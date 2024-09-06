@@ -192,16 +192,18 @@ void felix86_set_guest_xmm(felix86_recompiler_t* recompiler, x86_ref_e ref, xmm_
 }
 
 felix86_exit_reason_e felix86_recompiler_run_v2(felix86_recompiler_t* recompiler) {
+    while (true) {
         u64 address = recompiler->state.rip;
-    ir_function_t* function = ir_function_cache_get_function(recompiler->function_cache, address);
+        printf("Now at %016lx\n", address);
+        ir_function_t* function = ir_function_cache_get_function(recompiler->function_cache, address);
 
-    frontend_compile_function(function);
+        frontend_compile_function(function);
 
-    ir_ssa_pass(function);
-    ir_copy_propagation_pass(function);
-    ir_naming_pass(function);
-
-    ir_interpret_function(function, &recompiler->state);
+        // ir_ssa_pass(function);
+        // ir_copy_propagation_pass(function);
+        ir_naming_pass(function);
+        ir_interpret_function(function, &recompiler->state);
+    }
 
     return DoneTesting;
 }

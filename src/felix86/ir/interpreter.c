@@ -417,11 +417,120 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
             break;
         }
         case IR_SET_GUEST: {
-            ERROR("Interpreting set_guest, this should not happen");
+            switch (instruction->set_guest.ref) {
+                case X86_REF_RAX ... X86_REF_R15: {
+                    state->gprs[instruction->set_guest.ref - X86_REF_RAX] = temps[instruction->set_guest.source->name];
+                    break;
+                }
+                case X86_REF_CF: {
+                    if (temps[instruction->set_guest.source->name] > 1) {
+                        ERROR("Invalid value for CF");
+                    }
+                    state->cf = temps[instruction->set_guest.source->name];
+                    break;
+                }
+                case X86_REF_PF: {
+                    if (temps[instruction->set_guest.source->name] > 1) {
+                        ERROR("Invalid value for PF");
+                    }
+                    state->pf = temps[instruction->set_guest.source->name];
+                    break;
+                }
+                case X86_REF_AF: {
+                    if (temps[instruction->set_guest.source->name] > 1) {
+                        ERROR("Invalid value for AF");
+                    }
+                    state->af = temps[instruction->set_guest.source->name];
+                    break;
+                }
+                case X86_REF_ZF: {
+                    if (temps[instruction->set_guest.source->name] > 1) {
+                        ERROR("Invalid value for ZF");
+                    }
+                    state->zf = temps[instruction->set_guest.source->name];
+                    break;
+                }
+                case X86_REF_SF: {
+                    if (temps[instruction->set_guest.source->name] > 1) {
+                        ERROR("Invalid value for SF");
+                    }
+                    state->sf = temps[instruction->set_guest.source->name];
+                    break;
+                }
+                case X86_REF_OF: {
+                    if (temps[instruction->set_guest.source->name] > 1) {
+                        ERROR("Invalid value for OF");
+                    }
+                    state->of = temps[instruction->set_guest.source->name];
+                    break;
+                }
+                case X86_REF_RIP: {
+                    WARN("Setting RIP to %016lx", temps[instruction->set_guest.source->name]);
+                    state->rip = temps[instruction->set_guest.source->name];
+                    break;
+                }
+                case X86_REF_XMM0 ... X86_REF_XMM15: {
+                    state->xmm[instruction->set_guest.ref - X86_REF_XMM0] = xmm_temps[instruction->set_guest.source->name];
+                    break;
+                }
+                default: {
+                    ERROR("Invalid reg reference: %d", instruction->set_guest.ref);
+                    break;
+                }
+            }
             break;
         }
         case IR_GET_GUEST: {
-            ERROR("Interpreting get_guest, this should not happen");
+            switch (instruction->get_guest.ref) {
+                case X86_REF_RAX ... X86_REF_R15: {
+                    temps[instruction->name] = state->gprs[instruction->get_guest.ref - X86_REF_RAX];
+                    break;
+                }
+                case X86_REF_CF: {
+                    temps[instruction->name] = state->cf;
+                    break;
+                }
+                case X86_REF_PF: {
+                    temps[instruction->name] = state->pf;
+                    break;
+                }
+                case X86_REF_AF: {
+                    temps[instruction->name] = state->af;
+                    break;
+                }
+                case X86_REF_ZF: {
+                    temps[instruction->name] = state->zf;
+                    break;
+                }
+                case X86_REF_SF: {
+                    temps[instruction->name] = state->sf;
+                    break;
+                }
+                case X86_REF_OF: {
+                    temps[instruction->name] = state->of;
+                    break;
+                }
+                case X86_REF_RIP: {
+                    temps[instruction->name] = state->rip;
+                    break;
+                }
+                case X86_REF_FS: {
+                    temps[instruction->name] = state->fs;
+                    break;
+                }
+                case X86_REF_GS: {
+                    temps[instruction->name] = state->gs;
+                    break;
+                }
+                case X86_REF_XMM0 ... X86_REF_XMM15: {
+                    xmm_temps[instruction->name] = state->xmm[instruction->get_guest.ref - X86_REF_XMM0];
+                    break;
+                }
+                default: {
+                    ERROR("Invalid reg reference: %d", instruction->get_guest.ref);
+                    break;
+                }
+            }
             break;
         }
         default: {

@@ -432,15 +432,14 @@ IR_HANDLE(group2_rm8_imm8) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm8, imm8 - 0xc0
 }
 
 IR_HANDLE(ret) { // ret - 0xc3
-    ERROR("Unimplemented instruction: ret - 0xc3");
-    // ir_instruction_t* rsp = ir_emit_get_guest(INSTS, X86_REF_RSP);
-    // ir_instruction_t* size = ir_emit_immediate(INSTS, 8);
-    // ir_instruction_t* rip = ir_emit_read_qword(INSTS, rsp);
-    // ir_instruction_t* rsp_add = ir_emit_add(INSTS, rsp, size);
-    // ir_emit_set_guest(INSTS, X86_REF_RSP, rsp_add);
-    // ir_emit_jump(INSTS, rip);
+    ir_instruction_t* rsp = ir_emit_get_guest(INSTS, X86_REF_RSP);
+    ir_instruction_t* size = ir_emit_immediate(INSTS, 8);
+    ir_instruction_t* rip = ir_emit_read_qword(INSTS, rsp);
+    ir_instruction_t* rsp_add = ir_emit_add(INSTS, rsp, size);
+    ir_emit_set_guest(INSTS, X86_REF_RSP, rsp_add);
+    ir_emit_jump_register(INSTS, rip);
 
-    // state->exit = true;
+    state->exit = true;
 }
 
 IR_HANDLE(mov_rm8_imm8) { // mov rm8, imm8 - 0xc6

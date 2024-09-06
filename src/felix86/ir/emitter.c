@@ -286,7 +286,7 @@ ir_instruction_t* ir_emit_get_guest(ir_instruction_list_t* instructions, x86_ref
     return instruction;
 }
 
-ir_instruction_t* ir_emit_set_guest(ir_instruction_list_t* instructions, x86_ref_e ref, ir_instruction_t* source)
+void ir_emit_set_guest(ir_instruction_list_t* instructions, x86_ref_e ref, ir_instruction_t* source)
 {
     ir_instruction_t* instruction = ir_ilist_push_back(instructions);
     instruction->opcode = IR_SET_GUEST;
@@ -294,7 +294,6 @@ ir_instruction_t* ir_emit_set_guest(ir_instruction_list_t* instructions, x86_ref
     instruction->set_guest.ref = ref;
     instruction->set_guest.source = source;
     source->uses++;
-    return instruction;
 }
 
 ir_instruction_t* ir_emit_get_flag(ir_instruction_list_t* instructions, x86_ref_e flag) {
@@ -311,14 +310,13 @@ ir_instruction_t* ir_emit_get_flag_not(ir_instruction_list_t* instructions, x86_
     return ir_emit_xor(instructions, instruction, one);
 }
 
-ir_instruction_t* ir_emit_set_flag(ir_instruction_list_t* instructions, x86_ref_e flag, ir_instruction_t* source) {
+void ir_emit_set_flag(ir_instruction_list_t* instructions, x86_ref_e flag, ir_instruction_t* source) {
     ir_instruction_t* instruction = ir_ilist_push_back(instructions);
     instruction->opcode = IR_SET_GUEST;
     instruction->type = IR_TYPE_SET_GUEST;
     instruction->set_guest.ref = flag;
     instruction->set_guest.source = source;
     source->uses++;
-    return instruction;
 }
 
 ir_instruction_t* ir_emit_read_byte(ir_instruction_list_t* instructions, ir_instruction_t* address)
@@ -341,24 +339,24 @@ ir_instruction_t* ir_emit_read_qword(ir_instruction_list_t* instructions, ir_ins
     return ir_emit_one_operand(instructions, IR_READ_QWORD, address);
 }
 
-ir_instruction_t* ir_emit_write_byte(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source)
+void ir_emit_write_byte(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source)
 {
-    return ir_emit_two_operands(instructions, IR_WRITE_BYTE, address, source);
+    ir_emit_two_operands(instructions, IR_WRITE_BYTE, address, source);
 }
 
-ir_instruction_t* ir_emit_write_word(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source)
+void ir_emit_write_word(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source)
 {
-    return ir_emit_two_operands(instructions, IR_WRITE_WORD, address, source);
+    ir_emit_two_operands(instructions, IR_WRITE_WORD, address, source);
 }
 
-ir_instruction_t* ir_emit_write_dword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source)
+void ir_emit_write_dword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source)
 {
-    return ir_emit_two_operands(instructions, IR_WRITE_DWORD, address, source);
+    ir_emit_two_operands(instructions, IR_WRITE_DWORD, address, source);
 }
 
-ir_instruction_t* ir_emit_write_qword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source)
+void ir_emit_write_qword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source)
 {
-    return ir_emit_two_operands(instructions, IR_WRITE_QWORD, address, source);
+    ir_emit_two_operands(instructions, IR_WRITE_QWORD, address, source);
 }
 
 ir_instruction_t* ir_emit_cpuid(ir_instruction_list_t* instructions)
@@ -432,7 +430,7 @@ ir_instruction_t* ir_emit_get_rm(ir_instruction_list_t* instructions, x86_operan
     }
 }
 
-ir_instruction_t* ir_emit_set_reg(ir_instruction_list_t* instructions, x86_operand_t* reg_operand, ir_instruction_t* source)
+void ir_emit_set_reg(ir_instruction_list_t* instructions, x86_operand_t* reg_operand, ir_instruction_t* source)
 {
     switch (reg_operand->size) {
         case X86_SIZE_BYTE: {
@@ -445,11 +443,11 @@ ir_instruction_t* ir_emit_set_reg(ir_instruction_list_t* instructions, x86_opera
         case X86_SIZE_WORD: return ir_emit_set_gpr16(instructions, reg_operand->reg.ref, source);
         case X86_SIZE_DWORD: return ir_emit_set_gpr32(instructions, reg_operand->reg.ref, source);
         case X86_SIZE_QWORD: return ir_emit_set_gpr64(instructions, reg_operand->reg.ref, source);
-        default: ERROR("Invalid register size"); return NULL;
+        default: ERROR("Invalid register size"); return;
     }
 }
 
-ir_instruction_t* ir_emit_set_rm(ir_instruction_list_t* instructions, x86_operand_t* rm_operand, ir_instruction_t* source)
+void ir_emit_set_rm(ir_instruction_list_t* instructions, x86_operand_t* rm_operand, ir_instruction_t* source)
 {
     if (rm_operand->type == X86_OP_TYPE_REGISTER) {
         return ir_emit_set_reg(instructions, rm_operand, source);
@@ -459,14 +457,14 @@ ir_instruction_t* ir_emit_set_rm(ir_instruction_list_t* instructions, x86_operan
     }
 }
 
-ir_instruction_t* ir_emit_write_memory(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* value, x86_size_e size)
+void ir_emit_write_memory(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* value, x86_size_e size)
 {
     switch (size) {
         case X86_SIZE_BYTE: return ir_emit_write_byte(instructions, address, value);
         case X86_SIZE_WORD: return ir_emit_write_word(instructions, address, value);
         case X86_SIZE_DWORD: return ir_emit_write_dword(instructions, address, value);
         case X86_SIZE_QWORD: return ir_emit_write_qword(instructions, address, value);
-        default: ERROR("Invalid memory size"); return NULL;
+        default: ERROR("Invalid memory size"); return;
     }
 }
 
@@ -555,7 +553,7 @@ ir_instruction_t* ir_emit_get_vector(ir_instruction_list_t* instructions, x86_re
     return instruction;
 }
 
-ir_instruction_t* ir_emit_set_gpr8_low(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
+void ir_emit_set_gpr8_low(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
 {
     ir_instruction_t* full_reg = ir_emit_get_guest(instructions, reg);
     ir_instruction_t* mask = ir_emit_immediate(instructions, 0xFFFFFFFFFFFFFF00);
@@ -563,12 +561,10 @@ ir_instruction_t* ir_emit_set_gpr8_low(ir_instruction_list_t* instructions, x86_
     ir_instruction_t* value_mask = ir_emit_immediate(instructions, 0xFF);
     ir_instruction_t* value = ir_emit_and(instructions, source, value_mask);
     ir_instruction_t* final_value = ir_emit_or(instructions, masked, value);
-    ir_instruction_t* instruction = ir_emit_set_guest(instructions, reg, final_value);
-
-    return instruction;
+    ir_emit_set_guest(instructions, reg, final_value);
 }
 
-ir_instruction_t* ir_emit_set_gpr8_high(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
+void ir_emit_set_gpr8_high(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
 {
     ir_instruction_t* full_reg = ir_emit_get_guest(instructions, reg);
     ir_instruction_t* mask = ir_emit_immediate(instructions, 0xFFFFFFFFFFFF00FF);
@@ -578,12 +574,10 @@ ir_instruction_t* ir_emit_set_gpr8_high(ir_instruction_list_t* instructions, x86
     ir_instruction_t* shift = ir_emit_immediate(instructions, 8);
     ir_instruction_t* shifted = ir_emit_left_shift(instructions, value, shift);
     ir_instruction_t* final_value = ir_emit_or(instructions, masked, shifted);
-    ir_instruction_t* instruction = ir_emit_set_guest(instructions, reg, final_value);
-
-    return instruction;
+    ir_emit_set_guest(instructions, reg, final_value);
 }
 
-ir_instruction_t* ir_emit_set_gpr16(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
+void ir_emit_set_gpr16(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
 {
     ir_instruction_t* full_reg = ir_emit_get_guest(instructions, reg);
     ir_instruction_t* mask = ir_emit_immediate(instructions, 0xFFFFFFFFFFFF0000);
@@ -591,25 +585,19 @@ ir_instruction_t* ir_emit_set_gpr16(ir_instruction_list_t* instructions, x86_ref
     ir_instruction_t* value_mask = ir_emit_immediate(instructions, 0xFFFF);
     ir_instruction_t* value = ir_emit_and(instructions, source, value_mask);
     ir_instruction_t* final_value = ir_emit_or(instructions, masked, value);
-    ir_instruction_t* instruction = ir_emit_set_guest(instructions, reg, final_value);
-
-    return instruction;
+    ir_emit_set_guest(instructions, reg, final_value);
 }
 
-ir_instruction_t* ir_emit_set_gpr32(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
+void ir_emit_set_gpr32(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
 {
     ir_instruction_t* value_mask = ir_emit_immediate(instructions, 0xFFFFFFFF);
     ir_instruction_t* final_value = ir_emit_and(instructions, source, value_mask);
-    ir_instruction_t* instruction = ir_emit_set_guest(instructions, reg, final_value);
-
-    return instruction;
+    ir_emit_set_guest(instructions, reg, final_value);
 }
 
-ir_instruction_t* ir_emit_set_gpr64(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
+void ir_emit_set_gpr64(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source)
 {
-    ir_instruction_t* instruction = ir_emit_set_guest(instructions, reg, source);
-
-    return instruction;
+    ir_emit_set_guest(instructions, reg, source);
 }
 
 ir_instruction_t* ir_emit_get_parity(ir_instruction_list_t* instructions, ir_instruction_t* source)
@@ -999,7 +987,7 @@ ir_instruction_t* ir_emit_get_cc(ir_instruction_list_t* instructions, u8 opcode)
 }
 
 ir_instruction_t* ir_emit_setcc(ir_instruction_list_t* instructions, x86_instruction_t* inst) {
-    return ir_emit_set_rm(instructions, &inst->operand_rm, ir_emit_get_cc(instructions, inst->opcode));
+    ir_emit_set_rm(instructions, &inst->operand_rm, ir_emit_get_cc(instructions, inst->opcode));
 }
 
 ir_instruction_t* ir_emit_cmovcc(ir_instruction_list_t* instructions, x86_instruction_t* inst) {

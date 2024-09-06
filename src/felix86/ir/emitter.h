@@ -46,19 +46,19 @@ ir_instruction_t* ir_emit_insert_integer_to_vector(
 ir_instruction_t* ir_emit_extract_integer_from_vector(ir_instruction_list_t* instructions, ir_instruction_t* src, u8 idx, x86_size_e sz);
 
 ir_instruction_t* ir_emit_get_guest(ir_instruction_list_t* instructions, x86_ref_e ref);
-ir_instruction_t* ir_emit_set_guest(ir_instruction_list_t* instructions, x86_ref_e ref, ir_instruction_t* source);
+void ir_emit_set_guest(ir_instruction_list_t* instructions, x86_ref_e ref, ir_instruction_t* source);
 ir_instruction_t* ir_emit_get_flag(ir_instruction_list_t* instructions, x86_ref_e flag);
-ir_instruction_t* ir_emit_set_flag(ir_instruction_list_t* instructions, x86_ref_e flag, ir_instruction_t* source);
+void ir_emit_set_flag(ir_instruction_list_t* instructions, x86_ref_e flag, ir_instruction_t* source);
 ir_instruction_t* ir_emit_get_flag_not(ir_instruction_list_t* instructions, x86_ref_e flag);
 
 ir_instruction_t* ir_emit_read_byte(ir_instruction_list_t* instructions, ir_instruction_t* address);
 ir_instruction_t* ir_emit_read_word(ir_instruction_list_t* instructions, ir_instruction_t* address);
 ir_instruction_t* ir_emit_read_dword(ir_instruction_list_t* instructions, ir_instruction_t* address);
 ir_instruction_t* ir_emit_read_qword(ir_instruction_list_t* instructions, ir_instruction_t* address);
-ir_instruction_t* ir_emit_write_byte(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
-ir_instruction_t* ir_emit_write_word(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
-ir_instruction_t* ir_emit_write_dword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
-ir_instruction_t* ir_emit_write_qword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
+void ir_emit_write_byte(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
+void ir_emit_write_word(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
+void ir_emit_write_dword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
+void ir_emit_write_qword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
 
 ir_instruction_t* ir_emit_cpuid(ir_instruction_list_t* instructions);
 
@@ -71,10 +71,10 @@ ir_instruction_t* ir_emit_immediate_sext(ir_instruction_list_t* instructions, x8
 
 ir_instruction_t* ir_emit_get_reg(ir_instruction_list_t* instructions, x86_operand_t* reg_operand);
 ir_instruction_t* ir_emit_get_rm(ir_instruction_list_t* instructions, x86_operand_t* rm_operand);
-ir_instruction_t* ir_emit_set_reg(ir_instruction_list_t* instructions, x86_operand_t* reg_operand, ir_instruction_t* source);
-ir_instruction_t* ir_emit_set_rm(ir_instruction_list_t* instructions, x86_operand_t* rm_operand, ir_instruction_t* source);
+void ir_emit_set_reg(ir_instruction_list_t* instructions, x86_operand_t* reg_operand, ir_instruction_t* source);
+void ir_emit_set_rm(ir_instruction_list_t* instructions, x86_operand_t* rm_operand, ir_instruction_t* source);
 
-ir_instruction_t* ir_emit_write_memory(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* value, x86_size_e size);
+void ir_emit_write_memory(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* value, x86_size_e size);
 ir_instruction_t* ir_emit_read_memory(ir_instruction_list_t* instructions, ir_instruction_t* address, x86_size_e size);
 
 ir_instruction_t* ir_emit_get_gpr8_low(ir_instruction_list_t* instructions, x86_ref_e reg);
@@ -83,11 +83,11 @@ ir_instruction_t* ir_emit_get_gpr16(ir_instruction_list_t* instructions, x86_ref
 ir_instruction_t* ir_emit_get_gpr32(ir_instruction_list_t* instructions, x86_ref_e reg);
 ir_instruction_t* ir_emit_get_gpr64(ir_instruction_list_t* instructions, x86_ref_e reg);
 ir_instruction_t* ir_emit_get_vector(ir_instruction_list_t* instructions, x86_ref_e reg);
-ir_instruction_t* ir_emit_set_gpr8_low(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
-ir_instruction_t* ir_emit_set_gpr8_high(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
-ir_instruction_t* ir_emit_set_gpr16(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
-ir_instruction_t* ir_emit_set_gpr32(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
-ir_instruction_t* ir_emit_set_gpr64(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
+void ir_emit_set_gpr8_low(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
+void ir_emit_set_gpr8_high(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
+void ir_emit_set_gpr16(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
+void ir_emit_set_gpr32(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
+void ir_emit_set_gpr64(ir_instruction_list_t* instructions, x86_ref_e reg, ir_instruction_t* source);
 
 ir_instruction_t* ir_emit_get_parity(ir_instruction_list_t* instructions, ir_instruction_t* source);
 ir_instruction_t* ir_emit_get_zero(ir_instruction_list_t* sta32te, ir_instruction_t* source);
