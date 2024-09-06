@@ -2,7 +2,7 @@
 // X(primary opcode, no prefix handler, handler with 0x66 prefix, handler with 0xF3 prefix, handler with 0xF2 prefix, decoding intricacy flag, whether this instruction has an immediate and its size)
 
 X(0x00, error, error, error, error, NO_FLAG, NO_IMMEDIATE)
-X(0x01, error, error, error, error, NO_FLAG, NO_IMMEDIATE)
+X(0x01, group7, error, error, error, NO_FLAG, BYTE_IMMEDIATE)
 X(0x02, error, error, error, error, NO_FLAG, NO_IMMEDIATE)
 X(0x03, error, error, error, error, NO_FLAG, NO_IMMEDIATE)
 X(0x04, error, error, error, error, NO_FLAG, NO_IMMEDIATE)

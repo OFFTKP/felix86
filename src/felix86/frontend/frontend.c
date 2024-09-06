@@ -3,27 +3,8 @@
 #include "felix86/ir/handlers.h"
 #include "felix86/ir/emitter.h"
 #include "felix86/common/log.h"
+#include "felix86/common/state.h"
 #include <Zydis/Zydis.h>
-
-typedef union {
-    struct {
-        u8 rm : 3;
-        u8 reg : 3;
-        u8 mod : 2;
-    };
-
-    u8 raw;
-} modrm_t;
-
-typedef union {
-    struct {
-        u8 base : 3;
-        u8 index : 3;
-        u8 scale : 2;
-    };
-
-    u8 raw;
-} sib_t;
 
 typedef enum : u8 {
     NO_IMMEDIATE,

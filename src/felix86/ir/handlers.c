@@ -1,8 +1,19 @@
 #include "felix86/common/global.h"
 #include "felix86/common/log.h"
+#include "felix86/common/state.h"
 #include "felix86/ir/emitter.h"
 #include "felix86/ir/instruction.h"
 #include "felix86/ir/handlers.h"
+
+u64 sext_if_64(u64 value, x86_size_e size_e) {
+    switch (size_e) {
+        case X86_SIZE_BYTE:
+        case X86_SIZE_WORD:
+        case X86_SIZE_DWORD: return value;
+        case X86_SIZE_QWORD: return (i64)(i32)value;
+        default: ERROR("Invalid immediate size");
+    }
+}
 
 #define IR_HANDLE(name) void ir_handle_##name(frontend_state_t* state, x86_instruction_t* inst)
 
@@ -87,7 +98,7 @@ IR_HANDLE(add_al_imm8) { // add al, imm8 - 0x04
 IR_HANDLE(add_eax_imm32) { // add ax/eax/rax, imm16/32/64 - 0x05
     x86_size_e size_e = inst->operand_reg.size;
     ir_instruction_t* eax = ir_emit_get_reg(INSTS, &inst->operand_reg);
-    ir_instruction_t* imm = ir_emit_immediate_sext(INSTS, &inst->operand_imm);
+    ir_instruction_t* imm = ir_emit_immediate(INSTS, sext_if_64(inst->operand_imm.immediate.data, size_e));
     ir_instruction_t* result = ir_emit_add(INSTS, eax, imm);
     ir_emit_set_reg(INSTS, &inst->operand_reg, result);
 
@@ -131,10 +142,25 @@ IR_HANDLE(or_r32_rm32) { // or r16/32/64, rm16/32/64 - 0x0B
     ir_emit_set_cpazso(INSTS, zero, p, NULL, z, s, zero);
 }
 
+IR_HANDLE(or_eax_imm32) { // add ax/eax/rax, imm16/32/64 - 0x0D
+    x86_size_e size_e = inst->operand_reg.size;
+    ir_instruction_t* eax = ir_emit_get_reg(INSTS, &inst->operand_reg);
+    ir_instruction_t* imm = ir_emit_immediate(INSTS, sext_if_64(inst->operand_imm.immediate.data, size_e));
+    ir_instruction_t* result = ir_emit_or(INSTS, eax, imm);
+    ir_emit_set_reg(INSTS, &inst->operand_reg, result);
+
+    ir_instruction_t* zero = ir_emit_immediate(INSTS, 0);
+    ir_instruction_t* p = ir_emit_get_parity(INSTS, result);
+    ir_instruction_t* z = ir_emit_get_zero(INSTS, result);
+    ir_instruction_t* s = ir_emit_get_sign(INSTS, result, size_e);
+
+    ir_emit_set_cpazso(INSTS, zero, p, NULL, z, s, zero);
+}
+
 IR_HANDLE(and_eax_imm32) { // and ax/eax/rax, imm16/32/64 - 0x25
     x86_size_e size_e = inst->operand_reg.size;
     ir_instruction_t* eax = ir_emit_get_reg(INSTS, &inst->operand_reg);
-    ir_instruction_t* imm = ir_emit_immediate_sext(INSTS, &inst->operand_imm);
+    ir_instruction_t* imm = ir_emit_immediate(INSTS, sext_if_64(inst->operand_imm.immediate.data, size_e));
     ir_instruction_t* result = ir_emit_and(INSTS, eax, imm);
     ir_emit_set_reg(INSTS, &inst->operand_reg, result);
 
@@ -246,7 +272,7 @@ IR_HANDLE(cmp_al_imm8) { // cmp al, imm8 - 0x3c
 IR_HANDLE(cmp_eax_imm32) { // cmp eax, imm32 - 0x3d
     x86_size_e size_e = inst->operand_reg.size;
     ir_instruction_t* eax = ir_emit_get_reg(INSTS, &inst->operand_reg);
-    ir_instruction_t* imm = ir_emit_immediate_sext(INSTS, &inst->operand_imm);
+    ir_instruction_t* imm = ir_emit_immediate(INSTS, sext_if_64(inst->operand_imm.immediate.data, size_e));
     ir_instruction_t* result = ir_emit_sub(INSTS, eax, imm);
 
     ir_instruction_t* c = ir_emit_get_carry_sub(INSTS, eax, imm, result, size_e);
@@ -387,6 +413,20 @@ IR_HANDLE(test_al_imm8) { // test al, imm8 - 0xa8
     x86_size_e size_e = inst->operand_reg.size;
     ir_instruction_t* reg = ir_emit_get_reg(INSTS, &inst->operand_reg);
     ir_instruction_t* imm = ir_emit_immediate(INSTS, inst->operand_imm.immediate.data);
+    ir_instruction_t* result = ir_emit_and(INSTS, reg, imm);
+
+    ir_instruction_t* zero = ir_emit_immediate(INSTS, 0);
+    ir_instruction_t* p = ir_emit_get_parity(INSTS, result);
+    ir_instruction_t* z = ir_emit_get_zero(INSTS, result);
+    ir_instruction_t* s = ir_emit_get_sign(INSTS, result, size_e);
+
+    ir_emit_set_cpazso(INSTS, zero, p, NULL, z, s, zero);
+}
+
+IR_HANDLE(test_eax_imm32) { // test eax, imm32 - 0xa9
+    x86_size_e size_e = inst->operand_reg.size;
+    ir_instruction_t* reg = ir_emit_get_reg(INSTS, &inst->operand_reg);
+    ir_instruction_t* imm = ir_emit_immediate(INSTS, sext_if_64(inst->operand_imm.immediate.data, size_e));
     ir_instruction_t* result = ir_emit_and(INSTS, reg, imm);
 
     ir_instruction_t* zero = ir_emit_immediate(INSTS, 0);
@@ -563,6 +603,39 @@ IR_HANDLE(inc_dec_rm8) { // inc/dec rm8 - 0xfe
 // ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████   
 //      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██    
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██    
+
+IR_HANDLE(group7) { // group 7 - 0x0f 0x01
+    x86_group1_e opcode = inst->operand_imm.immediate.data;
+    modrm_t modrm; // we take it in as an immediate instead of as a modrm because
+                   // we don't want to potentially get a SIB too
+    modrm.raw = opcode;
+    switch (modrm.reg) {
+        case 2: {
+            if (opcode == 0xD0) { // xgetbv
+                // That's probably fine for now
+                xcr0_reg_t xcr0 = {0};
+                xcr0.x87 = 1;
+                xcr0.sse = 1;
+                xcr0.avx = 1;
+                u32 rax = xcr0.raw;
+                u32 rdx = xcr0.raw >> 32;
+                x86_operand_t rax_reg = get_full_reg(X86_REF_RAX);
+                x86_operand_t rdx_reg = get_full_reg(X86_REF_RDX);
+                ir_emit_set_reg(INSTS, &rax_reg, ir_emit_immediate(INSTS, rax));
+                ir_emit_set_reg(INSTS, &rdx_reg, ir_emit_immediate(INSTS, rdx));
+            } else if (opcode == 0xD1) { // xsetbv
+                ERROR("XSETBV instruction not implemented");
+            } else {
+                ERROR("LGDT instruction not implemented");
+            }
+            break;
+        }
+        default: {
+            ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, state->current_address - g_base_address);
+            break;
+        }
+    }
+}
 
 IR_HANDLE(syscall) { // syscall - 0x0f 0x05
     ir_emit_syscall(INSTS);

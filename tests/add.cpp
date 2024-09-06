@@ -32,7 +32,11 @@ FELIX86_TEST(add_sign_extend) {
     xor_(ebx, ebx);
     add(ebx, -1); // encoded as add rm32, imm8 - gets sign extended
 
+    xor_(eax, eax);
+    add(rax, -1337); // encoded as add r32, imm32 - gets sign extended
+
     verify(X86_REF_RBX, (uint32_t)-1ull);
+    verify(X86_REF_RAX, (uint64_t)-1337);
 }
 
 FELIX86_TEST(add_eax_imm32) {
