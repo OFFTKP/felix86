@@ -18,6 +18,7 @@ ir_instruction_t* ir_emit_left_shift(ir_instruction_list_t* instructions, ir_ins
 ir_instruction_t* ir_emit_right_shift(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
 ir_instruction_t* ir_emit_right_shift_arithmetic(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
 ir_instruction_t* ir_emit_rotate(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2, x86_size_e size, bool right);
+ir_instruction_t* ir_emit_select(ir_instruction_list_t* instructions, ir_instruction_t* condition, ir_instruction_t* source1, ir_instruction_t* source2);
 ir_instruction_t* ir_emit_and(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
 ir_instruction_t* ir_emit_or(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
 ir_instruction_t* ir_emit_xor(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
@@ -62,8 +63,7 @@ void ir_emit_write_qword(ir_instruction_list_t* instructions, ir_instruction_t* 
 
 ir_instruction_t* ir_emit_cpuid(ir_instruction_list_t* instructions);
 
-ir_instruction_t* ir_emit_setcc(ir_instruction_list_t* instructions, x86_instruction_t* inst);
-ir_instruction_t* ir_emit_cmovcc(ir_instruction_list_t* instructions, x86_instruction_t* inst);
+void ir_emit_setcc(ir_instruction_list_t* instructions, x86_instruction_t* inst);
 
 // Helpers
 ir_instruction_t* ir_emit_immediate(ir_instruction_list_t* instructions, u64 value);

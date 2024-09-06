@@ -24,6 +24,7 @@ felix86 is very early in development. If you want a more complete emulator, use 
 - [Constant propagation](https://en.wikipedia.org/wiki/Constant_folding)
 - [Dead store](https://en.wikipedia.org/wiki/Dead_store)
 - [Linear scan register allocation](https://web.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf)
+- [Efficiently Computing Static Single Assignment Form and the Control Dependence Graph](https://www.cs.utexas.edu/%7Epingali/CS380C/2010/papers/ssaCytron.pdf)
 - [Simple and Efficient Construction of Static Single Assignment Form](https://link.springer.com/chapter/10.1007/978-3-642-37051-9_6)
 - Yuzu source code
 - [Dynarmic source code & docs folder](https://github.com/PabloMK7/dynarmic/)

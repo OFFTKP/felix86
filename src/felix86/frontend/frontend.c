@@ -49,6 +49,8 @@ typedef enum : u16 {
     RM_MM_FLAG = 256, // rm is an mm register
     REG_EAX_OVERRIDE_FLAG = 512,
     DEFAULT_U64_FLAG = 1024,
+    CAN_REP_FLAG = 2048,
+    CAN_REPZ_REPNZ_FLAG = 4096,
 } decoding_flags_e;
 
 typedef struct {
@@ -157,6 +159,8 @@ void frontend_compile_instruction(frontend_state_t* state)
     bool rex_x = false;
     bool rex_r = false;
     bool address_override = false;
+    bool rep_nz_f2 = false;
+    bool rep_z_f3 = false;
     instruction_metadata_t* primary_map = primary_table;
     x86_prefixes_t prefixes;
     prefixes.raw = 0;
@@ -244,11 +248,12 @@ void frontend_compile_instruction(frontend_state_t* state)
 
                 // specifies implicit mandatory prefix
                 u8 pp = vex2 & 0b11;
-                switch (pp) {
-                    case 0b01: prefixes.operand_override = 1; break;
-                    case 0b10: prefixes.rep_z_f3 = 1; break;
-                    case 0b11: prefixes.rep_nz_f2 = 1; break;
-                }
+                // switch (pp) {
+                //     case 0b01: prefixes.operand_override = 1; break;
+                //     case 0b10: prefixes.rep_z_f3 = 1; break;
+                //     case 0b11: prefixes.rep_nz_f2 = 1; break;
+                // }
+                ERROR("TODO: do the above differently");
 
                 index += 3;
                 break;
@@ -268,11 +273,12 @@ void frontend_compile_instruction(frontend_state_t* state)
 
                 // specifies implicit mandatory prefix
                 u8 pp = vex & 0b11;
-                switch (pp) {
-                    case 0b01: prefixes.operand_override = 1; break;
-                    case 0b10: prefixes.rep_z_f3 = 1; break;
-                    case 0b11: prefixes.rep_nz_f2 = 1; break;
-                }
+                // switch (pp) {
+                //     case 0b01: prefixes.operand_override = 1; break;
+                //     case 0b10: prefixes.rep_z_f3 = 1; break;
+                //     case 0b11: prefixes.rep_nz_f2 = 1; break;
+                // }
+                ERROR("TODO: do the above differently");
 
                 index += 2;
                 break;
@@ -286,7 +292,7 @@ void frontend_compile_instruction(frontend_state_t* state)
             }
 
             case 0xF2: {
-                prefixes.rep_nz_f2 = 1;
+                rep_nz_f2 = true;
                 prefix = true;
                 index += 1;
                 secondary_table_index = 2;
@@ -294,7 +300,7 @@ void frontend_compile_instruction(frontend_state_t* state)
             }
 
             case 0xF3: {
-                prefixes.rep_z_f3 = 1;
+                rep_z_f3 = true;
                 prefix = true;
                 index += 1;
                 secondary_table_index = 3;
@@ -315,7 +321,6 @@ void frontend_compile_instruction(frontend_state_t* state)
     decoding_flags_e decoding_flags = primary.decoding_flags;
     immediate_size_e immediate_size = primary.immediate_size;
     ir_handle_fn_t fn = primary.fn[0];
-
 
     if (opcode == 0x0F) {
         if (primary_map != primary_table) {
@@ -369,6 +374,23 @@ void frontend_compile_instruction(frontend_state_t* state)
     } else if (decoding_flags & OPCODE_FLAG) {
         inst.operand_reg.type = X86_OP_TYPE_REGISTER;
         inst.operand_reg.reg.ref = (X86_REF_RAX + (opcode & 0x07)) | (rex_b << 3);
+    }
+
+    enum {
+        NONE,
+        REP,
+        REP_Z,
+        REP_NZ,
+    } rep_type;
+
+    if (rep_z_f3 && (decoding_flags & CAN_REPZ_REPNZ_FLAG)) {
+        rep_type = REP_Z;
+    } else if (rep_nz_f2 && (decoding_flags & CAN_REPZ_REPNZ_FLAG)) {
+        rep_type = REP_NZ;
+    } else if ((rep_nz_f2 || rep_z_f3) && (decoding_flags & CAN_REP_FLAG)) {
+        rep_type = REP;
+    } else {
+        rep_type = NONE;
     }
     
     if (decoding_flags & RM_EAX_OVERRIDE_FLAG) {
@@ -526,7 +548,7 @@ void frontend_compile_instruction(frontend_state_t* state)
 
     inst.length = index;
 
-    bool is_rep = prefixes.rep_nz_f2 || prefixes.rep_z_f3;
+    bool is_rep = rep_type != NONE;
     ir_block_t* rep_loop_block = NULL;
     if (is_rep) {
         rep_loop_block = ir_function_get_block(state->function, state->current_block, IR_NO_ADDRESS);
@@ -557,14 +579,19 @@ void frontend_compile_instruction(frontend_state_t* state)
         ir_instruction_t* one = ir_emit_immediate(INSTS, 1);
         ir_instruction_t* sub = ir_emit_sub(INSTS, rcx, one);
         ir_emit_set_reg(INSTS, &rcx_reg, sub);
-        ir_instruction_t* rcx_zero = ir_emit_equal(INSTS, rcx, zero);
+        ir_instruction_t* rcx_zero = ir_emit_equal(INSTS, sub, zero);
         ir_instruction_t* condition;
         ir_instruction_t* zf = ir_emit_get_flag(INSTS, X86_REF_ZF);
-        if (prefixes.rep_nz_f2) {
+        if (rep_type == REP) { // Some instructions don't check the ZF flag
+            condition = zero;
+        } else if (rep_type == REP_NZ) {
             condition = ir_emit_not_equal(INSTS, zf, zero);
-        } else {
+        } else if (rep_type == REP_Z) {
             condition = ir_emit_equal(INSTS, zf, zero);
+        } else {
+            ERROR("Unreachable");
         }
+
         ir_instruction_t* final_condition = ir_emit_or(INSTS, rcx_zero, condition);
         ir_emit_jump_conditional(INSTS, final_condition, rep_exit_block, rep_loop_block);
 

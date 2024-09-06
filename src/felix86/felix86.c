@@ -1,9 +1,9 @@
 #include "felix86/felix86.h"
+#include "felix86/common/global.h"
 #include "felix86/common/log.h"
 #include "felix86/common/state.h"
 #include "felix86/frontend/frontend.h"
 #include "felix86/ir/function_cache.h"
-#include "felix86/ir/emitter.h"
 #include "felix86/ir/passes.h"
 #include "felix86/ir/print.h"
 #include "felix86/ir/interpreter.h"
@@ -27,6 +27,8 @@ felix86_recompiler_t* felix86_recompiler_create(felix86_recompiler_config_t* con
     recompiler->print_blocks = config->print_blocks;
     recompiler->base_address = config->base_address;
     recompiler->use_interpreter = config->use_interpreter;
+
+    g_base_address = recompiler->base_address;
 
     return recompiler;
 }
@@ -194,7 +196,6 @@ void felix86_set_guest_xmm(felix86_recompiler_t* recompiler, x86_ref_e ref, xmm_
 felix86_exit_reason_e felix86_recompiler_run_v2(felix86_recompiler_t* recompiler) {
     while (true) {
         u64 address = recompiler->state.rip;
-        printf("Now at %016lx\n", address);
         ir_function_t* function = ir_function_cache_get_function(recompiler->function_cache, address);
 
         frontend_compile_function(function);
@@ -203,6 +204,7 @@ felix86_exit_reason_e felix86_recompiler_run_v2(felix86_recompiler_t* recompiler
         // ir_copy_propagation_pass(function);
         ir_naming_pass(function);
         ir_interpret_function(function, &recompiler->state);
+        ir_print_function_graphviz(recompiler->base_address, function);
     }
 
     return DoneTesting;

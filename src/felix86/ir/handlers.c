@@ -1,3 +1,4 @@
+#include "felix86/common/global.h"
 #include "felix86/common/log.h"
 #include "felix86/ir/emitter.h"
 #include "felix86/ir/instruction.h"
@@ -5,10 +6,8 @@
 
 #define IR_HANDLE(name) void ir_handle_##name(frontend_state_t* state, x86_instruction_t* inst)
 
-#define SET_REG(source) ()
-
 IR_HANDLE(error) {
-    ERROR("Hit error instruction during: %016lx - Opcode: %02x", state->current_address, inst->opcode);
+    ERROR("Hit error instruction during: %016lx - Opcode: %02x", state->current_address - g_base_address, inst->opcode);
 }
 
 // ██████  ██████  ██ ███    ███  █████  ██████  ██    ██ 
@@ -431,6 +430,10 @@ IR_HANDLE(group2_rm8_imm8) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm8, imm8 - 0xc0
     ir_emit_group2_imm(INSTS, inst);
 }
 
+IR_HANDLE(group2_rm32_imm8) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, imm8 - 0xc1
+    ir_emit_group2_imm(INSTS, inst);
+}
+
 IR_HANDLE(ret) { // ret - 0xc3
     ir_instruction_t* rsp = ir_emit_get_guest(INSTS, X86_REF_RSP);
     ir_instruction_t* size = ir_emit_immediate(INSTS, 8);
@@ -566,7 +569,11 @@ IR_HANDLE(syscall) { // syscall - 0x0f 0x05
 }
 
 IR_HANDLE(cmovcc) { // cmovcc - 0x0f 0x40-0x4f
-    ir_emit_cmovcc(INSTS, inst);
+    ir_instruction_t* rm = ir_emit_get_rm(INSTS, &inst->operand_rm);
+    ir_instruction_t* reg = ir_emit_get_reg(INSTS, &inst->operand_reg);
+    ir_instruction_t* condition = ir_emit_get_cc(INSTS, inst->opcode);
+    ir_instruction_t* value = ir_emit_select(INSTS, condition, reg, rm);
+    ir_emit_set_reg(INSTS, &inst->operand_reg, value);
 }
 
 IR_HANDLE(movq_mm_rm32) { // movq mm, rm32 - 0x0f 0x6e

@@ -57,25 +57,26 @@ FELIX86_TEST(stosd) {
     verify(X86_REF_RDI, (u64)memory.getAddress() + 4);
 }
 
-// FELIX86_TEST(rep_stosq) {
-//     Xbyak::Label memory, end;
-//     mov(rcx, 6);
-//     mov(rdi, memory);
-//     mov(rax, 0x123456789bcdef0);
-//     rep();
-//     stosq();
-//     jmp(end);
-//     L(memory);
-//     dq(0xdeadbeefdeadbeef);
-//     dq(0xdeadbeefdeadbeef);
-//     dq(0xdeadbeefdeadbeef);
-//     dq(0xdeadbeefdeadbeef);
-//     dq(0xdeadbeefdeadbeef);
-//     dq(0xdeadbeefdeadbeef);
-//     L(end);
+FELIX86_TEST(rep_stosq) {
+    Xbyak::Label memory, end;
+    mov(rcx, 6);
+    mov(rdi, memory);
+    mov(rax, 0x123456789bcdef0);
+    rep();
+    stosq();
+    jmp(end);
+    L(memory);
+    dq(0xdeadbeefdeadbeef);
+    dq(0xdeadbeefdeadbeef);
+    dq(0xdeadbeefdeadbeef);
+    dq(0xdeadbeefdeadbeef);
+    dq(0xdeadbeefdeadbeef);
+    dq(0xdeadbeefdeadbeef);
+    L(end);
 
-//     for (int i = 0; i < 6; i++) {
-//         verify_memory((u64*)memory.getAddress() + i, 0x123456789bcdef0, sizeof(u64));
-//     }
-//     verify(X86_REF_RDI, (u64)memory.getAddress() + 8);
-// }
+    for (int i = 0; i < 6; i++) {
+        verify_memory((u64*)memory.getAddress() + i, 0x123456789bcdef0, sizeof(u64));
+    }
+
+    verify(X86_REF_RDI, (u64)memory.getAddress() + 8 * 6);
+}

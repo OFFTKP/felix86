@@ -140,14 +140,12 @@ typedef union {
 		u16 address_override : 1;
 		u16 operand_override : 1;
 		u16 lock : 1;
-		u16 rep_nz_f2 : 1;
-		u16 rep_z_f3 : 1;
 		u16 segment_override : 2;
 		u16 byte_override : 1;
 		u16 vex_l : 1;  // 0 for 128-bit, 1 for 256-bit
 		u16 vex : 1;    // the presence of vex can mean instructions are treated differently, such
 						// as how their top bits are treated
-		u16 : 4;
+		u16 : 6;
 	};
 
 	u16 raw;

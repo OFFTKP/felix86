@@ -124,6 +124,11 @@ ir_instruction_t* ir_emit_rotate(ir_instruction_list_t* instructions, ir_instruc
     return ir_emit_two_operands(instructions, type, source1, count);
 }
 
+ir_instruction_t* ir_emit_select(ir_instruction_list_t* instructions, ir_instruction_t* condition, ir_instruction_t* source1, ir_instruction_t* source2)
+{
+    return ir_emit_three_operands(instructions, IR_SELECT, condition, source1, source2);
+}
+
 ir_instruction_t* ir_emit_and(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2)
 {
     return ir_emit_two_operands(instructions, IR_AND, source1, source2);
@@ -640,6 +645,16 @@ ir_instruction_t* ir_emit_get_shift_mask_left(ir_instruction_list_t* instruction
     return mask;
 }
 
+ir_instruction_t* ir_emit_get_shift_mask_right(ir_instruction_list_t* instructions, ir_instruction_t* source)
+{
+    ir_instruction_t* zero = ir_emit_immediate(instructions, 0);
+    ir_instruction_t* is_zero = ir_emit_equal(instructions, source, zero);
+    ir_instruction_t* one = ir_emit_immediate(instructions, 1);
+    ir_instruction_t* shift = ir_emit_sub(instructions, source, one);
+    ir_instruction_t* mask = ir_emit_left_shift(instructions, one, shift);
+    return ir_emit_select(instructions, is_zero, zero, mask);
+}
+
 ir_instruction_t* ir_emit_get_mask(ir_instruction_list_t* instructions, x86_size_e size_e)
 {
     u16 size = get_bit_size(size_e);
@@ -889,9 +904,18 @@ void ir_emit_group2_imm(ir_instruction_list_t* instructions, x86_instruction_t* 
             break;
         }
         case X86_GROUP2_SHR: {
+            ir_instruction_t* msb_mask = ir_emit_get_shift_mask_right(instructions, shift_imm);
+            result = ir_emit_right_shift(instructions, rm, shift_imm);
+            c = ir_emit_equal(instructions, ir_emit_and(instructions, rm, msb_mask), msb_mask);
+            o = ir_emit_get_sign(instructions, rm, size_e);
+
+            if (shift_amount != 0) {
+                update_pzs = true;
+            }
             break;
         }
         case X86_GROUP2_SAR: {
+            ERROR("SAR\n");
             break;
         }
     }
@@ -986,17 +1010,8 @@ ir_instruction_t* ir_emit_get_cc(ir_instruction_list_t* instructions, u8 opcode)
     ERROR("Invalid condition code");
 }
 
-ir_instruction_t* ir_emit_setcc(ir_instruction_list_t* instructions, x86_instruction_t* inst) {
+void ir_emit_setcc(ir_instruction_list_t* instructions, x86_instruction_t* inst) {
     ir_emit_set_rm(instructions, &inst->operand_rm, ir_emit_get_cc(instructions, inst->opcode));
-}
-
-ir_instruction_t* ir_emit_cmovcc(ir_instruction_list_t* instructions, x86_instruction_t* inst) {
-    ERROR("Unimplemented: cmovcc");
-    // ir_instruction_t* rm = ir_emit_get_rm(instructions, &inst->operand_rm);
-    // ir_instruction_t* reg = ir_emit_get_reg(instructions, &inst->operand_reg);
-    // ir_instruction_t* condition = ir_emit_get_cc(instructions, inst->opcode);
-    // ir_instruction_t* value = ir_emit_ternary(instructions, condition, rm, reg);
-    // return ir_emit_set_reg(instructions, &inst->operand_reg, value);
 }
 
 // void ir_emit_rep_start(ir_instruction_list_t* instructions, x86_size_e size_e) {

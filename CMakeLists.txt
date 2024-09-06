@@ -34,12 +34,13 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/instruction.c
     src/felix86/ir/instruction_list.c
     src/felix86/ir/passes.cpp
-    src/felix86/ir/print.c
+    src/felix86/ir/print.cpp
 )
 
 set(FELIX86_COMMON_SOURCES
     src/felix86/common/allocator.c
     src/felix86/common/file.c
+    src/felix86/common/global.c
     src/felix86/common/log.c
 )
 
