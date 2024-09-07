@@ -137,8 +137,6 @@ typedef enum : u8 {
 typedef union {
 	struct {
 		u16 rex_w : 1;
-		u16 address_override : 1;
-		u16 operand_override : 1;
 		u16 lock : 1;
 		u16 segment_override : 2;
 		u16 byte_override : 1;
@@ -158,7 +156,12 @@ typedef struct {
 			x86_ref_e base;
 			x86_ref_e index;
 			u8 scale;
-			bool address_override;
+			struct {
+				u8 address_override : 1;
+				u8 fs_override : 1;
+				u8 gs_override : 1;
+				u8 : 5;
+			};
 		} memory;
 
 		struct {

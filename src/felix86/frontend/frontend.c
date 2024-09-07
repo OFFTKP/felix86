@@ -1,4 +1,5 @@
 #include "felix86/frontend/frontend.h"
+#include "felix86/common/global.h"
 #include "felix86/frontend/instruction.h"
 #include "felix86/ir/handlers.h"
 #include "felix86/ir/emitter.h"
@@ -32,24 +33,45 @@ typedef enum : u16 {
     DEFAULT_U64_FLAG = 1024,
     CAN_REP_FLAG = 2048,
     CAN_REPZ_REPNZ_FLAG = 4096,
+    REG_XMM_FLAG = 8192,
+    RM_XMM_FLAG = 16384,
+    MANDATORY_PREFIX_FLAG = 32768,
 } decoding_flags_e;
 
 typedef struct {
     u8 opcode;
-    ir_handle_fn_t fn[4];
+    ir_handle_fn_t fn;
     decoding_flags_e decoding_flags;
     immediate_size_e immediate_size;
 } instruction_metadata_t;
 
 instruction_metadata_t primary_table[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, { ir_handle_##name, 0, 0, 0 }, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
 #include "felix86/frontend/primary.inc"
 #undef X
 };
 
 instruction_metadata_t secondary_table[] = {
-#define X(opcode, name, name_66, name_f2, name_f3, flag, immsize) [opcode] = {opcode, { ir_handle_##name, ir_handle_##name_66, ir_handle_##name_f2, ir_handle_##name_f3 }, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
 #include "felix86/frontend/secondary.inc"
+#undef X
+};
+
+instruction_metadata_t secondary_table_66[] = {
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#include "felix86/frontend/secondary_66.inc"
+#undef X
+};
+
+instruction_metadata_t secondary_table_f2[] = {
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#include "felix86/frontend/secondary_f2.inc"
+#undef X
+};
+
+instruction_metadata_t secondary_table_f3[] = {
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#include "felix86/frontend/secondary_f3.inc"
 #undef X
 };
 
@@ -133,13 +155,15 @@ void frontend_compile_instruction(frontend_state_t* state)
 
     x86_instruction_t inst = {0};
     int index = 0;
-    int secondary_table_index = 0;
     bool prefix = false;
     bool rex = false;
     bool rex_b = false;
     bool rex_x = false;
     bool rex_r = false;
     bool address_override = false;
+    bool operand_override = false;
+    bool fs_override = false;
+    bool gs_override = false;
     bool rep_nz_f2 = false;
     bool rep_z_f3 = false;
     instruction_metadata_t* primary_map = primary_table;
@@ -165,26 +189,23 @@ void frontend_compile_instruction(frontend_state_t* state)
             }
 
             case 0x64: {
-                ERROR("FS segment override not supported");
-                prefixes.segment_override = SEGMENT_FS;
+                fs_override = true;
                 prefix = true;
                 index += 1;
                 break;
             }
 
             case 0x65: {
-                ERROR("GS segment override not supported");
-                prefixes.segment_override = SEGMENT_GS;
+                gs_override = true;
                 prefix = true;
                 index += 1;
                 break;
             }
 
             case 0x66: {
-                prefixes.operand_override = true;
+                operand_override = true;
                 prefix = true;
                 index += 1;
-                secondary_table_index = 1;
                 break;
             }
 
@@ -229,12 +250,11 @@ void frontend_compile_instruction(frontend_state_t* state)
 
                 // specifies implicit mandatory prefix
                 u8 pp = vex2 & 0b11;
-                // switch (pp) {
-                //     case 0b01: prefixes.operand_override = 1; break;
-                //     case 0b10: prefixes.rep_z_f3 = 1; break;
-                //     case 0b11: prefixes.rep_nz_f2 = 1; break;
-                // }
-                ERROR("TODO: do the above differently");
+                switch (pp) {
+                    case 0b01: operand_override = true; break;
+                    case 0b10: rep_z_f3 = true; break;
+                    case 0b11: rep_nz_f2 = true; break;
+                }
 
                 index += 3;
                 break;
@@ -254,12 +274,11 @@ void frontend_compile_instruction(frontend_state_t* state)
 
                 // specifies implicit mandatory prefix
                 u8 pp = vex & 0b11;
-                // switch (pp) {
-                //     case 0b01: prefixes.operand_override = 1; break;
-                //     case 0b10: prefixes.rep_z_f3 = 1; break;
-                //     case 0b11: prefixes.rep_nz_f2 = 1; break;
-                // }
-                ERROR("TODO: do the above differently");
+                switch (pp) {
+                    case 0b01: operand_override = true; break;
+                    case 0b10: rep_z_f3 = true; break;
+                    case 0b11: rep_nz_f2 = true; break;
+                }
 
                 index += 2;
                 break;
@@ -276,7 +295,6 @@ void frontend_compile_instruction(frontend_state_t* state)
                 rep_nz_f2 = true;
                 prefix = true;
                 index += 1;
-                secondary_table_index = 2;
                 break;
             }
 
@@ -284,7 +302,6 @@ void frontend_compile_instruction(frontend_state_t* state)
                 rep_z_f3 = true;
                 prefix = true;
                 index += 1;
-                secondary_table_index = 3;
                 break;
             }
 
@@ -301,7 +318,7 @@ void frontend_compile_instruction(frontend_state_t* state)
     instruction_metadata_t primary = primary_map[opcode];
     decoding_flags_e decoding_flags = primary.decoding_flags;
     immediate_size_e immediate_size = primary.immediate_size;
-    ir_handle_fn_t fn = primary.fn[0];
+    ir_handle_fn_t fn = primary.fn;
 
     if (opcode == 0x0F) {
         if (primary_map != primary_table) {
@@ -312,8 +329,20 @@ void frontend_compile_instruction(frontend_state_t* state)
         inst.opcode = opcode;
         instruction_metadata_t secondary = secondary_table[opcode];
         decoding_flags = secondary.decoding_flags;
+
+        if (decoding_flags & MANDATORY_PREFIX_FLAG) {
+            if (operand_override) {
+                secondary = secondary_table_66[opcode];
+            } else if (rep_z_f3) {
+                secondary = secondary_table_f3[opcode];
+            } else if (rep_nz_f2) {
+                secondary = secondary_table_f2[opcode];
+            }
+        }
+
+        decoding_flags = secondary.decoding_flags;
         immediate_size = secondary.immediate_size;
-        fn = secondary.fn[secondary_table_index];
+        fn = secondary.fn;
     }
 
     u8 size = (decoding_flags & DEFAULT_U64_FLAG) ? X86_SIZE_QWORD : X86_SIZE_DWORD;
@@ -322,7 +351,7 @@ void frontend_compile_instruction(frontend_state_t* state)
         size = X86_SIZE_BYTE;
     } else if (prefixes.rex_w) {
         size = X86_SIZE_QWORD;
-    } else if (prefixes.operand_override) {
+    } else if (operand_override) {
         size = X86_SIZE_WORD;
     }
 
@@ -393,30 +422,42 @@ void frontend_compile_instruction(frontend_state_t* state)
 
     if (decoding_flags & RM_MM_FLAG) {
         u8 reg = inst.operand_rm.reg.ref - X86_REF_RAX;
-
-        if (prefixes.operand_override) {
-            inst.operand_rm.reg.ref = X86_REF_XMM0 + reg;
-            size_rm = X86_SIZE_XMM;
-        } else if (prefixes.vex_l) {
-            inst.operand_rm.reg.ref = X86_REF_XMM0 + reg;
-            size_rm = X86_SIZE_YMM;
-        } else {
-            inst.operand_rm.reg.ref = X86_REF_MM0 + reg;
-            size_rm = X86_SIZE_MM;
+        if (reg > 7) {
+            ERROR("Invalid MM register");
         }
-    } else if (decoding_flags & REG_MM_FLAG) {
+
+        inst.operand_rm.reg.ref = X86_REF_MM0 + reg;
+        size_rm = X86_SIZE_MM;
+    }
+    
+    if (decoding_flags & REG_MM_FLAG) {
         u8 reg = inst.operand_reg.reg.ref - X86_REF_RAX;
-
-        if (prefixes.operand_override) {
-            inst.operand_reg.reg.ref = X86_REF_XMM0 + reg;
-            size_reg = X86_SIZE_XMM;
-        } else if (prefixes.vex_l) {
-            inst.operand_reg.reg.ref = X86_REF_XMM0 + reg;
-            size_reg = X86_SIZE_YMM;
-        } else {
-            inst.operand_reg.reg.ref = X86_REF_MM0 + reg;
-            size_reg = X86_SIZE_MM;
+        if (reg > 7) {
+            ERROR("Invalid MM register");
         }
+
+        inst.operand_reg.reg.ref = X86_REF_MM0 + reg;
+        size_reg = X86_SIZE_MM;
+    }
+
+    if (decoding_flags & REG_XMM_FLAG) {
+        u8 reg = inst.operand_reg.reg.ref - X86_REF_RAX;
+        if (reg > 15) {
+            ERROR("Invalid XMM register");
+        }
+
+        inst.operand_reg.reg.ref = X86_REF_XMM0 + reg;
+        size_reg = X86_SIZE_XMM;
+    }
+
+    if (decoding_flags & RM_XMM_FLAG) {
+        u8 reg = inst.operand_rm.reg.ref - X86_REF_RAX;
+        if (reg > 15) {
+            ERROR("Invalid XMM register");
+        }
+
+        inst.operand_rm.reg.ref = X86_REF_XMM0 + reg;
+        size_rm = X86_SIZE_XMM;
     }
 
     switch (immediate_size) {
@@ -435,7 +476,7 @@ void frontend_compile_instruction(frontend_state_t* state)
         }
 
         case UP_TO_DWORD_IMMEDIATE: {
-            if (prefixes.operand_override) {
+            if (operand_override) {
                 inst.operand_imm.immediate.data = *(u16*)&data[index];
                 inst.operand_imm.size = X86_SIZE_WORD;
                 index += 2;
@@ -448,7 +489,7 @@ void frontend_compile_instruction(frontend_state_t* state)
         }
 
         case UP_TO_QWORD_IMMEDIATE: {
-            if (prefixes.operand_override) {
+            if (operand_override) {
                 inst.operand_imm.immediate.data = *(u16*)&data[index];
                 inst.operand_imm.size = X86_SIZE_WORD;
                 index += 2;
@@ -482,7 +523,7 @@ void frontend_compile_instruction(frontend_state_t* state)
 
         case UP_TO_DWORD_IMMEDIATE_IF_REG_0_OR_1: {
             if (inst.operand_reg.reg.ref == X86_REF_RAX || inst.operand_reg.reg.ref == X86_REF_RCX) {
-                if (prefixes.operand_override) {
+                if (operand_override) {
                     inst.operand_imm.immediate.data = *(u16*)&data[index];
                     inst.operand_imm.size = X86_SIZE_WORD;
                     index += 2;
@@ -519,6 +560,8 @@ void frontend_compile_instruction(frontend_state_t* state)
         }
     } else if (inst.operand_rm.type == X86_OP_TYPE_MEMORY) {
         inst.operand_rm.memory.address_override = address_override;
+        inst.operand_rm.memory.fs_override = fs_override;
+        inst.operand_rm.memory.gs_override = gs_override;
         if (inst.operand_rm.memory.base == X86_REF_RIP) {
             inst.operand_rm.memory.displacement += state->current_address + index;
             inst.operand_rm.memory.base = X86_REF_COUNT;

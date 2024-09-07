@@ -16,130 +16,6 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
             ERROR("Interpreting null, this should not happen\n");
             break;
         }
-        case IR_LOAD_GUEST_FROM_MEMORY: {
-            switch (instruction->get_guest.ref) {
-                case X86_REF_RAX ... X86_REF_R15: {
-                    temps[instruction->name] = state->gprs[instruction->get_guest.ref - X86_REF_RAX];
-                    break;
-                }
-                case X86_REF_XMM0 ... X86_REF_XMM31: {
-                    xmm_temps[instruction->name] = state->xmm[instruction->get_guest.ref - X86_REF_XMM0];
-                    break;
-                }
-                case X86_REF_RIP: {
-                    temps[instruction->name] = state->rip;
-                    break;
-                }
-                case X86_REF_FS: {
-                    temps[instruction->name] = state->fs;
-                    break;
-                }
-                case X86_REF_GS: {
-                    temps[instruction->name] = state->gs;
-                    break;
-                }
-                case X86_REF_CF: {
-                    temps[instruction->name] = state->cf;
-                    break;
-                }
-                case X86_REF_PF: {
-                    temps[instruction->name] = state->pf;
-                    break;
-                }
-                case X86_REF_AF: {
-                    temps[instruction->name] = state->af;
-                    break;
-                }
-                case X86_REF_ZF: {
-                    temps[instruction->name] = state->zf;
-                    break;
-                }
-                case X86_REF_SF: {
-                    temps[instruction->name] = state->sf;
-                    break;
-                }
-                case X86_REF_OF: {
-                    temps[instruction->name] = state->of;
-                    break;
-                }
-                default: {
-                    ERROR("Invalid GPR reference");
-                    break;
-                }
-            }
-            break;
-        }
-        case IR_STORE_GUEST_TO_MEMORY: {
-            switch (instruction->set_guest.ref) {
-                case X86_REF_RAX ... X86_REF_R15: {
-                    state->gprs[instruction->set_guest.ref - X86_REF_RAX] = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_XMM0 ... X86_REF_XMM31: {
-                    state->xmm[instruction->set_guest.ref - X86_REF_XMM0] = xmm_temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_RIP: {
-                    state->rip = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_FS: {
-                    state->fs = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_GS: {
-                    state->gs = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_CF: {
-                    if (temps[instruction->set_guest.source->name] > 1) {
-                        ERROR("Invalid value for CF");
-                    }
-                    state->cf = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_PF: {
-                    if (temps[instruction->set_guest.source->name] > 1) {
-                        ERROR("Invalid value for PF");
-                    }
-                    state->pf = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_AF: {
-                    if (temps[instruction->set_guest.source->name] > 1) {
-                        ERROR("Invalid value for AF");
-                    }
-                    state->af = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_ZF: {
-                    if (temps[instruction->set_guest.source->name] > 1) {
-                        ERROR("Invalid value for ZF");
-                    }
-                    state->zf = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_SF: {
-                    if (temps[instruction->set_guest.source->name] > 1) {
-                        ERROR("Invalid value for SF");
-                    }
-                    state->sf = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                case X86_REF_OF: {
-                    if (temps[instruction->set_guest.source->name] > 1) {
-                        ERROR("Invalid value for OF");
-                    }
-                    state->of = temps[instruction->set_guest.source->name];
-                    break;
-                }
-                default: {
-                    ERROR("Invalid GPR reference");
-                    break;
-                }
-            }
-            break;
-        }
         case IR_INSERT_INTEGER_TO_VECTOR: {
             xmm_reg_t xmm = xmm_temps[instruction->operands.args[0]->name];
             u32 index = temps[instruction->operands.args[2]->name];
@@ -254,15 +130,15 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
             temps[instruction->name] = temps[instruction->operands.args[0]->name] ^ temps[instruction->operands.args[1]->name];
             break;
         }
-        case IR_LEFT_SHIFT: {
+        case IR_SHIFT_LEFT: {
             temps[instruction->name] = temps[instruction->operands.args[0]->name] << temps[instruction->operands.args[1]->name];
             break;
         }
-        case IR_RIGHT_SHIFT: {
+        case IR_SHIFT_RIGHT: {
             temps[instruction->name] = temps[instruction->operands.args[0]->name] >> temps[instruction->operands.args[1]->name];
             break;
         }
-        case IR_RIGHT_SHIFT_ARITHMETIC: {
+        case IR_SHIFT_RIGHT_ARITHMETIC: {
             temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] >> temps[instruction->operands.args[1]->name];
             break;
         }
@@ -530,6 +406,18 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
                     ERROR("Invalid reg reference: %d", instruction->get_guest.ref);
                     break;
                 }
+            }
+            break;
+        }
+        case IR_SELECT: {
+            if (temps[instruction->operands.args[0]->name] & ~1) {
+                ERROR("Invalid select condition");
+            }
+
+            if (temps[instruction->operands.args[0]->name]) {
+                temps[instruction->name] = temps[instruction->operands.args[1]->name];
+            } else {
+                temps[instruction->name] = temps[instruction->operands.args[2]->name];
             }
             break;
         }

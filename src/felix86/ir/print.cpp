@@ -76,15 +76,15 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
             print_two_op(instruction, "-");
             break;
         }
-        case IR_LEFT_SHIFT: {
+        case IR_SHIFT_LEFT: {
             print_two_op(instruction, "&lt;&lt;");
             break;
         }
-        case IR_RIGHT_SHIFT: {
+        case IR_SHIFT_RIGHT: {
             print_two_op(instruction, "&gt;&gt;");
             break;
         }
-        case IR_RIGHT_SHIFT_ARITHMETIC: {
+        case IR_SHIFT_RIGHT_ARITHMETIC: {
             print_two_op(instruction, "&gt;&gt;");
             break;
         }
@@ -230,17 +230,6 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
         }
         case IR_JUMP_REGISTER: {
             printf(OP VAR, "jump", instruction->operands.args[0]->name);
-            break;
-        }
-        case IR_LOAD_GUEST_FROM_MEMORY: {
-            printf("t%d = load_guest_from_memory ", instruction->name);
-            print_guest(instruction->get_guest.ref);
-            break;
-        }
-        case IR_STORE_GUEST_TO_MEMORY: {
-            printf("store_guest_to_memory ");
-            print_guest(instruction->set_guest.ref);
-            printf(", t%d", instruction->set_guest.source->name);
             break;
         }
         default: {

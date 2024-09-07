@@ -14,9 +14,9 @@ x86_operand_t get_full_reg(x86_ref_e ref);
 
 ir_instruction_t* ir_emit_add(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
 ir_instruction_t* ir_emit_sub(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
-ir_instruction_t* ir_emit_left_shift(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
-ir_instruction_t* ir_emit_right_shift(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
-ir_instruction_t* ir_emit_right_shift_arithmetic(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
+ir_instruction_t* ir_emit_shift_left(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
+ir_instruction_t* ir_emit_shift_right(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
+ir_instruction_t* ir_emit_shift_right_arithmetic(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
 ir_instruction_t* ir_emit_rotate(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2, x86_size_e size, bool right);
 ir_instruction_t* ir_emit_select(ir_instruction_list_t* instructions, ir_instruction_t* condition, ir_instruction_t* source1, ir_instruction_t* source2);
 ir_instruction_t* ir_emit_and(ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
@@ -56,6 +56,7 @@ ir_instruction_t* ir_emit_read_byte(ir_instruction_list_t* instructions, ir_inst
 ir_instruction_t* ir_emit_read_word(ir_instruction_list_t* instructions, ir_instruction_t* address);
 ir_instruction_t* ir_emit_read_dword(ir_instruction_list_t* instructions, ir_instruction_t* address);
 ir_instruction_t* ir_emit_read_qword(ir_instruction_list_t* instructions, ir_instruction_t* address);
+ir_instruction_t* ir_emit_read_xmmword(ir_instruction_list_t* instructions, ir_instruction_t* address);
 void ir_emit_write_byte(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
 void ir_emit_write_word(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
 void ir_emit_write_dword(ir_instruction_list_t* instructions, ir_instruction_t* address, ir_instruction_t* source);
@@ -71,6 +72,7 @@ ir_instruction_t* ir_emit_immediate_sext(ir_instruction_list_t* instructions, x8
 
 ir_instruction_t* ir_emit_get_reg(ir_instruction_list_t* instructions, x86_operand_t* reg_operand);
 ir_instruction_t* ir_emit_get_rm(ir_instruction_list_t* instructions, x86_operand_t* rm_operand);
+ir_instruction_t* ir_emit_get_rm128(ir_instruction_list_t* instructions, x86_operand_t* rm_operand);
 void ir_emit_set_reg(ir_instruction_list_t* instructions, x86_operand_t* reg_operand, ir_instruction_t* source);
 void ir_emit_set_rm(ir_instruction_list_t* instructions, x86_operand_t* rm_operand, ir_instruction_t* source);
 

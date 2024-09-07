@@ -15,8 +15,6 @@
     ir_block_t* entry = current_block
 
 #define END_IR_TEST() \
-    ir_ssa_pass(function); \
-    ir_copy_propagation_pass(function); \
     ir_naming_pass(function)
 
 #define SWITCH_TO_BLOCK(block) \

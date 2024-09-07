@@ -645,21 +645,18 @@ IR_HANDLE(cmovcc) { // cmovcc - 0x0f 0x40-0x4f
     ir_instruction_t* rm = ir_emit_get_rm(INSTS, &inst->operand_rm);
     ir_instruction_t* reg = ir_emit_get_reg(INSTS, &inst->operand_reg);
     ir_instruction_t* condition = ir_emit_get_cc(INSTS, inst->opcode);
-    ir_instruction_t* value = ir_emit_select(INSTS, condition, reg, rm);
+    ir_instruction_t* value = ir_emit_select(INSTS, condition, rm, reg);
     ir_emit_set_reg(INSTS, &inst->operand_reg, value);
 }
 
 IR_HANDLE(movq_mm_rm32) { // movq mm, rm32 - 0x0f 0x6e
-    ERROR("Unimplemented instruction: movq mm, rm32 - 0x0f 0x6e");
+    ERROR("Unimplemented instruction: movq mm, rm32 - 0x0f 0x6e during %016lx", state->current_address - g_base_address);
 }
 
-IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x0f 0x6e
+IR_HANDLE(movdqa_xmm_rm128) { // movdqa xmm, rm128 - 0x0f 0x6f
     x86_size_e size_e = inst->operand_rm.size;
-    ir_instruction_t* rm = ir_emit_get_rm(INSTS, &inst->operand_rm);
-    ir_instruction_t* reg = ir_emit_get_reg(INSTS, &inst->operand_reg);
-    ir_instruction_t* vector = ir_emit_insert_integer_to_vector(INSTS, reg, rm, size_e, 0);
-    ir_emit_set_guest(INSTS, inst->operand_reg.reg.ref, vector);
-    WARN("Untested instruction: movq xmm, rm32 - 0x0f 0x6e");
+    ir_instruction_t* rm = ir_emit_get_rm128(INSTS, &inst->operand_rm);
+    ERROR("Unimplemented instruction: movdqa xmm, rm128 - 0x0f 0x6f during %016lx", state->current_address - g_base_address);
 }
 
 IR_HANDLE(setcc) { // setcc - 0x0f 0x90-0x9f
@@ -668,6 +665,16 @@ IR_HANDLE(setcc) { // setcc - 0x0f 0x90-0x9f
 
 IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
     ir_emit_cpuid(INSTS);
+}
+
+IR_HANDLE(bt) { // bt - 0x0f 0xa3
+    ir_instruction_t* rm = ir_emit_get_rm(INSTS, &inst->operand_rm);
+    ir_instruction_t* reg = ir_emit_get_reg(INSTS, &inst->operand_reg);
+    ir_instruction_t* mask = ir_emit_immediate(INSTS, get_bit_size(inst->operand_reg.size) - 1);
+    ir_instruction_t* shift = ir_emit_and(INSTS, reg, mask);
+    ir_instruction_t* bit = ir_emit_shift_left(INSTS, ir_emit_immediate(INSTS, 1), shift);
+    ir_instruction_t* result = ir_emit_and(INSTS, rm, bit);
+    ir_emit_set_flag(INSTS, X86_REF_CF, ir_emit_equal(INSTS, result, mask));
 }
 
 IR_HANDLE(movzx_r32_rm8) { // movzx r32/64, rm8 - 0x0f 0xb6
@@ -679,3 +686,35 @@ IR_HANDLE(movzx_r32_rm16) { // movzx r32/64, rm16 - 0x0f 0xb7
     ir_instruction_t* rm = ir_emit_get_rm(INSTS, &inst->operand_rm);
     ir_emit_set_gpr64(INSTS, inst->operand_reg.reg.ref, rm);
 }
+
+// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██      ██████   ██████  
+// ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██   ██  ██  ██      ██       ██       
+// ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████       ███████  ███████  
+//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██    ██ ██    ██ 
+// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████  
+                                                                                                  
+IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
+    x86_size_e size_e = inst->operand_rm.size;
+    ir_instruction_t* rm = ir_emit_get_rm(INSTS, &inst->operand_rm);
+    ir_instruction_t* reg = ir_emit_get_reg(INSTS, &inst->operand_reg);
+    ir_instruction_t* vector = ir_emit_insert_integer_to_vector(INSTS, reg, rm, size_e, 0);
+    ir_emit_set_guest(INSTS, inst->operand_reg.reg.ref, vector);
+    WARN("Untested instruction: movq xmm, rm32 - 0x0f 0x6e");
+}
+
+// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██     ███████ ██████  
+// ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██   ██  ██  ██      ██           ██ 
+// ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████       █████    █████  
+//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██      ██      
+// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██        ██      ███████ 
+
+
+
+
+
+// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██     ███████ ██████  
+// ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██   ██  ██  ██      ██           ██ 
+// ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████       █████    █████  
+//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██           ██ 
+// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██        ██      ██████  
+
