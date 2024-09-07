@@ -217,6 +217,7 @@ void frontend_compile_instruction(frontend_state_t* state)
             }
 
             case 0xC4: {
+                ERROR("VEX prefix not supported, TODO: needs vector size prefix on instructions");
                 // Three-byte VEX prefix
                 u8 vex1 = data[index + 1];
                 u8 vex2 = data[index + 2];
@@ -261,6 +262,7 @@ void frontend_compile_instruction(frontend_state_t* state)
             }
 
             case 0xC5: {
+                ERROR("VEX prefix not supported, TODO: needs vector size prefix on instructions");
                 // Two-byte VEX prefix
                 u8 vex = data[index + 1];
                 prefixes.vex = true;
@@ -441,22 +443,26 @@ void frontend_compile_instruction(frontend_state_t* state)
     }
 
     if (decoding_flags & REG_XMM_FLAG) {
-        u8 reg = inst.operand_reg.reg.ref - X86_REF_RAX;
-        if (reg > 15) {
-            ERROR("Invalid XMM register");
-        }
+        if (inst.operand_reg.type == X86_OP_TYPE_REGISTER) {
+            u8 reg = inst.operand_reg.reg.ref - X86_REF_RAX;
+            if (reg > 15) {
+                ERROR("Invalid XMM register");
+            }
 
-        inst.operand_reg.reg.ref = X86_REF_XMM0 + reg;
+            inst.operand_reg.reg.ref = X86_REF_XMM0 + reg;
+        }
         size_reg = X86_SIZE_XMM;
     }
 
     if (decoding_flags & RM_XMM_FLAG) {
-        u8 reg = inst.operand_rm.reg.ref - X86_REF_RAX;
-        if (reg > 15) {
-            ERROR("Invalid XMM register");
-        }
+        if (inst.operand_rm.type == X86_OP_TYPE_REGISTER) {
+            u8 reg = inst.operand_rm.reg.ref - X86_REF_RAX;
+            if (reg > 15) {
+                ERROR("Invalid XMM register");
+            }
 
-        inst.operand_rm.reg.ref = X86_REF_XMM0 + reg;
+            inst.operand_rm.reg.ref = X86_REF_XMM0 + reg;
+        }
         size_rm = X86_SIZE_XMM;
     }
 
@@ -660,4 +666,6 @@ void frontend_compile_function(ir_function_t* function) {
 
         current = current->next;
     }
+
+    function->compiled = true;
 }

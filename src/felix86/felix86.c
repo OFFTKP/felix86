@@ -178,7 +178,7 @@ void felix86_set_guest(felix86_recompiler_t* recompiler, x86_ref_e ref, u64 valu
 }
 
 xmm_reg_t felix86_get_guest_xmm(felix86_recompiler_t* recompiler, x86_ref_e ref) {
-    if (ref < X86_REF_XMM0 || ref > X86_REF_XMM31) {
+    if (ref < X86_REF_XMM0 || ref > X86_REF_XMM15) {
         ERROR("Invalid XMM reference");
     }
 
@@ -186,7 +186,7 @@ xmm_reg_t felix86_get_guest_xmm(felix86_recompiler_t* recompiler, x86_ref_e ref)
 }
 
 void felix86_set_guest_xmm(felix86_recompiler_t* recompiler, x86_ref_e ref, xmm_reg_t value) {
-    if (ref < X86_REF_XMM0 || ref > X86_REF_XMM31) {
+    if (ref < X86_REF_XMM0 || ref > X86_REF_XMM15) {
         ERROR("Invalid XMM reference");
     }
 
@@ -202,13 +202,15 @@ felix86_exit_reason_e felix86_recompiler_run(felix86_recompiler_t* recompiler) {
         u64 address = recompiler->state.rip;
         ir_function_t* function = ir_function_cache_get_function(recompiler->function_cache, address);
 
-        frontend_compile_function(function);
+        if (!function->compiled) {
+            frontend_compile_function(function);
+            ir_naming_pass(function);
 
-        // ir_ssa_pass(function);
-        // ir_copy_propagation_pass(function);
-        ir_naming_pass(function);
+            if (recompiler->print_blocks)
+                ir_print_function_graphviz(recompiler->base_address, function);
+        }
+
         ir_interpret_function(function, &recompiler->state);
-        ir_print_function_graphviz(recompiler->base_address, function);
 
         if (recompiler->testing)
             break;

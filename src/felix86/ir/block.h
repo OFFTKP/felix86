@@ -28,6 +28,7 @@ typedef struct ir_function_t {
 	ir_block_list_t* entry;
 	ir_block_list_t* first;
 	ir_block_list_t* last;
+	bool compiled;
 } ir_function_t;
 
 struct ir_function_cache_s;

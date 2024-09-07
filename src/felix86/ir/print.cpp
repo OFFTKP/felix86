@@ -44,7 +44,7 @@ void print_guest(x86_ref_e guest) {
         case X86_REF_RIP: printf("rip"); break;
         case X86_REF_FS: printf("fs"); break;
         case X86_REF_GS: printf("gs"); break;
-        case X86_REF_XMM0 ... X86_REF_XMM31: printf("xmm%d", guest - X86_REF_XMM0); break;
+        case X86_REF_XMM0 ... X86_REF_XMM15: printf("xmm%d", guest - X86_REF_XMM0); break;
         default: printf("Unknown guest"); break;
     }
     printf(GUEST_END);
@@ -175,6 +175,10 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
             printf("t%d = qword[t%d]", instruction->name, instruction->operands.args[0]->name);
             break;
         }
+        case IR_READ_XMMWORD: {
+            printf("t%d = xmmword[t%d]", instruction->name, instruction->operands.args[0]->name);
+            break;
+        }
         case IR_WRITE_BYTE: {
             printf("byte[t%d] = t%d", instruction->operands.args[0]->name, instruction->operands.args[1]->name);
             break;
@@ -250,6 +254,19 @@ void ir_print_block(ir_block_t* block) {
 }
 
 extern "C" void ir_print_function_graphviz(u64 program_entrypoint, ir_function_t* function) {
+    {
+        ir_block_list_t* blocks = function->first;
+        while (blocks) {
+            printf("block: %p\n", blocks->block);
+            ir_instruction_list_t* node = blocks->block->instructions;
+            while (node) {
+                printf("\tinstruction: %p\n", &node->instruction);
+                node = node->next;
+            }
+            blocks = blocks->next;
+        }
+    }
+
     printf("digraph function_%p {\n", function);
     printf("\tgraph [splines=true, nodesep=0.8, overlap=false]\n");
     printf("\tnode ["
@@ -310,4 +327,5 @@ extern "C" void ir_print_function_graphviz(u64 program_entrypoint, ir_function_t
     
     
     printf("}\n");
+    fflush(stdout);
 }

@@ -35,7 +35,7 @@ private: \
         for (auto& check : xmm_checks) { \
             xmm_reg_t has = felix86_get_guest_xmm(recompiler, std::get<0>(check)); \
             xmm_reg_t expected = std::get<1>(check); \
-            for (int i = 0; i < 8; i++) { \
+            for (int i = 0; i < sizeof(xmm_reg_t) / sizeof(u64); i++) { \
                 REQUIRE(has.data[i] == expected.data[i]); \
             } \
         } \

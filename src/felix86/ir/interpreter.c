@@ -16,13 +16,25 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
             ERROR("Interpreting null, this should not happen\n");
             break;
         }
+        case IR_VECTOR_FROM_INTEGER: {
+            u64 value = temps[instruction->operands.args[0]->name];
+            xmm_reg_t xmm = {0};
+            xmm.data[0] = value;
+            xmm_temps[instruction->name] = xmm;
+            break;
+        }
+        case IR_INTEGER_FROM_VECTOR: {
+            xmm_reg_t xmm = xmm_temps[instruction->operands.args[0]->name];
+            temps[instruction->name] = xmm.data[0];
+            break;
+        }
         case IR_INSERT_INTEGER_TO_VECTOR: {
             xmm_reg_t xmm = xmm_temps[instruction->operands.args[0]->name];
             u32 index = temps[instruction->operands.args[2]->name];
             x86_size_e size = temps[instruction->operands.args[3]->name];
             switch (size) {
                 case X86_SIZE_BYTE: {
-                    if (index > 63) {
+                    if (index > 15) {
                         ERROR("Invalid index");
                     }
 
@@ -32,7 +44,7 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
                     break;
                 }
                 case X86_SIZE_WORD: {
-                    if (index > 31) {
+                    if (index > 7) {
                         ERROR("Invalid index");
                     }
 
@@ -42,7 +54,7 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
                     break;
                 }
                 case X86_SIZE_DWORD: {
-                    if (index > 15) {
+                    if (index > 3) {
                         ERROR("Invalid index");
                     }
 
@@ -52,7 +64,7 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
                     break;
                 }
                 case X86_SIZE_QWORD: {
-                    if (index > 7) {
+                    if (index > 1) {
                         ERROR("Invalid index");
                     }
 
@@ -71,7 +83,7 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
             x86_size_e size = temps[instruction->operands.args[2]->name];
             switch (size) {
                 case X86_SIZE_BYTE: {
-                    if (index > 63) {
+                    if (index > 15) {
                         ERROR("Invalid index");
                     }
 
@@ -80,7 +92,7 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
                     break;
                 }
                 case X86_SIZE_WORD: {
-                    if (index > 31) {
+                    if (index > 7) {
                         ERROR("Invalid index");
                     }
 
@@ -89,7 +101,7 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
                     break;
                 }
                 case X86_SIZE_DWORD: {
-                    if (index > 15) {
+                    if (index > 3) {
                         ERROR("Invalid index");
                     }
 
@@ -98,7 +110,7 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
                     break;
                 }
                 case X86_SIZE_QWORD: {
-                    if (index > 7) {
+                    if (index > 1) {
                         ERROR("Invalid index");
                     }
 
@@ -169,8 +181,8 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
         case IR_LEA: {
             u64 base = temps[instruction->operands.args[0]->name];
             u64 index = temps[instruction->operands.args[1]->name];
-            u64 displacement = temps[instruction->operands.args[2]->name];
-            u64 scale = temps[instruction->operands.args[3]->name];
+            u64 scale = temps[instruction->operands.args[2]->name];
+            u64 displacement = temps[instruction->operands.args[3]->name];
             temps[instruction->name] = base + index * scale + displacement;
             break;
         }
@@ -188,6 +200,11 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
         }
         case IR_READ_QWORD: {
             temps[instruction->name] = *(u64*)(temps[instruction->operands.args[0]->name]);
+            break;
+        }
+        case IR_READ_XMMWORD: {
+            xmm_temps[instruction->name].data[0] = *(u64*)(temps[instruction->operands.args[0]->name]);
+            xmm_temps[instruction->name].data[1] = *(u64*)(temps[instruction->operands.args[0]->name] + 8);
             break;
         }
         case IR_WRITE_BYTE: {
@@ -419,6 +436,31 @@ ir_block_t* ir_interpret_instruction(ir_block_t* entry, ir_instruction_t* instru
             } else {
                 temps[instruction->name] = temps[instruction->operands.args[2]->name];
             }
+            break;
+        }
+        case IR_VECTOR_UNPACK_DWORD_LOW: {
+            xmm_reg_t xmm_dest = xmm_temps[instruction->operands.args[0]->name];
+            xmm_reg_t xmm_src = xmm_temps[instruction->operands.args[1]->name];
+            xmm_reg_t result = {0};
+            u64 first = (u32)xmm_dest.data[0] | ((u64)(u32)xmm_src.data[0] << 32);
+            u64 second = (xmm_dest.data[0] >> 32) | (xmm_src.data[0] & 0xFFFFFFFF00000000);
+            result.data[0] = first;
+            result.data[1] = second;
+            xmm_temps[instruction->name] = result;
+            break;
+        }
+        case IR_VECTOR_PACKED_AND: {
+            xmm_reg_t xmm_dest = xmm_temps[instruction->operands.args[0]->name];
+            xmm_reg_t xmm_src = xmm_temps[instruction->operands.args[1]->name];
+            xmm_reg_t result = {0};
+            result.data[0] = xmm_dest.data[0] & xmm_src.data[0];
+            result.data[1] = xmm_dest.data[1] & xmm_src.data[1];
+            xmm_temps[instruction->name] = result;
+            break;
+        }
+        case IR_HINT_INPUTS:
+        case IR_HINT_OUTPUTS: {
+            // Doesn't mean anything to the interpreter, shouldn't exist past optimizations anyway
             break;
         }
         default: {

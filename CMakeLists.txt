@@ -84,6 +84,7 @@ set(FELIX86_TEST_SOURCES
     tests/mov.cpp
     tests/lea.cpp
     tests/special.cpp
+    tests/xmm.cpp
     tests/ir/control_flow.cpp
 )
 

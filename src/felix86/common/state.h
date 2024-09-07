@@ -7,7 +7,7 @@ extern "C" {
 #include "felix86/common/utility.h"
 
 typedef struct {
-	u64 data[8];
+	u64 data[2];
 } xmm_reg_t;
 
 typedef struct {
