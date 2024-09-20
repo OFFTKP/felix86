@@ -14,8 +14,7 @@
     ir_block_t* current_block = function->list->block;\
     ir_block_t* entry = current_block
 
-#define END_IR_TEST() \
-    ir_naming_pass(function)
+#define END_IR_TEST()
 
 #define SWITCH_TO_BLOCK(block) \
     current_block = block

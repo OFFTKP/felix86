@@ -140,13 +140,6 @@ void ir_emit_hint_outputs(ir_instruction_list_t* instructions, x86_ref_e* refs, 
     ir_emit_side_effect(instructions, IR_HINT_OUTPUTS, refs, count);
 }
 
-void ir_emit_hint_full(ir_instruction_list_t* instructions)
-{
-    ir_instruction_t* instruction = ir_ilist_push_back(instructions);
-    instruction->opcode = IR_HINT_FULL;
-    instruction->type = IR_TYPE_NO_OPERANDS;
-}
-
 void ir_emit_runtime_comment(ir_instruction_list_t* instructions, const char* comment)
 {
     ir_instruction_t* instruction = ir_ilist_push_back(instructions);

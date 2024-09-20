@@ -334,7 +334,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         }
         case IR_MOV:
         {
-            WARN("Interpreting MOV, this should not happen");
+            ERROR("Interpreting MOV, this should not happen");
             temps[instruction->name] = temps[instruction->operands.args[0]->name];
             break;
         }
@@ -345,18 +345,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         }
         case IR_PHI:
         {
-            ir_phi_node_t* node = instruction->phi.list;
-            while (node)
-            {
-                if (entry == node->block)
-                {
-                    temps[instruction->name] = temps[node->value->name];
-                    return NULL;
-                }
-
-                node = node->next;
-            }
-            ERROR("Entry not found while interpreting PHI node");
+            ERROR("Interpreting PHI, this should not happen");
             break;
         }
         case IR_SYSCALL:

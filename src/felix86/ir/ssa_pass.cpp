@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdio>
 #include <deque>
+#include <stack>
 #include <unordered_map>
 #include <vector>
 
@@ -116,7 +117,12 @@ struct ir_ssa_block_t
     int postorder_index = 0;
 };
 
-void postorder(ir_ssa_block_t* block, std::vector<ir_ssa_block_t*>& output)
+struct ir_dominator_tree_node_t {
+    ir_ssa_block_t* block = nullptr;
+    std::vector<ir_dominator_tree_node_t*> children = {};
+};
+
+static void postorder(ir_ssa_block_t* block, std::vector<ir_ssa_block_t*>& output)
 {
     if (block->visited)
     {
@@ -138,7 +144,7 @@ void postorder(ir_ssa_block_t* block, std::vector<ir_ssa_block_t*>& output)
     output.push_back(block);
 }
 
-void reverse_postorder_vector_creation(ir_function_t* function, std::vector<ir_ssa_block_t>& list,
+static void reverse_postorder_vector_creation(ir_function_t* function, std::vector<ir_ssa_block_t>& list,
                                        std::vector<ir_ssa_block_t*>& output, size_t size)
 {
     list.resize(size);
@@ -195,6 +201,7 @@ void reverse_postorder_vector_creation(ir_function_t* function, std::vector<ir_s
     {
         // Set the postorder number before reversing
         output[i]->postorder_index = i;
+        output[i]->visited = false;
     }
 
     std::reverse(output.begin(), output.end());
@@ -205,7 +212,7 @@ void reverse_postorder_vector_creation(ir_function_t* function, std::vector<ir_s
     }
 }
 
-ir_ssa_block_t* intersect(ir_ssa_block_t* a, ir_ssa_block_t* b)
+static ir_ssa_block_t* intersect(ir_ssa_block_t* a, ir_ssa_block_t* b)
 {
     ir_ssa_block_t* finger1 = a;
     ir_ssa_block_t* finger2 = b;
@@ -227,7 +234,7 @@ ir_ssa_block_t* intersect(ir_ssa_block_t* a, ir_ssa_block_t* b)
 }
 
 // See Cytron et al. paper figure 11
-void place_phi_functions(std::vector<ir_ssa_block_t>& list)
+static void place_phi_functions(std::vector<ir_ssa_block_t>& list)
 {
     std::vector<ir_ssa_block_t*> worklist = {};
     worklist.reserve(list.size());
@@ -247,12 +254,21 @@ void place_phi_functions(std::vector<ir_ssa_block_t>& list)
         for (const ir_instruction_t& inst : instructions)
         {
             // Make sure it wasn't already added in this list of instructions
-            if (inst.type == IR_TYPE_SET_GUEST)
+            if (inst.opcode == IR_SET_GUEST)
             {
                 if (assignments[inst.set_guest.ref].empty() ||
                     assignments[inst.set_guest.ref].back() != block)
                 {
                     assignments[inst.set_guest.ref].push_back(block);
+                }
+            } else if (inst.opcode == IR_HINT_OUTPUTS) {
+                for (u8 j = 0; j < inst.side_effect.count; j++) {
+                    x86_ref_e ref = inst.side_effect.registers_affected[j];
+                    if (assignments[ref].empty() ||
+                        assignments[ref].back() != block)
+                    {
+                        assignments[ref].push_back(block);
+                    }
                 }
             }
         }
@@ -283,6 +299,9 @@ void place_phi_functions(std::vector<ir_ssa_block_t>& list)
                     phi.type = IR_TYPE_PHI;
                     phi.opcode = IR_PHI;
                     phi.phi.ref = static_cast<x86_ref_e>(i);
+                    std::vector<ir_phi_node_t>* list = new std::vector<ir_phi_node_t>();
+                    list->resize(df->predecessors.size());
+                    phi.phi.list = list;
 
                     df->instructions.push_front(phi);
                     has_already[df->list_index] = iter_count;
@@ -295,6 +314,60 @@ void place_phi_functions(std::vector<ir_ssa_block_t>& list)
             }
         }
     }
+}
+
+int which_pred(ir_ssa_block_t* pred, ir_ssa_block_t* block) {
+    for (size_t i = 0; i < block->predecessors.size(); i++) {
+        if (block->predecessors[i] == pred) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+void name(ir_instruction_t* instruction, x86_ref_e* pref, u32 count) {
+    u32 name = 0;
+    if (pref) {
+        u32 ref = *pref;
+        name |= 0x8000'0000; // we use bit 31 to indicate this is a register
+        name |= ref << 20; // store here which register this is
+
+        if (count >= ((1 << 20) - 1)) {
+            ERROR("Too many names");
+        }
+
+        name |= count;
+    } else {
+        name = count;
+    }
+
+    instruction->name = name;
+}
+
+static void search(ir_dominator_tree_node_t* node, std::array<std::stack<int>, X86_REF_COUNT>& stacks, std::array<int, X86_REF_COUNT + 1>& counters) {
+    ir_ssa_block_t* block = node->block;
+    for (auto& inst : block->instructions) {
+        if (inst.opcode == IR_SET_GUEST || inst.opcode == IR_GET_GUEST) {
+            int i = counters[inst.get_guest.ref];
+            name(&inst, &inst.get_guest.ref, i);
+            stacks[inst.get_guest.ref].push(i);
+            counters[inst.get_guest.ref] = i + 1;
+        }
+    }
+
+    if (block->successor1) {
+        
+    }
+}
+
+static void rename(std::vector<ir_dominator_tree_node_t>& list) {
+    std::array<std::stack<int>, X86_REF_COUNT> stacks = {};
+
+    // The one at counters[X86_REF_COUNT] is the counter for temporaries
+    std::array<int, X86_REF_COUNT + 1> counters = {};
+
+    search(&list[0], stacks, counters);
 }
 
 void ir_ssa_pass(ir_function_t* function)
@@ -381,4 +454,20 @@ void ir_ssa_pass(ir_function_t* function)
     // Now that we have dominance frontiers, step 1 is complete
     // We can now move on to step 2, which is inserting phi instructions
     place_phi_functions(storage);
+
+    // Construct a dominator tree
+    std::vector<ir_dominator_tree_node_t> dominator_tree;
+    dominator_tree.resize(count);
+
+    for (size_t i = 0; i < rpo_vector.size(); i++)
+    {
+        ir_ssa_block_t* b = rpo_vector[i];
+        if (b->immediate_dominator)
+        {
+            dominator_tree[b->immediate_dominator->list_index].children.push_back(&dominator_tree[i]);
+        }
+    }
+
+    // Now rename the variables
+    rename(dominator_tree);
 }

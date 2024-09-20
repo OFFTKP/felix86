@@ -243,23 +243,23 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block)
         case IR_PHI:
         {
             printf("t%d = φ&lt;", instruction->name);
-            ir_phi_node_t* node = instruction->phi.list;
-            while (node)
-            {
-                if (!node->value || !node->block)
-                {
-                    printf("NULL");
-                }
-                else
-                {
-                    printf("t%d @ %p", node->value->name, node->block);
-                }
-                node = node->next;
-                if (node)
-                {
-                    printf(", ");
-                }
-            }
+            // ir_phi_node_t* node = instruction->phi.list;
+            // while (node)
+            // {
+            //     if (!node->value || !node->block)
+            //     {
+            //         printf("NULL");
+            //     }
+            //     else
+            //     {
+            //         printf("t%d @ %p", node->value->name, node->block);
+            //     }
+            //     node = node->next;
+            //     if (node)
+            //     {
+            //         printf(", ");
+            //     }
+            // }
             printf("&gt;");
             break;
         }

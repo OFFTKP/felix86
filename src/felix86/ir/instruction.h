@@ -18,8 +18,6 @@ typedef enum : u8
                      // inputs so they aren't optimized away
     IR_HINT_OUTPUTS, // tells the recompiler that the registers listed are used as
                      // outputs so they aren't optimized away
-    IR_HINT_FULL,    // tells the recompiler that everything could be used as an
-                     // input or output, an optimization barrier essentially
 
     IR_MOV,
     IR_IMMEDIATE,
@@ -129,7 +127,6 @@ typedef struct ir_phi_node_s
 {
     struct ir_block_s* block;
     struct ir_instruction_s* value;
-    struct ir_phi_node_s* next;
 } ir_phi_node_t;
 
 typedef struct ir_instruction_s
@@ -153,8 +150,8 @@ typedef struct ir_instruction_s
 
         struct
         {
-            struct ir_instruction_s* source;
             x86_ref_e ref;
+            struct ir_instruction_s* source;
         } set_guest;
 
         struct
@@ -171,8 +168,8 @@ typedef struct ir_instruction_s
 
         struct
         {
-            ir_phi_node_t* list;
             x86_ref_e ref;
+            void* list;
         } phi;
 
         struct

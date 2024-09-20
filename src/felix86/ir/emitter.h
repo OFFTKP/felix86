@@ -14,7 +14,6 @@ x86_operand_t get_full_reg(x86_ref_e ref);
 
 void ir_emit_hint_inputs(ir_instruction_list_t* instructions, x86_ref_e* refs, u8 count);
 void ir_emit_hint_outputs(ir_instruction_list_t* instructions, x86_ref_e* refs, u8 count);
-void ir_emit_hint_full(ir_instruction_list_t* instructions);
 void ir_emit_runtime_comment(ir_instruction_list_t* instructions, const char* comment);
 
 ir_instruction_t* ir_emit_add(ir_instruction_list_t* instructions, ir_instruction_t* source1,
