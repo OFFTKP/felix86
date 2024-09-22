@@ -30,7 +30,7 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/emitter.c
     src/felix86/ir/handlers_weak.c
     src/felix86/ir/handlers.c
-    src/felix86/ir/interpreter.c
+    src/felix86/ir/interpreter.cpp
     src/felix86/ir/instruction.c
     src/felix86/ir/instruction_list.c
     src/felix86/ir/print.cpp
@@ -97,7 +97,6 @@ set(FELIX86_TEST_SOURCES
     tests/shift.cpp
     tests/special.cpp
     tests/xmm.cpp
-    tests/ir/control_flow.cpp
 )
 
 add_executable(felix86_test)

@@ -1,9 +1,11 @@
 #include "felix86/common/log.h"
 #include "felix86/ir/passes.h"
+#include "felix86/ir/ssa_block.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdio>
 #include <deque>
+#include <list>
 #include <stack>
 #include <unordered_map>
 #include <vector>
@@ -35,25 +37,9 @@
     ...
     (immediately after the last usage of rax, store it back to memory)
 
-    This is not hard, but there's a tiny gotcha. Imagine the first occurence of
-   a usage of a variable. Imagine that this first usage is not dominated by a
-   definition. So for example if your very first basic block in a CFG started
-   with this instruction:
-
-    mov rbx, rax
-
-    rax here has a usage but is not dominated by a definition. So we need to
-   insert a definition when converting to SSA:
-
-    rax_0 = load rax from memory (our actual state struct)
-    rbx_0 = rax_0
-
-    Furthermore, we need to ensure that a load like this, even though it defines
-   a variable named rax_0, it doesn't actually write it back because rax is not
-   changed.
-
-    If these rules are ensured, then dead load/store elimination should be
-   simple. Stores and loads with no uses will get eliminated.
+    A thing that enables this is the fact that we have an entry block that loads
+    the entire VM state and an exit block that writebacks the entire VM state.
+    This might seem wasteful, however we can optimize this later.
 
     ---
 
@@ -101,21 +87,6 @@
     t0-t3 and the rest of the temporaries down the road are in SSA form already,
    it's just the registers that need to be renamed
 */
-
-struct ir_ssa_block_t
-{
-    ir_block_t* actual_block = nullptr;
-    std::vector<ir_ssa_block_t*> predecessors = {};
-    std::vector<ir_ssa_block_t*> dominance_frontiers = {};
-    ir_ssa_block_t* immediate_dominator = nullptr;
-
-    std::deque<ir_instruction_t> instructions = {};
-    ir_ssa_block_t* successor1 = nullptr;
-    ir_ssa_block_t* successor2 = nullptr;
-    bool visited = false;
-    int list_index = 0;
-    int postorder_index = 0;
-};
 
 struct ir_dominator_tree_node_t {
     ir_ssa_block_t* block = nullptr;
@@ -202,6 +173,8 @@ static void reverse_postorder_vector_creation(ir_function_t* function, std::vect
         // Set the postorder number before reversing
         output[i]->postorder_index = i;
         output[i]->visited = false;
+
+        printf("Block %p (%d): %p\n", output[i], i, output[i]->actual_block);
     }
 
     std::reverse(output.begin(), output.end());
@@ -250,7 +223,7 @@ static void place_phi_functions(std::vector<ir_ssa_block_t>& list)
     for (size_t i = 0; i < list.size(); i++)
     {
         ir_ssa_block_t* block = &list[i];
-        std::deque<ir_instruction_t>& instructions = block->instructions;
+        std::list<ir_instruction_t>& instructions = block->instructions;
         for (const ir_instruction_t& inst : instructions)
         {
             // Make sure it wasn't already added in this list of instructions
@@ -304,6 +277,8 @@ static void place_phi_functions(std::vector<ir_ssa_block_t>& list)
                     phi.phi.list = list;
 
                     df->instructions.push_front(phi);
+                    df->phi_instructions.push_back(&df->instructions.front());
+
                     has_already[df->list_index] = iter_count;
                     if (work[df->list_index] < iter_count)
                     {
@@ -345,32 +320,90 @@ void name(ir_instruction_t* instruction, x86_ref_e* pref, u32 count) {
     instruction->name = name;
 }
 
-static void search(ir_dominator_tree_node_t* node, std::array<std::stack<int>, X86_REF_COUNT>& stacks, std::array<int, X86_REF_COUNT + 1>& counters) {
+static void search(ir_dominator_tree_node_t* node, std::array<std::stack<ir_instruction_t*>, X86_REF_COUNT>& stacks, std::array<int, X86_REF_COUNT>& counters) {
     ir_ssa_block_t* block = node->block;
-    for (auto& inst : block->instructions) {
+    auto previous_it = block->instructions.begin();
+    std::array<int, X86_REF_COUNT> pop_count = {};
+    for (auto it = block->instructions.begin(); it != block->instructions.end();) {
+        ir_instruction_t& inst = *it;
+        // These are the only instructions we care about moving to SSA, the rest should already be in SSA
         if (inst.opcode == IR_SET_GUEST || inst.opcode == IR_GET_GUEST) {
-            int i = counters[inst.get_guest.ref];
-            name(&inst, &inst.get_guest.ref, i);
-            stacks[inst.get_guest.ref].push(i);
-            counters[inst.get_guest.ref] = i + 1;
+            static_assert(offsetof(ir_instruction_t, set_guest.ref) == offsetof(ir_instruction_t, get_guest.ref), "Offsets are not the same");
+            x86_ref_e ref = inst.get_guest.ref;
+
+            if (inst.opcode == IR_GET_GUEST) {
+                // At this point we eliminate the get_guest instruction, effectively forwarding set_guest
+                ir_instruction_t* def = stacks[ref].top();
+                inst.type = IR_TYPE_ONE_OPERAND;
+                inst.opcode = IR_MOV;
+                inst.operands.args[0] = def;
+                def->uses += 1;
+            } else {
+                // This is a definition (set_guest) and we wanna push it to the appropriate stack.
+                int i = counters[ref];
+                name(&inst, &ref, i);
+                stacks[ref].push(&inst);
+                pop_count[ref]++;
+                counters[ref] = i + 1;
+            }
+        }
+
+        previous_it = it;
+        it++;
+    }
+
+    int successor_count = 0;
+    std::array<ir_ssa_block_t*, 2> successors = {nullptr, nullptr};
+    if (block->successor1) {
+        successors[successor_count] = block->successor1;
+        successor_count++;
+    }
+
+    if (block->successor2) {
+        successors[successor_count] = block->successor2;
+        successor_count++;
+    }
+
+    for (int i = 0; i < successor_count; i++) {
+        ir_ssa_block_t* succ = successors[i];
+        int j = which_pred(block, succ);
+        for (ir_instruction_t* F : succ->phi_instructions) {
+            std::vector<ir_phi_node_t>* list = (std::vector<ir_phi_node_t>*)F->phi.list;
+            ir_phi_node_t& node = (*list)[j];
+            node.block = block->actual_block;
+
+            x86_ref_e ref = F->phi.ref;
+            node.value = stacks[ref].top();
+            node.value->uses += 1;
         }
     }
 
-    if (block->successor1) {
-        
+    for (ir_dominator_tree_node_t* child : node->children) {
+        search(child, stacks, counters);
+    }
+
+    for (size_t i = 0; i < X86_REF_COUNT; i++) {
+        for (int j = 0; j < pop_count[i]; j++) {
+            stacks[i].pop();
+        }
     }
 }
 
+// This is similar to the Cytron rename pass
+// Our get_guest instructions are essentially uses, and set_guest instructions are
+// defines. We need to replace each use (get_guest) with the appropriate definition, as done
+// in Cytron et al. A small catch is, we may encounter a use (get_guest) that is not dominated
+// by a definition (either set_guest or phi). In this case, we need to insert a definition
+// before the use, by loading the register from memory.
+// This should effectively forward sets to gets and get rid of get_guest instructions
 static void rename(std::vector<ir_dominator_tree_node_t>& list) {
-    std::array<std::stack<int>, X86_REF_COUNT> stacks = {};
-
-    // The one at counters[X86_REF_COUNT] is the counter for temporaries
-    std::array<int, X86_REF_COUNT + 1> counters = {};
+    std::array<std::stack<ir_instruction_t*>, X86_REF_COUNT> stacks = {};
+    std::array<int, X86_REF_COUNT> counters = {};
 
     search(&list[0], stacks, counters);
 }
 
-void ir_ssa_pass(ir_function_t* function)
+extern "C" void ir_ssa_pass(ir_function_t* function)
 {
     size_t count = 0;
     ir_block_list_t* block = function->list;
@@ -455,19 +488,35 @@ void ir_ssa_pass(ir_function_t* function)
     // We can now move on to step 2, which is inserting phi instructions
     place_phi_functions(storage);
 
+    // Before we made the entry block have itself as the immediate dominator, we need to undo that
+    rpo_vector[0]->immediate_dominator = nullptr;
+
     // Construct a dominator tree
     std::vector<ir_dominator_tree_node_t> dominator_tree;
     dominator_tree.resize(count);
 
-    for (size_t i = 0; i < rpo_vector.size(); i++)
-    {
-        ir_ssa_block_t* b = rpo_vector[i];
-        if (b->immediate_dominator)
-        {
-            dominator_tree[b->immediate_dominator->list_index].children.push_back(&dominator_tree[i]);
+    for (size_t i = 0; i < storage.size(); i++) {
+        ir_ssa_block_t* block = &storage[i];
+        dominator_tree[i].block = block;
+        if (block->immediate_dominator) {
+            dominator_tree[block->immediate_dominator->list_index].children.push_back(&dominator_tree[i]);
         }
     }
 
     // Now rename the variables
     rename(dominator_tree);
+
+    u32 name = 1;
+    // Rename the temps too
+    for (size_t i = 0; i < storage.size(); i++)
+    {
+        ir_ssa_block_t* block = &storage[i];
+        for (ir_instruction_t& inst : block->instructions)
+        {
+            if (inst.name == 0) {
+                inst.name = name;
+                name++;
+            }
+        }
+    }
 }

@@ -445,12 +445,6 @@ ir_instruction_t* ir_emit_exit(ir_instruction_list_t* instructions)
     return instruction;
 }
 
-ir_instruction_t* ir_emit_jump_register(ir_instruction_list_t* instructions,
-                                        ir_instruction_t* target)
-{
-    return ir_emit_one_operand(instructions, IR_JUMP_REGISTER, target);
-}
-
 ir_instruction_t* ir_emit_jump(ir_instruction_list_t* instructions, ir_block_t* target)
 {
     ir_instruction_t* instruction = ir_ilist_push_back(instructions);
@@ -624,6 +618,26 @@ ir_instruction_t* ir_emit_vector_packed_compare_implicit_string_index(
 {
     return ir_emit_two_operands(instructions, IR_VECTOR_PACKED_COMPARE_IMPLICIT_STRING_INDEX,
                                 source1, source2);
+}
+
+ir_instruction_t* ir_emit_load_guest_from_memory(ir_instruction_list_t* instructions, x86_ref_e ref)
+{
+    ir_instruction_t* instruction = ir_ilist_push_back(instructions);
+    instruction->opcode = IR_LOAD_GUEST_FROM_MEMORY;
+    instruction->type = IR_TYPE_LOAD_GUEST_FROM_MEMORY;
+    instruction->get_guest.ref = ref;
+    return instruction;
+}
+
+void ir_emit_store_guest_to_memory(ir_instruction_list_t* instructions, x86_ref_e ref,
+                                   ir_instruction_t* source)
+{
+    ir_instruction_t* instruction = ir_ilist_push_back(instructions);
+    instruction->opcode = IR_STORE_GUEST_TO_MEMORY;
+    instruction->type = IR_TYPE_STORE_GUEST_TO_MEMORY;
+    instruction->set_guest.ref = ref;
+    instruction->set_guest.source = source;
+    source->uses++;
 }
 
 ir_instruction_t* ir_emit_get_guest(ir_instruction_list_t* instructions, x86_ref_e ref)

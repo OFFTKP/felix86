@@ -31,6 +31,7 @@ typedef struct ir_block_list_s
 typedef struct ir_function_t
 {
     ir_block_t* entry;
+    ir_block_t* exit;
     ir_block_list_t* list; // total list of blocks
     bool compiled;
 } ir_function_t;

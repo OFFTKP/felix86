@@ -575,8 +575,9 @@ IR_HANDLE(ret)
     ir_instruction_t* rip = ir_emit_read_qword(INSTS, rsp);
     ir_instruction_t* rsp_add = ir_emit_add(INSTS, rsp, size);
     ir_emit_set_guest(INSTS, X86_REF_RSP, rsp_add);
-    ir_emit_jump_register(INSTS, rip);
-
+    ir_emit_set_guest(INSTS, X86_REF_RIP, rip);
+    ir_emit_jump(INSTS, state->function->exit);
+    ir_add_successor(state->current_block, state->function->exit);
     state->exit = true;
 }
 
@@ -642,8 +643,9 @@ IR_HANDLE(call_rel32)
     ir_instruction_t* rsp_sub = ir_emit_sub(INSTS, rsp, size);
     ir_emit_write_qword(INSTS, rsp_sub, return_rip);
     ir_emit_set_guest(INSTS, X86_REF_RSP, rsp_sub);
-    ir_emit_jump_register(INSTS, rip);
-
+    ir_emit_set_guest(INSTS, X86_REF_RIP, rip);
+    ir_emit_jump(INSTS, state->function->exit);
+    ir_add_successor(state->current_block, state->function->exit);
     state->exit = true;
 }
 
@@ -654,7 +656,6 @@ IR_HANDLE(jmp_rel32)
 
     ir_block_t* block = ir_function_get_block(state->function, state->current_block, jump_address);
     ir_emit_jump(INSTS, block);
-
     state->exit = true;
 
     frontend_compile_block(state->function, block);
@@ -667,7 +668,6 @@ IR_HANDLE(jmp_rel8)
 
     ir_block_t* block = ir_function_get_block(state->function, state->current_block, jump_address);
     ir_emit_jump(INSTS, block);
-
     state->exit = true;
 
     frontend_compile_block(state->function, block);
@@ -675,7 +675,8 @@ IR_HANDLE(jmp_rel8)
 
 IR_HANDLE(hlt)
 { // hlt - 0xf4
-    ir_emit_exit(INSTS);
+    ir_emit_jump(INSTS, state->function->exit);
+    ir_add_successor(state->current_block, state->function->exit);
     state->exit = true;
 }
 
@@ -785,7 +786,9 @@ IR_HANDLE(group5)
             ir_instruction_t* rsp_sub = ir_emit_sub(INSTS, rsp, size);
             ir_emit_write_qword(INSTS, rsp_sub, return_rip);
             ir_emit_set_guest(INSTS, X86_REF_RSP, rsp_sub);
-            ir_emit_jump_register(INSTS, rip);
+            ir_emit_set_guest(INSTS, X86_REF_RIP, rip);
+            ir_emit_jump(INSTS, state->function->exit);
+            ir_add_successor(state->current_block, state->function->exit);
             state->exit = true;
             break;
         }
@@ -794,7 +797,9 @@ IR_HANDLE(group5)
             x86_operand_t rm_op = inst->operand_rm;
             rm_op.size = X86_SIZE_QWORD;
             ir_instruction_t* rm = ir_emit_get_rm(INSTS, &rm_op);
-            ir_emit_jump_register(INSTS, rm);
+            ir_emit_set_guest(INSTS, X86_REF_RIP, rm);
+            ir_emit_jump(INSTS, state->function->exit);
+            ir_add_successor(state->current_block, state->function->exit);
             state->exit = true;
             break;
         }

@@ -29,13 +29,14 @@ typedef enum : u8
     IR_CPUID,
     IR_RDTSC,
 
-    IR_GET_GUEST,
-    IR_SET_GUEST,
+    IR_GET_GUEST, // placeholder instruction that indicates a use of a register, replaced by the ssa pass
+    IR_SET_GUEST, // placeholder instruction that indicates a def of a register, replaced by the ssa pass
+    IR_LOAD_GUEST_FROM_MEMORY,
+    IR_STORE_GUEST_TO_MEMORY,
 
     IR_EXIT,
     IR_JUMP,
     IR_JUMP_CONDITIONAL,
-    IR_JUMP_REGISTER,
 
     IR_ADD,
     IR_SUB,
@@ -118,6 +119,8 @@ typedef enum : u8
     IR_TYPE_SIDE_EFFECTS,
     IR_TYPE_GET_GUEST,
     IR_TYPE_SET_GUEST,
+    IR_TYPE_LOAD_GUEST_FROM_MEMORY,
+    IR_TYPE_STORE_GUEST_TO_MEMORY,
     IR_TYPE_JUMP,
     IR_TYPE_JUMP_CONDITIONAL,
     IR_TYPE_PHI,

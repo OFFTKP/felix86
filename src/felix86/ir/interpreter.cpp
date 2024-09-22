@@ -8,9 +8,10 @@
 #include "felix86/ir/print.h"
 #include <string.h>
 #include <unistd.h>
+#include <unordered_map>
 
-static u64 temps[16384] = {0};
-static xmm_reg_t xmm_temps[16384] = {0};
+static std::unordered_map<u32, u64> temps;
+static std::unordered_map<u32, xmm_reg_t> xmm_temps;
 
 ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_t* entry,
                                      ir_instruction_t* instruction, x86_thread_state_t* state)
@@ -40,7 +41,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         {
             xmm_reg_t xmm = xmm_temps[instruction->operands.args[0]->name];
             u32 index = temps[instruction->operands.args[2]->name];
-            x86_size_e size = temps[instruction->operands.args[3]->name];
+            x86_size_e size = (x86_size_e)temps[instruction->operands.args[3]->name];
             switch (size)
             {
                 case X86_SIZE_BYTE:
@@ -101,7 +102,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         {
             xmm_reg_t xmm = xmm_temps[instruction->operands.args[0]->name];
             u32 index = temps[instruction->operands.args[1]->name];
-            x86_size_e size = temps[instruction->operands.args[2]->name];
+            x86_size_e size = (x86_size_e)temps[instruction->operands.args[2]->name];
             switch (size)
             {
                 case X86_SIZE_BYTE:
@@ -378,11 +379,6 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
             temps[instruction->name] = tsc;
             WARN("Interpreting RDTSC");
             break;
-        }
-        case IR_JUMP_REGISTER:
-        {
-            state->rip = temps[instruction->operands.args[0]->name];
-            return NULL;
         }
         case IR_JUMP_CONDITIONAL:
         {
@@ -952,7 +948,6 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
             xmm_temps[instruction->name] = result;
             break;
         }
-        case IR_HINT_FULL:
         case IR_HINT_INPUTS:
         case IR_HINT_OUTPUTS:
         {
@@ -969,10 +964,12 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
     return NULL;
 }
 
-void ir_interpret_function(felix86_recompiler_t* recompiler, ir_function_t* function,
+extern "C" void ir_interpret_function(felix86_recompiler_t* recompiler, ir_function_t* function,
                            x86_thread_state_t* state)
 {
-    memset(temps, 0, sizeof(temps));
+    temps.clear();
+    xmm_temps.clear();
+
     ir_block_list_t* blocks = function->entry->successors;
     ir_instruction_list_t* current = blocks->block->instructions;
     ir_block_t* next;

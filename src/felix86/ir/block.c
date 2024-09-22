@@ -1,5 +1,6 @@
 #include "felix86/ir/block.h"
 #include "felix86/frontend/frontend.h"
+#include "felix86/ir/emitter.h"
 #include <stdlib.h>
 
 ir_block_list_t* ir_block_list_create(ir_block_t* block)
@@ -35,8 +36,26 @@ ir_function_t* ir_function_create(u64 address)
 {
     ir_function_t* function = calloc(sizeof(ir_function_t), 1);
     function->entry = ir_block_create(IR_NO_ADDRESS);
+    function->exit = ir_block_create(IR_NO_ADDRESS);
+
+    ir_instruction_list_t* insts = ir_ilist_create();
+    for (int i = 0; i < X86_REF_COUNT; i++) {
+        ir_instruction_t* load = ir_emit_load_guest_from_memory(insts, i);
+        ir_emit_set_guest(insts, i, load);
+    }
+    function->entry->instructions = insts;
+
+    insts = ir_ilist_create();
+    for (int i = 0; i < X86_REF_COUNT; i++) {
+        ir_instruction_t* guest = ir_emit_get_guest(insts, i);
+        ir_emit_store_guest_to_memory(insts, i, guest);
+    }
+    ir_emit_exit(insts);
+    function->exit->instructions = insts;
 
     function->list = ir_block_list_create(function->entry);
+    ir_block_list_t* list = ir_block_list_create(function->exit);
+    function->list->next = list;
 
     function->compiled = false;
 

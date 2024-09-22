@@ -4,6 +4,7 @@
 #include "felix86/common/print.h"
 
 #include <stdio.h>
+#include <vector>
 
 #define OPC_BEGIN "<font color=\"#c586c0\">"
 #define OPC_END "</font>"
@@ -243,23 +244,23 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block)
         case IR_PHI:
         {
             printf("t%d = φ&lt;", instruction->name);
-            // ir_phi_node_t* node = instruction->phi.list;
-            // while (node)
-            // {
-            //     if (!node->value || !node->block)
-            //     {
-            //         printf("NULL");
-            //     }
-            //     else
-            //     {
-            //         printf("t%d @ %p", node->value->name, node->block);
-            //     }
-            //     node = node->next;
-            //     if (node)
-            //     {
-            //         printf(", ");
-            //     }
-            // }
+            std::vector<ir_phi_node_t>* list = (std::vector<ir_phi_node_t>*)instruction->phi.list;
+            for (int i = 0; i < list->size(); i++)
+            {
+                ir_phi_node_t* node = &list->at(i);
+                if (!node->value || !node->block)
+                {
+                    printf("NULL");
+                }
+                else
+                {
+                    printf("t%d @ %p", node->value->name, node->block);
+                }
+                if (i < list->size() - 1)
+                {
+                    printf(", ");
+                }
+            }
             printf("&gt;");
             break;
         }
@@ -268,11 +269,6 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block)
             printf("jump t%d ? %p : %p", instruction->jump_conditional.condition->name,
                    instruction->jump_conditional.target_true,
                    instruction->jump_conditional.target_false);
-            break;
-        }
-        case IR_JUMP_REGISTER:
-        {
-            printf(OP VAR, "jump", instruction->operands.args[0]->name);
             break;
         }
         default:

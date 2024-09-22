@@ -72,8 +72,6 @@ ir_instruction_t* ir_emit_jump(ir_instruction_list_t* instructions, ir_block_t* 
 ir_instruction_t* ir_emit_jump_conditional(ir_instruction_list_t* instructions,
                                            ir_instruction_t* condition, ir_block_t* target_true,
                                            ir_block_t* target_false);
-ir_instruction_t* ir_emit_jump_register(ir_instruction_list_t* instructions,
-                                        ir_instruction_t* target);
 ir_instruction_t* ir_emit_insert_integer_to_vector(ir_instruction_list_t* instructions,
                                                    ir_instruction_t* dst, ir_instruction_t* source,
                                                    u8 idx, x86_size_e sz);
@@ -131,6 +129,9 @@ ir_instruction_t* ir_emit_vector_packed_min_byte(ir_instruction_list_t* instruct
 ir_instruction_t* ir_emit_vector_packed_compare_implicit_string_index(
     ir_instruction_list_t* instructions, ir_instruction_t* source1, ir_instruction_t* source2);
 
+ir_instruction_t* ir_emit_load_guest_from_memory(ir_instruction_list_t* instructions, x86_ref_e ref);
+void ir_emit_store_guest_to_memory(ir_instruction_list_t* instructions, x86_ref_e ref,
+                                   ir_instruction_t* source);
 ir_instruction_t* ir_emit_get_guest(ir_instruction_list_t* instructions, x86_ref_e ref);
 void ir_emit_set_guest(ir_instruction_list_t* instructions, x86_ref_e ref,
                        ir_instruction_t* source);
