@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 
 typedef struct {
@@ -215,7 +211,3 @@ typedef struct {
     u32 addr_mask_ext : 1;
     u32 : 1;
 } feature_info_80000001_ecx_t;
-
-#ifdef __cplusplus
-}
-#endif

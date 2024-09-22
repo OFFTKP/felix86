@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 #include "felix86/frontend/instruction.h"
 #include "felix86/ir/block.h"
@@ -245,7 +241,3 @@ void ir_emit_group3(ir_instruction_list_t* instructions, x86_instruction_t* inst
 
 void ir_emit_rep_start(ir_instruction_list_t* instructions, x86_size_e size);
 void ir_emit_rep_end(ir_instruction_list_t* instructions, bool is_nz, x86_size_e size);
-
-#ifdef __cplusplus
-}
-#endif

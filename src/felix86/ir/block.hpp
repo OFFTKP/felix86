@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 #include "felix86/ir/instruction_list.h"
 
@@ -44,7 +40,3 @@ void ir_function_destroy(ir_function_t* function);
 ir_block_t* ir_function_get_block(ir_function_t* function, ir_block_t* predecessor, u64 address);
 void ir_add_predecessor(ir_block_t* block, ir_block_t* predecessor);
 void ir_add_successor(ir_block_t* block, ir_block_t* successor);
-
-#ifdef __cplusplus
-}
-#endif

@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 
 typedef struct {
@@ -13,7 +9,3 @@ typedef struct {
     void (*fclose)(void* handle, void* user_data);
     u64 (*get_size)(void* handle, void* user_data);
 } file_reading_callbacks_t;
-
-#ifdef __cplusplus
-}
-#endif

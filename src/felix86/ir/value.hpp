@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 #include "felix86/frontend/instruction.h"
 
@@ -25,7 +21,3 @@ typedef struct {
 
     ir_value_type_t type;
 } ir_value_t;
-
-#ifdef __cplusplus
-}
-#endif

@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 
 typedef struct backend_block_metadata_s backend_block_metadata_t;
@@ -15,7 +11,3 @@ void backend_block_metadata_patch(backend_block_metadata_t* metadata, u64 addres
                                   void* start_of_block);
 void backend_block_metadata_unpatch(backend_block_metadata_t* metadata, u64 address,
                                     void* start_of_block);
-
-#ifdef __cplusplus
-}
-#endif

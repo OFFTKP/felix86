@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/callbacks.h"
 #include "felix86/common/utility.h"
 
@@ -30,7 +26,3 @@ typedef struct {
 elf_t* elf_load(const char* path, file_reading_callbacks_t* callbacks, bool is_interpreter);
 
 void elf_destroy(elf_t* elf);
-
-#ifdef __cplusplus
-}
-#endif

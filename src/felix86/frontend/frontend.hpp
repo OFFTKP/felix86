@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 #include "felix86/ir/block.h"
 
@@ -16,7 +12,3 @@ typedef struct {
 
 void frontend_compile_block(ir_function_t* function, ir_block_t* block);
 void frontend_compile_function(ir_function_t* function, u64 address);
-
-#ifdef __cplusplus
-}
-#endif

@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 #include "felix86/frontend/instruction.h"
 
@@ -187,7 +183,3 @@ typedef struct ir_instruction_s {
 void ir_clear_instruction(ir_instruction_t* instruction);
 
 ir_instruction_t ir_copy_expression(ir_instruction_t* expression);
-
-#ifdef __cplusplus
-}
-#endif

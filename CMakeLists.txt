@@ -21,30 +21,30 @@ add_subdirectory(external/xbyak)
 add_subdirectory(external/zydis)
 
 set(FELIX86_FRONTEND_SOURCES
-    src/felix86/frontend/frontend.c
+    src/felix86/frontend/frontend.cpp
 )
 
 set(FELIX86_IR_SOURCES
-    src/felix86/ir/block.c
+    src/felix86/ir/block.cpp
     src/felix86/ir/function_cache.cpp
-    src/felix86/ir/emitter.c
-    src/felix86/ir/handlers_weak.c
-    src/felix86/ir/handlers.c
+    src/felix86/ir/emitter.cpp
+    src/felix86/ir/handlers_weak.cpp
+    src/felix86/ir/handlers.cpp
     src/felix86/ir/interpreter.cpp
-    src/felix86/ir/instruction.c
-    src/felix86/ir/instruction_list.c
+    src/felix86/ir/instruction.cpp
+    src/felix86/ir/instruction_list.cpp
     src/felix86/ir/print.cpp
     src/felix86/ir/ssa_pass.cpp
 )
 
 set(FELIX86_COMMON_SOURCES
-    src/felix86/common/allocator.c
-    src/felix86/common/exit.c
-    src/felix86/common/file.c
-    src/felix86/common/global.c
-    src/felix86/common/log.c
-    src/felix86/common/print.c
-    src/felix86/common/prompt.c
+    src/felix86/common/allocator.cpp
+    src/felix86/common/exit.cpp
+    src/felix86/common/file.cpp
+    src/felix86/common/global.cpp
+    src/felix86/common/log.cpp
+    src/felix86/common/print.cpp
+    src/felix86/common/prompt.cpp
 )
 
 set(FELIX86_BACKEND_SOURCES
@@ -52,15 +52,15 @@ set(FELIX86_BACKEND_SOURCES
 )
 
 set(FELIX86_LOADER_SOURCES
-    src/felix86/loader/elf.c
-    src/felix86/loader/loader.c
+    src/felix86/loader/elf.cpp
+    src/felix86/loader/loader.cpp
 )
 
 set(FELIX86_HLE_SOURCES
-    src/felix86/hle/cpuid.c
-    src/felix86/hle/filesystem.c
+    src/felix86/hle/cpuid.cpp
     src/felix86/hle/filesystem.cpp
-    src/felix86/hle/syscall.c
+    src/felix86/hle/filesystem.cpp
+    src/felix86/hle/syscall.cpp
 )
 
 set(FELIX86_CORE_SOURCES
@@ -70,7 +70,7 @@ set(FELIX86_CORE_SOURCES
     ${FELIX86_BACKEND_SOURCES}
     ${FELIX86_LOADER_SOURCES}
     ${FELIX86_HLE_SOURCES}
-    src/felix86/felix86.c
+    src/felix86/felix86.cpp
 )
 
 set(FELIX86_INCLUDES
@@ -85,7 +85,7 @@ target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis)
 
 add_executable(felix86)
-target_sources(felix86 PRIVATE src/felix86/main.c src/felix86/gui.cpp)
+target_sources(felix86 PRIVATE src/felix86/main.cpp src/felix86/gui.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
 
 set(FELIX86_TEST_SOURCES

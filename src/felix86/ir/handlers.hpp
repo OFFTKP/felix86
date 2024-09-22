@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/frontend/frontend.h"
 #include "felix86/frontend/instruction.h"
 
@@ -24,7 +20,3 @@ typedef void (*ir_handle_fn_t)(frontend_state_t* state, x86_instruction_t* inst)
 #include "felix86/frontend/tertiary_3a.inc"
 #include "felix86/frontend/tertiary_3a_66.inc"
 #undef X
-
-#ifdef __cplusplus
-}
-#endif

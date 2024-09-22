@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "felix86/common/utility.h"
 
 typedef enum : u8 {
@@ -192,7 +188,3 @@ typedef struct {
     u8 opcode;
     u8 length;
 } x86_instruction_t;
-
-#ifdef __cplusplus
-}
-#endif
