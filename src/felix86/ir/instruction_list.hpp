@@ -1,6 +1,6 @@
 #pragma once
 
-#include "felix86/ir/instruction.h"
+#include "felix86/ir/instruction.hpp"
 
 struct ir_instruction_list_s;
 

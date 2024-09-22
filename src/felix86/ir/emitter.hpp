@@ -1,9 +1,9 @@
 #pragma once
 
-#include "felix86/common/utility.h"
-#include "felix86/frontend/instruction.h"
-#include "felix86/ir/block.h"
-#include "felix86/ir/instruction.h"
+#include "felix86/common/utility.hpp"
+#include "felix86/frontend/instruction.hpp"
+#include "felix86/ir/block.hpp"
+#include "felix86/ir/instruction.hpp"
 
 u16 get_bit_size(x86_size_e size);
 x86_operand_t get_full_reg(x86_ref_e ref);

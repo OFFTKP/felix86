@@ -1,11 +1,11 @@
 #include <argp.h>
 #include <stdio.h>
-#include "felix86/common/log.h"
-#include "felix86/common/prompt.h"
-#include "felix86/common/version.h"
-#include "felix86/gui.h"
-#include "felix86/hle/filesystem.h"
-#include "felix86/loader/loader.h"
+#include "felix86/common/log.hpp"
+#include "felix86/common/prompt.hpp"
+#include "felix86/common/version.hpp"
+#include "felix86/gui.hpp"
+#include "felix86/hle/filesystem.hpp"
+#include "felix86/loader/loader.hpp"
 
 const char* argp_program_version = "felix86 " FELIX86_VERSION;
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";

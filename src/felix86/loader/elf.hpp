@@ -1,7 +1,7 @@
 #pragma once
 
-#include "felix86/common/callbacks.h"
-#include "felix86/common/utility.h"
+#include "felix86/common/callbacks.hpp"
+#include "felix86/common/utility.hpp"
 
 typedef struct {
     void* program;

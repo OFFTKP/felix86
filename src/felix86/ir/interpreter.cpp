@@ -1,14 +1,14 @@
 #include <unordered_map>
 #include <string.h>
 #include <unistd.h>
-#include "felix86/common/global.h"
-#include "felix86/common/log.h"
-#include "felix86/common/print.h"
-#include "felix86/common/utility.h"
-#include "felix86/hle/cpuid.h"
-#include "felix86/hle/syscall.h"
-#include "felix86/ir/interpreter.h"
-#include "felix86/ir/print.h"
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/common/print.hpp"
+#include "felix86/common/utility.hpp"
+#include "felix86/hle/cpuid.hpp"
+#include "felix86/hle/syscall.hpp"
+#include "felix86/ir/interpreter.hpp"
+#include "felix86/ir/print.hpp"
 
 static std::unordered_map<u32, u64> temps;
 static std::unordered_map<u32, xmm_reg_t> xmm_temps;

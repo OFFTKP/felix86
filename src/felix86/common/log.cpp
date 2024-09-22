@@ -1,4 +1,4 @@
-#include "felix86/common/log.h"
+#include "felix86/common/log.hpp"
 
 bool verbose = false;
 bool quiet = false;

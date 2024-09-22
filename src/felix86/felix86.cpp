@@ -1,13 +1,13 @@
 #include <stdlib.h>
-#include "felix86/common/global.h"
-#include "felix86/common/log.h"
-#include "felix86/common/state.h"
-#include "felix86/felix86.h"
-#include "felix86/frontend/frontend.h"
-#include "felix86/ir/function_cache.h"
-#include "felix86/ir/interpreter.h"
-#include "felix86/ir/passes.h"
-#include "felix86/ir/print.h"
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/common/state.hpp"
+#include "felix86/felix86.hpp"
+#include "felix86/frontend/frontend.hpp"
+#include "felix86/ir/function_cache.hpp"
+#include "felix86/ir/interpreter.hpp"
+#include "felix86/ir/passes.hpp"
+#include "felix86/ir/print.hpp"
 
 felix86_recompiler_t* felix86_recompiler_create(felix86_recompiler_config_t* config) {
     felix86_recompiler_t* recompiler = calloc(1, sizeof(felix86_recompiler_t));

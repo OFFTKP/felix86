@@ -1,7 +1,7 @@
 #pragma once
 
-#include "felix86/common/utility.h"
-#include "felix86/ir/instruction_list.h"
+#include "felix86/common/utility.hpp"
+#include "felix86/ir/instruction_list.hpp"
 
 #define IR_NO_ADDRESS (-1ull)
 

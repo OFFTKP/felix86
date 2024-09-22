@@ -6,8 +6,8 @@
 #include <stack>
 #include <unordered_map>
 #include <vector>
-#include "felix86/common/log.h"
-#include "felix86/ir/passes.h"
+#include "felix86/common/log.hpp"
+#include "felix86/ir/passes.hpp"
 #include "felix86/ir/ssa_block.hpp"
 
 /*

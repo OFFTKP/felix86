@@ -1,6 +1,6 @@
 #pragma once
 
-#include "felix86/common/utility.h"
+#include "felix86/common/utility.hpp"
 
 typedef enum : u8 {
     SEGMENT_NONE = 0,

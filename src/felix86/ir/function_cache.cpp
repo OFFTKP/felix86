@@ -1,8 +1,8 @@
-#include "felix86/ir/function_cache.h"
+#include "felix86/ir/function_cache.hpp"
 
 #include <tsl/robin_map.h>
 
-#include "felix86/common/log.h"
+#include "felix86/common/log.hpp"
 
 extern "C" struct ir_function_cache_s {
     tsl::robin_map<u64, ir_function_t*> functions;

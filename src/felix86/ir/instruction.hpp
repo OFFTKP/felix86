@@ -1,7 +1,7 @@
 #pragma once
 
-#include "felix86/common/utility.h"
-#include "felix86/frontend/instruction.h"
+#include "felix86/common/utility.hpp"
+#include "felix86/frontend/instruction.hpp"
 
 typedef enum : u8 {
     IR_NULL,

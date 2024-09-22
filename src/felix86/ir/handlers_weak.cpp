@@ -1,6 +1,6 @@
-#include "felix86/common/global.h"
-#include "felix86/common/log.h"
-#include "felix86/frontend/frontend.h"
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/frontend/frontend.hpp"
 
 void __attribute__((weak)) ir_handle_add_rm_reg(frontend_state_t* state, x86_instruction_t* inst) {
     ERROR("STUB: Unimplemented ir handler: %s (%x) during address: %016llx", "add_rm_reg",

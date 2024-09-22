@@ -1,7 +1,7 @@
 #pragma once
 
-#include "felix86/common/utility.h"
-#include "felix86/ir/block.h"
+#include "felix86/common/utility.hpp"
+#include "felix86/ir/block.hpp"
 
 typedef struct ir_function_cache_s ir_function_cache_t;
 

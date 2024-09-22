@@ -1,6 +1,6 @@
 #pragma once
 
-#include "felix86/common/utility.h"
+#include "felix86/common/utility.hpp"
 
 typedef struct backend_block_metadata_s backend_block_metadata_t;
 

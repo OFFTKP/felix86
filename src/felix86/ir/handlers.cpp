@@ -1,9 +1,9 @@
-#include "felix86/common/global.h"
-#include "felix86/common/log.h"
-#include "felix86/common/state.h"
-#include "felix86/ir/emitter.h"
-#include "felix86/ir/handlers.h"
-#include "felix86/ir/instruction.h"
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/common/state.hpp"
+#include "felix86/ir/emitter.hpp"
+#include "felix86/ir/handlers.hpp"
+#include "felix86/ir/instruction.hpp"
 
 u64 sext_if_64(u64 value, x86_size_e size_e) {
     switch (size_e) {

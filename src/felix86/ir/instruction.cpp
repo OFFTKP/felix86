@@ -1,5 +1,5 @@
-#include "felix86/common/log.h"
-#include "felix86/ir/instruction.h"
+#include "felix86/common/log.hpp"
+#include "felix86/ir/instruction.hpp"
 
 void ir_clear_instruction(ir_instruction_t* instruction) {
     instruction->raw_data[0] = 0;

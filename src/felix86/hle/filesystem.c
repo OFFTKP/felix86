@@ -5,8 +5,8 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include "felix86/common/log.h"
-#include "felix86/hle/filesystem.h"
+#include "felix86/common/log.hpp"
+#include "felix86/hle/filesystem.hpp"
 
 char squashfs_path[PATH_MAX] = {0};
 char emulated_executable_path[PATH_MAX] = {0};

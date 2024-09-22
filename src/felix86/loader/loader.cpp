@@ -2,12 +2,12 @@
 #include <string.h>
 #include <sys/auxv.h>
 #include <sys/random.h>
-#include "felix86/common/global.h"
-#include "felix86/common/log.h"
-#include "felix86/common/version.h"
-#include "felix86/felix86.h"
-#include "felix86/loader/elf.h"
-#include "felix86/loader/loader.h"
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/common/version.hpp"
+#include "felix86/felix86.hpp"
+#include "felix86/loader/elf.hpp"
+#include "felix86/loader/loader.hpp"
 
 extern char** environ;
 

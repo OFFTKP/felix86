@@ -5,10 +5,10 @@
 #include <sys/mman.h>
 #include <sys/personality.h>
 #include <sys/resource.h>
-#include "felix86/common/file.h"
-#include "felix86/common/global.h"
-#include "felix86/common/log.h"
-#include "felix86/loader/elf.h"
+#include "felix86/common/file.hpp"
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/loader/elf.hpp"
 
 // Not a full ELF implementation, but one that suits our needs as a loader of
 // both the executable and the dynamic linker, and one that only supports x86_64
@@ -128,18 +128,18 @@ elf_t* elf_load(const char* path, file_reading_callbacks_t* callbacks, bool is_i
     elf.entry = ehdr.e_entry;
 
     u64 phdrtable_size = ehdr.e_phnum * ehdr.e_phentsize;
-    phdrtable = malloc(phdrtable_size);
+    phdrtable = new u8[phdrtable_size];
     result = fread(file, phdrtable, ehdr.e_phoff, phdrtable_size, user_data);
 
     u64 shdrtable_size = ehdr.e_shnum * ehdr.e_shentsize;
-    shdrtable = malloc(shdrtable_size);
+    shdrtable = new u8[shdrtable_size];
     result = fread(file, shdrtable, ehdr.e_shoff, shdrtable_size, user_data);
 
     for (Elf64_Half i = 0; i < phdrtable_size; i += ehdr.e_phentsize) {
         Elf64_Phdr* phdr = (Elf64_Phdr*)(phdrtable + i);
         switch (phdr->p_type) {
         case PT_INTERP: {
-            elf.interpreter = malloc(phdr->p_filesz);
+            elf.interpreter = new char[phdr->p_filesz];
             result = fread(file, elf.interpreter, phdr->p_offset, phdr->p_filesz, user_data);
             if (!result) {
                 WARN("Failed to read interpreter from file %s", path);
@@ -342,7 +342,7 @@ elf_t* elf_load(const char* path, file_reading_callbacks_t* callbacks, bool is_i
 cleanup:
     if (phdrtable)
         free(phdrtable);
-    if (shdrtable)
+    if (shdrtable) use unique_ptr everywhere or vector
         free(shdrtable);
     if (elf.interpreter)
         free(elf.interpreter);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "felix86/common/utility.h"
+#include "felix86/common/utility.hpp"
 
 void* easy_fopen(const char* path, void* user_data);
 bool easy_fread(void* handle, void* buffer, u64 offset, u64 size, void* user_data);

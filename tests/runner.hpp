@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <xbyak/xbyak.h>
-#include "felix86/common/utility.h"
-#include "felix86/felix86.h"
+#include "felix86/common/utility.hpp"
+#include "felix86/felix86.hpp"
 
 using namespace Xbyak;
 using namespace Xbyak::util;

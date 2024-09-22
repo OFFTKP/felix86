@@ -1,8 +1,8 @@
 #include <errno.h>
 #include <unistd.h>
-#include "felix86/common/log.h"
-#include "felix86/hle/filesystem.h"
-#include "felix86/hle/syscall.h"
+#include "felix86/common/log.hpp"
+#include "felix86/hle/filesystem.hpp"
+#include "felix86/hle/syscall.hpp"
 
 // We add felix86_${ARCH}_ in front of the linux related identifiers to avoid
 // naming conflicts

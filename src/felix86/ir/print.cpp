@@ -1,7 +1,7 @@
-#include "felix86/common/global.h"
-#include "felix86/common/log.h"
-#include "felix86/common/print.h"
-#include "felix86/ir/print.h"
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/common/print.hpp"
+#include "felix86/ir/print.hpp"
 
 #include <vector>
 #include <stdio.h>

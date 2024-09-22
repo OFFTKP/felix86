@@ -1,7 +1,7 @@
 #include <stdlib.h>
-#include "felix86/frontend/frontend.h"
-#include "felix86/ir/block.h"
-#include "felix86/ir/emitter.h"
+#include "felix86/frontend/frontend.hpp"
+#include "felix86/ir/block.hpp"
+#include "felix86/ir/emitter.hpp"
 
 ir_block_list_t* ir_block_list_create(ir_block_t* block) {
     ir_block_list_t* list = calloc(1, sizeof(ir_block_list_t));

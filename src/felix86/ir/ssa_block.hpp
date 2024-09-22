@@ -2,7 +2,7 @@
 
 #include <list>
 #include <vector>
-#include "felix86/ir/block.h"
+#include "felix86/ir/block.hpp"
 
 struct ir_ssa_block_t
 {

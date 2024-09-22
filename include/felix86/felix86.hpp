@@ -1,8 +1,8 @@
 #pragma once
 
-#include "felix86/common/state.h"
-#include "felix86/frontend/instruction.h"
-#include "felix86/ir/block.h"
+#include "felix86/common/state.hpp"
+#include "felix86/frontend/instruction.hpp"
+#include "felix86/ir/block.hpp"
 
 typedef struct {
 	bool testing;

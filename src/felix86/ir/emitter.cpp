@@ -2,10 +2,10 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-#include "felix86/common/log.h"
-#include "felix86/frontend/instruction.h"
-#include "felix86/ir/emitter.h"
-#include "felix86/ir/instruction.h"
+#include "felix86/common/log.hpp"
+#include "felix86/frontend/instruction.hpp"
+#include "felix86/ir/emitter.hpp"
+#include "felix86/ir/instruction.hpp"
 
 u16 get_bit_size(x86_size_e size) {
     switch (size) {
@@ -1012,10 +1012,10 @@ ir_instruction_t* ir_emit_get_overflow_add(ir_instruction_list_t* instructions,
     // sign bit of z is different
     ir_instruction_t* xor1 = ir_emit_xor(instructions, result, source1);
     ir_instruction_t* xor2 = ir_emit_xor(instructions, result, source2);
-    ir_instruction_t*and = ir_emit_and(instructions, xor1, xor2);
-    ir_instruction_t* masked = ir_emit_and(instructions, and, mask);
+    ir_instruction_t* masked1 = ir_emit_and(instructions, xor1, xor2);
+    ir_instruction_t* masked2 = ir_emit_and(instructions, masked1, mask);
 
-    return ir_emit_equal(instructions, masked, mask);
+    return ir_emit_equal(instructions, masked2, mask);
 }
 
 ir_instruction_t* ir_emit_get_overflow_sub(ir_instruction_list_t* instructions,
@@ -1026,10 +1026,10 @@ ir_instruction_t* ir_emit_get_overflow_sub(ir_instruction_list_t* instructions,
     // for x - y = z, overflow occurs if ((x ^ y) & (x ^ z) & mask) == mask
     ir_instruction_t* xor1 = ir_emit_xor(instructions, source1, source2);
     ir_instruction_t* xor2 = ir_emit_xor(instructions, source1, result);
-    ir_instruction_t*and = ir_emit_and(instructions, xor1, xor2);
-    ir_instruction_t* masked = ir_emit_and(instructions, and, mask);
+    ir_instruction_t* masked1 = ir_emit_and(instructions, xor1, xor2);
+    ir_instruction_t* masked2 = ir_emit_and(instructions, masked1, mask);
 
-    return ir_emit_equal(instructions, masked, mask);
+    return ir_emit_equal(instructions, masked2, mask);
 }
 
 ir_instruction_t* ir_emit_get_carry_add(ir_instruction_list_t* instructions,
@@ -1119,7 +1119,7 @@ ir_instruction_t* ir_emit_set_cpazso(ir_instruction_list_t* instructions, ir_ins
 }
 
 void ir_emit_group1_imm(ir_instruction_list_t* instructions, x86_instruction_t* inst) {
-    x86_group1_e opcode = inst->operand_reg.reg.ref - X86_REF_RAX;
+    x86_group1_e opcode = (x86_group1_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     ir_instruction_t* rm = ir_emit_get_rm(instructions, &inst->operand_rm);
@@ -1197,7 +1197,7 @@ void ir_emit_group1_imm(ir_instruction_list_t* instructions, x86_instruction_t* 
 
 void ir_emit_group2(ir_instruction_list_t* instructions, x86_instruction_t* inst,
                     ir_instruction_t* shift_amount) {
-    x86_group2_e opcode = inst->operand_reg.reg.ref - X86_REF_RAX;
+    x86_group2_e opcode = (x86_group2_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     u8 shift_mask = get_bit_size(size_e) - 1;
@@ -1282,7 +1282,7 @@ void ir_emit_group2(ir_instruction_list_t* instructions, x86_instruction_t* inst
 }
 
 void ir_emit_group3(ir_instruction_list_t* instructions, x86_instruction_t* inst) {
-    x86_group3_e opcode = inst->operand_reg.reg.ref - X86_REF_RAX;
+    x86_group3_e opcode = (x86_group3_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     ir_instruction_t* rm = ir_emit_get_rm(instructions, &inst->operand_rm);

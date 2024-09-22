@@ -1,6 +1,6 @@
 #include <cstring>
 #include <filesystem>
-#include "felix86/hle/filesystem.h"
+#include "felix86/hle/filesystem.hpp"
 
 extern "C" int felix86_lexically_normal(char* buffer, u32 buffer_size, const char* path) {
     std::filesystem::path normal_path = std::filesystem::path(path).lexically_normal();

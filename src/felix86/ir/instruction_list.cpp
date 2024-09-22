@@ -1,6 +1,6 @@
 #include <stddef.h>
 #include <stdlib.h>
-#include "felix86/ir/instruction_list.h"
+#include "felix86/ir/instruction_list.hpp"
 
 ir_instruction_list_t* ir_ilist_create() {
     ir_instruction_list_t* ilist = calloc(1, sizeof(ir_instruction_list_t));

@@ -1,4 +1,4 @@
-#include "felix86/backend/block_metadata.h"
+#include "felix86/backend/block_metadata.hpp"
 
 #include <tsl/robin_map.h>
 

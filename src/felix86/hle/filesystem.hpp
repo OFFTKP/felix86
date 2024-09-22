@@ -1,7 +1,7 @@
 #pragma once
 
 #include <linux/limits.h>
-#include "felix86/common/utility.h"
+#include "felix86/common/utility.hpp"
 
 extern char squashfs_path[PATH_MAX];
 

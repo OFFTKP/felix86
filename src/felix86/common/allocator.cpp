@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
-#include "felix86/common/allocator.h"
-#include "felix86/common/log.h"
+#include "felix86/common/allocator.hpp"
+#include "felix86/common/log.hpp"
 
 struct allocator_s {
     u8* memory;

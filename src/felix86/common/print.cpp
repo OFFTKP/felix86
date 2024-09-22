@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "felix86/common/print.h"
+#include "felix86/common/print.hpp"
 
 void print_guest_register(x86_ref_e guest) {
     switch (guest) {

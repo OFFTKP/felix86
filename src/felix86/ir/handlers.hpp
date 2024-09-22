@@ -1,7 +1,7 @@
 #pragma once
 
-#include "felix86/frontend/frontend.h"
-#include "felix86/frontend/instruction.h"
+#include "felix86/frontend/frontend.hpp"
+#include "felix86/frontend/instruction.hpp"
 
 #define INSTS (state->current_block->instructions)
 
