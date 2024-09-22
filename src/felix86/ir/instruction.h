@@ -7,8 +7,7 @@ extern "C" {
 #include "felix86/common/utility.h"
 #include "felix86/frontend/instruction.h"
 
-typedef enum : u8
-{
+typedef enum : u8 {
     IR_NULL,
 
     IR_START_OF_BLOCK,
@@ -29,8 +28,10 @@ typedef enum : u8
     IR_CPUID,
     IR_RDTSC,
 
-    IR_GET_GUEST, // placeholder instruction that indicates a use of a register, replaced by the ssa pass
-    IR_SET_GUEST, // placeholder instruction that indicates a def of a register, replaced by the ssa pass
+    IR_GET_GUEST, // placeholder instruction that indicates a use of a register, replaced by the ssa
+                  // pass
+    IR_SET_GUEST, // placeholder instruction that indicates a def of a register, replaced by the ssa
+                  // pass
     IR_LOAD_GUEST_FROM_MEMORY,
     IR_STORE_GUEST_TO_MEMORY,
 
@@ -107,8 +108,7 @@ typedef enum : u8
     IR_VECTOR_ZEXT64, // zero extend the bottom 64-bits of a vector
 } ir_opcode_e;
 
-typedef enum : u8
-{
+typedef enum : u8 {
     IR_TYPE_NULL,
     IR_TYPE_LOAD_IMMEDIATE,
     IR_TYPE_NO_OPERANDS,
@@ -126,63 +126,51 @@ typedef enum : u8
     IR_TYPE_PHI,
 } ir_type_e;
 
-typedef struct ir_phi_node_s
-{
+typedef struct ir_phi_node_s {
     struct ir_block_s* block;
     struct ir_instruction_s* value;
 } ir_phi_node_t;
 
-typedef struct ir_instruction_s
-{
-    union
-    {
-        struct
-        {
+typedef struct ir_instruction_s {
+    union {
+        struct {
             struct ir_instruction_s* args[4];
         } operands;
 
-        struct
-        {
+        struct {
             u64 immediate;
         } load_immediate;
 
-        struct
-        {
+        struct {
             x86_ref_e ref;
         } get_guest;
 
-        struct
-        {
+        struct {
             x86_ref_e ref;
             struct ir_instruction_s* source;
         } set_guest;
 
-        struct
-        {
+        struct {
             struct ir_instruction_s* condition;
             struct ir_block_s* target_true;
             struct ir_block_s* target_false;
         } jump_conditional;
 
-        struct
-        {
+        struct {
             struct ir_block_s* target;
         } jump;
 
-        struct
-        {
+        struct {
             x86_ref_e ref;
             void* list;
         } phi;
 
-        struct
-        {
+        struct {
             x86_ref_e registers_affected[16];
             u8 count;
         } side_effect;
 
-        struct
-        {
+        struct {
             const char* comment;
         } runtime_comment;
 

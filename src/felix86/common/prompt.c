@@ -1,27 +1,19 @@
-#include "felix86/common/prompt.h"
-#include "felix86/common/log.h"
 #include <stdio.h>
+#include "felix86/common/log.h"
+#include "felix86/common/prompt.h"
 
-u32 prompt_yn_question(const char* question)
-{
+u32 prompt_yn_question(const char* question) {
     int response;
-    do
-    {
+    do {
         printf("%s [y/n]:\n", question);
         response = getchar();
-        if (getchar() != '\n')
-        {
+        if (getchar() != '\n') {
             while (getchar() != '\n')
                 ;
-        }
-        else
-        {
-            if (response == 'y')
-            {
+        } else {
+            if (response == 'y') {
                 return 1;
-            }
-            else if (response == 'n')
-            {
+            } else if (response == 'n') {
                 return 0;
             }
         }

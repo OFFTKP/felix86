@@ -6,8 +6,7 @@ extern "C" {
 
 #include "felix86/common/utility.h"
 
-typedef struct
-{
+typedef struct {
     char* argv[256];
     int argc;
     char** envp;

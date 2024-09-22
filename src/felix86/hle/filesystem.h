@@ -4,8 +4,8 @@
 extern "C" {
 #endif
 
-#include "felix86/common/utility.h"
 #include <linux/limits.h>
+#include "felix86/common/utility.h"
 
 extern char squashfs_path[PATH_MAX];
 

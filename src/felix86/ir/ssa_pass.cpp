@@ -1,6 +1,3 @@
-#include "felix86/common/log.h"
-#include "felix86/ir/passes.h"
-#include "felix86/ir/ssa_block.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdio>
@@ -9,6 +6,9 @@
 #include <stack>
 #include <unordered_map>
 #include <vector>
+#include "felix86/common/log.h"
+#include "felix86/ir/passes.h"
+#include "felix86/ir/ssa_block.hpp"
 
 /*
     This file is in C++ instead of C to not have to reimplement some very useful
@@ -93,31 +93,27 @@ struct ir_dominator_tree_node_t {
     std::vector<ir_dominator_tree_node_t*> children = {};
 };
 
-static void postorder(ir_ssa_block_t* block, std::vector<ir_ssa_block_t*>& output)
-{
-    if (block->visited)
-    {
+static void postorder(ir_ssa_block_t* block, std::vector<ir_ssa_block_t*>& output) {
+    if (block->visited) {
         return;
     }
 
     block->visited = true;
 
-    if (block->successor1)
-    {
+    if (block->successor1) {
         postorder(block->successor1, output);
     }
 
-    if (block->successor2)
-    {
+    if (block->successor2) {
         postorder(block->successor2, output);
     }
 
     output.push_back(block);
 }
 
-static void reverse_postorder_vector_creation(ir_function_t* function, std::vector<ir_ssa_block_t>& list,
-                                       std::vector<ir_ssa_block_t*>& output, size_t size)
-{
+static void reverse_postorder_vector_creation(ir_function_t* function,
+                                              std::vector<ir_ssa_block_t>& list,
+                                              std::vector<ir_ssa_block_t*>& output, size_t size) {
     list.resize(size);
 
     std::vector<std::pair<ir_block_t*, ir_block_t*>> successors;
@@ -126,16 +122,14 @@ static void reverse_postorder_vector_creation(ir_function_t* function, std::vect
     std::unordered_map<ir_block_t*, int> block_to_index;
     ir_block_list_t* block = function->list;
     size_t index = 0;
-    while (block)
-    {
+    while (block) {
         list[index].actual_block = block->block;
         list[index].visited = false;
         block_to_index[block->block] = index;
         list[index].list_index = index;
 
         ir_instruction_list_t* inst = block->block->instructions;
-        while (inst)
-        {
+        while (inst) {
             list[index].instructions.push_back(inst->instruction);
             inst = inst->next;
         }
@@ -150,16 +144,14 @@ static void reverse_postorder_vector_creation(ir_function_t* function, std::vect
         block = block->next;
     }
 
-    for (size_t i = 0; i < list.size(); i++)
-    {
+    for (size_t i = 0; i < list.size(); i++) {
         list[i].successor1 =
             successors[i].first ? &list[block_to_index[successors[i].first]] : nullptr;
         list[i].successor2 =
             successors[i].second ? &list[block_to_index[successors[i].second]] : nullptr;
 
         ir_block_list_t* pred = list[i].actual_block->predecessors;
-        while (pred)
-        {
+        while (pred) {
             list[i].predecessors.push_back(&list[block_to_index[pred->block]]);
             pred = pred->next;
         }
@@ -168,8 +160,7 @@ static void reverse_postorder_vector_creation(ir_function_t* function, std::vect
     ir_ssa_block_t* entry = &list[0];
     postorder(entry, output);
 
-    for (size_t i = 0; i < output.size(); i++)
-    {
+    for (size_t i = 0; i < output.size(); i++) {
         // Set the postorder number before reversing
         output[i]->postorder_index = i;
         output[i]->visited = false;
@@ -179,26 +170,21 @@ static void reverse_postorder_vector_creation(ir_function_t* function, std::vect
 
     std::reverse(output.begin(), output.end());
 
-    if (output.size() != size)
-    {
+    if (output.size() != size) {
         ERROR("Postorder traversal did not visit all blocks");
     }
 }
 
-static ir_ssa_block_t* intersect(ir_ssa_block_t* a, ir_ssa_block_t* b)
-{
+static ir_ssa_block_t* intersect(ir_ssa_block_t* a, ir_ssa_block_t* b) {
     ir_ssa_block_t* finger1 = a;
     ir_ssa_block_t* finger2 = b;
 
-    while (finger1->postorder_index != finger2->postorder_index)
-    {
-        while (finger1->postorder_index < finger2->postorder_index)
-        {
+    while (finger1->postorder_index != finger2->postorder_index) {
+        while (finger1->postorder_index < finger2->postorder_index) {
             finger1 = finger1->immediate_dominator;
         }
 
-        while (finger2->postorder_index < finger1->postorder_index)
-        {
+        while (finger2->postorder_index < finger1->postorder_index) {
             finger2 = finger2->immediate_dominator;
         }
     }
@@ -207,8 +193,7 @@ static ir_ssa_block_t* intersect(ir_ssa_block_t* a, ir_ssa_block_t* b)
 }
 
 // See Cytron et al. paper figure 11
-static void place_phi_functions(std::vector<ir_ssa_block_t>& list)
-{
+static void place_phi_functions(std::vector<ir_ssa_block_t>& list) {
     std::vector<ir_ssa_block_t*> worklist = {};
     worklist.reserve(list.size());
     std::vector<int> work;        // indicates whether X has ever been added to worklist
@@ -220,26 +205,20 @@ static void place_phi_functions(std::vector<ir_ssa_block_t>& list)
 
     std::array<std::vector<ir_ssa_block_t*>, X86_REF_COUNT> assignments = {};
 
-    for (size_t i = 0; i < list.size(); i++)
-    {
+    for (size_t i = 0; i < list.size(); i++) {
         ir_ssa_block_t* block = &list[i];
         std::list<ir_instruction_t>& instructions = block->instructions;
-        for (const ir_instruction_t& inst : instructions)
-        {
+        for (const ir_instruction_t& inst : instructions) {
             // Make sure it wasn't already added in this list of instructions
-            if (inst.opcode == IR_SET_GUEST)
-            {
+            if (inst.opcode == IR_SET_GUEST) {
                 if (assignments[inst.set_guest.ref].empty() ||
-                    assignments[inst.set_guest.ref].back() != block)
-                {
+                    assignments[inst.set_guest.ref].back() != block) {
                     assignments[inst.set_guest.ref].push_back(block);
                 }
             } else if (inst.opcode == IR_HINT_OUTPUTS) {
                 for (u8 j = 0; j < inst.side_effect.count; j++) {
                     x86_ref_e ref = inst.side_effect.registers_affected[j];
-                    if (assignments[ref].empty() ||
-                        assignments[ref].back() != block)
-                    {
+                    if (assignments[ref].empty() || assignments[ref].back() != block) {
                         assignments[ref].push_back(block);
                     }
                 }
@@ -249,25 +228,20 @@ static void place_phi_functions(std::vector<ir_ssa_block_t>& list)
 
     // Placement of phi functions
     int iter_count = 0;
-    for (size_t i = 0; i < X86_REF_COUNT; i++)
-    {
+    for (size_t i = 0; i < X86_REF_COUNT; i++) {
         iter_count += 1;
 
-        for (const auto& block : assignments[i])
-        {
+        for (const auto& block : assignments[i]) {
             work[block->list_index] = iter_count;
             worklist.push_back(block);
         }
 
-        while (!worklist.empty())
-        {
+        while (!worklist.empty()) {
             ir_ssa_block_t* X = worklist.back();
             worklist.pop_back();
 
-            for (auto& df : X->dominance_frontiers)
-            {
-                if (has_already[df->list_index] < iter_count)
-                {
+            for (auto& df : X->dominance_frontiers) {
+                if (has_already[df->list_index] < iter_count) {
                     ir_instruction_t phi = {0};
                     phi.type = IR_TYPE_PHI;
                     phi.opcode = IR_PHI;
@@ -280,8 +254,7 @@ static void place_phi_functions(std::vector<ir_ssa_block_t>& list)
                     df->phi_instructions.push_back(&df->instructions.front());
 
                     has_already[df->list_index] = iter_count;
-                    if (work[df->list_index] < iter_count)
-                    {
+                    if (work[df->list_index] < iter_count) {
                         work[df->list_index] = iter_count;
                         worklist.push_back(df);
                     }
@@ -306,7 +279,7 @@ void name(ir_instruction_t* instruction, x86_ref_e* pref, u32 count) {
     if (pref) {
         u32 ref = *pref;
         name |= 0x8000'0000; // we use bit 31 to indicate this is a register
-        name |= ref << 20; // store here which register this is
+        name |= ref << 20;   // store here which register this is
 
         if (count >= ((1 << 20) - 1)) {
             ERROR("Too many names");
@@ -320,19 +293,25 @@ void name(ir_instruction_t* instruction, x86_ref_e* pref, u32 count) {
     instruction->name = name;
 }
 
-static void search(ir_dominator_tree_node_t* node, std::array<std::stack<ir_instruction_t*>, X86_REF_COUNT>& stacks, std::array<int, X86_REF_COUNT>& counters) {
+static void search(ir_dominator_tree_node_t* node,
+                   std::array<std::stack<ir_instruction_t*>, X86_REF_COUNT>& stacks,
+                   std::array<int, X86_REF_COUNT>& counters) {
     ir_ssa_block_t* block = node->block;
     auto previous_it = block->instructions.begin();
     std::array<int, X86_REF_COUNT> pop_count = {};
     for (auto it = block->instructions.begin(); it != block->instructions.end();) {
         ir_instruction_t& inst = *it;
-        // These are the only instructions we care about moving to SSA, the rest should already be in SSA
+        // These are the only instructions we care about moving to SSA, the rest should already be
+        // in SSA
         if (inst.opcode == IR_SET_GUEST || inst.opcode == IR_GET_GUEST) {
-            static_assert(offsetof(ir_instruction_t, set_guest.ref) == offsetof(ir_instruction_t, get_guest.ref), "Offsets are not the same");
+            static_assert(offsetof(ir_instruction_t, set_guest.ref) ==
+                              offsetof(ir_instruction_t, get_guest.ref),
+                          "Offsets are not the same");
             x86_ref_e ref = inst.get_guest.ref;
 
             if (inst.opcode == IR_GET_GUEST) {
-                // At this point we eliminate the get_guest instruction, effectively forwarding set_guest
+                // At this point we eliminate the get_guest instruction, effectively forwarding
+                // set_guest
                 ir_instruction_t* def = stacks[ref].top();
                 inst.type = IR_TYPE_ONE_OPERAND;
                 inst.opcode = IR_MOV;
@@ -403,12 +382,10 @@ static void rename(std::vector<ir_dominator_tree_node_t>& list) {
     search(&list[0], stacks, counters);
 }
 
-extern "C" void ir_ssa_pass(ir_function_t* function)
-{
+extern "C" void ir_ssa_pass(ir_function_t* function) {
     size_t count = 0;
     ir_block_list_t* block = function->list;
-    while (block)
-    {
+    while (block) {
         count++;
         block = block->next;
     }
@@ -419,8 +396,7 @@ extern "C" void ir_ssa_pass(ir_function_t* function)
 
     reverse_postorder_vector_creation(function, storage, rpo_vector, count);
 
-    if (rpo_vector[0]->actual_block != function->entry)
-    {
+    if (rpo_vector[0]->actual_block != function->entry) {
         ERROR("Entry block is not the first block");
     }
 
@@ -429,32 +405,26 @@ extern "C" void ir_ssa_pass(ir_function_t* function)
 
     // Simple fixpoint algorithm to find immediate dominators by Cooper et al.
     // Name: A Simple, Fast Dominance Algorithm
-    while (changed)
-    {
+    while (changed) {
         changed = false;
 
         // For all nodes in reverse postorder, except the start node
-        for (size_t i = 1; i < rpo_vector.size(); i++)
-        {
+        for (size_t i = 1; i < rpo_vector.size(); i++) {
             ir_ssa_block_t* b = rpo_vector[i];
 
-            if (b->predecessors.empty())
-            {
+            if (b->predecessors.empty()) {
                 ERROR("Block has no predecessors, this should not happen");
             }
 
             ir_ssa_block_t* new_idom = b->predecessors[0];
-            for (size_t j = 1; j < b->predecessors.size(); j++)
-            {
+            for (size_t j = 1; j < b->predecessors.size(); j++) {
                 ir_ssa_block_t* p = b->predecessors[j];
-                if (p->immediate_dominator)
-                {
+                if (p->immediate_dominator) {
                     new_idom = intersect(p, new_idom);
                 }
             }
 
-            if (b->immediate_dominator != new_idom)
-            {
+            if (b->immediate_dominator != new_idom) {
                 b->immediate_dominator = new_idom;
                 changed = true;
             }
@@ -462,19 +432,15 @@ extern "C" void ir_ssa_pass(ir_function_t* function)
     }
 
     // Now we have immediate dominators, we can find dominance frontiers
-    for (size_t i = 0; i < rpo_vector.size(); i++)
-    {
+    for (size_t i = 0; i < rpo_vector.size(); i++) {
         ir_ssa_block_t* b = rpo_vector[i];
 
-        if (b->predecessors.size() >= 2)
-        {
-            for (size_t j = 0; j < b->predecessors.size(); j++)
-            {
+        if (b->predecessors.size() >= 2) {
+            for (size_t j = 0; j < b->predecessors.size(); j++) {
                 ir_ssa_block_t* p = b->predecessors[j];
                 ir_ssa_block_t* runner = p;
 
-                while (runner != b->immediate_dominator)
-                {
+                while (runner != b->immediate_dominator) {
                     runner->dominance_frontiers.push_back(b);
 
                     ir_ssa_block_t* old_runner = runner;
@@ -499,7 +465,8 @@ extern "C" void ir_ssa_pass(ir_function_t* function)
         ir_ssa_block_t* block = &storage[i];
         dominator_tree[i].block = block;
         if (block->immediate_dominator) {
-            dominator_tree[block->immediate_dominator->list_index].children.push_back(&dominator_tree[i]);
+            dominator_tree[block->immediate_dominator->list_index].children.push_back(
+                &dominator_tree[i]);
         }
     }
 
@@ -508,11 +475,9 @@ extern "C" void ir_ssa_pass(ir_function_t* function)
 
     u32 name = 1;
     // Rename the temps too
-    for (size_t i = 0; i < storage.size(); i++)
-    {
+    for (size_t i = 0; i < storage.size(); i++) {
         ir_ssa_block_t* block = &storage[i];
-        for (ir_instruction_t& inst : block->instructions)
-        {
+        for (ir_instruction_t& inst : block->instructions) {
             if (inst.name == 0) {
                 inst.name = name;
                 name++;

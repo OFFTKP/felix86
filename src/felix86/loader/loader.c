@@ -1,54 +1,47 @@
-#include "felix86/loader/loader.h"
+#include <errno.h>
+#include <string.h>
+#include <sys/auxv.h>
+#include <sys/random.h>
 #include "felix86/common/global.h"
 #include "felix86/common/log.h"
 #include "felix86/common/version.h"
 #include "felix86/felix86.h"
 #include "felix86/loader/elf.h"
-#include <errno.h>
-#include <string.h>
-#include <sys/auxv.h>
-#include <sys/random.h>
+#include "felix86/loader/loader.h"
 
 extern char** environ;
 
 static char x86_64_string[] = "x86_64";
 
-typedef struct
-{
+typedef struct {
     int a_type;
 
-    union
-    {
+    union {
         long a_val;
         void* a_ptr;
         void (*a_fnc)();
     } a_un;
 } auxv_t;
 
-u64 stack_push(u64 stack, u64 value)
-{
+u64 stack_push(u64 stack, u64 value) {
     stack -= 8;
     *(u64*)stack = value;
     return stack;
 }
 
-u64 stack_push_string(u64 stack, const char* str)
-{
+u64 stack_push_string(u64 stack, const char* str) {
     u64 len = strlen(str) + 1;
     stack -= len;
     strcpy((char*)stack, str);
     return stack;
 }
 
-void loader_run_elf(loader_config_t* config)
-{
+void loader_run_elf(loader_config_t* config) {
     LOG("felix86 version %s", FELIX86_VERSION);
 
-    if (config->argc > 1)
-    {
+    if (config->argc > 1) {
         VERBOSE("Passing %d arguments to guest executable", config->argc - 1);
-        for (int i = 1; i < config->argc; i++)
-        {
+        for (int i = 1; i < config->argc; i++) {
             VERBOSE("Guest argument %d: %s", i, config->argv[i]);
         }
     }
@@ -56,22 +49,18 @@ void loader_run_elf(loader_config_t* config)
     const char* path = config->argv[0];
 
     elf_t* elf = elf_load(path, NULL, false);
-    if (!elf)
-    {
+    if (!elf) {
         ERROR("Failed to load ELF");
         return;
     }
 
     u64 entry;
     elf_t* interpreter = NULL;
-    if (elf->interpreter)
-    {
+    if (elf->interpreter) {
         interpreter = elf_load(elf->interpreter, NULL, true);
         entry = (u64)interpreter->program + interpreter->entry;
         g_interpreter_address = (u64)interpreter->program;
-    }
-    else
-    {
+    } else {
         entry = (u64)elf->program + elf->entry;
     }
 
@@ -87,19 +76,16 @@ void loader_run_elf(loader_config_t* config)
     rsp = stack_push_string(rsp, x86_64_string);
     const char* platform_name = (const char*)rsp;
 
-    for (int i = 0; i < config->argc; i++)
-    {
+    for (int i = 0; i < config->argc; i++) {
         rsp = stack_push_string(rsp, config->argv[i]);
         argv_addresses[i] = rsp;
     }
 
     int envc = config->envc;
 
-    if (config->use_host_envs)
-    {
+    if (config->use_host_envs) {
         char** envp = environ;
-        while (*envp)
-        {
+        while (*envp) {
             envc++;
             envp++;
         }
@@ -107,15 +93,11 @@ void loader_run_elf(loader_config_t* config)
 
     u64* envp_addresses = malloc(envc * sizeof(u64));
 
-    for (int i = 0; i < envc; i++)
-    {
+    for (int i = 0; i < envc; i++) {
         char* env;
-        if (i < config->envc)
-        {
+        if (i < config->envc) {
             env = config->envp[i];
-        }
-        else
-        {
+        } else {
             env = environ[i - config->envc];
         }
         rsp = stack_push_string(rsp, env);
@@ -127,8 +109,7 @@ void loader_run_elf(loader_config_t* config)
     stack_push(rsp, 0);
 
     int result = getrandom((void*)rand_address, 16, 0);
-    if (result == -1 || result != 16)
-    {
+    if (result == -1 || result != 16) {
         ERROR("Failed to get random data");
         return;
     }
@@ -170,15 +151,13 @@ void loader_run_elf(loader_config_t* config)
                       8;                 // argc
 
     u64 final_rsp = rsp - size_needed;
-    if (final_rsp & 0xF)
-    {
+    if (final_rsp & 0xF) {
         // The final rsp wouldn't be aligned to 16 bytes
         // so we need to add padding
         rsp = stack_push(rsp, 0);
     }
 
-    for (int i = auxv_count - 1; i >= 0; i--)
-    {
+    for (int i = auxv_count - 1; i >= 0; i--) {
         rsp = stack_push(rsp, (u64)auxv_entries[i].a_un.a_ptr);
         rsp = stack_push(rsp, auxv_entries[i].a_type);
     }
@@ -186,23 +165,20 @@ void loader_run_elf(loader_config_t* config)
     // End of environment variables
     rsp = stack_push(rsp, 0);
 
-    for (int i = envc - 1; i >= 0; i--)
-    {
+    for (int i = envc - 1; i >= 0; i--) {
         rsp = stack_push(rsp, envp_addresses[i]);
     }
 
     // End of arguments
     rsp = stack_push(rsp, 0);
-    for (int i = config->argc - 1; i >= 0; i--)
-    {
+    for (int i = config->argc - 1; i >= 0; i--) {
         rsp = stack_push(rsp, argv_addresses[i]);
     }
 
     // Argument count
     rsp = stack_push(rsp, config->argc);
 
-    if (rsp & 0xF)
-    {
+    if (rsp & 0xF) {
         ERROR("Stack not aligned to 16 bytes\n");
         return;
     }

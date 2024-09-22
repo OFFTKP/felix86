@@ -7,8 +7,7 @@ extern "C" {
 #include "felix86/common/callbacks.h"
 #include "felix86/common/utility.h"
 
-typedef struct
-{
+typedef struct {
     void* program;
     u64 entry;
     char* interpreter;
