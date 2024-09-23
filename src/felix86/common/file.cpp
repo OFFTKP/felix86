@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "file.h"
+#include "file.hpp"
 
 void* easy_fopen(const char* path, void* user_data) {
     return (void*)(intptr_t)fopen(path, "rb");

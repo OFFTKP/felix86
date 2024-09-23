@@ -3,30 +3,6 @@
 #include "felix86/ir/block.hpp"
 #include "felix86/ir/emitter.hpp"
 
-ir_block_list_t* ir_block_list_create(ir_block_t* block) {
-    ir_block_list_t* list = calloc(1, sizeof(ir_block_list_t));
-    list->block = block;
-    return list;
-}
-
-ir_block_t* ir_block_create(u64 address) {
-    ir_block_t* block = calloc(1, sizeof(ir_block_t));
-    block->instructions = ir_ilist_create();
-    block->start_address = address;
-    return block;
-}
-
-void ir_block_list_node_destroy(ir_block_list_t* list) {
-    ir_ilist_destroy(list->block->instructions);
-    free(list->block);
-    free(list);
-}
-
-void ir_block_list_insert(ir_block_list_t* list, ir_block_t* block) {
-    ir_block_list_t* next = list->next;
-    list->next = ir_block_list_create(block);
-    list->next->next = next;
-}
 
 ir_function_t* ir_function_create(u64 address) {
     ir_function_t* function = calloc(sizeof(ir_function_t), 1);
@@ -137,4 +113,14 @@ void ir_add_successor(ir_block_t* block, ir_block_t* successor) {
     } else {
         ir_block_list_insert(successor->predecessors, block);
     }
+}
+
+IRFunction::IRFunction() {
+    blocks.push_back(IRBlock());
+    blocks.push_back(IRBlock());
+    entry = &blocks[0];
+    exit = &blocks[1];
+
+    TODO,
+
 }

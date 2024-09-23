@@ -1,3 +1,4 @@
+#include <vector>
 #include <errno.h>
 #include <string.h>
 #include <sys/auxv.h>
@@ -17,7 +18,7 @@ typedef struct {
     int a_type;
 
     union {
-        long a_val;
+        u64 a_val;
         void* a_ptr;
         void (*a_fnc)();
     } a_un;
@@ -48,16 +49,16 @@ void loader_run_elf(loader_config_t* config) {
 
     const char* path = config->argv[0];
 
-    elf_t* elf = elf_load(path, NULL, false);
+    std::unique_ptr<Elf> elf = elf_load(path, false);
     if (!elf) {
         ERROR("Failed to load ELF");
         return;
     }
 
     u64 entry;
-    elf_t* interpreter = NULL;
-    if (elf->interpreter) {
-        interpreter = elf_load(elf->interpreter, NULL, true);
+    std::unique_ptr<Elf> interpreter;
+    if (!elf->interpreter.empty()) {
+        interpreter = elf_load(elf->interpreter, true);
         entry = (u64)interpreter->program + interpreter->entry;
         g_interpreter_address = (u64)interpreter->program;
     } else {
@@ -68,7 +69,7 @@ void loader_run_elf(loader_config_t* config) {
     u64 rsp = (u64)elf->stack_pointer;
 
     // To hold the addresses of the arguments for later pushing
-    u64* argv_addresses = malloc(config->argc * sizeof(u64));
+    std::vector<u64> argv_addresses(config->argc);
 
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
@@ -91,7 +92,7 @@ void loader_run_elf(loader_config_t* config) {
         }
     }
 
-    u64* envp_addresses = malloc(envc * sizeof(u64));
+    std::vector<u64> envp_addresses(envc);
 
     for (int i = 0; i < envc; i++) {
         char* env;
@@ -117,23 +118,23 @@ void loader_run_elf(loader_config_t* config) {
     rsp &= ~0xF; // Align to 16 bytes
 
     auxv_t auxv_entries[17] = {
-        [0] = {AT_PAGESZ, {4096}},
-        [1] = {AT_EXECFN, {(u64)program_name}},
-        [2] = {AT_CLKTCK, {100}},
-        [3] = {AT_ENTRY, {elf->entry}},
-        [4] = {AT_PLATFORM, {(u64)platform_name}},
-        [5] = {AT_BASE, {(u64)elf->program}},
-        [6] = {AT_FLAGS, {0}},
-        [7] = {AT_UID, {1000}},
-        [8] = {AT_EUID, {1000}},
-        [9] = {AT_GID, {1000}},
-        [10] = {AT_EGID, {1000}},
-        [11] = {AT_SECURE, {0}},
-        [12] = {AT_PHDR, {(u64)elf->phdr}},
-        [13] = {AT_PHENT, {elf->phent}},
-        [14] = {AT_PHNUM, {elf->phnum}},
-        [15] = {AT_RANDOM, {rand_address}},
-        [16] = {AT_NULL, {0}} // null terminator
+        {AT_PAGESZ, {4096}},
+        {AT_EXECFN, {(u64)program_name}},
+        {AT_CLKTCK, {100}},
+        {AT_ENTRY, {elf->entry}},
+        {AT_PLATFORM, {(u64)platform_name}},
+        {AT_BASE, {(u64)elf->program}},
+        {AT_FLAGS, {0}},
+        {AT_UID, {1000}},
+        {AT_EUID, {1000}},
+        {AT_GID, {1000}},
+        {AT_EGID, {1000}},
+        {AT_SECURE, {0}},
+        {AT_PHDR, {(u64)elf->phdr}},
+        {AT_PHENT, {elf->phent}},
+        {AT_PHNUM, {elf->phnum}},
+        {AT_RANDOM, {rand_address}},
+        {AT_NULL, {0}} // null terminator
     };
 
     VERBOSE("AT_PHDR: %p", auxv_entries[12].a_un.a_ptr);
@@ -183,13 +184,10 @@ void loader_run_elf(loader_config_t* config) {
         return;
     }
 
-    free(argv_addresses);
-    free(envp_addresses);
-
     felix86_recompiler_config_t fconfig = {.testing = false,
                                            .optimize = !config->dont_optimize,
-                                           .use_interpreter = config->use_interpreter,
                                            .print_blocks = config->print_blocks,
+                                           .use_interpreter = config->use_interpreter,
                                            .base_address = (u64)elf->program,
                                            .brk_base_address = (u64)elf->brk_base};
     felix86_recompiler_t* recompiler = felix86_recompiler_create(&fconfig);
@@ -197,6 +195,4 @@ void loader_run_elf(loader_config_t* config) {
     felix86_set_guest(recompiler, X86_REF_RSP, rsp);
     felix86_recompiler_run(recompiler);
     felix86_recompiler_destroy(recompiler);
-
-    elf_destroy(elf);
 }

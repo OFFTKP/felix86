@@ -10,7 +10,7 @@
 #include "felix86/ir/print.hpp"
 
 felix86_recompiler_t* felix86_recompiler_create(felix86_recompiler_config_t* config) {
-    felix86_recompiler_t* recompiler = calloc(1, sizeof(felix86_recompiler_t));
+    felix86_recompiler_t* recompiler = new felix86_recompiler_t();
     recompiler->function_cache = ir_function_cache_create();
     recompiler->testing = config->testing;
     recompiler->optimize = config->optimize;

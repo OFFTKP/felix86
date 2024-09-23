@@ -40,7 +40,7 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
     }
 
     switch (instruction->opcode) {
-    case IR_RUNTIME_COMMENT: {
+    case IR_COMMENT: {
         printf("%s", instruction->runtime_comment.comment);
         break;
     }

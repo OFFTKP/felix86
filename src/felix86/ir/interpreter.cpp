@@ -761,7 +761,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         temps[instruction->name] = mask;
         break;
     }
-    case IR_RUNTIME_COMMENT: {
+    case IR_COMMENT: {
         WARN("Runtime comment: %s", instruction->runtime_comment.comment);
         fflush(stdout);
         // print_state(state);

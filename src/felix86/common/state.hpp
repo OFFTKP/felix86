@@ -17,11 +17,11 @@ typedef struct {
     bool zf;
     bool sf;
     bool of;
+    u64 gsbase;
+    u64 fsbase;
 
     // The kernel normally maintains these for each thread, since we are emulating
     // the kernel we need to maintain them ourselves
-    u64 gsbase;
-    u64 fsbase;
     u64 robust_futex_list;
     u64 set_child_tid;
     u64 clear_child_tid;

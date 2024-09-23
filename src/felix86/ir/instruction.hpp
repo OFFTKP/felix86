@@ -1,18 +1,19 @@
 #pragma once
 
+#include <array>
+#include <string>
+#include <variant>
+#include <vector>
 #include "felix86/common/utility.hpp"
 #include "felix86/frontend/instruction.hpp"
 
-typedef enum : u8 {
+enum class IROpcode : u8 { // TODO: match naming scheme of IRType
     IR_NULL,
 
     IR_START_OF_BLOCK,
     IR_PHI,
-    IR_RUNTIME_COMMENT,
-    IR_HINT_INPUTS,  // tells the recompiler that the registers listed are used as
-                     // inputs so they aren't optimized away
-    IR_HINT_OUTPUTS, // tells the recompiler that the registers listed are used as
-                     // outputs so they aren't optimized away
+    IR_COMMENT,
+    IR_TUPLE_GET,
 
     IR_MOV,
     IR_IMMEDIATE,
@@ -31,13 +32,9 @@ typedef enum : u8 {
     IR_LOAD_GUEST_FROM_MEMORY,
     IR_STORE_GUEST_TO_MEMORY,
 
-    IR_EXIT,
-    IR_JUMP,
-    IR_JUMP_CONDITIONAL,
-
     IR_ADD,
     IR_SUB,
-    IR_IMUL,
+    IR_IMUL64,
     IR_IDIV8,
     IR_IDIV16,
     IR_IDIV32,
@@ -102,84 +99,143 @@ typedef enum : u8 {
     IR_VECTOR_PACKED_MIN_BYTE,
     IR_VECTOR_PACKED_COMPARE_IMPLICIT_STRING_INDEX,
     IR_VECTOR_ZEXT64, // zero extend the bottom 64-bits of a vector
-} ir_opcode_e;
+};
 
-typedef enum : u8 {
-    IR_TYPE_NULL,
-    IR_TYPE_LOAD_IMMEDIATE,
-    IR_TYPE_NO_OPERANDS,
-    IR_TYPE_ONE_OPERAND,
-    IR_TYPE_TWO_OPERANDS,
-    IR_TYPE_THREE_OPERANDS,
-    IR_TYPE_FOUR_OPERANDS,
-    IR_TYPE_SIDE_EFFECTS,
-    IR_TYPE_GET_GUEST,
-    IR_TYPE_SET_GUEST,
-    IR_TYPE_LOAD_GUEST_FROM_MEMORY,
-    IR_TYPE_STORE_GUEST_TO_MEMORY,
-    IR_TYPE_JUMP,
-    IR_TYPE_JUMP_CONDITIONAL,
-    IR_TYPE_PHI,
-} ir_type_e;
+enum class IRType : u8 {
+    Void,
+    Integer64,
+    Vector128,
+    TupleTwoInteger64,
+    TupleFourInteger64,
+};
 
-typedef struct ir_phi_node_s {
-    struct ir_block_s* block;
-    struct ir_instruction_s* value;
-} ir_phi_node_t;
+struct IRInstruction;
+struct IRBlock;
 
-typedef struct ir_instruction_s {
-    union {
-        struct {
-            struct ir_instruction_s* args[4];
-        } operands;
+struct Operands {
+    std::vector<IRInstruction*> operands = {};
+    u8 control_byte = 0; // for some sse instructions
+};
 
-        struct {
-            u64 immediate;
-        } load_immediate;
+struct Immediate {
+    u64 immediate = 0;
+};
 
-        struct {
-            x86_ref_e ref;
-        } get_guest;
+struct GetGuest {
+    x86_ref_e ref = X86_REF_COUNT;
+};
 
-        struct {
-            x86_ref_e ref;
-            struct ir_instruction_s* source;
-        } set_guest;
+struct SetGuest {
+    x86_ref_e ref = X86_REF_COUNT;
+    IRInstruction* source = nullptr;
+};
 
-        struct {
-            struct ir_instruction_s* condition;
-            struct ir_block_s* target_true;
-            struct ir_block_s* target_false;
-        } jump_conditional;
+struct PhiNode {
+    IRBlock* block = nullptr;
+    IRInstruction* value = nullptr;
+};
 
-        struct {
-            struct ir_block_s* target;
-        } jump;
+struct Phi {
+    Phi(const Phi& other) = delete;
+    Phi(Phi&& other) = default;
+    Phi& operator=(const Phi& other) = delete;
+    Phi& operator=(Phi&& other) = default;
 
-        struct {
-            x86_ref_e ref;
-            void* list;
-        } phi;
+    x86_ref_e ref = X86_REF_COUNT;
+    std::vector<PhiNode> nodes = {};
+};
 
-        struct {
-            x86_ref_e registers_affected[16];
-            u8 count;
-        } side_effect;
+struct TupleGet {
+    IRInstruction* tuple = nullptr;
+    u8 index = 0;
+};
 
-        struct {
-            const char* comment;
-        } runtime_comment;
+struct Comment {
+    std::string comment = {};
+};
 
-        u64 raw_data[4];
-    };
+using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, TupleGet>;
 
-    u16 uses;
-    u16 name;
-    ir_type_e type;
-    ir_opcode_e opcode;
-    u8 control_byte; // for some sse instructions
-} ir_instruction_t;
+IRType GetTypeFromOpcode(IROpcode opcode);
+IRType GetTypeFromTuple(IRType type, u8 index);
+IRType GetTypeFromPhi(const Phi& phi);
 
-void ir_clear_instruction(ir_instruction_t* instruction);
+struct IRInstruction {
+    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands) : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
+        Operands op;
+        op.operands = operands;
+        expression = op;
 
-ir_instruction_t ir_copy_expression(ir_instruction_t* expression);
+        for (auto& operand : operands) {
+            operand->uses++;
+        }
+    }
+
+    IRInstruction(u64 immediate) : opcode(IROpcode::IR_IMMEDIATE), returnType{GetTypeFromOpcode(opcode)} {
+        Immediate imm;
+        imm.immediate = immediate;
+        expression = imm;
+    }
+
+    IRInstruction(x86_ref_e ref) : opcode(IROpcode::IR_GET_GUEST), returnType{GetTypeFromOpcode(opcode)} {
+        GetGuest get;
+        get.ref = ref;
+        expression = get;
+    }
+
+    IRInstruction(x86_ref_e ref, IRInstruction* source) : opcode(IROpcode::IR_SET_GUEST), returnType{GetTypeFromOpcode(opcode)} {
+        SetGuest set;
+        set.ref = ref;
+        set.source = source;
+        expression = set;
+
+        source->uses++;
+    }
+
+    IRInstruction(Phi phi) : opcode(IROpcode::IR_PHI), returnType{GetTypeFromPhi(phi)} {
+        expression = std::move(phi);
+
+        for (auto& node : phi.nodes) {
+            node.value->uses++;
+        }
+    }
+
+    IRInstruction(const std::string& comment) : opcode(IROpcode::IR_COMMENT), returnType{GetTypeFromOpcode(opcode)} {
+        Comment c;
+        c.comment = comment;
+        expression = c;
+    }
+
+    IRInstruction(IRInstruction* tuple, u8 index) : opcode(IROpcode::IR_TUPLE_GET), returnType(GetTypeFromTuple(tuple->returnType, index)) {
+        TupleGet tg;
+        tg.tuple = tuple;
+        tg.index = index;
+        expression = tg;
+
+        tuple->uses++;
+    }
+
+    IRInstruction(IRInstruction* mov) : opcode(IROpcode::IR_MOV), returnType{mov->returnType} {
+        Operands op;
+        op.operands.push_back(mov);
+        expression = op;
+
+        mov->uses++;
+    }
+
+    IRInstruction(const IRInstruction& other) = delete;
+    IRInstruction& operator=(const IRInstruction& other) = delete;
+    IRInstruction(IRInstruction&& other) = default;
+    IRInstruction& operator=(IRInstruction&& other) = default;
+
+    bool IsSameExpression(const IRInstruction& other) const;
+    IRType GetType() const { return returnType; }
+    void UndoUses();
+
+private:
+    Expression expression;
+    u16 name = 0;
+    u16 uses = 0;
+    IROpcode opcode;
+    IRType returnType;
+};

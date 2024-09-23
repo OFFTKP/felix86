@@ -1,42 +1,82 @@
 #pragma once
 
+#include <array>
+#include <list>
 #include "felix86/common/utility.hpp"
-#include "felix86/ir/instruction_list.hpp"
+#include "felix86/ir/instruction.hpp"
 
 #define IR_NO_ADDRESS (-1ull)
 
-typedef struct ir_block_s {
-    u64 start_address;
-    ir_instruction_list_t* instructions;
-    struct ir_block_list_s* predecessors;
-    struct ir_block_list_s* successors;
-    u8 predecessors_count;
-    u8 successors_count;
-    bool compiled;
-} ir_block_t;
+enum class Termination {
+    Null,
+    Jump,
+    JumpConditional,
+    Exit,
+};
 
-typedef struct ir_block_list_s {
-    ir_block_t* block;
-    struct ir_block_list_s* next;
-} ir_block_list_t;
+struct IRBlock {
+    using iterator = std::list<IRInstruction>::iterator;
 
-// A function has an entry block and an exit block. A function always starts at
-// the entry block and ends at the exit block.
-typedef struct ir_function_t {
-    ir_block_t* entry;
-    ir_block_t* exit;
-    ir_block_list_t* list; // total list of blocks
-    bool compiled;
-} ir_function_t;
+    void TerminateJump(IRBlock* target) {
+        termination = Termination::Jump;
+        successors[0] = target;
+    }
 
-struct ir_function_cache_s;
+    void TerminateJumpConditional(IRBlock* target_true, IRBlock* target_false) {
+        termination = Termination::JumpConditional;
+        successors[0] = target_true;
+        successors[1] = target_false;
+    }
 
-ir_block_list_t* ir_block_list_create(ir_block_t* block);
-void ir_block_list_insert(ir_block_list_t* list, ir_block_t* block);
-void ir_block_list_node_destroy(ir_block_list_t* list);
-ir_block_t* ir_block_create(u64 address);
-ir_function_t* ir_function_create(u64 address);
-void ir_function_destroy(ir_function_t* function);
-ir_block_t* ir_function_get_block(ir_function_t* function, ir_block_t* predecessor, u64 address);
-void ir_add_predecessor(ir_block_t* block, ir_block_t* predecessor);
-void ir_add_successor(ir_block_t* block, ir_block_t* successor);
+    void TerminateExit() {
+        termination = Termination::Exit;
+    }
+
+    iterator InsertAfter(iterator pos, IRInstruction&& instr) {
+        return instructions.insert(std::next(pos), std::move(instr));
+    }
+
+    iterator InsertBefore(iterator pos, IRInstruction&& instr) {
+        return instructions.insert(pos, std::move(instr));
+    }
+
+    void InsertAtEnd(IRInstruction&& instr) {
+        instructions.push_back(std::move(instr));
+    }
+
+    iterator EraseAndUndoUses(iterator pos) {
+        (*pos).UndoUses();
+        return instructions.erase(pos);
+    }
+
+    void AddPredecessor(IRBlock* pred) {
+        predecessors.push_back(pred);
+    }
+
+private:
+    std::list<IRInstruction> instructions;
+    std::vector<IRBlock*> predecessors;
+    std::array<IRBlock*, 2> successors = {nullptr, nullptr};
+    Termination termination = Termination::Null;
+};
+
+struct IRFunction {
+    IRFunction();
+
+    IRBlock* GetEntry() {
+        return entry;
+    }
+
+    IRBlock* GetExit() {
+        return exit;
+    }
+
+    IRBlock* GetBlockAt(IRBlock* predecessor, u64 address);
+
+    IRBlock* GetBlock(IRBlock* predecessor);
+
+private:
+    IRBlock* entry = nullptr;
+    IRBlock* exit = nullptr;
+    std::vector<IRBlock> blocks;
+};
