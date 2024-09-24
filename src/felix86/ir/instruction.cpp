@@ -238,7 +238,7 @@ IRType GetTypeFromPhi(const Phi& phi) {
     return firstType;
 }
 
-void IRInstruction::UndoUses() {
+void IRInstruction::Invalidate() {
     switch (expression.index()) {
     case 0: {
         Operands& operands = std::get<Operands>(expression);

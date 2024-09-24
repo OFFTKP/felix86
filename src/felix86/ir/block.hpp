@@ -20,12 +20,19 @@ struct IRBlock {
     void TerminateJump(IRBlock* target) {
         termination = Termination::Jump;
         successors[0] = target;
+
+        successors[0]->AddPredecessor(this);
     }
 
-    void TerminateJumpConditional(IRBlock* target_true, IRBlock* target_false) {
+    void TerminateJumpConditional(IRInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
         termination = Termination::JumpConditional;
         successors[0] = target_true;
         successors[1] = target_false;
+        this->condition = condition;
+        condition->AddUse();
+
+        successors[0]->AddPredecessor(this);
+        successors[1]->AddPredecessor(this);
     }
 
     void TerminateExit() {
@@ -44,8 +51,8 @@ struct IRBlock {
         instructions.push_back(std::move(instr));
     }
 
-    iterator EraseAndUndoUses(iterator pos) {
-        (*pos).UndoUses();
+    iterator EraseAndInvalidate(iterator pos) {
+        (*pos).Invalidate();
         return instructions.erase(pos);
     }
 
@@ -53,11 +60,16 @@ struct IRBlock {
         predecessors.push_back(pred);
     }
 
+    IRInstruction& GetLastInstruction() {
+        return instructions.back();
+    }
+
 private:
     std::list<IRInstruction> instructions;
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
     Termination termination = Termination::Null;
+    IRInstruction* condition = nullptr;
 };
 
 struct IRFunction {

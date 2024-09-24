@@ -167,7 +167,18 @@ struct IRInstruction {
         expression = op;
 
         for (auto& operand : operands) {
-            operand->uses++;
+            operand->AddUse();
+        }
+    }
+
+    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands, u8 control_byte) : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
+        Operands op;
+        op.operands = operands;
+        op.control_byte = control_byte;
+        expression = op;
+
+        for (auto& operand : operands) {
+            operand->AddUse();
         }
     }
 
@@ -177,26 +188,26 @@ struct IRInstruction {
         expression = imm;
     }
 
-    IRInstruction(x86_ref_e ref) : opcode(IROpcode::IR_GET_GUEST), returnType{GetTypeFromOpcode(opcode)} {
+    IRInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
         GetGuest get;
         get.ref = ref;
         expression = get;
     }
 
-    IRInstruction(x86_ref_e ref, IRInstruction* source) : opcode(IROpcode::IR_SET_GUEST), returnType{GetTypeFromOpcode(opcode)} {
+    IRInstruction(IROpcode opcode, x86_ref_e ref, IRInstruction* source) : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
         SetGuest set;
         set.ref = ref;
         set.source = source;
         expression = set;
 
-        source->uses++;
+        source->AddUse();
     }
 
     IRInstruction(Phi phi) : opcode(IROpcode::IR_PHI), returnType{GetTypeFromPhi(phi)} {
         expression = std::move(phi);
 
         for (auto& node : phi.nodes) {
-            node.value->uses++;
+            node.value->AddUse();
         }
     }
 
@@ -212,7 +223,7 @@ struct IRInstruction {
         tg.index = index;
         expression = tg;
 
-        tuple->uses++;
+        tuple->AddUse();
     }
 
     IRInstruction(IRInstruction* mov) : opcode(IROpcode::IR_MOV), returnType{mov->returnType} {
@@ -220,7 +231,7 @@ struct IRInstruction {
         op.operands.push_back(mov);
         expression = op;
 
-        mov->uses++;
+        mov->AddUse();
     }
 
     IRInstruction(const IRInstruction& other) = delete;
@@ -230,7 +241,8 @@ struct IRInstruction {
 
     bool IsSameExpression(const IRInstruction& other) const;
     IRType GetType() const { return returnType; }
-    void UndoUses();
+    void AddUse() { uses++; }
+    void Invalidate();
 
 private:
     Expression expression;

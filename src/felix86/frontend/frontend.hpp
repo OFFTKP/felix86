@@ -4,11 +4,11 @@
 #include "felix86/ir/block.hpp"
 
 typedef struct {
-    ir_function_t* function;
-    ir_block_t* current_block;
+    IRFunction* function;
+    IRBlock* current_block;
     u64 current_address;
     bool exit;
 } frontend_state_t;
 
-void frontend_compile_block(ir_function_t* function, ir_block_t* block);
-void frontend_compile_function(ir_function_t* function, u64 address);
+void frontend_compile_block(IRFunction* function, IRBlock* block);
+void frontend_compile_function(IRFunction* function, u64 address);

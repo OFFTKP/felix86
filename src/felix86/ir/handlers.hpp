@@ -3,8 +3,6 @@
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/frontend/instruction.hpp"
 
-#define INSTS (state->current_block->instructions)
-
 typedef void (*ir_handle_fn_t)(frontend_state_t* state, x86_instruction_t* inst);
 
 #define X(opcode, name, modrm, immsize)                                                            \
