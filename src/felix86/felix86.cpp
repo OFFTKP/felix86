@@ -191,7 +191,7 @@ felix86_exit_reason_e felix86_recompiler_run(felix86_recompiler_t* recompiler) {
 
     while (true) {
         u64 address = recompiler->state.rip;
-        ir_function_t* function =
+        IRFunction* function =
             ir_function_cache_get_function(recompiler->function_cache, address);
 
         if (!function->compiled) {
@@ -211,6 +211,6 @@ felix86_exit_reason_e felix86_recompiler_run(felix86_recompiler_t* recompiler) {
     return DoneTesting;
 }
 
-ir_function_t* felix86_get_function(felix86_recompiler_t* recompiler, u64 address) {
+IRFunction* felix86_get_function(felix86_recompiler_t* recompiler, u64 address) {
     return ir_function_cache_get_function(recompiler->function_cache, address);
 }

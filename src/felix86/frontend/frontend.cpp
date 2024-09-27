@@ -46,61 +46,61 @@ typedef struct {
 } instruction_metadata_t;
 
 instruction_metadata_t primary_table[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/primary.inc"
 #undef X
 };
 
 instruction_metadata_t secondary_table[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/secondary.inc"
 #undef X
 };
 
 instruction_metadata_t secondary_table_66[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/secondary_66.inc"
 #undef X
 };
 
 instruction_metadata_t secondary_table_f2[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/secondary_f2.inc"
 #undef X
 };
 
 instruction_metadata_t secondary_table_f3[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/secondary_f3.inc"
 #undef X
 };
 
 instruction_metadata_t tertiary_table_3a[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/tertiary_3a.inc"
 #undef X
 };
 
 instruction_metadata_t tertiary_table_3a_66[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/tertiary_3a_66.inc"
 #undef X
 };
 
 instruction_metadata_t tertiary_table_38[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/tertiary_38.inc"
 #undef X
 };
 
 instruction_metadata_t tertiary_table_38_66[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/tertiary_38_66.inc"
 #undef X
 };
 
 instruction_metadata_t tertiary_table_38_f2[] = {
-#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, flag, immsize},
+#define X(opcode, name, flag, immsize) [opcode] = {opcode, ir_handle_##name, (decoding_flags_e)(flag), immsize},
 #include "felix86/frontend/tertiary_38_f2.inc"
 #undef X
 };
@@ -108,7 +108,7 @@ instruction_metadata_t tertiary_table_38_f2[] = {
 u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_b, bool rex_x,
                 bool rex_r, modrm_t modrm, sib_t sib) {
     operand_reg->type = X86_OP_TYPE_REGISTER;
-    operand_reg->reg.ref = X86_REF_RAX + (modrm.reg | (rex_r << 3));
+    operand_reg->reg.ref = x86_ref_e(X86_REF_RAX + (modrm.reg | (rex_r << 3)));
 
     if (modrm.mod != 0b11) {
         operand_rm->type = X86_OP_TYPE_MEMORY;
@@ -122,12 +122,12 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
         if (modrm.rm == 0b100) {
             u8 xindex = sib.index | (rex_x << 3);
             if (xindex != 0b100) {
-                operand_rm->memory.index = X86_REF_RAX + xindex;
+                operand_rm->memory.index = x86_ref_e(X86_REF_RAX + xindex);
                 operand_rm->memory.scale = 1 << sib.scale;
             }
 
             if (sib.base != 0b101) {
-                operand_rm->memory.base = X86_REF_RAX + (sib.base | (rex_b << 3));
+                operand_rm->memory.base = x86_ref_e(X86_REF_RAX + (sib.base | (rex_b << 3)));
             } else {
                 return 4;
             }
@@ -137,42 +137,42 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
             operand_rm->memory.base = X86_REF_RIP;
             return 4;
         } else {
-            operand_rm->memory.base = X86_REF_RAX + (modrm.rm | (rex_b << 3));
+            operand_rm->memory.base = x86_ref_e(X86_REF_RAX + (modrm.rm | (rex_b << 3)));
             return 0;
         }
     }
 
     case 0b01: {
         if (modrm.rm == 0b100) {
-            operand_rm->memory.base = X86_REF_RAX + (sib.base | (rex_b << 3));
+            operand_rm->memory.base = x86_ref_e(X86_REF_RAX + (sib.base | (rex_b << 3)));
             u8 xindex = sib.index | (rex_x << 3);
             if (xindex != 0b100) {
-                operand_rm->memory.index = X86_REF_RAX + xindex;
+                operand_rm->memory.index = x86_ref_e(X86_REF_RAX + xindex);
                 operand_rm->memory.scale = 1 << sib.scale;
             }
         } else {
-            operand_rm->memory.base = X86_REF_RAX + (modrm.rm | (rex_b << 3));
+            operand_rm->memory.base = x86_ref_e(X86_REF_RAX + (modrm.rm | (rex_b << 3)));
         }
         return 1;
     }
 
     case 0b10: {
         if (modrm.rm == 0b100) {
-            operand_rm->memory.base = X86_REF_RAX + (sib.base | (rex_b << 3));
+            operand_rm->memory.base = x86_ref_e(X86_REF_RAX + (sib.base | (rex_b << 3)));
             u8 xindex = sib.index | (rex_x << 3);
             if (xindex != 0b100) {
-                operand_rm->memory.index = X86_REF_RAX + xindex;
+                operand_rm->memory.index = x86_ref_e(X86_REF_RAX + xindex);
                 operand_rm->memory.scale = 1 << sib.scale;
             }
         } else {
-            operand_rm->memory.base = X86_REF_RAX + (modrm.rm | (rex_b << 3));
+            operand_rm->memory.base = x86_ref_e(X86_REF_RAX + (modrm.rm | (rex_b << 3)));
         }
         return 4;
     }
 
     case 0b11: {
         operand_rm->type = X86_OP_TYPE_REGISTER;
-        operand_rm->reg.ref = X86_REF_RAX + (modrm.rm | (rex_b << 3));
+        operand_rm->reg.ref = x86_ref_e(X86_REF_RAX + (modrm.rm | (rex_b << 3)));
         return 0;
     }
     }
@@ -412,7 +412,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
         inst.opcode = opcode;
     }
 
-    u8 size = (decoding_flags & DEFAULT_U64_FLAG) ? X86_SIZE_QWORD : X86_SIZE_DWORD;
+    x86_size_e size = (decoding_flags & DEFAULT_U64_FLAG) ? X86_SIZE_QWORD : X86_SIZE_DWORD;
     if (decoding_flags & BYTE_OVERRIDE_FLAG) {
         prefixes.byte_override = true;
         size = X86_SIZE_BYTE;
@@ -422,8 +422,8 @@ void frontend_compile_instruction(frontend_state_t* state) {
         size = X86_SIZE_WORD;
     }
 
-    u8 size_rm = size;
-    u8 size_reg = size;
+    x86_size_e size_rm = size;
+    x86_size_e size_reg = size;
 
     if (decoding_flags & MODRM_FLAG) {
         modrm_t modrm;
@@ -451,7 +451,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
         }
     } else if (decoding_flags & OPCODE_FLAG) {
         inst.operand_reg.type = X86_OP_TYPE_REGISTER;
-        inst.operand_reg.reg.ref = (X86_REF_RAX + (opcode & 0x07)) | (rex_b << 3);
+        inst.operand_reg.reg.ref = x86_ref_e((X86_REF_RAX + (opcode & 0x07)) | (rex_b << 3));
     }
 
     enum {
@@ -494,7 +494,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
             ERROR("Invalid MM register");
         }
 
-        inst.operand_rm.reg.ref = X86_REF_MM0 + reg;
+        inst.operand_rm.reg.ref = x86_ref_e(X86_REF_MM0 + reg);
         size_rm = X86_SIZE_MM;
     }
 
@@ -504,7 +504,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
             ERROR("Invalid MM register");
         }
 
-        inst.operand_reg.reg.ref = X86_REF_MM0 + reg;
+        inst.operand_reg.reg.ref = x86_ref_e(X86_REF_MM0 + reg);
         size_reg = X86_SIZE_MM;
     }
 
@@ -515,7 +515,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
                 ERROR("Invalid XMM register");
             }
 
-            inst.operand_reg.reg.ref = X86_REF_XMM0 + reg;
+            inst.operand_reg.reg.ref = x86_ref_e(X86_REF_XMM0 + reg);
         }
         size_reg = X86_SIZE_XMM;
     }
@@ -527,7 +527,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
                 ERROR("Invalid XMM register");
             }
 
-            inst.operand_rm.reg.ref = X86_REF_XMM0 + reg;
+            inst.operand_rm.reg.ref = x86_ref_e(X86_REF_XMM0 + reg);
         }
         size_rm = X86_SIZE_XMM;
     }
@@ -618,7 +618,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
     if (!rex && inst.operand_reg.size == X86_SIZE_BYTE) {
         int reg_index = (inst.operand_reg.reg.ref - X86_REF_RAX) & 0x7;
         bool high = reg_index >= 4;
-        inst.operand_reg.reg.ref = X86_REF_RAX + (reg_index & 0x3);
+        inst.operand_reg.reg.ref = x86_ref_e(X86_REF_RAX + (reg_index & 0x3));
         inst.operand_reg.reg.high8 = high;
     }
 
@@ -627,7 +627,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
         if (!rex && inst.operand_rm.size == X86_SIZE_BYTE) {
             int reg_index = (inst.operand_rm.reg.ref - X86_REF_RAX) & 0x7;
             bool high = reg_index >= 4;
-            inst.operand_rm.reg.ref = X86_REF_RAX + (reg_index & 0x3);
+            inst.operand_rm.reg.ref = x86_ref_e(X86_REF_RAX + (reg_index & 0x3));
             inst.operand_rm.reg.high8 = high;
         }
     } else if (inst.operand_rm.type == X86_OP_TYPE_MEMORY) {
@@ -654,27 +654,21 @@ void frontend_compile_instruction(frontend_state_t* state) {
         char* buffer = (char*)malloc(256);
         snprintf(buffer, 256, "%016llx  %s",
                  (unsigned long long)(state->current_address - g_base_address), zydis_inst.text);
-        ir_emit_runtime_comment(INSTS, buffer);
+        ir_emit_runtime_comment(state->current_block, buffer);
     }
 
     bool is_rep = rep_type != NONE;
-    ir_block_t *rep_loop_block = NULL, *rep_exit_block = NULL;
+    IRBlock *rep_loop_block = NULL, *rep_exit_block = NULL;
     if (is_rep) {
-        rep_loop_block =
-            ir_function_get_block(state->function, state->current_block, IR_NO_ADDRESS);
-        rep_exit_block = ir_function_get_block(state->function, state->current_block,
-                                               state->current_address + inst.length);
-        ir_add_predecessor(rep_exit_block, rep_loop_block);
-        ir_add_successor(rep_loop_block, rep_loop_block);
+        rep_loop_block = state->function->GetBlock();
+        rep_exit_block = state->function->GetBlock();
 
-        ir_emit_get_flag(INSTS, X86_REF_ZF); // emitting this to make sure the flag
-                                             // is available before the loop
         x86_operand_t rcx_reg = get_full_reg(X86_REF_RCX);
         rcx_reg.size = inst.operand_reg.size;
-        ir_instruction_t* rcx = ir_emit_get_reg(INSTS, &rcx_reg);
-        ir_instruction_t* zero = ir_emit_immediate(INSTS, 0);
-        ir_instruction_t* condition = ir_emit_equal(INSTS, rcx, zero);
-        ir_emit_jump_conditional(INSTS, condition, rep_exit_block, rep_loop_block);
+        IRInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
+        IRInstruction* zero = ir_emit_immediate(state->current_block, 0);
+        IRInstruction* condition = ir_emit_equal(state->current_block, rcx, zero);
+        rep_loop_block->TerminateJumpConditional(condition, rep_exit_block, rep_loop_block);
 
         // Write the instruction in the loop body
         state->current_block = rep_loop_block;
@@ -685,26 +679,26 @@ void frontend_compile_instruction(frontend_state_t* state) {
     if (is_rep) {
         x86_operand_t rcx_reg = get_full_reg(X86_REF_RCX);
         rcx_reg.size = inst.operand_reg.size;
-        ir_instruction_t* rcx = ir_emit_get_reg(INSTS, &rcx_reg);
-        ir_instruction_t* zero = ir_emit_immediate(INSTS, 0);
-        ir_instruction_t* one = ir_emit_immediate(INSTS, 1);
-        ir_instruction_t* sub = ir_emit_sub(INSTS, rcx, one);
-        ir_emit_set_reg(INSTS, &rcx_reg, sub);
-        ir_instruction_t* rcx_zero = ir_emit_equal(INSTS, sub, zero);
-        ir_instruction_t* condition;
-        ir_instruction_t* zf = ir_emit_get_flag(INSTS, X86_REF_ZF);
+        IRInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
+        IRInstruction* zero = ir_emit_immediate(state->current_block, 0);
+        IRInstruction* one = ir_emit_immediate(state->current_block, 1);
+        IRInstruction* sub = ir_emit_sub(state->current_block, rcx, one);
+        ir_emit_set_reg(state->current_block, &rcx_reg, sub);
+        IRInstruction* rcx_zero = ir_emit_equal(state->current_block, sub, zero);
+        IRInstruction* condition;
+        IRInstruction* zf = ir_emit_get_flag(state->current_block, X86_REF_ZF);
         if (rep_type == REP) { // Some instructions don't check the ZF flag
             condition = zero;
         } else if (rep_type == REP_NZ) {
-            condition = ir_emit_not_equal(INSTS, zf, zero);
+            condition = ir_emit_not_equal(state->current_block, zf, zero);
         } else if (rep_type == REP_Z) {
-            condition = ir_emit_equal(INSTS, zf, zero);
+            condition = ir_emit_equal(state->current_block, zf, zero);
         } else {
             ERROR("Unreachable");
         }
 
-        ir_instruction_t* final_condition = ir_emit_or(INSTS, rcx_zero, condition);
-        ir_emit_jump_conditional(INSTS, final_condition, rep_exit_block, rep_loop_block);
+        IRInstruction* final_condition = ir_emit_or(state->current_block, rcx_zero, condition);
+        state->current_block->TerminateJumpConditional(final_condition, rep_exit_block, rep_loop_block);
 
         frontend_compile_block(state->function, rep_exit_block);
         state->exit = true;
@@ -713,25 +707,25 @@ void frontend_compile_instruction(frontend_state_t* state) {
     state->current_address += inst.length;
 }
 
-void frontend_compile_block(ir_function_t* function, ir_block_t* block) {
-    if (block->compiled) {
+void frontend_compile_block(IRFunction* function, IRBlock* block) {
+    if (block->IsCompiled()) {
         return;
     }
 
     frontend_state_t state = {0};
     state.function = function;
     state.current_block = block;
-    state.current_address = block->start_address;
+    state.current_address = block->GetStartAddress();
     state.exit = false;
 
-    block->compiled = true;
+    block->SetCompiled();
 
     while (!state.exit) {
         frontend_compile_instruction(&state);
     }
 }
 
-void frontend_compile_function(ir_function_t* function, u64 address) {
-    ir_block_t* first = ir_function_get_block(function, function->entry, address);
-    frontend_compile_block(function, first);
+void frontend_compile_function(IRFunction* function, u64 address) {
+    IRBlock* block = function->GetBlockAt(address);
+    frontend_compile_block(function, block);
 }

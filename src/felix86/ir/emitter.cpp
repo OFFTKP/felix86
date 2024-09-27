@@ -1261,18 +1261,14 @@ void ir_emit_group3(IRBlock* block, x86_instruction_t* inst) {
     }
     case X86_GROUP3_DIV: {
         x86_ref_e inputs[] = {X86_REF_RAX, X86_REF_RDX};
-        x86_ref_e outputs[] = {X86_REF_RAX, X86_REF_RDX};
-        ir_emit_hint_inputs(block, inputs, 2);
+        x86_ref_e outputs[] = {X86_REF_RAX, X86_REF_RDX};todo,
         ir_emit_udiv(block, inst->operand_rm.size, rm);
-        ir_emit_hint_outputs(block, outputs, 2);
         break;
     }
     case X86_GROUP3_IDIV: {
         x86_ref_e inputs[] = {X86_REF_RAX, X86_REF_RDX};
-        x86_ref_e outputs[] = {X86_REF_RAX, X86_REF_RDX};
-        ir_emit_hint_inputs(block, inputs, 2);
+        x86_ref_e outputs[] = {X86_REF_RAX, X86_REF_RDX};todo,
         ir_emit_idiv(block, inst->operand_rm.size, rm);
-        ir_emit_hint_outputs(block, outputs, 2);
         break;
     }
     }

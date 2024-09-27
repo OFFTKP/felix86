@@ -1,126 +1,47 @@
 #include <stdlib.h>
+#include "felix86/common/log.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/ir/block.hpp"
 #include "felix86/ir/emitter.hpp"
 
-
-ir_function_t* ir_function_create(u64 address) {
-    ir_function_t* function = calloc(sizeof(ir_function_t), 1);
-    function->entry = ir_block_create(IR_NO_ADDRESS);
-    function->exit = ir_block_create(IR_NO_ADDRESS);
-
-    ir_instruction_list_t* insts = ir_ilist_create();
-    for (int i = 0; i < X86_REF_COUNT; i++) {
-        ir_instruction_t* load = ir_emit_load_guest_from_memory(insts, i);
-        ir_emit_set_guest(insts, i, load);
-    }
-    function->entry->instructions = insts;
-
-    insts = ir_ilist_create();
-    for (int i = 0; i < X86_REF_COUNT; i++) {
-        ir_instruction_t* guest = ir_emit_get_guest(insts, i);
-        ir_emit_store_guest_to_memory(insts, i, guest);
-    }
-    ir_emit_exit(insts);
-    function->exit->instructions = insts;
-
-    function->list = ir_block_list_create(function->entry);
-    ir_block_list_t* list = ir_block_list_create(function->exit);
-    function->list->next = list;
-
-    function->compiled = false;
-
-    return function;
-}
-
-void ir_function_destroy(ir_function_t* function) {
-    ir_block_list_t* current = function->list;
-    while (current) {
-        ir_block_list_t* predecessors = current->block->predecessors;
-        while (predecessors) {
-            ir_block_list_t* next = predecessors->next;
-            free(predecessors);
-            predecessors = next;
-        }
-
-        ir_block_list_t* successors = current->block->successors;
-        while (successors) {
-            ir_block_list_t* next = successors->next;
-            free(successors);
-            successors = next;
-        }
-
-        ir_block_list_t* next = current->next;
-        ir_block_list_node_destroy(current);
-        current = next;
-    }
-
-    free(function);
-}
-
-// Gets a block from the function. The function keeps a list of all blocks so it
-// can go through them linearly if needed. If address is IR_NO_ADDRESS, a new
-// block is created and not looked up in the list. This is for blocks that are
-// not tied to an actual address but are used as auxiliary blocks, for example
-// for the rep instruction loop bodies or in the future for breaking up critical
-// edges etc.
-ir_block_t* ir_function_get_block(ir_function_t* function, ir_block_t* predecessor, u64 address) {
-    if (address != IR_NO_ADDRESS) {
-        for (ir_block_list_t* current = function->list; current; current = current->next) {
-            if (current->block->start_address == address) {
-                if (predecessor) {
-                    ir_add_predecessor(current->block, predecessor);
-                }
-                return current->block;
-            }
-        }
-    }
-
-    ir_block_t* block = ir_block_create(address);
-    ir_block_list_insert(function->list, block);
-
-    // Add block to predecessor's successors
-    if (predecessor) {
-        ir_add_successor(predecessor, block);
-    }
-
-    return block;
-}
-
-void ir_add_predecessor(ir_block_t* block, ir_block_t* predecessor) {
-    if (!block->predecessors) {
-        block->predecessors = ir_block_list_create(predecessor);
-    } else {
-        ir_block_list_insert(block->predecessors, predecessor);
-    }
-    block->predecessors_count++;
-    if (!predecessor->successors) {
-        predecessor->successors = ir_block_list_create(block);
-    } else {
-        ir_block_list_insert(predecessor->successors, block);
-    }
-}
-
-void ir_add_successor(ir_block_t* block, ir_block_t* successor) {
-    if (!block->successors) {
-        block->successors = ir_block_list_create(successor);
-    } else {
-        ir_block_list_insert(block->successors, successor);
-    }
-    block->successors_count++;
-    if (!successor->predecessors) {
-        successor->predecessors = ir_block_list_create(block);
-    } else {
-        ir_block_list_insert(successor->predecessors, block);
-    }
-}
-
-IRFunction::IRFunction() {
+IRFunction::IRFunction(u64 address) {
     blocks.push_back(IRBlock());
     blocks.push_back(IRBlock());
     entry = &blocks[0];
     exit = &blocks[1];
 
-    TODO,
+    blocks.push_back(IRBlock());
+    IRBlock* block = &blocks.back();
+    block_map[address] = block;
 
+    entry->TerminateJump(block);
+    exit->TerminateExit();
+}
+
+IRBlock* IRFunction::CreateBlockAt(u64 address) {
+    if (address != 0 && block_map.find(address) != block_map.end()) {
+        return block_map[address];
+    }
+
+    blocks.push_back(IRBlock(address));
+    IRBlock* block = &blocks.back();
+
+    if (address != 0) {
+        block_map[address] = block;
+    }
+
+    return block;
+}
+
+IRBlock* IRFunction::GetBlockAt(u64 address) {
+    if (block_map.find(address) != block_map.end()) {
+        return block_map[address];
+    }
+
+    ERROR("Block not found: %016lx", address);
+}
+
+IRBlock* IRFunction::GetBlock() {
+    blocks.push_back(IRBlock());
+    return &blocks.back();
 }

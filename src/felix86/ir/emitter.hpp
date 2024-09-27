@@ -8,8 +8,6 @@
 u16 get_bit_size(x86_size_e size);
 x86_operand_t get_full_reg(x86_ref_e ref);
 
-void ir_emit_hint_inputs(IRBlock* block, x86_ref_e* refs, u8 count);
-void ir_emit_hint_outputs(IRBlock* block, x86_ref_e* refs, u8 count);
 void ir_emit_runtime_comment(IRBlock* block, const char* comment);
 
 IRInstruction* ir_emit_add(IRBlock* block, IRInstruction* source1,
@@ -63,11 +61,6 @@ IRInstruction* ir_emit_sext8(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_sext16(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_sext32(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_syscall(IRBlock* block, std::initializer_list<IRInstruction*> args);
-IRInstruction* ir_emit_exit(IRBlock* block);
-IRInstruction* ir_emit_jump(IRBlock* block, IRBlock* target);
-IRInstruction* ir_emit_jump_conditional(IRBlock* block,
-                                           IRInstruction* condition, IRBlock* target_true,
-                                           IRBlock* target_false);
 IRInstruction* ir_emit_insert_integer_to_vector(IRBlock* block,
                                                    IRInstruction* dst, IRInstruction* source,
                                                    u8 idx, x86_size_e sz);
@@ -160,6 +153,7 @@ void ir_emit_setcc(IRBlock* block, x86_instruction_t* inst);
 
 IRInstruction* ir_emit_cpuid(IRBlock* block, IRInstruction* rax, IRInstruction* rcx);
 IRInstruction* ir_emit_rdtsc(IRBlock* block);
+IRInstruction* ir_emit_tuple_extract(IRInstruction* instruction, u8 index);
 
 // Helpers
 IRInstruction* ir_emit_immediate(IRBlock* block, u64 value);

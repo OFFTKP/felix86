@@ -27,8 +27,7 @@ IR_HANDLE(error) {
     if (address & (1ull << 63)) {
         address = state->current_address - g_interpreter_address;
     }
-    ERROR("Hit error instruction during: %016lx - Opcode: %02x",
-          state->current_address - g_base_address, inst->opcode);
+    ERROR("Hit error instruction during: %016lx - Opcode: %02x", state->current_address - g_base_address, inst->opcode);
 }
 
 // ██████  ██████  ██ ███    ███  █████  ██████  ██    ██
@@ -74,8 +73,7 @@ IR_HANDLE(add_reg_rm) { // add r16/32/64, rm16/32/64 - 0x03
 IR_HANDLE(add_eax_imm) { // add ax/eax/rax, imm16/32/64 - 0x05
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* eax = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* imm =
-        ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
+    IRInstruction* imm = ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
     IRInstruction* result = ir_emit_add(BLOCK, eax, imm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 
@@ -122,8 +120,7 @@ IR_HANDLE(or_reg_rm) { // or r16/32/64, rm16/32/64 - 0x0B
 IR_HANDLE(or_eax_imm) { // add ax/eax/rax, imm16/32/64 - 0x0D
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* eax = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* imm =
-        ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
+    IRInstruction* imm = ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
     IRInstruction* result = ir_emit_or(BLOCK, eax, imm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 
@@ -153,8 +150,7 @@ IR_HANDLE(and_rm_reg) { // and rm16/32/64, r16/32/64 - 0x21
 IR_HANDLE(and_eax_imm) { // and ax/eax/rax, imm16/32/64 - 0x25
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* eax = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* imm =
-        ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
+    IRInstruction* imm = ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
     IRInstruction* result = ir_emit_and(BLOCK, eax, imm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 
@@ -186,8 +182,7 @@ IR_HANDLE(sub_rm_reg) { // sub rm16/32/64, r16/32/64 - 0x29
 IR_HANDLE(sub_eax_imm) { // sub ax/eax/rax, imm16/32/64 - 0x2d
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* eax = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* imm =
-        ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
+    IRInstruction* imm = ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
     IRInstruction* result = ir_emit_sub(BLOCK, eax, imm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 
@@ -251,8 +246,7 @@ IR_HANDLE(xor_reg_rm) { // xor r16/32/64, rm16/32/64 - 0x33
 IR_HANDLE(xor_eax_imm) { // xor ax/eax/rax, imm16/32/64 - 0x35
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* eax = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* imm =
-        ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
+    IRInstruction* imm = ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
     IRInstruction* result = ir_emit_xor(BLOCK, eax, imm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 
@@ -299,8 +293,7 @@ IR_HANDLE(cmp_reg_rm) { // cmp r8, rm8 - 0x3a
 IR_HANDLE(cmp_eax_imm) { // cmp eax, imm32 - 0x3d
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* eax = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* imm =
-        ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
+    IRInstruction* imm = ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
     IRInstruction* result = ir_emit_sub(BLOCK, eax, imm);
 
     IRInstruction* c = ir_emit_get_carry_sub(BLOCK, eax, imm, result, size_e);
@@ -364,17 +357,12 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     IRInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
     IRInstruction* condition = ir_emit_get_cc(BLOCK, inst->opcode);
     u64 jump_address_false = state->current_address + inst_length;
-    u64 jump_address_true = state->current_address + inst_length + imm->load_immediate.immediate;
+    u64 jump_address_true = state->current_address + inst_length + inst->operand_imm.immediate.data;
 
-    ir_block_t* block_true =
-        ir_function_get_block(state->function, state->current_block, jump_address_true);
-    ir_block_t* block_false =
-        ir_function_get_block(state->function, state->current_block, jump_address_false);
-    ir_emit_jump_conditional(BLOCK, condition, block_true, block_false);
+    IRBlock* block_true = state->function->CreateBlockAt(jump_address_true);
+    IRBlock* block_false = state->function->CreateBlockAt(jump_address_false);
+    BLOCK->TerminateJumpConditional(condition, block_true, block_false);
     state->exit = true;
-
-    frontend_compile_block(state->function, block_true);
-    frontend_compile_block(state->function, block_false);
 }
 
 IR_HANDLE(group1_rm8_imm8) { // add/or/adc/sbb/and/sub/xor/cmp rm8, imm8 - 0x80
@@ -469,8 +457,7 @@ IR_HANDLE(cdq) { // cwd/cdq/cqo - 0x99
 IR_HANDLE(test_eax_imm) { // test eax, imm32 - 0xa9
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* imm =
-        ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
+    IRInstruction* imm = ir_emit_immediate(BLOCK, sext_if_64(inst->operand_imm.immediate.data, size_e));
     IRInstruction* result = ir_emit_and(BLOCK, reg, imm);
 
     IRInstruction* zero = ir_emit_immediate(BLOCK, 0);
@@ -496,8 +483,7 @@ IR_HANDLE(stosd) { // stosd - 0xab
     ir_emit_write_memory(BLOCK, rdi, rax, size_e);
 
     // Assume DF is 0 for now
-    IRInstruction* rdi_add =
-        ir_emit_add(BLOCK, rdi, ir_emit_immediate(BLOCK, get_bit_size(size_e) / 8));
+    IRInstruction* rdi_add = ir_emit_add(BLOCK, rdi, ir_emit_immediate(BLOCK, get_bit_size(size_e) / 8));
     ir_emit_set_reg(BLOCK, &rdi_reg, rdi_add);
 }
 
@@ -527,8 +513,7 @@ IR_HANDLE(ret) { // ret - 0xc3
     IRInstruction* rsp_add = ir_emit_add(BLOCK, rsp, size);
     ir_emit_set_guest(BLOCK, X86_REF_RSP, rsp_add);
     ir_emit_set_guest(BLOCK, X86_REF_RIP, rip);
-    ir_emit_jump(BLOCK, state->function->exit);
-    ir_add_successor(state->current_block, state->function->exit);
+    BLOCK->TerminateJump(state->function->GetExit());
     state->exit = true;
 }
 
@@ -552,8 +537,7 @@ IR_HANDLE(leave) { // leave - 0xc9
 
     IRInstruction* rbp = ir_emit_get_reg(BLOCK, &rbp_reg);
 
-    IRInstruction* popped_value =
-        size == X86_SIZE_WORD ? ir_emit_read_word(BLOCK, rbp) : ir_emit_read_qword(BLOCK, rbp);
+    IRInstruction* popped_value = size == X86_SIZE_WORD ? ir_emit_read_word(BLOCK, rbp) : ir_emit_read_qword(BLOCK, rbp);
     IRInstruction* imm = ir_emit_immediate(BLOCK, size == X86_SIZE_WORD ? 2 : 8);
     IRInstruction* rbp_add = ir_emit_add(BLOCK, rbp, imm);
 
@@ -588,8 +572,7 @@ IR_HANDLE(call_rel32) { // call rel32 - 0xe8
     ir_emit_write_qword(BLOCK, rsp_sub, return_rip);
     ir_emit_set_guest(BLOCK, X86_REF_RSP, rsp_sub);
     ir_emit_set_guest(BLOCK, X86_REF_RIP, rip);
-    ir_emit_jump(BLOCK, state->function->exit);
-    ir_add_successor(state->current_block, state->function->exit);
+    BLOCK->TerminateJump(state->function->GetExit());
     state->exit = true;
 }
 
@@ -597,27 +580,26 @@ IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
     u64 displacement = (i64)(i32)inst->operand_imm.immediate.data;
     u64 jump_address = state->current_address + inst->length + displacement;
 
-    ir_block_t* block = ir_function_get_block(state->function, state->current_block, jump_address);
-    ir_emit_jump(BLOCK, block);
+    IRBlock* target = state->function->CreateBlockAt(jump_address);
+    BLOCK->TerminateJump(target);
     state->exit = true;
 
-    frontend_compile_block(state->function, block);
+    frontend_compile_block(state->function, target);
 }
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
     u64 displacement = (i64)(i8)inst->operand_imm.immediate.data;
     u64 jump_address = state->current_address + inst->length + displacement;
 
-    ir_block_t* block = ir_function_get_block(state->function, state->current_block, jump_address);
-    ir_emit_jump(BLOCK, block);
+    IRBlock* target = state->function->CreateBlockAt(jump_address);
+    BLOCK->TerminateJump(target);
     state->exit = true;
 
-    frontend_compile_block(state->function, block);
+    frontend_compile_block(state->function, target);
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4
-    ir_emit_jump(BLOCK, state->function->exit);
-    ir_add_successor(state->current_block, state->function->exit);
+    BLOCK->TerminateJump(state->function->GetExit());
     state->exit = true;
 }
 
@@ -636,7 +618,7 @@ IR_HANDLE(stc) { // stc - 0xf9
 
 IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
     x86_size_e size_e = inst->operand_reg.size;
-    x86_group4_e opcode = inst->operand_reg.reg.ref - X86_REF_RAX;
+    x86_group4_e opcode = (x86_group4_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
 
     IRInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
     IRInstruction* one = ir_emit_immediate(BLOCK, 1);
@@ -673,7 +655,7 @@ IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
 }
 
 IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32
-    x86_group3_e opcode = inst->operand_reg.reg.ref - X86_REF_RAX;
+    x86_group5_e opcode = (x86_group5_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
     switch (opcode) {
     case X86_GROUP5_INC: {
         x86_size_e size_e = inst->operand_rm.size;
@@ -715,8 +697,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32
         ir_emit_write_qword(BLOCK, rsp_sub, return_rip);
         ir_emit_set_guest(BLOCK, X86_REF_RSP, rsp_sub);
         ir_emit_set_guest(BLOCK, X86_REF_RIP, rip);
-        ir_emit_jump(BLOCK, state->function->exit);
-        ir_add_successor(state->current_block, state->function->exit);
+        BLOCK->TerminateJump(state->function->GetExit());
         state->exit = true;
         break;
     }
@@ -725,14 +706,12 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32
         rm_op.size = X86_SIZE_QWORD;
         IRInstruction* rm = ir_emit_get_rm(BLOCK, &rm_op);
         ir_emit_set_guest(BLOCK, X86_REF_RIP, rm);
-        ir_emit_jump(BLOCK, state->function->exit);
-        ir_add_successor(state->current_block, state->function->exit);
+        BLOCK->TerminateJump(state->function->GetExit());
         state->exit = true;
         break;
     }
     default: {
-        ERROR("Unimplemented group 5 opcode: %02x during %016lx", opcode,
-              state->current_address - g_base_address);
+        ERROR("Unimplemented group 5 opcode: %02x during %016lx", opcode, state->current_address - g_base_address);
         break;
     }
     }
@@ -745,7 +724,9 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██
 
 IR_HANDLE(group7) { // group 7 - 0x0f 0x01
-    x86_group1_e opcode = inst->operand_imm.immediate.data;
+    // TODO: this is a mess
+    // maybe needs its own table ...
+    u8 opcode = inst->operand_imm.immediate.data;
     modrm_t modrm; // we take it in as an immediate instead of as a modrm because
                    // we don't want to potentially get a SIB too
     modrm.raw = opcode;
@@ -756,7 +737,6 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
             xcr0_reg_t xcr0 = {0};
             xcr0.x87 = 1;
             xcr0.sse = 1;
-            xcr0.avx = 1;
             u32 rax = xcr0.raw;
             u32 rdx = xcr0.raw >> 32;
             x86_operand_t rax_reg = get_full_reg(X86_REF_RAX);
@@ -771,20 +751,30 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
         break;
     }
     default: {
-        ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode,
-              state->current_address - g_base_address);
+        ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, state->current_address - g_base_address);
         break;
     }
     }
 }
 
 IR_HANDLE(syscall) { // syscall - 0x0f 0x05
-    x86_ref_e inputs[] = {X86_REF_RAX, X86_REF_RDI, X86_REF_RSI, X86_REF_RDX,
-                          X86_REF_R10, X86_REF_R8,  X86_REF_R9};
-    x86_ref_e outputs[] = {X86_REF_RAX};
-    ir_emit_hint_inputs(BLOCK, inputs, 7);
-    ir_emit_syscall(BLOCK);
-    ir_emit_hint_outputs(BLOCK, outputs, 1);
+    x86_operand_t rax_reg = get_full_reg(X86_REF_RAX);
+    x86_operand_t rdi_reg = get_full_reg(X86_REF_RDI);
+    x86_operand_t rsi_reg = get_full_reg(X86_REF_RSI);
+    x86_operand_t rdx_reg = get_full_reg(X86_REF_RDX);
+    x86_operand_t r10_reg = get_full_reg(X86_REF_R10);
+    x86_operand_t r8_reg = get_full_reg(X86_REF_R8);
+    x86_operand_t r9_reg = get_full_reg(X86_REF_R9);
+    IRInstruction* rax = ir_emit_get_reg(BLOCK, &rax_reg);
+    IRInstruction* rdi = ir_emit_get_reg(BLOCK, &rdi_reg);
+    IRInstruction* rsi = ir_emit_get_reg(BLOCK, &rsi_reg);
+    IRInstruction* rdx = ir_emit_get_reg(BLOCK, &rdx_reg);
+    IRInstruction* r10 = ir_emit_get_reg(BLOCK, &r10_reg);
+    IRInstruction* r8 = ir_emit_get_reg(BLOCK, &r8_reg);
+    IRInstruction* r9 = ir_emit_get_reg(BLOCK, &r9_reg);
+
+    IRInstruction* result = ir_emit_syscall(BLOCK, {rax, rdi, rsi, rdx, r10, r8, r9});
+    ir_emit_set_reg(BLOCK, &rax_reg, result);
 }
 
 IR_HANDLE(mov_xmm_xmm128) { // movups/movaps xmm, xmm128 - 0x0f 0x11
@@ -799,8 +789,7 @@ IR_HANDLE(movhps_xmm_m64) {
 
     IRInstruction* xmm = ir_emit_get_reg(BLOCK, &inst->operand_reg);
     IRInstruction* m64 = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    IRInstruction* xmm_dest =
-        ir_emit_insert_integer_to_vector(BLOCK, xmm, m64, 1, X86_SIZE_QWORD);
+    IRInstruction* xmm_dest = ir_emit_insert_integer_to_vector(BLOCK, xmm, m64, 1, X86_SIZE_QWORD);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, xmm_dest);
 }
 
@@ -810,9 +799,13 @@ IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
 }
 
 IR_HANDLE(rdtsc) { // rdtsc - 0x0f 0x31
-    x86_ref_e outputs[] = {X86_REF_RAX, X86_REF_RDX};
-    ir_emit_rdtsc(BLOCK);
-    ir_emit_hint_outputs(BLOCK, outputs, 2);
+    x86_operand_t rax_reg = get_full_reg(X86_REF_RAX);
+    x86_operand_t rdx_reg = get_full_reg(X86_REF_RDX);
+    IRInstruction* tuple = ir_emit_rdtsc(BLOCK);
+    IRInstruction* rax = ir_emit_tuple_extract(tuple, 0);
+    IRInstruction* rdx = ir_emit_tuple_extract(tuple, 1);
+    ir_emit_set_reg(BLOCK, &rax_reg, rax);
+    ir_emit_set_reg(BLOCK, &rdx_reg, rdx);
 }
 
 IR_HANDLE(cmovcc) { // cmovcc - 0x0f 0x40-0x4f
@@ -824,8 +817,7 @@ IR_HANDLE(cmovcc) { // cmovcc - 0x0f 0x40-0x4f
 }
 
 IR_HANDLE(movq_mm_rm32) { // movq mm, rm32 - 0x0f 0x6e
-    ERROR("Unimplemented instruction: movq mm, rm32 - 0x0f 0x6e during %016lx",
-          state->current_address - g_base_address);
+    ERROR("Unimplemented instruction: movq mm, rm32 - 0x0f 0x6e during %016lx", state->current_address - g_base_address);
 }
 
 IR_HANDLE(setcc) { // setcc - 0x0f 0x90-0x9f
@@ -833,11 +825,24 @@ IR_HANDLE(setcc) { // setcc - 0x0f 0x90-0x9f
 }
 
 IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
-    x86_ref_e inputs[] = {X86_REF_RAX, X86_REF_RCX};
-    x86_ref_e outputs[] = {X86_REF_RAX, X86_REF_RBX, X86_REF_RCX, X86_REF_RDX};
-    ir_emit_hint_inputs(BLOCK, inputs, 2);
-    ir_emit_cpuid(BLOCK);
-    ir_emit_hint_outputs(BLOCK, outputs, 4);
+    x86_operand_t rax_reg = get_full_reg(X86_REF_RAX);
+    x86_operand_t rbx_reg = get_full_reg(X86_REF_RBX);
+    x86_operand_t rcx_reg = get_full_reg(X86_REF_RCX);
+    x86_operand_t rdx_reg = get_full_reg(X86_REF_RDX);
+
+    IRInstruction* rax = ir_emit_get_reg(BLOCK, &rax_reg);
+    IRInstruction* rcx = ir_emit_get_reg(BLOCK, &rcx_reg);
+
+    IRInstruction* tuple = ir_emit_cpuid(BLOCK, rax, rcx);
+    rax = ir_emit_tuple_extract(tuple, 0);
+    IRInstruction* rbx = ir_emit_tuple_extract(tuple, 1);
+    rcx = ir_emit_tuple_extract(tuple, 2);
+    IRInstruction* rdx = ir_emit_tuple_extract(tuple, 3);
+
+    ir_emit_set_reg(BLOCK, &rax_reg, rax);
+    ir_emit_set_reg(BLOCK, &rbx_reg, rbx);
+    ir_emit_set_reg(BLOCK, &rcx_reg, rcx);
+    ir_emit_set_reg(BLOCK, &rdx_reg, rdx);
 }
 
 IR_HANDLE(bt) { // bt - 0x0f 0xa3
@@ -854,8 +859,7 @@ IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
     IRInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* result =
-        ir_emit_imul(BLOCK, ir_emit_sext(BLOCK, reg, size_e), ir_emit_sext(BLOCK, rm, size_e));
+    IRInstruction* result = ir_emit_imul(BLOCK, ir_emit_sext(BLOCK, reg, size_e), ir_emit_sext(BLOCK, rm, size_e));
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 
@@ -906,14 +910,11 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
     ir_emit_set_flag(BLOCK, X86_REF_ZF, zero);
 }
 
-// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██
-// ██████   ██████ ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██
-// ██  ██  ██      ██       ██ ███████ █████   ██      ██    ██ ██ ██  ██ ██ ██
-// ███████ ██████    ████       ███████  ███████
-//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██ ██
-//      ██ ██    ██
-// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██
-// ██████   ██████
+// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██      ██████   ██████
+// ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██   ██  ██  ██      ██       ██
+// ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████       ███████  ███████
+//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██    ██ ██    ██
+// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████
 
 IR_HANDLE(punpcklbw_xmm_xmm128) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
     IRInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
@@ -937,7 +938,7 @@ IR_HANDLE(punpckldq_xmm_xmm128) { // punpckldq xmm, xmm/m128 - 0x66 0x0f 0x62
 }
 
 IR_HANDLE(group14_xmm) { // group14 xmm - 0x66 0x0f 0x73
-    x86_group14_e opcode = inst->operand_reg.reg.ref - X86_REF_XMM0;
+    x86_group14_e opcode = (x86_group14_e)(inst->operand_reg.reg.ref - X86_REF_XMM0);
     switch (opcode) {
     case X86_GROUP14_PSRLDQ: {
         IRInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
@@ -947,8 +948,7 @@ IR_HANDLE(group14_xmm) { // group14 xmm - 0x66 0x0f 0x73
         break;
     }
     default: {
-        ERROR("Unimplemented group 14 opcode: %02x during %016lx", opcode,
-              state->current_address - g_base_address);
+        ERROR("Unimplemented group 14 opcode: %02x during %016lx", opcode, state->current_address - g_base_address);
         break;
     }
     }
@@ -974,8 +974,7 @@ IR_HANDLE(movdqa_xmm_xmm128) { // movdqa xmm, xmm128 - 0x66 0x0f 0x6f
 
 IR_HANDLE(pshufd_xmm_xmm128_cb) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
     IRInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    IRInstruction* result =
-        ir_emit_vector_packed_shuffle_dword(BLOCK, rm, inst->operand_imm.immediate.data);
+    IRInstruction* result = ir_emit_vector_packed_shuffle_dword(BLOCK, rm, inst->operand_imm.immediate.data);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 
@@ -1062,23 +1061,17 @@ IR_HANDLE(psubb_xmm_xmm128) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 
-// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██
-// ███████ ██████ ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██
-// ██  ██  ██      ██           ██ ███████ █████   ██      ██    ██ ██ ██  ██ ██
-// ██ ███████ ██████    ████       █████    █████
-//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██ ██
-//      ██
-// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██ ██
-// ███████
+// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██     ███████ ██████
+// ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██   ██  ██  ██      ██           ██
+// ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████       █████    █████
+//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██      ██
+// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██        ██      ███████
 
-// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██
-// ███████ ██████ ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██
-// ██  ██  ██      ██           ██ ███████ █████   ██      ██    ██ ██ ██  ██ ██
-// ██ ███████ ██████    ████       █████    █████
-//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██ ██
-//      ██
-// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██ ██
-// ██████
+// ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██     ███████ ██████
+// ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██   ██  ██  ██      ██           ██
+// ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████       █████    █████
+//      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██           ██
+// ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██        ██      ██████
 
 IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f
     IRInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
@@ -1100,60 +1093,59 @@ IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
     ir_emit_set_reg(BLOCK, &inst->operand_reg, integer);
 }
 
-// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ██████
-// █████
-//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██           ██ ██
-//    ██ ██    █████   ██████     ██    ██ ███████ ██████    ████        █████
-//    █████ ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██ ██ ██   ██
-//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██        ██████
-//    █████
+// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ██████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██           ██ ██   ██
+//    ██    █████   ██████     ██    ██ ███████ ██████    ████        █████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██             ██ ██   ██
+//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██        ██████   █████
 
-// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ██████
-// █████       ██████   ██████
-//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██           ██ ██
-//    ██     ██       ██ ██    █████   ██████     ██    ██ ███████ ██████ ████
-//    █████   █████      ███████  ███████ ██    ██      ██   ██    ██    ██ ██
-//    ██ ██   ██    ██             ██ ██   ██     ██    ██ ██    ██ ██ ███████
-//    ██   ██    ██    ██ ██   ██ ██   ██    ██        ██████   █████ ██████
-//    ██████
+// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██      ██████   ██████      ██████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██      ██       ██                ██ ██   ██
+//    ██    █████   ██████     ██    ██ ███████ ██████    ████       ███████  ███████       █████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██        ██    ██ ██    ██          ██ ██   ██
+//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██         ██████   ██████      ██████   █████
 
-// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ██████
-// █████      ███████ ██████
-//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██           ██ ██
-//    ██     ██           ██ ██    █████   ██████     ██    ██ ███████ ██████
-//    ████        █████   █████      █████    █████ ██    ██      ██   ██    ██
-//    ██ ██   ██ ██   ██    ██             ██ ██   ██     ██      ██ ██ ███████
-//    ██   ██    ██    ██ ██   ██ ██   ██    ██        ██████   █████      ██
-//    ███████
+// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ███████ ██████      ██████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██      ██           ██          ██ ██   ██
+//    ██    █████   ██████     ██    ██ ███████ ██████    ████       █████    █████       █████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██        ██      ██               ██ ██   ██
+//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██        ██      ███████     ██████   █████
 
-// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ██████
-// █████
-//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██           ██ ██
-//    ██ ██    █████   ██████     ██    ██ ███████ ██████    ████        █████
-//    ███████ ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██ ██ ██   ██
-//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██        ██████  ██
-//    ██
+// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ██████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██           ██ ██   ██
+//    ██    █████   ██████     ██    ██ ███████ ██████    ████        █████  ███████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██             ██ ██   ██
+//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██        ██████  ██   ██
 
-// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ██████
-// █████       ██████   ██████
-//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██           ██ ██
-//    ██     ██       ██ ██    █████   ██████     ██    ██ ███████ ██████ ████
-//    █████  ███████     ███████  ███████ ██    ██      ██   ██    ██    ██ ██
-//    ██ ██   ██    ██             ██ ██   ██     ██    ██ ██    ██ ██ ███████
-//    ██   ██    ██    ██ ██   ██ ██   ██    ██        ██████  ██   ██ ██████
-//    ██████
+// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██      ██████   ██████      ██████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██      ██       ██                ██ ██   ██
+//    ██    █████   ██████     ██    ██ ███████ ██████    ████       ███████  ███████       █████  ███████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██        ██    ██ ██    ██          ██ ██   ██
+//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██         ██████   ██████      ██████  ██   ██
 
-IR_HANDLE(pcmpistri_xmm_xmm128_cb) { // pcmpistri xmm, xmm/m128, imm8 - 0x66
-                                     // 0x0f 0x3a 0x63
-    IRInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    IRInstruction* imm = ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data);
-    IRInstruction* result = ir_emit_vector_packed_compare_implicit_string_index(BLOCK, rm, imm);
-    ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
+IR_HANDLE(pcmpistri_xmm_xmm128_cb) { // pcmpistri xmm, xmm/m128, imm8 - 0x66 0x0f 0x3a 0x63
+    ERROR("Impl me, output xmm + rcx + flags reg?");
+    // IRInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    // IRInstruction* imm = ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data);
+    // IRInstruction* result = ir_emit_vector_packed_compare_implicit_string_index(BLOCK, rm, imm);
+    // ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 
-    x86_ref_e outputs[] = {X86_REF_RCX, X86_REF_CF, X86_REF_ZF, X86_REF_SF, X86_REF_OF};
-    ir_emit_hint_outputs(BLOCK, outputs, 5);
+    // x86_ref_e outputs[] = {X86_REF_RCX, X86_REF_CF, X86_REF_ZF, X86_REF_SF, X86_REF_OF};
+    // ir_emit_hint_outputs(BLOCK, outputs, 5);
 
-    IRInstruction* zero = ir_emit_immediate(BLOCK, 0);
-    ir_emit_set_flag(BLOCK, X86_REF_PF, zero);
-    ir_emit_set_flag(BLOCK, X86_REF_AF, zero);
+    // IRInstruction* zero = ir_emit_immediate(BLOCK, 0);
+    // ir_emit_set_flag(BLOCK, X86_REF_PF, zero);
+    // ir_emit_set_flag(BLOCK, X86_REF_AF, zero);
 }
+
+// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ███████ ██████      ██████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██      ██           ██          ██ ██   ██
+//    ██    █████   ██████     ██    ██ ███████ ██████    ████       █████    █████       █████  ███████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██        ██      ██               ██ ██   ██
+//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██        ██      ███████     ██████  ██   ██
+
+// ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ███████ ██████      ██████   █████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██      ██           ██          ██ ██   ██
+//    ██    █████   ██████     ██    ██ ███████ ██████    ████       █████    █████       █████  ███████
+//    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██        ██           ██          ██ ██   ██
+//    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██        ██      ██████      ██████  ██   ██

@@ -4,8 +4,9 @@
 #include <list>
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/instruction.hpp"
+#include "tsl/robin_map.h"
 
-#define IR_NO_ADDRESS (-1ull)
+#define IR_NO_ADDRESS (0)
 
 enum class Termination {
     Null,
@@ -15,6 +16,9 @@ enum class Termination {
 };
 
 struct IRBlock {
+    IRBlock() = default;
+    IRBlock(u64 address) : start_address(address) {}
+
     using iterator = std::list<IRInstruction>::iterator;
 
     void TerminateJump(IRBlock* target) {
@@ -56,24 +60,38 @@ struct IRBlock {
         return instructions.erase(pos);
     }
 
-    void AddPredecessor(IRBlock* pred) {
-        predecessors.push_back(pred);
-    }
-
     IRInstruction& GetLastInstruction() {
         return instructions.back();
     }
 
+    bool IsCompiled() {
+        return compiled;
+    }
+
+    void SetCompiled() {
+        compiled = true;
+    }
+
+    u64 GetStartAddress() {
+        return start_address;
+    }
+
 private:
+    void AddPredecessor(IRBlock* pred) {
+        predecessors.push_back(pred);
+    }
+
+    u64 start_address = IR_NO_ADDRESS;
     std::list<IRInstruction> instructions;
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
     Termination termination = Termination::Null;
     IRInstruction* condition = nullptr;
+    bool compiled = false;
 };
 
 struct IRFunction {
-    IRFunction();
+    IRFunction(u64 address);
 
     IRBlock* GetEntry() {
         return entry;
@@ -83,12 +101,15 @@ struct IRFunction {
         return exit;
     }
 
-    IRBlock* GetBlockAt(IRBlock* predecessor, u64 address);
+    IRBlock* CreateBlockAt(u64 address);
 
-    IRBlock* GetBlock(IRBlock* predecessor);
+    IRBlock* GetBlockAt(u64 address);
+
+    IRBlock* GetBlock();
 
 private:
     IRBlock* entry = nullptr;
     IRBlock* exit = nullptr;
     std::vector<IRBlock> blocks;
+    tsl::robin_map<u64, IRBlock*> block_map;
 };
