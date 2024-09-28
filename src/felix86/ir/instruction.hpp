@@ -145,7 +145,7 @@ struct Phi {
     std::vector<PhiNode> nodes = {};
 };
 
-struct TupleGet {
+struct TupleAccess {
     IRInstruction* tuple = nullptr;
     u8 index = 0;
 };
@@ -154,7 +154,7 @@ struct Comment {
     std::string comment = {};
 };
 
-using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, TupleGet>;
+using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, TupleAccess>;
 
 IRType GetTypeFromOpcode(IROpcode opcode);
 IRType GetTypeFromTuple(IRType type, u8 index);
@@ -218,10 +218,12 @@ struct IRInstruction {
     }
 
     IRInstruction(IRInstruction* tuple, u8 index) : opcode(IROpcode::IR_TUPLE_GET), returnType(GetTypeFromTuple(tuple->returnType, index)) {
-        TupleGet tg;
+        TupleAccess tg;
         tg.tuple = tuple;
         tg.index = index;
         expression = tg;
+
+        ValidateTuple(tg);
 
         tuple->AddUse();
     }

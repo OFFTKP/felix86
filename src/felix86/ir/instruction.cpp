@@ -68,8 +68,8 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
         return comment.comment == other_comment.comment;
     }
     case 6: {
-        const TupleGet& tuple_get = std::get<TupleGet>(expression);
-        const TupleGet& other_tuple_get = std::get<TupleGet>(other.expression);
+        const TupleAccess& tuple_get = std::get<TupleAccess>(expression);
+        const TupleAccess& other_tuple_get = std::get<TupleAccess>(other.expression);
 
         return tuple_get.tuple == other_tuple_get.tuple && tuple_get.index == other_tuple_get.index;
     }
