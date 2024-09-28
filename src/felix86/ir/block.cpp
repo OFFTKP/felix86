@@ -10,6 +10,9 @@ IRFunction::IRFunction(u64 address) {
     entry = &blocks[0];
     exit = &blocks[1];
 
+    entry->SetIndex(0);
+    exit->SetIndex(1);
+
     blocks.push_back(IRBlock());
     IRBlock* block = &blocks.back();
     block_map[address] = block;
@@ -25,6 +28,7 @@ IRBlock* IRFunction::CreateBlockAt(u64 address) {
 
     blocks.push_back(IRBlock(address));
     IRBlock* block = &blocks.back();
+    block->SetIndex(blocks.size() - 1);
 
     if (address != 0) {
         block_map[address] = block;
@@ -41,7 +45,9 @@ IRBlock* IRFunction::GetBlockAt(u64 address) {
     ERROR("Block not found: %016lx", address);
 }
 
-IRBlock* IRFunction::GetBlock() {
+IRBlock* IRFunction::CreateBlock() {
     blocks.push_back(IRBlock());
-    return &blocks.back();
+    IRBlock* block = &blocks.back();
+    block->SetIndex(blocks.size() - 1);
+    return block;
 }

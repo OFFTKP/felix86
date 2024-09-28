@@ -8,18 +8,13 @@
 #include <vector>
 #include "felix86/common/log.hpp"
 #include "felix86/ir/passes.hpp"
-#include "felix86/ir/ssa_block.hpp"
 
 /*
-    This file is in C++ instead of C to not have to reimplement some very useful
-   standard C++ containers
-
     This is written with my current understanding of SSA at this time, parts of
    it could be wrong.
 
-    We want to convert registers (rax, rcx, ...) to SSA form. At this time we do
-   not care about moving memory to SSA. This is because when there's code like
-   this:
+    We want to convert registers (rax, rcx, ...) to SSA form.
+    This is because when there's code like this:
 
     mov rax, 1
     mov rax, 2
@@ -35,7 +30,6 @@
     rax_0 = 1
     rax_1 = 2
     ...
-    (immediately after the last usage of rax, store it back to memory)
 
     A thing that enables this is the fact that we have an entry block that loads
     the entire VM state and an exit block that writebacks the entire VM state.
@@ -88,104 +82,57 @@
    it's just the registers that need to be renamed
 */
 
-struct ir_dominator_tree_node_t {
-    ir_ssa_block_t* block = nullptr;
-    std::vector<ir_dominator_tree_node_t*> children = {};
+struct IRDominatorTreeNode {
+    IRBlock* block = nullptr;
+    std::vector<IRDominatorTreeNode*> children = {};
 };
 
-static void postorder(ir_ssa_block_t* block, std::vector<ir_ssa_block_t*>& output) {
-    if (block->visited) {
+static void postorder(IRBlock* block, std::vector<IRBlock*>& output) {
+    if (block->IsVisited()) {
         return;
     }
 
-    block->visited = true;
+    block->SetVisited(true);
 
-    if (block->successor1) {
-        postorder(block->successor1, output);
+    IRBlock* first_successor = block->GetSuccessor(0);
+    if (first_successor) {
+        postorder(first_successor, output);
     }
 
-    if (block->successor2) {
-        postorder(block->successor2, output);
+    IRBlock* second_successor = block->GetSuccessor(1);
+    if (second_successor) {
+        postorder(second_successor, output);
     }
 
-    output.push_back(block);
+    output.push_back(block); // TODO: don't use vector in the future
 }
 
-static void reverse_postorder_vector_creation(ir_function_t* function,
-                                              std::vector<ir_ssa_block_t>& list,
-                                              std::vector<ir_ssa_block_t*>& output, size_t size) {
-    list.resize(size);
+static void reverse_postorder_creation(IRFunction* function, std::vector<IRBlock*>& order) {
+    IRBlock* entry = function->GetEntry();
+    postorder(entry, order);
 
-    std::vector<std::pair<ir_block_t*, ir_block_t*>> successors;
-    successors.resize(size);
-
-    std::unordered_map<ir_block_t*, int> block_to_index;
-    ir_block_list_t* block = function->list;
-    size_t index = 0;
-    while (block) {
-        list[index].actual_block = block->block;
-        list[index].visited = false;
-        block_to_index[block->block] = index;
-        list[index].list_index = index;
-
-        ir_instruction_list_t* inst = block->block->instructions;
-        while (inst) {
-            list[index].instructions.push_back(inst->instruction);
-            inst = inst->next;
-        }
-
-        successors[index].first =
-            block->block->successors ? block->block->successors->block : nullptr;
-        successors[index].second =
-            block->block->successors
-                ? block->block->successors->next ? block->block->successors->next->block : nullptr
-                : nullptr;
-        index++;
-        block = block->next;
-    }
-
-    for (size_t i = 0; i < list.size(); i++) {
-        list[i].successor1 =
-            successors[i].first ? &list[block_to_index[successors[i].first]] : nullptr;
-        list[i].successor2 =
-            successors[i].second ? &list[block_to_index[successors[i].second]] : nullptr;
-
-        ir_block_list_t* pred = list[i].actual_block->predecessors;
-        while (pred) {
-            list[i].predecessors.push_back(&list[block_to_index[pred->block]]);
-            pred = pred->next;
-        }
-    }
-
-    ir_ssa_block_t* entry = &list[0];
-    postorder(entry, output);
-
-    for (size_t i = 0; i < output.size(); i++) {
-        // Set the postorder number before reversing
-        output[i]->postorder_index = i;
-        output[i]->visited = false;
-
-        printf("Block %p (%d): %p\n", output[i], i, output[i]->actual_block);
-    }
-
-    std::reverse(output.begin(), output.end());
-
-    if (output.size() != size) {
+    if (order.size() != function->GetBlocks().size()) {
         ERROR("Postorder traversal did not visit all blocks");
     }
+
+    for (size_t i = 0; i < order.size(); i++) {
+        order[i]->SetPostorderIndex(i);
+    }
+
+    std::reverse(order.begin(), order.end());
 }
 
-static ir_ssa_block_t* intersect(ir_ssa_block_t* a, ir_ssa_block_t* b) {
-    ir_ssa_block_t* finger1 = a;
-    ir_ssa_block_t* finger2 = b;
+static IRBlock* intersect(IRBlock* a, IRBlock* b) {
+    IRBlock* finger1 = a;
+    IRBlock* finger2 = b;
 
-    while (finger1->postorder_index != finger2->postorder_index) {
-        while (finger1->postorder_index < finger2->postorder_index) {
-            finger1 = finger1->immediate_dominator;
+    while (finger1->GetPostorderIndex() != finger2->GetPostorderIndex()) {
+        while (finger1->GetPostorderIndex() < finger2->GetPostorderIndex()) {
+            finger1 = finger1->GetImmediateDominator();
         }
 
-        while (finger2->postorder_index < finger1->postorder_index) {
-            finger2 = finger2->immediate_dominator;
+        while (finger2->GetPostorderIndex() < finger1->GetPostorderIndex()) {
+            finger2 = finger2->GetImmediateDominator();
         }
     }
 
@@ -194,7 +141,7 @@ static ir_ssa_block_t* intersect(ir_ssa_block_t* a, ir_ssa_block_t* b) {
 
 // See Cytron et al. paper figure 11
 static void place_phi_functions(std::vector<ir_ssa_block_t>& list) {
-    std::vector<ir_ssa_block_t*> worklist = {};
+    std::vector<IRBlock*> worklist = {};
     worklist.reserve(list.size());
     std::vector<int> work;        // indicates whether X has ever been added to worklist
                                   // during the current iteration of the outer loop.
@@ -382,25 +329,17 @@ static void rename(std::vector<ir_dominator_tree_node_t>& list) {
     search(&list[0], stacks, counters);
 }
 
-extern "C" void ir_ssa_pass(ir_function_t* function) {
-    size_t count = 0;
-    ir_block_list_t* block = function->list;
-    while (block) {
-        count++;
-        block = block->next;
-    }
+void ir_ssa_pass(IRFunction* function) {
+    size_t count = function->GetBlocks().size();
 
-    std::vector<ir_ssa_block_t> storage;
-    std::vector<ir_ssa_block_t*> rpo_vector; // points to storage
-    rpo_vector.reserve(count);
+    std::vector<IRBlock*> rpo;
+    reverse_postorder_creation(function, rpo);
 
-    reverse_postorder_vector_creation(function, storage, rpo_vector, count);
-
-    if (rpo_vector[0]->actual_block != function->entry) {
+    if (rpo[0] != function->GetEntry()) {
         ERROR("Entry block is not the first block");
     }
 
-    rpo_vector[0]->immediate_dominator = rpo_vector[0];
+    rpo[0]->SetImmediateDominator(rpo[0]);
     bool changed = true;
 
     // Simple fixpoint algorithm to find immediate dominators by Cooper et al.
@@ -409,42 +348,44 @@ extern "C" void ir_ssa_pass(ir_function_t* function) {
         changed = false;
 
         // For all nodes in reverse postorder, except the start node
-        for (size_t i = 1; i < rpo_vector.size(); i++) {
-            ir_ssa_block_t* b = rpo_vector[i];
+        for (size_t i = 1; i < rpo.size(); i++) {
+            IRBlock* b = rpo[i];
 
-            if (b->predecessors.empty()) {
+            auto& predecessors = b->GetPredecessors();
+            if (predecessors.empty()) {
                 ERROR("Block has no predecessors, this should not happen");
             }
 
-            ir_ssa_block_t* new_idom = b->predecessors[0];
-            for (size_t j = 1; j < b->predecessors.size(); j++) {
-                ir_ssa_block_t* p = b->predecessors[j];
-                if (p->immediate_dominator) {
+            IRBlock* new_idom = predecessors[0];
+            for (size_t j = 1; j < predecessors.size(); j++) {
+                IRBlock* p = predecessors[j];
+                if (p->GetImmediateDominator()) {
                     new_idom = intersect(p, new_idom);
                 }
             }
 
-            if (b->immediate_dominator != new_idom) {
-                b->immediate_dominator = new_idom;
+            if (b->GetImmediateDominator() != new_idom) {
+                b->SetImmediateDominator(new_idom);
                 changed = true;
             }
         }
     }
 
     // Now we have immediate dominators, we can find dominance frontiers
-    for (size_t i = 0; i < rpo_vector.size(); i++) {
-        ir_ssa_block_t* b = rpo_vector[i];
+    for (size_t i = 0; i < rpo.size(); i++) {
+        IRBlock* b = rpo[i];
 
-        if (b->predecessors.size() >= 2) {
-            for (size_t j = 0; j < b->predecessors.size(); j++) {
-                ir_ssa_block_t* p = b->predecessors[j];
-                ir_ssa_block_t* runner = p;
+        auto& predecessors = b->GetPredecessors();
+        if (predecessors.size() >= 2) {
+            for (size_t j = 0; j < predecessors.size(); j++) {
+                IRBlock* p = predecessors[j];
+                IRBlock* runner = p;
 
-                while (runner != b->immediate_dominator) {
-                    runner->dominance_frontiers.push_back(b);
+                while (runner != b->GetImmediateDominator()) {
+                    runner->AddDominanceFrontier(b);
 
-                    ir_ssa_block_t* old_runner = runner;
-                    runner = runner->immediate_dominator;
+                    IRBlock* old_runner = runner;
+                    runner = runner->GetImmediateDominator();
                 }
             }
         }
@@ -455,7 +396,7 @@ extern "C" void ir_ssa_pass(ir_function_t* function) {
     place_phi_functions(storage);
 
     // Before we made the entry block have itself as the immediate dominator, we need to undo that
-    rpo_vector[0]->immediate_dominator = nullptr;
+    rpo[0]->immediate_dominator = nullptr;
 
     // Construct a dominator tree
     std::vector<ir_dominator_tree_node_t> dominator_tree;

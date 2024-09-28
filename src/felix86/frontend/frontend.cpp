@@ -660,8 +660,8 @@ void frontend_compile_instruction(frontend_state_t* state) {
     bool is_rep = rep_type != NONE;
     IRBlock *rep_loop_block = NULL, *rep_exit_block = NULL;
     if (is_rep) {
-        rep_loop_block = state->function->GetBlock();
-        rep_exit_block = state->function->GetBlock();
+        rep_loop_block = state->function->CreateBlock();
+        rep_exit_block = state->function->CreateBlock();
 
         x86_operand_t rcx_reg = get_full_reg(X86_REF_RCX);
         rcx_reg.size = inst.operand_reg.size;

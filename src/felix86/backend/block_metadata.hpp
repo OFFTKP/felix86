@@ -1,13 +1,25 @@
 #pragma once
 
 #include "felix86/common/utility.hpp"
+#include "felix86/backend/block_metadata.hpp"
 
-typedef struct backend_block_metadata_s backend_block_metadata_t;
+#include <tsl/robin_map.h>
 
-backend_block_metadata_t* backend_block_metadata_create();
-void backend_block_metadata_destroy(backend_block_metadata_t* metadata);
-void* backend_block_metadata_get_code_ptr(backend_block_metadata_t* metadata, u64 address);
-void backend_block_metadata_patch(backend_block_metadata_t* metadata, u64 address,
-                                  void* start_of_block);
-void backend_block_metadata_unpatch(backend_block_metadata_t* metadata, u64 address,
-                                    void* start_of_block);
+#include <vector>
+
+struct BlockMetadata {
+    void MapCompiledFunction(u64 address, void* function) {
+        map[address] = function;
+    }
+
+    void* GetCompiledFunction(u64 address) {
+        if (map.find(address) != map.end()) {
+            return map[address];
+        }
+
+        return nullptr;
+    }
+
+private:
+    tsl::robin_map<u64, void*> map; // map functions to host code
+};

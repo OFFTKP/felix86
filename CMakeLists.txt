@@ -46,7 +46,6 @@ set(FELIX86_COMMON_SOURCES
 )
 
 set(FELIX86_BACKEND_SOURCES
-    src/felix86/backend/block_metadata.cpp
 )
 
 set(FELIX86_LOADER_SOURCES

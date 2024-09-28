@@ -76,6 +76,58 @@ struct IRBlock {
         return start_address;
     }
 
+    bool IsVisited() {
+        return visited;
+    }
+
+    void SetVisited(bool value) {
+        visited = value;
+    }
+
+    u32 GetIndex() {
+        return list_index;
+    }
+
+    void SetIndex(u32 index) {
+        list_index = index;
+    }
+
+    u32 GetPostorderIndex() {
+        return postorder_index;
+    }
+
+    void SetPostorderIndex(u32 index) {
+        postorder_index = index;
+    }
+
+    IRBlock* GetSuccessor(bool index) {
+        return successors[index];
+    }
+
+    IRBlock* GetImmediateDominator() {
+        return idom;
+    }
+
+    void SetImmediateDominator(IRBlock* block) {
+        idom = block;
+    }
+
+    std::vector<IRBlock*>& GetPredecessors() {
+        return predecessors;
+    }
+    
+    std::list<IRInstruction>& GetInstructions() {
+        return instructions;
+    }
+
+    std::vector<IRBlock*>& GetDominanceFrontiers() {
+        return dominance_frontiers;
+    }
+
+    void AddDominanceFrontier(IRBlock* block) {
+        dominance_frontiers.push_back(block);
+    }
+
 private:
     void AddPredecessor(IRBlock* pred) {
         predecessors.push_back(pred);
@@ -85,9 +137,14 @@ private:
     std::list<IRInstruction> instructions;
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
+    std::vector<IRBlock*> dominance_frontiers;
+    IRBlock* idom = nullptr; // immediate dominator
     Termination termination = Termination::Null;
     IRInstruction* condition = nullptr;
     bool compiled = false;
+    bool visited = false;
+    u32 list_index = 0; // TODO: remove if unnecessary
+    u32 postorder_index = 0;
 };
 
 struct IRFunction {
@@ -105,7 +162,11 @@ struct IRFunction {
 
     IRBlock* GetBlockAt(u64 address);
 
-    IRBlock* GetBlock();
+    IRBlock* CreateBlock();
+
+    std::vector<IRBlock>& GetBlocks() {
+        return blocks;
+    }
 
 private:
     IRBlock* entry = nullptr;
