@@ -2,9 +2,22 @@
 
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/block.hpp"
+#include <tsl/robin_map.h>
 
-typedef struct ir_function_cache_s ir_function_cache_t;
+struct FunctionCache {
+    IRFunction* CreateOrGetFunctionAt(u64 address) {
+        auto it = map.find(address);
+        if (it != map.end()) {
+            return it->second;
+        }
 
-ir_function_cache_t* ir_function_cache_create();
-IRFunction* ir_function_cache_get_function(ir_function_cache_t* cache, u64 address);
-void ir_function_cache_destroy(ir_function_cache_t* cache);
+        storage.push_back(IRFunction(address));
+
+        IRFunction* function = &storage.back();
+        map[address] = function;
+        return function;
+    }
+private:
+    std::vector<IRFunction> storage {};
+    tsl::robin_map<u64, IRFunction*> map {};
+};

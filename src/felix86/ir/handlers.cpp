@@ -1,6 +1,6 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/state.hpp"
+#include "felix86/common/x86.hpp"
 #include "felix86/ir/emitter.hpp"
 #include "felix86/ir/handlers.hpp"
 #include "felix86/ir/instruction.hpp"
@@ -802,8 +802,8 @@ IR_HANDLE(rdtsc) { // rdtsc - 0x0f 0x31
     x86_operand_t rax_reg = get_full_reg(X86_REF_RAX);
     x86_operand_t rdx_reg = get_full_reg(X86_REF_RDX);
     IRInstruction* tuple = ir_emit_rdtsc(BLOCK);
-    IRInstruction* rax = ir_emit_tuple_extract(tuple, 0);
-    IRInstruction* rdx = ir_emit_tuple_extract(tuple, 1);
+    IRInstruction* rax = ir_emit_tuple_extract(BLOCK, tuple, 0);
+    IRInstruction* rdx = ir_emit_tuple_extract(BLOCK, tuple, 1);
     ir_emit_set_reg(BLOCK, &rax_reg, rax);
     ir_emit_set_reg(BLOCK, &rdx_reg, rdx);
 }
@@ -834,10 +834,10 @@ IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
     IRInstruction* rcx = ir_emit_get_reg(BLOCK, &rcx_reg);
 
     IRInstruction* tuple = ir_emit_cpuid(BLOCK, rax, rcx);
-    rax = ir_emit_tuple_extract(tuple, 0);
-    IRInstruction* rbx = ir_emit_tuple_extract(tuple, 1);
-    rcx = ir_emit_tuple_extract(tuple, 2);
-    IRInstruction* rdx = ir_emit_tuple_extract(tuple, 3);
+    rax = ir_emit_tuple_extract(BLOCK, tuple, 0);
+    IRInstruction* rbx = ir_emit_tuple_extract(BLOCK, tuple, 1);
+    rcx = ir_emit_tuple_extract(BLOCK, tuple, 2);
+    IRInstruction* rdx = ir_emit_tuple_extract(BLOCK, tuple, 3);
 
     ir_emit_set_reg(BLOCK, &rax_reg, rax);
     ir_emit_set_reg(BLOCK, &rbx_reg, rbx);

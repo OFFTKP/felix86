@@ -1,7 +1,7 @@
 #include <Zydis/Zydis.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/state.hpp"
+#include "felix86/common/x86.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/ir/emitter.hpp"

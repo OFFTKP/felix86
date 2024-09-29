@@ -1,13 +1,14 @@
 #include "felix86/common/log.hpp"
+#include "felix86/common/x86.hpp"
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/hle/cpuid.hpp"
 
 const char* manufacturer_id = "GenuineIntel";
 
-void felix86_cpuid(x86_thread_state_t* state) {
-    u32 eax = state->gprs[0];
+void felix86_cpuid(u64* peax, u64* pebx, u64* pecx, u64* pedx) {
+    u32 eax = *peax;
     u32 ebx = 0;
-    u32 ecx = 0;
+    u32 ecx = *pecx;
     u32 edx = 0;
     VERBOSE("CPUID: %08x", eax);
     switch (eax) {
@@ -91,8 +92,8 @@ void felix86_cpuid(x86_thread_state_t* state) {
     }
     }
 
-    state->gprs[X86_REF_RAX - X86_REF_RAX] = eax;
-    state->gprs[X86_REF_RBX - X86_REF_RAX] = ebx;
-    state->gprs[X86_REF_RCX - X86_REF_RAX] = ecx;
-    state->gprs[X86_REF_RDX - X86_REF_RAX] = edx;
+    *peax = eax;
+    *pebx = ebx;
+    *pecx = ecx;
+    *pedx = edx;
 }

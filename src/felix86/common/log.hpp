@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "felix86/common/global.hpp"
 #include "felix86/common/exit.hpp"
 
 #define ANSI_COLOR_RED "\x1b[31m"
@@ -11,12 +12,9 @@
 #define ANSI_COLOR_CYAN "\x1b[36m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
-extern bool verbose;
-extern bool quiet;
-
 #define LOG(format, ...)                                                                                                                                                                                                                                                                                   \
     do {                                                                                                                                                                                                                                                                                                   \
-        if (!quiet) {                                                                                                                                                                                                                                                                                      \
+        if (!g_quiet) {                                                                                                                                                                                                                                                                                      \
             printf(ANSI_COLOR_CYAN "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                                                                                                                                                                              \
         }                                                                                                                                                                                                                                                                                                  \
     } while (0)
@@ -27,13 +25,13 @@ extern bool quiet;
     } while (0)
 #define WARN(format, ...)                                                                                                                                                                                                                                                                                  \
     do {                                                                                                                                                                                                                                                                                                   \
-        if (!quiet) {                                                                                                                                                                                                                                                                                      \
+        if (!g_quiet) {                                                                                                                                                                                                                                                                                      \
             printf(ANSI_COLOR_YELLOW "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                                                                                                                                                                            \
         }                                                                                                                                                                                                                                                                                                  \
     } while (0)
 #define VERBOSE(format, ...)                                                                                                                                                                                                                                                                               \
     do {                                                                                                                                                                                                                                                                                                   \
-        if (verbose && !quiet) {                                                                                                                                                                                                                                                                           \
+        if (g_verbose && !g_quiet) {                                                                                                                                                                                                                                                                           \
             printf(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                                                                                                                                                                           \
         }                                                                                                                                                                                                                                                                                                  \
     } while (0)

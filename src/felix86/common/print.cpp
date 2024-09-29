@@ -73,10 +73,10 @@ void print_guest_register(x86_ref_e guest) {
         printf("rip");
         break;
     case X86_REF_FS:
-        printf("fs");
+        printf("fsbase");
         break;
     case X86_REF_GS:
-        printf("gs");
+        printf("gsbase");
         break;
     case X86_REF_XMM0 ... X86_REF_XMM15:
         printf("xmm%d", guest - X86_REF_XMM0);
@@ -87,9 +87,9 @@ void print_guest_register(x86_ref_e guest) {
     }
 }
 
-void print_state(x86_thread_state_t* state) {
+void print_state(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
-        print_guest_register(X86_REF_RAX + i);
+        print_guest_register((x86_ref_e)(X86_REF_RAX + i));
         printf(" = %016lx\n", state->gprs[i]);
     }
 

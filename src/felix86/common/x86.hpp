@@ -2,15 +2,20 @@
 
 #include "felix86/common/utility.hpp"
 
-typedef struct {
+struct XmmReg {
     u64 data[2];
-} xmm_reg_t;
+};
 
-typedef struct {
-    u64 gprs[16];
-    u64 rip;
-    u64 mm[8];
-    xmm_reg_t xmm[16];
+struct FpReg {
+    u64 mm;
+    u16 signexp;
+};
+
+struct ThreadState {
+    u64 gprs[16] = {};
+    u64 rip = 0;
+    FpReg fp[8];
+    XmmReg xmm[16];
     bool cf;
     bool pf;
     bool af;
@@ -20,12 +25,11 @@ typedef struct {
     u64 gsbase;
     u64 fsbase;
 
-    // The kernel normally maintains these for each thread, since we are emulating
-    // the kernel we need to maintain them ourselves
     u64 robust_futex_list;
     u64 set_child_tid;
     u64 clear_child_tid;
-} x86_thread_state_t;
+    u64 brk_current_address;
+};
 
 typedef union {
     struct {

@@ -1,13 +1,10 @@
 #pragma once
 
-#include "felix86/backend/block_metadata.hpp"
 #include "felix86/common/utility.hpp"
 
 #include <tsl/robin_map.h>
 
-#include <vector>
-
-struct BlockMetadata {
+struct CodeCache {
     void MapCompiledFunction(u64 address, void* function) {
         map[address] = function;
     }

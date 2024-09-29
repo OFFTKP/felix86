@@ -1,5 +1,5 @@
 #pragma once
 
-#include "felix86/felix86.hpp"
+#include "felix86/common/utility.hpp"
 
-void felix86_cpuid(x86_thread_state_t* state);
+void felix86_cpuid(u64* peax, u64* pebx, u64* pecx, u64* pedx);
