@@ -32,8 +32,8 @@ int match_host(int syscall) {
 #ifdef __x86_64__
     return syscall;
 #elif defined(__riscv) && __riscv_xlen == 64
-#define X(name, id)                                                                                \
-    case felix86_x86_64_##name:                                                                    \
+#define X(name, id)                                                                                                                                                                                                                                                                                        \
+    case felix86_x86_64_##name:                                                                                                                                                                                                                                                                            \
         return felix86_riscv64_##name;
     switch (syscall) {
 #include "felix86/hle/syscalls_x86_64.inc"
@@ -48,8 +48,8 @@ int match_host(int syscall) {
 
 const char* print_syscall_name(u64 syscall_number) {
     switch (syscall_number) {
-#define X(name, id)                                                                                \
-    case id:                                                                                       \
+#define X(name, id)                                                                                                                                                                                                                                                                                        \
+    case id:                                                                                                                                                                                                                                                                                               \
         return #name;
 #include "felix86/hle/syscalls_x86_64.inc"
 #undef X
@@ -140,8 +140,7 @@ void felix86_syscall(felix86_recompiler_t* recompiler, x86_thread_state_t* state
     }
     case felix86_x86_64_readlinkat: {
         felix86_fs_readlinkat(rdi, (const char*)rsi, (char*)rdx, r10);
-        VERBOSE("readlinkat(%d, %s, %s, %d) = %d", (int)rdi, (const char*)rsi, (char*)rdx, (int)r10,
-                (int)result);
+        VERBOSE("readlinkat(%d, %s, %s, %d) = %d", (int)rdi, (const char*)rsi, (char*)rdx, (int)r10, (int)result);
         break;
     }
     case felix86_x86_64_getrandom: {
@@ -155,8 +154,7 @@ void felix86_syscall(felix86_recompiler_t* recompiler, x86_thread_state_t* state
         break;
     }
     default: {
-        ERROR("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number),
-              syscall_number);
+        ERROR("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
         break;
     }
     }

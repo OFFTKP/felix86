@@ -11,8 +11,7 @@ struct allocator_s {
 
 allocator_t* allocator_create(u64 size) {
     allocator_t* allocator = (allocator_t*)malloc(sizeof(allocator_t));
-    allocator->memory =
-        (u8*)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    allocator->memory = (u8*)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (allocator->memory == MAP_FAILED) {
         ERROR("Failed to allocate memory");
         free(allocator);
@@ -43,8 +42,7 @@ u64 allocator_get_size(allocator_t* allocator) {
     return allocator->size - allocator->offset;
 }
 
-void allocator_protect(allocator_t* allocator, void* ptr, u64 size, bool read, bool write,
-                       bool execute) {
+void allocator_protect(allocator_t* allocator, void* ptr, u64 size, bool read, bool write, bool execute) {
     u8 prot = 0;
 
     if (read) {

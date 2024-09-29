@@ -14,32 +14,28 @@
 extern bool verbose;
 extern bool quiet;
 
-#define LOG(format, ...)                                                                           \
-    do {                                                                                           \
-        if (!quiet) {                                                                              \
-            printf(ANSI_COLOR_CYAN "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__,      \
-                   ##__VA_ARGS__);                                                                 \
-        }                                                                                          \
+#define LOG(format, ...)                                                                                                                                                                                                                                                                                   \
+    do {                                                                                                                                                                                                                                                                                                   \
+        if (!quiet) {                                                                                                                                                                                                                                                                                      \
+            printf(ANSI_COLOR_CYAN "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                                                                                                                                                                              \
+        }                                                                                                                                                                                                                                                                                                  \
     } while (0)
-#define ERROR(format, ...)                                                                         \
-    do {                                                                                           \
-        printf(ANSI_COLOR_RED "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__,           \
-               ##__VA_ARGS__);                                                                     \
-        felix86_exit(1);                                                                           \
+#define ERROR(format, ...)                                                                                                                                                                                                                                                                                 \
+    do {                                                                                                                                                                                                                                                                                                   \
+        printf(ANSI_COLOR_RED "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                                                                                                                                                                                   \
+        felix86_exit(1);                                                                                                                                                                                                                                                                                   \
     } while (0)
-#define WARN(format, ...)                                                                          \
-    do {                                                                                           \
-        if (!quiet) {                                                                              \
-            printf(ANSI_COLOR_YELLOW "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__,    \
-                   ##__VA_ARGS__);                                                                 \
-        }                                                                                          \
+#define WARN(format, ...)                                                                                                                                                                                                                                                                                  \
+    do {                                                                                                                                                                                                                                                                                                   \
+        if (!quiet) {                                                                                                                                                                                                                                                                                      \
+            printf(ANSI_COLOR_YELLOW "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                                                                                                                                                                            \
+        }                                                                                                                                                                                                                                                                                                  \
     } while (0)
-#define VERBOSE(format, ...)                                                                       \
-    do {                                                                                           \
-        if (verbose && !quiet) {                                                                   \
-            printf(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__,   \
-                   ##__VA_ARGS__);                                                                 \
-        }                                                                                          \
+#define VERBOSE(format, ...)                                                                                                                                                                                                                                                                               \
+    do {                                                                                                                                                                                                                                                                                                   \
+        if (verbose && !quiet) {                                                                                                                                                                                                                                                                           \
+            printf(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                                                                                                                                                                           \
+        }                                                                                                                                                                                                                                                                                                  \
     } while (0)
 
 void enable_verbose();

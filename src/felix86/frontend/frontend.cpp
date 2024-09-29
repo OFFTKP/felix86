@@ -105,8 +105,7 @@ instruction_metadata_t tertiary_table_38_f2[] = {
 #undef X
 };
 
-u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_b, bool rex_x,
-                bool rex_r, modrm_t modrm, sib_t sib) {
+u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_b, bool rex_x, bool rex_r, modrm_t modrm, sib_t sib) {
     operand_reg->type = X86_OP_TYPE_REGISTER;
     operand_reg->reg.ref = x86_ref_e(X86_REF_RAX + (modrm.reg | (rex_r << 3)));
 
@@ -434,8 +433,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
             sib.raw = data[index++];
         }
 
-        u8 displacement_size =
-            decode_modrm(&inst.operand_rm, &inst.operand_reg, rex_b, rex_x, rex_r, modrm, sib);
+        u8 displacement_size = decode_modrm(&inst.operand_rm, &inst.operand_reg, rex_b, rex_x, rex_r, modrm, sib);
         switch (displacement_size) {
         case 1: {
             inst.operand_rm.memory.displacement = (i64)(i32)(i8)data[index];
@@ -652,8 +650,7 @@ void frontend_compile_instruction(frontend_state_t* state) {
             /* length:          */ 15,
             /* instruction:     */ &zydis_inst))) {
         char* buffer = (char*)malloc(256);
-        snprintf(buffer, 256, "%016llx  %s",
-                 (unsigned long long)(state->current_address - g_base_address), zydis_inst.text);
+        snprintf(buffer, 256, "%016llx  %s", (unsigned long long)(state->current_address - g_base_address), zydis_inst.text);
         ir_emit_runtime_comment(state->current_block, buffer);
     }
 

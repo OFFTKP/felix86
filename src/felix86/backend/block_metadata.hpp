@@ -1,7 +1,7 @@
 #pragma once
 
-#include "felix86/common/utility.hpp"
 #include "felix86/backend/block_metadata.hpp"
+#include "felix86/common/utility.hpp"
 
 #include <tsl/robin_map.h>
 

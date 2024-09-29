@@ -56,8 +56,7 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
         ERROR("Failed to read ELF header from file %s", path);
     }
 
-    if (ehdr.e_ident[0] != 0x7F || ehdr.e_ident[1] != 'E' || ehdr.e_ident[2] != 'L' ||
-        ehdr.e_ident[3] != 'F') {
+    if (ehdr.e_ident[0] != 0x7F || ehdr.e_ident[1] != 'E' || ehdr.e_ident[2] != 'L' || ehdr.e_ident[3] != 'F') {
         ERROR("File %s is not an ELF file", path);
     }
 
@@ -91,11 +90,11 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
 
     if (ehdr.e_phnum == 0xFFFF) {
         ERROR("If the number of program headers is greater than or equal to PN_XNUM "
-             "(0xffff) "
-             "this member has the value PN_XNUM (0xffff). The actual number of "
-             "program header "
-             "table entries is contained in the sh_info field of the section "
-             "header at index 0");
+              "(0xffff) "
+              "this member has the value PN_XNUM (0xffff). The actual number of "
+              "program header "
+              "table entries is contained in the sh_info field of the section "
+              "header at index 0");
     }
 
     elf->entry = ehdr.e_entry;
@@ -159,16 +158,12 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
 
     u64 stack_hint = 0x7FFFFFFFF000 - max_stack_size;
 
-    elf->stack_base =
-        (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE,
-             MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+    elf->stack_base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
     if (elf->stack_base == MAP_FAILED) {
         ERROR("Failed to allocate stack for ELF file %s", path);
     }
 
-    elf->stack_pointer =
-        (u8*)mmap(elf->stack_base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
-             MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
+    elf->stack_pointer = (u8*)mmap(elf->stack_base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
     if (elf->stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack for ELF file %s", path);
     }
@@ -214,23 +209,20 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
             u64 segment_base = base_address + PAGE_START(phdr->p_vaddr);
             u64 segment_size = phdr->p_filesz + PAGE_OFFSET(phdr->p_vaddr);
 
-            u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE,
-                              MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+            u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
             if (addr == MAP_FAILED) {
                 ERROR("Failed to allocate memory for segment in file %s", path);
             } else {
-                VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)",
-                        (void*)phdr->p_vaddr, addr, addr + segment_size, phdr->p_offset);
+                VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)", (void*)phdr->p_vaddr, addr, addr + segment_size, phdr->p_offset);
                 if (addr != (void*)segment_base) {
                     ERROR("Failed to allocate memory at requested address for segment in "
-                         "file %s",
-                         path);
+                          "file %s",
+                          path);
                 }
             }
 
             if (phdr->p_filesz > 0) {
-                result = fread(file, (void*)(base_address + phdr->p_vaddr), phdr->p_offset,
-                               phdr->p_filesz, user_data);
+                result = fread(file, (void*)(base_address + phdr->p_vaddr), phdr->p_offset, phdr->p_filesz, user_data);
                 if (!result) {
                     ERROR("Failed to read segment from file %s", path);
                 }
@@ -250,8 +242,7 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
                 }
 
                 if (bss_page_start != bss_page_end) {
-                    u8* bss = (u8*)mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot,
-                                     MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+                    u8* bss = (u8*)mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     if (bss == MAP_FAILED) {
                         ERROR("Failed to allocate memory for BSS in file %s", path);
                     }
@@ -273,8 +264,7 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
 
     if (!is_interpreter) {
         const u64 brk_size = 8 * 1024 * 1024;
-        elf->brk_base = (u8*)mmap((void*)PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE,
-                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        elf->brk_base = (u8*)mmap((void*)PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if (elf->brk_base == MAP_FAILED) {
             ERROR("Failed to allocate memory for brk in file %s", path);
         }

@@ -242,33 +242,59 @@ struct IRInstruction {
 
     bool IsSameExpression(const IRInstruction& other) const;
 
-    IRType GetType() const { return returnType; }
+    IRType GetType() const {
+        return returnType;
+    }
 
-    IROpcode GetOpcode() const { return opcode; }
+    IROpcode GetOpcode() const {
+        return opcode;
+    }
 
-    void AddUse() { uses++; }
+    void AddUse() {
+        uses++;
+    }
 
     void Invalidate();
 
-    const Operands& AsOperands() const { return std::get<Operands>(expression); }
+    const Operands& AsOperands() const {
+        return std::get<Operands>(expression);
+    }
 
-    const GetGuest& AsGetGuest() const { return std::get<GetGuest>(expression); }
+    const GetGuest& AsGetGuest() const {
+        return std::get<GetGuest>(expression);
+    }
 
-    const SetGuest& AsSetGuest() const { return std::get<SetGuest>(expression); }
+    const SetGuest& AsSetGuest() const {
+        return std::get<SetGuest>(expression);
+    }
 
-    const Immediate& AsImmediate() const { return std::get<Immediate>(expression); }
+    const Immediate& AsImmediate() const {
+        return std::get<Immediate>(expression);
+    }
 
-    const Phi& AsPhi() const { return std::get<Phi>(expression); }
+    const Phi& AsPhi() const {
+        return std::get<Phi>(expression);
+    }
 
-    const Comment& AsComment() const { return std::get<Comment>(expression); }
+    const Comment& AsComment() const {
+        return std::get<Comment>(expression);
+    }
 
-    const TupleAccess& AsTupleAccess() const { return std::get<TupleAccess>(expression); }
+    const TupleAccess& AsTupleAccess() const {
+        return std::get<TupleAccess>(expression);
+    }
 
-    Operands& AsOperands() { return std::get<Operands>(expression); }
+    Operands& AsOperands() {
+        return std::get<Operands>(expression);
+    }
 
-    Phi& AsPhi() { return std::get<Phi>(expression); }
+    Phi& AsPhi() {
+        return std::get<Phi>(expression);
+    }
 
-    void SetName(u32 name) { this->name = name; }
+    void SetName(u32 name) {
+        this->name = name;
+    }
 
     void ReplaceWith(IRInstruction&& other) {
         Invalidate();

@@ -13,8 +13,7 @@
 static std::unordered_map<u32, u64> temps;
 static std::unordered_map<u32, xmm_reg_t> xmm_temps;
 
-ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_t* entry,
-                                     ir_instruction_t* instruction, x86_thread_state_t* state) {
+ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_t* entry, ir_instruction_t* instruction, x86_thread_state_t* state) {
     switch (instruction->opcode) {
     case IR_NULL: {
         ERROR("Interpreting null, this should not happen\n");
@@ -131,73 +130,59 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         break;
     }
     case IR_ADD: {
-        temps[instruction->name] =
-            temps[instruction->operands.args[0]->name] + temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] + temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_SUB: {
-        temps[instruction->name] =
-            temps[instruction->operands.args[0]->name] - temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] - temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_AND: {
-        temps[instruction->name] =
-            temps[instruction->operands.args[0]->name] & temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] & temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_OR: {
-        temps[instruction->name] =
-            temps[instruction->operands.args[0]->name] | temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] | temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_XOR: {
-        temps[instruction->name] =
-            temps[instruction->operands.args[0]->name] ^ temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] ^ temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_SHIFT_LEFT: {
-        temps[instruction->name] = temps[instruction->operands.args[0]->name]
-                                   << temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] << temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_SHIFT_RIGHT: {
-        temps[instruction->name] = temps[instruction->operands.args[0]->name] >>
-                                   temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] >> temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_SHIFT_RIGHT_ARITHMETIC: {
-        temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] >>
-                                   temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] >> temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_EQUAL: {
-        temps[instruction->name] = temps[instruction->operands.args[0]->name] ==
-                                   temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] == temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_NOT_EQUAL: {
-        temps[instruction->name] = temps[instruction->operands.args[0]->name] !=
-                                   temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] != temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_GREATER_THAN_SIGNED: {
-        temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] >
-                                   (i64)temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] > (i64)temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_LESS_THAN_SIGNED: {
-        temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] <
-                                   (i64)temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] < (i64)temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_GREATER_THAN_UNSIGNED: {
-        temps[instruction->name] =
-            temps[instruction->operands.args[0]->name] > temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] > temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_LESS_THAN_UNSIGNED: {
-        temps[instruction->name] =
-            temps[instruction->operands.args[0]->name] < temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = temps[instruction->operands.args[0]->name] < temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_LEA: {
@@ -226,35 +211,28 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
     }
     case IR_READ_XMMWORD: {
         xmm_temps[instruction->name].data[0] = *(u64*)(temps[instruction->operands.args[0]->name]);
-        xmm_temps[instruction->name].data[1] =
-            *(u64*)(temps[instruction->operands.args[0]->name] + 8);
+        xmm_temps[instruction->name].data[1] = *(u64*)(temps[instruction->operands.args[0]->name] + 8);
         break;
     }
     case IR_WRITE_BYTE: {
-        *(u8*)(temps[instruction->operands.args[0]->name]) =
-            temps[instruction->operands.args[1]->name];
+        *(u8*)(temps[instruction->operands.args[0]->name]) = temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_WRITE_WORD: {
-        *(u16*)(temps[instruction->operands.args[0]->name]) =
-            temps[instruction->operands.args[1]->name];
+        *(u16*)(temps[instruction->operands.args[0]->name]) = temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_WRITE_DWORD: {
-        *(u32*)(temps[instruction->operands.args[0]->name]) =
-            temps[instruction->operands.args[1]->name];
+        *(u32*)(temps[instruction->operands.args[0]->name]) = temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_WRITE_QWORD: {
-        *(u64*)(temps[instruction->operands.args[0]->name]) =
-            temps[instruction->operands.args[1]->name];
+        *(u64*)(temps[instruction->operands.args[0]->name]) = temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_WRITE_XMMWORD: {
-        *(u64*)(temps[instruction->operands.args[0]->name]) =
-            xmm_temps[instruction->operands.args[1]->name].data[0];
-        *(u64*)(temps[instruction->operands.args[0]->name] + 8) =
-            xmm_temps[instruction->operands.args[1]->name].data[1];
+        *(u64*)(temps[instruction->operands.args[0]->name]) = xmm_temps[instruction->operands.args[1]->name].data[0];
+        *(u64*)(temps[instruction->operands.args[0]->name] + 8) = xmm_temps[instruction->operands.args[1]->name].data[1];
         break;
     }
     case IR_START_OF_BLOCK: {
@@ -325,8 +303,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
     case IR_SET_GUEST: {
         switch (instruction->set_guest.ref) {
         case X86_REF_RAX ... X86_REF_R15: {
-            state->gprs[instruction->set_guest.ref - X86_REF_RAX] =
-                temps[instruction->set_guest.source->name];
+            state->gprs[instruction->set_guest.ref - X86_REF_RAX] = temps[instruction->set_guest.source->name];
             break;
         }
         case X86_REF_CF: {
@@ -377,8 +354,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
             break;
         }
         case X86_REF_XMM0 ... X86_REF_XMM15: {
-            state->xmm[instruction->set_guest.ref - X86_REF_XMM0] =
-                xmm_temps[instruction->set_guest.source->name];
+            state->xmm[instruction->set_guest.ref - X86_REF_XMM0] = xmm_temps[instruction->set_guest.source->name];
             break;
         }
         default: {
@@ -589,8 +565,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         break;
     }
     case IR_IDIV64: {
-        __int128_t dividend =
-            ((__int128_t)(state->gprs[X86_REF_RDX]) << 64) | state->gprs[X86_REF_RAX];
+        __int128_t dividend = ((__int128_t)(state->gprs[X86_REF_RDX]) << 64) | state->gprs[X86_REF_RAX];
         __int128_t divisor = temps[instruction->operands.args[0]->name];
         if (divisor == 0) {
             ERROR("Division by zero");
@@ -653,8 +628,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         break;
     }
     case IR_UDIV64: {
-        __uint128_t dividend =
-            ((__uint128_t)(state->gprs[X86_REF_RDX]) << 64) | state->gprs[X86_REF_RAX];
+        __uint128_t dividend = ((__uint128_t)(state->gprs[X86_REF_RDX]) << 64) | state->gprs[X86_REF_RAX];
         __uint128_t divisor = temps[instruction->operands.args[0]->name];
         if (divisor == 0) {
             ERROR("Division by zero");
@@ -679,8 +653,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
         break;
     }
     case IR_IMUL: {
-        temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] *
-                                   (i64)temps[instruction->operands.args[1]->name];
+        temps[instruction->name] = (i64)temps[instruction->operands.args[0]->name] * (i64)temps[instruction->operands.args[1]->name];
         break;
     }
     case IR_VECTOR_PACKED_SHIFT_RIGHT: {
@@ -800,8 +773,7 @@ ir_block_t* ir_interpret_instruction(felix86_recompiler_t* recompiler, ir_block_
     return NULL;
 }
 
-extern "C" void ir_interpret_function(felix86_recompiler_t* recompiler, ir_function_t* function,
-                                      x86_thread_state_t* state) {
+extern "C" void ir_interpret_function(felix86_recompiler_t* recompiler, ir_function_t* function, x86_thread_state_t* state) {
     temps.clear();
     xmm_temps.clear();
 

@@ -5,8 +5,7 @@
 
 typedef void (*ir_handle_fn_t)(frontend_state_t* state, x86_instruction_t* inst);
 
-#define X(opcode, name, modrm, immsize)                                                            \
-    void ir_handle_##name(frontend_state_t* state, x86_instruction_t* inst);
+#define X(opcode, name, modrm, immsize) void ir_handle_##name(frontend_state_t* state, x86_instruction_t* inst);
 #include "felix86/frontend/primary.inc"
 #include "felix86/frontend/secondary.inc"
 #include "felix86/frontend/secondary_66.inc"

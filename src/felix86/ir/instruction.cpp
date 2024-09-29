@@ -81,133 +81,133 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
 
 IRType GetTypeFromOpcode(IROpcode opcode) {
     switch (opcode) {
-        case IROpcode::IR_TUPLE_EXTRACT:
-        case IROpcode::IR_MOV: 
-        case IROpcode::IR_LOAD_GUEST_FROM_MEMORY:
-        case IROpcode::IR_STORE_GUEST_TO_MEMORY:
-        case IROpcode::IR_PHI:
-        case IROpcode::IR_GET_GUEST:
-        case IROpcode::IR_SET_GUEST: {
-            ERROR("Should not be used in GetTypeFromOpcode");
-            return IRType::Void;
-        }
-        case IROpcode::IR_NULL:
-        case IROpcode::IR_START_OF_BLOCK:
-        case IROpcode::IR_COMMENT: {
-            return IRType::Void;
-        }
-        case IROpcode::IR_SELECT:
-        case IROpcode::IR_IMMEDIATE:
-        case IROpcode::IR_POPCOUNT:
-        case IROpcode::IR_ADD:
-        case IROpcode::IR_SUB:
-        case IROpcode::IR_CLZ:
-        case IROpcode::IR_CTZ:
-        case IROpcode::IR_SHIFT_LEFT:
-        case IROpcode::IR_SHIFT_RIGHT:
-        case IROpcode::IR_SHIFT_RIGHT_ARITHMETIC:
-        case IROpcode::IR_LEFT_ROTATE8:
-        case IROpcode::IR_LEFT_ROTATE16:
-        case IROpcode::IR_LEFT_ROTATE32:
-        case IROpcode::IR_LEFT_ROTATE64:
-        case IROpcode::IR_AND:
-        case IROpcode::IR_OR:
-        case IROpcode::IR_XOR:
-        case IROpcode::IR_NOT:
-        case IROpcode::IR_LEA:
-        case IROpcode::IR_EQUAL:
-        case IROpcode::IR_NOT_EQUAL:
-        case IROpcode::IR_GREATER_THAN_SIGNED:
-        case IROpcode::IR_LESS_THAN_SIGNED:
-        case IROpcode::IR_GREATER_THAN_UNSIGNED:
-        case IROpcode::IR_LESS_THAN_UNSIGNED:
-        case IROpcode::IR_READ_BYTE:
-        case IROpcode::IR_READ_WORD:
-        case IROpcode::IR_READ_DWORD:
-        case IROpcode::IR_READ_QWORD:
-        case IROpcode::IR_SYSCALL:
-        case IROpcode::IR_INTEGER_FROM_VECTOR:
-        case IROpcode::IR_EXTRACT_INTEGER_FROM_VECTOR:
-        case IROpcode::IR_SEXT8:
-        case IROpcode::IR_SEXT16:
-        case IROpcode::IR_SEXT32: {
-            return IRType::Integer64;
-        }
-        case IROpcode::IR_IMUL64:
-        case IROpcode::IR_IDIV8:
-        case IROpcode::IR_IDIV16:
-        case IROpcode::IR_IDIV32:
-        case IROpcode::IR_IDIV64:
-        case IROpcode::IR_UDIV8:
-        case IROpcode::IR_UDIV16:
-        case IROpcode::IR_UDIV32:
-        case IROpcode::IR_UDIV64:
-        case IROpcode::IR_RDTSC: {
-            return IRType::TupleTwoInteger64;
-        }
-        case IROpcode::IR_CPUID: {
-            return IRType::TupleFourInteger64;
-        }
-        case IROpcode::IR_READ_XMMWORD:
-        case IROpcode::IR_VECTOR_FROM_INTEGER:
-        case IROpcode::IR_VECTOR_UNPACK_BYTE_LOW:
-        case IROpcode::IR_VECTOR_UNPACK_WORD_LOW:
-        case IROpcode::IR_VECTOR_UNPACK_DWORD_LOW:
-        case IROpcode::IR_VECTOR_UNPACK_QWORD_LOW:
-        case IROpcode::IR_VECTOR_PACKED_AND:
-        case IROpcode::IR_VECTOR_PACKED_OR:
-        case IROpcode::IR_VECTOR_PACKED_XOR:
-        case IROpcode::IR_VECTOR_PACKED_SHIFT_RIGHT:
-        case IROpcode::IR_VECTOR_PACKED_SHIFT_LEFT:
-        case IROpcode::IR_VECTOR_PACKED_SUB_BYTE:
-        case IROpcode::IR_VECTOR_PACKED_ADD_QWORD:
-        case IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_BYTE:
-        case IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_WORD:
-        case IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_DWORD:
-        case IROpcode::IR_VECTOR_PACKED_SHUFFLE_DWORD:
-        case IROpcode::IR_VECTOR_PACKED_MOVE_BYTE_MASK:
-        case IROpcode::IR_VECTOR_PACKED_MIN_BYTE:
-        case IROpcode::IR_VECTOR_PACKED_COMPARE_IMPLICIT_STRING_INDEX: 
-        case IROpcode::IR_VECTOR_ZEXT64:
-        case IROpcode::IR_INSERT_INTEGER_TO_VECTOR: {
-            return IRType::Vector128;
-        }
-        case IROpcode::IR_WRITE_BYTE:
-        case IROpcode::IR_WRITE_WORD:
-        case IROpcode::IR_WRITE_DWORD:
-        case IROpcode::IR_WRITE_QWORD:
-        case IROpcode::IR_WRITE_XMMWORD: {
-            return IRType::Void;
-        }
-        default: {
-            ERROR("Unimplemented opcode: %d", static_cast<u8>(opcode));
-            return IRType::Void;
-        }
+    case IROpcode::IR_TUPLE_EXTRACT:
+    case IROpcode::IR_MOV:
+    case IROpcode::IR_LOAD_GUEST_FROM_MEMORY:
+    case IROpcode::IR_STORE_GUEST_TO_MEMORY:
+    case IROpcode::IR_PHI:
+    case IROpcode::IR_GET_GUEST:
+    case IROpcode::IR_SET_GUEST: {
+        ERROR("Should not be used in GetTypeFromOpcode");
+        return IRType::Void;
+    }
+    case IROpcode::IR_NULL:
+    case IROpcode::IR_START_OF_BLOCK:
+    case IROpcode::IR_COMMENT: {
+        return IRType::Void;
+    }
+    case IROpcode::IR_SELECT:
+    case IROpcode::IR_IMMEDIATE:
+    case IROpcode::IR_POPCOUNT:
+    case IROpcode::IR_ADD:
+    case IROpcode::IR_SUB:
+    case IROpcode::IR_CLZ:
+    case IROpcode::IR_CTZ:
+    case IROpcode::IR_SHIFT_LEFT:
+    case IROpcode::IR_SHIFT_RIGHT:
+    case IROpcode::IR_SHIFT_RIGHT_ARITHMETIC:
+    case IROpcode::IR_LEFT_ROTATE8:
+    case IROpcode::IR_LEFT_ROTATE16:
+    case IROpcode::IR_LEFT_ROTATE32:
+    case IROpcode::IR_LEFT_ROTATE64:
+    case IROpcode::IR_AND:
+    case IROpcode::IR_OR:
+    case IROpcode::IR_XOR:
+    case IROpcode::IR_NOT:
+    case IROpcode::IR_LEA:
+    case IROpcode::IR_EQUAL:
+    case IROpcode::IR_NOT_EQUAL:
+    case IROpcode::IR_GREATER_THAN_SIGNED:
+    case IROpcode::IR_LESS_THAN_SIGNED:
+    case IROpcode::IR_GREATER_THAN_UNSIGNED:
+    case IROpcode::IR_LESS_THAN_UNSIGNED:
+    case IROpcode::IR_READ_BYTE:
+    case IROpcode::IR_READ_WORD:
+    case IROpcode::IR_READ_DWORD:
+    case IROpcode::IR_READ_QWORD:
+    case IROpcode::IR_SYSCALL:
+    case IROpcode::IR_INTEGER_FROM_VECTOR:
+    case IROpcode::IR_EXTRACT_INTEGER_FROM_VECTOR:
+    case IROpcode::IR_SEXT8:
+    case IROpcode::IR_SEXT16:
+    case IROpcode::IR_SEXT32: {
+        return IRType::Integer64;
+    }
+    case IROpcode::IR_IMUL64:
+    case IROpcode::IR_IDIV8:
+    case IROpcode::IR_IDIV16:
+    case IROpcode::IR_IDIV32:
+    case IROpcode::IR_IDIV64:
+    case IROpcode::IR_UDIV8:
+    case IROpcode::IR_UDIV16:
+    case IROpcode::IR_UDIV32:
+    case IROpcode::IR_UDIV64:
+    case IROpcode::IR_RDTSC: {
+        return IRType::TupleTwoInteger64;
+    }
+    case IROpcode::IR_CPUID: {
+        return IRType::TupleFourInteger64;
+    }
+    case IROpcode::IR_READ_XMMWORD:
+    case IROpcode::IR_VECTOR_FROM_INTEGER:
+    case IROpcode::IR_VECTOR_UNPACK_BYTE_LOW:
+    case IROpcode::IR_VECTOR_UNPACK_WORD_LOW:
+    case IROpcode::IR_VECTOR_UNPACK_DWORD_LOW:
+    case IROpcode::IR_VECTOR_UNPACK_QWORD_LOW:
+    case IROpcode::IR_VECTOR_PACKED_AND:
+    case IROpcode::IR_VECTOR_PACKED_OR:
+    case IROpcode::IR_VECTOR_PACKED_XOR:
+    case IROpcode::IR_VECTOR_PACKED_SHIFT_RIGHT:
+    case IROpcode::IR_VECTOR_PACKED_SHIFT_LEFT:
+    case IROpcode::IR_VECTOR_PACKED_SUB_BYTE:
+    case IROpcode::IR_VECTOR_PACKED_ADD_QWORD:
+    case IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_BYTE:
+    case IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_WORD:
+    case IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_DWORD:
+    case IROpcode::IR_VECTOR_PACKED_SHUFFLE_DWORD:
+    case IROpcode::IR_VECTOR_PACKED_MOVE_BYTE_MASK:
+    case IROpcode::IR_VECTOR_PACKED_MIN_BYTE:
+    case IROpcode::IR_VECTOR_PACKED_COMPARE_IMPLICIT_STRING_INDEX:
+    case IROpcode::IR_VECTOR_ZEXT64:
+    case IROpcode::IR_INSERT_INTEGER_TO_VECTOR: {
+        return IRType::Vector128;
+    }
+    case IROpcode::IR_WRITE_BYTE:
+    case IROpcode::IR_WRITE_WORD:
+    case IROpcode::IR_WRITE_DWORD:
+    case IROpcode::IR_WRITE_QWORD:
+    case IROpcode::IR_WRITE_XMMWORD: {
+        return IRType::Void;
+    }
+    default: {
+        ERROR("Unimplemented opcode: %d", static_cast<u8>(opcode));
+        return IRType::Void;
+    }
     }
 }
 
 IRType GetTypeFromTuple(IRType type, u8 index) {
     switch (type) {
-        case IRType::TupleFourInteger64: {
-            if (index < 4) {
-                return IRType::Integer64;
-            } else {
-                ERROR("Invalid index for TupleFourInteger64: %d", index);
-                return IRType::Void;
-            }
-        }
-        case IRType::TupleTwoInteger64: {
-            if (index < 2) {
-                return IRType::Integer64;
-            } else {
-                ERROR("Invalid index for TupleTwoInteger64: %d", index);
-                return IRType::Void;
-            }
-        }
-        default: {
-            ERROR("Invalid type for tuple: %d", static_cast<u8>(type));
+    case IRType::TupleFourInteger64: {
+        if (index < 4) {
+            return IRType::Integer64;
+        } else {
+            ERROR("Invalid index for TupleFourInteger64: %d", index);
             return IRType::Void;
         }
+    }
+    case IRType::TupleTwoInteger64: {
+        if (index < 2) {
+            return IRType::Integer64;
+        } else {
+            ERROR("Invalid index for TupleTwoInteger64: %d", index);
+            return IRType::Void;
+        }
+    }
+    default: {
+        ERROR("Invalid type for tuple: %d", static_cast<u8>(type));
+        return IRType::Void;
+    }
     }
 }
 

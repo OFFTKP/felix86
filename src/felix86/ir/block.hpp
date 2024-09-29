@@ -115,7 +115,7 @@ struct IRBlock {
     std::vector<IRBlock*>& GetPredecessors() {
         return predecessors;
     }
-    
+
     std::list<IRInstruction>& GetInstructions() {
         return instructions;
     }

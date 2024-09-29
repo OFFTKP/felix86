@@ -30,8 +30,7 @@ void print_one_op(ir_instruction_t* instruction, const char* op) {
 }
 
 void print_two_op(ir_instruction_t* instruction, const char* op) {
-    printf(VAR EQUALS VAR OP VAR, instruction->name, instruction->operands.args[0]->name, op,
-           instruction->operands.args[1]->name);
+    printf(VAR EQUALS VAR OP VAR, instruction->name, instruction->operands.args[0]->name, op, instruction->operands.args[1]->name);
 }
 
 void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
@@ -45,8 +44,7 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
         break;
     }
     case IR_IMMEDIATE: {
-        printf(VAR EQUALS IMM, instruction->name,
-               (unsigned long long)instruction->load_immediate.immediate);
+        printf(VAR EQUALS IMM, instruction->name, (unsigned long long)instruction->load_immediate.immediate);
         break;
     }
     case IR_ADD: {
@@ -126,9 +124,7 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
         break;
     }
     case IR_LEA: {
-        printf("t%d = ptr[t%d + t%d * t%d + t%d]", instruction->name,
-               instruction->operands.args[0]->name, instruction->operands.args[1]->name,
-               instruction->operands.args[2]->name, instruction->operands.args[3]->name);
+        printf("t%d = ptr[t%d + t%d * t%d + t%d]", instruction->name, instruction->operands.args[0]->name, instruction->operands.args[1]->name, instruction->operands.args[2]->name, instruction->operands.args[3]->name);
         break;
     }
     case IR_GET_GUEST: {
@@ -163,23 +159,19 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
         break;
     }
     case IR_WRITE_BYTE: {
-        printf("byte[t%d] = t%d", instruction->operands.args[0]->name,
-               instruction->operands.args[1]->name);
+        printf("byte[t%d] = t%d", instruction->operands.args[0]->name, instruction->operands.args[1]->name);
         break;
     }
     case IR_WRITE_WORD: {
-        printf("word[t%d] = t%d", instruction->operands.args[0]->name,
-               instruction->operands.args[1]->name);
+        printf("word[t%d] = t%d", instruction->operands.args[0]->name, instruction->operands.args[1]->name);
         break;
     }
     case IR_WRITE_DWORD: {
-        printf("dword[t%d] = t%d", instruction->operands.args[0]->name,
-               instruction->operands.args[1]->name);
+        printf("dword[t%d] = t%d", instruction->operands.args[0]->name, instruction->operands.args[1]->name);
         break;
     }
     case IR_WRITE_QWORD: {
-        printf("qword[t%d] = t%d", instruction->operands.args[0]->name,
-               instruction->operands.args[1]->name);
+        printf("qword[t%d] = t%d", instruction->operands.args[0]->name, instruction->operands.args[1]->name);
         break;
     }
     case IR_SYSCALL: {
@@ -216,9 +208,7 @@ void ir_print_instruction(ir_instruction_t* instruction, ir_block_t* block) {
         break;
     }
     case IR_JUMP_CONDITIONAL: {
-        printf("jump t%d ? %p : %p", instruction->jump_conditional.condition->name,
-               instruction->jump_conditional.target_true,
-               instruction->jump_conditional.target_false);
+        printf("jump t%d ? %p : %p", instruction->jump_conditional.condition->name, instruction->jump_conditional.target_true, instruction->jump_conditional.target_false);
         break;
     }
     default: {

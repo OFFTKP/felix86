@@ -184,12 +184,7 @@ void loader_run_elf(loader_config_t* config) {
         return;
     }
 
-    felix86_recompiler_config_t fconfig = {.testing = false,
-                                           .optimize = !config->dont_optimize,
-                                           .print_blocks = config->print_blocks,
-                                           .use_interpreter = config->use_interpreter,
-                                           .base_address = (u64)elf->program,
-                                           .brk_base_address = (u64)elf->brk_base};
+    felix86_recompiler_config_t fconfig = {.testing = false, .optimize = !config->dont_optimize, .print_blocks = config->print_blocks, .use_interpreter = config->use_interpreter, .base_address = (u64)elf->program, .brk_base_address = (u64)elf->brk_base};
     felix86_recompiler_t* recompiler = felix86_recompiler_create(&fconfig);
     felix86_set_guest(recompiler, X86_REF_RIP, entry);
     felix86_set_guest(recompiler, X86_REF_RSP, rsp);

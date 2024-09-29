@@ -13,15 +13,14 @@ const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issue
 static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "BINARY [ARGS...]";
 
-static struct argp_option options[] = {
-    {"verbose", 'v', 0, 0, "Produce verbose output"},
-    {"quiet", 'q', 0, 0, "Don't produce any output"},
-    {"interpreter", 'i', 0, 0, "Run in interpreter mode"},
-    {"host-envs", 'e', 0, 0, "Pass host environment variables to the guest"},
-    {"print-functions", 'P', 0, 0, "Print functions as they compile"},
-    {"dont-optimize", 'O', 0, 0, "Don't run IR optimizations"},
-    {"squashfs-path", 'p', "PATH", 0, "Path to the rootfs squashfs image"},
-    {0}};
+static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose output"},
+                                       {"quiet", 'q', 0, 0, "Don't produce any output"},
+                                       {"interpreter", 'i', 0, 0, "Run in interpreter mode"},
+                                       {"host-envs", 'e', 0, 0, "Pass host environment variables to the guest"},
+                                       {"print-functions", 'P', 0, 0, "Print functions as they compile"},
+                                       {"dont-optimize", 'O', 0, 0, "Don't run IR optimizations"},
+                                       {"squashfs-path", 'p', "PATH", 0, "Path to the rootfs squashfs image"},
+                                       {0}};
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     loader_config_t* config = state->input;

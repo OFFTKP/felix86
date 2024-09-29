@@ -160,8 +160,7 @@ static void place_phi_functions(IRFunction* function) {
             // Make sure it wasn't already added in this list of instructions
             if (inst.GetOpcode() == IROpcode::IR_SET_GUEST) {
                 x86_ref_e ref = inst.AsSetGuest().ref;
-                if (assignments[ref].empty() ||
-                    assignments[ref].back() != block) {
+                if (assignments[ref].empty() || assignments[ref].back() != block) {
                     assignments[ref].push_back(block);
                 }
             }
@@ -213,8 +212,7 @@ int which_pred(IRBlock* pred, IRBlock* block) {
     return -1;
 }
 
-static void search(IRDominatorTreeNode* node,
-                   std::array<std::stack<IRInstruction*>, X86_REF_COUNT>& stacks) {
+static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstruction*>, X86_REF_COUNT>& stacks) {
     IRBlock* block = node->block;
     std::array<int, X86_REF_COUNT> pop_count = {};
     for (auto it = block->GetInstructions().begin(); it != block->GetInstructions().end();) {
@@ -226,7 +224,7 @@ static void search(IRDominatorTreeNode* node,
             pop_count[ref]++;
         } else if (inst.GetOpcode() == IROpcode::IR_GET_GUEST) {
             IRInstruction* def = stacks[inst.AsGetGuest().ref].top();
-            
+
             IRInstruction new_inst(IROpcode::IR_MOV, {def});
             inst.ReplaceWith(std::move(new_inst));
         }
@@ -347,8 +345,7 @@ void ir_ssa_pass(IRFunction* function) {
         IRBlock* block = &blocks[i];
         dominator_tree[i].block = block;
         if (block->GetImmediateDominator()) {
-            dominator_tree[block->GetImmediateDominator()->GetIndex()].children.push_back(
-                &dominator_tree[i]);
+            dominator_tree[block->GetImmediateDominator()->GetIndex()].children.push_back(&dominator_tree[i]);
         }
     }
 
