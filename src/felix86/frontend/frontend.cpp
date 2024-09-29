@@ -728,4 +728,5 @@ void frontend_compile_block(IRFunction* function, IRBlock* block) {
 void frontend_compile_function(IRFunction* function, u64 address) {
     IRBlock* block = function->GetBlockAt(address);
     frontend_compile_block(function, block);
+    function->SetCompiled();
 }

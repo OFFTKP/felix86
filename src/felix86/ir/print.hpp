@@ -2,5 +2,5 @@
 
 #include "felix86/ir/block.hpp"
 
-void ir_print_block(ir_block_t* block);
-void ir_print_function_graphviz(ir_function_t* function);
+void ir_print_block(IRBlock* block);
+void ir_print_function_graphviz(IRFunction* function);

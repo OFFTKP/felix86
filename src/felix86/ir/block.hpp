@@ -105,11 +105,11 @@ struct IRBlock {
     }
 
     IRBlock* GetImmediateDominator() {
-        return idom;
+        return immediate_dominator;
     }
 
     void SetImmediateDominator(IRBlock* block) {
-        idom = block;
+        immediate_dominator = block;
     }
 
     std::vector<IRBlock*>& GetPredecessors() {
@@ -120,12 +120,20 @@ struct IRBlock {
         return instructions;
     }
 
+    std::vector<IRInstruction>& GetPhiInstructions() {
+        return phi_instructions;
+    }
+
     std::vector<IRBlock*>& GetDominanceFrontiers() {
         return dominance_frontiers;
     }
 
     void AddDominanceFrontier(IRBlock* block) {
         dominance_frontiers.push_back(block);
+    }
+
+    void AddPhi(IRInstruction&& instr) {
+        phi_instructions.push_back(std::move(instr));
     }
 
 private:
@@ -135,15 +143,16 @@ private:
 
     u64 start_address = IR_NO_ADDRESS;
     std::list<IRInstruction> instructions;
+    std::vector<IRInstruction> phi_instructions;
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
     std::vector<IRBlock*> dominance_frontiers;
-    IRBlock* idom = nullptr; // immediate dominator
+    IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
     IRInstruction* condition = nullptr;
     bool compiled = false;
     bool visited = false;
-    u32 list_index = 0; // TODO: remove if unnecessary
+    u32 list_index = 0;
     u32 postorder_index = 0;
 };
 
@@ -168,9 +177,18 @@ struct IRFunction {
         return blocks;
     }
 
+    bool IsCompiled() {
+        return compiled;
+    }
+
+    void SetCompiled() {
+        compiled = true;
+    }
+
 private:
     IRBlock* entry = nullptr;
     IRBlock* exit = nullptr;
     std::vector<IRBlock> blocks;
     tsl::robin_map<u64, IRBlock*> block_map;
+    bool compiled = false;
 };

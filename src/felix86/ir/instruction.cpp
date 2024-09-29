@@ -81,7 +81,7 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
 
 IRType GetTypeFromOpcode(IROpcode opcode) {
     switch (opcode) {
-        case IROpcode::IR_TUPLE_GET:
+        case IROpcode::IR_TUPLE_EXTRACT:
         case IROpcode::IR_MOV: 
         case IROpcode::IR_LOAD_GUEST_FROM_MEMORY:
         case IROpcode::IR_STORE_GUEST_TO_MEMORY:
@@ -281,6 +281,12 @@ void IRInstruction::Invalidate() {
         break;
     }
     case 6: {
+        TupleAccess& tuple_access = std::get<TupleAccess>(expression);
+        if (tuple_access.tuple != nullptr) {
+            tuple_access.tuple->uses--;
+        } else {
+            ERROR("Tuple is null");
+        }
         break;
     }
     default:

@@ -194,7 +194,7 @@ felix86_exit_reason_e felix86_recompiler_run(felix86_recompiler_t* recompiler) {
         IRFunction* function =
             ir_function_cache_get_function(recompiler->function_cache, address);
 
-        if (!function->compiled) {
+        if (!function->IsCompiled()) {
             frontend_compile_function(function, address);
             ir_ssa_pass(function);
 
@@ -209,8 +209,4 @@ felix86_exit_reason_e felix86_recompiler_run(felix86_recompiler_t* recompiler) {
     }
 
     return DoneTesting;
-}
-
-IRFunction* felix86_get_function(felix86_recompiler_t* recompiler, u64 address) {
-    return ir_function_cache_get_function(recompiler->function_cache, address);
 }

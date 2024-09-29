@@ -13,7 +13,7 @@ enum class IROpcode : u8 { // TODO: match naming scheme of IRType
     IR_START_OF_BLOCK,
     IR_PHI,
     IR_COMMENT,
-    IR_TUPLE_GET,
+    IR_TUPLE_EXTRACT,
 
     IR_MOV,
     IR_IMMEDIATE,
@@ -136,6 +136,7 @@ struct PhiNode {
 };
 
 struct Phi {
+    Phi() = default;
     Phi(const Phi& other) = delete;
     Phi(Phi&& other) = default;
     Phi& operator=(const Phi& other) = delete;
@@ -203,7 +204,7 @@ struct IRInstruction {
         source->AddUse();
     }
 
-    IRInstruction(Phi phi) : opcode(IROpcode::IR_PHI), returnType{GetTypeFromPhi(phi)} {
+    IRInstruction(Phi&& phi) : opcode(IROpcode::IR_PHI), returnType{GetTypeFromPhi(phi)} {
         expression = std::move(phi);
 
         for (auto& node : phi.nodes) {
@@ -217,13 +218,11 @@ struct IRInstruction {
         expression = c;
     }
 
-    IRInstruction(IRInstruction* tuple, u8 index) : opcode(IROpcode::IR_TUPLE_GET), returnType(GetTypeFromTuple(tuple->returnType, index)) {
+    IRInstruction(IRInstruction* tuple, u8 index) : opcode(IROpcode::IR_TUPLE_EXTRACT), returnType(GetTypeFromTuple(tuple->returnType, index)) {
         TupleAccess tg;
         tg.tuple = tuple;
         tg.index = index;
         expression = tg;
-
-        ValidateTuple(tg);
 
         tuple->AddUse();
     }
@@ -242,13 +241,43 @@ struct IRInstruction {
     IRInstruction& operator=(IRInstruction&& other) = default;
 
     bool IsSameExpression(const IRInstruction& other) const;
+
     IRType GetType() const { return returnType; }
+
+    IROpcode GetOpcode() const { return opcode; }
+
     void AddUse() { uses++; }
+
     void Invalidate();
+
+    const Operands& AsOperands() const { return std::get<Operands>(expression); }
+
+    const GetGuest& AsGetGuest() const { return std::get<GetGuest>(expression); }
+
+    const SetGuest& AsSetGuest() const { return std::get<SetGuest>(expression); }
+
+    const Immediate& AsImmediate() const { return std::get<Immediate>(expression); }
+
+    const Phi& AsPhi() const { return std::get<Phi>(expression); }
+
+    const Comment& AsComment() const { return std::get<Comment>(expression); }
+
+    const TupleAccess& AsTupleAccess() const { return std::get<TupleAccess>(expression); }
+
+    Operands& AsOperands() { return std::get<Operands>(expression); }
+
+    Phi& AsPhi() { return std::get<Phi>(expression); }
+
+    void SetName(u32 name) { this->name = name; }
+
+    void ReplaceWith(IRInstruction&& other) {
+        Invalidate();
+        *this = std::move(other);
+    }
 
 private:
     Expression expression;
-    u16 name = 0;
+    u32 name = 0;
     u16 uses = 0;
     IROpcode opcode;
     IRType returnType;

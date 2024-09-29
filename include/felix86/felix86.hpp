@@ -39,5 +39,4 @@ u64 felix86_get_guest(felix86_recompiler_t* recompiler, x86_ref_e ref);
 void felix86_set_guest(felix86_recompiler_t* recompiler, x86_ref_e ref, u64 value);
 xmm_reg_t felix86_get_guest_xmm(felix86_recompiler_t* recompiler, x86_ref_e ref);
 void felix86_set_guest_xmm(felix86_recompiler_t* recompiler, x86_ref_e ref, xmm_reg_t value);
-ir_function_t* felix86_get_function(felix86_recompiler_t* recompiler, u64 address);
 felix86_exit_reason_e felix86_recompiler_run(felix86_recompiler_t* recompiler);
