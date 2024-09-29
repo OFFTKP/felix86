@@ -179,7 +179,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
     ERROR("Unreachable");
 }
 
-void frontend_compile_instruction(frontend_state_t* state) {
+void frontend_compile_instruction(FrontendState* state) {
     u8* data = (u8*)state->current_address;
 
     x86_instruction_t inst = {0};
@@ -709,7 +709,7 @@ void frontend_compile_block(IRFunction* function, IRBlock* block) {
         return;
     }
 
-    frontend_state_t state = {0};
+    FrontendState state = {0};
     state.function = function;
     state.current_block = block;
     state.current_address = block->GetStartAddress();

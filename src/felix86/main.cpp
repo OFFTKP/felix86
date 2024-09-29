@@ -23,16 +23,10 @@ static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose o
                                        {0}};
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
-    loader_config_t* config = state->input;
+    Config* config = (Config*)state->input;
 
     if (key == ARGP_KEY_ARG) {
-        // This is one of the guest executable arguments
-        if (config->argc == 255) {
-            printf("Too many guest arguments\n");
-            argp_usage(state);
-        }
-
-        config->argv[config->argc++] = arg;
+       config->argv.push_back(arg);
         return 0;
     }
 
@@ -46,11 +40,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'p': {
-        config->squashfs_path = arg;
+        config->rootfs_path = arg;
         break;
     }
     case 'e': {
-        config->use_host_envs = true;
+        config->use_host_envs = true; todo, move them in here
         break;
     }
     case 'P': {
@@ -62,7 +56,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'O': {
-        config->dont_optimize = true;
+        config->optimize = false;
         break;
     }
     case ARGP_KEY_END: {
@@ -79,20 +73,26 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
-    loader_config_t config = {0};
+    Config config = {0};
     config.use_interpreter = false;
+    config.optimize = true;
 
     argp_parse(&argp, argc, argv, 0, 0, &config);
 
-    if (config.squashfs_path == NULL) {
-        ERROR("No squashfs image path provided");
+    if (config.rootfs_path.empty()) {
+        ERROR("Rootfs path not specified");
         return 1;
     }
 
-    felix86_fs_init(config.squashfs_path, config.argv[0]);
+    if (config.executable_path.empty()) {
+        ERROR("Executable path not specified");
+        return 1;
+    }
+
+    Emulator emulator(config);
 
     if (argc == 1) {
-        felix86_gui();
+        ERROR("Unimplemented");
     } else {
         loader_run_elf(&config);
     }

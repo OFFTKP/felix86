@@ -3,20 +3,34 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/frontend/instruction.hpp"
+#include "felix86/hle/filesystem.hpp"
 #include "felix86/ir/block.hpp"
 #include "felix86/ir/function_cache.hpp"
 
 struct Config {
-	bool testing;
-	bool optimize;
-	bool print_blocks;
-	bool use_interpreter;
-	u64 base_address;
-	bool verify;
-	u64 brk_base_address;
+    std::filesystem::path rootfs_path;
+    std::filesystem::path executable_path;
+	bool testing = false;
+	bool optimize = false;
+	bool print_blocks = false;
+	bool use_interpreter = false;
+	u64 base_address = 0;
+	u64 brk_base_address = 0;
+    std::vector<std::string> argv;
+    std::vector<std::string> envp;
 };
 
 struct Emulator {
+    Emulator(const Config& config) : fs(config.rootfs_path), config(config) {}
+
+    ThreadState& GetThreadState() {
+        return state;
+    }
+
+    Filesystem& GetFilesystem() {
+        return fs;
+    }
+
     u64 GetGpr(x86_ref_e ref) {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
             ERROR("Invalid GPR reference: %d", ref);
@@ -144,5 +158,6 @@ struct Emulator {
 private:
     FunctionCache cache;
     ThreadState state;
+    Filesystem fs;
     Config config;
 };

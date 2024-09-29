@@ -158,12 +158,14 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
 
     u64 stack_hint = 0x7FFFFFFFF000 - max_stack_size;
 
-    elf->stack_base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+    elf->stack_base =
+        (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
     if (elf->stack_base == MAP_FAILED) {
         ERROR("Failed to allocate stack for ELF file %s", path);
     }
 
-    elf->stack_pointer = (u8*)mmap(elf->stack_base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
+    elf->stack_pointer = (u8*)mmap(elf->stack_base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
+                                   MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
     if (elf->stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack for ELF file %s", path);
     }
@@ -213,7 +215,8 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
             if (addr == MAP_FAILED) {
                 ERROR("Failed to allocate memory for segment in file %s", path);
             } else {
-                VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)", (void*)phdr->p_vaddr, addr, addr + segment_size, phdr->p_offset);
+                VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)", (void*)phdr->p_vaddr, addr, addr + segment_size,
+                        phdr->p_offset);
                 if (addr != (void*)segment_base) {
                     ERROR("Failed to allocate memory at requested address for segment in "
                           "file %s",

@@ -72,7 +72,8 @@ IRInstruction* ir_emit_three_operands(IRBlock* block, IROpcode opcode, IRInstruc
     return &block->GetLastInstruction();
 }
 
-IRInstruction* ir_emit_four_operands(IRBlock* block, IROpcode opcode, IRInstruction* source1, IRInstruction* source2, IRInstruction* source3, IRInstruction* source4) {
+IRInstruction* ir_emit_four_operands(IRBlock* block, IROpcode opcode, IRInstruction* source1, IRInstruction* source2, IRInstruction* source3,
+                                     IRInstruction* source4) {
     IRInstruction instruction(opcode, {source1, source2, source3, source4});
     block->InsertAtEnd(std::move(instruction));
     return &block->GetLastInstruction();
@@ -914,7 +915,8 @@ IRInstruction* ir_emit_get_aux_sub(IRBlock* block, IRInstruction* source1, IRIns
     return ir_emit_less_than_unsigned(block, and1, and2);
 }
 
-IRInstruction* ir_emit_set_cpazso(IRBlock* block, IRInstruction* c, IRInstruction* p, IRInstruction* a, IRInstruction* z, IRInstruction* s, IRInstruction* o) {
+IRInstruction* ir_emit_set_cpazso(IRBlock* block, IRInstruction* c, IRInstruction* p, IRInstruction* a, IRInstruction* z, IRInstruction* s,
+                                  IRInstruction* o) {
     if (c)
         ir_emit_set_flag(block, X86_REF_CF, c);
     if (p)
@@ -1213,9 +1215,11 @@ IRInstruction* ir_emit_get_cc(IRBlock* block, u8 opcode) {
     case 13:
         return ir_emit_equal(block, ir_emit_get_flag(block, X86_REF_SF), ir_emit_get_flag(block, X86_REF_OF));
     case 14:
-        return ir_emit_or(block, ir_emit_equal(block, ir_emit_get_flag(block, X86_REF_ZF), ir_emit_immediate(block, 1)), ir_emit_not_equal(block, ir_emit_get_flag(block, X86_REF_SF), ir_emit_get_flag(block, X86_REF_OF)));
+        return ir_emit_or(block, ir_emit_equal(block, ir_emit_get_flag(block, X86_REF_ZF), ir_emit_immediate(block, 1)),
+                          ir_emit_not_equal(block, ir_emit_get_flag(block, X86_REF_SF), ir_emit_get_flag(block, X86_REF_OF)));
     case 15:
-        return ir_emit_and(block, ir_emit_equal(block, ir_emit_get_flag(block, X86_REF_ZF), ir_emit_immediate(block, 0)), ir_emit_equal(block, ir_emit_get_flag(block, X86_REF_SF), ir_emit_get_flag(block, X86_REF_OF)));
+        return ir_emit_and(block, ir_emit_equal(block, ir_emit_get_flag(block, X86_REF_ZF), ir_emit_immediate(block, 0)),
+                           ir_emit_equal(block, ir_emit_get_flag(block, X86_REF_SF), ir_emit_get_flag(block, X86_REF_OF)));
     }
 
     ERROR("Invalid condition code");

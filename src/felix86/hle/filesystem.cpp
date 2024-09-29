@@ -1,9 +1,60 @@
-#include <cstring>
-#include <filesystem>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include "felix86/common/log.hpp"
 #include "felix86/hle/filesystem.hpp"
 
-extern "C" int felix86_lexically_normal(char* buffer, u32 buffer_size, const char* path) {
-    std::filesystem::path normal_path = std::filesystem::path(path).lexically_normal();
-    snprintf(buffer, buffer_size, "%s", normal_path.c_str());
-    return normal_path.is_absolute();
+#define VALIDATE_PATH(path)                                                                                                                          \
+    if (!validatePath(path)) {                                                                                                                       \
+        return -ENOENT;                                                                                                                                   \
+    }
+
+const char* proc_self_exe = "/proc/self/exe";
+
+Filesystem::Filesystem(const std::filesystem::path& path) {
+    rootfs_path = std::filesystem::canonical(path);
+    rootfs_path_string = rootfs_path.string();
+
+    if (!std::filesystem::exists(rootfs_path) || !std::filesystem::is_directory(rootfs_path)) {
+        ERROR("Rootfs path %s does not exist", rootfs_path.c_str());
+        return;
+    }
+
+    // Do some basic sanity checks to make sure the user didn't pick a
+    // wrong directory
+    auto dirs = {
+        "bin", "dev", "etc", "lib", "lib64", "mnt", "opt", "proc", "root", "run", "sbin", "sys", "usr", "var",
+    };
+
+    for (auto& dir : dirs) {
+        if (!std::filesystem::exists(rootfs_path / dir)) {
+            ERROR("Rootfs path %s is missing %s", rootfs_path.c_str(), dir);
+            return;
+        }
+    }
+
+    good = true;
+}
+
+ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 bufsiz) {
+    VALIDATE_PATH(pathname);
+
+    ERROR("Unsupported readlinkat call: (%d) %s", dirfd, pathname);
+}
+
+bool Filesystem::validatePath(const std::filesystem::path& path) {
+    std::string string = path.lexically_normal().string();
+
+    // To check that it's part of the sandbox, we check that the path is
+    // a subpath of the rootfs path
+    if (string.find(rootfs_path_string) != 0) {
+        ERROR("Path %s is not part of the sandbox", string.c_str());
+        return false;
+    }
+
+    return true;
 }

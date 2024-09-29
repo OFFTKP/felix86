@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include "felix86/common/log.hpp"
-#include "felix86/frontend/frontend.hpp"
 #include "felix86/ir/block.hpp"
-#include "felix86/ir/emitter.hpp"
 
 IRFunction::IRFunction(u64 address) {
     blocks.push_back(IRBlock());

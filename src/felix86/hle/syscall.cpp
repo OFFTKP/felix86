@@ -1,8 +1,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include "felix86/common/log.hpp"
+#include "felix86/common/x86.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/syscall.hpp"
+#include "felix86/emulator.hpp"
 
 // We add felix86_${ARCH}_ in front of the linux related identifiers to avoid
 // naming conflicts
@@ -32,8 +34,8 @@ int match_host(int syscall) {
 #ifdef __x86_64__
     return syscall;
 #elif defined(__riscv) && __riscv_xlen == 64
-#define X(name, id)                                                                                                                                                                                                                                                                                        \
-    case felix86_x86_64_##name:                                                                                                                                                                                                                                                                            \
+#define X(name, id)                                                                                                                                  \
+    case felix86_x86_64_##name:                                                                                                                      \
         return felix86_riscv64_##name;
     switch (syscall) {
 #include "felix86/hle/syscalls_x86_64.inc"
@@ -48,8 +50,8 @@ int match_host(int syscall) {
 
 const char* print_syscall_name(u64 syscall_number) {
     switch (syscall_number) {
-#define X(name, id)                                                                                                                                                                                                                                                                                        \
-    case id:                                                                                                                                                                                                                                                                                               \
+#define X(name, id)                                                                                                                                  \
+    case id:                                                                                                                                         \
         return #name;
 #include "felix86/hle/syscalls_x86_64.inc"
 #undef X
@@ -58,23 +60,20 @@ const char* print_syscall_name(u64 syscall_number) {
     }
 }
 
-void felix86_syscall(felix86_recompiler_t* recompiler, x86_thread_state_t* state) {
-    u64 syscall_number = state->gprs[X86_REF_RAX];
-    u64 rdi = state->gprs[X86_REF_RDI];
-    u64 rsi = state->gprs[X86_REF_RSI];
-    u64 rdx = state->gprs[X86_REF_RDX];
-    u64 r10 = state->gprs[X86_REF_R10];
-    u64 r8 = state->gprs[X86_REF_R8];
-    u64 r9 = state->gprs[X86_REF_R9];
+void felix86_syscall(Emulator& emulator, u64* prax, u64 rdi, u64 rsi, u64 rdx, u64 r10, u64 r8, u64 r9) {
+    u64 syscall_number = *prax;
     u64 result = 0;
+
+    ThreadState& state = emulator.GetThreadState();
+    Filesystem& fs = emulator.GetFilesystem();
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
         if (rdi == 0) {
-            result = recompiler->brk_current_address;
+            result = state.brk_current_address;
         } else {
-            recompiler->brk_current_address = rdi;
-            result = recompiler->brk_current_address;
+            state.brk_current_address = rdi;
+            result = state.brk_current_address;
         }
         VERBOSE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;
@@ -82,19 +81,19 @@ void felix86_syscall(felix86_recompiler_t* recompiler, x86_thread_state_t* state
     case felix86_x86_64_arch_prctl: {
         switch (rdi) {
         case felix86_x86_64_ARCH_SET_GS: {
-            state->gsbase = rsi;
+            state.gsbase = rsi;
             break;
         }
         case felix86_x86_64_ARCH_SET_FS: {
-            state->fsbase = rsi;
+            state.fsbase = rsi;
             break;
         }
         case felix86_x86_64_ARCH_GET_FS: {
-            result = state->fsbase;
+            result = state.fsbase;
             break;
         }
         case felix86_x86_64_ARCH_GET_GS: {
-            result = state->gsbase;
+            result = state.gsbase;
             break;
         }
         default: {
@@ -106,7 +105,7 @@ void felix86_syscall(felix86_recompiler_t* recompiler, x86_thread_state_t* state
         break;
     }
     case felix86_x86_64_set_tid_address: {
-        state->clear_child_tid = rdi;
+        state.clear_child_tid = rdi;
         result = rdi;
         VERBOSE("set_tid_address(%016lx) = %016lx", rdi, result);
         break;
@@ -119,7 +118,7 @@ void felix86_syscall(felix86_recompiler_t* recompiler, x86_thread_state_t* state
         break;
     }
     case felix86_x86_64_set_robust_list: {
-        state->robust_futex_list = rdi;
+        state.robust_futex_list = rdi;
 
         if (rsi != sizeof(u64) * 3) {
             WARN("Struct size is wrong during set_robust_list");
@@ -139,7 +138,7 @@ void felix86_syscall(felix86_recompiler_t* recompiler, x86_thread_state_t* state
         break;
     }
     case felix86_x86_64_readlinkat: {
-        felix86_fs_readlinkat(rdi, (const char*)rsi, (char*)rdx, r10);
+        fs.ReadLinkAt(rdi, (const char*)rsi, (char*)rdx, r10);
         VERBOSE("readlinkat(%d, %s, %s, %d) = %d", (int)rdi, (const char*)rsi, (char*)rdx, (int)r10, (int)result);
         break;
     }
@@ -159,5 +158,5 @@ void felix86_syscall(felix86_recompiler_t* recompiler, x86_thread_state_t* state
     }
     }
 
-    state->gprs[X86_REF_RAX] = result;
+    *prax = result;
 }

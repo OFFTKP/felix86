@@ -20,7 +20,7 @@ u64 sext_if_64(u64 value, x86_size_e size_e) {
     }
 }
 
-#define IR_HANDLE(name) void ir_handle_##name(frontend_state_t* state, x86_instruction_t* inst)
+#define IR_HANDLE(name) void ir_handle_##name(FrontendState* state, x86_instruction_t* inst)
 
 IR_HANDLE(error) {
     u64 address = state->current_address - g_base_address;
