@@ -43,8 +43,8 @@ void loader_run_elf(Config* config) {
     size_t argc = config->argv.size();
     if (argc > 1) {
         VERBOSE("Passing %zu arguments to guest executable", argc - 1);
-        for (int i = 1; i < argc; i++) {
-            VERBOSE("Guest argument %d: %s", i, config->argv[i].c_str());
+        for (size_t i = 1; i < argc; i++) {
+            VERBOSE("Guest argument %zu: %s", i, config->argv[i].c_str());
         }
     }
 
@@ -78,7 +78,7 @@ void loader_run_elf(Config* config) {
     rsp = stack_push_string(rsp, x86_64_string);
     const char* platform_name = (const char*)rsp;
 
-    for (int i = 0; i < argc; i++) {
+    for (size_t i = 0; i < argc; i++) {
         rsp = stack_push_string(rsp, config->argv[i].c_str());
         argv_addresses[i] = rsp;
     }
@@ -86,7 +86,7 @@ void loader_run_elf(Config* config) {
     size_t envc = config->envp.size();
     std::vector<u64> envp_addresses(envc);
 
-    for (int i = 0; i < envc; i++) {
+    for (size_t i = 0; i < envc; i++) {
         const char* env = config->envp[i].c_str();
         rsp = stack_push_string(rsp, env);
         envp_addresses[i] = rsp;

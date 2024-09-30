@@ -20,10 +20,24 @@ u64 sext_if_64(u64 value, x86_size_e size_e) {
     }
 }
 
+u64 sext(u64 value, x86_size_e size_e) {
+    switch (size_e) {
+    case X86_SIZE_BYTE:
+        return (i64)(i8)value;
+    case X86_SIZE_WORD:
+        return (i64)(i16)value;
+    case X86_SIZE_DWORD:
+        return (i64)(i32)value;
+    case X86_SIZE_QWORD:
+        return value;
+    default:
+        ERROR("Invalid immediate size");
+    }
+}
+
 #define IR_HANDLE(name) void ir_handle_##name(FrontendState* state, x86_instruction_t* inst)
 
 IR_HANDLE(error) {
-    u64 address = state->current_address - g_base_address;
     ERROR("Hit error instruction during: %016lx - Opcode: %02x", state->current_address - g_base_address, inst->opcode);
 }
 
@@ -351,10 +365,11 @@ IR_HANDLE(push_imm8) { // push imm8 - 0x6a
 
 IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     u8 inst_length = inst->length;
-    IRInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
+    x86_size_e size_e = inst->operand_imm.size;
+    i64 immediate = sext(inst->operand_imm.immediate.data, size_e);
     IRInstruction* condition = ir_emit_get_cc(BLOCK, inst->opcode);
     u64 jump_address_false = state->current_address + inst_length;
-    u64 jump_address_true = state->current_address + inst_length + inst->operand_imm.immediate.data;
+    u64 jump_address_true = state->current_address + inst_length + immediate;
 
     IRBlock* block_true = state->function->CreateBlockAt(jump_address_true);
     IRBlock* block_false = state->function->CreateBlockAt(jump_address_false);

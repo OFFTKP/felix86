@@ -8,7 +8,7 @@ void* easy_fopen(const char* path, void* user_data) {
 bool easy_fread(void* handle, void* buffer, u64 offset, u64 size, void* user_data) {
     FILE* file = (FILE*)(intptr_t)handle;
     fseek(file, offset, SEEK_SET);
-    int res = fread(buffer, 1, size, file);
+    size_t res = fread(buffer, 1, size, file);
     return res == size;
 }
 
