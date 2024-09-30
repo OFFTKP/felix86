@@ -1,10 +1,8 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
-#include <deque>
 #include <list>
 #include <stack>
-#include <unordered_map>
 #include <vector>
 #include "felix86/common/log.hpp"
 #include "felix86/ir/passes.hpp"
@@ -158,7 +156,7 @@ static void place_phi_functions(IRFunction* function) {
         std::list<IRInstruction>& instructions = block->GetInstructions();
         for (const IRInstruction& inst : instructions) {
             // Make sure it wasn't already added in this list of instructions
-            if (inst.GetOpcode() == IROpcode::IR_SET_GUEST) {
+            if (inst.GetOpcode() == IROpcode::SetGuest) {
                 x86_ref_e ref = inst.AsSetGuest().ref;
                 if (assignments[ref].empty() || assignments[ref].back() != block) {
                     assignments[ref].push_back(block);
@@ -218,14 +216,14 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstructio
     for (auto it = block->GetInstructions().begin(); it != block->GetInstructions().end();) {
         IRInstruction& inst = *it;
         // These are the only instructions we care about moving to SSA.
-        if (inst.GetOpcode() == IROpcode::IR_SET_GUEST) {
+        if (inst.GetOpcode() == IROpcode::SetGuest) {
             int ref = inst.AsSetGuest().ref;
             stacks[ref].push(&inst);
             pop_count[ref]++;
-        } else if (inst.GetOpcode() == IROpcode::IR_GET_GUEST) {
+        } else if (inst.GetOpcode() == IROpcode::GetGuest) {
             IRInstruction* def = stacks[inst.AsGetGuest().ref].top();
 
-            IRInstruction new_inst(IROpcode::IR_MOV, {def});
+            IRInstruction new_inst(IROpcode::Mov, {def});
             inst.ReplaceWith(std::move(new_inst));
         }
 

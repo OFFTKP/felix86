@@ -786,7 +786,7 @@ IR_HANDLE(movhps_xmm_m64) {
 
     IRInstruction* xmm = ir_emit_get_reg(BLOCK, &inst->operand_reg);
     IRInstruction* m64 = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    IRInstruction* xmm_dest = ir_emit_insert_integer_to_vector(BLOCK, xmm, m64, 1, X86_SIZE_QWORD);
+    IRInstruction* xmm_dest = ir_emit_insert_integer_to_vector(BLOCK, m64, xmm, 1, X86_SIZE_QWORD);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, xmm_dest);
 }
 

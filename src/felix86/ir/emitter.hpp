@@ -39,7 +39,7 @@ IRInstruction* ir_emit_sext8(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_sext16(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_sext32(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_syscall(IRBlock* block, std::initializer_list<IRInstruction*> args);
-IRInstruction* ir_emit_insert_integer_to_vector(IRBlock* block, IRInstruction* dst, IRInstruction* source, u8 idx, x86_size_e sz);
+IRInstruction* ir_emit_insert_integer_to_vector(IRBlock* block, IRInstruction* source, IRInstruction* dest, u8 idx, x86_size_e sz);
 IRInstruction* ir_emit_extract_integer_from_vector(IRBlock* block, IRInstruction* src, u8 idx, x86_size_e sz);
 IRInstruction* ir_emit_vector_unpack_byte_low(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
 IRInstruction* ir_emit_vector_unpack_word_low(IRBlock* block, IRInstruction* source1, IRInstruction* source2);

@@ -7,96 +7,94 @@
 #include "felix86/frontend/instruction.hpp"
 
 enum class IROpcode : u8 { // TODO: match naming scheme of IRType
-    IR_NULL,
+    Null,
 
-    IR_PHI,
-    IR_COMMENT,
-    IR_TUPLE_EXTRACT,
+    Phi,
+    Comment,
+    TupleExtract,
 
-    IR_MOV,
-    IR_IMMEDIATE,
-    IR_POPCOUNT,
-    IR_SEXT8,
-    IR_SEXT16,
-    IR_SEXT32,
-    IR_SYSCALL,
-    IR_CPUID,
-    IR_RDTSC,
+    Mov,
+    Immediate,
+    Popcount,
+    Sext8,
+    Sext16,
+    Sext32,
+    Syscall,
+    Cpuid,
+    Rdtsc,
 
-    IR_GET_GUEST, // placeholder instruction that indicates a use of a register, replaced by the ssa
-                  // pass
-    IR_SET_GUEST, // placeholder instruction that indicates a def of a register, replaced by the ssa
-                  // pass
-    IR_LOAD_GUEST_FROM_MEMORY,
-    IR_STORE_GUEST_TO_MEMORY,
+    GetGuest, // placeholder instruction that indicates a use of a register, replaced by the ssa pass
+    SetGuest, // placeholder instruction that indicates a def of a register, replaced by the ssa pass
+    LoadGuestFromMemory,
+    StoreGuestToMemory,
 
-    IR_ADD,
-    IR_SUB,
-    IR_IMUL64,
-    IR_IDIV8,
-    IR_IDIV16,
-    IR_IDIV32,
-    IR_IDIV64,
-    IR_UDIV8,
-    IR_UDIV16,
-    IR_UDIV32,
-    IR_UDIV64,
-    IR_CLZ,
-    IR_CTZ,
-    IR_SHIFT_LEFT,
-    IR_SHIFT_RIGHT,
-    IR_SHIFT_RIGHT_ARITHMETIC,
-    IR_LEFT_ROTATE8,
-    IR_LEFT_ROTATE16,
-    IR_LEFT_ROTATE32,
-    IR_LEFT_ROTATE64,
-    IR_SELECT,
-    IR_AND,
-    IR_OR,
-    IR_XOR,
-    IR_NOT,
-    IR_LEA,
-    IR_EQUAL,
-    IR_NOT_EQUAL,
-    IR_GREATER_THAN_SIGNED,
-    IR_LESS_THAN_SIGNED,
-    IR_GREATER_THAN_UNSIGNED,
-    IR_LESS_THAN_UNSIGNED,
+    Add,
+    Sub,
+    IMul64,
+    IDiv8,
+    IDiv16,
+    IDiv32,
+    IDiv64,
+    UDiv8,
+    UDiv16,
+    UDiv32,
+    UDiv64,
+    Clz,
+    Ctz,
+    ShiftLeft,
+    ShiftRight,
+    ShiftRightArithmetic,
+    LeftRotate8,
+    LeftRotate16,
+    LeftRotate32,
+    LeftRotate64,
+    Select,
+    And,
+    Or,
+    Xor,
+    Not,
+    Lea,
+    Equal,
+    NotEqual,
+    IGreaterThan,
+    ILessThan,
+    UGreaterThan,
+    ULessThan,
 
-    IR_READ_BYTE,
-    IR_READ_WORD,
-    IR_READ_DWORD,
-    IR_READ_QWORD,
-    IR_READ_XMMWORD,
-    IR_WRITE_BYTE,
-    IR_WRITE_WORD,
-    IR_WRITE_DWORD,
-    IR_WRITE_QWORD,
-    IR_WRITE_XMMWORD,
+    ReadByte,
+    ReadWord,
+    ReadDWord,
+    ReadQWord,
+    ReadXmmWord,
+    WriteByte,
+    WriteWord,
+    WriteDWord,
+    WriteQWord,
+    WriteXmmWord,
 
-    IR_INSERT_INTEGER_TO_VECTOR,
-    IR_EXTRACT_INTEGER_FROM_VECTOR,
-    IR_VECTOR_FROM_INTEGER,
-    IR_INTEGER_FROM_VECTOR,
-    IR_VECTOR_UNPACK_BYTE_LOW,
-    IR_VECTOR_UNPACK_WORD_LOW,
-    IR_VECTOR_UNPACK_DWORD_LOW,
-    IR_VECTOR_UNPACK_QWORD_LOW,
-    IR_VECTOR_PACKED_AND,
-    IR_VECTOR_PACKED_OR,
-    IR_VECTOR_PACKED_XOR,
-    IR_VECTOR_PACKED_SHIFT_RIGHT,
-    IR_VECTOR_PACKED_SHIFT_LEFT,
-    IR_VECTOR_PACKED_SUB_BYTE,
-    IR_VECTOR_PACKED_ADD_QWORD,
-    IR_VECTOR_PACKED_COMPARE_EQ_BYTE,
-    IR_VECTOR_PACKED_COMPARE_EQ_WORD,
-    IR_VECTOR_PACKED_COMPARE_EQ_DWORD,
-    IR_VECTOR_PACKED_SHUFFLE_DWORD,
-    IR_VECTOR_PACKED_MOVE_BYTE_MASK,
-    IR_VECTOR_PACKED_MIN_BYTE,
-    IR_VECTOR_PACKED_COMPARE_IMPLICIT_STRING_INDEX,
-    IR_VECTOR_ZEXT64, // zero extend the bottom 64-bits of a vector
+    CastIntegerToVector,
+    CastVectorToInteger,
+
+    VInsertInteger,
+    VExtractInteger,
+    VUnpackByteLow,
+    VUnpackWordLow,
+    VUnpackDWordLow,
+    VUnpackQWordLow,
+    VAnd,
+    VOr,
+    VXor,
+    VShr,
+    VShl,
+    VPackedSubByte,
+    VPackedAddQWord,
+    VPackedEqualByte,
+    VPackedEqualWord,
+    VPackedEqualDWord,
+    VPackedShuffleDWord,
+    VMoveByteMask,
+    VPackedMinByte,
+    VZext64, // zero extend the bottom 64-bits of a vector
 };
 
 enum class IRType : u8 {
@@ -113,7 +111,7 @@ struct IRBlock;
 
 struct Operands {
     std::vector<IRInstruction*> operands = {};
-    u8 control_byte = 0; // for some sse instructions
+    u64 extra_data = 0; // for some sse instructions
 };
 
 struct Immediate {
@@ -156,12 +154,9 @@ struct Comment {
 
 using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, TupleAccess>;
 
-IRType GetTypeFromOpcode(IROpcode opcode);
-IRType GetTypeFromTuple(IRType type, u8 index);
-IRType GetTypeFromPhi(const Phi& phi);
-
 struct IRInstruction {
-    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands) : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
+    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands)
+        : opcode(opcode), returnType{IRInstruction::getTypeFromOpcode(opcode)} {
         Operands op;
         op.operands = operands;
         expression = op;
@@ -169,33 +164,23 @@ struct IRInstruction {
         for (auto& operand : operands) {
             operand->AddUse();
         }
+
+        checkValidity(opcode, op);
     }
 
-    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands, u8 control_byte)
-        : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
-        Operands op;
-        op.operands = operands;
-        op.control_byte = control_byte;
-        expression = op;
-
-        for (auto& operand : operands) {
-            operand->AddUse();
-        }
-    }
-
-    IRInstruction(u64 immediate) : opcode(IROpcode::IR_IMMEDIATE), returnType{GetTypeFromOpcode(opcode)} {
+    IRInstruction(u64 immediate) : opcode(IROpcode::Immediate), returnType{IRType::Integer64} {
         Immediate imm;
         imm.immediate = immediate;
         expression = imm;
     }
 
-    IRInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
+    IRInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), returnType{IRInstruction::getTypeFromOpcode(opcode, ref)} {
         GetGuest get;
         get.ref = ref;
         expression = get;
     }
 
-    IRInstruction(IROpcode opcode, x86_ref_e ref, IRInstruction* source) : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
+    IRInstruction(IROpcode opcode, x86_ref_e ref, IRInstruction* source) : opcode(opcode), returnType{IRInstruction::getTypeFromOpcode(opcode, ref)} {
         SetGuest set;
         set.ref = ref;
         set.source = source;
@@ -204,7 +189,7 @@ struct IRInstruction {
         source->AddUse();
     }
 
-    IRInstruction(Phi&& phi) : opcode(IROpcode::IR_PHI), returnType{GetTypeFromPhi(phi)} {
+    IRInstruction(Phi phi) : opcode(IROpcode::Phi), returnType{IRInstruction::getTypeFromOpcode(opcode, phi.ref)} {
         expression = std::move(phi);
 
         for (auto& node : phi.nodes) {
@@ -212,13 +197,14 @@ struct IRInstruction {
         }
     }
 
-    IRInstruction(const std::string& comment) : opcode(IROpcode::IR_COMMENT), returnType{GetTypeFromOpcode(opcode)} {
+    IRInstruction(const std::string& comment) : opcode(IROpcode::Comment), returnType{IRInstruction::getTypeFromOpcode(opcode)} {
         Comment c;
         c.comment = comment;
         expression = c;
     }
 
-    IRInstruction(IRInstruction* tuple, u8 index) : opcode(IROpcode::IR_TUPLE_EXTRACT), returnType(GetTypeFromTuple(tuple->returnType, index)) {
+    IRInstruction(IRInstruction* tuple, u8 index)
+        : opcode(IROpcode::TupleExtract), returnType(IRInstruction::getTypeFromTuple(tuple->returnType, index)) {
         TupleAccess tg;
         tg.tuple = tuple;
         tg.index = index;
@@ -227,7 +213,7 @@ struct IRInstruction {
         tuple->AddUse();
     }
 
-    IRInstruction(IRInstruction* mov) : opcode(IROpcode::IR_MOV), returnType{mov->returnType} {
+    IRInstruction(IRInstruction* mov) : opcode(IROpcode::Mov), returnType{mov->returnType} {
         Operands op;
         op.operands.push_back(mov);
         expression = op;
@@ -309,7 +295,15 @@ struct IRInstruction {
         *this = std::move(other);
     }
 
+    void SetExtraData(u64 extra_data) {
+        AsOperands().extra_data = extra_data;
+    }
+
 private:
+    static IRType getTypeFromOpcode(IROpcode opcode, x86_ref_e ref = X86_REF_COUNT);
+    static IRType getTypeFromTuple(IRType type, u8 index);
+    static void checkValidity(IROpcode opcode, const Operands& operands);
+
     Expression expression;
     u32 name = 0;
     u16 uses = 0;

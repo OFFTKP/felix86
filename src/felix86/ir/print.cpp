@@ -3,8 +3,8 @@
 #include "felix86/common/print.hpp"
 #include "felix86/ir/print.hpp"
 
-#include <vector>
 #include <cstdio>
+#include <vector>
 
 #define OPC_BEGIN "<font color=\"#c586c0\">"
 #define OPC_END "</font>"
@@ -35,151 +35,151 @@ void print_two_op(const IRInstruction& instruction, const char* op) {
 
 void ir_print_instruction(const IRInstruction& instruction, const IRBlock& block) {
     switch (instruction.GetOpcode()) {
-    case IROpcode::IR_COMMENT: {
+    case IROpcode::Comment: {
         printf("%s", instruction.AsComment().comment.c_str());
         break;
     }
-    case IROpcode::IR_IMMEDIATE: {
+    case IROpcode::Immediate: {
         printf(VAR EQUALS IMM, instruction.GetName(), (unsigned long long)instruction.AsImmediate().immediate);
         break;
     }
-    case IROpcode::IR_ADD: {
+    case IROpcode::Add: {
         print_two_op(instruction, "+");
         break;
     }
-    case IROpcode::IR_SUB: {
+    case IROpcode::Sub: {
         print_two_op(instruction, "-");
         break;
     }
-    case IROpcode::IR_SHIFT_LEFT: {
+    case IROpcode::ShiftLeft: {
         print_two_op(instruction, "&lt;&lt;");
         break;
     }
-    case IROpcode::IR_SHIFT_RIGHT: {
+    case IROpcode::ShiftRight: {
         print_two_op(instruction, "&gt;&gt;");
         break;
     }
-    case IROpcode::IR_SHIFT_RIGHT_ARITHMETIC: {
+    case IROpcode::ShiftRightArithmetic: {
         print_two_op(instruction, "&gt;&gt;");
         break;
     }
-    case IROpcode::IR_AND: {
+    case IROpcode::And: {
         print_two_op(instruction, "&amp;");
         break;
     }
-    case IROpcode::IR_OR: {
+    case IROpcode::Or: {
         print_two_op(instruction, "|");
         break;
     }
-    case IROpcode::IR_XOR: {
+    case IROpcode::Xor: {
         print_two_op(instruction, "^");
         break;
     }
-    case IROpcode::IR_POPCOUNT: {
+    case IROpcode::Popcount: {
         print_one_op(instruction, "popcount");
         break;
     }
-    case IROpcode::IR_EQUAL: {
+    case IROpcode::Equal: {
         print_two_op(instruction, "==");
         break;
     }
-    case IROpcode::IR_NOT_EQUAL: {
+    case IROpcode::NotEqual: {
         print_two_op(instruction, "!=");
         break;
     }
-    case IROpcode::IR_GREATER_THAN_SIGNED: {
+    case IROpcode::IGreaterThan: {
         print_two_op(instruction, "s&gt;");
         break;
     }
-    case IROpcode::IR_LESS_THAN_SIGNED: {
+    case IROpcode::ILessThan: {
         print_two_op(instruction, "s&lt;");
         break;
     }
-    case IROpcode::IR_GREATER_THAN_UNSIGNED: {
+    case IROpcode::UGreaterThan: {
         print_two_op(instruction, "u&gt;");
         break;
     }
-    case IROpcode::IR_LESS_THAN_UNSIGNED: {
+    case IROpcode::ULessThan: {
         print_two_op(instruction, "u&lt;");
         break;
     }
-    case IROpcode::IR_MOV: {
+    case IROpcode::Mov: {
         printf(VAR EQUALS VAR, instruction.GetName(), instruction.GetOperandName(0));
         break;
     }
-    case IROpcode::IR_SEXT8: {
+    case IROpcode::Sext8: {
         print_one_op(instruction, "sext8");
         break;
     }
-    case IROpcode::IR_SEXT16: {
+    case IROpcode::Sext16: {
         print_one_op(instruction, "sext16");
         break;
     }
-    case IROpcode::IR_SEXT32: {
+    case IROpcode::Sext32: {
         print_one_op(instruction, "sext32");
         break;
     }
-    case IROpcode::IR_LEA: {
+    case IROpcode::Lea: {
         printf("t%d = ptr[t%d + t%d * t%d + t%d]", instruction.GetName(), instruction.GetOperandName(0), instruction.GetOperandName(1),
                instruction.GetOperandName(2), instruction.GetOperandName(3));
         break;
     }
-    case IROpcode::IR_GET_GUEST: {
+    case IROpcode::GetGuest: {
         printf(VAR EQUALS OP, instruction.GetName(), "get_guest");
         print_guest(instruction.AsGetGuest().ref);
         break;
     }
-    case IROpcode::IR_SET_GUEST: {
+    case IROpcode::SetGuest: {
         printf(VAR EQUALS OP, instruction.GetName(), "set_guest");
         print_guest(instruction.AsSetGuest().ref);
         printf(",&nbsp;" VAR, instruction.AsSetGuest().source->GetName());
         break;
     }
-    case IROpcode::IR_READ_BYTE: {
+    case IROpcode::ReadByte: {
         printf("t%d = byte[t%d]", instruction.GetName(), instruction.GetOperandName(0));
         break;
     }
-    case IROpcode::IR_READ_WORD: {
+    case IROpcode::ReadWord: {
         printf("t%d = word[t%d]", instruction.GetName(), instruction.GetOperandName(0));
         break;
     }
-    case IROpcode::IR_READ_DWORD: {
+    case IROpcode::ReadDWord: {
         printf("t%d = dword[t%d]", instruction.GetName(), instruction.GetOperandName(0));
         break;
     }
-    case IROpcode::IR_READ_QWORD: {
+    case IROpcode::ReadQWord: {
         printf("t%d = qword[t%d]", instruction.GetName(), instruction.GetOperandName(0));
         break;
     }
-    case IROpcode::IR_READ_XMMWORD: {
+    case IROpcode::ReadXmmWord: {
         printf("t%d = xmmword[t%d]", instruction.GetName(), instruction.GetOperandName(0));
         break;
     }
-    case IROpcode::IR_WRITE_BYTE: {
+    case IROpcode::WriteByte: {
         printf("byte[t%d] = t%d", instruction.GetOperandName(0), instruction.GetOperandName(1));
         break;
     }
-    case IROpcode::IR_WRITE_WORD: {
+    case IROpcode::WriteWord: {
         printf("word[t%d] = t%d", instruction.GetOperandName(0), instruction.GetOperandName(1));
         break;
     }
-    case IROpcode::IR_WRITE_DWORD: {
+    case IROpcode::WriteDWord: {
         printf("dword[t%d] = t%d", instruction.GetOperandName(0), instruction.GetOperandName(1));
         break;
     }
-    case IROpcode::IR_WRITE_QWORD: {
+    case IROpcode::WriteQWord: {
         printf("qword[t%d] = t%d", instruction.GetOperandName(0), instruction.GetOperandName(1));
         break;
     }
-    case IROpcode::IR_SYSCALL: {
+    case IROpcode::Syscall: {
         printf("syscall");
         break;
     }
-    case IROpcode::IR_CPUID: {
+    case IROpcode::Cpuid: {
         printf("cpuid");
         break;
     }
-    case IROpcode::IR_PHI: {
+    case IROpcode::Phi: {
         printf("t%d = φ&lt;", instruction.GetName());
         const Phi& phi = instruction.AsPhi();
         for (auto& node : phi.nodes) {

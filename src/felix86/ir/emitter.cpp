@@ -81,23 +81,23 @@ void ir_emit_runtime_comment(IRBlock* block, const char* comment) {
 }
 
 IRInstruction* ir_emit_add(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_ADD, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::Add, source1, source2);
 }
 
 IRInstruction* ir_emit_sub(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_SUB, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::Sub, source1, source2);
 }
 
 IRInstruction* ir_emit_shift_left(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_SHIFT_LEFT, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::ShiftLeft, source1, source2);
 }
 
 IRInstruction* ir_emit_shift_right(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_SHIFT_RIGHT, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::ShiftRight, source1, source2);
 }
 
 IRInstruction* ir_emit_shift_right_arithmetic(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_SHIFT_RIGHT_ARITHMETIC, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::ShiftRightArithmetic, source1, source2);
 }
 
 IRInstruction* ir_emit_rotate(IRBlock* block, IRInstruction* source1, IRInstruction* source2, x86_size_e size_e, bool right) {
@@ -106,25 +106,25 @@ IRInstruction* ir_emit_rotate(IRBlock* block, IRInstruction* source1, IRInstruct
     IRInstruction* count = source2;
     switch (size) {
     case 8:
-        type = IROpcode::IR_LEFT_ROTATE8;
+        type = IROpcode::LeftRotate8;
         if (right) {
             count = ir_emit_sub(block, ir_emit_immediate(block, 8), count);
         }
         break;
     case 16:
-        type = IROpcode::IR_LEFT_ROTATE16;
+        type = IROpcode::LeftRotate16;
         if (right) {
             count = ir_emit_sub(block, ir_emit_immediate(block, 16), count);
         }
         break;
     case 32:
-        type = IROpcode::IR_LEFT_ROTATE32;
+        type = IROpcode::LeftRotate32;
         if (right) {
             count = ir_emit_sub(block, ir_emit_immediate(block, 32), count);
         }
         break;
     case 64:
-        type = IROpcode::IR_LEFT_ROTATE64;
+        type = IROpcode::LeftRotate64;
         if (right) {
             count = ir_emit_sub(block, ir_emit_immediate(block, 64), count);
         }
@@ -134,27 +134,27 @@ IRInstruction* ir_emit_rotate(IRBlock* block, IRInstruction* source1, IRInstruct
 }
 
 IRInstruction* ir_emit_select(IRBlock* block, IRInstruction* condition, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_three_operands(block, IROpcode::IR_SELECT, condition, source1, source2);
+    return ir_emit_three_operands(block, IROpcode::Select, condition, source1, source2);
 }
 
 IRInstruction* ir_emit_imul(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_IMUL64, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::IMul64, source1, source2);
 }
 
 IRInstruction* ir_emit_idiv(IRBlock* block, x86_size_e size, IRInstruction* rdx, IRInstruction* rax, IRInstruction* divisor) {
     IROpcode opcode;
     switch (size) {
     case X86_SIZE_BYTE:
-        opcode = IROpcode::IR_IDIV8;
+        opcode = IROpcode::IDiv8;
         return ir_emit_two_operands(block, opcode, rax, divisor);
     case X86_SIZE_WORD:
-        opcode = IROpcode::IR_IDIV16;
+        opcode = IROpcode::IDiv16;
         break;
     case X86_SIZE_DWORD:
-        opcode = IROpcode::IR_IDIV32;
+        opcode = IROpcode::IDiv32;
         break;
     case X86_SIZE_QWORD:
-        opcode = IROpcode::IR_IDIV64;
+        opcode = IROpcode::IDiv64;
         break;
     default:
         ERROR("Invalid size");
@@ -164,27 +164,27 @@ IRInstruction* ir_emit_idiv(IRBlock* block, x86_size_e size, IRInstruction* rdx,
 }
 
 IRInstruction* ir_emit_clz(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_CLZ, source);
+    return ir_emit_one_operand(block, IROpcode::Clz, source);
 }
 
 IRInstruction* ir_emit_ctz(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_CTZ, source);
+    return ir_emit_one_operand(block, IROpcode::Ctz, source);
 }
 
 IRInstruction* ir_emit_udiv(IRBlock* block, x86_size_e size, IRInstruction* rdx, IRInstruction* rax, IRInstruction* divisor) {
     IROpcode opcode;
     switch (size) {
     case X86_SIZE_BYTE:
-        opcode = IROpcode::IR_UDIV8;
+        opcode = IROpcode::UDiv8;
         return ir_emit_two_operands(block, opcode, rax, divisor);
     case X86_SIZE_WORD:
-        opcode = IROpcode::IR_UDIV16;
+        opcode = IROpcode::UDiv16;
         break;
     case X86_SIZE_DWORD:
-        opcode = IROpcode::IR_UDIV32;
+        opcode = IROpcode::UDiv32;
         break;
     case X86_SIZE_QWORD:
-        opcode = IROpcode::IR_UDIV64;
+        opcode = IROpcode::UDiv64;
         break;
     default:
         ERROR("Invalid size");
@@ -194,43 +194,43 @@ IRInstruction* ir_emit_udiv(IRBlock* block, x86_size_e size, IRInstruction* rdx,
 }
 
 IRInstruction* ir_emit_and(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_AND, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::And, source1, source2);
 }
 
 IRInstruction* ir_emit_or(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_OR, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::Or, source1, source2);
 }
 
 IRInstruction* ir_emit_xor(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_XOR, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::Xor, source1, source2);
 }
 
 IRInstruction* ir_emit_not(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_NOT, source);
+    return ir_emit_one_operand(block, IROpcode::Not, source);
 }
 
 IRInstruction* ir_emit_equal(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_EQUAL, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::Equal, source1, source2);
 }
 
 IRInstruction* ir_emit_not_equal(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_NOT_EQUAL, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::NotEqual, source1, source2);
 }
 
 IRInstruction* ir_emit_greater_than_signed(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_GREATER_THAN_SIGNED, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::IGreaterThan, source1, source2);
 }
 
 IRInstruction* ir_emit_less_than_signed(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_LESS_THAN_SIGNED, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::ILessThan, source1, source2);
 }
 
 IRInstruction* ir_emit_greater_than_unsigned(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_GREATER_THAN_UNSIGNED, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::UGreaterThan, source1, source2);
 }
 
 IRInstruction* ir_emit_less_than_unsigned(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_LESS_THAN_UNSIGNED, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::ULessThan, source1, source2);
 }
 
 IRInstruction* ir_emit_lea(IRBlock* block, x86_operand_t* rm_operand) {
@@ -250,7 +250,7 @@ IRInstruction* ir_emit_lea(IRBlock* block, x86_operand_t* rm_operand) {
     IRInstruction* index = rm_operand->memory.index != X86_REF_COUNT ? get_guest(block, rm_operand->memory.index) : ir_emit_immediate(block, 0);
     IRInstruction* displacement = ir_emit_immediate(block, rm_operand->memory.displacement);
     IRInstruction* scale = ir_emit_immediate(block, rm_operand->memory.scale);
-    IRInstruction* address = ir_emit_four_operands(block, IROpcode::IR_LEA, base_final, index, scale, displacement);
+    IRInstruction* address = ir_emit_four_operands(block, IROpcode::Lea, base_final, index, scale, displacement);
 
     IRInstruction* final_address = address;
     if (rm_operand->memory.address_override) {
@@ -262,19 +262,19 @@ IRInstruction* ir_emit_lea(IRBlock* block, x86_operand_t* rm_operand) {
 }
 
 IRInstruction* ir_emit_popcount(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_POPCOUNT, source);
+    return ir_emit_one_operand(block, IROpcode::Popcount, source);
 }
 
 IRInstruction* ir_emit_sext8(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_SEXT8, source);
+    return ir_emit_one_operand(block, IROpcode::Sext8, source);
 }
 
 IRInstruction* ir_emit_sext16(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_SEXT16, source);
+    return ir_emit_one_operand(block, IROpcode::Sext16, source);
 }
 
 IRInstruction* ir_emit_sext32(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_SEXT32, source);
+    return ir_emit_one_operand(block, IROpcode::Sext32, source);
 }
 
 IRInstruction* ir_emit_sext(IRBlock* block, IRInstruction* source, x86_size_e size) {
@@ -297,7 +297,7 @@ IRInstruction* ir_emit_syscall(IRBlock* block, std::initializer_list<IRInstructi
         ERROR("Invalid number of arguments");
     }
 
-    IRInstruction instruction(IROpcode::IR_SYSCALL, args);
+    IRInstruction instruction(IROpcode::Syscall, args);
     return block->InsertAtEnd(std::move(instruction));
 }
 
@@ -309,97 +309,96 @@ void ir_terminate_jump_conditional(IRBlock* block, IRInstruction* condition, IRB
     block->TerminateJumpConditional(condition, target_true, target_false);
 }
 
-IRInstruction* ir_emit_insert_integer_to_vector(IRBlock* block, IRInstruction* dest, IRInstruction* source, u8 idx, x86_size_e sz) {
-    IRInstruction* index = ir_emit_immediate(block, idx);
-    IRInstruction* size = ir_emit_immediate(block, sz);
-    return ir_emit_four_operands(block, IROpcode::IR_INSERT_INTEGER_TO_VECTOR, dest, source, index, size);
+IRInstruction* ir_emit_insert_integer_to_vector(IRBlock* block, IRInstruction* source, IRInstruction* dest, u8 idx, x86_size_e sz) {
+    u64 extra_data = (u64)sz << 8 | idx;
+    IRInstruction* instruction = ir_emit_two_operands(block, IROpcode::VInsertInteger, source, dest);
+    instruction->SetExtraData(extra_data);
+    return instruction;
 }
 
 IRInstruction* ir_emit_extract_integer_from_vector(IRBlock* block, IRInstruction* src, u8 idx, x86_size_e sz) {
-    IRInstruction* index = ir_emit_immediate(block, idx);
-    IRInstruction* size = ir_emit_immediate(block, sz);
-    return ir_emit_three_operands(block, IROpcode::IR_EXTRACT_INTEGER_FROM_VECTOR, src, index, size);
+    u64 extra_data = (u64)sz << 8 | idx;
+    IRInstruction* instruction = ir_emit_one_operand(block, IROpcode::VExtractInteger, src);
+    instruction->SetExtraData(extra_data);
+    return instruction;
 }
 
 IRInstruction* ir_emit_vector_unpack_byte_low(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_UNPACK_BYTE_LOW, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VUnpackByteLow, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_unpack_word_low(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_UNPACK_WORD_LOW, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VUnpackWordLow, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_unpack_dword_low(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_UNPACK_DWORD_LOW, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VUnpackDWordLow, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_unpack_qword_low(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_UNPACK_QWORD_LOW, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VUnpackQWordLow, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_from_integer(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_VECTOR_FROM_INTEGER, source);
+    return ir_emit_one_operand(block, IROpcode::CastIntegerToVector, source);
 }
 
 IRInstruction* ir_emit_integer_from_vector(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_INTEGER_FROM_VECTOR, source);
+    return ir_emit_one_operand(block, IROpcode::CastVectorToInteger, source);
 }
 
 IRInstruction* ir_emit_vector_packed_and(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_AND, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VAnd, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_packed_or(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_OR, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VOr, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_packed_xor(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_XOR, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VXor, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_packed_shift_right(IRBlock* block, IRInstruction* source, IRInstruction* imm) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_SHIFT_RIGHT, source, imm);
+    return ir_emit_two_operands(block, IROpcode::VShr, source, imm);
 }
 
 IRInstruction* ir_emit_vector_packed_shift_left(IRBlock* block, IRInstruction* source, IRInstruction* imm) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_SHIFT_LEFT, source, imm);
+    return ir_emit_two_operands(block, IROpcode::VShl, source, imm);
 }
 
 IRInstruction* ir_emit_vector_packed_sub_byte(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_SUB_BYTE, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VPackedSubByte, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_packed_add_qword(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_ADD_QWORD, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VPackedAddQWord, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_packed_compare_eq_byte(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_BYTE, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VPackedEqualByte, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_packed_compare_eq_word(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_WORD, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VPackedEqualWord, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_packed_compare_eq_dword(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_COMPARE_EQ_DWORD, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VPackedEqualDWord, source1, source2);
 }
 
 IRInstruction* ir_emit_vector_packed_shuffle_dword(IRBlock* block, IRInstruction* source, u8 control_byte) {
-    IRInstruction instruction(IROpcode::IR_VECTOR_PACKED_SHUFFLE_DWORD, {source}, control_byte);
+    IRInstruction instruction(IROpcode::VPackedShuffleDWord, {source});
+    instruction.SetExtraData(control_byte);
     return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_vector_packed_move_byte_mask(IRBlock* block, IRInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::IR_VECTOR_PACKED_MOVE_BYTE_MASK, source);
+    return ir_emit_one_operand(block, IROpcode::VMoveByteMask, source);
 }
 
 IRInstruction* ir_emit_vector_packed_min_byte(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_MIN_BYTE, source1, source2);
-}
-
-IRInstruction* ir_emit_vector_packed_compare_implicit_string_index(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IR_VECTOR_PACKED_COMPARE_IMPLICIT_STRING_INDEX, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::VPackedMinByte, source1, source2);
 }
 
 IRInstruction* ir_emit_load_guest_from_memory(IRBlock* block, x86_ref_e ref) {
@@ -407,7 +406,7 @@ IRInstruction* ir_emit_load_guest_from_memory(IRBlock* block, x86_ref_e ref) {
         ERROR("Invalid register reference");
     }
 
-    IRInstruction instruction(IROpcode::IR_LOAD_GUEST_FROM_MEMORY, ref);
+    IRInstruction instruction(IROpcode::LoadGuestFromMemory, ref);
     return block->InsertAtEnd(std::move(instruction));
 }
 
@@ -416,7 +415,7 @@ void ir_emit_store_guest_to_memory(IRBlock* block, x86_ref_e ref, IRInstruction*
         ERROR("Invalid register reference");
     }
 
-    IRInstruction instruction(IROpcode::IR_STORE_GUEST_TO_MEMORY, ref, source);
+    IRInstruction instruction(IROpcode::StoreGuestToMemory, ref, source);
     block->InsertAtEnd(std::move(instruction));
 }
 
@@ -425,7 +424,7 @@ IRInstruction* ir_emit_get_guest(IRBlock* block, x86_ref_e ref) {
         ERROR("Invalid register reference");
     }
 
-    IRInstruction instruction(IROpcode::IR_GET_GUEST, ref);
+    IRInstruction instruction(IROpcode::GetGuest, ref);
     return block->InsertAtEnd(std::move(instruction));
 }
 
@@ -434,7 +433,7 @@ void ir_emit_set_guest(IRBlock* block, x86_ref_e ref, IRInstruction* source) {
         ERROR("Invalid register reference");
     }
 
-    IRInstruction instruction(IROpcode::IR_SET_GUEST, ref, source);
+    IRInstruction instruction(IROpcode::SetGuest, ref, source);
     block->InsertAtEnd(std::move(instruction));
 }
 
@@ -461,58 +460,58 @@ void ir_emit_set_flag(IRBlock* block, x86_ref_e flag, IRInstruction* source) {
 }
 
 IRInstruction* ir_emit_read_byte(IRBlock* block, IRInstruction* address) {
-    return ir_emit_one_operand(block, IROpcode::IR_READ_BYTE, address);
+    return ir_emit_one_operand(block, IROpcode::ReadByte, address);
 }
 
 IRInstruction* ir_emit_read_word(IRBlock* block, IRInstruction* address) {
-    return ir_emit_one_operand(block, IROpcode::IR_READ_WORD, address);
+    return ir_emit_one_operand(block, IROpcode::ReadWord, address);
 }
 
 IRInstruction* ir_emit_read_dword(IRBlock* block, IRInstruction* address) {
-    return ir_emit_one_operand(block, IROpcode::IR_READ_DWORD, address);
+    return ir_emit_one_operand(block, IROpcode::ReadDWord, address);
 }
 
 IRInstruction* ir_emit_read_qword(IRBlock* block, IRInstruction* address) {
-    return ir_emit_one_operand(block, IROpcode::IR_READ_QWORD, address);
+    return ir_emit_one_operand(block, IROpcode::ReadQWord, address);
 }
 
 IRInstruction* ir_emit_read_xmmword(IRBlock* block, IRInstruction* address) {
-    return ir_emit_one_operand(block, IROpcode::IR_READ_XMMWORD, address);
+    return ir_emit_one_operand(block, IROpcode::ReadXmmWord, address);
 }
 
 void ir_emit_write_byte(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::IR_WRITE_BYTE, address, source);
+    ir_emit_two_operands(block, IROpcode::WriteByte, address, source);
 }
 
 void ir_emit_write_word(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::IR_WRITE_WORD, address, source);
+    ir_emit_two_operands(block, IROpcode::WriteWord, address, source);
 }
 
 void ir_emit_write_dword(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::IR_WRITE_DWORD, address, source);
+    ir_emit_two_operands(block, IROpcode::WriteDWord, address, source);
 }
 
 void ir_emit_write_qword(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::IR_WRITE_QWORD, address, source);
+    ir_emit_two_operands(block, IROpcode::WriteQWord, address, source);
 }
 
 void ir_emit_write_xmmword(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::IR_WRITE_XMMWORD, address, source);
+    ir_emit_two_operands(block, IROpcode::WriteXmmWord, address, source);
 }
 
 IRInstruction* ir_emit_cpuid(IRBlock* block, IRInstruction* rax, IRInstruction* rcx) {
-    IRInstruction instruction(IROpcode::IR_CPUID, {rax, rcx});
+    IRInstruction instruction(IROpcode::Cpuid, {rax, rcx});
     return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_rdtsc(IRBlock* block) {
-    IRInstruction instruction(IROpcode::IR_RDTSC, {});
+    IRInstruction instruction(IROpcode::Rdtsc, {});
     return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_tuple_extract(IRBlock* block, IRInstruction* tuple, u8 index) {
-    IRInstruction* instruction = ir_emit_one_operand(block, IROpcode::IR_TUPLE_EXTRACT, tuple);
-    instruction->AsOperands().control_byte = index;
+    IRInstruction* instruction = ir_emit_one_operand(block, IROpcode::TupleExtract, tuple);
+    instruction->SetExtraData(index);
     return instruction;
 }
 
