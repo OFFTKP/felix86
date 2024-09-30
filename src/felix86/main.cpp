@@ -1,9 +1,7 @@
 #include <argp.h>
 #include <stdio.h>
 #include "felix86/common/log.hpp"
-#include "felix86/common/prompt.hpp"
 #include "felix86/common/version.hpp"
-#include "felix86/gui.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/loader/loader.hpp"
 
@@ -15,7 +13,6 @@ static char args_doc[] = "BINARY [ARGS...]";
 
 static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose output"},
                                        {"quiet", 'q', 0, 0, "Don't produce any output"},
-                                       {"interpreter", 'i', 0, 0, "Run in interpreter mode"},
                                        {"host-envs", 'e', 0, 0, "Pass host environment variables to the guest"},
                                        {"print-functions", 'P', 0, 0, "Print functions as they compile"},
                                        {"dont-optimize", 'O', 0, 0, "Don't run IR optimizations"},
@@ -26,7 +23,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     Config* config = (Config*)state->input;
 
     if (key == ARGP_KEY_ARG) {
-       config->argv.push_back(arg);
+        config->argv.push_back(arg);
         return 0;
     }
 
@@ -44,7 +41,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'e': {
-        config->use_host_envs = true; todo, move them in here
+        char** envp = environ;
+        while (*envp) {
+            config->envp.push_back(*envp);
+            envp++;
+        }
         break;
     }
     case 'P': {
@@ -73,7 +74,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
-    Config config = {0};
+    Config config = {};
     config.use_interpreter = false;
     config.optimize = true;
 
@@ -94,7 +95,7 @@ int main(int argc, char* argv[]) {
     if (argc == 1) {
         ERROR("Unimplemented");
     } else {
-        loader_run_elf(&config);
+        loader_run_elf(config);
     }
 
     felix86_exit(0);

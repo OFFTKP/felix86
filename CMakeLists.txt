@@ -29,14 +29,12 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/emitter.cpp
     src/felix86/ir/handlers_weak.cpp
     src/felix86/ir/handlers.cpp
-    src/felix86/ir/interpreter.cpp
     src/felix86/ir/instruction.cpp
     src/felix86/ir/print.cpp
     src/felix86/ir/ssa_pass.cpp
 )
 
 set(FELIX86_COMMON_SOURCES
-    src/felix86/common/allocator.cpp
     src/felix86/common/exit.cpp
     src/felix86/common/file.cpp
     src/felix86/common/global.cpp
@@ -66,7 +64,7 @@ set(FELIX86_CORE_SOURCES
     ${FELIX86_BACKEND_SOURCES}
     ${FELIX86_LOADER_SOURCES}
     ${FELIX86_HLE_SOURCES}
-    src/felix86/felix86.cpp
+    src/felix86/emulator.cpp
 )
 
 set(FELIX86_INCLUDES
@@ -81,7 +79,7 @@ target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis)
 
 add_executable(felix86)
-target_sources(felix86 PRIVATE src/felix86/main.cpp src/felix86/gui.cpp)
+target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
 
 set(FELIX86_TEST_SOURCES

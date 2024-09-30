@@ -492,7 +492,7 @@ void frontend_compile_instruction(FrontendState* state) {
             ERROR("Invalid MM register");
         }
 
-        inst.operand_rm.reg.ref = x86_ref_e(X86_REF_MM0 + reg);
+        inst.operand_rm.reg.ref = x86_ref_e(X86_REF_ST0 + reg);
         size_rm = X86_SIZE_MM;
     }
 
@@ -502,7 +502,7 @@ void frontend_compile_instruction(FrontendState* state) {
             ERROR("Invalid MM register");
         }
 
-        inst.operand_reg.reg.ref = x86_ref_e(X86_REF_MM0 + reg);
+        inst.operand_reg.reg.ref = x86_ref_e(X86_REF_ST0 + reg);
         size_reg = X86_SIZE_MM;
     }
 
@@ -722,8 +722,8 @@ void frontend_compile_block(IRFunction* function, IRBlock* block) {
     }
 }
 
-void frontend_compile_function(IRFunction* function, u64 address) {
-    IRBlock* block = function->GetBlockAt(address);
+void frontend_compile_function(IRFunction* function) {
+    IRBlock* block = function->GetBlockAt(function->GetStartAddress());
     frontend_compile_block(function, block);
     function->SetCompiled();
 }

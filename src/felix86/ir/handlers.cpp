@@ -24,9 +24,6 @@ u64 sext_if_64(u64 value, x86_size_e size_e) {
 
 IR_HANDLE(error) {
     u64 address = state->current_address - g_base_address;
-    if (address & (1ull << 63)) {
-        address = state->current_address - g_interpreter_address;
-    }
     ERROR("Hit error instruction during: %016lx - Opcode: %02x", state->current_address - g_base_address, inst->opcode);
 }
 

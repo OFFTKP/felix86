@@ -10,12 +10,12 @@
 struct Config {
     std::filesystem::path rootfs_path;
     std::filesystem::path executable_path;
-	bool testing = false;
-	bool optimize = false;
-	bool print_blocks = false;
-	bool use_interpreter = false;
-	u64 base_address = 0;
-	u64 brk_base_address = 0;
+    bool testing = false;
+    bool optimize = false;
+    bool print_blocks = false;
+    bool use_interpreter = false;
+    u64 base_address = 0;
+    u64 brk_base_address = 0;
     std::vector<std::string> argv;
     std::vector<std::string> envp;
 };
@@ -50,65 +50,65 @@ struct Emulator {
 
     bool GetFlag(x86_ref_e flag) {
         switch (flag) {
-            case X86_REF_CF:
-                return state.cf;
-            case X86_REF_PF:
-                return state.pf;
-            case X86_REF_AF:
-                return state.af;
-            case X86_REF_ZF:
-                return state.zf;
-            case X86_REF_SF:
-                return state.sf;
-            case X86_REF_OF:
-                return state.of;
-            default:
-                ERROR("Invalid flag reference: %d", flag);
-                return false;
+        case X86_REF_CF:
+            return state.cf;
+        case X86_REF_PF:
+            return state.pf;
+        case X86_REF_AF:
+            return state.af;
+        case X86_REF_ZF:
+            return state.zf;
+        case X86_REF_SF:
+            return state.sf;
+        case X86_REF_OF:
+            return state.of;
+        default:
+            ERROR("Invalid flag reference: %d", flag);
+            return false;
         }
     }
 
     void SetFlag(x86_ref_e flag, bool value) {
         switch (flag) {
-            case X86_REF_CF:
-                state.cf = value;
-                break;
-            case X86_REF_PF:
-                state.pf = value;
-                break;
-            case X86_REF_AF:
-                state.af = value;
-                break;
-            case X86_REF_ZF:
-                state.zf = value;
-                break;
-            case X86_REF_SF:
-                state.sf = value;
-                break;
-            case X86_REF_OF:
-                state.of = value;
-                break;
-            default:
-                ERROR("Invalid flag reference: %d", flag);
+        case X86_REF_CF:
+            state.cf = value;
+            break;
+        case X86_REF_PF:
+            state.pf = value;
+            break;
+        case X86_REF_AF:
+            state.af = value;
+            break;
+        case X86_REF_ZF:
+            state.zf = value;
+            break;
+        case X86_REF_SF:
+            state.sf = value;
+            break;
+        case X86_REF_OF:
+            state.of = value;
+            break;
+        default:
+            ERROR("Invalid flag reference: %d", flag);
         }
     }
 
     FpReg GetFpReg(x86_ref_e ref) {
-        if (ref < X86_REF_MM0 || ref > X86_REF_MM7) {
+        if (ref < X86_REF_ST0 || ref > X86_REF_ST7) {
             ERROR("Invalid FP register reference: %d", ref);
             return {};
         }
 
-        return state.fp[ref - X86_REF_MM0];
+        return state.fp[ref - X86_REF_ST0];
     }
 
     void SetFpReg(x86_ref_e ref, const FpReg& value) {
-        if (ref < X86_REF_MM0 || ref > X86_REF_MM7) {
+        if (ref < X86_REF_ST0 || ref > X86_REF_ST7) {
             ERROR("Invalid FP register reference: %d", ref);
             return;
         }
 
-        state.fp[ref - X86_REF_MM0] = value;
+        state.fp[ref - X86_REF_ST0] = value;
     }
 
     XmmReg GetXmmReg(x86_ref_e ref) {

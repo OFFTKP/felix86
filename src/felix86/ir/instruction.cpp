@@ -79,20 +79,15 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
     }
 }
 
-IRType GetTypeFromOpcode(IROpcode opcode) {
+IRType GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     switch (opcode) {
     case IROpcode::IR_TUPLE_EXTRACT:
     case IROpcode::IR_MOV:
-    case IROpcode::IR_LOAD_GUEST_FROM_MEMORY:
-    case IROpcode::IR_STORE_GUEST_TO_MEMORY:
-    case IROpcode::IR_PHI:
-    case IROpcode::IR_GET_GUEST:
-    case IROpcode::IR_SET_GUEST: {
+    case IROpcode::IR_PHI: {
         ERROR("Should not be used in GetTypeFromOpcode");
         return IRType::Void;
     }
     case IROpcode::IR_NULL:
-    case IROpcode::IR_START_OF_BLOCK:
     case IROpcode::IR_COMMENT: {
         return IRType::Void;
     }
@@ -179,6 +174,29 @@ IRType GetTypeFromOpcode(IROpcode opcode) {
     case IROpcode::IR_WRITE_XMMWORD: {
         return IRType::Void;
     }
+
+    case IROpcode::IR_GET_GUEST:
+    case IROpcode::IR_SET_GUEST:
+    case IROpcode::IR_LOAD_GUEST_FROM_MEMORY:
+    case IROpcode::IR_STORE_GUEST_TO_MEMORY: {
+        switch (ref) {
+        case X86_REF_RAX ... X86_REF_R15:
+        case X86_REF_RIP:
+        case X86_REF_GS:
+        case X86_REF_FS:
+            return IRType::Integer64;
+        case X86_REF_ST0 ... X86_REF_ST7:
+            return IRType::Float80;
+        case X86_REF_CF ... X86_REF_OF:
+            return IRType::Integer64;
+        case X86_REF_XMM0 ... X86_REF_XMM15:
+            return IRType::Vector128;
+        default:
+            ERROR("Invalid register reference: %d", static_cast<u8>(ref));
+            return IRType::Void;
+        }
+    }
+
     default: {
         ERROR("Unimplemented opcode: %d", static_cast<u8>(opcode));
         return IRType::Void;

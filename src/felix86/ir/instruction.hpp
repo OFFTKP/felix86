@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <string>
 #include <variant>
 #include <vector>
@@ -10,7 +9,6 @@
 enum class IROpcode : u8 { // TODO: match naming scheme of IRType
     IR_NULL,
 
-    IR_START_OF_BLOCK,
     IR_PHI,
     IR_COMMENT,
     IR_TUPLE_EXTRACT,
@@ -105,6 +103,7 @@ enum class IRType : u8 {
     Void,
     Integer64,
     Vector128,
+    Float80, // :(
     TupleTwoInteger64,
     TupleFourInteger64,
 };
@@ -172,7 +171,8 @@ struct IRInstruction {
         }
     }
 
-    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands, u8 control_byte) : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
+    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands, u8 control_byte)
+        : opcode(opcode), returnType{GetTypeFromOpcode(opcode)} {
         Operands op;
         op.operands = operands;
         op.control_byte = control_byte;
@@ -292,8 +292,16 @@ struct IRInstruction {
         return std::get<Phi>(expression);
     }
 
+    u32 GetName() const {
+        return name;
+    }
+
     void SetName(u32 name) {
         this->name = name;
+    }
+
+    u32 GetOperandName(u8 index) const {
+        return AsOperands().operands[index]->GetName();
     }
 
     void ReplaceWith(IRInstruction&& other) {

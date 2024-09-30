@@ -1,8 +1,8 @@
 #pragma once
 
+#include <tsl/robin_map.h>
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/block.hpp"
-#include <tsl/robin_map.h>
 
 struct FunctionCache {
     IRFunction* CreateOrGetFunctionAt(u64 address) {
@@ -17,7 +17,8 @@ struct FunctionCache {
         map[address] = function;
         return function;
     }
+
 private:
-    std::vector<IRFunction> storage {};
-    tsl::robin_map<u64, IRFunction*> map {};
+    std::vector<IRFunction> storage{};
+    tsl::robin_map<u64, IRFunction*> map{};
 };

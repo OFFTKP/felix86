@@ -10,7 +10,7 @@
 
 #define VALIDATE_PATH(path)                                                                                                                          \
     if (!validatePath(path)) {                                                                                                                       \
-        return -ENOENT;                                                                                                                                   \
+        return -ENOENT;                                                                                                                              \
     }
 
 const char* proc_self_exe = "/proc/self/exe";

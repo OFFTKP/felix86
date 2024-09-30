@@ -6,7 +6,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/version.hpp"
-#include "felix86/felix86.hpp"
+#include "felix86/emulator.hpp"
 #include "felix86/loader/elf.hpp"
 #include "felix86/loader/loader.hpp"
 
@@ -37,17 +37,18 @@ u64 stack_push_string(u64 stack, const char* str) {
     return stack;
 }
 
-void loader_run_elf(loader_config_t* config) {
+void loader_run_elf(Config* config) {
     LOG("felix86 version %s", FELIX86_VERSION);
 
-    if (config->argc > 1) {
-        VERBOSE("Passing %d arguments to guest executable", config->argc - 1);
-        for (int i = 1; i < config->argc; i++) {
-            VERBOSE("Guest argument %d: %s", i, config->argv[i]);
+    size_t argc = config->argv.size();
+    if (argc > 1) {
+        VERBOSE("Passing %zu arguments to guest executable", argc - 1);
+        for (int i = 1; i < argc; i++) {
+            VERBOSE("Guest argument %d: %s", i, config->argv[i].c_str());
         }
     }
 
-    const char* path = config->argv[0];
+    const char* path = config->argv[0].c_str();
 
     std::unique_ptr<Elf> elf = elf_load(path, false);
     if (!elf) {
@@ -69,7 +70,7 @@ void loader_run_elf(loader_config_t* config) {
     u64 rsp = (u64)elf->stack_pointer;
 
     // To hold the addresses of the arguments for later pushing
-    std::vector<u64> argv_addresses(config->argc);
+    std::vector<u64> argv_addresses(argc);
 
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
@@ -77,30 +78,16 @@ void loader_run_elf(loader_config_t* config) {
     rsp = stack_push_string(rsp, x86_64_string);
     const char* platform_name = (const char*)rsp;
 
-    for (int i = 0; i < config->argc; i++) {
-        rsp = stack_push_string(rsp, config->argv[i]);
+    for (int i = 0; i < argc; i++) {
+        rsp = stack_push_string(rsp, config->argv[i].c_str());
         argv_addresses[i] = rsp;
     }
 
-    int envc = config->envc;
-
-    if (config->use_host_envs) {
-        char** envp = environ;
-        while (*envp) {
-            envc++;
-            envp++;
-        }
-    }
-
+    size_t envc = config->envp.size();
     std::vector<u64> envp_addresses(envc);
 
     for (int i = 0; i < envc; i++) {
-        char* env;
-        if (i < config->envc) {
-            env = config->envp[i];
-        } else {
-            env = environ[i - config->envc];
-        }
+        const char* env = config->envp[i].c_str();
         rsp = stack_push_string(rsp, env);
         envp_addresses[i] = rsp;
     }
@@ -144,12 +131,12 @@ void loader_run_elf(loader_config_t* config) {
     // past our own information block
     // It's important to calculate this because the RSP final
     // value needs to be aligned to 16 bytes
-    u16 size_needed = 16 * auxv_count +  // aux vector entries
-                      8 +                // null terminator
-                      envc * 8 +         // envp
-                      8 +                // null terminator
-                      config->argc * 8 + // argv
-                      8;                 // argc
+    u16 size_needed = 16 * auxv_count + // aux vector entries
+                      8 +               // null terminator
+                      envc * 8 +        // envp
+                      8 +               // null terminator
+                      argc * 8 +        // argv
+                      8;                // argc
 
     u64 final_rsp = rsp - size_needed;
     if (final_rsp & 0xF) {
@@ -172,27 +159,26 @@ void loader_run_elf(loader_config_t* config) {
 
     // End of arguments
     rsp = stack_push(rsp, 0);
-    for (int i = config->argc - 1; i >= 0; i--) {
+    for (size_t i = argc - 1; i >= 0; i--) {
         rsp = stack_push(rsp, argv_addresses[i]);
     }
 
     // Argument count
-    rsp = stack_push(rsp, config->argc);
+    rsp = stack_push(rsp, argc);
 
     if (rsp & 0xF) {
         ERROR("Stack not aligned to 16 bytes\n");
         return;
     }
 
-    felix86_recompiler_config_t fconfig = {.testing = false,
-                                           .optimize = !config->dont_optimize,
-                                           .print_blocks = config->print_blocks,
-                                           .use_interpreter = config->use_interpreter,
-                                           .base_address = (u64)elf->program,
-                                           .brk_base_address = (u64)elf->brk_base};
-    felix86_recompiler_t* recompiler = felix86_recompiler_create(&fconfig);
-    felix86_set_guest(recompiler, X86_REF_RIP, entry);
-    felix86_set_guest(recompiler, X86_REF_RSP, rsp);
-    felix86_recompiler_run(recompiler);
-    felix86_recompiler_destroy(recompiler);
+    Config fconfig = {.testing = false,
+                      .optimize = config->optimize,
+                      .print_blocks = config->print_blocks,
+                      .use_interpreter = config->use_interpreter,
+                      .base_address = (u64)elf->program,
+                      .brk_base_address = (u64)elf->brk_base};
+    Emulator emulator(fconfig);
+    emulator.SetGpr(X86_REF_RSP, rsp);
+    emulator.SetGpr(X86_REF_RIP, entry);
+    emulator.Run();
 }

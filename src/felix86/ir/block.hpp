@@ -19,8 +19,6 @@ struct IRBlock {
     IRBlock() = default;
     IRBlock(u64 address) : start_address(address) {}
 
-    using iterator = std::list<IRInstruction>::iterator;
-
     void TerminateJump(IRBlock* target) {
         termination = Termination::Jump;
         successors[0] = target;
@@ -43,28 +41,12 @@ struct IRBlock {
         termination = Termination::Exit;
     }
 
-    iterator InsertAfter(iterator pos, IRInstruction&& instr) {
-        return instructions.insert(std::next(pos), std::move(instr));
-    }
-
-    iterator InsertBefore(iterator pos, IRInstruction&& instr) {
-        return instructions.insert(pos, std::move(instr));
-    }
-
-    void InsertAtEnd(IRInstruction&& instr) {
+    IRInstruction* InsertAtEnd(IRInstruction&& instr) {
         instructions.push_back(std::move(instr));
+        return &instructions.back();
     }
 
-    iterator EraseAndInvalidate(iterator pos) {
-        (*pos).Invalidate();
-        return instructions.erase(pos);
-    }
-
-    IRInstruction& GetLastInstruction() {
-        return instructions.back();
-    }
-
-    bool IsCompiled() {
+    bool IsCompiled() const {
         return compiled;
     }
 
@@ -72,11 +54,11 @@ struct IRBlock {
         compiled = true;
     }
 
-    u64 GetStartAddress() {
+    u64 GetStartAddress() const {
         return start_address;
     }
 
-    bool IsVisited() {
+    bool IsVisited() const {
         return visited;
     }
 
@@ -84,7 +66,7 @@ struct IRBlock {
         visited = value;
     }
 
-    u32 GetIndex() {
+    u32 GetIndex() const {
         return list_index;
     }
 
@@ -92,7 +74,7 @@ struct IRBlock {
         list_index = index;
     }
 
-    u32 GetPostorderIndex() {
+    u32 GetPostorderIndex() const {
         return postorder_index;
     }
 
@@ -101,6 +83,10 @@ struct IRBlock {
     }
 
     IRBlock* GetSuccessor(bool index) {
+        return successors[index];
+    }
+
+    const IRBlock* GetSuccessor(bool index) const {
         return successors[index];
     }
 
@@ -116,7 +102,15 @@ struct IRBlock {
         return predecessors;
     }
 
+    Termination GetTermination() const {
+        return termination;
+    }
+
     std::list<IRInstruction>& GetInstructions() {
+        return instructions;
+    }
+
+    const std::list<IRInstruction>& GetInstructions() const {
         return instructions;
     }
 
@@ -177,7 +171,11 @@ struct IRFunction {
         return blocks;
     }
 
-    bool IsCompiled() {
+    const std::vector<IRBlock>& GetBlocks() const {
+        return blocks;
+    }
+
+    bool IsCompiled() const {
         return compiled;
     }
 
@@ -185,9 +183,14 @@ struct IRFunction {
         compiled = true;
     }
 
+    u64 GetStartAddress() const {
+        return start_address_block->GetStartAddress();
+    }
+
 private:
     IRBlock* entry = nullptr;
     IRBlock* exit = nullptr;
+    IRBlock* start_address_block = nullptr;
     std::vector<IRBlock> blocks;
     tsl::robin_map<u64, IRBlock*> block_map;
     bool compiled = false;

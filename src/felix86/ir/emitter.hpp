@@ -124,7 +124,8 @@ IRInstruction* ir_emit_get_carry_sbb(IRBlock* block, IRInstruction* source1, IRI
 IRInstruction* ir_emit_get_aux_add(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
 IRInstruction* ir_emit_get_aux_sub(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
 
-IRInstruction* ir_emit_set_cpazso(IRBlock* block, IRInstruction* c, IRInstruction* p, IRInstruction* a, IRInstruction* z, IRInstruction* s, IRInstruction* o);
+IRInstruction* ir_emit_set_cpazso(IRBlock* block, IRInstruction* c, IRInstruction* p, IRInstruction* a, IRInstruction* z, IRInstruction* s,
+                                  IRInstruction* o);
 
 IRInstruction* ir_emit_debug_info_compile_time(IRBlock* block, const char* format, ...);
 

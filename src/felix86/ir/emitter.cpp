@@ -56,27 +56,23 @@ IRInstruction* ir_emit_get_mask(IRBlock* block, x86_size_e size_e) {
 
 IRInstruction* ir_emit_one_operand(IRBlock* block, IROpcode opcode, IRInstruction* source) {
     IRInstruction instruction(opcode, {source});
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_two_operands(IRBlock* block, IROpcode opcode, IRInstruction* source1, IRInstruction* source2) {
     IRInstruction instruction(opcode, {source1, source2});
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_three_operands(IRBlock* block, IROpcode opcode, IRInstruction* source1, IRInstruction* source2, IRInstruction* source3) {
     IRInstruction instruction(opcode, {source1, source2, source3});
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_four_operands(IRBlock* block, IROpcode opcode, IRInstruction* source1, IRInstruction* source2, IRInstruction* source3,
                                      IRInstruction* source4) {
     IRInstruction instruction(opcode, {source1, source2, source3, source4});
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 void ir_emit_runtime_comment(IRBlock* block, const char* comment) {
@@ -302,8 +298,7 @@ IRInstruction* ir_emit_syscall(IRBlock* block, std::initializer_list<IRInstructi
     }
 
     IRInstruction instruction(IROpcode::IR_SYSCALL, args);
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 void ir_terminate_jump(IRBlock* block, IRBlock* target) {
@@ -392,8 +387,7 @@ IRInstruction* ir_emit_vector_packed_compare_eq_dword(IRBlock* block, IRInstruct
 
 IRInstruction* ir_emit_vector_packed_shuffle_dword(IRBlock* block, IRInstruction* source, u8 control_byte) {
     IRInstruction instruction(IROpcode::IR_VECTOR_PACKED_SHUFFLE_DWORD, {source}, control_byte);
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_vector_packed_move_byte_mask(IRBlock* block, IRInstruction* source) {
@@ -414,8 +408,7 @@ IRInstruction* ir_emit_load_guest_from_memory(IRBlock* block, x86_ref_e ref) {
     }
 
     IRInstruction instruction(IROpcode::IR_LOAD_GUEST_FROM_MEMORY, ref);
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 void ir_emit_store_guest_to_memory(IRBlock* block, x86_ref_e ref, IRInstruction* source) {
@@ -433,8 +426,7 @@ IRInstruction* ir_emit_get_guest(IRBlock* block, x86_ref_e ref) {
     }
 
     IRInstruction instruction(IROpcode::IR_GET_GUEST, ref);
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 void ir_emit_set_guest(IRBlock* block, x86_ref_e ref, IRInstruction* source) {
@@ -510,14 +502,12 @@ void ir_emit_write_xmmword(IRBlock* block, IRInstruction* address, IRInstruction
 
 IRInstruction* ir_emit_cpuid(IRBlock* block, IRInstruction* rax, IRInstruction* rcx) {
     IRInstruction instruction(IROpcode::IR_CPUID, {rax, rcx});
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_rdtsc(IRBlock* block) {
     IRInstruction instruction(IROpcode::IR_RDTSC, {});
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_tuple_extract(IRBlock* block, IRInstruction* tuple, u8 index) {
@@ -528,8 +518,7 @@ IRInstruction* ir_emit_tuple_extract(IRBlock* block, IRInstruction* tuple, u8 in
 
 IRInstruction* ir_emit_immediate(IRBlock* block, u64 value) {
     IRInstruction instruction(value);
-    block->InsertAtEnd(std::move(instruction));
-    return &block->GetLastInstruction();
+    return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_immediate_sext(IRBlock* block, x86_operand_t* operand) {
