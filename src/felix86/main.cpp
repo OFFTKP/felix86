@@ -80,6 +80,8 @@ int main(int argc, char* argv[]) {
 
     argp_parse(&argp, argc, argv, 0, 0, &config);
 
+    config.executable_path = config.argv[0];
+
     if (config.rootfs_path.empty()) {
         ERROR("Rootfs path not specified");
         return 1;

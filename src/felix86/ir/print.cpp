@@ -33,7 +33,7 @@ void print_two_op(const IRInstruction& instruction, const char* op) {
     printf(VAR EQUALS VAR OP VAR, instruction.GetName(), instruction.GetOperandName(0), op, instruction.GetOperandName(1));
 }
 
-void ir_print_instruction(const IRInstruction& instruction, const IRBlock& block) {
+void ir_print_instruction(const IRInstruction& instruction, const IRBlock* block) {
     switch (instruction.GetOpcode()) {
     case IROpcode::Comment: {
         printf("%s", instruction.AsComment().comment.c_str());
@@ -200,8 +200,8 @@ void ir_print_instruction(const IRInstruction& instruction, const IRBlock& block
     // printf("\t\t\t\t(uses: %d)", instruction->uses);
 }
 
-void ir_print_block(const IRBlock& block) {
-    for (auto& instruction : block.GetInstructions()) {
+void ir_print_block(const IRBlock* block) {
+    for (auto& instruction : block->GetInstructions()) {
         ir_print_instruction(instruction, block);
     }
 }
@@ -226,7 +226,7 @@ void ir_print_function_graphviz(const IRFunction& function) {
 
     auto& blocks = function.GetBlocks();
     for (auto& block : blocks) {
-        u64 address = block.GetStartAddress() - g_base_address;
+        u64 address = block->GetStartAddress() - g_base_address;
         printf("\tblock_%p [", &block);
         printf("\t\tfontcolor=\"#ffffff\"");
         printf("\t\tfillcolor=\"#1e1e1e\"");
@@ -234,7 +234,7 @@ void ir_print_function_graphviz(const IRFunction& function) {
                "cellpadding=\"3\">\n");
         printf("\t\t<tr><td port=\"top\"><b>%016lx</b></td> </tr>\n", (u64)(address));
 
-        for (auto& instruction : block.GetInstructions()) {
+        for (auto& instruction : block->GetInstructions()) {
             printf("\t\t<tr><td align=\"left\" sides=\"lr\">");
             ir_print_instruction(instruction, block);
             printf("</td></tr>\n");
@@ -244,15 +244,15 @@ void ir_print_function_graphviz(const IRFunction& function) {
         printf("\t\tshape=plain\n");
         printf("\t];\n");
 
-        if (block.GetTermination() == Termination::JumpConditional) {
+        if (block->GetTermination() == Termination::JumpConditional) {
             printf("\tblock_%p:exit -> block_%p:top [color=\"#00ff00\" tailport=s "
                    "headport=n]\n",
-                   &block, block.GetSuccessor(0));
+                   &block, block->GetSuccessor(0));
             printf("\tblock_%p:exit -> block_%p:top [color=\"#ff0000\" tailport=s "
                    "headport=n]\n",
-                   &block, block.GetSuccessor(1));
-        } else if (block.GetTermination() == Termination::Jump) {
-            printf("\tblock_%p:exit -> block_%p:top\n", &block, block.GetSuccessor(0));
+                   &block, block->GetSuccessor(1));
+        } else if (block->GetTermination() == Termination::Jump) {
+            printf("\tblock_%p:exit -> block_%p:top\n", &block, block->GetSuccessor(0));
         }
     }
 

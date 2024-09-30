@@ -83,19 +83,22 @@ add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
 
-set(FELIX86_TEST_SOURCES
-    tests/add.cpp
-    tests/and.cpp
-    tests/sub.cpp
-    tests/mov.cpp
-    tests/lea.cpp
-    tests/shift.cpp
-    tests/special.cpp
-    tests/xmm.cpp
-)
+if (BUILD_TESTS)
 
-add_executable(felix86_test)
-target_sources(felix86_test PRIVATE ${FELIX86_TEST_SOURCES})
-target_include_directories(felix86_test PRIVATE tests)
-target_link_libraries(felix86_test PRIVATE felix86_core Catch2::Catch2WithMain xbyak)
-target_compile_options(felix86_test PRIVATE $<$<COMPILE_LANGUAGE:CPP>:-fno-operator-names>)
+    set(FELIX86_TEST_SOURCES
+        tests/add.cpp
+        tests/and.cpp
+        tests/sub.cpp
+        tests/mov.cpp
+        tests/lea.cpp
+        tests/shift.cpp
+        tests/special.cpp
+        tests/xmm.cpp
+    )
+
+    add_executable(felix86_test)
+    target_sources(felix86_test PRIVATE ${FELIX86_TEST_SOURCES})
+    target_include_directories(felix86_test PRIVATE tests)
+    target_link_libraries(felix86_test PRIVATE felix86_core Catch2::Catch2WithMain xbyak)
+    target_compile_options(felix86_test PRIVATE $<$<COMPILE_LANGUAGE:CPP>:-fno-operator-names>)
+endif()

@@ -27,7 +27,7 @@ Filesystem::Filesystem(const std::filesystem::path& path) {
     // Do some basic sanity checks to make sure the user didn't pick a
     // wrong directory
     auto dirs = {
-        "bin", "dev", "etc", "lib", "lib64", "mnt", "opt", "proc", "root", "run", "sbin", "sys", "usr", "var",
+        "bin", "etc", "lib", "lib64", "sbin", "usr", "var",
     };
 
     for (auto& dir : dirs) {

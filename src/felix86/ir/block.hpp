@@ -153,6 +153,8 @@ private:
 struct IRFunction {
     IRFunction(u64 address);
 
+    ~IRFunction();
+
     IRBlock* GetEntry() {
         return entry;
     }
@@ -167,11 +169,11 @@ struct IRFunction {
 
     IRBlock* CreateBlock();
 
-    std::vector<IRBlock>& GetBlocks() {
+    std::vector<IRBlock*>& GetBlocks() {
         return blocks;
     }
 
-    const std::vector<IRBlock>& GetBlocks() const {
+    const std::vector<IRBlock*>& GetBlocks() const {
         return blocks;
     }
 
@@ -188,10 +190,14 @@ struct IRFunction {
     }
 
 private:
+    IRBlock* allocateBlock();
+
+    void deallocateAll();
+
     IRBlock* entry = nullptr;
     IRBlock* exit = nullptr;
     IRBlock* start_address_block = nullptr;
-    std::vector<IRBlock> blocks;
+    std::vector<IRBlock*> blocks;
     tsl::robin_map<u64, IRBlock*> block_map;
     bool compiled = false;
 };

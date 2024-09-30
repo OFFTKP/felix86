@@ -189,15 +189,15 @@ void frontend_compile_instruction(FrontendState* state) {
     bool rex_b = false;
     bool rex_x = false;
     bool rex_r = false;
+    bool rex_w = false;
     bool address_override = false;
     bool operand_override = false;
     bool fs_override = false;
     bool gs_override = false;
     bool rep_nz_f2 = false;
     bool rep_z_f3 = false;
+    bool lock = false;
     instruction_metadata_t* primary_map = primary_table;
-    x86_prefixes_t prefixes;
-    prefixes.raw = 0;
     do {
         switch (data[index]) {
         case 0x26:
@@ -216,7 +216,7 @@ void frontend_compile_instruction(FrontendState* state) {
             rex_b = opcode & 0x1;
             rex_x = (opcode >> 1) & 0x1;
             rex_r = (opcode >> 2) & 0x1;
-            prefixes.rex_w = (opcode >> 3) & 0x1;
+            rex_w = (opcode >> 3) & 0x1;
             prefix = true;
             index += 1;
             break;
@@ -328,7 +328,7 @@ void frontend_compile_instruction(FrontendState* state) {
         }
 
         case 0xF0: {
-            prefixes.lock = true;
+            lock = true;
             prefix = true;
             index += 1;
             break;
@@ -413,9 +413,8 @@ void frontend_compile_instruction(FrontendState* state) {
 
     x86_size_e size = (decoding_flags & DEFAULT_U64_FLAG) ? X86_SIZE_QWORD : X86_SIZE_DWORD;
     if (decoding_flags & BYTE_OVERRIDE_FLAG) {
-        prefixes.byte_override = true;
         size = X86_SIZE_BYTE;
-    } else if (prefixes.rex_w) {
+    } else if (rex_w) {
         size = X86_SIZE_QWORD;
     } else if (operand_override) {
         size = X86_SIZE_WORD;
@@ -478,7 +477,6 @@ void frontend_compile_instruction(FrontendState* state) {
     }
 
     if (decoding_flags & RM_ALWAYS_BYTE_FLAG) {
-        prefixes.byte_override = true;
         size_rm = X86_SIZE_BYTE;
     } else if (decoding_flags & RM_ALWAYS_WORD_FLAG) {
         size_rm = X86_SIZE_WORD;
@@ -563,7 +561,7 @@ void frontend_compile_instruction(FrontendState* state) {
             inst.operand_imm.immediate.data = *(u16*)&data[index];
             inst.operand_imm.size = X86_SIZE_WORD;
             index += 2;
-        } else if (prefixes.rex_w) {
+        } else if (rex_w) {
             inst.operand_imm.immediate.data = *(u64*)&data[index];
             inst.operand_imm.size = X86_SIZE_QWORD;
             index += 8;

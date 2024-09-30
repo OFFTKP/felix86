@@ -19,7 +19,7 @@
 #define PAGE_OFFSET(x) ((x) & 4095)
 #define PAGE_ALIGN(x) (((x) + 4095) & ~(uintptr_t)(4095))
 
-std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
+std::unique_ptr<Elf> elf_load(const std::string& path, bool is_interpreter) {
     std::unique_ptr<Elf> elf = std::make_unique<Elf>();
     std::vector<u8> phdrtable = {};
     std::vector<u8> shdrtable = {};
@@ -40,52 +40,52 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
     fclose = easy_fclose;
     get_size = easy_get_size;
 
-    file = fopen(path, user_data);
+    file = fopen(path.c_str(), user_data);
     if (!file) {
-        ERROR("Failed to open file %s", path);
+        ERROR("Failed to open file %s", path.c_str());
     }
 
     u64 size = get_size(file, user_data);
     if (size < sizeof(Elf64_Ehdr)) {
-        ERROR("File %s is too small to be an ELF file", path);
+        ERROR("File %s is too small to be an ELF file", path.c_str());
     }
 
     Elf64_Ehdr ehdr;
     bool result = fread(file, &ehdr, 0, sizeof(Elf64_Ehdr), user_data);
     if (!result) {
-        ERROR("Failed to read ELF header from file %s", path);
+        ERROR("Failed to read ELF header from file %s", path.c_str());
     }
 
     if (ehdr.e_ident[0] != 0x7F || ehdr.e_ident[1] != 'E' || ehdr.e_ident[2] != 'L' || ehdr.e_ident[3] != 'F') {
-        ERROR("File %s is not an ELF file", path);
+        ERROR("File %s is not an ELF file", path.c_str());
     }
 
     if (ehdr.e_ident[4] != ELFCLASS64) {
-        ERROR("File %s is not a 64-bit ELF file", path);
+        ERROR("File %s is not a 64-bit ELF file", path.c_str());
     }
 
     if (ehdr.e_ident[5] != ELFDATA2LSB) {
-        ERROR("File %s is not a little-endian ELF file", path);
+        ERROR("File %s is not a little-endian ELF file", path.c_str());
     }
 
     if (ehdr.e_ident[6] != 1 || ehdr.e_version != 1) {
-        ERROR("File %s has an invalid version", path);
+        ERROR("File %s has an invalid version", path.c_str());
     }
 
     if (ehdr.e_type != ET_EXEC && ehdr.e_type != ET_DYN) {
-        ERROR("File %s is not an executable or shared object", path);
+        ERROR("File %s is not an executable or shared object", path.c_str());
     }
 
     if (ehdr.e_machine != EM_X86_64) {
-        ERROR("File %s is not an x86_64 ELF file", path);
+        ERROR("File %s is not an x86_64 ELF file", path.c_str());
     }
 
     if (ehdr.e_entry == 0 && ehdr.e_type == ET_EXEC) {
-        ERROR("File %s is an executable but has no entry point", path);
+        ERROR("File %s is an executable but has no entry point", path.c_str());
     }
 
     if (ehdr.e_phoff == 0) {
-        ERROR("File %s has no program header table, thus has no loadable segments", path);
+        ERROR("File %s has no program header table, thus has no loadable segments", path.c_str());
     }
 
     if (ehdr.e_phnum == 0xFFFF) {
@@ -110,7 +110,7 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
             elf->interpreter.resize(phdr->p_filesz);
             result = fread(file, elf->interpreter.data(), phdr->p_offset, phdr->p_filesz, user_data);
             if (!result) {
-                ERROR("Failed to read interpreter from file %s", path);
+                ERROR("Failed to read interpreter from file %s", path.c_str());
             }
             break;
         }
@@ -161,13 +161,13 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
     elf->stack_base =
         (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
     if (elf->stack_base == MAP_FAILED) {
-        ERROR("Failed to allocate stack for ELF file %s", path);
+        ERROR("Failed to allocate stack for ELF file %s", path.c_str());
     }
 
     elf->stack_pointer = (u8*)mmap(elf->stack_base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
                                    MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
     if (elf->stack_pointer == MAP_FAILED) {
-        ERROR("Failed to allocate stack for ELF file %s", path);
+        ERROR("Failed to allocate stack for ELF file %s", path.c_str());
     }
     VERBOSE("Allocated stack at %p", elf->stack_base);
     elf->stack_pointer += stack_size;
@@ -178,7 +178,7 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
         elf->program = (u8*)mmap(NULL, highest_vaddr, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         base_address = (u64)elf->program;
         if (elf->program == MAP_FAILED) {
-            ERROR("Failed to allocate memory for ELF file %s", path);
+            ERROR("Failed to allocate memory for ELF file %s", path.c_str());
         }
     } else {
         elf->program = NULL;
@@ -191,7 +191,7 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
         switch (phdr->p_type) {
         case PT_LOAD: {
             if (phdr->p_filesz == 0) {
-                ERROR("Loadable segment has no data in file %s", path);
+                ERROR("Loadable segment has no data in file %s", path.c_str());
                 break;
             }
 
@@ -213,21 +213,19 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
 
             u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
             if (addr == MAP_FAILED) {
-                ERROR("Failed to allocate memory for segment in file %s", path);
+                ERROR("Failed to allocate memory for segment in file %s", path.c_str());
             } else {
                 VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)", (void*)phdr->p_vaddr, addr, addr + segment_size,
                         phdr->p_offset);
                 if (addr != (void*)segment_base) {
-                    ERROR("Failed to allocate memory at requested address for segment in "
-                          "file %s",
-                          path);
+                    ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
                 }
             }
 
             if (phdr->p_filesz > 0) {
                 result = fread(file, (void*)(base_address + phdr->p_vaddr), phdr->p_offset, phdr->p_filesz, user_data);
                 if (!result) {
-                    ERROR("Failed to read segment from file %s", path);
+                    ERROR("Failed to read segment from file %s", path.c_str());
                 }
             }
 
@@ -247,7 +245,7 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
                 if (bss_page_start != bss_page_end) {
                     u8* bss = (u8*)mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     if (bss == MAP_FAILED) {
-                        ERROR("Failed to allocate memory for BSS in file %s", path);
+                        ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
                     }
 
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
@@ -269,7 +267,7 @@ std::unique_ptr<Elf> elf_load(const char* path, bool is_interpreter) {
         const u64 brk_size = 8 * 1024 * 1024;
         elf->brk_base = (u8*)mmap((void*)PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if (elf->brk_base == MAP_FAILED) {
-            ERROR("Failed to allocate memory for brk in file %s", path);
+            ERROR("Failed to allocate memory for brk in file %s", path.c_str());
         }
         VERBOSE("BRK base at %p", elf->brk_base);
     }

@@ -4,10 +4,10 @@
 #include "felix86/ir/emitter.hpp"
 
 IRFunction::IRFunction(u64 address) {
-    blocks.push_back(IRBlock());
-    blocks.push_back(IRBlock());
-    entry = &blocks[0];
-    exit = &blocks[1];
+    blocks.push_back(allocateBlock());
+    blocks.push_back(allocateBlock());
+    entry = blocks[0];
+    exit = blocks[1];
 
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Load all state from memory and run the set_guest instruction
@@ -33,13 +33,17 @@ IRFunction::IRFunction(u64 address) {
     exit->TerminateExit();
 }
 
+IRFunction::~IRFunction() {
+    deallocateAll();
+}
+
 IRBlock* IRFunction::CreateBlockAt(u64 address) {
     if (address != 0 && block_map.find(address) != block_map.end()) {
         return block_map[address];
     }
 
-    blocks.push_back(IRBlock(address));
-    IRBlock* block = &blocks.back();
+    blocks.push_back(new IRBlock(address));
+    IRBlock* block = blocks.back();
     block->SetIndex(blocks.size() - 1);
 
     if (address != 0) {
@@ -58,8 +62,18 @@ IRBlock* IRFunction::GetBlockAt(u64 address) {
 }
 
 IRBlock* IRFunction::CreateBlock() {
-    blocks.push_back(IRBlock());
-    IRBlock* block = &blocks.back();
+    blocks.push_back(allocateBlock());
+    IRBlock* block = blocks.back();
     block->SetIndex(blocks.size() - 1);
     return block;
+}
+
+IRBlock* IRFunction::allocateBlock() {
+    return new IRBlock(); // TODO: use a memory pool
+}
+
+void IRFunction::deallocateAll() {
+    for (auto& pair : block_map) {
+        delete pair.second;
+    }
 }

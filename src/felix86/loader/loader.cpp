@@ -9,6 +9,7 @@
 #include "felix86/emulator.hpp"
 #include "felix86/loader/elf.hpp"
 #include "felix86/loader/loader.hpp"
+#include "felix86/common/utility.hpp"
 
 extern char** environ;
 
@@ -37,18 +38,18 @@ u64 stack_push_string(u64 stack, const char* str) {
     return stack;
 }
 
-void loader_run_elf(Config* config) {
+void loader_run_elf(Config& config) {
     LOG("felix86 version %s", FELIX86_VERSION);
 
-    size_t argc = config->argv.size();
+    ssize_t argc = config.argv.size();
     if (argc > 1) {
         VERBOSE("Passing %zu arguments to guest executable", argc - 1);
-        for (size_t i = 1; i < argc; i++) {
-            VERBOSE("Guest argument %zu: %s", i, config->argv[i].c_str());
+        for (ssize_t i = 1; i < argc; i++) {
+            VERBOSE("Guest argument %zu: %s", i, config.argv[i].c_str());
         }
     }
 
-    const char* path = config->argv[0].c_str();
+    const char* path = config.argv[0].c_str();
 
     std::unique_ptr<Elf> elf = elf_load(path, false);
     if (!elf) {
@@ -78,16 +79,16 @@ void loader_run_elf(Config* config) {
     rsp = stack_push_string(rsp, x86_64_string);
     const char* platform_name = (const char*)rsp;
 
-    for (size_t i = 0; i < argc; i++) {
-        rsp = stack_push_string(rsp, config->argv[i].c_str());
+    for (ssize_t i = 0; i < argc; i++) {
+        rsp = stack_push_string(rsp, config.argv[i].c_str());
         argv_addresses[i] = rsp;
     }
 
-    size_t envc = config->envp.size();
+    size_t envc = config.envp.size();
     std::vector<u64> envp_addresses(envc);
 
     for (size_t i = 0; i < envc; i++) {
-        const char* env = config->envp[i].c_str();
+        const char* env = config.envp[i].c_str();
         rsp = stack_push_string(rsp, env);
         envp_addresses[i] = rsp;
     }
@@ -159,7 +160,7 @@ void loader_run_elf(Config* config) {
 
     // End of arguments
     rsp = stack_push(rsp, 0);
-    for (size_t i = argc - 1; i >= 0; i--) {
+    for (ssize_t i = argc - 1; i >= 0; i--) {
         rsp = stack_push(rsp, argv_addresses[i]);
     }
 
@@ -171,14 +172,10 @@ void loader_run_elf(Config* config) {
         return;
     }
 
-    Config fconfig = {.testing = false,
-                      .optimize = config->optimize,
-                      .print_blocks = config->print_blocks,
-                      .use_interpreter = config->use_interpreter,
-                      .base_address = (u64)elf->program,
-                      .brk_base_address = (u64)elf->brk_base};
-    Emulator emulator(fconfig);
+    config.base_address = (u64)elf->program;
+    config.brk_base_address = (u64)elf->brk_base;
+    Emulator emulator(config);
     emulator.SetGpr(X86_REF_RSP, rsp);
-    emulator.SetGpr(X86_REF_RIP, entry);
+    emulator.SetRip(entry);
     emulator.Run();
 }

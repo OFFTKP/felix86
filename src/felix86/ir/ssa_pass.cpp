@@ -152,7 +152,7 @@ static void place_phi_functions(IRFunction* function) {
     std::array<std::vector<IRBlock*>, X86_REF_COUNT> assignments = {};
 
     for (size_t i = 0; i < list.size(); i++) {
-        IRBlock* block = &list[i];
+        IRBlock* block = list[i];
         std::list<IRInstruction>& instructions = block->GetInstructions();
         for (const IRInstruction& inst : instructions) {
             // Make sure it wasn't already added in this list of instructions
@@ -319,8 +319,6 @@ void ir_ssa_pass(IRFunction* function) {
 
                 while (runner != b->GetImmediateDominator()) {
                     runner->AddDominanceFrontier(b);
-
-                    IRBlock* old_runner = runner;
                     runner = runner->GetImmediateDominator();
                 }
             }
@@ -340,7 +338,7 @@ void ir_ssa_pass(IRFunction* function) {
 
     auto& blocks = function->GetBlocks();
     for (size_t i = 0; i < blocks.size(); i++) {
-        IRBlock* block = &blocks[i];
+        IRBlock* block = blocks[i];
         dominator_tree[i].block = block;
         if (block->GetImmediateDominator()) {
             dominator_tree[block->GetImmediateDominator()->GetIndex()].children.push_back(&dominator_tree[i]);

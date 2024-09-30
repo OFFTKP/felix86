@@ -136,21 +136,6 @@ typedef enum : u8 {
     X86_SIZE_ZMM,
 } x86_size_e;
 
-typedef union {
-    struct {
-        u16 rex_w : 1;
-        u16 lock : 1;
-        u16 segment_override : 2;
-        u16 byte_override : 1;
-        u16 vex_l : 1; // 0 for 128-bit, 1 for 256-bit
-        u16 vex : 1;   // the presence of vex can mean instructions are treated
-                       // differently, such as how their top bits are treated
-        u16 : 6;
-    };
-
-    u16 raw;
-} x86_prefixes_t;
-
 typedef struct {
     union {
         struct {

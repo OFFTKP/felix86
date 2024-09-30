@@ -5,20 +5,31 @@
 #include "felix86/ir/block.hpp"
 
 struct FunctionCache {
+    ~FunctionCache() {
+        deallocateAll();
+    }
+
     IRFunction* CreateOrGetFunctionAt(u64 address) {
         auto it = map.find(address);
         if (it != map.end()) {
             return it->second;
         }
 
-        storage.push_back(IRFunction(address));
-
-        IRFunction* function = &storage.back();
+        IRFunction* function = allocateFunction(address);
         map[address] = function;
         return function;
     }
 
 private:
-    std::vector<IRFunction> storage{};
+    IRFunction* allocateFunction(u64 address) {
+        return new IRFunction(address); // TODO: use a memory pool
+    }
+
+    void deallocateAll() {
+        for (auto& pair : map) {
+            delete pair.second;
+        }
+    }
+
     tsl::robin_map<u64, IRFunction*> map{};
 };
