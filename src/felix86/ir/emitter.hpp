@@ -8,7 +8,7 @@
 u16 get_bit_size(x86_size_e size);
 x86_operand_t get_full_reg(x86_ref_e ref);
 
-void ir_emit_runtime_comment(IRBlock* block, const char* comment);
+void ir_emit_runtime_comment(IRBlock* block, const std::string& comment);
 
 IRInstruction* ir_emit_add(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
 IRInstruction* ir_emit_sub(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
@@ -126,8 +126,6 @@ IRInstruction* ir_emit_get_aux_sub(IRBlock* block, IRInstruction* source1, IRIns
 
 IRInstruction* ir_emit_set_cpazso(IRBlock* block, IRInstruction* c, IRInstruction* p, IRInstruction* a, IRInstruction* z, IRInstruction* s,
                                   IRInstruction* o);
-
-IRInstruction* ir_emit_debug_info_compile_time(IRBlock* block, const char* format, ...);
 
 IRInstruction* ir_emit_get_cc(IRBlock* block, u8 opcode);
 

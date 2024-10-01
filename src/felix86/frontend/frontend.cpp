@@ -182,7 +182,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
 void frontend_compile_instruction(FrontendState* state) {
     u8* data = (u8*)state->current_address;
 
-    x86_instruction_t inst = {0};
+    x86_instruction_t inst = {};
     int index = 0;
     bool prefix = false;
     bool rex = false;
@@ -647,8 +647,9 @@ void frontend_compile_instruction(FrontendState* state) {
             /* buffer:          */ data,
             /* length:          */ 15,
             /* instruction:     */ &zydis_inst))) {
-        char* buffer = (char*)malloc(256);
-        snprintf(buffer, 256, "%016llx  %s", (unsigned long long)(state->current_address - g_base_address), zydis_inst.text);
+        std::string buffer;
+        buffer.resize(256);
+        snprintf(buffer.data(), 256, "%016llx  %s", (unsigned long long)(state->current_address - g_base_address), zydis_inst.text);
         ir_emit_runtime_comment(state->current_block, buffer);
     }
 

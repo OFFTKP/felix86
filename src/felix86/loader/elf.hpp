@@ -1,12 +1,14 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include "felix86/common/utility.hpp"
 
 struct Elf {
     ~Elf();
 
     u8* program = nullptr;
+    std::vector<std::pair<u8*, u64>> executable_segments {};
     u64 entry = 0;
     std::string interpreter {};
     u8* stack_base = nullptr;

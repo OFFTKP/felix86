@@ -195,6 +195,20 @@ std::unique_ptr<Elf> elf_load(const std::string& path, bool is_interpreter) {
                 break;
             }
 
+            u64 segment_base = base_address + PAGE_START(phdr->p_vaddr);
+            u64 segment_size = phdr->p_filesz + PAGE_OFFSET(phdr->p_vaddr);
+            u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+
+            if (addr == MAP_FAILED) {
+                ERROR("Failed to allocate memory for segment in file %s", path.c_str());
+            } else {
+                VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)", (void*)phdr->p_vaddr, addr, addr + segment_size,
+                        phdr->p_offset);
+                if (addr != (void*)segment_base) {
+                    ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
+                }
+            }
+
             u8 prot = 0;
             if (phdr->p_flags & PF_R) {
                 prot |= PROT_READ;
@@ -206,20 +220,7 @@ std::unique_ptr<Elf> elf_load(const std::string& path, bool is_interpreter) {
 
             if (phdr->p_flags & PF_X) {
                 prot |= PROT_EXEC;
-            }
-
-            u64 segment_base = base_address + PAGE_START(phdr->p_vaddr);
-            u64 segment_size = phdr->p_filesz + PAGE_OFFSET(phdr->p_vaddr);
-
-            u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-            if (addr == MAP_FAILED) {
-                ERROR("Failed to allocate memory for segment in file %s", path.c_str());
-            } else {
-                VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)", (void*)phdr->p_vaddr, addr, addr + segment_size,
-                        phdr->p_offset);
-                if (addr != (void*)segment_base) {
-                    ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
-                }
+                elf->executable_segments.push_back({addr, segment_size});
             }
 
             if (phdr->p_filesz > 0) {

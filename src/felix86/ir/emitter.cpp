@@ -75,7 +75,7 @@ IRInstruction* ir_emit_four_operands(IRBlock* block, IROpcode opcode, IRInstruct
     return block->InsertAtEnd(std::move(instruction));
 }
 
-void ir_emit_runtime_comment(IRBlock* block, const char* comment) {
+void ir_emit_runtime_comment(IRBlock* block, const std::string& comment) {
     IRInstruction instruction(comment);
     block->InsertAtEnd(std::move(instruction));
 }
