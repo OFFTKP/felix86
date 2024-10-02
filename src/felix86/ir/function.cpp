@@ -1,6 +1,6 @@
 #include "felix86/common/log.hpp"
-#include "felix86/ir/function.hpp"
 #include "felix86/ir/emitter.hpp"
+#include "felix86/ir/function.hpp"
 
 IRFunction::IRFunction(u64 address) {
     blocks.push_back(allocateBlock());
@@ -74,5 +74,48 @@ IRBlock* IRFunction::allocateBlock() {
 void IRFunction::deallocateAll() {
     for (auto& pair : block_map) {
         delete pair.second;
+    }
+}
+
+std::string IRFunction::Print() const {
+    if (!IsCompiled()) {
+        WARN("Print called on not compiled function");
+        return "";
+    }
+
+    std::string ret;
+
+    UnvisitAll();
+
+    std::vector<const IRBlock*> blocks;
+    blocks.push_back(GetEntry());
+
+    while (!blocks.empty()) {
+        const IRBlock* work = blocks.back();
+        blocks.pop_back();
+        work->SetVisited(true);
+
+        ret += work->Print();
+
+        const IRBlock* succ1 = work->GetSuccessor(false);
+        const IRBlock* succ2 = work->GetSuccessor(true);
+
+        if (succ1 && !succ1->IsVisited()) {
+            blocks.push_back(succ1);
+        }
+
+        if (succ2 && !succ2->IsVisited()) {
+            blocks.push_back(succ2);
+        }
+    }
+
+    UnvisitAll();
+
+    return ret;
+}
+
+void IRFunction::UnvisitAll() const {
+    for (auto& block : blocks) {
+        block->SetVisited(false);
     }
 }

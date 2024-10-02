@@ -1,7 +1,7 @@
 #include <vector>
+#include <Zydis/Utils.h>
 #include "felix86/aot/aot.hpp"
 #include "felix86/common/log.hpp"
-#include <Zydis/Utils.h>
 
 /**
     Follow the control flow of the executable, starting at entry point, to find as many functions as we can.
@@ -30,59 +30,59 @@ void AOT::ControlFlowAnalysis() {
 
             bool break_outer = false;
             switch (instruction.meta.category) {
-                case ZYDIS_CATEGORY_COND_BR: {
-                    u64 target;
-                    if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, operands, work, &target))) {
-                        // Could not get the address at compile time, skip
-                        break;
-                    }
-
-                    if (visited.find(target) == visited.end()) {
-                        visited.insert(target);
-                        worklist.push_back(target);
-                    }
+            case ZYDIS_CATEGORY_COND_BR: {
+                u64 target;
+                if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, operands, work, &target))) {
+                    // Could not get the address at compile time, skip
                     break;
                 }
-                case ZYDIS_CATEGORY_UNCOND_BR: {
-                    // Since it's an unconditional branch we must stop this path here
-                    break_outer = true;
 
-                    u64 target;
-                    if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, operands, work, &target))) {
-                        // Could not get the address at compile time, skip
-                        break;
-                    }
+                if (visited.find(target) == visited.end()) {
+                    visited.insert(target);
+                    worklist.push_back(target);
+                }
+                break;
+            }
+            case ZYDIS_CATEGORY_UNCOND_BR: {
+                // Since it's an unconditional branch we must stop this path here
+                break_outer = true;
 
-                    // Don't add to addresses, only call targets go there
-                    if (visited.find(target) == visited.end()) {
-                        visited.insert(target);
-                        worklist.push_back(target);
-                    }
+                u64 target;
+                if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, operands, work, &target))) {
+                    // Could not get the address at compile time, skip
                     break;
                 }
-                case ZYDIS_CATEGORY_CALL: {
-                    u64 target;
-                    if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, operands, work, &target))) {
-                        // Could not get the address at compile time, skip
-                        break;
-                    }
 
-                    if (addresses.find(target) == addresses.end()) {
-                        addresses.insert(target);
-                        worklist.push_back(target);
-                        visited.insert(target);
-                    }
+                // Don't add to addresses, only call targets go there
+                if (visited.find(target) == visited.end()) {
+                    visited.insert(target);
+                    worklist.push_back(target);
+                }
+                break;
+            }
+            case ZYDIS_CATEGORY_CALL: {
+                u64 target;
+                if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&instruction, operands, work, &target))) {
+                    // Could not get the address at compile time, skip
                     break;
                 }
-                case ZYDIS_CATEGORY_RET: {
-                    // Since ret is an unconditional branch we must stop this path here
-                    break_outer = true;
-                    break;
+
+                if (addresses.find(target) == addresses.end()) {
+                    addresses.insert(target);
+                    worklist.push_back(target);
+                    visited.insert(target);
                 }
-                default: {
-                    work += instruction.length;
-                    continue;
-                }
+                break;
+            }
+            case ZYDIS_CATEGORY_RET: {
+                // Since ret is an unconditional branch we must stop this path here
+                break_outer = true;
+                break;
+            }
+            default: {
+                work += instruction.length;
+                continue;
+            }
             }
 
             if (break_outer) {

@@ -133,8 +133,8 @@ IRInstruction* ir_emit_rotate(IRBlock* block, IRInstruction* source1, IRInstruct
     return ir_emit_two_operands(block, type, source1, count);
 }
 
-IRInstruction* ir_emit_select(IRBlock* block, IRInstruction* condition, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_three_operands(block, IROpcode::Select, condition, source1, source2);
+IRInstruction* ir_emit_select(IRBlock* block, IRInstruction* condition, IRInstruction* true_value, IRInstruction* false_value) {
+    return ir_emit_three_operands(block, IROpcode::Select, condition, true_value, false_value);
 }
 
 IRInstruction* ir_emit_imul(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {

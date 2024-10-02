@@ -1,95 +1,72 @@
-#include <stdio.h>
+#include <cstdio>
+#include "felix86/common/log.hpp"
 #include "felix86/common/print.hpp"
 
-void print_guest_register(x86_ref_e guest) {
+std::string print_guest_register(x86_ref_e guest) {
     switch (guest) {
     case X86_REF_RAX:
-        printf("rax");
-        break;
+        return "rax";
     case X86_REF_RCX:
-        printf("rcx");
-        break;
+        return "rcx";
     case X86_REF_RDX:
-        printf("rdx");
-        break;
+        return "rdx";
     case X86_REF_RBX:
-        printf("rbx");
-        break;
+        return "rbx";
     case X86_REF_RSP:
-        printf("rsp");
-        break;
+        return "rsp";
     case X86_REF_RBP:
-        printf("rbp");
-        break;
+        return "rbp";
     case X86_REF_RSI:
-        printf("rsi");
-        break;
+        return "rsi";
     case X86_REF_RDI:
-        printf("rdi");
-        break;
+        return "rdi";
     case X86_REF_R8:
-        printf("r8");
-        break;
+        return "r8";
     case X86_REF_R9:
-        printf("r9");
-        break;
+        return "r9";
     case X86_REF_R10:
-        printf("r10");
-        break;
+        return "r10";
     case X86_REF_R11:
-        printf("r11");
-        break;
+        return "r11";
     case X86_REF_R12:
-        printf("r12");
-        break;
+        return "r12";
     case X86_REF_R13:
-        printf("r13");
-        break;
+        return "r13";
     case X86_REF_R14:
-        printf("r14");
-        break;
+        return "r14";
     case X86_REF_R15:
-        printf("r15");
-        break;
+        return "r15";
     case X86_REF_CF:
-        printf("cf");
-        break;
+        return "cf";
     case X86_REF_PF:
-        printf("pf");
-        break;
+        return "pf";
     case X86_REF_AF:
-        printf("af");
-        break;
+        return "af";
     case X86_REF_ZF:
-        printf("zf");
-        break;
+        return "zf";
     case X86_REF_SF:
-        printf("sf");
-        break;
+        return "sf";
     case X86_REF_OF:
-        printf("of");
-        break;
+        return "of";
     case X86_REF_RIP:
-        printf("rip");
-        break;
+        return "rip";
     case X86_REF_FS:
-        printf("fsbase");
-        break;
+        return "fsbase";
     case X86_REF_GS:
-        printf("gsbase");
-        break;
+        return "gsbase";
     case X86_REF_XMM0 ... X86_REF_XMM15:
-        printf("xmm%d", guest - X86_REF_XMM0);
-        break;
+        return "xmm" + std::to_string(guest - X86_REF_XMM0);
+    case X86_REF_ST0 ... X86_REF_ST7:
+        return "st" + std::to_string(guest - X86_REF_ST0);
     default:
-        printf("Unknown guest");
-        break;
+        ERROR("Unreachable");
     }
 }
 
 void print_state(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
-        print_guest_register((x86_ref_e)(X86_REF_RAX + i));
+        std::string guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
+        printf("%s", guest.c_str());
         printf(" = %016lx\n", state->gprs[i]);
     }
 

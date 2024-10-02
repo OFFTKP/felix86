@@ -61,7 +61,7 @@ struct IRBlock {
         return visited;
     }
 
-    void SetVisited(bool value) {
+    void SetVisited(bool value) const {
         visited = value;
     }
 
@@ -129,10 +129,14 @@ struct IRBlock {
         phi_instructions.push_back(std::move(instr));
     }
 
+    std::string Print() const;
+
 private:
     void AddPredecessor(IRBlock* pred) {
         predecessors.push_back(pred);
     }
+
+    std::string printInstruction(const IRInstruction& inst) const;
 
     u64 start_address = IR_NO_ADDRESS;
     std::list<IRInstruction> instructions;
@@ -144,7 +148,7 @@ private:
     Termination termination = Termination::Null;
     IRInstruction* condition = nullptr;
     bool compiled = false;
-    bool visited = false;
+    mutable bool visited = false;
     u32 list_index = 0;
     u32 postorder_index = 0;
 };

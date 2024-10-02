@@ -1,3 +1,4 @@
+#include <fmt/format.h>
 #include "felix86/common/log.hpp"
 #include "felix86/ir/instruction.hpp"
 
@@ -428,6 +429,33 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         if (operands.operands[1]->GetType() != IRType::Vector128) {
             ERROR("Invalid operand type for opcode %d", static_cast<u8>(opcode));
         }
+    }
+    }
+}
+
+std::string IRInstruction::GetNameString() const {
+    switch (returnType) {
+    case IRType::Integer64: {
+        return fmt::format("i{}", GetName());
+    }
+    case IRType::Vector128: {
+        return fmt::format("v{}", GetName());
+    }
+    case IRType::Float80: {
+        return fmt::format("f{}", GetName());
+    }
+    case IRType::TupleTwoInteger64: {
+        return fmt::format("t{}<int, int>", GetName());
+    }
+    case IRType::TupleFourInteger64: {
+        return fmt::format("t{}<i64, i64, i64, i64>", GetName());
+    }
+    case IRType::Void: {
+        return "void";
+    }
+    default: {
+        ERROR("Unreachable");
+        return "";
     }
     }
 }

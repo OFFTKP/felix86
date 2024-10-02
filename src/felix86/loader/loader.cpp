@@ -5,11 +5,11 @@
 #include <sys/random.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/utility.hpp"
 #include "felix86/common/version.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/loader/elf.hpp"
 #include "felix86/loader/loader.hpp"
-#include "felix86/common/utility.hpp"
 
 extern char** environ;
 

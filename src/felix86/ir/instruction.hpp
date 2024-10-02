@@ -236,6 +236,10 @@ struct IRInstruction {
         return opcode;
     }
 
+    u32 GetUseCount() const {
+        return uses;
+    }
+
     void AddUse() {
         uses++;
     }
@@ -286,13 +290,27 @@ struct IRInstruction {
         this->name = name;
     }
 
+    std::string GetNameString() const;
+
+    const IRInstruction* GetOperand(u8 index) const {
+        return AsOperands().operands[index];
+    }
+
     u32 GetOperandName(u8 index) const {
         return AsOperands().operands[index]->GetName();
+    }
+
+    std::string GetOperandNameString(u8 index) const {
+        return AsOperands().operands[index]->GetNameString();
     }
 
     void ReplaceWith(IRInstruction&& other) {
         Invalidate();
         *this = std::move(other);
+    }
+
+    u64 GetExtraData() const {
+        return AsOperands().extra_data;
     }
 
     void SetExtraData(u64 extra_data) {

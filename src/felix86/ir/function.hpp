@@ -12,6 +12,10 @@ struct IRFunction {
         return entry;
     }
 
+    const IRBlock* GetEntry() const {
+        return entry;
+    }
+
     IRBlock* GetExit() {
         return exit;
     }
@@ -41,6 +45,10 @@ struct IRFunction {
     u64 GetStartAddress() const {
         return start_address_block->GetStartAddress();
     }
+
+    std::string Print() const;
+
+    void UnvisitAll() const;
 
 private:
     IRBlock* allocateBlock();
