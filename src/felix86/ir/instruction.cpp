@@ -83,7 +83,7 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     switch (opcode) {
     case IROpcode::TupleExtract:
     case IROpcode::Mov: {
-        ERROR("Should not be used in GetTypeFromOpcode");
+        ERROR("Should not be used in GetTypeFromOpcode: %d", (int)opcode);
         return IRType::Void;
     }
     case IROpcode::Null:

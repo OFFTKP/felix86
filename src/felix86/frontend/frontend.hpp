@@ -1,7 +1,7 @@
 #pragma once
 
 #include "felix86/common/utility.hpp"
-#include "felix86/ir/block.hpp"
+#include "felix86/ir/function.hpp"
 
 typedef struct {
     IRFunction* function;

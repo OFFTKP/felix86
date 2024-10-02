@@ -4,7 +4,6 @@
 #include "felix86/common/x86.hpp"
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/hle/filesystem.hpp"
-#include "felix86/ir/block.hpp"
 #include "felix86/ir/function_cache.hpp"
 
 struct Config {
@@ -21,7 +20,13 @@ struct Config {
 };
 
 struct Emulator {
-    Emulator(const Config& config) : fs(config.rootfs_path), config(config) {}
+    Emulator(const Config& config) : fs(config.rootfs_path), config(config) {
+        if (!fs.Good()) {
+            ERROR("Failed to initialize filesystem");
+        }
+    }
+
+    ~Emulator() = default;
 
     ThreadState& GetThreadState() {
         return state;
@@ -31,7 +36,11 @@ struct Emulator {
         return fs;
     }
 
-    u64 GetGpr(x86_ref_e ref) {
+    Config& GetConfig() {
+        return config;
+    }
+
+    u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
             ERROR("Invalid GPR reference: %d", ref);
             return 0;
@@ -48,7 +57,7 @@ struct Emulator {
         state.gprs[ref - X86_REF_RAX] = value;
     }
 
-    bool GetFlag(x86_ref_e flag) {
+    bool GetFlag(x86_ref_e flag) const {
         switch (flag) {
         case X86_REF_CF:
             return state.cf;
@@ -93,7 +102,7 @@ struct Emulator {
         }
     }
 
-    FpReg GetFpReg(x86_ref_e ref) {
+    FpReg GetFpReg(x86_ref_e ref) const {
         if (ref < X86_REF_ST0 || ref > X86_REF_ST7) {
             ERROR("Invalid FP register reference: %d", ref);
             return {};
@@ -111,7 +120,7 @@ struct Emulator {
         state.fp[ref - X86_REF_ST0] = value;
     }
 
-    XmmReg GetXmmReg(x86_ref_e ref) {
+    XmmReg GetXmmReg(x86_ref_e ref) const {
         if (ref < X86_REF_XMM0 || ref > X86_REF_XMM15) {
             ERROR("Invalid XMM register reference: %d", ref);
             return {};
@@ -129,7 +138,7 @@ struct Emulator {
         state.xmm[ref - X86_REF_XMM0] = value;
     }
 
-    u64 GetRip() {
+    u64 GetRip() const {
         return state.rip;
     }
 
@@ -137,7 +146,7 @@ struct Emulator {
         state.rip = value;
     }
 
-    u64 GetGSBase() {
+    u64 GetGSBase() const {
         return state.gsbase;
     }
 
@@ -145,7 +154,7 @@ struct Emulator {
         state.gsbase = value;
     }
 
-    u64 GetFSBase() {
+    u64 GetFSBase() const {
         return state.fsbase;
     }
 

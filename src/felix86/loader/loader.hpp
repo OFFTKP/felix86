@@ -2,4 +2,4 @@
 
 #include "felix86/emulator.hpp"
 
-void loader_run_elf(Config& config);
+void loader_run(Emulator& config);

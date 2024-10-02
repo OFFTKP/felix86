@@ -16,6 +16,17 @@
 const char* proc_self_exe = "/proc/self/exe";
 
 Filesystem::Filesystem(const std::filesystem::path& path) {
+    if (path.empty()) {
+        ERROR("Empty rootfs path");
+        return;
+    }
+
+    std::filesystem::path root_path = "/";
+    if (path == root_path) { // hopefully prevent someone from messing with their host root
+        ERROR("You chose your own root path, you need to choose a sandboxed rootfs path");
+        return;
+    }
+
     rootfs_path = std::filesystem::canonical(path);
     rootfs_path_string = rootfs_path.string();
 

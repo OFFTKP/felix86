@@ -223,7 +223,7 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstructio
         } else if (inst.GetOpcode() == IROpcode::GetGuest) {
             IRInstruction* def = stacks[inst.AsGetGuest().ref].top();
 
-            IRInstruction new_inst(IROpcode::Mov, {def});
+            IRInstruction new_inst(def);
             inst.ReplaceWith(std::move(new_inst));
         }
 

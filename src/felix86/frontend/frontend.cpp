@@ -427,7 +427,7 @@ void frontend_compile_instruction(FrontendState* state) {
         modrm_t modrm;
         modrm.raw = data[index++];
 
-        sib_t sib = {0};
+        sib_t sib = {};
         if (modrm.rm == 0b100 && modrm.mod != 0b11) {
             sib.raw = data[index++];
         }
@@ -713,6 +713,7 @@ void frontend_compile_block(IRFunction* function, IRBlock* block) {
     state.current_block = block;
     state.current_address = block->GetStartAddress();
     state.exit = false;
+    VERBOSE("Compiling block at: %016lx", block->GetStartAddress());
 
     block->SetCompiled();
 

@@ -38,8 +38,8 @@ u64 stack_push_string(u64 stack, const char* str) {
     return stack;
 }
 
-void loader_run_elf(Config& config) {
-    LOG("felix86 version %s", FELIX86_VERSION);
+void loader_run(Emulator& emulator) {
+    Config& config = emulator.GetConfig();
 
     ssize_t argc = config.argv.size();
     if (argc > 1) {
@@ -174,7 +174,6 @@ void loader_run_elf(Config& config) {
 
     config.base_address = (u64)elf->program;
     config.brk_base_address = (u64)elf->brk_base;
-    Emulator emulator(config);
     emulator.SetGpr(X86_REF_RSP, rsp);
     emulator.SetRip(entry);
     emulator.Run();

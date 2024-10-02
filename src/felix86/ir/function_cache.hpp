@@ -2,7 +2,7 @@
 
 #include <tsl/robin_map.h>
 #include "felix86/common/utility.hpp"
-#include "felix86/ir/block.hpp"
+#include "felix86/ir/function.hpp"
 
 struct FunctionCache {
     ~FunctionCache() {
@@ -26,6 +26,7 @@ private:
     }
 
     void deallocateAll() {
+        printf("Deallocator\n");
         for (auto& pair : map) {
             delete pair.second;
         }

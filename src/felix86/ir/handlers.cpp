@@ -746,7 +746,7 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
     case 2: {
         if (opcode == 0xD0) { // xgetbv
             // That's probably fine for now
-            xcr0_reg_t xcr0 = {0};
+            xcr0_reg_t xcr0 = {};
             xcr0.x87 = 1;
             xcr0.sse = 1;
             u32 rax = xcr0.raw;
@@ -755,6 +755,7 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
             x86_operand_t rdx_reg = get_full_reg(X86_REF_RDX);
             ir_emit_set_reg(BLOCK, &rax_reg, ir_emit_immediate(BLOCK, rax));
             ir_emit_set_reg(BLOCK, &rdx_reg, ir_emit_immediate(BLOCK, rdx));
+            WARN("XGETBV");
         } else if (opcode == 0xD1) { // xsetbv
             ERROR("XSETBV instruction not implemented");
         } else {

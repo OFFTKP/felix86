@@ -41,6 +41,7 @@ Do note that I haven't fully read through all of these, most of them were used a
 - [Dead store](https://en.wikipedia.org/wiki/Dead_store)
 - [Code motion](https://en.wikipedia.org/wiki/Code_motion)
 - [Sparse conditional constant propagation](https://www.cs.wustl.edu/~cytron/531Pages/f11/Resources/Papers/cprop.pdf)
+- [Inline caching](https://bernsteinbear.com/blog/inline-caching/)
 ### Cliff Click's research
 - [Cliff Click - The Sea of Nodes and the HotSpot JIT](https://www.youtube.com/watch?v=9epgZ-e6DUU)
 - [A Simple Graph-Based Intermediate Representation](https://www.oracle.com/technetwork/java/javase/tech/c2-ir95-150110.pdf), the original Sea of Nodes paper, which is a property of IR used in V8, HotSpot and Graal
@@ -50,7 +51,6 @@ Do note that I haven't fully read through all of these, most of them were used a
 - [v8 source code](https://github.com/v8/v8)
 - [LuaJIT source code](https://github.com/LuaJIT/LuaJIT), a tracing JIT for Lua
 - [Dynarmic source code & docs folder](https://github.com/PabloMK7/dynarmic/)
-
 
 ## Other useful documentation
 - [How programs get run: ELF binaries](https://lwn.net/Articles/631631/)

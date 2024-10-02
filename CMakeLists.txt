@@ -26,8 +26,8 @@ set(FELIX86_FRONTEND_SOURCES
 )
 
 set(FELIX86_IR_SOURCES
-    src/felix86/ir/block.cpp
     src/felix86/ir/emitter.cpp
+    src/felix86/ir/function.cpp
     src/felix86/ir/handlers_weak.cpp
     src/felix86/ir/handlers.cpp
     src/felix86/ir/instruction.cpp
@@ -84,7 +84,6 @@ target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
 
 if (BUILD_TESTS)
-
     set(FELIX86_TEST_SOURCES
         tests/add.cpp
         tests/and.cpp

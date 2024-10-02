@@ -16,13 +16,17 @@ static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose o
                                        {"host-envs", 'e', 0, 0, "Pass host environment variables to the guest"},
                                        {"print-functions", 'P', 0, 0, "Print functions as they compile"},
                                        {"dont-optimize", 'O', 0, 0, "Don't run IR optimizations"},
-                                       {"squashfs-path", 'p', "PATH", 0, "Path to the rootfs squashfs image"},
+                                       {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
                                        {0}};
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     Config* config = (Config*)state->input;
 
     if (key == ARGP_KEY_ARG) {
+        if (config->argv.empty()) {
+            config->executable_path = arg;
+        }
+
         config->argv.push_back(arg);
         return 0;
     }
@@ -61,6 +65,9 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case ARGP_KEY_END: {
+        if (config->argv.empty()) {
+            argp_usage(state);
+        }
         break;
     }
 
@@ -80,8 +87,6 @@ int main(int argc, char* argv[]) {
 
     argp_parse(&argp, argc, argv, 0, 0, &config);
 
-    config.executable_path = config.argv[0];
-
     if (config.rootfs_path.empty()) {
         ERROR("Rootfs path not specified");
         return 1;
@@ -92,12 +97,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    LOG("felix86 version %s", FELIX86_VERSION);
+
     Emulator emulator(config);
 
     if (argc == 1) {
         ERROR("Unimplemented");
     } else {
-        loader_run_elf(config);
+        loader_run(emulator);
     }
 
     felix86_exit(0);

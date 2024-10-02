@@ -1,3 +1,4 @@
+#define CATCH_CONFIG_PREFIX_MESSAGES
 #include <catch2/catch_test_macros.hpp>
 #include <xbyak/xbyak.h>
 #include "felix86/common/utility.hpp"
@@ -8,10 +9,9 @@ using namespace Xbyak::util;
 
 #define FELIX86_TEST(name) struct Code_##name final : Xbyak::CodeGenerator { \
     Code_##name(); \
-    ~Code_##name() { free(data); } \
     void verify(x86_ref_e ref, u64 value) { checks.push_back({ ref, value }); } \
     void verify_memory(void* mem, u64 value, u8 size) { mem_checks.push_back({ mem, value, size }); } \
-    void verify_xmm(x86_ref_e ref, xmm_reg_t reg) { xmm_checks.push_back({ ref, reg }); } \
+    void verify_xmm(x86_ref_e ref, XmmReg reg) { xmm_checks.push_back({ ref, reg }); } \
     void verify_c(bool value) { c = value; } \
     void verify_p(bool value) { p = value; } \
     void verify_a(bool value) { a = value; } \
@@ -22,20 +22,20 @@ using namespace Xbyak::util;
     u8* stack; \
 private: \
     void emit_code(); \
-    void verify_checks() { \
+    void verify_checks(const Emulator& emulator) { \
         for (auto& check : checks) { \
-            REQUIRE(felix86_get_guest(recompiler, check.first) == check.second); \
+            REQUIRE(emulator.GetGpr(check.first) == check.second); \
         } \
-        if (c.has_value()) REQUIRE(!!(felix86_get_guest(recompiler, X86_REF_CF)) == c.value()); \
-        if (p.has_value()) REQUIRE(!!(felix86_get_guest(recompiler, X86_REF_PF)) == p.value()); \
-        if (a.has_value()) REQUIRE(!!(felix86_get_guest(recompiler, X86_REF_AF)) == a.value()); \
-        if (z.has_value()) REQUIRE(!!(felix86_get_guest(recompiler, X86_REF_ZF)) == z.value()); \
-        if (s.has_value()) REQUIRE(!!(felix86_get_guest(recompiler, X86_REF_SF)) == s.value()); \
-        if (o.has_value()) REQUIRE(!!(felix86_get_guest(recompiler, X86_REF_OF)) == o.value()); \
+        if (c.has_value()) REQUIRE(!!(emulator.GetFlag(X86_REF_CF)) == c.value()); \
+        if (p.has_value()) REQUIRE(!!(emulator.GetFlag(X86_REF_PF)) == p.value()); \
+        if (a.has_value()) REQUIRE(!!(emulator.GetFlag(X86_REF_AF)) == a.value()); \
+        if (z.has_value()) REQUIRE(!!(emulator.GetFlag(X86_REF_ZF)) == z.value()); \
+        if (s.has_value()) REQUIRE(!!(emulator.GetFlag(X86_REF_SF)) == s.value()); \
+        if (o.has_value()) REQUIRE(!!(emulator.GetFlag(X86_REF_OF)) == o.value()); \
         for (auto& check : xmm_checks) { \
-            xmm_reg_t has = felix86_get_guest_xmm(recompiler, std::get<0>(check)); \
-            xmm_reg_t expected = std::get<1>(check); \
-            for (int i = 0; i < sizeof(xmm_reg_t) / sizeof(u64); i++) { \
+            XmmReg has = emulator.GetXmmReg(std::get<0>(check)); \
+            XmmReg expected = std::get<1>(check); \
+            for (size_t i = 0; i < sizeof(XmmReg) / sizeof(u64); i++) { \
                 REQUIRE(has.data[i] == expected.data[i]); \
             } \
         } \
@@ -51,26 +51,25 @@ private: \
             } \
         } \
     } \
-    felix86_recompiler_t* recompiler; \
     std::vector<std::pair<x86_ref_e, u64>> checks; \
     std::vector<std::tuple<void*, u64, u8>> mem_checks; \
-    std::vector<std::pair<x86_ref_e, xmm_reg_t>> xmm_checks; \
+    std::vector<std::pair<x86_ref_e, XmmReg>> xmm_checks; \
     std::optional<bool> c,p,a,z,s,o; \
 }; \
 TEST_CASE(#name, "[felix86]") { \
     Code_##name c; \
 } \
-Code_##name::Code_##name() : Xbyak::CodeGenerator(0x1000, malloc(0x2000)) { \
+Code_##name::Code_##name() : Xbyak::CodeGenerator(0x4000) { \
     data = (u8*)getCode(); \
     stack = data + 0x2000; \
-    mov(rsp, (u64)stack); \
     emit_code(); \
     hlt(); /* emit a hlt instruction to stop the recompiler */ \
-    felix86_recompiler_config_t config = { .testing = true, .optimize = true, .print_blocks = true, .use_interpreter = true }; \
-    recompiler = felix86_recompiler_create(&config); \
-    felix86_set_guest(recompiler, X86_REF_RIP, (u64)data); \
-    felix86_recompiler_run(recompiler); \
-    verify_checks(); \
-    felix86_recompiler_destroy(recompiler); \
+    Config config = {}; \
+    config.testing = true; \
+    Emulator emulator(config); \
+    emulator.SetGpr(X86_REF_RSP, (u64)stack); \
+    emulator.SetRip((u64)data); \
+    emulator.Run(); \
+    verify_checks(emulator); \
 } \
 void Code_##name::emit_code()
