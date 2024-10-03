@@ -298,6 +298,7 @@ IRInstruction* ir_emit_syscall(IRBlock* block, std::initializer_list<IRInstructi
     }
 
     IRInstruction instruction(IROpcode::Syscall, args);
+    instruction.Lock();
     return block->InsertAtEnd(std::move(instruction));
 }
 
@@ -480,23 +481,28 @@ IRInstruction* ir_emit_read_xmmword(IRBlock* block, IRInstruction* address) {
 }
 
 void ir_emit_write_byte(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::WriteByte, address, source);
+    IRInstruction* instruction = ir_emit_two_operands(block, IROpcode::WriteByte, address, source);
+    instruction->Lock();
 }
 
 void ir_emit_write_word(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::WriteWord, address, source);
+    IRInstruction* instruction = ir_emit_two_operands(block, IROpcode::WriteWord, address, source);
+    instruction->Lock();
 }
 
 void ir_emit_write_dword(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::WriteDWord, address, source);
+    IRInstruction* instruction = ir_emit_two_operands(block, IROpcode::WriteDWord, address, source);
+    instruction->Lock();
 }
 
 void ir_emit_write_qword(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::WriteQWord, address, source);
+    IRInstruction* instruction = ir_emit_two_operands(block, IROpcode::WriteQWord, address, source);
+    instruction->Lock();
 }
 
 void ir_emit_write_xmmword(IRBlock* block, IRInstruction* address, IRInstruction* source) {
-    ir_emit_two_operands(block, IROpcode::WriteXmmWord, address, source);
+    IRInstruction* instruction = ir_emit_two_operands(block, IROpcode::WriteXmmWord, address, source);
+    instruction->Lock();
 }
 
 IRInstruction* ir_emit_cpuid(IRBlock* block, IRInstruction* rax, IRInstruction* rcx) {

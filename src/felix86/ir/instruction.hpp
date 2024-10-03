@@ -3,10 +3,11 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/frontend/instruction.hpp"
 
-enum class IROpcode : u8 { // TODO: match naming scheme of IRType
+enum class IROpcode : u8 {
     Null,
 
     Phi,
@@ -104,6 +105,8 @@ enum class IRType : u8 {
     Float80, // :(
     TupleTwoInteger64,
     TupleFourInteger64,
+
+    Count,
 };
 
 struct IRInstruction;
@@ -156,7 +159,7 @@ using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Co
 
 struct IRInstruction {
     IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands)
-        : opcode(opcode), returnType{IRInstruction::getTypeFromOpcode(opcode)} {
+        : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode)} {
         Operands op;
         op.operands = operands;
         expression = op;
@@ -168,19 +171,20 @@ struct IRInstruction {
         checkValidity(opcode, op);
     }
 
-    IRInstruction(u64 immediate) : opcode(IROpcode::Immediate), returnType{IRType::Integer64} {
+    IRInstruction(u64 immediate) : opcode(IROpcode::Immediate), return_type{IRType::Integer64} {
         Immediate imm;
         imm.immediate = immediate;
         expression = imm;
     }
 
-    IRInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), returnType{IRInstruction::getTypeFromOpcode(opcode, ref)} {
+    IRInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode, ref)} {
         GetGuest get;
         get.ref = ref;
         expression = get;
     }
 
-    IRInstruction(IROpcode opcode, x86_ref_e ref, IRInstruction* source) : opcode(opcode), returnType{IRInstruction::getTypeFromOpcode(opcode, ref)} {
+    IRInstruction(IROpcode opcode, x86_ref_e ref, IRInstruction* source)
+        : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode, ref)} {
         SetGuest set;
         set.ref = ref;
         set.source = source;
@@ -189,7 +193,7 @@ struct IRInstruction {
         source->AddUse();
     }
 
-    IRInstruction(Phi phi) : opcode(IROpcode::Phi), returnType{IRInstruction::getTypeFromOpcode(opcode, phi.ref)} {
+    IRInstruction(Phi phi) : opcode(IROpcode::Phi), return_type{IRInstruction::getTypeFromOpcode(opcode, phi.ref)} {
         expression = std::move(phi);
 
         for (auto& node : phi.nodes) {
@@ -197,14 +201,14 @@ struct IRInstruction {
         }
     }
 
-    IRInstruction(const std::string& comment) : opcode(IROpcode::Comment), returnType{IRInstruction::getTypeFromOpcode(opcode)} {
+    IRInstruction(const std::string& comment) : opcode(IROpcode::Comment), return_type{IRInstruction::getTypeFromOpcode(opcode)} {
         Comment c;
         c.comment = comment;
         expression = c;
     }
 
     IRInstruction(IRInstruction* tuple, u8 index)
-        : opcode(IROpcode::TupleExtract), returnType(IRInstruction::getTypeFromTuple(tuple->returnType, index)) {
+        : opcode(IROpcode::TupleExtract), return_type(IRInstruction::getTypeFromTuple(tuple->return_type, index)) {
         TupleAccess tg;
         tg.tuple = tuple;
         tg.index = index;
@@ -213,7 +217,7 @@ struct IRInstruction {
         tuple->AddUse();
     }
 
-    IRInstruction(IRInstruction* mov) : opcode(IROpcode::Mov), returnType{mov->returnType} {
+    IRInstruction(IRInstruction* mov) : opcode(IROpcode::Mov), return_type{mov->return_type} {
         Operands op;
         op.operands.push_back(mov);
         expression = op;
@@ -229,7 +233,7 @@ struct IRInstruction {
     bool IsSameExpression(const IRInstruction& other) const;
 
     IRType GetType() const {
-        return returnType;
+        return return_type;
     }
 
     IROpcode GetOpcode() const {
@@ -242,6 +246,10 @@ struct IRInstruction {
 
     void AddUse() {
         uses++;
+    }
+
+    void RemoveUse() {
+        uses--;
     }
 
     void Invalidate();
@@ -296,6 +304,10 @@ struct IRInstruction {
         return AsOperands().operands[index];
     }
 
+    IRInstruction* GetOperand(u8 index) {
+        return AsOperands().operands[index];
+    }
+
     u32 GetOperandName(u8 index) const {
         return AsOperands().operands[index]->GetName();
     }
@@ -306,7 +318,9 @@ struct IRInstruction {
 
     void ReplaceWith(IRInstruction&& other) {
         Invalidate();
+        u16 uses = this->uses;
         *this = std::move(other);
+        this->uses = uses;
     }
 
     u64 GetExtraData() const {
@@ -315,6 +329,16 @@ struct IRInstruction {
 
     void SetExtraData(u64 extra_data) {
         AsOperands().extra_data = extra_data;
+    }
+
+    Expression& GetExpression() {
+        return expression;
+    }
+
+    std::string Print() const;
+
+    void Lock() {
+        locked = true;
     }
 
 private:
@@ -326,5 +350,6 @@ private:
     u32 name = 0;
     u16 uses = 0;
     IROpcode opcode;
-    IRType returnType;
+    IRType return_type;
+    bool locked = false; // must not be removed by optimizations, even when used by nothing
 };

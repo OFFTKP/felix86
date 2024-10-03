@@ -79,12 +79,6 @@
     t0-t3 and the rest of the temporaries down the road are in SSA form already,
    it's just the registers that need to be renamed
 */
-
-struct IRDominatorTreeNode {
-    IRBlock* block = nullptr;
-    std::vector<IRDominatorTreeNode*> children = {};
-};
-
 static void postorder(IRBlock* block, std::vector<IRBlock*>& output) {
     if (block->IsVisited()) {
         return;
@@ -333,18 +327,20 @@ void ir_ssa_pass(IRFunction* function) {
     rpo[0]->SetImmediateDominator(nullptr);
 
     // Construct a dominator tree
-    std::vector<IRDominatorTreeNode> dominator_tree;
-    dominator_tree.resize(count);
+    IRDominatorTree dominator_tree;
+    dominator_tree.nodes.resize(count);
 
     auto& blocks = function->GetBlocks();
     for (size_t i = 0; i < blocks.size(); i++) {
         IRBlock* block = blocks[i];
-        dominator_tree[i].block = block;
+        dominator_tree.nodes[i].block = block;
         if (block->GetImmediateDominator()) {
-            dominator_tree[block->GetImmediateDominator()->GetIndex()].children.push_back(&dominator_tree[i]);
+            dominator_tree.nodes[block->GetImmediateDominator()->GetIndex()].children.push_back(&dominator_tree.nodes[i]);
         }
     }
 
     // Now rename the variables
-    rename(dominator_tree);
+    rename(dominator_tree.nodes);
+
+    function->SetDominatorTree(std::move(dominator_tree));
 }

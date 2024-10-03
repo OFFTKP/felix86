@@ -1,4 +1,5 @@
 #include <Zydis/Zydis.h>
+#include <fmt/format.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
@@ -647,9 +648,7 @@ void frontend_compile_instruction(FrontendState* state) {
             /* buffer:          */ data,
             /* length:          */ 15,
             /* instruction:     */ &zydis_inst))) {
-        std::string buffer;
-        buffer.resize(256);
-        snprintf(buffer.data(), 256, "%016llx  %s", (unsigned long long)(state->current_address - g_base_address), zydis_inst.text);
+        std::string buffer = fmt::format("{:016x} {}", (state->current_address - g_base_address), zydis_inst.text);
         ir_emit_runtime_comment(state->current_block, buffer);
     }
 

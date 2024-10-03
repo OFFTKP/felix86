@@ -27,11 +27,14 @@ set(FELIX86_FRONTEND_SOURCES
 
 set(FELIX86_IR_SOURCES
     src/felix86/ir/block.cpp
+    src/felix86/ir/copy_propagation_pass.cpp
     src/felix86/ir/emitter.cpp
+    src/felix86/ir/entry_exit_unused_pass.cpp
     src/felix86/ir/function.cpp
     src/felix86/ir/handlers_weak.cpp
     src/felix86/ir/handlers.cpp
     src/felix86/ir/instruction.cpp
+    src/felix86/ir/naming_pass.cpp
     src/felix86/ir/print.cpp
     src/felix86/ir/ssa_pass.cpp
 )
@@ -78,7 +81,7 @@ set(FELIX86_INCLUDES
 add_library(felix86_core STATIC)
 target_sources(felix86_core PUBLIC ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis)
+target_link_libraries(felix86_core PUBLIC Zydis fmt)
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)

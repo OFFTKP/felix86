@@ -109,8 +109,6 @@ std::string IRFunction::Print() const {
         }
     }
 
-    UnvisitAll();
-
     return ret;
 }
 
@@ -118,4 +116,91 @@ void IRFunction::UnvisitAll() const {
     for (auto& block : blocks) {
         block->SetVisited(false);
     }
+}
+
+bool IRFunction::Validate() const {
+    struct Uses {
+        u32 want = 0;
+        u32 have = 0;
+    };
+
+    std::unordered_map<IRInstruction*, Uses> uses;
+    for (auto& block : blocks) {
+        if (block->GetTermination() == Termination::Null) {
+            return false;
+        }
+
+        auto add_uses = [&uses](IRInstruction* inst) {
+            uses[inst].want = inst->GetUseCount();
+
+            Expression& expression = inst->GetExpression();
+            switch (expression.index()) {
+            case 0: {
+                Operands& operands = std::get<Operands>(expression);
+                for (IRInstruction* operand : operands.operands) {
+                    if (operand != nullptr) {
+                        uses[operand].have += 1;
+                    } else {
+                        ERROR("Operand is null");
+                    }
+                }
+                break;
+            }
+            case 1:
+            case 2:
+            case 5: {
+                break;
+            }
+            case 3: {
+                SetGuest& set_guest = std::get<SetGuest>(expression);
+                if (set_guest.source != nullptr) {
+                    uses[set_guest.source].have += 1;
+                } else {
+                    ERROR("Source is null");
+                }
+                break;
+            }
+            case 4: {
+                Phi& phi = std::get<Phi>(expression);
+                for (const PhiNode& node : phi.nodes) {
+                    if (node.value != nullptr) {
+                        uses[node.value].have += 1;
+                    } else {
+                        ERROR("Value is null");
+                    }
+                }
+                break;
+            }
+            case 6: {
+                TupleAccess& tuple_access = std::get<TupleAccess>(expression);
+                if (tuple_access.tuple != nullptr) {
+                    uses[tuple_access.tuple].have += 1;
+                } else {
+                    ERROR("Tuple is null");
+                }
+                break;
+            }
+            default: {
+                ERROR("Unreachable");
+            }
+            }
+        };
+
+        for (auto& inst : block->GetPhiInstructions()) {
+            add_uses(&inst);
+        }
+
+        for (auto& inst : block->GetInstructions()) {
+            add_uses(&inst);
+        }
+    }
+
+    for (const auto& [inst, use] : uses) {
+        if (use.have != use.want) {
+            WARN("Mismatch on uses on instruction: %s", inst->Print().c_str());
+            return false;
+        }
+    }
+
+    return true;
 }

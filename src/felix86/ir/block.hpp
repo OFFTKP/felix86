@@ -30,7 +30,7 @@ struct IRBlock {
         successors[0] = target_true;
         successors[1] = target_false;
         this->condition = condition;
-        condition->AddUse();
+        condition->Lock(); // this is used by the termination, don't optimize away
 
         successors[0]->AddPredecessor(this);
         successors[1]->AddPredecessor(this);
@@ -135,8 +135,6 @@ private:
     void AddPredecessor(IRBlock* pred) {
         predecessors.push_back(pred);
     }
-
-    std::string printInstruction(const IRInstruction& inst) const;
 
     u64 start_address = IR_NO_ADDRESS;
     std::list<IRInstruction> instructions;
