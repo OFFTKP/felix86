@@ -65,6 +65,14 @@ struct IRFunction {
         }
     }
 
+    const std::vector<IRBlock*>& GetBlocksPostorder() const {
+        return blocks_postorder;
+    }
+
+    void SetPostorder(const std::vector<IRBlock*>& postorder) {
+        blocks_postorder = postorder;
+    }
+
 private:
     IRBlock* allocateBlock();
 
@@ -74,6 +82,7 @@ private:
     IRBlock* exit = nullptr;
     IRBlock* start_address_block = nullptr;
     std::vector<IRBlock*> blocks;
+    std::vector<IRBlock*> blocks_postorder;
     tsl::robin_map<u64, IRBlock*> block_map;
     IRDominatorTree dominator_tree;
     bool compiled = false;

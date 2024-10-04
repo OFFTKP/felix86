@@ -763,3 +763,42 @@ bool IRInstruction::NeedsAllocation() const {
     bool dont_allocate = return_type == IRType::Void;
     return !already_allocated && !dont_allocate;
 }
+
+std::list<IRInstruction*> IRInstruction::GetUsedInstructions() const {
+    std::list<IRInstruction*> used_instructions;
+    switch (expression_type) {
+    case ExpressionType::Operands: {
+        const Operands& operands = std::get<Operands>(expression);
+        for (IRInstruction* operand : operands.operands) {
+            if (operand != nullptr) {
+                used_instructions.push_back(operand);
+            }
+        }
+        break;
+    }
+    case ExpressionType::Comment:
+    case ExpressionType::Immediate:
+    case ExpressionType::GetGuest: {
+        break;
+    }
+    case ExpressionType::SetGuest: {
+        used_instructions.push_back(AsSetGuest().source);
+        break;
+    }
+    case ExpressionType::Phi: {
+        const Phi& phi = AsPhi();
+        for (const PhiNode& node : phi.nodes) {
+            used_instructions.push_back(node.value);
+        }
+        break;
+    }
+    case ExpressionType::TupleAccess: {
+        used_instructions.push_back(AsTupleAccess().tuple);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    return used_instructions;
+}

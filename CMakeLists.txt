@@ -35,7 +35,7 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/instruction.cpp
     src/felix86/ir/print.cpp
     src/felix86/ir/passes/copy_propagation_pass.cpp
-    src/felix86/ir/passes/ir_extraneous_writeback_pass.cpp
+    src/felix86/ir/passes/extraneous_writeback_pass.cpp
     src/felix86/ir/passes/naming_pass.cpp
     src/felix86/ir/passes/ssa_pass.cpp
 )

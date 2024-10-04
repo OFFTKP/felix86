@@ -1,5 +1,6 @@
 #pragma once
 
+#include <list>
 #include <string>
 #include <variant>
 #include <vector>
@@ -422,6 +423,8 @@ struct IRInstruction {
     std::string GetOperandNameString(u8 index) const {
         return AsOperands().operands[index]->GetNameString();
     }
+
+    std::list<IRInstruction*> GetUsedInstructions() const;
 
     void ReplaceWith(IRInstruction&& other) {
         Invalidate();

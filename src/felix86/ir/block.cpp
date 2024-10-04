@@ -34,8 +34,5 @@ std::string IRBlock::Print() const {
 IRInstruction* IRBlock::InsertAtEnd(IRInstruction&& instr) {
     instructions.push_back(std::move(instr));
     IRInstruction* ret = &instructions.back();
-    if (instr.NeedsAllocation()) {
-        needs_allocation.push_back(ret);
-    }
     return ret;
 }

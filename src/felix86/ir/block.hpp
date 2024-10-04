@@ -2,6 +2,7 @@
 
 #include <array>
 #include <list>
+#include <span>
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/instruction.hpp"
 
@@ -134,7 +135,6 @@ private:
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
     std::vector<IRBlock*> dominance_frontiers;
-    std::vector<IRInstruction*> needs_allocation;
     IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
     IRInstruction* condition = nullptr;

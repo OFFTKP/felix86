@@ -111,6 +111,8 @@ static void reverse_postorder_creation(IRFunction* function, std::vector<IRBlock
         order[i]->SetPostorderIndex(i);
     }
 
+    function->SetPostorder(order);
+
     std::reverse(order.begin(), order.end());
 }
 
