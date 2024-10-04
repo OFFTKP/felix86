@@ -123,6 +123,8 @@ struct IRBlock {
         instructions.push_front(std::move(instr));
     }
 
+    bool IsUsedInPhi(IRInstruction* instr) const;
+
     std::string Print() const;
 
 private:

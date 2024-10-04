@@ -408,6 +408,8 @@ struct IRInstruction {
 
     std::string GetNameString() const;
 
+    std::string GetTypeString() const;
+
     const IRInstruction* GetOperand(u8 index) const {
         return AsOperands().operands[index];
     }
@@ -499,6 +501,8 @@ struct IRInstruction {
     u32 GetSpillLocation() {
         return std::get<u32>(allocation);
     }
+
+    bool IsVoid() const;
 
     bool NeedsAllocation() const;
 

@@ -11,6 +11,7 @@ void Emulator::Run() {
     ir_naming_pass(function);
     ir_copy_propagation_pass(function);
     ir_extraneous_writeback_pass(function);
+    ir_graph_coloring_pass(function);
 
     fmt::print("{}", function->Print());
 

@@ -36,3 +36,18 @@ IRInstruction* IRBlock::InsertAtEnd(IRInstruction&& instr) {
     IRInstruction* ret = &instructions.back();
     return ret;
 }
+
+bool IRBlock::IsUsedInPhi(IRInstruction* target) const {
+    for (auto& instr : instructions) {
+        if (instr.IsPhi()) {
+            const Phi& phi = instr.AsPhi();
+            for (auto& [_, value] : phi.nodes) {
+                if (value == target) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}

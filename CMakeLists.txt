@@ -36,6 +36,7 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/print.cpp
     src/felix86/ir/passes/copy_propagation_pass.cpp
     src/felix86/ir/passes/extraneous_writeback_pass.cpp
+    src/felix86/ir/passes/graph_coloring_pass.cpp
     src/felix86/ir/passes/naming_pass.cpp
     src/felix86/ir/passes/ssa_pass.cpp
 )
@@ -85,7 +86,7 @@ set(FELIX86_INCLUDES
 add_library(felix86_core STATIC)
 target_sources(felix86_core PUBLIC ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis fmt)
+target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit)
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)

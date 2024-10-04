@@ -25,41 +25,82 @@ using LivenessList = std::list<IRInstruction*>;
     for each block b
         in[b] = {}
         out[b] = {}
-    
+
     repeat
         for each block b
             in_old = in[b]
             out_old = out[b]
             in[b] = use[b] U (out[b] - def[b])
             out[b] = U (in[s]) for all s in succ[b]
-        
+
         while in[b] != in_old or out[b] != out_old
 
     To incorporate phi functions, this is recommended in SSA book:
 
-    LiveIn(B) = PhiDefs(B) ∪ UpwardExposed(B) ∪ (LiveOut(B) \ Defs(B))
+    LiveIn(B) = PhiDefs(B) U UpwardExposed(B) U (LiveOut(B) \ Defs(B))
     LiveOut(B) = ⋃ S∈succs(B)(LiveIn(S) \ PhiDefs(S)) ∪ PhiUses(B)
-    
+
     there's other non fixpoint algos but they are more complex
 */
 void liveness(IRFunction* function, std::vector<LivenessList>& in, std::vector<LivenessList>& out) {
     const std::vector<IRBlock*>& blocks = function->GetBlocksPostorder();
     std::vector<LivenessList> use(blocks.size());
     std::vector<LivenessList> def(blocks.size());
+    std::vector<LivenessList> phi_def(blocks.size());
+    std::vector<LivenessList> phi_use(blocks.size());
 
     in.resize(blocks.size());
     out.resize(blocks.size());
 
     // Populate use and def sets
-    for (size_t i = 0; i < blocks.size(); i++) {
-        IRBlock* block = blocks[i];
+    for (size_t j = 0; j < blocks.size(); j++) {
+        IRBlock* block = blocks[j];
+        size_t i = block->GetIndex();
         for (IRInstruction& instr : block->GetInstructions()) {
-            def[i].push_back(&instr);
+            if (instr.IsPhi()) {
+                phi_def[i].push_back(&instr);
+            } else {
+                if (!instr.IsVoid()) {
+                    def[i].push_back(&instr);
+                }
 
-            std::list<IRInstruction*> used_instructions = instr.GetUsedInstructions();
-            use[i].insert(use[i].end(), used_instructions.begin(), used_instructions.end());
+                std::list<IRInstruction*> used_instructions = instr.GetUsedInstructions();
+                for (IRInstruction* used_instr : used_instructions) {
+                    // Not defined in this block ie. upwards exposed, live range goes outside
+                    // current block
+                    if (std::find(def[i].begin(), def[i].end(), used_instr) == def[i].end()) {
+                        use[i].push_back(used_instr);
+                    }
+                }
+            }
+
+            IRBlock* successor1 = block->GetSuccessor(0);
+            if (successor1 && successor1->IsUsedInPhi(&instr)) {
+                phi_use[i].push_back(&instr);
+            }
+
+            IRBlock* successor2 = block->GetSuccessor(1);
+            if (successor2 && successor2->IsUsedInPhi(&instr)) {
+                phi_use[i].push_back(&instr);
+            }
         }
     }
+
+    // for (int i = 0; i < blocks.size(); i++) {
+    //     printf("Block %d\n", i);
+    //     printf("Use count: %d\n", use[i].size());
+    //     printf("{\n");
+    //     for (IRInstruction* instr : use[i]) {
+    //         printf("    %s\n", instr->Print().c_str());
+    //     }
+    //     printf("}\n");
+    //     printf("Def count: %d\n", def[i].size());
+    //     printf("{\n");
+    //     for (IRInstruction* instr : def[i]) {
+    //         printf("    %s\n", instr->Print().c_str());
+    //     }
+    //     printf("}\n");
+    // }
 
     // Calculate in and out sets
     bool changed;
@@ -75,9 +116,10 @@ void liveness(IRFunction* function, std::vector<LivenessList>& in, std::vector<L
             LivenessList out_old = out[i];
 
             in[i].clear();
-            
-            // in[b] = use[b] U (out[b] - def[b])
+
+            // in[b] = phi_def U use[b] U (out[b] - def[b])
             in[i].insert(in[i].end(), use[i].begin(), use[i].end());
+            in[i].insert(in[i].end(), phi_def[i].begin(), phi_def[i].end());
 
             LivenessList out_minus_def = out[i];
             for (IRInstruction* instr : def[i]) {
@@ -88,14 +130,26 @@ void liveness(IRFunction* function, std::vector<LivenessList>& in, std::vector<L
 
             // out[b] = U (in[s]) for all s in succ[b]
             out[i].clear();
+            out[i].insert(out[i].end(), phi_use[i].begin(), phi_use[i].end());
+
             const IRBlock* successor1 = block->GetSuccessor(0);
             const IRBlock* successor2 = block->GetSuccessor(1);
             if (successor1 != nullptr) {
-                out[i].insert(out[i].end(), in[successor1->GetIndex()].begin(), in[successor1->GetIndex()].end());
+                size_t s = successor1->GetIndex();
+                LivenessList in_minus_phi_def = in[s];
+                for (IRInstruction* instr : phi_def[s]) {
+                    in_minus_phi_def.remove(instr);
+                }
+                out[i].insert(out[i].end(), in_minus_phi_def.begin(), in_minus_phi_def.end());
             }
 
             if (successor2 != nullptr) {
-                out[i].insert(out[i].end(), in[successor2->GetIndex()].begin(), in[successor2->GetIndex()].end());
+                size_t s = successor2->GetIndex();
+                LivenessList in_minus_phi_def = in[s];
+                for (IRInstruction* instr : phi_def[s]) {
+                    in_minus_phi_def.remove(instr);
+                }
+                out[i].insert(out[i].end(), in_minus_phi_def.begin(), in_minus_phi_def.end());
             }
 
             // check for changes
@@ -125,7 +179,18 @@ void ir_graph_coloring_pass(IRFunction* function) {
     std::vector<LivenessList> in, out;
     liveness(function, in, out);
 
-    // Create interference graph
-    InterferenceGraph graph;
-
+    for (auto& block : function->GetBlocks()) {
+        printf("Block %d live in count: %d\n", block->GetIndex(), in[block->GetIndex()].size());
+        printf("{\n");
+        for (auto& instr : in[block->GetIndex()]) {
+            printf("    %s\n", instr->Print().c_str());
+        }
+        printf("}\n");
+        printf("Block %d live out count: %d\n", block->GetIndex(), out[block->GetIndex()].size());
+        printf("{\n");
+        for (auto& instr : out[block->GetIndex()]) {
+            printf("    %s\n", instr->Print().c_str());
+        }
+        printf("}\n");
+    }
 }

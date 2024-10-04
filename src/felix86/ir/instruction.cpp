@@ -445,27 +445,58 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 }
 
 std::string IRInstruction::GetNameString() const {
-    switch (return_type) {
+    // switch (return_type) {
+    // case IRType::Integer64: {
+    //     return fmt::format("{}", GetName());
+    // }
+    // case IRType::Vector128: {
+    //     return fmt::format("v{}", GetName());
+    // }
+    // case IRType::Float64: {
+    //     return fmt::format("f{}", GetName());
+    // }
+    // case IRType::Float80: {
+    //     return fmt::format("sp{}", GetName());
+    // }
+    // case IRType::TupleTwoInteger64: {
+    //     return fmt::format("t{}<int, int>", GetName());
+    // }
+    // case IRType::TupleFourInteger64: {
+    //     return fmt::format("t{}<i64, i64, i64, i64>", GetName());
+    // }
+    // case IRType::Void: {
+    //     return "void";
+    // }
+    // default: {
+    //     ERROR("Unreachable");
+    //     return "";
+    // }
+    // }
+    return fmt::format("%{}", GetName());
+}
+
+std::string IRInstruction::GetTypeString() const {
+    switch (GetType()) {
     case IRType::Integer64: {
-        return fmt::format("i{}", GetName());
+        return "Int64";
     }
     case IRType::Vector128: {
-        return fmt::format("v{}", GetName());
+        return "Vec128";
     }
     case IRType::Float64: {
-        return fmt::format("f{}", GetName());
+        return "Float64";
     }
     case IRType::Float80: {
-        return fmt::format("sp{}", GetName());
+        return "Float80";
     }
     case IRType::TupleTwoInteger64: {
-        return fmt::format("t{}<int, int>", GetName());
+        return "Tuple<Int64, Int64>";
     }
     case IRType::TupleFourInteger64: {
-        return fmt::format("t{}<i64, i64, i64, i64>", GetName());
+        return "Tuple<Int64, Int64, Int64, Int64>";
     }
     case IRType::Void: {
-        return "void";
+        return "Void";
     }
     default: {
         ERROR("Unreachable");
@@ -474,24 +505,25 @@ std::string IRInstruction::GetNameString() const {
     }
 }
 
-#define OP2(op) fmt::format("{} ← {} {} {}", GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
-#define SOP2(op) fmt::format("{} ← (i64){} {} (i64){}", GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
-#define U8OP2(op) fmt::format("{} ← (u8){} {} (u8){}", GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
-#define S8OP2(op) fmt::format("{} ← (i8){} {} (i8){}", GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
-#define S16OP2(op) fmt::format("{} ← (i16){} {} (i16){}", GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
-#define S32OP2(op) fmt::format("{} ← (i32){} {} (i32){}", GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
+#define OP2(op) fmt::format("{} {} ← {} {} {}", GetTypeString(), GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
+#define SOP2(op) fmt::format("{} {} ← (i64){} {} (i64){}", GetTypeString(), GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
+#define U8OP2(op) fmt::format("{} {} ← (u8){} {} (u8){}", GetTypeString(), GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
+#define S8OP2(op) fmt::format("{} {} ← (i8){} {} (i8){}", GetTypeString(), GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
+#define S16OP2(op) fmt::format("{} {} ← (i16){} {} (i16){}", GetTypeString(), GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
+#define S32OP2(op) fmt::format("{} {} ← (i32){} {} (i32){}", GetTypeString(), GetNameString(), GetOperandNameString(0), #op, GetOperandNameString(1))
 
-#define FOP(func) fmt::format("{} ← {}()", GetNameString(), #func)
-#define FOP1(func, param) fmt::format("{} ← {}({}: {})", GetNameString(), #func, #param, GetOperandNameString(0))
+#define FOP(func) fmt::format("{} {} ← {}()", GetTypeString(), GetNameString(), #func)
+#define FOP1(func, param) fmt::format("{} {} ← {}({}: {})", GetTypeString(), GetNameString(), #func, #param, GetOperandNameString(0))
 #define FOP2(func, param1, param2)                                                                                                                   \
-    fmt::format("{} ← {}({}: {}, {}: {})", GetNameString(), #func, #param1, GetOperandNameString(0), #param2, GetOperandNameString(1))
+    fmt::format("{} {} ← {}({}: {}, {}: {})", GetTypeString(), GetNameString(), #func, #param1, GetOperandNameString(0), #param2,                    \
+                GetOperandNameString(1))
 #define FOP3(func, param1, param2, param3)                                                                                                           \
-    fmt::format("{} ← {}({}: {}, {}: {}, {}: {})", GetNameString(), #func, #param1, GetOperandNameString(0), #param2, GetOperandNameString(1),       \
-                #param3, GetOperandNameString(2))
+    fmt::format("{} {} ← {}({}: {}, {}: {}, {}: {})", GetTypeString(), GetNameString(), #func, #param1, GetOperandNameString(0), #param2,            \
+                GetOperandNameString(1), #param3, GetOperandNameString(2))
 #define FOP7(func, param1, param2, param3, param4, param5, param6, param7)                                                                           \
-    fmt::format("{} ← {}({}: {}, {}: {}, {}: {}, {}: {}, {}: {}, {}: {}, {}: {})", GetNameString(), #func, #param1, GetOperandNameString(0),         \
-                #param2, GetOperandNameString(1), #param3, GetOperandNameString(2), #param4, GetOperandNameString(3), #param5,                       \
-                GetOperandNameString(4), #param6, GetOperandNameString(5), #param7, GetOperandNameString(6))
+    fmt::format("{} {} ← {}({}: {}, {}: {}, {}: {}, {}: {}, {}: {}, {}: {}, {}: {})", GetTypeString(), GetNameString(), #func, #param1,              \
+                GetOperandNameString(0), #param2, GetOperandNameString(1), #param3, GetOperandNameString(2), #param4, GetOperandNameString(3),       \
+                #param5, GetOperandNameString(4), #param6, GetOperandNameString(5), #param7, GetOperandNameString(6))
 
 std::string IRInstruction::Print() const {
     IROpcode opcode = GetOpcode();
@@ -501,7 +533,7 @@ std::string IRInstruction::Print() const {
     }
     case IROpcode::Phi: {
         const Phi& phi = AsPhi();
-        std::string ret = fmt::format("{} ← φ<%{}>(", GetNameString(), print_guest_register(phi.ref));
+        std::string ret = fmt::format("{} {} ← φ<%{}>(", GetTypeString(), GetNameString(), print_guest_register(phi.ref));
         for (size_t i = 0; i < phi.nodes.size(); i++) {
             ret += fmt::format("{} @ Block {}", phi.nodes[i].value->GetNameString(), phi.nodes[i].block->GetIndex());
 
@@ -517,20 +549,21 @@ std::string IRInstruction::Print() const {
     }
     case IROpcode::TupleExtract: {
         const TupleAccess& tup = AsTupleAccess();
-        return fmt::format("{} ← get<{}>({})", GetNameString(), tup.index, tup.tuple->GetNameString());
+        return fmt::format("{} {} ← get<{}>({})", GetTypeString(), GetNameString(), tup.index, tup.tuple->GetNameString());
     }
     case IROpcode::Select: {
-        return fmt::format("{} ← {} ? {} : {}", GetNameString(), GetOperandNameString(0), GetOperandNameString(1), GetOperandNameString(2));
+        return fmt::format("{} {} ← {} ? {} : {}", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
+                           GetOperandNameString(2));
     }
     case IROpcode::Lea: {
-        return fmt::format("{} ← [{} + {} * {} + 0x{:x}]", GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
+        return fmt::format("{} {} ← [{} + {} * {} + 0x{:x}]", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
                            GetOperand(2)->AsImmediate().immediate, GetOperand(3)->AsImmediate().immediate);
     }
     case IROpcode::Mov: {
-        return fmt::format("{} ← {}", GetNameString(), GetOperandNameString(0));
+        return fmt::format("{} {} ← {}", GetTypeString(), GetNameString(), GetOperandNameString(0));
     }
     case IROpcode::Immediate: {
-        return fmt::format("{} ← {:x}", GetNameString(), AsImmediate().immediate);
+        return fmt::format("{} {} ← 0x{:x}", GetTypeString(), GetNameString(), AsImmediate().immediate);
     }
     case IROpcode::Rdtsc: {
         return FOP(rdtsc);
@@ -545,7 +578,7 @@ std::string IRInstruction::Print() const {
         return fmt::format("{} ← load_from_vm %{}", GetNameString(), print_guest_register(AsGetGuest().ref));
     }
     case IROpcode::StoreGuestToMemory: {
-        return fmt::format("{} ← store_to_vm %{}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
+        return fmt::format("store_to_vm %{}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
     }
     case IROpcode::Add: {
         return OP2(+);
@@ -722,7 +755,7 @@ std::string IRInstruction::Print() const {
         return FOP2(vpeqdword, src1, src2);
     }
     case IROpcode::VPackedShuffleDWord: {
-        return fmt::format("{} ← vpshufdword({}, {:x})", GetNameString(), GetOperandNameString(0), (u8)GetExtraData());
+        return fmt::format("{} {} ← vpshufdword({}, 0x{:x})", GetTypeString(), GetNameString(), GetOperandNameString(0), (u8)GetExtraData());
     }
     case IROpcode::VPackedMinByte: {
         return FOP2(vpminbyte, src1, src2);
@@ -758,9 +791,13 @@ std::string IRInstruction::Print() const {
     }
 }
 
+bool IRInstruction::IsVoid() const {
+    return return_type == IRType::Void;
+}
+
 bool IRInstruction::NeedsAllocation() const {
     bool already_allocated = allocation.index() != 0;
-    bool dont_allocate = return_type == IRType::Void;
+    bool dont_allocate = IsVoid();
     return !already_allocated && !dont_allocate;
 }
 
@@ -786,10 +823,7 @@ std::list<IRInstruction*> IRInstruction::GetUsedInstructions() const {
         break;
     }
     case ExpressionType::Phi: {
-        const Phi& phi = AsPhi();
-        for (const PhiNode& node : phi.nodes) {
-            used_instructions.push_back(node.value);
-        }
+        ERROR("Should not be used");
         break;
     }
     case ExpressionType::TupleAccess: {
