@@ -1,4 +1,4 @@
-#include "felix86/ir/passes.hpp"
+#include "felix86/ir/passes/passes.hpp"
 
 void ir_copy_propagate_node(const IRDominatorTreeNode* node, std::unordered_map<IRInstruction*, IRInstruction*> map) {
     std::list<IRInstruction>& insts = node->block->GetInstructions();

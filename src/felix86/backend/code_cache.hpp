@@ -1,10 +1,15 @@
 #pragma once
 
+#include "biscuit/assembler.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/common/x86.hpp"
 
 #include <tsl/robin_map.h>
 
 struct CodeCache {
+    CodeCache(ThreadState& thread_state);
+    ~CodeCache();
+
     void MapCompiledFunction(u64 address, void* function) {
         map[address] = function;
     }
@@ -18,5 +23,28 @@ struct CodeCache {
     }
 
 private:
-    tsl::robin_map<u64, void*> map; // map functions to host code
+    static u8* allocateCodeCache();
+    static void deallocateCodeCache(u8* memory);
+
+    void emitNecessaryStuff();
+    void resetCodeCache();
+
+    ThreadState& thread_state;
+    u8* memory = nullptr;
+    biscuit::Assembler as{};
+    tsl::robin_map<u64, void*> map{}; // map functions to host code
+
+    constexpr static std::array saved_gprs = {biscuit::ra, biscuit::sp, biscuit::gp,  biscuit::tp, biscuit::s0, biscuit::s1,
+                                              biscuit::s2, biscuit::s3, biscuit::s4,  biscuit::s5, biscuit::s6, biscuit::s7,
+                                              biscuit::s8, biscuit::s9, biscuit::s10, biscuit::s11};
+
+    constexpr static std::array saved_fprs = {biscuit::fs0, biscuit::fs1, biscuit::fs2, biscuit::fs3, biscuit::fs4,  biscuit::fs5,
+                                              biscuit::fs6, biscuit::fs7, biscuit::fs8, biscuit::fs9, biscuit::fs10, biscuit::fs11};
+
+    std::array<u64, saved_gprs.size()> gpr_storage{};
+    std::array<u64, saved_fprs.size()> fpr_storage{};
+
+    // Special addresses within the code cache
+    u8* enter_dispatcher = nullptr;
+    u8* exit_dispatcher = nullptr;
 };

@@ -435,6 +435,11 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         if (operands.operands[1]->GetType() != IRType::Vector128) {
             ERROR("Invalid operand type for opcode %d", static_cast<u8>(opcode));
         }
+        break;
+    }
+
+    default: {
+        ERROR("Unreachable");
     }
     }
 }
@@ -447,8 +452,11 @@ std::string IRInstruction::GetNameString() const {
     case IRType::Vector128: {
         return fmt::format("v{}", GetName());
     }
-    case IRType::Float80: {
+    case IRType::Float64: {
         return fmt::format("f{}", GetName());
+    }
+    case IRType::Float80: {
+        return fmt::format("sp{}", GetName());
     }
     case IRType::TupleTwoInteger64: {
         return fmt::format("t{}<int, int>", GetName());
@@ -748,4 +756,10 @@ std::string IRInstruction::Print() const {
         return "";
     }
     }
+}
+
+bool IRInstruction::NeedsAllocation() const {
+    bool already_allocated = allocation.index() != 0;
+    bool dont_allocate = return_type == IRType::Void;
+    return !already_allocated && !dont_allocate;
 }

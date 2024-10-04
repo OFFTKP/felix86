@@ -5,7 +5,7 @@
 #include <stack>
 #include <vector>
 #include "felix86/common/log.hpp"
-#include "felix86/ir/passes.hpp"
+#include "felix86/ir/passes/passes.hpp"
 
 /*
     This is written with my current understanding of SSA at this time, parts of

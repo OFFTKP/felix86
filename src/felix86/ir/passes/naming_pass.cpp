@@ -1,4 +1,4 @@
-#include "felix86/ir/passes.hpp"
+#include "felix86/ir/passes/passes.hpp"
 
 void ir_naming_pass(IRFunction* function) {
     function->UnvisitAll();

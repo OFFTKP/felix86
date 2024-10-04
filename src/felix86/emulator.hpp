@@ -1,5 +1,6 @@
 #pragma once
 
+#include "felix86/backend/code_cache.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/frontend/instruction.hpp"
@@ -169,7 +170,8 @@ struct Emulator {
     void Run();
 
 private:
-    FunctionCache cache;
+    CodeCache code_cache;
+    FunctionCache function_cache;
     ThreadState state;
     Filesystem fs;
     Config config;

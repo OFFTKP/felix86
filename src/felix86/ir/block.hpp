@@ -40,10 +40,7 @@ struct IRBlock {
         termination = Termination::Exit;
     }
 
-    IRInstruction* InsertAtEnd(IRInstruction&& instr) {
-        instructions.push_back(std::move(instr));
-        return &instructions.back();
-    }
+    IRInstruction* InsertAtEnd(IRInstruction&& instr);
 
     bool IsCompiled() const {
         return compiled;
@@ -137,6 +134,7 @@ private:
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
     std::vector<IRBlock*> dominance_frontiers;
+    std::vector<IRInstruction*> needs_allocation;
     IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
     IRInstruction* condition = nullptr;
