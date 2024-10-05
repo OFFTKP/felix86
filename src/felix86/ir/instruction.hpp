@@ -260,6 +260,8 @@ struct IRInstruction {
         expression = c;
 
         expression_type = ExpressionType::Comment;
+
+        Lock();
     }
 
     IRInstruction(IRInstruction* tuple, u8 index)
@@ -446,8 +448,16 @@ struct IRInstruction {
 
     std::string Print(const std::function<std::string(const IRInstruction*)>& callback) const;
 
+    void Unlock() {
+        locked = false;
+    }
+
     void Lock() {
         locked = true;
+    }
+
+    bool IsLocked() const {
+        return locked;
     }
 
     bool IsSpilled() {

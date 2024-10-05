@@ -417,6 +417,7 @@ void ir_emit_store_guest_to_memory(IRBlock* block, x86_ref_e ref, IRInstruction*
     }
 
     IRInstruction instruction(IROpcode::StoreGuestToMemory, ref, source);
+    instruction.Lock();
     block->InsertAtEnd(std::move(instruction));
 }
 

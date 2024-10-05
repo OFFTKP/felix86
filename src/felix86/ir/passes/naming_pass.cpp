@@ -4,14 +4,11 @@ void ir_naming_pass(IRFunction* function) {
     function->UnvisitAll();
 
     // Now add a name to every instruction
-    std::array<u32, (u8)IRType::Count> names;
-    std::fill(names.begin(), names.end(), 1);
+    u32 name = 1;
 
-    auto get_name = [&names](IRType type) { return names[(u8)type]++; };
-
-    auto name_block = [&get_name](IRBlock* block) {
+    auto name_block = [&name](IRBlock* block) {
         for (auto& inst : block->GetInstructions()) {
-            inst.SetName(get_name(inst.GetType()));
+            inst.SetName(name++);
         }
     };
 

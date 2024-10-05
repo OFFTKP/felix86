@@ -25,6 +25,7 @@ void ir_extraneous_writeback_pass(IRFunction* function) {
             const SetGuest& set_guest = inst.AsSetGuest();
             if (entry_defs[set_guest.ref] == set_guest.source) {
                 // It's the same one that was loaded in entry block, store can be removed
+                inst.Unlock();
                 inst.Invalidate();
                 it = insts_exit.erase(it);
                 continue;

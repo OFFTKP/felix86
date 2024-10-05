@@ -534,7 +534,7 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
     }
     case IROpcode::Phi: {
         const Phi& phi = AsPhi();
-        std::string ret = fmt::format("{} {} ← φ<%{}>(", GetTypeString(), GetNameString(), print_guest_register(phi.ref));
+        std::string ret = fmt::format("{} {} ← φ<a{}>(", GetTypeString(), GetNameString(), print_guest_register(phi.ref));
         for (size_t i = 0; i < phi.nodes.size(); i++) {
             ret += fmt::format("{} @ Block {}", phi.nodes[i].value->GetNameString(), phi.nodes[i].block->GetIndex());
 
@@ -575,19 +575,19 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
         return FOP(rdtsc);
     }
     case IROpcode::GetGuest: {
-        ret += fmt::format("{} ← get_guest %{}", GetNameString(), print_guest_register(AsGetGuest().ref));
+        ret += fmt::format("{} ← get_guest {}", GetNameString(), print_guest_register(AsGetGuest().ref));
         break;
     }
     case IROpcode::SetGuest: {
-        ret += fmt::format("{} ← set_guest %{}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
+        ret += fmt::format("{} ← set_guest {}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
         break;
     }
     case IROpcode::LoadGuestFromMemory: {
-        ret += fmt::format("{} ← load_from_vm %{}", GetNameString(), print_guest_register(AsGetGuest().ref));
+        ret += fmt::format("{} ← load_from_vm {}", GetNameString(), print_guest_register(AsGetGuest().ref));
         break;
     }
     case IROpcode::StoreGuestToMemory: {
-        ret += fmt::format("store_to_vm %{}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
+        ret += fmt::format("store_to_vm {}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
         break;
     }
     case IROpcode::Add: {
@@ -875,7 +875,11 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
             size++;
         }
 
-        ret += "(uses: " + std::to_string(GetUseCount()) + ") ";
+        ret += "(uses: " + std::to_string(GetUseCount());
+        if (IsLocked()) {
+            ret += " *locked*";
+        }
+        ret += ")";
     }
 
     if (callback)
