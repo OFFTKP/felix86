@@ -30,7 +30,7 @@ bool IRBlock::IsUsedInPhi(IRInstruction* target) const {
     for (auto& instr : instructions) {
         if (instr.IsPhi()) {
             const Phi& phi = instr.AsPhi();
-            for (auto& [_, value] : phi.nodes) {
+            for (auto& value : phi.values) {
                 if (value == target) {
                     return true;
                 }

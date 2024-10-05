@@ -182,9 +182,9 @@ void ir_print_instruction(const IRInstruction& instruction, const IRBlock* block
     case IROpcode::Phi: {
         printf("t%d = φ&lt;", instruction.GetName());
         const Phi& phi = instruction.AsPhi();
-        for (auto& node : phi.nodes) {
-            printf("t%d @ %p", node.value->GetName(), node.block);
-            if (&node != &phi.nodes.back()) {
+        for (size_t i = 0; i < phi.values.size(); i++) {
+            printf("t%d @ %p", phi.values[i]->GetName(), phi.blocks[i]);
+            if (i != phi.values.size() - 1) {
                 printf(", ");
             }
         }

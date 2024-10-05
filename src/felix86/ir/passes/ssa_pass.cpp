@@ -179,7 +179,10 @@ static void place_phi_functions(IRFunction* function) {
                 if (has_already[df->GetIndex()] < iter_count) {
                     Phi phi;
                     phi.ref = static_cast<x86_ref_e>(i);
-                    phi.nodes.resize(df->GetPredecessors().size());
+
+                    size_t pred_count = df->GetPredecessors().size();
+                    phi.values.resize(pred_count);
+                    phi.blocks.resize(pred_count);
 
                     IRInstruction instruction(std::move(phi));
                     df->AddPhi(std::move(instruction));
@@ -235,9 +238,9 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstructio
             }
 
             Phi& phi = inst.AsPhi();
-            phi.nodes[j].block = block;
-            phi.nodes[j].value = stacks[phi.ref].top();
-            phi.nodes[j].value->AddUse();
+            phi.blocks[j] = block;
+            phi.values[j] = stacks[phi.ref].top();
+            phi.values[j]->AddUse();
         }
     }
 

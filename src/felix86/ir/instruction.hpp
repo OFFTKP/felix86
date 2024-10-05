@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <list>
+#include <span>
 #include <string>
 #include <variant>
 #include <vector>
@@ -141,11 +142,6 @@ struct SetGuest {
     IRInstruction* source = nullptr;
 };
 
-struct PhiNode {
-    IRBlock* block = nullptr;
-    IRInstruction* value = nullptr;
-};
-
 struct Phi {
     Phi() = default;
     Phi(const Phi& other) = delete;
@@ -154,7 +150,8 @@ struct Phi {
     Phi& operator=(Phi&& other) = default;
 
     x86_ref_e ref = X86_REF_COUNT;
-    std::vector<PhiNode> nodes = {};
+    std::vector<IRBlock*> blocks = {};
+    std::vector<IRInstruction*> values = {};
 };
 
 struct TupleAccess {
@@ -247,8 +244,8 @@ struct IRInstruction {
     IRInstruction(Phi phi) : opcode(IROpcode::Phi), return_type{IRInstruction::getTypeFromOpcode(opcode, phi.ref)} {
         expression = std::move(phi);
 
-        for (auto& node : phi.nodes) {
-            node.value->AddUse();
+        for (auto& value : phi.values) {
+            value->AddUse();
         }
 
         expression_type = ExpressionType::Phi;
@@ -429,7 +426,7 @@ struct IRInstruction {
         return AsOperands().operands[index]->GetNameString();
     }
 
-    std::list<IRInstruction*> GetUsedInstructions() const;
+    std::span<IRInstruction*> GetUsedInstructions();
 
     void ReplaceWith(IRInstruction&& other) {
         Invalidate();

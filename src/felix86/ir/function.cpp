@@ -161,9 +161,9 @@ bool IRFunction::Validate() const {
             }
             case ExpressionType::Phi: {
                 Phi& phi = inst->AsPhi();
-                for (const PhiNode& node : phi.nodes) {
-                    if (node.value != nullptr) {
-                        uses[node.value].have += 1;
+                for (auto value : phi.values) {
+                    if (value != nullptr) {
+                        uses[value].have += 1;
                     } else {
                         ERROR("Value is null");
                     }

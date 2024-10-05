@@ -52,12 +52,12 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
             return false;
         }
 
-        if (phi.nodes.size() != other_phi.nodes.size()) {
+        if (phi.values.size() != other_phi.values.size()) {
             return false;
         }
 
-        for (u8 i = 0; i < phi.nodes.size(); i++) {
-            if (phi.nodes[i].block != other_phi.nodes[i].block || phi.nodes[i].value != other_phi.nodes[i].value) {
+        for (u16 i = 0; i < phi.values.size(); i++) {
+            if (phi.values[i] != other_phi.values[i] || phi.blocks[i] != other_phi.blocks[i]) {
                 return false;
             }
         }
@@ -265,9 +265,9 @@ void IRInstruction::Invalidate() {
     }
     case 4: {
         Phi& phi = std::get<Phi>(expression);
-        for (const PhiNode& node : phi.nodes) {
-            if (node.value != nullptr) {
-                node.value->RemoveUse();
+        for (auto value : phi.values) {
+            if (value != nullptr) {
+                value->RemoveUse();
             } else {
                 ERROR("Value is null");
             }
@@ -535,10 +535,10 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
     case IROpcode::Phi: {
         const Phi& phi = AsPhi();
         std::string ret = fmt::format("{} {} ← φ<a{}>(", GetTypeString(), GetNameString(), print_guest_register(phi.ref));
-        for (size_t i = 0; i < phi.nodes.size(); i++) {
-            ret += fmt::format("{} @ Block {}", phi.nodes[i].value->GetNameString(), phi.nodes[i].block->GetIndex());
+        for (size_t i = 0; i < phi.values.size(); i++) {
+            ret += fmt::format("{} @ Block {}", phi.values[i]->GetNameString(), phi.blocks[i]->GetIndex());
 
-            if (i != phi.nodes.size() - 1) {
+            if (i != phi.values.size() - 1) {
                 ret += ", ";
             }
         }
@@ -587,7 +587,7 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
         break;
     }
     case IROpcode::StoreGuestToMemory: {
-        ret += fmt::format("store_to_vm {}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
+        ret += fmt::format("store_to_vm {}, {}", print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
         break;
     }
     case IROpcode::Add: {
@@ -898,17 +898,10 @@ bool IRInstruction::NeedsAllocation() const {
     return !already_allocated && !dont_allocate;
 }
 
-std::list<IRInstruction*> IRInstruction::GetUsedInstructions() const {
-    std::list<IRInstruction*> used_instructions;
+std::span<IRInstruction*> IRInstruction::GetUsedInstructions() {
     switch (expression_type) {
     case ExpressionType::Operands: {
-        const Operands& operands = AsOperands();
-        for (IRInstruction* operand : operands.operands) {
-            if (operand != nullptr) {
-                used_instructions.push_back(operand);
-            }
-        }
-        break;
+        return AsOperands().operands;
     }
     case ExpressionType::Comment:
     case ExpressionType::Immediate:
@@ -916,23 +909,17 @@ std::list<IRInstruction*> IRInstruction::GetUsedInstructions() const {
         break;
     }
     case ExpressionType::SetGuest: {
-        used_instructions.push_back(AsSetGuest().source);
-        break;
+        return {&AsSetGuest().source, 1};
     }
     case ExpressionType::Phi: {
-        const Phi& phi = AsPhi();
-        for (auto [_, node] : phi.nodes) {
-            used_instructions.push_back(node);
-        }
-        break;
+        return AsPhi().values;
     }
     case ExpressionType::TupleAccess: {
-        used_instructions.push_back(AsTupleAccess().tuple);
-        break;
+        return {&AsTupleAccess().tuple, 1};
     }
     default: {
         break;
     }
     }
-    return used_instructions;
+    return {};
 }

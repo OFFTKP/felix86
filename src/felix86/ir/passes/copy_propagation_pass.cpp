@@ -38,11 +38,11 @@ void ir_copy_propagate_node(const IRDominatorTreeNode* node, std::unordered_map<
             }
             case ExpressionType::Phi: {
                 Phi& phi = it->AsPhi();
-                for (PhiNode& node : phi.nodes) {
-                    auto found = map.find(node.value);
+                for (auto value : phi.values) {
+                    auto found = map.find(value);
                     if (found != map.end()) {
-                        node.value = found->second;
-                        node.value->AddUse();
+                        value = found->second;
+                        value->AddUse();
                     }
                 }
                 break;

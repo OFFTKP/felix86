@@ -70,7 +70,7 @@ void liveness(IRFunction* function, std::vector<LivenessList>& in, std::vector<L
                     def[i].push_back(&instr);
                 }
 
-                std::list<IRInstruction*> used_instructions = instr.GetUsedInstructions();
+                std::span<IRInstruction*> used_instructions = instr.GetUsedInstructions();
                 for (IRInstruction* used_instr : used_instructions) {
                     // Not defined in this block ie. upwards exposed, live range goes outside
                     // current block
@@ -220,7 +220,7 @@ void ir_graph_coloring_pass(IRFunction* function) {
             // Erase the currently defined variable if it exists in the set
             live_now.erase(&inst);
 
-            std::list<IRInstruction*> operands = it->GetUsedInstructions();
+            std::span<IRInstruction*> operands = it->GetUsedInstructions();
             for (auto& op : operands) {
                 live_now.insert(op);
             }
