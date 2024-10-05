@@ -48,8 +48,9 @@ using LivenessList = std::list<IRInstruction*>;
 
     there's other non fixpoint algos but they are more complex
 */
-void liveness(IRFunction* function, std::vector<LivenessList>& in, std::vector<LivenessList>& out) {
+void liveness(IRFunction* function, InterferenceGraph& graph) {
     const std::vector<IRBlock*>& blocks = function->GetBlocksPostorder();
+    std::vector<LivenessList> in, out;
     std::vector<LivenessList> use(blocks.size());
     std::vector<LivenessList> def(blocks.size());
     std::vector<LivenessList> phi_def(blocks.size());
@@ -180,29 +181,6 @@ void liveness(IRFunction* function, std::vector<LivenessList>& in, std::vector<L
             }
         }
     } while (changed);
-}
-
-void ir_graph_coloring_pass(IRFunction* function) {
-    std::vector<LivenessList> in, out;
-    liveness(function, in, out);
-
-    // for (auto& block : function->GetBlocks()) {
-    //     printf("Block %d live in count: %d\n", block->GetIndex(), in[block->GetIndex()].size());
-    //     printf("{\n");
-    //     for (auto& instr : in[block->GetIndex()]) {
-    //         printf("    %s\n", instr->Print().c_str());
-    //     }
-    //     printf("}\n");
-    //     printf("Block %d live out count: %d\n", block->GetIndex(), out[block->GetIndex()].size());
-    //     printf("{\n");
-    //     for (auto& instr : out[block->GetIndex()]) {
-    //         printf("    %s\n", instr->Print().c_str());
-    //     }
-    //     printf("}\n");
-    // }
-
-    // Go through every block and add interference edges
-    InterferenceGraph graph;
 
     for (IRBlock* block : function->GetBlocksPostorder()) {
         std::unordered_set<IRInstruction*> live_now;
@@ -225,22 +203,47 @@ void ir_graph_coloring_pass(IRFunction* function) {
                 live_now.insert(op);
             }
 
-            for (auto& live : live_now) {
-                graph.AddEdge(&inst, live);
+            if (!inst.IsVoid()) {
+                for (auto& live : live_now) {
+                    graph.AddEdge(&inst, live);
+                }
             }
         }
     }
+}
+
+void ir_graph_coloring_pass(IRFunction* function) {
+    InterferenceGraph graph;
+    liveness(function, graph);
+
+    // for (auto& block : function->GetBlocks()) {
+    //     printf("Block %d live in count: %d\n", block->GetIndex(), in[block->GetIndex()].size());
+    //     printf("{\n");
+    //     for (auto& instr : in[block->GetIndex()]) {
+    //         printf("    %s\n", instr->Print().c_str());
+    //     }
+    //     printf("}\n");
+    //     printf("Block %d live out count: %d\n", block->GetIndex(), out[block->GetIndex()].size());
+    //     printf("{\n");
+    //     for (auto& instr : out[block->GetIndex()]) {
+    //         printf("    %s\n", instr->Print().c_str());
+    //     }
+    //     printf("}\n");
+    // }
+
+    // Go through every block and add interference edges
 
     std::function<std::string(const IRInstruction*)> func = [&graph](const IRInstruction* inst) {
         auto& interferences = graph.GetInterferences(inst);
         if (interferences.empty())
             return std::string{};
-        std::string ret = fmt::format("{} interferes with:", inst->GetNameString());
+        std::string ret = fmt::format(" {} interferes with:", inst->GetNameString());
         for (auto& interfering : interferences) {
             ret += fmt::format("{}, ", interfering->GetNameString());
         }
         return ret;
     };
-
     fmt::print("{}", function->Print(func));
+
+    // Now we have the interference graph, we can color it
 }

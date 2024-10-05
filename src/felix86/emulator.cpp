@@ -8,11 +8,13 @@ void Emulator::Run() {
     IRFunction* function = function_cache.CreateOrGetFunctionAt(GetRip());
     frontend_compile_function(function);
     ir_ssa_pass(function);
-    ir_naming_pass(function);
     ir_copy_propagation_pass(function);
     ir_extraneous_writeback_pass(function);
     ir_dead_code_elimination_pass(function);
-    ir_graph_coloring_pass(function);
+    ir_naming_pass(function);
+    // ir_graph_coloring_pass(function);
+
+    fmt::print("{}", function->Print({}));
 
     if (!function->Validate()) {
         ERROR("Function did not validate");

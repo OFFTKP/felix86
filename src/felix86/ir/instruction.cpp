@@ -172,15 +172,15 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::WriteWord:
     case IROpcode::WriteDWord:
     case IROpcode::WriteQWord:
-    case IROpcode::WriteXmmWord: {
+    case IROpcode::WriteXmmWord:
+    case IROpcode::StoreGuestToMemory: {
         return IRType::Void;
     }
 
     case IROpcode::Phi:
     case IROpcode::GetGuest:
     case IROpcode::SetGuest:
-    case IROpcode::LoadGuestFromMemory:
-    case IROpcode::StoreGuestToMemory: {
+    case IROpcode::LoadGuestFromMemory: {
         switch (ref) {
         case X86_REF_RAX ... X86_REF_R15:
         case X86_REF_RIP:
@@ -236,59 +236,8 @@ void IRInstruction::Invalidate() {
         ERROR("Tried to invalidate locked instruction");
     }
 
-    switch (expression.index()) {
-    case 0: {
-        Operands& operands = std::get<Operands>(expression);
-        for (IRInstruction* operand : operands.operands) {
-            if (operand != nullptr) {
-                operand->RemoveUse();
-            } else {
-                ERROR("Operand is null");
-            }
-        }
-        break;
-    }
-    case 1: {
-        break;
-    }
-    case 2: {
-        break;
-    }
-    case 3: {
-        SetGuest& set_guest = std::get<SetGuest>(expression);
-        if (set_guest.source != nullptr) {
-            set_guest.source->RemoveUse();
-        } else {
-            ERROR("Source is null");
-        }
-        break;
-    }
-    case 4: {
-        Phi& phi = std::get<Phi>(expression);
-        for (auto value : phi.values) {
-            if (value != nullptr) {
-                value->RemoveUse();
-            } else {
-                ERROR("Value is null");
-            }
-        }
-        break;
-    }
-    case 5: {
-        break;
-    }
-    case 6: {
-        TupleAccess& tuple_access = std::get<TupleAccess>(expression);
-        if (tuple_access.tuple != nullptr) {
-            tuple_access.tuple->RemoveUse();
-        } else {
-            ERROR("Tuple is null");
-        }
-        break;
-    }
-    default:
-        ERROR("Unreachable");
-        break;
+    for (IRInstruction* used : GetUsedInstructions()) {
+        used->RemoveUse();
     }
 }
 
