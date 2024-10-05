@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <list>
 #include <string>
 #include <variant>
@@ -443,7 +444,7 @@ struct IRInstruction {
         AsOperands().extra_data = extra_data;
     }
 
-    std::string Print() const;
+    std::string Print(const std::function<std::string(const IRInstruction*)>& callback) const;
 
     void Lock() {
         locked = true;

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <list>
-#include <span>
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/instruction.hpp"
 
@@ -125,7 +125,7 @@ struct IRBlock {
 
     bool IsUsedInPhi(IRInstruction* instr) const;
 
-    std::string Print() const;
+    std::string Print(const std::function<std::string(const IRInstruction*)>& callback) const;
 
 private:
     void AddPredecessor(IRBlock* pred) {

@@ -13,8 +13,6 @@ void Emulator::Run() {
     ir_extraneous_writeback_pass(function);
     ir_graph_coloring_pass(function);
 
-    fmt::print("{}", function->Print());
-
     if (!function->Validate()) {
         ERROR("Function did not validate");
     }

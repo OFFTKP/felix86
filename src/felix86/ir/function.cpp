@@ -77,7 +77,7 @@ void IRFunction::deallocateAll() {
     }
 }
 
-std::string IRFunction::Print() const {
+std::string IRFunction::Print(const std::function<std::string(const IRInstruction*)>& callback) const {
     if (!IsCompiled()) {
         WARN("Print called on not compiled function");
         return "";
@@ -95,7 +95,7 @@ std::string IRFunction::Print() const {
         blocks.pop_back();
         work->SetVisited(true);
 
-        ret += work->Print();
+        ret += work->Print(callback);
 
         const IRBlock* succ1 = work->GetSuccessor(false);
         const IRBlock* succ2 = work->GetSuccessor(true);
@@ -192,7 +192,7 @@ bool IRFunction::Validate() const {
 
     for (const auto& [inst, use] : uses) {
         if (use.have != use.want) {
-            WARN("Mismatch on uses on instruction: %s", inst->Print().c_str());
+            WARN("Mismatch on uses on instruction: %s", inst->Print({}).c_str());
             return false;
         }
     }

@@ -1,4 +1,6 @@
 #include <unordered_set>
+#include <fmt/base.h>
+#include <fmt/format.h>
 #include "felix86/ir/passes/passes.hpp"
 
 // This has got to be super slow, lots of heap allocations, please profile me
@@ -12,6 +14,10 @@ struct InterferenceGraph {
     void RemoveEdge(IRInstruction* a, IRInstruction* b) {
         graph[a].erase(b);
         graph[b].erase(a);
+    }
+
+    const std::unordered_set<IRInstruction*>& GetInterferences(const IRInstruction* inst) {
+        return graph[(IRInstruction*)inst];
     }
 
 private:
@@ -153,20 +159,22 @@ void liveness(IRFunction* function, std::vector<LivenessList>& in, std::vector<L
             }
 
             // check for changes
-            if (in[i].size() != in_old.size() || out[i].size() != out_old.size()) {
-                changed = true;
-            } else {
-                for (IRInstruction* instr : in[i]) {
-                    if (std::find(in_old.begin(), in_old.end(), instr) == in_old.end()) {
-                        changed = true;
-                        break;
+            if (!changed) {
+                if (in[i].size() != in_old.size() || out[i].size() != out_old.size()) {
+                    changed = true;
+                } else {
+                    for (IRInstruction* instr : in[i]) {
+                        if (std::find(in_old.begin(), in_old.end(), instr) == in_old.end()) {
+                            changed = true;
+                            break;
+                        }
                     }
-                }
 
-                for (IRInstruction* instr : out[i]) {
-                    if (std::find(out_old.begin(), out_old.end(), instr) == out_old.end()) {
-                        changed = true;
-                        break;
+                    for (IRInstruction* instr : out[i]) {
+                        if (std::find(out_old.begin(), out_old.end(), instr) == out_old.end()) {
+                            changed = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -174,23 +182,65 @@ void liveness(IRFunction* function, std::vector<LivenessList>& in, std::vector<L
     } while (changed);
 }
 
-// Hack et al. graph coloring algorithm
 void ir_graph_coloring_pass(IRFunction* function) {
     std::vector<LivenessList> in, out;
     liveness(function, in, out);
 
-    for (auto& block : function->GetBlocks()) {
-        printf("Block %d live in count: %d\n", block->GetIndex(), in[block->GetIndex()].size());
-        printf("{\n");
-        for (auto& instr : in[block->GetIndex()]) {
-            printf("    %s\n", instr->Print().c_str());
+    // for (auto& block : function->GetBlocks()) {
+    //     printf("Block %d live in count: %d\n", block->GetIndex(), in[block->GetIndex()].size());
+    //     printf("{\n");
+    //     for (auto& instr : in[block->GetIndex()]) {
+    //         printf("    %s\n", instr->Print().c_str());
+    //     }
+    //     printf("}\n");
+    //     printf("Block %d live out count: %d\n", block->GetIndex(), out[block->GetIndex()].size());
+    //     printf("{\n");
+    //     for (auto& instr : out[block->GetIndex()]) {
+    //         printf("    %s\n", instr->Print().c_str());
+    //     }
+    //     printf("}\n");
+    // }
+
+    // Go through every block and add interference edges
+    InterferenceGraph graph;
+
+    for (IRBlock* block : function->GetBlocksPostorder()) {
+        std::unordered_set<IRInstruction*> live_now;
+
+        // We are gonna walk the block backwards, first add all definitions that have lifetime
+        // that extends past this basic block
+        for (auto& inst : out[block->GetIndex()]) {
+            live_now.insert(inst);
         }
-        printf("}\n");
-        printf("Block %d live out count: %d\n", block->GetIndex(), out[block->GetIndex()].size());
-        printf("{\n");
-        for (auto& instr : out[block->GetIndex()]) {
-            printf("    %s\n", instr->Print().c_str());
+
+        std::list<IRInstruction>& insts = block->GetInstructions();
+        for (auto it = insts.rbegin(); it != insts.rend(); ++it) {
+            IRInstruction& inst = *it;
+
+            // Erase the currently defined variable if it exists in the set
+            live_now.erase(&inst);
+
+            std::list<IRInstruction*> operands = it->GetUsedInstructions();
+            for (auto& op : operands) {
+                live_now.insert(op);
+            }
+
+            for (auto& live : live_now) {
+                graph.AddEdge(&inst, live);
+            }
         }
-        printf("}\n");
     }
+
+    std::function<std::string(const IRInstruction*)> func = [&graph](const IRInstruction* inst) {
+        auto& interferences = graph.GetInterferences(inst);
+        if (interferences.empty())
+            return std::string{};
+        std::string ret = fmt::format("{} interferes with:", inst->GetNameString());
+        for (auto& interfering : interferences) {
+            ret += fmt::format("{}, ", interfering->GetNameString());
+        }
+        return ret;
+    };
+
+    fmt::print("{}", function->Print(func));
 }

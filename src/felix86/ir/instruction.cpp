@@ -447,22 +447,22 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 std::string IRInstruction::GetNameString() const {
     // switch (return_type) {
     // case IRType::Integer64: {
-    //     return fmt::format("{}", GetName());
+    //     ret += fmt::format("{}", GetName());
     // }
     // case IRType::Vector128: {
-    //     return fmt::format("v{}", GetName());
+    //     ret += fmt::format("v{}", GetName());
     // }
     // case IRType::Float64: {
-    //     return fmt::format("f{}", GetName());
+    //     ret += fmt::format("f{}", GetName());
     // }
     // case IRType::Float80: {
-    //     return fmt::format("sp{}", GetName());
+    //     ret += fmt::format("sp{}", GetName());
     // }
     // case IRType::TupleTwoInteger64: {
-    //     return fmt::format("t{}<int, int>", GetName());
+    //     ret += fmt::format("t{}<int, int>", GetName());
     // }
     // case IRType::TupleFourInteger64: {
-    //     return fmt::format("t{}<i64, i64, i64, i64>", GetName());
+    //     ret += fmt::format("t{}<i64, i64, i64, i64>", GetName());
     // }
     // case IRType::Void: {
     //     return "void";
@@ -525,8 +525,9 @@ std::string IRInstruction::GetTypeString() const {
                 GetOperandNameString(0), #param2, GetOperandNameString(1), #param3, GetOperandNameString(2), #param4, GetOperandNameString(3),       \
                 #param5, GetOperandNameString(4), #param6, GetOperandNameString(5), #param7, GetOperandNameString(6))
 
-std::string IRInstruction::Print() const {
+std::string IRInstruction::Print(const std::function<std::string(const IRInstruction*)>& callback) const {
     IROpcode opcode = GetOpcode();
+    std::string ret;
     switch (opcode) {
     case IROpcode::Null: {
         return "Null";
@@ -542,253 +543,345 @@ std::string IRInstruction::Print() const {
             }
         }
         ret += ")";
-        return ret;
+        break;
     }
     case IROpcode::Comment: {
         return AsComment().comment;
     }
     case IROpcode::TupleExtract: {
         const TupleAccess& tup = AsTupleAccess();
-        return fmt::format("{} {} ← get<{}>({})", GetTypeString(), GetNameString(), tup.index, tup.tuple->GetNameString());
+        ret += fmt::format("{} {} ← get<{}>({})", GetTypeString(), GetNameString(), tup.index, tup.tuple->GetNameString());
+        break;
     }
     case IROpcode::Select: {
-        return fmt::format("{} {} ← {} ? {} : {}", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
+        ret += fmt::format("{} {} ← {} ? {} : {}", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
                            GetOperandNameString(2));
+        break;
     }
     case IROpcode::Lea: {
-        return fmt::format("{} {} ← [{} + {} * {} + 0x{:x}]", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
+        ret += fmt::format("{} {} ← [{} + {} * {} + 0x{:x}]", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
                            GetOperand(2)->AsImmediate().immediate, GetOperand(3)->AsImmediate().immediate);
+        break;
     }
     case IROpcode::Mov: {
-        return fmt::format("{} {} ← {}", GetTypeString(), GetNameString(), GetOperandNameString(0));
+        ret += fmt::format("{} {} ← {}", GetTypeString(), GetNameString(), GetOperandNameString(0));
+        break;
     }
     case IROpcode::Immediate: {
-        return fmt::format("{} {} ← 0x{:x}", GetTypeString(), GetNameString(), AsImmediate().immediate);
+        ret += fmt::format("{} {} ← 0x{:x}", GetTypeString(), GetNameString(), AsImmediate().immediate);
+        break;
     }
     case IROpcode::Rdtsc: {
         return FOP(rdtsc);
     }
     case IROpcode::GetGuest: {
-        return fmt::format("{} ← get_guest %{}", GetNameString(), print_guest_register(AsGetGuest().ref));
+        ret += fmt::format("{} ← get_guest %{}", GetNameString(), print_guest_register(AsGetGuest().ref));
+        break;
     }
     case IROpcode::SetGuest: {
-        return fmt::format("{} ← set_guest %{}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
+        ret += fmt::format("{} ← set_guest %{}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
+        break;
     }
     case IROpcode::LoadGuestFromMemory: {
-        return fmt::format("{} ← load_from_vm %{}", GetNameString(), print_guest_register(AsGetGuest().ref));
+        ret += fmt::format("{} ← load_from_vm %{}", GetNameString(), print_guest_register(AsGetGuest().ref));
+        break;
     }
     case IROpcode::StoreGuestToMemory: {
-        return fmt::format("store_to_vm %{}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
+        ret += fmt::format("store_to_vm %{}, {}", GetNameString(), print_guest_register(AsSetGuest().ref), AsSetGuest().source->GetNameString());
+        break;
     }
     case IROpcode::Add: {
-        return OP2(+);
+        ret += OP2(+);
+        break;
     }
     case IROpcode::Sub: {
-        return OP2(-);
+        ret += OP2(-);
+        break;
     }
     case IROpcode::And: {
-        return OP2(&);
+        ret += OP2(&);
+        break;
     }
     case IROpcode::Or: {
-        return OP2(|);
+        ret += OP2(|);
+        break;
     }
     case IROpcode::Xor: {
-        return OP2(^);
+        ret += OP2(^);
+        break;
     }
     case IROpcode::ShiftLeft: {
-        return OP2(<<);
+        ret += OP2(<<);
+        break;
     }
     case IROpcode::ShiftRight: {
-        return OP2(>>);
+        ret += OP2(>>);
+        break;
     }
     case IROpcode::ShiftRightArithmetic: {
-        return SOP2(>>);
+        ret += SOP2(>>);
+        break;
     }
     case IROpcode::Equal: {
-        return OP2(==);
+        ret += OP2(==);
+        break;
     }
     case IROpcode::NotEqual: {
-        return OP2(!=);
+        ret += OP2(!=);
+        break;
     }
     case IROpcode::UGreaterThan: {
-        return OP2(>);
+        ret += OP2(>);
+        break;
     }
     case IROpcode::IGreaterThan: {
-        return SOP2(>);
+        ret += SOP2(>);
+        break;
     }
     case IROpcode::ULessThan: {
-        return OP2(<);
+        ret += OP2(<);
+        break;
     }
     case IROpcode::ILessThan: {
-        return SOP2(<);
+        ret += SOP2(<);
+        break;
     }
     case IROpcode::UDiv8: {
-        return U8OP2(/);
+        ret += U8OP2(/);
+        break;
     }
     case IROpcode::IDiv8: {
-        return S8OP2(/);
+        ret += S8OP2(/);
+        break;
     }
     case IROpcode::IMul64: {
-        return SOP2(*);
+        ret += SOP2(*);
+        break;
     }
     case IROpcode::LeftRotate8: {
-        return FOP2(rol8, src, amount);
+        ret += FOP2(rol8, src, amount);
+        break;
     }
     case IROpcode::LeftRotate16: {
-        return FOP2(rol16, src, amount);
+        ret += FOP2(rol16, src, amount);
+        break;
     }
     case IROpcode::LeftRotate32: {
-        return FOP2(rol32, src, amount);
+        ret += FOP2(rol32, src, amount);
+        break;
     }
     case IROpcode::LeftRotate64: {
-        return FOP2(rol64, src, amount);
+        ret += FOP2(rol64, src, amount);
+        break;
     }
     case IROpcode::Cpuid: {
-        return FOP2(cpuid, rax, rcx);
+        ret += FOP2(cpuid, rax, rcx);
+        break;
     }
     case IROpcode::WriteByte: {
-        return FOP2(write8, address, src);
+        ret += FOP2(write8, address, src);
+        break;
     }
     case IROpcode::WriteWord: {
-        return FOP2(write16, address, src);
+        ret += FOP2(write16, address, src);
+        break;
     }
     case IROpcode::WriteDWord: {
-        return FOP2(write32, address, src);
+        ret += FOP2(write32, address, src);
+        break;
     }
     case IROpcode::WriteQWord: {
-        return FOP2(write64, address, src);
+        ret += FOP2(write64, address, src);
+        break;
     }
     case IROpcode::WriteXmmWord: {
-        return FOP2(write128, address, src);
+        ret += FOP2(write128, address, src);
+        break;
     }
     case IROpcode::Sext8: {
-        return FOP1(sext8, src);
+        ret += FOP1(sext8, src);
+        break;
     }
     case IROpcode::Sext16: {
-        return FOP1(sext16, src);
+        ret += FOP1(sext16, src);
+        break;
     }
     case IROpcode::Sext32: {
-        return FOP1(sext32, src);
+        ret += FOP1(sext32, src);
+        break;
     }
     case IROpcode::CastIntegerToVector: {
-        return FOP1(int_to_vec, integer);
+        ret += FOP1(int_to_vec, integer);
+        break;
     }
     case IROpcode::CastVectorToInteger: {
-        return FOP1(vec_to_int, vector);
+        ret += FOP1(vec_to_int, vector);
+        break;
     }
     case IROpcode::Clz: {
-        return FOP1(clz, src);
+        ret += FOP1(clz, src);
+        break;
     }
     case IROpcode::Ctz: {
-        return FOP1(ctz, src);
+        ret += FOP1(ctz, src);
+        break;
     }
     case IROpcode::Not: {
-        return FOP1(not, src);
+        ret += FOP1(not, src);
+        break;
     }
     case IROpcode::Popcount: {
-        return FOP1(popcount, src);
+        ret += FOP1(popcount, src);
+        break;
     }
     case IROpcode::ReadByte: {
-        return FOP1(read8, address);
+        ret += FOP1(read8, address);
+        break;
     }
     case IROpcode::ReadWord: {
-        return FOP1(read16, address);
+        ret += FOP1(read16, address);
+        break;
     }
     case IROpcode::ReadDWord: {
-        return FOP1(read32, address);
+        ret += FOP1(read32, address);
+        break;
     }
     case IROpcode::ReadQWord: {
-        return FOP1(read64, address);
+        ret += FOP1(read64, address);
+        break;
     }
     case IROpcode::ReadXmmWord: {
-        return FOP1(read128, address);
+        ret += FOP1(read128, address);
+        break;
     }
     case IROpcode::IDiv16: {
-        return FOP3(idiv16, rdx, rax, divisor);
+        ret += FOP3(idiv16, rdx, rax, divisor);
+        break;
     }
     case IROpcode::IDiv32: {
-        return FOP3(idiv32, rdx, rax, divisor);
+        ret += FOP3(idiv32, rdx, rax, divisor);
+        break;
     }
     case IROpcode::IDiv64: {
-        return FOP3(idiv64, rdx, rax, divisor);
+        ret += FOP3(idiv64, rdx, rax, divisor);
+        break;
     }
     case IROpcode::UDiv16: {
-        return FOP3(udiv16, rdx, rax, divisor);
+        ret += FOP3(udiv16, rdx, rax, divisor);
+        break;
     }
     case IROpcode::UDiv32: {
-        return FOP3(udiv32, rdx, rax, divisor);
+        ret += FOP3(udiv32, rdx, rax, divisor);
+        break;
     }
     case IROpcode::UDiv64: {
-        return FOP3(udiv64, rdx, rax, divisor);
+        ret += FOP3(udiv64, rdx, rax, divisor);
+        break;
     }
     case IROpcode::Syscall: {
-        return FOP7(syscall, rax, rdi, rsi, rdx, r10, r8, r9);
+        ret += FOP7(syscall, rax, rdi, rsi, rdx, r10, r8, r9);
+        break;
     }
     case IROpcode::VAnd: {
-        return FOP2(vand, src1, src2);
+        ret += FOP2(vand, src1, src2);
+        break;
     }
     case IROpcode::VOr: {
-        return FOP2(vor, src1, src2);
+        ret += FOP2(vor, src1, src2);
+        break;
     }
     case IROpcode::VXor: {
-        return FOP2(vxor, src1, src2);
+        ret += FOP2(vxor, src1, src2);
+        break;
     }
     case IROpcode::VShl: {
-        return FOP2(vshl, src1, src2);
+        ret += FOP2(vshl, src1, src2);
+        break;
     }
     case IROpcode::VShr: {
-        return FOP2(vshr, src1, src2);
+        ret += FOP2(vshr, src1, src2);
+        break;
     }
     case IROpcode::VZext64: {
-        return FOP1(vzext64, src);
+        ret += FOP1(vzext64, src);
+        break;
     }
     case IROpcode::VPackedAddQWord: {
-        return FOP2(vpaddqword, src1, src2);
+        ret += FOP2(vpaddqword, src1, src2);
+        break;
     }
     case IROpcode::VPackedEqualByte: {
-        return FOP2(vpeqbyte, src1, src2);
+        ret += FOP2(vpeqbyte, src1, src2);
+        break;
     }
     case IROpcode::VPackedEqualWord: {
-        return FOP2(vpeqword, src1, src2);
+        ret += FOP2(vpeqword, src1, src2);
+        break;
     }
     case IROpcode::VPackedEqualDWord: {
-        return FOP2(vpeqdword, src1, src2);
+        ret += FOP2(vpeqdword, src1, src2);
+        break;
     }
     case IROpcode::VPackedShuffleDWord: {
-        return fmt::format("{} {} ← vpshufdword({}, 0x{:x})", GetTypeString(), GetNameString(), GetOperandNameString(0), (u8)GetExtraData());
+        ret += fmt::format("{} {} ← vpshufdword({}, 0x{:x})", GetTypeString(), GetNameString(), GetOperandNameString(0), (u8)GetExtraData());
+        break;
     }
     case IROpcode::VPackedMinByte: {
-        return FOP2(vpminbyte, src1, src2);
+        ret += FOP2(vpminbyte, src1, src2);
+        break;
     }
     case IROpcode::VPackedSubByte: {
-        return FOP2(vpsubbyte, src1, src2);
+        ret += FOP2(vpsubbyte, src1, src2);
+        break;
     }
     case IROpcode::VMoveByteMask: {
-        return FOP1(vmovbytemask, src);
+        ret += FOP1(vmovbytemask, src);
+        break;
     }
     case IROpcode::VExtractInteger: {
-        return FOP1(vextractint, src);
+        ret += FOP1(vextractint, src);
+        break;
     }
     case IROpcode::VInsertInteger: {
-        return FOP2(vinsertint, vector, integer);
+        ret += FOP2(vinsertint, vector, integer);
+        break;
     }
     case IROpcode::VUnpackByteLow: {
-        return FOP2(vunpackbytelow, src1, src2);
+        ret += FOP2(vunpackbytelow, src1, src2);
+        break;
     }
     case IROpcode::VUnpackWordLow: {
-        return FOP2(vunpackwordlow, src1, src2);
+        ret += FOP2(vunpackwordlow, src1, src2);
+        break;
     }
     case IROpcode::VUnpackDWordLow: {
-        return FOP2(vunpackdwordlow, src1, src2);
+        ret += FOP2(vunpackdwordlow, src1, src2);
+        break;
     }
     case IROpcode::VUnpackQWordLow: {
-        return FOP2(vunpackqwordlow, src1, src2);
+        ret += FOP2(vunpackqwordlow, src1, src2);
+        break;
     }
     default: {
         ERROR("Unimplemented op: %d", (int)GetOpcode());
         return "";
     }
     }
+
+    if (opcode != IROpcode::Comment) {
+        u64 size = ret.size();
+        while (size < 50) {
+            ret += " ";
+            size++;
+        }
+
+        ret += "(uses: " + std::to_string(GetUseCount()) + ") ";
+    }
+
+    if (callback)
+        ret += callback(this);
+
+    return ret;
 }
 
 bool IRInstruction::IsVoid() const {
@@ -805,7 +898,7 @@ std::list<IRInstruction*> IRInstruction::GetUsedInstructions() const {
     std::list<IRInstruction*> used_instructions;
     switch (expression_type) {
     case ExpressionType::Operands: {
-        const Operands& operands = std::get<Operands>(expression);
+        const Operands& operands = AsOperands();
         for (IRInstruction* operand : operands.operands) {
             if (operand != nullptr) {
                 used_instructions.push_back(operand);
@@ -823,7 +916,10 @@ std::list<IRInstruction*> IRInstruction::GetUsedInstructions() const {
         break;
     }
     case ExpressionType::Phi: {
-        ERROR("Should not be used");
+        const Phi& phi = AsPhi();
+        for (auto [_, node] : phi.nodes) {
+            used_instructions.push_back(node);
+        }
         break;
     }
     case ExpressionType::TupleAccess: {
