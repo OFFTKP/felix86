@@ -1,14 +1,15 @@
 #pragma once
 
 #include "biscuit/assembler.hpp"
+#include "felix86/backend/registers.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86.hpp"
 
 #include <tsl/robin_map.h>
 
-struct CodeCache {
-    CodeCache(ThreadState& thread_state);
-    ~CodeCache();
+struct Backend {
+    Backend(ThreadState& thread_state);
+    ~Backend();
 
     void MapCompiledFunction(u64 address, void* function) {
         map[address] = function;
@@ -21,6 +22,10 @@ struct CodeCache {
 
         return nullptr;
     }
+
+    u8 AvailableGPRs() const;
+    u8 AvailableFPRs() const;
+    u8 AvailableVec() const;
 
 private:
     static u8* allocateCodeCache();
@@ -47,4 +52,6 @@ private:
     // Special addresses within the code cache
     u8* enter_dispatcher = nullptr;
     u8* exit_dispatcher = nullptr;
+
+    Registers regs;
 };

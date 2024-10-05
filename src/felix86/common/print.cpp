@@ -59,7 +59,7 @@ std::string print_guest_register(x86_ref_e guest) {
     case X86_REF_ST0 ... X86_REF_ST7:
         return "st" + std::to_string(guest - X86_REF_ST0);
     default:
-        ERROR("Unreachable");
+        UNREACHABLE();
     }
 }
 

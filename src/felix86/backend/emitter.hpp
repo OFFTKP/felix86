@@ -2,7 +2,7 @@
 
 #include "felix86/ir/instruction.hpp"
 
-struct RISCVEmitter {
+struct Emitter {
     void Emit(const IRInstruction& instruction);
 
 private:

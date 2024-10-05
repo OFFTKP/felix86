@@ -6,7 +6,7 @@
 #include <string>
 #include <variant>
 #include <vector>
-#include "biscuit/registers.hpp"
+#include "felix86/backend/registers.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/frontend/instruction.hpp"
@@ -116,7 +116,6 @@ enum class IRType : u8 {
     Float64,
     Float80, // :(
     TupleTwoInteger64,
-    TupleFourInteger64,
 
     Count,
 };
@@ -218,7 +217,7 @@ struct IRInstruction {
 
         // If it's zero we can just give it x0 which is hardwired to 0
         if (immediate == 0) {
-            allocation = biscuit::x0;
+            allocation = Registers::Zero();
         }
     }
 

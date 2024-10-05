@@ -13,7 +13,7 @@ void Emulator::Run() {
     ir_extraneous_writeback_pass(function);
     ir_dead_code_elimination_pass(function);
     ir_naming_pass(function);
-    // ir_graph_coloring_pass(function);
+    ir_graph_coloring_pass(function);
 
     auto test = [](const IRInstruction* inst) { return fmt::format(" 0x{:x}", (u64)inst); };
     fmt::print("{}", function->Print(test));

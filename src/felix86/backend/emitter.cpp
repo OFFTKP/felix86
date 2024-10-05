@@ -1,7 +1,7 @@
 #include "felix86/backend/emitter.hpp"
 
 // Dispatch to correct function
-void RISCVEmitter::Emit(const IRInstruction& instruction) {
+void Emitter::Emit(const IRInstruction& instruction) {
 #define X(stuff)                                                                                                                                     \
     case IROpcode::stuff: {                                                                                                                          \
         return Emit##stuff(instruction);                                                                                                             \
@@ -10,16 +10,16 @@ void RISCVEmitter::Emit(const IRInstruction& instruction) {
     switch (instruction.GetOpcode()) {
         IR_OPCODES
     default: {
-        ERROR("Unreachable");
+        UNREACHABLE();
     }
     }
 #undef X
 }
 
-void RISCVEmitter::EmitNull(const IRInstruction&) {
-    ERROR("Unreachable");
+void Emitter::EmitNull(const IRInstruction&) {
+    UNREACHABLE();
 }
 
-void RISCVEmitter::EmitPhi(const IRInstruction&) {
-    ERROR("Unreachable");
+void Emitter::EmitPhi(const IRInstruction&) {
+    UNREACHABLE();
 }

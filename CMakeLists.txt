@@ -51,7 +51,8 @@ set(FELIX86_COMMON_SOURCES
 )
 
 set(FELIX86_BACKEND_SOURCES
-    src/felix86/backend/code_cache.cpp
+    src/felix86/backend/backend.cpp
+    src/felix86/backend/emitter.cpp
 )
 
 set(FELIX86_LOADER_SOURCES

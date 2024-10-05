@@ -73,7 +73,7 @@ void ir_copy_propagate_node(const IRDominatorTreeNode* node, std::unordered_map<
                 break;
             }
             default: {
-                ERROR("Unreachable");
+                UNREACHABLE();
             }
             }
             ++it;

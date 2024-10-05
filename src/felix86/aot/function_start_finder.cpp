@@ -265,7 +265,7 @@ void AOT::FunctionStartFinder() {
                 break;
             }
             default: {
-                ERROR("Unreachable");
+                UNREACHABLE();
             }
             }
 

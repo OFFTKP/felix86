@@ -5,14 +5,14 @@
 #include "felix86/ir/instruction.hpp"
 
 bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
-    if (expression.index() != other.expression.index()) {
+    if (expression_type != other.expression_type) {
         return false;
     }
 
-    switch (expression.index()) {
-    case 0: {
-        const Operands& operands = std::get<Operands>(expression);
-        const Operands& other_operands = std::get<Operands>(other.expression);
+    switch (expression_type) {
+    case ExpressionType::Operands: {
+        const Operands& operands = AsOperands();
+        const Operands& other_operands = other.AsOperands();
 
         for (u8 i = 0; i < 6; i++) {
             if (operands.operands[i] != other_operands.operands[i]) {
@@ -26,27 +26,27 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
 
         return true;
     }
-    case 1: {
-        const Immediate& immediate = std::get<Immediate>(expression);
-        const Immediate& other_immediate = std::get<Immediate>(other.expression);
+    case ExpressionType::Immediate: {
+        const Immediate& immediate = AsImmediate();
+        const Immediate& other_immediate = other.AsImmediate();
 
         return immediate.immediate == other_immediate.immediate;
     }
-    case 2: {
-        const GetGuest& get_guest = std::get<GetGuest>(expression);
-        const GetGuest& other_get_guest = std::get<GetGuest>(other.expression);
+    case ExpressionType::GetGuest: {
+        const GetGuest& get_guest = AsGetGuest();
+        const GetGuest& other_get_guest = other.AsGetGuest();
 
         return get_guest.ref == other_get_guest.ref;
     }
-    case 3: {
-        const SetGuest& set_guest = std::get<SetGuest>(expression);
-        const SetGuest& other_set_guest = std::get<SetGuest>(other.expression);
+    case ExpressionType::SetGuest: {
+        const SetGuest& set_guest = AsSetGuest();
+        const SetGuest& other_set_guest = other.AsSetGuest();
 
         return set_guest.ref == other_set_guest.ref && set_guest.source == other_set_guest.source;
     }
-    case 4: {
-        const Phi& phi = std::get<Phi>(expression);
-        const Phi& other_phi = std::get<Phi>(other.expression);
+    case ExpressionType::Phi: {
+        const Phi& phi = AsPhi();
+        const Phi& other_phi = other.AsPhi();
 
         if (phi.ref != other_phi.ref) {
             return false;
@@ -64,20 +64,20 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
 
         return true;
     }
-    case 5: {
-        const Comment& comment = std::get<Comment>(expression);
-        const Comment& other_comment = std::get<Comment>(other.expression);
+    case ExpressionType::Comment: {
+        const Comment& comment = AsComment();
+        const Comment& other_comment = other.AsComment();
 
         return comment.comment == other_comment.comment;
     }
-    case 6: {
-        const TupleAccess& tuple_get = std::get<TupleAccess>(expression);
-        const TupleAccess& other_tuple_get = std::get<TupleAccess>(other.expression);
+    case ExpressionType::TupleAccess: {
+        const TupleAccess& tuple_get = AsTupleAccess();
+        const TupleAccess& other_tuple_get = other.AsTupleAccess();
 
         return tuple_get.tuple == other_tuple_get.tuple && tuple_get.index == other_tuple_get.index;
     }
     default:
-        ERROR("Unreachable");
+        UNREACHABLE();
         return false;
     }
 }
@@ -90,7 +90,10 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
         return IRType::Void;
     }
     case IROpcode::Null:
-    case IROpcode::Comment: {
+    case IROpcode::Comment:
+    case IROpcode::Syscall:
+    case IROpcode::Cpuid:
+    case IROpcode::Rdtsc: {
         return IRType::Void;
     }
     case IROpcode::Select:
@@ -122,7 +125,6 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::ReadWord:
     case IROpcode::ReadDWord:
     case IROpcode::ReadQWord:
-    case IROpcode::Syscall:
     case IROpcode::CastVectorToInteger:
     case IROpcode::VExtractInteger:
     case IROpcode::Sext8:
@@ -138,12 +140,8 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::UDiv8:
     case IROpcode::UDiv16:
     case IROpcode::UDiv32:
-    case IROpcode::UDiv64:
-    case IROpcode::Rdtsc: {
+    case IROpcode::UDiv64: {
         return IRType::TupleTwoInteger64;
-    }
-    case IROpcode::Cpuid: {
-        return IRType::TupleFourInteger64;
     }
     case IROpcode::ReadXmmWord:
     case IROpcode::CastIntegerToVector:
@@ -208,14 +206,6 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
 
 IRType IRInstruction::getTypeFromTuple(IRType type, u8 index) {
     switch (type) {
-    case IRType::TupleFourInteger64: {
-        if (index < 4) {
-            return IRType::Integer64;
-        } else {
-            ERROR("Invalid index for TupleFourInteger64: %d", index);
-            return IRType::Void;
-        }
-    }
     case IRType::TupleTwoInteger64: {
         if (index < 2) {
             return IRType::Integer64;
@@ -295,6 +285,7 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         BAD(Immediate);
 
         VALIDATE_0OP(Rdtsc);
+        VALIDATE_0OP(Syscall);
 
         VALIDATE_OPS_INT(Sext8, 1);
         VALIDATE_OPS_INT(Sext16, 1);
@@ -347,8 +338,6 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 
         VALIDATE_OPS_INT(Lea, 4);
 
-        VALIDATE_OPS_INT(Syscall, 7);
-
         VALIDATE_OPS_VECTOR(CastVectorToInteger, 1);
         VALIDATE_OPS_VECTOR(VExtractInteger, 1);
         VALIDATE_OPS_VECTOR(VPackedShuffleDWord, 1);
@@ -388,39 +377,12 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
     }
 
     default: {
-        ERROR("Unreachable");
+        UNREACHABLE();
     }
     }
 }
 
 std::string IRInstruction::GetNameString() const {
-    // switch (return_type) {
-    // case IRType::Integer64: {
-    //     ret += fmt::format("{}", GetName());
-    // }
-    // case IRType::Vector128: {
-    //     ret += fmt::format("v{}", GetName());
-    // }
-    // case IRType::Float64: {
-    //     ret += fmt::format("f{}", GetName());
-    // }
-    // case IRType::Float80: {
-    //     ret += fmt::format("sp{}", GetName());
-    // }
-    // case IRType::TupleTwoInteger64: {
-    //     ret += fmt::format("t{}<int, int>", GetName());
-    // }
-    // case IRType::TupleFourInteger64: {
-    //     ret += fmt::format("t{}<i64, i64, i64, i64>", GetName());
-    // }
-    // case IRType::Void: {
-    //     return "void";
-    // }
-    // default: {
-    //     ERROR("Unreachable");
-    //     return "";
-    // }
-    // }
     return fmt::format("%{}", GetName());
 }
 
@@ -448,7 +410,7 @@ std::string IRInstruction::GetTypeString() const {
         return "Void";
     }
     default: {
-        ERROR("Unreachable");
+        UNREACHABLE();
         return "";
     }
     }

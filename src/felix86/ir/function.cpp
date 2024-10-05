@@ -133,55 +133,8 @@ bool IRFunction::Validate() const {
         auto add_uses = [&uses](IRInstruction* inst) {
             uses[inst].want = inst->GetUseCount();
 
-            switch (inst->GetExpressionType()) {
-            case ExpressionType::Operands: {
-                Operands& operands = inst->AsOperands();
-                for (IRInstruction* operand : operands.operands) {
-                    if (operand != nullptr) {
-                        uses[operand].have += 1;
-                    } else {
-                        ERROR("Operand is null");
-                    }
-                }
-                break;
-            }
-            case ExpressionType::GetGuest:
-            case ExpressionType::Immediate:
-            case ExpressionType::Comment: {
-                break;
-            }
-            case ExpressionType::SetGuest: {
-                SetGuest& set_guest = inst->AsSetGuest();
-                if (set_guest.source != nullptr) {
-                    uses[set_guest.source].have += 1;
-                } else {
-                    ERROR("Source is null");
-                }
-                break;
-            }
-            case ExpressionType::Phi: {
-                Phi& phi = inst->AsPhi();
-                for (auto value : phi.values) {
-                    if (value != nullptr) {
-                        uses[value].have += 1;
-                    } else {
-                        ERROR("Value is null");
-                    }
-                }
-                break;
-            }
-            case ExpressionType::TupleAccess: {
-                TupleAccess& tuple_access = inst->AsTupleAccess();
-                if (tuple_access.tuple != nullptr) {
-                    uses[tuple_access.tuple].have += 1;
-                } else {
-                    ERROR("Tuple is null");
-                }
-                break;
-            }
-            default: {
-                ERROR("Unreachable");
-            }
+            for (auto& inst : inst->GetUsedInstructions()) {
+                uses[inst].have++;
             }
         };
 

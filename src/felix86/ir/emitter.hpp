@@ -38,7 +38,7 @@ IRInstruction* ir_emit_sext(IRBlock* block, IRInstruction* source, x86_size_e si
 IRInstruction* ir_emit_sext8(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_sext16(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_sext32(IRBlock* block, IRInstruction* source);
-IRInstruction* ir_emit_syscall(IRBlock* block, std::initializer_list<IRInstruction*> args);
+void ir_emit_syscall(IRBlock* block);
 IRInstruction* ir_emit_insert_integer_to_vector(IRBlock* block, IRInstruction* source, IRInstruction* dest, u8 idx, x86_size_e sz);
 IRInstruction* ir_emit_extract_integer_from_vector(IRBlock* block, IRInstruction* src, u8 idx, x86_size_e sz);
 IRInstruction* ir_emit_vector_unpack_byte_low(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
@@ -83,8 +83,8 @@ void ir_emit_write_xmmword(IRBlock* block, IRInstruction* address, IRInstruction
 
 void ir_emit_setcc(IRBlock* block, x86_instruction_t* inst);
 
-IRInstruction* ir_emit_cpuid(IRBlock* block, IRInstruction* rax, IRInstruction* rcx);
-IRInstruction* ir_emit_rdtsc(IRBlock* block);
+void ir_emit_cpuid(IRBlock* block);
+void ir_emit_rdtsc(IRBlock* block);
 IRInstruction* ir_emit_tuple_extract(IRBlock* block, IRInstruction* instruction, u8 index);
 
 // Helpers

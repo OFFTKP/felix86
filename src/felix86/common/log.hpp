@@ -35,6 +35,7 @@
             printf(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                     \
         }                                                                                                                                            \
     } while (0)
+#define UNREACHABLE() ERROR("Unreachable code hit")
 
 void enable_verbose();
 void disable_logging();

@@ -7,6 +7,20 @@
 #include "felix86/ir/emitter.hpp"
 #include "felix86/ir/instruction.hpp"
 
+void ir_store_partial_state(IRBlock* block, std::span<const x86_ref_e> refs) {
+    for (x86_ref_e reg : refs) {
+        IRInstruction* guest = ir_emit_get_guest(block, reg);
+        ir_emit_store_guest_to_memory(block, reg, guest);
+    }
+}
+
+void ir_load_partial_state(IRBlock* block, std::span<const x86_ref_e> refs) {
+    for (x86_ref_e reg : refs) {
+        IRInstruction* guest = ir_emit_load_guest_from_memory(block, reg);
+        ir_emit_set_guest(block, reg, guest);
+    }
+}
+
 u16 get_bit_size(x86_size_e size) {
     switch (size) {
     case X86_SIZE_BYTE:
@@ -292,14 +306,22 @@ IRInstruction* ir_emit_sext(IRBlock* block, IRInstruction* source, x86_size_e si
     }
 }
 
-IRInstruction* ir_emit_syscall(IRBlock* block, std::initializer_list<IRInstruction*> args) {
-    if (args.size() != 7) {
-        ERROR("Invalid number of arguments");
-    }
+void ir_emit_syscall(IRBlock* block) {
+    // The kernel clobbers registers rcx and r11 but preserves all other registers except rax which is the result.
+    // We don't have to clobber rcx and r11 as we are not a kernel.
+    // First, get_guest and writeback rax, rdi, rsi, rdx, r10, r8, r9 because they may be used by the syscall.
+    // Then emit the syscall instruction.
+    // Finally, load rax so it's not propagated from before the syscall.
+    constexpr static std::array in_regs = {X86_REF_RAX, X86_REF_RDI, X86_REF_RSI, X86_REF_RDX, X86_REF_R10, X86_REF_R8, X86_REF_R9};
+    constexpr static std::array out_regs = {X86_REF_RAX};
 
-    IRInstruction instruction(IROpcode::Syscall, args);
+    ir_store_partial_state(block, in_regs);
+
+    IRInstruction instruction(IROpcode::Syscall, {});
     instruction.Lock();
-    return block->InsertAtEnd(std::move(instruction));
+    block->InsertAtEnd(std::move(instruction));
+
+    ir_load_partial_state(block, out_regs);
 }
 
 void ir_terminate_jump(IRBlock* block, IRBlock* target) {
@@ -506,14 +528,28 @@ void ir_emit_write_xmmword(IRBlock* block, IRInstruction* address, IRInstruction
     instruction->Lock();
 }
 
-IRInstruction* ir_emit_cpuid(IRBlock* block, IRInstruction* rax, IRInstruction* rcx) {
-    IRInstruction instruction(IROpcode::Cpuid, {rax, rcx});
-    return block->InsertAtEnd(std::move(instruction));
+void ir_emit_cpuid(IRBlock* block) {
+    // Similar to syscall, cpuid clobbers registers rax, rcx, rdx, rbx but preserves all other registers.
+    // It uses rax and rcx as input.
+    constexpr static std::array in_regs = {X86_REF_RAX, X86_REF_RCX};
+    constexpr static std::array out_regs = {X86_REF_RAX, X86_REF_RBX, X86_REF_RCX, X86_REF_RDX};
+
+    ir_store_partial_state(block, in_regs);
+
+    IRInstruction instruction(IROpcode::Cpuid, {});
+    block->InsertAtEnd(std::move(instruction));
+
+    ir_load_partial_state(block, out_regs);
 }
 
-IRInstruction* ir_emit_rdtsc(IRBlock* block) {
+void ir_emit_rdtsc(IRBlock* block) {
+    // Has no inputs but writes to EDX:EAX
+    constexpr static std::array out_regs = {X86_REF_RAX, X86_REF_RDX};
+
     IRInstruction instruction(IROpcode::Rdtsc, {});
-    return block->InsertAtEnd(std::move(instruction));
+    block->InsertAtEnd(std::move(instruction));
+
+    ir_load_partial_state(block, out_regs);
 }
 
 IRInstruction* ir_emit_tuple_extract(IRBlock* block, IRInstruction* tuple, u8 index) {

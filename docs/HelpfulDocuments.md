@@ -24,6 +24,7 @@ Do note that I haven't fully read through all of these, most of them were used a
 - [A Fast Algorithm for Finding Dominators in a Flowgraph](https://www.cs.princeton.edu/courses/archive/fall03/cs528/handouts/a%20fast%20algorithm%20for%20finding.pdf), Lengauer-Tarjan dominance algorithm
 - [Simple and Efficient Construction of Static Single Assignment Form](https://link.springer.com/chapter/10.1007/978-3-642-37051-9_6), an alternative way of constructing SSA form employed by Yuzu's & shadPS4 shader recompiler among others
 - [SSA book](https://pfalcon.github.io/ssabook/latest/book-v1.pdf)
+- [Translating Out of SSA Form](https://graal.ens-lyon.fr/~pkchouha/presentation/ssa/ssaf.pdf)
 ### Optimizations that you can apply to SSA
 - [Common subexpression elimination](https://en.wikipedia.org/wiki/Common_subexpression_elimination)
 - [Partial-redundancy elimination](https://en.wikipedia.org/wiki/Partial-redundancy_elimination)

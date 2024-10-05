@@ -171,7 +171,7 @@ struct Emulator {
 
 private:
     ThreadState thread_state;
-    CodeCache code_cache;
+    Backend code_cache;
     FunctionCache function_cache;
     Filesystem fs;
     Config config;

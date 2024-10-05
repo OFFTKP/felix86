@@ -1,7 +1,6 @@
+#include <fstream>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <fstream>
-#include "felix86/common/print.hpp"
 #include "fex_test_loader.hpp"
 #include "nlohmann/json.hpp"
 
@@ -36,12 +35,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     }
 
     const char* argv[] = {
-        "nasm",
-        spath.c_str(),
-        "-fbin",
-        "-o",
-        "/dev/stdout",
-        nullptr,
+        "nasm", spath.c_str(), "-fbin", "-o", "/dev/stdout", nullptr,
     };
 
     // Run the nasm as a separate process, read the output from stdout
@@ -87,7 +81,10 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     std::unordered_map<std::string, nlohmann::json> regs;
     regs = j["RegData"].get<std::unordered_map<std::string, nlohmann::json>>();
 
-#define fill(x) if (regs.find(#x) != regs.end()) { expected_gpr[X86_REF_##x - X86_REF_RAX] = std::stoull(regs[#x].get<std::string>(), nullptr, 16); }
+#define fill(x)                                                                                                                                      \
+    if (regs.find(#x) != regs.end()) {                                                                                                               \
+        expected_gpr[X86_REF_##x - X86_REF_RAX] = std::stoull(regs[#x].get<std::string>(), nullptr, 16);                                             \
+    }
     fill(RAX);
     fill(RCX);
     fill(RDX);
@@ -106,12 +103,14 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     fill(R15);
 #undef fill
 
-#define fill(x) if (regs.find(#x) != regs.end()) { \
-    std::vector<std::string> data = regs[#x].get<std::vector<std::string>>(); \
-    XmmReg reg = {}; \
-    reg.data[0] = std::stoull(data[0], nullptr, 16); \
-    reg.data[1] = std::stoull(data[1], nullptr, 16); \
-    expected_xmm[X86_REF_##x - X86_REF_XMM0] = reg; }
+#define fill(x)                                                                                                                                      \
+    if (regs.find(#x) != regs.end()) {                                                                                                               \
+        std::vector<std::string> data = regs[#x].get<std::vector<std::string>>();                                                                    \
+        XmmReg reg = {};                                                                                                                             \
+        reg.data[0] = std::stoull(data[0], nullptr, 16);                                                                                             \
+        reg.data[1] = std::stoull(data[1], nullptr, 16);                                                                                             \
+        expected_xmm[X86_REF_##x - X86_REF_XMM0] = reg;                                                                                              \
+    }
     fill(XMM0);
     fill(XMM1);
     fill(XMM2);
@@ -173,7 +172,8 @@ void FEXTestLoader::Validate() {
             XmmReg actual = emulator->GetXmmReg(ref);
             for (int j = 0; j < 2; j++) {
                 if (actual.data[j] != value.data[j]) {
-                    ERROR("%s mismatch for qword %d: Expected: 0x%016lx, got: 0x%016lx", print_guest_register(ref).c_str(), j, value.data[j], actual.data[j]);
+                    ERROR("%s mismatch for qword %d: Expected: 0x%016lx, got: 0x%016lx", print_guest_register(ref).c_str(), j, value.data[j],
+                          actual.data[j]);
                 }
             }
         }

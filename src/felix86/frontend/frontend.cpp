@@ -177,7 +177,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
     }
     }
 
-    ERROR("Unreachable");
+    UNREACHABLE();
 }
 
 void frontend_compile_instruction(FrontendState* state) {
@@ -689,7 +689,7 @@ void frontend_compile_instruction(FrontendState* state) {
         } else if (rep_type == REP_Z) {
             condition = ir_emit_equal(state->current_block, zf, zero);
         } else {
-            ERROR("Unreachable");
+            UNREACHABLE();
         }
 
         IRInstruction* final_condition = ir_emit_or(state->current_block, rcx_zero, condition);

@@ -1,15 +1,13 @@
 #include <sys/mman.h>
 #include "biscuit/cpuinfo.hpp"
-#include "felix86/backend/code_cache.hpp"
+#include "felix86/backend/backend.hpp"
 #include "felix86/common/log.hpp"
 
 using namespace biscuit;
 
 constexpr static u64 code_cache_size = 32 * 1024 * 1024;
 
-constexpr static biscuit::GPR scratch = t6;
-
-CodeCache::CodeCache(ThreadState& thread_state) : thread_state(thread_state), memory(allocateCodeCache()), as(memory, code_cache_size) {
+Backend::Backend(ThreadState& thread_state) : thread_state(thread_state), memory(allocateCodeCache()), as(memory, code_cache_size) {
     emitNecessaryStuff();
     CPUInfo cpuinfo;
     bool has_atomic = cpuinfo.Has(RISCVExtension::A);
@@ -28,12 +26,14 @@ CodeCache::CodeCache(ThreadState& thread_state) : thread_state(thread_state), me
     }
 }
 
-CodeCache::~CodeCache() {
+Backend::~Backend() {
     deallocateCodeCache(memory);
 }
 
-void CodeCache::emitNecessaryStuff() {
+void Backend::emitNecessaryStuff() {
     enter_dispatcher = as.GetCursorPointer();
+
+    biscuit::GPR scratch = regs.AcquireScratchGPR();
 
     // Save the current register state of callee-saved registers and return address
     u64 gpr_storage_ptr = (u64)gpr_storage.data();
@@ -47,6 +47,8 @@ void CodeCache::emitNecessaryStuff() {
     for (size_t i = 0; i < saved_fprs.size(); i++) {
         as.FSD(saved_fprs[i], i * sizeof(u64), scratch);
     }
+
+    as.LI(Registers::SpillPointer(), (u64)&thread_state);
 
     // Jump
     // ...
@@ -65,21 +67,23 @@ void CodeCache::emitNecessaryStuff() {
     }
 
     as.RET();
+
+    regs.ReleaseScratchRegs();
 }
 
-void CodeCache::resetCodeCache() {
+void Backend::resetCodeCache() {
     map.clear();
     as.RewindBuffer();
     emitNecessaryStuff();
 }
 
-u8* CodeCache::allocateCodeCache() {
+u8* Backend::allocateCodeCache() {
     u8 prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     u8 flags = MAP_PRIVATE | MAP_ANONYMOUS;
 
     return (u8*)mmap(nullptr, code_cache_size, prot, flags, -1, 0);
 }
 
-void CodeCache::deallocateCodeCache(u8* memory) {
+void Backend::deallocateCodeCache(u8* memory) {
     munmap(memory, code_cache_size);
 }
