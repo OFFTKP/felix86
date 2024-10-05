@@ -26,7 +26,6 @@ private:
     }
 
     void deallocateAll() {
-        printf("Deallocator\n");
         for (auto& pair : map) {
             delete pair.second;
         }

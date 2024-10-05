@@ -272,15 +272,6 @@ struct IRInstruction {
         expression_type = ExpressionType::TupleAccess;
     }
 
-    IRInstruction(IRInstruction* mov) : opcode(IROpcode::Mov), return_type{mov->return_type} {
-        Operands op;
-        op.operands.push_back(mov);
-        expression = op;
-
-        mov->AddUse();
-        expression_type = ExpressionType::Operands;
-    }
-
     IRInstruction(const IRInstruction& other) = delete;
     IRInstruction& operator=(const IRInstruction& other) = delete;
     IRInstruction(IRInstruction&& other) = default;
@@ -428,11 +419,18 @@ struct IRInstruction {
 
     std::span<IRInstruction*> GetUsedInstructions();
 
-    void ReplaceWith(IRInstruction&& other) {
+    void ReplaceExpressionWithMov(IRInstruction* mov) {
         Invalidate();
-        u16 uses = this->uses;
-        *this = std::move(other);
-        this->uses = uses;
+        Operands op;
+        op.operands.push_back(mov);
+
+        Expression swap = {op};
+        expression.swap(swap);
+        expression_type = ExpressionType::Operands;
+        opcode = IROpcode::Mov;
+        return_type = mov->return_type;
+
+        mov->AddUse();
     }
 
     u64 GetExtraData() const {

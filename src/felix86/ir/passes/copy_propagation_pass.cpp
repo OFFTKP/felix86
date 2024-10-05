@@ -7,11 +7,23 @@ void ir_copy_propagate_node(const IRDominatorTreeNode* node, std::unordered_map<
     while (it != end) {
         if (it->GetOpcode() == IROpcode::Mov) {
             IRInstruction* value_final = it->GetOperand(0);
+            bool found_once = false;
             while (map.find(value_final) != map.end()) {
+                found_once = true;
                 value_final = map[value_final];
             }
             map[&*it] = value_final;
-            it->Invalidate();
+            // If it's the mov operand was already in the map, that means it was also removed
+            // This can happen if you have sequential movs like so:
+            // mov a, b
+            // mov c, a
+            // When the pass go through, it will remove `a`. So we don't need to remove a use
+            // from a as it's removed from the list and it would be invalid to do so anyway.
+            // We still need to keep it in the map though for instructions that could be using
+            // it further down the line.
+            if (!found_once) {
+                it->Invalidate();
+            }
             it = insts.erase(it);
         } else {
             switch (it->GetExpressionType()) {
@@ -80,8 +92,7 @@ void replace_setguest_with_mov(IRFunction* function) {
         auto end = insts.end();
         while (it != end) {
             if (it->GetOpcode() == IROpcode::SetGuest) {
-                IRInstruction replacement(it->AsSetGuest().source);
-                it->ReplaceWith(std::move(replacement));
+                it->ReplaceExpressionWithMov(it->AsSetGuest().source);
             }
             ++it;
         }
@@ -89,7 +100,7 @@ void replace_setguest_with_mov(IRFunction* function) {
 }
 
 void ir_copy_propagation_pass(IRFunction* function) {
-    // replace_setguest_with_mov(function);
+    replace_setguest_with_mov(function);
 
     const IRDominatorTree& dominator_tree = function->GetDominatorTree();
 

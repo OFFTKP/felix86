@@ -221,9 +221,7 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstructio
             pop_count[ref]++;
         } else if (inst.GetOpcode() == IROpcode::GetGuest) {
             IRInstruction* def = stacks[inst.AsGetGuest().ref].top();
-
-            IRInstruction new_inst(def);
-            inst.ReplaceWith(std::move(new_inst));
+            inst.ReplaceExpressionWithMov(def);
         }
 
         it++;

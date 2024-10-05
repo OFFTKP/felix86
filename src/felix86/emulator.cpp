@@ -1,4 +1,5 @@
 #include <fmt/base.h>
+#include <fmt/format.h>
 #include <stdlib.h>
 #include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
@@ -14,7 +15,8 @@ void Emulator::Run() {
     ir_naming_pass(function);
     // ir_graph_coloring_pass(function);
 
-    fmt::print("{}", function->Print({}));
+    auto test = [](const IRInstruction* inst) { return fmt::format(" 0x{:x}", (u64)inst); };
+    fmt::print("{}", function->Print(test));
 
     if (!function->Validate()) {
         ERROR("Function did not validate");
