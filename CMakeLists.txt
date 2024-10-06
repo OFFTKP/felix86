@@ -39,6 +39,7 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/passes/extraneous_writeback_pass.cpp
     src/felix86/ir/passes/graph_coloring_pass.cpp
     src/felix86/ir/passes/naming_pass.cpp
+    src/felix86/ir/passes/spill_everything_pass.cpp
     src/felix86/ir/passes/ssa_pass.cpp
 )
 

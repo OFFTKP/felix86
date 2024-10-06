@@ -24,6 +24,8 @@ Backend::Backend(ThreadState& thread_state) : thread_state(thread_state), memory
         ERROR("Backend is missing some extensions");
 #endif
     }
+
+    spill_storage.resize(32768);
 }
 
 Backend::~Backend() {
@@ -37,6 +39,8 @@ void Backend::emitNecessaryStuff() {
 
     // Save the current register state of callee-saved registers and return address
     u64 gpr_storage_ptr = (u64)gpr_storage.data();
+    const auto& saved_gprs = Registers::GetSavedGPRs();
+    const auto& saved_fprs = Registers::GetSavedFPRs();
     as.LI(scratch, gpr_storage_ptr);
     for (size_t i = 0; i < saved_gprs.size(); i++) {
         as.SD(saved_gprs[i], i * sizeof(u64), scratch);
@@ -48,7 +52,9 @@ void Backend::emitNecessaryStuff() {
         as.FSD(saved_fprs[i], i * sizeof(u64), scratch);
     }
 
-    as.LI(Registers::SpillPointer(), (u64)&thread_state);
+    as.LI(Registers::SpillPointer(), (u64)spill_storage.data());
+
+    as.LI(Registers::ThreadStatePointer(), (u64)&thread_state);
 
     // Jump
     // ...
@@ -86,4 +92,14 @@ u8* Backend::allocateCodeCache() {
 
 void Backend::deallocateCodeCache(u8* memory) {
     munmap(memory, code_cache_size);
+}
+
+void* Backend::EmitFunction(IRFunction* function) {
+    void* start = as.GetCursorPointer();
+    for (IRBlock* block : function->GetBlocks()) {
+        for (const IRInstruction& inst : block->GetInstructions()) {
+            Emitter::Emit(*this, as, inst);
+        }
+    }
+    return start;
 }

@@ -109,7 +109,6 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Or:
     case IROpcode::Xor:
     case IROpcode::Not:
-    case IROpcode::Lea:
     case IROpcode::Equal:
     case IROpcode::NotEqual:
     case IROpcode::IGreaterThan:
@@ -314,8 +313,6 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 
         VALIDATE_OPS_INT(Select, 3);
 
-        VALIDATE_OPS_INT(Lea, 4);
-
         VALIDATE_OPS_VECTOR(CastVectorToInteger, 1);
         VALIDATE_OPS_VECTOR(VExtractInteger, 1);
         VALIDATE_OPS_VECTOR(VPackedShuffleDWord, 1);
@@ -434,11 +431,6 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
     case IROpcode::Select: {
         ret += fmt::format("{} {} ← {} ? {} : {}", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
                            GetOperandNameString(2));
-        break;
-    }
-    case IROpcode::Lea: {
-        ret += fmt::format("{} {} ← [{} + {} * {} + 0x{:x}]", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
-                           GetOperand(2)->AsImmediate().immediate, GetOperand(3)->AsImmediate().immediate);
         break;
     }
     case IROpcode::Mov: {
@@ -819,5 +811,31 @@ bool IRInstruction::ExitsVM() const {
         return true;
     default:
         return false;
+    }
+}
+
+bool IRInstruction::IsCallerSaved() const {
+    switch (GetAllocationType()) {
+    case AllocationType::GPR: {
+        return Registers::IsCallerSaved(GetGPR());
+    }
+    case AllocationType::FPR: {
+        return Registers::IsCallerSaved(GetFPR());
+    }
+    case AllocationType::Vec: {
+        return true;
+    }
+    case AllocationType::Spill: {
+        WARN("Called with spilled instruction");
+        return false;
+    }
+    case AllocationType::Null: {
+        ERROR("Uninitialized allocation");
+        return false;
+    }
+    default: {
+        UNREACHABLE();
+        return false;
+    }
     }
 }

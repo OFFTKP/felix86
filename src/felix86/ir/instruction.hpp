@@ -62,7 +62,6 @@
     X(Or)                                                                                                                                            \
     X(Xor)                                                                                                                                           \
     X(Not)                                                                                                                                           \
-    X(Lea)                                                                                                                                           \
     X(Equal)                                                                                                                                         \
     X(NotEqual)                                                                                                                                      \
     X(IGreaterThan)                                                                                                                                  \
@@ -178,14 +177,22 @@ enum class ExpressionType : u8 {
     Count,
 };
 
+enum class AllocationType : u8 {
+    Null,
+    GPR,
+    FPR,
+    Vec,
+    Spill,
+};
+
 // Don't change their order and make sure to properly update stuff if you add to the end
 using Allocation = std::variant<std::monostate, biscuit::GPR, biscuit::FPR, biscuit::Vec, u32>;
 static_assert(std::variant_size_v<Allocation> == 5);
-static_assert(std::is_same_v<std::monostate, std::variant_alternative_t<0, Allocation>>);
-static_assert(std::is_same_v<biscuit::GPR, std::variant_alternative_t<1, Allocation>>);
-static_assert(std::is_same_v<biscuit::FPR, std::variant_alternative_t<2, Allocation>>);
-static_assert(std::is_same_v<biscuit::Vec, std::variant_alternative_t<3, Allocation>>);
-static_assert(std::is_same_v<u32, std::variant_alternative_t<4, Allocation>>);
+static_assert(std::is_same_v<std::monostate, std::variant_alternative_t<(u8)AllocationType::Null, Allocation>>);
+static_assert(std::is_same_v<biscuit::GPR, std::variant_alternative_t<(u8)AllocationType::GPR, Allocation>>);
+static_assert(std::is_same_v<biscuit::FPR, std::variant_alternative_t<(u8)AllocationType::FPR, Allocation>>);
+static_assert(std::is_same_v<biscuit::Vec, std::variant_alternative_t<(u8)AllocationType::Vec, Allocation>>);
+static_assert(std::is_same_v<u32, std::variant_alternative_t<(u8)AllocationType::Spill, Allocation>>);
 
 using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, PushHost, PopHost>;
 static_assert(std::variant_size_v<Expression> == (u8)ExpressionType::Count);
@@ -460,24 +467,29 @@ struct IRInstruction {
         return locked;
     }
 
-    bool IsSpilled() {
-        if (allocation.index() == 0) {
-            // Not yet allocated?
+    AllocationType GetAllocationType() const {
+        return (AllocationType)allocation.index();
+    }
+
+    bool IsSpilled() const {
+        if (GetAllocationType() == AllocationType::Null) {
             ERROR("Uninitialized allocation");
         }
 
-        if (allocation.index() == 4) {
+        if (GetAllocationType() == AllocationType::Spill) {
             return true;
         }
 
         return false;
     }
 
+    bool IsCallerSaved() const;
+
     Allocation& GetAllocation() {
         return allocation;
     }
 
-    bool IsGPR() {
+    bool IsGPR() const {
         if (return_type == IRType::Integer64) {
             return true;
         }
@@ -485,7 +497,7 @@ struct IRInstruction {
         return false;
     }
 
-    bool IsFPR() {
+    bool IsFPR() const {
         if (return_type == IRType::Float64) {
             return true;
         }
@@ -493,7 +505,7 @@ struct IRInstruction {
         return false;
     }
 
-    bool IsVec() {
+    bool IsVec() const {
         if (return_type == IRType::Vector128) {
             return true;
         }
@@ -501,19 +513,19 @@ struct IRInstruction {
         return false;
     }
 
-    biscuit::GPR GetGPR() {
+    biscuit::GPR GetGPR() const {
         return std::get<biscuit::GPR>(allocation);
     }
 
-    biscuit::FPR GetFPR() {
+    biscuit::FPR GetFPR() const {
         return std::get<biscuit::FPR>(allocation);
     }
 
-    biscuit::Vec GetVec() {
+    biscuit::Vec GetVec() const {
         return std::get<biscuit::Vec>(allocation);
     }
 
-    u32 GetSpillLocation() {
+    u32 GetSpillLocation() const {
         return std::get<u32>(allocation);
     }
 

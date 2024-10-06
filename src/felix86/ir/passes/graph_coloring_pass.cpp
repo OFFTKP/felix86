@@ -4,13 +4,16 @@
 #include "felix86/ir/passes/passes.hpp"
 
 riscv_ref_e AllocationToRef(Allocation& allocation) {
-    if (allocation.index() == 1) {
+    AllocationType type = (AllocationType)allocation.index();
+    switch (type) {
+    case AllocationType::GPR:
         return (riscv_ref_e)(RISCV_REF_X0 + std::get<biscuit::GPR>(allocation).Index());
-    } else if (allocation.index() == 2) {
+    case AllocationType::FPR:
         return (riscv_ref_e)(RISCV_REF_F0 + std::get<biscuit::FPR>(allocation).Index());
-    } else if (allocation.index() == 3) {
+    case AllocationType::Vec:
         return (riscv_ref_e)(RISCV_REF_VEC0 + std::get<biscuit::Vec>(allocation).Index());
-    } else {
+    default:
+        ERROR("Invalid allocation type");
         return RISCV_REF_COUNT;
     }
 }
@@ -286,7 +289,7 @@ void ir_graph_coloring_pass(IRFunction* function) {
             IRInstruction* inst = &*it;
             if (inst->ExitsVM()) {
                 for (auto& interference : graph.GetInterferences(inst)) {
-                    if (!interference->IsSpilled()) {
+                    if (!interference->IsSpilled() && interference->IsCallerSaved()) {
                         riscv_ref_e ref = AllocationToRef(interference->GetAllocation());
                         IRInstruction store(ref, true);
                         IRInstruction load(ref, false);

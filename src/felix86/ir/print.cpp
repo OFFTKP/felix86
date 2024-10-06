@@ -119,11 +119,6 @@ void ir_print_instruction(const IRInstruction& instruction, const IRBlock* block
         print_one_op(instruction, "sext32");
         break;
     }
-    case IROpcode::Lea: {
-        printf("t%d = ptr[t%d + t%d * t%d + t%d]", instruction.GetName(), instruction.GetOperandName(0), instruction.GetOperandName(1),
-               instruction.GetOperandName(2), instruction.GetOperandName(3));
-        break;
-    }
     case IROpcode::GetGuest: {
         printf(VAR EQUALS OP, instruction.GetName(), "get_guest");
         print_guest(instruction.AsGetGuest().ref);

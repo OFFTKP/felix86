@@ -274,9 +274,11 @@ IRInstruction* ir_emit_lea(IRBlock* block, x86_operand_t* rm_operand) {
     IRInstruction* index = rm_operand->memory.index != X86_REF_COUNT ? get_guest(block, rm_operand->memory.index) : ir_emit_immediate(block, 0);
     IRInstruction* displacement = ir_emit_immediate(block, rm_operand->memory.displacement);
     IRInstruction* scale = ir_emit_immediate(block, rm_operand->memory.scale);
-    IRInstruction* address = ir_emit_four_operands(block, IROpcode::Lea, base_final, index, scale, displacement);
+    IRInstruction* scaled_index = ir_emit_shift_left(block, index, scale);
+    IRInstruction* address = ir_emit_add(block, base_final, scaled_index);
+    IRInstruction* displaced_address = ir_emit_add(block, address, displacement);
 
-    IRInstruction* final_address = address;
+    IRInstruction* final_address = displaced_address;
     if (rm_operand->memory.address_override) {
         IRInstruction* mask = ir_emit_immediate(block, 0xFFFFFFFF);
         final_address = ir_emit_and(block, address, mask);
