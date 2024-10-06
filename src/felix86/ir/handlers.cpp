@@ -855,7 +855,7 @@ IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
     x86_size_e size_e = inst->operand_reg.size;
     IRInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
     IRInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    IRInstruction* result = ir_emit_imul(BLOCK, ir_emit_sext(BLOCK, reg, size_e), ir_emit_sext(BLOCK, rm, size_e));
+    IRInstruction* result = ir_emit_mul(BLOCK, ir_emit_sext(BLOCK, reg, size_e), ir_emit_sext(BLOCK, rm, size_e));
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 

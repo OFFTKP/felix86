@@ -48,12 +48,7 @@ public:
         return x1;
     }
 
-    // Pointer to the VM state, holding RISC-V registers when we need to exit VM
-    static biscuit::GPR VMStatePointer() {
-        return x2;
-    }
-
-    static constexpr u32 ScratchGPRCount = 2;
+    static constexpr u32 ScratchGPRCount = 3;
     static constexpr u32 ScratchFPRCount = 0;
     static constexpr u32 ScratchVecCount = 0;
     static constexpr u32 AvailableGPRCount = total_gprs.size() - ScratchGPRCount;

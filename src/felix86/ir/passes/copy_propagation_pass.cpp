@@ -63,15 +63,6 @@ void ir_copy_propagate_node(const IRDominatorTreeNode* node, std::unordered_map<
                 }
                 break;
             }
-            case ExpressionType::TupleAccess: {
-                TupleAccess& tuple_access = it->AsTupleAccess();
-                auto found = map.find(tuple_access.tuple);
-                if (found != map.end()) {
-                    tuple_access.tuple = found->second;
-                    tuple_access.tuple->AddUse();
-                }
-                break;
-            }
             default: {
                 UNREACHABLE();
             }

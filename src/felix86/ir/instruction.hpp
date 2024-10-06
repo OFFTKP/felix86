@@ -17,7 +17,6 @@
                                                                                                                                                      \
     X(Phi)                                                                                                                                           \
     X(Comment)                                                                                                                                       \
-    X(TupleExtract)                                                                                                                                  \
                                                                                                                                                      \
     X(Mov)                                                                                                                                           \
     X(Immediate)                                                                                                                                     \
@@ -36,7 +35,6 @@
     X(PopHost)  /* and not screw up our allocated registers */                                                                                       \
     X(Add)                                                                                                                                           \
     X(Sub)                                                                                                                                           \
-    X(IMul64)                                                                                                                                        \
     X(Divu)                                                                                                                                          \
     X(Div)                                                                                                                                           \
     X(Remu)                                                                                                                                          \
@@ -47,6 +45,9 @@
     X(Remw)                                                                                                                                          \
     X(Div128)                                                                                                                                        \
     X(Divu128)                                                                                                                                       \
+    X(Mul)                                                                                                                                           \
+    X(Mulh)                                                                                                                                          \
+    X(Mulhu)                                                                                                                                         \
     X(Clz)                                                                                                                                           \
     X(Ctz)                                                                                                                                           \
     X(ShiftLeft)                                                                                                                                     \
@@ -68,7 +69,6 @@
     X(ILessThan)                                                                                                                                     \
     X(UGreaterThan)                                                                                                                                  \
     X(ULessThan)                                                                                                                                     \
-                                                                                                                                                     \
     X(ReadByte)                                                                                                                                      \
     X(ReadWord)                                                                                                                                      \
     X(ReadDWord)                                                                                                                                     \
@@ -79,10 +79,8 @@
     X(WriteDWord)                                                                                                                                    \
     X(WriteQWord)                                                                                                                                    \
     X(WriteXmmWord)                                                                                                                                  \
-                                                                                                                                                     \
     X(CastIntegerToVector)                                                                                                                           \
     X(CastVectorToInteger)                                                                                                                           \
-                                                                                                                                                     \
     X(VInsertInteger)                                                                                                                                \
     X(VExtractInteger)                                                                                                                               \
     X(VUnpackByteLow)                                                                                                                                \
@@ -118,7 +116,6 @@ enum class IRType : u8 {
     Vector128,
     Float64,
     Float80, // :(
-    TupleTwoInteger64,
 
     Count,
 };
@@ -156,11 +153,6 @@ struct Phi {
     std::vector<IRInstruction*> values = {};
 };
 
-struct TupleAccess {
-    IRInstruction* tuple = nullptr;
-    u8 index = 0;
-};
-
 struct Comment {
     std::string comment = {};
 };
@@ -180,7 +172,6 @@ enum class ExpressionType : u8 {
     SetGuest,
     Phi,
     Comment,
-    TupleAccess,
     PushHost,
     PopHost,
 
@@ -196,7 +187,7 @@ static_assert(std::is_same_v<biscuit::FPR, std::variant_alternative_t<2, Allocat
 static_assert(std::is_same_v<biscuit::Vec, std::variant_alternative_t<3, Allocation>>);
 static_assert(std::is_same_v<u32, std::variant_alternative_t<4, Allocation>>);
 
-using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, TupleAccess, PushHost, PopHost>;
+using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, PushHost, PopHost>;
 static_assert(std::variant_size_v<Expression> == (u8)ExpressionType::Count);
 static_assert(std::is_same_v<Operands, std::variant_alternative_t<(u8)ExpressionType::Operands, Expression>>);
 static_assert(std::is_same_v<Immediate, std::variant_alternative_t<(u8)ExpressionType::Immediate, Expression>>);
@@ -204,7 +195,6 @@ static_assert(std::is_same_v<GetGuest, std::variant_alternative_t<(u8)Expression
 static_assert(std::is_same_v<SetGuest, std::variant_alternative_t<(u8)ExpressionType::SetGuest, Expression>>);
 static_assert(std::is_same_v<Phi, std::variant_alternative_t<(u8)ExpressionType::Phi, Expression>>);
 static_assert(std::is_same_v<Comment, std::variant_alternative_t<(u8)ExpressionType::Comment, Expression>>);
-static_assert(std::is_same_v<TupleAccess, std::variant_alternative_t<(u8)ExpressionType::TupleAccess, Expression>>);
 static_assert(std::is_same_v<PushHost, std::variant_alternative_t<(u8)ExpressionType::PushHost, Expression>>);
 static_assert(std::is_same_v<PopHost, std::variant_alternative_t<(u8)ExpressionType::PopHost, Expression>>);
 
@@ -273,17 +263,6 @@ struct IRInstruction {
         expression_type = ExpressionType::Comment;
 
         Lock();
-    }
-
-    IRInstruction(IRInstruction* tuple, u8 index)
-        : opcode(IROpcode::TupleExtract), return_type(IRInstruction::getTypeFromTuple(tuple->return_type, index)) {
-        TupleAccess tg;
-        tg.tuple = tuple;
-        tg.index = index;
-        expression = tg;
-
-        tuple->AddUse();
-        expression_type = ExpressionType::TupleAccess;
     }
 
     IRInstruction(riscv_ref_e ref, bool push) {
@@ -363,10 +342,6 @@ struct IRInstruction {
         return std::get<Comment>(expression);
     }
 
-    const TupleAccess& AsTupleAccess() const {
-        return std::get<TupleAccess>(expression);
-    }
-
     Operands& AsOperands() {
         return std::get<Operands>(expression);
     }
@@ -389,10 +364,6 @@ struct IRInstruction {
 
     Comment& AsComment() {
         return std::get<Comment>(expression);
-    }
-
-    TupleAccess& AsTupleAccess() {
-        return std::get<TupleAccess>(expression);
     }
 
     ExpressionType GetExpressionType() const {
@@ -421,10 +392,6 @@ struct IRInstruction {
 
     bool IsComment() const {
         return expression_type == ExpressionType::Comment;
-    }
-
-    bool IsTupleAccess() const {
-        return expression_type == ExpressionType::TupleAccess;
     }
 
     u32 GetName() const {
@@ -562,7 +529,6 @@ struct IRInstruction {
 
 private:
     static IRType getTypeFromOpcode(IROpcode opcode, x86_ref_e ref = X86_REF_COUNT);
-    static IRType getTypeFromTuple(IRType type, u8 index);
     static void checkValidity(IROpcode opcode, const Operands& operands);
 
     Expression expression;

@@ -157,10 +157,6 @@ IRInstruction* ir_emit_select(IRBlock* block, IRInstruction* condition, IRInstru
     return ir_emit_three_operands(block, IROpcode::Select, condition, true_value, false_value);
 }
 
-IRInstruction* ir_emit_imul(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IMul64, source1, source2);
-}
-
 IRInstruction* ir_emit_clz(IRBlock* block, IRInstruction* source) {
     return ir_emit_one_operand(block, IROpcode::Clz, source);
 }
@@ -239,6 +235,18 @@ IRInstruction* ir_emit_remw(IRBlock* block, IRInstruction* source1, IRInstructio
 
 IRInstruction* ir_emit_remuw(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
     return ir_emit_two_operands(block, IROpcode::Remuw, source1, source2);
+}
+
+IRInstruction* ir_emit_mul(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
+    return ir_emit_two_operands(block, IROpcode::Mul, source1, source2);
+}
+
+IRInstruction* ir_emit_mulh(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
+    return ir_emit_two_operands(block, IROpcode::Mulh, source1, source2);
+}
+
+IRInstruction* ir_emit_mulhu(IRBlock* block, IRInstruction* source1, IRInstruction* source2) {
+    return ir_emit_two_operands(block, IROpcode::Mulhu, source1, source2);
 }
 
 IRInstruction* ir_emit_div128(IRBlock* block, IRInstruction* divisor) {
@@ -552,12 +560,6 @@ void ir_emit_rdtsc(IRBlock* block) {
     block->InsertAtEnd(std::move(instruction));
 
     ir_load_partial_state(block, out_regs);
-}
-
-IRInstruction* ir_emit_tuple_extract(IRBlock* block, IRInstruction* tuple, u8 index) {
-    IRInstruction* instruction = ir_emit_one_operand(block, IROpcode::TupleExtract, tuple);
-    instruction->SetExtraData(index);
-    return instruction;
 }
 
 IRInstruction* ir_emit_immediate(IRBlock* block, u64 value) {

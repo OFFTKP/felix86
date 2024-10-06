@@ -70,12 +70,6 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
 
         return comment.comment == other_comment.comment;
     }
-    case ExpressionType::TupleAccess: {
-        const TupleAccess& tuple_get = AsTupleAccess();
-        const TupleAccess& other_tuple_get = other.AsTupleAccess();
-
-        return tuple_get.tuple == other_tuple_get.tuple && tuple_get.index == other_tuple_get.index;
-    }
     default:
         UNREACHABLE();
         return false;
@@ -84,7 +78,6 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
 
 IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     switch (opcode) {
-    case IROpcode::TupleExtract:
     case IROpcode::Mov: {
         ERROR("Should not be used in GetTypeFromOpcode: %d", (int)opcode);
         return IRType::Void;
@@ -142,9 +135,6 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Remuw: {
         return IRType::Integer64;
     }
-    case IROpcode::IMul64: {
-        return IRType::TupleTwoInteger64;
-    }
     case IROpcode::ReadXmmWord:
     case IROpcode::CastIntegerToVector:
     case IROpcode::VUnpackByteLow:
@@ -201,23 +191,6 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
 
     default: {
         ERROR("Unimplemented opcode: %d", static_cast<u8>(opcode));
-        return IRType::Void;
-    }
-    }
-}
-
-IRType IRInstruction::getTypeFromTuple(IRType type, u8 index) {
-    switch (type) {
-    case IRType::TupleTwoInteger64: {
-        if (index < 2) {
-            return IRType::Integer64;
-        } else {
-            ERROR("Invalid index for TupleTwoInteger64: %d", index);
-            return IRType::Void;
-        }
-    }
-    default: {
-        ERROR("Invalid type for tuple: %d", static_cast<u8>(type));
         return IRType::Void;
     }
     }
@@ -282,7 +255,6 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         BAD(SetGuest);
         BAD(LoadGuestFromMemory);
         BAD(StoreGuestToMemory);
-        BAD(TupleExtract);
         BAD(Comment);
         BAD(Immediate);
 
@@ -336,7 +308,9 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(Remu, 2);
         VALIDATE_OPS_INT(Remw, 2);
         VALIDATE_OPS_INT(Remuw, 2);
-        VALIDATE_OPS_INT(IMul64, 2);
+        VALIDATE_OPS_INT(Mul, 2);
+        VALIDATE_OPS_INT(Mulh, 2);
+        VALIDATE_OPS_INT(Mulhu, 2);
 
         VALIDATE_OPS_INT(Select, 3);
 
@@ -404,9 +378,6 @@ std::string IRInstruction::GetTypeString() const {
     case IRType::Float80: {
         return "Float80";
     }
-    case IRType::TupleTwoInteger64: {
-        return "Tuple<Int64, Int64>";
-    }
     case IRType::Void: {
         return "Void";
     }
@@ -459,11 +430,6 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
     }
     case IROpcode::Comment: {
         return AsComment().comment;
-    }
-    case IROpcode::TupleExtract: {
-        const TupleAccess& tup = AsTupleAccess();
-        ret += fmt::format("{} {} ← get<{}>({})", GetTypeString(), GetNameString(), tup.index, tup.tuple->GetNameString());
-        break;
     }
     case IROpcode::Select: {
         ret += fmt::format("{} {} ← {} ? {} : {}", GetTypeString(), GetNameString(), GetOperandNameString(0), GetOperandNameString(1),
@@ -558,7 +524,9 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
         ret += SOP2(<);
         break;
     }
-    case IROpcode::IMul64: {
+    case IROpcode::Mul:
+    case IROpcode::Mulh:
+    case IROpcode::Mulhu: {
         ret += SOP2(*);
         break;
     }
@@ -833,9 +801,6 @@ std::span<IRInstruction*> IRInstruction::GetUsedInstructions() {
     }
     case ExpressionType::Phi: {
         return AsPhi().values;
-    }
-    case ExpressionType::TupleAccess: {
-        return {&AsTupleAccess().tuple, 1};
     }
     default: {
         break;

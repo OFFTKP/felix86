@@ -1,6 +1,6 @@
 #pragma once
 
-#include "felix86/backend/code_cache.hpp"
+#include "felix86/backend/backend.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/frontend/instruction.hpp"
@@ -21,7 +21,7 @@ struct Config {
 };
 
 struct Emulator {
-    Emulator(const Config& config) : thread_state(), code_cache(thread_state), config(config) {
+    Emulator(const Config& config) : thread_state(), backend(thread_state), config(config) {
         // Sometimes we run without rootfs, such as for testing
         if (!config.rootfs_path.empty()) {
             fs.LoadRootFS(config.rootfs_path);
@@ -171,7 +171,7 @@ struct Emulator {
 
 private:
     ThreadState thread_state;
-    Backend code_cache;
+    Backend backend;
     FunctionCache function_cache;
     Filesystem fs;
     Config config;

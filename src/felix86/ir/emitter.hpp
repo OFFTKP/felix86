@@ -17,7 +17,6 @@ IRInstruction* ir_emit_shift_right(IRBlock* block, IRInstruction* source1, IRIns
 IRInstruction* ir_emit_shift_right_arithmetic(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
 IRInstruction* ir_emit_rotate(IRBlock* block, IRInstruction* source1, IRInstruction* source2, x86_size_e size, bool right);
 IRInstruction* ir_emit_select(IRBlock* block, IRInstruction* condition, IRInstruction* true_value, IRInstruction* false_value);
-IRInstruction* ir_emit_imul(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
 IRInstruction* ir_emit_clz(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_ctz(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_and(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
@@ -36,6 +35,17 @@ IRInstruction* ir_emit_sext(IRBlock* block, IRInstruction* source, x86_size_e si
 IRInstruction* ir_emit_sext8(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_sext16(IRBlock* block, IRInstruction* source);
 IRInstruction* ir_emit_sext32(IRBlock* block, IRInstruction* source);
+IRInstruction* ir_emit_div(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_divu(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_rem(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_remu(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_divw(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_divuw(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_remw(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_remuw(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_mul(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_mulh(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
+IRInstruction* ir_emit_mulhu(IRBlock* block, IRInstruction* source1, IRInstruction* source2);
 void ir_emit_syscall(IRBlock* block);
 IRInstruction* ir_emit_insert_integer_to_vector(IRBlock* block, IRInstruction* source, IRInstruction* dest, u8 idx, x86_size_e sz);
 IRInstruction* ir_emit_extract_integer_from_vector(IRBlock* block, IRInstruction* src, u8 idx, x86_size_e sz);
@@ -83,7 +93,6 @@ void ir_emit_setcc(IRBlock* block, x86_instruction_t* inst);
 
 void ir_emit_cpuid(IRBlock* block);
 void ir_emit_rdtsc(IRBlock* block);
-IRInstruction* ir_emit_tuple_extract(IRBlock* block, IRInstruction* instruction, u8 index);
 
 // Helpers
 IRInstruction* ir_emit_immediate(IRBlock* block, u64 value);

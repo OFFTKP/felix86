@@ -27,6 +27,14 @@ struct Backend {
     u8 AvailableFPRs() const;
     u8 AvailableVec() const;
 
+    u64 GetVMStatePointer() const {
+        return (u64)(vm_storage.data());
+    }
+
+    Registers& GetRegisters() {
+        return regs;
+    }
+
 private:
     static u8* allocateCodeCache();
     static void deallocateCodeCache(u8* memory);
