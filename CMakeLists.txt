@@ -18,7 +18,7 @@ add_subdirectory(external/biscuit)
 # add_subdirectory(external/plog)
 add_subdirectory(external/Catch2)
 add_subdirectory(external/xbyak)
-# add_subdirectory(external/riscv-disassembler)
+add_subdirectory(external/riscv-disassembler)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 
@@ -89,7 +89,7 @@ set(FELIX86_INCLUDES
 add_library(felix86_core STATIC)
 target_sources(felix86_core PUBLIC ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit)
+target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit rvasm)
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)

@@ -97,6 +97,39 @@ void Emitter::Emit(Backend& backend, biscuit::Assembler& as, const IRInstruction
     backend.ReleaseScratchRegs();
 }
 
+template <typename T>
+T my_abs(T val) {
+    return val < 0 ? -val : val;
+}
+
+void Emitter::EmitJump(Backend& backend, biscuit::Assembler& as, void* target) {
+    // Check if target is in one MB range
+    void* cursor = as.GetCursorPointer();
+    if (my_abs((u64)cursor - (u64)target) > 0x100000) {
+        biscuit::GPR scratch = backend.AcquireScratchGPR();
+        as.LI(scratch, (u64)target);
+        as.JR(scratch);
+        backend.ReleaseScratchRegs();
+    } else {
+        as.J((u64)target - (u64)cursor);
+    }
+}
+
+void Emitter::EmitJumpConditional(Backend& backend, biscuit::Assembler& as, const IRInstruction& condition, void* target_true, void* target_false) {
+    biscuit::GPR address_true = backend.AcquireScratchGPR();
+    biscuit::GPR address_false = backend.AcquireScratchGPR();
+    biscuit::GPR condition_reg = _RegRO_(&condition);
+    Label false_label;
+
+    // TODO: emit relative jumps if possible
+    as.BEQZ(condition_reg, &false_label);
+    as.LI(address_true, (u64)target_true);
+    as.JR(address_true);
+    as.Bind(&false_label);
+    as.LI(address_false, (u64)target_false);
+    as.JR(address_false);
+}
+
 void Emitter::EmitNull(Backend& backend, biscuit::Assembler& as, const IRInstruction& inst) {
     UNREACHABLE();
 }

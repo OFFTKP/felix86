@@ -1,6 +1,7 @@
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <stdlib.h>
+#include "felix86/backend/disassembler.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/ir/passes/passes.hpp"
@@ -24,5 +25,7 @@ void Emulator::Run() {
     }
 
     void* emit = backend.EmitFunction(function);
+    std::string disassembly = Disassembler::Disassemble(emit, 0x100);
+    fmt::print("{}\n", disassembly);
     // if recompiler testing, exit...
 }

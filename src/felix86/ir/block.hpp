@@ -43,6 +43,10 @@ struct IRBlock {
 
     IRInstruction* InsertAtEnd(IRInstruction&& instr);
 
+    const IRInstruction* GetCondition() const {
+        return condition;
+    }
+
     bool IsCompiled() const {
         return compiled;
     }

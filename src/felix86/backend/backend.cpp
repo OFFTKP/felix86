@@ -96,10 +96,80 @@ void Backend::deallocateCodeCache(u8* memory) {
 
 void* Backend::EmitFunction(IRFunction* function) {
     void* start = as.GetCursorPointer();
+    tsl::robin_map<IRBlock*, void*> block_map;
+
+    struct ConditionalJump {
+        ptrdiff_t location;
+        const IRInstruction* inst;
+        IRBlock* target_true;
+        IRBlock* target_false;
+    };
+
+    struct DirectJump {
+        ptrdiff_t location;
+        IRBlock* target;
+    };
+
+    std::vector<ConditionalJump> conditional_jumps;
+    std::vector<DirectJump> direct_jumps;
+
     for (IRBlock* block : function->GetBlocks()) {
+        block_map[block] = as.GetCursorPointer();
         for (const IRInstruction& inst : block->GetInstructions()) {
             Emitter::Emit(*this, as, inst);
         }
+
+        switch (block->GetTermination()) {
+        case Termination::Jump: {
+            direct_jumps.push_back({as.GetCodeBuffer().GetCursorOffset(), block->GetSuccessor(0)});
+            // Some space for the backpatched jump
+            as.EBREAK();
+            as.EBREAK();
+            as.EBREAK();
+            break;
+        }
+        case Termination::JumpConditional: {
+            conditional_jumps.push_back(
+                {as.GetCodeBuffer().GetCursorOffset(), block->GetCondition(), block->GetSuccessor(0), block->GetSuccessor(1)});
+            // Some space for the backpatched jump
+            as.NOP();
+            as.NOP();
+            as.NOP();
+            as.NOP();
+            as.EBREAK();
+            break;
+        }
+        case Termination::Exit: {
+            Emitter::EmitJump(*this, as, exit_dispatcher);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
     }
+
+    for (const DirectJump& jump : direct_jumps) {
+        if (block_map.find(jump.target) == block_map.end()) {
+            ERROR("Block not found");
+        }
+
+        ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
+        as.RewindBuffer(jump.location);
+        Emitter::EmitJump(*this, as, block_map[jump.target]);
+        as.RewindBuffer(cursor);
+    }
+
+    for (const ConditionalJump& jump : conditional_jumps) {
+        if (block_map.find(jump.target_true) == block_map.end() || block_map.find(jump.target_false) == block_map.end()) {
+            ERROR("Block not found");
+        }
+
+        ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
+        as.RewindBuffer(jump.location);
+        Emitter::EmitJumpConditional(*this, as, *jump.inst, block_map[jump.target_true], block_map[jump.target_false]);
+        as.RewindBuffer(cursor);
+    }
+
     return start;
 }
