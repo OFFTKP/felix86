@@ -34,10 +34,8 @@ private:
     void emitNecessaryStuff();
     void resetCodeCache();
 
-    ThreadState& thread_state;
-    u8* memory = nullptr;
-    biscuit::Assembler as{};
-    tsl::robin_map<u64, void*> map{}; // map functions to host code
+    constexpr static u64 vm_storage_size = 32 * 8 + 32 * 8 + 32 * 16; // 32 GPRs, 32 FPRs, 32 Vecs
+    std::array<u8, vm_storage_size> vm_storage{};
 
     constexpr static std::array saved_gprs = {biscuit::ra, biscuit::sp, biscuit::gp,  biscuit::tp, biscuit::s0, biscuit::s1,
                                               biscuit::s2, biscuit::s3, biscuit::s4,  biscuit::s5, biscuit::s6, biscuit::s7,
@@ -48,6 +46,11 @@ private:
 
     std::array<u64, saved_gprs.size()> gpr_storage{};
     std::array<u64, saved_fprs.size()> fpr_storage{};
+
+    ThreadState& thread_state;
+    u8* memory = nullptr;
+    biscuit::Assembler as{};
+    tsl::robin_map<u64, void*> map{}; // map functions to host code
 
     // Special addresses within the code cache
     u8* enter_dispatcher = nullptr;

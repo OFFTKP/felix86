@@ -8,6 +8,7 @@
 #include <vector>
 #include "felix86/backend/registers.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/riscv.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/frontend/instruction.hpp"
 
@@ -27,23 +28,25 @@
     X(Syscall)                                                                                                                                       \
     X(Cpuid)                                                                                                                                         \
     X(Rdtsc)                                                                                                                                         \
-                                                                                                                                                     \
-    X(GetGuest) /* placeholder instruction that indicates a use of a register, replaced by the ssa pass */                                           \
-    X(SetGuest) /* placeholder instruction that indicates a def of a register, replaced by the ssa pass */                                           \
-    X(LoadGuestFromMemory)                                                                                                                           \
+    X(GetGuest)            /* placeholder instruction that indicates a use of a register, replaced by the ssa pass */                                \
+    X(SetGuest)            /* placeholder instruction that indicates a def of a register, replaced by the ssa pass */                                \
+    X(LoadGuestFromMemory) /* to load or store to the thread_state struct which contains x86 register info */                                        \
     X(StoreGuestToMemory)                                                                                                                            \
-                                                                                                                                                     \
+    X(PushHost) /* to load or store to the vm_state struct which contains risc-v reg info. for when we need to exit vm */                            \
+    X(PopHost)  /* and not screw up our allocated registers */                                                                                       \
     X(Add)                                                                                                                                           \
     X(Sub)                                                                                                                                           \
     X(IMul64)                                                                                                                                        \
-    X(IDiv8)                                                                                                                                         \
-    X(IDiv16)                                                                                                                                        \
-    X(IDiv32)                                                                                                                                        \
-    X(IDiv64)                                                                                                                                        \
-    X(UDiv8)                                                                                                                                         \
-    X(UDiv16)                                                                                                                                        \
-    X(UDiv32)                                                                                                                                        \
-    X(UDiv64)                                                                                                                                        \
+    X(Divu)                                                                                                                                          \
+    X(Div)                                                                                                                                           \
+    X(Remu)                                                                                                                                          \
+    X(Rem)                                                                                                                                           \
+    X(Divuw)                                                                                                                                         \
+    X(Divw)                                                                                                                                          \
+    X(Remuw)                                                                                                                                         \
+    X(Remw)                                                                                                                                          \
+    X(Div128)                                                                                                                                        \
+    X(Divu128)                                                                                                                                       \
     X(Clz)                                                                                                                                           \
     X(Ctz)                                                                                                                                           \
     X(ShiftLeft)                                                                                                                                     \
@@ -162,6 +165,14 @@ struct Comment {
     std::string comment = {};
 };
 
+struct PushHost {
+    riscv_ref_e ref = RISCV_REF_COUNT;
+};
+
+struct PopHost {
+    riscv_ref_e ref = RISCV_REF_COUNT;
+};
+
 enum class ExpressionType : u8 {
     Operands,
     Immediate,
@@ -170,6 +181,8 @@ enum class ExpressionType : u8 {
     Phi,
     Comment,
     TupleAccess,
+    PushHost,
+    PopHost,
 
     Count,
 };
@@ -183,7 +196,7 @@ static_assert(std::is_same_v<biscuit::FPR, std::variant_alternative_t<2, Allocat
 static_assert(std::is_same_v<biscuit::Vec, std::variant_alternative_t<3, Allocation>>);
 static_assert(std::is_same_v<u32, std::variant_alternative_t<4, Allocation>>);
 
-using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, TupleAccess>;
+using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, TupleAccess, PushHost, PopHost>;
 static_assert(std::variant_size_v<Expression> == (u8)ExpressionType::Count);
 static_assert(std::is_same_v<Operands, std::variant_alternative_t<(u8)ExpressionType::Operands, Expression>>);
 static_assert(std::is_same_v<Immediate, std::variant_alternative_t<(u8)ExpressionType::Immediate, Expression>>);
@@ -192,6 +205,8 @@ static_assert(std::is_same_v<SetGuest, std::variant_alternative_t<(u8)Expression
 static_assert(std::is_same_v<Phi, std::variant_alternative_t<(u8)ExpressionType::Phi, Expression>>);
 static_assert(std::is_same_v<Comment, std::variant_alternative_t<(u8)ExpressionType::Comment, Expression>>);
 static_assert(std::is_same_v<TupleAccess, std::variant_alternative_t<(u8)ExpressionType::TupleAccess, Expression>>);
+static_assert(std::is_same_v<PushHost, std::variant_alternative_t<(u8)ExpressionType::PushHost, Expression>>);
+static_assert(std::is_same_v<PopHost, std::variant_alternative_t<(u8)ExpressionType::PopHost, Expression>>);
 
 struct IRInstruction {
     IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands)
@@ -217,7 +232,7 @@ struct IRInstruction {
 
         // If it's zero we can just give it x0 which is hardwired to 0
         if (immediate == 0) {
-            allocation = Registers::Zero();
+            Allocate(Registers::Zero());
         }
     }
 
@@ -271,6 +286,22 @@ struct IRInstruction {
         expression_type = ExpressionType::TupleAccess;
     }
 
+    IRInstruction(riscv_ref_e ref, bool push) {
+        if (push) {
+            opcode = IROpcode::PushHost;
+        } else {
+            opcode = IROpcode::PopHost;
+        }
+
+        if (push) {
+            expression = PushHost{ref};
+        } else {
+            expression = PopHost{ref};
+        }
+        expression_type = push ? ExpressionType::PushHost : ExpressionType::PopHost;
+        return_type = IRType::Void;
+    }
+
     IRInstruction(const IRInstruction& other) = delete;
     IRInstruction& operator=(const IRInstruction& other) = delete;
     IRInstruction(IRInstruction&& other) = default;
@@ -318,6 +349,14 @@ struct IRInstruction {
 
     const Phi& AsPhi() const {
         return std::get<Phi>(expression);
+    }
+
+    const PushHost& AsPushHost() const {
+        return std::get<PushHost>(expression);
+    }
+
+    const PopHost& AsPopHost() const {
+        return std::get<PopHost>(expression);
     }
 
     const Comment& AsComment() const {
@@ -467,6 +506,10 @@ struct IRInstruction {
         return false;
     }
 
+    Allocation& GetAllocation() {
+        return allocation;
+    }
+
     bool IsGPR() {
         if (return_type == IRType::Integer64) {
             return true;
@@ -510,6 +553,12 @@ struct IRInstruction {
     bool IsVoid() const;
 
     bool NeedsAllocation() const;
+
+    bool ExitsVM() const;
+
+    void Allocate(Allocation&& alloc) {
+        allocation = std::move(alloc);
+    }
 
 private:
     static IRType getTypeFromOpcode(IROpcode opcode, x86_ref_e ref = X86_REF_COUNT);

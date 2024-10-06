@@ -50,6 +50,8 @@ void Backend::emitNecessaryStuff() {
 
     as.LI(Registers::SpillPointer(), (u64)&thread_state);
 
+    as.LI(Registers::VMStatePointer(), (u64)&vm_storage);
+
     // Jump
     // ...
 

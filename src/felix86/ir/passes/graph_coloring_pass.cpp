@@ -3,6 +3,18 @@
 #include <fmt/format.h>
 #include "felix86/ir/passes/passes.hpp"
 
+riscv_ref_e AllocationToRef(Allocation& allocation) {
+    if (allocation.index() == 1) {
+        return (riscv_ref_e)(RISCV_REF_X0 + std::get<biscuit::GPR>(allocation).Index());
+    } else if (allocation.index() == 2) {
+        return (riscv_ref_e)(RISCV_REF_F0 + std::get<biscuit::FPR>(allocation).Index());
+    } else if (allocation.index() == 3) {
+        return (riscv_ref_e)(RISCV_REF_VEC0 + std::get<biscuit::Vec>(allocation).Index());
+    } else {
+        return RISCV_REF_COUNT;
+    }
+}
+
 // This has got to be super slow, lots of heap allocations, please profile me
 
 struct InterferenceGraph {
@@ -246,4 +258,46 @@ void ir_graph_coloring_pass(IRFunction* function) {
     fmt::print("{}", function->Print(func));
 
     // Now we have the interference graph, we can color it
+    // ...
+    // depths of hell
+    // ...
+
+    // After it's been colored, go to instructions that exit vm, check the interferences
+    // see which of the interferences are not spilled values (ie they are allocated to regs), store them to memory
+    // and load them back after the exit vm instruction
+    // So imagine you have a state like this:
+    // r1 <- ...
+    // syscall (exits vm)
+    // r2 <- r1 ...
+    // (assuming there's no prior live registers)
+    // r1 here needs to be stored to a temporary, and loaded back after the syscall
+    // So we need to convert it to something like this:
+    // r1 <- ...
+    // write to memory r1
+    // syscall (exits vm)
+    // read from memory r1
+    // r2 <- r1 ...
+    // And do that for all live registers at those points that exit vm
+    for (IRBlock* block : function->GetBlocks()) {
+        auto it = block->GetInstructions().begin();
+        auto end = block->GetInstructions().end();
+        std::list<IRInstruction>& instructions = block->GetInstructions();
+        while (it != end) {
+            IRInstruction* inst = &*it;
+            if (inst->ExitsVM()) {
+                for (auto& interference : graph.GetInterferences(inst)) {
+                    if (!interference->IsSpilled()) {
+                        riscv_ref_e ref = AllocationToRef(interference->GetAllocation());
+                        IRInstruction store(ref, true);
+                        IRInstruction load(ref, false);
+                        instructions.insert(it, std::move(store));
+                        auto it_after = it;
+                        it_after++;
+                        instructions.insert(it_after, std::move(load));
+                    }
+                }
+            }
+            it++;
+        }
+    }
 }

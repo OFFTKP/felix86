@@ -93,7 +93,9 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Comment:
     case IROpcode::Syscall:
     case IROpcode::Cpuid:
-    case IROpcode::Rdtsc: {
+    case IROpcode::Rdtsc:
+    case IROpcode::Div128:
+    case IROpcode::Divu128: {
         return IRType::Void;
     }
     case IROpcode::Select:
@@ -129,18 +131,18 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::VExtractInteger:
     case IROpcode::Sext8:
     case IROpcode::Sext16:
-    case IROpcode::Sext32: {
+    case IROpcode::Sext32:
+    case IROpcode::Div:
+    case IROpcode::Divu:
+    case IROpcode::Divw:
+    case IROpcode::Divuw:
+    case IROpcode::Rem:
+    case IROpcode::Remu:
+    case IROpcode::Remw:
+    case IROpcode::Remuw: {
         return IRType::Integer64;
     }
-    case IROpcode::IMul64:
-    case IROpcode::IDiv8:
-    case IROpcode::IDiv16:
-    case IROpcode::IDiv32:
-    case IROpcode::IDiv64:
-    case IROpcode::UDiv8:
-    case IROpcode::UDiv16:
-    case IROpcode::UDiv32:
-    case IROpcode::UDiv64: {
+    case IROpcode::IMul64: {
         return IRType::TupleTwoInteger64;
     }
     case IROpcode::ReadXmmWord:
@@ -286,6 +288,7 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 
         VALIDATE_0OP(Rdtsc);
         VALIDATE_0OP(Syscall);
+        VALIDATE_0OP(Cpuid);
 
         VALIDATE_OPS_INT(Sext8, 1);
         VALIDATE_OPS_INT(Sext16, 1);
@@ -300,6 +303,8 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(ReadDWord, 1);
         VALIDATE_OPS_INT(ReadQWord, 1);
         VALIDATE_OPS_INT(ReadXmmWord, 1);
+        VALIDATE_OPS_INT(Div128, 1);
+        VALIDATE_OPS_INT(Divu128, 1);
 
         VALIDATE_OPS_INT(WriteByte, 2);
         VALIDATE_OPS_INT(WriteWord, 2);
@@ -323,17 +328,16 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(LeftRotate16, 2);
         VALIDATE_OPS_INT(LeftRotate32, 2);
         VALIDATE_OPS_INT(LeftRotate64, 2);
-        VALIDATE_OPS_INT(IDiv8, 2);
-        VALIDATE_OPS_INT(UDiv8, 2);
-        VALIDATE_OPS_INT(Cpuid, 2);
+        VALIDATE_OPS_INT(Div, 2);
+        VALIDATE_OPS_INT(Divu, 2);
+        VALIDATE_OPS_INT(Divw, 2);
+        VALIDATE_OPS_INT(Divuw, 2);
+        VALIDATE_OPS_INT(Rem, 2);
+        VALIDATE_OPS_INT(Remu, 2);
+        VALIDATE_OPS_INT(Remw, 2);
+        VALIDATE_OPS_INT(Remuw, 2);
         VALIDATE_OPS_INT(IMul64, 2);
 
-        VALIDATE_OPS_INT(IDiv16, 3);
-        VALIDATE_OPS_INT(UDiv16, 3);
-        VALIDATE_OPS_INT(IDiv32, 3);
-        VALIDATE_OPS_INT(UDiv32, 3);
-        VALIDATE_OPS_INT(IDiv64, 3);
-        VALIDATE_OPS_INT(UDiv64, 3);
         VALIDATE_OPS_INT(Select, 3);
 
         VALIDATE_OPS_INT(Lea, 4);
@@ -402,9 +406,6 @@ std::string IRInstruction::GetTypeString() const {
     }
     case IRType::TupleTwoInteger64: {
         return "Tuple<Int64, Int64>";
-    }
-    case IRType::TupleFourInteger64: {
-        return "Tuple<Int64, Int64, Int64, Int64>";
     }
     case IRType::Void: {
         return "Void";
@@ -557,14 +558,6 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
         ret += SOP2(<);
         break;
     }
-    case IROpcode::UDiv8: {
-        ret += U8OP2(/);
-        break;
-    }
-    case IROpcode::IDiv8: {
-        ret += S8OP2(/);
-        break;
-    }
     case IROpcode::IMul64: {
         ret += SOP2(*);
         break;
@@ -665,28 +658,44 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
         ret += FOP1(read128, address);
         break;
     }
-    case IROpcode::IDiv16: {
-        ret += FOP3(idiv16, rdx, rax, divisor);
+    case IROpcode::Div: {
+        ret += FOP2(div, dividend, divisor);
         break;
     }
-    case IROpcode::IDiv32: {
-        ret += FOP3(idiv32, rdx, rax, divisor);
+    case IROpcode::Divu: {
+        ret += FOP2(divu, dividend, divisor);
         break;
     }
-    case IROpcode::IDiv64: {
-        ret += FOP3(idiv64, rdx, rax, divisor);
+    case IROpcode::Divw: {
+        ret += FOP2(divw, dividend, divisor);
         break;
     }
-    case IROpcode::UDiv16: {
-        ret += FOP3(udiv16, rdx, rax, divisor);
+    case IROpcode::Divuw: {
+        ret += FOP2(divuw, dividend, divisor);
         break;
     }
-    case IROpcode::UDiv32: {
-        ret += FOP3(udiv32, rdx, rax, divisor);
+    case IROpcode::Rem: {
+        ret += FOP2(rem, dividend, divisor);
         break;
     }
-    case IROpcode::UDiv64: {
-        ret += FOP3(udiv64, rdx, rax, divisor);
+    case IROpcode::Remu: {
+        ret += FOP2(remu, dividend, divisor);
+        break;
+    }
+    case IROpcode::Remw: {
+        ret += FOP2(remw, dividend, divisor);
+        break;
+    }
+    case IROpcode::Remuw: {
+        ret += FOP2(remuw, dividend, divisor);
+        break;
+    }
+    case IROpcode::Div128: {
+        ret += FOP1(div128, divisor);
+        break;
+    }
+    case IROpcode::Divu128: {
+        ret += FOP1(divu128, divisor);
         break;
     }
     case IROpcode::Syscall: {
@@ -833,4 +842,17 @@ std::span<IRInstruction*> IRInstruction::GetUsedInstructions() {
     }
     }
     return {};
+}
+
+bool IRInstruction::ExitsVM() const {
+    switch (GetOpcode()) {
+    case IROpcode::Syscall:
+    case IROpcode::Cpuid:
+    case IROpcode::Rdtsc:
+    case IROpcode::Div128:
+    case IROpcode::Divu128:
+        return true;
+    default:
+        return false;
+    }
 }
