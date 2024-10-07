@@ -138,7 +138,7 @@ void felix86_syscall(Emulator& emulator, u64* prax, u64 rdi, u64 rsi, u64 rdx, u
         break;
     }
     case felix86_x86_64_readlinkat: {
-        fs.ReadLinkAt(rdi, (const char*)rsi, (char*)rdx, r10);
+        result = fs.ReadLinkAt(rdi, (const char*)rsi, (char*)rdx, r10);
         VERBOSE("readlinkat(%d, %s, %s, %d) = %d", (int)rdi, (const char*)rsi, (char*)rdx, (int)r10, (int)result);
         break;
     }

@@ -29,8 +29,8 @@ void Emulator::Run() {
         ERROR("Function did not validate");
     }
 
-    // void* emit = backend.EmitFunction(function);
-    // std::string disassembly = Disassembler::Disassemble(emit, 0x100);
-    // fmt::print("{}\n", disassembly);
+    void* emit = backend.EmitFunction(function);
+    std::string disassembly = Disassembler::Disassemble(emit, 0x200);
+    fmt::print("{}\n", disassembly);
     // if recompiler testing, exit...
 }

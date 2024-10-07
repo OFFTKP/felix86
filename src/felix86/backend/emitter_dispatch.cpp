@@ -140,7 +140,7 @@ void Emitter::Emit(Backend& backend, const IRInstruction& inst) {
     }
 
     case IROpcode::Addi: {
-        EmitAddi(backend, _RegWO_(&inst), _RegRO_(inst.GetOperand(0)), inst.AsImmediate().immediate);
+        EmitAddi(backend, _RegWO_(&inst), _RegRO_(inst.GetOperand(0)), inst.AsOperands().immediate_data);
         break;
     }
 

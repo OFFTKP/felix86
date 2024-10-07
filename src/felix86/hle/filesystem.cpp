@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,23 +9,23 @@
 #include "felix86/common/log.hpp"
 #include "felix86/hle/filesystem.hpp"
 
-#define VALIDATE_PATH(path)                                                                                                                          \
-    if (!validatePath(path)) {                                                                                                                       \
-        return -ENOENT;                                                                                                                              \
-    }
-
 const char* proc_self_exe = "/proc/self/exe";
 
-void Filesystem::LoadRootFS(const std::filesystem::path& path) {
+bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
+    if (!rootfs_path.empty()) {
+        ERROR("Rootfs already loaded");
+        return false;
+    }
+
     if (path.empty()) {
         ERROR("Empty rootfs path");
-        return;
+        return false;
     }
 
     std::filesystem::path root_path = "/";
     if (path == root_path) { // hopefully prevent someone from messing with their host root
         ERROR("You chose your own root path, you need to choose a sandboxed rootfs path");
-        return;
+        return false;
     }
 
     rootfs_path = std::filesystem::canonical(path);
@@ -32,7 +33,7 @@ void Filesystem::LoadRootFS(const std::filesystem::path& path) {
 
     if (!std::filesystem::exists(rootfs_path) || !std::filesystem::is_directory(rootfs_path)) {
         ERROR("Rootfs path %s does not exist", rootfs_path.c_str());
-        return;
+        return false;
     }
 
     // Do some basic sanity checks to make sure the user didn't pick a
@@ -44,21 +45,83 @@ void Filesystem::LoadRootFS(const std::filesystem::path& path) {
     for (auto& dir : dirs) {
         if (!std::filesystem::exists(rootfs_path / dir)) {
             ERROR("Rootfs path %s is missing %s", rootfs_path.c_str(), dir);
-            return;
+            return false;
         }
     }
 
-    good = true;
+    cwd_path = rootfs_path;
+
+    return true;
 }
 
 ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 bufsiz) {
-    VALIDATE_PATH(pathname);
+    std::filesystem::path path = pathname;
 
-    ERROR("Unsupported readlinkat call: (%d) %s", dirfd, pathname);
+    if (path.is_relative()) {
+        if (dirfd == AT_FDCWD) {
+            path = cwd_path / path;
+        } else {
+            struct stat dirfd_stat;
+            fstat(dirfd, &dirfd_stat);
+
+            bool is_dir = S_ISDIR(dirfd_stat.st_mode);
+            if (!is_dir) {
+                WARN("dirfd is not a directory");
+                return -ENOTDIR;
+            }
+
+            // This is not POSIX portable but should work on Linux which is what we're targeting
+            char dirfd_path[PATH_MAX];
+            snprintf(dirfd_path, sizeof(dirfd_path), "/proc/self/fd/%d", dirfd);
+            ssize_t res = readlink(dirfd_path, dirfd_path, sizeof(dirfd_path));
+            if (res == -1) {
+                WARN("Failed to readlink dirfd");
+                return -ENOENT;
+            }
+            dirfd_path[res] = '\0';
+
+            struct stat dirfd_path_stat;
+            stat(dirfd_path, &dirfd_path_stat);
+
+            // Sanity check that the directory was not moved or something
+            if (dirfd_path_stat.st_dev != dirfd_stat.st_dev || dirfd_path_stat.st_ino != dirfd_stat.st_ino) {
+                WARN("dirfd sanity check failed");
+                return -ENOENT;
+            }
+
+            path = std::filesystem::path(dirfd_path) / path;
+        }
+    } else if (path.is_absolute()) {
+        if (path == proc_self_exe) { // special case for /proc/self/exe
+            std::string exe = executable_path.string();
+            if (exe.size() > bufsiz) {
+                WARN("Buffer too small for readlinkat");
+                return -EINVAL;
+            }
+
+            // readlink/readlinkat doesn't null terminate the buffer
+            memcpy(buf, exe.c_str(), exe.size());
+            return exe.size();
+        } else {
+            path = rootfs_path / path;
+        }
+    } else {
+        UNREACHABLE();
+    }
+
+    if (!validatePath(path)) {                                                                                                                       \
+        return -ENOENT;                                                                                                                              \
+    }
+
+    return readlink(path.c_str(), buf, bufsiz);
+}
+
+ssize_t Filesystem::ReadLink(const char* pathname, char* buf, u32 bufsiz) {
+    return ReadLinkAt(AT_FDCWD, pathname, buf, bufsiz);
 }
 
 bool Filesystem::validatePath(const std::filesystem::path& path) {
-    if (!Good()) {
+    if (rootfs_path_string.empty()) {
         ERROR("Filesystem not initialized");
         return false;
     }

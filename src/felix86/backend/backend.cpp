@@ -2,6 +2,7 @@
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/backend/backend.hpp"
 #include "felix86/common/log.hpp"
+#include "fmt/base.h"
 
 using namespace biscuit;
 
@@ -113,7 +114,10 @@ void* Backend::EmitFunction(IRFunction* function) {
     std::vector<ConditionalJump> conditional_jumps;
     std::vector<DirectJump> direct_jumps;
 
-    for (IRBlock* block : function->GetBlocks()) {
+    std::vector<IRBlock*> blocks_postorder = function->GetBlocksPostorder();
+
+    for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
+        IRBlock* block = *it;
         block_map[block] = as.GetCursorPointer();
         for (const IRInstruction& inst : block->GetInstructions()) {
             Emitter::Emit(*this, inst);

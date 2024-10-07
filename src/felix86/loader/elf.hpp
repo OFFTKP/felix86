@@ -1,16 +1,36 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <vector>
 #include "felix86/common/utility.hpp"
 
 struct Elf {
+    Elf(bool is_interpreter);
+
     ~Elf();
 
+    void Load(const std::filesystem::path& path);
+
+    bool Okay() const {
+        return ok;
+    }
+
+    std::filesystem::path GetInterpreterPath() const {
+        return interpreter;
+    }
+
+    void* GetEntrypoint() const {
+        return (void*)(program + entry);
+    }
+
+private:
+    bool ok = false;
+    bool is_interpreter = false;
     u8* program = nullptr;
     std::vector<std::pair<u8*, u64>> executable_segments{};
     u64 entry = 0;
-    std::string interpreter{};
+    std::filesystem::path interpreter{};
     u8* stack_base = nullptr;
     u8* stack_pointer = nullptr;
     u8* brk_base = nullptr;
@@ -19,5 +39,3 @@ struct Elf {
     u64 phnum = 0;
     u64 phent = 0;
 };
-
-std::unique_ptr<Elf> elf_load(const std::string& path, bool is_interpreter);

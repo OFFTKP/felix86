@@ -6,6 +6,7 @@
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/ir/function_cache.hpp"
+#include "felix86/loader/elf.hpp"
 
 struct Config {
     std::filesystem::path rootfs_path;
@@ -165,6 +166,10 @@ struct Emulator {
 
     void SetFSBase(u64 value) {
         thread_state.fsbase = value;
+    }
+
+    Elf LoadElf(const std::filesystem::path& path) {
+        return elf_load(path, config.use_interpreter);
     }
 
     void Run();

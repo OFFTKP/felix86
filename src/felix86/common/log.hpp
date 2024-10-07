@@ -36,6 +36,7 @@
         }                                                                                                                                            \
     } while (0)
 #define UNREACHABLE() ERROR("Unreachable code hit")
+#define UNIMPLEMENTED() ERROR("Unimplemented code hit")
 
 void enable_verbose();
 void disable_logging();
