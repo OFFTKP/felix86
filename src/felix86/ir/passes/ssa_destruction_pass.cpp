@@ -19,12 +19,13 @@
     And a blog post based on the algorithm with a neat demo: https://compiler.club/parallel-moves/
 */
 
-// Break critical edges that lead to blocks with phis and also construct the RIRInstructions
+// Break critical edges that lead to blocks with phis and also construct the ReducedInstructions
+// TODO: separate pass to convert to ReducedInstructions
 void critical_edge_splitting_pass(IRFunction* function) {
     for (IRBlock* block : function->GetBlocks()) {
         for (const SSAInstruction& inst : block->GetInstructions()) {
             if (inst.IsOperands()) {
-                RIRInstruction rir_inst = inst.AsReducedInstruction();
+                ReducedInstruction rir_inst = inst.AsReducedInstruction();
                 block->InsertReducedInstruction(std::move(rir_inst));
 
                 if (&inst == block->GetCondition()) {
@@ -32,18 +33,35 @@ void critical_edge_splitting_pass(IRFunction* function) {
                 }
             }
         }
+    }
 
-        if (block->GetTermination() == Termination::JumpConditional) {
-            // Only termination variety with more than one successor
-            for (IRBlock* successor : block->GetSuccessors()) {
-                if (successor->GetPredecessors().size() > 1 && successor->HasPhis()) {
-                    // Critical edge, must be split
-                    successor->RemovePredecessor(block);
-                    IRBlock* new_block = function->CreateBlock();
-                    new_block->TerminateJump(successor);
-                    block->ReplaceSuccessor(successor, new_block);
+    // Ugly, its due to vector invalidating iterators while we loop and add blocks
+    // TODO: cleanup
+    while (true) {
+        bool changed = false;
+        for (IRBlock* block : function->GetBlocks()) {
+            if (block->GetTermination() == Termination::JumpConditional) {
+                // Only termination variety with more than one successor
+                for (IRBlock* successor : block->GetSuccessors()) {
+                    if (successor->GetPredecessors().size() > 1 && successor->HasPhis()) {
+                        // Critical edge, must be split
+                        successor->RemovePredecessor(block);
+                        IRBlock* new_block = function->CreateBlock();
+                        new_block->TerminateJump(successor);
+                        block->ReplaceSuccessor(successor, new_block);
+                        changed = true;
+                        break;
+                    }
+                }
+
+                if (changed) {
+                    break;
                 }
             }
+        }
+
+        if (!changed) {
+            break;
         }
     }
 }
@@ -59,8 +77,60 @@ struct ParallelMove {
 // We use the u32 names after translating out of SSA because
 // there can now be multiple definitions for the same variable after
 // breaking the phis
-void insert_parallel_move(IRBlock* block, const ParallelMove& move) {
-    // ARGH it dont work cus you remove the instructions thus making the pointers invalid and we cant check the name of the operands
+void insert_parallel_move(IRBlock* block, ParallelMove& move) {
+    // This only modifies the ReducedInstruction part of the block so we can always have a valid SSA form
+    // to analyze and because ReducedInstruction deals with names instead of pointers.
+    size_t size = move.names_lhs.size();
+    enum Status { To_move, Being_moved, Moved };
+
+    std::vector<Status> status(size, To_move);
+
+    auto& dst = move.names_lhs;
+    auto& src = move.names_rhs;
+
+    std::function<void(int)> move_one = [&](int i) {
+        if (src[i] != dst[i]) {
+            status[i] = Being_moved;
+
+            for (size_t j = 0; j < size; j++) {
+                if (src[j] == dst[i]) {
+                    switch (status[j]) {
+                        case To_move: {
+                            move_one(j);
+                            break;
+                        }
+                        case Being_moved: {
+                            ReducedInstruction rinstr = {};
+                            rinstr.opcode = IROpcode::Mov;
+                            rinstr.name = block->GetNextName();
+                            rinstr.operands[0] = src[j];
+                            rinstr.operand_count = 1;
+                            block->InsertReducedInstruction(std::move(rinstr));
+                            src[j] = rinstr.name;
+                            break;
+                        }
+                        case Moved: {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            ReducedInstruction rinstr = {};
+            rinstr.opcode = IROpcode::Mov;
+            rinstr.name = dst[i];
+            rinstr.operands[0] = src[i];
+            rinstr.operand_count = 1;
+            block->InsertReducedInstruction(std::move(rinstr));
+            status[i] = Moved;
+        }
+    };
+
+    for (size_t i = 0; i < size; ++i) {
+        if (status[i] == To_move) {
+            move_one(i);
+        }
+    }
 }
 
 void breakup_phis(IRBlock* block, const std::vector<InstIterator>& phis) {
@@ -76,10 +146,6 @@ void breakup_phis(IRBlock* block, const std::vector<InstIterator>& phis) {
         move.names_lhs.resize(pred_count);
         move.names_rhs.resize(pred_count);
         for (InstIterator phi : phis) {
-            if (phi->AsPhi().blocks[i] != pred) {
-                ERROR("Predecessor mismatch");
-            }
-
             u32 name = phi->GetName();
             u32 value = phi->AsPhi().values[i]->GetName();
             move.names_lhs[i] = name;
@@ -102,6 +168,7 @@ void phi_replacement_pass(IRFunction* function) {
                 } else {
                     break;
                 }
+                inst++;
             }
 
             if (phis.empty()) {
@@ -109,11 +176,6 @@ void phi_replacement_pass(IRFunction* function) {
             }
 
             breakup_phis(block, phis);
-
-            // Now that we have broken up the phis, we can safely remove them
-            for (InstIterator inst : phis) {
-                block->GetInstructions().erase(inst);
-            }
         }
     }
 }

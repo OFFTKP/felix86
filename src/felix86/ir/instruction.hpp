@@ -85,15 +85,19 @@ static_assert(std::is_same_v<Comment, std::variant_alternative_t<(u8)ExpressionT
 static_assert(std::is_same_v<PushHost, std::variant_alternative_t<(u8)ExpressionType::PushHost, Expression>>);
 static_assert(std::is_same_v<PopHost, std::variant_alternative_t<(u8)ExpressionType::PopHost, Expression>>);
 
+std::string GetNameString(u32 name);
+
 // Reduced instruction, after the SSA destruction it gets transformed to this form
 // for easier register allocation and so that instruction operands are names and not
 // pointers since we remove phis
-struct RIRInstruction {
-    RIRInstruction() = default;
-    RIRInstruction(const RIRInstruction& other) = delete;
-    RIRInstruction& operator=(const RIRInstruction& other) = delete;
-    RIRInstruction(RIRInstruction&& other) = default;
-    RIRInstruction& operator=(RIRInstruction&& other) = default;
+struct ReducedInstruction {
+    ReducedInstruction() = default;
+    ReducedInstruction(const ReducedInstruction& other) = delete;
+    ReducedInstruction& operator=(const ReducedInstruction& other) = delete;
+    ReducedInstruction(ReducedInstruction&& other) = default;
+    ReducedInstruction& operator=(ReducedInstruction&& other) = default;
+
+    [[nodiscard]] std::string Print(const std::function<std::string(const ReducedInstruction*)>& callback) const;
 
     std::array<u32, 4> operands;
     u64 immediate_data;
@@ -302,8 +306,6 @@ struct SSAInstruction {
         return name;
     }
 
-    std::string GetNameString() const;
-
     std::string GetTypeString() const;
 
     const SSAInstruction* GetOperand(u8 index) const {
@@ -314,8 +316,8 @@ struct SSAInstruction {
         return AsOperands().operands[index];
     }
 
-    std::string GetOperandNameString(u8 index) const {
-        return AsOperands().operands[index]->GetNameString();
+    u32 GetOperandName(u8 index) const {
+        return AsOperands().operands[index]->GetName();
     }
 
     std::span<SSAInstruction*> GetUsedInstructions();
@@ -343,7 +345,7 @@ struct SSAInstruction {
         AsOperands().immediate_data = immediate_data;
     }
 
-    std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
+    [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
     void Unlock() {
         locked = false;
@@ -389,12 +391,12 @@ struct SSAInstruction {
 
     void PropagateMovs();
 
-    RIRInstruction AsReducedInstruction() const {
+    ReducedInstruction AsReducedInstruction() const {
         if (!IsOperands()) {
             ERROR("Tried to reduce non-operands instruction");
         }
 
-        RIRInstruction rir_inst;
+        ReducedInstruction rir_inst;
         rir_inst.name = GetName();
         rir_inst.opcode = GetOpcode();
         rir_inst.operand_count = AsOperands().operand_count;

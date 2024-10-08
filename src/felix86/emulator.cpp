@@ -36,7 +36,7 @@ typedef struct {
 } auxv_t;
 
 void Emulator::Run() {
-    u64 rip = GetRip();
+    u64 rip = 0x403ab0;//GetRip();
     IRFunction* function = function_cache.CreateOrGetFunctionAt(rip);
     frontend_compile_function(function);
     ir_ssa_pass(function);
@@ -47,8 +47,9 @@ void Emulator::Run() {
     ir_local_cse_pass(function);
     ir_copy_propagation_pass(function);
     ir_dead_code_elimination_pass(function);
-    auto test = [](const SSAInstruction* inst) { return fmt::format(" 0x{:x}", (u64)inst); };
-    fmt::print("{}", function->Print(test));
+    fmt::print("{}", function->Print({}));
+    ir_ssa_destruction_pass(function);
+    fmt::print("{}", function->PrintReduced({}));
 
     if (!function->Validate()) {
         ERROR("Function did not validate");

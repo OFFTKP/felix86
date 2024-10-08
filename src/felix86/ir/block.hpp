@@ -6,6 +6,7 @@
 #include "felix86/backend/instruction.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/instruction.hpp"
+#include "fmt/format.h"
 
 #define IR_NO_ADDRESS (0)
 
@@ -24,7 +25,7 @@ struct IRBlock {
         termination = Termination::Jump;
         successors[0] = target;
 
-        successors[0]->AddPredecessor(this);
+        successors[0]->addPredecessor(this);
     }
 
     void TerminateJumpConditional(SSAInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
@@ -34,8 +35,8 @@ struct IRBlock {
         this->condition = condition;
         condition->Lock(); // this is used by the termination, don't optimize away
 
-        successors[0]->AddPredecessor(this);
-        successors[1]->AddPredecessor(this);
+        successors[0]->addPredecessor(this);
+        successors[1]->addPredecessor(this);
     }
 
     using iterator = std::list<SSAInstruction>::iterator;
@@ -46,7 +47,7 @@ struct IRBlock {
 
     SSAInstruction* InsertAtEnd(SSAInstruction&& instr);
 
-    void InsertReducedInstruction(RIRInstruction&& instr) {
+    void InsertReducedInstruction(ReducedInstruction&& instr) {
         reduced_instructions.push_back(std::move(instr));
     }
 
@@ -84,6 +85,20 @@ struct IRBlock {
 
     u32 GetIndex() const {
         return list_index;
+    }
+
+    std::string GetName() const {
+        if (GetIndex() == 0) {
+            return "Entry";
+        } else if (GetIndex() == 1) {
+            return "Exit";
+        } else {
+            return fmt::format("{}", GetIndex() - 2);
+        }
+    }
+
+    u32 GetNextName() {
+        return (GetIndex() << 20) | next_name++;
     }
 
     void SetIndex(u32 index) {
@@ -167,7 +182,7 @@ struct IRBlock {
         return instructions;
     }
 
-    const std::vector<RIRInstruction>& GetReducedInstructions() const {
+    const std::vector<ReducedInstruction>& GetReducedInstructions() const {
         return reduced_instructions;
     }
 
@@ -189,20 +204,26 @@ struct IRBlock {
 
     bool IsUsedInPhi(SSAInstruction* instr) const;
 
-    std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
+    [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
-    void SetReducedCondition(const RIRInstruction* instr) {
+    [[nodiscard]] std::string PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) const;
+
+    void SetReducedCondition(const ReducedInstruction* instr) {
         reduced_condition = instr;
     }
 
 private:
-    void AddPredecessor(IRBlock* pred) {
+    void addPredecessor(IRBlock* pred) {
         predecessors.push_back(pred);
     }
 
+    [[nodiscard]] std::string printBlock() const;
+
+    [[nodiscard]] std::string printTermination() const;
+
     u64 start_address = IR_NO_ADDRESS;
     std::list<SSAInstruction> instructions;
-    std::vector<RIRInstruction> reduced_instructions;
+    std::vector<ReducedInstruction> reduced_instructions;
     std::vector<BackendInstruction> backend_instructions;
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
@@ -210,7 +231,7 @@ private:
     IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
     const SSAInstruction* condition = nullptr;
-    const RIRInstruction* reduced_condition = nullptr;
+    const ReducedInstruction* reduced_condition = nullptr;
     const BackendInstruction* backend_condition = nullptr;
     bool compiled = false;
     mutable bool visited = false;

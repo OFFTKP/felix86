@@ -7,8 +7,6 @@
 #include "felix86/ir/emitter.hpp"
 #include "felix86/ir/instruction.hpp"
 
-#define INST_NAME (block->GetNextName())
-
 void ir_store_partial_state(IRBlock* block, std::span<const x86_ref_e> refs) {
     for (x86_ref_e reg : refs) {
         SSAInstruction* guest = ir_emit_get_guest(block, reg);

@@ -95,6 +95,24 @@ std::string IRFunction::Print(const std::function<std::string(const SSAInstructi
     return ret;
 }
 
+std::string IRFunction::PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) const {
+    if (!IsCompiled()) {
+        WARN("Print called on not compiled function");
+        return "";
+    }
+
+    std::string ret;
+
+    auto& blocks = GetBlocksPostorder();
+    auto it = blocks.rbegin();
+    while (it != blocks.rend()) {
+        ret += (*it)->PrintReduced(callback);
+        ++it;
+    }
+
+    return ret;
+}
+
 void IRFunction::UnvisitAll() const {
     for (auto& block : blocks) {
         block->SetVisited(false);

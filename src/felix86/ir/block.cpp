@@ -5,6 +5,32 @@
 std::string IRBlock::Print(const std::function<std::string(const SSAInstruction*)>& callback) const {
     std::string ret;
 
+    ret += printBlock() + "\n";
+
+    for (const SSAInstruction& inst : GetInstructions()) {
+        ret += inst.Print(callback);
+        ret += "\n";
+    }
+
+    ret += printTermination() + "\n";
+
+    return ret;
+}
+
+std::string IRBlock::PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) const {
+    std::string ret;
+
+    for (const ReducedInstruction& inst : GetReducedInstructions()) {
+        ret += inst.Print(callback);
+        ret += "\n";
+    }
+    ret += printTermination() + "\n";
+
+    return ret;
+}
+
+std::string IRBlock::printBlock() const {
+    std::string ret;
     if (GetIndex() == 0) {
         ret += "Entry Block";
     } else if (GetIndex() == 1) {
@@ -15,21 +41,19 @@ std::string IRBlock::Print(const std::function<std::string(const SSAInstruction*
     if (GetStartAddress() != IR_NO_ADDRESS) {
         ret += fmt::format(" @ 0x{:016x}", GetStartAddress());
     }
-    ret += "\n";
+    return ret;
+}
 
-    for (const SSAInstruction& inst : GetInstructions()) {
-        ret += inst.Print(callback);
-        ret += "\n";
-    }
-
+std::string IRBlock::printTermination() const {
+    std::string ret;
     switch (GetTermination()) {
     case Termination::Jump: {
-        ret += fmt::format("Termination -> Jump to Block {}\n", GetSuccessor(0)->GetIndex() - 2);
+        ret += fmt::format("Termination -> Jump to Block {}\n", GetSuccessor(0)->GetName());
         break;
     }
     case Termination::JumpConditional: {
-        ret += fmt::format("Termination -> JumpConditional ({}) to Block {} or Block {}\n", GetCondition()->GetNameString(),
-                           GetSuccessor(0)->GetIndex() - 2, GetSuccessor(1)->GetIndex() - 2);
+        ret += fmt::format("Termination -> JumpConditional ({}) to Block {} or Block {}\n", GetNameString(GetCondition()->GetName()),
+                           GetSuccessor(0)->GetName(), GetSuccessor(1)->GetName());
         break;
     }
     case Termination::Exit: {
@@ -41,16 +65,13 @@ std::string IRBlock::Print(const std::function<std::string(const SSAInstruction*
         break;
     }
     }
-
-    ret += "\n";
-
     return ret;
 }
 
 SSAInstruction* IRBlock::InsertAtEnd(SSAInstruction&& instr) {
     instructions.push_back(std::move(instr));
     SSAInstruction* ret = &instructions.back();
-    ret->SetName((GetIndex() << 20) | next_name++);
+    ret->SetName(GetNextName());
     return ret;
 }
 
