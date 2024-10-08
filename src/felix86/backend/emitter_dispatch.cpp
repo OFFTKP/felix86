@@ -9,10 +9,10 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
     case IROpcode::Phi:
     case IROpcode::SetGuest:
     case IROpcode::GetGuest:
-    case IROpcode::Count: 
+    case IROpcode::Count:
     case IROpcode::LoadGuestFromMemory:
-    case IROpcode::StoreGuestToMemory: 
-    case IROpcode::PushHost: 
+    case IROpcode::StoreGuestToMemory:
+    case IROpcode::PushHost:
     case IROpcode::PopHost: {
         UNREACHABLE();
     }
@@ -21,7 +21,17 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
     }
 
     case IROpcode::Mov: {
-        EmitMov(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
+        auto Rd = _RegWO_(inst.GetAllocation());
+        auto Rs = _RegRO_(inst.GetOperand(0));
+        if (inst.GetAllocation().IsGPR() || inst.GetAllocation().IsSpilled()) {
+            EmitMov(backend, Rd.AsGPR(), Rs.AsGPR());
+        } else if (inst.GetAllocation().IsFPR()) {
+            EmitMov(backend, Rd.AsFPR(), Rs.AsFPR());
+        } else if (inst.GetAllocation().IsVec()) {
+            EmitMov(backend, Rd.AsVec(), Rs.AsVec());
+        } else {
+            UNREACHABLE();
+        }
         break;
     }
 

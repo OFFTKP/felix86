@@ -4,8 +4,8 @@
 #include "Zycore/Status.h"
 #include "Zydis/Decoder.h"
 #include "Zydis/DecoderTypes.h"
+#include "felix86/common/elf.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/loader/elf.hpp"
 
 // These analyses find jump targets and add them to the addresses set
 // They are not very good but they can find some stuff for now

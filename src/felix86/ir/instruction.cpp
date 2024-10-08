@@ -14,11 +14,11 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
         const Operands& operands = AsOperands();
         const Operands& other_operands = other.AsOperands();
 
-        if (operands.operands.size() != other_operands.operands.size()) {
+        if (operands.operand_count != other_operands.operand_count) {
             return false;
         }
 
-        for (u8 i = 0; i < operands.operands.size(); i++) {
+        for (u8 i = 0; i < operands.operand_count; i++) {
             if (operands.operands[i] != other_operands.operands[i]) {
                 return false;
             }
@@ -208,17 +208,18 @@ void SSAInstruction::Invalidate() {
 
 #define VALIDATE_0OP(opcode)                                                                                                                         \
     case IROpcode::opcode:                                                                                                                           \
-        if (operands.operands.size() != 0) {                                                                                                         \
+        if (operands.operand_count != 0) {                                                                                                           \
             ERROR("Invalid operands for opcode %d", static_cast<u8>(IROpcode::opcode));                                                              \
         }                                                                                                                                            \
         break
 
 #define VALIDATE_OPS_INT(opcode, num_ops)                                                                                                            \
     case IROpcode::opcode:                                                                                                                           \
-        if (operands.operands.size() != num_ops) {                                                                                                   \
+        if (operands.operand_count != num_ops) {                                                                                                     \
             ERROR("Invalid operands for opcode %d", static_cast<u8>(IROpcode::opcode));                                                              \
         }                                                                                                                                            \
-        for (SSAInstruction * operand : operands.operands) {                                                                                          \
+        for (u8 i = 0; i < operands.operand_count; i++) {                                                                                            \
+            SSAInstruction* operand = operands.operands[i];                                                                                          \
             if (operand->GetType() != IRType::Integer64) {                                                                                           \
                 ERROR("Invalid operand type for opcode %d", static_cast<u8>(IROpcode::opcode));                                                      \
             }                                                                                                                                        \
@@ -227,10 +228,11 @@ void SSAInstruction::Invalidate() {
 
 #define VALIDATE_OPS_VECTOR(opcode, num_ops)                                                                                                         \
     case IROpcode::opcode:                                                                                                                           \
-        if (operands.operands.size() != num_ops) {                                                                                                   \
+        if (operands.operand_count != num_ops) {                                                                                                     \
             ERROR("Invalid operands for opcode %d", static_cast<u8>(IROpcode::opcode));                                                              \
         }                                                                                                                                            \
-        for (SSAInstruction * operand : operands.operands) {                                                                                          \
+        for (u8 i = 0; i < operands.operand_count; i++) {                                                                                            \
+            SSAInstruction* operand = operands.operands[i];                                                                                          \
             if (operand->GetType() != IRType::Vector128) {                                                                                           \
                 ERROR("Invalid operand type for opcode %d", static_cast<u8>(IROpcode::opcode));                                                      \
             }                                                                                                                                        \
@@ -341,7 +343,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 
     case IROpcode::WriteXmmWord:
     case IROpcode::VInsertInteger: {
-        if (operands.operands.size() != 2) {
+        if (operands.operand_count != 2) {
             ERROR("Invalid operands for opcode %d", static_cast<u8>(opcode));
         }
 
@@ -801,7 +803,7 @@ bool SSAInstruction::IsVoid() const {
 std::span<SSAInstruction*> SSAInstruction::GetUsedInstructions() {
     switch (expression_type) {
     case ExpressionType::Operands: {
-        return AsOperands().operands;
+        return {&AsOperands().operands[0], AsOperands().operand_count};
     }
     case ExpressionType::Comment:
     case ExpressionType::GetGuest: {
@@ -856,16 +858,23 @@ void SSAInstruction::PropagateMovs() {
     switch (expression_type) {
     case ExpressionType::Operands: {
         Operands& operands = AsOperands();
-        int i = 0;
-        for (SSAInstruction*& operand : operands.operands) {
-            replace_mov(operand, i);
-            i++;
+        for (u8 i = 0; i < operands.operand_count; i++) {
+            replace_mov(operands.operands[i], i);
         }
         break;
     }
-    case ExpressionType::GetGuest:
+    case ExpressionType::GetGuest: {
+        if (GetOpcode() == IROpcode::GetGuest) {
+            ERROR("Shouldn't exist");
+        }
+        break;
+    }
     case ExpressionType::SetGuest: {
-        ERROR("Shouldn't exist");
+        if (GetOpcode() == IROpcode::SetGuest) {
+            ERROR("Shouldn't exist");
+        } else if (GetOpcode() == IROpcode::StoreGuestToMemory) {
+            replace_mov(AsSetGuest().source, 0);
+        }
         break;
     }
     case ExpressionType::Phi: {

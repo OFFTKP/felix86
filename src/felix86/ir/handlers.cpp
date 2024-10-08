@@ -392,12 +392,13 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     x86_size_e size_e = inst->operand_imm.size;
     i64 immediate = sext(inst->operand_imm.immediate.data, size_e);
     SSAInstruction* condition = ir_emit_get_cc(BLOCK, inst->opcode);
+    SSAInstruction* condition_mov = ir_emit_not_equal(BLOCK, condition, ir_emit_immediate(BLOCK, 0));
     u64 jump_address_false = state->current_address + inst_length;
     u64 jump_address_true = state->current_address + inst_length + immediate;
 
     IRBlock* block_true = state->function->CreateBlockAt(jump_address_true);
     IRBlock* block_false = state->function->CreateBlockAt(jump_address_false);
-    BLOCK->TerminateJumpConditional(condition, block_true, block_false);
+    BLOCK->TerminateJumpConditional(condition_mov, block_true, block_false);
     state->exit = true;
 
     frontend_compile_block(state->function, block_false);

@@ -178,7 +178,7 @@ static void place_phi_functions(IRFunction* function) {
                     phi.values.resize(pred_count);
                     phi.blocks.resize(pred_count);
 
-                    SSAInstruction instruction(std::move(phi), df->GetNextName());
+                    SSAInstruction instruction(std::move(phi));
                     df->AddPhi(std::move(instruction));
 
                     has_already[df->GetIndex()] = iter_count;

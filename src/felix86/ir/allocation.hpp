@@ -57,6 +57,7 @@ struct Allocation {
     AllocationType GetAllocationType() const {
         return (AllocationType)allocation.index();
     }
+
 private:
     AllocationInner allocation;
 };

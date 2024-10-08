@@ -2,9 +2,9 @@
 
 #include <filesystem>
 #include <linux/limits.h>
+#include "felix86/common/elf.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/loader/elf.hpp"
 
 struct Filesystem {
     Filesystem() = default;
@@ -24,6 +24,7 @@ struct Filesystem {
 
         executable_path = path;
 
+        elf = std::make_unique<Elf>(/* is_interpreter */ false);
         elf->Load(executable_path);
         if (!elf->Okay()) {
             ERROR("Failed to load ELF file %s", executable_path.c_str());
@@ -38,6 +39,7 @@ struct Filesystem {
             }
 
             std::filesystem::path interpreter_path_sandboxed = rootfs_path / interpreter_path.lexically_normal();
+            interpreter = std::make_unique<Elf>(/* is_interpreter */ true);
             interpreter->Load(interpreter_path_sandboxed);
             if (!interpreter->Okay()) {
                 ERROR("Failed to load interpreter ELF file %s", interpreter_path_sandboxed.c_str());

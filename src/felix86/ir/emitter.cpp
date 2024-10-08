@@ -92,7 +92,7 @@ SSAInstruction* ir_emit_three_operands(IRBlock* block, IROpcode opcode, SSAInstr
 }
 
 SSAInstruction* ir_emit_four_operands(IRBlock* block, IROpcode opcode, SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* source3,
-                                     SSAInstruction* source4) {
+                                      SSAInstruction* source4) {
     SSAInstruction instruction(opcode, {source1, source2, source3, source4});
     return block->InsertAtEnd(std::move(instruction));
 }
@@ -898,7 +898,8 @@ SSAInstruction* ir_emit_get_sign(IRBlock* block, SSAInstruction* source, x86_siz
     return instruction;
 }
 
-SSAInstruction* ir_emit_get_overflow_add(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e) {
+SSAInstruction* ir_emit_get_overflow_add(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result,
+                                         x86_size_e size_e) {
     SSAInstruction* mask = ir_emit_get_sign_mask(block, size_e);
 
     // for x + y = z, overflow occurs if ((z ^ x) & (z ^ y) & mask) == mask
@@ -912,7 +913,8 @@ SSAInstruction* ir_emit_get_overflow_add(IRBlock* block, SSAInstruction* source1
     return ir_emit_equal(block, masked2, mask);
 }
 
-SSAInstruction* ir_emit_get_overflow_sub(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e) {
+SSAInstruction* ir_emit_get_overflow_sub(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result,
+                                         x86_size_e size_e) {
     SSAInstruction* mask = ir_emit_get_sign_mask(block, size_e);
 
     // for x - y = z, overflow occurs if ((x ^ y) & (x ^ z) & mask) == mask
@@ -980,7 +982,7 @@ SSAInstruction* ir_emit_get_aux_sub(IRBlock* block, SSAInstruction* source1, SSA
 }
 
 SSAInstruction* ir_emit_set_cpazso(IRBlock* block, SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s,
-                                  SSAInstruction* o) {
+                                   SSAInstruction* o) {
     if (c)
         ir_emit_set_flag(block, X86_REF_CF, c);
     if (p)

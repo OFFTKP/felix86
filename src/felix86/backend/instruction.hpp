@@ -21,6 +21,7 @@ struct BackendInstruction {
     const Allocation& GetOperand(u8 index) const {
         return operands[index];
     }
+
 private:
     std::array<Allocation, 4> operands;
     Allocation allocation;

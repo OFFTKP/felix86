@@ -6,9 +6,9 @@
 #include <sys/mman.h>
 #include <sys/personality.h>
 #include <sys/resource.h>
+#include "felix86/common/elf.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/loader/elf.hpp"
 
 // Not a full ELF implementation, but one that suits our needs as a loader of
 // both the executable and the dynamic linker, and one that only supports x86_64
@@ -67,7 +67,7 @@ void Elf::Load(const std::filesystem::path& path) {
     fseek(file, 0, SEEK_SET);
 
     Elf64_Ehdr ehdr;
-    bool result = fread(&ehdr, sizeof(Elf64_Ehdr), 1, file);
+    ssize_t result = fread(&ehdr, sizeof(Elf64_Ehdr), 1, file);
     if (result != 1) {
         ERROR("Failed to read ELF header from file %s", path.c_str());
     }
@@ -120,6 +120,7 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     std::vector<Elf64_Phdr> phdrtable(ehdr.e_phnum);
+    fseek(file, ehdr.e_phoff, SEEK_SET);
     result = fread(phdrtable.data(), sizeof(Elf64_Phdr), ehdr.e_phnum, file);
     if (result != ehdr.e_phnum) {
         ERROR("Failed to read program header table from file %s", path.c_str());
@@ -131,6 +132,7 @@ void Elf::Load(const std::filesystem::path& path) {
         case PT_INTERP: {
             std::string interpreter_str;
             interpreter_str.resize(phdr.p_filesz);
+            fseek(file, phdr.p_offset, SEEK_SET);
             result = fread(interpreter_str.data(), 1, phdr.p_filesz, file);
             if (result != phdr.p_filesz) {
                 ERROR("Failed to read interpreter from file %s", path.c_str());
@@ -188,7 +190,7 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     stack_pointer = (u8*)mmap(stack_base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
-                                   MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
+                              MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
     if (stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack for ELF file %s", path.c_str());
     }
@@ -209,7 +211,7 @@ void Elf::Load(const std::filesystem::path& path) {
     }
     VERBOSE("Allocated program at %p", program);
 
-    for (Elf64_Half i = 0; i < ehdr.e_phnum; i += ehdr.e_phentsize) {
+    for (Elf64_Half i = 0; i < ehdr.e_phnum; i += 1) {
         Elf64_Phdr& phdr = phdrtable[i];
         switch (phdr.p_type) {
         case PT_LOAD: {
@@ -225,8 +227,7 @@ void Elf::Load(const std::filesystem::path& path) {
             if (addr == MAP_FAILED) {
                 ERROR("Failed to allocate memory for segment in file %s", path.c_str());
             } else {
-                VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)", (void*)phdr.p_vaddr, addr, addr + segment_size,
-                        phdr.p_offset);
+                VERBOSE("Mapping segment with vaddr %p to %p-%p (file offset: %08lx)", (void*)phdr.p_vaddr, addr, addr + segment_size, phdr.p_offset);
                 if (addr != (void*)segment_base) {
                     ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
                 }
@@ -247,6 +248,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             if (phdr.p_filesz > 0) {
+                fseek(file, phdr.p_offset, SEEK_SET);
                 result = fread(addr, 1, phdr.p_filesz, file);
                 if (result != phdr.p_filesz) {
                     ERROR("Failed to read segment from file %s", path.c_str());
@@ -307,6 +309,6 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     fclose(file);
-    
+
     ok = true;
 }

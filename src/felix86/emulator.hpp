@@ -1,12 +1,12 @@
 #pragma once
 
 #include "felix86/backend/backend.hpp"
+#include "felix86/common/elf.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/ir/function_cache.hpp"
-#include "felix86/loader/elf.hpp"
 
 struct Config {
     std::filesystem::path rootfs_path;

@@ -135,7 +135,7 @@ SSAInstruction* ir_emit_get_aux_add(IRBlock* block, SSAInstruction* source1, SSA
 SSAInstruction* ir_emit_get_aux_sub(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 
 SSAInstruction* ir_emit_set_cpazso(IRBlock* block, SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s,
-                                  SSAInstruction* o);
+                                   SSAInstruction* o);
 
 SSAInstruction* ir_emit_get_cc(IRBlock* block, u8 opcode);
 

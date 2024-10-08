@@ -47,15 +47,15 @@ void Emulator::Run() {
     ir_local_cse_pass(function);
     ir_copy_propagation_pass(function);
     ir_dead_code_elimination_pass(function);
-    // ir_graph_coloring_pass(function);
-    ir_spill_everything_pass(function);
-
     auto test = [](const SSAInstruction* inst) { return fmt::format(" 0x{:x}", (u64)inst); };
     fmt::print("{}", function->Print(test));
 
     if (!function->Validate()) {
         ERROR("Function did not validate");
     }
+
+    // ir_graph_coloring_pass(function);
+    ir_spill_everything_pass(function);
 
     void* emit = backend.EmitFunction(function);
     std::string disassembly = Disassembler::Disassemble(emit, 0x200);

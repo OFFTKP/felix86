@@ -12,6 +12,8 @@ struct Emitter {
 
 private:
     static void EmitMov(Backend&, biscuit::GPR, biscuit::GPR);
+    static void EmitMov(Backend&, biscuit::FPR, biscuit::FPR);
+    static void EmitMov(Backend&, biscuit::Vec, biscuit::Vec);
     static void EmitImmediate(Backend&, biscuit::GPR, u64);
     static void EmitRdtsc(Backend&);
     static void EmitSyscall(Backend&);

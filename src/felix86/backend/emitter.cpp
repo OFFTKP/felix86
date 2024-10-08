@@ -73,143 +73,167 @@ void Emitter::EmitJumpConditional(Backend& backend, const BackendInstruction& co
     AS.JR(address_false);
 }
 
-void Emitter::EmitLoadGuestFromMemory(Backend& backend, const SSAInstruction& inst) {
-    biscuit::GPR address = backend.GetRegisters().ThreadStatePointer();
+// void Emitter::EmitLoadGuestFromMemory(Backend& backend, const SSAInstruction& inst) {
+//     biscuit::GPR address = backend.GetRegisters().ThreadStatePointer();
 
-    auto Rd = _RegWO_(&inst);
+//     auto Rd = _RegWO_(&inst);
 
-    const GetGuest& get_guest = inst.AsGetGuest();
-    x86_ref_e ref = get_guest.ref;
-    switch (ref) {
-    case X86_REF_RAX ... X86_REF_R15: {
-        u64 offset = offsetof(ThreadState, gprs) + (ref - X86_REF_RAX) * sizeof(u64);
-        AS.LD(Rd, offset, address);
-        break;
-    }
-    case X86_REF_CF ... X86_REF_OF: {
-        u64 offset = offsetof(ThreadState, cf) + (ref - X86_REF_CF) * sizeof(bool);
-        AS.LB(Rd, offset, address);
-        break;
-    }
-    case X86_REF_RIP: {
-        u64 offset = offsetof(ThreadState, rip);
-        AS.LD(Rd, offset, address);
-        break;
-    }
-    case X86_REF_FS: {
-        u64 offset = offsetof(ThreadState, fsbase);
-        AS.LD(Rd, offset, address);
-        break;
-    }
-    case X86_REF_GS: {
-        u64 offset = offsetof(ThreadState, gsbase);
-        AS.LD(Rd, offset, address);
-        break;
-    }
-    default: {
-        UNREACHABLE();
-    }
-    }
-}
+//     const GetGuest& get_guest = inst.AsGetGuest();
+//     x86_ref_e ref = get_guest.ref;
+//     switch (ref) {
+//     case X86_REF_RAX ... X86_REF_R15: {
+//         u64 offset = offsetof(ThreadState, gprs) + (ref - X86_REF_RAX) * sizeof(u64);
+//         AS.LD(Rd, offset, address);
+//         break;
+//     }
+//     case X86_REF_CF ... X86_REF_OF: {
+//         u64 offset = offsetof(ThreadState, cf) + (ref - X86_REF_CF) * sizeof(bool);
+//         AS.LB(Rd, offset, address);
+//         break;
+//     }
+//     case X86_REF_RIP: {
+//         u64 offset = offsetof(ThreadState, rip);
+//         AS.LD(Rd, offset, address);
+//         break;
+//     }
+//     case X86_REF_FS: {
+//         u64 offset = offsetof(ThreadState, fsbase);
+//         AS.LD(Rd, offset, address);
+//         break;
+//     }
+//     case X86_REF_GS: {
+//         u64 offset = offsetof(ThreadState, gsbase);
+//         AS.LD(Rd, offset, address);
+//         break;
+//     }
+//     default: {
+//         UNREACHABLE();
+//     }
+//     }
+// }
 
-void Emitter::EmitStoreGuestToMemory(Backend& backend, const SSAInstruction& inst) {
-    biscuit::GPR address = backend.GetRegisters().ThreadStatePointer();
+// void Emitter::EmitStoreGuestToMemory(Backend& backend, const SSAInstruction& inst) {
+//     biscuit::GPR address = backend.GetRegisters().ThreadStatePointer();
 
-    const SetGuest& set_guest = inst.AsSetGuest();
-    x86_ref_e ref = set_guest.ref;
-    auto Rs = _RegRO_(set_guest.source);
+//     const SetGuest& set_guest = inst.AsSetGuest();
+//     x86_ref_e ref = set_guest.ref;
+//     auto Rs = _RegRO_(set_guest.source);
 
-    switch (ref) {
-    case X86_REF_RAX ... X86_REF_R15: {
-        u64 offset = offsetof(ThreadState, gprs) + (ref - X86_REF_RAX) * sizeof(u64);
-        AS.SD(Rs, offset, address);
-        break;
-    }
-    case X86_REF_CF ... X86_REF_OF: {
-        u64 offset = offsetof(ThreadState, cf) + (ref - X86_REF_CF) * sizeof(bool);
-        AS.SB(Rs, offset, address);
-        break;
-    }
-    case X86_REF_RIP: {
-        u64 offset = offsetof(ThreadState, rip);
-        AS.SD(Rs, offset, address);
-        break;
-    }
-    case X86_REF_FS: {
-        u64 offset = offsetof(ThreadState, fsbase);
-        AS.SD(Rs, offset, address);
-        break;
-    }
-    case X86_REF_GS: {
-        u64 offset = offsetof(ThreadState, gsbase);
-        AS.SD(Rs, offset, address);
-        break;
-    }
-    default: {
-        UNREACHABLE();
-    }
-    }
-}
+//     switch (ref) {
+//     case X86_REF_RAX ... X86_REF_R15: {
+//         u64 offset = offsetof(ThreadState, gprs) + (ref - X86_REF_RAX) * sizeof(u64);
+//         AS.SD(Rs, offset, address);
+//         break;
+//     }
+//     case X86_REF_CF ... X86_REF_OF: {
+//         u64 offset = offsetof(ThreadState, cf) + (ref - X86_REF_CF) * sizeof(bool);
+//         AS.SB(Rs, offset, address);
+//         break;
+//     }
+//     case X86_REF_RIP: {
+//         u64 offset = offsetof(ThreadState, rip);
+//         AS.SD(Rs, offset, address);
+//         break;
+//     }
+//     case X86_REF_FS: {
+//         u64 offset = offsetof(ThreadState, fsbase);
+//         AS.SD(Rs, offset, address);
+//         break;
+//     }
+//     case X86_REF_GS: {
+//         u64 offset = offsetof(ThreadState, gsbase);
+//         AS.SD(Rs, offset, address);
+//         break;
+//     }
+//     default: {
+//         UNREACHABLE();
+//     }
+//     }
+// }
 
 // TODO: do proper pushing/popping, get rid of vmstatepointer
-void Emitter::EmitPushHost(Backend& backend, const SSAInstruction& inst) {
-    const PushHost& push_host = inst.AsPushHost();
-    biscuit::GPR vm_state = backend.GetRegisters().AcquireScratchGPR();
-    AS.LI(vm_state, backend.GetVMStatePointer());
-    switch (push_host.ref) {
-    case RISCV_REF_X0 ... RISCV_REF_X31: {
-        u32 index = push_host.ref - RISCV_REF_X0;
-        u32 offset = index * sizeof(u64);
-        biscuit::GPR to_push = biscuit::GPR(index);
-        AS.SD(to_push, offset, vm_state);
-        break;
+// void Emitter::EmitPushHost(Backend& backend, const SSAInstruction& inst) {
+//     const PushHost& push_host = inst.AsPushHost();
+//     biscuit::GPR vm_state = backend.GetRegisters().AcquireScratchGPR();
+//     AS.LI(vm_state, backend.GetVMStatePointer());
+//     switch (push_host.ref) {
+//     case RISCV_REF_X0 ... RISCV_REF_X31: {
+//         u32 index = push_host.ref - RISCV_REF_X0;
+//         u32 offset = index * sizeof(u64);
+//         biscuit::GPR to_push = biscuit::GPR(index);
+//         AS.SD(to_push, offset, vm_state);
+//         break;
+//     }
+//     case RISCV_REF_F0 ... RISCV_REF_F31: {
+//         u32 index = push_host.ref - RISCV_REF_F0;
+//         u32 offset = index * sizeof(double) + (32 * sizeof(u64));
+//         biscuit::FPR to_push = biscuit::FPR(index);
+//         AS.FSD(to_push, offset, vm_state);
+//         break;
+//     }
+//     case RISCV_REF_VEC0 ... RISCV_REF_VEC31: {
+//         ERROR("Implme");
+//         break;
+//     }
+//     default: {
+//         UNREACHABLE();
+//     }
+//     }
+// }
+
+// void Emitter::EmitPopHost(Backend& backend, const SSAInstruction& inst) {
+//     const PopHost& pop_host = inst.AsPopHost();
+//     biscuit::GPR vm_state = backend.GetRegisters().AcquireScratchGPR();
+//     AS.LI(vm_state, backend.GetVMStatePointer());
+//     switch (pop_host.ref) {
+//     case RISCV_REF_X0 ... RISCV_REF_X31: {
+//         u32 index = pop_host.ref - RISCV_REF_X0;
+//         u32 offset = index * sizeof(u64);
+//         biscuit::GPR to_pop = biscuit::GPR(index);
+//         biscuit::GPR base = vm_state;
+//         AS.LD(to_pop, offset, base);
+//         break;
+//     }
+//     case RISCV_REF_F0 ... RISCV_REF_F31: {
+//         u32 index = pop_host.ref - RISCV_REF_F0;
+//         u32 offset = index * sizeof(double) + (32 * sizeof(u64));
+//         biscuit::FPR to_pop = biscuit::FPR(index);
+//         biscuit::GPR base = vm_state;
+//         AS.FLD(to_pop, offset, base);
+//         break;
+//     }
+//     case RISCV_REF_VEC0 ... RISCV_REF_VEC31: {
+//         ERROR("Implme");
+//         break;
+//     }
+//     default: {
+//         UNREACHABLE();
+//     }
+//     }
+// }
+
+void Emitter::EmitMov(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
+    if (Rd == Rs) {
+        return;
     }
-    case RISCV_REF_F0 ... RISCV_REF_F31: {
-        u32 index = push_host.ref - RISCV_REF_F0;
-        u32 offset = index * sizeof(double) + (32 * sizeof(u64));
-        biscuit::FPR to_push = biscuit::FPR(index);
-        AS.FSD(to_push, offset, vm_state);
-        break;
-    }
-    case RISCV_REF_VEC0 ... RISCV_REF_VEC31: {
-        ERROR("Implme");
-        break;
-    }
-    default: {
-        UNREACHABLE();
-    }
-    }
+
+    AS.C_MV(Rd, Rs);
 }
 
-void Emitter::EmitPopHost(Backend& backend, const SSAInstruction& inst) {
-    const PopHost& pop_host = inst.AsPopHost();
-    biscuit::GPR vm_state = backend.GetRegisters().AcquireScratchGPR();
-    AS.LI(vm_state, backend.GetVMStatePointer());
-    switch (pop_host.ref) {
-    case RISCV_REF_X0 ... RISCV_REF_X31: {
-        u32 index = pop_host.ref - RISCV_REF_X0;
-        u32 offset = index * sizeof(u64);
-        biscuit::GPR to_pop = biscuit::GPR(index);
-        biscuit::GPR base = vm_state;
-        AS.LD(to_pop, offset, base);
-        break;
+void Emitter::EmitMov(Backend& backend, biscuit::FPR Rd, biscuit::FPR Rs) {
+    if (Rd == Rs) {
+        return;
     }
-    case RISCV_REF_F0 ... RISCV_REF_F31: {
-        u32 index = pop_host.ref - RISCV_REF_F0;
-        u32 offset = index * sizeof(double) + (32 * sizeof(u64));
-        biscuit::FPR to_pop = biscuit::FPR(index);
-        biscuit::GPR base = vm_state;
-        AS.FLD(to_pop, offset, base);
-        break;
+
+    AS.FMV_D(Rd, Rs);
+}
+
+void Emitter::EmitMov(Backend& backend, biscuit::Vec Rd, biscuit::Vec Rs) {
+    if (Rd == Rs) {
+        return;
     }
-    case RISCV_REF_VEC0 ... RISCV_REF_VEC31: {
-        ERROR("Implme");
-        break;
-    }
-    default: {
-        UNREACHABLE();
-    }
-    }
+
+    AS.VMV(Rd, Rs);
 }
 
 void Emitter::EmitImmediate(Backend& backend, biscuit::GPR Rd, u64 immediate) {

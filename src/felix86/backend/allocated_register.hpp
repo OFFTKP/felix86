@@ -64,6 +64,18 @@ struct AllocatedReg {
         return std::get<biscuit::Vec>(reg);
     }
 
+    biscuit::GPR AsGPR() const {
+        return std::get<biscuit::GPR>(reg);
+    }
+
+    biscuit::FPR AsFPR() const {
+        return std::get<biscuit::FPR>(reg);
+    }
+
+    biscuit::Vec AsVec() const {
+        return std::get<biscuit::Vec>(reg);
+    }
+
     bool spilled = false;
     bool load = false;
     u64 spill_location = 0;

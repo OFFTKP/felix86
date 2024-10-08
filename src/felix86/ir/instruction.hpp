@@ -114,7 +114,7 @@ struct SSAInstruction {
             SSAInstruction* inst = *(operands.begin() + i);
             op.operands[i] = inst;
         }
-        op.operands_count = operands.size();
+        op.operand_count = operands.size();
         expression = op;
 
         for (auto& operand : operands) {
@@ -163,8 +163,7 @@ struct SSAInstruction {
         expression_type = ExpressionType::Phi;
     }
 
-    SSAInstruction(const std::string& comment)
-        : opcode(IROpcode::Comment), return_type{SSAInstruction::getTypeFromOpcode(opcode)} {
+    SSAInstruction(const std::string& comment) : opcode(IROpcode::Comment), return_type{SSAInstruction::getTypeFromOpcode(opcode)} {
         Comment c;
         c.comment = comment;
         expression = c;

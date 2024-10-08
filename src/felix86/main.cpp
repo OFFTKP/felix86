@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/version.hpp"
+#include "felix86/emulator.hpp"
 #include "felix86/hle/filesystem.hpp"
-#include "felix86/loader/loader.hpp"
 
 const char* argp_program_version = "felix86 " FELIX86_VERSION;
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";
@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
     if (argc == 1) {
         ERROR("Unimplemented");
     } else {
-        loader_run(emulator);
+        emulator.Run();
     }
 
     felix86_exit(0);

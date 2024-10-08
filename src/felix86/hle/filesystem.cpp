@@ -73,23 +73,24 @@ ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 b
             // This is not POSIX portable but should work on Linux which is what we're targeting
             char dirfd_path[PATH_MAX];
             snprintf(dirfd_path, sizeof(dirfd_path), "/proc/self/fd/%d", dirfd);
-            ssize_t res = readlink(dirfd_path, dirfd_path, sizeof(dirfd_path));
+            char result_path[PATH_MAX];
+            ssize_t res = readlink(result_path, dirfd_path, sizeof(dirfd_path));
             if (res == -1) {
                 WARN("Failed to readlink dirfd");
                 return -ENOENT;
             }
-            dirfd_path[res] = '\0';
+            result_path[res] = '\0';
 
-            struct stat dirfd_path_stat;
-            stat(dirfd_path, &dirfd_path_stat);
+            struct stat result_path_stat;
+            stat(result_path, &result_path_stat);
 
             // Sanity check that the directory was not moved or something
-            if (dirfd_path_stat.st_dev != dirfd_stat.st_dev || dirfd_path_stat.st_ino != dirfd_stat.st_ino) {
+            if (result_path_stat.st_dev != dirfd_stat.st_dev || result_path_stat.st_ino != dirfd_stat.st_ino) {
                 WARN("dirfd sanity check failed");
                 return -ENOENT;
             }
 
-            path = std::filesystem::path(dirfd_path) / path;
+            path = std::filesystem::path(result_path) / path;
         }
     } else if (path.is_absolute()) {
         if (path == proc_self_exe) { // special case for /proc/self/exe
@@ -109,8 +110,8 @@ ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 b
         UNREACHABLE();
     }
 
-    if (!validatePath(path)) {                                                                                                                       \
-        return -ENOENT;                                                                                                                              \
+    if (!validatePath(path)) {
+        return -ENOENT;
     }
 
     return readlink(path.c_str(), buf, bufsiz);
