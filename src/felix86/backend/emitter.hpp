@@ -8,7 +8,7 @@ struct Backend;
 struct Emitter {
     static void Emit(Backend& backend, const BackendInstruction& instruction);
     static void EmitJump(Backend& backend, void* target);
-    static void EmitJumpConditional(Backend& backend, const BackendInstruction& condition, void* target_true, void* target_false);
+    static void EmitJumpConditional(Backend& backend, Allocation condition, void* target_true, void* target_false);
 
 private:
     static void EmitMov(Backend&, biscuit::GPR, biscuit::GPR);
@@ -27,18 +27,22 @@ private:
     static void EmitCtz(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitNot(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitParity(Backend&, biscuit::GPR, biscuit::GPR);
+    static void EmitDiv128(Backend&, biscuit::GPR);
+    static void EmitDivu128(Backend&, biscuit::GPR);
     static void EmitReadByte(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitReadWord(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitReadDWord(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitReadQWord(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitReadXmmWord(Backend&, biscuit::Vec, biscuit::GPR);
-    static void EmitDiv128(Backend&, biscuit::GPR);
-    static void EmitDivu128(Backend&, biscuit::GPR);
+    static void EmitReadByteRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
+    static void EmitReadQWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitWriteByte(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitWriteWord(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitWriteDWord(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitWriteQWord(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitWriteXmmWord(Backend&, biscuit::GPR, biscuit::Vec);
+    static void EmitWriteByteRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
+    static void EmitWriteQWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitAddi(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitAdd(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitSub(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);

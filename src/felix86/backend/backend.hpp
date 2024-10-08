@@ -29,10 +29,6 @@ struct Backend {
     u8 AvailableFPRs() const;
     u8 AvailableVec() const;
 
-    u64 GetVMStatePointer() const {
-        return (u64)(vm_storage.data());
-    }
-
     Registers& GetRegisters() {
         return regs;
     }
@@ -69,9 +65,6 @@ private:
 
     void emitNecessaryStuff();
     void resetCodeCache();
-
-    constexpr static u64 vm_storage_size = 32 * 8 + 32 * 8 + 32 * 16; // 32 GPRs, 32 FPRs, 32 Vecs
-    std::array<u8, vm_storage_size> vm_storage{};
 
     std::array<u64, Registers::GetSavedGPRs().size()> gpr_storage{};
     std::array<u64, Registers::GetSavedFPRs().size()> fpr_storage{};

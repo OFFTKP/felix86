@@ -55,35 +55,23 @@ struct Comment {
     std::string comment = {};
 };
 
-struct PushHost {
-    riscv_ref_e ref = RISCV_REF_COUNT;
-};
-
-struct PopHost {
-    riscv_ref_e ref = RISCV_REF_COUNT;
-};
-
 enum class ExpressionType : u8 {
     Operands,
     GetGuest,
     SetGuest,
     Phi,
     Comment,
-    PushHost,
-    PopHost,
 
     Count,
 };
 
-using Expression = std::variant<Operands, GetGuest, SetGuest, Phi, Comment, PushHost, PopHost>;
+using Expression = std::variant<Operands, GetGuest, SetGuest, Phi, Comment>;
 static_assert(std::variant_size_v<Expression> == (u8)ExpressionType::Count);
 static_assert(std::is_same_v<Operands, std::variant_alternative_t<(u8)ExpressionType::Operands, Expression>>);
 static_assert(std::is_same_v<GetGuest, std::variant_alternative_t<(u8)ExpressionType::GetGuest, Expression>>);
 static_assert(std::is_same_v<SetGuest, std::variant_alternative_t<(u8)ExpressionType::SetGuest, Expression>>);
 static_assert(std::is_same_v<Phi, std::variant_alternative_t<(u8)ExpressionType::Phi, Expression>>);
 static_assert(std::is_same_v<Comment, std::variant_alternative_t<(u8)ExpressionType::Comment, Expression>>);
-static_assert(std::is_same_v<PushHost, std::variant_alternative_t<(u8)ExpressionType::PushHost, Expression>>);
-static_assert(std::is_same_v<PopHost, std::variant_alternative_t<(u8)ExpressionType::PopHost, Expression>>);
 
 std::string GetNameString(u32 name);
 
@@ -103,6 +91,7 @@ struct ReducedInstruction {
     u64 immediate_data;
     u32 name;
     IROpcode opcode;
+    x86_ref_e ref; // needed for a couple instructions
     u8 operand_count;
 };
 
@@ -177,22 +166,6 @@ struct SSAInstruction {
         Lock();
     }
 
-    SSAInstruction(riscv_ref_e ref, bool push) {
-        if (push) {
-            opcode = IROpcode::PushHost;
-        } else {
-            opcode = IROpcode::PopHost;
-        }
-
-        if (push) {
-            expression = PushHost{ref};
-        } else {
-            expression = PopHost{ref};
-        }
-        expression_type = push ? ExpressionType::PushHost : ExpressionType::PopHost;
-        return_type = IRType::Void;
-    }
-
     SSAInstruction(const SSAInstruction& other) = delete;
     SSAInstruction& operator=(const SSAInstruction& other) = delete;
     SSAInstruction(SSAInstruction&& other) = default;
@@ -236,14 +209,6 @@ struct SSAInstruction {
 
     const Phi& AsPhi() const {
         return std::get<Phi>(expression);
-    }
-
-    const PushHost& AsPushHost() const {
-        return std::get<PushHost>(expression);
-    }
-
-    const PopHost& AsPopHost() const {
-        return std::get<PopHost>(expression);
     }
 
     const Comment& AsComment() const {
@@ -392,18 +357,33 @@ struct SSAInstruction {
     void PropagateMovs();
 
     ReducedInstruction AsReducedInstruction() const {
-        if (!IsOperands()) {
-            ERROR("Tried to reduce non-operands instruction");
-        }
+        ReducedInstruction rir_inst = {};
 
-        ReducedInstruction rir_inst;
         rir_inst.name = GetName();
         rir_inst.opcode = GetOpcode();
-        rir_inst.operand_count = AsOperands().operand_count;
-        rir_inst.immediate_data = GetImmediateData();
-        for (u8 i = 0; i < rir_inst.operand_count; i++) {
-            rir_inst.operands[i] = GetOperand(i)->GetName();
+
+        if (IsOperands()) {
+            rir_inst.operand_count = AsOperands().operand_count;
+            rir_inst.immediate_data = GetImmediateData();
+            for (u8 i = 0; i < rir_inst.operand_count; i++) {
+                rir_inst.operands[i] = GetOperand(i)->GetName();
+            }
+        } else if (IsGetGuest()) {
+            if (GetOpcode() != IROpcode::LoadGuestFromMemory) {
+                UNREACHABLE();
+            }
+
+            rir_inst.ref = AsGetGuest().ref;
+        } else if (IsSetGuest()) {
+            if (GetOpcode() != IROpcode::StoreGuestToMemory) {
+                UNREACHABLE();
+            }
+
+            rir_inst.ref = AsSetGuest().ref;
+            rir_inst.operands[0] = AsSetGuest().source->GetName();
+            rir_inst.operand_count = 1;
         }
+
         return rir_inst;
     }
 

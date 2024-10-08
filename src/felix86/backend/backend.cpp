@@ -100,7 +100,7 @@ void* Backend::EmitFunction(IRFunction* function) {
 
     struct ConditionalJump {
         ptrdiff_t location;
-        const BackendInstruction* inst;
+        Allocation allocation;
         IRBlock* target_true;
         IRBlock* target_false;
     };
@@ -134,7 +134,7 @@ void* Backend::EmitFunction(IRFunction* function) {
         }
         case Termination::JumpConditional: {
             conditional_jumps.push_back(
-                {as.GetCodeBuffer().GetCursorOffset(), block->GetBackendCondition(), block->GetSuccessor(0), block->GetSuccessor(1)});
+                {as.GetCodeBuffer().GetCursorOffset(), block->GetConditionAllocation(), block->GetSuccessor(0), block->GetSuccessor(1)});
             // Some space for the backpatched jump
             as.NOP();
             as.NOP();
@@ -172,7 +172,7 @@ void* Backend::EmitFunction(IRFunction* function) {
 
         u8* cursor = as.GetCursorPointer();
         as.RewindBuffer(jump.location);
-        Emitter::EmitJumpConditional(*this, *jump.inst, block_map[jump.target_true], block_map[jump.target_false]);
+        Emitter::EmitJumpConditional(*this, jump.allocation, block_map[jump.target_true], block_map[jump.target_false]);
         as.GetCodeBuffer().SetCursor(cursor);
     }
 

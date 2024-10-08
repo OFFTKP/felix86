@@ -79,47 +79,16 @@
     t0-t3 and the rest of the temporaries down the road are in SSA form already,
    it's just the registers that need to be renamed
 */
-static void postorder(IRBlock* block, std::vector<IRBlock*>& output) {
-    if (block->IsVisited()) {
-        return;
-    }
-
-    block->SetVisited(true);
-
-    for (IRBlock* successor : block->GetSuccessors()) {
-        postorder(successor, output);
-    }
-
-    output.push_back(block); // TODO: don't use vector in the future
-}
-
-static void reverse_postorder_creation(IRFunction* function, std::vector<IRBlock*>& order) {
-    IRBlock* entry = function->GetEntry();
-    postorder(entry, order);
-
-    if (order.size() != function->GetBlocks().size()) {
-        ERROR("Postorder traversal did not visit all blocks: %zu vs %zu", order.size(), function->GetBlocks().size());
-    }
-
-    for (size_t i = 0; i < order.size(); i++) {
-        order[i]->SetPostorderIndex(i);
-    }
-
-    function->SetPostorder(order);
-
-    std::reverse(order.begin(), order.end());
-}
-
-static IRBlock* intersect(IRBlock* a, IRBlock* b) {
+static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postorder_index) {
     IRBlock* finger1 = a;
     IRBlock* finger2 = b;
 
-    while (finger1->GetPostorderIndex() != finger2->GetPostorderIndex()) {
-        while (finger1->GetPostorderIndex() < finger2->GetPostorderIndex()) {
+    while (postorder_index[finger1->GetIndex()] != postorder_index[finger2->GetIndex()]) {
+        while (postorder_index[finger1->GetIndex()] < postorder_index[finger2->GetIndex()]) {
             finger1 = finger1->GetImmediateDominator();
         }
 
-        while (finger2->GetPostorderIndex() < finger1->GetPostorderIndex()) {
+        while (postorder_index[finger2->GetIndex()] < postorder_index[finger1->GetIndex()]) {
             finger2 = finger2->GetImmediateDominator();
         }
     }
@@ -266,8 +235,13 @@ static void rename(std::vector<IRDominatorTreeNode>& list) {
 void ir_ssa_pass(IRFunction* function) {
     size_t count = function->GetBlocks().size();
 
-    std::vector<IRBlock*> rpo;
-    reverse_postorder_creation(function, rpo);
+    std::vector<IRBlock*> rpo = function->GetBlocksPostorder();
+    std::vector<u32> postorder_index(count);
+    for (size_t i = 0; i < count; i++) {
+        postorder_index[rpo[i]->GetIndex()] = i;
+    }
+
+    std::reverse(rpo.begin(), rpo.end());
 
     if (rpo[0] != function->GetEntry()) {
         ERROR("Entry block is not the first block");
@@ -294,7 +268,7 @@ void ir_ssa_pass(IRFunction* function) {
             for (size_t j = 1; j < predecessors.size(); j++) {
                 IRBlock* p = predecessors[j];
                 if (p->GetImmediateDominator()) {
-                    new_idom = intersect(p, new_idom);
+                    new_idom = intersect(p, new_idom, postorder_index);
                 }
             }
 

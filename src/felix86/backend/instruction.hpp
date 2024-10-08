@@ -6,6 +6,8 @@
 #include "felix86/ir/opcode.hpp"
 
 struct BackendInstruction {
+    BackendInstruction(Allocation allocation) : allocation(allocation) {}
+
     IROpcode GetOpcode() const {
         return opcode;
     }
@@ -22,9 +24,9 @@ struct BackendInstruction {
         return operands[index];
     }
 
-private:
     std::array<Allocation, 4> operands;
     Allocation allocation;
     u64 immediate_data;
     IROpcode opcode;
+    u8 operand_count;
 };

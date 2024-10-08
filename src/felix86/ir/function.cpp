@@ -77,7 +77,7 @@ void IRFunction::deallocateAll() {
     }
 }
 
-std::string IRFunction::Print(const std::function<std::string(const SSAInstruction*)>& callback) const {
+std::string IRFunction::Print(const std::function<std::string(const SSAInstruction*)>& callback) {
     if (!IsCompiled()) {
         WARN("Print called on not compiled function");
         return "";
@@ -85,7 +85,7 @@ std::string IRFunction::Print(const std::function<std::string(const SSAInstructi
 
     std::string ret;
 
-    auto& blocks = GetBlocksPostorder();
+    auto blocks = GetBlocksPostorder();
     auto it = blocks.rbegin();
     while (it != blocks.rend()) {
         ret += (*it)->Print(callback);
@@ -95,7 +95,7 @@ std::string IRFunction::Print(const std::function<std::string(const SSAInstructi
     return ret;
 }
 
-std::string IRFunction::PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) const {
+std::string IRFunction::PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) {
     if (!IsCompiled()) {
         WARN("Print called on not compiled function");
         return "";
@@ -103,7 +103,7 @@ std::string IRFunction::PrintReduced(const std::function<std::string(const Reduc
 
     std::string ret;
 
-    auto& blocks = GetBlocksPostorder();
+    auto blocks = GetBlocksPostorder();
     auto it = blocks.rbegin();
     while (it != blocks.rend()) {
         ret += (*it)->PrintReduced(callback);
@@ -198,4 +198,34 @@ bool IRFunction::ValidatePhis() const {
     }
 
     return true;
+}
+
+static void postorder(IRBlock* block, std::vector<IRBlock*>& output) {
+    if (block->IsVisited()) {
+        return;
+    }
+
+    block->SetVisited(true);
+
+    for (IRBlock* successor : block->GetSuccessors()) {
+        postorder(successor, output);
+    }
+
+    output.push_back(block); // TODO: don't use vector in the future
+}
+
+static void reverse_postorder_creation(IRFunction* function, std::vector<IRBlock*>& order) {
+    IRBlock* entry = function->GetEntry();
+    postorder(entry, order);
+
+    if (order.size() != function->GetBlocks().size()) {
+        ERROR("Postorder traversal did not visit all blocks: %zu vs %zu", order.size(), function->GetBlocks().size());
+    }
+}
+
+std::vector<IRBlock*> IRFunction::GetBlocksPostorder() {
+    std::vector<IRBlock*> order; // TODO: cache this
+    reverse_postorder_creation(this, order);
+    UnvisitAll();
+    return order;
 }

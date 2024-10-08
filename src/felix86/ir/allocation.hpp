@@ -22,6 +22,12 @@ static_assert(std::is_same_v<biscuit::Vec, std::variant_alternative_t<(u8)Alloca
 static_assert(std::is_same_v<u32, std::variant_alternative_t<(u8)AllocationType::Spill, AllocationInner>>);
 
 struct Allocation {
+    Allocation() = default;
+    Allocation(biscuit::GPR gpr) : allocation(gpr) {}
+    Allocation(biscuit::FPR fpr) : allocation(fpr) {}
+    Allocation(biscuit::Vec vec) : allocation(vec) {}
+    Allocation(u32 spill) : allocation(spill) {}
+
     bool IsGPR() const {
         return GetAllocationType() == AllocationType::GPR;
     }
@@ -36,6 +42,10 @@ struct Allocation {
 
     bool IsSpilled() const {
         return GetAllocationType() == AllocationType::Spill;
+    }
+
+    bool IsValid() const {
+        return GetAllocationType() != AllocationType::Null;
     }
 
     biscuit::GPR AsGPR() const {

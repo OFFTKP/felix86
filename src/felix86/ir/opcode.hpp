@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include "felix86/common/utility.hpp"
 
 #define IR_OPCODES                                                                                                                                   \
@@ -19,8 +20,6 @@
     X(SetGuest)            /* placeholder instruction that indicates a def of a register, replaced by the ssa pass */                                \
     X(LoadGuestFromMemory) /* to load or store to the thread_state struct which contains x86 register info */                                        \
     X(StoreGuestToMemory)                                                                                                                            \
-    X(PushHost) /* to load or store to the vm_state struct which contains risc-v reg info. for when we need to exit vm */                            \
-    X(PopHost)  /* and not screw up our allocated registers */                                                                                       \
     X(Add)                                                                                                                                           \
     X(Sub)                                                                                                                                           \
     X(Divu)                                                                                                                                          \
@@ -68,6 +67,10 @@
     X(WriteWord)                                                                                                                                     \
     X(WriteDWord)                                                                                                                                    \
     X(WriteQWord)                                                                                                                                    \
+    X(ReadByteRelative)                                                                                                                              \
+    X(ReadQWordRelative)                                                                                                                             \
+    X(WriteByteRelative)                                                                                                                             \
+    X(WriteQWordRelative)                                                                                                                            \
     X(WriteXmmWord)                                                                                                                                  \
     X(CastIntegerToVector)                                                                                                                           \
     X(CastVectorToInteger)                                                                                                                           \
@@ -98,3 +101,5 @@ enum class IROpcode : u8 {
     IR_OPCODES
 #undef X
 };
+
+std::string GetOpcodeString(IROpcode opcode);

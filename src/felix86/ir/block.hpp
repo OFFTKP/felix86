@@ -33,6 +33,7 @@ struct IRBlock {
         successors[0] = target_true;
         successors[1] = target_false;
         this->condition = condition;
+        condition_name = condition->GetName();
         condition->Lock(); // this is used by the termination, don't optimize away
 
         successors[0]->addPredecessor(this);
@@ -59,8 +60,16 @@ struct IRBlock {
         return condition;
     }
 
-    const BackendInstruction* GetBackendCondition() const {
-        return backend_condition;
+    u32 GetConditionName() const {
+        return condition_name;
+    }
+
+    void SetConditionAllocation(Allocation allocation) {
+        condition_allocation = allocation;
+    }
+
+    Allocation GetConditionAllocation() const {
+        return condition_allocation;
     }
 
     bool IsCompiled() const {
@@ -103,14 +112,6 @@ struct IRBlock {
 
     void SetIndex(u32 index) {
         list_index = index;
-    }
-
-    u32 GetPostorderIndex() const {
-        return postorder_index;
-    }
-
-    void SetPostorderIndex(u32 index) {
-        postorder_index = index;
     }
 
     std::span<IRBlock* const> GetSuccessors() const {
@@ -200,6 +201,8 @@ struct IRBlock {
 
     void AddPhi(SSAInstruction&& instr) {
         instructions.push_front(std::move(instr));
+        SSAInstruction* phi = &instructions.front();
+        phi->SetName(GetNextName());
     }
 
     bool IsUsedInPhi(SSAInstruction* instr) const;
@@ -207,10 +210,6 @@ struct IRBlock {
     [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
     [[nodiscard]] std::string PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) const;
-
-    void SetReducedCondition(const ReducedInstruction* instr) {
-        reduced_condition = instr;
-    }
 
 private:
     void addPredecessor(IRBlock* pred) {
@@ -231,11 +230,10 @@ private:
     IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
     const SSAInstruction* condition = nullptr;
-    const ReducedInstruction* reduced_condition = nullptr;
-    const BackendInstruction* backend_condition = nullptr;
+    Allocation condition_allocation;
+    u32 condition_name = 0;
     bool compiled = false;
     mutable bool visited = false;
     u32 list_index = 0;
-    u32 postorder_index = 0;
     u32 next_name = 1;
 };

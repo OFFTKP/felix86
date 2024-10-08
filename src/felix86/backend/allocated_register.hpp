@@ -11,10 +11,10 @@ struct AllocatedReg {
         if (allocation.IsSpilled()) {
             spilled = true;
             spill_location = allocation.GetSpillLocation() * (allocation.IsVec() ? 16 : 8);
-            if (allocation.IsGPR()) {
-                reg = backend.AcquireScratchGPRFromSpill(spill_location);
+            if (load) {
+                reg = backend.AcquireScratchGPRFromSpill(spill_location); // TODO: FPR/Vec
             } else {
-                ERROR("Implme");
+                reg = backend.AcquireScratchGPR();
             }
         } else {
             reg = allocation.AsGPR();

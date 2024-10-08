@@ -36,7 +36,7 @@ typedef struct {
 } auxv_t;
 
 void Emulator::Run() {
-    u64 rip = 0x403ab0;//GetRip();
+    u64 rip = 0x403c60;
     IRFunction* function = function_cache.CreateOrGetFunctionAt(rip);
     frontend_compile_function(function);
     ir_ssa_pass(function);

@@ -19,22 +19,19 @@
     And a blog post based on the algorithm with a neat demo: https://compiler.club/parallel-moves/
 */
 
-// Break critical edges that lead to blocks with phis and also construct the ReducedInstructions
-// TODO: separate pass to convert to ReducedInstructions
-void critical_edge_splitting_pass(IRFunction* function) {
+void convert_to_reduced_form(IRFunction* function) {
     for (IRBlock* block : function->GetBlocks()) {
         for (const SSAInstruction& inst : block->GetInstructions()) {
-            if (inst.IsOperands()) {
+            if (inst.IsOperands() || inst.IsSetGuest() || inst.IsGetGuest()) {
                 ReducedInstruction rir_inst = inst.AsReducedInstruction();
                 block->InsertReducedInstruction(std::move(rir_inst));
-
-                if (&inst == block->GetCondition()) {
-                    block->SetReducedCondition(&block->GetReducedInstructions().back());
-                }
             }
         }
     }
+}
 
+// Break critical edges that lead to blocks with phis
+void critical_edge_splitting_pass(IRFunction* function) {
     // Ugly, its due to vector invalidating iterators while we loop and add blocks
     // TODO: cleanup
     while (true) {
@@ -95,23 +92,23 @@ void insert_parallel_move(IRBlock* block, ParallelMove& move) {
             for (size_t j = 0; j < size; j++) {
                 if (src[j] == dst[i]) {
                     switch (status[j]) {
-                        case To_move: {
-                            move_one(j);
-                            break;
-                        }
-                        case Being_moved: {
-                            ReducedInstruction rinstr = {};
-                            rinstr.opcode = IROpcode::Mov;
-                            rinstr.name = block->GetNextName();
-                            rinstr.operands[0] = src[j];
-                            rinstr.operand_count = 1;
-                            block->InsertReducedInstruction(std::move(rinstr));
-                            src[j] = rinstr.name;
-                            break;
-                        }
-                        case Moved: {
-                            break;
-                        }
+                    case To_move: {
+                        move_one(j);
+                        break;
+                    }
+                    case Being_moved: {
+                        ReducedInstruction rinstr = {};
+                        rinstr.opcode = IROpcode::Mov;
+                        rinstr.name = block->GetNextName();
+                        rinstr.operands[0] = src[j];
+                        rinstr.operand_count = 1;
+                        block->InsertReducedInstruction(std::move(rinstr));
+                        src[j] = rinstr.name;
+                        break;
+                    }
+                    case Moved: {
+                        break;
+                    }
                     }
                 }
             }
@@ -143,13 +140,14 @@ void breakup_phis(IRBlock* block, const std::vector<InstIterator>& phis) {
     for (size_t i = 0; i < pred_count; i++) {
         IRBlock* pred = block->GetPredecessors()[i];
         ParallelMove move = {};
-        move.names_lhs.resize(pred_count);
-        move.names_rhs.resize(pred_count);
-        for (InstIterator phi : phis) {
+        move.names_lhs.resize(phis.size());
+        move.names_rhs.resize(phis.size());
+        for (size_t j = 0; j < phis.size(); j++) {
+            SSAInstruction* phi = &*phis[j];
             u32 name = phi->GetName();
             u32 value = phi->AsPhi().values[i]->GetName();
-            move.names_lhs[i] = name;
-            move.names_rhs[i] = value;
+            move.names_lhs[j] = name;
+            move.names_rhs[j] = value;
         }
 
         insert_parallel_move(pred, move);
@@ -185,6 +183,7 @@ void ir_ssa_destruction_pass(IRFunction* function) {
         ERROR("Phis are not all gathered at the start of the block");
     }
 
+    convert_to_reduced_form(function);
     critical_edge_splitting_pass(function);
     phi_replacement_pass(function);
 }

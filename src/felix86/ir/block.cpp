@@ -20,6 +20,7 @@ std::string IRBlock::Print(const std::function<std::string(const SSAInstruction*
 std::string IRBlock::PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) const {
     std::string ret;
 
+    ret += printBlock() + "\n";
     for (const ReducedInstruction& inst : GetReducedInstructions()) {
         ret += inst.Print(callback);
         ret += "\n";

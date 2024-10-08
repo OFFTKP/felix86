@@ -5,6 +5,7 @@
 // Dispatch to correct function
 void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
     switch (inst.GetOpcode()) {
+    // Should not exist in the reduced IR representation
     case IROpcode::Null:
     case IROpcode::Phi:
     case IROpcode::SetGuest:
@@ -12,12 +13,8 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
     case IROpcode::Count:
     case IROpcode::LoadGuestFromMemory:
     case IROpcode::StoreGuestToMemory:
-    case IROpcode::PushHost:
-    case IROpcode::PopHost: {
-        UNREACHABLE();
-    }
     case IROpcode::Comment: {
-        break;
+        UNREACHABLE();
     }
 
     case IROpcode::Mov: {
@@ -32,6 +29,26 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
         } else {
             UNREACHABLE();
         }
+        break;
+    }
+
+    case IROpcode::ReadByteRelative: {
+        EmitReadByteRelative(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), inst.GetImmediateData());
+        break;
+    }
+
+    case IROpcode::ReadQWordRelative: {
+        EmitReadQWordRelative(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), inst.GetImmediateData());
+        break;
+    }
+
+    case IROpcode::WriteByteRelative: {
+        EmitWriteByteRelative(backend, _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), inst.GetImmediateData());
+        break;
+    }
+
+    case IROpcode::WriteQWordRelative: {
+        EmitWriteQWordRelative(backend, _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 
