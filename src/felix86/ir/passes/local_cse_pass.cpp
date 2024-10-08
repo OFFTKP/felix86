@@ -2,7 +2,7 @@
 
 void ir_local_cse_pass(IRFunction* function) {
     for (IRBlock* block : function->GetBlocks()) {
-        std::vector<IRInstruction*> instructions;
+        std::vector<SSAInstruction*> instructions;
         for (auto& inst : block->GetInstructions()) {
             if (!inst.IsLocked()) {
                 bool replaced = false;

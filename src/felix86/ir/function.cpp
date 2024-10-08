@@ -11,7 +11,7 @@ IRFunction::IRFunction(u64 address) {
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Load all state from memory and run the set_guest instruction
         // See ssa_pass.cpp for more information
-        IRInstruction* value = ir_emit_load_guest_from_memory(entry, x86_ref_e(i));
+        SSAInstruction* value = ir_emit_load_guest_from_memory(entry, x86_ref_e(i));
         ir_emit_set_guest(entry, x86_ref_e(i), value);
     }
 
@@ -19,7 +19,7 @@ IRFunction::IRFunction(u64 address) {
         // Emit get_guest for every piece of state and store it to memory
         // These get_guests will be replaced with movs from a temporary or a phi
         // during the ssa pass
-        IRInstruction* value = ir_emit_get_guest(exit, x86_ref_e(i));
+        SSAInstruction* value = ir_emit_get_guest(exit, x86_ref_e(i));
         ir_emit_store_guest_to_memory(exit, x86_ref_e(i), value);
     }
 
@@ -77,7 +77,7 @@ void IRFunction::deallocateAll() {
     }
 }
 
-std::string IRFunction::Print(const std::function<std::string(const IRInstruction*)>& callback) const {
+std::string IRFunction::Print(const std::function<std::string(const SSAInstruction*)>& callback) const {
     if (!IsCompiled()) {
         WARN("Print called on not compiled function");
         return "";
@@ -107,13 +107,13 @@ bool IRFunction::Validate() const {
         u32 have = 0;
     };
 
-    std::unordered_map<IRInstruction*, Uses> uses;
+    std::unordered_map<SSAInstruction*, Uses> uses;
     for (auto& block : blocks) {
         if (block->GetTermination() == Termination::Null) {
             return false;
         }
 
-        auto add_uses = [&uses](IRInstruction* inst) {
+        auto add_uses = [&uses](SSAInstruction* inst) {
             uses[inst].want = inst->GetUseCount();
 
             for (auto& inst : inst->GetUsedInstructions()) {

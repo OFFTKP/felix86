@@ -47,7 +47,7 @@ struct IRFunction {
         return start_address_block->GetStartAddress();
     }
 
-    [[nodiscard]] std::string Print(const std::function<std::string(const IRInstruction*)>& callback) const;
+    [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
     void UnvisitAll() const;
 

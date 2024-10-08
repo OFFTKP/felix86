@@ -22,7 +22,7 @@
 // Break critical edges that lead to blocks with phis and also construct the RIRInstructions
 void critical_edge_splitting_pass(IRFunction* function) {
     for (IRBlock* block : function->GetBlocks()) {
-        for (const IRInstruction& inst : block->GetInstructions()) {
+        for (const SSAInstruction& inst : block->GetInstructions()) {
             if (inst.IsOperands()) {
                 RIRInstruction rir_inst = inst.AsReducedInstruction();
                 block->InsertReducedInstruction(std::move(rir_inst));

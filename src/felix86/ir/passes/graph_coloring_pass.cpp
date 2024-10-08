@@ -21,25 +21,25 @@ riscv_ref_e AllocationToRef(Allocation& allocation) {
 // This has got to be super slow, lots of heap allocations, please profile me
 
 struct InterferenceGraph {
-    void AddEdge(u32 a, IRInstruction* b) {
+    void AddEdge(u32 a, SSAInstruction* b) {
         todo, interferences must happen using names graph[a].insert(b);
         graph[b].insert(a);
     }
 
-    void RemoveEdge(IRInstruction* a, IRInstruction* b) {
+    void RemoveEdge(SSAInstruction* a, SSAInstruction* b) {
         graph[a].erase(b);
         graph[b].erase(a);
     }
 
-    const std::unordered_set<IRInstruction*>& GetInterferences(const IRInstruction* inst) {
-        return graph[(IRInstruction*)inst];
+    const std::unordered_set<SSAInstruction*>& GetInterferences(const SSAInstruction* inst) {
+        return graph[(SSAInstruction*)inst];
     }
 
 private:
-    tsl::robin_map<IRInstruction*, std::unordered_set<IRInstruction*>> graph;
+    tsl::robin_map<SSAInstruction*, std::unordered_set<SSAInstruction*>> graph;
 };
 
-using LivenessList = std::list<IRInstruction*>;
+using LivenessList = std::list<SSAInstruction*>;
 
 /*
     Based on this common algorithm that I couldn't find a paper for:
@@ -78,7 +78,7 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
     for (size_t j = 0; j < blocks.size(); j++) {
         IRBlock* block = blocks[j];
         size_t i = block->GetIndex();
-        for (IRInstruction& instr : block->GetInstructions()) {
+        for (SSAInstruction& instr : block->GetInstructions()) {
             if (instr.IsPhi()) {
                 phi_def[i].push_back(&instr);
             } else {
@@ -86,8 +86,8 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
                     def[i].push_back(&instr);
                 }
 
-                std::span<IRInstruction*> used_instructions = instr.GetUsedInstructions();
-                for (IRInstruction* used_instr : used_instructions) {
+                std::span<SSAInstruction*> used_instructions = instr.GetUsedInstructions();
+                for (SSAInstruction* used_instr : used_instructions) {
                     // Not defined in this block ie. upwards exposed, live range goes outside
                     // current block
                     if (std::find(def[i].begin(), def[i].end(), used_instr) == def[i].end()) {
@@ -112,13 +112,13 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
     //     printf("Block %d\n", i);
     //     printf("Use count: %d\n", use[i].size());
     //     printf("{\n");
-    //     for (IRInstruction* instr : use[i]) {
+    //     for (SSAInstruction* instr : use[i]) {
     //         printf("    %s\n", instr->Print().c_str());
     //     }
     //     printf("}\n");
     //     printf("Def count: %d\n", def[i].size());
     //     printf("{\n");
-    //     for (IRInstruction* instr : def[i]) {
+    //     for (SSAInstruction* instr : def[i]) {
     //         printf("    %s\n", instr->Print().c_str());
     //     }
     //     printf("}\n");
@@ -144,7 +144,7 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
             in[i].insert(in[i].end(), phi_def[i].begin(), phi_def[i].end());
 
             LivenessList out_minus_def = out[i];
-            for (IRInstruction* instr : def[i]) {
+            for (SSAInstruction* instr : def[i]) {
                 out_minus_def.remove(instr);
             }
 
@@ -161,7 +161,7 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
 
                 size_t s = successor->GetIndex();
                 LivenessList in_minus_phi_def = in[s];
-                for (IRInstruction* instr : phi_def[s]) {
+                for (SSAInstruction* instr : phi_def[s]) {
                     in_minus_phi_def.remove(instr);
                 }
                 out[i].insert(out[i].end(), in_minus_phi_def.begin(), in_minus_phi_def.end());
@@ -172,14 +172,14 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
                 if (in[i].size() != in_old.size() || out[i].size() != out_old.size()) {
                     changed = true;
                 } else {
-                    for (IRInstruction* instr : in[i]) {
+                    for (SSAInstruction* instr : in[i]) {
                         if (std::find(in_old.begin(), in_old.end(), instr) == in_old.end()) {
                             changed = true;
                             break;
                         }
                     }
 
-                    for (IRInstruction* instr : out[i]) {
+                    for (SSAInstruction* instr : out[i]) {
                         if (std::find(out_old.begin(), out_old.end(), instr) == out_old.end()) {
                             changed = true;
                             break;
@@ -191,7 +191,7 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
     } while (changed);
 
     for (IRBlock* block : function->GetBlocksPostorder()) {
-        std::unordered_set<IRInstruction*> live_now;
+        std::unordered_set<SSAInstruction*> live_now;
 
         // We are gonna walk the block backwards, first add all definitions that have lifetime
         // that extends past this basic block
@@ -199,14 +199,14 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
             live_now.insert(inst);
         }
 
-        std::list<IRInstruction>& insts = block->GetInstructions();
+        std::list<SSAInstruction>& insts = block->GetInstructions();
         for (auto it = insts.rbegin(); it != insts.rend(); ++it) {
-            IRInstruction& inst = *it;
+            SSAInstruction& inst = *it;
 
             // Erase the currently defined variable if it exists in the set
             live_now.erase(&inst);
 
-            std::span<IRInstruction*> operands = it->GetUsedInstructions();
+            std::span<SSAInstruction*> operands = it->GetUsedInstructions();
             for (auto& op : operands) {
                 live_now.insert(op);
             }
@@ -241,7 +241,7 @@ void ir_graph_coloring_pass(IRFunction* function) {
 
     // Go through every block and add interference edges
 
-    std::function<std::string(const IRInstruction*)> func = [&graph](const IRInstruction* inst) {
+    std::function<std::string(const SSAInstruction*)> func = [&graph](const SSAInstruction* inst) {
         auto& interferences = graph.GetInterferences(inst);
         if (interferences.empty())
             return std::string{};
@@ -277,15 +277,15 @@ void ir_graph_coloring_pass(IRFunction* function) {
     for (IRBlock* block : function->GetBlocks()) {
         auto it = block->GetInstructions().begin();
         auto end = block->GetInstructions().end();
-        std::list<IRInstruction>& instructions = block->GetInstructions();
+        std::list<SSAInstruction>& instructions = block->GetInstructions();
         while (it != end) {
-            IRInstruction* inst = &*it;
+            SSAInstruction* inst = &*it;
             if (inst->ExitsVM()) {
                 for (auto& interference : graph.GetInterferences(inst)) {
                     if (!interference->IsSpilled() && interference->IsCallerSaved()) {
                         riscv_ref_e ref = AllocationToRef(interference->GetAllocation());
-                        IRInstruction store(ref, true, block->GetNextName());
-                        IRInstruction load(ref, false, block->GetNextName());
+                        SSAInstruction store(ref, true, block->GetNextName());
+                        SSAInstruction load(ref, false, block->GetNextName());
                         instructions.insert(it, std::move(store));
                         auto it_after = it;
                         it_after++;

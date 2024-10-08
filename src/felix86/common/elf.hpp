@@ -24,6 +24,26 @@ struct Elf {
         return (void*)(program + entry);
     }
 
+    void* GetStackPointer() const {
+        return stack_pointer;
+    }
+
+    void* GetProgramBase() const {
+        return program;
+    }
+
+    void* GetPhdr() const {
+        return phdr;
+    }
+
+    u64 GetPhnum() const {
+        return phnum;
+    }
+
+    u64 GetPhent() const {
+        return phent;
+    }
+
 private:
     bool ok = false;
     bool is_interpreter = false;

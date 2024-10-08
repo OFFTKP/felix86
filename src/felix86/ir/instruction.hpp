@@ -21,11 +21,11 @@ enum class IRType : u8 {
     Count,
 };
 
-struct IRInstruction;
+struct SSAInstruction;
 struct IRBlock;
 
 struct Operands {
-    std::array<IRInstruction*, 4> operands;
+    std::array<SSAInstruction*, 4> operands;
     u64 immediate_data = 0; // for some sse instructions
     u8 operand_count = 0;
 };
@@ -36,7 +36,7 @@ struct GetGuest {
 
 struct SetGuest {
     x86_ref_e ref = X86_REF_COUNT;
-    IRInstruction* source = nullptr;
+    SSAInstruction* source = nullptr;
 };
 
 struct Phi {
@@ -48,7 +48,7 @@ struct Phi {
 
     x86_ref_e ref = X86_REF_COUNT;
     std::vector<IRBlock*> blocks = {};
-    std::vector<IRInstruction*> values = {};
+    std::vector<SSAInstruction*> values = {};
 };
 
 struct Comment {
@@ -102,18 +102,19 @@ struct RIRInstruction {
     u8 operand_count;
 };
 
-struct IRInstruction {
-    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands)
-        : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode)} {
+struct SSAInstruction {
+    SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands)
+        : opcode(opcode), return_type{SSAInstruction::getTypeFromOpcode(opcode)} {
         Operands op;
         for (size_t i = 0; i < operands.size(); i++) {
             if (i >= op.operands.size()) {
                 ERROR("Too many operands");
             }
 
-            IRInstruction* inst = *(operands.begin() + i);
+            SSAInstruction* inst = *(operands.begin() + i);
             op.operands[i] = inst;
         }
+        op.operands_count = operands.size();
         expression = op;
 
         for (auto& operand : operands) {
@@ -124,7 +125,7 @@ struct IRInstruction {
         expression_type = ExpressionType::Operands;
     }
 
-    IRInstruction(u64 immediate) : opcode(IROpcode::Immediate), return_type{IRType::Integer64} {
+    SSAInstruction(u64 immediate) : opcode(IROpcode::Immediate), return_type{IRType::Integer64} {
         Operands op;
         op.immediate_data = immediate;
         op.operand_count = 0;
@@ -133,7 +134,7 @@ struct IRInstruction {
         expression_type = ExpressionType::Operands;
     }
 
-    IRInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode, ref)} {
+    SSAInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), return_type{SSAInstruction::getTypeFromOpcode(opcode, ref)} {
         GetGuest get;
         get.ref = ref;
         expression = get;
@@ -141,8 +142,8 @@ struct IRInstruction {
         expression_type = ExpressionType::GetGuest;
     }
 
-    IRInstruction(IROpcode opcode, x86_ref_e ref, IRInstruction* source)
-        : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode, ref)} {
+    SSAInstruction(IROpcode opcode, x86_ref_e ref, SSAInstruction* source)
+        : opcode(opcode), return_type{SSAInstruction::getTypeFromOpcode(opcode, ref)} {
         SetGuest set;
         set.ref = ref;
         set.source = source;
@@ -152,7 +153,7 @@ struct IRInstruction {
         expression_type = ExpressionType::SetGuest;
     }
 
-    IRInstruction(Phi phi) : opcode(IROpcode::Phi), return_type{IRInstruction::getTypeFromOpcode(opcode, phi.ref)} {
+    SSAInstruction(Phi phi) : opcode(IROpcode::Phi), return_type{SSAInstruction::getTypeFromOpcode(opcode, phi.ref)} {
         expression = std::move(phi);
 
         for (auto& value : phi.values) {
@@ -162,8 +163,8 @@ struct IRInstruction {
         expression_type = ExpressionType::Phi;
     }
 
-    IRInstruction(const std::string& comment)
-        : opcode(IROpcode::Comment), return_type{IRInstruction::getTypeFromOpcode(opcode)} {
+    SSAInstruction(const std::string& comment)
+        : opcode(IROpcode::Comment), return_type{SSAInstruction::getTypeFromOpcode(opcode)} {
         Comment c;
         c.comment = comment;
         expression = c;
@@ -173,7 +174,7 @@ struct IRInstruction {
         Lock();
     }
 
-    IRInstruction(riscv_ref_e ref, bool push) {
+    SSAInstruction(riscv_ref_e ref, bool push) {
         if (push) {
             opcode = IROpcode::PushHost;
         } else {
@@ -189,12 +190,12 @@ struct IRInstruction {
         return_type = IRType::Void;
     }
 
-    IRInstruction(const IRInstruction& other) = delete;
-    IRInstruction& operator=(const IRInstruction& other) = delete;
-    IRInstruction(IRInstruction&& other) = default;
-    IRInstruction& operator=(IRInstruction&& other) = default;
+    SSAInstruction(const SSAInstruction& other) = delete;
+    SSAInstruction& operator=(const SSAInstruction& other) = delete;
+    SSAInstruction(SSAInstruction&& other) = default;
+    SSAInstruction& operator=(SSAInstruction&& other) = default;
 
-    bool IsSameExpression(const IRInstruction& other) const;
+    bool IsSameExpression(const SSAInstruction& other) const;
 
     IRType GetType() const {
         return return_type;
@@ -306,11 +307,11 @@ struct IRInstruction {
 
     std::string GetTypeString() const;
 
-    const IRInstruction* GetOperand(u8 index) const {
+    const SSAInstruction* GetOperand(u8 index) const {
         return AsOperands().operands[index];
     }
 
-    IRInstruction* GetOperand(u8 index) {
+    SSAInstruction* GetOperand(u8 index) {
         return AsOperands().operands[index];
     }
 
@@ -318,9 +319,9 @@ struct IRInstruction {
         return AsOperands().operands[index]->GetNameString();
     }
 
-    std::span<IRInstruction*> GetUsedInstructions();
+    std::span<SSAInstruction*> GetUsedInstructions();
 
-    void ReplaceExpressionWithMov(IRInstruction* mov) {
+    void ReplaceExpressionWithMov(SSAInstruction* mov) {
         Invalidate();
         Operands op;
         op.operands[0] = mov;
@@ -343,7 +344,7 @@ struct IRInstruction {
         AsOperands().immediate_data = immediate_data;
     }
 
-    std::string Print(const std::function<std::string(const IRInstruction*)>& callback) const;
+    std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
     void Unlock() {
         locked = false;

@@ -2,7 +2,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/ir/block.hpp"
 
-std::string IRBlock::Print(const std::function<std::string(const IRInstruction*)>& callback) const {
+std::string IRBlock::Print(const std::function<std::string(const SSAInstruction*)>& callback) const {
     std::string ret;
 
     if (GetIndex() == 0) {
@@ -17,7 +17,7 @@ std::string IRBlock::Print(const std::function<std::string(const IRInstruction*)
     }
     ret += "\n";
 
-    for (const IRInstruction& inst : GetInstructions()) {
+    for (const SSAInstruction& inst : GetInstructions()) {
         ret += inst.Print(callback);
         ret += "\n";
     }
@@ -47,14 +47,14 @@ std::string IRBlock::Print(const std::function<std::string(const IRInstruction*)
     return ret;
 }
 
-IRInstruction* IRBlock::InsertAtEnd(IRInstruction&& instr) {
+SSAInstruction* IRBlock::InsertAtEnd(SSAInstruction&& instr) {
     instructions.push_back(std::move(instr));
-    IRInstruction* ret = &instructions.back();
+    SSAInstruction* ret = &instructions.back();
     ret->SetName((GetIndex() << 20) | next_name++);
     return ret;
 }
 
-bool IRBlock::IsUsedInPhi(IRInstruction* target) const {
+bool IRBlock::IsUsedInPhi(SSAInstruction* target) const {
     for (auto& instr : instructions) {
         if (instr.IsPhi()) {
             const Phi& phi = instr.AsPhi();

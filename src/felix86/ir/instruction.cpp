@@ -4,7 +4,7 @@
 #include "felix86/ir/block.hpp"
 #include "felix86/ir/instruction.hpp"
 
-bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
+bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
     if (expression_type != other.expression_type) {
         return false;
     }
@@ -74,7 +74,7 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
     }
 }
 
-IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
+IRType SSAInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     switch (opcode) {
     case IROpcode::Mov: {
         ERROR("Should not be used in GetTypeFromOpcode: %d", (int)opcode);
@@ -196,12 +196,12 @@ IRType IRInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     }
 }
 
-void IRInstruction::Invalidate() {
+void SSAInstruction::Invalidate() {
     if (locked) {
         ERROR("Tried to invalidate locked instruction");
     }
 
-    for (IRInstruction* used : GetUsedInstructions()) {
+    for (SSAInstruction* used : GetUsedInstructions()) {
         used->RemoveUse();
     }
 }
@@ -218,7 +218,7 @@ void IRInstruction::Invalidate() {
         if (operands.operands.size() != num_ops) {                                                                                                   \
             ERROR("Invalid operands for opcode %d", static_cast<u8>(IROpcode::opcode));                                                              \
         }                                                                                                                                            \
-        for (IRInstruction * operand : operands.operands) {                                                                                          \
+        for (SSAInstruction * operand : operands.operands) {                                                                                          \
             if (operand->GetType() != IRType::Integer64) {                                                                                           \
                 ERROR("Invalid operand type for opcode %d", static_cast<u8>(IROpcode::opcode));                                                      \
             }                                                                                                                                        \
@@ -230,7 +230,7 @@ void IRInstruction::Invalidate() {
         if (operands.operands.size() != num_ops) {                                                                                                   \
             ERROR("Invalid operands for opcode %d", static_cast<u8>(IROpcode::opcode));                                                              \
         }                                                                                                                                            \
-        for (IRInstruction * operand : operands.operands) {                                                                                          \
+        for (SSAInstruction * operand : operands.operands) {                                                                                          \
             if (operand->GetType() != IRType::Vector128) {                                                                                           \
                 ERROR("Invalid operand type for opcode %d", static_cast<u8>(IROpcode::opcode));                                                      \
             }                                                                                                                                        \
@@ -242,7 +242,7 @@ void IRInstruction::Invalidate() {
         ERROR("Invalid opcode %d", static_cast<u8>(IROpcode::opcode));                                                                               \
         break
 
-void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
+void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
     switch (opcode) {
     case IROpcode::Null: {
         ERROR("Null should not be used");
@@ -361,11 +361,11 @@ void IRInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
     }
 }
 
-std::string IRInstruction::GetNameString() const {
+std::string SSAInstruction::GetNameString() const {
     return fmt::format("%{}", GetName());
 }
 
-std::string IRInstruction::GetTypeString() const {
+std::string SSAInstruction::GetTypeString() const {
     switch (GetType()) {
     case IRType::Integer64: {
         return "Int64";
@@ -411,7 +411,7 @@ std::string IRInstruction::GetTypeString() const {
                 GetOperandNameString(0), #param2, GetOperandNameString(1), #param3, GetOperandNameString(2), #param4, GetOperandNameString(3),       \
                 #param5, GetOperandNameString(4), #param6, GetOperandNameString(5), #param7, GetOperandNameString(6))
 
-std::string IRInstruction::Print(const std::function<std::string(const IRInstruction*)>& callback) const {
+std::string SSAInstruction::Print(const std::function<std::string(const SSAInstruction*)>& callback) const {
     IROpcode opcode = GetOpcode();
     std::string ret;
     switch (opcode) {
@@ -794,11 +794,11 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
     return ret;
 }
 
-bool IRInstruction::IsVoid() const {
+bool SSAInstruction::IsVoid() const {
     return return_type == IRType::Void;
 }
 
-std::span<IRInstruction*> IRInstruction::GetUsedInstructions() {
+std::span<SSAInstruction*> SSAInstruction::GetUsedInstructions() {
     switch (expression_type) {
     case ExpressionType::Operands: {
         return AsOperands().operands;
@@ -820,7 +820,7 @@ std::span<IRInstruction*> IRInstruction::GetUsedInstructions() {
     return {};
 }
 
-bool IRInstruction::ExitsVM() const {
+bool SSAInstruction::ExitsVM() const {
     switch (GetOpcode()) {
     case IROpcode::Syscall:
     case IROpcode::Cpuid:
@@ -833,14 +833,14 @@ bool IRInstruction::ExitsVM() const {
     }
 }
 
-void IRInstruction::PropagateMovs() {
-    auto replace_mov = [](IRInstruction*& operand, int index) {
+void SSAInstruction::PropagateMovs() {
+    auto replace_mov = [](SSAInstruction*& operand, int index) {
         if (operand->GetOpcode() != IROpcode::Mov) {
             return;
         }
 
         bool is_mov = true;
-        IRInstruction* value_final = operand->GetOperand(0);
+        SSAInstruction* value_final = operand->GetOperand(0);
         do {
             is_mov = false;
             if (value_final->GetOpcode() == IROpcode::Mov) {
@@ -857,7 +857,7 @@ void IRInstruction::PropagateMovs() {
     case ExpressionType::Operands: {
         Operands& operands = AsOperands();
         int i = 0;
-        for (IRInstruction*& operand : operands.operands) {
+        for (SSAInstruction*& operand : operands.operands) {
             replace_mov(operand, i);
             i++;
         }

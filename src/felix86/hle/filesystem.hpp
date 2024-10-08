@@ -51,8 +51,11 @@ struct Filesystem {
     void* GetEntrypoint() {
         if (interpreter) {
             return interpreter->GetEntrypoint();
-        } else {
+        } else if (elf) {
             return elf->GetEntrypoint();
+        } else {
+            ERROR("No ELF file loaded");
+            return nullptr;
         }
     }
 
@@ -64,6 +67,14 @@ struct Filesystem {
         return rootfs_path;
     }
 
+    std::shared_ptr<Elf> GetExecutable() {
+        return elf;
+    }
+
+    std::shared_ptr<Elf> GetInterpreter() {
+        return interpreter;
+    }
+
 private:
     bool validatePath(const std::filesystem::path& path);
 
@@ -71,6 +82,6 @@ private:
     std::string rootfs_path_string;
     std::filesystem::path executable_path;
     std::filesystem::path cwd_path;
-    std::unique_ptr<Elf> elf;
-    std::unique_ptr<Elf> interpreter;
+    std::shared_ptr<Elf> elf;
+    std::shared_ptr<Elf> interpreter;
 };

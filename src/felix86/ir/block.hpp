@@ -27,7 +27,7 @@ struct IRBlock {
         successors[0]->AddPredecessor(this);
     }
 
-    void TerminateJumpConditional(IRInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
+    void TerminateJumpConditional(SSAInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
         termination = Termination::JumpConditional;
         successors[0] = target_true;
         successors[1] = target_false;
@@ -38,13 +38,13 @@ struct IRBlock {
         successors[1]->AddPredecessor(this);
     }
 
-    using iterator = std::list<IRInstruction>::iterator;
+    using iterator = std::list<SSAInstruction>::iterator;
 
     void TerminateExit() {
         termination = Termination::Exit;
     }
 
-    IRInstruction* InsertAtEnd(IRInstruction&& instr);
+    SSAInstruction* InsertAtEnd(SSAInstruction&& instr);
 
     void InsertReducedInstruction(RIRInstruction&& instr) {
         reduced_instructions.push_back(std::move(instr));
@@ -54,7 +54,7 @@ struct IRBlock {
         backend_instructions.push_back(std::move(instr));
     }
 
-    const IRInstruction* GetCondition() const {
+    const SSAInstruction* GetCondition() const {
         return condition;
     }
 
@@ -159,11 +159,11 @@ struct IRBlock {
         return termination;
     }
 
-    std::list<IRInstruction>& GetInstructions() {
+    std::list<SSAInstruction>& GetInstructions() {
         return instructions;
     }
 
-    const std::list<IRInstruction>& GetInstructions() const {
+    const std::list<SSAInstruction>& GetInstructions() const {
         return instructions;
     }
 
@@ -183,13 +183,13 @@ struct IRBlock {
         dominance_frontiers.push_back(block);
     }
 
-    void AddPhi(IRInstruction&& instr) {
+    void AddPhi(SSAInstruction&& instr) {
         instructions.push_front(std::move(instr));
     }
 
-    bool IsUsedInPhi(IRInstruction* instr) const;
+    bool IsUsedInPhi(SSAInstruction* instr) const;
 
-    std::string Print(const std::function<std::string(const IRInstruction*)>& callback) const;
+    std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
     void SetReducedCondition(const RIRInstruction* instr) {
         reduced_condition = instr;
@@ -201,7 +201,7 @@ private:
     }
 
     u64 start_address = IR_NO_ADDRESS;
-    std::list<IRInstruction> instructions;
+    std::list<SSAInstruction> instructions;
     std::vector<RIRInstruction> reduced_instructions;
     std::vector<BackendInstruction> backend_instructions;
     std::vector<IRBlock*> predecessors;
@@ -209,7 +209,7 @@ private:
     std::vector<IRBlock*> dominance_frontiers;
     IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
-    const IRInstruction* condition = nullptr;
+    const SSAInstruction* condition = nullptr;
     const RIRInstruction* reduced_condition = nullptr;
     const BackendInstruction* backend_condition = nullptr;
     bool compiled = false;

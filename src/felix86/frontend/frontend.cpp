@@ -660,9 +660,9 @@ void frontend_compile_instruction(FrontendState* state) {
 
         x86_operand_t rcx_reg = get_full_reg(X86_REF_RCX);
         rcx_reg.size = inst.operand_reg.size;
-        IRInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
-        IRInstruction* zero = ir_emit_immediate(state->current_block, 0);
-        IRInstruction* condition = ir_emit_equal(state->current_block, rcx, zero);
+        SSAInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
+        SSAInstruction* zero = ir_emit_immediate(state->current_block, 0);
+        SSAInstruction* condition = ir_emit_equal(state->current_block, rcx, zero);
         rep_loop_block->TerminateJumpConditional(condition, rep_exit_block, rep_loop_block);
 
         // Write the instruction in the loop body
@@ -674,14 +674,14 @@ void frontend_compile_instruction(FrontendState* state) {
     if (is_rep) {
         x86_operand_t rcx_reg = get_full_reg(X86_REF_RCX);
         rcx_reg.size = inst.operand_reg.size;
-        IRInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
-        IRInstruction* zero = ir_emit_immediate(state->current_block, 0);
-        IRInstruction* one = ir_emit_immediate(state->current_block, 1);
-        IRInstruction* sub = ir_emit_sub(state->current_block, rcx, one);
+        SSAInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
+        SSAInstruction* zero = ir_emit_immediate(state->current_block, 0);
+        SSAInstruction* one = ir_emit_immediate(state->current_block, 1);
+        SSAInstruction* sub = ir_emit_sub(state->current_block, rcx, one);
         ir_emit_set_reg(state->current_block, &rcx_reg, sub);
-        IRInstruction* rcx_zero = ir_emit_equal(state->current_block, sub, zero);
-        IRInstruction* condition;
-        IRInstruction* zf = ir_emit_get_flag(state->current_block, X86_REF_ZF);
+        SSAInstruction* rcx_zero = ir_emit_equal(state->current_block, sub, zero);
+        SSAInstruction* condition;
+        SSAInstruction* zf = ir_emit_get_flag(state->current_block, X86_REF_ZF);
         if (rep_type == REP) { // Some instructions don't check the ZF flag
             condition = zero;
         } else if (rep_type == REP_NZ) {
@@ -692,7 +692,7 @@ void frontend_compile_instruction(FrontendState* state) {
             UNREACHABLE();
         }
 
-        IRInstruction* final_condition = ir_emit_or(state->current_block, rcx_zero, condition);
+        SSAInstruction* final_condition = ir_emit_or(state->current_block, rcx_zero, condition);
         state->current_block->TerminateJumpConditional(final_condition, rep_exit_block, rep_loop_block);
 
         frontend_compile_block(state->function, rep_exit_block);

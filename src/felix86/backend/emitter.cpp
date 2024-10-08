@@ -73,7 +73,7 @@ void Emitter::EmitJumpConditional(Backend& backend, const BackendInstruction& co
     AS.JR(address_false);
 }
 
-void Emitter::EmitLoadGuestFromMemory(Backend& backend, const IRInstruction& inst) {
+void Emitter::EmitLoadGuestFromMemory(Backend& backend, const SSAInstruction& inst) {
     biscuit::GPR address = backend.GetRegisters().ThreadStatePointer();
 
     auto Rd = _RegWO_(&inst);
@@ -112,7 +112,7 @@ void Emitter::EmitLoadGuestFromMemory(Backend& backend, const IRInstruction& ins
     }
 }
 
-void Emitter::EmitStoreGuestToMemory(Backend& backend, const IRInstruction& inst) {
+void Emitter::EmitStoreGuestToMemory(Backend& backend, const SSAInstruction& inst) {
     biscuit::GPR address = backend.GetRegisters().ThreadStatePointer();
 
     const SetGuest& set_guest = inst.AsSetGuest();
@@ -152,7 +152,7 @@ void Emitter::EmitStoreGuestToMemory(Backend& backend, const IRInstruction& inst
 }
 
 // TODO: do proper pushing/popping, get rid of vmstatepointer
-void Emitter::EmitPushHost(Backend& backend, const IRInstruction& inst) {
+void Emitter::EmitPushHost(Backend& backend, const SSAInstruction& inst) {
     const PushHost& push_host = inst.AsPushHost();
     biscuit::GPR vm_state = backend.GetRegisters().AcquireScratchGPR();
     AS.LI(vm_state, backend.GetVMStatePointer());
@@ -181,7 +181,7 @@ void Emitter::EmitPushHost(Backend& backend, const IRInstruction& inst) {
     }
 }
 
-void Emitter::EmitPopHost(Backend& backend, const IRInstruction& inst) {
+void Emitter::EmitPopHost(Backend& backend, const SSAInstruction& inst) {
     const PopHost& pop_host = inst.AsPopHost();
     biscuit::GPR vm_state = backend.GetRegisters().AcquireScratchGPR();
     AS.LI(vm_state, backend.GetVMStatePointer());

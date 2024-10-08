@@ -1,7 +1,7 @@
 #include "felix86/ir/passes/passes.hpp"
 
 void ir_copy_propagate_block_v2(IRBlock* block) {
-    for (IRInstruction& inst : block->GetInstructions()) {
+    for (SSAInstruction& inst : block->GetInstructions()) {
         if (inst.GetOpcode() != IROpcode::Mov) {
             inst.PropagateMovs();
         }

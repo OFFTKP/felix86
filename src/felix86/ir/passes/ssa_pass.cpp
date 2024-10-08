@@ -143,8 +143,8 @@ static void place_phi_functions(IRFunction* function) {
 
     for (size_t i = 0; i < list.size(); i++) {
         IRBlock* block = list[i];
-        std::list<IRInstruction>& instructions = block->GetInstructions();
-        for (const IRInstruction& inst : instructions) {
+        std::list<SSAInstruction>& instructions = block->GetInstructions();
+        for (const SSAInstruction& inst : instructions) {
             // Make sure it wasn't already added in this list of instructions
             if (inst.GetOpcode() == IROpcode::SetGuest) {
                 x86_ref_e ref = inst.AsSetGuest().ref;
@@ -178,7 +178,7 @@ static void place_phi_functions(IRFunction* function) {
                     phi.values.resize(pred_count);
                     phi.blocks.resize(pred_count);
 
-                    IRInstruction instruction(std::move(phi), df->GetNextName());
+                    SSAInstruction instruction(std::move(phi), df->GetNextName());
                     df->AddPhi(std::move(instruction));
 
                     has_already[df->GetIndex()] = iter_count;
@@ -203,11 +203,11 @@ int which_pred(IRBlock* pred, IRBlock* block) {
     return -1;
 }
 
-static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstruction*>, X86_REF_COUNT>& stacks) {
+static void search(IRDominatorTreeNode* node, std::array<std::stack<SSAInstruction*>, X86_REF_COUNT>& stacks) {
     IRBlock* block = node->block;
     std::array<int, X86_REF_COUNT> pop_count = {};
     for (auto it = block->GetInstructions().begin(); it != block->GetInstructions().end();) {
-        IRInstruction& inst = *it;
+        SSAInstruction& inst = *it;
         // These are the only instructions we care about moving to SSA.
         if (inst.GetOpcode() == IROpcode::SetGuest) {
             int ref = inst.AsSetGuest().ref;
@@ -218,7 +218,7 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstructio
             stacks[ref].push(&inst);
             pop_count[ref]++;
         } else if (inst.GetOpcode() == IROpcode::GetGuest) {
-            IRInstruction* def = stacks[inst.AsGetGuest().ref].top();
+            SSAInstruction* def = stacks[inst.AsGetGuest().ref].top();
             inst.ReplaceExpressionWithMov(def);
         }
 
@@ -227,7 +227,7 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstructio
 
     for (IRBlock* succesor : block->GetSuccessors()) {
         int j = which_pred(block, succesor);
-        for (IRInstruction& inst : succesor->GetInstructions()) {
+        for (SSAInstruction& inst : succesor->GetInstructions()) {
             if (!inst.IsPhi()) {
                 break;
             }
@@ -258,7 +258,7 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstructio
 // before the use, by loading the register from memory.
 // This should effectively forward sets to gets and get rid of get_guest instructions
 static void rename(std::vector<IRDominatorTreeNode>& list) {
-    std::array<std::stack<IRInstruction*>, X86_REF_COUNT> stacks = {};
+    std::array<std::stack<SSAInstruction*>, X86_REF_COUNT> stacks = {};
 
     search(&list[0], stacks);
 }
