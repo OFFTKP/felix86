@@ -1,6 +1,5 @@
 #include <fmt/format.h>
 #include "felix86/common/log.hpp"
-#include "felix86/common/print.hpp"
 #include "felix86/ir/block.hpp"
 
 std::string IRBlock::Print(const std::function<std::string(const IRInstruction*)>& callback) const {
@@ -51,6 +50,7 @@ std::string IRBlock::Print(const std::function<std::string(const IRInstruction*)
 IRInstruction* IRBlock::InsertAtEnd(IRInstruction&& instr) {
     instructions.push_back(std::move(instr));
     IRInstruction* ret = &instructions.back();
+    ret->SetName((GetIndex() << 20) | next_name++);
     return ret;
 }
 

@@ -3,6 +3,7 @@
 #include <array>
 #include <functional>
 #include <list>
+#include "felix86/backend/instruction.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/instruction.hpp"
 
@@ -45,8 +46,20 @@ struct IRBlock {
 
     IRInstruction* InsertAtEnd(IRInstruction&& instr);
 
+    void InsertReducedInstruction(RIRInstruction&& instr) {
+        reduced_instructions.push_back(std::move(instr));
+    }
+
+    void InsertBackendInstruction(BackendInstruction&& instr) {
+        backend_instructions.push_back(std::move(instr));
+    }
+
     const IRInstruction* GetCondition() const {
         return condition;
+    }
+
+    const BackendInstruction* GetBackendCondition() const {
+        return backend_condition;
     }
 
     bool IsCompiled() const {
@@ -71,18 +84,6 @@ struct IRBlock {
 
     u32 GetIndex() const {
         return list_index;
-    }
-
-    u32 GetNextName() {
-        if (GetIndex() > ((1 << 12) - 1)) {
-            ERROR("Too many blocks for this to work");
-        }
-
-        if (next_instruction_name > ((1 << 20) - 1)) {
-            ERROR("Too many instructions for this to work");
-        }
-
-        return (GetIndex() << 20) | (next_instruction_name++);
     }
 
     void SetIndex(u32 index) {
@@ -166,6 +167,14 @@ struct IRBlock {
         return instructions;
     }
 
+    const std::vector<RIRInstruction>& GetReducedInstructions() const {
+        return reduced_instructions;
+    }
+
+    const std::vector<BackendInstruction>& GetBackendInstructions() const {
+        return backend_instructions;
+    }
+
     std::vector<IRBlock*>& GetDominanceFrontiers() {
         return dominance_frontiers;
     }
@@ -182,6 +191,10 @@ struct IRBlock {
 
     std::string Print(const std::function<std::string(const IRInstruction*)>& callback) const;
 
+    void SetReducedCondition(const RIRInstruction* instr) {
+        reduced_condition = instr;
+    }
+
 private:
     void AddPredecessor(IRBlock* pred) {
         predecessors.push_back(pred);
@@ -189,15 +202,19 @@ private:
 
     u64 start_address = IR_NO_ADDRESS;
     std::list<IRInstruction> instructions;
+    std::vector<RIRInstruction> reduced_instructions;
+    std::vector<BackendInstruction> backend_instructions;
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
     std::vector<IRBlock*> dominance_frontiers;
     IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
-    IRInstruction* condition = nullptr;
+    const IRInstruction* condition = nullptr;
+    const RIRInstruction* reduced_condition = nullptr;
+    const BackendInstruction* backend_condition = nullptr;
     bool compiled = false;
     mutable bool visited = false;
     u32 list_index = 0;
     u32 postorder_index = 0;
-    u32 next_instruction_name = 0;
+    u32 next_name = 1;
 };

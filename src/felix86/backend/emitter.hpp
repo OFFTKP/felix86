@@ -1,20 +1,17 @@
 #pragma once
 
-#include "biscuit/assembler.hpp"
-#include "felix86/ir/instruction.hpp"
+#include "biscuit/registers.hpp"
+#include "felix86/backend/instruction.hpp"
 
 struct Backend;
 
 struct Emitter {
-    static void Emit(Backend& backend, const IRInstruction& instruction);
+    static void Emit(Backend& backend, const BackendInstruction& instruction);
     static void EmitJump(Backend& backend, void* target);
-    static void EmitJumpConditional(Backend& backend, const IRInstruction& condition, void* target_true, void* target_false);
+    static void EmitJumpConditional(Backend& backend, const BackendInstruction& condition, void* target_true, void* target_false);
 
 private:
-    static void EmitLoadGuestFromMemory(Backend&, const IRInstruction&);
-    static void EmitStoreGuestToMemory(Backend&, const IRInstruction&);
-    static void EmitPushHost(Backend&, const IRInstruction&);
-    static void EmitPopHost(Backend&, const IRInstruction&);
+    static void EmitMov(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitImmediate(Backend&, biscuit::GPR, u64);
     static void EmitRdtsc(Backend&);
     static void EmitSyscall(Backend&);

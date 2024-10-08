@@ -798,12 +798,6 @@ bool IRInstruction::IsVoid() const {
     return return_type == IRType::Void;
 }
 
-bool IRInstruction::NeedsAllocation() const {
-    bool already_allocated = allocation.index() != 0;
-    bool dont_allocate = IsVoid();
-    return !already_allocated && !dont_allocate;
-}
-
 std::span<IRInstruction*> IRInstruction::GetUsedInstructions() {
     switch (expression_type) {
     case ExpressionType::Operands: {
@@ -839,34 +833,8 @@ bool IRInstruction::ExitsVM() const {
     }
 }
 
-bool IRInstruction::IsCallerSaved() const {
-    switch (GetAllocationType()) {
-    case AllocationType::GPR: {
-        return Registers::IsCallerSaved(GetGPR());
-    }
-    case AllocationType::FPR: {
-        return Registers::IsCallerSaved(GetFPR());
-    }
-    case AllocationType::Vec: {
-        return true;
-    }
-    case AllocationType::Spill: {
-        WARN("Called with spilled instruction");
-        return false;
-    }
-    case AllocationType::Null: {
-        ERROR("Uninitialized allocation");
-        return false;
-    }
-    default: {
-        UNREACHABLE();
-        return false;
-    }
-    }
-}
-
 void IRInstruction::PropagateMovs() {
-    auto replace_mov = [this](IRInstruction*& operand, int index) {
+    auto replace_mov = [](IRInstruction*& operand, int index) {
         if (operand->GetOpcode() != IROpcode::Mov) {
             return;
         }
@@ -883,8 +851,6 @@ void IRInstruction::PropagateMovs() {
         operand->RemoveUse();
         operand = value_final;
         operand->AddUse();
-
-        operand_names[index] = operand->GetName();
     };
 
     switch (expression_type) {

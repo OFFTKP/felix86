@@ -58,10 +58,10 @@ void Emitter::EmitJump(Backend& backend, void* target) {
 }
 
 // Should never be more than 6 instructions
-void Emitter::EmitJumpConditional(Backend& backend, const IRInstruction& condition, void* target_true, void* target_false) {
+void Emitter::EmitJumpConditional(Backend& backend, const BackendInstruction& condition, void* target_true, void* target_false) {
     biscuit::GPR address_true = backend.AcquireScratchGPR();
     biscuit::GPR address_false = backend.AcquireScratchGPR();
-    biscuit::GPR condition_reg = _RegRO_(&condition);
+    biscuit::GPR condition_reg = _RegRO_(condition.GetAllocation());
     Label false_label;
 
     // TODO: emit relative jumps if possible
@@ -151,6 +151,7 @@ void Emitter::EmitStoreGuestToMemory(Backend& backend, const IRInstruction& inst
     }
 }
 
+// TODO: do proper pushing/popping, get rid of vmstatepointer
 void Emitter::EmitPushHost(Backend& backend, const IRInstruction& inst) {
     const PushHost& push_host = inst.AsPushHost();
     biscuit::GPR vm_state = backend.GetRegisters().AcquireScratchGPR();

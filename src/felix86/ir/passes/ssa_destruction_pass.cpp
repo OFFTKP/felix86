@@ -19,9 +19,20 @@
     And a blog post based on the algorithm with a neat demo: https://compiler.club/parallel-moves/
 */
 
-// Break critical edges that lead to blocks with phis
+// Break critical edges that lead to blocks with phis and also construct the RIRInstructions
 void critical_edge_splitting_pass(IRFunction* function) {
     for (IRBlock* block : function->GetBlocks()) {
+        for (const IRInstruction& inst : block->GetInstructions()) {
+            if (inst.IsOperands()) {
+                RIRInstruction rir_inst = inst.AsReducedInstruction();
+                block->InsertReducedInstruction(std::move(rir_inst));
+
+                if (&inst == block->GetCondition()) {
+                    block->SetReducedCondition(&block->GetReducedInstructions().back());
+                }
+            }
+        }
+
         if (block->GetTermination() == Termination::JumpConditional) {
             // Only termination variety with more than one successor
             for (IRBlock* successor : block->GetSuccessors()) {
@@ -49,7 +60,7 @@ struct ParallelMove {
 // there can now be multiple definitions for the same variable after
 // breaking the phis
 void insert_parallel_move(IRBlock* block, const ParallelMove& move) {
-    ARGH it dont work cus you remove the instructions thus making the pointers invalid and we cant check the name of the operands
+    // ARGH it dont work cus you remove the instructions thus making the pointers invalid and we cant check the name of the operands
 }
 
 void breakup_phis(IRBlock* block, const std::vector<InstIterator>& phis) {
@@ -83,8 +94,14 @@ void phi_replacement_pass(IRFunction* function) {
     for (IRBlock* block : function->GetBlocks()) {
         if (block->HasPhis()) {
             std::vector<InstIterator> phis;
-            for (InstIterator inst = block->GetInstructions().begin(); inst->IsPhi(); ++inst) {
-                phis.push_back(inst);
+            InstIterator inst = block->GetInstructions().begin();
+            InstIterator end = block->GetInstructions().end();
+            while (inst != end) {
+                if (inst->IsPhi()) {
+                    phis.push_back(inst);
+                } else {
+                    break;
+                }
             }
 
             if (phis.empty()) {

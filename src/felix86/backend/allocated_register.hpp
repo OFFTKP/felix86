@@ -2,21 +2,22 @@
 
 #include "felix86/backend/backend.hpp"
 #include "felix86/backend/emitter.hpp"
+#include "felix86/ir/allocation.hpp"
 
 // RAII generic allocated reg, can be gpr/fpr/vec and if it's spilled it will load/store
 struct AllocatedReg {
-    AllocatedReg(Backend& backend, const IRInstruction* inst, bool load) : backend(backend) {
+    AllocatedReg(Backend& backend, const Allocation& allocation, bool load) : backend(backend) {
         this->load = load;
-        if (inst->IsSpilled()) {
+        if (allocation.IsSpilled()) {
             spilled = true;
-            spill_location = inst->GetSpillLocation() * (inst->IsVec() ? 16 : 8);
-            if (inst->IsGPR()) {
+            spill_location = allocation.GetSpillLocation() * (allocation.IsVec() ? 16 : 8);
+            if (allocation.IsGPR()) {
                 reg = backend.AcquireScratchGPRFromSpill(spill_location);
             } else {
                 ERROR("Implme");
             }
         } else {
-            reg = inst->GetGPR();
+            reg = allocation.AsGPR();
         }
     }
 

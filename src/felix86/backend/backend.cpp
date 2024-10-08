@@ -2,7 +2,6 @@
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/backend/backend.hpp"
 #include "felix86/common/log.hpp"
-#include "fmt/base.h"
 
 using namespace biscuit;
 
@@ -101,7 +100,7 @@ void* Backend::EmitFunction(IRFunction* function) {
 
     struct ConditionalJump {
         ptrdiff_t location;
-        const IRInstruction* inst;
+        const BackendInstruction* inst;
         IRBlock* target_true;
         IRBlock* target_false;
     };
@@ -119,7 +118,7 @@ void* Backend::EmitFunction(IRFunction* function) {
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
         IRBlock* block = *it;
         block_map[block] = as.GetCursorPointer();
-        for (const IRInstruction& inst : block->GetInstructions()) {
+        for (const BackendInstruction& inst : block->GetBackendInstructions()) {
             Emitter::Emit(*this, inst);
         }
 
@@ -135,7 +134,7 @@ void* Backend::EmitFunction(IRFunction* function) {
         }
         case Termination::JumpConditional: {
             conditional_jumps.push_back(
-                {as.GetCodeBuffer().GetCursorOffset(), block->GetCondition(), block->GetSuccessor(0), block->GetSuccessor(1)});
+                {as.GetCodeBuffer().GetCursorOffset(), block->GetBackendCondition(), block->GetSuccessor(0), block->GetSuccessor(1)});
             // Some space for the backpatched jump
             as.NOP();
             as.NOP();
