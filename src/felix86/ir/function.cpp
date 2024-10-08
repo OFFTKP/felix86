@@ -135,3 +135,49 @@ bool IRFunction::Validate() const {
 
     return true;
 }
+
+// Some algorithms rely on all the phis being at the start of the instruction list to be
+// easily collected into a span, so we need to validate that if phis are present, they are
+// all collected at the start of the instruction list
+bool IRFunction::ValidatePhis() const {
+    for (auto& block : blocks) {
+        bool found_non_phi = false;
+        bool found_phi = false;
+        std::vector<IRBlock*> block_order = {};
+        size_t size = 0;
+        for (auto& inst : block->GetInstructions()) {
+            if (inst.IsPhi()) {
+                if (!found_phi) {
+                    size = inst.AsPhi().blocks.size();
+                    block_order = inst.AsPhi().blocks;
+                }
+
+                if (found_non_phi) {
+                    WARN("Phi instruction found after non-phi instruction in block %d", block->GetIndex());
+                    return false;
+                }
+
+                if (size != inst.AsPhi().blocks.size()) {
+                    WARN("Phi instruction with different number of predecessors in block %d", block->GetIndex());
+                    return false;
+                }
+
+                if (size != inst.AsPhi().values.size()) {
+                    WARN("Phi instruction with different number of values in block %d", block->GetIndex());
+                    return false;
+                }
+
+                for (size_t i = 0; i < size; i++) {
+                    if (block_order[i] != inst.AsPhi().blocks[i]) {
+                        WARN("Phi instruction with different predecessor order in block %d", block->GetIndex());
+                        return false;
+                    }
+                }
+            } else {
+                found_non_phi = true;
+            }
+        }
+    }
+
+    return true;
+}

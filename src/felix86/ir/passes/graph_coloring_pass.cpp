@@ -21,8 +21,8 @@ riscv_ref_e AllocationToRef(Allocation& allocation) {
 // This has got to be super slow, lots of heap allocations, please profile me
 
 struct InterferenceGraph {
-    void AddEdge(IRInstruction* a, IRInstruction* b) {
-        graph[a].insert(b);
+    void AddEdge(u32 a, IRInstruction* b) {
+        todo, interferences must happen using names graph[a].insert(b);
         graph[b].insert(a);
     }
 
@@ -96,14 +96,14 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
                 }
             }
 
-            IRBlock* successor1 = block->GetSuccessor(0);
-            if (successor1 && successor1->IsUsedInPhi(&instr)) {
-                phi_use[i].push_back(&instr);
-            }
+            for (IRBlock* successor : block->GetSuccessors()) {
+                if (!successor) {
+                    ERROR("Null successor");
+                }
 
-            IRBlock* successor2 = block->GetSuccessor(1);
-            if (successor2 && successor2->IsUsedInPhi(&instr)) {
-                phi_use[i].push_back(&instr);
+                if (successor->IsUsedInPhi(&instr)) {
+                    phi_use[i].push_back(&instr);
+                }
             }
         }
     }
@@ -154,19 +154,12 @@ void liveness(IRFunction* function, InterferenceGraph& graph) {
             out[i].clear();
             out[i].insert(out[i].end(), phi_use[i].begin(), phi_use[i].end());
 
-            const IRBlock* successor1 = block->GetSuccessor(0);
-            const IRBlock* successor2 = block->GetSuccessor(1);
-            if (successor1 != nullptr) {
-                size_t s = successor1->GetIndex();
-                LivenessList in_minus_phi_def = in[s];
-                for (IRInstruction* instr : phi_def[s]) {
-                    in_minus_phi_def.remove(instr);
+            for (IRBlock* successor : block->GetSuccessors()) {
+                if (!successor) {
+                    ERROR("Null successor");
                 }
-                out[i].insert(out[i].end(), in_minus_phi_def.begin(), in_minus_phi_def.end());
-            }
 
-            if (successor2 != nullptr) {
-                size_t s = successor2->GetIndex();
+                size_t s = successor->GetIndex();
                 LivenessList in_minus_phi_def = in[s];
                 for (IRInstruction* instr : phi_def[s]) {
                     in_minus_phi_def.remove(instr);
@@ -291,8 +284,8 @@ void ir_graph_coloring_pass(IRFunction* function) {
                 for (auto& interference : graph.GetInterferences(inst)) {
                     if (!interference->IsSpilled() && interference->IsCallerSaved()) {
                         riscv_ref_e ref = AllocationToRef(interference->GetAllocation());
-                        IRInstruction store(ref, true);
-                        IRInstruction load(ref, false);
+                        IRInstruction store(ref, true, block->GetNextName());
+                        IRInstruction load(ref, false, block->GetNextName());
                         instructions.insert(it, std::move(store));
                         auto it_after = it;
                         it_after++;

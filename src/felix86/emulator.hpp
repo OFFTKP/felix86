@@ -26,9 +26,10 @@ struct Emulator {
         // Sometimes we run without rootfs, such as for testing
         if (!config.rootfs_path.empty()) {
             fs.LoadRootFS(config.rootfs_path);
-            if (!fs.Good()) {
-                ERROR("Failed to initialize filesystem");
-            }
+        }
+
+        if (!config.executable_path.empty()) {
+            fs.LoadExecutable(config.executable_path);
         }
     }
 
@@ -166,10 +167,6 @@ struct Emulator {
 
     void SetFSBase(u64 value) {
         thread_state.fsbase = value;
-    }
-
-    Elf LoadElf(const std::filesystem::path& path) {
-        return elf_load(path, config.use_interpreter);
     }
 
     void Run();

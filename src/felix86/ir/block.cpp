@@ -25,12 +25,12 @@ std::string IRBlock::Print(const std::function<std::string(const IRInstruction*)
 
     switch (GetTermination()) {
     case Termination::Jump: {
-        ret += fmt::format("Termination -> Jump to Block {}\n", GetSuccessor(false)->GetIndex() - 2);
+        ret += fmt::format("Termination -> Jump to Block {}\n", GetSuccessor(0)->GetIndex() - 2);
         break;
     }
     case Termination::JumpConditional: {
         ret += fmt::format("Termination -> JumpConditional ({}) to Block {} or Block {}\n", GetCondition()->GetNameString(),
-                           GetSuccessor(false)->GetIndex() - 2, GetSuccessor(true)->GetIndex() - 2);
+                           GetSuccessor(0)->GetIndex() - 2, GetSuccessor(1)->GetIndex() - 2);
         break;
     }
     case Termination::Exit: {

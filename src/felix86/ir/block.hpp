@@ -37,6 +37,8 @@ struct IRBlock {
         successors[1]->AddPredecessor(this);
     }
 
+    using iterator = std::list<IRInstruction>::iterator;
+
     void TerminateExit() {
         termination = Termination::Exit;
     }
@@ -71,6 +73,18 @@ struct IRBlock {
         return list_index;
     }
 
+    u32 GetNextName() {
+        if (GetIndex() > ((1 << 12) - 1)) {
+            ERROR("Too many blocks for this to work");
+        }
+
+        if (next_instruction_name > ((1 << 20) - 1)) {
+            ERROR("Too many instructions for this to work");
+        }
+
+        return (GetIndex() << 20) | (next_instruction_name++);
+    }
+
     void SetIndex(u32 index) {
         list_index = index;
     }
@@ -81,6 +95,32 @@ struct IRBlock {
 
     void SetPostorderIndex(u32 index) {
         postorder_index = index;
+    }
+
+    std::span<IRBlock* const> GetSuccessors() const {
+        if (termination == Termination::Jump) {
+            return {&successors[0], 1};
+        } else if (termination == Termination::JumpConditional) {
+            return {&successors[0], 2};
+        } else {
+            return {};
+        }
+    }
+
+    void ReplaceSuccessor(IRBlock* old_block, IRBlock* new_block) {
+        for (size_t i = 0; i < successors.size(); i++) {
+            if (successors[i] == old_block) {
+                successors[i] = new_block;
+                return;
+            }
+        }
+
+        ERROR("Block is not a successor of the other block");
+    }
+
+    // The IRFunction::ValidatePhis should guarantee that phis only appear at the start of the block
+    bool HasPhis() const {
+        return !instructions.empty() && instructions.front().IsPhi();
     }
 
     IRBlock* GetSuccessor(bool index) {
@@ -97,6 +137,17 @@ struct IRBlock {
 
     void SetImmediateDominator(IRBlock* block) {
         immediate_dominator = block;
+    }
+
+    void RemovePredecessor(IRBlock* pred) {
+        for (size_t i = 0; i < predecessors.size(); i++) {
+            if (predecessors[i] == pred) {
+                predecessors.erase(predecessors.begin() + i);
+                return;
+            }
+        }
+
+        ERROR("Block is not a predecessor of the other block");
     }
 
     std::vector<IRBlock*>& GetPredecessors() {
@@ -148,4 +199,5 @@ private:
     mutable bool visited = false;
     u32 list_index = 0;
     u32 postorder_index = 0;
+    u32 next_instruction_name = 0;
 };

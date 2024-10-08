@@ -18,7 +18,6 @@ void Emulator::Run() {
     ir_local_cse_pass(function);
     ir_copy_propagation_pass(function);
     ir_dead_code_elimination_pass(function);
-    ir_naming_pass(function);
     // ir_graph_coloring_pass(function);
     ir_spill_everything_pass(function);
 

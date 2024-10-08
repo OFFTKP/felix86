@@ -86,14 +86,8 @@ static void postorder(IRBlock* block, std::vector<IRBlock*>& output) {
 
     block->SetVisited(true);
 
-    IRBlock* first_successor = block->GetSuccessor(0);
-    if (first_successor) {
-        postorder(first_successor, output);
-    }
-
-    IRBlock* second_successor = block->GetSuccessor(1);
-    if (second_successor) {
-        postorder(second_successor, output);
+    for (IRBlock* successor : block->GetSuccessors()) {
+        postorder(successor, output);
     }
 
     output.push_back(block); // TODO: don't use vector in the future
@@ -184,7 +178,7 @@ static void place_phi_functions(IRFunction* function) {
                     phi.values.resize(pred_count);
                     phi.blocks.resize(pred_count);
 
-                    IRInstruction instruction(std::move(phi));
+                    IRInstruction instruction(std::move(phi), df->GetNextName());
                     df->AddPhi(std::move(instruction));
 
                     has_already[df->GetIndex()] = iter_count;
@@ -231,25 +225,9 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<IRInstructio
         it++;
     }
 
-    IRBlock* successor1 = block->GetSuccessor(0);
-    if (successor1) {
-        int j = which_pred(block, successor1);
-        for (IRInstruction& inst : successor1->GetInstructions()) {
-            if (!inst.IsPhi()) {
-                break;
-            }
-
-            Phi& phi = inst.AsPhi();
-            phi.blocks[j] = block;
-            phi.values[j] = stacks[phi.ref].top();
-            phi.values[j]->AddUse();
-        }
-    }
-
-    IRBlock* successor2 = block->GetSuccessor(1);
-    if (successor2) {
-        int j = which_pred(block, successor2);
-        for (IRInstruction& inst : successor2->GetInstructions()) {
+    for (IRBlock* succesor : block->GetSuccessors()) {
+        int j = which_pred(block, succesor);
+        for (IRInstruction& inst : succesor->GetInstructions()) {
             if (!inst.IsPhi()) {
                 break;
             }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <functional>
-#include <list>
 #include <span>
 #include <string>
 #include <variant>
@@ -123,12 +122,9 @@ struct IRInstruction;
 struct IRBlock;
 
 struct Operands {
-    std::vector<IRInstruction*> operands = {};
+    std::array<IRInstruction*, 4> operands;
     u64 immediate_data = 0; // for some sse instructions
-};
-
-struct Immediate {
-    u64 immediate = 0;
+    u8 operand_count = 0;
 };
 
 struct GetGuest {
@@ -166,7 +162,6 @@ struct PopHost {
 
 enum class ExpressionType : u8 {
     Operands,
-    Immediate,
     GetGuest,
     SetGuest,
     Phi,
@@ -194,10 +189,9 @@ static_assert(std::is_same_v<biscuit::FPR, std::variant_alternative_t<(u8)Alloca
 static_assert(std::is_same_v<biscuit::Vec, std::variant_alternative_t<(u8)AllocationType::Vec, Allocation>>);
 static_assert(std::is_same_v<u32, std::variant_alternative_t<(u8)AllocationType::Spill, Allocation>>);
 
-using Expression = std::variant<Operands, Immediate, GetGuest, SetGuest, Phi, Comment, PushHost, PopHost>;
+using Expression = std::variant<Operands, GetGuest, SetGuest, Phi, Comment, PushHost, PopHost>;
 static_assert(std::variant_size_v<Expression> == (u8)ExpressionType::Count);
 static_assert(std::is_same_v<Operands, std::variant_alternative_t<(u8)ExpressionType::Operands, Expression>>);
-static_assert(std::is_same_v<Immediate, std::variant_alternative_t<(u8)ExpressionType::Immediate, Expression>>);
 static_assert(std::is_same_v<GetGuest, std::variant_alternative_t<(u8)ExpressionType::GetGuest, Expression>>);
 static_assert(std::is_same_v<SetGuest, std::variant_alternative_t<(u8)ExpressionType::SetGuest, Expression>>);
 static_assert(std::is_same_v<Phi, std::variant_alternative_t<(u8)ExpressionType::Phi, Expression>>);
@@ -206,10 +200,18 @@ static_assert(std::is_same_v<PushHost, std::variant_alternative_t<(u8)Expression
 static_assert(std::is_same_v<PopHost, std::variant_alternative_t<(u8)ExpressionType::PopHost, Expression>>);
 
 struct IRInstruction {
-    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands)
-        : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode)} {
+    IRInstruction(IROpcode opcode, std::initializer_list<IRInstruction*> operands, u32 name)
+        : name(name), opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode)} {
         Operands op;
-        op.operands = operands;
+        for (size_t i = 0; i < operands.size(); i++) {
+            if (i >= op.operands.size()) {
+                ERROR("Too many operands");
+            }
+
+            IRInstruction* inst = *(operands.begin() + i);
+            op.operands[i] = inst;
+            operand_names[i] = inst->GetName();
+        }
         expression = op;
 
         for (auto& operand : operands) {
@@ -220,12 +222,13 @@ struct IRInstruction {
         expression_type = ExpressionType::Operands;
     }
 
-    IRInstruction(u64 immediate) : opcode(IROpcode::Immediate), return_type{IRType::Integer64} {
-        Immediate imm;
-        imm.immediate = immediate;
-        expression = imm;
+    IRInstruction(u64 immediate, u32 name) : name(name), opcode(IROpcode::Immediate), return_type{IRType::Integer64} {
+        Operands op;
+        op.immediate_data = immediate;
+        op.operand_count = 0;
+        expression = op;
 
-        expression_type = ExpressionType::Immediate;
+        expression_type = ExpressionType::Operands;
 
         // If it's zero we can just give it x0 which is hardwired to 0
         if (immediate == 0) {
@@ -233,7 +236,7 @@ struct IRInstruction {
         }
     }
 
-    IRInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode, ref)} {
+    IRInstruction(IROpcode opcode, x86_ref_e ref, u32 name) : name(name), opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode, ref)} {
         GetGuest get;
         get.ref = ref;
         expression = get;
@@ -241,8 +244,8 @@ struct IRInstruction {
         expression_type = ExpressionType::GetGuest;
     }
 
-    IRInstruction(IROpcode opcode, x86_ref_e ref, IRInstruction* source)
-        : opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode, ref)} {
+    IRInstruction(IROpcode opcode, x86_ref_e ref, IRInstruction* source, u32 name)
+        : name(name), opcode(opcode), return_type{IRInstruction::getTypeFromOpcode(opcode, ref)} {
         SetGuest set;
         set.ref = ref;
         set.source = source;
@@ -252,7 +255,7 @@ struct IRInstruction {
         expression_type = ExpressionType::SetGuest;
     }
 
-    IRInstruction(Phi phi) : opcode(IROpcode::Phi), return_type{IRInstruction::getTypeFromOpcode(opcode, phi.ref)} {
+    IRInstruction(Phi phi, u32 name) : name(name), opcode(IROpcode::Phi), return_type{IRInstruction::getTypeFromOpcode(opcode, phi.ref)} {
         expression = std::move(phi);
 
         for (auto& value : phi.values) {
@@ -262,7 +265,8 @@ struct IRInstruction {
         expression_type = ExpressionType::Phi;
     }
 
-    IRInstruction(const std::string& comment) : opcode(IROpcode::Comment), return_type{IRInstruction::getTypeFromOpcode(opcode)} {
+    IRInstruction(const std::string& comment, u32 name)
+        : name(name), opcode(IROpcode::Comment), return_type{IRInstruction::getTypeFromOpcode(opcode)} {
         Comment c;
         c.comment = comment;
         expression = c;
@@ -272,7 +276,7 @@ struct IRInstruction {
         Lock();
     }
 
-    IRInstruction(riscv_ref_e ref, bool push) {
+    IRInstruction(riscv_ref_e ref, bool push, u32 name) : name(name) {
         if (push) {
             opcode = IROpcode::PushHost;
         } else {
@@ -329,10 +333,6 @@ struct IRInstruction {
         return std::get<SetGuest>(expression);
     }
 
-    const Immediate& AsImmediate() const {
-        return std::get<Immediate>(expression);
-    }
-
     const Phi& AsPhi() const {
         return std::get<Phi>(expression);
     }
@@ -361,10 +361,6 @@ struct IRInstruction {
         return std::get<SetGuest>(expression);
     }
 
-    Immediate& AsImmediate() {
-        return std::get<Immediate>(expression);
-    }
-
     Phi& AsPhi() {
         return std::get<Phi>(expression);
     }
@@ -382,7 +378,7 @@ struct IRInstruction {
     }
 
     bool IsImmediate() const {
-        return expression_type == ExpressionType::Immediate;
+        return opcode == IROpcode::Immediate;
     }
 
     bool IsGetGuest() const {
@@ -403,10 +399,6 @@ struct IRInstruction {
 
     u32 GetName() const {
         return name;
-    }
-
-    void SetName(u32 name) {
-        this->name = name;
     }
 
     std::string GetNameString() const;
@@ -434,7 +426,8 @@ struct IRInstruction {
     void ReplaceExpressionWithMov(IRInstruction* mov) {
         Invalidate();
         Operands op;
-        op.operands.push_back(mov);
+        op.operands[0] = mov;
+        op.operand_count = 1;
 
         Expression swap = {op};
         expression.swap(swap);
@@ -539,12 +532,18 @@ struct IRInstruction {
         allocation = std::move(alloc);
     }
 
+    void PropagateMovs();
+
 private:
     static IRType getTypeFromOpcode(IROpcode opcode, x86_ref_e ref = X86_REF_COUNT);
     static void checkValidity(IROpcode opcode, const Operands& operands);
 
     Expression expression;
-    u32 name = 0; // TODO: merge with allocated name?
+    // During SSA form we use the IRInstruction* stuff in Operands etc.
+    // After breaking SSA, we use this name field to identify temporaries, since multiple instructions
+    // may define the same temporary
+    u32 name = 0;
+    std::array<u32, 4> operand_names;
     Allocation allocation;
     u16 uses = 0;
     ExpressionType expression_type;

@@ -30,12 +30,6 @@ bool IRInstruction::IsSameExpression(const IRInstruction& other) const {
 
         return true;
     }
-    case ExpressionType::Immediate: {
-        const Immediate& immediate = AsImmediate();
-        const Immediate& other_immediate = other.AsImmediate();
-
-        return immediate.immediate == other_immediate.immediate;
-    }
     case ExpressionType::GetGuest: {
         const GetGuest& get_guest = AsGetGuest();
         const GetGuest& other_get_guest = other.AsGetGuest();
@@ -458,7 +452,7 @@ std::string IRInstruction::Print(const std::function<std::string(const IRInstruc
         break;
     }
     case IROpcode::Immediate: {
-        ret += fmt::format("{} {} <- 0x{:x}", GetTypeString(), GetNameString(), AsImmediate().immediate);
+        ret += fmt::format("{} {} <- 0x{:x}", GetTypeString(), GetNameString(), GetImmediateData());
         break;
     }
     case IROpcode::Rdtsc: {
@@ -816,7 +810,6 @@ std::span<IRInstruction*> IRInstruction::GetUsedInstructions() {
         return AsOperands().operands;
     }
     case ExpressionType::Comment:
-    case ExpressionType::Immediate:
     case ExpressionType::GetGuest: {
         break;
     }
@@ -868,6 +861,61 @@ bool IRInstruction::IsCallerSaved() const {
     default: {
         UNREACHABLE();
         return false;
+    }
+    }
+}
+
+void IRInstruction::PropagateMovs() {
+    auto replace_mov = [this](IRInstruction*& operand, int index) {
+        if (operand->GetOpcode() != IROpcode::Mov) {
+            return;
+        }
+
+        bool is_mov = true;
+        IRInstruction* value_final = operand->GetOperand(0);
+        do {
+            is_mov = false;
+            if (value_final->GetOpcode() == IROpcode::Mov) {
+                value_final = value_final->GetOperand(0);
+                is_mov = true;
+            }
+        } while (is_mov);
+        operand->RemoveUse();
+        operand = value_final;
+        operand->AddUse();
+
+        operand_names[index] = operand->GetName();
+    };
+
+    switch (expression_type) {
+    case ExpressionType::Operands: {
+        Operands& operands = AsOperands();
+        int i = 0;
+        for (IRInstruction*& operand : operands.operands) {
+            replace_mov(operand, i);
+            i++;
+        }
+        break;
+    }
+    case ExpressionType::GetGuest:
+    case ExpressionType::SetGuest: {
+        ERROR("Shouldn't exist");
+        break;
+    }
+    case ExpressionType::Phi: {
+        Phi& phi = AsPhi();
+        for (size_t i = 0; i < phi.blocks.size(); i++) {
+            replace_mov(phi.values[i], i);
+        }
+        break;
+    }
+    case ExpressionType::PushHost:
+    case ExpressionType::PopHost:
+    case ExpressionType::Comment: {
+        break;
+    }
+    default: {
+        UNREACHABLE();
     }
     }
 }

@@ -53,6 +53,8 @@ struct IRFunction {
 
     bool Validate() const;
 
+    bool ValidatePhis() const;
+
     const IRDominatorTree& GetDominatorTree() const {
         return dominator_tree;
     }

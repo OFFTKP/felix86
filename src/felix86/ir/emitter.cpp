@@ -7,6 +7,8 @@
 #include "felix86/ir/emitter.hpp"
 #include "felix86/ir/instruction.hpp"
 
+#define INST_NAME (block->GetNextName())
+
 void ir_store_partial_state(IRBlock* block, std::span<const x86_ref_e> refs) {
     for (x86_ref_e reg : refs) {
         IRInstruction* guest = ir_emit_get_guest(block, reg);
@@ -75,28 +77,28 @@ IRInstruction* ir_emit_get_mask(IRBlock* block, x86_size_e size_e) {
 }
 
 IRInstruction* ir_emit_one_operand(IRBlock* block, IROpcode opcode, IRInstruction* source) {
-    IRInstruction instruction(opcode, {source});
+    IRInstruction instruction(opcode, {source}, INST_NAME);
     return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_two_operands(IRBlock* block, IROpcode opcode, IRInstruction* source1, IRInstruction* source2) {
-    IRInstruction instruction(opcode, {source1, source2});
+    IRInstruction instruction(opcode, {source1, source2}, INST_NAME);
     return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_three_operands(IRBlock* block, IROpcode opcode, IRInstruction* source1, IRInstruction* source2, IRInstruction* source3) {
-    IRInstruction instruction(opcode, {source1, source2, source3});
+    IRInstruction instruction(opcode, {source1, source2, source3}, INST_NAME);
     return block->InsertAtEnd(std::move(instruction));
 }
 
 IRInstruction* ir_emit_four_operands(IRBlock* block, IROpcode opcode, IRInstruction* source1, IRInstruction* source2, IRInstruction* source3,
                                      IRInstruction* source4) {
-    IRInstruction instruction(opcode, {source1, source2, source3, source4});
+    IRInstruction instruction(opcode, {source1, source2, source3, source4}, INST_NAME);
     return block->InsertAtEnd(std::move(instruction));
 }
 
 void ir_emit_runtime_comment(IRBlock* block, const std::string& comment) {
-    IRInstruction instruction(comment);
+    IRInstruction instruction(comment, INST_NAME);
     block->InsertAtEnd(std::move(instruction));
 }
 
@@ -354,7 +356,7 @@ void ir_emit_syscall(IRBlock* block) {
 
     ir_store_partial_state(block, in_regs);
 
-    IRInstruction instruction(IROpcode::Syscall, {});
+    IRInstruction instruction(IROpcode::Syscall, {}, INST_NAME);
     instruction.Lock();
     block->InsertAtEnd(std::move(instruction));
 
@@ -448,7 +450,7 @@ IRInstruction* ir_emit_vector_packed_compare_eq_dword(IRBlock* block, IRInstruct
 }
 
 IRInstruction* ir_emit_vector_packed_shuffle_dword(IRBlock* block, IRInstruction* source, u8 control_byte) {
-    IRInstruction instruction(IROpcode::VPackedShuffleDWord, {source});
+    IRInstruction instruction(IROpcode::VPackedShuffleDWord, {source}, INST_NAME);
     instruction.SetImmediateData(control_byte);
     return block->InsertAtEnd(std::move(instruction));
 }
@@ -466,7 +468,7 @@ IRInstruction* ir_emit_load_guest_from_memory(IRBlock* block, x86_ref_e ref) {
         ERROR("Invalid register reference");
     }
 
-    IRInstruction instruction(IROpcode::LoadGuestFromMemory, ref);
+    IRInstruction instruction(IROpcode::LoadGuestFromMemory, ref, INST_NAME);
     return block->InsertAtEnd(std::move(instruction));
 }
 
@@ -475,7 +477,7 @@ void ir_emit_store_guest_to_memory(IRBlock* block, x86_ref_e ref, IRInstruction*
         ERROR("Invalid register reference");
     }
 
-    IRInstruction instruction(IROpcode::StoreGuestToMemory, ref, source);
+    IRInstruction instruction(IROpcode::StoreGuestToMemory, ref, source, INST_NAME);
     instruction.Lock();
     block->InsertAtEnd(std::move(instruction));
 }
@@ -485,7 +487,7 @@ IRInstruction* ir_emit_get_guest(IRBlock* block, x86_ref_e ref) {
         ERROR("Invalid register reference");
     }
 
-    IRInstruction instruction(IROpcode::GetGuest, ref);
+    IRInstruction instruction(IROpcode::GetGuest, ref, INST_NAME);
     return block->InsertAtEnd(std::move(instruction));
 }
 
@@ -494,7 +496,7 @@ void ir_emit_set_guest(IRBlock* block, x86_ref_e ref, IRInstruction* source) {
         ERROR("Invalid register reference");
     }
 
-    IRInstruction instruction(IROpcode::SetGuest, ref, source);
+    IRInstruction instruction(IROpcode::SetGuest, ref, source, INST_NAME);
     block->InsertAtEnd(std::move(instruction));
 }
 
@@ -573,7 +575,7 @@ void ir_emit_cpuid(IRBlock* block) {
 
     ir_store_partial_state(block, in_regs);
 
-    IRInstruction instruction(IROpcode::Cpuid, {});
+    IRInstruction instruction(IROpcode::Cpuid, {}, INST_NAME);
     instruction.Lock();
     block->InsertAtEnd(std::move(instruction));
 
@@ -584,7 +586,7 @@ void ir_emit_rdtsc(IRBlock* block) {
     // Has no inputs but writes to EDX:EAX
     constexpr static std::array out_regs = {X86_REF_RAX, X86_REF_RDX};
 
-    IRInstruction instruction(IROpcode::Rdtsc, {});
+    IRInstruction instruction(IROpcode::Rdtsc, {}, INST_NAME);
     instruction.Lock();
     block->InsertAtEnd(std::move(instruction));
 
@@ -592,7 +594,7 @@ void ir_emit_rdtsc(IRBlock* block) {
 }
 
 IRInstruction* ir_emit_immediate(IRBlock* block, u64 value) {
-    IRInstruction instruction(value);
+    IRInstruction instruction(value, INST_NAME);
     return block->InsertAtEnd(std::move(instruction));
 }
 

@@ -37,7 +37,7 @@ void Emitter::Emit(Backend& backend, const IRInstruction& inst) {
     }
 
     case IROpcode::Immediate: {
-        EmitImmediate(backend, _RegWO_(&inst), inst.AsImmediate().immediate);
+        EmitImmediate(backend, _RegWO_(&inst), inst.GetImmediateData());
         break;
     }
     case IROpcode::Rdtsc: {
