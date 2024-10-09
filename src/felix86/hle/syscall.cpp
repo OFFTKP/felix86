@@ -14,7 +14,7 @@
 #define felix86_x86_64_ARCH_GET_FS 0x1003
 #define felix86_x86_64_ARCH_GET_GS 0x1004
 
-#define HOST_SYSCALL(name, ...) (syscall(match_host(name), ##__VA_ARGS__))
+#define HOST_SYSCALL(name, ...) (syscall(match_host(felix86_x86_64_##name), ##__VA_ARGS__))
 
 enum {
 
@@ -30,23 +30,30 @@ enum {
 #undef X
 };
 
-int match_host(int syscall) {
-#ifdef __x86_64__
+consteval int match_host(int syscall) {
+#if defined(__x86_64__)
     return syscall;
-#elif defined(__riscv) && __riscv_xlen == 64
-#define X(name, id)                                                                                                                                  \
+#elif defined(__riscv)
+#define X(name)                                                                                                                                      \
     case felix86_x86_64_##name:                                                                                                                      \
         return felix86_riscv64_##name;
     switch (syscall) {
-#include "felix86/hle/syscalls_x86_64.inc"
+#include "felix86/hle/syscalls_common.inc"
+#undef X
     default:
         return -1;
     }
 #undef X
 #else
-#error "Unsupported architecture"
+#error "What are you trying to compile on!?"
 #endif
 }
+
+#ifdef __x86_64__
+static_assert(match_host(felix86_x86_64_setxattr) == felix86_x86_64_setxattr);
+#elif defined(__riscv)
+static_assert(match_host(felix86_x86_64_setxattr) == felix86_riscv64_setxattr);
+#endif
 
 const char* print_syscall_name(u64 syscall_number) {
     switch (syscall_number) {
@@ -138,7 +145,7 @@ extern "C" void felix86_syscall(Emulator* emulator, ThreadState* state) {
         break;
     }
     case felix86_x86_64_prlimit64: {
-        result = HOST_SYSCALL(syscall_number, rdi, rsi, rdx, r10);
+        result = HOST_SYSCALL(prlimit64, rdi, rsi, rdx, r10);
         VERBOSE("prlimit64(%016lx, %016lx, %016lx, %016lx) = %016lx", rdi, rsi, rdx, r10, result);
         break;
     }
@@ -148,12 +155,12 @@ extern "C" void felix86_syscall(Emulator* emulator, ThreadState* state) {
         break;
     }
     case felix86_x86_64_getrandom: {
-        result = HOST_SYSCALL(syscall_number, rdi, rsi, rdx);
+        result = HOST_SYSCALL(getrandom, rdi, rsi, rdx);
         VERBOSE("getrandom(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
         break;
     }
     case felix86_x86_64_mprotect: {
-        result = HOST_SYSCALL(syscall_number, rdi, rsi, rdx);
+        result = HOST_SYSCALL(mprotect, rdi, rsi, rdx);
         VERBOSE("mprotect(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
         break;
     }
