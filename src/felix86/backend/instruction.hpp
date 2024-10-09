@@ -24,6 +24,10 @@ struct BackendInstruction {
         return operands[index];
     }
 
+    AllocationType GetAllocationType() const {
+        return allocation.GetAllocationType();
+    }
+
     std::array<Allocation, 4> operands;
     Allocation allocation;
     u64 immediate_data;

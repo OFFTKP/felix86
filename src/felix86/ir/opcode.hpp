@@ -72,8 +72,10 @@
     X(WriteByteRelative)                                                                                                                             \
     X(WriteQWordRelative)                                                                                                                            \
     X(WriteXmmWord)                                                                                                                                  \
-    X(CastIntegerToVector)                                                                                                                           \
-    X(CastVectorToInteger)                                                                                                                           \
+    X(CastVectorFromInteger)                                                                                                                         \
+    X(CastIntegerFromVector)                                                                                                                         \
+    X(CastVectorFromFloat)                                                                                                                           \
+    X(CastFloatFromVector)                                                                                                                           \
     X(VInsertInteger)                                                                                                                                \
     X(VExtractInteger)                                                                                                                               \
     X(VUnpackByteLow)                                                                                                                                \

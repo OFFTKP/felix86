@@ -56,8 +56,10 @@ SSAInstruction* ir_emit_vector_unpack_byte_low(IRBlock* block, SSAInstruction* s
 SSAInstruction* ir_emit_vector_unpack_word_low(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_vector_unpack_dword_low(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_vector_unpack_qword_low(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
-SSAInstruction* ir_emit_vector_from_integer(IRBlock* block, SSAInstruction* source);
-SSAInstruction* ir_emit_integer_from_vector(IRBlock* block, SSAInstruction* source);
+SSAInstruction* ir_emit_cast_vector_integer(IRBlock* block, SSAInstruction* source);
+SSAInstruction* ir_emit_cast_integer_vector(IRBlock* block, SSAInstruction* source);
+SSAInstruction* ir_emit_cast_vector_float(IRBlock* block, SSAInstruction* source);
+SSAInstruction* ir_emit_cast_float_vector(IRBlock* block, SSAInstruction* source);
 SSAInstruction* ir_emit_vector_packed_and(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_vector_packed_or(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_vector_packed_xor(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);

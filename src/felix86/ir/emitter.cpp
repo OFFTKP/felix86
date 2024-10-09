@@ -399,12 +399,20 @@ SSAInstruction* ir_emit_vector_unpack_qword_low(IRBlock* block, SSAInstruction* 
     return ir_emit_two_operands(block, IROpcode::VUnpackQWordLow, source1, source2);
 }
 
-SSAInstruction* ir_emit_vector_from_integer(IRBlock* block, SSAInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::CastIntegerToVector, source);
+SSAInstruction* ir_emit_cast_vector_integer(IRBlock* block, SSAInstruction* source) {
+    return ir_emit_one_operand(block, IROpcode::CastVectorFromInteger, source);
 }
 
-SSAInstruction* ir_emit_integer_from_vector(IRBlock* block, SSAInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::CastVectorToInteger, source);
+SSAInstruction* ir_emit_cast_integer_vector(IRBlock* block, SSAInstruction* source) {
+    return ir_emit_one_operand(block, IROpcode::CastIntegerFromVector, source);
+}
+
+SSAInstruction* ir_emit_cast_vector_float(IRBlock* block, SSAInstruction* source) {
+    return ir_emit_one_operand(block, IROpcode::CastVectorFromFloat, source);
+}
+
+SSAInstruction* ir_emit_cast_float_vector(IRBlock* block, SSAInstruction* source) {
+    return ir_emit_one_operand(block, IROpcode::CastFloatFromVector, source);
 }
 
 SSAInstruction* ir_emit_vector_packed_and(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {

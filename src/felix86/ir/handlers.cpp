@@ -933,23 +933,33 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
 //      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██    ██ ██    ██
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████
 
+// These will conditionally cast (move) from float to vector register or from vector to float.
+// In RISC-V the FPU regs and the vector regs are separate but in x86-64 they are the same (sans x87 but we don't talk about that)
+// So we need to cast between them.
+// An alternative solution would be to do the FPU operations on the vector registers on a single lane and mask it.
+// Sounds very possible, I just wanna use the FPU regs because they are there and it would be a waste not to use
+// 32 very capable registers.
+#define VEC(inst) (ir_emit_cast_vector_float(BLOCK, inst))
+#define FPR(inst) (ir_emit_cast_float_vector(BLOCK, inst))
+
 IR_HANDLE(punpcklbw_xmm_xmm128) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
+    SSAInstruction* rm = VEC(ir_emit_get_rm(BLOCK, &inst->operand_rm));
+    SSAInstruction* reg = VEC(ir_emit_get_reg(BLOCK, &inst->operand_reg));
     SSAInstruction* result = ir_emit_vector_unpack_byte_low(BLOCK, reg, rm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 
 IR_HANDLE(punpcklwd_xmm_xmm128) { // punpcklwd xmm, xmm/m128 - 0x66 0x0f 0x61
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
+    SSAInstruction* rm = VEC(ir_emit_get_rm(BLOCK, &inst->operand_rm));
+    SSAInstruction* reg = VEC(ir_emit_get_reg(BLOCK, &inst->operand_reg));
     SSAInstruction* result = ir_emit_vector_unpack_word_low(BLOCK, reg, rm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 
 IR_HANDLE(punpckldq_xmm_xmm128) { // punpckldq xmm, xmm/m128 - 0x66 0x0f 0x62
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
+    SSAInstruction* rm = VEC(ir_emit_get_rm(BLOCK, &inst->operand_rm));
+    cast the rest too;
+    SSAInstruction* reg = VEC(ir_emit_get_reg(BLOCK, &inst->operand_reg));
     SSAInstruction* result = ir_emit_vector_unpack_dword_low(BLOCK, reg, rm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
@@ -980,7 +990,7 @@ IR_HANDLE(punpcklqdq_xmm_xmm128) { // punpcklqdq xmm, xmm/m128 - 0x66 0x0f 0x6c
 
 IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
     SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    SSAInstruction* vector = ir_emit_vector_from_integer(BLOCK, rm);
+    SSAInstruction* vector = ir_emit_cast_vector_integer(BLOCK, rm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, vector);
 }
 
@@ -1018,7 +1028,7 @@ IR_HANDLE(pcmpeqd_xmm_xmm128) { // pcmpeqd xmm, xmm/m128 - 0x66 0x0f 0x76
 
 IR_HANDLE(movq_rm32_xmm) { // movq rm32, xmm - 0x66 0x0f 0x7e
     SSAInstruction* xmm = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    SSAInstruction* rm = ir_emit_integer_from_vector(BLOCK, xmm);
+    SSAInstruction* rm = ir_emit_cast_integer_vector(BLOCK, xmm);
     ir_emit_set_rm(BLOCK, &inst->operand_rm, rm);
 }
 
@@ -1103,10 +1113,10 @@ IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
         integer = ir_emit_get_rm(BLOCK, &rm_op);
     } else {
         SSAInstruction* reg = ir_emit_get_reg(BLOCK, &rm_op);
-        integer = ir_emit_integer_from_vector(BLOCK, reg);
+        integer = ir_emit_cast_integer_vector(BLOCK, reg);
     }
 
-    ir_emit_vector_from_integer(BLOCK, integer);
+    ir_emit_cast_vector_integer(BLOCK, integer);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, integer);
 }
 

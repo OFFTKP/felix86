@@ -74,8 +74,8 @@ private:
     static void EmitMulh(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitMulhu(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitSelect(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitCastIntegerToVector(Backend&, biscuit::Vec, biscuit::GPR);
-    static void EmitCastVectorToInteger(Backend&, biscuit::GPR, biscuit::Vec);
+    static void EmitCastVectorFromInteger(Backend&, biscuit::Vec, biscuit::GPR);
+    static void EmitCastIntegerFromVector(Backend&, biscuit::GPR, biscuit::Vec);
     static void EmitVInsertInteger(Backend&, biscuit::Vec, biscuit::GPR, biscuit::Vec, u64);
     static void EmitVExtractInteger(Backend&, biscuit::GPR, biscuit::Vec, u64);
     static void EmitVPackedShuffleDWord(Backend&, biscuit::Vec, biscuit::Vec, u64);

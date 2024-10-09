@@ -425,11 +425,11 @@ void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Conditi
     AS.Bind(&end_label);
 }
 
-void Emitter::EmitCastIntegerToVector(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs) {
+void Emitter::EmitCastVectorFromInteger(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs) {
     AS.VMV_SX(Vd, Rs);
 }
 
-void Emitter::EmitCastVectorToInteger(Backend& backend, biscuit::GPR Rd, biscuit::Vec Vs) {
+void Emitter::EmitCastIntegerFromVector(Backend& backend, biscuit::GPR Rd, biscuit::Vec Vs) {
     AS.VMV_XS(Rd, Vs);
 }
 

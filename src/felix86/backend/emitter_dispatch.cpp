@@ -305,8 +305,31 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
         break;
     }
 
-    case IROpcode::CastIntegerToVector: {
-        EmitCastIntegerToVector(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
+    case IROpcode::CastVectorFromInteger: {
+        EmitCastVectorFromInteger(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
+        break;
+    }
+
+    case IROpcode::CastIntegerFromVector: {
+        EmitCastIntegerFromVector(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
+        break;
+    }
+
+    case IROpcode::CastVectorFromFloat: {
+        if (inst.GetAllocationType() == AllocationType::Vec && inst.GetOperand(0).GetAllocationType() == AllocationType::Vec) {
+            UNREACHABLE(); // EmitCastVectorFromFloat(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
+        } else {
+            UNREACHABLE();
+        }
+        break;
+    }
+
+    case IROpcode::CastFloatFromVector: {
+        if (inst.GetAllocationType() == AllocationType::FPR && inst.GetOperand(0).GetAllocationType() == AllocationType::FPR) {
+            UNREACHABLE(); // EmitCastFloatFromVector(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
+        } else {
+            UNREACHABLE();
+        }
         break;
     }
 
@@ -347,11 +370,6 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
 
     case IROpcode::VPackedShuffleDWord: {
         EmitVPackedShuffleDWord(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), inst.GetImmediateData());
-        break;
-    }
-
-    case IROpcode::CastVectorToInteger: {
-        EmitCastVectorToInteger(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
         break;
     }
 

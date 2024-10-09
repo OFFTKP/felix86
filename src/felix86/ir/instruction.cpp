@@ -141,7 +141,7 @@ IRType SSAInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::ReadWord:
     case IROpcode::ReadDWord:
     case IROpcode::ReadQWord:
-    case IROpcode::CastVectorToInteger:
+    case IROpcode::CastIntegerFromVector:
     case IROpcode::VExtractInteger:
     case IROpcode::Sext8:
     case IROpcode::Sext16:
@@ -157,7 +157,7 @@ IRType SSAInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
         return IRType::Integer64;
     }
     case IROpcode::ReadXmmWord:
-    case IROpcode::CastIntegerToVector:
+    case IROpcode::CastVectorFromInteger:
     case IROpcode::VUnpackByteLow:
     case IROpcode::VUnpackWordLow:
     case IROpcode::VUnpackDWordLow:
@@ -289,7 +289,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(Sext8, 1);
         VALIDATE_OPS_INT(Sext16, 1);
         VALIDATE_OPS_INT(Sext32, 1);
-        VALIDATE_OPS_INT(CastIntegerToVector, 1);
+        VALIDATE_OPS_INT(CastVectorFromInteger, 1);
         VALIDATE_OPS_INT(Clz, 1);
         VALIDATE_OPS_INT(Ctzh, 1);
         VALIDATE_OPS_INT(Ctzw, 1);
@@ -340,7 +340,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 
         VALIDATE_OPS_INT(Select, 3);
 
-        VALIDATE_OPS_VECTOR(CastVectorToInteger, 1);
+        VALIDATE_OPS_VECTOR(CastIntegerFromVector, 1);
         VALIDATE_OPS_VECTOR(VExtractInteger, 1);
         VALIDATE_OPS_VECTOR(VPackedShuffleDWord, 1);
         VALIDATE_OPS_VECTOR(VMoveByteMask, 1);
@@ -605,11 +605,11 @@ std::string SSAInstruction::Print(const std::function<std::string(const SSAInstr
         ret += FOP1(sext32, src);
         break;
     }
-    case IROpcode::CastIntegerToVector: {
+    case IROpcode::CastVectorFromInteger: {
         ret += FOP1(int_to_vec, integer);
         break;
     }
-    case IROpcode::CastVectorToInteger: {
+    case IROpcode::CastIntegerFromVector: {
         ret += FOP1(vec_to_int, vector);
         break;
     }
@@ -1067,11 +1067,11 @@ std::string ReducedInstruction::Print(const std::function<std::string(const Redu
         ret += FOP1(sext32, src);
         break;
     }
-    case IROpcode::CastIntegerToVector: {
+    case IROpcode::CastVectorFromInteger: {
         ret += FOP1(int_to_vec, integer);
         break;
     }
-    case IROpcode::CastVectorToInteger: {
+    case IROpcode::CastIntegerFromVector: {
         ret += FOP1(vec_to_int, vector);
         break;
     }
