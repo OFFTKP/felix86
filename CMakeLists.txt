@@ -14,6 +14,7 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
+set(BISCUIT_CODE_BUFFER_MMAP ON)
 add_subdirectory(external/biscuit)
 # add_subdirectory(external/plog)
 add_subdirectory(external/Catch2)
