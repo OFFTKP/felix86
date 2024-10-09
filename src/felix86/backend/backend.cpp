@@ -22,7 +22,7 @@ Backend::Backend(Emulator& emulator) : emulator(emulator), memory(allocateCodeCa
 #ifdef __x86_64__
         WARN("Running in x86-64 environment");
 #else
-        ERROR("Backend is missing some extensions or doesn't have VLEN=128");
+        WARN("Backend is missing some extensions or doesn't have VLEN=128");
 #endif
     }
 }
@@ -148,6 +148,7 @@ void* Backend::EmitFunction(IRFunction* function) {
 
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
         IRBlock* block = *it;
+        VERBOSE("Block %s starts at %p", block->GetName().c_str(), as.GetCursorPointer());
         block_map[block] = as.GetCursorPointer();
         for (const BackendInstruction& inst : block->GetBackendInstructions()) {
             Emitter::Emit(*this, inst);
@@ -194,6 +195,9 @@ void* Backend::EmitFunction(IRFunction* function) {
         as.RewindBuffer(jump.location);
         Emitter::EmitJump(*this, block_map[jump.target]);
         as.GetCodeBuffer().SetCursor(cursor);
+        VERBOSE("Backpatched jump to %s", jump.target->GetName().c_str());
+        VERBOSE("Target: %p", block_map[jump.target]);
+        VERBOSE("Jump location: %p", (void*)jump.location);
     }
 
     for (const ConditionalJump& jump : conditional_jumps) {
