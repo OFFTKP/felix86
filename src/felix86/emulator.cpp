@@ -36,35 +36,20 @@ typedef struct {
 } auxv_t;
 
 void Emulator::Run() {
-    u64 rip = GetRip();
-    IRFunction* function = function_cache.CreateOrGetFunctionAt(rip);
-    frontend_compile_function(function);
-    ir_ssa_pass(function);
-    ir_replace_setguest_pass(function);
-    ir_copy_propagation_pass(function);
-    ir_extraneous_writeback_pass(function);
-    ir_dead_code_elimination_pass(function);
-    ir_local_cse_pass(function);
-    ir_copy_propagation_pass(function);
-    ir_dead_code_elimination_pass(function);
-    fmt::print("{}", function->Print({}));
-    ir_ssa_destruction_pass(function);
-    fmt::print("{}", function->PrintReduced({}));
-
-    if (!function->Validate()) {
-        ERROR("Function did not validate");
+    if (thread_states.size() != 1) {
+        ERROR("Expected exactly one thread state during Emulator::Run, the main thread");
     }
 
-    // ir_graph_coloring_pass(function);
-    ir_spill_everything_pass(function);
+    VERBOSE("Entering main thread :)");
 
-    void* emit = backend.EmitFunction(function);
-    std::string disassembly = Disassembler::Disassemble(emit, 0x200);
-    fmt::print("{}\n", disassembly);
-    // if recompiler testing, exit...
+    ThreadState* state = &thread_states.back();
+    backend.EnterDispatcher(state);
+
+    VERBOSE("Bye-bye main thread :(");
+    VERBOSE("Main thread exited: %d", (int)state->exit_dispatcher_flag);
 }
 
-void Emulator::setupStack() {
+void Emulator::setupMainStack(ThreadState* state) {
     ssize_t argc = config.argv.size();
     if (argc > 1) {
         VERBOSE("Passing %zu arguments to guest executable", argc - 1);
@@ -182,5 +167,49 @@ void Emulator::setupStack() {
         return;
     }
 
-    SetGpr(X86_REF_RSP, rsp);
+    state->SetGpr(X86_REF_RSP, rsp);
+}
+
+void* Emulator::compileFunction(u64 rip) {
+    IRFunction function{rip};
+    frontend_compile_function(&function);
+    ir_ssa_pass(&function);
+    ir_replace_setguest_pass(&function);
+    ir_copy_propagation_pass(&function);
+    ir_extraneous_writeback_pass(&function);
+    ir_dead_code_elimination_pass(&function);
+    ir_local_cse_pass(&function);
+    ir_copy_propagation_pass(&function);
+    ir_dead_code_elimination_pass(&function);
+
+    if (config.print_blocks) {
+        fmt::print("{}", function.Print({}));
+    }
+
+    ir_ssa_destruction_pass(&function);
+
+    if (!function.Validate()) {
+        ERROR("Function did not validate");
+    }
+
+    // ir_graph_coloring_pass(function);
+    ir_spill_everything_pass(&function);
+
+    void* emit = backend.EmitFunction(&function);
+    std::string disassembly = Disassembler::Disassemble(emit, 0x200);
+    fmt::print("{}\n", disassembly);
+
+    return emit;
+}
+
+void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
+    void* function;
+
+    // Mutex needs to be unlocked before the thread is dispatched
+    {
+        std::lock_guard<std::mutex> lock(emulator->compilation_mutex);
+        function = emulator->compileFunction(thread_state->rip);
+    }
+
+    return function;
 }

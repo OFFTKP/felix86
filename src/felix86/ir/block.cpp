@@ -57,8 +57,8 @@ std::string IRBlock::printTermination() const {
                            GetSuccessor(0)->GetName(), GetSuccessor(1)->GetName());
         break;
     }
-    case Termination::Exit: {
-        ret += "Termination -> Exit\n";
+    case Termination::BackToDispatcher: {
+        ret += "Termination -> Back to dispatcher\n";
         break;
     }
     case Termination::Null: {

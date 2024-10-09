@@ -29,7 +29,7 @@ IRFunction::IRFunction(u64 address) {
     start_address_block = CreateBlockAt(address);
 
     entry->TerminateJump(start_address_block);
-    exit->TerminateExit();
+    exit->TerminateBackToDispatcher();
 }
 
 IRFunction::~IRFunction() {

@@ -147,3 +147,6 @@ void ir_emit_group3(IRBlock* block, x86_instruction_t* inst);
 
 void ir_emit_rep_start(IRBlock* block, x86_size_e size);
 void ir_emit_rep_end(IRBlock* block, bool is_nz, x86_size_e size);
+
+// Exits the dispatcher all together ending the current thread, with a byte to specify the reason
+void ir_emit_set_exit_reason(IRBlock* block, u8 reason);

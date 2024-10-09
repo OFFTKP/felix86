@@ -6,6 +6,7 @@
 #include "felix86/ir/opcode.hpp"
 
 struct BackendInstruction {
+    BackendInstruction() = default;
     BackendInstruction(Allocation allocation) : allocation(allocation) {}
 
     IROpcode GetOpcode() const {

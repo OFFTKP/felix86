@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include "biscuit/assembler.hpp"
 #include "felix86/backend/emitter.hpp"
 #include "felix86/backend/registers.hpp"
@@ -9,8 +10,11 @@
 
 #include <tsl/robin_map.h>
 
+struct Emulator;
+
+// There is a single backend that services all threads. A mutex is locked to synchronize.
 struct Backend {
-    Backend(ThreadState& thread_state);
+    Backend(Emulator& emulator);
     ~Backend();
 
     void MapCompiledFunction(u64 address, void* function) {
@@ -33,10 +37,6 @@ struct Backend {
         return regs;
     }
 
-    ThreadState& GetThreadState() {
-        return thread_state;
-    }
-
     biscuit::GPR AcquireScratchGPR() {
         return regs.AcquireScratchGPR();
     }
@@ -48,6 +48,8 @@ struct Backend {
     void ReleaseScratchRegs() {
         regs.ReleaseScratchRegs();
     }
+
+    void EnterDispatcher(ThreadState* state);
 
     void* EmitFunction(IRFunction* function);
 
@@ -66,19 +68,20 @@ private:
     void emitNecessaryStuff();
     void resetCodeCache();
 
-    std::array<u64, Registers::GetSavedGPRs().size()> gpr_storage{};
-    std::array<u64, Registers::GetSavedFPRs().size()> fpr_storage{};
+    Emulator& emulator;
 
-    std::vector<u64> spill_storage{};
-
-    ThreadState& thread_state;
     u8* memory = nullptr;
     biscuit::Assembler as{};
     tsl::robin_map<u64, void*> map{}; // map functions to host code
 
-    // Special addresses within the code cache
-    u8* enter_dispatcher = nullptr;
-    u8* exit_dispatcher = nullptr;
+    void (*enter_dispatcher)(ThreadState*) = nullptr;
+    void (*exit_dispatcher)() = nullptr;
+    void (*compile_next)() = nullptr;
 
     Registers regs;
+
+    // This isn't important to ensure thread safety or anything, it's just a simple sanity check at the start of
+    // compilation to ensure only one thread owns this. This should always be the case because we lock a mutex,
+    // but it's there for if the code changes and we forget.
+    std::atomic_bool compiling{false};
 };

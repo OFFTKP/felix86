@@ -60,20 +60,25 @@ const char* print_syscall_name(u64 syscall_number) {
     }
 }
 
-void felix86_syscall(Emulator& emulator, u64* prax, u64 rdi, u64 rsi, u64 rdx, u64 r10, u64 r8, u64 r9) {
-    u64 syscall_number = *prax;
+extern "C" void felix86_syscall(Emulator* emulator, ThreadState* state) {
+    u64 syscall_number = state->gprs[X86_REF_RAX - X86_REF_RAX];
+    u64 rdi = state->gprs[X86_REF_RDI - X86_REF_RAX];
+    u64 rsi = state->gprs[X86_REF_RSI - X86_REF_RAX];
+    u64 rdx = state->gprs[X86_REF_RDX - X86_REF_RAX];
+    u64 r10 = state->gprs[X86_REF_R10 - X86_REF_RAX];
+    u64 r8 = state->gprs[X86_REF_R8 - X86_REF_RAX];
+    u64 r9 = state->gprs[X86_REF_R9 - X86_REF_RAX];
     u64 result = 0;
 
-    ThreadState& state = emulator.GetThreadState();
-    Filesystem& fs = emulator.GetFilesystem();
+    Filesystem& fs = emulator->GetFilesystem();
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
         if (rdi == 0) {
-            result = state.brk_current_address;
+            result = state->brk_current_address;
         } else {
-            state.brk_current_address = rdi;
-            result = state.brk_current_address;
+            state->brk_current_address = rdi;
+            result = state->brk_current_address;
         }
         VERBOSE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;
@@ -81,19 +86,19 @@ void felix86_syscall(Emulator& emulator, u64* prax, u64 rdi, u64 rsi, u64 rdx, u
     case felix86_x86_64_arch_prctl: {
         switch (rdi) {
         case felix86_x86_64_ARCH_SET_GS: {
-            state.gsbase = rsi;
+            state->gsbase = rsi;
             break;
         }
         case felix86_x86_64_ARCH_SET_FS: {
-            state.fsbase = rsi;
+            state->fsbase = rsi;
             break;
         }
         case felix86_x86_64_ARCH_GET_FS: {
-            result = state.fsbase;
+            result = state->fsbase;
             break;
         }
         case felix86_x86_64_ARCH_GET_GS: {
-            result = state.gsbase;
+            result = state->gsbase;
             break;
         }
         default: {
@@ -105,7 +110,7 @@ void felix86_syscall(Emulator& emulator, u64* prax, u64 rdi, u64 rsi, u64 rdx, u
         break;
     }
     case felix86_x86_64_set_tid_address: {
-        state.clear_child_tid = rdi;
+        state->clear_child_tid = rdi;
         result = rdi;
         VERBOSE("set_tid_address(%016lx) = %016lx", rdi, result);
         break;
@@ -118,7 +123,7 @@ void felix86_syscall(Emulator& emulator, u64* prax, u64 rdi, u64 rsi, u64 rdx, u
         break;
     }
     case felix86_x86_64_set_robust_list: {
-        state.robust_futex_list = rdi;
+        state->robust_futex_list = rdi;
 
         if (rsi != sizeof(u64) * 3) {
             WARN("Struct size is wrong during set_robust_list");
@@ -158,5 +163,5 @@ void felix86_syscall(Emulator& emulator, u64* prax, u64 rdi, u64 rsi, u64 rdx, u
     }
     }
 
-    *prax = result;
+    state->gprs[X86_REF_RAX - X86_REF_RAX] = result;
 }

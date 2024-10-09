@@ -75,6 +75,12 @@ void Emitter::EmitJumpConditional(Backend& backend, Allocation condition, void* 
     backend.ReleaseScratchRegs();
 }
 
+void Emitter::EmitSetExitReason(Backend& backend, u64 reason) {
+    biscuit::GPR reason_reg = backend.AcquireScratchGPR();
+    AS.LI(reason_reg, (u8)reason);
+    AS.SB(reason_reg, offsetof(ThreadState, exit_dispatcher_flag), Registers::ThreadStatePointer());
+}
+
 void Emitter::EmitMov(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
     if (Rd == Rs) {
         return;

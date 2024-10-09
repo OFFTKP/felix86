@@ -70,5 +70,3 @@ And assuming no other modifications happen to rax, the exit block will then do s
 <store %7 to rdx in vm state>
 ```
 The `mov rdx, rax` got removed during copy propagation and the register for rax is used directly in the Exit block.
-
-See also: `xmm-registers.md`

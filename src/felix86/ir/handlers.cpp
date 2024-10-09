@@ -637,6 +637,7 @@ IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4
+    ir_emit_set_exit_reason(BLOCK, EXIT_REASON_HLT);
     BLOCK->TerminateJump(state->function->GetExit());
     state->exit = true;
 }
@@ -933,33 +934,23 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
 //      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██    ██ ██    ██
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████
 
-// These will conditionally cast (move) from float to vector register or from vector to float.
-// In RISC-V the FPU regs and the vector regs are separate but in x86-64 they are the same (sans x87 but we don't talk about that)
-// So we need to cast between them.
-// An alternative solution would be to do the FPU operations on the vector registers on a single lane and mask it.
-// Sounds very possible, I just wanna use the FPU regs because they are there and it would be a waste not to use
-// 32 very capable registers.
-#define VEC(inst) (ir_emit_cast_vector_float(BLOCK, inst))
-#define FPR(inst) (ir_emit_cast_float_vector(BLOCK, inst))
-
 IR_HANDLE(punpcklbw_xmm_xmm128) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
-    SSAInstruction* rm = VEC(ir_emit_get_rm(BLOCK, &inst->operand_rm));
-    SSAInstruction* reg = VEC(ir_emit_get_reg(BLOCK, &inst->operand_reg));
+    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
     SSAInstruction* result = ir_emit_vector_unpack_byte_low(BLOCK, reg, rm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 
 IR_HANDLE(punpcklwd_xmm_xmm128) { // punpcklwd xmm, xmm/m128 - 0x66 0x0f 0x61
-    SSAInstruction* rm = VEC(ir_emit_get_rm(BLOCK, &inst->operand_rm));
-    SSAInstruction* reg = VEC(ir_emit_get_reg(BLOCK, &inst->operand_reg));
+    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
     SSAInstruction* result = ir_emit_vector_unpack_word_low(BLOCK, reg, rm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 
 IR_HANDLE(punpckldq_xmm_xmm128) { // punpckldq xmm, xmm/m128 - 0x66 0x0f 0x62
-    SSAInstruction* rm = VEC(ir_emit_get_rm(BLOCK, &inst->operand_rm));
-    cast the rest too;
-    SSAInstruction* reg = VEC(ir_emit_get_reg(BLOCK, &inst->operand_reg));
+    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
     SSAInstruction* result = ir_emit_vector_unpack_dword_low(BLOCK, reg, rm);
     ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }

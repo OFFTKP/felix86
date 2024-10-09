@@ -95,13 +95,14 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
     }
 }
 
-IRType SSAInstruction::getTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
+IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     switch (opcode) {
     case IROpcode::Mov: {
         ERROR("Should not be used in GetTypeFromOpcode: %d", (int)opcode);
         return IRType::Void;
     }
     case IROpcode::Null:
+    case IROpcode::SetExitReason:
     case IROpcode::Comment:
     case IROpcode::Syscall:
     case IROpcode::Cpuid:
@@ -428,6 +429,10 @@ std::string SSAInstruction::Print(const std::function<std::string(const SSAInstr
     switch (opcode) {
     case IROpcode::Null: {
         return "Null";
+    }
+    case IROpcode::SetExitReason: {
+        ret += fmt::format("SetExitReason 0x{:x}", GetImmediateData());
+        break;
     }
     case IROpcode::Phi: {
         const Phi& phi = AsPhi();

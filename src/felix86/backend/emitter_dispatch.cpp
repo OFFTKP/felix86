@@ -17,6 +17,11 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
         UNREACHABLE();
     }
 
+    case IROpcode::SetExitReason: {
+        EmitSetExitReason(backend, inst.GetImmediateData());
+        break;
+    }
+
     case IROpcode::Mov: {
         auto Rd = _RegWO_(inst.GetAllocation());
         auto Rs = _RegRO_(inst.GetOperand(0));

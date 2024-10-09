@@ -97,7 +97,7 @@ struct ReducedInstruction {
 
 struct SSAInstruction {
     SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands)
-        : opcode(opcode), return_type{SSAInstruction::getTypeFromOpcode(opcode)} {
+        : opcode(opcode), return_type{SSAInstruction::GetTypeFromOpcode(opcode)} {
         Operands op;
         for (size_t i = 0; i < operands.size(); i++) {
             if (i >= op.operands.size()) {
@@ -127,7 +127,7 @@ struct SSAInstruction {
         expression_type = ExpressionType::Operands;
     }
 
-    SSAInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), return_type{SSAInstruction::getTypeFromOpcode(opcode, ref)} {
+    SSAInstruction(IROpcode opcode, x86_ref_e ref) : opcode(opcode), return_type{SSAInstruction::GetTypeFromOpcode(opcode, ref)} {
         GetGuest get;
         get.ref = ref;
         expression = get;
@@ -136,7 +136,7 @@ struct SSAInstruction {
     }
 
     SSAInstruction(IROpcode opcode, x86_ref_e ref, SSAInstruction* source)
-        : opcode(opcode), return_type{SSAInstruction::getTypeFromOpcode(opcode, ref)} {
+        : opcode(opcode), return_type{SSAInstruction::GetTypeFromOpcode(opcode, ref)} {
         SetGuest set;
         set.ref = ref;
         set.source = source;
@@ -146,7 +146,7 @@ struct SSAInstruction {
         expression_type = ExpressionType::SetGuest;
     }
 
-    SSAInstruction(Phi phi) : opcode(IROpcode::Phi), return_type{SSAInstruction::getTypeFromOpcode(opcode, phi.ref)} {
+    SSAInstruction(Phi phi) : opcode(IROpcode::Phi), return_type{SSAInstruction::GetTypeFromOpcode(opcode, phi.ref)} {
         expression = std::move(phi);
 
         for (auto& value : phi.values) {
@@ -156,7 +156,7 @@ struct SSAInstruction {
         expression_type = ExpressionType::Phi;
     }
 
-    SSAInstruction(const std::string& comment) : opcode(IROpcode::Comment), return_type{SSAInstruction::getTypeFromOpcode(opcode)} {
+    SSAInstruction(const std::string& comment) : opcode(IROpcode::Comment), return_type{SSAInstruction::GetTypeFromOpcode(opcode)} {
         Comment c;
         c.comment = comment;
         expression = c;
@@ -387,8 +387,10 @@ struct SSAInstruction {
         return rir_inst;
     }
 
+    // TODO: move outside this class
+    static IRType GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref = X86_REF_COUNT);
+
 private:
-    static IRType getTypeFromOpcode(IROpcode opcode, x86_ref_e ref = X86_REF_COUNT);
     static void checkValidity(IROpcode opcode, const Operands& operands);
 
     Expression expression;

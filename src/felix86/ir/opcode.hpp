@@ -5,6 +5,7 @@
 
 #define IR_OPCODES                                                                                                                                   \
     X(Null)                                                                                                                                          \
+    X(SetExitReason)                                                                                                                                 \
     X(Phi)                                                                                                                                           \
     X(Comment)                                                                                                                                       \
     X(Mov)                                                                                                                                           \

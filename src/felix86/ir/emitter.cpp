@@ -74,6 +74,11 @@ SSAInstruction* ir_emit_get_mask(IRBlock* block, x86_size_e size_e) {
     }
 }
 
+SSAInstruction* ir_emit_no_operands(IRBlock* block, IROpcode opcode) {
+    SSAInstruction instruction(opcode, {});
+    return block->InsertAtEnd(std::move(instruction));
+}
+
 SSAInstruction* ir_emit_one_operand(IRBlock* block, IROpcode opcode, SSAInstruction* source) {
     SSAInstruction instruction(opcode, {source});
     return block->InsertAtEnd(std::move(instruction));
@@ -1365,4 +1370,10 @@ SSAInstruction* ir_emit_get_cc(IRBlock* block, u8 opcode) {
 
 void ir_emit_setcc(IRBlock* block, x86_instruction_t* inst) {
     ir_emit_set_rm(block, &inst->operand_rm, ir_emit_get_cc(block, inst->opcode));
+}
+
+void ir_emit_set_exit_reason(IRBlock* block, u8 reason) {
+    SSAInstruction* set_exit_reason = ir_emit_no_operands(block, IROpcode::SetExitReason);
+    set_exit_reason->SetImmediateData(reason);
+    set_exit_reason->Lock();
 }

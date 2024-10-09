@@ -15,7 +15,6 @@ static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose o
                                        {"quiet", 'q', 0, 0, "Don't produce any output"},
                                        {"host-envs", 'e', 0, 0, "Pass host environment variables to the guest"},
                                        {"print-functions", 'P', 0, 0, "Print functions as they compile"},
-                                       {"dont-optimize", 'O', 0, 0, "Don't run IR optimizations"},
                                        {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
                                        {0}};
 
@@ -60,10 +59,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         config->use_interpreter = true;
         break;
     }
-    case 'O': {
-        config->optimize = false;
-        break;
-    }
     case ARGP_KEY_END: {
         if (config->argv.empty()) {
             argp_usage(state);
@@ -83,7 +78,6 @@ static struct argp argp = {options, parse_opt, args_doc, doc};
 int main(int argc, char* argv[]) {
     Config config = {};
     config.use_interpreter = false;
-    config.optimize = true;
 
     argp_parse(&argp, argc, argv, 0, 0, &config);
 

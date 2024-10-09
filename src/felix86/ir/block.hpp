@@ -14,7 +14,7 @@ enum class Termination {
     Null,
     Jump,
     JumpConditional,
-    Exit,
+    BackToDispatcher,
 };
 
 struct IRBlock {
@@ -42,8 +42,8 @@ struct IRBlock {
 
     using iterator = std::list<SSAInstruction>::iterator;
 
-    void TerminateExit() {
-        termination = Termination::Exit;
+    void TerminateBackToDispatcher() {
+        termination = Termination::BackToDispatcher;
     }
 
     SSAInstruction* InsertAtEnd(SSAInstruction&& instr);

@@ -14,7 +14,10 @@ void ir_spill_everything_pass(IRFunction* function) {
         IRBlock* block = *it;
         for (const ReducedInstruction& inst : block->GetReducedInstructions()) {
             // Just spill it somewhere
-            BackendInstruction binst(Allocation(spill_count++));
+            BackendInstruction binst;
+            if (SSAInstruction::GetTypeFromOpcode(inst.opcode, inst.ref) != IRType::Void) {
+                binst = BackendInstruction{Allocation{spill_count++}};
+            }
             binst.opcode = inst.opcode;
 
             switch (inst.opcode) {
