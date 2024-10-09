@@ -161,6 +161,12 @@ void* Backend::EmitFunction(IRFunction* function) {
             as.NOP();
             as.NOP();
             as.NOP();
+            as.NOP();
+            as.NOP();
+            as.NOP();
+            as.NOP();
+            as.NOP();
+            as.NOP();
             as.EBREAK();
             break;
         }
@@ -168,6 +174,10 @@ void* Backend::EmitFunction(IRFunction* function) {
             conditional_jumps.push_back(
                 {as.GetCodeBuffer().GetCursorOffset(), block->GetConditionAllocation(), block->GetSuccessor(0), block->GetSuccessor(1)});
             // Some space for the backpatched jump
+            as.NOP();
+            as.NOP();
+            as.NOP();
+            as.NOP();
             as.NOP();
             as.NOP();
             as.NOP();
