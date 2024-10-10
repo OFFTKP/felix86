@@ -89,6 +89,8 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
                 ERROR("finger1 has null immediate dominator, name: %s, index: %d", finger1->GetName().c_str(), finger1->GetIndex());
             }
 
+            printf("        finger1 less than finger2: %d < %d, setting finger1 to %d\n", finger1->GetIndex(), finger2->GetIndex(),
+                   finger1->GetImmediateDominator()->GetIndex());
             finger1 = finger1->GetImmediateDominator();
         }
 
@@ -97,9 +99,14 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
                 ERROR("finger2 has null immediate dominator, name: %s, index: %d", finger2->GetName().c_str(), finger2->GetIndex());
             }
 
+            printf("        finger2 less than finger1: %d < %d, setting finger2 to %d\n", finger2->GetIndex(), finger1->GetIndex(),
+                   finger2->GetImmediateDominator()->GetIndex());
+
             finger2 = finger2->GetImmediateDominator();
         }
     }
+
+    printf("    returning %d\n", finger1->GetIndex());
 
     return finger1;
 }
