@@ -9,12 +9,12 @@ a better way of doing things.
 This means the following are advised to be avoided until proven to be necessary:
 
 - use of pointless iterator mumbojumbo like std::for_each when a simple for loop is just fine
-- use of any fresh modern C++2x techniques that I have to look up what they do on cppreference every time I review code, you shouldn't need anything that isn't <filesystem> and C++11 with a few exceptions. To name a few:
+- use of any fresh modern C++2x techniques that I have to look up what they do on cppreference every time I review code, you shouldn't need anything that isn't \<filesystem\> and C++11 with a few exceptions. To name a few:
     - coroutines/concepts/modules
-    - <ranges> for the most part
+    - \<ranges\> for the most part
     - bit_cast when memcpy is just fine
     - streams. stringstream, fstream, cout. they are garbage. Use FILE*, fmt::format.
-    - <limits>
+    - \<limits\>
     - [[likely]]/[[unlikely]] without profiling
     - stuff like `if (T x = some_stuff; some_expression)`
 - C++-style casts, they provide no benefit (with the exception of dynamic_cast, but no RTTI here) to C casts in most cases. Their supposed benefit is compile time checking, but this is useless 9/10 times and in the 1/10 times it's useful is in templated code which we generally avoid
