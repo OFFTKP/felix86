@@ -318,6 +318,11 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
         break;
     }
 
+    case IROpcode::AmoCAS128: {
+        UNIMPLEMENTED();
+        break;
+    }
+
     case IROpcode::Sub: {
         EmitSub(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
         break;

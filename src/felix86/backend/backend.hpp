@@ -61,10 +61,6 @@ struct Backend {
         return emulator;
     }
 
-    bool HasB() const {
-        return true; // TODO: proper way to check for bitmanip extension?
-    }
-
     void* GetCrashTarget() {
         return crash_target;
     }

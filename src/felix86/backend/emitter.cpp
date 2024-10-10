@@ -26,6 +26,10 @@ constexpr bool HasZacas() {
     return false;
 }
 
+constexpr bool HasB() {
+    return false;
+}
+
 void EmitCrash(Backend& backend, ExitReason reason) {
     Emitter::EmitSetExitReason(backend, static_cast<u64>(reason));
     Emitter::EmitJump(backend, backend.GetCrashTarget());
@@ -331,7 +335,7 @@ void Emitter::EmitCtzh(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitCtzw(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (backend.HasB()) {
+    if (HasB()) {
         AS.CTZW(Rd, Rs);
     } else {
         SoftwareCtz(backend, Rd, Rs, 32);
@@ -339,7 +343,7 @@ void Emitter::EmitCtzw(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (backend.HasB()) {
+    if (HasB()) {
         AS.CTZ(Rd, Rs);
     } else {
         SoftwareCtz(backend, Rd, Rs, 64);
@@ -359,7 +363,7 @@ void Emitter::EmitNeg(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (backend.HasB()) {
+    if (HasB()) {
         AS.ANDI(Rd, Rs, 0xFF);
         AS.CPOPW(Rd, Rd);
     } else {
