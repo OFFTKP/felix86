@@ -574,113 +574,147 @@ void ir_emit_write_xmmword(IRBlock* block, SSAInstruction* address, SSAInstructi
     instruction->Lock();
 }
 
-SSAInstruction* ir_emit_amoadd8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAdd8, address, source);
-    instruction->SetImmediateData((u8)ordering);
+SSAInstruction* ir_emit_amoadd(IRBlock* block, SSAInstruction* address, SSAInstruction* source, x86_size_e size) {
+    IROpcode opcode;
+    switch (size) {
+    case X86_SIZE_BYTE:
+        opcode = IROpcode::AmoAdd8;
+        break;
+    case X86_SIZE_WORD:
+        opcode = IROpcode::AmoAdd16;
+        break;
+    case X86_SIZE_DWORD:
+        opcode = IROpcode::AmoAdd32;
+        break;
+    case X86_SIZE_QWORD:
+        opcode = IROpcode::AmoAdd64;
+        break;
+    default:
+        ERROR("Invalid size");
+    }
+
+    SSAInstruction* instruction = ir_emit_two_operands(block, opcode, address, source);
     instruction->Lock();
     return instruction;
 }
 
-SSAInstruction* ir_emit_amoadd16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAdd16, address, source);
-    instruction->SetImmediateData((u8)ordering);
+SSAInstruction* ir_emit_amoxor(IRBlock* block, SSAInstruction* address, SSAInstruction* source, x86_size_e size) {
+    IROpcode opcode;
+    switch (size) {
+    case X86_SIZE_BYTE:
+        opcode = IROpcode::AmoXor8;
+        break;
+    case X86_SIZE_WORD:
+        opcode = IROpcode::AmoXor16;
+        break;
+    case X86_SIZE_DWORD:
+        opcode = IROpcode::AmoXor32;
+        break;
+    case X86_SIZE_QWORD:
+        opcode = IROpcode::AmoXor64;
+        break;
+    default:
+        ERROR("Invalid size");
+    }
+
+    SSAInstruction* instruction = ir_emit_two_operands(block, opcode, address, source);
     instruction->Lock();
     return instruction;
 }
 
-SSAInstruction* ir_emit_amoadd32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAdd32, address, source);
-    instruction->SetImmediateData((u8)ordering);
+SSAInstruction* ir_emit_amoor(IRBlock* block, SSAInstruction* address, SSAInstruction* source, x86_size_e size) {
+    IROpcode opcode;
+    switch (size) {
+    case X86_SIZE_BYTE:
+        opcode = IROpcode::AmoOr8;
+        break;
+    case X86_SIZE_WORD:
+        opcode = IROpcode::AmoOr16;
+        break;
+    case X86_SIZE_DWORD:
+        opcode = IROpcode::AmoOr32;
+        break;
+    case X86_SIZE_QWORD:
+        opcode = IROpcode::AmoOr64;
+        break;
+    default:
+        ERROR("Invalid size");
+    }
+
+    SSAInstruction* instruction = ir_emit_two_operands(block, opcode, address, source);
     instruction->Lock();
     return instruction;
 }
 
-SSAInstruction* ir_emit_amoadd64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAdd64, address, source);
-    instruction->SetImmediateData((u8)ordering);
+SSAInstruction* ir_emit_amoand(IRBlock* block, SSAInstruction* address, SSAInstruction* source, x86_size_e size) {
+    IROpcode opcode;
+    switch (size) {
+    case X86_SIZE_BYTE:
+        opcode = IROpcode::AmoAnd8;
+        break;
+    case X86_SIZE_WORD:
+        opcode = IROpcode::AmoAnd16;
+        break;
+    case X86_SIZE_DWORD:
+        opcode = IROpcode::AmoAnd32;
+        break;
+    case X86_SIZE_QWORD:
+        opcode = IROpcode::AmoAnd64;
+        break;
+    default:
+        ERROR("Invalid size");
+    }
+
+    SSAInstruction* instruction = ir_emit_two_operands(block, opcode, address, source);
     instruction->Lock();
     return instruction;
 }
 
-SSAInstruction* ir_emit_amoand8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAnd8, address, source);
-    instruction->SetImmediateData((u8)ordering);
+SSAInstruction* ir_emit_amoswap(IRBlock* block, SSAInstruction* address, SSAInstruction* source, x86_size_e size) {
+    IROpcode opcode;
+    switch (size) {
+    case X86_SIZE_BYTE:
+        opcode = IROpcode::AmoSwap8;
+        break;
+    case X86_SIZE_WORD:
+        opcode = IROpcode::AmoSwap16;
+        break;
+    case X86_SIZE_DWORD:
+        opcode = IROpcode::AmoSwap32;
+        break;
+    case X86_SIZE_QWORD:
+        opcode = IROpcode::AmoSwap64;
+        break;
+    default:
+        ERROR("Invalid size");
+    }
+
+    SSAInstruction* instruction = ir_emit_two_operands(block, opcode, address, source);
     instruction->Lock();
     return instruction;
 }
 
-SSAInstruction* ir_emit_amoand16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAnd16, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
+SSAInstruction* ir_emit_amocas(IRBlock* block, SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering,
+                               x86_size_e size) {
+    IROpcode opcode;
+    switch (size) {
+    case X86_SIZE_BYTE:
+        opcode = IROpcode::AmoCAS8;
+        break;
+    case X86_SIZE_WORD:
+        opcode = IROpcode::AmoCAS16;
+        break;
+    case X86_SIZE_DWORD:
+        opcode = IROpcode::AmoCAS32;
+        break;
+    case X86_SIZE_QWORD:
+        opcode = IROpcode::AmoCAS64;
+        break;
+    default:
+        ERROR("Invalid size");
+    }
 
-SSAInstruction* ir_emit_amoand32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAnd32, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoand64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAnd64, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoor8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoOr8, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoor16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoOr16, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoor32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoOr32, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoor64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoOr64, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoxor8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoXor8, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoxor16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoXor16, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoxor32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoXor32, address, source);
-    instruction->SetImmediateData((u8)ordering);
-    instruction->Lock();
-    return instruction;
-}
-
-SSAInstruction* ir_emit_amoxor64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
-    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoXor64, address, source);
+    SSAInstruction* instruction = ir_emit_three_operands(block, opcode, address, expected, source);
     instruction->SetImmediateData((u8)ordering);
     instruction->Lock();
     return instruction;

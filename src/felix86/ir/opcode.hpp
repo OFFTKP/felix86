@@ -72,6 +72,15 @@
     X(AmoXor16)                                                                                                                                      \
     X(AmoXor32)                                                                                                                                      \
     X(AmoXor64)                                                                                                                                      \
+    X(AmoSwap8)                                                                                                                                      \
+    X(AmoSwap16)                                                                                                                                     \
+    X(AmoSwap32)                                                                                                                                     \
+    X(AmoSwap64)                                                                                                                                     \
+    X(AmoCAS8)                                                                                                                                       \
+    X(AmoCAS16)                                                                                                                                      \
+    X(AmoCAS32)                                                                                                                                      \
+    X(AmoCAS64)                                                                                                                                      \
+    X(AmoCAS128)                                                                                                                                     \
     X(SetLessThanSigned)                                                                                                                             \
     X(SetLessThanUnsigned)                                                                                                                           \
     X(ReadByte)                                                                                                                                      \

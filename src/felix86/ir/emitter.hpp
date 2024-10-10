@@ -94,22 +94,13 @@ void ir_emit_write_dword(IRBlock* block, SSAInstruction* address, SSAInstruction
 void ir_emit_write_qword(IRBlock* block, SSAInstruction* address, SSAInstruction* source);
 void ir_emit_write_xmmword(IRBlock* block, SSAInstruction* address, SSAInstruction* source);
 
-SSAInstruction* ir_emit_amoadd8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoadd16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoadd32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoadd64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoand8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoand16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoand32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoand64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoor8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoor16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoor32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoor64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoxor8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoxor16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoxor32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
-SSAInstruction* ir_emit_amoxor64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
+SSAInstruction* ir_emit_amoadd(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+SSAInstruction* ir_emit_amoxor(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+SSAInstruction* ir_emit_amoor(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+SSAInstruction* ir_emit_amoand(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+SSAInstruction* ir_emit_amoswap(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+SSAInstruction* ir_emit_amocas(IRBlock* block, SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering,
+                               x86_size_e size);
 
 void ir_emit_setcc(IRBlock* block, x86_instruction_t* inst);
 

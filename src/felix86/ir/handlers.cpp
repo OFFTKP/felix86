@@ -53,38 +53,9 @@ IR_HANDLE(add_rm_reg) { // add rm8, r8 - 0x00
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
 
     if (IS_LOCK) {
-        // Need to do atomic operation
-        switch (inst->operand_rm.size) {
-        case X86_SIZE_QWORD: {
-            // Amoadd loads the value before the addition into the rm temporary so we
-            // need to do the addition again to get the result for the flags
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoadd64(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_add(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_DWORD: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoadd32(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_add(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_WORD: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoadd16(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_add(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_BYTE: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoadd8(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_add(BLOCK, rm, reg);
-            break;
-        }
-        default: {
-            UNIMPLEMENTED();
-        }
-        }
+        SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+        rm = ir_emit_amoadd(BLOCK, address, reg, MemoryOrdering::AqRl, size_e);
+        result = ir_emit_add(BLOCK, rm, reg);
     } else {
         rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
         result = ir_emit_add(BLOCK, rm, reg);
@@ -156,35 +127,9 @@ IR_HANDLE(or_reg_rm) { // or r16/32/64, rm16/32/64 - 0x0B
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
 
     if (IS_LOCK) {
-        switch (inst->operand_rm.size) {
-        case X86_SIZE_QWORD: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoor64(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_or(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_DWORD: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoor32(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_or(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_WORD: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoor16(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_or(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_BYTE: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoor8(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_or(BLOCK, rm, reg);
-            break;
-        }
-        default: {
-            UNIMPLEMENTED();
-        }
-        }
+        SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+        rm = ir_emit_amoor(BLOCK, address, reg, MemoryOrdering::AqRl, size_e);
+        result = ir_emit_or(BLOCK, rm, reg);
     } else {
         rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
         result = ir_emit_or(BLOCK, rm, reg);
@@ -220,35 +165,9 @@ IR_HANDLE(and_rm_reg) { // and rm16/32/64, r16/32/64 - 0x21
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
 
     if (IS_LOCK) {
-        switch (inst->operand_rm.size) {
-        case X86_SIZE_QWORD: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoand64(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_and(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_DWORD: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoand32(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_and(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_WORD: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoand16(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_and(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_BYTE: {
-            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-            rm = ir_emit_amoand8(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_and(BLOCK, rm, reg);
-            break;
-        }
-        default: {
-            UNIMPLEMENTED();
-        }
-        }
+        SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+        rm = ir_emit_amoand(BLOCK, address, reg, MemoryOrdering::AqRl, size_e);
+        result = ir_emit_and(BLOCK, rm, reg);
     } else {
         rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
         result = ir_emit_and(BLOCK, rm, reg);
@@ -286,31 +205,8 @@ IR_HANDLE(sub_rm_reg) { // sub rm16/32/64, r16/32/64 - 0x29
     if (IS_LOCK) {
         SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
         SSAInstruction* neg_reg = ir_emit_neg(BLOCK, reg);
-        switch (inst->operand_rm.size) {
-        case X86_SIZE_QWORD: {
-            rm = ir_emit_amoadd64(BLOCK, address, neg_reg, MemoryOrdering::AqRl);
-            result = ir_emit_sub(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_DWORD: {
-            rm = ir_emit_amoadd32(BLOCK, address, neg_reg, MemoryOrdering::AqRl);
-            result = ir_emit_sub(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_WORD: {
-            rm = ir_emit_amoadd16(BLOCK, address, neg_reg, MemoryOrdering::AqRl);
-            result = ir_emit_sub(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_BYTE: {
-            rm = ir_emit_amoadd8(BLOCK, address, neg_reg, MemoryOrdering::AqRl);
-            result = ir_emit_sub(BLOCK, rm, reg);
-            break;
-        }
-        default: {
-            UNIMPLEMENTED();
-        }
-        }
+        rm = ir_emit_amoadd(BLOCK, address, neg_reg, MemoryOrdering::AqRl, size_e);
+        result = ir_emit_sub(BLOCK, rm, reg);
     } else {
         rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
         result = ir_emit_sub(BLOCK, rm, reg);
@@ -368,31 +264,8 @@ IR_HANDLE(xor_rm_reg) { // xor rm8, r8 - 0x30
 
     if (IS_LOCK) {
         SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
-        switch (inst->operand_rm.size) {
-        case X86_SIZE_QWORD: {
-            rm = ir_emit_amoxor64(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_xor(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_DWORD: {
-            rm = ir_emit_amoxor32(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_xor(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_WORD: {
-            rm = ir_emit_amoxor16(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_xor(BLOCK, rm, reg);
-            break;
-        }
-        case X86_SIZE_BYTE: {
-            rm = ir_emit_amoxor8(BLOCK, address, reg, MemoryOrdering::AqRl);
-            result = ir_emit_xor(BLOCK, rm, reg);
-            break;
-        }
-        default: {
-            UNIMPLEMENTED();
-        }
-        }
+        rm = ir_emit_amoxor(BLOCK, address, reg, MemoryOrdering::AqRl, size_e);
+        result = ir_emit_xor(BLOCK, rm, reg);
     } else {
         rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
         result = ir_emit_xor(BLOCK, rm, reg);
@@ -438,6 +311,10 @@ IR_HANDLE(xor_eax_imm) { // xor ax/eax/rax, imm16/32/64 - 0x35
 }
 
 IR_HANDLE(cmp_rm_reg) { // cmp rm8, r8 - 0x38
+    if (IS_LOCK) {
+        UNIMPLEMENTED();
+    }
+
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
@@ -580,10 +457,16 @@ IR_HANDLE(test_rm_reg) { // test rm8, r8 - 0x84
 }
 
 IR_HANDLE(xchg_rm_reg) { // xchg rm8, r8 - 0x86
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    ir_emit_set_rm(BLOCK, &inst->operand_rm, reg);
-    ir_emit_set_reg(BLOCK, &inst->operand_reg, rm);
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+        SSAInstruction* swapped_reg = ir_emit_amoswap(BLOCK, address, reg, MemoryOrdering::AqRl, inst->operand_reg.size);
+        ir_emit_set_reg(BLOCK, &inst->operand_reg, swapped_reg);
+    } else {
+        SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+        ir_emit_set_rm(BLOCK, &inst->operand_rm, reg);
+        ir_emit_set_reg(BLOCK, &inst->operand_reg, rm);
+    }
 }
 
 IR_HANDLE(mov_rm_reg) { // mov rm8/16/32/64, r8/16/32/64 - 0x88
@@ -1013,16 +896,25 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     x86_size_e size_e = inst->operand_reg.size;
     x86_operand_t eax_reg = get_full_reg(X86_REF_RAX);
     eax_reg.size = size_e;
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
     SSAInstruction* eax = ir_emit_get_reg(BLOCK, &eax_reg);
-    SSAInstruction* equal = ir_emit_equal(BLOCK, eax, rm);
-    SSAInstruction* new_rm = ir_emit_select(BLOCK, equal, reg, rm);
-    SSAInstruction* new_eax = ir_emit_select(BLOCK, equal, rm, eax);
 
-    ir_emit_set_reg(BLOCK, &eax_reg, new_eax);
-    ir_emit_set_rm(BLOCK, &inst->operand_rm, new_rm);
-    ir_emit_set_flag(BLOCK, X86_REF_ZF, equal);
+    if (IS_LOCK) {
+        SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+        SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
+        SSAInstruction* actual = ir_emit_amocas(BLOCK, address, eax, reg, MemoryOrdering::AqRl, size_e);
+
+        ir_emit_set_reg(BLOCK, &eax_reg, actual);
+        ir_emit_set_flag(BLOCK, X86_REF_ZF, ir_emit_equal(BLOCK, actual, reg));
+    } else {
+        SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+        SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
+        SSAInstruction* equal = ir_emit_equal(BLOCK, eax, rm);
+        SSAInstruction* new_rm = ir_emit_select(BLOCK, equal, reg, rm);
+
+        ir_emit_set_reg(BLOCK, &eax_reg, rm);
+        ir_emit_set_rm(BLOCK, &inst->operand_rm, new_rm);
+        ir_emit_set_flag(BLOCK, X86_REF_ZF, equal);
+    }
 }
 
 IR_HANDLE(movzx_r32_rm8) { // movzx r32/64, rm8 - 0x0f 0xb6

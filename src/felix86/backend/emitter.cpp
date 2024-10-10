@@ -18,17 +18,31 @@
 namespace {
 
 // Nothing ships these extensions yet and AFAIK there's no way to check for them
-bool HasZabha() {
+constexpr bool HasZabha() {
     return false;
 }
 
-bool HasZacas() {
+constexpr bool HasZacas() {
     return false;
 }
 
 void EmitCrash(Backend& backend, ExitReason reason) {
     Emitter::EmitSetExitReason(backend, static_cast<u64>(reason));
     Emitter::EmitJump(backend, backend.GetCrashTarget());
+}
+
+void EmitZext8(Backend& backend, biscuit::GPR Rd) {
+    AS.C_ANDI(Rd, 0xFF);
+}
+
+void EmitZext16(Backend& backend, biscuit::GPR Rd) {
+    AS.C_SLLI(Rd, 48);
+    AS.C_SRLI(Rd, 48);
+}
+
+void EmitZext32(Backend& backend, biscuit::GPR Rd) {
+    AS.C_SLLI(Rd, 32);
+    AS.C_SRLI(Rd, 32);
 }
 
 void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
@@ -459,6 +473,7 @@ void Emitter::EmitAddi(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u64 i
 void Emitter::EmitAmoAdd8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     if (HasZabha()) {
         AS.AMOADD_B(ordering, Rd, Rs, Address);
+        EmitZext8(backend, Rd);
     } else {
         SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::ADD);
     }
@@ -468,6 +483,7 @@ void Emitter::EmitAmoAdd16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
     if (HasZabha()) {
         EmitAlignmentCheck(backend, Address, 2);
         AS.AMOADD_H(ordering, Rd, Rs, Address);
+        EmitZext16(backend, Rd);
     } else {
         SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::ADD);
     }
@@ -486,6 +502,7 @@ void Emitter::EmitAmoAdd64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 void Emitter::EmitAmoAnd8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     if (HasZabha()) {
         AS.AMOAND_B(ordering, Rd, Rs, Address);
+        EmitZext8(backend, Rd);
     } else {
         SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::AND);
     }
@@ -495,6 +512,7 @@ void Emitter::EmitAmoAnd16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
     if (HasZabha()) {
         EmitAlignmentCheck(backend, Address, 2);
         AS.AMOAND_H(ordering, Rd, Rs, Address);
+        EmitZext16(backend, Rd);
     } else {
         SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::AND);
     }
@@ -503,6 +521,7 @@ void Emitter::EmitAmoAnd16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 void Emitter::EmitAmoAnd32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     EmitAlignmentCheck(backend, Address, 4);
     AS.AMOAND_W(ordering, Rd, Rs, Address);
+    EmitZext32(backend, Rd);
 }
 
 void Emitter::EmitAmoAnd64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
@@ -513,6 +532,7 @@ void Emitter::EmitAmoAnd64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 void Emitter::EmitAmoOr8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     if (HasZabha()) {
         AS.AMOOR_B(ordering, Rd, Rs, Address);
+        EmitZext8(backend, Rd);
     } else {
         SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::OR);
     }
@@ -522,6 +542,7 @@ void Emitter::EmitAmoOr16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addres
     if (HasZabha()) {
         EmitAlignmentCheck(backend, Address, 2);
         AS.AMOOR_H(ordering, Rd, Rs, Address);
+        EmitZext16(backend, Rd);
     } else {
         SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::OR);
     }
@@ -530,6 +551,7 @@ void Emitter::EmitAmoOr16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addres
 void Emitter::EmitAmoOr32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     EmitAlignmentCheck(backend, Address, 4);
     AS.AMOOR_W(ordering, Rd, Rs, Address);
+    EmitZext32(backend, Rd);
 }
 
 void Emitter::EmitAmoOr64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
@@ -540,6 +562,7 @@ void Emitter::EmitAmoOr64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addres
 void Emitter::EmitAmoXor8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     if (HasZabha()) {
         AS.AMOXOR_B(ordering, Rd, Rs, Address);
+        EmitZext8(backend, Rd);
     } else {
         SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::XOR);
     }
@@ -549,6 +572,7 @@ void Emitter::EmitAmoXor16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
     if (HasZabha()) {
         EmitAlignmentCheck(backend, Address, 2);
         AS.AMOXOR_H(ordering, Rd, Rs, Address);
+        EmitZext16(backend, Rd);
     } else {
         SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::XOR);
     }
@@ -557,11 +581,87 @@ void Emitter::EmitAmoXor16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 void Emitter::EmitAmoXor32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     EmitAlignmentCheck(backend, Address, 4);
     AS.AMOXOR_W(ordering, Rd, Rs, Address);
+    EmitZext32(backend, Rd);
 }
 
 void Emitter::EmitAmoXor64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     EmitAlignmentCheck(backend, Address, 8);
     AS.AMOXOR_D(ordering, Rd, Rs, Address);
+}
+
+void Emitter::EmitAmoSwap8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    if (HasZabha()) {
+        AS.AMOSWAP_B(ordering, Rd, Rs, Address);
+        EmitZext8(backend, Rd);
+    } else {
+        UNIMPLEMENTED();
+    }
+}
+
+void Emitter::EmitAmoSwap16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    if (HasZabha()) {
+        EmitAlignmentCheck(backend, Address, 2);
+        AS.AMOSWAP_H(ordering, Rd, Rs, Address);
+        EmitZext16(backend, Rd);
+    } else {
+        UNIMPLEMENTED();
+    }
+}
+
+void Emitter::EmitAmoSwap32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 4);
+    AS.AMOSWAP_W(ordering, Rd, Rs, Address);
+    EmitZext32(backend, Rd);
+}
+
+void Emitter::EmitAmoSwap64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 8);
+    AS.AMOSWAP_D(ordering, Rd, Rs, Address);
+}
+
+void Emitter::EmitAmoCAS8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
+                          biscuit::Ordering ordering) {
+    if (HasZabha() && HasZacas()) {
+        AS.AMOCAS_B(ordering, Rd, Rs, Address);
+        EmitZext8(backend, Rd);
+    } else {
+        UNIMPLEMENTED();
+    }
+}
+
+void Emitter::EmitAmoCAS16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
+                           biscuit::Ordering ordering) {
+    AS.MV(Rd, Expected);
+    if (HasZabha() && HasZacas()) {
+        EmitAlignmentCheck(backend, Address, 2);
+        AS.AMOCAS_H(ordering, Rd, Rs, Address);
+        EmitZext16(backend, Rd);
+    } else {
+        UNIMPLEMENTED();
+    }
+}
+
+void Emitter::EmitAmoCAS32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
+                           biscuit::Ordering ordering) {
+    AS.MV(Rd, Expected);
+    if (HasZacas()) {
+        EmitAlignmentCheck(backend, Address, 4);
+        AS.AMOCAS_W(ordering, Rd, Rs, Address);
+        EmitZext32(backend, Rd);
+    } else {
+        UNIMPLEMENTED();
+    }
+}
+
+void Emitter::EmitAmoCAS64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
+                           biscuit::Ordering ordering) {
+    AS.MV(Rd, Expected);
+    if (HasZacas()) {
+        EmitAlignmentCheck(backend, Address, 8);
+        AS.AMOCAS_D(ordering, Rd, Rs, Address);
+    } else {
+        UNIMPLEMENTED();
+    }
 }
 
 void Emitter::EmitSub(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
