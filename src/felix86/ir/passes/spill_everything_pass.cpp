@@ -19,6 +19,7 @@ void ir_spill_everything_pass(IRFunction* function) {
                 binst = BackendInstruction{Allocation{spill_count++}};
             }
             binst.opcode = inst.opcode;
+            binst.immediate_data = inst.immediate_data;
 
             switch (inst.opcode) {
             case IROpcode::LoadGuestFromMemory: {
