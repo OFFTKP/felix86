@@ -51,7 +51,7 @@ struct Backend {
 
     void EnterDispatcher(ThreadState* state);
 
-    void* EmitFunction(IRFunction* function);
+    std::pair<void*, u64> EmitFunction(IRFunction* function);
 
     Assembler& GetAssembler() {
         return as;

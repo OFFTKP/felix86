@@ -195,11 +195,11 @@ void* Emulator::compileFunction(u64 rip) {
     // ir_graph_coloring_pass(function);
     ir_spill_everything_pass(&function);
 
-    void* emit = backend.EmitFunction(&function);
-    std::string disassembly = Disassembler::Disassemble(emit, 0x200);
+    auto [func, size] = backend.EmitFunction(&function);
+    std::string disassembly = Disassembler::Disassemble(func, size);
     fmt::print("{}\n", disassembly);
 
-    return emit;
+    return func;
 }
 
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {

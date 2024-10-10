@@ -119,7 +119,7 @@ void Backend::EnterDispatcher(ThreadState* state) {
     enter_dispatcher(state);
 }
 
-void* Backend::EmitFunction(IRFunction* function) {
+std::pair<void*, u64> Backend::EmitFunction(IRFunction* function) {
     // This is a sanity check for when stuff is refactored, not done for thread safety.
     if (compiling.load()) {
         ERROR("Already compiling");
@@ -148,7 +148,6 @@ void* Backend::EmitFunction(IRFunction* function) {
 
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
         IRBlock* block = *it;
-        VERBOSE("Block %s starts at %p", block->GetName().c_str(), as.GetCursorPointer());
         block_map[block] = as.GetCursorPointer();
         for (const BackendInstruction& inst : block->GetBackendInstructions()) {
             Emitter::Emit(*this, inst);
@@ -205,9 +204,6 @@ void* Backend::EmitFunction(IRFunction* function) {
         as.RewindBuffer(jump.location);
         Emitter::EmitJump(*this, block_map[jump.target]);
         as.GetCodeBuffer().SetCursor(cursor);
-        VERBOSE("Backpatched jump to %s", jump.target->GetName().c_str());
-        VERBOSE("Target: %p", block_map[jump.target]);
-        VERBOSE("Jump location: %p", (void*)jump.location);
     }
 
     for (const ConditionalJump& jump : conditional_jumps) {
@@ -221,7 +217,10 @@ void* Backend::EmitFunction(IRFunction* function) {
         as.GetCodeBuffer().SetCursor(cursor);
     }
 
+    void* end = as.GetCursorPointer();
+    u64 size = (u64)end - (u64)start;
+
     // This is a sanity check for when stuff is refactored, not done for thread safety.
     compiling.store(false);
-    return start;
+    return {start, size};
 }
