@@ -3,8 +3,8 @@
 #include "felix86/ir/function.hpp"
 
 IRFunction::IRFunction(u64 address) {
-    blocks.push_back(allocateBlock());
-    blocks.push_back(allocateBlock());
+    blocks.push_back(new IRBlock());
+    blocks.push_back(new IRBlock());
     entry = blocks[0];
     exit = blocks[1];
 
@@ -61,14 +61,10 @@ IRBlock* IRFunction::GetBlockAt(u64 address) {
 }
 
 IRBlock* IRFunction::CreateBlock() {
-    blocks.push_back(allocateBlock());
+    blocks.push_back(new IRBlock());
     IRBlock* block = blocks.back();
     block->SetIndex(blocks.size() - 1);
     return block;
-}
-
-IRBlock* IRFunction::allocateBlock() {
-    return new IRBlock(); // TODO: use a memory pool
 }
 
 void IRFunction::deallocateAll() {

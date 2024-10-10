@@ -72,8 +72,6 @@ struct IRFunction {
     std::vector<IRBlock*> GetBlocksPostorder();
 
 private:
-    IRBlock* allocateBlock();
-
     void deallocateAll();
 
     IRBlock* entry = nullptr;

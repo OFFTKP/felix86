@@ -85,10 +85,18 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
 
     while (postorder_index[finger1->GetIndex()] != postorder_index[finger2->GetIndex()]) {
         while (postorder_index[finger1->GetIndex()] < postorder_index[finger2->GetIndex()]) {
+            if (finger1->GetImmediateDominator() == nullptr) {
+                ERROR("finger1 has null immediate dominator, name: %s, index: %d", finger1->GetName().c_str(), finger1->GetIndex());
+            }
+
             finger1 = finger1->GetImmediateDominator();
         }
 
         while (postorder_index[finger2->GetIndex()] < postorder_index[finger1->GetIndex()]) {
+            if (finger2->GetImmediateDominator() == nullptr) {
+                ERROR("finger2 has null immediate dominator, name: %s, index: %d", finger2->GetName().c_str(), finger2->GetIndex());
+            }
+
             finger2 = finger2->GetImmediateDominator();
         }
     }
@@ -267,6 +275,10 @@ void ir_ssa_pass(IRFunction* function) {
             IRBlock* new_idom = predecessors[0];
             for (size_t j = 1; j < predecessors.size(); j++) {
                 IRBlock* p = predecessors[j];
+                if (!p) {
+                    ERROR("Block has a null predecessor, this should not happen");
+                }
+
                 if (p->GetImmediateDominator()) {
                     new_idom = intersect(p, new_idom, postorder_index);
                 }
