@@ -1,6 +1,8 @@
 #include "felix86/backend/allocated_register.hpp"
 #include "felix86/backend/backend.hpp"
 #include "felix86/backend/emitter.hpp"
+#include "felix86/hle/cpuid.hpp"
+#include "felix86/hle/syscall.hpp"
 
 #define AS (backend.GetAssembler())
 
@@ -37,6 +39,43 @@ void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
 
 [[nodiscard]] constexpr bool IsValidSigned12BitImm(ptrdiff_t value) {
     return value >= -2048 && value <= 2047;
+}
+
+// Inefficient but push/pop everything for now around calls
+void PushAllCallerSaved(Backend& backend) {
+    auto& caller_saved_gprs = Registers::GetCallerSavedGPRs();
+    auto& caller_saved_fprs = Registers::GetCallerSavedFPRs();
+
+    constexpr i64 size = 8 * (caller_saved_gprs.size() + caller_saved_fprs.size());
+    constexpr i64 gprs_size = 8 * caller_saved_gprs.size();
+
+    AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), -size);
+
+    for (size_t i = 0; i < caller_saved_gprs.size(); i++) {
+        AS.SD(caller_saved_gprs[i], i * 8, Registers::StackPointer());
+    }
+
+    for (size_t i = 0; i < caller_saved_fprs.size(); i++) {
+        AS.FSD(caller_saved_fprs[i], gprs_size + i * 8, Registers::StackPointer());
+    }
+}
+
+void PopAllCallerSaved(Backend& backend) {
+    auto& caller_saved_gprs = Registers::GetCallerSavedGPRs();
+    auto& caller_saved_fprs = Registers::GetCallerSavedFPRs();
+
+    constexpr i64 size = 8 * (caller_saved_gprs.size() + caller_saved_fprs.size());
+    constexpr i64 gprs_size = 8 * caller_saved_gprs.size();
+
+    for (size_t i = 0; i < caller_saved_gprs.size(); i++) {
+        AS.LD(caller_saved_gprs[i], i * 8, Registers::StackPointer());
+    }
+
+    for (size_t i = 0; i < caller_saved_fprs.size(); i++) {
+        AS.FLD(caller_saved_fprs[i], gprs_size + i * 8, Registers::StackPointer());
+    }
+
+    AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), size);
 }
 
 } // namespace
@@ -114,11 +153,24 @@ void Emitter::EmitRdtsc(Backend& backend) {
 }
 
 void Emitter::EmitSyscall(Backend& backend) {
-    UNREACHABLE();
+    PushAllCallerSaved(backend);
+
+    AS.LI(a0, (u64)&backend.GetEmulator()); // TODO: maybe make Emulator class global...
+    AS.MV(a1, Registers::ThreadStatePointer());
+    AS.LI(a2, (u64)felix86_syscall); // TODO: remove when moving code buffer close to text?
+    AS.JALR(a2);
+
+    PopAllCallerSaved(backend);
 }
 
 void Emitter::EmitCpuid(Backend& backend) {
-    UNREACHABLE();
+    PushAllCallerSaved(backend);
+
+    AS.MV(a0, Registers::ThreadStatePointer());
+    AS.LI(a1, (u64)felix86_cpuid);
+    AS.JALR(a1);
+
+    PopAllCallerSaved(backend);
 }
 
 void Emitter::EmitSext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
@@ -319,19 +371,11 @@ void Emitter::EmitNotEqual(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, 
     AS.SNEZ(Rd, Rd);
 }
 
-void Emitter::EmitIGreaterThan(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    AS.SLT(Rd, Rs2, Rs1);
-}
-
-void Emitter::EmitILessThan(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
+void Emitter::EmitSetLessThanSigned(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
     AS.SLT(Rd, Rs1, Rs2);
 }
 
-void Emitter::EmitUGreaterThan(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    AS.SLTU(Rd, Rs2, Rs1);
-}
-
-void Emitter::EmitULessThan(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
+void Emitter::EmitSetLessThanUnsigned(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
     AS.SLTU(Rd, Rs1, Rs2);
 }
 
@@ -422,13 +466,11 @@ void Emitter::EmitMulhu(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 }
 
 void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Condition, biscuit::GPR RsTrue, biscuit::GPR RsFalse) {
-    Label true_label, end_label;
+    Label true_label;
+    AS.C_MV(Rd, RsTrue);
     AS.C_BNEZ(Condition, &true_label);
     AS.C_MV(Rd, RsFalse);
-    AS.C_J(&end_label);
     AS.Bind(&true_label);
-    AS.C_MV(Rd, RsTrue);
-    AS.Bind(&end_label);
 }
 
 void Emitter::EmitCastVectorFromInteger(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs) {

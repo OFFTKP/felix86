@@ -5,10 +5,10 @@
 
 const char* manufacturer_id = "GenuineIntel";
 
-void felix86_cpuid(u64* peax, u64* pebx, u64* pecx, u64* pedx) {
-    u32 eax = *peax;
+void felix86_cpuid(ThreadState* thread_state) {
+    u32 eax = thread_state->GetGpr(X86_REF_RAX);
     u32 ebx = 0;
-    u32 ecx = *pecx;
+    u32 ecx = thread_state->GetGpr(X86_REF_RCX);
     u32 edx = 0;
     VERBOSE("CPUID: %08x", eax);
     switch (eax) {
@@ -92,8 +92,8 @@ void felix86_cpuid(u64* peax, u64* pebx, u64* pecx, u64* pedx) {
     }
     }
 
-    *peax = eax;
-    *pebx = ebx;
-    *pecx = ecx;
-    *pedx = edx;
+    thread_state->SetGpr(X86_REF_RAX, eax);
+    thread_state->SetGpr(X86_REF_RBX, ebx);
+    thread_state->SetGpr(X86_REF_RCX, ecx);
+    thread_state->SetGpr(X86_REF_RDX, edx);
 }

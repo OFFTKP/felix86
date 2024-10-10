@@ -134,10 +134,8 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Not:
     case IROpcode::Equal:
     case IROpcode::NotEqual:
-    case IROpcode::IGreaterThan:
-    case IROpcode::ILessThan:
-    case IROpcode::UGreaterThan:
-    case IROpcode::ULessThan:
+    case IROpcode::SetLessThanSigned:
+    case IROpcode::SetLessThanUnsigned:
     case IROpcode::ReadByte:
     case IROpcode::ReadWord:
     case IROpcode::ReadDWord:
@@ -319,10 +317,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(Xor, 2);
         VALIDATE_OPS_INT(Equal, 2);
         VALIDATE_OPS_INT(NotEqual, 2);
-        VALIDATE_OPS_INT(IGreaterThan, 2);
-        VALIDATE_OPS_INT(ILessThan, 2);
-        VALIDATE_OPS_INT(UGreaterThan, 2);
-        VALIDATE_OPS_INT(ULessThan, 2);
+        VALIDATE_OPS_INT(SetLessThanSigned, 2);
+        VALIDATE_OPS_INT(SetLessThanUnsigned, 2);
         VALIDATE_OPS_INT(LeftRotate8, 2);
         VALIDATE_OPS_INT(LeftRotate16, 2);
         VALIDATE_OPS_INT(LeftRotate32, 2);
@@ -536,19 +532,11 @@ std::string SSAInstruction::Print(const std::function<std::string(const SSAInstr
         ret += OP2(!=);
         break;
     }
-    case IROpcode::UGreaterThan: {
-        ret += OP2(>);
-        break;
-    }
-    case IROpcode::IGreaterThan: {
-        ret += OP2(>);
-        break;
-    }
-    case IROpcode::ULessThan: {
+    case IROpcode::SetLessThanUnsigned: {
         ret += OP2(<);
         break;
     }
-    case IROpcode::ILessThan: {
+    case IROpcode::SetLessThanSigned: {
         ret += OP2(<);
         break;
     }
@@ -998,19 +986,11 @@ std::string ReducedInstruction::Print(const std::function<std::string(const Redu
         ret += OP2(!=);
         break;
     }
-    case IROpcode::UGreaterThan: {
-        ret += OP2(>);
-        break;
-    }
-    case IROpcode::IGreaterThan: {
-        ret += OP2(>);
-        break;
-    }
-    case IROpcode::ULessThan: {
+    case IROpcode::SetLessThanUnsigned: {
         ret += OP2(<);
         break;
     }
-    case IROpcode::ILessThan: {
+    case IROpcode::SetLessThanSigned: {
         ret += OP2(<);
         break;
     }

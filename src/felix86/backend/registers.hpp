@@ -19,6 +19,11 @@ class Registers {
 
     constexpr static std::array saved_fprs = {fs0, fs1, fs2, fs3, fs4, fs5, fs6, fs7, fs8, fs9, fs10, fs11};
 
+    constexpr static std::array caller_saved_gprs = {ra, t0, t1, t2, t3, t4, t5, t6, a0, a1, a2, a3, a4, a5, a6, a7};
+
+    constexpr static std::array caller_saved_fprs = {ft0,  ft1,  ft2, ft3, ft4, ft5, ft6, ft7, ft8, ft9,
+                                                     ft10, ft11, fa0, fa1, fa2, fa3, fa4, fa5, fa6, fa7};
+
 public:
     biscuit::GPR AcquireScratchGPR() {
         if (scratch_gpr_index >= scratch_gprs.size()) {
@@ -68,6 +73,10 @@ public:
         return x0;
     }
 
+    static biscuit::GPR StackPointer() {
+        return x2;
+    }
+
     // Pointer to the spill location, holding spilled registers
     static biscuit::GPR SpillPointer() {
         return x8; // saved register so that when we exit VM we don't have to save it
@@ -78,30 +87,38 @@ public:
     }
 
     constexpr static bool IsCallerSaved(biscuit::GPR reg) {
-        for (biscuit::GPR saved : saved_gprs) {
+        for (biscuit::GPR saved : caller_saved_gprs) {
             if (reg == saved) {
-                return false;
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 
     constexpr static bool IsCallerSaved(biscuit::FPR reg) {
-        for (biscuit::FPR saved : saved_fprs) {
+        for (biscuit::FPR saved : caller_saved_fprs) {
             if (reg == saved) {
-                return false;
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 
-    constexpr static auto GetSavedGPRs() {
+    constexpr static const auto& GetCallerSavedGPRs() {
+        return caller_saved_gprs;
+    }
+
+    constexpr static const auto& GetCallerSavedFPRs() {
+        return caller_saved_fprs;
+    }
+
+    constexpr static const auto& GetSavedGPRs() {
         return saved_gprs;
     }
 
-    constexpr static auto GetSavedFPRs() {
+    constexpr static const auto& GetSavedFPRs() {
         return saved_fprs;
     }
 

@@ -209,19 +209,19 @@ SSAInstruction* ir_emit_not_equal(IRBlock* block, SSAInstruction* source1, SSAIn
 }
 
 SSAInstruction* ir_emit_greater_than_signed(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::IGreaterThan, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::SetLessThanSigned, source2, source1);
 }
 
 SSAInstruction* ir_emit_less_than_signed(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::ILessThan, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::SetLessThanSigned, source1, source2);
 }
 
 SSAInstruction* ir_emit_greater_than_unsigned(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::UGreaterThan, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::SetLessThanUnsigned, source2, source1);
 }
 
 SSAInstruction* ir_emit_less_than_unsigned(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::ULessThan, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::SetLessThanUnsigned, source1, source2);
 }
 
 SSAInstruction* ir_emit_div(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {

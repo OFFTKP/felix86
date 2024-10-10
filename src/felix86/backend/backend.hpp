@@ -57,6 +57,10 @@ struct Backend {
         return as;
     }
 
+    Emulator& GetEmulator() {
+        return emulator;
+    }
+
     bool HasB() const {
         return true; // TODO: proper way to check for bitmanip extension?
     }

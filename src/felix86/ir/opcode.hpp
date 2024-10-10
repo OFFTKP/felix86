@@ -55,10 +55,8 @@
     X(Not)                                                                                                                                           \
     X(Equal)                                                                                                                                         \
     X(NotEqual)                                                                                                                                      \
-    X(IGreaterThan)                                                                                                                                  \
-    X(ILessThan)                                                                                                                                     \
-    X(UGreaterThan)                                                                                                                                  \
-    X(ULessThan)                                                                                                                                     \
+    X(SetLessThanSigned)                                                                                                                             \
+    X(SetLessThanUnsigned)                                                                                                                           \
     X(ReadByte)                                                                                                                                      \
     X(ReadWord)                                                                                                                                      \
     X(ReadDWord)                                                                                                                                     \

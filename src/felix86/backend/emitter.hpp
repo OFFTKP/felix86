@@ -52,10 +52,8 @@ private:
     static void EmitXor(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitEqual(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitNotEqual(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitIGreaterThan(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitILessThan(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitUGreaterThan(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitULessThan(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
+    static void EmitSetLessThanSigned(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
+    static void EmitSetLessThanUnsigned(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitShiftLeft(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitShiftRight(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitShiftRightArithmetic(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);

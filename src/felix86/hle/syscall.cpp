@@ -67,14 +67,14 @@ const char* print_syscall_name(u64 syscall_number) {
     }
 }
 
-extern "C" void felix86_syscall(Emulator* emulator, ThreadState* state) {
-    u64 syscall_number = state->gprs[X86_REF_RAX - X86_REF_RAX];
-    u64 rdi = state->gprs[X86_REF_RDI - X86_REF_RAX];
-    u64 rsi = state->gprs[X86_REF_RSI - X86_REF_RAX];
-    u64 rdx = state->gprs[X86_REF_RDX - X86_REF_RAX];
-    u64 r10 = state->gprs[X86_REF_R10 - X86_REF_RAX];
-    u64 r8 = state->gprs[X86_REF_R8 - X86_REF_RAX];
-    u64 r9 = state->gprs[X86_REF_R9 - X86_REF_RAX];
+void felix86_syscall(Emulator* emulator, ThreadState* state) {
+    u64 syscall_number = state->GetGpr(X86_REF_RAX);
+    u64 rdi = state->GetGpr(X86_REF_RDI);
+    u64 rsi = state->GetGpr(X86_REF_RSI);
+    u64 rdx = state->GetGpr(X86_REF_RDX);
+    u64 r10 = state->GetGpr(X86_REF_R10);
+    u64 r8 = state->GetGpr(X86_REF_R8);
+    u64 r9 = state->GetGpr(X86_REF_R9);
     u64 result = 0;
 
     Filesystem& fs = emulator->GetFilesystem();
@@ -170,5 +170,5 @@ extern "C" void felix86_syscall(Emulator* emulator, ThreadState* state) {
     }
     }
 
-    state->gprs[X86_REF_RAX - X86_REF_RAX] = result;
+    state->SetGpr(X86_REF_RAX, result);
 }

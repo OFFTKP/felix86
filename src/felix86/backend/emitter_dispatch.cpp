@@ -265,23 +265,13 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
         break;
     }
 
-    case IROpcode::IGreaterThan: {
-        EmitIGreaterThan(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
+    case IROpcode::SetLessThanSigned: {
+        EmitSetLessThanSigned(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
         break;
     }
 
-    case IROpcode::ILessThan: {
-        EmitILessThan(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::UGreaterThan: {
-        EmitUGreaterThan(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::ULessThan: {
-        EmitULessThan(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
+    case IROpcode::SetLessThanUnsigned: {
+        EmitSetLessThanUnsigned(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
         break;
     }
 
