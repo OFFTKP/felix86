@@ -79,37 +79,6 @@
     t0-t3 and the rest of the temporaries down the road are in SSA form already,
    it's just the registers that need to be renamed
 */
-static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postorder_index) {
-    IRBlock* finger1 = a;
-    IRBlock* finger2 = b;
-
-    while (postorder_index[finger1->GetIndex()] != postorder_index[finger2->GetIndex()]) {
-        while (postorder_index[finger1->GetIndex()] < postorder_index[finger2->GetIndex()]) {
-            if (finger1->GetImmediateDominator() == nullptr) {
-                ERROR("finger1 has null immediate dominator, name: %s, index: %d", finger1->GetName().c_str(), finger1->GetIndex());
-            }
-
-            printf("        finger1 less than finger2: %d < %d, setting finger1 to %d\n", finger1->GetIndex(), finger2->GetIndex(),
-                   finger1->GetImmediateDominator()->GetIndex());
-            finger1 = finger1->GetImmediateDominator();
-        }
-
-        while (postorder_index[finger2->GetIndex()] < postorder_index[finger1->GetIndex()]) {
-            if (finger2->GetImmediateDominator() == nullptr) {
-                ERROR("finger2 has null immediate dominator, name: %s, index: %d", finger2->GetName().c_str(), finger2->GetIndex());
-            }
-
-            printf("        finger2 less than finger1: %d < %d, setting finger2 to %d\n", finger2->GetIndex(), finger1->GetIndex(),
-                   finger2->GetImmediateDominator()->GetIndex());
-
-            finger2 = finger2->GetImmediateDominator();
-        }
-    }
-
-    printf("    returning %d\n", finger1->GetIndex());
-
-    return finger1;
-}
 
 // See Cytron et al. paper figure 11
 static void place_phi_functions(IRFunction* function) {
@@ -247,6 +216,80 @@ static void rename(std::vector<IRDominatorTreeNode>& list) {
     search(&list[0], stacks);
 }
 
+static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postorder_index, std::vector<IRBlock*>& doms) {
+    IRBlock* finger1 = a;
+    IRBlock* finger2 = b;
+
+    while (postorder_index[finger1->GetIndex()] != postorder_index[finger2->GetIndex()]) {
+        while (postorder_index[finger1->GetIndex()] < postorder_index[finger2->GetIndex()]) {
+            if (doms[finger1->GetIndex()] == nullptr) {
+                WARN("finger1 (%d) has no immediate dominator", finger1->GetIndex());
+            }
+
+            finger1 = doms[finger1->GetIndex()];
+        }
+
+        while (postorder_index[finger2->GetIndex()] < postorder_index[finger1->GetIndex()]) {
+            if (doms[finger2->GetIndex()] == nullptr) {
+                WARN("finger2 (%d) has no immediate dominator", finger2->GetIndex());
+            }
+
+            finger2 = doms[finger2->GetIndex()];
+        }
+    }
+
+    return finger1;
+}
+
+[[nodiscard]] std::vector<IRBlock*> fast_dominance_algorithm(const std::vector<IRBlock*>& rpo, const std::vector<u32>& postorder_indices) {
+    std::vector<IRBlock*> doms(rpo.size());
+    std::fill(doms.begin(), doms.end(), nullptr);
+
+    doms[0] = rpo[0];
+
+    bool changed = true;
+
+    // Simple fixpoint algorithm to find immediate dominators by Cooper et al.
+    // Name: A Simple, Fast Dominance Algorithm
+    while (changed) {
+        changed = false;
+        printf("Startover\n");
+
+        // For all nodes in reverse postorder, except the start node
+        for (size_t i = 1; i < rpo.size(); i++) {
+            IRBlock* b = rpo[i];
+
+            auto& predecessors = b->GetPredecessors();
+            if (predecessors.empty()) {
+                ERROR("Block has no predecessors, this should not happen");
+            }
+
+            IRBlock* new_idom = predecessors[0];
+            printf("Now processing: %d\n", new_idom->GetIndex());
+            for (size_t j = 1; j < predecessors.size(); j++) {
+                IRBlock* p = predecessors[j];
+                if (!p) {
+                    ERROR("Block has a null predecessor, this should not happen");
+                }
+
+                printf("    Predecessor: %d\n", p->GetIndex());
+
+                if (doms[p->GetIndex()] != nullptr) {
+                    new_idom = intersect(p, new_idom, postorder_indices, doms);
+                }
+            }
+
+            if (doms[b->GetIndex()] != new_idom) {
+                doms[b->GetIndex()] = new_idom;
+                printf("Set immediate dominator for: %d to %d\n", b->GetIndex(), new_idom->GetIndex());
+                changed = true;
+            }
+        }
+    }
+
+    return doms;
+}
+
 void ir_ssa_pass(IRFunction* function) {
     size_t count = function->GetBlocks().size();
 
@@ -268,45 +311,18 @@ void ir_ssa_pass(IRFunction* function) {
         ERROR("Entry block is not the first block");
     }
 
-    rpo[0]->SetImmediateDominator(rpo[0]);
-    bool changed = true;
+    std::vector<IRBlock*> result_fast = fast_dominance_algorithm(rpo, postorder_index);
 
-    // Simple fixpoint algorithm to find immediate dominators by Cooper et al.
-    // Name: A Simple, Fast Dominance Algorithm
-    while (changed) {
-        changed = false;
-        printf("Startover\n");
+    // std::vector<IRBlock*> result_slow = slow_dominance_algorithm(rpo);
+    // for (size_t i = 0; i < count; i++) {
+    //     if (result_fast[i] != result_slow[i]) {
+    //         ERROR("Fast and slow dominance algorithms do not match for block: %d", i);
+    //     }
+    // }
 
-        // For all nodes in reverse postorder, except the start node
-        for (size_t i = 1; i < rpo.size(); i++) {
-            IRBlock* b = rpo[i];
-            printf("Now processing: %d\n", b->GetIndex());
-
-            auto& predecessors = b->GetPredecessors();
-            if (predecessors.empty()) {
-                ERROR("Block has no predecessors, this should not happen");
-            }
-
-            IRBlock* new_idom = predecessors[0];
-            for (size_t j = 1; j < predecessors.size(); j++) {
-                IRBlock* p = predecessors[j];
-                if (!p) {
-                    ERROR("Block has a null predecessor, this should not happen");
-                }
-
-                printf("    Predecessor: %d\n", p->GetIndex());
-
-                if (p->GetImmediateDominator()) {
-                    new_idom = intersect(p, new_idom, postorder_index);
-                }
-            }
-
-            if (b->GetImmediateDominator() != new_idom) {
-                b->SetImmediateDominator(new_idom);
-                printf("Set immediate dominator for: %d to %d\n", b->GetIndex(), new_idom->GetIndex());
-                changed = true;
-            }
-        }
+    for (size_t i = 0; i < count; i++) {
+        IRBlock* block = function->GetBlocks()[i];
+        block->SetImmediateDominator(result_fast[i]);
     }
 
     // Now we have immediate dominators, we can find dominance frontiers
