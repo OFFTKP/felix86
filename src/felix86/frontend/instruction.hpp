@@ -15,7 +15,8 @@ typedef struct {
                 u8 address_override : 1;
                 u8 fs_override : 1;
                 u8 gs_override : 1;
-                u8 : 5;
+                u8 lock : 1;
+                u8 : 4;
             };
         } memory;
 

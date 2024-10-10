@@ -285,6 +285,10 @@ struct SSAInstruction {
         return AsOperands().operands[index]->GetName();
     }
 
+    u8 GetOperandCount() const {
+        return AsOperands().operand_count;
+    }
+
     std::span<SSAInstruction*> GetUsedInstructions();
 
     void ReplaceExpressionWithMov(SSAInstruction* mov) {

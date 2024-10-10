@@ -1,5 +1,6 @@
 #pragma once
 
+#include "biscuit/isa.hpp"
 #include "biscuit/registers.hpp"
 #include "felix86/backend/instruction.hpp"
 
@@ -44,8 +45,12 @@ private:
     static void EmitWriteXmmWord(Backend&, biscuit::GPR, biscuit::Vec);
     static void EmitWriteByteRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitWriteQWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
-    static void EmitAddi(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitAdd(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
+    static void EmitAddi(Backend&, biscuit::GPR, biscuit::GPR, u64);
+    static void EmitAmoAdd8(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
+    static void EmitAmoAdd16(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
+    static void EmitAmoAdd32(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
+    static void EmitAmoAdd64(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
     static void EmitSub(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitAnd(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitOr(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);

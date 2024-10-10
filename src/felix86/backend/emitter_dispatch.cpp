@@ -165,6 +165,30 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
         break;
     }
 
+    case IROpcode::AmoAdd8: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoAdd8(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoAdd16: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoAdd16(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoAdd32: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoAdd32(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoAdd64: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoAdd64(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
     case IROpcode::Sub: {
         EmitSub(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
         break;
@@ -307,24 +331,6 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
 
     case IROpcode::CastIntegerFromVector: {
         EmitCastIntegerFromVector(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
-        break;
-    }
-
-    case IROpcode::CastVectorFromFloat: {
-        if (inst.GetAllocationType() == AllocationType::Vec && inst.GetOperand(0).GetAllocationType() == AllocationType::Vec) {
-            UNREACHABLE(); // EmitCastVectorFromFloat(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
-        } else {
-            UNREACHABLE();
-        }
-        break;
-    }
-
-    case IROpcode::CastFloatFromVector: {
-        if (inst.GetAllocationType() == AllocationType::FPR && inst.GetOperand(0).GetAllocationType() == AllocationType::FPR) {
-            UNREACHABLE(); // EmitCastFloatFromVector(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
-        } else {
-            UNREACHABLE();
-        }
         break;
     }
 

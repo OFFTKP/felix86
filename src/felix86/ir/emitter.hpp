@@ -1,6 +1,7 @@
 #pragma once
 
 #include "felix86/common/utility.hpp"
+#include "felix86/frontend/frontend.hpp"
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/ir/block.hpp"
 #include "felix86/ir/instruction.hpp"
@@ -58,8 +59,6 @@ SSAInstruction* ir_emit_vector_unpack_dword_low(IRBlock* block, SSAInstruction* 
 SSAInstruction* ir_emit_vector_unpack_qword_low(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_cast_vector_integer(IRBlock* block, SSAInstruction* source);
 SSAInstruction* ir_emit_cast_integer_vector(IRBlock* block, SSAInstruction* source);
-SSAInstruction* ir_emit_cast_vector_float(IRBlock* block, SSAInstruction* source);
-SSAInstruction* ir_emit_cast_float_vector(IRBlock* block, SSAInstruction* source);
 SSAInstruction* ir_emit_vector_packed_and(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_vector_packed_or(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_vector_packed_xor(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
@@ -93,6 +92,11 @@ void ir_emit_write_word(IRBlock* block, SSAInstruction* address, SSAInstruction*
 void ir_emit_write_dword(IRBlock* block, SSAInstruction* address, SSAInstruction* source);
 void ir_emit_write_qword(IRBlock* block, SSAInstruction* address, SSAInstruction* source);
 void ir_emit_write_xmmword(IRBlock* block, SSAInstruction* address, SSAInstruction* source);
+
+SSAInstruction* ir_emit_amoadd8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
+SSAInstruction* ir_emit_amoadd16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
+SSAInstruction* ir_emit_amoadd32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
+SSAInstruction* ir_emit_amoadd64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering);
 
 void ir_emit_setcc(IRBlock* block, x86_instruction_t* inst);
 
@@ -145,8 +149,8 @@ void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst);
 void ir_emit_group2(IRBlock* block, x86_instruction_t* inst, SSAInstruction* shift_amount);
 void ir_emit_group3(IRBlock* block, x86_instruction_t* inst);
 
-void ir_emit_rep_start(IRBlock* block, x86_size_e size);
-void ir_emit_rep_end(IRBlock* block, bool is_nz, x86_size_e size);
+void ir_emit_rep_start(FrontendState* state, const x86_instruction_t& inst, IRBlock* loop_block, IRBlock* exit_block);
+void ir_emit_rep_end(FrontendState* state, const x86_instruction_t& inst, x86_rep_e rep_type, IRBlock* loop_block, IRBlock* exit_block);
 
 // Exits the dispatcher all together ending the current thread, with a byte to specify the reason
 void ir_emit_set_exit_reason(IRBlock* block, u8 reason);

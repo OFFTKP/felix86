@@ -2,7 +2,6 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/ir/emitter.hpp"
-#include "felix86/ir/handlers.hpp"
 #include "felix86/ir/instruction.hpp"
 
 #define BLOCK (state->current_block)
@@ -35,6 +34,7 @@ u64 sext(u64 value, x86_size_e size_e) {
     }
 }
 
+#define IS_LOCK (inst->operand_rm.type == X86_OP_TYPE_MEMORY && inst->operand_rm.memory.lock)
 #define IR_HANDLE(name) void ir_handle_##name(FrontendState* state, x86_instruction_t* inst)
 
 IR_HANDLE(error) {
@@ -49,10 +49,47 @@ IR_HANDLE(error) {
 
 IR_HANDLE(add_rm_reg) { // add rm8, r8 - 0x00
     x86_size_e size_e = inst->operand_reg.size;
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    SSAInstruction *rm, *result;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    SSAInstruction* result = ir_emit_add(BLOCK, rm, reg);
-    ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+
+    if (IS_LOCK) {
+        // Need to do atomic operation
+        switch (inst->operand_rm.size) {
+        case X86_SIZE_QWORD: {
+            // Amoadd loads the value before the addition into the rm temporary so we
+            // need to do the addition again to get the result for the flags
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoadd64(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_add(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoadd32(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_add(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoadd16(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_add(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_BYTE: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoadd8(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_add(BLOCK, rm, reg);
+            break;
+        }
+        default: {
+            UNIMPLEMENTED();
+        }
+        }
+    } else {
+        rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+        result = ir_emit_add(BLOCK, rm, reg);
+        ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+    }
 
     SSAInstruction* c = ir_emit_get_carry_add(BLOCK, rm, reg, result, size_e);
     SSAInstruction* p = ir_emit_get_parity(BLOCK, result);

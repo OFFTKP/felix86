@@ -27,7 +27,7 @@ class Registers {
 public:
     biscuit::GPR AcquireScratchGPR() {
         if (scratch_gpr_index >= scratch_gprs.size()) {
-            ERROR("Out of scratch GPRs");
+            ERROR("Out of scratch GPRs. TODO: push regs when necessary?");
         }
 
         return scratch_gprs[scratch_gpr_index++];

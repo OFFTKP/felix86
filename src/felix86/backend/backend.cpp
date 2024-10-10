@@ -173,15 +173,9 @@ std::pair<void*, u64> Backend::EmitFunction(IRFunction* function) {
             conditional_jumps.push_back(
                 {as.GetCodeBuffer().GetCursorOffset(), block->GetConditionAllocation(), block->GetSuccessor(0), block->GetSuccessor(1)});
             // Some space for the backpatched jump
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
+            for (int i = 0; i < 18; i++) {
+                as.NOP();
+            }
             as.EBREAK();
             break;
         }

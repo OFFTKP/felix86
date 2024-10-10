@@ -99,3 +99,10 @@ enum riscv_ref_e {
     RISCV_REF_VEC31,
     RISCV_REF_COUNT
 };
+
+enum class MemoryOrdering {
+    None = 0,
+    Aq = 0b01,
+    Rl = 0b10,
+    AqRl = 0b11,
+};

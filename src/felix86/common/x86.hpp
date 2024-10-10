@@ -60,6 +60,13 @@ typedef enum : u8 {
     X86_GROUP14_PSLLDQ = 7,
 } x86_group14_e;
 
+enum x86_rep_e {
+    NONE,
+    REP,
+    REP_Z,
+    REP_NZ,
+};
+
 typedef enum : u8 {
     X86_REF_RAX,
     X86_REF_RCX,

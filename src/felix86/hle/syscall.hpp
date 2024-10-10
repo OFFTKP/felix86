@@ -1,5 +1,5 @@
 #pragma once
 
-#include "felix86/common/utility.hpp"
+#include "felix86/emulator.hpp"
 
-void felix86_syscall(u64* prax, u64 rdi, u64 rsi, u64 rdx, u64 r10, u64 r8, u64 r9);
+void felix86_syscall(Emulator* emulator, ThreadState* state);

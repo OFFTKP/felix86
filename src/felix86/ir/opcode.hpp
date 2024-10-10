@@ -55,6 +55,10 @@
     X(Not)                                                                                                                                           \
     X(Equal)                                                                                                                                         \
     X(NotEqual)                                                                                                                                      \
+    X(AmoAdd8)                                                                                                                                       \
+    X(AmoAdd16)                                                                                                                                      \
+    X(AmoAdd32)                                                                                                                                      \
+    X(AmoAdd64)                                                                                                                                      \
     X(SetLessThanSigned)                                                                                                                             \
     X(SetLessThanUnsigned)                                                                                                                           \
     X(ReadByte)                                                                                                                                      \
@@ -73,8 +77,6 @@
     X(WriteXmmWord)                                                                                                                                  \
     X(CastVectorFromInteger)                                                                                                                         \
     X(CastIntegerFromVector)                                                                                                                         \
-    X(CastVectorFromFloat)                                                                                                                           \
-    X(CastFloatFromVector)                                                                                                                           \
     X(VInsertInteger)                                                                                                                                \
     X(VExtractInteger)                                                                                                                               \
     X(VUnpackByteLow)                                                                                                                                \

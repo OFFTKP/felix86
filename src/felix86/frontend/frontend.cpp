@@ -452,21 +452,13 @@ void frontend_compile_instruction(FrontendState* state) {
         inst.operand_reg.reg.ref = x86_ref_e((X86_REF_RAX + (opcode & 0x07)) | (rex_b << 3));
     }
 
-    enum {
-        NONE,
-        REP,
-        REP_Z,
-        REP_NZ,
-    } rep_type;
-
+    x86_rep_e rep_type = x86_rep_e::NONE; // TODO: use enum class for x86_rep_e
     if (rep_z_f3 && (decoding_flags & CAN_REPZ_REPNZ_FLAG)) {
         rep_type = REP_Z;
     } else if (rep_nz_f2 && (decoding_flags & CAN_REPZ_REPNZ_FLAG)) {
         rep_type = REP_NZ;
     } else if ((rep_nz_f2 || rep_z_f3) && (decoding_flags & CAN_REP_FLAG)) {
         rep_type = REP;
-    } else {
-        rep_type = NONE;
     }
 
     if (decoding_flags & RM_EAX_OVERRIDE_FLAG) {
@@ -631,6 +623,7 @@ void frontend_compile_instruction(FrontendState* state) {
         inst.operand_rm.memory.address_override = address_override;
         inst.operand_rm.memory.fs_override = fs_override;
         inst.operand_rm.memory.gs_override = gs_override;
+        inst.operand_rm.memory.lock = lock;
         if (inst.operand_rm.memory.base == X86_REF_RIP) {
             inst.operand_rm.memory.displacement += state->current_address + index;
             inst.operand_rm.memory.base = X86_REF_COUNT;
@@ -653,50 +646,20 @@ void frontend_compile_instruction(FrontendState* state) {
     }
 
     bool is_rep = rep_type != NONE;
-    IRBlock *rep_loop_block = NULL, *rep_exit_block = NULL;
+    IRBlock* loop_block = nullptr;
+    IRBlock* exit_block = nullptr;
+
     if (is_rep) {
-        rep_loop_block = state->function->CreateBlock();
-        rep_exit_block = state->function->CreateBlock();
-
-        x86_operand_t rcx_reg = get_full_reg(X86_REF_RCX);
-        rcx_reg.size = inst.operand_reg.size;
-        SSAInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
-        SSAInstruction* zero = ir_emit_immediate(state->current_block, 0);
-        SSAInstruction* condition = ir_emit_equal(state->current_block, rcx, zero);
-        rep_loop_block->TerminateJumpConditional(condition, rep_exit_block, rep_loop_block);
-
-        // Write the instruction in the loop body
-        state->current_block = rep_loop_block;
+        IRBlock* loop_block = state->function->CreateBlock();
+        IRBlock* exit_block = state->function->CreateBlock();
+        ir_emit_rep_start(state, inst, loop_block, exit_block);
     }
 
+    // Call actual decoding function
     fn(state, &inst);
 
     if (is_rep) {
-        x86_operand_t rcx_reg = get_full_reg(X86_REF_RCX);
-        rcx_reg.size = inst.operand_reg.size;
-        SSAInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
-        SSAInstruction* zero = ir_emit_immediate(state->current_block, 0);
-        SSAInstruction* one = ir_emit_immediate(state->current_block, 1);
-        SSAInstruction* sub = ir_emit_sub(state->current_block, rcx, one);
-        ir_emit_set_reg(state->current_block, &rcx_reg, sub);
-        SSAInstruction* rcx_zero = ir_emit_equal(state->current_block, sub, zero);
-        SSAInstruction* condition;
-        SSAInstruction* zf = ir_emit_get_flag(state->current_block, X86_REF_ZF);
-        if (rep_type == REP) { // Some instructions don't check the ZF flag
-            condition = zero;
-        } else if (rep_type == REP_NZ) {
-            condition = ir_emit_not_equal(state->current_block, zf, zero);
-        } else if (rep_type == REP_Z) {
-            condition = ir_emit_equal(state->current_block, zf, zero);
-        } else {
-            UNREACHABLE();
-        }
-
-        SSAInstruction* final_condition = ir_emit_or(state->current_block, rcx_zero, condition);
-        state->current_block->TerminateJumpConditional(final_condition, rep_exit_block, rep_loop_block);
-
-        frontend_compile_block(state->function, rep_exit_block);
-        state->exit = true;
+        ir_emit_rep_end(state, inst, rep_type, loop_block, exit_block);
     }
 
     state->current_address += inst.length;
