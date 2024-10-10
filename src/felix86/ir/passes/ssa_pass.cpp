@@ -306,12 +306,6 @@ void ir_ssa_pass(IRFunction* function) {
 
     std::reverse(rpo.begin(), rpo.end());
 
-    printf("Rpo order: ");
-    for (int i = 0; i < rpo.size(); i++) {
-        printf("%d ", rpo[i]->GetIndex());
-    }
-    printf("\n");
-
     if (rpo[0] != function->GetEntry()) {
         ERROR("Entry block is not the first block");
     }

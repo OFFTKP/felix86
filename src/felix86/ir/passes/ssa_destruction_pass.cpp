@@ -85,6 +85,11 @@ void insert_parallel_move(IRBlock* block, ParallelMove& move) {
     auto& dst = move.names_lhs;
     auto& src = move.names_rhs;
 
+    VERBOSE("Constructing parallel move:");
+    for (size_t i = 0; i < size; i++) {
+        VERBOSE("t%s = t%s", GetNameString(dst[i]).c_str(), GetNameString(src[i]).c_str());
+    }
+
     std::function<void(int)> move_one = [&](int i) {
         if (src[i] != dst[i]) {
             status[i] = Being_moved;
@@ -103,6 +108,7 @@ void insert_parallel_move(IRBlock* block, ParallelMove& move) {
                         rinstr.operands[0] = src[j];
                         rinstr.operand_count = 1;
                         block->InsertReducedInstruction(std::move(rinstr));
+                        VERBOSE("temp%s = t%s", GetNameString(rinstr.name).c_str(), GetNameString(src[j]).c_str());
                         src[j] = rinstr.name;
                         break;
                     }
@@ -117,6 +123,7 @@ void insert_parallel_move(IRBlock* block, ParallelMove& move) {
             rinstr.opcode = IROpcode::Mov;
             rinstr.name = dst[i];
             rinstr.operands[0] = src[i];
+            VERBOSE("t%s = t%s", GetNameString(dst[i]).c_str(), GetNameString(src[i]).c_str());
             rinstr.operand_count = 1;
             block->InsertReducedInstruction(std::move(rinstr));
             status[i] = Moved;

@@ -97,6 +97,9 @@ void ir_spill_everything_pass(IRFunction* function) {
             case IROpcode::StoreGuestToMemory: {
                 // Break this to a regular store
                 Allocation address = Registers::ThreadStatePointer();
+                if (inst.operands[0] == 0) {
+                    ERROR("Null name...?");
+                }
                 if (allocations.find(inst.operands[0]) == allocations.end()) {
                     ERROR("Use not dominated by definition while allocating, operand name: %s", GetNameString(inst.operands[0]).c_str());
                 }
