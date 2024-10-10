@@ -223,7 +223,7 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
     while (postorder_index[finger1->GetIndex()] != postorder_index[finger2->GetIndex()]) {
         while (postorder_index[finger1->GetIndex()] < postorder_index[finger2->GetIndex()]) {
             if (doms[finger1->GetIndex()] == nullptr) {
-                WARN("finger1 (%d) has no immediate dominator", finger1->GetIndex());
+                ERROR("finger1 (%d) has no immediate dominator", finger1->GetIndex());
             }
 
             finger1 = doms[finger1->GetIndex()];
@@ -231,7 +231,7 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
 
         while (postorder_index[finger2->GetIndex()] < postorder_index[finger1->GetIndex()]) {
             if (doms[finger2->GetIndex()] == nullptr) {
-                WARN("finger2 (%d) has no immediate dominator", finger2->GetIndex());
+                ERROR("finger2 (%d) has no immediate dominator", finger2->GetIndex());
             }
 
             finger2 = doms[finger2->GetIndex()];
@@ -253,7 +253,6 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
     // Name: A Simple, Fast Dominance Algorithm
     while (changed) {
         changed = false;
-        printf("Startover\n");
 
         // For all nodes in reverse postorder, except the start node
         for (size_t i = 1; i < rpo.size(); i++) {
@@ -264,15 +263,22 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
                 ERROR("Block has no predecessors, this should not happen");
             }
 
-            IRBlock* new_idom = predecessors[0];
-            printf("Now processing: %d\n", new_idom->GetIndex());
-            for (size_t j = 1; j < predecessors.size(); j++) {
-                IRBlock* p = predecessors[j];
-                if (!p) {
-                    ERROR("Block has a null predecessor, this should not happen");
+            IRBlock* new_idom = nullptr;
+            for (IRBlock* block : predecessors) {
+                if (doms[block->GetIndex()] != nullptr) {
+                    new_idom = block;
+                    break;
                 }
+            }
 
-                printf("    Predecessor: %d\n", p->GetIndex());
+            if (!new_idom) {
+                ERROR("Could not find processed predecessor for block %d", b->GetIndex());
+            }
+
+            for (IRBlock* p : predecessors) {
+                if (p == new_idom) {
+                    continue;
+                }
 
                 if (doms[p->GetIndex()] != nullptr) {
                     new_idom = intersect(p, new_idom, postorder_indices, doms);
@@ -281,7 +287,6 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
 
             if (doms[b->GetIndex()] != new_idom) {
                 doms[b->GetIndex()] = new_idom;
-                printf("Set immediate dominator for: %d to %d\n", b->GetIndex(), new_idom->GetIndex());
                 changed = true;
             }
         }
