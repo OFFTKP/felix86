@@ -192,6 +192,8 @@ void* Emulator::compileFunction(u64 rip) {
         ERROR("Function did not validate");
     }
 
+    fmt::print("{}\n", function.PrintReduced({}));
+
     // ir_graph_coloring_pass(function);
     ir_spill_everything_pass(&function);
 

@@ -97,9 +97,6 @@ void ir_spill_everything_pass(IRFunction* function) {
             case IROpcode::StoreGuestToMemory: {
                 // Break this to a regular store
                 Allocation address = Registers::ThreadStatePointer();
-                if (inst.operands[0] == 0) {
-                    ERROR("Null name...?");
-                }
                 if (allocations.find(inst.operands[0]) == allocations.end()) {
                     ERROR("Use not dominated by definition while allocating, operand name: %s", GetNameString(inst.operands[0]).c_str());
                 }
@@ -186,9 +183,13 @@ void ir_spill_everything_pass(IRFunction* function) {
             default: {
                 binst.operand_count = inst.operand_count;
                 for (u8 i = 0; i < inst.operand_count; i++) {
+                    if (inst.operands[i] == 0) {
+                        ERROR("Null name...? opcode: %s, operand: %s", GetOpcodeString(inst.opcode).c_str(), GetNameString(i).c_str());
+                    }
+
                     if (allocations.find(inst.operands[i]) == allocations.end()) {
                         ERROR("Use not dominated by definition while allocating, opcode: %s, operand: %s", GetOpcodeString(inst.opcode).c_str(),
-                              GetNameString(i).c_str());
+                              GetNameString(inst.operands[i]).c_str());
                     }
 
                     binst.operands[i] = allocations[inst.operands[i]];

@@ -292,6 +292,8 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
         }
     }
 
+    doms[0] = nullptr;
+
     return doms;
 }
 
@@ -345,9 +347,6 @@ void ir_ssa_pass(IRFunction* function) {
     // Now that we have dominance frontiers, step 1 is complete
     // We can now move on to step 2, which is inserting phi instructions
     place_phi_functions(function);
-
-    // Before we made the entry block have itself as the immediate dominator, we need to undo that
-    rpo[0]->SetImmediateDominator(nullptr);
 
     // Construct a dominator tree
     IRDominatorTree dominator_tree;
