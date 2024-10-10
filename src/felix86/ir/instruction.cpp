@@ -132,6 +132,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Or:
     case IROpcode::Xor:
     case IROpcode::Not:
+    case IROpcode::Neg:
     case IROpcode::Equal:
     case IROpcode::NotEqual:
     case IROpcode::SetLessThanSigned:
@@ -331,6 +332,18 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(AmoAdd16, 2);
         VALIDATE_OPS_INT(AmoAdd32, 2);
         VALIDATE_OPS_INT(AmoAdd64, 2);
+        VALIDATE_OPS_INT(AmoAnd8, 2);
+        VALIDATE_OPS_INT(AmoAnd16, 2);
+        VALIDATE_OPS_INT(AmoAnd32, 2);
+        VALIDATE_OPS_INT(AmoAnd64, 2);
+        VALIDATE_OPS_INT(AmoOr8, 2);
+        VALIDATE_OPS_INT(AmoOr16, 2);
+        VALIDATE_OPS_INT(AmoOr32, 2);
+        VALIDATE_OPS_INT(AmoOr64, 2);
+        VALIDATE_OPS_INT(AmoXor8, 2);
+        VALIDATE_OPS_INT(AmoXor16, 2);
+        VALIDATE_OPS_INT(AmoXor32, 2);
+        VALIDATE_OPS_INT(AmoXor64, 2);
 
         VALIDATE_OPS_INT(Select, 3);
 
@@ -597,6 +610,66 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::AmoAdd64: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoadd64", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoAnd8: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoand8", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoAnd16: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoand16", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoAnd32: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoand32", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoAnd64: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoand64", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoOr8: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoor8", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoOr16: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoor16", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoOr32: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoor32", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoOr64: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoor64", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoXor8: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoxor8", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoXor16: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoxor16", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoXor32: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoxor32", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoXor64: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoxor64", "address", GetNameString(operands[0]), "src",
                            GetNameString(operands[1]));
         break;
     }

@@ -53,12 +53,25 @@
     X(Or)                                                                                                                                            \
     X(Xor)                                                                                                                                           \
     X(Not)                                                                                                                                           \
+    X(Neg)                                                                                                                                           \
     X(Equal)                                                                                                                                         \
     X(NotEqual)                                                                                                                                      \
     X(AmoAdd8)                                                                                                                                       \
     X(AmoAdd16)                                                                                                                                      \
     X(AmoAdd32)                                                                                                                                      \
     X(AmoAdd64)                                                                                                                                      \
+    X(AmoAnd8)                                                                                                                                       \
+    X(AmoAnd16)                                                                                                                                      \
+    X(AmoAnd32)                                                                                                                                      \
+    X(AmoAnd64)                                                                                                                                      \
+    X(AmoOr8)                                                                                                                                        \
+    X(AmoOr16)                                                                                                                                       \
+    X(AmoOr32)                                                                                                                                       \
+    X(AmoOr64)                                                                                                                                       \
+    X(AmoXor8)                                                                                                                                       \
+    X(AmoXor16)                                                                                                                                      \
+    X(AmoXor32)                                                                                                                                      \
+    X(AmoXor64)                                                                                                                                      \
     X(SetLessThanSigned)                                                                                                                             \
     X(SetLessThanUnsigned)                                                                                                                           \
     X(ReadByte)                                                                                                                                      \

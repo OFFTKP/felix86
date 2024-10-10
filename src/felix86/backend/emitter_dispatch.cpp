@@ -130,6 +130,11 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
         break;
     }
 
+    case IROpcode::Neg: {
+        EmitNeg(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
+        break;
+    }
+
     case IROpcode::Clz: {
         EmitClz(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)));
         break;
@@ -186,6 +191,78 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
     case IROpcode::AmoAdd64: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
         EmitAmoAdd64(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoAnd8: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoAnd8(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoAnd16: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoAnd16(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoAnd32: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoAnd32(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoAnd64: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoAnd64(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoOr8: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoOr8(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoOr16: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoOr16(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoOr32: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoOr32(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoOr64: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoOr64(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoXor8: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoXor8(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoXor16: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoXor16(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoXor32: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoXor32(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
+        break;
+    }
+
+    case IROpcode::AmoXor64: {
+        Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
+        EmitAmoXor64(backend, _RegWO_(inst.GetAllocation()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)), ordering);
         break;
     }
 

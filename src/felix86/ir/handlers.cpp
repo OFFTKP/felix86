@@ -152,10 +152,44 @@ IR_HANDLE(or_rm_reg) { // or rm16/32/64, r16/32/64 - 0x09
 
 IR_HANDLE(or_reg_rm) { // or r16/32/64, rm16/32/64 - 0x0B
     x86_size_e size_e = inst->operand_reg.size;
+    SSAInstruction *rm, *result;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    SSAInstruction* result = ir_emit_or(BLOCK, reg, rm);
-    ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
+
+    if (IS_LOCK) {
+        switch (inst->operand_rm.size) {
+        case X86_SIZE_QWORD: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoor64(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_or(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoor32(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_or(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoor16(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_or(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_BYTE: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoor8(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_or(BLOCK, rm, reg);
+            break;
+        }
+        default: {
+            UNIMPLEMENTED();
+        }
+        }
+    } else {
+        rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+        result = ir_emit_or(BLOCK, rm, reg);
+        ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+    }
 
     SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
     SSAInstruction* p = ir_emit_get_parity(BLOCK, result);
@@ -182,10 +216,44 @@ IR_HANDLE(or_eax_imm) { // add ax/eax/rax, imm16/32/64 - 0x0D
 
 IR_HANDLE(and_rm_reg) { // and rm16/32/64, r16/32/64 - 0x21
     x86_size_e size_e = inst->operand_reg.size;
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    SSAInstruction *rm, *result;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    SSAInstruction* result = ir_emit_and(BLOCK, rm, reg);
-    ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+
+    if (IS_LOCK) {
+        switch (inst->operand_rm.size) {
+        case X86_SIZE_QWORD: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoand64(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_and(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoand32(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_and(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoand16(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_and(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_BYTE: {
+            SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+            rm = ir_emit_amoand8(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_and(BLOCK, rm, reg);
+            break;
+        }
+        default: {
+            UNIMPLEMENTED();
+        }
+        }
+    } else {
+        rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+        result = ir_emit_and(BLOCK, rm, reg);
+        ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+    }
 
     SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
     SSAInstruction* p = ir_emit_get_parity(BLOCK, result);
@@ -212,10 +280,42 @@ IR_HANDLE(and_eax_imm) { // and ax/eax/rax, imm16/32/64 - 0x25
 
 IR_HANDLE(sub_rm_reg) { // sub rm16/32/64, r16/32/64 - 0x29
     x86_size_e size_e = inst->operand_reg.size;
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    SSAInstruction *rm, *result;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    SSAInstruction* result = ir_emit_sub(BLOCK, rm, reg);
-    ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+
+    if (IS_LOCK) {
+        SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+        SSAInstruction* neg_reg = ir_emit_neg(BLOCK, reg);
+        switch (inst->operand_rm.size) {
+        case X86_SIZE_QWORD: {
+            rm = ir_emit_amoadd64(BLOCK, address, neg_reg, MemoryOrdering::AqRl);
+            result = ir_emit_sub(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            rm = ir_emit_amoadd32(BLOCK, address, neg_reg, MemoryOrdering::AqRl);
+            result = ir_emit_sub(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            rm = ir_emit_amoadd16(BLOCK, address, neg_reg, MemoryOrdering::AqRl);
+            result = ir_emit_sub(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_BYTE: {
+            rm = ir_emit_amoadd8(BLOCK, address, neg_reg, MemoryOrdering::AqRl);
+            result = ir_emit_sub(BLOCK, rm, reg);
+            break;
+        }
+        default: {
+            UNIMPLEMENTED();
+        }
+        }
+    } else {
+        rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+        result = ir_emit_sub(BLOCK, rm, reg);
+        ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+    }
 
     SSAInstruction* c = ir_emit_get_carry_sub(BLOCK, rm, reg, result, size_e);
     SSAInstruction* p = ir_emit_get_parity(BLOCK, result);
@@ -263,21 +363,41 @@ IR_HANDLE(sub_reg_rm) {
 
 IR_HANDLE(xor_rm_reg) { // xor rm8, r8 - 0x30
     x86_size_e size_e = inst->operand_reg.size;
-    if (size_e == X86_SIZE_DWORD || size_e == X86_SIZE_QWORD) {
-        if (inst->operand_rm.type == X86_OP_TYPE_REGISTER && inst->operand_reg.reg.ref == inst->operand_rm.reg.ref) {
-            // xor reg, reg when the reg is the same for size 32/64 is always 0
-            SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
-            SSAInstruction* one = ir_emit_immediate(BLOCK, 1);
-            ir_emit_set_gpr64(BLOCK, inst->operand_reg.reg.ref, zero);
-            ir_emit_set_cpazso(BLOCK, zero, one, nullptr, one, zero, zero);
-            return;
-        }
-    }
-
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    SSAInstruction *rm, *result;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    SSAInstruction* result = ir_emit_xor(BLOCK, rm, reg);
-    ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+
+    if (IS_LOCK) {
+        SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
+        switch (inst->operand_rm.size) {
+        case X86_SIZE_QWORD: {
+            rm = ir_emit_amoxor64(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_xor(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            rm = ir_emit_amoxor32(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_xor(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            rm = ir_emit_amoxor16(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_xor(BLOCK, rm, reg);
+            break;
+        }
+        case X86_SIZE_BYTE: {
+            rm = ir_emit_amoxor8(BLOCK, address, reg, MemoryOrdering::AqRl);
+            result = ir_emit_xor(BLOCK, rm, reg);
+            break;
+        }
+        default: {
+            UNIMPLEMENTED();
+        }
+        }
+    } else {
+        rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+        result = ir_emit_xor(BLOCK, rm, reg);
+        ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
+    }
 
     SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
     SSAInstruction* p = ir_emit_get_parity(BLOCK, result);
@@ -289,17 +409,6 @@ IR_HANDLE(xor_rm_reg) { // xor rm8, r8 - 0x30
 
 IR_HANDLE(xor_reg_rm) { // xor r16/32/64, rm16/32/64 - 0x33
     x86_size_e size_e = inst->operand_reg.size;
-    if (size_e == X86_SIZE_DWORD || size_e == X86_SIZE_QWORD) {
-        if (inst->operand_rm.type == X86_OP_TYPE_REGISTER && inst->operand_reg.reg.ref == inst->operand_rm.reg.ref) {
-            // xor reg, reg when the reg is the same for size 32/64 is always 0
-            SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
-            SSAInstruction* one = ir_emit_immediate(BLOCK, 1);
-            ir_emit_set_gpr64(BLOCK, inst->operand_reg.reg.ref, zero);
-            ir_emit_set_cpazso(BLOCK, zero, one, nullptr, one, zero, zero);
-            return;
-        }
-    }
-
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
     SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
     SSAInstruction* result = ir_emit_xor(BLOCK, reg, rm);

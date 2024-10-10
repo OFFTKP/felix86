@@ -200,6 +200,10 @@ SSAInstruction* ir_emit_not(IRBlock* block, SSAInstruction* source) {
     return ir_emit_one_operand(block, IROpcode::Not, source);
 }
 
+SSAInstruction* ir_emit_neg(IRBlock* block, SSAInstruction* source) {
+    return ir_emit_one_operand(block, IROpcode::Neg, source);
+}
+
 SSAInstruction* ir_emit_equal(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
     return ir_emit_two_operands(block, IROpcode::Equal, source1, source2);
 }
@@ -593,6 +597,90 @@ SSAInstruction* ir_emit_amoadd32(IRBlock* block, SSAInstruction* address, SSAIns
 
 SSAInstruction* ir_emit_amoadd64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
     SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAdd64, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoand8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAnd8, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoand16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAnd16, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoand32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAnd32, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoand64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoAnd64, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoor8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoOr8, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoor16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoOr16, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoor32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoOr32, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoor64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoOr64, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoxor8(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoXor8, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoxor16(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoXor16, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoxor32(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoXor32, address, source);
+    instruction->SetImmediateData((u8)ordering);
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* ir_emit_amoxor64(IRBlock* block, SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering) {
+    SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::AmoXor64, address, source);
     instruction->SetImmediateData((u8)ordering);
     instruction->Lock();
     return instruction;

@@ -317,6 +317,10 @@ void Emitter::EmitNot(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
     }
 }
 
+void Emitter::EmitNeg(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
+    AS.NEG(Rd, Rs);
+}
+
 void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
     if (backend.HasB()) {
         AS.ANDI(Rd, Rs, 0xFF);
@@ -443,6 +447,54 @@ void Emitter::EmitAmoAdd32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 
 void Emitter::EmitAmoAdd64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     AS.AMOADD_D(ordering, Rd, Rs, Address);
+}
+
+void Emitter::EmitAmoAnd8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::AND);
+}
+
+void Emitter::EmitAmoAnd16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::AND);
+}
+
+void Emitter::EmitAmoAnd32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    AS.AMOAND_W(ordering, Rd, Rs, Address);
+}
+
+void Emitter::EmitAmoAnd64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    AS.AMOAND_D(ordering, Rd, Rs, Address);
+}
+
+void Emitter::EmitAmoOr8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::OR);
+}
+
+void Emitter::EmitAmoOr16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::OR);
+}
+
+void Emitter::EmitAmoOr32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    AS.AMOOR_W(ordering, Rd, Rs, Address);
+}
+
+void Emitter::EmitAmoOr64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    AS.AMOOR_D(ordering, Rd, Rs, Address);
+}
+
+void Emitter::EmitAmoXor8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::XOR);
+}
+
+void Emitter::EmitAmoXor16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::XOR);
+}
+
+void Emitter::EmitAmoXor32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    AS.AMOXOR_W(ordering, Rd, Rs, Address);
+}
+
+void Emitter::EmitAmoXor64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    AS.AMOXOR_D(ordering, Rd, Rs, Address);
 }
 
 void Emitter::EmitSub(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
