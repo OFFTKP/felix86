@@ -650,8 +650,8 @@ void frontend_compile_instruction(FrontendState* state) {
     IRBlock* exit_block = nullptr;
 
     if (is_rep) {
-        IRBlock* loop_block = state->function->CreateBlock();
-        IRBlock* exit_block = state->function->CreateBlock();
+        loop_block = state->function->CreateBlock();
+        exit_block = state->function->CreateBlock();
         ir_emit_rep_start(state, inst, loop_block, exit_block);
     }
 
