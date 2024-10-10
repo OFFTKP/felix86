@@ -251,6 +251,12 @@ void ir_ssa_pass(IRFunction* function) {
 
     std::reverse(rpo.begin(), rpo.end());
 
+    printf("Rpo order: ");
+    for (int i = 0; i < rpo.size(); i++) {
+        printf("%d ", rpo[i]->GetIndex());
+    }
+    printf("\n");
+
     if (rpo[0] != function->GetEntry()) {
         ERROR("Entry block is not the first block");
     }
@@ -262,10 +268,12 @@ void ir_ssa_pass(IRFunction* function) {
     // Name: A Simple, Fast Dominance Algorithm
     while (changed) {
         changed = false;
+        printf("Startover\n");
 
         // For all nodes in reverse postorder, except the start node
         for (size_t i = 1; i < rpo.size(); i++) {
             IRBlock* b = rpo[i];
+            printf("Now processing: %d\n", b->GetIndex());
 
             auto& predecessors = b->GetPredecessors();
             if (predecessors.empty()) {
@@ -279,6 +287,8 @@ void ir_ssa_pass(IRFunction* function) {
                     ERROR("Block has a null predecessor, this should not happen");
                 }
 
+                printf("    Predecessor: %d\n", p->GetIndex());
+
                 if (p->GetImmediateDominator()) {
                     new_idom = intersect(p, new_idom, postorder_index);
                 }
@@ -286,6 +296,7 @@ void ir_ssa_pass(IRFunction* function) {
 
             if (b->GetImmediateDominator() != new_idom) {
                 b->SetImmediateDominator(new_idom);
+                printf("Set immediate dominator for: %d to %d\n", b->GetIndex(), new_idom->GetIndex());
                 changed = true;
             }
         }

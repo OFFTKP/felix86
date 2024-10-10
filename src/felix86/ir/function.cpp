@@ -210,7 +210,7 @@ static void postorder(IRBlock* block, std::vector<IRBlock*>& output) {
     output.push_back(block); // TODO: don't use vector in the future
 }
 
-static void reverse_postorder_creation(IRFunction* function, std::vector<IRBlock*>& order) {
+static void postorder_creation(IRFunction* function, std::vector<IRBlock*>& order) {
     IRBlock* entry = function->GetEntry();
     postorder(entry, order);
 
@@ -221,7 +221,7 @@ static void reverse_postorder_creation(IRFunction* function, std::vector<IRBlock
 
 std::vector<IRBlock*> IRFunction::GetBlocksPostorder() {
     std::vector<IRBlock*> order; // TODO: cache this
-    reverse_postorder_creation(this, order);
+    postorder_creation(this, order);
     UnvisitAll();
     return order;
 }

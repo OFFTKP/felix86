@@ -370,14 +370,6 @@ void ir_emit_syscall(IRBlock* block) {
     ir_load_partial_state(block, out_regs);
 }
 
-void ir_terminate_jump(IRBlock* block, IRBlock* target) {
-    block->TerminateJump(target);
-}
-
-void ir_terminate_jump_conditional(IRBlock* block, SSAInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
-    block->TerminateJumpConditional(condition, target_true, target_false);
-}
-
 SSAInstruction* ir_emit_insert_integer_to_vector(IRBlock* block, SSAInstruction* source, SSAInstruction* dest, u8 idx, x86_size_e sz) {
     u64 immediate_data = (u64)sz << 8 | idx;
     SSAInstruction* instruction = ir_emit_two_operands(block, IROpcode::VInsertInteger, source, dest);
