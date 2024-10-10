@@ -20,6 +20,13 @@ felix86 depends on a bunch of great projects:
 - [robin-map](https://github.com/Tessil/robin-map) for a fast hashmap implementation
 - [nlohmann/json](https://github.com/nlohmann/json) for json parsing
 
+## Why?
+felix86 was started for several reasons, but to name a few:
+- Learning more about x86-64, RISC-V, Linux, high-level emulation
+- Learning about optimizing compilers, method JITs (SSA, RA, optimization passes, ...)
+- Learning more about different memory models and low level details
+- Fun challenge
+
 ## Also check out
 - [Panda3DS](https://github.com/wheremyfoodat/Panda3DS), a 3DS emulator for Windows, MacOS, Linux and Android
 - [shadPS4](https://github.com/shadps4-emu/shadPS4), the current greatest PS4 emulator

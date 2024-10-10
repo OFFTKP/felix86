@@ -65,6 +65,10 @@ struct Backend {
         return true; // TODO: proper way to check for bitmanip extension?
     }
 
+    void* GetCrashTarget() {
+        return crash_target;
+    }
+
 private:
     static u8* allocateCodeCache();
     static void deallocateCodeCache(u8* memory);
@@ -79,8 +83,9 @@ private:
     tsl::robin_map<u64, void*> map{}; // map functions to host code
 
     void (*enter_dispatcher)(ThreadState*) = nullptr;
-    void (*exit_dispatcher)() = nullptr;
-    void (*compile_next)() = nullptr;
+    void* exit_dispatcher = nullptr;
+    void* compile_next = nullptr;
+    void* crash_target = nullptr;
 
     Registers regs;
 

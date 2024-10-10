@@ -91,6 +91,9 @@ void Backend::emitNecessaryStuff() {
 
     as.RET();
 
+    crash_target = as.GetCursorPointer();
+    as.EBREAK();
+
     regs.ReleaseScratchRegs();
 }
 

@@ -17,6 +17,11 @@
 
 namespace {
 
+void EmitCrash(Backend& backend, ExitReason reason) {
+    Emitter::EmitSetExitReason(backend, static_cast<u64>(reason));
+    Emitter::EmitJump(backend, backend.GetCrashTarget());
+}
+
 void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     WARN("Untested CTZ implementation");
     biscuit::GPR mask = backend.AcquireScratchGPR();
@@ -164,6 +169,15 @@ void PopAllCallerSaved(Backend& backend) {
     }
 
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), size);
+}
+
+// Sanity check for alignment until we want to properly implement unaligned atomics
+void EmitAlignmentCheck(Backend& backend, biscuit::GPR address, u8 alignment) {
+    biscuit::Label ok;
+    AS.ANDI(address, address, alignment - 1);
+    AS.BEQZ(address, &ok);
+    EmitCrash(backend, ExitReason::EXIT_REASON_BAD_ALIGNMENT);
+    AS.Bind(&ok);
 }
 
 } // namespace
@@ -442,10 +456,12 @@ void Emitter::EmitAmoAdd16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 }
 
 void Emitter::EmitAmoAdd32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 4);
     AS.AMOADD_W(ordering, Rd, Rs, Address);
 }
 
 void Emitter::EmitAmoAdd64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 8);
     AS.AMOADD_D(ordering, Rd, Rs, Address);
 }
 
@@ -458,10 +474,12 @@ void Emitter::EmitAmoAnd16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 }
 
 void Emitter::EmitAmoAnd32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 4);
     AS.AMOAND_W(ordering, Rd, Rs, Address);
 }
 
 void Emitter::EmitAmoAnd64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 8);
     AS.AMOAND_D(ordering, Rd, Rs, Address);
 }
 
@@ -474,10 +492,12 @@ void Emitter::EmitAmoOr16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addres
 }
 
 void Emitter::EmitAmoOr32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 4);
     AS.AMOOR_W(ordering, Rd, Rs, Address);
 }
 
 void Emitter::EmitAmoOr64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 8);
     AS.AMOOR_D(ordering, Rd, Rs, Address);
 }
 
@@ -490,10 +510,12 @@ void Emitter::EmitAmoXor16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 }
 
 void Emitter::EmitAmoXor32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 4);
     AS.AMOXOR_W(ordering, Rd, Rs, Address);
 }
 
 void Emitter::EmitAmoXor64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    EmitAlignmentCheck(backend, Address, 8);
     AS.AMOXOR_D(ordering, Rd, Rs, Address);
 }
 

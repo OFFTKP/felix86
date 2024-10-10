@@ -10,9 +10,9 @@ struct Emitter {
     static void Emit(Backend& backend, const BackendInstruction& instruction);
     static void EmitJump(Backend& backend, void* target);
     static void EmitJumpConditional(Backend& backend, Allocation condition, void* target_true, void* target_false);
+    static void EmitSetExitReason(Backend&, u64);
 
 private:
-    static void EmitSetExitReason(Backend&, u64);
     static void EmitMov(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitMov(Backend&, biscuit::FPR, biscuit::FPR);
     static void EmitMov(Backend&, biscuit::Vec, biscuit::Vec);
