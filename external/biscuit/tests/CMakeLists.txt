@@ -17,6 +17,7 @@ add_executable(${PROJECT_NAME}
     src/assembler_rvq_tests.cpp
     src/assembler_rvv_tests.cpp
     src/assembler_vector_crypto_tests.cpp
+    src/assembler_zabha_tests.cpp
     src/assembler_zacas_tests.cpp
     src/assembler_zawrs_tests.cpp
     src/assembler_zc_tests.cpp

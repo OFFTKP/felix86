@@ -287,6 +287,29 @@ public:
     void AMOCAS_Q(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
     void AMOCAS_W(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
 
+    // Zabha Extension Instructions
+    void AMOADD_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOAND_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOMAX_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOMAXU_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOMIN_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOMINU_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOOR_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOSWAP_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOXOR_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOCAS_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+
+    void AMOADD_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOAND_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOMAX_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOMAXU_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOMIN_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOMINU_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOOR_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOSWAP_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOXOR_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void AMOCAS_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+
     // Zicond Extension Instructions
     void CZERO_EQZ(GPR rd, GPR value, GPR condition) noexcept;
     void CZERO_NEZ(GPR rd, GPR value, GPR condition) noexcept;

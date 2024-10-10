@@ -609,6 +609,70 @@ void Assembler::AMOCAS_W(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
     EmitAtomic(m_buffer, 0b00101, ordering, rs2, rs1, 0b010, rd, 0b0101111);
 }
 
+// Zabha Extension Instructions
+
+void Assembler::AMOADD_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b00000, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOAND_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b01100, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOMAX_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b10100, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOMAXU_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b11100, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOMIN_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b10000, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOMINU_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b11000, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOOR_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b01000, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOSWAP_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b00001, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOXOR_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b00100, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+void Assembler::AMOCAS_B(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b00101, ordering, rs2, rs1, 0b000, rd, 0b0101111);
+}
+
+void Assembler::AMOADD_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b00000, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOAND_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b01100, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOMAX_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b10100, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOMAXU_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b11100, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOMIN_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b10000, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOMINU_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b11000, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOOR_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b01000, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOSWAP_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b00001, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOXOR_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b00100, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+void Assembler::AMOCAS_H(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b00101, ordering, rs2, rs1, 0b001, rd, 0b0101111);
+}
+
 // Zicond Extension Instructions
 
 void Assembler::CZERO_EQZ(GPR rd, GPR value, GPR condition) noexcept {
