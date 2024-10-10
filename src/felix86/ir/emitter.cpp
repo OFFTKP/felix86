@@ -1531,7 +1531,7 @@ void ir_emit_rep_start(FrontendState* state, const x86_instruction_t& inst, IRBl
     SSAInstruction* rcx = ir_emit_get_reg(state->current_block, &rcx_reg);
     SSAInstruction* zero = ir_emit_immediate(state->current_block, 0);
     SSAInstruction* condition = ir_emit_equal(state->current_block, rcx, zero);
-    loop_block->TerminateJumpConditional(condition, exit_block, loop_block);
+    state->current_block->TerminateJumpConditional(condition, exit_block, loop_block);
 
     // Write the instruction in the loop body
     state->current_block = loop_block;
