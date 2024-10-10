@@ -173,6 +173,11 @@ void Emulator::setupMainStack(ThreadState* state) {
 void* Emulator::compileFunction(u64 rip) {
     IRFunction function{rip};
     frontend_compile_function(&function);
+
+    if (config.print_blocks) {
+        fmt::print("{}", function.Print({}));
+    }
+
     ir_ssa_pass(&function);
     ir_replace_setguest_pass(&function);
     ir_copy_propagation_pass(&function);
@@ -181,11 +186,6 @@ void* Emulator::compileFunction(u64 rip) {
     ir_local_cse_pass(&function);
     ir_copy_propagation_pass(&function);
     ir_dead_code_elimination_pass(&function);
-
-    if (config.print_blocks) {
-        fmt::print("{}", function.Print({}));
-    }
-
     ir_ssa_destruction_pass(&function);
 
     if (!function.Validate()) {
