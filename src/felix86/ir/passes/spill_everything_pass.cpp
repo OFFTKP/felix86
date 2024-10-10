@@ -15,8 +15,13 @@ void ir_spill_everything_pass(IRFunction* function) {
         for (const ReducedInstruction& inst : block->GetReducedInstructions()) {
             // Just spill it somewhere
             BackendInstruction binst;
-            if (SSAInstruction::GetTypeFromOpcode(inst.opcode, inst.ref) != IRType::Void) {
+            // So ugly...
+            if (inst.opcode == IROpcode::Mov) {
                 binst = BackendInstruction{Allocation{spill_count++}};
+            } else {
+                if (SSAInstruction::GetTypeFromOpcode(inst.opcode, inst.ref) != IRType::Void) {
+                    binst = BackendInstruction{Allocation{spill_count++}};
+                }
             }
             binst.opcode = inst.opcode;
             binst.immediate_data = inst.immediate_data;

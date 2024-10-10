@@ -97,7 +97,10 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
 
 IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     switch (opcode) {
-    case IROpcode::Mov:
+    case IROpcode::Mov: {
+        ERROR("Should not be used with Mov");
+        return IRType::Void;
+    }
     case IROpcode::Null:
     case IROpcode::SetExitReason:
     case IROpcode::Comment:
