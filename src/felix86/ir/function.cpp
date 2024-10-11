@@ -16,6 +16,7 @@ IRFunction::IRFunction(u64 address) {
     }
 
     thread_state_pointer = ir_emit_get_thread_state_pointer(entry);
+    thread_state_pointer->Lock();
 
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Emit get_guest for every piece of state and store it to memory
