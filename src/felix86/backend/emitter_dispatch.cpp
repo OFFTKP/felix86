@@ -93,7 +93,8 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
 
     case IROpcode::Immediate: {
         if (inst.GetImmediateData() == 0) {
-            ERROR("Immediate data is 0, should've been allocated to $zero");
+            ASSERT(allocation_map.GetAllocation(inst.GetName()).AsGPR() == Registers::Zero());
+            break;
         }
 
         EmitImmediate(backend, _RegWO_(inst.GetName()), inst.GetImmediateData());

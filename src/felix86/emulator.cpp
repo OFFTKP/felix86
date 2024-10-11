@@ -174,10 +174,6 @@ void* Emulator::compileFunction(u64 rip) {
     IRFunction function{rip};
     frontend_compile_function(&function);
 
-    if (config.print_blocks) {
-        fmt::print("{}", function.Print({}));
-    }
-
     ir_ssa_pass(&function);
 
     // These three need to happen to bring the IR to a normal state,
@@ -191,6 +187,10 @@ void* Emulator::compileFunction(u64 rip) {
     ir_copy_propagation_pass(&function);
     ir_dead_code_elimination_pass(&function);
     ir_critical_edge_splitting_pass(&function);
+
+    if (config.print_blocks) {
+        fmt::print("{}", function.Print({}));
+    }
 
     if (!function.Validate()) {
         ERROR("Function did not validate");

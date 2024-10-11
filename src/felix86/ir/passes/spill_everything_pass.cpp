@@ -14,6 +14,8 @@ AllocationMap ir_spill_everything_pass(const BackendFunction& function) {
             case IROpcode::Immediate: {
                 if (inst.GetImmediateData() == 0) {
                     allocations.Allocate(inst.GetName(), Registers::Zero());
+                } else {
+                    allocations.Allocate(inst.GetName(), spill_counter++, SpillSize::QWord, AllocationType::GPR);
                 }
                 break;
             }

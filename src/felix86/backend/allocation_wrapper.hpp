@@ -19,7 +19,7 @@ struct AllocationWrapper {
 
                 if (load) {
                     biscuit::GPR gpr = AsGPR();
-                    as.LD(gpr, spill_location * sizeof(u64), Registers::SpillPointer());
+                    as.LD(gpr, spill_location, Registers::SpillPointer());
                 }
                 break;
             }
@@ -28,7 +28,7 @@ struct AllocationWrapper {
 
                 if (load) {
                     biscuit::FPR fpr = AsFPR();
-                    as.FLD(fpr, spill_location * sizeof(u64), Registers::SpillPointer());
+                    as.FLD(fpr, spill_location, Registers::SpillPointer());
                 }
                 break;
             }
@@ -60,12 +60,12 @@ struct AllocationWrapper {
             switch (reg.index()) {
             case 0: {
                 biscuit::GPR gpr = AsGPR();
-                as.SD(gpr, spill_location * sizeof(u64), Registers::SpillPointer());
+                as.SD(gpr, spill_location, Registers::SpillPointer());
                 break;
             }
             case 1: {
                 biscuit::FPR fpr = AsFPR();
-                as.FSD(fpr, spill_location * sizeof(u64), Registers::SpillPointer());
+                as.FSD(fpr, spill_location, Registers::SpillPointer());
                 break;
             }
             case 2: {
