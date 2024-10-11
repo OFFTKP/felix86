@@ -12,22 +12,18 @@ struct AllocationMap {
     AllocationMap& operator=(AllocationMap&&) = default;
 
     void Allocate(u32 name, biscuit::GPR gpr) {
-        assertName(name);
         allocations[name] = gpr;
     }
 
     void Allocate(u32 name, biscuit::FPR fpr) {
-        assertName(name);
         allocations[name] = fpr;
     }
 
     void Allocate(u32 name, biscuit::Vec vec) {
-        assertName(name);
         allocations[name] = vec;
     }
 
     void Allocate(u32 name, u32 spill, SpillSize size, AllocationType type) {
-        assertName(name);
         allocations[name] = Allocation{spill, size, type};
     }
 
@@ -38,9 +34,5 @@ struct AllocationMap {
     }
 
 private:
-    void assertName(u32 name) {
-        ASSERT(allocations.find(name) == allocations.end());
-    }
-
     tsl::robin_map<u32, Allocation> allocations;
 };
