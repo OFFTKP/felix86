@@ -246,6 +246,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     }
     case IROpcode::Count: {
         UNREACHABLE();
+        break;
     }
     }
 }
