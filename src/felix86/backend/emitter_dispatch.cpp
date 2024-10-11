@@ -33,8 +33,12 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     case IROpcode::Comment: {
         UNREACHABLE();
     }
+
     case IROpcode::GetThreadStatePointer: {
-        UNREACHABLE();
+        // Do nothing, ThreadStatePointer is already in a register
+        // This static assert serves as a reminder in case something is changed and this is no longer true
+        static_assert(Registers::ThreadStatePointer() == x9);
+        break;
     }
 
     case IROpcode::SetExitReason: {
@@ -144,6 +148,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         EmitReadXmmWord(backend, _RegWO_(inst.GetName()), _RegRO_(inst.GetOperand(0)));
         break;
     }
+
     case IROpcode::Sext8: {
         EmitSext8(backend, _RegWO_(inst.GetName()), _RegRO_(inst.GetOperand(0)));
         break;

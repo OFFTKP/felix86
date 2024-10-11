@@ -65,20 +65,20 @@ public:
         return available_vecs;
     }
 
-    static biscuit::GPR Zero() {
+    constexpr static biscuit::GPR Zero() {
         return x0;
     }
 
-    static biscuit::GPR StackPointer() {
+    constexpr static biscuit::GPR StackPointer() {
         return x2;
     }
 
     // Pointer to the spill location, holding spilled registers
-    static biscuit::GPR SpillPointer() {
+    constexpr static biscuit::GPR SpillPointer() {
         return x8; // saved register so that when we exit VM we don't have to save it
     }
 
-    static biscuit::GPR ThreadStatePointer() {
+    constexpr static biscuit::GPR ThreadStatePointer() {
         return x9; // saved register so that when we exit VM we don't have to save it
     }
 

@@ -111,6 +111,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Divu128: {
         return IRType::Void;
     }
+    case IROpcode::GetThreadStatePointer:
     case IROpcode::Select:
     case IROpcode::Immediate:
     case IROpcode::Parity:
@@ -153,10 +154,41 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Rem:
     case IROpcode::Remu:
     case IROpcode::Remw:
-    case IROpcode::Remuw: {
+    case IROpcode::Remuw:
+    case IROpcode::Mul:
+    case IROpcode::Mulh:
+    case IROpcode::Mulhu:
+    case IROpcode::AmoAdd8:
+    case IROpcode::AmoAdd16:
+    case IROpcode::AmoAdd32:
+    case IROpcode::AmoAdd64:
+    case IROpcode::AmoAnd8:
+    case IROpcode::AmoAnd16:
+    case IROpcode::AmoAnd32:
+    case IROpcode::AmoAnd64:
+    case IROpcode::AmoOr8:
+    case IROpcode::AmoOr16:
+    case IROpcode::AmoOr32:
+    case IROpcode::AmoOr64:
+    case IROpcode::AmoXor8:
+    case IROpcode::AmoXor16:
+    case IROpcode::AmoXor32:
+    case IROpcode::AmoXor64:
+    case IROpcode::AmoSwap8:
+    case IROpcode::AmoSwap16:
+    case IROpcode::AmoSwap32:
+    case IROpcode::AmoSwap64:
+    case IROpcode::AmoCAS8:
+    case IROpcode::AmoCAS16:
+    case IROpcode::AmoCAS32:
+    case IROpcode::AmoCAS64:
+    case IROpcode::AmoCAS128:
+    case IROpcode::ReadByteRelative:
+    case IROpcode::ReadQWordRelative: {
         return IRType::Integer64;
     }
     case IROpcode::ReadXmmWord:
+    case IROpcode::ReadXmmWordRelative:
     case IROpcode::CastVectorFromInteger:
     case IROpcode::VUnpackByteLow:
     case IROpcode::VUnpackWordLow:
@@ -184,7 +216,10 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::WriteDWord:
     case IROpcode::WriteQWord:
     case IROpcode::WriteXmmWord:
-    case IROpcode::StoreGuestToMemory: {
+    case IROpcode::StoreGuestToMemory:
+    case IROpcode::WriteByteRelative:
+    case IROpcode::WriteQWordRelative:
+    case IROpcode::WriteXmmWordRelative: {
         return IRType::Void;
     }
 
@@ -209,10 +244,8 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
             return IRType::Void;
         }
     }
-
-    default: {
-        ERROR("Unimplemented opcode: %d", static_cast<u8>(opcode));
-        return IRType::Void;
+    case IROpcode::Count: {
+        UNREACHABLE();
     }
     }
 }
