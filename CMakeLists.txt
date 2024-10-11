@@ -52,6 +52,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/global.cpp
     src/felix86/common/log.cpp
     src/felix86/common/print.cpp
+    src/felix86/common/utility.cpp
 )
 
 set(FELIX86_BACKEND_SOURCES

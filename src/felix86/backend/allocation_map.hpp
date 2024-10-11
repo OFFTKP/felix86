@@ -33,7 +33,7 @@ struct AllocationMap {
 
     Allocation GetAllocation(u32 name) const {
         auto it = allocations.find(name);
-        ASSERT(it != allocations.end());
+        ASSERT_MSG(it != allocations.end(), "Allocation not found for name %s", GetNameString(name).c_str());
         return it->second;
     }
 

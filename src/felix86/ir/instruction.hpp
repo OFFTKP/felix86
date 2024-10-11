@@ -73,8 +73,6 @@ static_assert(std::is_same_v<SetGuest, std::variant_alternative_t<(u8)Expression
 static_assert(std::is_same_v<Phi, std::variant_alternative_t<(u8)ExpressionType::Phi, Expression>>);
 static_assert(std::is_same_v<Comment, std::variant_alternative_t<(u8)ExpressionType::Comment, Expression>>);
 
-std::string GetNameString(u32 name);
-
 struct SSAInstruction {
     SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands)
         : opcode(opcode), return_type{SSAInstruction::GetTypeFromOpcode(opcode)} {

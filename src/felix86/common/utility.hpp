@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -12,3 +13,5 @@ using i64 = int64_t;
 using i32 = int32_t;
 using i16 = int16_t;
 using i8 = int8_t;
+
+std::string GetNameString(u32 name);
