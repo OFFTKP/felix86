@@ -9,7 +9,6 @@ IRFunction::IRFunction(u64 address) {
     exit = blocks[1];
 
     thread_state_pointer = ir_emit_get_thread_state_pointer(entry);
-    thread_state_pointer->Lock();
 
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Load all state from memory and run the set_guest instruction

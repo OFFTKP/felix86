@@ -12,8 +12,10 @@ BackendInstruction BackendInstruction::FromSSAInstruction(const SSAInstruction* 
         backend_inst.desired_type = AllocationType::FPR;
     } else if (inst->IsVec()) {
         backend_inst.desired_type = AllocationType::Vec;
-    } else {
+    } else if (inst->IsVoid()) {
         backend_inst.desired_type = AllocationType::Null;
+    } else {
+        UNREACHABLE();
     }
 
     backend_inst.operand_count = inst->GetOperandCount();

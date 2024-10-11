@@ -105,6 +105,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
 
 void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_pointer) {
     const SetGuest& set_guest = inst.AsSetGuest();
+    inst.Unlock();
     switch (set_guest.ref) {
     case X86_REF_RAX ... X86_REF_R15: {
         Operands op;
@@ -214,6 +215,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         break;
     }
     }
+    inst.Lock();
 }
 
 // On entry blocks we load *all* state from VM (so that each use is dominated by a definition) and

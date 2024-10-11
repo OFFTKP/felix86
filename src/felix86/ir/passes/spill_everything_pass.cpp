@@ -22,10 +22,12 @@ AllocationMap ir_spill_everything_pass(const BackendFunction& function) {
                 break;
             }
             default: {
-                if (inst.GetDesiredType() == AllocationType::GPR) {
-                    allocations.Allocate(inst.GetName(), spill_counter++, SpillSize::QWord, AllocationType::GPR);
-                } else {
-                    UNIMPLEMENTED();
+                if (inst.GetDesiredType() != AllocationType::Null) { // if not void
+                    if (inst.GetDesiredType() == AllocationType::GPR) {
+                        allocations.Allocate(inst.GetName(), spill_counter++, SpillSize::QWord, AllocationType::GPR);
+                    } else {
+                        UNIMPLEMENTED();
+                    }
                 }
                 break;
             }

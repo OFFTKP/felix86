@@ -179,9 +179,13 @@ void* Emulator::compileFunction(u64 rip) {
     }
 
     ir_ssa_pass(&function);
+
+    // These three need to happen to bring the IR to a normal state,
+    // they remove the auxiliary instructions other than phis
     ir_replace_setguest_pass(&function);
     ir_copy_propagation_pass(&function);
     ir_extraneous_writeback_pass(&function);
+
     ir_dead_code_elimination_pass(&function);
     ir_local_cse_pass(&function);
     ir_copy_propagation_pass(&function);

@@ -246,9 +246,12 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     }
     case IROpcode::Count: {
         UNREACHABLE();
-        break;
+        return IRType::Void;
     }
     }
+
+    UNREACHABLE();
+    return IRType::Void;
 }
 
 void SSAInstruction::Invalidate() {
@@ -294,10 +297,6 @@ void SSAInstruction::Invalidate() {
 
 void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
     switch (opcode) {
-    case IROpcode::GetThreadStatePointer: {
-        break;
-    }
-
     case IROpcode::Null: {
         ERROR("Null should not be used");
         break;
@@ -314,6 +313,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         BAD(Immediate);
         BAD(AmoCAS128); // implme
 
+        VALIDATE_OPS_INT(GetThreadStatePointer, 0);
         VALIDATE_OPS_INT(Rdtsc, 0);
         VALIDATE_OPS_INT(Syscall, 0);
         VALIDATE_OPS_INT(Cpuid, 0);
