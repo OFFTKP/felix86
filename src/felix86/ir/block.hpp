@@ -3,19 +3,12 @@
 #include <array>
 #include <functional>
 #include <list>
-#include "felix86/backend/instruction.hpp"
+#include "felix86/common/termination.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/instruction.hpp"
 #include "fmt/format.h"
 
 #define IR_NO_ADDRESS (0)
-
-enum class Termination {
-    Null,
-    Jump,
-    JumpConditional,
-    BackToDispatcher,
-};
 
 struct IRBlock {
     IRBlock() = default;
@@ -33,7 +26,6 @@ struct IRBlock {
         successors[0] = target_true;
         successors[1] = target_false;
         this->condition = condition;
-        condition_name = condition->GetName();
         condition->Lock(); // this is used by the termination, don't optimize away
 
         successors[0]->addPredecessor(this);
@@ -48,28 +40,8 @@ struct IRBlock {
 
     SSAInstruction* InsertAtEnd(SSAInstruction&& instr);
 
-    void InsertReducedInstruction(ReducedInstruction&& instr) {
-        reduced_instructions.push_back(std::move(instr));
-    }
-
-    void InsertBackendInstruction(BackendInstruction&& instr) {
-        backend_instructions.push_back(std::move(instr));
-    }
-
     const SSAInstruction* GetCondition() const {
         return condition;
-    }
-
-    u32 GetConditionName() const {
-        return condition_name;
-    }
-
-    void SetConditionAllocation(Allocation allocation) {
-        condition_allocation = allocation;
-    }
-
-    Allocation GetConditionAllocation() const {
-        return condition_allocation;
     }
 
     bool IsCompiled() const {
@@ -183,14 +155,6 @@ struct IRBlock {
         return instructions;
     }
 
-    const std::vector<ReducedInstruction>& GetReducedInstructions() const {
-        return reduced_instructions;
-    }
-
-    const std::vector<BackendInstruction>& GetBackendInstructions() const {
-        return backend_instructions;
-    }
-
     std::vector<IRBlock*>& GetDominanceFrontiers() {
         return dominance_frontiers;
     }
@@ -209,8 +173,6 @@ struct IRBlock {
 
     [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
-    [[nodiscard]] std::string PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) const;
-
 private:
     void addPredecessor(IRBlock* pred) {
         predecessors.push_back(pred);
@@ -222,16 +184,12 @@ private:
 
     u64 start_address = IR_NO_ADDRESS;
     std::list<SSAInstruction> instructions;
-    std::vector<ReducedInstruction> reduced_instructions;
-    std::vector<BackendInstruction> backend_instructions;
     std::vector<IRBlock*> predecessors;
     std::array<IRBlock*, 2> successors = {nullptr, nullptr};
     std::vector<IRBlock*> dominance_frontiers;
     IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
     const SSAInstruction* condition = nullptr;
-    Allocation condition_allocation;
-    u32 condition_name = 0;
     bool compiled = false;
     mutable bool visited = false;
     u32 list_index = 0;

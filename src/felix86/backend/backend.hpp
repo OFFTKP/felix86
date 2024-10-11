@@ -1,12 +1,12 @@
 #pragma once
 
-#include <atomic>
 #include "biscuit/assembler.hpp"
+#include "felix86/backend/allocation_map.hpp"
 #include "felix86/backend/emitter.hpp"
+#include "felix86/backend/function.hpp"
 #include "felix86/backend/registers.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86.hpp"
-#include "felix86/ir/function.hpp"
 
 #include <tsl/robin_map.h>
 
@@ -41,17 +41,13 @@ struct Backend {
         return regs.AcquireScratchGPR();
     }
 
-    biscuit::GPR AcquireScratchGPRFromSpill(u64 spill_location) {
-        return regs.AcquireScratchGPRFromSpill(as, spill_location);
-    }
-
     void ReleaseScratchRegs() {
         regs.ReleaseScratchRegs();
     }
 
     void EnterDispatcher(ThreadState* state);
 
-    std::pair<void*, u64> EmitFunction(IRFunction* function);
+    std::pair<void*, u64> EmitFunction(const BackendFunction& function, const AllocationMap& allocations);
 
     Assembler& GetAssembler() {
         return as;
@@ -84,9 +80,4 @@ private:
     void* crash_target = nullptr;
 
     Registers regs;
-
-    // This isn't important to ensure thread safety or anything, it's just a simple sanity check at the start of
-    // compilation to ensure only one thread owns this. This should always be the case because we lock a mutex,
-    // but it's there for if the code changes and we forget.
-    std::atomic_bool compiling{false};
 };

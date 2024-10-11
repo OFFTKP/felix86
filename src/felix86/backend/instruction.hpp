@@ -1,14 +1,12 @@
 #pragma once
 
 #include <array>
+#include "felix86/backend/allocation.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/ir/allocation.hpp"
+#include "felix86/ir/instruction.hpp"
 #include "felix86/ir/opcode.hpp"
 
 struct BackendInstruction {
-    BackendInstruction() = default;
-    BackendInstruction(Allocation allocation) : allocation(allocation) {}
-
     IROpcode GetOpcode() const {
         return opcode;
     }
@@ -17,21 +15,29 @@ struct BackendInstruction {
         return immediate_data;
     }
 
-    const Allocation& GetAllocation() const {
-        return allocation;
+    u32 GetName() const {
+        return name;
     }
 
-    const Allocation& GetOperand(u8 index) const {
-        return operands[index];
+    u32 GetOperand(u32 index) const {
+        return operand_names[index];
     }
 
-    AllocationType GetAllocationType() const {
-        return allocation.GetAllocationType();
+    u8 GetOperandCount() const {
+        return operand_count;
     }
 
-    std::array<Allocation, 4> operands;
-    Allocation allocation;
+    AllocationType GetDesiredType() const {
+        return desired_type;
+    }
+
+    static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
+
+private:
     u64 immediate_data;
+    std::array<u32, 4> operand_names;
+    u32 name;
     IROpcode opcode;
+    AllocationType desired_type = AllocationType::Null;
     u8 operand_count;
 };

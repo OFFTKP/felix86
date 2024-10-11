@@ -1,5 +1,6 @@
 #include <sys/mman.h>
 #include "biscuit/cpuinfo.hpp"
+#include "felix86/backend/allocation_wrapper.hpp"
 #include "felix86/backend/backend.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/emulator.hpp"
@@ -122,59 +123,53 @@ void Backend::EnterDispatcher(ThreadState* state) {
     enter_dispatcher(state);
 }
 
-std::pair<void*, u64> Backend::EmitFunction(IRFunction* function) {
-    // This is a sanity check for when stuff is refactored, not done for thread safety.
-    if (compiling.load()) {
-        ERROR("Already compiling");
-    }
-    compiling.store(true);
-
+std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, const AllocationMap& allocations) {
     void* start = as.GetCursorPointer();
-    tsl::robin_map<IRBlock*, void*> block_map;
+    tsl::robin_map<const BackendBlock*, void*> block_map;
 
     struct ConditionalJump {
         ptrdiff_t location;
         Allocation allocation;
-        IRBlock* target_true;
-        IRBlock* target_false;
+        const BackendBlock* target_true;
+        const BackendBlock* target_false;
     };
 
     struct DirectJump {
         ptrdiff_t location;
-        IRBlock* target;
+        const BackendBlock* target;
     };
 
     std::vector<ConditionalJump> conditional_jumps;
     std::vector<DirectJump> direct_jumps;
 
-    std::vector<IRBlock*> blocks_postorder = function->GetBlocksPostorder();
+    std::vector<const BackendBlock*> blocks_postorder = function.GetBlocksPostorder();
 
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
-        IRBlock* block = *it;
+        const BackendBlock* block = *it;
         block_map[block] = as.GetCursorPointer();
-        for (const BackendInstruction& inst : block->GetBackendInstructions()) {
-            Emitter::Emit(*this, inst);
+
+        for (const BackendInstruction& inst : block->GetInstructions()) {
+            Emitter::Emit(*this, allocations, inst);
         }
 
         switch (block->GetTermination()) {
         case Termination::Jump: {
-            direct_jumps.push_back({as.GetCodeBuffer().GetCursorOffset(), block->GetSuccessor(0)});
+            ptrdiff_t offset = as.GetCodeBuffer().GetCursorOffset();
+            const BackendBlock* target = &function.GetBlock(block->GetSuccessor(0));
+            direct_jumps.push_back({offset, target});
             // Some space for the backpatched jump
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            as.NOP();
+            for (int i = 0; i < 18; i++) {
+                as.NOP();
+            }
             as.EBREAK();
             break;
         }
         case Termination::JumpConditional: {
-            conditional_jumps.push_back(
-                {as.GetCodeBuffer().GetCursorOffset(), block->GetConditionAllocation(), block->GetSuccessor(0), block->GetSuccessor(1)});
+            ptrdiff_t offset = as.GetCodeBuffer().GetCursorOffset();
+            Allocation condition = allocations.GetAllocation(block->GetCondition()->GetName());
+            const BackendBlock* target_true = &function.GetBlock(block->GetSuccessor(0));
+            const BackendBlock* target_false = &function.GetBlock(block->GetSuccessor(1));
+            conditional_jumps.push_back({offset, condition, target_true, target_false});
             // Some space for the backpatched jump
             for (int i = 0; i < 18; i++) {
                 as.NOP();
@@ -204,20 +199,19 @@ std::pair<void*, u64> Backend::EmitFunction(IRFunction* function) {
     }
 
     for (const ConditionalJump& jump : conditional_jumps) {
-        if (block_map.find(jump.target_true) == block_map.end() || block_map.find(jump.target_false) == block_map.end()) {
-            ERROR("Block not found");
-        }
+        ASSERT(block_map.find(jump.target_true) != block_map.end());
+        ASSERT(block_map.find(jump.target_false) != block_map.end());
 
         u8* cursor = as.GetCursorPointer();
         as.RewindBuffer(jump.location);
-        Emitter::EmitJumpConditional(*this, jump.allocation, block_map[jump.target_true], block_map[jump.target_false]);
+
+        AllocationWrapper condition = AllocationWrapper(*this, jump.allocation, true);
+        Emitter::EmitJumpConditional(*this, condition.AsGPR(), block_map[jump.target_true], block_map[jump.target_false]);
         as.GetCodeBuffer().SetCursor(cursor);
     }
 
     void* end = as.GetCursorPointer();
     u64 size = (u64)end - (u64)start;
 
-    // This is a sanity check for when stuff is refactored, not done for thread safety.
-    compiling.store(false);
     return {start, size};
 }

@@ -75,26 +75,6 @@ static_assert(std::is_same_v<Comment, std::variant_alternative_t<(u8)ExpressionT
 
 std::string GetNameString(u32 name);
 
-// Reduced instruction, after the SSA destruction it gets transformed to this form
-// for easier register allocation and so that instruction operands are names and not
-// pointers since we remove phis
-struct ReducedInstruction {
-    ReducedInstruction() = default;
-    ReducedInstruction(const ReducedInstruction& other) = delete;
-    ReducedInstruction& operator=(const ReducedInstruction& other) = delete;
-    ReducedInstruction(ReducedInstruction&& other) = default;
-    ReducedInstruction& operator=(ReducedInstruction&& other) = default;
-
-    [[nodiscard]] std::string Print(const std::function<std::string(const ReducedInstruction*)>& callback) const;
-
-    std::array<u32, 4> operands;
-    u64 immediate_data;
-    u32 name;
-    IROpcode opcode;
-    x86_ref_e ref; // needed for a couple instructions
-    u8 operand_count;
-};
-
 struct SSAInstruction {
     SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands)
         : opcode(opcode), return_type{SSAInstruction::GetTypeFromOpcode(opcode)} {
@@ -282,6 +262,14 @@ struct SSAInstruction {
     }
 
     u32 GetOperandName(u8 index) const {
+        if (!IsOperands()) {
+            ERROR("Bad variant");
+        }
+
+        if (index > AsOperands().operand_count) {
+            ERROR("Out of bounds access");
+        }
+
         return AsOperands().operands[index]->GetName();
     }
 
@@ -366,37 +354,6 @@ struct SSAInstruction {
     bool ExitsVM() const;
 
     void PropagateMovs();
-
-    ReducedInstruction AsReducedInstruction() const {
-        ReducedInstruction rir_inst = {};
-
-        rir_inst.name = GetName();
-        rir_inst.opcode = GetOpcode();
-
-        if (IsOperands()) {
-            rir_inst.operand_count = AsOperands().operand_count;
-            rir_inst.immediate_data = GetImmediateData();
-            for (u8 i = 0; i < rir_inst.operand_count; i++) {
-                rir_inst.operands[i] = GetOperand(i)->GetName();
-            }
-        } else if (IsGetGuest()) {
-            if (GetOpcode() != IROpcode::LoadGuestFromMemory) {
-                UNREACHABLE();
-            }
-
-            rir_inst.ref = AsGetGuest().ref;
-        } else if (IsSetGuest()) {
-            if (GetOpcode() != IROpcode::StoreGuestToMemory) {
-                UNREACHABLE();
-            }
-
-            rir_inst.ref = AsSetGuest().ref;
-            rir_inst.operands[0] = AsSetGuest().source->GetName();
-            rir_inst.operand_count = 1;
-        }
-
-        return rir_inst;
-    }
 
     // TODO: move outside this class
     static IRType GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref = X86_REF_COUNT);

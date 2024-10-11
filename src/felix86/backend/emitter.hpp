@@ -2,14 +2,15 @@
 
 #include "biscuit/isa.hpp"
 #include "biscuit/registers.hpp"
+#include "felix86/backend/allocation_map.hpp"
 #include "felix86/backend/instruction.hpp"
 
 struct Backend;
 
 struct Emitter {
-    static void Emit(Backend& backend, const BackendInstruction& instruction);
+    static void Emit(Backend& backend, const AllocationMap& allocations, const BackendInstruction& instruction);
     static void EmitJump(Backend& backend, void* target);
-    static void EmitJumpConditional(Backend& backend, Allocation condition, void* target_true, void* target_false);
+    static void EmitJumpConditional(Backend& backend, biscuit::GPR condition, void* target_true, void* target_false);
     static void EmitSetExitReason(Backend&, u64);
 
 private:

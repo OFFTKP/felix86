@@ -49,8 +49,6 @@ struct IRFunction {
 
     [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback);
 
-    [[nodiscard]] std::string PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback);
-
     void UnvisitAll() const;
 
     bool Validate() const;

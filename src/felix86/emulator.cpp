@@ -186,18 +186,18 @@ void* Emulator::compileFunction(u64 rip) {
     ir_local_cse_pass(&function);
     ir_copy_propagation_pass(&function);
     ir_dead_code_elimination_pass(&function);
+    ir_critical_edge_splitting_pass(&function);
     ir_ssa_destruction_pass(&function);
 
     if (!function.Validate()) {
         ERROR("Function did not validate");
     }
 
-    fmt::print("{}\n", function.PrintReduced({}));
+    BackendFunction backend_function = BackendFunction::FromIRFunction(&function);
 
-    // ir_graph_coloring_pass(function);
-    ir_spill_everything_pass(&function);
+    AllocationMap allocations = ir_spill_everything_pass(backend_function);
 
-    auto [func, size] = backend.EmitFunction(&function);
+    auto [func, size] = backend.EmitFunction(backend_function, allocations);
     std::string disassembly = Disassembler::Disassemble(func, size);
     fmt::print("{}\n", disassembly);
 

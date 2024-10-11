@@ -12,11 +12,8 @@ When an IRFunction is ready, it's not yet ready to be transformed into RISC-V. I
 from the SetGuest/GetGuest to find the definitions of each variable (a variable being any sort of x86 state such as the RAX register) and add phis wherever necessary. This pass removes any GetGuest instructions. Another pass converts the remaining SetGuest instructions into copy operations which are then copy propagated later.
 
 After SSA construction, optimizations can be applied on the IR, followed by SSA destruction.
-During SSA destruction the IR is converted into a "reduced" mode, where operands are references to by integers instead of
-pointers, because now two instructions can define the same temporary (due to phi destruction).
-
-The register allocator takes this reduced mode and converts it into yet another mode called the backend mode, where
-instead of integers for operands there's actual allocated registers or spill locations.
+During SSA destruction the IR is converted into a "backend" mode, where operands are references to by integers instead of
+pointers, because now two instructions can define the same temporary (due to phi destruction). The RA allocates registers/spill locations on this form.
 
 Finally the backend passes this form to the emitter and emits RISC-V.
 

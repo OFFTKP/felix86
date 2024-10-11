@@ -17,19 +17,6 @@ std::string IRBlock::Print(const std::function<std::string(const SSAInstruction*
     return ret;
 }
 
-std::string IRBlock::PrintReduced(const std::function<std::string(const ReducedInstruction*)>& callback) const {
-    std::string ret;
-
-    ret += printBlock() + "\n";
-    for (const ReducedInstruction& inst : GetReducedInstructions()) {
-        ret += inst.Print(callback);
-        ret += "\n";
-    }
-    ret += printTermination() + "\n";
-
-    return ret;
-}
-
 std::string IRBlock::printBlock() const {
     std::string ret;
     if (GetIndex() == 0) {
@@ -85,6 +72,8 @@ bool IRBlock::IsUsedInPhi(SSAInstruction* target) const {
                     return true;
                 }
             }
+        } else {
+            break;
         }
     }
 

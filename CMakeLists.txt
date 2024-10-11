@@ -56,8 +56,11 @@ set(FELIX86_COMMON_SOURCES
 
 set(FELIX86_BACKEND_SOURCES
     src/felix86/backend/backend.cpp
+    src/felix86/backend/block.cpp
     src/felix86/backend/emitter.cpp
     src/felix86/backend/emitter_dispatch.cpp
+    src/felix86/backend/function.cpp
+    src/felix86/backend/instruction.cpp
 )
 
 set(FELIX86_HLE_SOURCES

@@ -95,6 +95,7 @@
     X(WriteQWord)                                                                                                                                    \
     X(ReadByteRelative)                                                                                                                              \
     X(ReadQWordRelative)                                                                                                                             \
+    X(ReadXmmWordRelative)                                                                                                                           \
     X(WriteByteRelative)                                                                                                                             \
     X(WriteQWordRelative)                                                                                                                            \
     X(WriteXmmWordRelative)                                                                                                                          \
@@ -129,4 +130,7 @@ enum class IROpcode : u8 {
 #undef X
 };
 
+namespace Opcode {
 std::string GetOpcodeString(IROpcode opcode);
+bool IsAuxiliary(IROpcode opcode);
+} // namespace Opcode

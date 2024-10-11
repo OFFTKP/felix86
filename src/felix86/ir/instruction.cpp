@@ -304,6 +304,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(ReadXmmWord, 1);
         VALIDATE_OPS_INT(ReadByteRelative, 1);
         VALIDATE_OPS_INT(ReadQWordRelative, 1);
+        VALIDATE_OPS_INT(ReadXmmWordRelative, 1);
         VALIDATE_OPS_INT(Div128, 1);
         VALIDATE_OPS_INT(Divu128, 1);
 
@@ -880,6 +881,10 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {} + 0x{:x})", GetNameString(name), "read64", "address", GetNameString(operands[0]), immediate_data);
         break;
     }
+    case IROpcode::ReadXmmWordRelative: {
+        ret += fmt::format("{} <- {}({}: {} + 0x{:x})", GetNameString(name), "read128", "address", GetNameString(operands[0]), immediate_data);
+        break;
+    }
     case IROpcode::WriteByteRelative: {
         ret += fmt::format("{}({}: {} + 0x{:x}, {}: {})", "write8", "address", GetNameString(operands[0]), immediate_data, "src",
                            GetNameString(operands[1]));
@@ -1044,17 +1049,6 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         break;
     }
     }
-
-    return ret;
-}
-
-std::string ReducedInstruction::Print(const std::function<std::string(const ReducedInstruction*)>& callback) const {
-    std::string ret;
-
-    ret += ::Print(opcode, ref, name, operands.data(), immediate_data);
-
-    if (callback)
-        ret += callback(this);
 
     return ret;
 }

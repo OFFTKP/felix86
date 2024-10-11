@@ -209,7 +209,6 @@ void EmitAlignmentCheck(Backend& backend, biscuit::GPR address, u8 alignment) {
 
 } // namespace
 
-// Should never be more than 4 instructions
 void Emitter::EmitJump(Backend& backend, void* target) {
     auto my_abs = [](u64 x) -> u64 { return x < 0 ? -x : x; };
 
@@ -225,15 +224,13 @@ void Emitter::EmitJump(Backend& backend, void* target) {
     }
 }
 
-// Should never be more than 6 instructions
-void Emitter::EmitJumpConditional(Backend& backend, Allocation condition, void* target_true, void* target_false) {
+void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, void* target_true, void* target_false) {
     biscuit::GPR address_true = backend.AcquireScratchGPR();
     biscuit::GPR address_false = backend.AcquireScratchGPR();
-    biscuit::GPR condition_reg = _RegRO_(condition);
     Label false_label;
 
     // TODO: emit relative jumps if possible
-    AS.BEQZ(condition_reg, &false_label);
+    AS.BEQZ(condition, &false_label);
     AS.LI(address_true, (u64)target_true);
     AS.JR(address_true);
     AS.Bind(&false_label);
