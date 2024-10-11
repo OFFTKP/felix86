@@ -625,6 +625,7 @@ void Emitter::EmitAmoSwap64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addr
 
 void Emitter::EmitAmoCAS8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
                           biscuit::Ordering ordering) {
+    AS.MV(Rd, Expected);
     if (HasZabha() && HasZacas()) {
         AS.AMOCAS_B(ordering, Rd, Rs, Address);
         EmitZext8(backend, Rd);

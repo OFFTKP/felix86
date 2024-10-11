@@ -11,6 +11,7 @@ x86_operand_t get_full_reg(x86_ref_e ref);
 
 void ir_emit_runtime_comment(IRBlock* block, const std::string& comment);
 
+SSAInstruction* ir_emit_get_thread_state_pointer(IRBlock* block);
 SSAInstruction* ir_emit_add(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_addi(IRBlock* block, SSAInstruction* source, i64 imm);
 SSAInstruction* ir_emit_sub(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);

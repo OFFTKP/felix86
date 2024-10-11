@@ -321,6 +321,10 @@ SSAInstruction* ir_emit_lea(IRBlock* block, x86_operand_t* operand_rm) {
     return final_address;
 }
 
+SSAInstruction* ir_emit_get_thread_state_pointer(IRBlock* block) {
+    return ir_emit_no_operands(block, IROpcode::GetThreadStatePointer);
+}
+
 SSAInstruction* ir_emit_get_parity(IRBlock* block, SSAInstruction* source) {
     return ir_emit_one_operand(block, IROpcode::Parity, source);
 }

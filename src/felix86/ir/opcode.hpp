@@ -5,6 +5,7 @@
 
 #define IR_OPCODES                                                                                                                                   \
     X(Null)                                                                                                                                          \
+    X(GetThreadStatePointer)                                                                                                                         \
     X(SetExitReason)                                                                                                                                 \
     X(Phi)                                                                                                                                           \
     X(Comment)                                                                                                                                       \
@@ -96,6 +97,7 @@
     X(ReadQWordRelative)                                                                                                                             \
     X(WriteByteRelative)                                                                                                                             \
     X(WriteQWordRelative)                                                                                                                            \
+    X(WriteXmmWordRelative)                                                                                                                          \
     X(WriteXmmWord)                                                                                                                                  \
     X(CastVectorFromInteger)                                                                                                                         \
     X(CastIntegerFromVector)                                                                                                                         \

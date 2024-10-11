@@ -260,11 +260,16 @@ void SSAInstruction::Invalidate() {
 
 void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
     switch (opcode) {
+    case IROpcode::GetThreadStatePointer: {
+        break;
+    }
+
     case IROpcode::Null: {
         ERROR("Null should not be used");
         break;
     }
 
+        BAD(Count);
         BAD(Mov);
         BAD(Phi);
         BAD(GetGuest);
@@ -273,11 +278,14 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         BAD(StoreGuestToMemory);
         BAD(Comment);
         BAD(Immediate);
+        BAD(AmoCAS128); // implme
 
         VALIDATE_OPS_INT(Rdtsc, 0);
         VALIDATE_OPS_INT(Syscall, 0);
         VALIDATE_OPS_INT(Cpuid, 0);
+        VALIDATE_OPS_INT(SetExitReason, 0);
 
+        VALIDATE_OPS_INT(Neg, 1);
         VALIDATE_OPS_INT(Addi, 1);
         VALIDATE_OPS_INT(Sext8, 1);
         VALIDATE_OPS_INT(Sext16, 1);
@@ -294,6 +302,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(ReadDWord, 1);
         VALIDATE_OPS_INT(ReadQWord, 1);
         VALIDATE_OPS_INT(ReadXmmWord, 1);
+        VALIDATE_OPS_INT(ReadByteRelative, 1);
+        VALIDATE_OPS_INT(ReadQWordRelative, 1);
         VALIDATE_OPS_INT(Div128, 1);
         VALIDATE_OPS_INT(Divu128, 1);
 
@@ -301,6 +311,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(WriteWord, 2);
         VALIDATE_OPS_INT(WriteDWord, 2);
         VALIDATE_OPS_INT(WriteQWord, 2);
+        VALIDATE_OPS_INT(WriteByteRelative, 2);
+        VALIDATE_OPS_INT(WriteQWordRelative, 2);
         VALIDATE_OPS_INT(Add, 2);
         VALIDATE_OPS_INT(Sub, 2);
         VALIDATE_OPS_INT(ShiftLeft, 2);
@@ -344,8 +356,16 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(AmoXor16, 2);
         VALIDATE_OPS_INT(AmoXor32, 2);
         VALIDATE_OPS_INT(AmoXor64, 2);
+        VALIDATE_OPS_INT(AmoSwap8, 2);
+        VALIDATE_OPS_INT(AmoSwap16, 2);
+        VALIDATE_OPS_INT(AmoSwap32, 2);
+        VALIDATE_OPS_INT(AmoSwap64, 2);
 
         VALIDATE_OPS_INT(Select, 3);
+        VALIDATE_OPS_INT(AmoCAS8, 3);
+        VALIDATE_OPS_INT(AmoCAS16, 3);
+        VALIDATE_OPS_INT(AmoCAS32, 3);
+        VALIDATE_OPS_INT(AmoCAS64, 3);
 
         VALIDATE_OPS_VECTOR(CastIntegerFromVector, 1);
         VALIDATE_OPS_VECTOR(VExtractInteger, 1);
@@ -370,6 +390,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_VECTOR(VPackedMinByte, 2);
 
     case IROpcode::WriteXmmWord:
+    case IROpcode::WriteXmmWordRelative:
     case IROpcode::VInsertInteger: {
         if (operands.operand_count != 2) {
             ERROR("Invalid operands for opcode %d", static_cast<u8>(opcode));
@@ -383,10 +404,6 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
             ERROR("Invalid operand type for opcode %d", static_cast<u8>(opcode));
         }
         break;
-    }
-
-    default: {
-        UNREACHABLE();
     }
     }
 }
@@ -527,6 +544,9 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::Null: {
         return "Null";
+    }
+    case IROpcode::GetThreadStatePointer: {
+        return fmt::format("{} <- ThreadStatePointer", GetNameString(name));
     }
     case IROpcode::SetExitReason: {
         return fmt::format("SetExitReason({})", (u8)immediate_data);
@@ -673,6 +693,51 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
+    case IROpcode::AmoSwap8: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoswap8", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoSwap16: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoswap16", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoSwap32: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoswap32", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoSwap64: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "amoswap64", "address", GetNameString(operands[0]), "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::AmoCAS8: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {}, {}: {})", GetNameString(name), "amocas8", "address", GetNameString(operands[0]), "expected",
+                           GetNameString(operands[1]), "src", GetNameString(operands[2]));
+        break;
+    }
+    case IROpcode::AmoCAS16: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {}, {}: {})", GetNameString(name), "amocas16", "address", GetNameString(operands[0]), "expected",
+                           GetNameString(operands[1]), "src", GetNameString(operands[2]));
+        break;
+    }
+    case IROpcode::AmoCAS32: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {}, {}: {})", GetNameString(name), "amocas32", "address", GetNameString(operands[0]), "expected",
+                           GetNameString(operands[1]), "src", GetNameString(operands[2]));
+        break;
+    }
+    case IROpcode::AmoCAS64: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {}, {}: {})", GetNameString(name), "amocas64", "address", GetNameString(operands[0]), "expected",
+                           GetNameString(operands[1]), "src", GetNameString(operands[2]));
+        break;
+    }
+    case IROpcode::AmoCAS128: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {}, {}: {})", GetNameString(name), "amocas128", "address", GetNameString(operands[0]), "expected",
+                           GetNameString(operands[1]), "src", GetNameString(operands[2]));
+        break;
+    }
     case IROpcode::Equal: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "==", GetNameString(operands[1]));
         break;
@@ -687,6 +752,10 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::SetLessThanSigned: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "<", GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::Neg: {
+        ret += fmt::format("{} <- {} {}", GetNameString(name), "-", GetNameString(operands[0]));
         break;
     }
     case IROpcode::Mul:
@@ -818,6 +887,11 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::WriteQWordRelative: {
         ret += fmt::format("{}({}: {} + 0x{:x}, {}: {})", "write64", "address", GetNameString(operands[0]), immediate_data, "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::WriteXmmWordRelative: {
+        ret += fmt::format("{}({}: {} + 0x{:x}, {}: {})", "write128", "address", GetNameString(operands[0]), immediate_data, "src",
                            GetNameString(operands[1]));
         break;
     }

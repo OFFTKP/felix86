@@ -15,6 +15,8 @@ IRFunction::IRFunction(u64 address) {
         ir_emit_set_guest(entry, x86_ref_e(i), value);
     }
 
+    thread_state_pointer = ir_emit_get_thread_state_pointer(entry);
+
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Emit get_guest for every piece of state and store it to memory
         // These get_guests will be replaced with movs from a temporary or a phi

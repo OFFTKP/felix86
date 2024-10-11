@@ -5,15 +5,32 @@
 // Dispatch to correct function
 void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
     switch (inst.GetOpcode()) {
-    // Should not exist in the reduced IR representation
-    case IROpcode::Null:
-    case IROpcode::Phi:
-    case IROpcode::SetGuest:
-    case IROpcode::GetGuest:
-    case IROpcode::Count:
-    case IROpcode::LoadGuestFromMemory:
-    case IROpcode::StoreGuestToMemory:
+    // Should not exist in the backend IR representation, replaced by simpler stuff
+    case IROpcode::Null: {
+        UNREACHABLE();
+    }
+    case IROpcode::Phi: {
+        UNREACHABLE();
+    }
+    case IROpcode::SetGuest: {
+        UNREACHABLE();
+    }
+    case IROpcode::GetGuest: {
+        UNREACHABLE();
+    }
+    case IROpcode::Count: {
+        UNREACHABLE();
+    }
+    case IROpcode::LoadGuestFromMemory: {
+        UNREACHABLE();
+    }
+    case IROpcode::StoreGuestToMemory: {
+        UNREACHABLE();
+    }
     case IROpcode::Comment: {
+        UNREACHABLE();
+    }
+    case IROpcode::GetThreadStatePointer: {
         UNREACHABLE();
     }
 
@@ -57,7 +74,16 @@ void Emitter::Emit(Backend& backend, const BackendInstruction& inst) {
         break;
     }
 
+    case IROpcode::WriteXmmWordRelative: {
+        UNIMPLEMENTED();
+        break;
+    }
+
     case IROpcode::Immediate: {
+        if (inst.GetImmediateData() == 0) {
+            ERROR("Immediate data is 0, should've been allocated to $zero");
+        }
+
         EmitImmediate(backend, _RegWO_(inst.GetAllocation()), inst.GetImmediateData());
         break;
     }

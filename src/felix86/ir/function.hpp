@@ -69,6 +69,10 @@ struct IRFunction {
         }
     }
 
+    SSAInstruction* ThreadStatePointer() {
+        return thread_state_pointer;
+    }
+
     std::vector<IRBlock*> GetBlocksPostorder();
 
 private:
@@ -77,6 +81,7 @@ private:
     IRBlock* entry = nullptr;
     IRBlock* exit = nullptr;
     IRBlock* start_address_block = nullptr;
+    SSAInstruction* thread_state_pointer = nullptr;
     std::vector<IRBlock*> blocks;
     tsl::robin_map<u64, IRBlock*> block_map;
     IRDominatorTree dominator_tree;
