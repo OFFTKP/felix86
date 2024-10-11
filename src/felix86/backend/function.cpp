@@ -35,6 +35,7 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
                     case Being_moved: {
                         BackendInstruction instr = BackendInstruction::FromMove(block->GetNextName(), src[j]);
                         src[j] = instr.GetName();
+                        VERBOSE("        temp %s <- %s", GetNameString(instr.GetName()).c_str(), GetNameString(src[j]).c_str());
                         block->InsertAtEnd(std::move(instr));
                         break;
                     }
@@ -48,6 +49,7 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
             BackendInstruction instr = BackendInstruction::FromMove(dst[i], src[i]);
             block->InsertAtEnd(std::move(instr));
             status[i] = Moved;
+            VERBOSE("        %s <- %s", GetNameString(dst[i]).c_str(), GetNameString(src[i]).c_str());
         }
     };
 
@@ -74,12 +76,15 @@ void BreakupPhis(BackendFunction* function, IRBlock* block, const std::vector<Na
         ParallelMove move = {};
         move.names_lhs.resize(phis.size());
         move.names_rhs.resize(phis.size());
+
+        VERBOSE("Constructing parallel move: %zu phis", phis.size());
         for (size_t j = 0; j < phis.size(); j++) {
             const NamedPhi& named_phi = phis[j];
             u32 name = named_phi.name;
             u32 value = named_phi.phi->values[i]->GetName();
             move.names_lhs[j] = name;
             move.names_rhs[j] = value;
+            VERBOSE("    %s <- %s", GetNameString(name).c_str(), GetNameString(value).c_str());
         }
 
         InsertParallelMove(pred, move);
@@ -103,6 +108,7 @@ BackendFunction BackendFunction::FromIRFunction(const IRFunction* function) {
 
     for (size_t i = 0; i < blocks.size(); i++) {
         if (phis[i].empty()) {
+            VERBOSE("Block with index %d has no phis, skipping", i);
             continue;
         }
 
