@@ -187,7 +187,6 @@ void* Emulator::compileFunction(u64 rip) {
     ir_copy_propagation_pass(&function);
     ir_dead_code_elimination_pass(&function);
     ir_critical_edge_splitting_pass(&function);
-    ir_ssa_destruction_pass(&function);
 
     if (!function.Validate()) {
         ERROR("Function did not validate");

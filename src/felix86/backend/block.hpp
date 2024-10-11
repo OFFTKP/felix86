@@ -57,6 +57,10 @@ struct BackendBlock {
         instructions.push_back(std::move(instruction));
     }
 
+    u32 GetNextName() const {
+        return (list_index << 20) | (instructions.empty() ? 1 : instructions.back().GetName() + 1);
+    }
+
 private:
     Termination termination = Termination::Null;
     const BackendInstruction* condition = nullptr;

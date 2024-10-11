@@ -78,6 +78,9 @@
 
     t0-t3 and the rest of the temporaries down the road are in SSA form already,
    it's just the registers that need to be renamed
+
+   SSA form is destroyed during IRFunction -> BackendFunction conversion
+   See BackendFunction::FromIRFunction
 */
 
 // See Cytron et al. paper figure 11

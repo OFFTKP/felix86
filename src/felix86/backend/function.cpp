@@ -21,11 +21,6 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
     auto& dst = move.names_lhs;
     auto& src = move.names_rhs;
 
-    VERBOSE("Constructing parallel move:");
-    for (size_t i = 0; i < size; i++) {
-        VERBOSE("t%s = t%s", GetNameString(dst[i]).c_str(), GetNameString(src[i]).c_str());
-    }
-
     std::function<void(int)> move_one = [&](int i) {
         if (src[i] != dst[i]) {
             status[i] = Being_moved;
@@ -38,14 +33,9 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
                         break;
                     }
                     case Being_moved: {
-                        ReducedInstruction rinstr = {};
-                        rinstr.opcode = IROpcode::Mov;
-                        rinstr.name = block->GetNextName();
-                        rinstr.operands[0] = src[j];
-                        rinstr.operand_count = 1;
-                        block->InsertReducedInstruction(std::move(rinstr));
-                        VERBOSE("temp%s = t%s", GetNameString(rinstr.name).c_str(), GetNameString(src[j]).c_str());
-                        src[j] = rinstr.name;
+                        BackendInstruction instr = BackendInstruction::FromMove(block->GetNextName(), src[j]);
+                        src[j] = instr.GetName();
+                        block->InsertAtEnd(std::move(instr));
                         break;
                     }
                     case Moved: {
@@ -55,13 +45,8 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
                 }
             }
 
-            ReducedInstruction rinstr = {};
-            rinstr.opcode = IROpcode::Mov;
-            rinstr.name = dst[i];
-            rinstr.operands[0] = src[i];
-            VERBOSE("t%s = t%s", GetNameString(dst[i]).c_str(), GetNameString(src[i]).c_str());
-            rinstr.operand_count = 1;
-            block->InsertReducedInstruction(std::move(rinstr));
+            BackendInstruction instr = BackendInstruction::FromMove(dst[i], src[i]);
+            block->InsertAtEnd(std::move(instr));
             status[i] = Moved;
         }
     };
@@ -121,7 +106,7 @@ BackendFunction BackendFunction::FromIRFunction(const IRFunction* function) {
             continue;
         }
 
-        BreakupPhis(blocks[i], phis[i]);
+        BreakupPhis(&backend_function, blocks[i], phis[i]);
     }
 
     return backend_function;

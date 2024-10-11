@@ -33,6 +33,8 @@ struct BackendInstruction {
 
     static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
 
+    static BackendInstruction FromMove(u32 lhs, u32 rhs);
+
 private:
     u64 immediate_data;
     std::array<u32, 4> operand_names;
