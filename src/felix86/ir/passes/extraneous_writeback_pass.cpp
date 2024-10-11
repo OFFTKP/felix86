@@ -21,9 +21,6 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         break;
     }
     case X86_REF_ST0 ... X86_REF_ST7: {
-        if (inst.GetUseCount() > 1) {
-            UNIMPLEMENTED(); // might be used
-        }
         WARN("ST0-ST7 are not supported, ignoring"); // will be removed by dce
         break;
     }
