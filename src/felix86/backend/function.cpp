@@ -2,9 +2,35 @@
 
 namespace {
 struct ParallelMove {
+    std::vector<AllocationType> types_lhs;
     std::vector<u32> names_lhs;
     std::vector<u32> names_rhs;
 };
+
+AllocationType GetTypeFromRef(x86_ref_e ref) {
+    switch (ref) {
+    case X86_REF_RAX ... X86_REF_R15:
+        return AllocationType::GPR;
+    case X86_REF_CF ... X86_REF_OF:
+        return AllocationType::GPR;
+    case X86_REF_RIP:
+        return AllocationType::GPR;
+    case X86_REF_FS:
+        return AllocationType::GPR;
+    case X86_REF_GS:
+        return AllocationType::GPR;
+    case X86_REF_XMM0 ... X86_REF_XMM15:
+        return AllocationType::Vec;
+    case X86_REF_ST0 ... X86_REF_ST7:
+        return AllocationType::FPR;
+    case X86_REF_COUNT:
+        UNREACHABLE();
+        return AllocationType::Null;
+    }
+
+    UNREACHABLE();
+    return AllocationType::Null;
+}
 
 // Sequentializing a parallel move at the end of the block
 // We use the u32 names after translating out of SSA because
@@ -20,6 +46,7 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
 
     auto& dst = move.names_lhs;
     auto& src = move.names_rhs;
+    auto type = move.types_lhs;
 
     std::function<void(int)> move_one = [&](int i) {
         if (src[i] != dst[i]) {
@@ -33,9 +60,9 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
                         break;
                     }
                     case Being_moved: {
-                        BackendInstruction instr = BackendInstruction::FromMove(block->GetNextName(), src[j]);
+                        BackendInstruction instr = BackendInstruction::FromMove(block->GetNextName(), src[j], type[j]);
                         src[j] = instr.GetName();
-                        VERBOSE("        temp %s <- %s", GetNameString(instr.GetName()).c_str(), GetNameString(src[j]).c_str());
+                        WARN("Parallel move cycle detected, breaking it");
                         block->InsertAtEnd(std::move(instr));
                         break;
                     }
@@ -46,7 +73,7 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
                 }
             }
 
-            BackendInstruction instr = BackendInstruction::FromMove(dst[i], src[i]);
+            BackendInstruction instr = BackendInstruction::FromMove(dst[i], src[i], type[i]);
             block->InsertAtEnd(std::move(instr));
             status[i] = Moved;
             VERBOSE("        %s <- %s", GetNameString(dst[i]).c_str(), GetNameString(src[i]).c_str());
@@ -74,6 +101,7 @@ void BreakupPhis(BackendFunction* function, IRBlock* block, const std::vector<Na
         ASSERT(pred->GetIndex() == ir_pred->GetIndex());
 
         ParallelMove move = {};
+        move.types_lhs.resize(phis.size());
         move.names_lhs.resize(phis.size());
         move.names_rhs.resize(phis.size());
 
@@ -82,6 +110,7 @@ void BreakupPhis(BackendFunction* function, IRBlock* block, const std::vector<Na
             const NamedPhi& named_phi = phis[j];
             u32 name = named_phi.name;
             u32 value = named_phi.phi->values[i]->GetName();
+            move.types_lhs[j] = GetTypeFromRef(named_phi.phi->ref);
             move.names_lhs[j] = name;
             move.names_rhs[j] = value;
             VERBOSE("    %s <- %s", GetNameString(name).c_str(), GetNameString(value).c_str());

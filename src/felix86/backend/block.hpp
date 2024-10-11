@@ -38,6 +38,11 @@ struct BackendBlock {
             UNREACHABLE();
             return 0;
         }
+        default: {
+            // uhhh gcc warning
+            UNREACHABLE();
+            return 0;
+        }
         }
     }
 

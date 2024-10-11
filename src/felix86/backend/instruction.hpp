@@ -33,7 +33,7 @@ struct BackendInstruction {
 
     static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
 
-    static BackendInstruction FromMove(u32 lhs, u32 rhs);
+    static BackendInstruction FromMove(u32 lhs, u32 rhs, AllocationType type);
 
 private:
     u64 immediate_data;

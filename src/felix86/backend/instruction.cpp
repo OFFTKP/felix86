@@ -26,11 +26,12 @@ BackendInstruction BackendInstruction::FromSSAInstruction(const SSAInstruction* 
     return backend_inst;
 }
 
-BackendInstruction BackendInstruction::FromMove(u32 lhs, u32 rhs) {
+BackendInstruction BackendInstruction::FromMove(u32 lhs, u32 rhs, AllocationType type) {
     BackendInstruction inst;
     inst.opcode = IROpcode::Mov;
     inst.name = lhs;
     inst.operand_names[0] = rhs;
     inst.operand_count = 1;
+    inst.desired_type = type;
     return inst;
 }
