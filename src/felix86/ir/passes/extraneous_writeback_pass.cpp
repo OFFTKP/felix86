@@ -9,7 +9,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, gprs[get_guest.ref - X86_REF_RAX]);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadQWordRelative);
+        inst.Replace(op, IROpcode::ReadQWordRelative);
         break;
     }
     case X86_REF_XMM0 ... X86_REF_XMM15: {
@@ -17,7 +17,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, xmm[get_guest.ref - X86_REF_XMM0]);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadXmmWordRelative);
+        inst.Replace(op, IROpcode::ReadXmmWordRelative);
         break;
     }
     case X86_REF_ST0 ... X86_REF_ST7: {
@@ -29,7 +29,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, rip);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadQWordRelative);
+        inst.Replace(op, IROpcode::ReadQWordRelative);
         break;
     }
     case X86_REF_GS: {
@@ -37,7 +37,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, gsbase);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadQWordRelative);
+        inst.Replace(op, IROpcode::ReadQWordRelative);
         break;
     }
     case X86_REF_FS: {
@@ -45,7 +45,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, fsbase);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadQWordRelative);
+        inst.Replace(op, IROpcode::ReadQWordRelative);
         break;
     }
     case X86_REF_CF: {
@@ -53,7 +53,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, cf);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadByteRelative);
+        inst.Replace(op, IROpcode::ReadByteRelative);
         break;
     }
     case X86_REF_ZF: {
@@ -61,7 +61,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, zf);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadByteRelative);
+        inst.Replace(op, IROpcode::ReadByteRelative);
         break;
     }
     case X86_REF_AF: {
@@ -69,7 +69,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, af);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadByteRelative);
+        inst.Replace(op, IROpcode::ReadByteRelative);
         break;
     }
     case X86_REF_PF: {
@@ -77,7 +77,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, pf);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadByteRelative);
+        inst.Replace(op, IROpcode::ReadByteRelative);
         break;
     }
     case X86_REF_SF: {
@@ -85,7 +85,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, sf);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadByteRelative);
+        inst.Replace(op, IROpcode::ReadByteRelative);
         break;
     }
     case X86_REF_OF: {
@@ -93,7 +93,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, of);
-        inst.ReplaceDontInvalidate(op, IROpcode::ReadByteRelative);
+        inst.Replace(op, IROpcode::ReadByteRelative);
         break;
     }
     case X86_REF_COUNT: {
@@ -112,7 +112,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, gprs[set_guest.ref - X86_REF_RAX]);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteQWordRelative);
+        inst.Replace(op, IROpcode::WriteQWordRelative);
         break;
     }
     case X86_REF_XMM0 ... X86_REF_XMM15: {
@@ -121,7 +121,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, xmm[set_guest.ref - X86_REF_XMM0]);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteXmmWordRelative);
+        inst.Replace(op, IROpcode::WriteXmmWordRelative);
         break;
     }
     case X86_REF_ST0 ... X86_REF_ST7: {
@@ -134,7 +134,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, rip);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteQWordRelative);
+        inst.Replace(op, IROpcode::WriteQWordRelative);
         break;
     }
     case X86_REF_GS: {
@@ -143,7 +143,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, gsbase);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteQWordRelative);
+        inst.Replace(op, IROpcode::WriteQWordRelative);
         break;
     }
     case X86_REF_FS: {
@@ -152,7 +152,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, fsbase);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteQWordRelative);
+        inst.Replace(op, IROpcode::WriteQWordRelative);
         break;
     }
     case X86_REF_CF: {
@@ -161,7 +161,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, cf);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteByteRelative);
+        inst.Replace(op, IROpcode::WriteByteRelative);
         break;
     }
     case X86_REF_ZF: {
@@ -170,7 +170,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, zf);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteByteRelative);
+        inst.Replace(op, IROpcode::WriteByteRelative);
         break;
     }
     case X86_REF_AF: {
@@ -179,7 +179,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, af);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteByteRelative);
+        inst.Replace(op, IROpcode::WriteByteRelative);
         break;
     }
     case X86_REF_PF: {
@@ -188,7 +188,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, pf);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteByteRelative);
+        inst.Replace(op, IROpcode::WriteByteRelative);
         break;
     }
     case X86_REF_SF: {
@@ -197,7 +197,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, sf);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteByteRelative);
+        inst.Replace(op, IROpcode::WriteByteRelative);
         break;
     }
     case X86_REF_OF: {
@@ -206,7 +206,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, of);
-        inst.ReplaceDontInvalidate(op, IROpcode::WriteByteRelative);
+        inst.Replace(op, IROpcode::WriteByteRelative);
         break;
     }
     case X86_REF_COUNT: {

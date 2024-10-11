@@ -294,11 +294,16 @@ struct SSAInstruction {
         mov->AddUse();
     }
 
-    void ReplaceDontInvalidate(Expression&& expression_other, IROpcode opcode_other) {
+    void Replace(Expression&& expression_other, IROpcode opcode_other) {
+        Invalidate();
         expression = std::move(expression_other);
         opcode = opcode_other;
         return_type = GetTypeFromOpcode(opcode_other);
         expression_type = ExpressionType::Operands;
+
+        for (auto& operand : GetUsedInstructions()) {
+            operand->AddUse();
+        }
     }
 
     u64 GetImmediateData() const {

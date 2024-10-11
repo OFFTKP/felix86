@@ -8,15 +8,15 @@ IRFunction::IRFunction(u64 address) {
     entry = blocks[0];
     exit = blocks[1];
 
+    thread_state_pointer = ir_emit_get_thread_state_pointer(entry);
+    thread_state_pointer->Lock();
+
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Load all state from memory and run the set_guest instruction
         // See ssa_pass.cpp for more information
         SSAInstruction* value = ir_emit_load_guest_from_memory(entry, x86_ref_e(i));
         ir_emit_set_guest(entry, x86_ref_e(i), value);
     }
-
-    thread_state_pointer = ir_emit_get_thread_state_pointer(entry);
-    thread_state_pointer->Lock();
 
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Emit get_guest for every piece of state and store it to memory
@@ -127,7 +127,7 @@ bool IRFunction::Validate() const {
 
     for (const auto& [inst, use] : uses) {
         if (use.have != use.want) {
-            WARN("Mismatch on uses on instruction: %s", inst->Print({}).c_str());
+            WARN("Mismatch on uses on instruction: %d, want: %d, have: %d", inst->GetName(), use.want, use.have);
             return false;
         }
     }
