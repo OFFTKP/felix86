@@ -25,8 +25,8 @@ bool PeepholeAddImmediates(SSAInstruction& inst) {
 // t2 = t1 + 0
 bool PeepholeAddZero(SSAInstruction& inst) {
     for (u8 i = 0; i < 2; i++) {
-        if (IsImmediate(inst.GetOperand(i), 0) && IsInteger64(inst.GetOperand(~i))) {
-            inst.ReplaceWithMov(inst.GetOperand(~i));
+        if (IsImmediate(inst.GetOperand(i), 0) && IsInteger64(inst.GetOperand(!i))) {
+            inst.ReplaceWithMov(inst.GetOperand(!i));
             return true;
         }
     }
@@ -55,7 +55,7 @@ bool PeepholeAndImmediates(SSAInstruction& inst) {
 bool PeepholeAndTwice(SSAInstruction& inst) {
     for (u8 i = 0; i < 2; i++) {
         SSAInstruction* operand = inst.GetOperand(i);
-        const SSAInstruction* other = inst.GetOperand(~i);
+        const SSAInstruction* other = inst.GetOperand(!i);
         if (operand->GetOpcode() == IROpcode::And) {
             for (u8 i = 0; i < 2; i++) {
                 if (operand->GetOperand(i) == other) {
