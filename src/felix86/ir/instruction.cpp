@@ -481,6 +481,10 @@ bool SSAInstruction::PropagateMovs() {
     switch (expression_type) {
     case ExpressionType::Operands: {
         Operands& operands = AsOperands();
+        if (opcode == IROpcode::Mov) {
+            break;
+        }
+
         for (u8 i = 0; i < operands.operand_count; i++) {
             replace_mov(operands.operands[i], i);
         }
