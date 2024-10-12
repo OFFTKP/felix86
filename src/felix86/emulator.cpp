@@ -180,6 +180,7 @@ void* Emulator::compileFunction(u64 rip) {
     bool changed = false;
 
     do {
+        changed = false;
         changed |= PassManager::PeepholePass(&function);
         changed |= PassManager::LocalCSEPass(&function);
         changed |= PassManager::CopyPropagationPass(&function);
