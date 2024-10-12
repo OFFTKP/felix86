@@ -200,6 +200,21 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::Zext8: {
+        EmitZext8(backend, _RegWO_(inst.GetName()), _RegRO_(inst.GetOperand(0)));
+        break;
+    }
+
+    case IROpcode::Zext16: {
+        EmitZext16(backend, _RegWO_(inst.GetName()), _RegRO_(inst.GetOperand(0)));
+        break;
+    }
+
+    case IROpcode::Zext32: {
+        EmitZext32(backend, _RegWO_(inst.GetName()), _RegRO_(inst.GetOperand(0)));
+        break;
+    }
+
     case IROpcode::Add: {
         EmitAdd(backend, _RegWO_(inst.GetName()), _RegRO_(inst.GetOperand(0)), _RegRO_(inst.GetOperand(1)));
         break;

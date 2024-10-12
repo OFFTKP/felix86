@@ -83,6 +83,17 @@
    See BackendFunction::FromIRFunction
 */
 
+void replace_setguest_pass(IRFunction* function) {
+    for (IRBlock* block : function->GetBlocksPostorder()) {
+        std::list<SSAInstruction>& insts = block->GetInstructions();
+        for (auto& inst : insts) {
+            if (inst.GetOpcode() == IROpcode::SetGuest) {
+                inst.ReplaceExpressionWithMov(inst.AsSetGuest().source);
+            }
+        }
+    }
+}
+
 // See Cytron et al. paper figure 11
 static void place_phi_functions(IRFunction* function) {
     auto& list = function->GetBlocks();
@@ -300,7 +311,7 @@ static IRBlock* intersect(IRBlock* a, IRBlock* b, const std::vector<u32>& postor
     return doms;
 }
 
-void ir_ssa_pass(IRFunction* function) {
+void PassManager::SSAPass(IRFunction* function) {
     size_t count = function->GetBlocks().size();
 
     std::vector<IRBlock*> rpo = function->GetBlocksPostorder();
@@ -368,4 +379,9 @@ void ir_ssa_pass(IRFunction* function) {
     rename(dominator_tree.nodes);
 
     function->SetDominatorTree(std::move(dominator_tree));
+
+    // Gets rid of the auxiliary get_guest/set_guest/store/load instructions
+    replace_setguest_pass(function);
+    CopyPropagationPass(function);
+    extraneousWritebackPass(function);
 }

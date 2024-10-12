@@ -41,6 +41,10 @@ SSAInstruction* ir_emit_sext(IRBlock* block, SSAInstruction* source, x86_size_e 
 SSAInstruction* ir_emit_sext8(IRBlock* block, SSAInstruction* source);
 SSAInstruction* ir_emit_sext16(IRBlock* block, SSAInstruction* source);
 SSAInstruction* ir_emit_sext32(IRBlock* block, SSAInstruction* source);
+SSAInstruction* ir_emit_zext(IRBlock* block, SSAInstruction* source, x86_size_e size);
+SSAInstruction* ir_emit_zext8(IRBlock* block, SSAInstruction* source);
+SSAInstruction* ir_emit_zext16(IRBlock* block, SSAInstruction* source);
+SSAInstruction* ir_emit_zext32(IRBlock* block, SSAInstruction* source);
 SSAInstruction* ir_emit_div(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_divu(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_rem(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);

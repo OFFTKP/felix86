@@ -1,6 +1,6 @@
 #include "felix86/ir/passes/passes.hpp"
 
-void ir_critical_edge_splitting_pass(IRFunction* function) {
+void PassManager::CriticalEdgeSplittingPass(IRFunction* function) {
     std::vector<std::tuple<IRBlock*, IRBlock*>> edges_to_split;
 
     for (IRBlock* block : function->GetBlocks()) {

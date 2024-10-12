@@ -222,7 +222,7 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
 // on exit blocks we store back all state. But if the exit block stores the exact same variable loaded on entry,
 // that can be removed.
 // We can find out only after moving to SSA and copy propagating the IR mov/set_guest instructions.
-void ir_extraneous_writeback_pass(IRFunction* function) {
+void PassManager::extraneousWritebackPass(IRFunction* function) {
     std::array<SSAInstruction*, X86_REF_COUNT> entry_defs{};
 
     IRBlock* entry = function->GetEntry();

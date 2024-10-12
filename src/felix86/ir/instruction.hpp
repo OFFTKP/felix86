@@ -356,7 +356,7 @@ struct SSAInstruction {
 
     bool ExitsVM() const;
 
-    void PropagateMovs();
+    bool PropagateMovs();
 
     // TODO: move outside this class
     static IRType GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref = X86_REF_COUNT);

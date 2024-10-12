@@ -1,6 +1,7 @@
 #include "felix86/ir/passes/passes.hpp"
 
-void ir_local_cse_pass(IRFunction* function) {
+bool PassManager::LocalCSEPass(IRFunction* function) {
+    bool changed = false;
     for (IRBlock* block : function->GetBlocks()) {
         std::vector<SSAInstruction*> instructions;
         for (auto& inst : block->GetInstructions()) {
@@ -9,6 +10,7 @@ void ir_local_cse_pass(IRFunction* function) {
                 for (auto other : instructions) {
                     if (inst.IsSameExpression(*other)) {
                         replaced = true;
+                        changed = true;
                         inst.ReplaceExpressionWithMov(other);
                         break;
                     }
@@ -20,4 +22,5 @@ void ir_local_cse_pass(IRFunction* function) {
             }
         }
     }
+    return changed;
 }

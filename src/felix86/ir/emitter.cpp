@@ -58,22 +58,6 @@ SSAInstruction* get_reg(IRBlock* block, x86_ref_e ref, x86_size_e size_e) {
     return ir_emit_get_reg(block, &operand);
 }
 
-SSAInstruction* ir_emit_get_mask(IRBlock* block, x86_size_e size_e) {
-    u16 size = get_bit_size(size_e);
-    switch (size) {
-    case 8:
-        return ir_emit_immediate(block, 0xFF);
-    case 16:
-        return ir_emit_immediate(block, 0xFFFF);
-    case 32:
-        return ir_emit_immediate(block, 0xFFFFFFFF);
-    case 64:
-        return ir_emit_immediate(block, 0xFFFFFFFFFFFFFFFF);
-    default:
-        ERROR("Invalid size");
-    }
-}
-
 SSAInstruction* ir_emit_no_operands(IRBlock* block, IROpcode opcode) {
     SSAInstruction instruction(opcode, {});
     return block->InsertAtEnd(std::move(instruction));
@@ -309,16 +293,49 @@ SSAInstruction* ir_emit_lea(IRBlock* block, x86_operand_t* operand_rm) {
 
     SSAInstruction* displaced_address = address;
     if (operand_rm->memory.displacement) {
-        displaced_address = ir_emit_addi(block, address, operand_rm->memory.displacement);
+        if (IsValidSigned12BitImm(operand_rm->memory.displacement)) {
+            displaced_address = ir_emit_addi(block, address, operand_rm->memory.displacement);
+        } else {
+            // Might benefit more since loading large immediates takes many instructions and
+            // this can be reused after optimization passes
+            SSAInstruction* displacement = ir_emit_immediate(block, operand_rm->memory.displacement);
+            displaced_address = ir_emit_add(block, address, displacement);
+        }
     }
 
     SSAInstruction* final_address = displaced_address;
     if (operand_rm->memory.address_override) {
-        SSAInstruction* mask = ir_emit_immediate(block, 0xFFFFFFFF);
-        final_address = ir_emit_and(block, address, mask);
+        final_address = ir_emit_zext32(block, displaced_address);
     }
 
     return final_address;
+}
+
+SSAInstruction* ir_emit_zext8(IRBlock* block, SSAInstruction* source) {
+    return ir_emit_one_operand(block, IROpcode::Zext8, source);
+}
+
+SSAInstruction* ir_emit_zext16(IRBlock* block, SSAInstruction* source) {
+    return ir_emit_one_operand(block, IROpcode::Zext16, source);
+}
+
+SSAInstruction* ir_emit_zext32(IRBlock* block, SSAInstruction* source) {
+    return ir_emit_one_operand(block, IROpcode::Zext32, source);
+}
+
+SSAInstruction* ir_emit_zext(IRBlock* block, SSAInstruction* source, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE:
+        return ir_emit_zext8(block, source);
+    case X86_SIZE_WORD:
+        return ir_emit_zext16(block, source);
+    case X86_SIZE_DWORD:
+        return ir_emit_zext32(block, source);
+    case X86_SIZE_QWORD:
+        return source;
+    default:
+        ERROR("Invalid size");
+    }
 }
 
 SSAInstruction* ir_emit_get_thread_state_pointer(IRBlock* block) {
@@ -902,8 +919,7 @@ SSAInstruction* ir_emit_get_gpr8_low(IRBlock* block, x86_ref_e reg) {
     }
 
     SSAInstruction* full_reg = ir_emit_get_guest(block, reg);
-    SSAInstruction* mask = ir_emit_immediate(block, 0xFF);
-    SSAInstruction* instruction = ir_emit_and(block, full_reg, mask);
+    SSAInstruction* instruction = ir_emit_zext8(block, full_reg);
 
     return instruction;
 }
@@ -916,8 +932,7 @@ SSAInstruction* ir_emit_get_gpr8_high(IRBlock* block, x86_ref_e reg) {
     SSAInstruction* full_reg = ir_emit_get_guest(block, reg);
     SSAInstruction* shift = ir_emit_immediate(block, 8);
     SSAInstruction* shifted = ir_emit_shift_right(block, full_reg, shift);
-    SSAInstruction* mask = ir_emit_immediate(block, 0xFF);
-    SSAInstruction* instruction = ir_emit_and(block, shifted, mask);
+    SSAInstruction* instruction = ir_emit_zext8(block, shifted);
 
     return instruction;
 }
@@ -928,8 +943,7 @@ SSAInstruction* ir_emit_get_gpr16(IRBlock* block, x86_ref_e reg) {
     }
 
     SSAInstruction* full_reg = ir_emit_get_guest(block, reg);
-    SSAInstruction* mask = ir_emit_immediate(block, 0xFFFF);
-    SSAInstruction* instruction = ir_emit_and(block, full_reg, mask);
+    SSAInstruction* instruction = ir_emit_zext16(block, full_reg);
 
     return instruction;
 }
@@ -940,8 +954,7 @@ SSAInstruction* ir_emit_get_gpr32(IRBlock* block, x86_ref_e reg) {
     }
 
     SSAInstruction* full_reg = ir_emit_get_guest(block, reg);
-    SSAInstruction* mask = ir_emit_immediate(block, 0xFFFFFFFF);
-    SSAInstruction* instruction = ir_emit_and(block, full_reg, mask);
+    SSAInstruction* instruction = ir_emit_zext32(block, full_reg);
 
     return instruction;
 }
@@ -968,8 +981,7 @@ void ir_emit_set_gpr8_low(IRBlock* block, x86_ref_e reg, SSAInstruction* source)
     SSAInstruction* full_reg = ir_emit_get_guest(block, reg);
     SSAInstruction* mask = ir_emit_immediate(block, 0xFFFFFFFFFFFFFF00);
     SSAInstruction* masked = ir_emit_and(block, full_reg, mask);
-    SSAInstruction* value_mask = ir_emit_immediate(block, 0xFF);
-    SSAInstruction* value = ir_emit_and(block, source, value_mask);
+    SSAInstruction* value = ir_emit_zext8(block, source);
     SSAInstruction* final_value = ir_emit_or(block, masked, value);
     ir_emit_set_guest(block, reg, final_value);
 }
@@ -978,8 +990,7 @@ void ir_emit_set_gpr8_high(IRBlock* block, x86_ref_e reg, SSAInstruction* source
     SSAInstruction* full_reg = ir_emit_get_guest(block, reg);
     SSAInstruction* mask = ir_emit_immediate(block, 0xFFFFFFFFFFFF00FF);
     SSAInstruction* masked = ir_emit_and(block, full_reg, mask);
-    SSAInstruction* value_mask = ir_emit_immediate(block, 0xFF);
-    SSAInstruction* value = ir_emit_and(block, source, value_mask);
+    SSAInstruction* value = ir_emit_zext8(block, source);
     SSAInstruction* shift = ir_emit_immediate(block, 8);
     SSAInstruction* shifted = ir_emit_shift_left(block, value, shift);
     SSAInstruction* final_value = ir_emit_or(block, masked, shifted);
@@ -990,15 +1001,13 @@ void ir_emit_set_gpr16(IRBlock* block, x86_ref_e reg, SSAInstruction* source) {
     SSAInstruction* full_reg = ir_emit_get_guest(block, reg);
     SSAInstruction* mask = ir_emit_immediate(block, 0xFFFFFFFFFFFF0000);
     SSAInstruction* masked = ir_emit_and(block, full_reg, mask);
-    SSAInstruction* value_mask = ir_emit_immediate(block, 0xFFFF);
-    SSAInstruction* value = ir_emit_and(block, source, value_mask);
+    SSAInstruction* value = ir_emit_zext16(block, source);
     SSAInstruction* final_value = ir_emit_or(block, masked, value);
     ir_emit_set_guest(block, reg, final_value);
 }
 
 void ir_emit_set_gpr32(IRBlock* block, x86_ref_e reg, SSAInstruction* source) {
-    SSAInstruction* value_mask = ir_emit_immediate(block, 0xFFFFFFFF);
-    SSAInstruction* final_value = ir_emit_and(block, source, value_mask);
+    SSAInstruction* final_value = ir_emit_zext32(block, source);
     ir_emit_set_guest(block, reg, final_value);
 }
 
@@ -1012,8 +1021,8 @@ void ir_emit_set_vector(IRBlock* block, x86_ref_e reg, SSAInstruction* source) {
 
 SSAInstruction* ir_emit_get_zero(IRBlock* block, SSAInstruction* source, x86_size_e size_e) {
     SSAInstruction* zero = ir_emit_immediate(block, 0);
-    SSAInstruction* masked = ir_emit_and(block, source, ir_emit_get_mask(block, size_e));
-    SSAInstruction* instruction = ir_emit_equal(block, masked, zero);
+    SSAInstruction* zext = ir_emit_zext(block, source, size_e);
+    SSAInstruction* instruction = ir_emit_equal(block, zext, zero);
 
     return instruction;
 }
@@ -1029,8 +1038,8 @@ SSAInstruction* ir_emit_get_sign_mask(IRBlock* block, x86_size_e size_e) {
 
 SSAInstruction* ir_emit_get_shift_mask_left(IRBlock* block, SSAInstruction* source, x86_size_e size_e) {
     SSAInstruction* one = ir_emit_immediate(block, 1);
-    SSAInstruction* shiftMax = ir_emit_get_size(block, size_e);
-    SSAInstruction* shift = ir_emit_sub(block, shiftMax, source);
+    SSAInstruction* shift_max = ir_emit_get_size(block, size_e);
+    SSAInstruction* shift = ir_emit_sub(block, shift_max, source);
     SSAInstruction* mask = ir_emit_shift_left(block, one, shift);
     return mask;
 }
@@ -1084,9 +1093,8 @@ SSAInstruction* ir_emit_get_carry_add(IRBlock* block, SSAInstruction* source1, S
     (void)source2; // dont need, just keeping for consistency
 
     // CF = result < source1, as that means that the result overflowed
-    SSAInstruction* mask = ir_emit_get_mask(block, size_e);
-    SSAInstruction* masked_result = ir_emit_and(block, result, mask);
-    return ir_emit_less_than_unsigned(block, masked_result, source1);
+    SSAInstruction* zext_result = ir_emit_zext(block, result, size_e);
+    return ir_emit_less_than_unsigned(block, zext_result, source1);
 }
 
 SSAInstruction* ir_emit_get_carry_adc(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2, x86_size_e size_e) {

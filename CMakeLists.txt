@@ -5,15 +5,6 @@ project(felix86)
 add_compile_options(-fsanitize=address)
 add_link_options(-fsanitize=address)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch")
-
-add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
-
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 20)
-
 set(BISCUIT_CODE_BUFFER_MMAP ON)
 add_subdirectory(external/biscuit)
 # add_subdirectory(external/plog)
@@ -22,6 +13,15 @@ add_subdirectory(external/xbyak)
 add_subdirectory(external/riscv-disassembler)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch")
+
+add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
+
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 
 set(FELIX86_FRONTEND_SOURCES
     src/felix86/frontend/frontend.cpp

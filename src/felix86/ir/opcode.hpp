@@ -15,6 +15,9 @@
     X(Sext8)                                                                                                                                         \
     X(Sext16)                                                                                                                                        \
     X(Sext32)                                                                                                                                        \
+    X(Zext8)                                                                                                                                         \
+    X(Zext16)                                                                                                                                        \
+    X(Zext32)                                                                                                                                        \
     X(Syscall)                                                                                                                                       \
     X(Cpuid)                                                                                                                                         \
     X(Rdtsc)                                                                                                                                         \

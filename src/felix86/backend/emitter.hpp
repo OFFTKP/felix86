@@ -24,6 +24,9 @@ private:
     static void EmitSext8(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitSext16(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitSext32(Backend&, biscuit::GPR, biscuit::GPR);
+    static void EmitZext8(Backend&, biscuit::GPR, biscuit::GPR);
+    static void EmitZext16(Backend&, biscuit::GPR, biscuit::GPR);
+    static void EmitZext32(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitClz(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitCtzh(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitCtzw(Backend&, biscuit::GPR, biscuit::GPR);

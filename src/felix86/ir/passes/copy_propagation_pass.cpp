@@ -1,15 +1,19 @@
 #include "felix86/ir/passes/passes.hpp"
 
-void ir_copy_propagate_block_v2(IRBlock* block) {
+bool ir_copy_propagate_block_v2(IRBlock* block) {
+    bool changed = false;
     for (SSAInstruction& inst : block->GetInstructions()) {
         if (inst.GetOpcode() != IROpcode::Mov) {
-            inst.PropagateMovs();
+            changed |= inst.PropagateMovs();
         }
     }
+    return changed;
 }
 
-void ir_copy_propagation_pass(IRFunction* function) {
+bool PassManager::CopyPropagationPass(IRFunction* function) {
+    bool changed = false;
     for (IRBlock* block : function->GetBlocks()) {
         ir_copy_propagate_block_v2(block);
     }
+    return changed;
 }

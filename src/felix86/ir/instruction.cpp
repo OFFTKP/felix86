@@ -126,6 +126,9 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Sext8:
     case IROpcode::Sext16:
     case IROpcode::Sext32:
+    case IROpcode::Zext8:
+    case IROpcode::Zext16:
+    case IROpcode::Zext32:
     case IROpcode::Div:
     case IROpcode::Divu:
     case IROpcode::Divw:
@@ -303,6 +306,9 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(Sext8, 1);
         VALIDATE_OPS_INT(Sext16, 1);
         VALIDATE_OPS_INT(Sext32, 1);
+        VALIDATE_OPS_INT(Zext8, 1);
+        VALIDATE_OPS_INT(Zext16, 1);
+        VALIDATE_OPS_INT(Zext32, 1);
         VALIDATE_OPS_INT(CastVectorFromInteger, 1);
         VALIDATE_OPS_INT(Clz, 1);
         VALIDATE_OPS_INT(Ctzh, 1);
@@ -485,13 +491,15 @@ bool SSAInstruction::ExitsVM() const {
     }
 }
 
-void SSAInstruction::PropagateMovs() {
-    auto replace_mov = [](SSAInstruction*& operand, int index) {
+bool SSAInstruction::PropagateMovs() {
+    bool replaced_something = false;
+    auto replace_mov = [&replaced_something](SSAInstruction*& operand, int index) {
         if (operand->GetOpcode() != IROpcode::Mov) {
             return;
         }
 
         bool is_mov = true;
+        replaced_something = true;
         SSAInstruction* value_final = operand->GetOperand(0);
         do {
             is_mov = false;
@@ -541,6 +549,8 @@ void SSAInstruction::PropagateMovs() {
         UNREACHABLE();
     }
     }
+
+    return replaced_something;
 }
 
 std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands, u64 immediate_data) {
@@ -832,6 +842,18 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::Sext32: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "sext32", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::Zext8: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "zext8", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::Zext16: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "zext16", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::Zext32: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "zext32", "src", GetNameString(operands[0]));
         break;
     }
     case IROpcode::CastVectorFromInteger: {
