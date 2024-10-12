@@ -394,112 +394,119 @@ bool PeepholeXorZero(SSAInstruction& inst) {
 }
 }; // namespace
 
+bool PassManager::peepholePassBlock(IRBlock* block) {
+    bool changed = false;
+    for (SSAInstruction& inst : block->GetInstructions()) {
+        if (!inst.IsLocked()) {
+            bool local_changed = false;
+#define CHECK(x)                                                                                                                                     \
+    if (!local_changed)                                                                                                                              \
+    local_changed |= x(inst)
+            switch (inst.GetOpcode()) {
+            case IROpcode::Add: {
+                CHECK(PeepholeAddImmediates);
+                CHECK(PeepholeAddZero);
+                break;
+            }
+            case IROpcode::And: {
+                CHECK(PeepholeAndImmediates);
+                CHECK(PeepholeAndZero);
+                CHECK(PeepholeAndTwice);
+                break;
+            }
+            case IROpcode::Or: {
+                CHECK(PeepholeOrImmediates);
+                break;
+            }
+            case IROpcode::Xor: {
+                CHECK(PeepholeXorImmediates);
+                CHECK(PeepholeXorZero);
+                break;
+            }
+            case IROpcode::Div: {
+                CHECK(PeepholeDivOne);
+                CHECK(PeepholeDivImmediates);
+                break;
+            }
+            case IROpcode::Divu: {
+                CHECK(PeepholeDivOne);
+                CHECK(PeepholeDivuImmediates);
+                break;
+            }
+            case IROpcode::Equal: {
+                CHECK(PeepholeEqualImmediates);
+                CHECK(PeepholeEqualSame);
+                break;
+            }
+            case IROpcode::SetLessThanSigned: {
+                CHECK(PeepholeLessThanSignedImmediates);
+                CHECK(PeepholeLessThanSame);
+                break;
+            }
+            case IROpcode::SetLessThanUnsigned: {
+                CHECK(PeepholeLessThanUnsignedImmediates);
+                CHECK(PeepholeLessThanSame);
+                break;
+            }
+            case IROpcode::Mul: {
+                CHECK(PeepholeMulImmediates);
+                break;
+            }
+            case IROpcode::Neg: {
+                CHECK(PeepholeNegImmediate);
+                break;
+            }
+            case IROpcode::Not: {
+                CHECK(PeepholeNotImmediate);
+                break;
+            }
+            case IROpcode::NotEqual: {
+                CHECK(PeepholeNotEqualImmediates);
+                CHECK(PeepholeNotEqualSame);
+                break;
+            }
+            case IROpcode::Rem: {
+                CHECK(PeepholeRemImmediates);
+                break;
+            }
+            case IROpcode::Remu: {
+                CHECK(PeepholeRemuImmediates);
+                break;
+            }
+            case IROpcode::ShiftLeft: {
+                CHECK(PeepholeShiftLeftImmediates);
+                break;
+            }
+            case IROpcode::ShiftRight: {
+                CHECK(PeepholeShiftRightImmediates);
+                break;
+            }
+            case IROpcode::ShiftRightArithmetic: {
+                CHECK(PeepholeShiftRightArithmeticImmediates);
+                break;
+            }
+            case IROpcode::Sub: {
+                CHECK(PeepholeSubImmediates);
+                CHECK(PeepholeSubSame);
+                CHECK(PeepholeSubZero);
+                break;
+            }
+            default:
+                break;
+            }
+
+            changed |= local_changed;
+        }
+    }
+
+    return changed;
+}
+
 bool PassManager::PeepholePass(IRFunction* function) {
     bool changed = false;
 
     for (IRBlock* block : function->GetBlocks()) {
-        for (SSAInstruction& inst : block->GetInstructions()) {
-            if (!inst.IsLocked()) {
-                bool local_changed = false;
-#define CHECK(x)                                                                                                                                     \
-    if (!local_changed)                                                                                                                              \
-    local_changed |= x(inst)
-                switch (inst.GetOpcode()) {
-                case IROpcode::Add: {
-                    CHECK(PeepholeAddImmediates);
-                    CHECK(PeepholeAddZero);
-                    break;
-                }
-                case IROpcode::And: {
-                    CHECK(PeepholeAndImmediates);
-                    CHECK(PeepholeAndZero);
-                    CHECK(PeepholeAndTwice);
-                    break;
-                }
-                case IROpcode::Or: {
-                    CHECK(PeepholeOrImmediates);
-                    break;
-                }
-                case IROpcode::Xor: {
-                    CHECK(PeepholeXorImmediates);
-                    CHECK(PeepholeXorZero);
-                    break;
-                }
-                case IROpcode::Div: {
-                    CHECK(PeepholeDivOne);
-                    CHECK(PeepholeDivImmediates);
-                    break;
-                }
-                case IROpcode::Divu: {
-                    CHECK(PeepholeDivOne);
-                    CHECK(PeepholeDivuImmediates);
-                    break;
-                }
-                case IROpcode::Equal: {
-                    CHECK(PeepholeEqualImmediates);
-                    CHECK(PeepholeEqualSame);
-                    break;
-                }
-                case IROpcode::SetLessThanSigned: {
-                    CHECK(PeepholeLessThanSignedImmediates);
-                    CHECK(PeepholeLessThanSame);
-                    break;
-                }
-                case IROpcode::SetLessThanUnsigned: {
-                    CHECK(PeepholeLessThanUnsignedImmediates);
-                    CHECK(PeepholeLessThanSame);
-                    break;
-                }
-                case IROpcode::Mul: {
-                    CHECK(PeepholeMulImmediates);
-                    break;
-                }
-                case IROpcode::Neg: {
-                    CHECK(PeepholeNegImmediate);
-                    break;
-                }
-                case IROpcode::Not: {
-                    CHECK(PeepholeNotImmediate);
-                    break;
-                }
-                case IROpcode::NotEqual: {
-                    CHECK(PeepholeNotEqualImmediates);
-                    CHECK(PeepholeNotEqualSame);
-                    break;
-                }
-                case IROpcode::Rem: {
-                    CHECK(PeepholeRemImmediates);
-                    break;
-                }
-                case IROpcode::Remu: {
-                    CHECK(PeepholeRemuImmediates);
-                    break;
-                }
-                case IROpcode::ShiftLeft: {
-                    CHECK(PeepholeShiftLeftImmediates);
-                    break;
-                }
-                case IROpcode::ShiftRight: {
-                    CHECK(PeepholeShiftRightImmediates);
-                    break;
-                }
-                case IROpcode::ShiftRightArithmetic: {
-                    CHECK(PeepholeShiftRightArithmeticImmediates);
-                    break;
-                }
-                case IROpcode::Sub: {
-                    CHECK(PeepholeSubImmediates);
-                    CHECK(PeepholeSubSame);
-                    CHECK(PeepholeSubZero);
-                    break;
-                }
-                default:
-                    break;
-                }
-
-                changed |= local_changed;
-            }
-        }
+        changed |= peepholePassBlock(block);
     }
 
     return changed;

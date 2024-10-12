@@ -339,6 +339,25 @@ struct SSAInstruction {
         return locked;
     }
 
+    bool IsRead() const {
+        switch (opcode) {
+        case IROpcode::ReadByte:
+        case IROpcode::ReadWord:
+        case IROpcode::ReadDWord:
+        case IROpcode::ReadQWord:
+        case IROpcode::ReadXmmWord:
+        case IROpcode::ReadByteRelative:
+        case IROpcode::ReadQWordRelative:
+        case IROpcode::ReadXmmWordRelative:
+            return true;
+        default:
+            return false;
+        }
+
+        UNREACHABLE();
+        return false;
+    }
+
     bool IsCallerSaved() const;
 
     bool IsGPR() const {
