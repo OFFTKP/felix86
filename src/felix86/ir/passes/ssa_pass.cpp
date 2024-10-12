@@ -88,7 +88,7 @@ void replace_setguest_pass(IRFunction* function) {
         std::list<SSAInstruction>& insts = block->GetInstructions();
         for (auto& inst : insts) {
             if (inst.GetOpcode() == IROpcode::SetGuest) {
-                inst.ReplaceExpressionWithMov(inst.AsSetGuest().source);
+                inst.ReplaceWithMov(inst.AsSetGuest().source);
             }
         }
     }
@@ -186,7 +186,7 @@ static void search(IRDominatorTreeNode* node, std::array<std::stack<SSAInstructi
             pop_count[ref]++;
         } else if (inst.GetOpcode() == IROpcode::GetGuest) {
             SSAInstruction* def = stacks[inst.AsGetGuest().ref].top();
-            inst.ReplaceExpressionWithMov(def);
+            inst.ReplaceWithMov(def);
         }
 
         it++;

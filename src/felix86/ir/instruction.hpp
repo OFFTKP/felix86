@@ -277,7 +277,7 @@ struct SSAInstruction {
 
     std::span<SSAInstruction*> GetUsedInstructions();
 
-    void ReplaceExpressionWithMov(SSAInstruction* mov) {
+    void ReplaceWithMov(SSAInstruction* mov) {
         Invalidate();
         Operands op;
         op.operands[0] = mov;
@@ -290,6 +290,19 @@ struct SSAInstruction {
         return_type = mov->return_type;
 
         mov->AddUse();
+    }
+
+    void ReplaceWithImmediate(u64 immediate) {
+        Invalidate();
+        Operands op;
+        op.operand_count = 0;
+        op.immediate_data = immediate;
+
+        Expression swap = {op};
+        expression.swap(swap);
+        expression_type = ExpressionType::Operands;
+        opcode = IROpcode::Immediate;
+        return_type = IRType::Integer64;
     }
 
     void Replace(Expression&& expression_other, IROpcode opcode_other) {

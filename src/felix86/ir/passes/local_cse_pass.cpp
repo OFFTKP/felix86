@@ -11,7 +11,7 @@ bool PassManager::LocalCSEPass(IRFunction* function) {
                     if (inst.IsSameExpression(*other)) {
                         replaced = true;
                         changed = true;
-                        inst.ReplaceExpressionWithMov(other);
+                        inst.ReplaceWithMov(other);
                         break;
                     }
                 }
