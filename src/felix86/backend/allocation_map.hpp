@@ -33,6 +33,10 @@ struct AllocationMap {
         return it->second;
     }
 
+    bool IsAllocated(u32 name) const {
+        return allocations.find(name) != allocations.end();
+    }
+
 private:
     tsl::robin_map<u32, Allocation> allocations;
 };

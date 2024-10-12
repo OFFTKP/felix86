@@ -6,7 +6,7 @@
 
 // TODO: move to regalloc class
 [[nodiscard]] AllocationMap ir_spill_everything_pass(const BackendFunction& function);
-void ir_graph_coloring_pass(BackendFunction* function);
+[[nodiscard]] AllocationMap ir_graph_coloring_pass(const BackendFunction& function);
 
 // TODO: use Function&
 struct PassManager {
@@ -17,19 +17,19 @@ struct PassManager {
     // These return bool to know if something has changed so that they can be run until fixpoint if necessary
     static bool CopyPropagationPass(IRFunction* function);
 
-    static bool copyPropagationPassBlock(IRBlock* block);
-
     static bool DeadCodeEliminationPass(IRFunction* function);
 
     static bool LocalCSEPass(IRFunction* function);
 
-    static bool localCSEPassBlock(IRBlock* block);
-
     static bool PeepholePass(IRFunction* function);
-
-    static bool peepholePassBlock(IRBlock* block);
 
 private:
     // Only used by the SSA pass to get rid of unused writebacks and replace store/loads with actual writes/reads
     static void extraneousWritebackPass(IRFunction* function);
+
+    static bool copyPropagationPassBlock(IRBlock* block);
+
+    static bool localCSEPassBlock(IRBlock* block);
+
+    static bool peepholePassBlock(IRBlock* block);
 };

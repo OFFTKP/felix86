@@ -47,6 +47,19 @@ bool PeepholeAndImmediates(SSAInstruction& inst) {
     return false;
 }
 
+// t2 = t1 & t1
+bool PeepholeAndSame(SSAInstruction& inst) {
+    SSAInstruction* op1 = inst.GetOperand(0);
+    SSAInstruction* op2 = inst.GetOperand(1);
+
+    if (op1 == op2) {
+        inst.ReplaceWithMov(op1);
+        return true;
+    }
+
+    return false;
+}
+
 // One of the operands masks something with the same mask
 // such as:
 // t4 = t3 & t2
@@ -262,6 +275,31 @@ bool PeepholeOrImmediates(SSAInstruction& inst) {
     return false;
 }
 
+// t2 = t1 | t1
+bool PeepholeOrSame(SSAInstruction& inst) {
+    SSAInstruction* op1 = inst.GetOperand(0);
+    SSAInstruction* op2 = inst.GetOperand(1);
+
+    if (op1 == op2) {
+        inst.ReplaceWithMov(op1);
+        return true;
+    }
+
+    return false;
+}
+
+// t2 = t1 | 0
+bool PeepholeOrZero(SSAInstruction& inst) {
+    for (u8 i = 0; i < 2; i++) {
+        if (IsImmediate(inst.GetOperand(i), 0) && IsInteger64(inst.GetOperand(!i))) {
+            inst.ReplaceWithMov(inst.GetOperand(!i));
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // t2 = imm % imm
 bool PeepholeRemImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
@@ -381,6 +419,19 @@ bool PeepholeXorImmediates(SSAInstruction& inst) {
     return false;
 }
 
+// t2 = t1 ^ t1
+bool PeepholeXorSame(SSAInstruction& inst) {
+    SSAInstruction* op1 = inst.GetOperand(0);
+    SSAInstruction* op2 = inst.GetOperand(1);
+
+    if (op1 == op2) {
+        inst.ReplaceWithImmediate(0);
+        return true;
+    }
+
+    return false;
+}
+
 // t2 = t1 ^ 0
 bool PeepholeXorZero(SSAInstruction& inst) {
     for (u8 i = 0; i < 2; i++) {
@@ -412,15 +463,19 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 CHECK(PeepholeAndImmediates);
                 CHECK(PeepholeAndZero);
                 CHECK(PeepholeAndTwice);
+                CHECK(PeepholeAndSame);
                 break;
             }
             case IROpcode::Or: {
                 CHECK(PeepholeOrImmediates);
+                CHECK(PeepholeOrZero);
+                CHECK(PeepholeOrSame);
                 break;
             }
             case IROpcode::Xor: {
                 CHECK(PeepholeXorImmediates);
                 CHECK(PeepholeXorZero);
+                CHECK(PeepholeXorSame);
                 break;
             }
             case IROpcode::Div: {

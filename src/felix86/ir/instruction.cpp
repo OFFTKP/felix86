@@ -181,7 +181,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
         case X86_REF_FS:
             return IRType::Integer64;
         case X86_REF_ST0 ... X86_REF_ST7:
-            return IRType::Float80;
+            return IRType::Float64;
         case X86_REF_CF ... X86_REF_OF:
             return IRType::Integer64;
         case X86_REF_XMM0 ... X86_REF_XMM15:
@@ -403,9 +403,6 @@ std::string SSAInstruction::GetTypeString() const {
     }
     case IRType::Float64: {
         return "Float64";
-    }
-    case IRType::Float80: {
-        return "Float80";
     }
     case IRType::Void: {
         return "Void";

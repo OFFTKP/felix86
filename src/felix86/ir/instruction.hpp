@@ -16,7 +16,6 @@ enum class IRType : u8 {
     Integer64,
     Vector128,
     Float64,
-    Float80, // :(
 
     Count,
 };

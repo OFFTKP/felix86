@@ -1176,8 +1176,8 @@ void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst) {
     switch (opcode) {
     case X86_GROUP1_ADD: {
         result = ir_emit_add(block, rm, imm);
-        c = ir_emit_get_carry_add(block, rm, imm, result, inst->operand_rm.size);
-        o = ir_emit_get_overflow_add(block, rm, imm, result, inst->operand_rm.size);
+        c = ir_emit_get_carry_add(block, rm, imm, result, size_e);
+        o = ir_emit_get_overflow_add(block, rm, imm, result, size_e);
         a = ir_emit_get_aux_add(block, rm, imm);
         break;
     }
@@ -1185,8 +1185,8 @@ void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst) {
         SSAInstruction* carry_in = ir_emit_get_flag(block, X86_REF_CF);
         SSAInstruction* imm_carry = ir_emit_add(block, imm, carry_in);
         result = ir_emit_add(block, rm, imm_carry);
-        c = ir_emit_get_carry_adc(block, rm, imm_carry, inst->operand_rm.size);
-        o = ir_emit_get_overflow_add(block, rm, imm_carry, result, inst->operand_rm.size);
+        c = ir_emit_get_carry_adc(block, rm, imm_carry, size_e);
+        o = ir_emit_get_overflow_add(block, rm, imm_carry, result, size_e);
         a = ir_emit_get_aux_add(block, rm, imm_carry);
         break;
     }
@@ -1194,8 +1194,8 @@ void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst) {
         SSAInstruction* carry_in = ir_emit_get_flag(block, X86_REF_CF);
         SSAInstruction* imm_carry = ir_emit_add(block, imm, carry_in);
         result = ir_emit_sub(block, rm, imm_carry);
-        c = ir_emit_get_carry_sbb(block, rm, imm_carry, inst->operand_rm.size);
-        o = ir_emit_get_overflow_sub(block, rm, imm_carry, result, inst->operand_rm.size);
+        c = ir_emit_get_carry_sbb(block, rm, imm_carry, size_e);
+        o = ir_emit_get_overflow_sub(block, rm, imm_carry, result, size_e);
         a = ir_emit_get_aux_sub(block, rm, imm_carry);
         break;
     }
@@ -1209,8 +1209,8 @@ void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst) {
     }
     case X86_GROUP1_SUB: {
         result = ir_emit_sub(block, rm, imm);
-        c = ir_emit_get_carry_sub(block, rm, imm, result, inst->operand_rm.size);
-        o = ir_emit_get_overflow_sub(block, rm, imm, result, inst->operand_rm.size);
+        c = ir_emit_get_carry_sub(block, rm, imm, result, size_e);
+        o = ir_emit_get_overflow_sub(block, rm, imm, result, size_e);
         a = ir_emit_get_aux_sub(block, rm, imm);
         break;
     }
@@ -1220,8 +1220,8 @@ void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst) {
     }
     case X86_GROUP1_CMP: {
         result = ir_emit_sub(block, rm, imm);
-        c = ir_emit_get_carry_sub(block, rm, imm, result, inst->operand_rm.size);
-        o = ir_emit_get_overflow_sub(block, rm, imm, result, inst->operand_rm.size);
+        c = ir_emit_get_carry_sub(block, rm, imm, result, size_e);
+        o = ir_emit_get_overflow_sub(block, rm, imm, result, size_e);
         a = ir_emit_get_aux_sub(block, rm, imm);
         break;
     }
@@ -1229,7 +1229,7 @@ void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst) {
 
     SSAInstruction* p = ir_emit_get_parity(block, result);
     SSAInstruction* z = ir_emit_get_zero(block, result, size_e);
-    SSAInstruction* s = ir_emit_get_sign(block, result, inst->operand_rm.size);
+    SSAInstruction* s = ir_emit_get_sign(block, result, size_e);
 
     ir_emit_set_cpazso(block, c, p, a, z, s, o);
 

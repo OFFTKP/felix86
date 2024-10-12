@@ -13,7 +13,7 @@ bool PassManager::copyPropagationPassBlock(IRBlock* block) {
 bool PassManager::CopyPropagationPass(IRFunction* function) {
     bool changed = false;
     for (IRBlock* block : function->GetBlocks()) {
-        copyPropagationPassBlock(block);
+        changed |= copyPropagationPassBlock(block);
     }
     return changed;
 }

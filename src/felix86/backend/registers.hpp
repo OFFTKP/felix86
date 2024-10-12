@@ -119,8 +119,8 @@ public:
     }
 
     constexpr static u32 ScratchGPRCount = 5;
-    constexpr static u32 ScratchFPRCount = 0;
-    constexpr static u32 ScratchVecCount = 0;
+    constexpr static u32 ScratchFPRCount = 3;
+    constexpr static u32 ScratchVecCount = 3;
     constexpr static u32 AvailableGPRCount = total_gprs.size() - ScratchGPRCount;
     constexpr static u32 AvailableFPRCount = total_fprs.size() - ScratchFPRCount;
     constexpr static u32 AvailableVecCount = total_vecs.size() - ScratchVecCount;

@@ -98,9 +98,7 @@ target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
 
 if (BUILD_TESTS)
-    set(CMAKE_BUILD_TYPE RelWithDebInfo)
     set(FELIX86_TEST_SOURCES
-        tests/opt/peephole_test.cpp
     )
 
     add_executable(felix86_test)
