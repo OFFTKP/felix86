@@ -355,6 +355,19 @@ bool PeepholeSubSame(SSAInstruction& inst) {
     return false;
 }
 
+// t2 = t1 - 0
+bool PeepholeSubZero(SSAInstruction& inst) {
+    SSAInstruction* op1 = inst.GetOperand(0);
+    SSAInstruction* op2 = inst.GetOperand(1);
+
+    if (IsImmediate(op2, 0)) {
+        inst.ReplaceWithMov(op1);
+        return true;
+    }
+
+    return false;
+}
+
 // t2 = imm ^ imm
 bool PeepholeXorImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
@@ -363,6 +376,18 @@ bool PeepholeXorImmediates(SSAInstruction& inst) {
     if (op1->IsImmediate() && op2->IsImmediate()) {
         inst.ReplaceWithImmediate(op1->GetImmediateData() ^ op2->GetImmediateData());
         return true;
+    }
+
+    return false;
+}
+
+// t2 = t1 ^ 0
+bool PeepholeXorZero(SSAInstruction& inst) {
+    for (u8 i = 0; i < 2; i++) {
+        if (IsImmediate(inst.GetOperand(i), 0) && IsInteger64(inst.GetOperand(!i))) {
+            inst.ReplaceWithMov(inst.GetOperand(!i));
+            return true;
+        }
     }
 
     return false;
@@ -397,6 +422,7 @@ bool PassManager::PeepholePass(IRFunction* function) {
                 }
                 case IROpcode::Xor: {
                     CHECK(PeepholeXorImmediates);
+                    CHECK(PeepholeXorZero);
                     break;
                 }
                 case IROpcode::Div: {
@@ -464,6 +490,7 @@ bool PassManager::PeepholePass(IRFunction* function) {
                 case IROpcode::Sub: {
                     CHECK(PeepholeSubImmediates);
                     CHECK(PeepholeSubSame);
+                    CHECK(PeepholeSubZero);
                     break;
                 }
                 default:

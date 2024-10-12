@@ -14,6 +14,9 @@ bool PassManager::LocalCSEPass(IRFunction* function) {
                         inst.ReplaceWithMov(other);
                         break;
                     }
+                    if (inst.IsImmediate() && other->IsImmediate()) {
+                        printf("Comparing immediates: %lu %lu = %d\n", inst.GetImmediateData(), other->GetImmediateData(), replaced);
+                    }
                 }
 
                 if (!replaced) {

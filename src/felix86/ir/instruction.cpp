@@ -9,6 +9,10 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
         return false;
     }
 
+    if (opcode != other.opcode) {
+        return false;
+    }
+
     switch (expression_type) {
     case ExpressionType::Operands: {
         const Operands& operands = AsOperands();
@@ -30,46 +34,7 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
 
         return true;
     }
-    case ExpressionType::GetGuest: {
-        const GetGuest& get_guest = AsGetGuest();
-        const GetGuest& other_get_guest = other.AsGetGuest();
-
-        return get_guest.ref == other_get_guest.ref;
-    }
-    case ExpressionType::SetGuest: {
-        const SetGuest& set_guest = AsSetGuest();
-        const SetGuest& other_set_guest = other.AsSetGuest();
-
-        return set_guest.ref == other_set_guest.ref && set_guest.source == other_set_guest.source;
-    }
-    case ExpressionType::Phi: {
-        const Phi& phi = AsPhi();
-        const Phi& other_phi = other.AsPhi();
-
-        if (phi.ref != other_phi.ref) {
-            return false;
-        }
-
-        if (phi.values.size() != other_phi.values.size()) {
-            return false;
-        }
-
-        for (u16 i = 0; i < phi.values.size(); i++) {
-            if (phi.values[i] != other_phi.values[i] || phi.blocks[i] != other_phi.blocks[i]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-    case ExpressionType::Comment: {
-        const Comment& comment = AsComment();
-        const Comment& other_comment = other.AsComment();
-
-        return comment.comment == other_comment.comment;
-    }
     default:
-        UNREACHABLE();
         return false;
     }
 }
