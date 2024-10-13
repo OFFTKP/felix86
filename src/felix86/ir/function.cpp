@@ -7,6 +7,8 @@ IRFunction::IRFunction(u64 address) {
     blocks.push_back(new IRBlock());
     entry = blocks[0];
     exit = blocks[1];
+    entry->SetIndex(0);
+    exit->SetIndex(1);
 
     thread_state_pointer = ir_emit_get_thread_state_pointer(entry);
 
@@ -24,9 +26,6 @@ IRFunction::IRFunction(u64 address) {
         SSAInstruction* value = ir_emit_get_guest(exit, x86_ref_e(i));
         ir_emit_store_guest_to_memory(exit, x86_ref_e(i), value);
     }
-
-    entry->SetIndex(0);
-    exit->SetIndex(1);
 
     start_address_block = CreateBlockAt(address);
 

@@ -144,18 +144,10 @@ struct XmmReg {
 };
 static_assert(sizeof(XmmReg) == 16);
 
-#pragma pack(push, 1)
-struct FpReg {
-    u64 mm;
-    u16 signexp;
-};
-#pragma pack(pop)
-static_assert(sizeof(FpReg) == 10);
-
 struct ThreadState {
     u64 gprs[16]{};
     u64 rip{};
-    FpReg fp[8]{};
+    u64 fp[8]{}; // we support 64-bit precision instead of 80-bit for speed and simplicity
     XmmReg xmm[16]{};
     bool cf{};
     bool pf{};
@@ -238,24 +230,6 @@ struct ThreadState {
         default:
             ERROR("Invalid flag reference: %d", flag);
         }
-    }
-
-    FpReg GetFpReg(x86_ref_e ref) const {
-        if (ref < X86_REF_ST0 || ref > X86_REF_ST7) {
-            ERROR("Invalid FP register reference: %d", ref);
-            return {};
-        }
-
-        return fp[ref - X86_REF_ST0];
-    }
-
-    void SetFpReg(x86_ref_e ref, const FpReg& value) {
-        if (ref < X86_REF_ST0 || ref > X86_REF_ST7) {
-            ERROR("Invalid FP register reference: %d", ref);
-            return;
-        }
-
-        fp[ref - X86_REF_ST0] = value;
     }
 
     XmmReg GetXmmReg(x86_ref_e ref) const {

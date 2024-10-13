@@ -39,3 +39,17 @@ BackendBlock BackendBlock::FromIRBlock(const IRBlock* block, std::vector<NamedPh
 
     return backend_block;
 }
+
+std::string BackendBlock::Print() const {
+    std::string ret;
+
+    ret += "Block " + std::to_string(list_index) + ":\n";
+
+    for (const BackendInstruction& inst : instructions) {
+        ret += inst.Print() + "\n";
+    }
+
+    ret += "\n\n";
+
+    return ret;
+}

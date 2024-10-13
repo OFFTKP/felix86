@@ -234,35 +234,33 @@ static void build(const BackendFunction& function, InterferenceGraphs& graphs) {
     }
 }
 
-static void spill(BackendFunction& function, u32 node, u32 location) {
+static void spill(BackendFunction& function, u32 node, u32 location, AllocationType spill_type) {
     for (BackendBlock& block : function.GetBlocks()) {
         auto it = block.GetInstructions().begin();
         while (it != block.GetInstructions().end()) {
             BackendInstruction& inst = *it;
             if (inst.GetName() == node) {
-                BackendInstruction store = BackendInstruction::FromStoreSpill(node, location);
+                u32 name = block.GetNextName();
+                BackendInstruction store = BackendInstruction::FromStoreSpill(name, node, location);
                 // Insert right after this instruction
                 auto next = std::next(it);
                 block.GetInstructions().insert(next, store);
                 it = next;
             } else {
-                u32 name = 0;
                 for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                     if (inst.GetOperand(i) == node) {
-                        name = block.GetNextName();
-                        BackendInstruction load = BackendInstruction::FromLoadSpill(name, location, inst.GetDesiredType());
+                        u32 name = block.GetNextName();
+                        BackendInstruction load = BackendInstruction::FromLoadSpill(name, location, spill_type);
                         // Insert right before this instruction
                         it = block.GetInstructions().insert(it, load);
-                        break;
-                    }
-                }
 
-                if (name != 0) {
-                    for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                        if (inst.GetOperand(i) == node) {
-                            // Use the new name, effectively splitting the live range
-                            inst.SetOperand(i, name);
+                        // Replace all operands
+                        for (u8 j = 0; j < inst.GetOperandCount(); j++) {
+                            if (inst.GetOperand(j) == node) {
+                                inst.SetOperand(j, name);
+                            }
                         }
+                        break;
                     }
                 }
 
@@ -289,6 +287,8 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
     InterferenceGraphs graphs;
     std::stack<Node> colorable;
     const auto& gprs = Registers::GetAllocatableGPRs();
+    constexpr u32 k = gprs.size();
+
     do {
         repeat = false;
         graphs.clear();
@@ -297,8 +297,6 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
         build(function, graphs);
 
         InterferenceGraph& gpr_graph = graphs.gpr_graph;
-
-        u32 k = gprs.size();
 
         // Remove nodes with degree < k
         bool less_than_k = false; // while some node has degree < k
@@ -321,20 +319,33 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
         repeat = true;
 
         // Find the node with the highest degree
+        std::vector<u32> to_spill;
         u32 max_degree = 0;
-        u32 max_degree_node = 0;
         for (auto& [id, edges] : gpr_graph) {
-            if (edges.size() > max_degree) {
+            if (edges.size() > k) {
                 max_degree = edges.size();
-                max_degree_node = id;
+                to_spill.push_back(id);
             }
         }
 
         ASSERT_MSG(max_degree >= k, "max_degree: %d, k: %d", max_degree, k);
-        gpr_graph.RemoveNode(max_degree_node);
 
-        u32 spill_location = allocation_map.IncrementSpillSize(8);
-        spill(function, max_degree_node, spill_location);
+        // Sort the vector by degree
+        std::sort(to_spill.begin(), to_spill.end(),
+                  [&gpr_graph](u32 a, u32 b) { return gpr_graph.GetInterferences(a).size() < gpr_graph.GetInterferences(b).size(); });
+
+        // Super dumb heuristic, spill the first 30 nodes
+        int count = 0;
+        while (!to_spill.empty()) {
+            u32 spill_location = allocation_map.IncrementSpillSize(8);
+            u32 node = to_spill.back();
+            to_spill.pop_back();
+            spill(function, node, spill_location, AllocationType::GPR);
+            count++;
+            if (count > 30) {
+                break;
+            }
+        }
     } while (repeat);
 
     // All nodes should be colorable now
@@ -346,14 +357,14 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
 
         // Find the first color that is not in the interference set
         biscuit::GPR color = x0;
-        std::array<bool, gprs.size()> used = {false};
+        std::array<bool, k> used = {false};
         for (u32 edge : edges) {
             if (allocation_map.IsAllocated(edge)) {
                 used[Registers::GetGPRIndex(allocation_map.GetAllocation(edge))] = true;
             }
         }
 
-        for (u32 i = 0; i < gprs.size(); i++) {
+        for (u32 i = 0; i < k; i++) {
             if (!used[i]) {
                 color = gprs[i];
                 break;

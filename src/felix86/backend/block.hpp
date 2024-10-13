@@ -71,6 +71,8 @@ struct BackendBlock {
         return (list_index << 20) | (next_name++);
     }
 
+    [[nodiscard]] std::string Print() const;
+
 private:
     Termination termination = Termination::Null;
     const BackendInstruction* condition = nullptr;

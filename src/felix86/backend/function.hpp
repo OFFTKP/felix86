@@ -30,6 +30,8 @@ struct BackendFunction {
 
     std::vector<const BackendBlock*> GetBlocksPostorder() const;
 
+    [[nodiscard]] std::string Print() const;
+
 private:
     std::vector<BackendBlock> blocks;
 };

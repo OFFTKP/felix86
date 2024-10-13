@@ -35,13 +35,19 @@ struct BackendInstruction {
         return desired_type;
     }
 
+    void Rename(u32 new_name) {
+        name = new_name;
+    }
+
     static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
 
     static BackendInstruction FromMove(u32 lhs, u32 rhs, AllocationType type);
 
-    static BackendInstruction FromStoreSpill(u32 name, u32 spill_offset);
+    static BackendInstruction FromStoreSpill(u32 name, u32 value, u32 spill_offset);
 
     static BackendInstruction FromLoadSpill(u32 name, u32 spill_offset, AllocationType type);
+
+    [[nodiscard]] std::string Print() const;
 
 private:
     u64 immediate_data;

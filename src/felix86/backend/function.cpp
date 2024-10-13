@@ -176,3 +176,15 @@ std::vector<const BackendBlock*> BackendFunction::GetBlocksPostorder() const {
     postorder_creation(this, order);
     return order;
 }
+
+std::string BackendFunction::Print() const {
+    std::string ret;
+
+    auto blocks = GetBlocksPostorder();
+
+    for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
+        ret += (*it)->Print();
+    }
+
+    return ret;
+}
