@@ -69,8 +69,6 @@ private:
     tsl::robin_map<u32, std::unordered_set<u32>> graph;
 };
 
-// using LivenessSet = std::list<SSAInstruction*>;
-
 /*
     for each block b
         in[b] = {}
@@ -99,7 +97,7 @@ bool IsHardcolored(const BackendInstruction& inst) {
     }
 }
 
-using LivenessSet = std::unordered_set<u32>;
+using LivenessSet = std::set<u32>;
 
 struct InterferenceGraphs {
     InterferenceGraph gpr_graph;
@@ -129,10 +127,10 @@ static void build(const BackendFunction& function, InterferenceGraphs& graphs) {
                 def[i].insert(inst.GetName());
             }
 
-            for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                if (std::find(def[i].begin(), def[i].end(), inst.GetOperand(i)) == def[i].end()) {
+            for (u8 j = 0; j < inst.GetOperandCount(); j++) {
+                if (std::find(def[i].begin(), def[i].end(), inst.GetOperand(j)) == def[i].end()) {
                     // Not defined in this block ie. upwards exposed, live range goes outside current block
-                    use[i].insert(inst.GetOperand(i));
+                    use[i].insert(inst.GetOperand(j));
                 }
             }
         }
@@ -165,8 +163,8 @@ static void build(const BackendFunction& function, InterferenceGraphs& graphs) {
 
             // out[b] = U (in[s]) for all s in succ[b]
             out[i].clear();
-            for (u8 i = 0; i < block->GetSuccessorCount(); i++) {
-                const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(i));
+            for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
+                const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
                 u32 succ_index = succ->GetIndex();
                 out[i].insert(in[succ_index].begin(), in[succ_index].end());
             }
@@ -302,6 +300,7 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
         bool less_than_k = false; // while some node has degree < k
         std::vector<u32> k_colorable;
         do {
+            less_than_k = false;
             for (auto& [id, edges] : gpr_graph) {
                 if (edges.size() < k && std::find(k_colorable.begin(), k_colorable.end(), id) == k_colorable.end()) {
                     k_colorable.push_back(id);
