@@ -233,7 +233,7 @@ void Emitter::EmitMov(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 
     ASSERT(Rd != Registers::Zero());
 
-    if (Rs == Registers::Zero()) {
+    if (Rs != Registers::Zero()) {
         AS.C_MV(Rd, Rs);
     } else {
         AS.MV(Rd, Rs);
