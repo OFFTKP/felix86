@@ -1,3 +1,4 @@
+#include <stack>
 #include <unordered_set>
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -41,6 +42,26 @@ struct InterferenceGraph {
         return graph[inst];
     }
 
+    auto begin() {
+        return graph.begin();
+    }
+
+    auto end() {
+        return graph.end();
+    }
+
+    auto find(u32 id) {
+        return graph.find(id);
+    }
+
+    bool empty() {
+        return graph.empty();
+    }
+
+    void clear() {
+        graph.clear();
+    }
+
 private:
     tsl::robin_map<u32, std::unordered_set<u32>> graph;
 };
@@ -48,7 +69,6 @@ private:
 // using LivenessSet = std::list<SSAInstruction*>;
 
 /*
-    Based on this common algorithm that I couldn't find a paper for:
     for each block b
         in[b] = {}
         out[b] = {}
@@ -63,206 +83,299 @@ private:
         while in[b] != in_old or out[b] != out_old
 */
 
+// Nothing interferes with these as they are always available
+bool IsHardcolored(const BackendInstruction& inst) {
+    switch (inst.GetOpcode()) {
+    case IROpcode::Immediate: {
+        return inst.GetImmediateData() == 0;
+    }
+    case IROpcode::GetThreadStatePointer:
+        return true;
+    default:
+        return false;
+    }
+}
+
 using LivenessSet = std::unordered_set<u32>;
-struct InOutLiveness {
-    LivenessSet in;
-    LivenessSet out;
+
+struct InterferenceGraphs {
+    InterferenceGraph gpr_graph;
+    InterferenceGraph fpr_graph;
+    InterferenceGraph vec_graph;
+
+    void clear() {
+        gpr_graph.clear();
+        fpr_graph.clear();
+        vec_graph.clear();
+    }
 };
 
-// void liveness(const BackendFunction& function, std::vector<LivenessSet>& out) {
-//     std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
-//     std::vector<LivenessSet> in(blocks.size());
-//     std::vector<LivenessSet> use(blocks.size());
-//     std::vector<LivenessSet> def(blocks.size());
+static void build(const BackendFunction& function, InterferenceGraphs& graphs) {
+    std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
+    std::vector<LivenessSet> in(blocks.size());
+    std::vector<LivenessSet> out(blocks.size());
+    std::vector<LivenessSet> use(blocks.size());
+    std::vector<LivenessSet> def(blocks.size());
 
-//     out.resize(blocks.size());
+    // Populate use and def sets
+    for (size_t j = 0; j < blocks.size(); j++) {
+        const BackendBlock* block = blocks[j];
+        size_t i = block->GetIndex();
+        for (const BackendInstruction& inst : block->GetInstructions()) {
+            if (inst.GetDesiredType() != AllocationType::Null) {
+                def[i].insert(inst.GetName());
+            }
 
-//     // Populate use and def sets
-//     for (size_t j = 0; j < blocks.size(); j++) {
-//         const BackendBlock* block = blocks[j];
-//         size_t i = block->GetIndex();
-//         for (const BackendInstruction& instr : block->GetInstructions()) {
-//             if (instr.GetDesiredType() != AllocationType::Null) {
-//                 def[i].insert(instr.GetName());
-//             }
+            for (u8 i = 0; i < inst.GetOperandCount(); i++) {
+                if (std::find(def[i].begin(), def[i].end(), inst.GetOperand(i)) == def[i].end()) {
+                    // Not defined in this block ie. upwards exposed, live range goes outside current block
+                    use[i].insert(inst.GetOperand(i));
+                }
+            }
+        }
+    }
 
-//             for (u8 i = 0; i < instr.GetOperandCount(); i++) {
-//                 if (std::find(def[i].begin(), def[i].end(), instr.GetOperand(i)) == def[i].end()) {
-//                     // Not defined in this block ie. upwards exposed, live range goes outside
-//                     // current block
-//                     use[i].insert(instr.GetOperand(i));
-//                 }
-//             }
-//         }
-//     }
+    // Calculate in and out sets
+    bool changed;
+    do {
+        changed = false;
+        for (size_t j = 0; j < blocks.size(); j++) {
+            const BackendBlock* block = blocks[j];
 
-//     // for (int i = 0; i < blocks.size(); i++) {
-//     //     printf("Block %d\n", i);
-//     //     printf("Use count: %d\n", use[i].size());
-//     //     printf("{\n");
-//     //     for (SSAInstruction* instr : use[i]) {
-//     //         printf("    %s\n", instr->Print().c_str());
-//     //     }
-//     //     printf("}\n");
-//     //     printf("Def count: %d\n", def[i].size());
-//     //     printf("{\n");
-//     //     for (SSAInstruction* instr : def[i]) {
-//     //         printf("    %s\n", instr->Print().c_str());
-//     //     }
-//     //     printf("}\n");
-//     // }
+            // j is the index in the postorder list, but we need the index in the blocks list
+            size_t i = block->GetIndex();
 
-//     // Calculate in and out sets
-//     bool changed;
-//     do {
-//         changed = false;
-//         for (size_t j = 0; j < blocks.size(); j++) {
-//             const BackendBlock* block = blocks[j];
+            LivenessSet in_old = in[i];
+            LivenessSet out_old = out[i];
 
-//             // j is the index in the postorder list, but we need the index in the blocks list
-//             size_t i = block->GetIndex();
+            in[i].clear();
 
-//             LivenessSet in_old = in[i];
-//             LivenessSet out_old = out[i];
+            // in[b] = use[b] U (out[b] - def[b])
+            in[i].insert(use[i].begin(), use[i].end());
 
-//             in[i].clear();
+            LivenessSet out_minus_def = out[i];
+            for (u32 inst : def[i]) {
+                out_minus_def.erase(inst);
+            }
 
-//             // in[b] = use[b] U (out[b] - def[b])
-//             in[i].insert(use[i].begin(), use[i].end());
+            in[i].insert(out_minus_def.begin(), out_minus_def.end());
 
-//             LivenessSet out_minus_def = out[i];
-//             for (u32 instr : def[i]) {
-//                 out_minus_def.erase(instr);
-//             }
+            // out[b] = U (in[s]) for all s in succ[b]
+            out[i].clear();
+            for (u8 i = 0; i < block->GetSuccessorCount(); i++) {
+                const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(i));
+                u32 succ_index = succ->GetIndex();
+                out[i].insert(in[succ_index].begin(), in[succ_index].end());
+            }
 
-//             in[i].insert(out_minus_def.begin(), out_minus_def.end());
+            // check for changes
+            if (!changed) {
+                if (in[i].size() != in_old.size() || out[i].size() != out_old.size()) {
+                    changed = true;
+                } else {
+                    for (u32 inst : in[i]) {
+                        if (in_old.find(inst) == in_old.end()) {
+                            changed = true;
+                            break;
+                        }
+                    }
 
-//             // out[b] = U (in[s]) for all s in succ[b]
-//             out[i].clear();
-//             for (u8 i = 0; i < block->GetSuccessorCount(); i++) {
-//                 const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(i));
-//                 u32 succ_index = succ->GetIndex();
-//                 out[i].insert(in[succ_index].begin(), in[succ_index].end());
-//             }
+                    if (!changed) {
+                        for (u32 inst : out[i]) {
+                            if (out_old.find(inst) == out_old.end()) {
+                                changed = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } while (changed);
 
-//             // check for changes
-//             if (!changed) {
-//                 if (in[i].size() != in_old.size() || out[i].size() != out_old.size()) {
-//                     changed = true;
-//                 } else {
-//                     for (u32 instr : in[i]) {
-//                         if (in_old.find(instr) == in_old.end()) {
-//                             changed = true;
-//                             break;
-//                         }
-//                     }
+    for (const BackendBlock* block : function.GetBlocksPostorder()) {
+        LivenessSet live_now;
 
-//                     if (!changed) {
-//                         for (u32 instr : out[i]) {
-//                             if (out_old.find(instr) == out_old.end()) {
-//                                 changed = true;
-//                                 break;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     } while (changed);
-// }
+        // We are gonna walk the block backwards, first add all definitions that have lifetime
+        // that extends past this basic block
+        live_now.insert(out[block->GetIndex()].begin(), out[block->GetIndex()].end());
 
-// void construct_interference_graph(const BackendFunction& function, const AllocationMap& allocation_map, std::array<InterferenceGraph, 3>& graph,
-//                                   const std::vector<LivenessSet>& out) {
+        const std::list<BackendInstruction>& insts = block->GetInstructions();
+        for (auto it = insts.rbegin(); it != insts.rend(); ++it) {
+            const BackendInstruction& inst = *it;
 
-//     InterferenceGraph& gpr_graph = graph[0];
-//     InterferenceGraph& fpr_graph = graph[1];
-//     InterferenceGraph& vec_graph = graph[2];
+            // Erase the currently defined variable if it exists in the set
+            live_now.erase(inst.GetName());
 
-//     for (const BackendBlock* block : function.GetBlocksPostorder()) {
-//         LivenessSet live_now;
+            for (u8 i = 0; i < inst.GetOperandCount(); i++) {
+                live_now.insert(inst.GetOperand(i));
+            }
 
-//         // We are gonna walk the block backwards, first add all definitions that have lifetime
-//         // that extends past this basic block
-//         live_now.insert(out[block->GetIndex()].begin(), out[block->GetIndex()].end());
+            switch (inst.GetDesiredType()) {
+            case AllocationType::GPR: {
+                for (auto& live : live_now) {
+                    graphs.gpr_graph.AddEdge(inst.GetName(), live);
+                }
+                break;
+            }
+            case AllocationType::FPR: {
+                for (auto& live : live_now) {
+                    graphs.fpr_graph.AddEdge(inst.GetName(), live);
+                }
+                break;
+            }
+            case AllocationType::Vec: {
+                for (auto& live : live_now) {
+                    graphs.vec_graph.AddEdge(inst.GetName(), live);
+                }
+                break;
+            }
+            case AllocationType::Null:
+                break;
+            default:
+                UNREACHABLE();
+                break;
+            }
+        }
+    }
 
-//         const std::list<BackendInstruction>& insts = block->GetInstructions();
-//         for (auto it = insts.rbegin(); it != insts.rend(); ++it) {
-//             const BackendInstruction& inst = *it;
+    // Easier to remove than to not add in the first place...
+    // TODO: dont add them in the first place
+    for (const BackendBlock& block : function.GetBlocks()) {
+        for (const BackendInstruction& inst : block.GetInstructions()) {
+            if (IsHardcolored(inst)) {
+                graphs.gpr_graph.RemoveNode(inst.GetName());
+            }
+        }
+    }
+}
 
-//             // Erase the currently defined variable if it exists in the set
-//             live_now.erase(inst.GetName());
+static void spill(BackendFunction& function, u32 node, u32 location) {
+    for (BackendBlock& block : function.GetBlocks()) {
+        auto it = block.GetInstructions().begin();
+        while (it != block.GetInstructions().end()) {
+            BackendInstruction& inst = *it;
+            if (inst.GetName() == node) {
+                BackendInstruction store = BackendInstruction::FromStoreSpill(node, location);
+                // Insert right after this instruction
+                auto next = std::next(it);
+                block.GetInstructions().insert(next, store);
+                it = next;
+            } else {
+                u32 name = 0;
+                for (u8 i = 0; i < inst.GetOperandCount(); i++) {
+                    if (inst.GetOperand(i) == node) {
+                        name = block.GetNextName();
+                        BackendInstruction load = BackendInstruction::FromLoadSpill(name, location, inst.GetDesiredType());
+                        // Insert right before this instruction
+                        it = block.GetInstructions().insert(it, load);
+                        break;
+                    }
+                }
 
-//             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-//                 live_now.insert(inst.GetOperand(i));
-//             }
+                if (name != 0) {
+                    for (u8 i = 0; i < inst.GetOperandCount(); i++) {
+                        if (inst.GetOperand(i) == node) {
+                            // Use the new name, effectively splitting the live range
+                            inst.SetOperand(i, name);
+                        }
+                    }
+                }
 
-//             switch (inst.GetDesiredType()) {
-//             case AllocationType::GPR: {
-//                 for (auto& live : live_now) {
-//                     if (!allocation_map.IsAllocated(live)) {
-//                         gpr_graph.AddEdge(inst.GetName(), live);
-//                     }
-//                 }
-//                 break;
-//             }
-//             case AllocationType::FPR: {
-//                 for (auto& live : live_now) {
-//                     if (!allocation_map.IsAllocated(live)) {
-//                         fpr_graph.AddEdge(inst.GetName(), live);
-//                     }
-//                 }
-//                 break;
-//             }
-//             case AllocationType::Vec: {
-//                 for (auto& live : live_now) {
-//                     if (!allocation_map.IsAllocated(live)) {
-//                         vec_graph.AddEdge(inst.GetName(), live);
-//                     }
-//                 }
-//                 break;
-//             }
-//             case AllocationType::Null:
-//                 break;
-//             default:
-//                 UNREACHABLE();
-//                 break;
-//             }
-//         }
-//     }
-// }
+                ++it;
+            }
+        }
+    }
+}
 
-// AllocationMap ir_graph_coloring_pass(const BackendFunction& function) {
-//     AllocationMap allocation_map;
+AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
+    AllocationMap allocation_map;
 
-//     // Pre-color some special values
-//     for (const BackendBlock* block : function.GetBlocksPostorder()) {
-//         for (const BackendInstruction& inst : block->GetInstructions()) {
-//             switch (inst.GetOpcode()) {
-//             case IROpcode::GetThreadStatePointer: {
-//                 allocation_map.Allocate(inst.GetName(), Registers::ThreadStatePointer());
-//                 break;
-//             }
-//             case IROpcode::Immediate: {
-//                 if (inst.GetImmediateData() == 0) {
-//                     allocation_map.Allocate(inst.GetName(), Registers::Zero());
-//                 }
-//                 break;
-//             }
-//             default:
-//                 break;
-//             }
-//         }
-//     }
+    for (const BackendBlock& block : function.GetBlocks()) {
+        for (const BackendInstruction& inst : block.GetInstructions()) {
+            if (inst.GetOpcode() == IROpcode::Immediate && inst.GetImmediateData() == 0) {
+                allocation_map.Allocate(inst.GetName(), Registers::Zero());
+            } else if (inst.GetOpcode() == IROpcode::GetThreadStatePointer) {
+                allocation_map.Allocate(inst.GetName(), Registers::ThreadStatePointer());
+            }
+        }
+    }
 
-//     // Computes variables live at the exit of a block
-//     std::vector<LivenessSet> out;
-//     liveness(function, out);
+    bool repeat = false;
+    InterferenceGraphs graphs;
+    const auto& gprs = Registers::GetAllocatableGPRs();
+    do {
+        repeat = false;
+        graphs.clear();
+        build(function, graphs);
 
-//     bool was_spilled = false;
+        InterferenceGraph& gpr_graph = graphs.gpr_graph;
 
-//     std::array<InterferenceGraph, 3> graphs;
-//     InterferenceGraph& gpr_graph = graphs[0];
-//     InterferenceGraph& fpr_graph = graphs[1];
-//     InterferenceGraph& vec_graph = graphs[2];
-//     construct_interference_graph(function, allocation_map, graphs, out);
-// }
+        u32 k = gprs.size();
+
+        // Remove nodes with degree < k
+        bool less_than_k = false; // while some node has degree < k
+        std::vector<u32> k_colorable;
+        do {
+            for (auto& [id, edges] : gpr_graph) {
+                if (edges.size() < k && std::find(k_colorable.begin(), k_colorable.end(), id) == k_colorable.end()) {
+                    k_colorable.push_back(id);
+                    less_than_k = true;
+                }
+            }
+        } while (less_than_k);
+
+        for (u32 id : k_colorable) {
+            gpr_graph.RemoveNode(id);
+        }
+
+        // If there are no nodes with degree < k, we are done
+        if (gpr_graph.empty()) {
+            break;
+        }
+
+        // We need to spill
+        repeat = true;
+
+        // Find the node with the highest degree
+        u32 max_degree = 0;
+        u32 max_degree_node = 0;
+        for (auto& [id, edges] : gpr_graph) {
+            if (edges.size() > max_degree) {
+                max_degree = edges.size();
+                max_degree_node = id;
+            }
+        }
+
+        ASSERT(max_degree > gprs.size());
+        gpr_graph.RemoveNode(max_degree_node);
+
+        u32 spill_location = allocation_map.IncrementSpillSize(8);
+        spill(function, max_degree_node, spill_location);
+    } while (repeat);
+
+    // All nodes should be colorable now
+    for (auto& [id, edges] : graphs.gpr_graph) {
+        // Find the first color that is not in the interference set
+        biscuit::GPR color = x0;
+        std::array<bool, gprs.size()> used = {false};
+        for (u32 edge : edges) {
+            if (allocation_map.IsAllocated(edge)) {
+                used[Registers::GetGPRIndex(allocation_map.GetAllocation(edge))] = true;
+            }
+        }
+
+        for (u32 i = 0; i < gprs.size(); i++) {
+            if (!used[i]) {
+                color = gprs[i];
+                break;
+            }
+        }
+
+        ASSERT(color != x0);
+
+        allocation_map.Allocate(id, color);
+    }
+
+    return allocation_map;
+}

@@ -173,13 +173,10 @@ struct ThreadState {
 
     u8 exit_dispatcher_flag{};
 
-    // Storage for saved RISC-V registers, per thread
+    // Storage for saved RISC-V registers, per thread, for when it's time to completely
+    // exit dispatcher and stop the emulator
     u64 gpr_storage[Registers::GetSavedGPRs().size()]{};
     u64 fpr_storage[Registers::GetSavedFPRs().size()]{};
-
-    // Start of spill area is offsetof(spill_gpr), shouldn't move the stuff below this comment
-    u64 spill_gpr[96]{};
-    XmmReg spill_xmm[78]{};
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
@@ -303,14 +300,6 @@ struct ThreadState {
         fsbase = value;
     }
 };
-
-// The two below need to be between a 2048 byte boundary currently
-// due to how RISC-V can access memory using a 12-bit signed offset and a pointer
-// If it ever proves that we need more spill space we can have a sigh of dissapointment
-// and change this and the way we access spill locations
-constexpr u32 offset_of_spill = offsetof(ThreadState, spill_gpr);
-constexpr u32 end_of_state = sizeof(ThreadState);
-static_assert(end_of_state - offset_of_spill < 2048);
 
 typedef union {
     struct {

@@ -199,7 +199,7 @@ void* Emulator::compileFunction(u64 rip) {
 
     BackendFunction backend_function = BackendFunction::FromIRFunction(&function);
 
-    AllocationMap allocations = ir_spill_everything_pass(backend_function);
+    AllocationMap allocations = ir_graph_coloring_pass(backend_function);
 
     auto [func, size] = backend.EmitFunction(backend_function, allocations);
     std::string disassembly = Disassembler::Disassemble(func, size);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <span>
+#include <array>
 #include "biscuit/assembler.hpp"
 #include "biscuit/registers.hpp"
 #include "felix86/common/log.hpp"
@@ -9,7 +9,7 @@
 using namespace biscuit;
 
 class Registers {
-    constexpr static std::array total_gprs = {x1,  x5,  x6,  x7,  x9,  x10, x11, x12, x13, x14, x15, x16, x17, x18,
+    constexpr static std::array total_gprs = {x1,  x6,  x7,  x8,  x9,  x10, x11, x12, x13, x14, x15, x16, x17, x18,
                                               x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, x29, x30, x31};
     constexpr static std::array total_fprs = {f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,  f8,  f9,  f10, f11, f12, f13, f14, f15,
                                               f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29, f30, f31};
@@ -25,57 +25,12 @@ class Registers {
                                                      ft10, ft11, fa0, fa1, fa2, fa3, fa4, fa5, fa6, fa7};
 
 public:
-    biscuit::GPR AcquireScratchGPR() {
-        if (scratch_gpr_index >= scratch_gprs.size()) {
-            ERROR("Out of scratch GPRs. TODO: push regs when necessary?");
-        }
-
-        return scratch_gprs[scratch_gpr_index++];
-    }
-
-    biscuit::FPR AcquireScratchFPR() {
-        if (scratch_fpr_index >= scratch_fprs.size()) {
-            ERROR("Out of scratch FPRs. TODO: push regs when necessary?");
-        }
-
-        return scratch_fprs[scratch_fpr_index++];
-    }
-
-    biscuit::Vec AcquireScratchVec() {
-        if (scratch_vec_index >= scratch_vecs.size()) {
-            ERROR("Out of scratch Vecs. TODO: push regs when necessary?");
-        }
-
-        return scratch_vecs[scratch_vec_index++];
-    }
-
-    void ReleaseScratchRegs() {
-        scratch_gpr_index = 0;
-        scratch_fpr_index = 0;
-        scratch_vec_index = 0;
-    }
-
-    std::span<const biscuit::GPR> GetAvailableGPRs() const {
-        return available_gprs;
-    }
-    std::span<const biscuit::FPR> GetAvailableFPRs() const {
-        return available_fprs;
-    }
-    std::span<const biscuit::Vec> GetAvailableVecs() const {
-        return available_vecs;
-    }
-
     constexpr static biscuit::GPR Zero() {
         return x0;
     }
 
     constexpr static biscuit::GPR StackPointer() {
         return x2;
-    }
-
-    // Pointer to the spill location, holding spilled registers
-    constexpr static biscuit::GPR SpillPointer() {
-        return x8; // saved register so that when we exit VM we don't have to save it
     }
 
     constexpr static biscuit::GPR ThreadStatePointer() {
@@ -118,29 +73,28 @@ public:
         return saved_fprs;
     }
 
-    constexpr static u32 ScratchGPRCount = 5;
-    constexpr static u32 ScratchFPRCount = 3;
-    constexpr static u32 ScratchVecCount = 3;
-    constexpr static u32 AvailableGPRCount = total_gprs.size() - ScratchGPRCount;
-    constexpr static u32 AvailableFPRCount = total_fprs.size() - ScratchFPRCount;
-    constexpr static u32 AvailableVecCount = total_vecs.size() - ScratchVecCount;
+    constexpr static const auto& GetAllocatableGPRs() {
+        return total_gprs;
+    }
 
-private:
-    constexpr static std::span<const biscuit::GPR> available_gprs = {total_gprs.begin(), AvailableGPRCount};
-    constexpr static std::span<const biscuit::GPR> scratch_gprs = {total_gprs.begin() + AvailableGPRCount, total_gprs.size() - AvailableGPRCount};
-    static_assert(scratch_gprs.size() + available_gprs.size() == total_gprs.size());
+    constexpr static const auto& GetAllocatableFPRs() {
+        return total_fprs;
+    }
 
-    constexpr static std::span<const biscuit::FPR> available_fprs = {total_fprs.begin(), AvailableFPRCount};
-    constexpr static std::span<const biscuit::FPR> scratch_fprs = {total_fprs.begin() + AvailableFPRCount, total_fprs.size() - AvailableFPRCount};
-    static_assert(scratch_fprs.size() + available_fprs.size() == total_fprs.size());
+    constexpr static const auto& GetAllocatableVecs() {
+        return total_vecs;
+    }
 
-    constexpr static std::span<const biscuit::Vec> available_vecs = {total_vecs.begin(), AvailableVecCount};
-    constexpr static std::span<const biscuit::Vec> scratch_vecs = {total_vecs.begin() + AvailableVecCount, total_vecs.size() - AvailableVecCount};
-    static_assert(scratch_vecs.size() + available_vecs.size() == total_vecs.size());
+    static u8 GetGPRIndex(biscuit::GPR reg) {
+        for (size_t i = 0; i < total_gprs.size(); i++) {
+            if (total_gprs[i] == reg) {
+                return i;
+            }
+        }
 
-    u8 scratch_gpr_index = 0;
-    u8 scratch_fpr_index = 0;
-    u8 scratch_vec_index = 0;
+        UNREACHABLE();
+        return 0;
+    }
 };
 
 static_assert(Registers::IsCallerSaved(t0));

@@ -33,18 +33,6 @@ struct Backend {
     u8 AvailableFPRs() const;
     u8 AvailableVec() const;
 
-    Registers& GetRegisters() {
-        return regs;
-    }
-
-    biscuit::GPR AcquireScratchGPR() {
-        return regs.AcquireScratchGPR();
-    }
-
-    void ReleaseScratchRegs() {
-        regs.ReleaseScratchRegs();
-    }
-
     void EnterDispatcher(ThreadState* state);
 
     std::pair<void*, u64> EmitFunction(const BackendFunction& function, const AllocationMap& allocations);
@@ -78,6 +66,4 @@ private:
     void* exit_dispatcher = nullptr;
     void* compile_next = nullptr;
     void* crash_target = nullptr;
-
-    Registers regs;
 };

@@ -26,6 +26,10 @@ struct BackendBlock {
         return instructions;
     }
 
+    std::list<BackendInstruction>& GetInstructions() {
+        return instructions;
+    }
+
     u32 GetSuccessorCount() const {
         switch (termination) {
         case Termination::Jump:
@@ -62,8 +66,9 @@ struct BackendBlock {
         instructions.push_back(std::move(instruction));
     }
 
-    u32 GetNextName() const {
-        return (list_index << 20) | (instructions.empty() ? 1 : instructions.back().GetName() + 1);
+    u32 GetNextName() {
+        ASSERT(next_name != 0);
+        return (list_index << 20) | (next_name++);
     }
 
 private:
@@ -72,4 +77,5 @@ private:
     std::list<BackendInstruction> instructions{};
     std::array<u32, 2> successors = {UINT32_MAX, UINT32_MAX};
     u32 list_index = 0;
+    u32 next_name = 0;
 };

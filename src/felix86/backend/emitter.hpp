@@ -17,6 +17,12 @@ private:
     static void EmitMov(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitMov(Backend&, biscuit::FPR, biscuit::FPR);
     static void EmitMov(Backend&, biscuit::Vec, biscuit::Vec);
+    static void EmitStoreSpill(Backend&, biscuit::GPR, u32);
+    static void EmitStoreSpill(Backend&, biscuit::FPR, u32);
+    static void EmitStoreSpill(Backend&, biscuit::Vec, u32);
+    static void EmitLoadSpill(Backend&, biscuit::GPR, u32);
+    static void EmitLoadSpill(Backend&, biscuit::FPR, u32);
+    static void EmitLoadSpill(Backend&, biscuit::Vec, u32);
     static void EmitImmediate(Backend&, biscuit::GPR, u64);
     static void EmitRdtsc(Backend&);
     static void EmitSyscall(Backend&);

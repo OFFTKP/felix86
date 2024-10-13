@@ -1,6 +1,5 @@
 #include <sys/mman.h>
 #include "biscuit/cpuinfo.hpp"
-#include "felix86/backend/allocation_wrapper.hpp"
 #include "felix86/backend/backend.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/emulator.hpp"
@@ -39,7 +38,7 @@ void Backend::emitNecessaryStuff() {
     /* void enter_dispatcher(ThreadState* state) */
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
-    biscuit::GPR address = regs.AcquireScratchGPR();
+    biscuit::GPR address = t0;
 
     // Save the current register state of callee-saved registers and return address
     as.ADDI(address, a0, offsetof(ThreadState, gpr_storage));
@@ -57,8 +56,6 @@ void Backend::emitNecessaryStuff() {
     // Since we picked callee-saved registers, we don't have to save them when calling stuff,
     // but they must be set after the save of the old state that happens above this comment
     as.C_MV(Registers::ThreadStatePointer(), a0);
-    as.C_MV(Registers::SpillPointer(), a0);
-    as.ADDI(Registers::SpillPointer(), Registers::SpillPointer(), offsetof(ThreadState, spill_gpr));
 
     // Jump
     Label exit_dispatcher_label;
@@ -94,8 +91,6 @@ void Backend::emitNecessaryStuff() {
 
     crash_target = as.GetCursorPointer();
     as.EBREAK();
-
-    regs.ReleaseScratchRegs();
 }
 
 void Backend::resetCodeCache() {
@@ -146,10 +141,24 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
         const BackendBlock* block = *it;
+
+        if (block->GetIndex() == 0) {
+            // Entry block, setup the stack pointer
+            as.LI(t0, allocations.GetSpillSize());
+            as.NEG(t0, t0);
+            as.ADD(Registers::StackPointer(), Registers::StackPointer(), t0);
+        }
+
         block_map[block] = as.GetCursorPointer();
 
         for (const BackendInstruction& inst : block->GetInstructions()) {
             Emitter::Emit(*this, allocations, inst);
+        }
+
+        if (block->GetIndex() == 1) {
+            // Exit block, restore the stack pointer
+            as.LI(t0, allocations.GetSpillSize());
+            as.ADD(Registers::StackPointer(), Registers::StackPointer(), t0);
         }
 
         switch (block->GetTermination()) {
@@ -205,8 +214,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         u8* cursor = as.GetCursorPointer();
         as.RewindBuffer(jump.location);
 
-        AllocationWrapper condition = AllocationWrapper(*this, jump.allocation, true);
-        Emitter::EmitJumpConditional(*this, condition.AsGPR(), block_map[jump.target_true], block_map[jump.target_false]);
+        Emitter::EmitJumpConditional(*this, jump.allocation.AsGPR(), block_map[jump.target_true], block_map[jump.target_false]);
         as.GetCodeBuffer().SetCursor(cursor);
     }
 

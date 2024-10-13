@@ -35,3 +35,24 @@ BackendInstruction BackendInstruction::FromMove(u32 lhs, u32 rhs, AllocationType
     inst.desired_type = type;
     return inst;
 }
+
+BackendInstruction BackendInstruction::FromStoreSpill(u32 name, u32 spill_offset) {
+    BackendInstruction inst;
+    inst.opcode = IROpcode::StoreSpill;
+    inst.name = 0;
+    inst.immediate_data = spill_offset;
+    inst.operand_count = 1;
+    inst.operand_names[0] = name;
+    inst.desired_type = AllocationType::Null;
+    return inst;
+}
+
+BackendInstruction BackendInstruction::FromLoadSpill(u32 name, u32 spill_offset, AllocationType type) {
+    BackendInstruction inst;
+    inst.opcode = IROpcode::LoadSpill;
+    inst.name = name;
+    inst.immediate_data = spill_offset;
+    inst.operand_count = 0;
+    inst.desired_type = type;
+    return inst;
+}

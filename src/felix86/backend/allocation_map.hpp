@@ -23,10 +23,6 @@ struct AllocationMap {
         allocations[name] = vec;
     }
 
-    void Allocate(u32 name, u32 spill, SpillSize size, AllocationType type) {
-        allocations[name] = Allocation{spill, size, type};
-    }
-
     Allocation GetAllocation(u32 name) const {
         auto it = allocations.find(name);
         ASSERT_MSG(it != allocations.end(), "Allocation not found for name %s", GetNameString(name).c_str());
@@ -37,6 +33,17 @@ struct AllocationMap {
         return allocations.find(name) != allocations.end();
     }
 
+    u32 IncrementSpillSize(u32 amount) {
+        u32 old_size = spill_size;
+        spill_size += amount;
+        return old_size;
+    }
+
+    u32 GetSpillSize() const {
+        return spill_size;
+    }
+
 private:
     tsl::robin_map<u32, Allocation> allocations;
+    u32 spill_size = 0;
 };

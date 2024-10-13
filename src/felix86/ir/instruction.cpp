@@ -45,6 +45,11 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
         ERROR("Should not be used with Mov");
         return IRType::Void;
     }
+    case IROpcode::StoreSpill:
+    case IROpcode::LoadSpill: {
+        ERROR("Should not be used with LoadSpill");
+        return IRType::Void;
+    }
     case IROpcode::Null:
     case IROpcode::SetExitReason:
     case IROpcode::Comment:
@@ -244,7 +249,9 @@ void SSAInstruction::Invalidate() {
 
 void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
     switch (opcode) {
-    case IROpcode::Null: {
+    case IROpcode::Null:
+    case IROpcode::LoadSpill:
+    case IROpcode::StoreSpill: {
         ERROR("Null should not be used");
         break;
     }
@@ -534,6 +541,12 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::Null: {
         return "Null";
+    }
+    case IROpcode::LoadSpill: {
+        return fmt::format("{} <- LoadSpill 0x{:x}", GetNameString(name), immediate_data);
+    }
+    case IROpcode::StoreSpill: {
+        return fmt::format("StoreSpill 0x{:x}, {}", immediate_data, GetNameString(operands[0]));
     }
     case IROpcode::GetThreadStatePointer: {
         return fmt::format("{} <- ThreadStatePointer", GetNameString(name));

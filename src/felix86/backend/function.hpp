@@ -16,6 +16,10 @@ struct BackendFunction {
         return blocks;
     }
 
+    std::vector<BackendBlock>& GetBlocks() {
+        return blocks;
+    }
+
     const BackendBlock& GetBlock(u32 index) const {
         return blocks[index];
     }

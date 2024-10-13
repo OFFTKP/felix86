@@ -23,6 +23,10 @@ struct BackendInstruction {
         return operand_names[index];
     }
 
+    void SetOperand(u32 index, u32 value) {
+        operand_names[index] = value;
+    }
+
     u8 GetOperandCount() const {
         return operand_count;
     }
@@ -34,6 +38,10 @@ struct BackendInstruction {
     static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
 
     static BackendInstruction FromMove(u32 lhs, u32 rhs, AllocationType type);
+
+    static BackendInstruction FromStoreSpill(u32 name, u32 spill_offset);
+
+    static BackendInstruction FromLoadSpill(u32 name, u32 spill_offset, AllocationType type);
 
 private:
     u64 immediate_data;
