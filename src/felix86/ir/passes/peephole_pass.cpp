@@ -87,7 +87,7 @@ bool PeepholeAndZero(SSAInstruction& inst) {
     for (u8 i = 0; i < 2; i++) {
         if (IsImmediate(inst.GetOperand(i), 0)) {
             inst.ReplaceWithImmediate(0);
-            return false;
+            return true;
         }
     }
 

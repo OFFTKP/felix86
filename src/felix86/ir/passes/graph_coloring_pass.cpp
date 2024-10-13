@@ -302,20 +302,15 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
 
         // Remove nodes with degree < k
         bool less_than_k = false; // while some node has degree < k
-        std::vector<u32> k_colorable;
         do {
             less_than_k = false;
             for (auto& [id, edges] : gpr_graph) {
-                if (edges.size() < k && std::find(k_colorable.begin(), k_colorable.end(), id) == k_colorable.end()) {
-                    k_colorable.push_back(id);
+                if (edges.size() < k) {
+                    colorable.push(gpr_graph.RemoveNode(id));
                     less_than_k = true;
                 }
             }
         } while (less_than_k);
-
-        for (u32 id : k_colorable) {
-            colorable.push(gpr_graph.RemoveNode(id));
-        }
 
         // If there are no nodes with degree < k, we are done
         if (gpr_graph.empty()) {
@@ -335,7 +330,7 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
             }
         }
 
-        ASSERT(max_degree > gprs.size());
+        ASSERT_MSG(max_degree >= k, "max_degree: %d, k: %d", max_degree, k);
         gpr_graph.RemoveNode(max_degree_node);
 
         u32 spill_location = allocation_map.IncrementSpillSize(8);
