@@ -173,25 +173,7 @@ static void build(const BackendFunction& function, InterferenceGraphs& graphs) {
 
             // check for changes
             if (!changed) {
-                if (in[i].size() != in_old.size() || out[i].size() != out_old.size()) {
-                    changed = true;
-                } else {
-                    for (u32 inst : in[i]) {
-                        if (in_old.find(inst) == in_old.end()) {
-                            changed = true;
-                            break;
-                        }
-                    }
-
-                    if (!changed) {
-                        for (u32 inst : out[i]) {
-                            if (out_old.find(inst) == out_old.end()) {
-                                changed = true;
-                                break;
-                            }
-                        }
-                    }
-                }
+                changed = in[i] != in_old || out[i] != out_old;
             }
         }
     } while (changed);
@@ -307,7 +289,6 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
     bool repeat = false;
     InterferenceGraphs graphs;
     const auto& gprs = Registers::GetAllocatableGPRs();
-    int iteration = 0;
     do {
         repeat = false;
         graphs.clear();
@@ -337,8 +318,6 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
         if (gpr_graph.empty()) {
             break;
         }
-
-        printf("Size: %zu %dn", gpr_graph.size(), iteration++);
 
         // We need to spill
         repeat = true;
