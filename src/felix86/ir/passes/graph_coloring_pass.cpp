@@ -1,3 +1,4 @@
+#include <stack>
 #include <unordered_set>
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -286,10 +287,13 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
 
     bool repeat = false;
     InterferenceGraphs graphs;
+    std::stack<Node> colorable;
     const auto& gprs = Registers::GetAllocatableGPRs();
     do {
         repeat = false;
         graphs.clear();
+        colorable = {};
+
         build(function, graphs);
 
         InterferenceGraph& gpr_graph = graphs.gpr_graph;
@@ -310,7 +314,7 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
         } while (less_than_k);
 
         for (u32 id : k_colorable) {
-            gpr_graph.RemoveNode(id);
+            colorable.push(gpr_graph.RemoveNode(id));
         }
 
         // If there are no nodes with degree < k, we are done
@@ -339,7 +343,12 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
     } while (repeat);
 
     // All nodes should be colorable now
-    for (auto& [id, edges] : graphs.gpr_graph) {
+    while (!colorable.empty()) {
+        Node node = colorable.top();
+        colorable.pop();
+
+        auto [id, edges] = node;
+
         // Find the first color that is not in the interference set
         biscuit::GPR color = x0;
         std::array<bool, gprs.size()> used = {false};
