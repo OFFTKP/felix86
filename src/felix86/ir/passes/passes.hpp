@@ -6,7 +6,7 @@
 
 // TODO: move to regalloc class
 [[nodiscard]] AllocationMap ir_spill_everything_pass(const BackendFunction& function);
-[[nodiscard]] AllocationMap ir_graph_coloring_pass(const BackendFunction& function);
+[[nodiscard]] AllocationMap ir_graph_coloring_pass(BackendFunction& function);
 
 // TODO: use Function&
 struct PassManager {
