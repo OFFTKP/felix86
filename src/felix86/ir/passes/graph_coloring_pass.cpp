@@ -1,4 +1,3 @@
-#include <stack>
 #include <unordered_set>
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -60,6 +59,10 @@ struct InterferenceGraph {
 
     void clear() {
         graph.clear();
+    }
+
+    size_t size() {
+        return graph.size();
     }
 
 private:
@@ -304,6 +307,7 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
     bool repeat = false;
     InterferenceGraphs graphs;
     const auto& gprs = Registers::GetAllocatableGPRs();
+    int iteration = 0;
     do {
         repeat = false;
         graphs.clear();
@@ -333,6 +337,8 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
         if (gpr_graph.empty()) {
             break;
         }
+
+        printf("Size: %zu %dn", gpr_graph.size(), iteration++);
 
         // We need to spill
         repeat = true;
