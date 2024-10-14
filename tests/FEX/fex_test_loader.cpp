@@ -2,6 +2,9 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#define CATCH_CONFIG_PREFIX_ALL
+#include "catch2/catch_message.hpp"
+#include "catch2/catch_test_macros.hpp"
 #include "felix86/common/print.hpp"
 #include "fex_test_loader.hpp"
 #include "nlohmann/json.hpp"
@@ -171,28 +174,25 @@ void FEXTestLoader::Run() {
 
 void FEXTestLoader::Validate() {
     for (size_t i = 0; i < expected_gpr.size(); i++) {
-        auto& expected = expected_gpr[i];
-        if (expected.has_value()) {
-            u64 value = *expected;
+        auto& pexpected = expected_gpr[i];
+        if (pexpected.has_value()) {
+            u64 expected = *pexpected;
             x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
             u64 actual = state->GetGpr(ref);
-            if (actual != value) {
-                ERROR("%s mismatch: Expected: 0x%016lx, got: 0x%016lx", print_guest_register(ref).c_str(), value, actual);
-            }
+            CATCH_INFO(fmt::format("Checking {}", print_guest_register(ref)));
+            CATCH_REQUIRE(expected == actual);
         }
     }
 
     for (size_t i = 0; i < expected_xmm.size(); i++) {
-        auto& expected = expected_xmm[i];
-        if (expected.has_value()) {
-            XmmReg value = *expected;
+        auto& pexpected = expected_xmm[i];
+        if (pexpected.has_value()) {
+            XmmReg expected = *pexpected;
             x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
             XmmReg actual = state->GetXmmReg(ref);
             for (int j = 0; j < 2; j++) {
-                if (actual.data[j] != value.data[j]) {
-                    ERROR("%s mismatch for qword %d: Expected: 0x%016lx, got: 0x%016lx", print_guest_register(ref).c_str(), j, value.data[j],
-                          actual.data[j]);
-                }
+                CATCH_INFO(fmt::format("Checking XMM{}[{}]", i, j));
+                CATCH_REQUIRE(expected.data[j] == actual.data[j]);
             }
         }
     }
