@@ -145,6 +145,10 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     // 2 pages at 0xe800'f000
     memory_mappings.push_back({0xE800'F000, 2 * 4096});
 
+    // 1 page at 0xC000'0000 for stack
+    // According to the example assembly this is configurable but haven't found a test that configures it
+    memory_mappings.push_back({0xC000'0000, 4096});
+
     if (j.find("MemoryRegions") != j.end()) {
         std::unordered_map<std::string, std::string> memory_regions;
         memory_regions = j["MemoryRegions"].get<std::unordered_map<std::string, std::string>>();
@@ -174,6 +178,7 @@ void FEXTestLoader::Run() {
         auto stuff = mmap((void*)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
         munmap_me.push_back({stuff, size});
     }
+    emulator->GetTestState()->SetGpr(X86_REF_RSP, 0xC000'0000 + 4096);
     emulator->Run();
     Validate();
 }
