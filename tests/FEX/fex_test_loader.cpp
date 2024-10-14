@@ -163,10 +163,16 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     state = emulator->GetTestState();
 }
 
+FEXTestLoader::~FEXTestLoader() {
+    for (auto& ptr : munmap_me) {
+        munmap(ptr.first, ptr.second);
+    }
+}
+
 void FEXTestLoader::Run() {
     for (auto& [address, size] : memory_mappings) {
-        auto shhh = mmap((void*)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-        (void)shhh;
+        auto stuff = mmap((void*)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+        munmap_me.push_back({stuff, size});
     }
     emulator->Run();
     Validate();

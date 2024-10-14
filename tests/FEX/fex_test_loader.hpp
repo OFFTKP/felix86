@@ -16,6 +16,7 @@
 
 struct FEXTestLoader {
     FEXTestLoader(const std::filesystem::path& path);
+    ~FEXTestLoader();
 
     void Run();
 
@@ -31,4 +32,5 @@ private:
     std::array<std::optional<u64>, 16> expected_gpr{};
     std::array<std::optional<XmmReg>, 16> expected_xmm{};
     std::vector<std::pair<u64, u64>> memory_mappings{};
+    std::vector<std::pair<void*, u64>> munmap_me;
 };

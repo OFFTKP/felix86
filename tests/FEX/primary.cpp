@@ -3,4 +3,5 @@
 
 TEST_CASE("Primary", "[FEX]") {
     FEXTestLoader::RunTest("ASM/Primary/Primary_00.asm");
+    FEXTestLoader::RunTest("ASM/Primary/Primary_10.asm");
 }
