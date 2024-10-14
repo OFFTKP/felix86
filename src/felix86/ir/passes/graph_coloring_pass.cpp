@@ -14,6 +14,10 @@ struct InterferenceGraph {
         graph[a].insert(b);
     }
 
+    void AddEmpty(u32 id) {
+        graph[id] = {};
+    }
+
     void RemoveEdge(u32 a, u32 b) {
         graph[a].erase(b);
         graph[b].erase(a);
@@ -234,6 +238,9 @@ static void build(const BackendFunction& function, InterferenceGraph& graph, boo
                 // Erase the currently defined variable if it exists in the set
                 live_now.erase(inst.GetName());
 
+                // in case there's nothing live (which is possible if nothing is read before written)
+                // then we need to add the current instruction to the graph so it gets allocated
+                graph.AddEmpty(inst.GetName());
                 for (u32 live : live_now) {
                     graph.AddEdge(inst.GetName(), live);
                 }
@@ -376,8 +383,6 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
     }
 
     allocations.SetSpillSize(spill_location);
-
-    fmt::print("\n\n\nFinal: {}\n\n\n", function.Print());
 
     return allocations;
 }
