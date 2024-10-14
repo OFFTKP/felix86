@@ -671,6 +671,11 @@ IR_HANDLE(hlt) { // hlt - 0xf4
     state->exit = true;
 }
 
+IR_HANDLE(clc) { // clc - 0xf8
+    SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
+    ir_emit_set_flag(BLOCK, X86_REF_CF, zero);
+}
+
 IR_HANDLE(group3_rm8) { // test/not/neg/mul/imul/div/idiv rm8, imm8 - 0xf6
     ir_emit_group3(BLOCK, inst);
 }
