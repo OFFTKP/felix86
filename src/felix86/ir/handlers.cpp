@@ -538,6 +538,29 @@ IR_HANDLE(cdq) { // cwd/cdq/cqo - 0x99
     ir_emit_set_reg(BLOCK, &rdx_reg, mask);
 }
 
+IR_HANDLE(lahf) { // lahf - 0x9f
+    SSAInstruction* c = ir_emit_get_flag(BLOCK, X86_REF_CF);
+    SSAInstruction* p = ir_emit_get_flag(BLOCK, X86_REF_PF);
+    SSAInstruction* a = ir_emit_get_flag(BLOCK, X86_REF_AF);
+    SSAInstruction* z = ir_emit_get_flag(BLOCK, X86_REF_ZF);
+    SSAInstruction* s = ir_emit_get_flag(BLOCK, X86_REF_SF);
+
+    SSAInstruction* p_shifted = ir_emit_shift_left(BLOCK, p, ir_emit_immediate(BLOCK, 2));
+    SSAInstruction* a_shifted = ir_emit_shift_left(BLOCK, a, ir_emit_immediate(BLOCK, 4));
+    SSAInstruction* z_shifted = ir_emit_shift_left(BLOCK, z, ir_emit_immediate(BLOCK, 6));
+    SSAInstruction* s_shifted = ir_emit_shift_left(BLOCK, s, ir_emit_immediate(BLOCK, 7));
+
+    SSAInstruction* c_p = ir_emit_or(BLOCK, c, p_shifted);
+    SSAInstruction* a_z = ir_emit_or(BLOCK, a_shifted, z_shifted);
+    SSAInstruction* c_p_s = ir_emit_or(BLOCK, c_p, s_shifted);
+    SSAInstruction* result = ir_emit_or(BLOCK, c_p_s, a_z);
+
+    x86_operand_t ah_reg = get_full_reg(X86_REF_RAX);
+    ah_reg.size = X86_SIZE_BYTE;
+    ah_reg.reg.high8 = true;
+    ir_emit_set_reg(BLOCK, &ah_reg, result);
+}
+
 IR_HANDLE(test_eax_imm) { // test eax, imm32 - 0xa9
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
