@@ -8,11 +8,14 @@
 struct Config {
     std::filesystem::path rootfs_path;
     std::filesystem::path executable_path;
-    bool testing = false;
     bool print_blocks = false;
     bool use_interpreter = false;
     std::vector<std::string> argv;
     std::vector<std::string> envp;
+};
+
+struct TestConfig {
+    void* entrypoint;
 };
 
 struct Emulator {
@@ -24,6 +27,12 @@ struct Emulator {
         main_state->SetRip((u64)fs.GetEntrypoint());
     }
 
+    Emulator(const TestConfig& config) : backend(*this) {
+        ThreadState* main_state = createThreadState();
+        main_state->SetRip((u64)config.entrypoint);
+        testing = true;
+    }
+
     ~Emulator() = default;
 
     Filesystem& GetFilesystem() {
@@ -32,6 +41,12 @@ struct Emulator {
 
     Config& GetConfig() {
         return config;
+    }
+
+    ThreadState* GetTestState() {
+        ASSERT(testing);
+        ASSERT(thread_states.size() == 1);
+        return &thread_states.front();
     }
 
     void Run();
@@ -54,4 +69,5 @@ private:
     Backend backend;
     Filesystem fs;
     Config config;
+    bool testing = false;
 };

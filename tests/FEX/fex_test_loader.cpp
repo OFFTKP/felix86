@@ -1,10 +1,16 @@
 #include <fstream>
 #include <sys/wait.h>
 #include <unistd.h>
+#include "felix86/common/print.hpp"
 #include "fex_test_loader.hpp"
 #include "nlohmann/json.hpp"
 
 FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
+    std::filesystem::path cpath = std::filesystem::absolute(path);
+    if (!std::filesystem::exists(cpath)) {
+        ERROR("File does not exist: %s", cpath.string().c_str());
+    }
+
     std::string spath = path.string();
     ssize_t bytes_read;
     buffer.resize(1024 * 1024);
@@ -145,10 +151,17 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
             memory_mappings.push_back({address, size});
         }
     }
+
+    TestConfig config = {};
+    config.entrypoint = buffer.data();
+
+    emulator = std::make_unique<Emulator>(config);
+    state = emulator->GetTestState();
 }
 
 void FEXTestLoader::Run() {
-    printf("TODO\n");
+    emulator->Run();
+    Validate();
 }
 
 void FEXTestLoader::Validate() {
@@ -157,7 +170,7 @@ void FEXTestLoader::Validate() {
         if (expected.has_value()) {
             u64 value = *expected;
             x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-            u64 actual = emulator->GetGpr(ref);
+            u64 actual = state->GetGpr(ref);
             if (actual != value) {
                 ERROR("%s mismatch: Expected: 0x%016lx, got: 0x%016lx", print_guest_register(ref).c_str(), value, actual);
             }
@@ -169,7 +182,7 @@ void FEXTestLoader::Validate() {
         if (expected.has_value()) {
             XmmReg value = *expected;
             x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
-            XmmReg actual = emulator->GetXmmReg(ref);
+            XmmReg actual = state->GetXmmReg(ref);
             for (int j = 0; j < 2; j++) {
                 if (actual.data[j] != value.data[j]) {
                     ERROR("%s mismatch for qword %d: Expected: 0x%016lx, got: 0x%016lx", print_guest_register(ref).c_str(), j, value.data[j],
@@ -181,4 +194,16 @@ void FEXTestLoader::Validate() {
 
     // In case we go higher in the future
     static_assert(sizeof(XmmReg) == 16, "XmmReg size mismatch");
+}
+
+void FEXTestLoader::RunTest(const std::filesystem::path& path) {
+    std::string exe_path;
+    exe_path.resize(PATH_MAX);
+    int res = readlink("/proc/self/exe", exe_path.data(), exe_path.size());
+    if (res == -1) {
+        perror("readlink");
+        exit(1);
+    }
+    FEXTestLoader loader(std::filesystem::path(exe_path).parent_path() / path);
+    loader.Run();
 }
