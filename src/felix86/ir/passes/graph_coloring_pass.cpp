@@ -15,7 +15,8 @@ struct InterferenceGraph {
     }
 
     void AddEmpty(u32 id) {
-        graph[id] = {};
+        if (graph.find(id) == graph.end())
+            graph[id] = {};
     }
 
     void RemoveEdge(u32 a, u32 b) {
