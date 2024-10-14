@@ -248,18 +248,15 @@ static void build(const BackendFunction& function, InterferenceGraph& graph, boo
     }
 }
 
-AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
-    AllocationMap allocations_outer;
-    u32 spill_location = 0;
-    InstructionMap instructions = create_instruction_map(function);
-    constexpr u32 k = Registers::GetAllocatableGPRs().size();
-
+static AllocationMap run(BackendFunction& function, const InstructionMap& instructions, AllocationType type,
+                         bool (*should_consider)(const InstructionMap&, u32), const std::vector<u32>& available_colors, u32& spill_location) {
+    const u32 k = available_colors.size();
     while (true) {
         // Chaitin-Briggs algorithm
         std::deque<Node> nodes;
         InterferenceGraph graph;
         AllocationMap allocations;
-        build(function, graph, should_consider_gpr, instructions);
+        build(function, graph, should_consider, instructions);
 
         while (true) {
             // While there's vertices with degree less than k
@@ -303,57 +300,84 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
         // Try to color the nodes
         bool colored = true;
 
-        std::vector<u32> colors;
-        for (biscuit::GPR gpr : Registers::GetAllocatableGPRs()) {
-            colors.push_back(gpr.Index());
-        }
-
         while (!nodes.empty()) {
             Node node = nodes.back();
 
-            std::vector<u32> available_colors = colors;
+            std::vector<u32> colors = available_colors;
             for (u32 neighbor : node.edges) {
                 if (allocations.IsAllocated(neighbor)) {
                     u32 allocation = allocations.GetAllocationIndex(neighbor);
-                    std::erase(available_colors, allocation);
+                    std::erase(colors, allocation);
                 }
             }
 
-            if (available_colors.empty()) {
+            if (colors.empty()) {
                 colored = false;
                 break;
             }
 
-            biscuit::GPR allocation = biscuit::GPR(available_colors[0]);
-            allocations.Allocate(node.id, allocation);
+            allocations.Allocate(node.id, type, colors[0]);
             nodes.pop_back();
         }
 
         if (colored) {
-            allocations_outer = allocations;
-            break;
+            return allocations;
         } else {
             // Must spill one of the nodes
-            spill(function, nodes.back().id, spill_location, AllocationType::GPR);
+            spill(function, nodes.back().id, spill_location, type);
             spill_location += 8;
         }
+    }
+}
+
+AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
+    AllocationMap allocations;
+    u32 spill_location = 0;
+    InstructionMap instructions = create_instruction_map(function);
+
+    std::vector<u32> available_gprs, available_fprs, available_vecs;
+    for (auto& gpr : Registers::GetAllocatableGPRs()) {
+        available_gprs.push_back(gpr.Index());
+    }
+
+    for (auto& fpr : Registers::GetAllocatableFPRs()) {
+        available_fprs.push_back(fpr.Index());
+    }
+
+    for (auto& vec : Registers::GetAllocatableVecs()) {
+        available_vecs.push_back(vec.Index());
+    }
+
+    AllocationMap gpr_map = run(function, instructions, AllocationType::GPR, should_consider_gpr, available_gprs, spill_location);
+    AllocationMap fpr_map = run(function, instructions, AllocationType::FPR, should_consider_fpr, available_fprs, spill_location);
+    AllocationMap vec_map = run(function, instructions, AllocationType::Vec, should_consider_vec, available_vecs, spill_location);
+
+    // Merge the maps
+    for (auto& [name, allocation] : gpr_map) {
+        allocations.Allocate(name, biscuit::GPR(allocation));
+    }
+
+    for (auto& [name, allocation] : fpr_map) {
+        allocations.Allocate(name, biscuit::FPR(allocation));
+    }
+
+    for (auto& [name, allocation] : vec_map) {
+        allocations.Allocate(name, biscuit::Vec(allocation));
     }
 
     for (BackendBlock& block : function.GetBlocks()) {
         for (BackendInstruction& inst : block.GetInstructions()) {
             if (inst.GetOpcode() == IROpcode::GetThreadStatePointer) {
-                allocations_outer.Allocate(inst.GetName(), Registers::ThreadStatePointer());
+                allocations.Allocate(inst.GetName(), Registers::ThreadStatePointer());
             } else if (inst.GetOpcode() == IROpcode::Immediate && inst.GetImmediateData() == 0) {
-                allocations_outer.Allocate(inst.GetName(), Registers::Zero());
+                allocations.Allocate(inst.GetName(), Registers::Zero());
             }
         }
     }
 
-    fmt::print("\n\n\nFINAL: {}\n\n\n", function.Print());
+    allocations.SetSpillSize(spill_location);
 
-    for (auto& allocation : allocations_outer) {
-        fmt::print("Allocated {} to {}\n", GetNameString(allocation.first), allocation.second.AsGPR().Index());
-    }
+    fmt::print("\n\n\nFinal: {}\n\n\n", function.Print());
 
-    return allocations_outer;
+    return allocations;
 }

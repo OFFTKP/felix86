@@ -23,6 +23,22 @@ struct AllocationMap {
         allocations[name] = vec;
     }
 
+    void Allocate(u32 name, AllocationType type, u32 index) {
+        switch (type) {
+        case AllocationType::GPR:
+            Allocate(name, biscuit::GPR(index));
+            break;
+        case AllocationType::FPR:
+            Allocate(name, biscuit::FPR(index));
+            break;
+        case AllocationType::Vec:
+            Allocate(name, biscuit::Vec(index));
+            break;
+        default:
+            ASSERT_MSG(false, "Invalid allocation type");
+        }
+    }
+
     Allocation GetAllocation(u32 name) const {
         auto it = allocations.find(name);
         ASSERT_MSG(it != allocations.end(), "Allocation not found for name %s", GetNameString(name).c_str());

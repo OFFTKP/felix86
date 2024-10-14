@@ -142,7 +142,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
         const BackendBlock* block = *it;
 
-        if (block->GetIndex() == 0) {
+        if (block->GetIndex() == 0 && allocations.GetSpillSize() > 0) {
             // Entry block, setup the stack pointer
             as.LI(t0, allocations.GetSpillSize());
             as.NEG(t0, t0);
@@ -155,7 +155,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             Emitter::Emit(*this, allocations, inst);
         }
 
-        if (block->GetIndex() == 1) {
+        if (block->GetIndex() == 1 && allocations.GetSpillSize() > 0) {
             // Exit block, restore the stack pointer
             as.LI(t0, allocations.GetSpillSize());
             as.ADD(Registers::StackPointer(), Registers::StackPointer(), t0);
