@@ -1,4 +1,5 @@
 #include <fstream>
+#include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include "felix86/common/print.hpp"
@@ -160,6 +161,10 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 }
 
 void FEXTestLoader::Run() {
+    for (auto& [address, size] : memory_mappings) {
+        auto shhh = mmap((void*)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+        (void)shhh;
+    }
     emulator->Run();
     Validate();
 }
