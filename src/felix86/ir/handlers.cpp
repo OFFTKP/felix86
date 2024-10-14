@@ -108,21 +108,6 @@ IR_HANDLE(add_eax_imm) { // add ax/eax/rax, imm16/32/64 - 0x05
 
 IR_HANDLE(or_rm_reg) { // or rm16/32/64, r16/32/64 - 0x09
     x86_size_e size_e = inst->operand_reg.size;
-    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
-    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    SSAInstruction* result = ir_emit_or(BLOCK, rm, reg);
-    ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
-
-    SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
-    SSAInstruction* p = ir_emit_get_parity(BLOCK, result);
-    SSAInstruction* z = ir_emit_get_zero(BLOCK, result, size_e);
-    SSAInstruction* s = ir_emit_get_sign(BLOCK, result, size_e);
-
-    ir_emit_set_cpazso(BLOCK, zero, p, nullptr, z, s, zero);
-}
-
-IR_HANDLE(or_reg_rm) { // or r16/32/64, rm16/32/64 - 0x0B
-    x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction *rm, *result;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
 
@@ -135,6 +120,21 @@ IR_HANDLE(or_reg_rm) { // or r16/32/64, rm16/32/64 - 0x0B
         result = ir_emit_or(BLOCK, rm, reg);
         ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
     }
+
+    SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
+    SSAInstruction* p = ir_emit_get_parity(BLOCK, result);
+    SSAInstruction* z = ir_emit_get_zero(BLOCK, result, size_e);
+    SSAInstruction* s = ir_emit_get_sign(BLOCK, result, size_e);
+
+    ir_emit_set_cpazso(BLOCK, zero, p, nullptr, z, s, zero);
+}
+
+IR_HANDLE(or_reg_rm) { // or r16/32/64, rm16/32/64 - 0x0B
+    x86_size_e size_e = inst->operand_reg.size;
+    SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
+    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
+    SSAInstruction* result = ir_emit_or(BLOCK, reg, rm);
+    ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 
     SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
     SSAInstruction* p = ir_emit_get_parity(BLOCK, result);
