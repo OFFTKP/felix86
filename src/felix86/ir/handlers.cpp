@@ -553,7 +553,8 @@ IR_HANDLE(lahf) { // lahf - 0x9f
     SSAInstruction* c_p = ir_emit_or(BLOCK, c, p_shifted);
     SSAInstruction* a_z = ir_emit_or(BLOCK, a_shifted, z_shifted);
     SSAInstruction* c_p_s = ir_emit_or(BLOCK, c_p, s_shifted);
-    SSAInstruction* result = ir_emit_or(BLOCK, c_p_s, a_z);
+    SSAInstruction* result_almost = ir_emit_or(BLOCK, c_p_s, a_z);
+    SSAInstruction* result = ir_emit_or(BLOCK, result_almost, ir_emit_immediate(BLOCK, 0b10)); // always set bit 1
 
     x86_operand_t ah_reg = get_full_reg(X86_REF_RAX);
     ah_reg.size = X86_SIZE_BYTE;
