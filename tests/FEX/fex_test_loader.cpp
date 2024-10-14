@@ -2,7 +2,6 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#define CATCH_CONFIG_PREFIX_ALL
 #include "catch2/catch_message.hpp"
 #include "catch2/catch_test_macros.hpp"
 #include "felix86/common/print.hpp"

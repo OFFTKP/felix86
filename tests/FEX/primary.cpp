@@ -2,7 +2,7 @@
 #include "FEX/fex_test_loader.hpp"
 
 #define PRIMARY_TEST(opcode)                                                                                                                         \
-    TEST_CASE("Primary_" #opcode, "[FEX][Primary]") {                                                                                                \
+    CATCH_TEST_CASE("Primary_" #opcode, "[FEX][Primary]") {                                                                                          \
         FEXTestLoader::RunTest("ASM/Primary/Primary_" #opcode ".asm");                                                                               \
     }
 
