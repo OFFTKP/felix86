@@ -6,8 +6,8 @@
 
 struct AllocationMap {
     AllocationMap() = default;
-    AllocationMap(const AllocationMap&) = delete;
-    AllocationMap& operator=(const AllocationMap&) = delete;
+    AllocationMap(const AllocationMap&) = default;
+    AllocationMap& operator=(const AllocationMap&) = default;
     AllocationMap(AllocationMap&&) = default;
     AllocationMap& operator=(AllocationMap&&) = default;
 
@@ -29,18 +29,42 @@ struct AllocationMap {
         return it->second;
     }
 
+    u32 GetAllocationIndex(u32 name) const {
+        Allocation allocation = GetAllocation(name);
+        if (allocation.IsGPR()) {
+            return allocation.AsGPR().Index();
+        } else if (allocation.IsFPR()) {
+            return allocation.AsFPR().Index();
+        } else if (allocation.IsVec()) {
+            return allocation.AsVec().Index();
+        } else {
+            ASSERT_MSG(false, "Invalid allocation type");
+            return 0;
+        }
+    }
+
     bool IsAllocated(u32 name) const {
         return allocations.find(name) != allocations.end();
     }
 
-    u32 IncrementSpillSize(u32 amount) {
-        u32 old_size = spill_size;
-        spill_size += amount;
-        return old_size;
+    void SetSpillSize(u32 size) {
+        spill_size = size;
     }
 
     u32 GetSpillSize() const {
         return spill_size;
+    }
+
+    auto begin() const {
+        return allocations.begin();
+    }
+
+    auto end() const {
+        return allocations.end();
+    }
+
+    auto size() const {
+        return allocations.size();
     }
 
 private:

@@ -5,15 +5,6 @@
 
 #define AS (backend.GetAssembler())
 
-#define MAYBE_C(operation)                                                                                                                           \
-    if (Rd == Rs1) {                                                                                                                                 \
-        AS.C_##operation(Rd, Rs2);                                                                                                                   \
-    } else if (Rd == Rs2) {                                                                                                                          \
-        AS.C_##operation(Rd, Rs1);                                                                                                                   \
-    } else {                                                                                                                                         \
-        AS.operation(Rd, Rs1, Rs2);                                                                                                                  \
-    }
-
 namespace {
 
 // Nothing ships these extensions yet and AFAIK there's no way to check for them
@@ -227,22 +218,16 @@ void Emitter::EmitSetExitReason(Backend& backend, u64 reason) {
 
 void Emitter::EmitMov(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
     if (Rd == Rs) {
-        ERROR("Rd == Rs"); // should've been coalesced
         return;
     }
 
     ASSERT(Rd != Registers::Zero());
 
-    if (Rs != Registers::Zero()) {
-        AS.C_MV(Rd, Rs);
-    } else {
-        AS.MV(Rd, Rs);
-    }
+    AS.MV(Rd, Rs);
 }
 
 void Emitter::EmitMov(Backend& backend, biscuit::FPR Rd, biscuit::FPR Rs) {
     if (Rd == Rs) {
-        ERROR("Rd == Rs");
         return;
     }
 
@@ -251,7 +236,6 @@ void Emitter::EmitMov(Backend& backend, biscuit::FPR Rd, biscuit::FPR Rs) {
 
 void Emitter::EmitMov(Backend& backend, biscuit::Vec Rd, biscuit::Vec Rs) {
     if (Rd == Rs) {
-        ERROR("Rd == Rs");
         return;
     }
 
@@ -336,55 +320,29 @@ void Emitter::EmitCpuid(Backend& backend) {
 }
 
 void Emitter::EmitSext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Rd == Rs) {
-        AS.C_SEXT_B(Rd);
-    } else {
-        AS.SEXTB(Rd, Rs);
-    }
+    AS.SEXTB(Rd, Rs);
 }
 
 void Emitter::EmitSext16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Rd == Rs) {
-        AS.C_SEXT_H(Rd);
-    } else {
-        AS.SEXTH(Rd, Rs);
-    }
+    AS.SEXTH(Rd, Rs);
 }
 
 void Emitter::EmitSext32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Rd == Rs) {
-        AS.C_ADDIW(Rd, 0);
-    } else {
-        AS.ADDIW(Rd, Rs, 0);
-    }
+    AS.ADDIW(Rd, Rs, 0);
 }
 
 void Emitter::EmitZext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Rd == Rs) {
-        AS.C_ANDI(Rd, 0xFF);
-    } else {
-        AS.ANDI(Rd, Rs, 0xFF);
-    }
+    AS.ANDI(Rd, Rs, 0xFF);
 }
 
 void Emitter::EmitZext16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Rd == Rs) {
-        AS.C_SLLI(Rd, 48);
-        AS.C_SRLI(Rd, 48);
-    } else {
-        AS.SLLI(Rd, Rs, 48);
-        AS.SRLI(Rd, Rd, 48);
-    }
+    AS.SLLI(Rd, Rs, 48);
+    AS.SRLI(Rd, Rd, 48);
 }
 
 void Emitter::EmitZext32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Rd == Rs) {
-        AS.C_SLLI(Rd, 32);
-        AS.C_SRLI(Rd, 32);
-    } else {
-        AS.SLLI(Rd, Rs, 32);
-        AS.SRLI(Rd, Rd, 32);
-    }
+    AS.SLLI(Rd, Rs, 32);
+    AS.SRLI(Rd, Rd, 32);
 }
 
 void Emitter::EmitClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
@@ -412,11 +370,7 @@ void Emitter::EmitCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitNot(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Rd == Rs) {
-        AS.C_NOT(Rd);
-    } else {
-        AS.NOT(Rd, Rs);
-    }
+    AS.NOT(Rd, Rs);
 }
 
 void Emitter::EmitNeg(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
@@ -451,7 +405,7 @@ void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 
         AS.LI(t0, (u64)&bitcount);
         AS.ANDI(Rd, Rs, 0xFF);
-        AS.C_ADD(Rd, t0);
+        AS.ADD(Rd, Rd, t0);
         AS.LB(Rd, 0, Rd);
     }
 }
@@ -521,7 +475,7 @@ void Emitter::EmitWriteQWordRelative(Backend& backend, biscuit::GPR Address, bis
 }
 
 void Emitter::EmitAdd(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    MAYBE_C(ADD);
+    AS.ADD(Rd, Rs1, Rs2);
 }
 
 void Emitter::EmitAddi(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u64 immediate) {
@@ -728,32 +682,28 @@ void Emitter::EmitAmoCAS64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 }
 
 void Emitter::EmitSub(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    if (Rd == Rs1) {
-        AS.C_SUB(Rd, Rs2);
-    } else {
-        AS.SUB(Rd, Rs1, Rs2);
-    }
+    AS.SUB(Rd, Rs1, Rs2);
 }
 
 void Emitter::EmitAnd(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    MAYBE_C(AND);
+    AS.AND(Rd, Rs1, Rs2);
 }
 
 void Emitter::EmitOr(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    MAYBE_C(OR);
+    AS.OR(Rd, Rs1, Rs2);
 }
 
 void Emitter::EmitXor(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    MAYBE_C(XOR);
+    AS.XOR(Rd, Rs1, Rs2);
 }
 
 void Emitter::EmitEqual(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    MAYBE_C(XOR);
+    AS.XOR(Rd, Rs1, Rs2);
     AS.SEQZ(Rd, Rd);
 }
 
 void Emitter::EmitNotEqual(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    MAYBE_C(XOR);
+    AS.XOR(Rd, Rs1, Rs2);
     AS.SNEZ(Rd, Rd);
 }
 
@@ -851,9 +801,9 @@ void Emitter::EmitMulhu(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 
 void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Condition, biscuit::GPR RsTrue, biscuit::GPR RsFalse) {
     Label true_label;
-    AS.C_MV(Rd, RsTrue);
+    AS.MV(Rd, RsTrue);
     AS.C_BNEZ(Condition, &true_label);
-    AS.C_MV(Rd, RsFalse);
+    AS.MV(Rd, RsFalse);
     AS.Bind(&true_label);
 }
 

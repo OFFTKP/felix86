@@ -1,10 +1,7 @@
+#include <deque>
 #include <stack>
 #include <unordered_set>
-#include <fmt/base.h>
-#include <fmt/format.h>
 #include "felix86/ir/passes/passes.hpp"
-
-// This has got to be super slow, lots of heap allocations, please profile me
 
 struct Node {
     u32 id;
@@ -66,27 +63,24 @@ struct InterferenceGraph {
         return graph.size();
     }
 
+    bool HasLessThanK(u32 k) {
+        for (const auto& [id, edges] : graph) {
+            if (edges.size() < k) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 private:
     tsl::robin_map<u32, std::unordered_set<u32>> graph;
 };
 
-/*
-    for each block b
-        in[b] = {}
-        out[b] = {}
+using LivenessSet = std::unordered_set<u32>;
 
-    repeat
-        for each block b
-            in_old = in[b]
-            out_old = out[b]
-            in[b] = use[b] U (out[b] - def[b])
-            out[b] = U (in[s]) for all s in succ[b]
+using InstructionMap = tsl::robin_map<u32, BackendInstruction*>;
 
-        while in[b] != in_old or out[b] != out_old
-*/
-
-// Nothing interferes with these as they are always available
-bool IsHardcolored(const BackendInstruction& inst) {
+static bool reserved_gpr(const BackendInstruction& inst) {
     switch (inst.GetOpcode()) {
     case IROpcode::Immediate: {
         return inst.GetImmediateData() == 0;
@@ -98,143 +92,33 @@ bool IsHardcolored(const BackendInstruction& inst) {
     }
 }
 
-using LivenessSet = std::set<u32>;
-
-struct InterferenceGraphs {
-    InterferenceGraph gpr_graph;
-    InterferenceGraph fpr_graph;
-    InterferenceGraph vec_graph;
-
-    void clear() {
-        gpr_graph.clear();
-        fpr_graph.clear();
-        vec_graph.clear();
-    }
-};
-
-static void build(const BackendFunction& function, InterferenceGraphs& graphs) {
-    std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
-    std::vector<LivenessSet> in(blocks.size());
-    std::vector<LivenessSet> out(blocks.size());
-    std::vector<LivenessSet> use(blocks.size());
-    std::vector<LivenessSet> def(blocks.size());
-
-    // Populate use and def sets
-    for (size_t j = 0; j < blocks.size(); j++) {
-        const BackendBlock* block = blocks[j];
-        size_t i = block->GetIndex();
-        for (const BackendInstruction& inst : block->GetInstructions()) {
-            if (inst.GetDesiredType() != AllocationType::Null) {
-                def[i].insert(inst.GetName());
-            }
-
-            for (u8 j = 0; j < inst.GetOperandCount(); j++) {
-                if (std::find(def[i].begin(), def[i].end(), inst.GetOperand(j)) == def[i].end()) {
-                    // Not defined in this block ie. upwards exposed, live range goes outside current block
-                    use[i].insert(inst.GetOperand(j));
-                }
-            }
+static InstructionMap create_instruction_map(BackendFunction& function) {
+    InstructionMap instructions;
+    for (BackendBlock& block : function.GetBlocks()) {
+        for (BackendInstruction& inst : block.GetInstructions()) {
+            instructions[inst.GetName()] = &inst;
         }
     }
+    return instructions;
+}
 
-    // Calculate in and out sets
-    bool changed;
-    do {
-        changed = false;
-        for (size_t j = 0; j < blocks.size(); j++) {
-            const BackendBlock* block = blocks[j];
+static bool should_consider_gpr(const InstructionMap& map, u32 inst) {
+    const BackendInstruction& instruction = *map.at(inst);
+    return instruction.GetDesiredType() == AllocationType::GPR && !reserved_gpr(instruction);
+}
 
-            // j is the index in the postorder list, but we need the index in the blocks list
-            size_t i = block->GetIndex();
+static bool should_consider_fpr(const InstructionMap& map, u32 inst) {
+    const BackendInstruction& instruction = *map.at(inst);
+    return instruction.GetDesiredType() == AllocationType::FPR;
+}
 
-            LivenessSet in_old = in[i];
-            LivenessSet out_old = out[i];
-
-            in[i].clear();
-
-            // in[b] = use[b] U (out[b] - def[b])
-            in[i].insert(use[i].begin(), use[i].end());
-
-            LivenessSet out_minus_def = out[i];
-            for (u32 inst : def[i]) {
-                out_minus_def.erase(inst);
-            }
-
-            in[i].insert(out_minus_def.begin(), out_minus_def.end());
-
-            // out[b] = U (in[s]) for all s in succ[b]
-            out[i].clear();
-            for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
-                const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
-                u32 succ_index = succ->GetIndex();
-                out[i].insert(in[succ_index].begin(), in[succ_index].end());
-            }
-
-            // check for changes
-            if (!changed) {
-                changed = in[i] != in_old || out[i] != out_old;
-            }
-        }
-    } while (changed);
-
-    for (const BackendBlock* block : function.GetBlocksPostorder()) {
-        LivenessSet live_now;
-
-        // We are gonna walk the block backwards, first add all definitions that have lifetime
-        // that extends past this basic block
-        live_now.insert(out[block->GetIndex()].begin(), out[block->GetIndex()].end());
-
-        const std::list<BackendInstruction>& insts = block->GetInstructions();
-        for (auto it = insts.rbegin(); it != insts.rend(); ++it) {
-            const BackendInstruction& inst = *it;
-
-            // Erase the currently defined variable if it exists in the set
-            live_now.erase(inst.GetName());
-
-            for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                live_now.insert(inst.GetOperand(i));
-            }
-
-            switch (inst.GetDesiredType()) {
-            case AllocationType::GPR: {
-                for (auto& live : live_now) {
-                    graphs.gpr_graph.AddEdge(inst.GetName(), live);
-                }
-                break;
-            }
-            case AllocationType::FPR: {
-                for (auto& live : live_now) {
-                    graphs.fpr_graph.AddEdge(inst.GetName(), live);
-                }
-                break;
-            }
-            case AllocationType::Vec: {
-                for (auto& live : live_now) {
-                    graphs.vec_graph.AddEdge(inst.GetName(), live);
-                }
-                break;
-            }
-            case AllocationType::Null:
-                break;
-            default:
-                UNREACHABLE();
-                break;
-            }
-        }
-    }
-
-    // Easier to remove than to not add in the first place...
-    // TODO: dont add them in the first place
-    for (const BackendBlock& block : function.GetBlocks()) {
-        for (const BackendInstruction& inst : block.GetInstructions()) {
-            if (IsHardcolored(inst)) {
-                graphs.gpr_graph.RemoveNode(inst.GetName());
-            }
-        }
-    }
+static bool should_consider_vec(const InstructionMap& map, u32 inst) {
+    const BackendInstruction& instruction = *map.at(inst);
+    return instruction.GetDesiredType() == AllocationType::Vec;
 }
 
 static void spill(BackendFunction& function, u32 node, u32 location, AllocationType spill_type) {
+    printf("Spilling %s\n", GetNameString(node).c_str());
     for (BackendBlock& block : function.GetBlocks()) {
         auto it = block.GetInstructions().begin();
         while (it != block.GetInstructions().end()) {
@@ -270,111 +154,206 @@ static void spill(BackendFunction& function, u32 node, u32 location, AllocationT
     }
 }
 
-AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
-    AllocationMap allocation_map;
+static void build(const BackendFunction& function, InterferenceGraph& graph, bool (*should_consider)(const InstructionMap&, u32),
+                  const InstructionMap& instructions) {
+    std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
 
-    for (const BackendBlock& block : function.GetBlocks()) {
-        for (const BackendInstruction& inst : block.GetInstructions()) {
-            if (inst.GetOpcode() == IROpcode::Immediate && inst.GetImmediateData() == 0) {
-                allocation_map.Allocate(inst.GetName(), Registers::Zero());
-            } else if (inst.GetOpcode() == IROpcode::GetThreadStatePointer) {
-                allocation_map.Allocate(inst.GetName(), Registers::ThreadStatePointer());
+    std::vector<LivenessSet> in(blocks.size());
+    std::vector<LivenessSet> out(blocks.size());
+    std::vector<LivenessSet> use(blocks.size());
+    std::vector<LivenessSet> def(blocks.size());
+
+    for (size_t counter = 0; counter < blocks.size(); counter++) {
+        const BackendBlock* block = blocks[counter];
+        size_t i = block->GetIndex();
+        for (const BackendInstruction& inst : block->GetInstructions()) {
+            if (should_consider(instructions, inst.GetName())) {
+                def[i].insert(inst.GetName());
             }
-        }
-    }
 
-    bool repeat = false;
-    InterferenceGraphs graphs;
-    std::stack<Node> colorable;
-    const auto& gprs = Registers::GetAllocatableGPRs();
-    constexpr u32 k = gprs.size();
-
-    do {
-        repeat = false;
-        graphs.clear();
-        colorable = {};
-
-        build(function, graphs);
-
-        InterferenceGraph& gpr_graph = graphs.gpr_graph;
-
-        // Remove nodes with degree < k
-        bool less_than_k = false; // while some node has degree < k
-        do {
-            less_than_k = false;
-            for (auto& [id, edges] : gpr_graph) {
-                if (edges.size() < k) {
-                    colorable.push(gpr_graph.RemoveNode(id));
-                    less_than_k = true;
+            for (u8 j = 0; j < inst.GetOperandCount(); j++) {
+                if (should_consider(instructions, inst.GetOperand(j)) &&
+                    std::find(def[i].begin(), def[i].end(), inst.GetOperand(j)) == def[i].end()) {
+                    // Not defined in this block ie. upwards exposed, live range goes outside current block
+                    use[i].insert(inst.GetOperand(j));
                 }
             }
-        } while (less_than_k);
-
-        // If there are no nodes with degree < k, we are done
-        if (gpr_graph.empty()) {
-            break;
         }
-
-        // We need to spill
-        repeat = true;
-
-        // Find the node with the highest degree
-        std::vector<u32> to_spill;
-        u32 max_degree = 0;
-        for (auto& [id, edges] : gpr_graph) {
-            if (edges.size() > k) {
-                max_degree = edges.size();
-                to_spill.push_back(id);
-            }
-        }
-
-        ASSERT_MSG(max_degree >= k, "max_degree: %d, k: %d", max_degree, k);
-
-        // Sort the vector by degree
-        std::sort(to_spill.begin(), to_spill.end(),
-                  [&gpr_graph](u32 a, u32 b) { return gpr_graph.GetInterferences(a).size() < gpr_graph.GetInterferences(b).size(); });
-
-        // Super dumb heuristic, spill the first 30 nodes
-        int count = 0;
-        while (!to_spill.empty()) {
-            u32 spill_location = allocation_map.IncrementSpillSize(8);
-            u32 node = to_spill.back();
-            to_spill.pop_back();
-            spill(function, node, spill_location, AllocationType::GPR);
-            count++;
-            if (count > 30) {
-                break;
-            }
-        }
-    } while (repeat);
-
-    // All nodes should be colorable now
-    while (!colorable.empty()) {
-        Node node = colorable.top();
-        colorable.pop();
-
-        auto [id, edges] = node;
-
-        // Find the first color that is not in the interference set
-        biscuit::GPR color = x0;
-        std::array<bool, k> used = {false};
-        for (u32 edge : edges) {
-            if (allocation_map.IsAllocated(edge)) {
-                used[Registers::GetGPRIndex(allocation_map.GetAllocation(edge))] = true;
-            }
-        }
-
-        for (u32 i = 0; i < k; i++) {
-            if (!used[i]) {
-                color = gprs[i];
-                break;
-            }
-        }
-
-        ASSERT(color != x0);
-
-        allocation_map.Allocate(id, color);
     }
 
-    return allocation_map;
+    bool changed;
+    do {
+        changed = false;
+        for (size_t j = 0; j < blocks.size(); j++) {
+            const BackendBlock* block = blocks[j];
+
+            // j is the index in the postorder list, but we need the index in the blocks list
+            size_t i = block->GetIndex();
+
+            LivenessSet in_old = in[i];
+            LivenessSet out_old = out[i];
+
+            in[i].clear();
+
+            // in[b] = use[b] U (out[b] - def[b])
+            in[i].insert(use[i].begin(), use[i].end());
+
+            LivenessSet out_minus_def = out[i];
+            for (u32 def_inst : def[i]) {
+                out_minus_def.erase(def_inst);
+            }
+
+            in[i].insert(out_minus_def.begin(), out_minus_def.end());
+
+            out[i].clear();
+            // out[b] = U (in[s]) for all s in succ[b]
+            for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
+                const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
+                u32 succ_index = succ->GetIndex();
+                out[i].insert(in[succ_index].begin(), in[succ_index].end());
+            }
+
+            // check for changes
+            if (!changed) {
+                changed = in[i] != in_old || out[i] != out_old;
+            }
+        }
+    } while (changed);
+
+    for (const BackendBlock* block : blocks) {
+        LivenessSet live_now;
+
+        // We are gonna walk the block backwards, first add all definitions that have lifetime
+        // that extends past this basic block
+        live_now.insert(out[block->GetIndex()].begin(), out[block->GetIndex()].end());
+
+        const std::list<BackendInstruction>& insts = block->GetInstructions();
+        for (auto it = insts.rbegin(); it != insts.rend(); ++it) {
+            const BackendInstruction& inst = *it;
+            if (should_consider(instructions, inst.GetName())) {
+                // Erase the currently defined variable if it exists in the set
+                live_now.erase(inst.GetName());
+
+                for (u32 live : live_now) {
+                    graph.AddEdge(inst.GetName(), live);
+                }
+            }
+
+            for (u8 i = 0; i < inst.GetOperandCount(); i++) {
+                if (should_consider(instructions, inst.GetOperand(i))) {
+                    live_now.insert(inst.GetOperand(i));
+                }
+            }
+        }
+    }
+}
+
+AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
+    AllocationMap allocations_outer;
+    u32 spill_location = 0;
+    InstructionMap instructions = create_instruction_map(function);
+    constexpr u32 k = Registers::GetAllocatableGPRs().size();
+
+    while (true) {
+        // Chaitin-Briggs algorithm
+        std::deque<Node> nodes;
+        InterferenceGraph graph;
+        AllocationMap allocations;
+        build(function, graph, should_consider_gpr, instructions);
+
+        while (true) {
+            // While there's vertices with degree less than k
+            while (graph.HasLessThanK(k)) {
+                // Pick any node with degree less than k and put it on the stack
+                std::stack<u32> to_remove;
+                for (auto& [id, edges] : graph) {
+                    if (edges.size() < k) {
+                        to_remove.push(id);
+                    }
+                }
+
+                while (!to_remove.empty()) {
+                    u32 id = to_remove.top();
+                    to_remove.pop();
+                    nodes.push_back(graph.RemoveNode(id));
+                }
+                // Removing nodes might have created more with degree less than k, repeat
+            }
+
+            bool repeat_outer = false;
+
+            // If graph is not empty, all vertices have more than k neighbors
+            while (!graph.empty()) {
+                // Pick some vertex using a heuristic and remove it.
+                // If it causes some node to have less than k neighbors, repeat at step 1, otherwise repeat step 2.
+                nodes.push_back(graph.RemoveNode(graph.begin()->first));
+
+                if (graph.HasLessThanK(k)) {
+                    repeat_outer = true;
+                    break; // break, return to top of while loop
+                }
+            }
+
+            if (!repeat_outer) {
+                // Graph is empty, try to color
+                break;
+            }
+        }
+
+        // Try to color the nodes
+        bool colored = true;
+
+        std::vector<u32> colors;
+        for (biscuit::GPR gpr : Registers::GetAllocatableGPRs()) {
+            colors.push_back(gpr.Index());
+        }
+
+        while (!nodes.empty()) {
+            Node node = nodes.back();
+
+            std::vector<u32> available_colors = colors;
+            for (u32 neighbor : node.edges) {
+                if (allocations.IsAllocated(neighbor)) {
+                    u32 allocation = allocations.GetAllocationIndex(neighbor);
+                    std::erase(available_colors, allocation);
+                }
+            }
+
+            if (available_colors.empty()) {
+                colored = false;
+                break;
+            }
+
+            biscuit::GPR allocation = biscuit::GPR(available_colors[0]);
+            allocations.Allocate(node.id, allocation);
+            nodes.pop_back();
+        }
+
+        if (colored) {
+            allocations_outer = allocations;
+            break;
+        } else {
+            // Must spill one of the nodes
+            spill(function, nodes.back().id, spill_location, AllocationType::GPR);
+            spill_location += 8;
+        }
+    }
+
+    for (BackendBlock& block : function.GetBlocks()) {
+        for (BackendInstruction& inst : block.GetInstructions()) {
+            if (inst.GetOpcode() == IROpcode::GetThreadStatePointer) {
+                allocations_outer.Allocate(inst.GetName(), Registers::ThreadStatePointer());
+            } else if (inst.GetOpcode() == IROpcode::Immediate && inst.GetImmediateData() == 0) {
+                allocations_outer.Allocate(inst.GetName(), Registers::Zero());
+            }
+        }
+    }
+
+    fmt::print("\n\n\nFINAL: {}\n\n\n", function.Print());
+
+    for (auto& allocation : allocations_outer) {
+        fmt::print("Allocated {} to {}\n", GetNameString(allocation.first), allocation.second.AsGPR().Index());
+    }
+
+    return allocations_outer;
 }
