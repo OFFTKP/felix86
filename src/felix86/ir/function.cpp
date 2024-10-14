@@ -69,8 +69,8 @@ IRBlock* IRFunction::CreateBlock() {
 }
 
 void IRFunction::deallocateAll() {
-    for (auto& pair : block_map) {
-        delete pair.second;
+    for (auto& block : blocks) {
+        delete block;
     }
 }
 
