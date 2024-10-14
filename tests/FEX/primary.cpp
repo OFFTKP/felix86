@@ -1,42 +1,43 @@
 #include <catch2/catch_test_macros.hpp>
 #include "FEX/fex_test_loader.hpp"
 
-TEST_CASE("Primary_00", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_00.asm");
-}
+#define PRIMARY_TEST(opcode)                                                                                                                         \
+    TEST_CASE("Primary_" #opcode, "[FEX][Primary]") {                                                                                                \
+        FEXTestLoader::RunTest("ASM/Primary/Primary_" #opcode ".asm");                                                                               \
+    }
 
-TEST_CASE("Primary_08", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_08.asm");
-}
-
-TEST_CASE("Primary_20", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_20.asm");
-}
-
-TEST_CASE("Primary_28", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_28.asm");
-}
-
-TEST_CASE("Primary_30", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_30.asm");
-}
-
-TEST_CASE("Primary_38", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_38.asm");
-}
-
-TEST_CASE("Primary_50", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_50.asm");
-}
-
-TEST_CASE("Primary_50_2", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_50_2.asm");
-}
-
-TEST_CASE("Primary_8D", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_8D.asm");
-}
-
-TEST_CASE("Primary_8D_2", "[FEX][Primary]") {
-    FEXTestLoader::RunTest("ASM/Primary/Primary_8D_2.asm");
-}
+PRIMARY_TEST(00)
+PRIMARY_TEST(08)
+PRIMARY_TEST(20)
+PRIMARY_TEST(28)
+PRIMARY_TEST(30)
+PRIMARY_TEST(38)
+PRIMARY_TEST(50)
+PRIMARY_TEST(50_2)
+PRIMARY_TEST(63)
+PRIMARY_TEST(6A)
+PRIMARY_TEST(6A_2)
+PRIMARY_TEST(84)
+PRIMARY_TEST(84_2)
+PRIMARY_TEST(86)
+PRIMARY_TEST(8D)
+PRIMARY_TEST(8D_2)
+PRIMARY_TEST(90)
+PRIMARY_TEST(90_2)
+PRIMARY_TEST(90_3)
+PRIMARY_TEST(90_4)
+PRIMARY_TEST(98)
+PRIMARY_TEST(98_2)
+PRIMARY_TEST(99)
+PRIMARY_TEST(99_2)
+PRIMARY_TEST(A9)
+PRIMARY_TEST(AB_word)
+PRIMARY_TEST(AB_dword)
+PRIMARY_TEST(AB_qword)
+PRIMARY_TEST(AB_word_REP)
+PRIMARY_TEST(AB_dword_REP)
+PRIMARY_TEST(AB_qword_REP)
+PRIMARY_TEST(AB_word_REPNE)
+PRIMARY_TEST(AB_dword_REPNE)
+PRIMARY_TEST(AB_qword_REPNE)
+PRIMARY_TEST(C9)
