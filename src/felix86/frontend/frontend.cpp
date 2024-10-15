@@ -652,7 +652,6 @@ void frontend_compile_instruction(FrontendState* state) {
     if (is_rep) {
         loop_block = state->function->CreateBlock();
         exit_block = state->function->CreateBlockAt(state->current_address + inst.length);
-        WARN("Constructed loop block: %s and exit block: %s", loop_block->GetName().c_str(), exit_block->GetName().c_str());
         ir_emit_rep_start(state, inst, loop_block, exit_block);
     }
 
