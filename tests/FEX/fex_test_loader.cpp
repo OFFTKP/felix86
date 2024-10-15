@@ -160,8 +160,16 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         }
     }
 
+    void* address = mmap((void*)0x10'0000, 0x10'0000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    if (address != (void*)0x10'0000) {
+        perror("mmap");
+        exit(1);
+    }
+
+    memcpy((void*)0x10'0000, buffer.data(), bytes_read);
+
     TestConfig config = {};
-    config.entrypoint = buffer.data();
+    config.entrypoint = (void*)0x10'0000;
 
     emulator = std::make_unique<Emulator>(config);
     state = emulator->GetTestState();
@@ -184,7 +192,7 @@ void FEXTestLoader::Run() {
 }
 
 void FEXTestLoader::Validate() {
-    auto [address, size] = emulator->GetCodeAt((u64)buffer.data());
+    auto [address, size] = emulator->GetCodeAt(0x10'0000);
     CATCH_INFO(fmt::format("Disassembly:\n{}", Disassembler::Disassemble(address, size)));
 
     for (size_t i = 0; i < expected_gpr.size(); i++) {
