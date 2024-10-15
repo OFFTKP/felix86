@@ -417,7 +417,7 @@ IR_HANDLE(movsxd) { // movsxd r32/64, rm32/64 - 0x63
 }
 
 IR_HANDLE(push_imm8) { // push imm8 - 0x6a
-    bool is_word = inst->operand_imm.size == X86_SIZE_WORD;
+    bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
     SSAInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
     x86_operand_t rsp_reg = get_full_reg(X86_REF_RSP);
     SSAInstruction* rsp = ir_emit_get_reg(BLOCK, &rsp_reg);
