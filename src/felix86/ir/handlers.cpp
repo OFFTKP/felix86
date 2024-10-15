@@ -528,6 +528,8 @@ IR_HANDLE(cwde) { // cbw/cwde/cdqe - 0x98
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
     SSAInstruction* sexted = ir_emit_sext(BLOCK, reg, size_e);
+
+    inst->operand_reg.size = X86_SIZE_QWORD;
     ir_emit_set_reg(BLOCK, &inst->operand_reg, sexted);
 }
 
