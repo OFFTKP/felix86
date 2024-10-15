@@ -17,16 +17,12 @@ struct Backend {
     Backend(Emulator& emulator);
     ~Backend();
 
-    void MapCompiledFunction(u64 address, void* function) {
-        map[address] = function;
-    }
-
-    void* GetCompiledFunction(u64 address) {
+    std::pair<void*, u64> GetCodeAt(u64 address) {
         if (map.find(address) != map.end()) {
             return map[address];
         }
 
-        return nullptr;
+        return {nullptr, 0};
     }
 
     u8 AvailableGPRs() const;
@@ -60,7 +56,7 @@ private:
 
     u8* memory = nullptr;
     biscuit::Assembler as{};
-    tsl::robin_map<u64, void*> map{}; // map functions to host code
+    tsl::robin_map<u64, std::pair<void*, u64>> map{}; // map functions to host code
 
     void (*enter_dispatcher)(ThreadState*) = nullptr;
     void* exit_dispatcher = nullptr;

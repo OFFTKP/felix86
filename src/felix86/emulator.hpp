@@ -49,6 +49,10 @@ struct Emulator {
         return &thread_states.front();
     }
 
+    std::pair<void*, u64> GetCodeAt(u64 rip) {
+        return backend.GetCodeAt(rip);
+    }
+
     void Run();
 
     static void* CompileNext(Emulator* emulator, ThreadState* state);

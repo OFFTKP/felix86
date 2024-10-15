@@ -171,6 +171,11 @@ void Emulator::setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::compileFunction(u64 rip) {
+    void* already_compiled = backend.GetCodeAt(rip).first;
+    if (already_compiled) {
+        return already_compiled;
+    }
+
     IRFunction function{rip};
     frontend_compile_function(&function);
 
@@ -202,8 +207,6 @@ void* Emulator::compileFunction(u64 rip) {
     AllocationMap allocations = ir_graph_coloring_pass(backend_function);
 
     auto [func, size] = backend.EmitFunction(backend_function, allocations);
-    std::string disassembly = Disassembler::Disassemble(func, size);
-    fmt::print("{}\n", disassembly);
 
     return func;
 }
