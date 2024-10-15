@@ -46,6 +46,8 @@ std::string print_guest_register(x86_ref_e guest) {
         return "zf";
     case X86_REF_SF:
         return "sf";
+    case X86_REF_DF:
+        return "df";
     case X86_REF_OF:
         return "of";
     case X86_REF_RIP:
@@ -58,8 +60,9 @@ std::string print_guest_register(x86_ref_e guest) {
         return "xmm" + std::to_string(guest - X86_REF_XMM0);
     case X86_REF_ST0 ... X86_REF_ST7:
         return "st" + std::to_string(guest - X86_REF_ST0);
-    default:
+    case X86_REF_COUNT:
         UNREACHABLE();
+        break;
     }
 }
 
@@ -75,6 +78,7 @@ void print_state(ThreadState* state) {
     printf("af = %d\n", state->af);
     printf("zf = %d\n", state->zf);
     printf("sf = %d\n", state->sf);
+    printf("df = %d\n", state->df);
     printf("of = %d\n", state->of);
 
     printf("rip = %016lx\n", state->rip);

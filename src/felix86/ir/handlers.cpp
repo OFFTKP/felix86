@@ -717,11 +717,6 @@ IR_HANDLE(hlt) { // hlt - 0xf4
     state->exit = true;
 }
 
-IR_HANDLE(clc) { // clc - 0xf8
-    SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
-    ir_emit_set_flag(BLOCK, X86_REF_CF, zero);
-}
-
 IR_HANDLE(group3_rm8) { // test/not/neg/mul/imul/div/idiv rm8, imm8 - 0xf6
     ir_emit_group3(BLOCK, inst);
 }
@@ -730,9 +725,24 @@ IR_HANDLE(group3_rm32) { // test/not/neg/mul/imul/div/idiv rm16/32/64, imm32 - 0
     ir_emit_group3(BLOCK, inst);
 }
 
+IR_HANDLE(clc) { // clc - 0xf8
+    SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
+    ir_emit_set_flag(BLOCK, X86_REF_CF, zero);
+}
+
 IR_HANDLE(stc) { // stc - 0xf9
     SSAInstruction* one = ir_emit_immediate(BLOCK, 1);
     ir_emit_set_flag(BLOCK, X86_REF_CF, one);
+}
+
+IR_HANDLE(cld) { // cld - 0xfc
+    SSAInstruction* zero = ir_emit_immediate(BLOCK, 0);
+    ir_emit_set_flag(BLOCK, X86_REF_DF, zero);
+}
+
+IR_HANDLE(std) { // std - 0xfd
+    SSAInstruction* one = ir_emit_immediate(BLOCK, 1);
+    ir_emit_set_flag(BLOCK, X86_REF_DF, one);
 }
 
 IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
@@ -773,7 +783,7 @@ IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
     ir_emit_set_rm(BLOCK, &inst->operand_rm, result);
 }
 
-IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32
+IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
     x86_group5_e opcode = (x86_group5_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
     switch (opcode) {
     case X86_GROUP5_INC: {

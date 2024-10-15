@@ -92,6 +92,14 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
         inst.Replace(op, IROpcode::ReadByteRelative);
         break;
     }
+    case X86_REF_DF: {
+        Operands op;
+        op.operands[0] = thread_state_pointer;
+        op.operand_count = 1;
+        op.immediate_data = offsetof(ThreadState, df);
+        inst.Replace(op, IROpcode::ReadByteRelative);
+        break;
+    }
     case X86_REF_OF: {
         Operands op;
         op.operands[0] = thread_state_pointer;
@@ -207,6 +215,15 @@ void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_poin
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, sf);
+        inst.Replace(op, IROpcode::WriteByteRelative);
+        break;
+    }
+    case X86_REF_DF: {
+        Operands op;
+        op.operands[0] = thread_state_pointer;
+        op.operands[1] = set_guest.source;
+        op.operand_count = 2;
+        op.immediate_data = offsetof(ThreadState, df);
         inst.Replace(op, IROpcode::WriteByteRelative);
         break;
     }

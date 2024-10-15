@@ -114,6 +114,7 @@ typedef enum : u8 {
     X86_REF_AF,
     X86_REF_ZF,
     X86_REF_SF,
+    X86_REF_DF,
     X86_REF_OF,
     X86_REF_GS,
     X86_REF_FS,
@@ -155,6 +156,7 @@ struct ThreadState {
     bool zf{};
     bool sf{};
     bool of{};
+    bool df{};
     u64 gsbase{};
     u64 fsbase{};
 
@@ -199,6 +201,8 @@ struct ThreadState {
             return zf;
         case X86_REF_SF:
             return sf;
+        case X86_REF_DF:
+            return df;
         case X86_REF_OF:
             return of;
         default:
@@ -223,6 +227,9 @@ struct ThreadState {
             break;
         case X86_REF_SF:
             sf = value;
+            break;
+        case X86_REF_DF:
+            df = value;
             break;
         case X86_REF_OF:
             of = value;
