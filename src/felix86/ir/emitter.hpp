@@ -78,7 +78,6 @@ SSAInstruction* ir_emit_vector_packed_compare_eq_dword(IRBlock* block, SSAInstru
 SSAInstruction* ir_emit_vector_packed_shuffle_dword(IRBlock* block, SSAInstruction* source, u8 control_byte);
 SSAInstruction* ir_emit_vector_packed_move_byte_mask(IRBlock* block, SSAInstruction* source);
 SSAInstruction* ir_emit_vector_packed_min_byte(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
-SSAInstruction* ir_emit_vector_packed_compare_implicit_string_index(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 
 SSAInstruction* ir_emit_load_guest_from_memory(IRBlock* block, x86_ref_e ref);
 void ir_emit_store_guest_to_memory(IRBlock* block, x86_ref_e ref, SSAInstruction* source);
@@ -163,3 +162,96 @@ void ir_emit_rep_end(FrontendState* state, const x86_instruction_t& inst, x86_re
 
 // Exits the dispatcher all together ending the current thread, with a byte to specify the reason
 void ir_emit_set_exit_reason(IRBlock* block, u8 reason);
+
+// TODO: finish this and replace the above functions
+struct IREmitter {
+    SSAInstruction* LoadGuestFromMemory(x86_ref_e ref);
+    void StoreGuestToMemory(x86_ref_e ref, SSAInstruction* source);
+    SSAInstruction* GetGuest(x86_ref_e ref);
+    void SetGuest(x86_ref_e ref, SSAInstruction* source);
+    SSAInstruction* GetFlag(x86_ref_e flag);
+    SSAInstruction* GetFlagNot(x86_ref_e flag);
+    void SetFlag(x86_ref_e flag, SSAInstruction* source);
+    void SetExitReason(u8 reason);
+    void Comment(const std::string& comment);
+
+    SSAInstruction* Immediate(u64 value);
+    SSAInstruction* Add(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Addi(SSAInstruction* source, i64 imm);
+    SSAInstruction* Sub(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* ShiftLeft(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* ShiftRight(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* ShiftRightArithmetic(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Rotate(SSAInstruction* source1, SSAInstruction* source2, x86_size_e size, bool right);
+    SSAInstruction* Select(SSAInstruction* condition, SSAInstruction* true_value, SSAInstruction* false_value);
+    SSAInstruction* Clz(SSAInstruction* source);
+    SSAInstruction* Ctz(SSAInstruction* source);
+    SSAInstruction* And(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Or(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Xor(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Not(SSAInstruction* source);
+    SSAInstruction* Neg(SSAInstruction* source);
+    SSAInstruction* GetParity(SSAInstruction* source);
+    SSAInstruction* Equal(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* NotEqual(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* GreaterThanSigned(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* LessThanSigned(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* GreaterThanUnsigned(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* LessThanUnsigned(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Lea(x86_operand_t* rm_operand);
+    SSAInstruction* Sext(SSAInstruction* source, x86_size_e size);
+    SSAInstruction* Zext(SSAInstruction* source, x86_size_e size);
+    SSAInstruction* Div(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Divu(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Rem(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Remu(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Divw(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Divuw(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Remw(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Remuw(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Mul(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Mulh(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* Mulhu(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* InsertIntegerToVector(SSAInstruction* source, SSAInstruction* dest, u8 idx, x86_size_e sz);
+    SSAInstruction* ExtractIntegerFromVector(SSAInstruction* src, u8 idx, x86_size_e sz);
+    SSAInstruction* VectorUnpackByteLow(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorUnpackWordLow(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorUnpackDWordLow(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorUnpackQWordLow(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* CastVectorInteger(SSAInstruction* source);
+    SSAInstruction* CastIntegerVector(SSAInstruction* source);
+    SSAInstruction* VectorPackedAnd(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorPackedOr(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorPackedXor(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorPackedShiftLeft(SSAInstruction* source, SSAInstruction* imm);
+    SSAInstruction* VectorPackedShiftRight(SSAInstruction* source, SSAInstruction* imm);
+    SSAInstruction* VectorPackedSubByte(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorPackedAddQWord(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorPackedCompareEqByte(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorPackedCompareEQWord(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorPackedCompareEqDWord(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* VectorPackedShuffleDWord(SSAInstruction* source, u8 control_byte);
+    SSAInstruction* VectorPackedMoveByteMask(SSAInstruction* source);
+    SSAInstruction* VectorPackedMinByte(SSAInstruction* source1, SSAInstruction* source2);
+
+    SSAInstruction* ReadByte(SSAInstruction* address);
+    SSAInstruction* ReadWord(SSAInstruction* address);
+    SSAInstruction* ReadDWord(SSAInstruction* address);
+    SSAInstruction* ReadQWord(SSAInstruction* address);
+    SSAInstruction* ReadXmmWord(SSAInstruction* address);
+    void WriteByte(SSAInstruction* address, SSAInstruction* source);
+    void WriteWord(SSAInstruction* address, SSAInstruction* source);
+    void WriteDWord(SSAInstruction* address, SSAInstruction* source);
+    void WriteQWord(SSAInstruction* address, SSAInstruction* source);
+    void WriteXmmWord(SSAInstruction* address, SSAInstruction* source);
+
+    SSAInstruction* AmoAdd(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoXor(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoOr(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoAnd(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoSwap(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+
+    void Setcc(x86_instruction_t* inst);
+    void Cpuid();
+    void Rdtsc();
+};
