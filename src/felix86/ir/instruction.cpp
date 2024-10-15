@@ -136,6 +136,8 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::AmoCAS64:
     case IROpcode::AmoCAS128:
     case IROpcode::ReadByteRelative:
+    case IROpcode::ReadWordRelative:
+    case IROpcode::ReadDWordRelative:
     case IROpcode::ReadQWordRelative: {
         return IRType::Integer64;
     }
