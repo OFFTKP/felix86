@@ -527,10 +527,26 @@ IR_HANDLE(xchg_reg_eax) { // xchg reg, eax - 0x91-0x97
 IR_HANDLE(cwde) { // cbw/cwde/cdqe - 0x98
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    SSAInstruction* sexted = ir_emit_sext(BLOCK, reg, size_e);
-
-    inst->operand_reg.size = X86_SIZE_QWORD;
-    ir_emit_set_reg(BLOCK, &inst->operand_reg, sexted);
+    switch (size_e) {
+    case X86_SIZE_WORD: {
+        SSAInstruction* sexted = ir_emit_sext8(BLOCK, reg);
+        ir_emit_set_reg(BLOCK, &inst->operand_reg, sexted);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        SSAInstruction* sexted = ir_emit_sext16(BLOCK, reg);
+        ir_emit_set_reg(BLOCK, &inst->operand_reg, sexted);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        SSAInstruction* sexted = ir_emit_sext32(BLOCK, reg);
+        ir_emit_set_reg(BLOCK, &inst->operand_reg, sexted);
+        break;
+    }
+    default:
+        UNREACHABLE();
+        break;
+    }
 }
 
 IR_HANDLE(cdq) { // cwd/cdq/cqo - 0x99
