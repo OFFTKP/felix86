@@ -664,7 +664,7 @@ void Emitter::EmitAmoSwap8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         AS.AMOSWAP_B(ordering, Rd, Rs, Address);
         EmitZext8(backend, Rd, Rd);
     } else {
-        auto mv = [](biscuit::Assembler& as, biscuit::GPR Rd, biscuit::GPR, biscuit::GPR Rs) { as.MV(Rd, Rs); };
+        auto mv = [](biscuit::Assembler& as, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR) { as.MV(Rd, Rs); };
         SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, mv);
     }
 }
@@ -675,7 +675,8 @@ void Emitter::EmitAmoSwap16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addr
         AS.AMOSWAP_H(ordering, Rd, Rs, Address);
         EmitZext16(backend, Rd, Rd);
     } else {
-        UNIMPLEMENTED();
+        auto mv = [](biscuit::Assembler& as, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR) { as.MV(Rd, Rs); };
+        SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, mv);
     }
 }
 
