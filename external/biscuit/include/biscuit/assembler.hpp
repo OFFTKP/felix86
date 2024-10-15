@@ -1,13 +1,13 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <biscuit/code_buffer.hpp>
 #include <biscuit/csr.hpp>
 #include <biscuit/isa.hpp>
 #include <biscuit/label.hpp>
 #include <biscuit/registers.hpp>
 #include <biscuit/vector.hpp>
-#include <cstddef>
-#include <cstdint>
 
 namespace biscuit {
 
@@ -61,8 +61,7 @@ public:
      * @note The caller is responsible for managing the lifetime of the given memory.
      *       CodeBuffer will *not* free the memory once it goes out of scope.
      */
-    [[nodiscard]] explicit Assembler(uint8_t* buffer, size_t capacity,
-                                     ArchFeature features = ArchFeature::RV64);
+    [[nodiscard]] explicit Assembler(uint8_t* buffer, size_t capacity, ArchFeature features = ArchFeature::RV64);
 
     // Copy constructor and assignment.
     Assembler(const Assembler&) = delete;

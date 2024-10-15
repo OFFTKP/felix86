@@ -348,11 +348,21 @@ void Emitter::EmitCpuid(Backend& backend) {
 }
 
 void Emitter::EmitSext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    AS.SEXTB(Rd, Rs);
+    if (HasB()) {
+        AS.SEXTB(Rd, Rs);
+    } else {
+        AS.SLLI(Rd, Rs, 56);
+        AS.SRAI(Rd, Rd, 56);
+    }
 }
 
 void Emitter::EmitSext16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    AS.SEXTH(Rd, Rs);
+    if (HasB()) {
+        AS.SEXTH(Rd, Rs);
+    } else {
+        AS.SLLI(Rd, Rs, 48);
+        AS.SRAI(Rd, Rd, 48);
+    }
 }
 
 void Emitter::EmitSext32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
@@ -639,7 +649,7 @@ void Emitter::EmitAmoSwap8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         EmitZext8(backend, Rd, Rd);
     } else {
         auto mv = [](biscuit::Assembler& as, biscuit::GPR Rd, biscuit::GPR, biscuit::GPR Rs) { as.MV(Rd, Rs); };
-        SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, mv);
+        SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, mv);
     }
 }
 
