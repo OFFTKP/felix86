@@ -221,5 +221,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     void* end = as.GetCursorPointer();
     u64 size = (u64)end - (u64)start;
 
+    map[function.GetStartAddress()] = {start, size};
+
     return {start, size};
 }

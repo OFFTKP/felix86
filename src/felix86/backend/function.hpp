@@ -32,6 +32,11 @@ struct BackendFunction {
 
     [[nodiscard]] std::string Print() const;
 
+    u64 GetStartAddress() const {
+        return start_address;
+    }
+
 private:
     std::vector<BackendBlock> blocks;
+    u64 start_address = 0;
 };

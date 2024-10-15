@@ -140,6 +140,8 @@ BackendFunction BackendFunction::FromIRFunction(const IRFunction* function) {
         BreakupPhis(&backend_function, blocks[i], phis[i]);
     }
 
+    backend_function.start_address = function->GetStartAddress();
+
     return backend_function;
 }
 
