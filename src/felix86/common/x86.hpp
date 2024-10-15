@@ -165,7 +165,7 @@ struct ThreadState {
     u64 clear_child_tid{};
     u64 brk_current_address{};
 
-    u8 exit_dispatcher_flag{};
+    u8 exit_reason{};
 
     // Storage for saved RISC-V registers, per thread, for when it's time to completely
     // exit dispatcher and stop the emulator

@@ -30,6 +30,11 @@ set(FELIX86_FRONTEND_SOURCES
     src/felix86/frontend/frontend.cpp
 )
 
+set(FELIX86_AOT_SOURCES
+    # src/felix86/aot/control_flow_analysis.cpp
+    # src/felix86/aot/function_start_finder.cpp
+)
+
 set(FELIX86_IR_SOURCES
     src/felix86/ir/block.cpp
     src/felix86/ir/emitter.cpp
@@ -75,6 +80,7 @@ set(FELIX86_HLE_SOURCES
 
 set(FELIX86_CORE_SOURCES
     ${FELIX86_COMMON_SOURCES}
+    ${FELIX86_AOT_SOURCES}
     ${FELIX86_FRONTEND_SOURCES}
     ${FELIX86_IR_SOURCES}
     ${FELIX86_BACKEND_SOURCES}

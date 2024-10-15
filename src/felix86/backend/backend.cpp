@@ -8,6 +8,24 @@ using namespace biscuit;
 
 constexpr static u64 code_cache_size = 32 * 1024 * 1024;
 
+namespace {
+std::string ExitReasonToString(ExitReason reason) {
+    switch (reason) {
+    case ExitReason::EXIT_REASON_HLT:
+        return "Hit hlt instruction";
+    case ExitReason::EXIT_REASON_BAD_ALIGNMENT:
+        return "Bad alignment";
+    }
+
+    UNREACHABLE();
+    return "";
+}
+
+void PrintExitReason(ThreadState* state) {
+    fmt::print("Exit reason: {}\n", ExitReasonToString((ExitReason)state->exit_reason));
+}
+} // namespace
+
 Backend::Backend(Emulator& emulator) : emulator(emulator), memory(allocateCodeCache()), as(memory, code_cache_size) {
     emitNecessaryStuff();
     CPUInfo cpuinfo;
@@ -62,7 +80,7 @@ void Backend::emitNecessaryStuff() {
 
     compile_next = (decltype(compile_next))as.GetCursorPointer();
     // If it's not zero it has some exit reason, exit the dispatcher
-    as.LB(a0, offsetof(ThreadState, exit_dispatcher_flag), Registers::ThreadStatePointer());
+    as.LB(a0, offsetof(ThreadState, exit_reason), Registers::ThreadStatePointer());
     as.BNEZ(a0, &exit_dispatcher_label);
     as.LI(a0, (u64)&emulator);
     as.MV(a1, Registers::ThreadStatePointer());
@@ -90,6 +108,23 @@ void Backend::emitNecessaryStuff() {
     as.RET();
 
     crash_target = as.GetCursorPointer();
+
+    // Load the old state and print a message
+    as.MV(address, Registers::ThreadStatePointer());
+    as.ADDI(address, address, offsetof(ThreadState, gpr_storage));
+    for (size_t i = 0; i < saved_gprs.size(); i++) {
+        as.LD(saved_gprs[i], i * sizeof(u64), address);
+    }
+
+    as.ADDI(address, address, saved_gprs.size() * sizeof(u64));
+    for (size_t i = 0; i < saved_fprs.size(); i++) {
+        as.FLD(saved_fprs[i], i * sizeof(u64), address);
+    }
+
+    as.MV(a0, Registers::ThreadStatePointer());
+    as.LI(a1, (u64)PrintExitReason);
+    as.JALR(a1);
+
     as.EBREAK();
 }
 

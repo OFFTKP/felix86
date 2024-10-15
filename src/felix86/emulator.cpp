@@ -46,7 +46,7 @@ void Emulator::Run() {
     backend.EnterDispatcher(state);
 
     VERBOSE("Bye-bye main thread :(");
-    VERBOSE("Main thread exited: %d", (int)state->exit_dispatcher_flag);
+    VERBOSE("Main thread exited: %d", (int)state->exit_reason);
 }
 
 void Emulator::setupMainStack(ThreadState* state) {

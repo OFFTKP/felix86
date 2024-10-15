@@ -19,6 +19,7 @@ void Pop(Backend& backend, biscuit::GPR Rs) {
 }
 
 // Nothing ships these extensions yet and AFAIK there's no way to check for them
+// TODO: in the future make it configurable to enable/disable these
 constexpr bool HasZabha() {
     return false;
 }
@@ -28,6 +29,10 @@ constexpr bool HasZacas() {
 }
 
 constexpr bool HasB() {
+    return false;
+}
+
+constexpr bool HasZam() {
     return false;
 }
 
@@ -203,13 +208,15 @@ void PopAllCallerSaved(Backend& backend) {
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), size);
 }
 
-// Sanity check for alignment until we want to properly implement unaligned atomics
+// Sanity check for alignment until we have unaligned atomic extensions
 void EmitAlignmentCheck(Backend& backend, biscuit::GPR address, u8 alignment) {
-    biscuit::Label ok;
-    AS.ANDI(address, address, alignment - 1);
-    AS.BEQZ(address, &ok);
-    EmitCrash(backend, ExitReason::EXIT_REASON_BAD_ALIGNMENT);
-    AS.Bind(&ok);
+    if (!HasZam()) {
+        biscuit::Label ok;
+        AS.ANDI(address, address, alignment - 1);
+        AS.BEQZ(address, &ok);
+        EmitCrash(backend, ExitReason::EXIT_REASON_BAD_ALIGNMENT);
+        AS.Bind(&ok);
+    }
 }
 
 } // namespace
@@ -241,7 +248,7 @@ void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, void
 
 void Emitter::EmitSetExitReason(Backend& backend, u64 reason) {
     AS.LI(t0, (u8)reason);
-    AS.SB(t0, offsetof(ThreadState, exit_dispatcher_flag), Registers::ThreadStatePointer());
+    AS.SB(t0, offsetof(ThreadState, exit_reason), Registers::ThreadStatePointer());
 }
 
 void Emitter::EmitMov(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
