@@ -94,6 +94,16 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::ReadWordRelative: {
+        EmitReadWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        break;
+    }
+
+    case IROpcode::ReadDWordRelative: {
+        EmitReadDWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        break;
+    }
+
     case IROpcode::ReadQWordRelative: {
         EmitReadQWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
@@ -106,6 +116,16 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
 
     case IROpcode::WriteByteRelative: {
         EmitWriteByteRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        break;
+    }
+
+    case IROpcode::WriteWordRelative: {
+        EmitWriteWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        break;
+    }
+
+    case IROpcode::WriteDWordRelative: {
+        EmitWriteDWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 

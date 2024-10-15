@@ -170,6 +170,8 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::WriteXmmWord:
     case IROpcode::StoreGuestToMemory:
     case IROpcode::WriteByteRelative:
+    case IROpcode::WriteWordRelative:
+    case IROpcode::WriteDWordRelative:
     case IROpcode::WriteQWordRelative:
     case IROpcode::WriteXmmWordRelative: {
         return IRType::Void;
@@ -294,6 +296,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(ReadQWord, 1);
         VALIDATE_OPS_INT(ReadXmmWord, 1);
         VALIDATE_OPS_INT(ReadByteRelative, 1);
+        VALIDATE_OPS_INT(ReadWordRelative, 1);
+        VALIDATE_OPS_INT(ReadDWordRelative, 1);
         VALIDATE_OPS_INT(ReadQWordRelative, 1);
         VALIDATE_OPS_INT(ReadXmmWordRelative, 1);
         VALIDATE_OPS_INT(Div128, 1);
@@ -304,6 +308,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(WriteDWord, 2);
         VALIDATE_OPS_INT(WriteQWord, 2);
         VALIDATE_OPS_INT(WriteByteRelative, 2);
+        VALIDATE_OPS_INT(WriteWordRelative, 2);
+        VALIDATE_OPS_INT(WriteDWordRelative, 2);
         VALIDATE_OPS_INT(WriteQWordRelative, 2);
         VALIDATE_OPS_INT(Add, 2);
         VALIDATE_OPS_INT(Sub, 2);
@@ -891,6 +897,14 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {} + 0x{:x})", GetNameString(name), "read8", "address", GetNameString(operands[0]), immediate_data);
         break;
     }
+    case IROpcode::ReadWordRelative: {
+        ret += fmt::format("{} <- {}({}: {} + 0x{:x})", GetNameString(name), "read16", "address", GetNameString(operands[0]), immediate_data);
+        break;
+    }
+    case IROpcode::ReadDWordRelative: {
+        ret += fmt::format("{} <- {}({}: {} + 0x{:x})", GetNameString(name), "read32", "address", GetNameString(operands[0]), immediate_data);
+        break;
+    }
     case IROpcode::ReadQWordRelative: {
         ret += fmt::format("{} <- {}({}: {} + 0x{:x})", GetNameString(name), "read64", "address", GetNameString(operands[0]), immediate_data);
         break;
@@ -901,6 +915,16 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::WriteByteRelative: {
         ret += fmt::format("{}({}: {} + 0x{:x}, {}: {})", "write8", "address", GetNameString(operands[0]), immediate_data, "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::WriteWordRelative: {
+        ret += fmt::format("{}({}: {} + 0x{:x}, {}: {})", "write16", "address", GetNameString(operands[0]), immediate_data, "src",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::WriteDWordRelative: {
+        ret += fmt::format("{}({}: {} + 0x{:x}, {}: {})", "write32", "address", GetNameString(operands[0]), immediate_data, "src",
                            GetNameString(operands[1]));
         break;
     }

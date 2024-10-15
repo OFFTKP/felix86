@@ -9,6 +9,48 @@ bool IsInteger64(const SSAInstruction* inst) {
     return !inst->IsImmediate() && inst->GetType() == IRType::Integer64;
 }
 
+IROpcode ReadToRelative(IROpcode read) {
+    switch (read) {
+    case IROpcode::ReadByte: {
+        return IROpcode::ReadByteRelative;
+    }
+    case IROpcode::ReadWord: {
+        return IROpcode::ReadWordRelative;
+    }
+    case IROpcode::ReadDWord: {
+        return IROpcode::ReadDWordRelative;
+    }
+    case IROpcode::ReadQWord: {
+        return IROpcode::ReadQWordRelative;
+    }
+    default: {
+        UNREACHABLE();
+        return IROpcode::Null;
+    }
+    }
+}
+
+IROpcode WriteToRelative(IROpcode write) {
+    switch (write) {
+    case IROpcode::WriteByte: {
+        return IROpcode::WriteByteRelative;
+    }
+    case IROpcode::WriteWord: {
+        return IROpcode::WriteWordRelative;
+    }
+    case IROpcode::WriteDWord: {
+        return IROpcode::WriteDWordRelative;
+    }
+    case IROpcode::WriteQWord: {
+        return IROpcode::WriteQWordRelative;
+    }
+    default: {
+        UNREACHABLE();
+        return IROpcode::Null;
+    }
+    }
+}
+
 // t2 = imm + imm
 bool PeepholeAddImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
@@ -367,6 +409,90 @@ bool PeepholeShiftRightImmediates(SSAInstruction& inst) {
     return false;
 }
 
+// t2 = t1 + imm
+// store some_val, (t2)
+bool PeepholeWriteRelative(SSAInstruction& inst) {
+    SSAInstruction* address = inst.GetOperand(0);
+
+    switch (address->GetOpcode()) {
+    case IROpcode::Add: {
+        for (u8 i = 0; i < 2; i++) {
+            SSAInstruction* imm = address->GetOperand(i);
+            SSAInstruction* base = address->GetOperand(!i);
+            if (imm->IsImmediate() && IsValidSigned12BitImm(imm->GetImmediateData())) {
+                Operands op;
+                op.operands[0] = base;
+                op.operands[1] = inst.GetOperand(1);
+                op.operand_count = 2;
+                op.immediate_data = imm->GetImmediateData();
+                inst.Replace(op, WriteToRelative(inst.GetOpcode()));
+                return true;
+            }
+        }
+        break;
+    }
+    case IROpcode::Sub: {
+        SSAInstruction* base = address->GetOperand(0);
+        SSAInstruction* imm = address->GetOperand(1);
+        if (imm->IsImmediate() && IsValidSigned12BitImm(-imm->GetImmediateData())) {
+            Operands op;
+            op.operands[0] = base;
+            op.operands[1] = inst.GetOperand(1);
+            op.operand_count = 2;
+            op.immediate_data = -imm->GetImmediateData();
+            inst.Replace(op, WriteToRelative(inst.GetOpcode()));
+            return true;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    return false;
+}
+
+// t2 = t1 + imm
+// read (t2)
+bool PeepholeReadRelative(SSAInstruction& inst) {
+    SSAInstruction* address = inst.GetOperand(0);
+
+    switch (address->GetOpcode()) {
+    case IROpcode::Add: {
+        for (u8 i = 0; i < 2; i++) {
+            SSAInstruction* imm = address->GetOperand(i);
+            SSAInstruction* base = address->GetOperand(!i);
+            if (imm->IsImmediate() && IsValidSigned12BitImm(imm->GetImmediateData())) {
+                Operands op;
+                op.operands[0] = base;
+                op.operand_count = 1;
+                op.immediate_data = imm->GetImmediateData();
+                inst.Replace(op, WriteToRelative(inst.GetOpcode()));
+                return true;
+            }
+        }
+        break;
+    }
+    case IROpcode::Sub: {
+        SSAInstruction* base = address->GetOperand(0);
+        SSAInstruction* imm = address->GetOperand(1);
+        if (imm->IsImmediate() && IsValidSigned12BitImm(-imm->GetImmediateData())) {
+            Operands op;
+            op.operands[0] = base;
+            op.operand_count = 1;
+            op.immediate_data = -imm->GetImmediateData();
+            inst.Replace(op, ReadToRelative(inst.GetOpcode()));
+            return true;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    return false;
+}
+
 // t2 = imm - imm
 bool PeepholeSubImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
@@ -520,6 +646,13 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 CHECK(PeepholeNotEqualSame);
                 break;
             }
+            case IROpcode::ReadByte:
+            case IROpcode::ReadWord:
+            case IROpcode::ReadDWord:
+            case IROpcode::ReadQWord: {
+                CHECK(PeepholeReadRelative);
+                break;
+            }
             case IROpcode::Rem: {
                 CHECK(PeepholeRemImmediates);
                 break;
@@ -544,6 +677,13 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 CHECK(PeepholeSubImmediates);
                 CHECK(PeepholeSubSame);
                 CHECK(PeepholeSubZero);
+                break;
+            }
+            case IROpcode::WriteByte:
+            case IROpcode::WriteWord:
+            case IROpcode::WriteDWord:
+            case IROpcode::WriteQWord: {
+                CHECK(PeepholeWriteRelative);
                 break;
             }
             default:

@@ -99,9 +99,13 @@
     X(WriteDWord)                                                                                                                                    \
     X(WriteQWord)                                                                                                                                    \
     X(ReadByteRelative)                                                                                                                              \
+    X(ReadWordRelative)                                                                                                                              \
+    X(ReadDWordRelative)                                                                                                                             \
     X(ReadQWordRelative)                                                                                                                             \
     X(ReadXmmWordRelative)                                                                                                                           \
     X(WriteByteRelative)                                                                                                                             \
+    X(WriteWordRelative)                                                                                                                             \
+    X(WriteDWordRelative)                                                                                                                            \
     X(WriteQWordRelative)                                                                                                                            \
     X(WriteXmmWordRelative)                                                                                                                          \
     X(WriteXmmWord)                                                                                                                                  \
