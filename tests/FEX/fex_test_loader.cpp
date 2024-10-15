@@ -184,7 +184,7 @@ void FEXTestLoader::Run() {
 }
 
 void FEXTestLoader::Validate() {
-    auto [address, size] = emulator->GetCodeAt(emulator->GetTestState()->GetGpr(X86_REF_RIP));
+    auto [address, size] = emulator->GetCodeAt(emulator->GetTestState()->GetRip());
     CATCH_INFO(fmt::format("Disassembly:\n{}", Disassembler::Disassemble(address, size)));
 
     for (size_t i = 0; i < expected_gpr.size(); i++) {
