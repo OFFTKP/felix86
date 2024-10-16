@@ -530,7 +530,7 @@ SSAInstruction* ir_emit_get_flag(IRBlock* block, x86_ref_e flag) {
 
 SSAInstruction* ir_emit_get_flag_not(IRBlock* block, x86_ref_e flag) {
     SSAInstruction* instruction = ir_emit_get_flag(block, flag);
-    return ir_emit_not(block, instruction);
+    return ir_emit_xor(block, instruction, ir_emit_immediate(block, 1));
 }
 
 void ir_emit_set_flag(IRBlock* block, x86_ref_e flag, SSAInstruction* source) {
