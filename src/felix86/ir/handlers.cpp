@@ -416,6 +416,22 @@ IR_HANDLE(movsxd) { // movsxd r32/64, rm32/64 - 0x63
     ir_emit_set_reg(BLOCK, &inst->operand_reg, serm);
 }
 
+IR_HANDLE(push_imm32) { // push imm32 - 0x68
+    bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
+    SSAInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
+    x86_operand_t rsp_reg = get_full_reg(X86_REF_RSP);
+    SSAInstruction* rsp = ir_emit_get_reg(BLOCK, &rsp_reg);
+    SSAInstruction* rsp_sub = ir_emit_addi(BLOCK, rsp, is_word ? -2 : -8);
+
+    if (is_word) {
+        ir_emit_write_word(BLOCK, rsp_sub, imm);
+    } else {
+        ir_emit_write_qword(BLOCK, rsp_sub, imm);
+    }
+
+    ir_emit_set_reg(BLOCK, &rsp_reg, rsp_sub);
+}
+
 IR_HANDLE(push_imm8) { // push imm8 - 0x6a
     bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
     SSAInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
