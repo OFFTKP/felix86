@@ -145,7 +145,7 @@ void Emulator::setupMainStack(ThreadState* state) {
 
     u64 final_rsp = rsp - size_needed;
     if (final_rsp & 0xF) {
-        ERROR("Stack not aligned to 16 bytes");
+        rsp -= 8;
     }
 
     for (int i = auxv_count - 1; i >= 0; i--) {
