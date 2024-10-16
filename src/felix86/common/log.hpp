@@ -35,6 +35,14 @@
             printf(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                     \
         }                                                                                                                                            \
     } while (0)
+
+#define SUCCESS(format, ...)                                                                                                                         \
+    do {                                                                                                                                             \
+        if (!g_quiet) {                                                                                                                              \
+            printf(ANSI_COLOR_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                    \
+        }                                                                                                                                            \
+    } while (0)
+
 #define UNREACHABLE() ERROR("Unreachable code hit")
 #define UNIMPLEMENTED() ERROR("Unimplemented code hit")
 

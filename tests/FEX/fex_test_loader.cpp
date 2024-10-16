@@ -230,4 +230,6 @@ void FEXTestLoader::RunTest(const std::filesystem::path& path) {
     }
     FEXTestLoader loader(std::filesystem::path(exe_path).parent_path() / path);
     loader.Run();
+
+    SUCCESS("Test passed: %s", path.string().c_str());
 }

@@ -40,7 +40,8 @@ Backend::Backend(Emulator& emulator) : emulator(emulator), memory(allocateCodeCa
 #ifdef __x86_64__
         WARN("Running in x86-64 environment");
 #else
-        WARN("Backend is missing some extensions or doesn't have VLEN=128");
+        if (!g_testing) // too much spam if testing
+            WARN("Backend is missing some extensions or doesn't have VLEN=128");
 #endif
     }
 }
