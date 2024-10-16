@@ -20,7 +20,7 @@ struct TestConfig {
 };
 
 struct Emulator {
-    Emulator(const Config& config) : backend(*this), config(config) {
+    Emulator(const Config& config) : config(config), backend(*this) {
         fs.LoadRootFS(config.rootfs_path);
         fs.LoadExecutable(config.executable_path);
         ThreadState* main_state = createThreadState();
@@ -71,8 +71,8 @@ private:
 
     std::mutex compilation_mutex; // to synchronize compilation and function lookup
     std::list<ThreadState> thread_states;
+    Config config;
     Backend backend;
     Filesystem fs;
-    Config config;
     bool testing = false;
 };
