@@ -72,12 +72,15 @@ void Emulator::setupMainStack(ThreadState* state) {
 
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
+    VERBOSE("Pushing: %s -> %s", path, program_name);
 
     rsp = stack_push_string(rsp, x86_64_string);
     const char* platform_name = (const char*)rsp;
+    VERBOSE("Pushing: %s -> %s", x86_64_string, platform_name);
 
     for (ssize_t i = 0; i < argc; i++) {
         rsp = stack_push_string(rsp, config.argv[i].c_str());
+        VERBOSE("Pushing: %s -> %p", config.argv[i].c_str(), (void*)rsp);
         argv_addresses[i] = rsp;
     }
 
@@ -91,8 +94,8 @@ void Emulator::setupMainStack(ThreadState* state) {
     }
 
     // Push 128-bits to stack that are gonna be used as random data
-    u64 rand_address = stack_push(rsp, 0);
     stack_push(rsp, 0);
+    u64 rand_address = stack_push(rsp, 0);
 
     int result = getrandom((void*)rand_address, 16, 0);
     if (result == -1 || result != 16) {
