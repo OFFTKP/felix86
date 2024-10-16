@@ -60,6 +60,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         config->use_interpreter = true;
         break;
     }
+    case 'b': {
+        config->break_before_dispatch = true;
+        break;
+    }
     case ARGP_KEY_END: {
         if (config->argv.empty()) {
             argp_usage(state);

@@ -235,5 +235,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
         function = emulator->compileFunction(thread_state->rip);
     }
 
+    VERBOSE("Jumping to function %p", function);
+
     return function;
 }
