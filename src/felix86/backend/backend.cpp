@@ -87,7 +87,12 @@ void Backend::emitNecessaryStuff() {
     as.MV(a1, Registers::ThreadStatePointer());
     as.LI(a2, (u64)Emulator::CompileNext);
     as.JALR(a2); // returns the function pointer to the compiled function
-    as.JR(a0);   // jump to the compiled function
+
+    if (emulator.GetConfig().break_before_dispatch) {
+        as.EBREAK();
+    }
+
+    as.JR(a0); // jump to the compiled function
 
     // When it needs to exit the dispatcher for whatever reason (such as hlt hit), jump here
     exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();

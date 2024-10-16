@@ -10,6 +10,7 @@ struct Config {
     std::filesystem::path executable_path;
     bool print_blocks = false;
     bool use_interpreter = false;
+    bool break_before_dispatch = false;
     std::vector<std::string> argv;
     std::vector<std::string> envp;
 };

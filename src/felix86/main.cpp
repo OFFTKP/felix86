@@ -13,6 +13,7 @@ static char args_doc[] = "BINARY [ARGS...]";
 
 static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose output"},
                                        {"quiet", 'q', 0, 0, "Don't produce any output"},
+                                       {"break", 'b', 0, 0, "Insert a breakpoint before dispatching"},
                                        {"host-envs", 'e', 0, 0, "Pass host environment variables to the guest"},
                                        {"print-functions", 'P', 0, 0, "Print functions as they compile"},
                                        {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
