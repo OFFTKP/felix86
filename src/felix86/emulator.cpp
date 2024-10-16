@@ -68,6 +68,8 @@ void Emulator::setupMainStack(ThreadState* state) {
     // To hold the addresses of the arguments for later pushing
     std::vector<u64> argv_addresses(argc);
 
+    void* stack_base = (void*)rsp;
+
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
 
@@ -165,6 +167,15 @@ void Emulator::setupMainStack(ThreadState* state) {
     if (rsp & 0xF) {
         ERROR("Stack not aligned to 16 bytes\n");
         return;
+    }
+
+    fmt::print("Stack:\n");
+    u64 stack_end = rsp;
+    for (u8* ptr = (u8*)stack_end; ptr < (u8*)stack_base;) {
+        for (int i = 0; i < 8; i++) {
+            fmt::print("{:02X} ", ptr[i]);
+        }
+        fmt::print("\n");
     }
 
     state->SetGpr(X86_REF_RSP, rsp);
