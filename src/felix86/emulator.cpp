@@ -176,6 +176,7 @@ void Emulator::setupMainStack(ThreadState* state) {
             fmt::print("{:02X} ", ptr[i]);
         }
         fmt::print("\n");
+        ptr += 8;
     }
 
     state->SetGpr(X86_REF_RSP, rsp);
