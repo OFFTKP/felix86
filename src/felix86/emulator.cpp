@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/random.h>
 #include "felix86/backend/disassembler.hpp"
+#include "felix86/common/print.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/ir/passes/passes.hpp"
@@ -199,15 +200,16 @@ void* Emulator::compileFunction(u64 rip) {
     PassManager::SSAPass(&function);
     PassManager::DeadCodeEliminationPass(&function);
 
-    bool changed = false;
-
-    do {
-        changed = false;
-        changed |= PassManager::PeepholePass(&function);
-        changed |= PassManager::LocalCSEPass(&function);
-        changed |= PassManager::CopyPropagationPass(&function);
-        changed |= PassManager::DeadCodeEliminationPass(&function);
-    } while (changed);
+    if (config.optimize) {
+        bool changed = false;
+        do {
+            changed = false;
+            changed |= PassManager::PeepholePass(&function);
+            changed |= PassManager::LocalCSEPass(&function);
+            changed |= PassManager::CopyPropagationPass(&function);
+            changed |= PassManager::DeadCodeEliminationPass(&function);
+        } while (changed);
+    }
 
     PassManager::CriticalEdgeSplittingPass(&function);
 
@@ -238,6 +240,10 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     }
 
     VERBOSE("Jumping to function %p", function);
+
+    if (emulator->config.print_state) {
+        print_state(thread_state);
+    }
 
     return function;
 }

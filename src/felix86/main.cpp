@@ -17,6 +17,7 @@ static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose o
                                        {"host-envs", 'e', 0, 0, "Pass host environment variables to the guest"},
                                        {"print-functions", 'P', 0, 0, "Print functions as they compile"},
                                        {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
+                                       {"dont-optimize", 'd', 0, 0, "Don't apply optimizations on the IR"},
                                        {0}};
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
@@ -42,6 +43,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
     case 'p': {
         config->rootfs_path = arg;
+        break;
+    }
+    case 'd': {
+        config->optimize = false;
         break;
     }
     case 'e': {
