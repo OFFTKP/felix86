@@ -103,8 +103,6 @@ void Emulator::setupMainStack(ThreadState* state) {
         return;
     }
 
-    rsp &= ~0xF; // Align to 16 bytes
-
     auxv_t auxv_entries[17] = {
         {AT_PAGESZ, {4096}},
         {AT_EXECFN, {(u64)program_name}},
