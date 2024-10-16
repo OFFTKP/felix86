@@ -99,8 +99,9 @@ void Emulator::setupMainStack(ThreadState* state) {
     }
 
     // Push 128-bits to stack that are gonna be used as random data
-    stack_push(rsp, 0);
-    u64 rand_address = stack_push(rsp, 0);
+    rsp = stack_push(rsp, 0);
+    rsp = stack_push(rsp, 0);
+    u64 rand_address = rsp;
 
     int result = getrandom((void*)rand_address, 16, 0);
     if (result == -1 || result != 16) {
