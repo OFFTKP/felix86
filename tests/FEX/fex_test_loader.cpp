@@ -228,6 +228,7 @@ void FEXTestLoader::RunTest(const std::filesystem::path& path) {
         perror("readlink");
         exit(1);
     }
+
     FEXTestLoader loader(std::filesystem::path(exe_path).parent_path() / path);
     loader.Run();
 
