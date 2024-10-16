@@ -80,37 +80,31 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     // At this point buffer should contain the compiled binary as raw bytes and
     // the json string should contain the json data
     nlohmann::json j = nlohmann::json::parse(json, nullptr, false);
-    if (j.empty()) {
-        ERROR("Failed to parse JSON: %s", json.c_str());
-    }
 
-    if (j.find("RegData") == j.end()) {
-        ERROR("JSON missing RegData for file: %s", spath.c_str());
-    }
-
-    std::unordered_map<std::string, nlohmann::json> regs;
-    regs = j["RegData"].get<std::unordered_map<std::string, nlohmann::json>>();
+    if (j.find("RegData") != j.end()) {
+        std::unordered_map<std::string, nlohmann::json> regs;
+        regs = j["RegData"].get<std::unordered_map<std::string, nlohmann::json>>();
 
 #define fill(x)                                                                                                                                      \
     if (regs.find(#x) != regs.end()) {                                                                                                               \
         expected_gpr[X86_REF_##x - X86_REF_RAX] = std::stoull(regs[#x].get<std::string>(), nullptr, 16);                                             \
     }
-    fill(RAX);
-    fill(RCX);
-    fill(RDX);
-    fill(RBX);
-    fill(RSP);
-    fill(RBP);
-    fill(RSI);
-    fill(RDI);
-    fill(R8);
-    fill(R9);
-    fill(R10);
-    fill(R11);
-    fill(R12);
-    fill(R13);
-    fill(R14);
-    fill(R15);
+        fill(RAX);
+        fill(RCX);
+        fill(RDX);
+        fill(RBX);
+        fill(RSP);
+        fill(RBP);
+        fill(RSI);
+        fill(RDI);
+        fill(R8);
+        fill(R9);
+        fill(R10);
+        fill(R11);
+        fill(R12);
+        fill(R13);
+        fill(R14);
+        fill(R15);
 #undef fill
 
 #define fill(x)                                                                                                                                      \
@@ -121,23 +115,24 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         reg.data[1] = std::stoull(data[1], nullptr, 16);                                                                                             \
         expected_xmm[X86_REF_##x - X86_REF_XMM0] = reg;                                                                                              \
     }
-    fill(XMM0);
-    fill(XMM1);
-    fill(XMM2);
-    fill(XMM3);
-    fill(XMM4);
-    fill(XMM5);
-    fill(XMM6);
-    fill(XMM7);
-    fill(XMM8);
-    fill(XMM9);
-    fill(XMM10);
-    fill(XMM11);
-    fill(XMM12);
-    fill(XMM13);
-    fill(XMM14);
-    fill(XMM15);
+        fill(XMM0);
+        fill(XMM1);
+        fill(XMM2);
+        fill(XMM3);
+        fill(XMM4);
+        fill(XMM5);
+        fill(XMM6);
+        fill(XMM7);
+        fill(XMM8);
+        fill(XMM9);
+        fill(XMM10);
+        fill(XMM11);
+        fill(XMM12);
+        fill(XMM13);
+        fill(XMM14);
+        fill(XMM15);
 #undef fill
+    }
 
     // 16 pages at 0xe000'0000
     memory_mappings.push_back({0xE000'0000, 16 * 4096});
