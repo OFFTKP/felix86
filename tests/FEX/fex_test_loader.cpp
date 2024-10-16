@@ -81,7 +81,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     // the json string should contain the json data
     nlohmann::json j = nlohmann::json::parse(json, nullptr, false);
     if (j.empty()) {
-        ERROR("Failed to parse JSON");
+        ERROR("Failed to parse JSON: %s", json.c_str());
     }
 
     if (j.find("RegData") == j.end()) {
