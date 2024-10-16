@@ -93,6 +93,11 @@ void Emulator::setupMainStack(ThreadState* state) {
         envp_addresses[i] = rsp;
     }
 
+    // Align up, to 16 bytes
+    if (rsp & 0xF) {
+        rsp -= rsp & 0xF;
+    }
+
     // Push 128-bits to stack that are gonna be used as random data
     stack_push(rsp, 0);
     u64 rand_address = stack_push(rsp, 0);
@@ -101,11 +106,6 @@ void Emulator::setupMainStack(ThreadState* state) {
     if (result == -1 || result != 16) {
         ERROR("Failed to get random data");
         return;
-    }
-
-    // Align up, to 16 bytes
-    if (rsp & 0xF) {
-        rsp -= rsp & 0xF;
     }
 
     auxv_t auxv_entries[17] = {
@@ -144,9 +144,7 @@ void Emulator::setupMainStack(ThreadState* state) {
 
     u64 final_rsp = rsp - size_needed;
     if (final_rsp & 0xF) {
-        // The final rsp wouldn't be aligned to 16 bytes
-        // so we need to add padding
-        rsp = stack_push(rsp, 0);
+        ERROR("Stack not aligned to 16 bytes");
     }
 
     for (int i = auxv_count - 1; i >= 0; i--) {

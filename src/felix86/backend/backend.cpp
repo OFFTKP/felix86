@@ -195,16 +195,6 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
         block_map[block] = as.GetCursorPointer();
 
-        if (emulator.GetConfig().print_state) {
-            Emitter::EmitPushAllCallerSaved(*this);
-
-            as.MV(a0, Registers::ThreadStatePointer());
-            as.LI(a1, (u64)print_state);
-            as.JALR(a1);
-
-            Emitter::EmitPopAllCallerSaved(*this);
-        }
-
         for (const BackendInstruction& inst : block->GetInstructions()) {
             Emitter::Emit(*this, allocations, inst);
         }
