@@ -2,7 +2,7 @@
 
 #define SECONDARY_TEST(opcode)                                                                                                                       \
     CATCH_TEST_CASE("0F_" #opcode, "[FEX][Secondary]") {                                                                                             \
-        FEXTestLoader::RunTest("ASM/TwoByte/" #opcode ".asm");                                                                                       \
+        FEXTestLoader::RunTest("ASM/TwoByte/0F_" #opcode ".asm");                                                                                    \
     }
 
 SECONDARY_TEST(80)
