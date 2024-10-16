@@ -64,6 +64,9 @@ std::string print_guest_register(x86_ref_e guest) {
         UNREACHABLE();
         break;
     }
+
+    UNREACHABLE();
+    return "";
 }
 
 void print_state(ThreadState* state) {
