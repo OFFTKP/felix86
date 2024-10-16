@@ -540,6 +540,7 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     switch (opcode) {
     case IROpcode::Count: {
         UNREACHABLE();
+        [[fallthrough]];
     }
     case IROpcode::Phi:
     case IROpcode::Comment:

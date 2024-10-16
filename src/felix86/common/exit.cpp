@@ -2,7 +2,7 @@
 #include "felix86/common/exit.hpp"
 #include "felix86/common/global.hpp"
 
-void __attribute__((weak)) felix86_test_failure(const char*, ...) {
+void __attribute__((weak)) __attribute__((noreturn)) felix86_test_failure(const char*, ...) {
     printf("Test failure called, but no test failure handler was set\n");
     exit(1);
 }
