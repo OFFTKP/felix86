@@ -2,6 +2,7 @@
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/backend/backend.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/print.hpp"
 #include "felix86/emulator.hpp"
 
 using namespace biscuit;
@@ -80,6 +81,16 @@ void Backend::emitNecessaryStuff() {
     Label exit_dispatcher_label;
 
     compile_next = (decltype(compile_next))as.GetCursorPointer();
+    if (emulator.GetConfig().print_state) {
+        Emitter::EmitPushAllCallerSaved(*this);
+
+        as.MV(a0, Registers::ThreadStatePointer());
+        as.LI(a1, (u64)print_state);
+        as.JALR(a1);
+
+        Emitter::EmitPopAllCallerSaved(*this);
+    }
+
     // If it's not zero it has some exit reason, exit the dispatcher
     as.LB(a0, offsetof(ThreadState, exit_reason), Registers::ThreadStatePointer());
     as.BNEZ(a0, &exit_dispatcher_label);
@@ -87,12 +98,7 @@ void Backend::emitNecessaryStuff() {
     as.MV(a1, Registers::ThreadStatePointer());
     as.LI(a2, (u64)Emulator::CompileNext);
     as.JALR(a2); // returns the function pointer to the compiled function
-
-    if (emulator.GetConfig().break_before_dispatch) {
-        as.EBREAK();
-    }
-
-    as.JR(a0); // jump to the compiled function
+    as.JR(a0);   // jump to the compiled function
 
     // When it needs to exit the dispatcher for whatever reason (such as hlt hit), jump here
     exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();

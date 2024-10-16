@@ -12,6 +12,8 @@ struct Emitter {
     static void EmitJump(Backend& backend, void* target);
     static void EmitJumpConditional(Backend& backend, biscuit::GPR condition, void* target_true, void* target_false);
     static void EmitSetExitReason(Backend&, u64);
+    static void EmitPushAllCallerSaved(Backend&);
+    static void EmitPopAllCallerSaved(Backend&);
 
 private:
     static void EmitMov(Backend&, biscuit::GPR, biscuit::GPR);
