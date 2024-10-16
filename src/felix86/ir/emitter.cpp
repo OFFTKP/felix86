@@ -1162,7 +1162,7 @@ SSAInstruction* ir_emit_set_cpazso(IRBlock* block, SSAInstruction* c, SSAInstruc
 }
 
 void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst) {
-    x86_group1_e opcode = (x86_group1_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
+    x86_group1_e opcode = (x86_group1_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     SSAInstruction* rm = ir_emit_get_rm(block, &inst->operand_rm);
@@ -1239,7 +1239,7 @@ void ir_emit_group1_imm(IRBlock* block, x86_instruction_t* inst) {
 }
 
 void ir_emit_group2(IRBlock* block, x86_instruction_t* inst, SSAInstruction* shift_amount) {
-    x86_group2_e opcode = (x86_group2_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
+    x86_group2_e opcode = (x86_group2_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     u8 shift_mask = get_bit_size(size_e) - 1;
@@ -1320,7 +1320,7 @@ void ir_emit_group2(IRBlock* block, x86_instruction_t* inst, SSAInstruction* shi
 }
 
 void ir_emit_group3(IRBlock* block, x86_instruction_t* inst) {
-    x86_group3_e opcode = (x86_group3_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
+    x86_group3_e opcode = (x86_group3_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     SSAInstruction* rm = ir_emit_get_rm(block, &inst->operand_rm);

@@ -1,4 +1,3 @@
-#include <catch2/catch_test_macros.hpp>
 #include "FEX/fex_test_loader.hpp"
 
 #define PRIMARY_TEST(opcode)                                                                                                                         \
