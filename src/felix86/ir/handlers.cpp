@@ -603,6 +603,16 @@ IR_HANDLE(lahf) { // lahf - 0x9f
     ir_emit_set_reg(BLOCK, &ah_reg, result);
 }
 
+IR_HANDLE(mov_eax_moffs) { // mov eax, moffs32 - 0xa1
+    SSAInstruction* moffs = ir_emit_read_memory(BLOCK, ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data), inst->operand_reg.size);
+    ir_emit_set_reg(BLOCK, &inst->operand_reg, moffs);
+}
+
+IR_HANDLE(mov_moffs_eax) { // mov moffs32, eax - 0xa3
+    SSAInstruction* eax = ir_emit_get_reg(BLOCK, &inst->operand_reg);
+    ir_emit_write_memory(BLOCK, ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data), eax, inst->operand_reg.size);
+}
+
 IR_HANDLE(test_eax_imm) { // test eax, imm32 - 0xa9
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
