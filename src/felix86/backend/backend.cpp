@@ -138,6 +138,11 @@ void Backend::emitNecessaryStuff() {
     as.JALR(a1);
 
     as.EBREAK();
+
+    VERBOSE("Enter dispatcher at: %p", enter_dispatcher);
+    VERBOSE("Exit dispatcher at: %p", exit_dispatcher);
+    VERBOSE("Crash target at: %p", crash_target);
+    VERBOSE("Compile next at: %p", compile_next);
 }
 
 void Backend::resetCodeCache() {
