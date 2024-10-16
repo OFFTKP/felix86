@@ -51,8 +51,8 @@ void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     AS.Bind(&loop);
     AS.AND(Rd, Rs, mask);
     AS.BNEZ(Rd, &end);
-    AS.C_ADDI(counter, 1);
-    AS.C_SLLI(mask, 1);
+    AS.ADDI(counter, counter, 1);
+    AS.SLLI(mask, mask, 1);
     AS.LI(Rd, size);
     AS.SLTU(Rd, counter, Rd);
     AS.BNEZ(Rd, &loop);
@@ -864,7 +864,7 @@ void Emitter::EmitMulhu(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Condition, biscuit::GPR RsTrue, biscuit::GPR RsFalse) {
     Label true_label;
     AS.MV(Rd, RsTrue);
-    AS.C_BNEZ(Condition, &true_label);
+    AS.BNEZ(Condition, &true_label);
     AS.MV(Rd, RsFalse);
     AS.Bind(&true_label);
 }
