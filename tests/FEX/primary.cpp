@@ -5,6 +5,11 @@
         FEXTestLoader::RunTest("ASM/Primary/Primary_" #opcode ".asm");                                                                               \
     }
 
+#define PRIMARY_TEST_NO_PREFIX(opcode)                                                                                                               \
+    CATCH_TEST_CASE("Primary_" #opcode, "[FEX][Primary]") {                                                                                          \
+        FEXTestLoader::RunTest("ASM/Primary/" #opcode ".asm");                                                                                       \
+    }
+
 #define PRIMARY_TEST_KNOWN_FAILURE(opcode)
 
 PRIMARY_TEST(00)
@@ -52,6 +57,9 @@ PRIMARY_TEST(C9)
 PRIMARY_TEST(E8)
 PRIMARY_TEST(E9)
 PRIMARY_TEST(EB)
+
+PRIMARY_TEST_NO_PREFIX(SHL)
+PRIMARY_TEST_NO_PREFIX(SHR)
 
 // Need unaligned atomics
 PRIMARY_TEST_KNOWN_FAILURE(01_Atomic16)

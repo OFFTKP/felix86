@@ -110,8 +110,9 @@ if (BUILD_TESTS)
         tests/FEX/common.cpp
         tests/FEX/fex_test_loader.cpp
         tests/FEX/primary.cpp
+        tests/FEX/primary_group.cpp
         tests/FEX/secondary.cpp
-        tests/FEX/group1.cpp
+        tests/FEX/twobyte.cpp
     )
 
     add_executable(felix86_test)

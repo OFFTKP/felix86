@@ -446,6 +446,20 @@ bool PeepholeWriteRelative(SSAInstruction& inst) {
         }
         break;
     }
+    case IROpcode::Addi: {
+        SSAInstruction* base = address->GetOperand(0);
+        u64 imm = address->GetImmediateData();
+        if (IsValidSigned12BitImm(imm)) {
+            Operands op;
+            op.operands[0] = base;
+            op.operands[1] = inst.GetOperand(1);
+            op.operand_count = 2;
+            op.immediate_data = imm;
+            inst.Replace(op, WriteToRelative(inst.GetOpcode()));
+            return true;
+        }
+        break;
+    }
     case IROpcode::Sub: {
         SSAInstruction* base = address->GetOperand(0);
         SSAInstruction* imm = address->GetOperand(1);
@@ -488,6 +502,19 @@ bool PeepholeReadRelative(SSAInstruction& inst) {
         }
         break;
     }
+    case IROpcode::Addi: {
+        SSAInstruction* base = address->GetOperand(0);
+        u64 imm = address->GetImmediateData();
+        if (IsValidSigned12BitImm(imm)) {
+            Operands op;
+            op.operands[0] = base;
+            op.operand_count = 1;
+            op.immediate_data = imm;
+            inst.Replace(op, WriteToRelative(inst.GetOpcode()));
+            return true;
+        }
+        break;
+    }
     case IROpcode::Sub: {
         SSAInstruction* base = address->GetOperand(0);
         SSAInstruction* imm = address->GetOperand(1);
@@ -503,6 +530,32 @@ bool PeepholeReadRelative(SSAInstruction& inst) {
     }
     default:
         break;
+    }
+
+    return false;
+}
+
+bool PeepholeSextImmediates(SSAInstruction& inst) {
+    const SSAInstruction* op1 = inst.GetOperand(0);
+
+    if (op1->IsImmediate()) {
+        switch (inst.GetOpcode()) {
+        case IROpcode::Sext8: {
+            inst.ReplaceWithImmediate((i64)(i8)op1->GetImmediateData());
+            return true;
+        }
+        case IROpcode::Sext16: {
+            inst.ReplaceWithImmediate((i64)(i16)op1->GetImmediateData());
+            return true;
+        }
+        case IROpcode::Sext32: {
+            inst.ReplaceWithImmediate((i64)(i32)op1->GetImmediateData());
+            return true;
+        }
+        default:
+            UNREACHABLE();
+            break;
+        }
     }
 
     return false;
@@ -579,6 +632,33 @@ bool PeepholeXorZero(SSAInstruction& inst) {
         if (IsImmediate(inst.GetOperand(i), 0) && IsInteger64(inst.GetOperand(!i))) {
             inst.ReplaceWithMov(inst.GetOperand(!i));
             return true;
+        }
+    }
+
+    return false;
+}
+
+// t2 = zext(t1)
+bool PeepholeZextImmediate(SSAInstruction& inst) {
+    const SSAInstruction* op1 = inst.GetOperand(0);
+
+    if (op1->IsImmediate()) {
+        switch (inst.GetOpcode()) {
+        case IROpcode::Zext8: {
+            inst.ReplaceWithImmediate(op1->GetImmediateData() & 0xFF);
+            return true;
+        }
+        case IROpcode::Zext16: {
+            inst.ReplaceWithImmediate(op1->GetImmediateData() & 0xFFFF);
+            return true;
+        }
+        case IROpcode::Zext32: {
+            inst.ReplaceWithImmediate(op1->GetImmediateData() & 0xFFFFFFFF);
+            return true;
+        }
+        default:
+            UNREACHABLE();
+            break;
         }
     }
 
@@ -692,6 +772,12 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 CHECK(PeepholeShiftRightArithmeticImmediates);
                 break;
             }
+            case IROpcode::Sext8:
+            case IROpcode::Sext16:
+            case IROpcode::Sext32: {
+                CHECK(PeepholeSextImmediates);
+                break;
+            }
             case IROpcode::Sub: {
                 CHECK(PeepholeSubImmediates);
                 CHECK(PeepholeSubSame);
@@ -703,6 +789,12 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
             case IROpcode::WriteDWord:
             case IROpcode::WriteQWord: {
                 CHECK(PeepholeWriteRelative);
+                break;
+            }
+            case IROpcode::Zext8:
+            case IROpcode::Zext16:
+            case IROpcode::Zext32: {
+                CHECK(PeepholeZextImmediate);
                 break;
             }
             default:

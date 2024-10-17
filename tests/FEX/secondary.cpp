@@ -1,57 +1,6 @@
 #include "FEX/fex_test_loader.hpp"
 
 #define SECONDARY_TEST(opcode)                                                                                                                       \
-    CATCH_TEST_CASE("0F_" #opcode, "[FEX][Secondary]") {                                                                                             \
-        FEXTestLoader::RunTest("ASM/TwoByte/0F_" #opcode ".asm");                                                                                    \
+    CATCH_TEST_CASE("Secondary_" #opcode, "[FEX][Secondary]") {                                                                                      \
+        FEXTestLoader::RunTest("ASM/Secondary/" #opcode ".asm");                                                                                     \
     }
-
-SECONDARY_TEST(40)
-SECONDARY_TEST(41)
-SECONDARY_TEST(42)
-SECONDARY_TEST(43)
-SECONDARY_TEST(44)
-SECONDARY_TEST(45)
-SECONDARY_TEST(46)
-SECONDARY_TEST(47)
-SECONDARY_TEST(48)
-SECONDARY_TEST(49)
-SECONDARY_TEST(4A)
-SECONDARY_TEST(4B)
-SECONDARY_TEST(4C)
-SECONDARY_TEST(4D)
-SECONDARY_TEST(4E)
-SECONDARY_TEST(4F)
-
-SECONDARY_TEST(80)
-SECONDARY_TEST(81)
-SECONDARY_TEST(82)
-SECONDARY_TEST(83)
-SECONDARY_TEST(84)
-SECONDARY_TEST(85)
-SECONDARY_TEST(86)
-SECONDARY_TEST(87)
-SECONDARY_TEST(88)
-SECONDARY_TEST(89)
-SECONDARY_TEST(8A)
-SECONDARY_TEST(8B)
-SECONDARY_TEST(8C)
-SECONDARY_TEST(8D)
-SECONDARY_TEST(8E)
-SECONDARY_TEST(8F)
-
-SECONDARY_TEST(90)
-SECONDARY_TEST(91)
-SECONDARY_TEST(92)
-SECONDARY_TEST(93)
-SECONDARY_TEST(94)
-SECONDARY_TEST(95)
-SECONDARY_TEST(96)
-SECONDARY_TEST(97)
-SECONDARY_TEST(98)
-SECONDARY_TEST(99)
-SECONDARY_TEST(9A)
-SECONDARY_TEST(9B)
-SECONDARY_TEST(9C)
-SECONDARY_TEST(9D)
-SECONDARY_TEST(9E)
-SECONDARY_TEST(9F)
