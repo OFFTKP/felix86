@@ -496,7 +496,7 @@ bool PeepholeReadRelative(SSAInstruction& inst) {
                 op.operands[0] = base;
                 op.operand_count = 1;
                 op.immediate_data = imm->GetImmediateData();
-                inst.Replace(op, WriteToRelative(inst.GetOpcode()));
+                inst.Replace(op, ReadToRelative(inst.GetOpcode()));
                 return true;
             }
         }
@@ -510,7 +510,7 @@ bool PeepholeReadRelative(SSAInstruction& inst) {
             op.operands[0] = base;
             op.operand_count = 1;
             op.immediate_data = imm;
-            inst.Replace(op, WriteToRelative(inst.GetOpcode()));
+            inst.Replace(op, ReadToRelative(inst.GetOpcode()));
             return true;
         }
         break;
