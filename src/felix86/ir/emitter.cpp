@@ -1564,6 +1564,12 @@ void ir_emit_rep_end(FrontendState* state, const x86_instruction_t& inst, x86_re
     SSAInstruction* final_condition = ir_emit_or(state->current_block, rcx_zero, condition);
     state->current_block->TerminateJumpConditional(final_condition, exit_block, loop_block);
 
-    frontend_compile_block(state->function, exit_block);
+    frontend_compile_block(*state->emulator, state->function, exit_block);
     state->exit = true;
+}
+
+void ir_emit_call_host_function(IRBlock* block, u64 function) {
+    SSAInstruction* call = ir_emit_no_operands(block, IROpcode::CallHostFunction);
+    call->SetImmediateData(function);
+    call->Lock();
 }

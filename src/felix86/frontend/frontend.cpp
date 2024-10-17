@@ -2,7 +2,9 @@
 #include <fmt/format.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/print.hpp"
 #include "felix86/common/x86.hpp"
+#include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/ir/emitter.hpp"
@@ -665,12 +667,13 @@ void frontend_compile_instruction(FrontendState* state) {
     state->current_address += inst.length;
 }
 
-void frontend_compile_block(IRFunction* function, IRBlock* block) {
+void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* block) {
     if (block->IsCompiled()) {
         return;
     }
 
     FrontendState state = {0};
+    state.emulator = &emulator;
     state.function = function;
     state.current_block = block;
     state.current_address = block->GetStartAddress();
@@ -681,10 +684,20 @@ void frontend_compile_block(IRFunction* function, IRBlock* block) {
     while (!state.exit) {
         frontend_compile_instruction(&state);
     }
+
+    if (emulator.GetConfig().print_state) {
+        for (u8 i = 0; i < X86_REF_COUNT; i++) {
+            // Writeback all state
+            SSAInstruction* value = ir_emit_get_guest(block, x86_ref_e(i));
+            ir_emit_store_guest_to_memory(block, x86_ref_e(i), value);
+        }
+
+        ir_emit_call_host_function(block, (u64)&print_gprs);
+    }
 }
 
-void frontend_compile_function(IRFunction* function) {
+void frontend_compile_function(Emulator& emulator, IRFunction* function) {
     IRBlock* block = function->GetBlockAt(function->GetStartAddress());
-    frontend_compile_block(function, block);
+    frontend_compile_block(emulator, function, block);
     function->SetCompiled();
 }

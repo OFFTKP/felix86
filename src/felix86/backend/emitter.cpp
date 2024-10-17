@@ -245,6 +245,16 @@ void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, void
     AS.JR(t0);
 }
 
+void Emitter::EmitCallHostFunction(Backend& backend, u64 function) {
+    EmitPushAllCallerSaved(backend);
+
+    AS.LI(t0, (u64)function);
+    AS.MV(a0, Registers::ThreadStatePointer());
+    AS.JALR(t0);
+
+    EmitPopAllCallerSaved(backend);
+}
+
 void Emitter::EmitSetExitReason(Backend& backend, u64 reason) {
     AS.LI(t0, (u8)reason);
     AS.SB(t0, offsetof(ThreadState, exit_reason), Registers::ThreadStatePointer());

@@ -462,8 +462,8 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     BLOCK->TerminateJumpConditional(condition_mov, block_true, block_false);
     state->exit = true;
 
-    frontend_compile_block(state->function, block_false);
-    frontend_compile_block(state->function, block_true);
+    frontend_compile_block(*state->emulator, state->function, block_false);
+    frontend_compile_block(*state->emulator, state->function, block_true);
 }
 
 IR_HANDLE(group1_rm8_imm8) { // add/or/adc/sbb/and/sub/xor/cmp rm8, imm8 - 0x80
@@ -741,7 +741,7 @@ IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
     BLOCK->TerminateJump(target);
     state->exit = true;
 
-    frontend_compile_block(state->function, target);
+    frontend_compile_block(*state->emulator, state->function, target);
 }
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
@@ -752,7 +752,7 @@ IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
     BLOCK->TerminateJump(target);
     state->exit = true;
 
-    frontend_compile_block(state->function, target);
+    frontend_compile_block(*state->emulator, state->function, target);
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4

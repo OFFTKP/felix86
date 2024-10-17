@@ -69,7 +69,7 @@ std::string print_guest_register(x86_ref_e guest) {
     return "";
 }
 
-void print_state(ThreadState* state) {
+void print_gprs(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
         std::string guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
         printf("%s", guest.c_str());
@@ -85,6 +85,10 @@ void print_state(ThreadState* state) {
     printf("of = %d\n", state->of);
 
     printf("rip = %016lx\n", state->rip);
+}
+
+void print_state(ThreadState* state) {
+    print_gprs(state);
 
     for (int i = 0; i < 16; i++) {
         printf("xmm%d = {", i);

@@ -51,6 +51,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
         return IRType::Void;
     }
     case IROpcode::Null:
+    case IROpcode::CallHostFunction:
     case IROpcode::SetExitReason:
     case IROpcode::Comment:
     case IROpcode::Syscall:
@@ -276,6 +277,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(Syscall, 0);
         VALIDATE_OPS_INT(Cpuid, 0);
         VALIDATE_OPS_INT(SetExitReason, 0);
+        VALIDATE_OPS_INT(CallHostFunction, 0);
 
         VALIDATE_OPS_INT(Neg, 1);
         VALIDATE_OPS_INT(Addi, 1);
@@ -570,6 +572,10 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     case IROpcode::Select: {
         ret += fmt::format("{} <- {} ? {} : {}", GetNameString(name), GetNameString(operands[0]), GetNameString(operands[1]),
                            GetNameString(operands[2]));
+        break;
+    }
+    case IROpcode::CallHostFunction: {
+        ret += fmt::format("{} <- call_host_function {}", GetNameString(name), immediate_data);
         break;
     }
     case IROpcode::Mov: {

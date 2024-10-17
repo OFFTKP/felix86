@@ -195,7 +195,7 @@ void* Emulator::compileFunction(u64 rip) {
     }
 
     IRFunction function{rip};
-    frontend_compile_function(&function);
+    frontend_compile_function(*this, &function);
 
     PassManager::SSAPass(&function);
     PassManager::DeadCodeEliminationPass(&function);
@@ -240,10 +240,6 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     }
 
     VERBOSE("Jumping to function %p", function);
-
-    if (emulator->config.print_state) {
-        print_state(thread_state);
-    }
 
     return function;
 }

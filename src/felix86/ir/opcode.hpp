@@ -7,6 +7,7 @@
     X(Null)                                                                                                                                          \
     X(GetThreadStatePointer)                                                                                                                         \
     X(SetExitReason)                                                                                                                                 \
+    X(CallHostFunction)                                                                                                                              \
     X(Phi)                                                                                                                                           \
     X(Comment)                                                                                                                                       \
     X(Mov)                                                                                                                                           \

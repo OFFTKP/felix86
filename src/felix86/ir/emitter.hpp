@@ -106,6 +106,7 @@ SSAInstruction* ir_emit_amoswap(IRBlock* block, SSAInstruction* address, SSAInst
 SSAInstruction* ir_emit_amocas(IRBlock* block, SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering,
                                x86_size_e size);
 
+void ir_emit_call_host_function(IRBlock* block, u64 function);
 void ir_emit_setcc(IRBlock* block, x86_instruction_t* inst);
 
 void ir_emit_cpuid(IRBlock* block);

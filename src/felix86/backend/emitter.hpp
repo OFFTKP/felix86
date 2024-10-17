@@ -16,6 +16,7 @@ struct Emitter {
     static void EmitPopAllCallerSaved(Backend&);
 
 private:
+    static void EmitCallHostFunction(Backend&, u64);
     static void EmitMov(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitMov(Backend&, biscuit::FPR, biscuit::FPR);
     static void EmitMov(Backend&, biscuit::Vec, biscuit::Vec);

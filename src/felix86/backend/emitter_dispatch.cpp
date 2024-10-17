@@ -32,6 +32,11 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         UNREACHABLE();
     }
 
+    case IROpcode::CallHostFunction: {
+        EmitCallHostFunction(backend, inst.GetImmediateData());
+        break;
+    }
+
     case IROpcode::GetThreadStatePointer: {
         // Do nothing, ThreadStatePointer is already in a register
         // This static assert serves as a reminder in case something is changed and this is no longer true
