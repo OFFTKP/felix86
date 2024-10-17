@@ -8,3 +8,4 @@
 
 BUG_TEST(dl_aux_init_stuck)
 BUG_TEST(regalloc_overload)
+BUG_TEST(ssa_phi_bug)

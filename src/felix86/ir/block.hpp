@@ -22,6 +22,14 @@ struct IRBlock {
     }
 
     void TerminateJumpConditional(SSAInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
+        if (target_true == target_false) {
+            // Such a stupid edge case... but it can ruin things with the ssa pass...
+            // Because if we have a block that is both the true and false target of a conditional jump
+            // the algorithm thinks there's 2 successors when there's only one
+            TerminateJump(target_true);
+            return;
+        }
+
         termination = Termination::JumpConditional;
         successors[0] = target_true;
         successors[1] = target_false;
