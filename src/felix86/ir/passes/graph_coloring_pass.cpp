@@ -123,7 +123,7 @@ static bool should_consider_vec(const InstructionMap& map, u32 inst) {
 }
 
 static void spill(BackendFunction& function, u32 node, u32 location, AllocationType spill_type) {
-    printf("Spilling %s\n", GetNameString(node).c_str());
+    VERBOSE("Spilling %s\n", GetNameString(node).c_str());
     for (BackendBlock& block : function.GetBlocks()) {
         auto it = block.GetInstructions().begin();
         while (it != block.GetInstructions().end()) {
@@ -134,6 +134,7 @@ static void spill(BackendFunction& function, u32 node, u32 location, AllocationT
                 // Insert right after this instruction
                 auto next = std::next(it);
                 block.GetInstructions().insert(next, store);
+                VERBOSE("Added store: %s right after: %s\n", GetNameString(name).c_str(), GetNameString(node).c_str());
                 it = next;
             } else {
                 for (u8 i = 0; i < inst.GetOperandCount(); i++) {
@@ -142,6 +143,7 @@ static void spill(BackendFunction& function, u32 node, u32 location, AllocationT
                         BackendInstruction load = BackendInstruction::FromLoadSpill(name, location, spill_type);
                         // Insert right before this instruction
                         it = block.GetInstructions().insert(it, load);
+                        VERBOSE("Added load: %s right before: %s\n", GetNameString(name).c_str(), GetNameString(inst.GetName()).c_str());
 
                         // Replace all operands
                         for (u8 j = 0; j < inst.GetOperandCount(); j++) {
@@ -333,6 +335,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
         } else {
             // Must spill one of the nodes
             spill(function, nodes.back().id, spill_location, type);
+            VERBOSE("Function after spilling:\n%s\n", function.Print().c_str());
             spill_location += 8;
         }
     }
