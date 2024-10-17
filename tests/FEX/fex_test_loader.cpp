@@ -82,6 +82,9 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     // At this point buffer should contain the compiled binary as raw bytes and
     // the json string should contain the json data
     nlohmann::json j = nlohmann::json::parse(json, nullptr, false);
+    if (j.is_discarded()) {
+        ERROR("Failed to parse JSON");
+    }
 
     if (j.find("RegData") != j.end()) {
         std::unordered_map<std::string, nlohmann::json> regs;

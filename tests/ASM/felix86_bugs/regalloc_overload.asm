@@ -1,44 +1,45 @@
 %ifdef CONFIG
 {
     "RegData": {
-        "RAX": "0x0000000000000001"
-        "RCX": "0x0000000000000002"
-        "RDX": "0x0000000000000003"
-        "RBX": "0x0000000000000004"
-        "RSP": "0x0000000000000005"
-        "RBP": "0x0000000000000006"
-        "RSI": "0x0000000000000007"
-        "RDI": "0x0000000000000008"
-        "R8": "0x0000000000000009"
-        "R9": "0x000000000000000A"
-        "R10": "0x000000000000000B"
-        "R11": "0x000000000000000C"
-        "R12": "0x000000000000000D"
-        "R13": "0x000000000000000E"
-        "R14": "0x000000000000000F"
+        "RAX": "0x0000000000000001",
+        "RCX": "0x0000000000000002",
+        "RDX": "0x0000000000000003",
+        "RBX": "0x0000000000000004",
+        "RSP": "0x0000000000000005",
+        "RBP": "0x0000000000000006",
+        "RSI": "0x0000000000000007",
+        "RDI": "0x0000000000000008",
+        "R8": "0x0000000000000009",
+        "R9": "0x000000000000000A",
+        "R10": "0x000000000000000B",
+        "R11": "0x000000000000000C",
+        "R12": "0x000000000000000D",
+        "R13": "0x000000000000000E",
+        "R14": "0x000000000000000F",
         "R15": "0x0000000000000010"
     }
 }
 %endif
+bits 64
 
 ; try it with fewer allocatable registers to induce spilling
 ; there must be enough to allow for loading from spill though
 mov rax, [rel my_data]
-mov rcx, [rel my_data]
-mov rdx, [rel my_data]
-mov rbx, [rel my_data]
-mov rsp, [rel my_data]
-mov rbp, [rel my_data]
-mov rsi, [rel my_data]
-mov rdi, [rel my_data]
-mov r8, [rel my_data]
-mov r9, [rel my_data]
-mov r10, [rel my_data]
-mov r11, [rel my_data]
-mov r12, [rel my_data]
-mov r13, [rel my_data]
-mov r14, [rel my_data]
-mov r15, [rel my_data]
+mov rcx, [rel my_data + 8]
+mov rdx, [rel my_data + 16]
+mov rbx, [rel my_data + 24]
+mov rsp, [rel my_data + 32]
+mov rbp, [rel my_data + 40]
+mov rsi, [rel my_data + 48]
+mov rdi, [rel my_data + 56]
+mov r8, [rel my_data + 64]
+mov r9, [rel my_data + 72]
+mov r10, [rel my_data + 80]
+mov r11, [rel my_data + 88]
+mov r12, [rel my_data + 96]
+mov r13, [rel my_data + 104]
+mov r14, [rel my_data + 112]
+mov r15, [rel my_data + 120]
 hlt
 
 
