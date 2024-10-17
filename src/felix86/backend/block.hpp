@@ -71,6 +71,10 @@ struct BackendBlock {
         return (list_index << 20) | (next_name++);
     }
 
+    u64 GetStartAddress() const {
+        return start_address;
+    }
+
     [[nodiscard]] std::string Print() const;
 
 private:
@@ -80,4 +84,5 @@ private:
     std::array<u32, 2> successors = {UINT32_MAX, UINT32_MAX};
     u32 list_index = 0;
     u32 next_name = 0;
+    u64 start_address = 0;
 };

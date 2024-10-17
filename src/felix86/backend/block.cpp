@@ -30,6 +30,7 @@ BackendBlock BackendBlock::FromIRBlock(const IRBlock* block, std::vector<NamedPh
     }
 
     backend_block.next_name = highest_name + 1;
+    backend_block.start_address = block->GetStartAddress();
 
     for (size_t i = 0; i < 2; i++) {
         if (block->GetSuccessor(i)) {

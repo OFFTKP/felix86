@@ -185,7 +185,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
         const BackendBlock* block = *it;
 
-        VERBOSE("Block %d corresponds to %p", block->GetIndex(), as.GetCursorPointer());
+        VERBOSE("Block %d (0x%016lx) corresponds to %p", block->GetIndex(), block->GetStartAddress(), as.GetCursorPointer());
         if (block->GetIndex() == 0 && allocations.GetSpillSize() > 0) {
             // Entry block, setup the stack pointer
             as.LI(t0, allocations.GetSpillSize());

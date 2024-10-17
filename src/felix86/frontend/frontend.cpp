@@ -675,7 +675,6 @@ void frontend_compile_block(IRFunction* function, IRBlock* block) {
     state.current_block = block;
     state.current_address = block->GetStartAddress();
     state.exit = false;
-    VERBOSE("Compiling block at: %016lx", block->GetStartAddress());
 
     block->SetCompiled();
 
