@@ -5,4 +5,4 @@ enum ExitReason {
     EXIT_REASON_BAD_ALIGNMENT = 2,
 };
 
-void felix86_exit(int code) __attribute__((noreturn));
+void felix86_exit(int code);

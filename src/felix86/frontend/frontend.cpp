@@ -180,6 +180,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
     }
 
     UNREACHABLE();
+    return 0;
 }
 
 void frontend_compile_instruction(FrontendState* state) {

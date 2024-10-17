@@ -9,27 +9,35 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     // Should not exist in the backend IR representation, replaced by simpler stuff
     case IROpcode::Null: {
         UNREACHABLE();
+        break;
     }
     case IROpcode::Phi: {
         UNREACHABLE();
+        break;
     }
     case IROpcode::SetGuest: {
         UNREACHABLE();
+        break;
     }
     case IROpcode::GetGuest: {
         UNREACHABLE();
+        break;
     }
     case IROpcode::Count: {
         UNREACHABLE();
+        break;
     }
     case IROpcode::LoadGuestFromMemory: {
         UNREACHABLE();
+        break;
     }
     case IROpcode::StoreGuestToMemory: {
         UNREACHABLE();
+        break;
     }
     case IROpcode::Comment: {
         UNREACHABLE();
+        break;
     }
 
     case IROpcode::CallHostFunction: {

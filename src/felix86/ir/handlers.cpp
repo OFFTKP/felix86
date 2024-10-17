@@ -16,6 +16,7 @@ u64 sext_if_64(u64 value, x86_size_e size_e) {
         return (i64)(i32)value;
     default:
         ERROR("Invalid immediate size");
+        return 0;
     }
 }
 
@@ -31,6 +32,7 @@ u64 sext(u64 value, x86_size_e size_e) {
         return value;
     default:
         ERROR("Invalid immediate size");
+        return 0;
     }
 }
 
@@ -1064,7 +1066,7 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
     }
     default: {
         ERROR("Unknown size for bsf: %d", size_e);
-        break;
+        return;
     }
     }
     ir_emit_set_reg(BLOCK, &inst->operand_reg, ctz);

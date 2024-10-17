@@ -59,6 +59,7 @@ IRBlock* IRFunction::GetBlockAt(u64 address) {
     }
 
     ERROR("Block not found: %016lx", address);
+    return nullptr;
 }
 
 IRBlock* IRFunction::CreateBlock() {
