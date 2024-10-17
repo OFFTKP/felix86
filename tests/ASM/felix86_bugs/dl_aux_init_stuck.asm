@@ -1,46 +1,85 @@
 %ifdef CONFIG
 {
   "RegData": {
-    "RSI": "0x0000000000000016"
+    "RSI": "0x0000000000000010"
   }
 }
 %endif
 
 bits 64
 
-global _start
-_start:
-lea rdx, [rel .stack + 8] ; get stack pointer past argc
-mov rax, qword[rel .stack] ; get argc
-lea rdi, qword[rdx + rax*8 + 8]
-xor esi, esi
-mov rdx, rdi
+lea rsp, [rsp - 384] ; bytes in the stack
+mov rcx, 0
+lea rdx, [rel stack]
+.copy_loop:
+movzx rax, byte[rdx + rcx]
+mov byte[rsp + rcx], al
+inc rcx
+cmp rcx, 384
+jnz .copy_loop
 
-.loop_skip_envp:
-add rdx, 8
-cmp qword[rdx - 8], 0
-jnz .loop_skip_envp
 
-mov rax, qword[rdx]
+xor  ebp, ebp
+mov  r9, rdx
+pop  rsi
+mov  rdx, rsp
+and  rsp, 0xfffffffffffffff0
+push rax
+push rsp
+xor  r8d, r8d
+xor  ecx, ecx
+call _libc_start_main
+hlt
+
+_libc_start_main:
+push   rbp
+movsxd rax, esi
+mov    rbp, rsp
+push   r15
+push   r14
+push   r13
+push   r12
+mov    r12, rdx
+push   rbx
+mov    rbx, rax
+sub    rsp, 0x18
+lea    rdi, qword[rdx + rax*8 + 8]
+mov    rax, qword[rbp + 0x10]
+.loop:
+add    rdi, 8
+cmp    qword[rdi - 8], 0
+jne    .loop
+call   _dl_aux_init
+hlt
+
+_dl_aux_init:
+push      rbp
+mov       rdx, rdi
+xor       eax, eax
+mov       ecx, 0x34
+mov       rbp, rsp
+sub       rsp, 0x1a0
+mov       rdi, rsi
+mov       rax, qword[rdx]
+test      rax, rax
+je        .end
 
 .loop:
-cmp rax, 0x33
-jna .above
-hlt
-
+cmp       rax, 0x33
+ja        .above
+mov       rcx, qword[rdx + 8]
+mov       qword[rbp + rax*8 - 0x1a0], rcx
 .above:
-mov rcx, qword[rdx + 0x8]
-mov rax, qword[rdx + 0x10]
-add rdx, 16
-inc rsi
-test rax, rax
-jnz .loop
-
-int3
+mov       rax, qword[rdx + 0x10]
+add       rdx, 0x10
+inc       rsi
+test      rax, rax
+jne       .loop
+.end:
 hlt
 
-; stack at process initialization
-.stack:
+
+stack:
 db 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC5, 0xFF, 0x3F, 0xF0, 0x3F, 0x00, 0x00, 0x00
 db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 db 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -65,10 +104,3 @@ db 0x00, 0x00, 0x00, 0x00, 0x00, 0x2F, 0x68, 0x6F, 0x6D, 0x65, 0x2F, 0x73, 0x69,
 db 0x64, 0x2F, 0x72, 0x6F, 0x6F, 0x74, 0x66, 0x73, 0x2F, 0x61, 0x2E, 0x6F, 0x75, 0x74, 0x00, 0x78
 db 0x38, 0x36, 0x5F, 0x36, 0x34, 0x00, 0x2F, 0x68, 0x6F, 0x6D, 0x65, 0x2F, 0x73, 0x69, 0x70, 0x65
 db 0x65, 0x64, 0x2F, 0x72, 0x6F, 0x6F, 0x74, 0x66, 0x73, 0x2F, 0x61, 0x2E, 0x6F, 0x75, 0x74, 0x00
-
-.outdata:
-dq 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dq 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dq 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dq 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-dq 0, 0, 0, 0, 0, 0, 0, 0, 0, 0

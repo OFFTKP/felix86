@@ -42,6 +42,7 @@ u16 get_bit_size(x86_size_e size) {
     }
 
     ERROR("Invalid register size");
+    return 0;
 }
 
 x86_operand_t get_full_reg(x86_ref_e ref) {
