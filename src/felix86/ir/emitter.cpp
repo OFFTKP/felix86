@@ -1241,7 +1241,7 @@ void ir_emit_group2(IRBlock* block, x86_instruction_t* inst, SSAInstruction* shi
     x86_group2_e opcode = (x86_group2_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
-    u8 shift_mask = get_bit_size(size_e) - 1;
+    u8 shift_mask = size_e == X86_SIZE_QWORD ? 0x3F : 0x1F;
     SSAInstruction* rm = ir_emit_get_rm(block, &inst->operand_rm);
     SSAInstruction* shift_value = ir_emit_and(block, shift_amount, ir_emit_immediate(block, shift_mask));
     SSAInstruction* result = NULL;
