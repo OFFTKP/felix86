@@ -10,6 +10,7 @@ std::string Opcode::GetOpcodeString(IROpcode opcode) {
 #undef X
     default:
         UNREACHABLE();
+        return "";
     }
 }
 
@@ -17,7 +18,7 @@ bool Opcode::IsAuxiliary(IROpcode opcode) {
     switch (opcode) {
     case IROpcode::Null: {
         UNREACHABLE();
-        break;
+        return false;
     }
     case IROpcode::Phi:
     case IROpcode::SetGuest:

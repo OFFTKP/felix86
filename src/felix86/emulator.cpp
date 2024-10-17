@@ -175,14 +175,16 @@ void Emulator::setupMainStack(ThreadState* state) {
         return;
     }
 
-    fmt::print("Stack:\n");
-    u64 stack_end = rsp;
-    for (u8* ptr = (u8*)stack_end; ptr < (u8*)stack_base;) {
-        for (int i = 0; i < 8; i++) {
-            fmt::print("{:02X} ", ptr[i]);
+    if (g_verbose) {
+        fmt::print("Stack:\n");
+        u64 stack_end = rsp;
+        for (u8* ptr = (u8*)stack_end; ptr < (u8*)stack_base;) {
+            for (int i = 0; i < 8; i++) {
+                fmt::print("{:02X} ", ptr[i]);
+            }
+            fmt::print("\n");
+            ptr += 8;
         }
-        fmt::print("\n");
-        ptr += 8;
     }
 
     state->SetGpr(X86_REF_RSP, rsp);

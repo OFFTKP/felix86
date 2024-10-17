@@ -113,6 +113,7 @@ if (BUILD_TESTS)
         tests/FEX/primary_group.cpp
         tests/FEX/secondary.cpp
         tests/FEX/twobyte.cpp
+        tests/FEX/felix86_bugs.cpp
     )
 
     add_executable(felix86_test)
@@ -122,4 +123,5 @@ if (BUILD_TESTS)
     target_compile_options(felix86_test PRIVATE $<$<COMPILE_LANGUAGE:CPP>:-fno-operator-names>)
     target_compile_definitions(felix86_test PRIVATE CATCH_CONFIG_PREFIX_ALL)
     file(COPY external/FEX/ASM DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    file(COPY tests/ASM DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 endif()
