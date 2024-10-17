@@ -9,8 +9,8 @@ struct Config {
     std::filesystem::path rootfs_path;
     std::filesystem::path executable_path;
     bool print_blocks = false;
-    bool use_interpreter = false;
     bool print_state = false;
+    bool print_disassembly = false;
     bool optimize = true;
     std::vector<std::string> argv;
     std::vector<std::string> envp;

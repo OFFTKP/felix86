@@ -17,7 +17,8 @@ static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose o
                                        {"host-envs", 'e', 0, 0, "Pass host environment variables to the guest"},
                                        {"print-functions", 'P', 0, 0, "Print functions as they compile"},
                                        {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
-                                       {"dont-optimize", 'd', 0, 0, "Don't apply optimizations on the IR"},
+                                       {"dont-optimize", 'x', 0, 0, "Don't apply optimizations on the IR"},
+                                       {"print-disassembly", 'd', 0, 0, "Print disassembly of emitted functions"},
                                        {0}};
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
@@ -45,7 +46,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         config->rootfs_path = arg;
         break;
     }
-    case 'd': {
+    case 'x': {
         config->optimize = false;
         break;
     }
@@ -61,12 +62,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         config->print_blocks = true;
         break;
     }
-    case 'i': {
-        config->use_interpreter = true;
-        break;
-    }
     case 's': {
         config->print_state = true;
+        break;
+    }
+    case 'd': {
+        config->print_disassembly = true;
         break;
     }
     case ARGP_KEY_END: {
@@ -87,7 +88,6 @@ static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
     Config config = {};
-    config.use_interpreter = false;
 
     argp_parse(&argp, argc, argv, 0, 0, &config);
 
