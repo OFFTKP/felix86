@@ -2,7 +2,7 @@
 {
     "RegData": {
         "RAX": "0x0000000000000001",
-        "RCX": "0x0000000000000002",
+        "RCX": "0x0000000000000000",
         "RDX": "0x0000000000000003",
         "RBX": "0x0000000000000004",
         "RSP": "0x0000000000000005",
@@ -24,22 +24,31 @@ bits 64
 
 ; try it with fewer allocatable registers to induce spilling
 ; there must be enough to allow for loading from spill though
+mov rcx, 10
+
+loop:
 mov rax, [rel my_data]
-mov rcx, [rel my_data + 8]
 mov rdx, [rel my_data + 16]
 mov rbx, [rel my_data + 24]
 mov rsp, [rel my_data + 32]
 mov rbp, [rel my_data + 40]
 mov rsi, [rel my_data + 48]
 mov rdi, [rel my_data + 56]
+cmp rcx, 5
+jz past
 mov r8, [rel my_data + 64]
 mov r9, [rel my_data + 72]
 mov r10, [rel my_data + 80]
 mov r11, [rel my_data + 88]
 mov r12, [rel my_data + 96]
+past:
 mov r13, [rel my_data + 104]
 mov r14, [rel my_data + 112]
 mov r15, [rel my_data + 120]
+dec rcx
+cmp rcx, 0
+jnz loop
+
 hlt
 
 

@@ -189,8 +189,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         if (block->GetIndex() == 0 && allocations.GetSpillSize() > 0) {
             // Entry block, setup the stack pointer
             as.LI(t0, allocations.GetSpillSize());
-            as.NEG(t0, t0);
-            as.ADD(Registers::StackPointer(), Registers::StackPointer(), t0);
+            as.SUB(Registers::StackPointer(), Registers::StackPointer(), t0);
         }
 
         block_map[block] = as.GetCursorPointer();
