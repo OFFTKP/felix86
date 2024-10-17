@@ -862,11 +862,23 @@ void Emitter::EmitMulhu(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 }
 
 void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Condition, biscuit::GPR RsTrue, biscuit::GPR RsFalse) {
-    Label true_label;
-    AS.MV(Rd, RsTrue);
-    AS.BNEZ(Condition, &true_label);
-    AS.MV(Rd, RsFalse);
-    AS.Bind(&true_label);
+    if (Rd != RsFalse) {
+        Label true_label;
+        AS.MV(Rd, RsTrue);
+        AS.BNEZ(Condition, &true_label);
+        AS.MV(Rd, RsFalse);
+        AS.Bind(&true_label);
+    } else {
+        // If Rd == RsFalse we can't do this shorthand mode above.
+        // Do this instead:
+        Label true_label, end_label;
+        AS.BNEZ(Condition, &true_label);
+        AS.MV(Rd, RsFalse);
+        AS.J(&end_label);
+        AS.Bind(&true_label);
+        AS.MV(Rd, RsTrue);
+        AS.Bind(&end_label);
+    }
 }
 
 void Emitter::EmitCastVectorFromInteger(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs) {
