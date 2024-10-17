@@ -8,6 +8,7 @@ void __attribute__((weak)) __attribute__((noreturn)) felix86_test_failure(const 
 }
 
 void felix86_exit(int code) {
+    fflush(stdout);
     if (g_testing) {
         felix86_test_failure("Exit called with code: %d", code);
     } else {

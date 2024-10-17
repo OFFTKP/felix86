@@ -870,7 +870,6 @@ void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Conditi
         AS.Bind(&true_label);
     } else {
         // If Rd == RsFalse we can't do this shorthand mode above.
-        // Do this instead:
         Label true_label, end_label;
         AS.BNEZ(Condition, &true_label);
         AS.MV(Rd, RsFalse);

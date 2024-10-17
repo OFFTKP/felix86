@@ -370,6 +370,21 @@ bool PeepholeRemuImmediates(SSAInstruction& inst) {
     return false;
 }
 
+// t2 = imm ? t1 : t0
+bool PeepholeSelectImmediate(SSAInstruction& inst) {
+    const SSAInstruction* op1 = inst.GetOperand(0);
+    SSAInstruction* op2 = inst.GetOperand(1);
+    SSAInstruction* op3 = inst.GetOperand(2);
+
+    if (op1->IsImmediate()) {
+        ASSERT(op1->GetImmediateData() == 0 || op1->GetImmediateData() == 1);
+        inst.ReplaceWithMov(op1->GetImmediateData() ? op2 : op3);
+        return true;
+    }
+
+    return false;
+}
+
 // t2 = imm << imm
 bool PeepholeShiftLeftImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
@@ -659,6 +674,10 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
             }
             case IROpcode::Remu: {
                 CHECK(PeepholeRemuImmediates);
+                break;
+            }
+            case IROpcode::Select: {
+                CHECK(PeepholeSelectImmediate);
                 break;
             }
             case IROpcode::ShiftLeft: {
