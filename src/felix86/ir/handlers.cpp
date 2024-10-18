@@ -1,3 +1,4 @@
+#include "Zydis/Disassembler.h"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
@@ -40,7 +41,18 @@ u64 sext(u64 value, x86_size_e size_e) {
 #define IR_HANDLE(name) void ir_handle_##name(FrontendState* state, x86_instruction_t* inst)
 
 IR_HANDLE(error) {
-    ERROR("Hit error instruction during: %016lx - Opcode: %02x", state->current_address - g_base_address, inst->opcode);
+    ZydisDisassembledInstruction zydis_inst;
+    if (ZYAN_SUCCESS(ZydisDisassembleIntel(
+            /* machine_mode:    */ ZYDIS_MACHINE_MODE_LONG_64,
+            /* runtime_address: */ state->current_address,
+            /* buffer:          */ (void*)state->current_address,
+            /* length:          */ 15,
+            /* instruction:     */ &zydis_inst))) {
+        std::string buffer = fmt::format("{}", zydis_inst.text);
+        ERROR("Hit error instruction: %s", buffer.c_str());
+    } else {
+        ERROR("Hit error instruction and couldn't even disassemble it. Opcode: %02x", inst->opcode);
+    }
 }
 
 // ██████  ██████  ██ ███    ███  █████  ██████  ██    ██
@@ -418,7 +430,7 @@ IR_HANDLE(movsxd) { // movsxd r32/64, rm32/64 - 0x63
     ir_emit_set_reg(BLOCK, &inst->operand_reg, serm);
 }
 
-IR_HANDLE(push_imm32) { // push imm32 - 0x68
+IR_HANDLE(push_imm) {
     bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
     SSAInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
     x86_operand_t rsp_reg = get_full_reg(X86_REF_RSP);
@@ -434,20 +446,11 @@ IR_HANDLE(push_imm32) { // push imm32 - 0x68
     ir_emit_set_reg(BLOCK, &rsp_reg, rsp_sub);
 }
 
-IR_HANDLE(push_imm8) { // push imm8 - 0x6a
-    bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
+IR_HANDLE(imul_r_rm_imm) {
+    SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
     SSAInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
-    x86_operand_t rsp_reg = get_full_reg(X86_REF_RSP);
-    SSAInstruction* rsp = ir_emit_get_reg(BLOCK, &rsp_reg);
-    SSAInstruction* rsp_sub = ir_emit_addi(BLOCK, rsp, is_word ? -2 : -8);
-
-    if (is_word) {
-        ir_emit_write_word(BLOCK, rsp_sub, imm);
-    } else {
-        ir_emit_write_qword(BLOCK, rsp_sub, imm);
-    }
-
-    ir_emit_set_reg(BLOCK, &rsp_reg, rsp_sub);
+    SSAInstruction* result = ir_emit_mul(BLOCK, rm, imm);
+    ir_emit_set_reg(BLOCK, &inst->operand_reg, result);
 }
 
 IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
@@ -581,28 +584,58 @@ IR_HANDLE(cdq) { // cwd/cdq/cqo - 0x99
     ir_emit_set_reg(BLOCK, &rdx_reg, mask);
 }
 
+IR_HANDLE(push_flags) { // pushfq - 0x9c
+    bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
+    SSAInstruction* flags = ir_emit_get_flags(BLOCK);
+    x86_operand_t rsp_reg = get_full_reg(X86_REF_RSP);
+    SSAInstruction* rsp = ir_emit_get_reg(BLOCK, &rsp_reg);
+    SSAInstruction* rsp_sub = ir_emit_addi(BLOCK, rsp, is_word ? -2 : -8);
+
+    if (is_word == X86_SIZE_WORD) {
+        ir_emit_write_word(BLOCK, rsp_sub, flags);
+    } else {
+        ir_emit_write_qword(BLOCK, rsp_sub, flags);
+    }
+
+    ir_emit_set_reg(BLOCK, &rsp_reg, rsp_sub);
+}
+
+IR_HANDLE(pop_flags) { // popfq - 0x9d
+    bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
+    x86_operand_t rsp_reg = get_full_reg(X86_REF_RSP);
+    SSAInstruction* rsp = ir_emit_get_reg(BLOCK, &rsp_reg);
+    SSAInstruction* rsp_add = ir_emit_addi(BLOCK, rsp, is_word ? 2 : 8);
+    SSAInstruction* flags;
+
+    if (is_word) {
+        flags = ir_emit_read_word(BLOCK, rsp);
+    } else {
+        flags = ir_emit_read_qword(BLOCK, rsp);
+    }
+
+    ir_emit_set_flags(BLOCK, flags);
+    ir_emit_set_reg(BLOCK, &rsp_reg, rsp_add);
+}
+
 IR_HANDLE(lahf) { // lahf - 0x9f
-    SSAInstruction* c = ir_emit_get_flag(BLOCK, X86_REF_CF);
-    SSAInstruction* p = ir_emit_get_flag(BLOCK, X86_REF_PF);
-    SSAInstruction* a = ir_emit_get_flag(BLOCK, X86_REF_AF);
-    SSAInstruction* z = ir_emit_get_flag(BLOCK, X86_REF_ZF);
-    SSAInstruction* s = ir_emit_get_flag(BLOCK, X86_REF_SF);
-
-    SSAInstruction* p_shifted = ir_emit_shift_left(BLOCK, p, ir_emit_immediate(BLOCK, 2));
-    SSAInstruction* a_shifted = ir_emit_shift_left(BLOCK, a, ir_emit_immediate(BLOCK, 4));
-    SSAInstruction* z_shifted = ir_emit_shift_left(BLOCK, z, ir_emit_immediate(BLOCK, 6));
-    SSAInstruction* s_shifted = ir_emit_shift_left(BLOCK, s, ir_emit_immediate(BLOCK, 7));
-
-    SSAInstruction* c_p = ir_emit_or(BLOCK, c, p_shifted);
-    SSAInstruction* a_z = ir_emit_or(BLOCK, a_shifted, z_shifted);
-    SSAInstruction* c_p_s = ir_emit_or(BLOCK, c_p, s_shifted);
-    SSAInstruction* result_almost = ir_emit_or(BLOCK, c_p_s, a_z);
-    SSAInstruction* result = ir_emit_or(BLOCK, result_almost, ir_emit_immediate(BLOCK, 0b10)); // always set bit 1
-
+    SSAInstruction* flags = ir_emit_get_flags(BLOCK);
     x86_operand_t ah_reg = get_full_reg(X86_REF_RAX);
     ah_reg.size = X86_SIZE_BYTE;
     ah_reg.reg.high8 = true;
-    ir_emit_set_reg(BLOCK, &ah_reg, result);
+    ir_emit_set_reg(BLOCK, &ah_reg, flags);
+}
+
+IR_HANDLE(sahf) { // sahf - 0x9e
+    x86_operand_t ah_reg = get_full_reg(X86_REF_RAX);
+    ah_reg.size = X86_SIZE_BYTE;
+    ah_reg.reg.high8 = true;
+    SSAInstruction* flags = ir_emit_get_reg(BLOCK, &ah_reg);
+    SSAInstruction* c = ir_emit_and(BLOCK, flags, ir_emit_immediate(BLOCK, 1));
+    SSAInstruction* p = ir_emit_and(BLOCK, ir_emit_shift_right(BLOCK, flags, ir_emit_immediate(BLOCK, 2)), ir_emit_immediate(BLOCK, 1));
+    SSAInstruction* a = ir_emit_and(BLOCK, ir_emit_shift_right(BLOCK, flags, ir_emit_immediate(BLOCK, 4)), ir_emit_immediate(BLOCK, 1));
+    SSAInstruction* z = ir_emit_and(BLOCK, ir_emit_shift_right(BLOCK, flags, ir_emit_immediate(BLOCK, 6)), ir_emit_immediate(BLOCK, 1));
+    SSAInstruction* s = ir_emit_and(BLOCK, ir_emit_shift_right(BLOCK, flags, ir_emit_immediate(BLOCK, 7)), ir_emit_immediate(BLOCK, 1));
+    ir_emit_set_cpazso(BLOCK, c, p, a, z, s, nullptr);
 }
 
 IR_HANDLE(mov_eax_moffs) { // mov eax, moffs32 - 0xa1
@@ -658,13 +691,28 @@ IR_HANDLE(mov_r32_imm32) { // mov r16/32/64, imm16/32/64 - 0xb8-0xbf
     ir_emit_set_reg(BLOCK, &inst->operand_reg, imm);
 }
 
-IR_HANDLE(group2_rm8_imm8) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm8, imm8 - 0xc0
+IR_HANDLE(group2_rm_imm8) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm8, imm8 - 0xc0
     ir_emit_group2(BLOCK, inst, ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data));
 }
 
-IR_HANDLE(group2_rm32_imm8) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64,
-                              // imm8 - 0xc1
-    ir_emit_group2(BLOCK, inst, ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data));
+IR_HANDLE(group2_rm_1) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, 1 - 0xc1
+    ir_emit_group2(BLOCK, inst, ir_emit_immediate(BLOCK, 1));
+}
+
+IR_HANDLE(group2_rm_cl) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, cl - 0xc1
+    SSAInstruction* cl = get_reg(BLOCK, X86_REF_RCX, X86_SIZE_BYTE);
+    ir_emit_group2(BLOCK, inst, cl);
+}
+
+IR_HANDLE(ret_imm) {
+    SSAInstruction* imm = ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data);
+    SSAInstruction* rsp = ir_emit_get_guest(BLOCK, X86_REF_RSP);
+    SSAInstruction* rip = ir_emit_read_qword(BLOCK, rsp);
+    SSAInstruction* rsp_add = ir_emit_add(BLOCK, rsp, imm);
+    ir_emit_set_guest(BLOCK, X86_REF_RSP, rsp_add);
+    ir_emit_set_guest(BLOCK, X86_REF_RIP, rip);
+    BLOCK->TerminateJump(state->function->GetExit());
+    state->exit = true;
 }
 
 IR_HANDLE(ret) { // ret - 0xc3

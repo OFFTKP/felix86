@@ -8,6 +8,7 @@
 
 u16 get_bit_size(x86_size_e size);
 x86_operand_t get_full_reg(x86_ref_e ref);
+SSAInstruction* get_reg(IRBlock* block, x86_ref_e ref, x86_size_e size_e);
 
 void ir_emit_runtime_comment(IRBlock* block, const std::string& comment);
 
@@ -56,6 +57,8 @@ SSAInstruction* ir_emit_remuw(IRBlock* block, SSAInstruction* source1, SSAInstru
 SSAInstruction* ir_emit_mul(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_mulh(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
 SSAInstruction* ir_emit_mulhu(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2);
+SSAInstruction* ir_emit_get_flags(IRBlock* block);
+void ir_emit_set_flags(IRBlock* block, SSAInstruction* flags);
 void ir_emit_syscall(IRBlock* block);
 SSAInstruction* ir_emit_insert_integer_to_vector(IRBlock* block, SSAInstruction* source, SSAInstruction* dest, u8 idx, x86_size_e sz);
 SSAInstruction* ir_emit_extract_integer_from_vector(IRBlock* block, SSAInstruction* src, u8 idx, x86_size_e sz);

@@ -257,10 +257,54 @@ SSAInstruction* ir_emit_mulhu(IRBlock* block, SSAInstruction* source1, SSAInstru
     return ir_emit_two_operands(block, IROpcode::Mulhu, source1, source2);
 }
 
-SSAInstruction* ir_emit_div128(IRBlock* block, SSAInstruction* divisor) {
+SSAInstruction* ir_emit_get_flags(IRBlock* block) {
+    SSAInstruction* c = ir_emit_get_flag(block, X86_REF_CF);
+    SSAInstruction* p = ir_emit_get_flag(block, X86_REF_PF);
+    SSAInstruction* a = ir_emit_get_flag(block, X86_REF_AF);
+    SSAInstruction* z = ir_emit_get_flag(block, X86_REF_ZF);
+    SSAInstruction* s = ir_emit_get_flag(block, X86_REF_SF);
+    SSAInstruction* o = ir_emit_get_flag(block, X86_REF_OF);
+    SSAInstruction* d = ir_emit_get_flag(block, X86_REF_DF);
+
+    SSAInstruction* p_shifted = ir_emit_shift_left(block, p, ir_emit_immediate(block, 2));
+    SSAInstruction* a_shifted = ir_emit_shift_left(block, a, ir_emit_immediate(block, 4));
+    SSAInstruction* z_shifted = ir_emit_shift_left(block, z, ir_emit_immediate(block, 6));
+    SSAInstruction* s_shifted = ir_emit_shift_left(block, s, ir_emit_immediate(block, 7));
+    SSAInstruction* d_shifted = ir_emit_shift_left(block, d, ir_emit_immediate(block, 10));
+    SSAInstruction* o_shifted = ir_emit_shift_left(block, o, ir_emit_immediate(block, 11));
+
+    SSAInstruction* c_p = ir_emit_or(block, c, p_shifted);
+    SSAInstruction* a_z = ir_emit_or(block, a_shifted, z_shifted);
+    SSAInstruction* a_z_o = ir_emit_or(block, a_z, o_shifted);
+    SSAInstruction* c_p_s = ir_emit_or(block, c_p, s_shifted);
+    SSAInstruction* c_p_s_d = ir_emit_or(block, c_p_s, d_shifted);
+    SSAInstruction* result_almost = ir_emit_or(block, c_p_s_d, a_z_o);
+    SSAInstruction* result = ir_emit_or(block, result_almost, ir_emit_immediate(block, 0b10)); // always set bit 1
+
+    return result;
+}
+
+void ir_emit_set_flags(IRBlock* block, SSAInstruction* flags) {
+    SSAInstruction* c = ir_emit_and(block, flags, ir_emit_immediate(block, 1));
+    SSAInstruction* p = ir_emit_and(block, ir_emit_shift_right(block, flags, ir_emit_immediate(block, 2)), ir_emit_immediate(block, 1));
+    SSAInstruction* a = ir_emit_and(block, ir_emit_shift_right(block, flags, ir_emit_immediate(block, 4)), ir_emit_immediate(block, 1));
+    SSAInstruction* z = ir_emit_and(block, ir_emit_shift_right(block, flags, ir_emit_immediate(block, 6)), ir_emit_immediate(block, 1));
+    SSAInstruction* s = ir_emit_and(block, ir_emit_shift_right(block, flags, ir_emit_immediate(block, 7)), ir_emit_immediate(block, 1));
+    SSAInstruction* o = ir_emit_and(block, ir_emit_shift_right(block, flags, ir_emit_immediate(block, 11)), ir_emit_immediate(block, 1));
+    SSAInstruction* d = ir_emit_and(block, ir_emit_shift_right(block, flags, ir_emit_immediate(block, 10)), ir_emit_immediate(block, 1));
+
+    ir_emit_set_flag(block, X86_REF_CF, c);
+    ir_emit_set_flag(block, X86_REF_PF, p);
+    ir_emit_set_flag(block, X86_REF_AF, a);
+    ir_emit_set_flag(block, X86_REF_ZF, z);
+    ir_emit_set_flag(block, X86_REF_SF, s);
+    ir_emit_set_flag(block, X86_REF_OF, o);
+    ir_emit_set_flag(block, X86_REF_DF, d);
+}
+
+void ir_emit_div128(IRBlock* block, SSAInstruction* divisor) {
     SSAInstruction* instruction = ir_emit_one_operand(block, IROpcode::Div128, divisor);
     instruction->Lock();
-    return instruction;
 }
 
 SSAInstruction* ir_emit_divu128(IRBlock* block, SSAInstruction* divisor) {

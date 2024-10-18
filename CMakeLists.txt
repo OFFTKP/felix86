@@ -39,7 +39,6 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/block.cpp
     src/felix86/ir/emitter.cpp
     src/felix86/ir/function.cpp
-    src/felix86/ir/handlers_weak.cpp
     src/felix86/ir/handlers.cpp
     src/felix86/ir/instruction.cpp
     src/felix86/ir/opcode.cpp
