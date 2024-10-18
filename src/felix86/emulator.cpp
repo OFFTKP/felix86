@@ -69,8 +69,6 @@ void Emulator::setupMainStack(ThreadState* state) {
     // To hold the addresses of the arguments for later pushing
     std::vector<u64> argv_addresses(argc);
 
-    void* stack_base = (void*)rsp;
-
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
     VERBOSE("Pushing: %s -> %s", path, program_name);
@@ -175,18 +173,6 @@ void Emulator::setupMainStack(ThreadState* state) {
         return;
     }
 
-    if (g_verbose) {
-        fmt::print("Stack:\n");
-        u64 stack_end = rsp;
-        for (u8* ptr = (u8*)stack_end; ptr < (u8*)stack_base;) {
-            for (int i = 0; i < 8; i++) {
-                fmt::print("{:02X} ", ptr[i]);
-            }
-            fmt::print("\n");
-            ptr += 8;
-        }
-    }
-
     state->SetGpr(X86_REF_RSP, rsp);
 }
 
@@ -244,6 +230,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     // Mutex needs to be unlocked before the thread is dispatched
     {
         std::lock_guard<std::mutex> lock(emulator->compilation_mutex);
+        VERBOSE("Now compiling: %016lx", thread_state->rip);
         function = emulator->compileFunction(thread_state->rip);
     }
 
