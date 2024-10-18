@@ -1,7 +1,7 @@
 %ifdef CONFIG
 {
   "RegData": {
-    "RSI": "0x0000000000000010"
+    "RSI": "0x0000000000000011"
   }
 }
 %endif

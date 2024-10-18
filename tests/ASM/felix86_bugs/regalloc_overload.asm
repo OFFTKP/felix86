@@ -14,9 +14,7 @@
         "R10": "0x000000000000000B",
         "R11": "0x000000000000000C",
         "R12": "0x000000000000000D",
-        "R13": "0x000000000000000E",
-        "R14": "0x000000000000000F",
-        "R15": "0x0000000000000010"
+        "R13": "0x000000000000000E"
     }
 }
 %endif
@@ -43,10 +41,7 @@ mov r11, [rel my_data + 88]
 mov r12, [rel my_data + 96]
 past:
 mov r13, [rel my_data + 104]
-mov r14, [rel my_data + 112]
-mov r15, [rel my_data + 120]
 dec rcx
-cmp rcx, 0
 jnz loop
 
 hlt
