@@ -706,7 +706,7 @@ IR_HANDLE(group2_rm_cl) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, cl - 0x
 }
 
 IR_HANDLE(ret_imm) {
-    SSAInstruction* imm = ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data);
+    SSAInstruction* imm = ir_emit_immediate(BLOCK, inst->operand_imm.immediate.data + inst->length);
     SSAInstruction* rsp = ir_emit_get_guest(BLOCK, X86_REF_RSP);
     SSAInstruction* rip = ir_emit_read_qword(BLOCK, rsp);
     SSAInstruction* rsp_add = ir_emit_add(BLOCK, rsp, imm);
