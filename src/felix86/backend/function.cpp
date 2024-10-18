@@ -107,7 +107,15 @@ void BreakupPhis(BackendFunction* function, IRBlock* block, const std::vector<Na
         for (size_t j = 0; j < phis.size(); j++) {
             const NamedPhi& named_phi = phis[j];
             u32 name = named_phi.name;
-            u32 value = named_phi.phi->values[i]->GetName();
+            u32 value = 0;
+            for (size_t k = 0; k < named_phi.phi->blocks.size(); k++) {
+                if (named_phi.phi->blocks[k] == ir_pred) {
+                    value = named_phi.phi->values[k]->GetName();
+                    break;
+                }
+            }
+            ASSERT_MSG(value != 0, "Phi predecessor not found");
+
             move.types_lhs[j] = GetTypeFromRef(named_phi.phi->ref);
             move.names_lhs[j] = name;
             move.names_rhs[j] = value;

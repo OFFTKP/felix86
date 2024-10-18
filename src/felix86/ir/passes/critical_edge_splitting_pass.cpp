@@ -19,5 +19,20 @@ void PassManager::CriticalEdgeSplittingPass(IRFunction* function) {
         IRBlock* new_block = function->CreateBlock();
         new_block->TerminateJump(successor);
         block->ReplaceSuccessor(successor, new_block);
+
+        if (successor->HasPhis()) {
+            for (SSAInstruction& instr : successor->GetInstructions()) {
+                if (instr.IsPhi()) {
+                    Phi& phi = instr.AsPhi();
+                    for (size_t i = 0; i < phi.blocks.size(); i++) {
+                        if (phi.blocks[i] == block) {
+                            phi.blocks[i] = new_block;
+                        }
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
     }
 }
