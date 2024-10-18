@@ -87,6 +87,7 @@ struct InstructionMetadata {
     BackendInstruction* inst = nullptr;
     u32 spill_cost = 0; // sum of uses + defs (loads and stores that would have to be inserted)
     u32 interferences = 0;
+    bool infinite_cost = false;
 };
 
 using InstructionMap = tsl::robin_map<u32, InstructionMetadata>;
@@ -109,6 +110,13 @@ static InstructionMap create_instruction_map(BackendFunction& function) {
         for (BackendInstruction& inst : block.GetInstructions()) {
             instructions[inst.GetName()].inst = &inst;
             instructions[inst.GetName()].spill_cost += 1;
+
+            if (inst.GetOpcode() == IROpcode::LoadSpill) {
+                // Don't pick them again
+                instructions[inst.GetName()].infinite_cost = true;
+            } else if (inst.GetOpcode() == IROpcode::StoreSpill) {
+                instructions[inst.GetOperand(0)].infinite_cost = true;
+            }
 
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                 instructions[inst.GetOperand(i)].spill_cost += 1;
@@ -276,6 +284,8 @@ static u32 choose(const InstructionMap& instructions, const std::deque<Node>& no
         float degree = instructions.at(node).interferences;
         if (degree == 0)
             continue;
+        if (instructions.at(node).infinite_cost)
+            continue;
         float cost = spill_cost / degree;
         if (cost < min) {
             min = cost;
@@ -283,7 +293,7 @@ static u32 choose(const InstructionMap& instructions, const std::deque<Node>& no
         }
     }
 
-    ASSERT(chosen != 0);
+    ASSERT(chosen != 0); // all nodes have infinite cost???
     return chosen;
 }
 
