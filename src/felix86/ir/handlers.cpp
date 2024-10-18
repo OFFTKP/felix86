@@ -501,11 +501,12 @@ IR_HANDLE(test_rm_reg) { // test rm8, r8 - 0x84
 
 IR_HANDLE(xchg_rm_reg) { // xchg rm8, r8 - 0x86
     SSAInstruction* reg = ir_emit_get_reg(BLOCK, &inst->operand_reg);
-    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY && false) {
         SSAInstruction* address = ir_emit_lea(BLOCK, &inst->operand_rm);
         SSAInstruction* swapped_reg = ir_emit_amoswap(BLOCK, address, reg, MemoryOrdering::AqRl, inst->operand_reg.size);
         ir_emit_set_reg(BLOCK, &inst->operand_reg, swapped_reg);
     } else {
+        WARN("Hardcoded non atomic path for xchg, fix me");
         SSAInstruction* rm = ir_emit_get_rm(BLOCK, &inst->operand_rm);
         ir_emit_set_rm(BLOCK, &inst->operand_rm, reg);
         ir_emit_set_reg(BLOCK, &inst->operand_reg, rm);
