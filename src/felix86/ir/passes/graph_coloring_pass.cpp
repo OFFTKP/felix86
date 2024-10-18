@@ -86,6 +86,7 @@ using LivenessSet = std::unordered_set<u32>;
 struct InstructionMetadata {
     BackendInstruction* inst = nullptr;
     u32 spill_cost = 0; // sum of uses + defs (loads and stores that would have to be inserted)
+    u32 interferences = 0;
 };
 
 using InstructionMap = tsl::robin_map<u32, InstructionMetadata>;
@@ -272,8 +273,9 @@ static u32 choose(const InstructionMap& instructions, const std::deque<Node>& no
 
     for (auto& [node, edges] : nodes) {
         float spill_cost = instructions.at(node).spill_cost;
-        float degree = edges.size();
-        ASSERT(!edges.empty());
+        float degree = instructions.at(node).interferences;
+        if (degree == 0)
+            continue;
         float cost = spill_cost / degree;
         if (cost < min) {
             min = cost;
@@ -295,6 +297,10 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
         AllocationMap allocations;
         InstructionMap instructions = create_instruction_map(function);
         build(function, instructions, graph, should_consider);
+
+        for (auto& [name, edges] : graph) {
+            instructions.at(name).interferences = edges.size();
+        }
 
         while (true) {
             // While there's vertices with degree less than k

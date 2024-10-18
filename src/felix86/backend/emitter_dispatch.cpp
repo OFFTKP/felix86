@@ -97,7 +97,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         } else if (Rd.IsVec() && Rs.IsVec()) {
             EmitMov(backend, Rd.AsVec(), Rs.AsVec());
         } else {
-            UNREACHABLE();
+            ERROR("Rd type: %d, Rs type: %d", (int)Rd.GetAllocationType(), (int)Rs.GetAllocationType());
         }
         break;
     }
