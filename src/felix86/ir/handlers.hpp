@@ -2,10 +2,11 @@
 
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/frontend/instruction.hpp"
+#include "felix86/ir/emitter_v2.hpp"
 
-typedef void (*ir_handle_fn_t)(FrontendState* state, x86_instruction_t* inst);
+typedef void (*ir_handle_fn_t)(FrontendState* state, IREmitter& ir, x86_instruction_t* inst);
 
-#define X(opcode, name, modrm, immsize) void ir_handle_##name(FrontendState* state, x86_instruction_t* inst);
+#define X(opcode, name, modrm, immsize) void ir_handle_##name(FrontendState* state, IREmitter& ir, x86_instruction_t* inst);
 #include "felix86/frontend/primary.inc"
 #include "felix86/frontend/secondary.inc"
 #include "felix86/frontend/secondary_66.inc"

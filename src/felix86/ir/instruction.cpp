@@ -72,16 +72,26 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Ctzh:
     case IROpcode::Ctzw:
     case IROpcode::Ctz:
-    case IROpcode::ShiftLeft:
-    case IROpcode::ShiftRight:
-    case IROpcode::ShiftRightArithmetic:
-    case IROpcode::LeftRotate8:
-    case IROpcode::LeftRotate16:
-    case IROpcode::LeftRotate32:
-    case IROpcode::LeftRotate64:
+    case IROpcode::Shl:
+    case IROpcode::Shli:
+    case IROpcode::Shr:
+    case IROpcode::Shri:
+    case IROpcode::Sar:
+    case IROpcode::Sari:
+    case IROpcode::Rol8:
+    case IROpcode::Rol16:
+    case IROpcode::Rol32:
+    case IROpcode::Rol64:
+    case IROpcode::Ror8:
+    case IROpcode::Ror16:
+    case IROpcode::Ror32:
+    case IROpcode::Ror64:
     case IROpcode::And:
+    case IROpcode::Andi:
     case IROpcode::Or:
+    case IROpcode::Ori:
     case IROpcode::Xor:
+    case IROpcode::Xori:
     case IROpcode::Not:
     case IROpcode::Neg:
     case IROpcode::Equal:
@@ -152,8 +162,8 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::VAnd:
     case IROpcode::VOr:
     case IROpcode::VXor:
-    case IROpcode::VShiftRight:
-    case IROpcode::VShiftLeft:
+    case IROpcode::VShr:
+    case IROpcode::VShl:
     case IROpcode::VPackedSubByte:
     case IROpcode::VPackedAddQWord:
     case IROpcode::VPackedEqualByte:
@@ -281,6 +291,12 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 
         VALIDATE_OPS_INT(Neg, 1);
         VALIDATE_OPS_INT(Addi, 1);
+        VALIDATE_OPS_INT(Andi, 1);
+        VALIDATE_OPS_INT(Ori, 1);
+        VALIDATE_OPS_INT(Xori, 1);
+        VALIDATE_OPS_INT(Shli, 1);
+        VALIDATE_OPS_INT(Shri, 1);
+        VALIDATE_OPS_INT(Sari, 1);
         VALIDATE_OPS_INT(Sext8, 1);
         VALIDATE_OPS_INT(Sext16, 1);
         VALIDATE_OPS_INT(Sext32, 1);
@@ -317,9 +333,9 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(WriteQWordRelative, 2);
         VALIDATE_OPS_INT(Add, 2);
         VALIDATE_OPS_INT(Sub, 2);
-        VALIDATE_OPS_INT(ShiftLeft, 2);
-        VALIDATE_OPS_INT(ShiftRight, 2);
-        VALIDATE_OPS_INT(ShiftRightArithmetic, 2);
+        VALIDATE_OPS_INT(Shl, 2);
+        VALIDATE_OPS_INT(Shr, 2);
+        VALIDATE_OPS_INT(Sar, 2);
         VALIDATE_OPS_INT(And, 2);
         VALIDATE_OPS_INT(Or, 2);
         VALIDATE_OPS_INT(Xor, 2);
@@ -327,10 +343,14 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(NotEqual, 2);
         VALIDATE_OPS_INT(SetLessThanSigned, 2);
         VALIDATE_OPS_INT(SetLessThanUnsigned, 2);
-        VALIDATE_OPS_INT(LeftRotate8, 2);
-        VALIDATE_OPS_INT(LeftRotate16, 2);
-        VALIDATE_OPS_INT(LeftRotate32, 2);
-        VALIDATE_OPS_INT(LeftRotate64, 2);
+        VALIDATE_OPS_INT(Rol8, 2);
+        VALIDATE_OPS_INT(Rol16, 2);
+        VALIDATE_OPS_INT(Rol32, 2);
+        VALIDATE_OPS_INT(Rol64, 2);
+        VALIDATE_OPS_INT(Ror8, 2);
+        VALIDATE_OPS_INT(Ror16, 2);
+        VALIDATE_OPS_INT(Ror32, 2);
+        VALIDATE_OPS_INT(Ror64, 2);
         VALIDATE_OPS_INT(Div, 2);
         VALIDATE_OPS_INT(Divu, 2);
         VALIDATE_OPS_INT(Divw, 2);
@@ -382,8 +402,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_VECTOR(VAnd, 2);
         VALIDATE_OPS_VECTOR(VOr, 2);
         VALIDATE_OPS_VECTOR(VXor, 2);
-        VALIDATE_OPS_VECTOR(VShiftRight, 2);
-        VALIDATE_OPS_VECTOR(VShiftLeft, 2);
+        VALIDATE_OPS_VECTOR(VShr, 2);
+        VALIDATE_OPS_VECTOR(VShl, 2);
         VALIDATE_OPS_VECTOR(VPackedSubByte, 2);
         VALIDATE_OPS_VECTOR(VPackedAddQWord, 2);
         VALIDATE_OPS_VECTOR(VPackedEqualByte, 2);
@@ -611,24 +631,48 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "&", GetNameString(operands[1]));
         break;
     }
+    case IROpcode::Andi: {
+        ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), "&", (i64)immediate_data);
+        break;
+    }
     case IROpcode::Or: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "|", GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::Ori: {
+        ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), "|", (i64)immediate_data);
         break;
     }
     case IROpcode::Xor: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "^", GetNameString(operands[1]));
         break;
     }
-    case IROpcode::ShiftLeft: {
+    case IROpcode::Xori: {
+        ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), "^", (i64)immediate_data);
+        break;
+    }
+    case IROpcode::Shl: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "<<", GetNameString(operands[1]));
         break;
     }
-    case IROpcode::ShiftRight: {
+    case IROpcode::Shli: {
+        ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), "<<", (i64)immediate_data);
+        break;
+    }
+    case IROpcode::Shr: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), ">>", GetNameString(operands[1]));
         break;
     }
-    case IROpcode::ShiftRightArithmetic: {
+    case IROpcode::Shri: {
+        ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), ">>", (i64)immediate_data);
+        break;
+    }
+    case IROpcode::Sar: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), ">>", GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::Sari: {
+        ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), ">>", (i64)immediate_data);
         break;
     }
     case IROpcode::AmoAdd8: {
@@ -782,23 +826,43 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "*", GetNameString(operands[1]));
         break;
     }
-    case IROpcode::LeftRotate8: {
+    case IROpcode::Rol8: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "rol8", "src", GetNameString(operands[0]), "amount",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::LeftRotate16: {
+    case IROpcode::Rol16: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "rol16", "src", GetNameString(operands[0]), "amount",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::LeftRotate32: {
+    case IROpcode::Rol32: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "rol32", "src", GetNameString(operands[0]), "amount",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::LeftRotate64: {
+    case IROpcode::Rol64: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "rol64", "src", GetNameString(operands[0]), "amount",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::Ror8: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "ror8", "src", GetNameString(operands[0]), "amount",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::Ror16: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "ror16", "src", GetNameString(operands[0]), "amount",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::Ror32: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "ror32", "src", GetNameString(operands[0]), "amount",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::Ror64: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "ror64", "src", GetNameString(operands[0]), "amount",
                            GetNameString(operands[1]));
         break;
     }
@@ -1014,12 +1078,12 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VShiftLeft: {
+    case IROpcode::VShl: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vshl", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VShiftRight: {
+    case IROpcode::VShr: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vshr", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;

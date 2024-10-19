@@ -136,8 +136,6 @@ typedef enum : u8 {
     X86_SIZE_QWORD,
     X86_SIZE_MM,
     X86_SIZE_XMM,
-    X86_SIZE_YMM,
-    X86_SIZE_ZMM,
 } x86_size_e;
 
 struct XmmReg {

@@ -31,10 +31,6 @@ u16 get_bit_size(x86_size_e size) {
         return 64;
     case X86_SIZE_XMM:
         return 128;
-    case X86_SIZE_YMM:
-        return 256;
-    case X86_SIZE_ZMM:
-        return 512;
     }
 
     ERROR("Invalid register size");
@@ -95,15 +91,15 @@ SSAInstruction* ir_emit_sub(IRBlock* block, SSAInstruction* source1, SSAInstruct
 }
 
 SSAInstruction* ir_emit_shift_left(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::ShiftLeft, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::Shl, source1, source2);
 }
 
 SSAInstruction* ir_emit_shift_right(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::ShiftRight, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::Shr, source1, source2);
 }
 
 SSAInstruction* ir_emit_shift_right_arithmetic(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
-    return ir_emit_two_operands(block, IROpcode::ShiftRightArithmetic, source1, source2);
+    return ir_emit_two_operands(block, IROpcode::Sar, source1, source2);
 }
 
 SSAInstruction* ir_emit_rotate(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2, x86_size_e size_e, bool right) {
@@ -112,25 +108,25 @@ SSAInstruction* ir_emit_rotate(IRBlock* block, SSAInstruction* source1, SSAInstr
     SSAInstruction* count = source2;
     switch (size) {
     case 8:
-        type = IROpcode::LeftRotate8;
+        type = IROpcode::Rol8;
         if (right) {
             count = ir_emit_sub(block, ir_emit_immediate(block, 8), count);
         }
         break;
     case 16:
-        type = IROpcode::LeftRotate16;
+        type = IROpcode::Rol16;
         if (right) {
             count = ir_emit_sub(block, ir_emit_immediate(block, 16), count);
         }
         break;
     case 32:
-        type = IROpcode::LeftRotate32;
+        type = IROpcode::Rol32;
         if (right) {
             count = ir_emit_sub(block, ir_emit_immediate(block, 32), count);
         }
         break;
     case 64:
-        type = IROpcode::LeftRotate64;
+        type = IROpcode::Rol64;
         if (right) {
             count = ir_emit_sub(block, ir_emit_immediate(block, 64), count);
         }
@@ -485,11 +481,11 @@ SSAInstruction* ir_emit_vector_packed_xor(IRBlock* block, SSAInstruction* source
 }
 
 SSAInstruction* ir_emit_vector_packed_shift_right(IRBlock* block, SSAInstruction* source, SSAInstruction* imm) {
-    return ir_emit_two_operands(block, IROpcode::VShiftRight, source, imm);
+    return ir_emit_two_operands(block, IROpcode::VShr, source, imm);
 }
 
 SSAInstruction* ir_emit_vector_packed_shift_left(IRBlock* block, SSAInstruction* source, SSAInstruction* imm) {
-    return ir_emit_two_operands(block, IROpcode::VShiftLeft, source, imm);
+    return ir_emit_two_operands(block, IROpcode::VShl, source, imm);
 }
 
 SSAInstruction* ir_emit_vector_packed_sub_byte(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {
@@ -858,8 +854,6 @@ SSAInstruction* ir_emit_get_reg(IRBlock* block, x86_operand_t* operand_reg) {
     case X86_SIZE_QWORD:
         return ir_emit_get_gpr64(block, operand_reg->reg.ref);
     case X86_SIZE_XMM:
-    case X86_SIZE_YMM:
-    case X86_SIZE_ZMM:
         return ir_emit_get_vector(block, operand_reg->reg.ref);
     default:
         ERROR("Invalid register size");
@@ -892,8 +886,6 @@ void ir_emit_set_reg(IRBlock* block, x86_operand_t* operand_reg, SSAInstruction*
     case X86_SIZE_QWORD:
         return ir_emit_set_gpr64(block, operand_reg->reg.ref, source);
     case X86_SIZE_XMM:
-    case X86_SIZE_YMM:
-    case X86_SIZE_ZMM:
         return ir_emit_set_vector(block, operand_reg->reg.ref, source);
     default:
         ERROR("Invalid register size");

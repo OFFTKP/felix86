@@ -47,18 +47,28 @@
     X(Ctzh)                                                                                                                                          \
     X(Ctzw)                                                                                                                                          \
     X(Ctz)                                                                                                                                           \
-    X(ShiftLeft)                                                                                                                                     \
-    X(ShiftRight)                                                                                                                                    \
-    X(ShiftRightArithmetic)                                                                                                                          \
-    X(LeftRotate8)                                                                                                                                   \
-    X(LeftRotate16)                                                                                                                                  \
-    X(LeftRotate32)                                                                                                                                  \
-    X(LeftRotate64)                                                                                                                                  \
+    X(Shl)                                                                                                                                           \
+    X(Shli)                                                                                                                                          \
+    X(Shr)                                                                                                                                           \
+    X(Shri)                                                                                                                                          \
+    X(Sar)                                                                                                                                           \
+    X(Sari)                                                                                                                                          \
+    X(Rol8)                                                                                                                                          \
+    X(Rol16)                                                                                                                                         \
+    X(Rol32)                                                                                                                                         \
+    X(Rol64)                                                                                                                                         \
+    X(Ror8)                                                                                                                                          \
+    X(Ror16)                                                                                                                                         \
+    X(Ror32)                                                                                                                                         \
+    X(Ror64)                                                                                                                                         \
     X(Select)                                                                                                                                        \
     X(Addi)                                                                                                                                          \
     X(And)                                                                                                                                           \
+    X(Andi)                                                                                                                                          \
     X(Or)                                                                                                                                            \
+    X(Ori)                                                                                                                                           \
     X(Xor)                                                                                                                                           \
+    X(Xori)                                                                                                                                          \
     X(Not)                                                                                                                                           \
     X(Neg)                                                                                                                                           \
     X(Equal)                                                                                                                                         \
@@ -121,8 +131,8 @@
     X(VAnd)                                                                                                                                          \
     X(VOr)                                                                                                                                           \
     X(VXor)                                                                                                                                          \
-    X(VShiftRight)                                                                                                                                   \
-    X(VShiftLeft)                                                                                                                                    \
+    X(VShr)                                                                                                                                          \
+    X(VShl)                                                                                                                                          \
     X(VPackedSubByte)                                                                                                                                \
     X(VPackedAddQWord)                                                                                                                               \
     X(VPackedEqualByte)                                                                                                                              \

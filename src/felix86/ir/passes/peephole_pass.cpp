@@ -386,7 +386,7 @@ bool PeepholeSelectImmediate(SSAInstruction& inst) {
 }
 
 // t2 = imm << imm
-bool PeepholeShiftLeftImmediates(SSAInstruction& inst) {
+bool PeepholeShlImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
     const SSAInstruction* op2 = inst.GetOperand(1);
 
@@ -399,7 +399,7 @@ bool PeepholeShiftLeftImmediates(SSAInstruction& inst) {
 }
 
 // t2 = imm >> imm
-bool PeepholeShiftRightArithmeticImmediates(SSAInstruction& inst) {
+bool PeepholeSarImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
     const SSAInstruction* op2 = inst.GetOperand(1);
 
@@ -412,7 +412,7 @@ bool PeepholeShiftRightArithmeticImmediates(SSAInstruction& inst) {
 }
 
 // t2 = imm >> imm
-bool PeepholeShiftRightImmediates(SSAInstruction& inst) {
+bool PeepholeShrImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
     const SSAInstruction* op2 = inst.GetOperand(1);
 
@@ -760,16 +760,16 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 CHECK(PeepholeSelectImmediate);
                 break;
             }
-            case IROpcode::ShiftLeft: {
-                CHECK(PeepholeShiftLeftImmediates);
+            case IROpcode::Shl: {
+                CHECK(PeepholeShlImmediates);
                 break;
             }
-            case IROpcode::ShiftRight: {
-                CHECK(PeepholeShiftRightImmediates);
+            case IROpcode::Shr: {
+                CHECK(PeepholeShrImmediates);
                 break;
             }
-            case IROpcode::ShiftRightArithmetic: {
-                CHECK(PeepholeShiftRightArithmeticImmediates);
+            case IROpcode::Sar: {
+                CHECK(PeepholeSarImmediates);
                 break;
             }
             case IROpcode::Sext8:

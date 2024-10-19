@@ -183,7 +183,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
     return 0;
 }
 
-void frontend_compile_instruction(FrontendState* state) {
+void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
     u8* data = (u8*)state->current_address;
 
     x86_instruction_t inst = {};
@@ -659,7 +659,7 @@ void frontend_compile_instruction(FrontendState* state) {
     }
 
     // Call actual decoding function
-    fn(state, &inst);
+    fn(state, ir, &inst);
 
     if (is_rep) {
         ir_emit_rep_end(state, inst, rep_type, loop_block, exit_block);
@@ -678,12 +678,13 @@ void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* b
     state.function = function;
     state.current_block = block;
     state.current_address = block->GetStartAddress();
-    state.exit = false;
+
+    IREmitter ir(*block, block->GetStartAddress());
 
     block->SetCompiled();
 
-    while (!state.exit) {
-        frontend_compile_instruction(&state);
+    while (!ir.IsExit()) {
+        frontend_compile_instruction(&state, ir);
     }
 
     if (emulator.GetConfig().print_state) {
