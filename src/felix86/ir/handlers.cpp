@@ -812,11 +812,7 @@ IR_HANDLE(hlt) { // hlt - 0xf4
     state->exit = true;
 }
 
-IR_HANDLE(group3_rm8) { // test/not/neg/mul/imul/div/idiv rm8, imm8 - 0xf6
-    ir_emit_group3(BLOCK, inst);
-}
-
-IR_HANDLE(group3_rm32) { // test/not/neg/mul/imul/div/idiv rm16/32/64, imm32 - 0xf7
+IR_HANDLE(group3) { // test/not/neg/mul/imul/div/idiv rm - 0xf6/0xf7
     ir_emit_group3(BLOCK, inst);
 }
 

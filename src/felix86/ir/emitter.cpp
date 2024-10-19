@@ -1,7 +1,3 @@
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
 #include "felix86/common/log.hpp"
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/ir/emitter.hpp"
@@ -1404,11 +1400,48 @@ void ir_emit_group3(IRBlock* block, x86_instruction_t* inst) {
         break;
     }
     case X86_GROUP3_MUL: {
-        ERROR("Unimplemented");
+        UNIMPLEMENTED();
         break;
     }
     case X86_GROUP3_IMUL: {
-        ERROR("Unimplemented");
+        switch (size_e) {
+        case X86_SIZE_BYTE: {
+            SSAInstruction* al = ir_emit_sext8(block, get_reg(block, X86_REF_RAX, X86_SIZE_BYTE));
+            SSAInstruction* se_rm = ir_emit_sext8(block, rm);
+            SSAInstruction* mul = ir_emit_mul(block, al, se_rm);
+            ir_emit_set_reg(block, X86_REF_RAX, X86_SIZE_WORD, mul);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            SSAInstruction* ax = ir_emit_sext16(block, get_reg(block, X86_REF_RAX, X86_SIZE_WORD));
+            SSAInstruction* se_rm = ir_emit_sext16(block, rm);
+            SSAInstruction* mul = ir_emit_mul(block, ax, se_rm);
+            SSAInstruction* mul_high = ir_emit_shift_right(block, mul, ir_emit_immediate(block, 16));
+            ir_emit_set_reg(block, X86_REF_RAX, X86_SIZE_WORD, mul);
+            ir_emit_set_reg(block, X86_REF_RDX, X86_SIZE_WORD, mul_high);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            SSAInstruction* eax = ir_emit_sext32(block, get_reg(block, X86_REF_RAX, X86_SIZE_DWORD));
+            SSAInstruction* se_rm = ir_emit_sext32(block, rm);
+            SSAInstruction* mul = ir_emit_mul(block, eax, se_rm);
+            SSAInstruction* mul_high = ir_emit_shift_right(block, mul, ir_emit_immediate(block, 32));
+            ir_emit_set_reg(block, X86_REF_RAX, X86_SIZE_DWORD, mul);
+            ir_emit_set_reg(block, X86_REF_RDX, X86_SIZE_DWORD, mul_high);
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            SSAInstruction* rax = get_reg(block, X86_REF_RAX, X86_SIZE_QWORD);
+            SSAInstruction* mul = ir_emit_mul(block, rax, rm);
+            SSAInstruction* mul_high = ir_emit_mulh(block, rax, rm);
+            ir_emit_set_reg(block, X86_REF_RAX, X86_SIZE_QWORD, mul);
+            ir_emit_set_reg(block, X86_REF_RDX, X86_SIZE_QWORD, mul_high);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
         break;
     }
     case X86_GROUP3_DIV: {
@@ -1467,9 +1500,10 @@ void ir_emit_group3(IRBlock* block, x86_instruction_t* inst) {
         switch (size_e) {
         case X86_SIZE_BYTE: {
             // ax / rm, al := quotient, ah := remainder
-            SSAInstruction* ax = get_reg(block, X86_REF_RAX, X86_SIZE_WORD);
-            SSAInstruction* quotient = ir_emit_divw(block, ax, rm);
-            SSAInstruction* remainder = ir_emit_remw(block, ax, rm);
+            SSAInstruction* ax = ir_emit_sext16(block, get_reg(block, X86_REF_RAX, X86_SIZE_WORD));
+            SSAInstruction* se_rm = ir_emit_sext8(block, rm);
+            SSAInstruction* quotient = ir_emit_divw(block, ax, se_rm);
+            SSAInstruction* remainder = ir_emit_remw(block, ax, se_rm);
             ir_emit_set_reg(block, X86_REF_RAX, X86_SIZE_BYTE, quotient);
             ir_emit_set_reg(block, X86_REF_RAX, X86_SIZE_BYTE, remainder, true);
             break;
@@ -1480,8 +1514,9 @@ void ir_emit_group3(IRBlock* block, x86_instruction_t* inst) {
             SSAInstruction* dx = get_reg(block, X86_REF_RDX, X86_SIZE_WORD);
             SSAInstruction* dx_shifted = ir_emit_shift_left(block, dx, ir_emit_immediate(block, 16));
             SSAInstruction* dx_ax = ir_emit_or(block, dx_shifted, ax);
-            SSAInstruction* quotient = ir_emit_divw(block, dx_ax, rm);
-            SSAInstruction* remainder = ir_emit_remw(block, dx_ax, rm);
+            SSAInstruction* se_rm = ir_emit_sext16(block, rm);
+            SSAInstruction* quotient = ir_emit_divw(block, dx_ax, se_rm);
+            SSAInstruction* remainder = ir_emit_remw(block, dx_ax, se_rm);
             ir_emit_set_reg(block, X86_REF_RAX, X86_SIZE_WORD, quotient);
             ir_emit_set_reg(block, X86_REF_RDX, X86_SIZE_WORD, remainder);
             break;
@@ -1492,8 +1527,9 @@ void ir_emit_group3(IRBlock* block, x86_instruction_t* inst) {
             SSAInstruction* edx = get_reg(block, X86_REF_RDX, X86_SIZE_DWORD);
             SSAInstruction* edx_shifted = ir_emit_shift_left(block, edx, ir_emit_immediate(block, 32));
             SSAInstruction* edx_eax = ir_emit_or(block, edx_shifted, eax);
-            SSAInstruction* quotient = ir_emit_div(block, edx_eax, rm);
-            SSAInstruction* remainder = ir_emit_rem(block, edx_eax, rm);
+            SSAInstruction* se_rm = ir_emit_sext32(block, rm);
+            SSAInstruction* quotient = ir_emit_div(block, edx_eax, se_rm);
+            SSAInstruction* remainder = ir_emit_rem(block, edx_eax, se_rm);
             ir_emit_set_reg(block, X86_REF_RAX, X86_SIZE_DWORD, quotient);
             ir_emit_set_reg(block, X86_REF_RDX, X86_SIZE_DWORD, remainder);
             break;
