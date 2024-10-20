@@ -480,6 +480,33 @@ SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
     return final_address;
 }
 
+SSAInstruction* IREmitter::GetFlags() {
+    SSAInstruction* c = GetFlag(X86_REF_CF);
+    SSAInstruction* p = GetFlag(X86_REF_PF);
+    SSAInstruction* a = GetFlag(X86_REF_AF);
+    SSAInstruction* z = GetFlag(X86_REF_ZF);
+    SSAInstruction* s = GetFlag(X86_REF_SF);
+    SSAInstruction* o = GetFlag(X86_REF_OF);
+    SSAInstruction* d = GetFlag(X86_REF_DF);
+
+    SSAInstruction* p_shifted = Shli(p, 2);
+    SSAInstruction* a_shifted = Shli(a, 4);
+    SSAInstruction* z_shifted = Shli(z, 6);
+    SSAInstruction* s_shifted = Shli(s, 7);
+    SSAInstruction* d_shifted = Shli(d, 10);
+    SSAInstruction* o_shifted = Shli(o, 11);
+
+    SSAInstruction* c_p = Or(c, p_shifted);
+    SSAInstruction* a_z = Or(a_shifted, z_shifted);
+    SSAInstruction* a_z_o = Or(a_z, o_shifted);
+    SSAInstruction* c_p_s = Or(c_p, s_shifted);
+    SSAInstruction* c_p_s_d = Or(c_p_s, d_shifted);
+    SSAInstruction* result_almost = Or(c_p_s_d, a_z_o);
+    SSAInstruction* result = Ori(result_almost, 0b10); // always set bit 1
+
+    return result;
+}
+
 SSAInstruction* IREmitter::IsZero(SSAInstruction* value, x86_size_e size) {
     return Seqz(Zext(value, size));
 }
@@ -499,6 +526,27 @@ SSAInstruction* IREmitter::IsNegative(SSAInstruction* value, x86_size_e size) {
         return nullptr;
     }
 }
+
+void IREmitter::Syscall() {
+    // The kernel clobbers registers rcx and r11 but preserves all other registers except rax which is the result.
+    // We don't have to clobber rcx and r11 as we are not a kernel.
+    // First, get_guest and writeback rax, rdi, rsi, rdx, r10, r8, r9 because they may be used by the syscall.
+    // Then emit the syscall instruction.
+    // Finally, load rax so it's not propagated from before the syscall.
+    constexpr static std::array in_regs = {X86_REF_RAX, X86_REF_RDI, X86_REF_RSI, X86_REF_RDX, X86_REF_R10, X86_REF_R8, X86_REF_R9};
+    constexpr static std::array out_regs = {X86_REF_RAX};
+
+    storePartialState(in_regs);
+
+    SSAInstruction* syscall = insertInstruction(IROpcode::Syscall, {});
+    syscall->Lock();
+
+    loadPartialState(out_regs);
+}
+
+void IREmitter::Cpuid() {}
+
+void IREmitter::Rdtsc() {}
 
 void IREmitter::SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o) {
     if (c)
@@ -593,7 +641,7 @@ void IREmitter::setGpr8Low(x86_ref_e ref, SSAInstruction* value) {
 
     SSAInstruction* old = getGpr64(ref);
     SSAInstruction* masked_old = Andi(old, 0xFFFFFFFFFFFFFF00);
-    SSAInstruction* masked_value = Andi(value, 0xFF);
+    SSAInstruction* masked_value = Zext(value, X86_SIZE_BYTE);
     SSAInstruction* new_value = Or(masked_old, masked_value);
     setGuest(ref, new_value);
 }
@@ -605,7 +653,7 @@ void IREmitter::setGpr8High(x86_ref_e ref, SSAInstruction* value) {
 
     SSAInstruction* old = getGpr64(ref);
     SSAInstruction* masked_old = Andi(old, 0xFFFFFFFFFFFF00FF);
-    SSAInstruction* masked_value = Andi(value, 0xFF);
+    SSAInstruction* masked_value = Zext(value, X86_SIZE_BYTE);
     SSAInstruction* shifted_value = Shli(masked_value, 8);
     SSAInstruction* new_value = Or(masked_old, shifted_value);
     setGuest(ref, new_value);
@@ -726,4 +774,187 @@ void IREmitter::WriteMemory(SSAInstruction* address, SSAInstruction* value, x86_
         ERROR("Invalid memory size");
         return;
     }
+}
+
+SSAInstruction* IREmitter::IsCarryAdd(SSAInstruction* source, SSAInstruction* result, x86_size_e size_e) {
+    SSAInstruction* zext_result = Zext(result, size_e);
+    return LessThanUnsigned(zext_result, source);
+}
+
+SSAInstruction* IREmitter::IsAuxAdd(SSAInstruction* lhs, SSAInstruction* rhs) {
+    SSAInstruction* and1 = Andi(lhs, 0xF);
+    SSAInstruction* and2 = Andi(rhs, 0xF);
+    SSAInstruction* result = Add(and1, and2);
+
+    return GreaterThanUnsigned(result, Imm(0xF));
+}
+
+SSAInstruction* IREmitter::IsOverflowAdd(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* result, x86_size_e size_e) {
+    SSAInstruction* mask = getSignMask(size_e);
+
+    // for x + y = z, overflow occurs if ((z ^ x) & (z ^ y) & mask) == mask
+    // which essentially checks if the sign bits of x and y are equal, but the
+    // sign bit of z is different
+    SSAInstruction* xor1 = Xor(result, lhs);
+    SSAInstruction* xor2 = Xor(result, rhs);
+    SSAInstruction* masked1 = And(xor1, xor2);
+    SSAInstruction* masked2 = And(masked1, mask);
+
+    return Equal(masked2, mask);
+}
+
+SSAInstruction* IREmitter::IsCarrySub(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return LessThanUnsigned(lhs, rhs);
+}
+
+SSAInstruction* IREmitter::IsAuxSub(SSAInstruction* lhs, SSAInstruction* rhs) {
+    SSAInstruction* and1 = Andi(lhs, 0xF);
+    SSAInstruction* and2 = Andi(rhs, 0xF);
+
+    return LessThanUnsigned(and1, and2);
+}
+
+SSAInstruction* IREmitter::IsOverflowSub(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* result, x86_size_e size_e) {
+    SSAInstruction* mask = getSignMask(size_e);
+
+    // for x - y = z, overflow occurs if ((x ^ y) & (x ^ z) & mask) == mask
+    SSAInstruction* xor1 = Xor(lhs, rhs);
+    SSAInstruction* xor2 = Xor(lhs, result);
+    SSAInstruction* masked1 = And(xor1, xor2);
+    SSAInstruction* masked2 = And(masked1, mask);
+
+    return Equal(masked2, mask);
+}
+
+SSAInstruction* IREmitter::LoadGuestFromMemory(x86_ref_e ref) {
+    if (ref == X86_REF_COUNT) {
+        ERROR("Invalid register reference");
+    }
+
+    SSAInstruction instruction(IROpcode::LoadGuestFromMemory, ref);
+    return block.InsertAtEnd(std::move(instruction));
+}
+
+void IREmitter::StoreGuestToMemory(SSAInstruction* value, x86_ref_e ref) {
+    if (ref == X86_REF_COUNT) {
+        ERROR("Invalid register reference");
+    }
+
+    SSAInstruction instruction(IROpcode::StoreGuestToMemory, ref, value);
+    instruction.Lock();
+    block.InsertAtEnd(std::move(instruction));
+}
+
+void IREmitter::loadPartialState(std::span<const x86_ref_e> refs) {
+    for (x86_ref_e reg : refs) {
+        SSAInstruction* guest = LoadGuestFromMemory(reg);
+        setGuest(reg, guest);
+    }
+}
+
+void IREmitter::storePartialState(std::span<const x86_ref_e> refs) {
+    for (x86_ref_e reg : refs) {
+        SSAInstruction* guest = getGuest(reg);
+        StoreGuestToMemory(guest, reg);
+    }
+}
+
+SSAInstruction* IREmitter::getSignMask(x86_size_e size_e) {
+    u16 size = getBitSize(size_e);
+    return Imm(1ull << (size - 1));
+}
+
+u16 IREmitter::getBitSize(x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE:
+        return 8;
+    case X86_SIZE_WORD:
+        return 16;
+    case X86_SIZE_DWORD:
+        return 32;
+    case X86_SIZE_QWORD:
+        return 64;
+    case X86_SIZE_MM:
+        return 64;
+    case X86_SIZE_XMM:
+        return 128;
+    }
+
+    ERROR("Invalid register size");
+    return 0;
+}
+
+SSAInstruction* IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
+    x86_group2_e opcode = (x86_group2_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+
+    x86_size_e size_e = inst->operand_rm.size;
+    u8 shift_mask = size_e == X86_SIZE_QWORD ? 0x3F : 0x1F;
+    SSAInstruction* rm = GetRm(inst->operand_rm);
+    SSAInstruction* shift_value = Andi(shift_amount, shift_mask);
+    SSAInstruction* result = nullptr;
+    SSAInstruction* c = nullptr;
+    SSAInstruction* p = nullptr;
+    SSAInstruction* a = nullptr;
+    SSAInstruction* z = nullptr;
+    SSAInstruction* s = nullptr;
+    SSAInstruction* o = nullptr;
+
+    switch (opcode) {
+    case X86_GROUP2_ROL: {
+        result = Rol(rm, shift_value, size_e);
+        SSAInstruction* msb = IsNegative(result, size_e);
+        c = Andi(result, 1);
+        o = Xor(c, msb);
+        break;
+    }
+    case X86_GROUP2_ROR: {
+        result = Ror(rm, shift_value, size_e);
+        c = IsNegative(result, size_e);
+        WARN("ROR OF unimplemented");
+        break;
+    }
+    case X86_GROUP2_RCL: {
+        ERROR("Why? :(");
+        break;
+    }
+    case X86_GROUP2_RCR: {
+        ERROR("Why? :(");
+        break;
+    }
+    case X86_GROUP2_SAL:
+    case X86_GROUP2_SHL: {
+        SSAInstruction* msb_mask = ir_emit_get_shift_mask_left(block, shift_value, size_e);
+        result = Shl(rm, shift_value);
+        c = Equal(And(rm, msb_mask), msb_mask);
+        SSAInstruction* sign = IsNegative(result, size_e);
+        o = Xor(c, sign);
+        break;
+    }
+    case X86_GROUP2_SHR: {
+        SSAInstruction* msb_mask = ir_emit_get_shift_mask_right(block, shift_value);
+        result = Shr(rm, shift_value);
+        c = Equal(And(rm, msb_mask), msb_mask);
+        o = IsNegative(rm, size_e);
+        break;
+    }
+    case X86_GROUP2_SAR: {
+        // Shift left to place MSB to bit 63
+        u8 anti_shift = 64 - getBitSize(size_e);
+        SSAInstruction* shifted_left = Shli(rm, anti_shift);
+        SSAInstruction* shift_right = Addi(shift_value, anti_shift);
+        SSAInstruction* msb_mask = ir_emit_get_shift_mask_right(block, shift_value);
+        result = Sar(shifted_left, shift_right);
+        o = Imm(0);
+        c = Equal(And(rm, msb_mask), msb_mask);
+        break;
+    }
+    }
+
+    p = Parity(result);
+    z = IsZero(result, size_e);
+    s = IsNegative(result, size_e);
+
+    SetCPAZSO(c, p, a, z, s, o);
+
+    SetRm(inst->operand_rm, result);
 }

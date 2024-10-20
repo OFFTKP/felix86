@@ -46,6 +46,9 @@ struct IREmitter {
     SSAInstruction* ReadMemory(SSAInstruction* address, x86_size_e size);
     void WriteMemory(SSAInstruction* address, SSAInstruction* value, x86_size_e size);
 
+    SSAInstruction* LoadGuestFromMemory(x86_ref_e ref);
+    void StoreGuestToMemory(SSAInstruction* value, x86_ref_e ref);
+
     SSAInstruction* Imm(u64 value);
     SSAInstruction* Add(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* Addi(SSAInstruction* lhs, i64 rhs);
@@ -100,12 +103,27 @@ struct IREmitter {
     SSAInstruction* AmoSwap(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* Lea(const x86_operand_t& operand);
+    SSAInstruction* GetFlags();
     SSAInstruction* IsZero(SSAInstruction* value, x86_size_e size);
     SSAInstruction* IsNegative(SSAInstruction* value, x86_size_e size);
+    SSAInstruction* IsCarryAdd(SSAInstruction* source, SSAInstruction* result, x86_size_e size);
+    SSAInstruction* IsAuxAdd(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* IsOverflowAdd(SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e);
+    SSAInstruction* IsCarrySub(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* IsAuxSub(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* IsOverflowSub(SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e);
+    SSAInstruction* Group2(x86_instruction_t* inst, SSAInstruction* shift_amount);
+    void Syscall();
+    void Cpuid();
+    void Rdtsc();
     void SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o);
 
     void TerminateJump(IRBlock* target);
     void TerminateJumpConditional(SSAInstruction* cond, IRBlock* true_target, IRBlock* false_target);
+
+    u64 GetCurrentAddress() {
+        return current_address;
+    }
 
 private:
     SSAInstruction* getGuest(x86_ref_e ref);
@@ -132,8 +150,13 @@ private:
     void writeDWord(SSAInstruction* address, SSAInstruction* value);
     void writeQWord(SSAInstruction* address, SSAInstruction* value);
     void writeXmmWord(SSAInstruction* address, SSAInstruction* value);
+    SSAInstruction* getSignMask(x86_size_e size);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate);
+
+    void loadPartialState(std::span<const x86_ref_e> refs);
+    void storePartialState(std::span<const x86_ref_e> refs);
+    u16 getBitSize(x86_size_e size);
 
     IRBlock& block;
 

@@ -59,8 +59,8 @@ IR_HANDLE(error) {
     ZydisDisassembledInstruction zydis_inst;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(
             /* machine_mode:    */ ZYDIS_MACHINE_MODE_LONG_64,
-            /* runtime_address: */ state->current_address,
-            /* buffer:          */ (void*)state->current_address,
+            /* runtime_address: */ ir.GetCurrentAddress(),
+            /* buffer:          */ (void*)ir.GetCurrentAddress(),
             /* length:          */ 15,
             /* instruction:     */ &zydis_inst))) {
         std::string buffer = fmt::format("{}", zydis_inst.text);
@@ -91,12 +91,12 @@ IR_HANDLE(add_rm_reg) { // add rm8, r8 - 0x00
         ir.SetRm(inst->operand_rm, result);
     }
 
-    SSAInstruction* c = ir_emit_get_carry_add(BLOCK, rm, reg, result, size_e);
+    SSAInstruction* c = ir.IsCarryAdd(rm, result, size_e);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_add(BLOCK, rm, reg);
+    SSAInstruction* a = ir.IsAuxAdd(rm, reg);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_add(BLOCK, rm, reg, result, size_e);
+    SSAInstruction* o = ir.IsOverflowAdd(rm, reg, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -108,12 +108,12 @@ IR_HANDLE(add_reg_rm) { // add r16/32/64, rm16/32/64 - 0x03
     SSAInstruction* result = ir.Add(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 
-    SSAInstruction* c = ir_emit_get_carry_add(BLOCK, reg, rm, result, size_e);
+    SSAInstruction* c = ir.IsCarryAdd(reg, result, size_e);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_add(BLOCK, reg, rm);
+    SSAInstruction* a = ir.IsAuxAdd(reg, rm);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_add(BLOCK, reg, rm, result, size_e);
+    SSAInstruction* o = ir.IsOverflowAdd(reg, rm, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -125,12 +125,12 @@ IR_HANDLE(add_eax_imm) { // add ax/eax/rax, imm16/32/64 - 0x05
     SSAInstruction* result = ir.Add(eax, imm);
     ir.SetReg(inst->operand_reg, result);
 
-    SSAInstruction* c = ir_emit_get_carry_add(BLOCK, eax, imm, result, size_e);
+    SSAInstruction* c = ir.IsCarryAdd(eax, result, size_e);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_add(BLOCK, eax, imm);
+    SSAInstruction* a = ir.IsAuxAdd(eax, imm);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_add(BLOCK, eax, imm, result, size_e);
+    SSAInstruction* o = ir.IsOverflowAdd(eax, imm, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -257,12 +257,12 @@ IR_HANDLE(sub_rm_reg) { // sub rm16/32/64, r16/32/64 - 0x29
         ir.SetRm(inst->operand_rm, result);
     }
 
-    SSAInstruction* c = ir_emit_get_carry_sub(BLOCK, rm, reg, result, size_e);
+    SSAInstruction* c = ir.IsCarrySub(rm, reg);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_sub(BLOCK, rm, reg);
+    SSAInstruction* a = ir.IsAuxSub(rm, reg);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_sub(BLOCK, rm, reg, result, size_e);
+    SSAInstruction* o = ir.IsOverflowSub(rm, reg, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -274,12 +274,12 @@ IR_HANDLE(sub_reg_rm) {
     SSAInstruction* result = ir.Sub(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 
-    SSAInstruction* c = ir_emit_get_carry_sub(BLOCK, reg, rm, result, size_e);
+    SSAInstruction* c = ir.IsCarrySub(reg, rm);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_sub(BLOCK, reg, rm);
+    SSAInstruction* a = ir.IsAuxSub(reg, rm);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_sub(BLOCK, reg, rm, result, size_e);
+    SSAInstruction* o = ir.IsOverflowSub(reg, rm, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -291,12 +291,12 @@ IR_HANDLE(sub_eax_imm) { // sub ax/eax/rax, imm16/32/64 - 0x2d
     SSAInstruction* result = ir.Sub(eax, imm);
     ir.SetReg(inst->operand_reg, result);
 
-    SSAInstruction* c = ir_emit_get_carry_sub(BLOCK, eax, imm, result, size_e);
+    SSAInstruction* c = ir.IsCarrySub(eax, imm);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_sub(BLOCK, eax, imm);
+    SSAInstruction* a = ir.IsAuxSub(eax, imm);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_sub(BLOCK, eax, imm, result, size_e);
+    SSAInstruction* o = ir.IsOverflowSub(eax, imm, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -364,12 +364,12 @@ IR_HANDLE(cmp_rm_reg) { // cmp rm8, r8 - 0x38
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     SSAInstruction* result = ir.Sub(rm, reg);
 
-    SSAInstruction* c = ir_emit_get_carry_sub(BLOCK, rm, reg, result, size_e);
+    SSAInstruction* c = ir.IsCarrySub(rm, reg);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_sub(BLOCK, rm, reg);
+    SSAInstruction* a = ir.IsAuxSub(rm, reg);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_sub(BLOCK, rm, reg, result, size_e);
+    SSAInstruction* o = ir.IsOverflowSub(rm, reg, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -380,12 +380,12 @@ IR_HANDLE(cmp_reg_rm) { // cmp r8, rm8 - 0x3a
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* result = ir.Sub(reg, rm);
 
-    SSAInstruction* c = ir_emit_get_carry_sub(BLOCK, reg, rm, result, size_e);
+    SSAInstruction* c = ir.IsCarrySub(reg, rm);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_sub(BLOCK, reg, rm);
+    SSAInstruction* a = ir.IsAuxSub(reg, rm);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_sub(BLOCK, reg, rm, result, size_e);
+    SSAInstruction* o = ir.IsOverflowSub(reg, rm, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -396,12 +396,12 @@ IR_HANDLE(cmp_eax_imm) { // cmp eax, imm32 - 0x3d
     SSAInstruction* imm = ir.Imm(sext_if_64(inst->operand_imm.immediate.data, size_e));
     SSAInstruction* result = ir.Sub(eax, imm);
 
-    SSAInstruction* c = ir_emit_get_carry_sub(BLOCK, eax, imm, result, size_e);
+    SSAInstruction* c = ir.IsCarrySub(eax, imm);
     SSAInstruction* p = ir.Parity(result);
-    SSAInstruction* a = ir_emit_get_aux_sub(BLOCK, eax, imm);
+    SSAInstruction* a = ir.IsAuxSub(eax, imm);
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
-    SSAInstruction* o = ir_emit_get_overflow_sub(BLOCK, eax, imm, result, size_e);
+    SSAInstruction* o = ir.IsOverflowSub(eax, imm, result, size_e);
 
     ir.SetCPAZSO(c, p, a, z, s, o);
 }
@@ -426,7 +426,7 @@ IR_HANDLE(pop_r64) { // pop r16/64 - 0x58-0x5f
 
 IR_HANDLE(movsxd) { // movsxd r32/64, rm32/64 - 0x63
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* serm = ir_emit_sext32(BLOCK, rm);
+    SSAInstruction* serm = ir.Sext(rm, X86_SIZE_DWORD);
     ir.SetReg(inst->operand_reg, serm);
 }
 
@@ -447,13 +447,12 @@ IR_HANDLE(imul_r_rm_imm) {
 }
 
 IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
-    u8 inst_length = inst->length;
     x86_size_e size_e = inst->operand_imm.size;
     i64 immediate = sext(inst->operand_imm.immediate.data, size_e);
     SSAInstruction* condition = ir_emit_get_cc(BLOCK, inst->opcode);
     SSAInstruction* condition_mov = ir.Snez(condition);
-    u64 jump_address_false = state->current_address + inst_length;
-    u64 jump_address_true = state->current_address + inst_length + immediate;
+    u64 jump_address_false = ir.GetCurrentAddress() + inst->length;
+    u64 jump_address_true = ir.GetCurrentAddress() + inst->length + immediate;
 
     IRBlock* block_true = state->function->CreateBlockAt(jump_address_true);
     IRBlock* block_false = state->function->CreateBlockAt(jump_address_false);
@@ -541,7 +540,7 @@ IR_HANDLE(cdq) { // cwd/cdq/cqo - 0x99
 
 IR_HANDLE(pushfq) { // pushfq - 0x9c
     bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
-    SSAInstruction* flags = ir_emit_get_flags(BLOCK);
+    SSAInstruction* flags = ir.GetFlags();
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rsp_sub = ir.Addi(rsp, is_word ? -2 : -8);
     ir.WriteMemory(rsp_sub, flags, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
@@ -558,7 +557,7 @@ IR_HANDLE(popfq) { // popfq - 0x9d
 }
 
 IR_HANDLE(lahf) { // lahf - 0x9f
-    SSAInstruction* flags = ir_emit_get_flags(BLOCK);
+    SSAInstruction* flags = ir.GetFlags();
     ir.SetReg(flags, X86_REF_RAX, X86_SIZE_BYTE, true);
 }
 
@@ -620,16 +619,16 @@ IR_HANDLE(mov_r32_imm32) { // mov r16/32/64, imm16/32/64 - 0xb8-0xbf
 }
 
 IR_HANDLE(group2_rm_imm8) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm8, imm8 - 0xc0
-    ir_emit_group2(BLOCK, inst, ir.Imm(inst->operand_imm.immediate.data));
+    ir.Group2(inst, ir.Imm(inst->operand_imm.immediate.data));
 }
 
 IR_HANDLE(group2_rm_1) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, 1 - 0xc1
-    ir_emit_group2(BLOCK, inst, ir.Imm(1));
+    ir.Group2(inst, ir.Imm(1));
 }
 
 IR_HANDLE(group2_rm_cl) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, cl - 0xc1
     SSAInstruction* cl = ir.GetReg(X86_REF_RCX, X86_SIZE_BYTE);
-    ir_emit_group2(BLOCK, inst, cl);
+    ir.Group2(inst, cl);
 }
 
 IR_HANDLE(ret_imm) {
@@ -687,8 +686,8 @@ IR_HANDLE(group2_rm32_cl) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, cl - 
 
 IR_HANDLE(call_rel32) { // call rel32 - 0xe8
     u64 displacement = (i64)(i32)inst->operand_imm.immediate.data;
-    u64 jump_address = state->current_address + inst->length + displacement;
-    u64 return_address = state->current_address + inst->length;
+    u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
+    u64 return_address = ir.GetCurrentAddress() + inst->length;
     SSAInstruction* rip = ir.Imm(jump_address);
     SSAInstruction* return_rip = ir.Imm(return_address);
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
@@ -702,7 +701,7 @@ IR_HANDLE(call_rel32) { // call rel32 - 0xe8
 
 IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
     u64 displacement = (i64)(i32)inst->operand_imm.immediate.data;
-    u64 jump_address = state->current_address + inst->length + displacement;
+    u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
 
     IRBlock* target = state->function->CreateBlockAt(jump_address);
     ir.TerminateJump(target);
@@ -713,7 +712,7 @@ IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
     u64 displacement = (i64)(i8)inst->operand_imm.immediate.data;
-    u64 jump_address = state->current_address + inst->length + displacement;
+    u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
 
     IRBlock* target = state->function->CreateBlockAt(jump_address);
     ir.TerminateJump(target);
@@ -762,14 +761,14 @@ IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
     switch (opcode) {
     case X86_GROUP4_INC: {
         result = ir.Addi(rm, 1);
-        o = ir_emit_get_overflow_add(BLOCK, rm, one, result, size_e);
-        a = ir_emit_get_aux_add(BLOCK, rm, one);
+        o = ir.IsOverflowAdd(rm, one, result, size_e);
+        a = ir.IsAuxAdd(rm, one);
         break;
     }
     case X86_GROUP4_DEC: {
         result = ir.Addi(rm, -1);
-        o = ir_emit_get_overflow_sub(BLOCK, rm, one, result, size_e);
-        a = ir_emit_get_aux_sub(BLOCK, rm, one);
+        o = ir.IsOverflowSub(rm, one, result, size_e);
+        a = ir.IsAuxSub(rm, one);
         break;
     }
     default: {
@@ -794,8 +793,8 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         SSAInstruction* one = ir.Imm(1);
         SSAInstruction* result = ir.Addi(rm, 1);
-        SSAInstruction* o = ir_emit_get_overflow_add(BLOCK, rm, one, result, size_e);
-        SSAInstruction* a = ir_emit_get_aux_add(BLOCK, rm, one);
+        SSAInstruction* o = ir.IsOverflowAdd(rm, one, result, size_e);
+        SSAInstruction* a = ir.IsAuxAdd(rm, one);
         SSAInstruction* p = ir.Parity(result);
         SSAInstruction* z = ir.IsZero(result, size_e);
         SSAInstruction* s = ir.IsNegative(result, size_e);
@@ -808,8 +807,8 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         SSAInstruction* one = ir.Imm(1);
         SSAInstruction* result = ir.Addi(rm, -1);
-        SSAInstruction* o = ir_emit_get_overflow_sub(BLOCK, rm, one, result, size_e);
-        SSAInstruction* a = ir_emit_get_aux_sub(BLOCK, rm, one);
+        SSAInstruction* o = ir.IsOverflowSub(rm, one, result, size_e);
+        SSAInstruction* a = ir.IsAuxSub(rm, one);
         SSAInstruction* p = ir.Parity(result);
         SSAInstruction* z = ir.IsZero(result, size_e);
         SSAInstruction* s = ir.IsNegative(result, size_e);
@@ -820,7 +819,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
     case X86_GROUP5_CALL: {
         x86_operand_t rm_op = inst->operand_rm;
         rm_op.size = X86_SIZE_QWORD;
-        u64 return_address = state->current_address + inst->length;
+        u64 return_address = ir.GetCurrentAddress() + inst->length;
         SSAInstruction* rip = ir.GetRm(rm_op);
         SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
         SSAInstruction* return_rip = ir.Imm(return_address);
@@ -840,7 +839,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         break;
     }
     default: {
-        ERROR("Unimplemented group 5 opcode: %02x during %016lx", opcode, state->current_address - g_base_address);
+        ERROR("Unimplemented group 5 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress() - g_base_address);
         break;
     }
     }
@@ -879,14 +878,14 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
         break;
     }
     default: {
-        ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, state->current_address - g_base_address);
+        ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress() - g_base_address);
         break;
     }
     }
 }
 
 IR_HANDLE(syscall) { // syscall - 0x0f 0x05
-    ir_emit_syscall(BLOCK);
+    ir.Syscall();
 }
 
 IR_HANDLE(mov_xmm_xmm128) { // movups/movaps xmm, xmm128 - 0x0f 0x11
@@ -911,7 +910,7 @@ IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
 }
 
 IR_HANDLE(rdtsc) { // rdtsc - 0x0f 0x31
-    ir_emit_rdtsc(BLOCK);
+    ir.Rdtsc();
 }
 
 IR_HANDLE(cmovcc) { // cmovcc - 0x0f 0x40-0x4f
@@ -923,7 +922,7 @@ IR_HANDLE(cmovcc) { // cmovcc - 0x0f 0x40-0x4f
 }
 
 IR_HANDLE(movq_mm_rm32) { // movq mm, rm32 - 0x0f 0x6e
-    ERROR("Unimplemented instruction: movq mm, rm32 - 0x0f 0x6e during %016lx", state->current_address - g_base_address);
+    ERROR("Unimplemented instruction: movq mm, rm32 - 0x0f 0x6e during %016lx", ir.GetCurrentAddress() - g_base_address);
 }
 
 IR_HANDLE(setcc) { // setcc - 0x0f 0x90-0x9f
@@ -931,7 +930,7 @@ IR_HANDLE(setcc) { // setcc - 0x0f 0x90-0x9f
 }
 
 IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
-    ir_emit_cpuid(BLOCK);
+    ir.Cpuid();
 }
 
 IR_HANDLE(bt) { // bt - 0x0f 0xa3
@@ -975,14 +974,9 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     }
 }
 
-IR_HANDLE(movzx_r32_rm8) { // movzx r32/64, rm8 - 0x0f 0xb6
+IR_HANDLE(movzx_r_rm) { // movzx r32/64, rm16 - 0x0f 0xb7
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    ir_emit_set_gpr64(BLOCK, inst->operand_reg.reg.ref, rm);
-}
-
-IR_HANDLE(movzx_r32_rm16) { // movzx r32/64, rm16 - 0x0f 0xb7
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    ir_emit_set_gpr64(BLOCK, inst->operand_reg.reg.ref, rm);
+    ir.SetReg(rm, inst->operand_reg.reg.ref);
 }
 
 IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
@@ -1062,7 +1056,7 @@ IR_HANDLE(group14_xmm) { // group14 xmm - 0x66 0x0f 0x73
         break;
     }
     default: {
-        ERROR("Unimplemented group 14 opcode: %02x during %016lx", opcode, state->current_address - g_base_address);
+        ERROR("Unimplemented group 14 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress() - g_base_address);
         break;
     }
     }
