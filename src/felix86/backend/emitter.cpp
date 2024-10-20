@@ -803,6 +803,14 @@ void Emitter::EmitNotEqual(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, 
     AS.SNEZ(Rd, Rd);
 }
 
+void Emitter::EmitSeqz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
+    AS.SEQZ(Rd, Rs);
+}
+
+void Emitter::EmitSnez(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
+    AS.SNEZ(Rd, Rs);
+}
+
 void Emitter::EmitSetLessThanSigned(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
     AS.SLT(Rd, Rs1, Rs2);
 }

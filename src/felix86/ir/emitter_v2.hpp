@@ -23,19 +23,28 @@ struct IREmitter {
         ASSERT(operand.type == X86_OP_TYPE_REGISTER);
         return GetReg(operand.reg.ref, operand.size);
     }
+    SSAInstruction* GetReg(x86_ref_e reg) {
+        return getGuest(reg);
+    }
 
-    void SetReg(x86_ref_e reg, SSAInstruction* value, x86_size_e size, bool high = false);
+    void SetReg(SSAInstruction* value, x86_ref_e reg, x86_size_e size, bool high = false);
     void SetReg(const x86_operand_t& operand, SSAInstruction* value) {
         ASSERT(operand.type == X86_OP_TYPE_REGISTER);
-        SetReg(operand.reg.ref, value, operand.size);
+        SetReg(value, operand.reg.ref, operand.size);
+    }
+    void SetReg(SSAInstruction* value, x86_ref_e reg) {
+        setGuest(reg, value);
     }
 
     SSAInstruction* GetFlag(x86_ref_e flag);
     SSAInstruction* GetFlagNot(x86_ref_e flag);
-    void SetFlag(x86_ref_e flag, SSAInstruction* value);
+    void SetFlag(SSAInstruction* value, x86_ref_e flag);
 
     SSAInstruction* GetRm(const x86_operand_t& operand);
     void SetRm(const x86_operand_t& operand, SSAInstruction* value);
+
+    SSAInstruction* ReadMemory(SSAInstruction* address, x86_size_e size);
+    void WriteMemory(SSAInstruction* address, SSAInstruction* value, x86_size_e size);
 
     SSAInstruction* Imm(u64 value);
     SSAInstruction* Add(SSAInstruction* lhs, SSAInstruction* rhs);
@@ -74,6 +83,8 @@ struct IREmitter {
     SSAInstruction* Divuw(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* Remw(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* Remuw(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* Seqz(SSAInstruction* value);
+    SSAInstruction* Snez(SSAInstruction* value);
     SSAInstruction* Equal(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* NotEqual(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* LessThanSigned(SSAInstruction* lhs, SSAInstruction* rhs);
@@ -82,7 +93,19 @@ struct IREmitter {
     SSAInstruction* GreaterThanUnsigned(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* Sext(SSAInstruction* value, x86_size_e size);
     SSAInstruction* Zext(SSAInstruction* value, x86_size_e size);
+    SSAInstruction* AmoAdd(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoAnd(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoOr(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoXor(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoSwap(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
+    SSAInstruction* AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* Lea(const x86_operand_t& operand);
+    SSAInstruction* IsZero(SSAInstruction* value, x86_size_e size);
+    SSAInstruction* IsNegative(SSAInstruction* value, x86_size_e size);
+    void SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o);
+
+    void TerminateJump(IRBlock* target);
+    void TerminateJumpConditional(SSAInstruction* cond, IRBlock* true_target, IRBlock* false_target);
 
 private:
     SSAInstruction* getGuest(x86_ref_e ref);
@@ -98,7 +121,6 @@ private:
     SSAInstruction* readDWord(SSAInstruction* address);
     SSAInstruction* readQWord(SSAInstruction* address);
     SSAInstruction* readXmmWord(SSAInstruction* address);
-    SSAInstruction* readMemory(SSAInstruction* address, x86_size_e size);
     void setGpr8Low(x86_ref_e reg, SSAInstruction* value);
     void setGpr8High(x86_ref_e reg, SSAInstruction* value);
     void setGpr16(x86_ref_e reg, SSAInstruction* value);
@@ -110,7 +132,6 @@ private:
     void writeDWord(SSAInstruction* address, SSAInstruction* value);
     void writeQWord(SSAInstruction* address, SSAInstruction* value);
     void writeXmmWord(SSAInstruction* address, SSAInstruction* value);
-    void writeMemory(SSAInstruction* address, SSAInstruction* value, x86_size_e size);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate);
 

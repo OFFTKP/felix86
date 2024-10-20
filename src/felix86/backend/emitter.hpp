@@ -96,6 +96,8 @@ private:
     static void EmitOri(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitXor(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitXori(Backend&, biscuit::GPR, biscuit::GPR, u64);
+    static void EmitSeqz(Backend&, biscuit::GPR, biscuit::GPR);
+    static void EmitSnez(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitEqual(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitNotEqual(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitSetLessThanSigned(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);

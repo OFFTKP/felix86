@@ -94,6 +94,8 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Xori:
     case IROpcode::Not:
     case IROpcode::Neg:
+    case IROpcode::Seqz:
+    case IROpcode::Snez:
     case IROpcode::Equal:
     case IROpcode::NotEqual:
     case IROpcode::SetLessThanSigned:
@@ -297,6 +299,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(Shli, 1);
         VALIDATE_OPS_INT(Shri, 1);
         VALIDATE_OPS_INT(Sari, 1);
+        VALIDATE_OPS_INT(Seqz, 1);
+        VALIDATE_OPS_INT(Snez, 1);
         VALIDATE_OPS_INT(Sext8, 1);
         VALIDATE_OPS_INT(Sext16, 1);
         VALIDATE_OPS_INT(Sext32, 1);
@@ -649,6 +653,14 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::Xori: {
         ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), "^", (i64)immediate_data);
+        break;
+    }
+    case IROpcode::Seqz: {
+        ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "==", 0);
+        break;
+    }
+    case IROpcode::Snez: {
+        ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "!=", 0);
         break;
     }
     case IROpcode::Shl: {

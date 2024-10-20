@@ -71,6 +71,8 @@
     X(Xori)                                                                                                                                          \
     X(Not)                                                                                                                                           \
     X(Neg)                                                                                                                                           \
+    X(Seqz)                                                                                                                                          \
+    X(Snez)                                                                                                                                          \
     X(Equal)                                                                                                                                         \
     X(NotEqual)                                                                                                                                      \
     X(AmoAdd8)                                                                                                                                       \

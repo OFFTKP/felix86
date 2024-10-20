@@ -1,6 +1,7 @@
 #include "felix86/ir/emitter_v2.hpp"
 
 SSAInstruction* IREmitter::GetReg(x86_ref_e reg, x86_size_e size, bool high) {
+    ASSERT(!high || size == X86_SIZE_BYTE);
     switch (size) {
     case X86_SIZE_BYTE: {
         if (high) {
@@ -23,7 +24,8 @@ SSAInstruction* IREmitter::GetReg(x86_ref_e reg, x86_size_e size, bool high) {
     }
 }
 
-void IREmitter::SetReg(x86_ref_e reg, SSAInstruction* value, x86_size_e size, bool high) {
+void IREmitter::SetReg(SSAInstruction* value, x86_ref_e reg, x86_size_e size, bool high) {
+    ASSERT(!high || size == X86_SIZE_BYTE);
     switch (size) {
     case X86_SIZE_BYTE: {
         if (high) {
@@ -67,7 +69,7 @@ SSAInstruction* IREmitter::GetFlagNot(x86_ref_e ref) {
     return Xori(getGuest(ref), 1);
 }
 
-void IREmitter::SetFlag(x86_ref_e ref, SSAInstruction* value) {
+void IREmitter::SetFlag(SSAInstruction* value, x86_ref_e ref) {
     if (ref < X86_REF_CF || ref > X86_REF_OF) {
         ERROR("Invalid flag reference");
     }
@@ -80,16 +82,16 @@ SSAInstruction* IREmitter::GetRm(const x86_operand_t& operand) {
         return GetReg(operand.reg.ref, operand.size);
     } else {
         SSAInstruction* address = Lea(operand);
-        return readMemory(address, operand.size);
+        return ReadMemory(address, operand.size);
     }
 }
 
 void IREmitter::SetRm(const x86_operand_t& operand, SSAInstruction* value) {
     if (operand.type == X86_OP_TYPE_REGISTER) {
-        SetReg(operand.reg.ref, value, operand.size);
+        SetReg(value, operand.reg.ref, operand.size);
     } else {
         SSAInstruction* address = Lea(operand);
-        writeMemory(address, value, operand.size);
+        WriteMemory(address, value, operand.size);
     }
 }
 
@@ -270,6 +272,14 @@ SSAInstruction* IREmitter::Remuw(SSAInstruction* lhs, SSAInstruction* rhs) {
     return insertInstruction(IROpcode::Remuw, {lhs, rhs});
 }
 
+SSAInstruction* IREmitter::Seqz(SSAInstruction* value) {
+    return insertInstruction(IROpcode::Seqz, {value});
+}
+
+SSAInstruction* IREmitter::Snez(SSAInstruction* value) {
+    return insertInstruction(IROpcode::Snez, {value});
+}
+
 SSAInstruction* IREmitter::Equal(SSAInstruction* lhs, SSAInstruction* rhs) {
     return insertInstruction(IROpcode::Equal, {lhs, rhs});
 }
@@ -325,6 +335,103 @@ SSAInstruction* IREmitter::Zext(SSAInstruction* value, x86_size_e size) {
     }
 }
 
+SSAInstruction* IREmitter::AmoAdd(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        return insertInstruction(IROpcode::AmoAdd8, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_WORD:
+        return insertInstruction(IROpcode::AmoAdd16, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_DWORD:
+        return insertInstruction(IROpcode::AmoAdd32, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_QWORD:
+        return insertInstruction(IROpcode::AmoAdd64, {address, source}, (u8)ordering);
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+
+SSAInstruction* IREmitter::AmoAnd(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        return insertInstruction(IROpcode::AmoAnd8, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_WORD:
+        return insertInstruction(IROpcode::AmoAnd16, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_DWORD:
+        return insertInstruction(IROpcode::AmoAnd32, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_QWORD:
+        return insertInstruction(IROpcode::AmoAnd64, {address, source}, (u8)ordering);
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+
+SSAInstruction* IREmitter::AmoOr(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        return insertInstruction(IROpcode::AmoOr8, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_WORD:
+        return insertInstruction(IROpcode::AmoOr16, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_DWORD:
+        return insertInstruction(IROpcode::AmoOr32, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_QWORD:
+        return insertInstruction(IROpcode::AmoOr64, {address, source}, (u8)ordering);
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+
+SSAInstruction* IREmitter::AmoXor(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        return insertInstruction(IROpcode::AmoXor8, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_WORD:
+        return insertInstruction(IROpcode::AmoXor16, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_DWORD:
+        return insertInstruction(IROpcode::AmoXor32, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_QWORD:
+        return insertInstruction(IROpcode::AmoXor64, {address, source}, (u8)ordering);
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+
+SSAInstruction* IREmitter::AmoSwap(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        return insertInstruction(IROpcode::AmoSwap8, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_WORD:
+        return insertInstruction(IROpcode::AmoSwap16, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_DWORD:
+        return insertInstruction(IROpcode::AmoSwap32, {address, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_QWORD:
+        return insertInstruction(IROpcode::AmoSwap64, {address, source}, (u8)ordering);
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+
+SSAInstruction* IREmitter::AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering,
+                                  x86_size_e size) {
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        return insertInstruction(IROpcode::AmoSwap8, {address, expected, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_WORD:
+        return insertInstruction(IROpcode::AmoSwap16, {address, expected, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_DWORD:
+        return insertInstruction(IROpcode::AmoSwap32, {address, expected, source}, (u8)ordering);
+    case x86_size_e::X86_SIZE_QWORD:
+        return insertInstruction(IROpcode::AmoSwap64, {address, expected, source}, (u8)ordering);
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+
 SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
     x86_size_e address_size = operand.memory.address_override ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     SSAInstruction *base, *index;
@@ -371,6 +478,41 @@ SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
     }
 
     return final_address;
+}
+
+SSAInstruction* IREmitter::IsZero(SSAInstruction* value, x86_size_e size) {
+    return Seqz(Zext(value, size));
+}
+
+SSAInstruction* IREmitter::IsNegative(SSAInstruction* value, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE:
+        return Andi(Shri(value, 7), 1);
+    case X86_SIZE_WORD:
+        return Andi(Shri(value, 15), 1);
+    case X86_SIZE_DWORD:
+        return Andi(Shri(value, 31), 1);
+    case X86_SIZE_QWORD:
+        return Andi(Shri(value, 63), 1);
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+
+void IREmitter::SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o) {
+    if (c)
+        SetFlag(c, X86_REF_CF);
+    if (p)
+        SetFlag(p, X86_REF_PF);
+    if (a)
+        SetFlag(a, X86_REF_AF);
+    if (z)
+        SetFlag(z, X86_REF_ZF);
+    if (s)
+        SetFlag(s, X86_REF_SF);
+    if (o)
+        SetFlag(o, X86_REF_OF);
 }
 
 SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands) {
@@ -525,7 +667,7 @@ SSAInstruction* IREmitter::readXmmWord(SSAInstruction* address) {
     return insertInstruction(IROpcode::ReadXmmWord, {address});
 }
 
-SSAInstruction* IREmitter::readMemory(SSAInstruction* address, x86_size_e size) {
+SSAInstruction* IREmitter::ReadMemory(SSAInstruction* address, x86_size_e size) {
     switch (size) {
     case X86_SIZE_BYTE:
         return readByte(address);
@@ -568,7 +710,7 @@ void IREmitter::writeXmmWord(SSAInstruction* address, SSAInstruction* value) {
     instruction->Lock();
 }
 
-void IREmitter::writeMemory(SSAInstruction* address, SSAInstruction* value, x86_size_e size) {
+void IREmitter::WriteMemory(SSAInstruction* address, SSAInstruction* value, x86_size_e size) {
     switch (size) {
     case X86_SIZE_BYTE:
         return writeByte(address, value);
