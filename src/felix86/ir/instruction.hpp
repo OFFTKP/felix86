@@ -95,6 +95,10 @@ struct SSAInstruction {
         expression_type = ExpressionType::Operands;
     }
 
+    SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate) : SSAInstruction(opcode, operands) {
+        SetImmediateData(immediate);
+    }
+
     SSAInstruction(u64 immediate) : opcode(IROpcode::Immediate), return_type{IRType::Integer64} {
         Operands op;
         op.immediate_data = immediate;

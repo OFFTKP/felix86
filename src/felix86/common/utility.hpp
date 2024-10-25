@@ -16,6 +16,6 @@ using i8 = int8_t;
 
 std::string GetNameString(u32 name);
 
-[[nodiscard]] constexpr bool IsValidSigned12BitImm(ptrdiff_t value) {
+[[nodiscard]] constexpr bool IsValidSigned12BitImm(i64 value) {
     return value >= -2048 && value <= 2047;
 }

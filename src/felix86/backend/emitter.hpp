@@ -141,7 +141,7 @@ private:
     static void EmitVAnd(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVOr(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVXor(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
-    static void EmitVShr(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVPackedShr(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVShl(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVPackedSubByte(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVPackedAddQWord(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);

@@ -6,8 +6,6 @@
 #include "felix86/ir/emitter_v2.hpp"
 #include "felix86/ir/instruction.hpp"
 
-#define BLOCK (state->current_block)
-
 u64 sext_if_64(u64 value, x86_size_e size_e) {
     switch (size_e) {
     case X86_SIZE_BYTE:
@@ -432,7 +430,7 @@ IR_HANDLE(movsxd) { // movsxd r32/64, rm32/64 - 0x63
 
 IR_HANDLE(push_imm) {
     bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
-    SSAInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
+    SSAInstruction* imm = ImmSext(BLOCK, &inst->operand_imm);
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rsp_sub = ir.Addi(rsp, is_word ? -2 : -8);
     ir.WriteMemory(rsp_sub, imm, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
@@ -441,7 +439,7 @@ IR_HANDLE(push_imm) {
 
 IR_HANDLE(imul_r_rm_imm) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
+    SSAInstruction* imm = ImmSext(BLOCK, &inst->operand_imm);
     SSAInstruction* result = ir.Mul(rm, imm);
     ir.SetReg(inst->operand_reg, result);
 }
@@ -552,7 +550,7 @@ IR_HANDLE(popfq) { // popfq - 0x9d
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rsp_add = ir.Addi(rsp, is_word ? 2 : 8);
     SSAInstruction* flags = ir.ReadMemory(rsp, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
-    ir_emit_set_flags(BLOCK, flags);
+    SetFlags(flags);
     ir.SetReg(rsp_add, X86_REF_RSP);
 }
 
@@ -658,7 +656,7 @@ IR_HANDLE(mov_rm8_imm8) { // mov rm8, imm8 - 0xc6
 }
 
 IR_HANDLE(mov_rm32_imm32) { // mov rm16/32/64, imm16/32/64 - 0xc7
-    SSAInstruction* imm = ir_emit_immediate_sext(BLOCK, &inst->operand_imm);
+    SSAInstruction* imm = ImmSext(BLOCK, &inst->operand_imm);
     ir.SetRm(inst->operand_rm, imm);
 }
 
@@ -672,16 +670,16 @@ IR_HANDLE(leave) { // leave - 0xc9
 }
 
 IR_HANDLE(group2_rm8_1) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm8, 1 - 0xd0
-    ir_emit_group2(BLOCK, inst, ir.Imm(1));
+    ir.Group2(inst, ir.Imm(1));
 }
 
 IR_HANDLE(group2_rm32_1) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, 1 - 0xd1
-    ir_emit_group2(BLOCK, inst, ir.Imm(1));
+    ir.Group2(inst, ir.Imm(1));
 }
 
 IR_HANDLE(group2_rm32_cl) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, cl - 0xd3
     SSAInstruction* cl = ir.GetReg(X86_REF_RCX, X86_SIZE_BYTE);
-    ir_emit_group2(BLOCK, inst, cl);
+    ir.Group2(inst, cl);
 }
 
 IR_HANDLE(call_rel32) { // call rel32 - 0xe8
@@ -722,13 +720,13 @@ IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4
-    ir_emit_set_exit_reason(BLOCK, EXIT_REASON_HLT);
+    ir.SetExitReason(EXIT_REASON_HLT);
     ir.TerminateJump(state->function->GetExit());
     ir.Exit();
 }
 
 IR_HANDLE(group3) { // test/not/neg/mul/imul/div/idiv rm - 0xf6/0xf7
-    ir_emit_group3(BLOCK, inst);
+    ir.Group3(inst);
 }
 
 IR_HANDLE(clc) { // clc - 0xf8
@@ -900,7 +898,7 @@ IR_HANDLE(movhps_xmm_m64) {
 
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
     SSAInstruction* m64 = ir.GetRm(inst->operand_rm);
-    SSAInstruction* xmm_dest = ir_emit_insert_integer_to_vector(BLOCK, m64, xmm, 1, X86_SIZE_QWORD);
+    SSAInstruction* xmm_dest = ir.InsertIntegerToVector(m64, xmm, 1, X86_SIZE_QWORD);
     ir.SetReg(inst->operand_reg, xmm_dest);
 }
 
@@ -1027,21 +1025,21 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
 IR_HANDLE(punpcklbw_xmm_xmm128) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_unpack_byte_low(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VUnpackByteLow(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(punpcklwd_xmm_xmm128) { // punpcklwd xmm, xmm/m128 - 0x66 0x0f 0x61
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_unpack_word_low(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VUnpackWordLow(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(punpckldq_xmm_xmm128) { // punpckldq xmm, xmm/m128 - 0x66 0x0f 0x62
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_unpack_dword_low(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VUnpackDWordLow(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
@@ -1051,7 +1049,7 @@ IR_HANDLE(group14_xmm) { // group14 xmm - 0x66 0x0f 0x73
     case X86_GROUP14_PSRLDQ: {
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* imm = ir.Imm(inst->operand_imm.immediate.data);
-        SSAInstruction* shifted = ir_emit_vector_packed_shift_right(BLOCK, reg, imm);
+        SSAInstruction* shifted = ir.VPackedShr(reg, imm);
         ir.SetReg(inst->operand_reg, shifted);
         break;
     }
@@ -1065,13 +1063,14 @@ IR_HANDLE(group14_xmm) { // group14 xmm - 0x66 0x0f 0x73
 IR_HANDLE(punpcklqdq_xmm_xmm128) { // punpcklqdq xmm, xmm/m128 - 0x66 0x0f 0x6c
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_unpack_qword_low(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VUnpackQWordLow(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* vector = ir_emit_cast_vector_integer(BLOCK, rm);
+    todo.casts should be VToI or similar instruction;
     ir.SetReg(inst->operand_reg, vector);
 }
 

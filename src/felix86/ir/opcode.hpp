@@ -133,7 +133,7 @@
     X(VAnd)                                                                                                                                          \
     X(VOr)                                                                                                                                           \
     X(VXor)                                                                                                                                          \
-    X(VShr)                                                                                                                                          \
+    X(VPackedShr)                                                                                                                                    \
     X(VShl)                                                                                                                                          \
     X(VPackedSubByte)                                                                                                                                \
     X(VPackedAddQWord)                                                                                                                               \

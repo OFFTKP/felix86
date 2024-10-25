@@ -4,7 +4,7 @@
 #include "felix86/ir/block.hpp"
 
 struct IREmitter {
-    IREmitter(IRBlock& block, u64 address) : block(block), current_address(address) {}
+    IREmitter(IRBlock& block, u64 address) : block(&block), current_address(address) {}
 
     void Exit() {
         exit = true;
@@ -112,17 +112,27 @@ struct IREmitter {
     SSAInstruction* IsCarrySub(SSAInstruction* source1, SSAInstruction* source2);
     SSAInstruction* IsAuxSub(SSAInstruction* source1, SSAInstruction* source2);
     SSAInstruction* IsOverflowSub(SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e);
-    SSAInstruction* Group2(x86_instruction_t* inst, SSAInstruction* shift_amount);
+    void Group1(x86_instruction_t* inst);
+    void Group2(x86_instruction_t* inst, SSAInstruction* shift_amount);
     void Syscall();
     void Cpuid();
     void Rdtsc();
     void SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o);
+    void SetExitReason(ExitReason reason);
+
+    void RepStart(IRBlock* loop_block, IRBlock* exit_block);
+    void RepEnd(x86_rep_e rep_type, IRBlock* loop_block, IRBlock* exit_block);
 
     void TerminateJump(IRBlock* target);
-    void TerminateJumpConditional(SSAInstruction* cond, IRBlock* true_target, IRBlock* false_target);
+    void TerminateJumpConditional(SSAInstruction* cond, IRBlock* target_true, IRBlock* target_false);
 
     u64 GetCurrentAddress() {
         return current_address;
+    }
+
+    void SetBlock(IRBlock* block) {
+        ASSERT(block);
+        this->block = block;
     }
 
 private:
@@ -158,7 +168,7 @@ private:
     void storePartialState(std::span<const x86_ref_e> refs);
     u16 getBitSize(x86_size_e size);
 
-    IRBlock& block;
+    IRBlock* block = nullptr;
 
     u64 current_address = 0;
     bool exit = false;

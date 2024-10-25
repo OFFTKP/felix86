@@ -9,6 +9,19 @@ bool IsInteger64(const SSAInstruction* inst) {
     return !inst->IsImmediate() && inst->GetType() == IRType::Integer64;
 }
 
+bool Peephole12BitImmediate(SSAInstruction& inst, IROpcode replacement) {
+    for (u8 i = 0; i < 2; i++) {
+        SSAInstruction* op1 = inst.GetOperand(i);
+        SSAInstruction* op2 = inst.GetOperand(!i);
+        if (op1->IsImmediate() && IsValidSigned12BitImm(op1->GetImmediateData()) && !op2->IsImmediate()) {
+            SSAInstruction andi(replacement, {op2}, op1->GetImmediateData());
+            return true;
+        }
+    }
+
+    return false;
+}
+
 IROpcode ReadToRelative(IROpcode read) {
     switch (read) {
     case IROpcode::ReadByte: {
@@ -64,6 +77,10 @@ bool PeepholeAddImmediates(SSAInstruction& inst) {
     return false;
 }
 
+bool PeepholeAdd12BitImmediate(SSAInstruction& inst) {
+    return Peephole12BitImmediate(inst, IROpcode::Addi);
+}
+
 // t2 = t1 + 0
 bool PeepholeAddZero(SSAInstruction& inst) {
     for (u8 i = 0; i < 2; i++) {
@@ -87,6 +104,10 @@ bool PeepholeAndImmediates(SSAInstruction& inst) {
     }
 
     return false;
+}
+
+bool PeepholeAnd12BitImmediate(SSAInstruction& inst) {
+    return Peephole12BitImmediate(inst, IROpcode::Andi);
 }
 
 // t2 = t1 & t1
@@ -315,6 +336,10 @@ bool PeepholeOrImmediates(SSAInstruction& inst) {
     }
 
     return false;
+}
+
+bool PeepholeOr12BitImmediate(SSAInstruction& inst) {
+    return Peephole12BitImmediate(inst, IROpcode::Ori);
 }
 
 // t2 = t1 | t1
@@ -613,6 +638,10 @@ bool PeepholeXorImmediates(SSAInstruction& inst) {
     return false;
 }
 
+bool PeepholeXor12BitImmediate(SSAInstruction& inst) {
+    return Peephole12BitImmediate(inst, IROpcode::Xori);
+}
+
 // t2 = t1 ^ t1
 bool PeepholeXorSame(SSAInstruction& inst) {
     SSAInstruction* op1 = inst.GetOperand(0);
@@ -677,11 +706,13 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
             switch (inst.GetOpcode()) {
             case IROpcode::Add: {
                 CHECK(PeepholeAddImmediates);
+                CHECK(PeepholeAdd12BitImmediate);
                 CHECK(PeepholeAddZero);
                 break;
             }
             case IROpcode::And: {
                 CHECK(PeepholeAndImmediates);
+                CHECK(PeepholeAnd12BitImmediate);
                 CHECK(PeepholeAndZero);
                 CHECK(PeepholeAndTwice);
                 CHECK(PeepholeAndSame);
@@ -689,12 +720,14 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
             }
             case IROpcode::Or: {
                 CHECK(PeepholeOrImmediates);
+                CHECK(PeepholeOr12BitImmediate);
                 CHECK(PeepholeOrZero);
                 CHECK(PeepholeOrSame);
                 break;
             }
             case IROpcode::Xor: {
                 CHECK(PeepholeXorImmediates);
+                CHECK(PeepholeXor12BitImmediate);
                 CHECK(PeepholeXorZero);
                 CHECK(PeepholeXorSame);
                 break;

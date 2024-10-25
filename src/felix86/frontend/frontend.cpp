@@ -108,6 +108,8 @@ instruction_metadata_t tertiary_table_38_f2[] = {
 #undef X
 };
 
+void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* block);
+
 u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_b, bool rex_x, bool rex_r, modrm_t modrm, sib_t sib) {
     operand_reg->type = X86_OP_TYPE_REGISTER;
     operand_reg->reg.ref = x86_ref_e(X86_REF_RAX + (modrm.reg | (rex_r << 3)));
@@ -655,14 +657,18 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
     if (is_rep) {
         loop_block = state->function->CreateBlock();
         exit_block = state->function->CreateBlockAt(state->current_address + inst.length);
-        ir_emit_rep_start(state, inst, loop_block, exit_block);
+        ir.RepStart(loop_block, exit_block);
+
+        // Write the instruction in the loop body
+        ir.SetBlock(loop_block);
     }
 
     // Call actual decoding function
     fn(state, ir, &inst);
 
     if (is_rep) {
-        ir_emit_rep_end(state, inst, rep_type, loop_block, exit_block);
+        ir.RepEnd(rep_type, loop_block, exit_block);
+        frontend_compile_block(*state->emulator, state->function, exit_block);
     }
 
     state->current_address += inst.length;

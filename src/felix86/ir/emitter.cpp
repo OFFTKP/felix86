@@ -481,7 +481,7 @@ SSAInstruction* ir_emit_vector_packed_xor(IRBlock* block, SSAInstruction* source
 }
 
 SSAInstruction* ir_emit_vector_packed_shift_right(IRBlock* block, SSAInstruction* source, SSAInstruction* imm) {
-    return ir_emit_two_operands(block, IROpcode::VShr, source, imm);
+    return ir_emit_two_operands(block, IROpcode::VPackedShr, source, imm);
 }
 
 SSAInstruction* ir_emit_vector_packed_shift_left(IRBlock* block, SSAInstruction* source, SSAInstruction* imm) {

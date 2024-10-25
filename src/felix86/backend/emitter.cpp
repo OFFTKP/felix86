@@ -36,6 +36,10 @@ constexpr bool HasZam() {
     return false;
 }
 
+constexpr bool HasZicond() {
+    return false;
+}
+
 void EmitCrash(Backend& backend, ExitReason reason) {
     Emitter::EmitSetExitReason(backend, static_cast<u64>(reason));
     Emitter::EmitJump(backend, backend.GetCrashTarget());
@@ -944,21 +948,28 @@ void Emitter::EmitMulhu(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 }
 
 void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Condition, biscuit::GPR RsTrue, biscuit::GPR RsFalse) {
-    if (Rd != RsFalse) {
-        Label true_label;
-        AS.MV(Rd, RsTrue);
-        AS.BNEZ(Condition, &true_label);
-        AS.MV(Rd, RsFalse);
-        AS.Bind(&true_label);
+    if (HasZicond()) {
+        // Not my favorite of conditional move instructions
+        AS.CZERO_EQZ(Rd, RsTrue, Condition);
+        AS.CZERO_NEZ(t0, RsFalse, Condition);
+        AS.OR(Rd, Rd, t0);
     } else {
-        // If Rd == RsFalse we can't do this shorthand mode above.
-        Label true_label, end_label;
-        AS.BNEZ(Condition, &true_label);
-        AS.MV(Rd, RsFalse);
-        AS.J(&end_label);
-        AS.Bind(&true_label);
-        AS.MV(Rd, RsTrue);
-        AS.Bind(&end_label);
+        if (Rd != RsFalse) {
+            Label true_label;
+            AS.MV(Rd, RsTrue);
+            AS.BNEZ(Condition, &true_label);
+            AS.MV(Rd, RsFalse);
+            AS.Bind(&true_label);
+        } else {
+            // If Rd == RsFalse we can't do this shorthand mode above.
+            Label true_label, end_label;
+            AS.BNEZ(Condition, &true_label);
+            AS.MV(Rd, RsFalse);
+            AS.J(&end_label);
+            AS.Bind(&true_label);
+            AS.MV(Rd, RsTrue);
+            AS.Bind(&end_label);
+        }
     }
 }
 
@@ -1014,7 +1025,7 @@ void Emitter::EmitVXor(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, bisc
     AS.VXOR(Vd, Vs1, Vs2);
 }
 
-void Emitter::EmitVShr(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVPackedShr(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 

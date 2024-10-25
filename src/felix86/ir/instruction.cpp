@@ -164,7 +164,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::VAnd:
     case IROpcode::VOr:
     case IROpcode::VXor:
-    case IROpcode::VShr:
+    case IROpcode::VPackedShr:
     case IROpcode::VShl:
     case IROpcode::VPackedSubByte:
     case IROpcode::VPackedAddQWord:
@@ -406,7 +406,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_VECTOR(VAnd, 2);
         VALIDATE_OPS_VECTOR(VOr, 2);
         VALIDATE_OPS_VECTOR(VXor, 2);
-        VALIDATE_OPS_VECTOR(VShr, 2);
+        VALIDATE_OPS_VECTOR(VPackedShr, 2);
         VALIDATE_OPS_VECTOR(VShl, 2);
         VALIDATE_OPS_VECTOR(VPackedSubByte, 2);
         VALIDATE_OPS_VECTOR(VPackedAddQWord, 2);
@@ -1095,8 +1095,8 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VShr: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vshr", "src1", GetNameString(operands[0]), "src2",
+    case IROpcode::VPackedShr: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "VPackedShr", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
