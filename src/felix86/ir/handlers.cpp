@@ -6,6 +6,28 @@
 #include "felix86/ir/emitter_v2.hpp"
 #include "felix86/ir/instruction.hpp"
 
+namespace {
+u64 ImmSext(u64 imm, x86_size_e size) {
+    i64 value = imm;
+    switch (size) {
+    case X86_SIZE_BYTE:
+        value = (i8)value;
+        break;
+    case X86_SIZE_WORD:
+        value = (i16)value;
+        break;
+    case X86_SIZE_DWORD:
+        value = (i32)value;
+        break;
+    case X86_SIZE_QWORD:
+        break;
+    default:
+        ERROR("Invalid immediate size");
+    }
+    return value;
+}
+} // namespace
+
 u64 sext_if_64(u64 value, x86_size_e size_e) {
     switch (size_e) {
     case X86_SIZE_BYTE:
@@ -430,7 +452,7 @@ IR_HANDLE(movsxd) { // movsxd r32/64, rm32/64 - 0x63
 
 IR_HANDLE(push_imm) {
     bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
-    SSAInstruction* imm = ImmSext(BLOCK, &inst->operand_imm);
+    SSAInstruction* imm = ir.Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rsp_sub = ir.Addi(rsp, is_word ? -2 : -8);
     ir.WriteMemory(rsp_sub, imm, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
@@ -439,7 +461,7 @@ IR_HANDLE(push_imm) {
 
 IR_HANDLE(imul_r_rm_imm) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* imm = ImmSext(BLOCK, &inst->operand_imm);
+    SSAInstruction* imm = ir.Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* result = ir.Mul(rm, imm);
     ir.SetReg(inst->operand_reg, result);
 }
@@ -550,7 +572,7 @@ IR_HANDLE(popfq) { // popfq - 0x9d
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rsp_add = ir.Addi(rsp, is_word ? 2 : 8);
     SSAInstruction* flags = ir.ReadMemory(rsp, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
-    SetFlags(flags);
+    ir.SetFlags(flags);
     ir.SetReg(rsp_add, X86_REF_RSP);
 }
 
@@ -656,7 +678,7 @@ IR_HANDLE(mov_rm8_imm8) { // mov rm8, imm8 - 0xc6
 }
 
 IR_HANDLE(mov_rm32_imm32) { // mov rm16/32/64, imm16/32/64 - 0xc7
-    SSAInstruction* imm = ImmSext(BLOCK, &inst->operand_imm);
+    SSAInstruction* imm = ir.Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     ir.SetRm(inst->operand_rm, imm);
 }
 
@@ -1069,8 +1091,7 @@ IR_HANDLE(punpcklqdq_xmm_xmm128) { // punpcklqdq xmm, xmm/m128 - 0x66 0x0f 0x6c
 
 IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* vector = ir_emit_cast_vector_integer(BLOCK, rm);
-    todo.casts should be VToI or similar instruction;
+    SSAInstruction* vector = ir.IToV(rm);
     ir.SetReg(inst->operand_reg, vector);
 }
 
@@ -1081,41 +1102,41 @@ IR_HANDLE(movdqa_xmm_xmm128) { // movdqa xmm, xmm128 - 0x66 0x0f 0x6f
 
 IR_HANDLE(pshufd_xmm_xmm128_cb) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* result = ir_emit_vector_packed_shuffle_dword(BLOCK, rm, inst->operand_imm.immediate.data);
+    SSAInstruction* result = ir.VPackedShuffleDWord(rm, inst->operand_imm.immediate.data);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pcmpeqb_xmm_xmm128) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_compare_eq_byte(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VPackedEqualByte(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pcmpeqw_xmm_xmm128) { // pcmpeqw xmm, xmm/m128 - 0x66 0x0f 0x75
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_compare_eq_word(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VPackedEqualWord(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pcmpeqd_xmm_xmm128) { // pcmpeqd xmm, xmm/m128 - 0x66 0x0f 0x76
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_compare_eq_dword(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VPackedEqualDWord(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(movq_rm32_xmm) { // movq rm32, xmm - 0x66 0x0f 0x7e
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
-    SSAInstruction* rm = ir_emit_cast_integer_vector(BLOCK, xmm);
+    SSAInstruction* rm = ir.VToI(xmm);
     ir.SetRm(inst->operand_rm, rm);
 }
 
 IR_HANDLE(paddq_xmm_xmm128) { // paddq xmm, xmm/m128 - 0x66 0x0f 0xd4
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_add_qword(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VPackedAddQWord(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
@@ -1129,42 +1150,42 @@ IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
 
 IR_HANDLE(pmovmskb_reg_xmm) { // pmovmskb reg, xmm - 0x66 0x0f 0xd7
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_move_byte_mask(BLOCK, xmm);
+    SSAInstruction* result = ir.VMoveByteMask(xmm);
     ir.SetReg(inst->operand_rm, result);
 }
 
 IR_HANDLE(pminub_xmm_xmm128) { // pminub xmm, xmm/m128 - 0x66 0x0f 0xda
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_min_byte(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VPackedMinByte(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pand_xmm_xmm128) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_and(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VAnd(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(por_xmm_xmm128) { // por xmm, xmm/m128 - 0x66 0x0f 0xeb
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_or(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VOr(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pxor_xmm_xmm128) { // pxor xmm, xmm/m128 - 0x66 0x0f 0xef
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_xor(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VXor(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(psubb_xmm_xmm128) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir_emit_vector_packed_sub_byte(BLOCK, reg, rm);
+    SSAInstruction* result = ir.VPackedSubByte(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
@@ -1187,17 +1208,15 @@ IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f
 
 IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
     x86_operand_t rm_op = inst->operand_rm;
-    SSAInstruction* integer;
+    SSAInstruction* result;
     if (rm_op.type == X86_OP_TYPE_MEMORY) {
         rm_op.size = X86_SIZE_QWORD;
-        integer = ir.GetRm(rm_op);
+        result = ir.IToV(ir.GetRm(rm_op));
     } else {
-        SSAInstruction* reg = ir.GetReg(rm_op);
-        integer = ir_emit_cast_integer_vector(BLOCK, reg);
+        result = ir.GetReg(rm_op);
     }
 
-    ir_emit_cast_vector_integer(BLOCK, integer);
-    ir.SetReg(inst->operand_reg, integer);
+    ir.SetReg(inst->operand_reg, result);
 }
 
 // ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ██████   █████

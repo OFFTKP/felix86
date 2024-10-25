@@ -122,8 +122,8 @@
     X(WriteQWordRelative)                                                                                                                            \
     X(WriteXmmWordRelative)                                                                                                                          \
     X(WriteXmmWord)                                                                                                                                  \
-    X(CastVectorFromInteger)                                                                                                                         \
-    X(CastIntegerFromVector)                                                                                                                         \
+    X(IToV)                                                                                                                                          \
+    X(VToI)                                                                                                                                          \
     X(VInsertInteger)                                                                                                                                \
     X(VExtractInteger)                                                                                                                               \
     X(VUnpackByteLow)                                                                                                                                \
@@ -136,10 +136,14 @@
     X(VPackedShr)                                                                                                                                    \
     X(VShl)                                                                                                                                          \
     X(VPackedSubByte)                                                                                                                                \
+    X(VPackedAddByte)                                                                                                                                \
+    X(VPackedAddWord)                                                                                                                                \
+    X(VPackedAddDWord)                                                                                                                               \
     X(VPackedAddQWord)                                                                                                                               \
     X(VPackedEqualByte)                                                                                                                              \
     X(VPackedEqualWord)                                                                                                                              \
     X(VPackedEqualDWord)                                                                                                                             \
+    X(VPackedEqualQWord)                                                                                                                             \
     X(VPackedShuffleDWord)                                                                                                                           \
     X(VMoveByteMask)                                                                                                                                 \
     X(VPackedMinByte)                                                                                                                                \

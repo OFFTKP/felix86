@@ -104,7 +104,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::ReadWord:
     case IROpcode::ReadDWord:
     case IROpcode::ReadQWord:
-    case IROpcode::CastIntegerFromVector:
+    case IROpcode::VToI:
     case IROpcode::VExtractInteger:
     case IROpcode::Sext8:
     case IROpcode::Sext16:
@@ -156,7 +156,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     }
     case IROpcode::ReadXmmWord:
     case IROpcode::ReadXmmWordRelative:
-    case IROpcode::CastVectorFromInteger:
+    case IROpcode::IToV:
     case IROpcode::VUnpackByteLow:
     case IROpcode::VUnpackWordLow:
     case IROpcode::VUnpackDWordLow:
@@ -167,10 +167,14 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::VPackedShr:
     case IROpcode::VShl:
     case IROpcode::VPackedSubByte:
+    case IROpcode::VPackedAddByte:
+    case IROpcode::VPackedAddWord:
+    case IROpcode::VPackedAddDWord:
     case IROpcode::VPackedAddQWord:
     case IROpcode::VPackedEqualByte:
     case IROpcode::VPackedEqualWord:
     case IROpcode::VPackedEqualDWord:
+    case IROpcode::VPackedEqualQWord:
     case IROpcode::VPackedShuffleDWord:
     case IROpcode::VMoveByteMask:
     case IROpcode::VPackedMinByte:
@@ -307,7 +311,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(Zext8, 1);
         VALIDATE_OPS_INT(Zext16, 1);
         VALIDATE_OPS_INT(Zext32, 1);
-        VALIDATE_OPS_INT(CastVectorFromInteger, 1);
+        VALIDATE_OPS_INT(IToV, 1);
         VALIDATE_OPS_INT(Clz, 1);
         VALIDATE_OPS_INT(Ctzh, 1);
         VALIDATE_OPS_INT(Ctzw, 1);
@@ -393,7 +397,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(AmoCAS32, 3);
         VALIDATE_OPS_INT(AmoCAS64, 3);
 
-        VALIDATE_OPS_VECTOR(CastIntegerFromVector, 1);
+        VALIDATE_OPS_VECTOR(VToI, 1);
         VALIDATE_OPS_VECTOR(VExtractInteger, 1);
         VALIDATE_OPS_VECTOR(VPackedShuffleDWord, 1);
         VALIDATE_OPS_VECTOR(VMoveByteMask, 1);
@@ -409,10 +413,14 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_VECTOR(VPackedShr, 2);
         VALIDATE_OPS_VECTOR(VShl, 2);
         VALIDATE_OPS_VECTOR(VPackedSubByte, 2);
+        VALIDATE_OPS_VECTOR(VPackedAddByte, 2);
+        VALIDATE_OPS_VECTOR(VPackedAddWord, 2);
+        VALIDATE_OPS_VECTOR(VPackedAddDWord, 2);
         VALIDATE_OPS_VECTOR(VPackedAddQWord, 2);
         VALIDATE_OPS_VECTOR(VPackedEqualByte, 2);
         VALIDATE_OPS_VECTOR(VPackedEqualWord, 2);
         VALIDATE_OPS_VECTOR(VPackedEqualDWord, 2);
+        VALIDATE_OPS_VECTOR(VPackedEqualQWord, 2);
         VALIDATE_OPS_VECTOR(VPackedMinByte, 2);
 
     case IROpcode::WriteXmmWord:
@@ -926,11 +934,11 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "zext32", "src", GetNameString(operands[0]));
         break;
     }
-    case IROpcode::CastVectorFromInteger: {
+    case IROpcode::IToV: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "int_to_vec", "integer", GetNameString(operands[0]));
         break;
     }
-    case IROpcode::CastIntegerFromVector: {
+    case IROpcode::VToI: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vec_to_int", "vector", GetNameString(operands[0]));
         break;
     }
@@ -1104,6 +1112,21 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vzext64", "src", GetNameString(operands[0]));
         break;
     }
+    case IROpcode::VPackedAddByte: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpaddbyte", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VPackedAddWord: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpaddword", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VPackedAddDWord: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpadddword", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
     case IROpcode::VPackedAddQWord: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpaddqword", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
@@ -1121,6 +1144,11 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::VPackedEqualDWord: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpeqdword", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VPackedEqualQWord: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpeqqword", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }

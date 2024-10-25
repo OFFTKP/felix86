@@ -973,11 +973,11 @@ void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Conditi
     }
 }
 
-void Emitter::EmitCastVectorFromInteger(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs) {
+void Emitter::EmitIToV(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs) {
     AS.VMV_SX(Vd, Rs);
 }
 
-void Emitter::EmitCastIntegerFromVector(Backend& backend, biscuit::GPR Rd, biscuit::Vec Vs) {
+void Emitter::EmitVToI(Backend& backend, biscuit::GPR Rd, biscuit::Vec Vs) {
     AS.VMV_XS(Rd, Vs);
 }
 
@@ -1037,6 +1037,18 @@ void Emitter::EmitVPackedSubByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec
     UNREACHABLE();
 }
 
+void Emitter::EmitVPackedAddByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    UNREACHABLE();
+}
+
+void Emitter::EmitVPackedAddWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    UNREACHABLE();
+}
+
+void Emitter::EmitVPackedAddDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    UNREACHABLE();
+}
+
 void Emitter::EmitVPackedAddQWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
@@ -1050,6 +1062,10 @@ void Emitter::EmitVPackedEqualWord(Backend& backend, biscuit::Vec Vd, biscuit::V
 }
 
 void Emitter::EmitVPackedEqualDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    UNREACHABLE();
+}
+
+void Emitter::EmitVPackedEqualQWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 

@@ -461,11 +461,11 @@ SSAInstruction* ir_emit_vector_unpack_qword_low(IRBlock* block, SSAInstruction* 
 }
 
 SSAInstruction* ir_emit_cast_vector_integer(IRBlock* block, SSAInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::CastVectorFromInteger, source);
+    return ir_emit_one_operand(block, IROpcode::IToV, source);
 }
 
 SSAInstruction* ir_emit_cast_integer_vector(IRBlock* block, SSAInstruction* source) {
-    return ir_emit_one_operand(block, IROpcode::CastIntegerFromVector, source);
+    return ir_emit_one_operand(block, IROpcode::VToI, source);
 }
 
 SSAInstruction* ir_emit_vector_packed_and(IRBlock* block, SSAInstruction* source1, SSAInstruction* source2) {

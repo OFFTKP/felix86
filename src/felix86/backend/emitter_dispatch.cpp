@@ -630,13 +630,13 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
-    case IROpcode::CastVectorFromInteger: {
-        EmitCastVectorFromInteger(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+    case IROpcode::IToV: {
+        EmitIToV(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
         break;
     }
 
-    case IROpcode::CastIntegerFromVector: {
-        EmitCastIntegerFromVector(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+    case IROpcode::VToI: {
+        EmitVToI(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
         break;
     }
 
@@ -730,6 +730,21 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::VPackedAddByte: {
+        EmitVPackedAddByte(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
+    case IROpcode::VPackedAddWord: {
+        EmitVPackedAddWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
+    case IROpcode::VPackedAddDWord: {
+        EmitVPackedAddDWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
     case IROpcode::VPackedAddQWord: {
         EmitVPackedAddQWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
@@ -747,6 +762,11 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
 
     case IROpcode::VPackedEqualDWord: {
         EmitVPackedEqualDWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
+    case IROpcode::VPackedEqualQWord: {
+        EmitVPackedEqualQWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
     }
 

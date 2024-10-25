@@ -128,8 +128,8 @@ private:
     static void EmitMulh(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitMulhu(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitSelect(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitCastVectorFromInteger(Backend&, biscuit::Vec, biscuit::GPR);
-    static void EmitCastIntegerFromVector(Backend&, biscuit::GPR, biscuit::Vec);
+    static void EmitIToV(Backend&, biscuit::Vec, biscuit::GPR);
+    static void EmitVToI(Backend&, biscuit::GPR, biscuit::Vec);
     static void EmitVInsertInteger(Backend&, biscuit::Vec, biscuit::GPR, biscuit::Vec, u64);
     static void EmitVExtractInteger(Backend&, biscuit::GPR, biscuit::Vec, u64);
     static void EmitVPackedShuffleDWord(Backend&, biscuit::Vec, biscuit::Vec, u64);
@@ -144,10 +144,14 @@ private:
     static void EmitVPackedShr(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVShl(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVPackedSubByte(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVPackedAddByte(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVPackedAddWord(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVPackedAddDWord(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVPackedAddQWord(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVPackedEqualByte(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVPackedEqualWord(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVPackedEqualDWord(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVPackedEqualQWord(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVPackedMinByte(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVZext64(Backend&, biscuit::Vec, biscuit::Vec);
 };
