@@ -832,6 +832,7 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
             }
 
         } else {
+            inst.Unlock();
             // Safe optimizations even for locked instructions
             switch (inst.GetOpcode()) {
             case IROpcode::WriteByte:
@@ -844,6 +845,7 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
             default:
                 break;
             }
+            inst.Lock();
         }
         changed |= local_changed;
     }
