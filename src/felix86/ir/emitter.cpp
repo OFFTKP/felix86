@@ -1000,6 +1000,21 @@ SSAInstruction* IREmitter::IsCarryAdd(SSAInstruction* source, SSAInstruction* re
     return LessThanUnsigned(zext_result, source);
 }
 
+SSAInstruction* IREmitter::IsCarryAdc(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* carry, x86_size_e size_e) {
+    SSAInstruction* sum = Add(lhs, rhs);
+    SSAInstruction* sum2 = Add(sum, carry);
+    SSAInstruction* carry1 = IsCarryAdd(lhs, sum, size_e);
+    SSAInstruction* carry2 = IsCarryAdd(sum, sum2, size_e);
+    return Or(carry1, carry2);
+}
+
+SSAInstruction* IREmitter::IsCarrySbb(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* carry, x86_size_e size_e) {
+    SSAInstruction* sum = Sub(lhs, rhs);
+    SSAInstruction* carry2 = IsCarrySub(sum, carry);
+    SSAInstruction* carry1 = IsCarrySub(lhs, rhs);
+    return Or(carry1, carry2);
+}
+
 SSAInstruction* IREmitter::IsAuxAdd(SSAInstruction* lhs, SSAInstruction* rhs) {
     SSAInstruction* and1 = Andi(lhs, 0xF);
     SSAInstruction* and2 = Andi(rhs, 0xF);
@@ -1129,23 +1144,21 @@ void IREmitter::Group1(x86_instruction_t* inst) {
         break;
     }
     case X86_GROUP1_ADC: {
-        UNIMPLEMENTED();
-        // SSAInstruction* carry_in = GetFlag(X86_REF_CF);
-        // SSAInstruction* imm_carry = Add(imm, carry_in);
-        // result = Add(rm, imm_carry);
-        // c = ir_emit_get_carry_adc(block, rm, imm_carry, size_e);
-        // o = IsOverflowAdd(rm, imm_carry, result, size_e);
-        // a = IsAuxAdd(rm, imm_carry);
+        SSAInstruction* carry_in = GetFlag(X86_REF_CF);
+        SSAInstruction* imm_carry = Add(imm, carry_in);
+        result = Add(rm, imm_carry);
+        c = IsCarryAdc(rm, imm, carry_in, size_e);
+        o = IsOverflowAdd(rm, imm_carry, result, size_e);
+        a = IsAuxAdd(rm, imm_carry);
         break;
     }
     case X86_GROUP1_SBB: {
-        UNIMPLEMENTED();
-        // SSAInstruction* carry_in = GetFlag(X86_REF_CF);
-        // SSAInstruction* imm_carry = Add(imm, carry_in);
-        // result = Sub(rm, imm_carry);
-        // c = ir_emit_get_carry_sbb(block, rm, imm_carry, size_e);
-        // o = IsOverflowSub(rm, imm_carry, result, size_e);
-        // a = IsAuxSub(rm, imm_carry);
+        SSAInstruction* carry_in = GetFlag(X86_REF_CF);
+        SSAInstruction* imm_carry = Add(imm, carry_in);
+        result = Sub(rm, imm_carry);
+        c = IsCarrySbb(rm, imm, carry_in, size_e);
+        o = IsOverflowSub(rm, imm_carry, result, size_e);
+        a = IsAuxSub(rm, imm_carry);
         break;
     }
     case X86_GROUP1_OR: {
