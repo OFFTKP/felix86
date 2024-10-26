@@ -20,10 +20,10 @@ This means the following are advised to be avoided until proven to be necessary:
 - C++-style casts, they provide no benefit (with the exception of dynamic_cast, but no RTTI here) to C casts in most cases. Their supposed benefit is compile time checking, but this is useless 9/10 times and in the 1/10 times it's useful is in templated code which we generally avoid
 - making everything a function / excessive separation of concerns - we prefer locality of behavior, we don't have to jump between 4 files and 7 functions to understand what something does
 - "Don't repeat yourself" and similar fashionable idioms, duplicate code is welcome if it makes everything more readable, coalesce code into functions at your own discresion
-- any TMP use / abuse of generics, especially in non hot paths. Generics have a use and their use is making containers.
-- visitor pattern, what a mess - use a switch
-- excessive polymorphism is a huge no no
-- exceptions/rtti - they are disabled. Use error codes
+- any TMP use / abuse of generics, especially when no significant runtime benefit
+- visitor pattern, use a switch
+- excessive polymorphism
+- exceptions/rtti
 - macros are welcome so long as they make the code more readable or succinct (ie X Macros)
 - too much abstraction for no obvious benefit - this is a very narrowly focused project so the code need not be too abstract
 - keyword spam when it has no immediate benefit. For example defining functions that will never realistically run at compile time as `constexpr`. Same goes for `if constexpr`. Either use `consteval`, don't use either, or make sure the function is used sometimes during compile-time and sometimes during runtime.

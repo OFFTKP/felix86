@@ -126,7 +126,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
             u8 xindex = sib.index | (rex_x << 3);
             if (xindex != 0b100) {
                 operand_rm->memory.index = x86_ref_e(X86_REF_RAX + xindex);
-                operand_rm->memory.scale = sib.scale;
+                operand_rm->memory.scale = 1 << sib.scale;
             }
 
             if (sib.base != 0b101) {
@@ -151,7 +151,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
             u8 xindex = sib.index | (rex_x << 3);
             if (xindex != 0b100) {
                 operand_rm->memory.index = x86_ref_e(X86_REF_RAX + xindex);
-                operand_rm->memory.scale = sib.scale;
+                operand_rm->memory.scale = 1 << sib.scale;
             }
         } else {
             operand_rm->memory.base = x86_ref_e(X86_REF_RAX + (modrm.rm | (rex_b << 3)));
@@ -165,7 +165,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
             u8 xindex = sib.index | (rex_x << 3);
             if (xindex != 0b100) {
                 operand_rm->memory.index = x86_ref_e(X86_REF_RAX + xindex);
-                operand_rm->memory.scale = sib.scale;
+                operand_rm->memory.scale = 1 << sib.scale;
             }
         } else {
             operand_rm->memory.base = x86_ref_e(X86_REF_RAX + (modrm.rm | (rex_b << 3)));

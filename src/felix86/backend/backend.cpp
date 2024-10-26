@@ -38,12 +38,8 @@ Backend::Backend(Emulator& emulator) : emulator(emulator), memory(allocateCodeCa
     bool has_vector = cpuinfo.Has(RISCVExtension::V);
 
     if (!has_atomic || !has_compressed || !has_integer || !has_mul || !has_fpu || !has_vector || cpuinfo.GetVlenb() != 128) {
-#ifdef __x86_64__
-        WARN("Running in x86-64 environment");
-#else
         if (!g_testing) // too much spam if testing
             WARN("Backend is missing some extensions or doesn't have VLEN=128");
-#endif
     }
 }
 

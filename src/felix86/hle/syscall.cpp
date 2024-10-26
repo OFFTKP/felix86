@@ -87,7 +87,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
             state->brk_current_address = rdi;
             result = state->brk_current_address;
         }
-        VERBOSE("brk(%p) = %p", (void*)rdi, (void*)result);
+        STRACE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;
     }
     case felix86_x86_64_arch_prctl: {
@@ -113,13 +113,13 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
             break;
         }
         }
-        VERBOSE("arch_prctl(%016lx, %016lx) = %016lx", rdi, rsi, result);
+        STRACE("arch_prctl(%016lx, %016lx) = %016lx", rdi, rsi, result);
         break;
     }
     case felix86_x86_64_set_tid_address: {
         state->clear_child_tid = rdi;
         result = rdi;
-        VERBOSE("set_tid_address(%016lx) = %016lx", rdi, result);
+        STRACE("set_tid_address(%016lx) = %016lx", rdi, result);
         break;
     }
     case felix86_x86_64_get_robust_list: {
@@ -136,32 +136,33 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
             WARN("Struct size is wrong during set_robust_list");
             result = EINVAL;
         }
-        VERBOSE("set_robust_list(%016lx, %016lx) = %016lx", rdi, rsi, result);
+        STRACE("set_robust_list(%016lx, %016lx) = %016lx", rdi, rsi, result);
         break;
     }
     case felix86_x86_64_rseq: {
         // Couldn't find any solid documentation and FEX doesn't support it either
         result = -ENOSYS;
+        STRACE("rseq(...) = %016lx", result);
         break;
     }
     case felix86_x86_64_prlimit64: {
         result = HOST_SYSCALL(prlimit64, rdi, rsi, rdx, r10);
-        VERBOSE("prlimit64(%016lx, %016lx, %016lx, %016lx) = %016lx", rdi, rsi, rdx, r10, result);
+        STRACE("prlimit64(%016lx, %016lx, %016lx, %016lx) = %016lx", rdi, rsi, rdx, r10, result);
         break;
     }
     case felix86_x86_64_readlinkat: {
         result = fs.ReadLinkAt(rdi, (const char*)rsi, (char*)rdx, r10);
-        VERBOSE("readlinkat(%d, %s, %s, %d) = %d", (int)rdi, (const char*)rsi, (char*)rdx, (int)r10, (int)result);
+        STRACE("readlinkat(%d, %s, %s, %d) = %d", (int)rdi, (const char*)rsi, (char*)rdx, (int)r10, (int)result);
         break;
     }
     case felix86_x86_64_getrandom: {
         result = HOST_SYSCALL(getrandom, rdi, rsi, rdx);
-        VERBOSE("getrandom(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
+        STRACE("getrandom(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
         break;
     }
     case felix86_x86_64_mprotect: {
         result = HOST_SYSCALL(mprotect, rdi, rsi, rdx);
-        VERBOSE("mprotect(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
+        STRACE("mprotect(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
         break;
     }
     default: {

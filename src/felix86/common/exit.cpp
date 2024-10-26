@@ -1,4 +1,5 @@
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include "felix86/common/exit.hpp"
 #include "felix86/common/global.hpp"
 

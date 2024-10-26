@@ -1,5 +1,4 @@
 #include <argp.h>
-#include <stdio.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/version.hpp"
 #include "felix86/emulator.hpp"
@@ -19,6 +18,7 @@ static struct argp_option options[] = {{"verbose", 'v', 0, 0, "Produce verbose o
                                        {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
                                        {"dont-optimize", 'x', 0, 0, "Don't apply optimizations on the IR"},
                                        {"print-disassembly", 'd', 0, 0, "Print disassembly of emitted functions"},
+                                       {"strace", 't', 0, 0, "Trace emulated application syscalls"},
                                        {0}};
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
@@ -68,6 +68,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
     case 'd': {
         config->print_disassembly = true;
+        break;
+    }
+    case 't': {
+        g_strace = true;
         break;
     }
     case ARGP_KEY_END: {

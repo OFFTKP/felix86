@@ -15,7 +15,7 @@
 #define LOG(format, ...)                                                                                                                             \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
-            printf(ANSI_COLOR_CYAN "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                        \
+            printf(ANSI_COLOR_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                     \
         }                                                                                                                                            \
     } while (0)
 #define ERROR(format, ...)                                                                                                                           \
@@ -33,6 +33,13 @@
     do {                                                                                                                                             \
         if (g_verbose && !g_quiet) {                                                                                                                 \
             printf(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                     \
+        }                                                                                                                                            \
+    } while (0)
+
+#define STRACE(format, ...)                                                                                                                          \
+    do {                                                                                                                                             \
+        if (g_strace && !g_quiet) {                                                                                                                  \
+            printf(ANSI_COLOR_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                     \
         }                                                                                                                                            \
     } while (0)
 
