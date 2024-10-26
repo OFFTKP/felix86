@@ -58,17 +58,17 @@ u64 sext(u64 value, x86_size_e size_e) {
     }
 }
 
-x86_size_e sizeup(x86_size_e size_e) {
+x86_size_e sizedown(x86_size_e size_e) {
     switch (size_e) {
-    case X86_SIZE_BYTE:
-        return X86_SIZE_WORD;
     case X86_SIZE_WORD:
-        return X86_SIZE_DWORD;
+        return X86_SIZE_BYTE;
     case X86_SIZE_DWORD:
-        return X86_SIZE_QWORD;
+        return X86_SIZE_WORD;
+    case X86_SIZE_QWORD:
+        return X86_SIZE_DWORD;
     default:
         UNREACHABLE();
-        return X86_SIZE_QWORD;
+        return X86_SIZE_BYTE;
     }
 }
 
@@ -543,8 +543,8 @@ IR_HANDLE(xchg_reg_eax) { // xchg reg, eax - 0x91-0x97
 IR_HANDLE(cwde) { // cbw/cwde/cdqe - 0x98
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* sexted = ir.Sext(reg, size_e);
-    ir.SetReg(sexted, inst->operand_reg.reg.ref, sizeup(size_e));
+    SSAInstruction* sexted = ir.Sext(reg, sizedown(size_e));
+    ir.SetReg(sexted, inst->operand_reg.reg.ref, size_e);
 }
 
 IR_HANDLE(cdq) { // cwd/cdq/cqo - 0x99
