@@ -14,7 +14,11 @@ bool Peephole12BitImmediate(SSAInstruction& inst, IROpcode replacement) {
         SSAInstruction* op1 = inst.GetOperand(i);
         SSAInstruction* op2 = inst.GetOperand(!i);
         if (op1->IsImmediate() && IsValidSigned12BitImm(op1->GetImmediateData()) && !op2->IsImmediate()) {
-            SSAInstruction andi(replacement, {op2}, op1->GetImmediateData());
+            Operands op;
+            op.operands[0] = op2;
+            op.immediate_data = op1->GetImmediateData();
+            op.operand_count = 1;
+            inst.Replace(op, replacement);
             return true;
         }
     }
@@ -701,8 +705,11 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
         if (!inst.IsLocked()) {
             bool local_changed = false;
 #define CHECK(x)                                                                                                                                     \
-    if (!local_changed)                                                                                                                              \
-    local_changed |= x(inst)
+    if (!local_changed) {                                                                                                                            \
+        local_changed |= x(inst);                                                                                                                    \
+        if (local_changed)                                                                                                                           \
+            printf("Peephole: %s\n", #x);                                                                                                            \
+    }
             switch (inst.GetOpcode()) {
             case IROpcode::Add: {
                 CHECK(PeepholeAddImmediates);
