@@ -571,7 +571,7 @@ SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
     }
 
     if (operand.memory.index != X86_REF_COUNT) {
-        index = GetReg(operand.memory.base, address_size);
+        index = GetReg(operand.memory.index, address_size);
     } else {
         index = nullptr;
     }
