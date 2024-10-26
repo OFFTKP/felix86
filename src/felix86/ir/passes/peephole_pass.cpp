@@ -81,6 +81,17 @@ bool PeepholeAddImmediates(SSAInstruction& inst) {
     return false;
 }
 
+bool PeepholeAddiImmediates(SSAInstruction& inst) {
+    const SSAInstruction* op = inst.GetOperand(0);
+
+    if (op->IsImmediate()) {
+        inst.ReplaceWithImmediate(op->GetImmediateData() + inst.GetImmediateData());
+        return true;
+    }
+
+    return false;
+}
+
 bool PeepholeAdd12BitImmediate(SSAInstruction& inst) {
     return Peephole12BitImmediate(inst, IROpcode::Addi);
 }
@@ -92,6 +103,15 @@ bool PeepholeAddZero(SSAInstruction& inst) {
             inst.ReplaceWithMov(inst.GetOperand(!i));
             return true;
         }
+    }
+
+    return false;
+}
+
+bool PeepholeAddiZero(SSAInstruction& inst) {
+    if (inst.GetImmediateData() == 0) {
+        inst.ReplaceWithMov(inst.GetOperand(0));
+        return true;
     }
 
     return false;
@@ -712,6 +732,11 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 CHECK(PeepholeAddImmediates);
                 CHECK(PeepholeAdd12BitImmediate);
                 CHECK(PeepholeAddZero);
+                break;
+            }
+            case IROpcode::Addi: {
+                CHECK(PeepholeAddiImmediates);
+                CHECK(PeepholeAddiZero);
                 break;
             }
             case IROpcode::And: {
