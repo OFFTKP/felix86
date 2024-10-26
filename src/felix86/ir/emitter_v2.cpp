@@ -117,6 +117,10 @@ void IREmitter::SetRm(const x86_operand_t& operand, SSAInstruction* value) {
     }
 }
 
+void IREmitter::Comment(const std::string& comment) {
+    block->InsertAtEnd(SSAInstruction(comment));
+}
+
 SSAInstruction* IREmitter::Imm(u64 value) {
     SSAInstruction instruction(value);
     return block->InsertAtEnd(std::move(instruction));
@@ -654,9 +658,71 @@ void IREmitter::Syscall() {
     loadPartialState(out_regs);
 }
 
-void IREmitter::Cpuid() {}
+void IREmitter::Cpuid() {
+    constexpr static std::array in_regs = {X86_REF_RAX, X86_REF_RCX};
+    constexpr static std::array out_regs = {X86_REF_RAX, X86_REF_RBX, X86_REF_RCX, X86_REF_RDX};
 
-void IREmitter::Rdtsc() {}
+    storePartialState(in_regs);
+
+    SSAInstruction* cpuid = insertInstruction(IROpcode::Cpuid, {});
+    cpuid->Lock();
+
+    loadPartialState(out_regs);
+}
+
+void IREmitter::Rdtsc() {
+    // Has no inputs but writes to EDX:EAX
+    constexpr static std::array out_regs = {X86_REF_RAX, X86_REF_RDX};
+
+    SSAInstruction* instruction = insertInstruction(IROpcode::Rdtsc, {});
+    instruction->Lock();
+
+    loadPartialState(out_regs);
+}
+
+void IREmitter::SetCC(x86_instruction_t* inst) {
+    SetRm(inst->operand_rm, GetCC(inst->opcode));
+}
+
+SSAInstruction* IREmitter::GetCC(u8 opcode) {
+    switch (opcode & 0xF) {
+    case 0:
+        return GetFlag(X86_REF_OF);
+    case 1:
+        return GetFlagNot(X86_REF_OF);
+    case 2:
+        return GetFlag(X86_REF_CF);
+    case 3:
+        return GetFlagNot(X86_REF_CF);
+    case 4:
+        return GetFlag(X86_REF_ZF);
+    case 5:
+        return GetFlagNot(X86_REF_ZF);
+    case 6:
+        return Or(GetFlag(X86_REF_CF), GetFlag(X86_REF_ZF));
+    case 7:
+        return And(GetFlagNot(X86_REF_CF), GetFlagNot(X86_REF_ZF));
+    case 8:
+        return GetFlag(X86_REF_SF);
+    case 9:
+        return GetFlagNot(X86_REF_SF);
+    case 10:
+        return GetFlag(X86_REF_PF);
+    case 11:
+        return GetFlagNot(X86_REF_PF);
+    case 12:
+        return NotEqual(GetFlag(X86_REF_SF), GetFlag(X86_REF_OF));
+    case 13:
+        return Equal(GetFlag(X86_REF_SF), GetFlag(X86_REF_OF));
+    case 14:
+        return Or(Equal(GetFlag(X86_REF_ZF), Imm(1)), NotEqual(GetFlag(X86_REF_SF), GetFlag(X86_REF_OF)));
+    case 15:
+        return And(Equal(GetFlag(X86_REF_ZF), Imm(0)), Equal(GetFlag(X86_REF_SF), GetFlag(X86_REF_OF)));
+    }
+
+    ERROR("Invalid condition code");
+    return nullptr;
+}
 
 void IREmitter::SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o) {
     if (c)
@@ -678,8 +744,31 @@ void IREmitter::SetExitReason(ExitReason reason) {
     set_exit_reason->Lock();
 }
 
+void IREmitter::SetFlags(SSAInstruction* flags) {
+    SSAInstruction* c = Andi(flags, 1);
+    SSAInstruction* p = Andi(Shri(flags, 2), 1);
+    SSAInstruction* a = Andi(Shri(flags, 4), 1);
+    SSAInstruction* z = Andi(Shri(flags, 6), 1);
+    SSAInstruction* s = Andi(Shri(flags, 7), 1);
+    SSAInstruction* d = Andi(Shri(flags, 10), 1);
+    SSAInstruction* o = Andi(Shri(flags, 11), 1);
+
+    SetFlag(c, X86_REF_CF);
+    SetFlag(p, X86_REF_PF);
+    SetFlag(a, X86_REF_AF);
+    SetFlag(z, X86_REF_ZF);
+    SetFlag(s, X86_REF_SF);
+    SetFlag(d, X86_REF_DF);
+    SetFlag(o, X86_REF_OF);
+}
+
 SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands) {
     SSAInstruction instruction(opcode, operands);
+    return block->InsertAtEnd(std::move(instruction));
+}
+
+SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 imm) {
+    SSAInstruction instruction(opcode, operands, imm);
     return block->InsertAtEnd(std::move(instruction));
 }
 
@@ -975,11 +1064,11 @@ void IREmitter::storePartialState(std::span<const x86_ref_e> refs) {
 }
 
 SSAInstruction* IREmitter::getSignMask(x86_size_e size_e) {
-    u16 size = getBitSize(size_e);
+    u16 size = GetBitSize(size_e);
     return Imm(1ull << (size - 1));
 }
 
-u16 IREmitter::getBitSize(x86_size_e size) {
+u16 IREmitter::GetBitSize(x86_size_e size) {
     switch (size) {
     case X86_SIZE_BYTE:
         return 8;
@@ -999,80 +1088,9 @@ u16 IREmitter::getBitSize(x86_size_e size) {
     return 0;
 }
 
-void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
-    x86_group2_e opcode = (x86_group2_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
-
-    x86_size_e size_e = inst->operand_rm.size;
-    u8 shift_mask = size_e == X86_SIZE_QWORD ? 0x3F : 0x1F;
-    SSAInstruction* rm = GetRm(inst->operand_rm);
-    SSAInstruction* shift_value = Andi(shift_amount, shift_mask);
-    SSAInstruction* result = nullptr;
-    SSAInstruction* c = nullptr;
-    SSAInstruction* p = nullptr;
-    SSAInstruction* a = nullptr;
-    SSAInstruction* z = nullptr;
-    SSAInstruction* s = nullptr;
-    SSAInstruction* o = nullptr;
-
-    switch (opcode) {
-    case X86_GROUP2_ROL: {
-        result = Rol(rm, shift_value, size_e);
-        SSAInstruction* msb = IsNegative(result, size_e);
-        c = Andi(result, 1);
-        o = Xor(c, msb);
-        break;
-    }
-    case X86_GROUP2_ROR: {
-        result = Ror(rm, shift_value, size_e);
-        c = IsNegative(result, size_e);
-        WARN("ROR OF unimplemented");
-        break;
-    }
-    case X86_GROUP2_RCL: {
-        ERROR("Why? :(");
-        break;
-    }
-    case X86_GROUP2_RCR: {
-        ERROR("Why? :(");
-        break;
-    }
-    case X86_GROUP2_SAL:
-    case X86_GROUP2_SHL: {
-        SSAInstruction* shift = Sub(Imm(getBitSize(size_e)), shift_value);
-        SSAInstruction* msb_mask = Shl(Imm(1), shift);
-        result = Shl(rm, shift_value);
-        c = Equal(And(rm, msb_mask), msb_mask);
-        SSAInstruction* sign = IsNegative(result, size_e);
-        o = Xor(c, sign);
-        break;
-    }
-    case X86_GROUP2_SHR: {
-        SSAInstruction* msb_mask = ir_emit_get_shift_mask_right(block, shift_value);
-        result = Shr(rm, shift_value);
-        c = Equal(And(rm, msb_mask), msb_mask);
-        o = IsNegative(rm, size_e);
-        break;
-    }
-    case X86_GROUP2_SAR: {
-        // Shift left to place MSB to bit 63
-        u8 anti_shift = 64 - getBitSize(size_e);
-        SSAInstruction* shifted_left = Shli(rm, anti_shift);
-        SSAInstruction* shift_right = Addi(shift_value, anti_shift);
-        SSAInstruction* msb_mask = ir_emit_get_shift_mask_right(block, shift_value);
-        result = Sar(shifted_left, shift_right);
-        o = Imm(0);
-        c = Equal(And(rm, msb_mask), msb_mask);
-        break;
-    }
-    }
-
-    p = Parity(result);
-    z = IsZero(result, size_e);
-    s = IsNegative(result, size_e);
-
-    SetCPAZSO(c, p, a, z, s, o);
-
-    SetRm(inst->operand_rm, result);
+SSAInstruction* IREmitter::VInsertInteger(SSAInstruction* integer, SSAInstruction* vector, u8 index, x86_size_e size) {
+    u64 immediate_data = (u64)size << 8 | index;
+    return insertInstruction(IROpcode::VInsertInteger, {integer, vector}, immediate_data);
 }
 
 void IREmitter::Group1(x86_instruction_t* inst) {
@@ -1096,21 +1114,23 @@ void IREmitter::Group1(x86_instruction_t* inst) {
         break;
     }
     case X86_GROUP1_ADC: {
-        SSAInstruction* carry_in = GetFlag(X86_REF_CF);
-        SSAInstruction* imm_carry = Add(imm, carry_in);
-        result = Add(rm, imm_carry);
-        c = ir_emit_get_carry_adc(block, rm, imm_carry, size_e);
-        o = ir_emit_get_overflow_add(block, rm, imm_carry, result, size_e);
-        a = ir_emit_get_aux_add(block, rm, imm_carry);
+        UNIMPLEMENTED();
+        // SSAInstruction* carry_in = GetFlag(X86_REF_CF);
+        // SSAInstruction* imm_carry = Add(imm, carry_in);
+        // result = Add(rm, imm_carry);
+        // c = ir_emit_get_carry_adc(block, rm, imm_carry, size_e);
+        // o = IsOverflowAdd(rm, imm_carry, result, size_e);
+        // a = IsAuxAdd(rm, imm_carry);
         break;
     }
     case X86_GROUP1_SBB: {
-        SSAInstruction* carry_in = GetFlag(X86_REF_CF);
-        SSAInstruction* imm_carry = Add(imm, carry_in);
-        result = Sub(rm, imm_carry);
-        c = ir_emit_get_carry_sbb(block, rm, imm_carry, size_e);
-        o = ir_emit_get_overflow_sub(block, rm, imm_carry, result, size_e);
-        a = ir_emit_get_aux_sub(block, rm, imm_carry);
+        UNIMPLEMENTED();
+        // SSAInstruction* carry_in = GetFlag(X86_REF_CF);
+        // SSAInstruction* imm_carry = Add(imm, carry_in);
+        // result = Sub(rm, imm_carry);
+        // c = ir_emit_get_carry_sbb(block, rm, imm_carry, size_e);
+        // o = IsOverflowSub(rm, imm_carry, result, size_e);
+        // a = IsAuxSub(rm, imm_carry);
         break;
     }
     case X86_GROUP1_OR: {
@@ -1152,6 +1172,292 @@ void IREmitter::Group1(x86_instruction_t* inst) {
     }
 }
 
+void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
+    x86_group2_e opcode = (x86_group2_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+
+    x86_size_e size_e = inst->operand_rm.size;
+    u8 shift_mask = size_e == X86_SIZE_QWORD ? 0x3F : 0x1F;
+    SSAInstruction* rm = GetRm(inst->operand_rm);
+    SSAInstruction* shift_value = Andi(shift_amount, shift_mask);
+    SSAInstruction* result = nullptr;
+    SSAInstruction* c = nullptr;
+    SSAInstruction* p = nullptr;
+    SSAInstruction* a = nullptr;
+    SSAInstruction* z = nullptr;
+    SSAInstruction* s = nullptr;
+    SSAInstruction* o = nullptr;
+
+    switch (opcode) {
+    case X86_GROUP2_ROL: {
+        result = Rol(rm, shift_value, size_e);
+        SSAInstruction* msb = IsNegative(result, size_e);
+        c = Andi(result, 1);
+        o = Xor(c, msb);
+        break;
+    }
+    case X86_GROUP2_ROR: {
+        result = Ror(rm, shift_value, size_e);
+        c = IsNegative(result, size_e);
+        WARN("ROR OF unimplemented");
+        break;
+    }
+    case X86_GROUP2_RCL: {
+        ERROR("Why? :(");
+        break;
+    }
+    case X86_GROUP2_RCR: {
+        ERROR("Why? :(");
+        break;
+    }
+    case X86_GROUP2_SAL:
+    case X86_GROUP2_SHL: {
+        SSAInstruction* shift = Sub(Imm(GetBitSize(size_e)), shift_value);
+        SSAInstruction* msb_mask = Shl(Imm(1), shift);
+        result = Shl(rm, shift_value);
+        c = Equal(And(rm, msb_mask), msb_mask);
+        SSAInstruction* sign = IsNegative(result, size_e);
+        o = Xor(c, sign);
+        break;
+    }
+    case X86_GROUP2_SHR: {
+        SSAInstruction* is_zero = Seqz(shift_value);
+        SSAInstruction* shift = Addi(shift_value, 1);
+        SSAInstruction* mask = Shl(Imm(1), shift);
+        SSAInstruction* msb_mask = Select(is_zero, Imm(0), mask);
+        result = Shr(rm, shift_value);
+        c = Equal(And(rm, msb_mask), msb_mask);
+        o = IsNegative(rm, size_e);
+        break;
+    }
+    case X86_GROUP2_SAR: {
+        // Shift left to place MSB to bit 63
+        u8 anti_shift = 64 - GetBitSize(size_e);
+        SSAInstruction* shifted_left = Shli(rm, anti_shift);
+        SSAInstruction* shift_right = Addi(shift_value, anti_shift);
+        SSAInstruction* is_zero = Seqz(shift_value);
+        SSAInstruction* shift = Addi(shift_value, 1);
+        SSAInstruction* mask = Shl(Imm(1), shift);
+        SSAInstruction* msb_mask = Select(is_zero, Imm(0), mask);
+        result = Sar(shifted_left, shift_right);
+        o = Imm(0);
+        c = Equal(And(rm, msb_mask), msb_mask);
+        break;
+    }
+    }
+
+    p = Parity(result);
+    z = IsZero(result, size_e);
+    s = IsNegative(result, size_e);
+
+    SetCPAZSO(c, p, a, z, s, o);
+
+    SetRm(inst->operand_rm, result);
+}
+
+void IREmitter::Group3(x86_instruction_t* inst) {
+    x86_group3_e opcode = (x86_group3_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+
+    x86_size_e size_e = inst->operand_rm.size;
+    SSAInstruction* rm = GetRm(inst->operand_rm);
+    SSAInstruction* result = nullptr;
+    SSAInstruction* c = nullptr;
+    SSAInstruction* p = nullptr;
+    SSAInstruction* a = nullptr;
+    SSAInstruction* z = nullptr;
+    SSAInstruction* s = nullptr;
+    SSAInstruction* o = nullptr;
+
+    switch (opcode) {
+    case X86_GROUP3_TEST:
+    case X86_GROUP3_TEST_: {
+        SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+        SSAInstruction* masked = And(rm, imm);
+        s = IsNegative(masked, size_e);
+        z = IsZero(masked, size_e);
+        p = Parity(masked);
+        break;
+    }
+    case X86_GROUP3_NOT: {
+        result = Not(rm);
+        break;
+    }
+    case X86_GROUP3_NEG: {
+        result = Neg(rm);
+        z = IsZero(result, size_e);
+        c = Seqz(z);
+        s = IsNegative(result, size_e);
+        o = IsOverflowSub(Imm(0), rm, result, size_e);
+        a = IsAuxSub(Imm(0), rm);
+        p = Parity(result);
+        break;
+    }
+    case X86_GROUP3_MUL: {
+        UNIMPLEMENTED();
+        break;
+    }
+    case X86_GROUP3_IMUL: {
+        switch (size_e) {
+        case X86_SIZE_BYTE: {
+            SSAInstruction* al = Sext(GetReg(X86_REF_RAX, X86_SIZE_BYTE), X86_SIZE_BYTE);
+            SSAInstruction* se_rm = Sext(rm, X86_SIZE_BYTE);
+            SSAInstruction* mul = Mul(al, se_rm);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            SSAInstruction* ax = Sext(GetReg(X86_REF_RAX, X86_SIZE_WORD), X86_SIZE_WORD);
+            SSAInstruction* se_rm = Sext(rm, X86_SIZE_WORD);
+            SSAInstruction* mul = Mul(ax, se_rm);
+            SSAInstruction* mul_high = Shri(mul, 16);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_WORD);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            SSAInstruction* eax = Sext(GetReg(X86_REF_RAX, X86_SIZE_DWORD), X86_SIZE_DWORD);
+            SSAInstruction* se_rm = Sext(rm, X86_SIZE_DWORD);
+            SSAInstruction* mul = Mul(eax, se_rm);
+            SSAInstruction* mul_high = Shri(mul, 32);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_DWORD);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_DWORD);
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            SSAInstruction* rax = GetReg(X86_REF_RAX, X86_SIZE_QWORD);
+            SSAInstruction* mul = Mul(rax, rm);
+            SSAInstruction* mul_high = Mulh(rax, rm);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_QWORD);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_QWORD);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+        break;
+    }
+    case X86_GROUP3_DIV: {
+        switch (size_e) {
+        case X86_SIZE_BYTE: {
+            // ax / rm, al := quotient, ah := remainder
+            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD);
+            SSAInstruction* quotient = Divuw(ax, rm);
+            SSAInstruction* remainder = Remuw(ax, rm);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_BYTE);
+            SetReg(remainder, X86_REF_RAX, X86_SIZE_BYTE, true);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            // dx:ax / rm, ax := quotient, dx := remainder
+            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD);
+            SSAInstruction* dx = GetReg(X86_REF_RDX, X86_SIZE_WORD);
+            SSAInstruction* dx_shifted = Shli(dx, 16);
+            SSAInstruction* dx_ax = Or(dx_shifted, ax);
+            SSAInstruction* quotient = Divuw(dx_ax, rm);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_WORD);
+            SSAInstruction* remainder = Remuw(dx_ax, rm);
+            SetReg(remainder, X86_REF_RDX, X86_SIZE_WORD);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            // edx:eax / rm, eax := quotient, edx := remainder
+            SSAInstruction* eax = GetReg(X86_REF_RAX, X86_SIZE_DWORD);
+            SSAInstruction* edx = GetReg(X86_REF_RDX, X86_SIZE_DWORD);
+            SSAInstruction* edx_shifted = Shli(edx, 32);
+            SSAInstruction* edx_eax = Or(edx_shifted, eax);
+            SSAInstruction* quotient = Divu(edx_eax, rm);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_DWORD);
+            SSAInstruction* remainder = Remu(edx_eax, rm);
+            SetReg(remainder, X86_REF_RDX, X86_SIZE_DWORD);
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            // rdx:rax / rm, rax := quotient, rdx := remainder
+            constexpr static std::array reg_refs = {X86_REF_RAX, X86_REF_RDX};
+
+            storePartialState(reg_refs);
+
+            SSAInstruction* instruction = insertInstruction(IROpcode::Div128, {rm});
+            instruction->Lock();
+
+            loadPartialState(reg_refs);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+        break;
+    }
+    case X86_GROUP3_IDIV: {
+        switch (size_e) {
+        case X86_SIZE_BYTE: {
+            // ax / rm, al := quotient, ah := remainder
+            SSAInstruction* ax = Sext(GetReg(X86_REF_RAX), X86_SIZE_WORD);
+            SSAInstruction* se_rm = Sext(rm, X86_SIZE_BYTE);
+            SSAInstruction* quotient = Divw(ax, se_rm);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_BYTE);
+            SSAInstruction* remainder = Remw(ax, se_rm);
+            SetReg(remainder, X86_REF_RAX, X86_SIZE_BYTE, true);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            // dx:ax / rm, ax := quotient, dx := remainder
+            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD);
+            SSAInstruction* dx = GetReg(X86_REF_RDX, X86_SIZE_WORD);
+            SSAInstruction* dx_shifted = Shli(dx, 16);
+            SSAInstruction* dx_ax = Or(dx_shifted, ax);
+            SSAInstruction* se_rm = Sext(rm, X86_SIZE_WORD);
+            SSAInstruction* quotient = Divw(dx_ax, se_rm);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_WORD);
+            SSAInstruction* remainder = Remw(dx_ax, se_rm);
+            SetReg(remainder, X86_REF_RDX, X86_SIZE_WORD);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            // edx:eax / rm, eax := quotient, edx := remainder
+            SSAInstruction* eax = GetReg(X86_REF_RAX, X86_SIZE_DWORD);
+            SSAInstruction* edx = GetReg(X86_REF_RDX, X86_SIZE_DWORD);
+            SSAInstruction* edx_shifted = Shli(edx, 32);
+            SSAInstruction* edx_eax = Or(edx_shifted, eax);
+            SSAInstruction* se_rm = Sext(rm, X86_SIZE_DWORD);
+            SSAInstruction* quotient = Div(edx_eax, se_rm);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_DWORD);
+            SSAInstruction* remainder = Rem(edx_eax, se_rm);
+            SetReg(remainder, X86_REF_RDX, X86_SIZE_DWORD);
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            // rdx:rax / rm, rax := quotient, rdx := remainder
+            constexpr static std::array reg_refs = {X86_REF_RAX, X86_REF_RDX};
+
+            storePartialState(reg_refs);
+
+            SSAInstruction* instruction = insertInstruction(IROpcode::Div128, {rm});
+            instruction->Lock();
+
+            loadPartialState(reg_refs);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+        break;
+    }
+    }
+
+    SetCPAZSO(c, p, a, z, s, o);
+
+    if (result) {
+        SetRm(inst->operand_rm, result);
+    }
+}
+
+SSAInstruction* IREmitter::GetThreadStatePointer() {
+    return insertInstruction(IROpcode::GetThreadStatePointer, {});
+}
+
 void IREmitter::RepStart(IRBlock* loop_block, IRBlock* exit_block) {
     SSAInstruction* rcx = GetReg(X86_REF_RCX);
     SSAInstruction* condition = Seqz(rcx);
@@ -1190,4 +1496,9 @@ void IREmitter::TerminateJump(IRBlock* block) {
 void IREmitter::TerminateJumpConditional(SSAInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
     ASSERT(block->GetTermination() == Termination::Null);
     block->TerminateJumpConditional(condition, target_true, target_false);
+}
+
+void IREmitter::CallHostFunction(u64 function_address) {
+    SSAInstruction* instruction = insertInstruction(IROpcode::CallHostFunction, {}, function_address);
+    instruction->Lock();
 }

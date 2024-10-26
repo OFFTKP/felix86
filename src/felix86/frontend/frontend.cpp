@@ -7,7 +7,6 @@
 #include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/frontend/instruction.hpp"
-#include "felix86/ir/emitter.hpp"
 #include "felix86/ir/handlers.hpp"
 
 typedef enum : u8 {
@@ -647,7 +646,7 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
             /* length:          */ 15,
             /* instruction:     */ &zydis_inst))) {
         std::string buffer = fmt::format("{:016x} {}", (state->current_address - g_base_address), zydis_inst.text);
-        ir_emit_runtime_comment(state->current_block, buffer);
+        ir.Comment(buffer);
     }
 
     bool is_rep = rep_type != NONE;
@@ -696,11 +695,11 @@ void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* b
     if (emulator.GetConfig().print_state) {
         for (u8 i = 0; i < X86_REF_COUNT; i++) {
             // Writeback all state
-            SSAInstruction* value = ir_emit_get_guest(block, x86_ref_e(i));
-            ir_emit_store_guest_to_memory(block, x86_ref_e(i), value);
+            SSAInstruction* value = ir.GetGuest(x86_ref_e(i));
+            ir.StoreGuestToMemory(value, x86_ref_e(i));
         }
 
-        ir_emit_call_host_function(block, (u64)&print_gprs);
+        ir.CallHostFunction((u64)&print_gprs);
     }
 }
 

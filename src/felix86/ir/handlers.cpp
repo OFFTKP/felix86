@@ -2,7 +2,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
-#include "felix86/ir/emitter.hpp"
+#include "felix86/frontend/frontend.hpp"
 #include "felix86/ir/emitter_v2.hpp"
 #include "felix86/ir/instruction.hpp"
 
@@ -469,7 +469,7 @@ IR_HANDLE(imul_r_rm_imm) {
 IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     x86_size_e size_e = inst->operand_imm.size;
     i64 immediate = sext(inst->operand_imm.immediate.data, size_e);
-    SSAInstruction* condition = ir_emit_get_cc(BLOCK, inst->opcode);
+    SSAInstruction* condition = ir.GetCC(inst->opcode);
     SSAInstruction* condition_mov = ir.Snez(condition);
     u64 jump_address_false = ir.GetCurrentAddress() + inst->length;
     u64 jump_address_true = ir.GetCurrentAddress() + inst->length + immediate;
@@ -484,7 +484,7 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
 }
 
 IR_HANDLE(group1) { // add/or/adc/sbb/and/sub/xor/cmp
-    ir_emit_group1_imm(BLOCK, inst);
+    ir.Group1(inst);
 }
 
 IR_HANDLE(test_rm_reg) { // test rm8, r8 - 0x84
@@ -624,7 +624,7 @@ IR_HANDLE(stosd) { // stosd - 0xab
     ir.WriteMemory(rdi, rax, size_e);
 
     // Assume DF is 0 for now
-    SSAInstruction* rdi_add = ir.Addi(rdi, get_bit_size(size_e) / 8);
+    SSAInstruction* rdi_add = ir.Addi(rdi, ir.GetBitSize(size_e) / 8);
     ir.SetReg(rdi_add, X86_REF_RDI, address_size);
 }
 
@@ -920,7 +920,7 @@ IR_HANDLE(movhps_xmm_m64) {
 
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
     SSAInstruction* m64 = ir.GetRm(inst->operand_rm);
-    SSAInstruction* xmm_dest = ir.InsertIntegerToVector(m64, xmm, 1, X86_SIZE_QWORD);
+    SSAInstruction* xmm_dest = ir.VInsertInteger(m64, xmm, 1, X86_SIZE_QWORD);
     ir.SetReg(inst->operand_reg, xmm_dest);
 }
 
@@ -936,7 +936,7 @@ IR_HANDLE(rdtsc) { // rdtsc - 0x0f 0x31
 IR_HANDLE(cmovcc) { // cmovcc - 0x0f 0x40-0x4f
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* condition = ir_emit_get_cc(BLOCK, inst->opcode);
+    SSAInstruction* condition = ir.GetCC(inst->opcode);
     SSAInstruction* value = ir.Select(condition, rm, reg);
     ir.SetReg(inst->operand_reg, value);
 }
@@ -946,7 +946,7 @@ IR_HANDLE(movq_mm_rm32) { // movq mm, rm32 - 0x0f 0x6e
 }
 
 IR_HANDLE(setcc) { // setcc - 0x0f 0x90-0x9f
-    ir_emit_setcc(BLOCK, inst);
+    ir.SetCC(inst);
 }
 
 IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
@@ -956,7 +956,7 @@ IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
 IR_HANDLE(bt) { // bt - 0x0f 0xa3
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* mask = ir.Imm(get_bit_size(inst->operand_reg.size) - 1);
+    SSAInstruction* mask = ir.Imm(ir.GetBitSize(inst->operand_reg.size) - 1);
     SSAInstruction* shift = ir.And(reg, mask);
     SSAInstruction* bit = ir.Shl(ir.Imm(1), shift);
     SSAInstruction* result = ir.And(rm, bit);

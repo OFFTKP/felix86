@@ -36,6 +36,8 @@ struct IREmitter {
         setGuest(reg, value);
     }
 
+    void Comment(const std::string& comment);
+
     SSAInstruction* GetFlag(x86_ref_e flag);
     SSAInstruction* GetFlagNot(x86_ref_e flag);
     void SetFlag(SSAInstruction* value, x86_ref_e flag);
@@ -122,6 +124,7 @@ struct IREmitter {
     SSAInstruction* VAnd(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VOr(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VXor(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VInsertInteger(SSAInstruction* integer, SSAInstruction* vector, u8 index, x86_size_e size);
     SSAInstruction* IToV(SSAInstruction* value);
     SSAInstruction* VToI(SSAInstruction* value);
     SSAInstruction* Lea(const x86_operand_t& operand);
@@ -134,13 +137,18 @@ struct IREmitter {
     SSAInstruction* IsCarrySub(SSAInstruction* source1, SSAInstruction* source2);
     SSAInstruction* IsAuxSub(SSAInstruction* source1, SSAInstruction* source2);
     SSAInstruction* IsOverflowSub(SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e);
+    SSAInstruction* GetThreadStatePointer();
     void Group1(x86_instruction_t* inst);
     void Group2(x86_instruction_t* inst, SSAInstruction* shift_amount);
+    void Group3(x86_instruction_t* inst);
     void Syscall();
     void Cpuid();
     void Rdtsc();
+    SSAInstruction* GetCC(u8 opcode);
+    void SetCC(x86_instruction_t* inst);
     void SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o);
     void SetExitReason(ExitReason reason);
+    void SetFlags(SSAInstruction* flags);
 
     void RepStart(IRBlock* loop_block, IRBlock* exit_block);
     void RepEnd(x86_rep_e rep_type, IRBlock* loop_block, IRBlock* exit_block);
@@ -156,6 +164,18 @@ struct IREmitter {
         ASSERT(block);
         this->block = block;
     }
+
+    u16 GetBitSize(x86_size_e size);
+
+    SSAInstruction* GetGuest(x86_ref_e ref) {
+        return getGuest(ref);
+    }
+
+    void SetGuest(x86_ref_e ref, SSAInstruction* value) {
+        setGuest(ref, value);
+    }
+
+    void CallHostFunction(u64 function_address);
 
 private:
     SSAInstruction* getGuest(x86_ref_e ref);
@@ -188,7 +208,6 @@ private:
 
     void loadPartialState(std::span<const x86_ref_e> refs);
     void storePartialState(std::span<const x86_ref_e> refs);
-    u16 getBitSize(x86_size_e size);
 
     IRBlock* block = nullptr;
 

@@ -1,5 +1,5 @@
 #include "felix86/common/log.hpp"
-#include "felix86/ir/emitter.hpp"
+#include "felix86/ir/emitter_v2.hpp"
 #include "felix86/ir/function.hpp"
 
 IRFunction::IRFunction(u64 address) {
@@ -10,21 +10,23 @@ IRFunction::IRFunction(u64 address) {
     entry->SetIndex(0);
     exit->SetIndex(1);
 
-    thread_state_pointer = ir_emit_get_thread_state_pointer(entry);
+    IREmitter entry_emitter(*entry, IR_NO_ADDRESS);
+    thread_state_pointer = entry_emitter.GetThreadStatePointer();
 
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Load all state from memory and run the set_guest instruction
         // See ssa_pass.cpp for more information
-        SSAInstruction* value = ir_emit_load_guest_from_memory(entry, x86_ref_e(i));
-        ir_emit_set_guest(entry, x86_ref_e(i), value);
+        SSAInstruction* value = entry_emitter.LoadGuestFromMemory(x86_ref_e(i));
+        entry_emitter.SetGuest(x86_ref_e(i), value);
     }
 
+    IREmitter exit_emitter(*exit, IR_NO_ADDRESS);
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Emit get_guest for every piece of state and store it to memory
         // These get_guests will be replaced with movs from a temporary or a phi
         // during the ssa pass
-        SSAInstruction* value = ir_emit_get_guest(exit, x86_ref_e(i));
-        ir_emit_store_guest_to_memory(exit, x86_ref_e(i), value);
+        SSAInstruction* value = exit_emitter.GetGuest(x86_ref_e(i));
+        exit_emitter.StoreGuestToMemory(value, x86_ref_e(i));
     }
 
     start_address_block = CreateBlockAt(address);
