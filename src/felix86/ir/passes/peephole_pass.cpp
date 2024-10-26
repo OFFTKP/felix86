@@ -705,11 +705,8 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
         if (!inst.IsLocked()) {
             bool local_changed = false;
 #define CHECK(x)                                                                                                                                     \
-    if (!local_changed) {                                                                                                                            \
-        local_changed |= x(inst);                                                                                                                    \
-        if (local_changed)                                                                                                                           \
-            printf("Peephole: %s\n", #x);                                                                                                            \
-    }
+    if (!local_changed)                                                                                                                              \
+        local_changed |= x(inst);
             switch (inst.GetOpcode()) {
             case IROpcode::Add: {
                 CHECK(PeepholeAddImmediates);
