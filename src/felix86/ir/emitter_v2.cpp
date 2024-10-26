@@ -1504,12 +1504,12 @@ void IREmitter::RepEnd(x86_rep_e rep_type, IRBlock* loop_block, IRBlock* exit_bl
 }
 
 void IREmitter::TerminateJump(IRBlock* block) {
-    ASSERT(block->GetTermination() == Termination::Null);
+    ASSERT_MSG(block->GetTermination() == Termination::Null, "Block %s already has a termination", block->GetName().c_str());
     block->TerminateJump(block);
 }
 
 void IREmitter::TerminateJumpConditional(SSAInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
-    ASSERT(block->GetTermination() == Termination::Null);
+    ASSERT_MSG(block->GetTermination() == Termination::Null, "Block %s already has a termination", block->GetName().c_str());
     block->TerminateJumpConditional(condition, target_true, target_false);
 }
 
