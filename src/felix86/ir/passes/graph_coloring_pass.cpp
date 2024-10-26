@@ -199,8 +199,10 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
             }
 
             for (u8 j = 0; j < inst.GetOperandCount(); j++) {
-                ASSERT_MSG(instructions.find(inst.GetOperand(j)) != instructions.end(), "Operand %d not found in map for instruction %s",
-                           inst.GetOperand(j), inst.Print().c_str());
+                if (instructions.at(inst.GetOperand(j)).inst == nullptr) {
+                    ERROR("Null operand %d for instruction %s", j, GetNameString(inst.GetName()).c_str());
+                }
+
                 if (should_consider(instructions, inst.GetOperand(j)) &&
                     std::find(def[i].begin(), def[i].end(), inst.GetOperand(j)) == def[i].end()) {
                     // Not defined in this block ie. upwards exposed, live range goes outside current block
