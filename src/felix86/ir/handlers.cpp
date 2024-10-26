@@ -3,7 +3,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/frontend/frontend.hpp"
-#include "felix86/ir/emitter_v2.hpp"
+#include "felix86/ir/emitter.hpp"
 #include "felix86/ir/instruction.hpp"
 
 namespace {
@@ -859,7 +859,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         break;
     }
     default: {
-        ERROR("Unimplemented group 5 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress() - g_base_address);
+        ERROR("Unimplemented group 5 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
         break;
     }
     }
@@ -898,7 +898,7 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
         break;
     }
     default: {
-        ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress() - g_base_address);
+        ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
         break;
     }
     }
@@ -942,7 +942,7 @@ IR_HANDLE(cmovcc) { // cmovcc - 0x0f 0x40-0x4f
 }
 
 IR_HANDLE(movq_mm_rm32) { // movq mm, rm32 - 0x0f 0x6e
-    ERROR("Unimplemented instruction: movq mm, rm32 - 0x0f 0x6e during %016lx", ir.GetCurrentAddress() - g_base_address);
+    ERROR("Unimplemented instruction: movq mm, rm32 - 0x0f 0x6e during %016lx", ir.GetCurrentAddress());
 }
 
 IR_HANDLE(setcc) { // setcc - 0x0f 0x90-0x9f
@@ -1076,7 +1076,7 @@ IR_HANDLE(group14_xmm) { // group14 xmm - 0x66 0x0f 0x73
         break;
     }
     default: {
-        ERROR("Unimplemented group 14 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress() - g_base_address);
+        ERROR("Unimplemented group 14 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
         break;
     }
     }

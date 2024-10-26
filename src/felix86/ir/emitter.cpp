@@ -1,4 +1,4 @@
-#include "felix86/ir/emitter_v2.hpp"
+#include "felix86/ir/emitter.hpp"
 
 namespace {
 u64 ImmSext(u64 imm, x86_size_e size) {
@@ -871,7 +871,7 @@ void IREmitter::setGpr8High(x86_ref_e ref, SSAInstruction* value) {
     }
 
     SSAInstruction* old = getGpr64(ref);
-    SSAInstruction* masked_old = Andi(old, 0xFFFFFFFFFFFF00FF);
+    SSAInstruction* masked_old = And(old, Imm(0xFFFFFFFFFFFF00FF));
     SSAInstruction* masked_value = Zext(value, X86_SIZE_BYTE);
     SSAInstruction* shifted_value = Shli(masked_value, 8);
     SSAInstruction* new_value = Or(masked_old, shifted_value);
@@ -884,7 +884,7 @@ void IREmitter::setGpr16(x86_ref_e ref, SSAInstruction* value) {
     }
 
     SSAInstruction* old = getGpr64(ref);
-    SSAInstruction* masked_old = Andi(old, 0xFFFFFFFFFFFF0000);
+    SSAInstruction* masked_old = And(old, Imm(0xFFFFFFFFFFFF0000));
     SSAInstruction* masked_value = Zext(value, X86_SIZE_WORD);
     SSAInstruction* new_value = Or(masked_old, masked_value);
     setGuest(ref, new_value);

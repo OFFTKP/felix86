@@ -302,12 +302,6 @@ void Elf::Load(const std::filesystem::path& path) {
     phnum = ehdr.e_phnum;
     phent = ehdr.e_phentsize;
 
-    if (!is_interpreter) {
-        g_base_address = (u64)program;
-    } else {
-        g_interpreter_address = (u64)program;
-    }
-
     fclose(file);
 
     ok = true;

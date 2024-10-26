@@ -1,5 +1,5 @@
 #include "felix86/common/log.hpp"
-#include "felix86/ir/emitter_v2.hpp"
+#include "felix86/ir/emitter.hpp"
 #include "felix86/ir/function.hpp"
 
 IRFunction::IRFunction(u64 address) {

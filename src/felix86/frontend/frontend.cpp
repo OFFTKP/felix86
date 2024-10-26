@@ -185,7 +185,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
 }
 
 void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
-    u8* data = (u8*)state->current_address;
+    u8* data = (u8*)ir.GetCurrentAddress();
 
     x86_instruction_t inst = {};
     int index = 0;
@@ -629,7 +629,7 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
         inst.operand_rm.memory.gs_override = gs_override;
         inst.operand_rm.memory.lock = lock;
         if (inst.operand_rm.memory.base == X86_REF_RIP) {
-            inst.operand_rm.memory.displacement += state->current_address + index;
+            inst.operand_rm.memory.displacement += ir.GetCurrentAddress() + index;
             inst.operand_rm.memory.base = X86_REF_COUNT;
         }
     } else if (inst.operand_rm.type != X86_OP_TYPE_NONE) {
@@ -641,11 +641,11 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
     ZydisDisassembledInstruction zydis_inst;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(
             /* machine_mode:    */ ZYDIS_MACHINE_MODE_LONG_64,
-            /* runtime_address: */ state->current_address - g_base_address,
+            /* runtime_address: */ ir.GetCurrentAddress(),
             /* buffer:          */ data,
             /* length:          */ 15,
             /* instruction:     */ &zydis_inst))) {
-        std::string buffer = fmt::format("{:016x} {}", (state->current_address - g_base_address), zydis_inst.text);
+        std::string buffer = fmt::format("{:016x} {}", ir.GetCurrentAddress(), zydis_inst.text);
         ir.Comment(buffer);
     }
 
@@ -655,7 +655,7 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
 
     if (is_rep) {
         loop_block = state->function->CreateBlock();
-        exit_block = state->function->CreateBlockAt(state->current_address + inst.length);
+        exit_block = state->function->CreateBlockAt(ir.GetCurrentAddress() + inst.length);
         ir.RepStart(loop_block, exit_block);
 
         // Write the instruction in the loop body
@@ -670,7 +670,7 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
         frontend_compile_block(*state->emulator, state->function, exit_block);
     }
 
-    state->current_address += inst.length;
+    ir.IncrementAddress(inst.length);
 }
 
 void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* block) {
@@ -681,8 +681,6 @@ void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* b
     FrontendState state = {0};
     state.emulator = &emulator;
     state.function = function;
-    state.current_block = block;
-    state.current_address = block->GetStartAddress();
 
     IREmitter ir(*block, block->GetStartAddress());
 

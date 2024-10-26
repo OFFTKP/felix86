@@ -2,7 +2,7 @@
 
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/frontend/instruction.hpp"
-#include "felix86/ir/emitter_v2.hpp"
+#include "felix86/ir/emitter.hpp"
 
 typedef void (*ir_handle_fn_t)(FrontendState* state, IREmitter& ir, x86_instruction_t* inst);
 
