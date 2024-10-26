@@ -224,8 +224,13 @@ SSAInstruction* IREmitter::And(SSAInstruction* lhs, SSAInstruction* rhs) {
 }
 
 SSAInstruction* IREmitter::Andi(SSAInstruction* lhs, u64 rhs) {
-    ASSERT(IsValidSigned12BitImm(rhs));
-    return insertInstruction(IROpcode::Andi, {lhs}, rhs);
+    if (IsValidSigned12BitImm(rhs)) {
+        return insertInstruction(IROpcode::Andi, {lhs}, rhs);
+    } else {
+        WARN("Andi reduced to And with immediate: 0x%lx", rhs);
+        SSAInstruction* imm = Imm(rhs);
+        return insertInstruction(IROpcode::And, {lhs, imm});
+    }
 }
 
 SSAInstruction* IREmitter::Or(SSAInstruction* lhs, SSAInstruction* rhs) {
@@ -233,8 +238,13 @@ SSAInstruction* IREmitter::Or(SSAInstruction* lhs, SSAInstruction* rhs) {
 }
 
 SSAInstruction* IREmitter::Ori(SSAInstruction* lhs, u64 rhs) {
-    ASSERT(IsValidSigned12BitImm(rhs));
-    return insertInstruction(IROpcode::Ori, {lhs}, rhs);
+    if (IsValidSigned12BitImm(rhs)) {
+        return insertInstruction(IROpcode::Ori, {lhs}, rhs);
+    } else {
+        WARN("Ori reduced to Or with immediate: 0x%lx", rhs);
+        SSAInstruction* imm = Imm(rhs);
+        return insertInstruction(IROpcode::Or, {lhs, imm});
+    }
 }
 
 SSAInstruction* IREmitter::Xor(SSAInstruction* lhs, SSAInstruction* rhs) {
@@ -242,8 +252,13 @@ SSAInstruction* IREmitter::Xor(SSAInstruction* lhs, SSAInstruction* rhs) {
 }
 
 SSAInstruction* IREmitter::Xori(SSAInstruction* lhs, u64 rhs) {
-    ASSERT(IsValidSigned12BitImm(rhs));
-    return insertInstruction(IROpcode::Xori, {lhs}, rhs);
+    if (IsValidSigned12BitImm(rhs)) {
+        return insertInstruction(IROpcode::Xori, {lhs}, rhs);
+    } else {
+        WARN("Xori reduced to Xor with immediate: 0x%lx", rhs);
+        SSAInstruction* imm = Imm(rhs);
+        return insertInstruction(IROpcode::Xor, {lhs, imm});
+    }
 }
 
 SSAInstruction* IREmitter::Not(SSAInstruction* value) {
