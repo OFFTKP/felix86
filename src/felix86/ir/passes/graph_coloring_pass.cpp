@@ -127,16 +127,19 @@ static InstructionMap create_instruction_map(BackendFunction& function) {
 }
 
 static bool should_consider_gpr(const InstructionMap& map, u32 inst) {
+    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map");
     const BackendInstruction* instruction = map.at(inst).inst;
     return instruction->GetDesiredType() == AllocationType::GPR && !reserved_gpr(*instruction);
 }
 
 static bool should_consider_fpr(const InstructionMap& map, u32 inst) {
+    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map");
     const BackendInstruction* instruction = map.at(inst).inst;
     return instruction->GetDesiredType() == AllocationType::FPR;
 }
 
 static bool should_consider_vec(const InstructionMap& map, u32 inst) {
+    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map");
     const BackendInstruction* instruction = map.at(inst).inst;
     return instruction->GetDesiredType() == AllocationType::Vec;
 }
@@ -196,6 +199,8 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
             }
 
             for (u8 j = 0; j < inst.GetOperandCount(); j++) {
+                ASSERT_MSG(instructions.find(inst.GetOperand(j)) != instructions.end(), "Operand %d not found in map for instruction %s",
+                           inst.GetOperand(j), inst.Print().c_str());
                 if (should_consider(instructions, inst.GetOperand(j)) &&
                     std::find(def[i].begin(), def[i].end(), inst.GetOperand(j)) == def[i].end()) {
                     // Not defined in this block ie. upwards exposed, live range goes outside current block
