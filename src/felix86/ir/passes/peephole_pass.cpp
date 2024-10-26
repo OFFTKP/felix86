@@ -702,8 +702,8 @@ bool PeepholeZextImmediate(SSAInstruction& inst) {
 bool PassManager::peepholePassBlock(IRBlock* block) {
     bool changed = false;
     for (SSAInstruction& inst : block->GetInstructions()) {
+        bool local_changed = false;
         if (!inst.IsLocked()) {
-            bool local_changed = false;
 #define CHECK(x)                                                                                                                                     \
     if (!local_changed)                                                                                                                              \
         local_changed |= x(inst);
@@ -821,13 +821,6 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 CHECK(PeepholeSubZero);
                 break;
             }
-            case IROpcode::WriteByte:
-            case IROpcode::WriteWord:
-            case IROpcode::WriteDWord:
-            case IROpcode::WriteQWord: {
-                CHECK(PeepholeWriteRelative);
-                break;
-            }
             case IROpcode::Zext8:
             case IROpcode::Zext16:
             case IROpcode::Zext32: {
@@ -838,8 +831,21 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 break;
             }
 
-            changed |= local_changed;
+        } else {
+            // Safe optimizations even for locked instructions
+            switch (inst.GetOpcode()) {
+            case IROpcode::WriteByte:
+            case IROpcode::WriteWord:
+            case IROpcode::WriteDWord:
+            case IROpcode::WriteQWord: {
+                CHECK(PeepholeWriteRelative);
+                break;
+            }
+            default:
+                break;
+            }
         }
+        changed |= local_changed;
     }
 
     return changed;
