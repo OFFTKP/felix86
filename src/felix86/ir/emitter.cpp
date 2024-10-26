@@ -587,7 +587,7 @@ SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
 
     SSAInstruction* address = base_final;
     if (index) {
-        ASSERT(operand.memory.scale == 1 || operand.memory.scale == 2 || operand.memory.scale == 4 || operand.memory.scale == 8);
+        ASSERT(operand.memory.scale >= 0 && operand.memory.scale <= 3);
         SSAInstruction* scaled_index = Shli(index, operand.memory.scale);
         address = Add(base_final, scaled_index);
     }
