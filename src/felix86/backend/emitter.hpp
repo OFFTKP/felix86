@@ -130,6 +130,12 @@ private:
     static void EmitSelect(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitIToV(Backend&, biscuit::Vec, biscuit::GPR);
     static void EmitVToI(Backend&, biscuit::GPR, biscuit::Vec);
+    static void EmitSetVectorStateFloat(Backend&);
+    static void EmitSetVectorStateDouble(Backend&);
+    static void EmitSetVectorStatePackedByte(Backend&);
+    static void EmitSetVectorStatePackedWord(Backend&);
+    static void EmitSetVectorStatePackedDWord(Backend&);
+    static void EmitSetVectorStatePackedQWord(Backend&);
     static void EmitVInsertInteger(Backend&, biscuit::Vec, biscuit::GPR, biscuit::Vec, u64);
     static void EmitVExtractInteger(Backend&, biscuit::GPR, biscuit::Vec, u64);
     static void EmitVPackedShuffleDWord(Backend&, biscuit::Vec, biscuit::Vec, u64);

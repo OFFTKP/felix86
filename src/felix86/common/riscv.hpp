@@ -106,3 +106,15 @@ enum class MemoryOrdering {
     Rl = 0b10,
     AqRl = 0b11,
 };
+
+// These are a higher level abstraction of VL and VTYPE combinations
+// that are useful when recompiling x86-64 to RISC-V. Particularily we care about
+// the different ways the xmm registers can be used.
+enum class VectorType {
+    Float,
+    Double,
+    PackedByte,
+    PackedWord,
+    PackedDWord,
+    PackedQWord,
+};

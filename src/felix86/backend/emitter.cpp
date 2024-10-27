@@ -982,6 +982,37 @@ void Emitter::EmitVToI(Backend& backend, biscuit::GPR Rd, biscuit::Vec Vs) {
     AS.VMV_XS(Rd, Vs);
 }
 
+void Emitter::EmitSetVectorStateFloat(Backend& backend) {
+    // Operate on one element, 32-bits
+    AS.VSETIVLI(x0, 1, SEW::E32);
+}
+
+void Emitter::EmitSetVectorStateDouble(Backend& backend) {
+    // Operate on one element, 64-bits
+    AS.VSETIVLI(x0, 1, SEW::E64);
+}
+
+void Emitter::EmitSetVectorStatePackedByte(Backend& backend) {
+    // Operate on VLEN/8 elements, 8-bits
+    static_assert(SUPPORTED_VLEN / 8 < 31); // for when we upgrade to 256-bit vectors
+    AS.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
+}
+
+void Emitter::EmitSetVectorStatePackedWord(Backend& backend) {
+    // Operate on VLEN/16 elements, 16-bits
+    AS.VSETIVLI(x0, SUPPORTED_VLEN / 16, SEW::E16);
+}
+
+void Emitter::EmitSetVectorStatePackedDWord(Backend& backend) {
+    // Operate on VLEN/32 elements, 32-bits
+    AS.VSETIVLI(x0, SUPPORTED_VLEN / 32, SEW::E32);
+}
+
+void Emitter::EmitSetVectorStatePackedQWord(Backend& backend) {
+    // Operate on VLEN/64 elements, 64-bits
+    AS.VSETIVLI(x0, SUPPORTED_VLEN / 64, SEW::E64);
+}
+
 void Emitter::EmitVInsertInteger(Backend& backend, biscuit::Vec, biscuit::GPR, biscuit::Vec, u64) {
     UNREACHABLE();
 }

@@ -37,9 +37,9 @@ Backend::Backend(Emulator& emulator) : emulator(emulator), memory(allocateCodeCa
     bool has_fpu = cpuinfo.Has(RISCVExtension::D) && cpuinfo.Has(RISCVExtension::F);
     bool has_vector = cpuinfo.Has(RISCVExtension::V);
 
-    if (!has_atomic || !has_compressed || !has_integer || !has_mul || !has_fpu || !has_vector || cpuinfo.GetVlenb() != 128) {
+    if (!has_atomic || !has_compressed || !has_integer || !has_mul || !has_fpu || !has_vector || cpuinfo.GetVlenb() * 8 != SUPPORTED_VLEN) {
         if (!g_testing) // too much spam if testing
-            WARN("Backend is missing some extensions or doesn't have VLEN=128");
+            WARN("Backend is missing some extensions or VLEN != %d", SUPPORTED_VLEN);
     }
 }
 

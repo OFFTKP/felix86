@@ -140,6 +140,12 @@ struct IREmitter {
     SSAInstruction* IsAuxSub(SSAInstruction* source1, SSAInstruction* source2);
     SSAInstruction* IsOverflowSub(SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e);
     SSAInstruction* GetThreadStatePointer();
+    void SetVectorStateFloat();
+    void SetVectorStateDouble();
+    void SetVectorStatePackedByte();
+    void SetVectorStatePackedWord();
+    void SetVectorStatePackedDWord();
+    void SetVectorStatePackedQWord();
     void Group1(x86_instruction_t* inst);
     void Group2(x86_instruction_t* inst, SSAInstruction* shift_amount);
     void Group3(x86_instruction_t* inst);

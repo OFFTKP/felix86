@@ -1486,6 +1486,36 @@ SSAInstruction* IREmitter::GetThreadStatePointer() {
     return insertInstruction(IROpcode::GetThreadStatePointer, {});
 }
 
+void IREmitter::SetVectorStateFloat() {
+    SSAInstruction* instruction = insertInstruction(IROpcode::SetVectorStateFloat, {});
+    instruction->Lock();
+}
+
+void IREmitter::SetVectorStateDouble() {
+    SSAInstruction* instruction = insertInstruction(IROpcode::SetVectorStateDouble, {});
+    instruction->Lock();
+}
+
+void IREmitter::SetVectorStatePackedByte() {
+    SSAInstruction* instruction = insertInstruction(IROpcode::SetVectorStatePackedByte, {});
+    instruction->Lock();
+}
+
+void IREmitter::SetVectorStatePackedWord() {
+    SSAInstruction* instruction = insertInstruction(IROpcode::SetVectorStatePackedWord, {});
+    instruction->Lock();
+}
+
+void IREmitter::SetVectorStatePackedDWord() {
+    SSAInstruction* instruction = insertInstruction(IROpcode::SetVectorStatePackedDWord, {});
+    instruction->Lock();
+}
+
+void IREmitter::SetVectorStatePackedQWord() {
+    SSAInstruction* instruction = insertInstruction(IROpcode::SetVectorStatePackedQWord, {});
+    instruction->Lock();
+}
+
 void IREmitter::RepStart(IRBlock* loop_block, IRBlock* exit_block) {
     SSAInstruction* rcx = GetReg(X86_REF_RCX);
     SSAInstruction* condition = Seqz(rcx);

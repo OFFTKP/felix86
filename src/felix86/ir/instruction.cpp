@@ -51,6 +51,12 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
         return IRType::Void;
     }
     case IROpcode::Null:
+    case IROpcode::SetVectorStateFloat:
+    case IROpcode::SetVectorStateDouble:
+    case IROpcode::SetVectorStatePackedByte:
+    case IROpcode::SetVectorStatePackedWord:
+    case IROpcode::SetVectorStatePackedDWord:
+    case IROpcode::SetVectorStatePackedQWord:
     case IROpcode::CallHostFunction:
     case IROpcode::SetExitReason:
     case IROpcode::Comment:
@@ -289,6 +295,12 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         BAD(AmoCAS128); // implme
 
         VALIDATE_OPS_INT(GetThreadStatePointer, 0);
+        VALIDATE_OPS_INT(SetVectorStateFloat, 0);
+        VALIDATE_OPS_INT(SetVectorStateDouble, 0);
+        VALIDATE_OPS_INT(SetVectorStatePackedByte, 0);
+        VALIDATE_OPS_INT(SetVectorStatePackedWord, 0);
+        VALIDATE_OPS_INT(SetVectorStatePackedDWord, 0);
+        VALIDATE_OPS_INT(SetVectorStatePackedQWord, 0);
         VALIDATE_OPS_INT(Rdtsc, 0);
         VALIDATE_OPS_INT(Syscall, 0);
         VALIDATE_OPS_INT(Cpuid, 0);
@@ -594,6 +606,24 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     case IROpcode::GetThreadStatePointer: {
         return fmt::format("{} <- ThreadStatePointer", GetNameString(name));
     }
+    case IROpcode::SetVectorStateFloat: {
+        return fmt::format("SetVectorStateFloat()");
+    }
+    case IROpcode::SetVectorStateDouble: {
+        return fmt::format("SetVectorStateDouble()");
+    }
+    case IROpcode::SetVectorStatePackedByte: {
+        return fmt::format("SetVectorStatePackedByte()");
+    }
+    case IROpcode::SetVectorStatePackedWord: {
+        return fmt::format("SetVectorStatePackedWord()");
+    }
+    case IROpcode::SetVectorStatePackedDWord: {
+        return fmt::format("SetVectorStatePackedDWord()");
+    }
+    case IROpcode::SetVectorStatePackedQWord: {
+        return fmt::format("SetVectorStatePackedQWord()");
+    }
     case IROpcode::SetExitReason: {
         return fmt::format("SetExitReason({})", (u8)immediate_data);
     }
@@ -887,7 +917,7 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         break;
     }
     case IROpcode::Cpuid: {
-        ret += fmt::format("{} <- {}()", GetNameString(name), "cpuid");
+        ret += fmt::format("CPUID()");
         break;
     }
     case IROpcode::WriteByte: {

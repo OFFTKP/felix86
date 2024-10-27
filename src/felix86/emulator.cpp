@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <sys/random.h>
 #include "felix86/backend/disassembler.hpp"
-#include "felix86/common/print.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/ir/passes/passes.hpp"

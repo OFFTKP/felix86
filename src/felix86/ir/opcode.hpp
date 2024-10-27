@@ -6,6 +6,12 @@
 #define IR_OPCODES                                                                                                                                   \
     X(Null)                                                                                                                                          \
     X(GetThreadStatePointer)                                                                                                                         \
+    X(SetVectorStateFloat) /* these set the state of vector operations, to operate on float/doubles or packed data */                                \
+    X(SetVectorStateDouble)                                                                                                                          \
+    X(SetVectorStatePackedByte)                                                                                                                      \
+    X(SetVectorStatePackedWord)                                                                                                                      \
+    X(SetVectorStatePackedDWord)                                                                                                                     \
+    X(SetVectorStatePackedQWord)                                                                                                                     \
     X(SetExitReason)                                                                                                                                 \
     X(CallHostFunction)                                                                                                                              \
     X(Phi)                                                                                                                                           \

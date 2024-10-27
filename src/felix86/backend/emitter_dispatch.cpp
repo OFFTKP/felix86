@@ -45,6 +45,36 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::SetVectorStateFloat: {
+        EmitSetVectorStateFloat(backend);
+        break;
+    }
+
+    case IROpcode::SetVectorStateDouble: {
+        EmitSetVectorStateDouble(backend);
+        break;
+    }
+
+    case IROpcode::SetVectorStatePackedByte: {
+        EmitSetVectorStatePackedByte(backend);
+        break;
+    }
+
+    case IROpcode::SetVectorStatePackedWord: {
+        EmitSetVectorStatePackedWord(backend);
+        break;
+    }
+
+    case IROpcode::SetVectorStatePackedDWord: {
+        EmitSetVectorStatePackedDWord(backend);
+        break;
+    }
+
+    case IROpcode::SetVectorStatePackedQWord: {
+        EmitSetVectorStatePackedQWord(backend);
+        break;
+    }
+
     case IROpcode::GetThreadStatePointer: {
         // Do nothing, ThreadStatePointer is already in a register
         // This static assert serves as a reminder in case something is changed and this is no longer true

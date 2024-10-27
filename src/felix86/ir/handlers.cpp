@@ -1145,7 +1145,7 @@ IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         inst->operand_rm.size = X86_SIZE_QWORD;
     }
-    ir.SetRm(inst->operand_rm, reg);
+    ir.SetRm(inst->operand_rm, ir.VToI(reg));
 }
 
 IR_HANDLE(pmovmskb_reg_xmm) { // pmovmskb reg, xmm - 0x66 0x0f 0xd7
