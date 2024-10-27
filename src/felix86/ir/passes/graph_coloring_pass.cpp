@@ -200,7 +200,7 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
 
             for (u8 j = 0; j < inst.GetOperandCount(); j++) {
                 if (instructions.at(inst.GetOperand(j)).inst == nullptr) {
-                    ERROR("Null operand %d for instruction %s", j, GetNameString(inst.GetName()).c_str());
+                    ERROR("Null operand %d for instruction %s", j, inst.Print().c_str());
                 }
 
                 if (should_consider(instructions, inst.GetOperand(j)) &&
