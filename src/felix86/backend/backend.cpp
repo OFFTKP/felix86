@@ -29,18 +29,6 @@ void PrintExitReason(ThreadState* state) {
 
 Backend::Backend(Emulator& emulator) : emulator(emulator), memory(allocateCodeCache()), as(memory, code_cache_size) {
     emitNecessaryStuff();
-    CPUInfo cpuinfo;
-    bool has_atomic = cpuinfo.Has(RISCVExtension::A);
-    bool has_compressed = cpuinfo.Has(RISCVExtension::C);
-    bool has_integer = cpuinfo.Has(RISCVExtension::I);
-    bool has_mul = cpuinfo.Has(RISCVExtension::M);
-    bool has_fpu = cpuinfo.Has(RISCVExtension::D) && cpuinfo.Has(RISCVExtension::F);
-    bool has_vector = cpuinfo.Has(RISCVExtension::V);
-
-    if (!has_atomic || !has_compressed || !has_integer || !has_mul || !has_fpu || !has_vector || cpuinfo.GetVlenb() * 8 != SUPPORTED_VLEN) {
-        if (!g_testing) // too much spam if testing
-            WARN("Backend is missing some extensions or VLEN != %d", SUPPORTED_VLEN);
-    }
 }
 
 Backend::~Backend() {
