@@ -83,7 +83,7 @@
    See BackendFunction::FromIRFunction
 */
 
-void replace_setguest_pass(IRFunction* function) {
+void replaceSetGuestPass(IRFunction* function) {
     for (IRBlock* block : function->GetBlocksPostorder()) {
         std::list<SSAInstruction>& insts = block->GetInstructions();
         for (auto& inst : insts) {
@@ -381,7 +381,7 @@ void PassManager::SSAPass(IRFunction* function) {
     function->SetDominatorTree(std::move(dominator_tree));
 
     // Gets rid of the auxiliary get_guest/set_guest/store/load instructions
-    replace_setguest_pass(function);
+    replaceSetGuestPass(function);
     CopyPropagationPass(function);
     extraneousWritebackPass(function);
 }

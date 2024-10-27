@@ -1,6 +1,6 @@
 #include "felix86/ir/passes/passes.hpp"
 
-void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_pointer) {
+void replaceLoadGuest(SSAInstruction& inst, SSAInstruction* thread_state_pointer) {
     // Break this to a regular load
     const GetGuest& get_guest = inst.AsGetGuest();
     switch (get_guest.ref) {
@@ -115,7 +115,7 @@ void replace_load_guest(SSAInstruction& inst, SSAInstruction* thread_state_point
     }
 }
 
-void replace_store_guest(SSAInstruction& inst, SSAInstruction* thread_state_pointer) {
+void replaceStoreGuest(SSAInstruction& inst, SSAInstruction* thread_state_pointer) {
     const SetGuest& set_guest = inst.AsSetGuest();
     inst.Unlock();
     switch (set_guest.ref) {
@@ -252,10 +252,14 @@ void PassManager::extraneousWritebackPass(IRFunction* function) {
     std::array<SSAInstruction*, X86_REF_COUNT> entry_defs{};
 
     IRBlock* entry = function->GetEntry();
-    for (auto& inst : entry->GetInstructions()) {
-        if (inst.GetOpcode() == IROpcode::LoadGuestFromMemory) {
-            entry_defs[inst.AsGetGuest().ref] = &inst;
-            replace_load_guest(inst, function->ThreadStatePointer());
+    for (IRBlock* block : function->GetBlocks()) {
+        for (auto& inst : block->GetInstructions()) {
+            if (inst.GetOpcode() == IROpcode::LoadGuestFromMemory) {
+                if (block == entry) {
+                    entry_defs[inst.AsGetGuest().ref] = &inst;
+                }
+                replaceLoadGuest(inst, function->ThreadStatePointer());
+            }
         }
     }
 
@@ -275,7 +279,7 @@ void PassManager::extraneousWritebackPass(IRFunction* function) {
                     continue;
                 } else {
                     // Replace with write to memory while we are at it
-                    replace_store_guest(inst, function->ThreadStatePointer());
+                    replaceStoreGuest(inst, function->ThreadStatePointer());
                 }
             }
             it++;
