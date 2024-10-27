@@ -207,6 +207,8 @@ int main(int argc, char* argv[]) {
 
     argp_parse(&argp, argc, argv, 0, 0, &config);
 
+    LOG("felix86 version %s", FELIX86_VERSION);
+
     // Check for FELIX86_EXTENSIONS environment variable
     const char* extensions_env = getenv("FELIX86_EXTENSIONS");
     if (extensions_env) {
@@ -233,7 +235,7 @@ int main(int argc, char* argv[]) {
 
     print_extensions();
 
-    if (!Extensions::G || Extensions::V || Extensions::VLEN < 128) {
+    if (!Extensions::G || !Extensions::V || Extensions::VLEN < 128) {
         WARN("Backend is missing some extensions or VLEN < 128 (ours: %d)", Extensions::VLEN);
         WARN("Illegal instructions may cause crashes");
     }
@@ -241,14 +243,32 @@ int main(int argc, char* argv[]) {
     if (config.rootfs_path.empty()) {
         ERROR("Rootfs path not specified");
         return 1;
+    } else {
+        if (!std::filesystem::exists(config.rootfs_path)) {
+            ERROR("Rootfs path does not exist");
+            return 1;
+        }
+
+        if (!std::filesystem::is_directory(config.rootfs_path)) {
+            ERROR("Rootfs path is not a directory");
+            return 1;
+        }
     }
 
     if (config.executable_path.empty()) {
         ERROR("Executable path not specified");
         return 1;
-    }
+    } else {
+        if (!std::filesystem::exists(config.executable_path)) {
+            ERROR("Executable path does not exist");
+            return 1;
+        }
 
-    LOG("felix86 version %s", FELIX86_VERSION);
+        if (!std::filesystem::is_regular_file(config.executable_path)) {
+            ERROR("Executable path is not a regular file");
+            return 1;
+        }
+    }
 
     Emulator emulator(config);
 
