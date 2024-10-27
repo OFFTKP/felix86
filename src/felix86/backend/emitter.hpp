@@ -54,6 +54,7 @@ private:
     static void EmitReadWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitReadDWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitReadQWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
+    static void EmitReadXmmWordRelative(Backend&, biscuit::Vec, biscuit::GPR, u64);
     static void EmitWriteByte(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitWriteWord(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitWriteDWord(Backend&, biscuit::GPR, biscuit::GPR);
@@ -63,6 +64,7 @@ private:
     static void EmitWriteWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitWriteDWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitWriteQWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
+    static void EmitWriteXmmWordRelative(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs, u64 offset);
     static void EmitAdd(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitAddi(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitAmoAdd8(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);

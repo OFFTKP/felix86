@@ -153,7 +153,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     }
 
     case IROpcode::ReadXmmWordRelative: {
-        UNIMPLEMENTED();
+        EmitReadXmmWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
@@ -178,7 +178,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     }
 
     case IROpcode::WriteXmmWordRelative: {
-        UNIMPLEMENTED();
+        EmitWriteXmmWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 
