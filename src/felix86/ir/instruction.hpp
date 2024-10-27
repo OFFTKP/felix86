@@ -95,6 +95,10 @@ struct SSAInstruction {
         expression_type = ExpressionType::Operands;
     }
 
+    SSAInstruction(IROpcode opcode, VectorMask mask, std::initializer_list<SSAInstruction*> operands) : SSAInstruction(opcode, operands) {
+        this->mask = mask;
+    }
+
     SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate) : SSAInstruction(opcode, operands) {
         SetImmediateData(immediate);
     }
@@ -405,5 +409,6 @@ private:
     ExpressionType expression_type;
     IROpcode opcode;
     IRType return_type;
+    VectorMask mask = VectorMask::No;
     bool locked = false; // must not be removed by optimizations, even when used by nothing
 };

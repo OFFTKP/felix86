@@ -40,7 +40,7 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
 }
 
 IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
-    switch (opcode) {
+    todo, merge return and argument function switch (opcode) {
     case IROpcode::Mov: {
         ERROR("Should not be used with Mov");
         return IRType::Void;
@@ -163,28 +163,18 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::ReadXmmWord:
     case IROpcode::ReadXmmWordRelative:
     case IROpcode::IToV:
-    case IROpcode::VUnpackByteLow:
-    case IROpcode::VUnpackWordLow:
-    case IROpcode::VUnpackDWordLow:
-    case IROpcode::VUnpackQWordLow:
     case IROpcode::VAnd:
     case IROpcode::VOr:
     case IROpcode::VXor:
-    case IROpcode::VPackedShr:
-    case IROpcode::VShl:
-    case IROpcode::VPackedSubByte:
-    case IROpcode::VPackedAddByte:
-    case IROpcode::VPackedAddWord:
-    case IROpcode::VPackedAddDWord:
-    case IROpcode::VPackedAddQWord:
-    case IROpcode::VPackedEqualByte:
-    case IROpcode::VPackedEqualWord:
-    case IROpcode::VPackedEqualDWord:
-    case IROpcode::VPackedEqualQWord:
-    case IROpcode::VPackedShuffleDWord:
-    case IROpcode::VMoveByteMask:
-    case IROpcode::VPackedMinByte:
-    case IROpcode::VZext64:
+    case IROpcode::VSubByte:
+    case IROpcode::VAddByte:
+    case IROpcode::VAddWord:
+    case IROpcode::VAddDWord:
+    case IROpcode::VAddQWord:
+    case IROpcode::VEqualByte:
+    case IROpcode::VEqualWord:
+    case IROpcode::VEqualDWord:
+    case IROpcode::VEqualQWord:
     case IROpcode::VInsertInteger: {
         return IRType::Vector128;
     }
@@ -411,29 +401,19 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
 
         VALIDATE_OPS_VECTOR(VToI, 1);
         VALIDATE_OPS_VECTOR(VExtractInteger, 1);
-        VALIDATE_OPS_VECTOR(VPackedShuffleDWord, 1);
-        VALIDATE_OPS_VECTOR(VMoveByteMask, 1);
-        VALIDATE_OPS_VECTOR(VZext64, 1);
 
-        VALIDATE_OPS_VECTOR(VUnpackByteLow, 2);
-        VALIDATE_OPS_VECTOR(VUnpackWordLow, 2);
-        VALIDATE_OPS_VECTOR(VUnpackDWordLow, 2);
-        VALIDATE_OPS_VECTOR(VUnpackQWordLow, 2);
         VALIDATE_OPS_VECTOR(VAnd, 2);
         VALIDATE_OPS_VECTOR(VOr, 2);
         VALIDATE_OPS_VECTOR(VXor, 2);
-        VALIDATE_OPS_VECTOR(VPackedShr, 2);
-        VALIDATE_OPS_VECTOR(VShl, 2);
-        VALIDATE_OPS_VECTOR(VPackedSubByte, 2);
-        VALIDATE_OPS_VECTOR(VPackedAddByte, 2);
-        VALIDATE_OPS_VECTOR(VPackedAddWord, 2);
-        VALIDATE_OPS_VECTOR(VPackedAddDWord, 2);
-        VALIDATE_OPS_VECTOR(VPackedAddQWord, 2);
-        VALIDATE_OPS_VECTOR(VPackedEqualByte, 2);
-        VALIDATE_OPS_VECTOR(VPackedEqualWord, 2);
-        VALIDATE_OPS_VECTOR(VPackedEqualDWord, 2);
-        VALIDATE_OPS_VECTOR(VPackedEqualQWord, 2);
-        VALIDATE_OPS_VECTOR(VPackedMinByte, 2);
+        VALIDATE_OPS_VECTOR(VSubByte, 2);
+        VALIDATE_OPS_VECTOR(VAddByte, 2);
+        VALIDATE_OPS_VECTOR(VAddWord, 2);
+        VALIDATE_OPS_VECTOR(VAddDWord, 2);
+        VALIDATE_OPS_VECTOR(VAddQWord, 2);
+        VALIDATE_OPS_VECTOR(VEqualByte, 2);
+        VALIDATE_OPS_VECTOR(VEqualWord, 2);
+        VALIDATE_OPS_VECTOR(VEqualDWord, 2);
+        VALIDATE_OPS_VECTOR(VEqualQWord, 2);
 
     case IROpcode::WriteXmmWord:
     case IROpcode::WriteXmmWordRelative:
@@ -1128,76 +1108,49 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VShl: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vshl", "src1", GetNameString(operands[0]), "src2",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::VPackedShr: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "VPackedShr", "src1", GetNameString(operands[0]), "src2",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::VZext64: {
-        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vzext64", "src", GetNameString(operands[0]));
-        break;
-    }
-    case IROpcode::VPackedAddByte: {
+    case IROpcode::VAddByte: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpaddbyte", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VPackedAddWord: {
+    case IROpcode::VAddWord: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpaddword", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VPackedAddDWord: {
+    case IROpcode::VAddDWord: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpadddword", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VPackedAddQWord: {
+    case IROpcode::VAddQWord: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpaddqword", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VPackedEqualByte: {
+    case IROpcode::VEqualByte: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpeqbyte", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VPackedEqualWord: {
+    case IROpcode::VEqualWord: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpeqword", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VPackedEqualDWord: {
+    case IROpcode::VEqualDWord: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpeqdword", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VPackedEqualQWord: {
+    case IROpcode::VEqualQWord: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpeqqword", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
-    case IROpcode::VPackedShuffleDWord: {
-        ret += fmt::format("{} <- vpshufdword({}, 0x{:x})", name, operands[0], (u8)immediate_data);
-        break;
-    }
-    case IROpcode::VPackedMinByte: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpminbyte", "src1", GetNameString(operands[0]), "src2",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::VPackedSubByte: {
+    case IROpcode::VSubByte: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vpsubbyte", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::VMoveByteMask: {
-        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vmovbytemask", "src", GetNameString(operands[0]));
         break;
     }
     case IROpcode::VExtractInteger: {
@@ -1206,26 +1159,6 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::VInsertInteger: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vinsertint", "vector", GetNameString(operands[0]), "integer",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::VUnpackByteLow: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vunpackbytelow", "src1", GetNameString(operands[0]), "src2",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::VUnpackWordLow: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vunpackwordlow", "src1", GetNameString(operands[0]), "src2",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::VUnpackDWordLow: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vunpackdwordlow", "src1", GetNameString(operands[0]), "src2",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::VUnpackQWordLow: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vunpackqwordlow", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }

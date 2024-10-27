@@ -473,72 +473,57 @@ SSAInstruction* IREmitter::AmoCAS(SSAInstruction* address, SSAInstruction* expec
     }
 }
 
-SSAInstruction* IREmitter::VUnpackByteLow(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VUnpackByteLow, {lhs, rhs});
+void IREmitter::SetVMask(SSAInstruction* mask) {
+    SSAInstruction* instruction = insertInstruction(IROpcode::SetVMask, {mask});
+    instruction->Lock();
 }
 
-SSAInstruction* IREmitter::VUnpackWordLow(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VUnpackWordLow, {lhs, rhs});
+SSAInstruction* IREmitter::VIota(SSAInstruction* mask, VectorMask masked) {
+    return insertInstruction(IROpcode::VIota, masked, {mask});
 }
 
-SSAInstruction* IREmitter::VUnpackDWordLow(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VUnpackDWordLow, {lhs, rhs});
+SSAInstruction* IREmitter::VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VectorMask masked) {
+    return insertInstruction(IROpcode::VGather, masked, {dest, source, iota});
 }
 
-SSAInstruction* IREmitter::VUnpackQWordLow(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VUnpackQWordLow, {lhs, rhs});
+SSAInstruction* IREmitter::VZero() {
+    return insertInstruction(IROpcode::VSplatI, {}, 0);
 }
 
-SSAInstruction* IREmitter::VPackedEqualByte(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedEqualByte, {lhs, rhs});
+SSAInstruction* IREmitter::VEqualByte(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VEqualByte, {lhs, rhs});
 }
 
-SSAInstruction* IREmitter::VPackedEqualWord(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedEqualWord, {lhs, rhs});
+SSAInstruction* IREmitter::VEqualWord(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VEqualWord, {lhs, rhs});
 }
 
-SSAInstruction* IREmitter::VPackedEqualDWord(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedEqualDWord, {lhs, rhs});
+SSAInstruction* IREmitter::VEqualDWord(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VEqualDWord, {lhs, rhs});
 }
 
-SSAInstruction* IREmitter::VPackedEqualQWord(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedEqualQWord, {lhs, rhs});
+SSAInstruction* IREmitter::VEqualQWord(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VEqualQWord, {lhs, rhs});
 }
 
-SSAInstruction* IREmitter::VPackedAddByte(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedAddByte, {lhs, rhs});
+SSAInstruction* IREmitter::VAddByte(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VAddByte, {lhs, rhs});
 }
 
-SSAInstruction* IREmitter::VPackedAddWord(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedAddWord, {lhs, rhs});
+SSAInstruction* IREmitter::VAddWord(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VAddWord, {lhs, rhs});
 }
 
-SSAInstruction* IREmitter::VPackedAddDWord(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedAddDWord, {lhs, rhs});
+SSAInstruction* IREmitter::VAddDWord(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VAddDWord, {lhs, rhs});
 }
 
-SSAInstruction* IREmitter::VPackedAddQWord(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedAddQWord, {lhs, rhs});
+SSAInstruction* IREmitter::VAddQWord(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VAddQWord, {lhs, rhs});
 }
 
-SSAInstruction* IREmitter::VPackedShuffleDWord(SSAInstruction* value, u8 shuffle) {
-    return insertInstruction(IROpcode::VPackedShuffleDWord, {value}, shuffle);
-}
-
-SSAInstruction* IREmitter::VPackedShr(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedShr, {lhs, rhs});
-}
-
-SSAInstruction* IREmitter::VPackedMinByte(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedMinByte, {lhs, rhs});
-}
-
-SSAInstruction* IREmitter::VPackedSubByte(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VPackedSubByte, {lhs, rhs});
-}
-
-SSAInstruction* IREmitter::VMoveByteMask(SSAInstruction* value) {
-    return insertInstruction(IROpcode::VMoveByteMask, {value});
+SSAInstruction* IREmitter::VSubByte(SSAInstruction* lhs, SSAInstruction* rhs) {
+    return insertInstruction(IROpcode::VSubByte, {lhs, rhs});
 }
 
 SSAInstruction* IREmitter::VAnd(SSAInstruction* lhs, SSAInstruction* rhs) {
@@ -779,6 +764,11 @@ void IREmitter::SetFlags(SSAInstruction* flags) {
 
 SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands) {
     SSAInstruction instruction(opcode, operands);
+    return block->InsertAtEnd(std::move(instruction));
+}
+
+SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, VectorMask mask, std::initializer_list<SSAInstruction*> operands) {
+    SSAInstruction instruction(opcode, mask, operands);
     return block->InsertAtEnd(std::move(instruction));
 }
 

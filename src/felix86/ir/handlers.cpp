@@ -1045,47 +1045,19 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████
 
 IR_HANDLE(punpcklbw_xmm_xmm128) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
+    // Essentially two "vdecompress" (viota + vrgather) instructions
+    ir.SetVectorStatePackedByte();
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VUnpackByteLow(reg, rm);
-    ir.SetReg(inst->operand_reg, result);
-}
-
-IR_HANDLE(punpcklwd_xmm_xmm128) { // punpcklwd xmm, xmm/m128 - 0x66 0x0f 0x61
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VUnpackWordLow(reg, rm);
-    ir.SetReg(inst->operand_reg, result);
-}
-
-IR_HANDLE(punpckldq_xmm_xmm128) { // punpckldq xmm, xmm/m128 - 0x66 0x0f 0x62
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VUnpackDWordLow(reg, rm);
-    ir.SetReg(inst->operand_reg, result);
-}
-
-IR_HANDLE(group14_xmm) { // group14 xmm - 0x66 0x0f 0x73
-    x86_group14_e opcode = (x86_group14_e)(inst->operand_reg.reg.ref - X86_REF_XMM0);
-    switch (opcode) {
-    case X86_GROUP14_PSRLDQ: {
-        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* imm = ir.Imm(inst->operand_imm.immediate.data);
-        SSAInstruction* shifted = ir.VPackedShr(reg, imm);
-        ir.SetReg(inst->operand_reg, shifted);
-        break;
-    }
-    default: {
-        ERROR("Unimplemented group 14 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
-        break;
-    }
-    }
-}
-
-IR_HANDLE(punpcklqdq_xmm_xmm128) { // punpcklqdq xmm, xmm/m128 - 0x66 0x0f 0x6c
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VUnpackQWordLow(reg, rm);
+    SSAInstruction* rm_mask = ir.IToV(ir.Imm(0b1010101010101010));
+    SSAInstruction* rm_iota = ir.VIota(rm_mask);
+    ir.SetVMask(rm_mask);
+    SSAInstruction* zero = ir.VZero();
+    SSAInstruction* rm_gathered = ir.VGather(zero, rm, rm_iota, VectorMask::Yes);
+    SSAInstruction* reg_mask = ir.IToV(ir.Imm(0b0101010101010101));
+    SSAInstruction* reg_iota = ir.VIota(reg_mask);
+    ir.SetVMask(reg_mask);
+    SSAInstruction* result = ir.VGather(rm_gathered, reg, reg_iota, VectorMask::Yes);
     ir.SetReg(inst->operand_reg, result);
 }
 
@@ -1100,30 +1072,24 @@ IR_HANDLE(movdqa_xmm_xmm128) { // movdqa xmm, xmm128 - 0x66 0x0f 0x6f
     ir.SetReg(inst->operand_reg, rm);
 }
 
-IR_HANDLE(pshufd_xmm_xmm128_cb) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* result = ir.VPackedShuffleDWord(rm, inst->operand_imm.immediate.data);
-    ir.SetReg(inst->operand_reg, result);
-}
-
 IR_HANDLE(pcmpeqb_xmm_xmm128) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VPackedEqualByte(reg, rm);
+    SSAInstruction* result = ir.VEqualByte(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pcmpeqw_xmm_xmm128) { // pcmpeqw xmm, xmm/m128 - 0x66 0x0f 0x75
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VPackedEqualWord(reg, rm);
+    SSAInstruction* result = ir.VEqualWord(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pcmpeqd_xmm_xmm128) { // pcmpeqd xmm, xmm/m128 - 0x66 0x0f 0x76
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VPackedEqualDWord(reg, rm);
+    SSAInstruction* result = ir.VEqualDWord(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
@@ -1136,7 +1102,7 @@ IR_HANDLE(movq_rm32_xmm) { // movq rm32, xmm - 0x66 0x0f 0x7e
 IR_HANDLE(paddq_xmm_xmm128) { // paddq xmm, xmm/m128 - 0x66 0x0f 0xd4
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VPackedAddQWord(reg, rm);
+    SSAInstruction* result = ir.VAddQWord(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 
@@ -1146,19 +1112,6 @@ IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
         inst->operand_rm.size = X86_SIZE_QWORD;
     }
     ir.SetRm(inst->operand_rm, ir.VToI(reg));
-}
-
-IR_HANDLE(pmovmskb_reg_xmm) { // pmovmskb reg, xmm - 0x66 0x0f 0xd7
-    SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VMoveByteMask(xmm);
-    ir.SetReg(inst->operand_rm, result);
-}
-
-IR_HANDLE(pminub_xmm_xmm128) { // pminub xmm, xmm/m128 - 0x66 0x0f 0xda
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VPackedMinByte(reg, rm);
-    ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pand_xmm_xmm128) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb
@@ -1185,7 +1138,7 @@ IR_HANDLE(pxor_xmm_xmm128) { // pxor xmm, xmm/m128 - 0x66 0x0f 0xef
 IR_HANDLE(psubb_xmm_xmm128) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VPackedSubByte(reg, rm);
+    SSAInstruction* result = ir.VSubByte(reg, rm);
     ir.SetReg(inst->operand_reg, result);
 }
 

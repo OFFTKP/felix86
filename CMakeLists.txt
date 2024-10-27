@@ -110,6 +110,7 @@ if (BUILD_TESTS)
         tests/FEX/fex_test_loader.cpp
         tests/FEX/primary.cpp
         tests/FEX/primary_group.cpp
+        tests/FEX/op_size.cpp
         tests/FEX/secondary.cpp
         tests/FEX/twobyte.cpp
         tests/FEX/felix86_bugs.cpp

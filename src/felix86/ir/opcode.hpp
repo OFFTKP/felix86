@@ -132,28 +132,18 @@
     X(VToI)                                                                                                                                          \
     X(VInsertInteger)                                                                                                                                \
     X(VExtractInteger)                                                                                                                               \
-    X(VUnpackByteLow)                                                                                                                                \
-    X(VUnpackWordLow)                                                                                                                                \
-    X(VUnpackDWordLow)                                                                                                                               \
-    X(VUnpackQWordLow)                                                                                                                               \
     X(VAnd)                                                                                                                                          \
     X(VOr)                                                                                                                                           \
     X(VXor)                                                                                                                                          \
-    X(VPackedShr)                                                                                                                                    \
-    X(VShl)                                                                                                                                          \
-    X(VPackedSubByte)                                                                                                                                \
-    X(VPackedAddByte)                                                                                                                                \
-    X(VPackedAddWord)                                                                                                                                \
-    X(VPackedAddDWord)                                                                                                                               \
-    X(VPackedAddQWord)                                                                                                                               \
-    X(VPackedEqualByte)                                                                                                                              \
-    X(VPackedEqualWord)                                                                                                                              \
-    X(VPackedEqualDWord)                                                                                                                             \
-    X(VPackedEqualQWord)                                                                                                                             \
-    X(VPackedShuffleDWord)                                                                                                                           \
-    X(VMoveByteMask)                                                                                                                                 \
-    X(VPackedMinByte)                                                                                                                                \
-    X(VZext64) /* zero extend the bottom 64-bits of a vector */                                                                                      \
+    X(VSubByte)                                                                                                                                      \
+    X(VAddByte)                                                                                                                                      \
+    X(VAddWord)                                                                                                                                      \
+    X(VAddDWord)                                                                                                                                     \
+    X(VAddQWord)                                                                                                                                     \
+    X(VEqualByte)                                                                                                                                    \
+    X(VEqualWord)                                                                                                                                    \
+    X(VEqualDWord)                                                                                                                                   \
+    X(VEqualQWord)                                                                                                                                   \
     X(Count)
 
 enum class IROpcode : u8 {

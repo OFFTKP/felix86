@@ -1027,30 +1027,6 @@ void Emitter::EmitVExtractInteger(Backend& backend, biscuit::GPR, biscuit::Vec, 
     UNREACHABLE();
 }
 
-void Emitter::EmitVPackedShuffleDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVMoveByteMask(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVUnpackByteLow(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVUnpackWordLow(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVUnpackDWordLow(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVUnpackQWordLow(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
 void Emitter::EmitVAnd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     AS.VAND(Vd, Vs1, Vs2);
 }
@@ -1063,54 +1039,38 @@ void Emitter::EmitVXor(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, bisc
     AS.VXOR(Vd, Vs1, Vs2);
 }
 
-void Emitter::EmitVPackedShr(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVSubByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVShl(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVAddByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVPackedSubByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVAddWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVPackedAddByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVAddDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVPackedAddWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVAddQWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVPackedAddDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVEqualByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVPackedAddQWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVEqualWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVPackedEqualByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVEqualDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVPackedEqualWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVPackedEqualDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVPackedEqualQWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVPackedMinByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVZext64(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs) {
+void Emitter::EmitVEqualQWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }

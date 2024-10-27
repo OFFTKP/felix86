@@ -104,23 +104,17 @@ struct IREmitter {
     SSAInstruction* AmoXor(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* AmoSwap(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
-    SSAInstruction* VUnpackByteLow(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VUnpackWordLow(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VUnpackDWordLow(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VUnpackQWordLow(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedEqualByte(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedEqualWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedEqualDWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedEqualQWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedAddByte(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedAddWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedAddDWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedAddQWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedSubByte(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VPackedMinByte(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VMoveByteMask(SSAInstruction* value);
-    SSAInstruction* VPackedShuffleDWord(SSAInstruction* value, u8 shuffle);
-    SSAInstruction* VPackedShr(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VIota(SSAInstruction* mask, VectorMask masked = VectorMask::No);
+    SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VectorMask masked);
+    SSAInstruction* VEqualByte(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VEqualWord(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VEqualDWord(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VEqualQWord(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VAddByte(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VAddWord(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VAddDWord(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VAddQWord(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VSubByte(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VAnd(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VOr(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VXor(SSAInstruction* lhs, SSAInstruction* rhs);
@@ -157,6 +151,7 @@ struct IREmitter {
     void SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o);
     void SetExitReason(ExitReason reason);
     void SetFlags(SSAInstruction* flags);
+    void SetVMask(SSAInstruction* mask);
 
     void RepStart(IRBlock* loop_block, IRBlock* exit_block);
     void RepEnd(x86_rep_e rep_type, IRBlock* loop_block, IRBlock* exit_block);
@@ -213,6 +208,7 @@ private:
     SSAInstruction* getSignMask(x86_size_e size);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate);
+    SSAInstruction* insertInstruction(IROpcode opcode, VectorMask mask, std::initializer_list<SSAInstruction*> operands);
 
     void loadPartialState(std::span<const x86_ref_e> refs);
     void storePartialState(std::span<const x86_ref_e> refs);
