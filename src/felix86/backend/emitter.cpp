@@ -500,10 +500,14 @@ void Emitter::EmitReadQWordRelative(Backend& backend, biscuit::GPR Rd, biscuit::
 void Emitter::EmitReadXmmWordRelative(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address, u64 offset) {
     ASSERT(IsValidSigned12BitImm(offset));
     if (offset == 0) {
-        AS.VLM(Vd, Address);
+        AS.LI(t0, 16);
+        AS.VSETVLI(x0, t0, SEW::E8);
+        AS.VLE8(Vd, Address);
     } else {
+        AS.LI(t0, 16);
+        AS.VSETVLI(x0, t0, SEW::E8);
         AS.ADDI(t0, Address, (i64)offset);
-        AS.VLM(Vd, t0);
+        AS.VLE8(Vd, t0);
     }
 }
 
@@ -552,10 +556,14 @@ void Emitter::EmitWriteQWordRelative(Backend& backend, biscuit::GPR Address, bis
 void Emitter::EmitWriteXmmWordRelative(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs, u64 offset) {
     ASSERT(IsValidSigned12BitImm(offset));
     if (offset == 0) {
-        AS.VSM(Vs, Address);
+        AS.LI(t0, 16);
+        AS.VSETVLI(x0, t0, SEW::E8);
+        AS.VSE8(Vs, Address);
     } else {
+        AS.LI(t0, 16);
+        AS.VSETVLI(x0, t0, SEW::E8);
         AS.ADDI(t0, Address, (i64)offset);
-        AS.VSM(Vs, t0);
+        AS.VSE8(Vs, t0);
     }
 }
 
