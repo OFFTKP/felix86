@@ -531,7 +531,7 @@ SSAInstruction* IREmitter::VSplati(u64 imm) {
 }
 
 SSAInstruction* IREmitter::VMergei(u64 true_imm, SSAInstruction* false_value) {
-    return insertInstruction(IROpcode::VMergei, {false_value}, true_imm);
+    return insertInstruction(IROpcode::VMergei, VecMask::Yes, {false_value}, true_imm);
 }
 
 SSAInstruction* IREmitter::IToV(SSAInstruction* value) {

@@ -32,6 +32,12 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
             return false;
         }
 
+        // If either are masked the mask at that time (v0) might have been different so we can't CSE
+        // At least not naively.
+        if (operands.masked == VecMask::Yes || other_operands.masked == VecMask::Yes) {
+            return false;
+        }
+
         return true;
     }
     default:
