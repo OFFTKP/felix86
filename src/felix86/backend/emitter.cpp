@@ -1001,7 +1001,8 @@ void Emitter::EmitSetVectorStateDouble(Backend& backend) {
 void Emitter::EmitSetVectorStatePackedByte(Backend& backend) {
     // Operate on VLEN/8 elements, 8-bits
     static_assert(SUPPORTED_VLEN / 8 < 31); // for when we upgrade to 256-bit vectors
-    AS.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
+    AS.LI(t0, -1);
+    AS.VSETVLI(x0, t0, SEW::E8);
 }
 
 void Emitter::EmitSetVectorStatePackedWord(Backend& backend) {
