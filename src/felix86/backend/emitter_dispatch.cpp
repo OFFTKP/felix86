@@ -756,7 +756,17 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     }
 
     case IROpcode::VEqual: {
-        EmitVEqual(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVEqual(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VSlli: {
+        EmitVSlli(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VSrai: {
+        EmitVSrai(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
     }
