@@ -44,19 +44,6 @@ void Backend::emitNecessaryStuff() {
     /* void enter_dispatcher(ThreadState* state) */
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
-    biscuit::Label has_vector, crash;
-    as.CSRR(t0, CSR::MStatus);
-    as.SRLI(t0, t0, 8);
-    as.ANDI(t0, t0, 0b11);
-    as.BNEZ(t0, &has_vector);
-
-    as.MV(t0, a0);
-    as.LI(t1, EXIT_REASON_NO_VECTOR);
-    as.SB(t1, offsetof(ThreadState, exit_reason), t0);
-    as.J(&crash);
-
-    as.Bind(&has_vector);
-
     biscuit::GPR address = t0;
 
     // Save the current register state of callee-saved registers and return address
@@ -110,7 +97,6 @@ void Backend::emitNecessaryStuff() {
     as.RET();
 
     crash_target = as.GetCursorPointer();
-    as.Bind(&crash);
 
     // Load the old state and print a message
     as.MV(address, Registers::ThreadStatePointer());
