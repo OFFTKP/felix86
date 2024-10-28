@@ -1045,12 +1045,12 @@ IR_HANDLE(mov_xmm_xmm128) {
 }
 
 IR_HANDLE(punpcklbw_xmm_xmm128) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
-    // Essentially two "vdecompress" (viota + vrgather) instructions
+    ir.SetVectorStatePackedByte();
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+    // Essentially two "vdecompress" (viota + vrgather) instructions
     // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
     // This means we don't care to reduce the splat to only the first two elements
-    ir.SetVectorStatePackedByte();
     SSAInstruction* rm_mask = ir.VSplat(ir.Imm(0b10101010));
     SSAInstruction* rm_iota = ir.VIota(rm_mask);
     ir.SetVMask(rm_mask);
@@ -1070,9 +1070,9 @@ IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
 }
 
 IR_HANDLE(pcmpeqb) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
+    ir.SetVectorStatePackedByte();
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    ir.SetVectorStatePackedByte();
     SSAInstruction* mask = ir.VEqual(reg, rm);
     // Splat 0xFF or 0 based on the mask
     ir.SetVMask(mask);
@@ -1081,9 +1081,9 @@ IR_HANDLE(pcmpeqb) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
 }
 
 IR_HANDLE(pcmpeqw) { // pcmpeqw xmm, xmm/m128 - 0x66 0x0f 0x75
+    ir.SetVectorStatePackedWord();
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    ir.SetVectorStatePackedWord();
     SSAInstruction* mask = ir.VEqual(reg, rm);
     // Splat 0xFFFF or 0 based on the mask
     ir.SetVMask(mask);
@@ -1092,9 +1092,9 @@ IR_HANDLE(pcmpeqw) { // pcmpeqw xmm, xmm/m128 - 0x66 0x0f 0x75
 }
 
 IR_HANDLE(pcmpeqd) { // pcmpeqd xmm, xmm/m128 - 0x66 0x0f 0x76
+    ir.SetVectorStatePackedDWord();
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    ir.SetVectorStatePackedDWord();
     SSAInstruction* mask = ir.VEqual(reg, rm);
     // Splat 0xFFFFFFFF or 0 based on the mask
     ir.SetVMask(mask);
