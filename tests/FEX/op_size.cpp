@@ -6,3 +6,4 @@
     }
 
 OP_SIZE(66_60)
+OP_SIZE(66_DB)
