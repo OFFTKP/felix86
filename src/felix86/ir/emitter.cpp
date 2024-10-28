@@ -514,6 +514,10 @@ SSAInstruction* IREmitter::VXor(SSAInstruction* lhs, SSAInstruction* rhs) {
     return insertInstruction(IROpcode::VXor, {lhs, rhs});
 }
 
+SSAInstruction* IREmitter::VSplat(SSAInstruction* value) {
+    return insertInstruction(IROpcode::VSplat, {value});
+}
+
 SSAInstruction* IREmitter::IToV(SSAInstruction* value) {
     return insertInstruction(IROpcode::IToV, {value});
 }

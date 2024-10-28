@@ -720,6 +720,11 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::VSplat: {
+        EmitVSplat(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        break;
+    }
+
     case IROpcode::VSplati: {
         EmitVSplati(backend, _Reg_(inst.GetName()), inst.GetImmediateData());
         break;

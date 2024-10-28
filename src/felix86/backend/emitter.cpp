@@ -1071,6 +1071,10 @@ void Emitter::EmitVGather(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, b
     AS.VMV(Vd, v1);
 }
 
+void Emitter::EmitVSplat(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs) {
+    AS.VMV(Vd, Rs);
+}
+
 void Emitter::EmitVSplati(Backend& backend, biscuit::Vec Vd, u64 immediate) {
     AS.VMV(Vd, immediate);
 }

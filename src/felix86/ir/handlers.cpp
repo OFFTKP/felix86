@@ -1049,12 +1049,14 @@ IR_HANDLE(punpcklbw_xmm_xmm128) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
     ir.SetVectorStatePackedByte();
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* rm_mask = ir.IToV(ir.Imm(0b1010101010101010));
+    // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
+    // This means we don't care to reduce the splat to only the first two elements
+    SSAInstruction* rm_mask = ir.VSplat(ir.Imm(0b10101010));
     SSAInstruction* rm_iota = ir.VIota(rm_mask);
     ir.SetVMask(rm_mask);
     SSAInstruction* zero = ir.VZero();
     SSAInstruction* rm_gathered = ir.VGather(zero, rm, rm_iota, VecMask::Yes);
-    SSAInstruction* reg_mask = ir.IToV(ir.Imm(0b0101010101010101));
+    SSAInstruction* reg_mask = ir.VSplat(ir.Imm(0b01010101));
     SSAInstruction* reg_iota = ir.VIota(reg_mask);
     ir.SetVMask(reg_mask);
     SSAInstruction* result = ir.VGather(rm_gathered, reg, reg_iota, VecMask::Yes);

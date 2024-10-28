@@ -171,6 +171,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::VAdd:
     case IROpcode::VEqual:
     case IROpcode::VInsertInteger:
+    case IROpcode::VSplat:
     case IROpcode::VSplati:
     case IROpcode::VGather:
     case IROpcode::VIota: {
@@ -331,6 +332,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(ReadXmmWordRelative, 1);
         VALIDATE_OPS_INT(Div128, 1);
         VALIDATE_OPS_INT(Divu128, 1);
+        VALIDATE_OPS_INT(VSplat, 1);
 
         VALIDATE_OPS_INT(WriteByte, 2);
         VALIDATE_OPS_INT(WriteWord, 2);
@@ -1114,6 +1116,10 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::VIota: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "viota", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::VSplat: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vsplat", "src", GetNameString(operands[0]));
         break;
     }
     case IROpcode::VSplati: {

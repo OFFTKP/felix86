@@ -149,5 +149,6 @@ private:
     static void EmitVEqual(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVIota(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVGather(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVSplat(Backend&, biscuit::Vec, biscuit::GPR);
     static void EmitVSplati(Backend&, biscuit::Vec, u64);
 };

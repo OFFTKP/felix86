@@ -141,6 +141,7 @@
     X(VEqual)                                                                                                                                        \
     X(VIota)                                                                                                                                         \
     X(VGather)                                                                                                                                       \
+    X(VSplat)                                                                                                                                        \
     X(VSplati)                                                                                                                                       \
     X(Count)
 
