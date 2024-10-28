@@ -908,11 +908,6 @@ IR_HANDLE(syscall) { // syscall - 0x0f 0x05
     ir.Syscall();
 }
 
-IR_HANDLE(mov_xmm_xmm128) { // movups/movaps xmm, xmm128 - 0x0f 0x11
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    ir.SetReg(inst->operand_reg, rm);
-}
-
 IR_HANDLE(movhps_xmm_m64) {
     if (inst->operand_rm.type != X86_OP_TYPE_MEMORY) {
         ERROR("movhps xmm, m64 but m64 is not a memory operand");
@@ -1044,6 +1039,11 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
 //      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██    ██ ██    ██
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████
 
+IR_HANDLE(mov_xmm_xmm128) {
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    ir.SetReg(inst->operand_reg, rm);
+}
+
 IR_HANDLE(punpcklbw_xmm_xmm128) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
     // Essentially two "vdecompress" (viota + vrgather) instructions
     ir.SetVectorStatePackedByte();
@@ -1065,11 +1065,6 @@ IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* vector = ir.IToV(rm);
     ir.SetReg(inst->operand_reg, vector);
-}
-
-IR_HANDLE(movdqa_xmm_xmm128) { // movdqa xmm, xmm128 - 0x66 0x0f 0x6f
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    ir.SetReg(inst->operand_reg, rm);
 }
 
 IR_HANDLE(pcmpeqb_xmm_xmm128) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
