@@ -15,8 +15,8 @@ add_subdirectory(external/riscv-disassembler)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall -march=rv64gcv")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch -march=rv64gcv")
 
 add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
 
@@ -118,7 +118,6 @@ if (BUILD_TESTS)
     target_include_directories(felix86_test PRIVATE tests)
     target_link_libraries(felix86_test PRIVATE felix86_core Catch2::Catch2WithMain xbyak)
     target_compile_options(felix86_test PRIVATE $<$<COMPILE_LANGUAGE:CPP>:-fno-operator-names>)
-    target_compile_options(felix86_test PRIVATE $<$<COMPILE_LANGUAGE:CPP>:-march=rv64gcv>)
     target_compile_definitions(felix86_test PRIVATE CATCH_CONFIG_PREFIX_ALL)
     file(COPY external/FEX/ASM DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
     file(COPY tests/ASM DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
