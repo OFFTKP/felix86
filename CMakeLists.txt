@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 
 project(felix86)
 
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
-
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
