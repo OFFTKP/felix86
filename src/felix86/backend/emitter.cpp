@@ -1052,26 +1052,26 @@ void Emitter::EmitVAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, bisc
     UNREACHABLE();
 }
 
-void Emitter::EmitVEqual(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
+void Emitter::EmitVEqual(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2, VecMask masked) {
+    AS.VMSEQ(Vd, Vs1, Vs2, masked);
 }
 
 void Emitter::EmitSetVMask(Backend& backend, biscuit::Vec Vs) {
     AS.VMV(v0, Vs);
 }
 
-void Emitter::EmitVIota(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask mask) {
-    AS.VIOTA(Vd, Vs, mask);
+void Emitter::EmitVIota(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
+    AS.VIOTA(Vd, Vs, masked);
 }
 
-void Emitter::EmitVGather(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2, biscuit::Vec Viota, VecMask mask) {
-    // We don't wanna modify Vs1
-    if (Vd != Vs2) {
+void Emitter::EmitVGather(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2, biscuit::Vec Viota, VecMask masked) {
+    if (Vd != Vs2 && Vd != Viota) {
         AS.VMV(Vd, Vs1);
-        AS.VRGATHER(Vd, Vs2, Viota, mask);
+        AS.VRGATHER(Vd, Vs2, Viota, masked);
     } else {
+        // We don't wanna modify Vs1
         AS.VMV(v1, Vs1);
-        AS.VRGATHER(v1, Vs2, Viota, mask);
+        AS.VRGATHER(v1, Vs2, Viota, masked);
         AS.VMV(Vd, v1);
     }
 }

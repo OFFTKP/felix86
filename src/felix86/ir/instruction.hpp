@@ -101,9 +101,11 @@ struct SSAInstruction {
         op.mask = mask;
     }
 
-    SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate) : SSAInstruction(opcode, operands) {
+    SSAInstruction(IROpcode opcode, VecMask mask, std::initializer_list<SSAInstruction*> operands, u64 immediate) : SSAInstruction(opcode, mask, operands) {
         SetImmediateData(immediate);
     }
+
+    SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate) : SSAInstruction(opcode, VecMask::No, operands, immediate) {}
 
     SSAInstruction(u64 immediate) : opcode(IROpcode::Immediate), return_type{IRType::Integer64} {
         Operands op;

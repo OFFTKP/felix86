@@ -1073,7 +1073,10 @@ IR_HANDLE(pcmpeqb_xmm_xmm128) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
     ir.SetVectorStatePackedByte();
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VEqual(reg, rm);
+    SSAInstruction* mask = ir.VEqual(reg, rm);
+    // Now we need to convert elements that are equal to 1 to all 1s
+    SSAInstruction* shifted_left = ir.VSlli(mask, 7);
+    SSAInstruction* result = ir.VSrai(shifted_left, 7);
     ir.SetReg(inst->operand_reg, result);
 }
 

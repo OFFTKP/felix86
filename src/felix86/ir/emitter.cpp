@@ -490,8 +490,16 @@ SSAInstruction* IREmitter::VZero() {
     return insertInstruction(IROpcode::VSplati, {}, 0);
 }
 
-SSAInstruction* IREmitter::VEqual(SSAInstruction* lhs, SSAInstruction* rhs) {
-    return insertInstruction(IROpcode::VEqual, {lhs, rhs});
+SSAInstruction* IREmitter::VSlli(SSAInstruction* value, u8 shift, VecMask masked) {
+    return insertInstruction(IROpcode::VSlli, masked, {value}, shift);
+}
+
+SSAInstruction* IREmitter::VSrai(SSAInstruction* value, u8 shift, VecMask masked) {
+    return insertInstruction(IROpcode::VSrai, masked, {value}, shift);
+}
+
+SSAInstruction* IREmitter::VEqual(SSAInstruction* lhs, SSAInstruction* rhs, VecMask masked) {
+    return insertInstruction(IROpcode::VEqual, masked, {lhs, rhs});
 }
 
 SSAInstruction* IREmitter::VAdd(SSAInstruction* lhs, SSAInstruction* rhs) {
@@ -747,8 +755,13 @@ SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, std::initializer_l
     return block->InsertAtEnd(std::move(instruction));
 }
 
-SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, VecMask mask, std::initializer_list<SSAInstruction*> operands) {
-    SSAInstruction instruction(opcode, mask, operands);
+SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, VecMask masked, std::initializer_list<SSAInstruction*> operands) {
+    SSAInstruction instruction(opcode, masked, operands);
+    return block->InsertAtEnd(std::move(instruction));
+}
+
+SSAInstruction* IREmitter::insertInstruction(IROpcode opcode, VecMask masked, std::initializer_list<SSAInstruction*> operands, u64 imm) {
+    SSAInstruction instruction(opcode, masked, operands, imm);
     return block->InsertAtEnd(std::move(instruction));
 }
 

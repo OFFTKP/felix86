@@ -143,6 +143,8 @@
     X(VGather)                                                                                                                                       \
     X(VSplat)                                                                                                                                        \
     X(VSplati)                                                                                                                                       \
+    X(VSlli)                                                                                                                                       \
+    X(VSrai)                                                                                                                                       \
     X(Count)
 
 enum class IROpcode : u8 {

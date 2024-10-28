@@ -1,6 +1,6 @@
 # How to use
 
-# Compiling on RISC-V hardware
+## Using on RISC-V hardware
 
 Simply compile felix86 with CMake
 
@@ -10,12 +10,14 @@ cmake -B build
 cmake --build build -j$(nproc)
 ```
 
-# Testing on other architectures
+Make sure to [grab a RootFS](#rootfs) and then felix86 is ready to run!
+
+## Using on other architectures
 
 Since RISC-V hardware is not up to par when it comes to both speed and extensions, it's desirable sometimes to use your more powerful hardware
 to run felix86 for debugging or testing purposes.
 
-[Spike](https://github.com/riscv-software-src/riscv-isa-sim) seems like a good candidate to emulate felix86, however the proxy kernel it requires seems quite incomplete.
+[Spike](https://github.com/riscv-software-src/riscv-isa-sim) seemed like a good candidate to emulate felix86, however the proxy kernel it uses seems quite incomplete right now.
 
 Currently to test felix86 I use qemu-riscv and run an Ubuntu image.
 
@@ -53,9 +55,9 @@ By default, no environment variables are passed to the executable.
 
 Use `--help` to view all the options.
 
-# Compiling tests
+## Compiling tests
 
-Set `BUILD_TESTS` to 1/ON/whatever else CMake requires as true.
+Set `BUILD_TESTS` to 1/ON/whatever CMake recognizes as truthy.
 
 Run `felix86_test` to run every test, or `felix86_test "the test name"` to run a specific test.
 

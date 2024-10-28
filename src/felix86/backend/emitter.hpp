@@ -146,7 +146,7 @@ private:
     static void EmitVXor(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVSub(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVAdd(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
-    static void EmitVEqual(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVEqual(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVIota(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVGather(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVSplat(Backend&, biscuit::Vec, biscuit::GPR);

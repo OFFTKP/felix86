@@ -107,8 +107,10 @@ struct IREmitter {
     SSAInstruction* VIota(SSAInstruction* mask, VecMask masked = VecMask::No);
     SSAInstruction* VSplat(SSAInstruction* value);
     SSAInstruction* VZero();
-    SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VecMask masked);
-    SSAInstruction* VEqual(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VecMask masked = VecMask::No);
+    SSAInstruction* VEqual(SSAInstruction* lhs, SSAInstruction* rhs, VecMask masked = VecMask::No);
+    SSAInstruction* VSlli(SSAInstruction* value, u8 shift, VecMask masked = VecMask::No);
+    SSAInstruction* VSrai(SSAInstruction* value, u8 shift, VecMask masked = VecMask::No);
     SSAInstruction* VAdd(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VSub(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VAnd(SSAInstruction* lhs, SSAInstruction* rhs);
@@ -204,7 +206,8 @@ private:
     SSAInstruction* getSignMask(x86_size_e size);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate);
-    SSAInstruction* insertInstruction(IROpcode opcode, VecMask mask, std::initializer_list<SSAInstruction*> operands);
+    SSAInstruction* insertInstruction(IROpcode opcode, VecMask masked, std::initializer_list<SSAInstruction*> operands);
+    SSAInstruction* insertInstruction(IROpcode opcode, VecMask masked, std::initializer_list<SSAInstruction*> operands, u64 imm);
 
     void loadPartialState(std::span<const x86_ref_e> refs);
     void storePartialState(std::span<const x86_ref_e> refs);

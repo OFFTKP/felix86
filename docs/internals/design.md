@@ -21,6 +21,8 @@ Finally the backend passes this form to the emitter and emits RISC-V.
 
 Felix86 does not do "static register allocation", meaning, giving some GPRs a specific purposes such as r1 is for rax, r2 is for rcx etc. I have not tested on whether or not that would be preferable but I consider it subpar as it would be hogging some registers when they don't need to be hogged.
 
+We have a Chaitin-Briggs graph coloring register allocator.
+
 # Multithreaded code
 
 Emitted code can run in parallel but only 1 function may compile at once. This is to reduce possible duplicate functions in the backend. A mutex is locked when we need to compile.
