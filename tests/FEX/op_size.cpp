@@ -5,5 +5,6 @@
         FEXTestLoader::RunTest("ASM/OpSize/" #opcode ".asm");                                                                                        \
     }
 
+OP_SIZE(66_28)
 OP_SIZE(66_60)
 OP_SIZE(66_DB)
