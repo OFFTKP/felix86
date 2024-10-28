@@ -335,8 +335,6 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(Div128, 1);
         VALIDATE_OPS_INT(Divu128, 1);
         VALIDATE_OPS_INT(VSplat, 1);
-        VALIDATE_OPS_INT(VSlli, 1);
-        VALIDATE_OPS_INT(VSrai, 1);
 
         VALIDATE_OPS_INT(WriteByte, 2);
         VALIDATE_OPS_INT(WriteWord, 2);
@@ -408,6 +406,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_VECTOR(SetVMask, 1);
         VALIDATE_OPS_VECTOR(VIota, 1);
         VALIDATE_OPS_VECTOR(VExtractInteger, 1);
+        VALIDATE_OPS_VECTOR(VSlli, 1);
+        VALIDATE_OPS_VECTOR(VSrai, 1);
 
         VALIDATE_OPS_VECTOR(VAnd, 2);
         VALIDATE_OPS_VECTOR(VOr, 2);
