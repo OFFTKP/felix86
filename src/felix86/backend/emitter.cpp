@@ -1039,38 +1039,33 @@ void Emitter::EmitVXor(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, bisc
     AS.VXOR(Vd, Vs1, Vs2);
 }
 
-void Emitter::EmitVSubByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVAddByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVAddWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVEqual(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVAddDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
+void Emitter::EmitSetVMask(Backend& backend, biscuit::Vec Vs) {
+    AS.VMV(v0, Vs);
 }
 
-void Emitter::EmitVAddQWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
+void Emitter::EmitVIota(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask mask) {
+    AS.VIOTA(Vd, Vs, mask);
 }
 
-void Emitter::EmitVEqualByte(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
+void Emitter::EmitVGather(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2, biscuit::Vec Viota, VecMask mask) {
+    // We don't wanna modify Vs1
+    AS.VMV(v1, Vs1);
+    AS.VRGATHER(v1, Vs2, Viota, mask);
+    AS.VMV(Vd, v1);
 }
 
-void Emitter::EmitVEqualWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVEqualDWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
-}
-
-void Emitter::EmitVEqualQWord(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
+void Emitter::EmitVSplati(Backend& backend, biscuit::Vec Vd, u64 immediate) {
+    AS.VMV(Vd, immediate);
 }

@@ -31,6 +31,10 @@ struct BackendInstruction {
         return operand_count;
     }
 
+    VecMask GetMask() const {
+        return mask;
+    }
+
     AllocationType GetDesiredType() const {
         return desired_type;
     }
@@ -55,5 +59,6 @@ private:
     u32 name;
     IROpcode opcode;
     AllocationType desired_type = AllocationType::Null;
+    VecMask mask = VecMask::No;
     u8 operand_count;
 };

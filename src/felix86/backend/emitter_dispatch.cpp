@@ -705,6 +705,26 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::SetVMask: {
+        EmitSetVMask(backend, _Reg_(inst.GetOperand(0)));
+        break;
+    }
+
+    case IROpcode::VIota: {
+        EmitVIota(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VGather: {
+        EmitVGather(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), _Reg_(inst.GetOperand(2)), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VSplati: {
+        EmitVSplati(backend, _Reg_(inst.GetName()), inst.GetImmediateData());
+        break;
+    }
+
     case IROpcode::VAnd: {
         EmitVAnd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
@@ -720,48 +740,18 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
-    case IROpcode::VSubByte: {
-        EmitVSubByte(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+    case IROpcode::VSub: {
+        EmitVSub(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
     }
 
-    case IROpcode::VAddByte: {
-        EmitVAddByte(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+    case IROpcode::VAdd: {
+        EmitVAdd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
     }
 
-    case IROpcode::VAddWord: {
-        EmitVAddWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::VAddDWord: {
-        EmitVAddDWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::VAddQWord: {
-        EmitVAddQWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::VEqualByte: {
-        EmitVEqualByte(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::VEqualWord: {
-        EmitVEqualWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::VEqualDWord: {
-        EmitVEqualDWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::VEqualQWord: {
-        EmitVEqualQWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+    case IROpcode::VEqual: {
+        EmitVEqual(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
     }
     }

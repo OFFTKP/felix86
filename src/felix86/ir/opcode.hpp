@@ -132,18 +132,16 @@
     X(VToI)                                                                                                                                          \
     X(VInsertInteger)                                                                                                                                \
     X(VExtractInteger)                                                                                                                               \
+    X(SetVMask)                                                                                                                                      \
     X(VAnd)                                                                                                                                          \
     X(VOr)                                                                                                                                           \
     X(VXor)                                                                                                                                          \
-    X(VSubByte)                                                                                                                                      \
-    X(VAddByte)                                                                                                                                      \
-    X(VAddWord)                                                                                                                                      \
-    X(VAddDWord)                                                                                                                                     \
-    X(VAddQWord)                                                                                                                                     \
-    X(VEqualByte)                                                                                                                                    \
-    X(VEqualWord)                                                                                                                                    \
-    X(VEqualDWord)                                                                                                                                   \
-    X(VEqualQWord)                                                                                                                                   \
+    X(VSub)                                                                                                                                          \
+    X(VAdd)                                                                                                                                          \
+    X(VEqual)                                                                                                                                        \
+    X(VIota)                                                                                                                                         \
+    X(VGather)                                                                                                                                       \
+    X(VSplati)                                                                                                                                       \
     X(Count)
 
 enum class IROpcode : u8 {

@@ -25,8 +25,9 @@ struct IRBlock;
 
 struct Operands {
     std::array<SSAInstruction*, 4> operands;
-    u64 immediate_data = 0; // for some sse instructions
+    u64 immediate_data = 0; // for some instructions
     u8 operand_count = 0;
+    VecMask mask = VecMask::No;
 };
 
 struct GetGuest {
@@ -95,8 +96,9 @@ struct SSAInstruction {
         expression_type = ExpressionType::Operands;
     }
 
-    SSAInstruction(IROpcode opcode, VectorMask mask, std::initializer_list<SSAInstruction*> operands) : SSAInstruction(opcode, operands) {
-        this->mask = mask;
+    SSAInstruction(IROpcode opcode, VecMask mask, std::initializer_list<SSAInstruction*> operands) : SSAInstruction(opcode, operands) {
+        Operands& op = AsOperands();
+        op.mask = mask;
     }
 
     SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate) : SSAInstruction(opcode, operands) {
@@ -328,6 +330,10 @@ struct SSAInstruction {
         return AsOperands().immediate_data;
     }
 
+    VecMask GetMask() const {
+        return AsOperands().mask;
+    }
+
     void SetImmediateData(u64 immediate_data) {
         AsOperands().immediate_data = immediate_data;
     }
@@ -409,6 +415,5 @@ private:
     ExpressionType expression_type;
     IROpcode opcode;
     IRType return_type;
-    VectorMask mask = VectorMask::No;
     bool locked = false; // must not be removed by optimizations, even when used by nothing
 };

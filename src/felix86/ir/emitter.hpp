@@ -104,17 +104,12 @@ struct IREmitter {
     SSAInstruction* AmoXor(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* AmoSwap(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
-    SSAInstruction* VIota(SSAInstruction* mask, VectorMask masked = VectorMask::No);
-    SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VectorMask masked);
-    SSAInstruction* VEqualByte(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VEqualWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VEqualDWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VEqualQWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VAddByte(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VAddWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VAddDWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VAddQWord(SSAInstruction* lhs, SSAInstruction* rhs);
-    SSAInstruction* VSubByte(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VIota(SSAInstruction* mask, VecMask masked = VecMask::No);
+    SSAInstruction* VZero();
+    SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VecMask masked);
+    SSAInstruction* VEqual(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VAdd(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* VSub(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VAnd(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VOr(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VXor(SSAInstruction* lhs, SSAInstruction* rhs);
@@ -208,7 +203,7 @@ private:
     SSAInstruction* getSignMask(x86_size_e size);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands);
     SSAInstruction* insertInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate);
-    SSAInstruction* insertInstruction(IROpcode opcode, VectorMask mask, std::initializer_list<SSAInstruction*> operands);
+    SSAInstruction* insertInstruction(IROpcode opcode, VecMask mask, std::initializer_list<SSAInstruction*> operands);
 
     void loadPartialState(std::span<const x86_ref_e> refs);
     void storePartialState(std::span<const x86_ref_e> refs);

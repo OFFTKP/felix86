@@ -118,8 +118,3 @@ enum class VectorType {
     PackedDWord,
     PackedQWord,
 };
-
-enum class VectorMask {
-    No = 0,
-    Yes = 1,
-};

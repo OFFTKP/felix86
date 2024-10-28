@@ -5,6 +5,7 @@ BackendInstruction BackendInstruction::FromSSAInstruction(const SSAInstruction* 
     backend_inst.opcode = inst->GetOpcode();
     backend_inst.name = inst->GetName();
     backend_inst.immediate_data = inst->GetImmediateData();
+    backend_inst.mask = inst->GetMask();
 
     if (inst->IsGPR()) {
         backend_inst.desired_type = AllocationType::GPR;
