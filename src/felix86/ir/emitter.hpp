@@ -106,6 +106,8 @@ struct IREmitter {
     SSAInstruction* AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* VIota(SSAInstruction* mask, VecMask masked = VecMask::No);
     SSAInstruction* VSplat(SSAInstruction* value);
+    SSAInstruction* VSplati(u64 imm);
+    SSAInstruction* VMergei(u64 true_imm, SSAInstruction* false_value);
     SSAInstruction* VZero();
     SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VecMask masked = VecMask::No);
     SSAInstruction* VEqual(SSAInstruction* lhs, SSAInstruction* rhs, VecMask masked = VecMask::No);

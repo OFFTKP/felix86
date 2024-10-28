@@ -151,6 +151,7 @@ private:
     static void EmitVGather(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVSplat(Backend&, biscuit::Vec, biscuit::GPR);
     static void EmitVSplati(Backend&, biscuit::Vec, u64);
+    static void EmitVMergei(Backend&, biscuit::Vec, biscuit::Vec, u64);
     static void EmitVSlli(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked);
     static void EmitVSrai(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked);
 };

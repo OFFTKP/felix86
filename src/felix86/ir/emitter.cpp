@@ -487,7 +487,7 @@ SSAInstruction* IREmitter::VGather(SSAInstruction* dest, SSAInstruction* source,
 }
 
 SSAInstruction* IREmitter::VZero() {
-    return insertInstruction(IROpcode::VSplati, {}, 0);
+    return VSplati(0);
 }
 
 SSAInstruction* IREmitter::VSlli(SSAInstruction* value, u8 shift, VecMask masked) {
@@ -524,6 +524,14 @@ SSAInstruction* IREmitter::VXor(SSAInstruction* lhs, SSAInstruction* rhs) {
 
 SSAInstruction* IREmitter::VSplat(SSAInstruction* value) {
     return insertInstruction(IROpcode::VSplat, {value});
+}
+
+SSAInstruction* IREmitter::VSplati(u64 imm) {
+    return insertInstruction(IROpcode::VSplati, {}, imm);
+}
+
+SSAInstruction* IREmitter::VMergei(u64 true_imm, SSAInstruction* false_value) {
+    return insertInstruction(IROpcode::VMergei, {false_value}, true_imm);
 }
 
 SSAInstruction* IREmitter::IToV(SSAInstruction* value) {

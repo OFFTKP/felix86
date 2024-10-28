@@ -555,6 +555,7 @@ void Emitter::EmitWriteXmmWordRelative(Backend& backend, biscuit::GPR Address, b
         EmitSetVectorStatePackedByte(backend);
         AS.VSE8(Vs, Address);
     } else {
+        EmitSetVectorStatePackedByte(backend);
         AS.ADDI(t0, Address, (i64)offset);
         AS.VSE8(Vs, t0);
     }
@@ -1090,4 +1091,8 @@ void Emitter::EmitVSlli(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 
 
 void Emitter::EmitVSrai(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
     AS.VSRA(Vd, Vs, immediate, masked);
+}
+
+void Emitter::EmitVMergei(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate) {
+    AS.VMERGE(Vd, Vs, immediate);
 }

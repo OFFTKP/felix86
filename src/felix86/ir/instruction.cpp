@@ -173,6 +173,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::VInsertInteger:
     case IROpcode::VSplat:
     case IROpcode::VSplati:
+    case IROpcode::VMergei:
     case IROpcode::VGather:
     case IROpcode::VIota:
     case IROpcode::VSlli:
@@ -406,6 +407,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_VECTOR(SetVMask, 1);
         VALIDATE_OPS_VECTOR(VIota, 1);
         VALIDATE_OPS_VECTOR(VExtractInteger, 1);
+        VALIDATE_OPS_VECTOR(VMergei, 1);
         VALIDATE_OPS_VECTOR(VSlli, 1);
         VALIDATE_OPS_VECTOR(VSrai, 1);
 
@@ -1128,6 +1130,10 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::VSplati: {
         ret += fmt::format("{} <- {}(0x{:x})", GetNameString(name), "vsplati", immediate_data);
+        break;
+    }
+    case IROpcode::VMergei: {
+        ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vmergei", "false_value", GetNameString(operands[0]), immediate_data);
         break;
     }
     case IROpcode::VSlli: {

@@ -1,5 +1,4 @@
 #include "Zydis/Disassembler.h"
-#include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/frontend/frontend.hpp"
@@ -26,6 +25,7 @@ u64 ImmSext(u64 imm, x86_size_e size) {
     }
     return value;
 }
+static_assert(-1ull == 0xffffffffffffffffull);
 } // namespace
 
 u64 sext_if_64(u64 value, x86_size_e size_e) {
@@ -1074,9 +1074,9 @@ IR_HANDLE(pcmpeqb_xmm_xmm128) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     SSAInstruction* mask = ir.VEqual(reg, rm);
-    // Now we need to convert elements that are equal to 1 to all 1s
-    SSAInstruction* shifted_left = ir.VSlli(mask, 7);
-    SSAInstruction* result = ir.VSrai(shifted_left, 7);
+    // Splat 0xFF or 0 based on the mask
+    ir.SetVMask(mask);
+    SSAInstruction* result = ir.VMergei(-1ull, ir.VZero());
     ir.SetReg(inst->operand_reg, result);
 }
 
