@@ -54,6 +54,7 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/passes/local_cse_pass.cpp
     src/felix86/ir/passes/peephole_pass.cpp
     src/felix86/ir/passes/ssa_pass.cpp
+    src/felix86/ir/passes/vector_state_pass.cpp
 )
 
 set(FELIX86_COMMON_SOURCES

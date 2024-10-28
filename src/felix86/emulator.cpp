@@ -212,6 +212,9 @@ void* Emulator::compileFunction(u64 rip) {
 
     AllocationMap allocations = ir_graph_coloring_pass(backend_function);
 
+    // Remove unnecessary vector state instructions and add ones needed before stores
+    PassManager::VectorStatePass(&backend_function);
+
     auto [func, size] = backend.EmitFunction(backend_function, allocations);
 
     if (config.print_blocks) {

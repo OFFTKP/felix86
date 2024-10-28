@@ -8,10 +8,13 @@
     X(GetThreadStatePointer)                                                                                                                         \
     X(SetVectorStateFloat) /* these set the state of vector operations, to operate on float/doubles or packed data */                                \
     X(SetVectorStateDouble)                                                                                                                          \
-    X(SetVectorStatePackedByte)                                                                                                                      \
+    X(SetVectorStatePackedByte) /* we do an optimization pass to remove unnecessary SetVectorState* (really we just unlock them and they get removed \
+                                   by dce) */                                                                                                        \
     X(SetVectorStatePackedWord)                                                                                                                      \
     X(SetVectorStatePackedDWord)                                                                                                                     \
     X(SetVectorStatePackedQWord)                                                                                                                     \
+    X(SetVectorStatePacked) /* this one is for instructions that don't care about the size and only care that it deals with all the elements, for    \
+                               optimization purposes so we can detect when it's unnecessary */                                                       \
     X(SetExitReason)                                                                                                                                 \
     X(CallHostFunction)                                                                                                                              \
     X(Phi)                                                                                                                                           \

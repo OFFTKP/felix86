@@ -53,6 +53,7 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::Null:
     case IROpcode::SetVectorStateFloat:
     case IROpcode::SetVectorStateDouble:
+    case IROpcode::SetVectorStatePacked:
     case IROpcode::SetVectorStatePackedByte:
     case IROpcode::SetVectorStatePackedWord:
     case IROpcode::SetVectorStatePackedDWord:
@@ -289,6 +290,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_INT(GetThreadStatePointer, 0);
         VALIDATE_OPS_INT(SetVectorStateFloat, 0);
         VALIDATE_OPS_INT(SetVectorStateDouble, 0);
+        VALIDATE_OPS_INT(SetVectorStatePacked, 0);
         VALIDATE_OPS_INT(SetVectorStatePackedByte, 0);
         VALIDATE_OPS_INT(SetVectorStatePackedWord, 0);
         VALIDATE_OPS_INT(SetVectorStatePackedDWord, 0);
@@ -596,6 +598,7 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     case IROpcode::SetVectorStateDouble: {
         return fmt::format("SetVectorStateDouble()");
     }
+    case IROpcode::SetVectorStatePacked:
     case IROpcode::SetVectorStatePackedByte: {
         return fmt::format("SetVectorStatePackedByte()");
     }

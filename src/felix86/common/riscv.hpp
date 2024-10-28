@@ -110,7 +110,8 @@ enum class MemoryOrdering {
 // These are a higher level abstraction of VL and VTYPE combinations
 // that are useful when recompiling x86-64 to RISC-V. Particularily we care about
 // the different ways the xmm registers can be used.
-enum class VectorType {
+enum class VectorState {
+    Null,
     Float,
     Double,
     PackedByte,
