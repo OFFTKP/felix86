@@ -43,6 +43,14 @@ struct BackendInstruction {
         name = new_name;
     }
 
+    void SetCurrentState(VectorState state) {
+        current_state = state;
+    }
+
+    VectorState GetCurrentState() const {
+        return current_state;
+    }
+
     static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
 
     static BackendInstruction FromMove(u32 lhs, u32 rhs, AllocationType type);
@@ -61,4 +69,5 @@ private:
     AllocationType desired_type = AllocationType::Null;
     VecMask mask = VecMask::No;
     u8 operand_count;
+    VectorState current_state = VectorState::Null;
 };

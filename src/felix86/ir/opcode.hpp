@@ -13,8 +13,6 @@
     X(SetVectorStatePackedWord)                                                                                                                      \
     X(SetVectorStatePackedDWord)                                                                                                                     \
     X(SetVectorStatePackedQWord)                                                                                                                     \
-    X(SetVectorStatePacked) /* this one is for instructions that don't care about the size and only care that it deals with all the elements, for    \
-                               optimization purposes so we can detect when it's unnecessary */                                                       \
     X(SetExitReason)                                                                                                                                 \
     X(CallHostFunction)                                                                                                                              \
     X(Phi)                                                                                                                                           \

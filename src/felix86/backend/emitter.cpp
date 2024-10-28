@@ -471,8 +471,23 @@ void Emitter::EmitReadQWord(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) 
     AS.LD(Rd, 0, Rs);
 }
 
-void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address) {
-    AS.VLE8(Vd, Address);
+void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address, VectorState state) {
+    switch (state) {
+    case VectorState::PackedByte:
+        AS.VLE8(Vd, Address);
+        break;
+    case VectorState::PackedWord:
+        AS.VLE16(Vd, Address);
+        break;
+    case VectorState::PackedDWord:
+        AS.VLE32(Vd, Address);
+        break;
+    case VectorState::PackedQWord:
+        AS.VLE64(Vd, Address);
+        break;
+    default:
+        UNREACHABLE();
+    }
 }
 
 void Emitter::EmitReadByteRelative(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u64 offset) {
@@ -495,13 +510,13 @@ void Emitter::EmitReadQWordRelative(Backend& backend, biscuit::GPR Rd, biscuit::
     AS.LD(Rd, offset, Rs);
 }
 
-void Emitter::EmitReadXmmWordRelative(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address, u64 offset) {
+void Emitter::EmitReadXmmWordRelative(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address, u64 offset, VectorState state) {
     ASSERT(IsValidSigned12BitImm(offset));
     if (offset == 0) {
-        AS.VLE8(Vd, Address);
+        EmitReadXmmWord(backend, Vd, Address, state);
     } else {
         AS.ADDI(t0, Address, (i64)offset);
-        AS.VLE8(Vd, t0);
+        EmitReadXmmWord(backend, Vd, t0, state);
     }
 }
 
@@ -521,8 +536,23 @@ void Emitter::EmitWriteQWord(Backend& backend, biscuit::GPR Address, biscuit::GP
     AS.SD(Rs, 0, Address);
 }
 
-void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs) {
-    AS.VSE8(Vs, Address);
+void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs, VectorState state) {
+    switch (state) {
+    case VectorState::PackedByte:
+        AS.VSE8(Vs, Address);
+        break;
+    case VectorState::PackedWord:
+        AS.VSE16(Vs, Address);
+        break;
+    case VectorState::PackedDWord:
+        AS.VSE32(Vs, Address);
+        break;
+    case VectorState::PackedQWord:
+        AS.VSE64(Vs, Address);
+        break;
+    default:
+        UNREACHABLE();
+    }
 }
 
 void Emitter::EmitWriteByteRelative(Backend& backend, biscuit::GPR Address, biscuit::GPR Rs, u64 offset) {
@@ -545,13 +575,13 @@ void Emitter::EmitWriteQWordRelative(Backend& backend, biscuit::GPR Address, bis
     AS.SD(Rs, offset, Address);
 }
 
-void Emitter::EmitWriteXmmWordRelative(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs, u64 offset) {
+void Emitter::EmitWriteXmmWordRelative(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs, u64 offset, VectorState state) {
     ASSERT(IsValidSigned12BitImm(offset));
     if (offset == 0) {
-        AS.VSE8(Vs, Address);
+        EmitWriteXmmWord(backend, Address, Vs, state);
     } else {
         AS.ADDI(t0, Address, (i64)offset);
-        AS.VSE8(Vs, t0);
+        EmitWriteXmmWord(backend, t0, Vs, state);
     }
 }
 

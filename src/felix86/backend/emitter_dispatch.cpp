@@ -55,7 +55,6 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
-    case IROpcode::SetVectorStatePacked:
     case IROpcode::SetVectorStatePackedByte: {
         EmitSetVectorStatePackedByte(backend);
         break;
@@ -154,7 +153,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     }
 
     case IROpcode::ReadXmmWordRelative: {
-        EmitReadXmmWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitReadXmmWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetCurrentState());
         break;
     }
 
@@ -179,7 +178,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     }
 
     case IROpcode::WriteXmmWordRelative: {
-        EmitWriteXmmWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        EmitWriteXmmWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData(), inst.GetCurrentState());
         break;
     }
 
@@ -238,7 +237,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     }
 
     case IROpcode::ReadXmmWord: {
-        EmitReadXmmWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitReadXmmWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetCurrentState());
         break;
     }
 
@@ -702,7 +701,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     }
 
     case IROpcode::WriteXmmWord: {
-        EmitWriteXmmWord(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitWriteXmmWord(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetCurrentState());
         break;
     }
 

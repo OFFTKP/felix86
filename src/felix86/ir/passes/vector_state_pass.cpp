@@ -61,14 +61,6 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                 state = VectorState::PackedQWord;
                 break;
             }
-            case IROpcode::SetVectorStatePacked: {
-                if (IsPacked(state)) {
-                    it = block.GetInstructions().erase(it);
-                    continue;
-                }
-                state = VectorState::PackedByte;
-                break;
-            }
             case IROpcode::WriteXmmWord:
             case IROpcode::WriteXmmWordRelative:
             case IROpcode::ReadXmmWord:
@@ -79,6 +71,8 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                     BackendInstruction new_inst = BackendInstruction::FromSSAInstruction(&inst);
                     it = block.GetInstructions().insert(it, new_inst);
                     continue;
+                } else {
+                    inst.SetCurrentState(state);
                 }
                 break;
             }
