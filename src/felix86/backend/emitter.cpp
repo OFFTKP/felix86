@@ -472,8 +472,7 @@ void Emitter::EmitReadQWord(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) 
 }
 
 void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address) {
-    AS.LI(t0, 16);
-    AS.VSETVLI(x0, t0, SEW::E8);
+    EmitSetVectorStatePackedByte(backend);
     AS.VLE8(Vd, Address);
 }
 
@@ -500,12 +499,10 @@ void Emitter::EmitReadQWordRelative(Backend& backend, biscuit::GPR Rd, biscuit::
 void Emitter::EmitReadXmmWordRelative(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address, u64 offset) {
     ASSERT(IsValidSigned12BitImm(offset));
     if (offset == 0) {
-        AS.LI(t0, 16);
-        AS.VSETVLI(x0, t0, SEW::E8);
+        EmitSetVectorStatePackedByte(backend);
         AS.VLE8(Vd, Address);
     } else {
-        AS.LI(t0, 16);
-        AS.VSETVLI(x0, t0, SEW::E8);
+        EmitSetVectorStatePackedByte(backend);
         AS.ADDI(t0, Address, (i64)offset);
         AS.VLE8(Vd, t0);
     }
@@ -528,8 +525,7 @@ void Emitter::EmitWriteQWord(Backend& backend, biscuit::GPR Address, biscuit::GP
 }
 
 void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs) {
-    AS.LI(t0, 16);
-    AS.VSETVLI(x0, t0, SEW::E8);
+    EmitSetVectorStatePackedByte(backend);
     AS.VSE8(Vs, Address);
 }
 
@@ -556,12 +552,9 @@ void Emitter::EmitWriteQWordRelative(Backend& backend, biscuit::GPR Address, bis
 void Emitter::EmitWriteXmmWordRelative(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs, u64 offset) {
     ASSERT(IsValidSigned12BitImm(offset));
     if (offset == 0) {
-        AS.LI(t0, 16);
-        AS.VSETVLI(x0, t0, SEW::E8);
+        EmitSetVectorStatePackedByte(backend);
         AS.VSE8(Vs, Address);
     } else {
-        AS.LI(t0, 16);
-        AS.VSETVLI(x0, t0, SEW::E8);
         AS.ADDI(t0, Address, (i64)offset);
         AS.VSE8(Vs, t0);
     }
@@ -1013,8 +1006,7 @@ void Emitter::EmitSetVectorStateDouble(Backend& backend) {
 void Emitter::EmitSetVectorStatePackedByte(Backend& backend) {
     // Operate on VLEN/8 elements, 8-bits
     static_assert(SUPPORTED_VLEN / 8 < 31); // for when we upgrade to 256-bit vectors
-    AS.LI(t0, 16);
-    AS.VSETVLI(x0, t0, SEW::E8);
+    AS.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
 }
 
 void Emitter::EmitSetVectorStatePackedWord(Backend& backend) {
