@@ -472,6 +472,8 @@ void Emitter::EmitReadQWord(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) 
 }
 
 void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address) {
+    AS.LI(t0, 16);
+    AS.VSETVLI(x0, t0, SEW::E8);
     AS.VLE8(Vd, Address);
 }
 
@@ -522,6 +524,8 @@ void Emitter::EmitWriteQWord(Backend& backend, biscuit::GPR Address, biscuit::GP
 }
 
 void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs) {
+    AS.LI(t0, 16);
+    AS.VSETVLI(x0, t0, SEW::E8);
     AS.VSE8(Vs, Address);
 }
 
@@ -1001,7 +1005,8 @@ void Emitter::EmitSetVectorStateDouble(Backend& backend) {
 void Emitter::EmitSetVectorStatePackedByte(Backend& backend) {
     // Operate on VLEN/8 elements, 8-bits
     static_assert(SUPPORTED_VLEN / 8 < 31); // for when we upgrade to 256-bit vectors
-    AS.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
+    AS.LI(t0, 16);
+    AS.VSETVLI(x0, t0, SEW::E8);
 }
 
 void Emitter::EmitSetVectorStatePackedWord(Backend& backend) {
