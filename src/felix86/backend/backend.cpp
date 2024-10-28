@@ -45,8 +45,7 @@ void Backend::emitNecessaryStuff() {
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
     // Give it an initial valid state
-    as.LI(t0, -1);
-    as.VSETVLI(x0, t0, SEW::E8);
+    as.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
 
     biscuit::GPR address = t0;
 
