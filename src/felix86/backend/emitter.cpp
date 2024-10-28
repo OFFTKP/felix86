@@ -1066,9 +1066,8 @@ void Emitter::EmitVIota(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecM
 
 void Emitter::EmitVGather(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2, biscuit::Vec Viota, VecMask mask) {
     // We don't wanna modify Vs1
-    AS.VMV(v1, Vs1);
-    AS.VRGATHER(v1, Vs2, Viota, mask);
-    AS.VMV(Vd, v1);
+    AS.VMV(Vd, Vs1);
+    AS.VRGATHER(Vd, Vs2, Viota, mask);
 }
 
 void Emitter::EmitVSplat(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs) {
