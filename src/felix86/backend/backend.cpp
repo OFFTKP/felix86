@@ -44,6 +44,9 @@ void Backend::emitNecessaryStuff() {
     /* void enter_dispatcher(ThreadState* state) */
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
+    // Give it an initial valid state
+    as.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
+
     biscuit::GPR address = t0;
 
     // Save the current register state of callee-saved registers and return address
