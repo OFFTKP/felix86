@@ -1069,12 +1069,34 @@ IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
     ir.SetReg(inst->operand_reg, vector);
 }
 
-IR_HANDLE(pcmpeqb_xmm_xmm128) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
+IR_HANDLE(pcmpeqb) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
     ir.SetVectorStatePackedByte();
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     SSAInstruction* mask = ir.VEqual(reg, rm);
     // Splat 0xFF or 0 based on the mask
+    ir.SetVMask(mask);
+    SSAInstruction* result = ir.VMergei(-1ull, ir.VZero());
+    ir.SetReg(inst->operand_reg, result);
+}
+
+IR_HANDLE(pcmpeqw) { // pcmpeqw xmm, xmm/m128 - 0x66 0x0f 0x75
+    ir.SetVectorStatePackedWord();
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+    SSAInstruction* mask = ir.VEqual(reg, rm);
+    // Splat 0xFFFF or 0 based on the mask
+    ir.SetVMask(mask);
+    SSAInstruction* result = ir.VMergei(-1ull, ir.VZero());
+    ir.SetReg(inst->operand_reg, result);
+}
+
+IR_HANDLE(pcmpeqd) { // pcmpeqd xmm, xmm/m128 - 0x66 0x0f 0x76
+    ir.SetVectorStatePackedDWord();
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+    SSAInstruction* mask = ir.VEqual(reg, rm);
+    // Splat 0xFFFFFFFF or 0 based on the mask
     ir.SetVMask(mask);
     SSAInstruction* result = ir.VMergei(-1ull, ir.VZero());
     ir.SetReg(inst->operand_reg, result);
