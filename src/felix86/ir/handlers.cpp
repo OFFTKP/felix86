@@ -1065,6 +1065,20 @@ IR_HANDLE(punpcklqdq) { // punpcklqdq xmm, xmm/m128 - 0x66 0x0f 0x6c
 }
 
 IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
+    switch (inst->operand_rm.size) {
+    case X86_SIZE_DWORD: {
+        ir.SetVectorStatePackedDWord();
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        ir.SetVectorStatePackedQWord();
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* vector = ir.IToV(rm);
     ir.SetReg(inst->operand_reg, vector);
@@ -1104,6 +1118,20 @@ IR_HANDLE(pcmpeqd) { // pcmpeqd xmm, xmm/m128 - 0x66 0x0f 0x76
 }
 
 IR_HANDLE(movq_rm32_xmm) { // movq rm32, xmm - 0x66 0x0f 0x7e
+    switch (inst->operand_rm.size) {
+    case X86_SIZE_DWORD: {
+        ir.SetVectorStatePackedDWord();
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        ir.SetVectorStatePackedQWord();
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
     SSAInstruction* rm = ir.VToI(xmm);
     ir.SetRm(inst->operand_rm, rm);
@@ -1114,6 +1142,7 @@ IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         inst->operand_rm.size = X86_SIZE_QWORD;
     }
+    ir.SetVectorStatePackedQWord();
     ir.SetRm(inst->operand_rm, ir.VToI(reg));
 }
 
@@ -1171,6 +1200,7 @@ IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
     SSAInstruction* result;
     if (rm_op.type == X86_OP_TYPE_MEMORY) {
         rm_op.size = X86_SIZE_QWORD;
+        ir.SetVectorStatePackedQWord();
         result = ir.IToV(ir.GetRm(rm_op));
     } else {
         result = ir.GetReg(rm_op);
