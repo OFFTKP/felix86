@@ -5,6 +5,19 @@ bool IsPacked(VectorState state) {
            state == VectorState::PackedQWord;
 }
 
+bool ExitsVM(IROpcode opcode) {
+    switch (opcode) {
+    case IROpcode::Syscall:
+    case IROpcode::Cpuid:
+    case IROpcode::Rdtsc:
+    case IROpcode::Div128:
+    case IROpcode::Divu128:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void PassManager::VectorStatePass(BackendFunction* function) {
     // Block local for now
     for (auto& block : function->GetBlocks()) {
@@ -76,8 +89,12 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                 }
                 break;
             }
-            default:
+            default: {
+                if (ExitsVM(inst.GetOpcode())) {
+                    state = VectorState::Null;
+                }
                 break;
+            }
             }
 
             it++;

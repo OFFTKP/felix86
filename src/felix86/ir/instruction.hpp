@@ -405,8 +405,6 @@ struct SSAInstruction {
 
     bool IsVoid() const;
 
-    bool ExitsVM() const;
-
     bool PropagateMovs();
 
     // TODO: move outside this class

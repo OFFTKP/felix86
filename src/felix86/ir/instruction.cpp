@@ -491,19 +491,6 @@ std::span<SSAInstruction*> SSAInstruction::GetUsedInstructions() {
     return {};
 }
 
-bool SSAInstruction::ExitsVM() const {
-    switch (GetOpcode()) {
-    case IROpcode::Syscall:
-    case IROpcode::Cpuid:
-    case IROpcode::Rdtsc:
-    case IROpcode::Div128:
-    case IROpcode::Divu128:
-        return true;
-    default:
-        return false;
-    }
-}
-
 bool SSAInstruction::PropagateMovs() {
     bool replaced_something = false;
     auto replace_mov = [&replaced_something](SSAInstruction*& operand, int index) {
