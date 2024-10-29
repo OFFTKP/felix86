@@ -652,7 +652,7 @@ IR_HANDLE(group2_rm_cl) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, cl - 0x
 }
 
 IR_HANDLE(ret_imm) {
-    SSAInstruction* imm = ir.Imm(inst->operand_imm.immediate.data + inst->length);
+    SSAInstruction* imm = ir.Imm(inst->operand_imm.immediate.data);
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rip = ir.ReadMemory(rsp, X86_SIZE_QWORD);
     SSAInstruction* rsp_add = ir.Add(rsp, imm);
