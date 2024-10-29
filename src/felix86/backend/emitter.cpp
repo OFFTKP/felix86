@@ -448,11 +448,13 @@ void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitDiv128(Backend& backend, biscuit::GPR Rs) {
-    UNREACHABLE();
+    AS.MV(a1, Rs);
+    EmitCallHostFunction(backend, (u64)felix86_div128);
 }
 
 void Emitter::EmitDivu128(Backend& backend, biscuit::GPR Rs) {
-    UNREACHABLE();
+    AS.MV(a1, Rs);
+    EmitCallHostFunction(backend, (u64)felix86_divu128);
 }
 
 void Emitter::EmitReadByte(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {

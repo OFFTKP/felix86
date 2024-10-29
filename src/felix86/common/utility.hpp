@@ -19,3 +19,6 @@ std::string GetNameString(u32 name);
 [[nodiscard]] constexpr bool IsValidSigned12BitImm(i64 value) {
     return value >= -2048 && value <= 2047;
 }
+
+void felix86_div128(struct ThreadState* state, u64 divisor);
+void felix86_divu128(struct ThreadState* state, u64 divisor);
