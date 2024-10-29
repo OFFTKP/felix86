@@ -147,6 +147,8 @@
     X(VMergei)                                                                                                                                       \
     X(VSlli)                                                                                                                                         \
     X(VSrai)                                                                                                                                         \
+    X(VSlideDowni)                                                                                                                                   \
+    X(VSlideUpi)                                                                                                                                     \
     X(Count)
 
 enum class IROpcode : u8 {

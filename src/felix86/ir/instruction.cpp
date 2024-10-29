@@ -183,7 +183,9 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     case IROpcode::VGather:
     case IROpcode::VIota:
     case IROpcode::VSlli:
-    case IROpcode::VSrai: {
+    case IROpcode::VSrai:
+    case IROpcode::VSlideUpi:
+    case IROpcode::VSlideDowni: {
         return IRType::Vector128;
     }
     case IROpcode::WriteByte:
@@ -416,6 +418,8 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
         VALIDATE_OPS_VECTOR(VMergei, 1);
         VALIDATE_OPS_VECTOR(VSlli, 1);
         VALIDATE_OPS_VECTOR(VSrai, 1);
+        VALIDATE_OPS_VECTOR(VSlideDowni, 1);
+        VALIDATE_OPS_VECTOR(VSlideUpi, 1);
 
         VALIDATE_OPS_VECTOR(VAnd, 2);
         VALIDATE_OPS_VECTOR(VOr, 2);
@@ -1135,6 +1139,14 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::VSrai: {
         ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vsrai", "src", GetNameString(operands[0]), immediate_data);
+        break;
+    }
+    case IROpcode::VSlideDowni: {
+        ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vslidedowni", "src", GetNameString(operands[0]), immediate_data);
+        break;
+    }
+    case IROpcode::VSlideUpi: {
+        ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vslideupi", "src", GetNameString(operands[0]), immediate_data);
         break;
     }
     case IROpcode::VGather: {

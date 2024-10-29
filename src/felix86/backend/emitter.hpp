@@ -154,4 +154,6 @@ private:
     static void EmitVMergei(Backend&, biscuit::Vec, biscuit::Vec, u64);
     static void EmitVSlli(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVSrai(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
+    static void EmitVSlideUpi(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
+    static void EmitVSlideDowni(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
 };

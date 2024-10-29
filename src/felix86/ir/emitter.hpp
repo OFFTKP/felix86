@@ -113,6 +113,9 @@ struct IREmitter {
     SSAInstruction* VEqual(SSAInstruction* lhs, SSAInstruction* rhs, VecMask masked = VecMask::No);
     SSAInstruction* VSlli(SSAInstruction* value, u8 shift, VecMask masked = VecMask::No);
     SSAInstruction* VSrai(SSAInstruction* value, u8 shift, VecMask masked = VecMask::No);
+    SSAInstruction* VSlideUpi(SSAInstruction* value, u8 shift, VecMask masked = VecMask::No);
+    SSAInstruction* VSlideDowni(SSAInstruction* value, u8 shift, VecMask masked = VecMask::No);
+    SSAInstruction* VZext(SSAInstruction* value, x86_size_e size);
     SSAInstruction* VAdd(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VSub(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* VAnd(SSAInstruction* lhs, SSAInstruction* rhs);

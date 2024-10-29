@@ -516,6 +516,36 @@ SSAInstruction* IREmitter::VSrai(SSAInstruction* value, u8 shift, VecMask masked
     return insertInstruction(IROpcode::VSrai, masked, {value}, shift);
 }
 
+SSAInstruction* IREmitter::VSlideDowni(SSAInstruction* value, u8 shift, VecMask masked) {
+    return insertInstruction(IROpcode::VSlideDowni, masked, {value}, shift);
+}
+
+SSAInstruction* IREmitter::VSlideUpi(SSAInstruction* value, u8 shift, VecMask masked) {
+    return insertInstruction(IROpcode::VSlideUpi, masked, {value}, shift);
+}
+
+SSAInstruction* IREmitter::VZext(SSAInstruction* value, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_DWORD: {
+        u8 element_count = SUPPORTED_VLEN / 32;
+        u8 shift_count = element_count - 1;
+        SetVectorStatePackedDWord();
+        SSAInstruction* upped = VSlideUpi(value, shift_count);
+        return VSlideDowni(upped, shift_count);
+    }
+    case X86_SIZE_QWORD: {
+        u8 element_count = SUPPORTED_VLEN / 64;
+        u8 shift_count = element_count - 1;
+        SetVectorStatePackedQWord();
+        SSAInstruction* upped = VSlideUpi(value, shift_count);
+        return VSlideDowni(upped, shift_count);
+    }
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+
 SSAInstruction* IREmitter::VEqual(SSAInstruction* lhs, SSAInstruction* rhs, VecMask masked) {
     return insertInstruction(IROpcode::VEqual, masked, {lhs, rhs});
 }

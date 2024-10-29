@@ -774,5 +774,15 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         EmitVSrai(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
+
+    case IROpcode::VSlideDowni: {
+        EmitVSlideDowni(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VSlideUpi: {
+        EmitVSlideUpi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        break;
+    }
     }
 }

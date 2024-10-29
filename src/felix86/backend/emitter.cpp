@@ -1122,3 +1122,16 @@ void Emitter::EmitVSrai(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 
 void Emitter::EmitVMergei(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate) {
     AS.VMERGE(Vd, Vs, immediate);
 }
+
+void Emitter::EmitVSlideDowni(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
+    AS.VSLIDEDOWN(Vd, Vs, immediate, masked);
+}
+
+void Emitter::EmitVSlideUpi(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
+    if (Vd == Vs) {
+        AS.VMV(v1, Vs);
+        AS.VSLIDEUP(Vd, v1, immediate, masked);
+    } else {
+        AS.VSLIDEUP(Vd, Vs, immediate, masked);
+    }
+}
