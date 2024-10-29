@@ -491,6 +491,16 @@ void IREmitter::Punpckl(x86_instruction_t* inst) {
     SetReg(inst->operand_reg, result);
 }
 
+void IREmitter::Pcmpeq(x86_instruction_t* inst) {
+    SSAInstruction* rm = GetRm(inst->operand_rm);
+    SSAInstruction* reg = GetReg(inst->operand_reg);
+    SSAInstruction* mask = VEqual(reg, rm);
+    // Splat 0xFF or 0 based on the mask
+    SetVMask(mask);
+    SSAInstruction* result = VMergei(-1ull, VZero());
+    SetReg(inst->operand_reg, result);
+}
+
 void IREmitter::SetVMask(SSAInstruction* mask) {
     SSAInstruction* instruction = insertInstruction(IROpcode::SetVMask, {mask});
     instruction->Lock();

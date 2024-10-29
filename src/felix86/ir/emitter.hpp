@@ -155,6 +155,7 @@ struct IREmitter {
     void SetExitReason(ExitReason reason);
     void SetFlags(SSAInstruction* flags);
     void SetVMask(SSAInstruction* mask);
+    void Pcmpeq(x86_instruction_t* inst);
     void Punpckl(x86_instruction_t* inst);
 
     void RepStart(IRBlock* loop_block, IRBlock* exit_block);
