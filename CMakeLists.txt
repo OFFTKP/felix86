@@ -7,6 +7,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(BISCUIT_CODE_BUFFER_MMAP ON)
+set(BUILD_TESTING OFF)
 add_subdirectory(external/biscuit)
 # add_subdirectory(external/plog)
 add_subdirectory(external/Catch2)

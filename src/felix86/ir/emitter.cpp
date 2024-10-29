@@ -473,6 +473,24 @@ SSAInstruction* IREmitter::AmoCAS(SSAInstruction* address, SSAInstruction* expec
     }
 }
 
+void IREmitter::Punpckl(x86_instruction_t* inst) {
+    SSAInstruction* rm = GetRm(inst->operand_rm);
+    SSAInstruction* reg = GetReg(inst->operand_reg);
+    // Essentially two "vdecompress" (viota + vrgather) instructions
+    // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
+    // This means we don't care to reduce the splat to only the first two elements
+    SSAInstruction* rm_mask = VSplat(Imm(0b10101010));
+    SSAInstruction* rm_iota = VIota(rm_mask);
+    SetVMask(rm_mask);
+    SSAInstruction* zero = VZero();
+    SSAInstruction* rm_gathered = VGather(zero, rm, rm_iota, VecMask::Yes);
+    SSAInstruction* reg_mask = VSplat(Imm(0b01010101));
+    SSAInstruction* reg_iota = VIota(reg_mask);
+    SetVMask(reg_mask);
+    SSAInstruction* result = VGather(rm_gathered, reg, reg_iota, VecMask::Yes);
+    SetReg(inst->operand_reg, result);
+}
+
 void IREmitter::SetVMask(SSAInstruction* mask) {
     SSAInstruction* instruction = insertInstruction(IROpcode::SetVMask, {mask});
     instruction->Lock();
