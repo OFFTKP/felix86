@@ -1026,19 +1026,19 @@ void Emitter::EmitVToI(Backend& backend, biscuit::GPR Rd, biscuit::Vec Vs) {
     AS.VMV_XS(Rd, Vs);
 }
 
-void Emitter::EmitVFAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVFAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VFADD(Vd, Vs2, Vs1);
 }
 
-void Emitter::EmitVFSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVFSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VFSUB(Vd, Vs2, Vs1);
 }
 
-void Emitter::EmitVFMul(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVFMul(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VFMUL(Vd, Vs2, Vs1);
 }
 
-void Emitter::EmitVFDiv(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVFDiv(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VFDIV(Vd, Vs2, Vs1);
 }
 
@@ -1054,11 +1054,11 @@ void Emitter::EmitVFRcpSqrt(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs) 
     AS.VFRSQRT7(Vd, Vs);
 }
 
-void Emitter::EmitVFMin(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVFMin(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VFMIN(Vd, Vs2, Vs1);
 }
 
-void Emitter::EmitVFMax(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVFMax(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VFMAX(Vd, Vs2, Vs1);
 }
 
@@ -1101,15 +1101,15 @@ void Emitter::EmitVExtractInteger(Backend& backend, biscuit::GPR, biscuit::Vec, 
     UNREACHABLE();
 }
 
-void Emitter::EmitVAnd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVAnd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VAND(Vd, Vs2, Vs1);
 }
 
-void Emitter::EmitVOr(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVOr(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VOR(Vd, Vs2, Vs1);
 }
 
-void Emitter::EmitVXor(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVXor(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VXOR(Vd, Vs2, Vs1);
 }
 
@@ -1117,16 +1117,16 @@ void Emitter::EmitVXori(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 
     AS.VXOR(Vd, Vs, immediate);
 }
 
-void Emitter::EmitVSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+void Emitter::EmitVSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     UNREACHABLE();
 }
 
-void Emitter::EmitVAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    UNREACHABLE();
+void Emitter::EmitVAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
+    AS.VADD(Vd, Vs2, Vs1);
 }
 
-void Emitter::EmitVEqual(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2, VecMask masked) {
-    AS.VMSEQ(Vd, Vs1, Vs2, masked);
+void Emitter::EmitVEqual(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VMSEQ(Vd, Vs2, Vs1, masked);
 }
 
 void Emitter::EmitSetVMask(Backend& backend, biscuit::Vec Vs) {
@@ -1165,8 +1165,8 @@ void Emitter::EmitVSrai(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 
     AS.VSRA(Vd, Vs, immediate, masked);
 }
 
-void Emitter::EmitVMerge(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    AS.VMERGE(Vd, Vs2, Vs1);
+void Emitter::EmitVMerge(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
+    AS.VMERGE(Vd, Vs1, Vs2);
 }
 
 void Emitter::EmitVMergei(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate) {
