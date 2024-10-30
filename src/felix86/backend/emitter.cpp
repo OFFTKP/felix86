@@ -1024,6 +1024,10 @@ void Emitter::EmitVToI(Backend& backend, biscuit::GPR Rd, biscuit::Vec Vs) {
     AS.VMV_XS(Rd, Vs);
 }
 
+void Emitter::EmitVFAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    AS.VFADD(Vd, Vs1, Vs2);
+}
+
 void Emitter::EmitSetVectorStateFloat(Backend& backend) {
     // Operate on one element, 32-bits
     AS.VSETIVLI(x0, 1, SEW::E32);

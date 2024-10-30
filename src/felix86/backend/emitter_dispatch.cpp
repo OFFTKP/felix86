@@ -784,5 +784,10 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         EmitVSlideUpi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
+
+    case IROpcode::VFAdd: {
+        EmitVFAdd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
     }
 }

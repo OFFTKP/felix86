@@ -156,4 +156,5 @@ private:
     static void EmitVSrai(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVSlideUpi(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVSlideDowni(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
+    static void EmitVFAdd(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
 };
