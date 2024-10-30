@@ -11,7 +11,7 @@
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/ir/opcode.hpp"
 
-enum class IRType : u8 {
+enum IRType : u8 {
     Void,
     Integer64,
     Vector128,

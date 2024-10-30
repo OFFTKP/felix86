@@ -4,6 +4,19 @@
 #include "felix86/ir/block.hpp"
 #include "felix86/ir/instruction.hpp"
 
+struct IROpcodeMetadata {
+    IROpcode opcode;
+    IRType return_type;
+    std::array<IRType, 4> operand_types;
+    u8 operand_count;
+};
+
+std::vector<IROpcodeMetadata> metadata = {
+#define X(name, return_type, ...) {IROpcode::name, IRType::return_type, {__VA_ARGS__}, sizeof((u32[]){__VA_ARGS__}) / sizeof(u32)},
+#include "felix86/ir/opcodes.inc"
+#undef X
+};
+
 bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
     if (expression_type != other.expression_type) {
         return false;
@@ -47,161 +60,13 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
 
 IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
     switch (opcode) {
-    case IROpcode::Mov: {
-        ERROR("Should not be used with Mov");
-        return IRType::Void;
-    }
-    case IROpcode::StoreSpill:
-    case IROpcode::LoadSpill: {
-        ERROR("Should not be used with LoadSpill");
-        return IRType::Void;
-    }
     case IROpcode::Null:
-    case IROpcode::SetVectorStateFloat:
-    case IROpcode::SetVectorStateDouble:
-    case IROpcode::SetVectorStatePackedByte:
-    case IROpcode::SetVectorStatePackedWord:
-    case IROpcode::SetVectorStatePackedDWord:
-    case IROpcode::SetVectorStatePackedQWord:
-    case IROpcode::CallHostFunction:
-    case IROpcode::SetExitReason:
-    case IROpcode::Comment:
-    case IROpcode::Syscall:
-    case IROpcode::Cpuid:
-    case IROpcode::Rdtsc:
-    case IROpcode::Div128:
-    case IROpcode::Divu128:
-    case IROpcode::SetVMask: {
+    case IROpcode::LoadSpill:
+    case IROpcode::StoreSpill:
+    case IROpcode::Count: {
+        UNREACHABLE();
         return IRType::Void;
     }
-    case IROpcode::GetThreadStatePointer:
-    case IROpcode::Select:
-    case IROpcode::Immediate:
-    case IROpcode::Parity:
-    case IROpcode::Add:
-    case IROpcode::Addi:
-    case IROpcode::Sub:
-    case IROpcode::Clz:
-    case IROpcode::Ctzh:
-    case IROpcode::Ctzw:
-    case IROpcode::Ctz:
-    case IROpcode::Shl:
-    case IROpcode::Shli:
-    case IROpcode::Shr:
-    case IROpcode::Shri:
-    case IROpcode::Sar:
-    case IROpcode::Sari:
-    case IROpcode::Rol8:
-    case IROpcode::Rol16:
-    case IROpcode::Rol32:
-    case IROpcode::Rol64:
-    case IROpcode::Ror8:
-    case IROpcode::Ror16:
-    case IROpcode::Ror32:
-    case IROpcode::Ror64:
-    case IROpcode::And:
-    case IROpcode::Andi:
-    case IROpcode::Or:
-    case IROpcode::Ori:
-    case IROpcode::Xor:
-    case IROpcode::Xori:
-    case IROpcode::Not:
-    case IROpcode::Neg:
-    case IROpcode::Seqz:
-    case IROpcode::Snez:
-    case IROpcode::Equal:
-    case IROpcode::NotEqual:
-    case IROpcode::SetLessThanSigned:
-    case IROpcode::SetLessThanUnsigned:
-    case IROpcode::ReadByte:
-    case IROpcode::ReadWord:
-    case IROpcode::ReadDWord:
-    case IROpcode::ReadQWord:
-    case IROpcode::VToI:
-    case IROpcode::VExtractInteger:
-    case IROpcode::Sext8:
-    case IROpcode::Sext16:
-    case IROpcode::Sext32:
-    case IROpcode::Zext8:
-    case IROpcode::Zext16:
-    case IROpcode::Zext32:
-    case IROpcode::Div:
-    case IROpcode::Divu:
-    case IROpcode::Divw:
-    case IROpcode::Divuw:
-    case IROpcode::Rem:
-    case IROpcode::Remu:
-    case IROpcode::Remw:
-    case IROpcode::Remuw:
-    case IROpcode::Mul:
-    case IROpcode::Mulh:
-    case IROpcode::Mulhu:
-    case IROpcode::AmoAdd8:
-    case IROpcode::AmoAdd16:
-    case IROpcode::AmoAdd32:
-    case IROpcode::AmoAdd64:
-    case IROpcode::AmoAnd8:
-    case IROpcode::AmoAnd16:
-    case IROpcode::AmoAnd32:
-    case IROpcode::AmoAnd64:
-    case IROpcode::AmoOr8:
-    case IROpcode::AmoOr16:
-    case IROpcode::AmoOr32:
-    case IROpcode::AmoOr64:
-    case IROpcode::AmoXor8:
-    case IROpcode::AmoXor16:
-    case IROpcode::AmoXor32:
-    case IROpcode::AmoXor64:
-    case IROpcode::AmoSwap8:
-    case IROpcode::AmoSwap16:
-    case IROpcode::AmoSwap32:
-    case IROpcode::AmoSwap64:
-    case IROpcode::AmoCAS8:
-    case IROpcode::AmoCAS16:
-    case IROpcode::AmoCAS32:
-    case IROpcode::AmoCAS64:
-    case IROpcode::AmoCAS128:
-    case IROpcode::ReadByteRelative:
-    case IROpcode::ReadWordRelative:
-    case IROpcode::ReadDWordRelative:
-    case IROpcode::ReadQWordRelative: {
-        return IRType::Integer64;
-    }
-    case IROpcode::ReadXmmWord:
-    case IROpcode::ReadXmmWordRelative:
-    case IROpcode::IToV:
-    case IROpcode::VAnd:
-    case IROpcode::VOr:
-    case IROpcode::VXor:
-    case IROpcode::VSub:
-    case IROpcode::VAdd:
-    case IROpcode::VEqual:
-    case IROpcode::VInsertInteger:
-    case IROpcode::VSplat:
-    case IROpcode::VSplati:
-    case IROpcode::VMergei:
-    case IROpcode::VGather:
-    case IROpcode::VIota:
-    case IROpcode::VSlli:
-    case IROpcode::VSrai:
-    case IROpcode::VSlideUpi:
-    case IROpcode::VSlideDowni: {
-        return IRType::Vector128;
-    }
-    case IROpcode::WriteByte:
-    case IROpcode::WriteWord:
-    case IROpcode::WriteDWord:
-    case IROpcode::WriteQWord:
-    case IROpcode::WriteXmmWord:
-    case IROpcode::StoreGuestToMemory:
-    case IROpcode::WriteByteRelative:
-    case IROpcode::WriteWordRelative:
-    case IROpcode::WriteDWordRelative:
-    case IROpcode::WriteQWordRelative:
-    case IROpcode::WriteXmmWordRelative: {
-        return IRType::Void;
-    }
-
     case IROpcode::Phi:
     case IROpcode::GetGuest:
     case IROpcode::SetGuest:
@@ -223,10 +88,17 @@ IRType SSAInstruction::GetTypeFromOpcode(IROpcode opcode, x86_ref_e ref) {
             return IRType::Void;
         }
     }
-    case IROpcode::Count: {
-        UNREACHABLE();
-        return IRType::Void;
+    default: {
+        break;
     }
+    }
+
+    switch (opcode) {
+#define X(name, return_type, ...)                                                                                                                    \
+    case IROpcode::name:                                                                                                                             \
+        return IRType::return_type;
+#include "felix86/ir/opcodes.inc"
+#undef X
     }
 
     UNREACHABLE();
@@ -243,32 +115,6 @@ void SSAInstruction::Invalidate() {
     }
 }
 
-#define VALIDATE_OPS_INT(opcode, num_ops)                                                                                                            \
-    case IROpcode::opcode:                                                                                                                           \
-        if (operands.operand_count != num_ops) {                                                                                                     \
-            ERROR("Invalid operands for opcode %d", static_cast<u8>(IROpcode::opcode));                                                              \
-        }                                                                                                                                            \
-        for (u8 i = 0; i < operands.operand_count; i++) {                                                                                            \
-            SSAInstruction* operand = operands.operands[i];                                                                                          \
-            if (operand->GetType() != IRType::Integer64) {                                                                                           \
-                ERROR("Invalid operand type for opcode %d", static_cast<u8>(IROpcode::opcode));                                                      \
-            }                                                                                                                                        \
-        }                                                                                                                                            \
-        break
-
-#define VALIDATE_OPS_VECTOR(opcode, num_ops)                                                                                                         \
-    case IROpcode::opcode:                                                                                                                           \
-        if (operands.operand_count != num_ops) {                                                                                                     \
-            ERROR("Invalid operands for opcode %d", static_cast<u8>(IROpcode::opcode));                                                              \
-        }                                                                                                                                            \
-        for (u8 i = 0; i < operands.operand_count; i++) {                                                                                            \
-            SSAInstruction* operand = operands.operands[i];                                                                                          \
-            if (operand->GetType() != IRType::Vector128) {                                                                                           \
-                ERROR("Invalid operand type for opcode %d", static_cast<u8>(IROpcode::opcode));                                                      \
-            }                                                                                                                                        \
-        }                                                                                                                                            \
-        break
-
 #define BAD(opcode)                                                                                                                                  \
     case IROpcode::opcode:                                                                                                                           \
         ERROR("Invalid opcode %d", static_cast<u8>(IROpcode::opcode));                                                                               \
@@ -278,173 +124,43 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
     switch (opcode) {
     case IROpcode::Null:
     case IROpcode::LoadSpill:
-    case IROpcode::StoreSpill: {
-        ERROR("Null should not be used");
+    case IROpcode::StoreSpill:
+    case IROpcode::Count:
+    case IROpcode::Mov:
+    case IROpcode::Phi:
+    case IROpcode::GetGuest:
+    case IROpcode::SetGuest:
+    case IROpcode::LoadGuestFromMemory:
+    case IROpcode::StoreGuestToMemory:
+    case IROpcode::Comment:
+    case IROpcode::Immediate:
+    case IROpcode::AmoCAS128: {
+        ERROR("Opcode %d shouldn't be used here", static_cast<u8>(opcode));
         break;
     }
-
-        BAD(Count);
-        BAD(Mov);
-        BAD(Phi);
-        BAD(GetGuest);
-        BAD(SetGuest);
-        BAD(LoadGuestFromMemory);
-        BAD(StoreGuestToMemory);
-        BAD(Comment);
-        BAD(Immediate);
-        BAD(AmoCAS128); // implme
-
-        VALIDATE_OPS_INT(GetThreadStatePointer, 0);
-        VALIDATE_OPS_INT(SetVectorStateFloat, 0);
-        VALIDATE_OPS_INT(SetVectorStateDouble, 0);
-        VALIDATE_OPS_INT(SetVectorStatePackedByte, 0);
-        VALIDATE_OPS_INT(SetVectorStatePackedWord, 0);
-        VALIDATE_OPS_INT(SetVectorStatePackedDWord, 0);
-        VALIDATE_OPS_INT(SetVectorStatePackedQWord, 0);
-        VALIDATE_OPS_INT(Rdtsc, 0);
-        VALIDATE_OPS_INT(Syscall, 0);
-        VALIDATE_OPS_INT(Cpuid, 0);
-        VALIDATE_OPS_INT(SetExitReason, 0);
-        VALIDATE_OPS_INT(CallHostFunction, 0);
-        VALIDATE_OPS_INT(VSplati, 0);
-
-        VALIDATE_OPS_INT(Neg, 1);
-        VALIDATE_OPS_INT(Addi, 1);
-        VALIDATE_OPS_INT(Andi, 1);
-        VALIDATE_OPS_INT(Ori, 1);
-        VALIDATE_OPS_INT(Xori, 1);
-        VALIDATE_OPS_INT(Shli, 1);
-        VALIDATE_OPS_INT(Shri, 1);
-        VALIDATE_OPS_INT(Sari, 1);
-        VALIDATE_OPS_INT(Seqz, 1);
-        VALIDATE_OPS_INT(Snez, 1);
-        VALIDATE_OPS_INT(Sext8, 1);
-        VALIDATE_OPS_INT(Sext16, 1);
-        VALIDATE_OPS_INT(Sext32, 1);
-        VALIDATE_OPS_INT(Zext8, 1);
-        VALIDATE_OPS_INT(Zext16, 1);
-        VALIDATE_OPS_INT(Zext32, 1);
-        VALIDATE_OPS_INT(IToV, 1);
-        VALIDATE_OPS_INT(Clz, 1);
-        VALIDATE_OPS_INT(Ctzh, 1);
-        VALIDATE_OPS_INT(Ctzw, 1);
-        VALIDATE_OPS_INT(Ctz, 1);
-        VALIDATE_OPS_INT(Not, 1);
-        VALIDATE_OPS_INT(Parity, 1);
-        VALIDATE_OPS_INT(ReadByte, 1);
-        VALIDATE_OPS_INT(ReadWord, 1);
-        VALIDATE_OPS_INT(ReadDWord, 1);
-        VALIDATE_OPS_INT(ReadQWord, 1);
-        VALIDATE_OPS_INT(ReadXmmWord, 1);
-        VALIDATE_OPS_INT(ReadByteRelative, 1);
-        VALIDATE_OPS_INT(ReadWordRelative, 1);
-        VALIDATE_OPS_INT(ReadDWordRelative, 1);
-        VALIDATE_OPS_INT(ReadQWordRelative, 1);
-        VALIDATE_OPS_INT(ReadXmmWordRelative, 1);
-        VALIDATE_OPS_INT(Div128, 1);
-        VALIDATE_OPS_INT(Divu128, 1);
-        VALIDATE_OPS_INT(VSplat, 1);
-
-        VALIDATE_OPS_INT(WriteByte, 2);
-        VALIDATE_OPS_INT(WriteWord, 2);
-        VALIDATE_OPS_INT(WriteDWord, 2);
-        VALIDATE_OPS_INT(WriteQWord, 2);
-        VALIDATE_OPS_INT(WriteByteRelative, 2);
-        VALIDATE_OPS_INT(WriteWordRelative, 2);
-        VALIDATE_OPS_INT(WriteDWordRelative, 2);
-        VALIDATE_OPS_INT(WriteQWordRelative, 2);
-        VALIDATE_OPS_INT(Add, 2);
-        VALIDATE_OPS_INT(Sub, 2);
-        VALIDATE_OPS_INT(Shl, 2);
-        VALIDATE_OPS_INT(Shr, 2);
-        VALIDATE_OPS_INT(Sar, 2);
-        VALIDATE_OPS_INT(And, 2);
-        VALIDATE_OPS_INT(Or, 2);
-        VALIDATE_OPS_INT(Xor, 2);
-        VALIDATE_OPS_INT(Equal, 2);
-        VALIDATE_OPS_INT(NotEqual, 2);
-        VALIDATE_OPS_INT(SetLessThanSigned, 2);
-        VALIDATE_OPS_INT(SetLessThanUnsigned, 2);
-        VALIDATE_OPS_INT(Rol8, 2);
-        VALIDATE_OPS_INT(Rol16, 2);
-        VALIDATE_OPS_INT(Rol32, 2);
-        VALIDATE_OPS_INT(Rol64, 2);
-        VALIDATE_OPS_INT(Ror8, 2);
-        VALIDATE_OPS_INT(Ror16, 2);
-        VALIDATE_OPS_INT(Ror32, 2);
-        VALIDATE_OPS_INT(Ror64, 2);
-        VALIDATE_OPS_INT(Div, 2);
-        VALIDATE_OPS_INT(Divu, 2);
-        VALIDATE_OPS_INT(Divw, 2);
-        VALIDATE_OPS_INT(Divuw, 2);
-        VALIDATE_OPS_INT(Rem, 2);
-        VALIDATE_OPS_INT(Remu, 2);
-        VALIDATE_OPS_INT(Remw, 2);
-        VALIDATE_OPS_INT(Remuw, 2);
-        VALIDATE_OPS_INT(Mul, 2);
-        VALIDATE_OPS_INT(Mulh, 2);
-        VALIDATE_OPS_INT(Mulhu, 2);
-        VALIDATE_OPS_INT(AmoAdd8, 2);
-        VALIDATE_OPS_INT(AmoAdd16, 2);
-        VALIDATE_OPS_INT(AmoAdd32, 2);
-        VALIDATE_OPS_INT(AmoAdd64, 2);
-        VALIDATE_OPS_INT(AmoAnd8, 2);
-        VALIDATE_OPS_INT(AmoAnd16, 2);
-        VALIDATE_OPS_INT(AmoAnd32, 2);
-        VALIDATE_OPS_INT(AmoAnd64, 2);
-        VALIDATE_OPS_INT(AmoOr8, 2);
-        VALIDATE_OPS_INT(AmoOr16, 2);
-        VALIDATE_OPS_INT(AmoOr32, 2);
-        VALIDATE_OPS_INT(AmoOr64, 2);
-        VALIDATE_OPS_INT(AmoXor8, 2);
-        VALIDATE_OPS_INT(AmoXor16, 2);
-        VALIDATE_OPS_INT(AmoXor32, 2);
-        VALIDATE_OPS_INT(AmoXor64, 2);
-        VALIDATE_OPS_INT(AmoSwap8, 2);
-        VALIDATE_OPS_INT(AmoSwap16, 2);
-        VALIDATE_OPS_INT(AmoSwap32, 2);
-        VALIDATE_OPS_INT(AmoSwap64, 2);
-
-        VALIDATE_OPS_INT(Select, 3);
-        VALIDATE_OPS_INT(AmoCAS8, 3);
-        VALIDATE_OPS_INT(AmoCAS16, 3);
-        VALIDATE_OPS_INT(AmoCAS32, 3);
-        VALIDATE_OPS_INT(AmoCAS64, 3);
-
-        VALIDATE_OPS_VECTOR(VToI, 1);
-        VALIDATE_OPS_VECTOR(SetVMask, 1);
-        VALIDATE_OPS_VECTOR(VIota, 1);
-        VALIDATE_OPS_VECTOR(VExtractInteger, 1);
-        VALIDATE_OPS_VECTOR(VMergei, 1);
-        VALIDATE_OPS_VECTOR(VSlli, 1);
-        VALIDATE_OPS_VECTOR(VSrai, 1);
-        VALIDATE_OPS_VECTOR(VSlideDowni, 1);
-        VALIDATE_OPS_VECTOR(VSlideUpi, 1);
-
-        VALIDATE_OPS_VECTOR(VAnd, 2);
-        VALIDATE_OPS_VECTOR(VOr, 2);
-        VALIDATE_OPS_VECTOR(VXor, 2);
-        VALIDATE_OPS_VECTOR(VSub, 2);
-        VALIDATE_OPS_VECTOR(VAdd, 2);
-        VALIDATE_OPS_VECTOR(VEqual, 2);
-        VALIDATE_OPS_VECTOR(VGather, 3);
-
-    case IROpcode::WriteXmmWord:
-    case IROpcode::WriteXmmWordRelative:
-    case IROpcode::VInsertInteger: {
-        if (operands.operand_count != 2) {
-            ERROR("Invalid operands for opcode %d", static_cast<u8>(opcode));
-        }
-
-        if (operands.operands[0]->GetType() != IRType::Integer64) {
-            ERROR("Invalid operand type for opcode %d", static_cast<u8>(opcode));
-        }
-
-        if (operands.operands[1]->GetType() != IRType::Vector128) {
-            ERROR("Invalid operand type for opcode %d", static_cast<u8>(opcode));
-        }
+    default: {
         break;
     }
+    }
+
+    switch (opcode) {
+#define X(name, ...)                                                                                                                                 \
+    case IROpcode::name: {                                                                                                                           \
+        auto& meta = metadata[(u8)IROpcode::name];                                                                                                   \
+        if (meta.opcode != IROpcode::name) {                                                                                                         \
+            ERROR("Invalid opcode %d", static_cast<u8>(IROpcode::name));                                                                             \
+        }                                                                                                                                            \
+        if (meta.operand_count != operands.operand_count) {                                                                                          \
+            ERROR("Invalid operand count for %s", Opcode::GetOpcodeString(IROpcode::name).c_str());                                                  \
+        }                                                                                                                                            \
+        for (u8 i = 0; i < meta.operand_count; i++) {                                                                                                \
+            if (meta.operand_types[i] != operands.operands[i]->GetType()) {                                                                          \
+                ERROR("Invalid operand %d for %s", i, Opcode::GetOpcodeString(IROpcode::name).c_str());                                              \
+            }                                                                                                                                        \
+        }                                                                                                                                            \
+    }
+#include "felix86/ir/opcodes.inc"
+#undef X
     }
 }
 

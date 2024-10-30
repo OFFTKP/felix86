@@ -3,10 +3,10 @@
 
 std::string Opcode::GetOpcodeString(IROpcode opcode) {
     switch (opcode) {
-#define X(stuff)                                                                                                                                     \
+#define X(stuff, ...)                                                                                                                                \
     case IROpcode::stuff:                                                                                                                            \
         return #stuff;
-        IR_OPCODES
+#include "felix86/ir/opcodes.inc"
 #undef X
     default:
         UNREACHABLE();
