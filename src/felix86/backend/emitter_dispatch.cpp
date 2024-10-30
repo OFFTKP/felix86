@@ -794,5 +794,15 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         EmitVFAdd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
     }
+
+    case IROpcode::VFSub: {
+        EmitVFSub(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
+    case IROpcode::VFMul: {
+        EmitVFMul(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
     }
 }

@@ -1171,6 +1171,38 @@ IR_HANDLE(addpd) {
     ir.PackedRegRm(inst, IROpcode::VFAdd, VectorState::PackedQWord);
 }
 
+IR_HANDLE(subss) { // subss xmm, xmm32 - 0xf3 0x0f 0x5c
+    ir.ScalarRegRm(inst, IROpcode::VFSub, VectorState::Float);
+}
+
+IR_HANDLE(subsd) {
+    ir.ScalarRegRm(inst, IROpcode::VFSub, VectorState::Double);
+}
+
+IR_HANDLE(subps) {
+    ir.PackedRegRm(inst, IROpcode::VFSub, VectorState::PackedDWord);
+}
+
+IR_HANDLE(subpd) {
+    ir.PackedRegRm(inst, IROpcode::VFSub, VectorState::PackedQWord);
+}
+
+IR_HANDLE(mulss) { // mulss xmm, xmm32 - 0xf3 0x0f 0x59
+    ir.ScalarRegRm(inst, IROpcode::VFMul, VectorState::Float);
+}
+
+IR_HANDLE(mulsd) {
+    ir.ScalarRegRm(inst, IROpcode::VFMul, VectorState::Double);
+}
+
+IR_HANDLE(mulps) {
+    ir.PackedRegRm(inst, IROpcode::VFMul, VectorState::PackedDWord);
+}
+
+IR_HANDLE(mulpd) {
+    ir.PackedRegRm(inst, IROpcode::VFMul, VectorState::PackedQWord);
+}
+
 IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     ir.SetReg(inst->operand_reg, rm);

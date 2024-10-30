@@ -650,10 +650,6 @@ SSAInstruction* IREmitter::VToI(SSAInstruction* value, VectorState state) {
     return insertInstruction(IROpcode::VToI, state, {value});
 }
 
-SSAInstruction* IREmitter::VFAdd(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
-    return insertInstruction(IROpcode::VFAdd, state, {lhs, rhs});
-}
-
 SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
     x86_size_e address_size = operand.memory.address_override ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     SSAInstruction *base, *index;

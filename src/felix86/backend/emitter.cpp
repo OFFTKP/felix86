@@ -1030,6 +1030,14 @@ void Emitter::EmitVFAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, bis
     AS.VFADD(Vd, Vs1, Vs2);
 }
 
+void Emitter::EmitVFSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    AS.VFSUB(Vd, Vs1, Vs2);
+}
+
+void Emitter::EmitVFMul(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    AS.VFMUL(Vd, Vs1, Vs2);
+}
+
 void Emitter::EmitSetVectorStateFloat(Backend& backend) {
     // Operate on one element, 32-bits
     AS.VSETIVLI(x0, 1, SEW::E32);
