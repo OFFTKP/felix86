@@ -118,4 +118,5 @@ enum class VectorState {
     PackedWord,
     PackedDWord,
     PackedQWord,
+    AnyPacked,
 };

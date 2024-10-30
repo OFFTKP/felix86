@@ -534,6 +534,13 @@ void IREmitter::ScalarRegRm(x86_instruction_t* inst, IROpcode opcode, VectorStat
     SetReg(inst->operand_reg, result);
 }
 
+void IREmitter::PackedRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state) {
+    SSAInstruction* rm = GetRm(inst->operand_rm, state);
+    SSAInstruction* reg = GetReg(inst->operand_reg);
+    SSAInstruction* result = insertInstruction(opcode, state, {reg, rm});
+    SetReg(inst->operand_reg, result);
+}
+
 void IREmitter::SetVMask(SSAInstruction* mask) {
     SSAInstruction* instruction = insertInstruction(IROpcode::SetVMask, {mask});
     instruction->Lock();

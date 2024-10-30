@@ -1127,32 +1127,20 @@ IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
     }
 }
 
-IR_HANDLE(pand_xmm_xmm128) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VAnd(reg, rm, VectorState::PackedByte);
-    ir.SetReg(inst->operand_reg, result);
+IR_HANDLE(pand) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb
+    ir.PackedRegRm(inst, IROpcode::VAnd, VectorState::AnyPacked);
 }
 
-IR_HANDLE(por_xmm_xmm128) { // por xmm, xmm/m128 - 0x66 0x0f 0xeb
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VOr(reg, rm, VectorState::PackedByte);
-    ir.SetReg(inst->operand_reg, result);
+IR_HANDLE(por) { // por xmm, xmm/m128 - 0x66 0x0f 0xeb
+    ir.PackedRegRm(inst, IROpcode::VOr, VectorState::AnyPacked);
 }
 
-IR_HANDLE(pxor_xmm_xmm128) { // pxor xmm, xmm/m128 - 0x66 0x0f 0xef
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VXor(reg, rm, VectorState::PackedByte);
-    ir.SetReg(inst->operand_reg, result);
+IR_HANDLE(pxor) { // pxor xmm, xmm/m128 - 0x66 0x0f 0xef
+    ir.PackedRegRm(inst, IROpcode::VXor, VectorState::AnyPacked);
 }
 
-IR_HANDLE(psubb_xmm_xmm128) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VSub(reg, rm, VectorState::PackedByte);
-    ir.SetReg(inst->operand_reg, result);
+IR_HANDLE(psubb) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
+    ir.PackedRegRm(inst, IROpcode::VSub, VectorState::PackedByte);
 }
 
 // ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██     ███████ ██████
@@ -1169,6 +1157,18 @@ IR_HANDLE(psubb_xmm_xmm128) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
 
 IR_HANDLE(addss) { // addss xmm, xmm32 - 0xf3 0x0f 0x58
     ir.ScalarRegRm(inst, IROpcode::VFAdd, VectorState::Float);
+}
+
+IR_HANDLE(addsd) {
+    ir.ScalarRegRm(inst, IROpcode::VFAdd, VectorState::Double);
+}
+
+IR_HANDLE(addps) {
+    ir.PackedRegRm(inst, IROpcode::VFAdd, VectorState::PackedDWord);
+}
+
+IR_HANDLE(addpd) {
+    ir.PackedRegRm(inst, IROpcode::VFAdd, VectorState::PackedQWord);
 }
 
 IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f

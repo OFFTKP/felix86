@@ -153,6 +153,7 @@ struct IREmitter {
     void SetVMask(SSAInstruction* mask);
     void Pcmpeq(x86_instruction_t* inst, VectorState state);
     void Punpckl(x86_instruction_t* inst, VectorState state);
+    void PackedRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state);
     void ScalarRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state);
 
     void RepStart(IRBlock* loop_block, IRBlock* exit_block);

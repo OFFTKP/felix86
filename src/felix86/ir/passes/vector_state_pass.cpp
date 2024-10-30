@@ -100,17 +100,65 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                             it = block.GetInstructions().insert(it, backend_inst);
                             continue;
                         }
+                        case VectorState::AnyPacked: {
+                            if (!IsPacked(state)) {
+                                // State is not packed, we need to set it to any packed state for this instruction
+                                // and we don't care which one it is. However if we set it to some state that might
+                                // be used later, that's even better.
+                                // Scan forward to find the next state usage.
+                                auto it2 = it;
+                                VectorState next_state = VectorState::Null;
+                                while (it2 != block.GetInstructions().end()) {
+                                    if (it2->GetVectorState() != VectorState::Null) {
+                                        next_state = it2->GetVectorState();
+                                        break;
+                                    }
+                                    it2++;
+                                }
+
+                                if (next_state == VectorState::Null) {
+                                    // Didn't find further usages, so just give it some packed state
+                                    SSAInstruction inst(IROpcode::SetVectorStatePackedDWord, {});
+                                    BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                                    it = block.GetInstructions().insert(it, backend_inst);
+                                    continue;
+                                } else {
+                                    IROpcode opcode;
+                                    switch (next_state) {
+                                    case VectorState::PackedByte:
+                                        opcode = IROpcode::SetVectorStatePackedByte;
+                                        break;
+                                    case VectorState::PackedWord:
+                                        opcode = IROpcode::SetVectorStatePackedWord;
+                                        break;
+                                    case VectorState::PackedDWord:
+                                        opcode = IROpcode::SetVectorStatePackedDWord;
+                                        break;
+                                    case VectorState::PackedQWord:
+                                        opcode = IROpcode::SetVectorStatePackedQWord;
+                                        break;
+                                    default:
+                                        UNREACHABLE();
+                                        break;
+                                    }
+
+                                    SSAInstruction inst(opcode, {});
+                                    BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                                    it = block.GetInstructions().insert(it, backend_inst);
+                                    continue;
+                                }
+                            }
                         case VectorState::Null:
                             UNREACHABLE();
                             break;
                         }
+                        }
                     }
+                    break;
                 }
-                break;
-            }
             }
 
-            it++;
+                it++;
+            }
         }
     }
-}
