@@ -17,6 +17,7 @@ void replaceLoadGuest(SSAInstruction& inst, SSAInstruction* thread_state_pointer
         op.operands[0] = thread_state_pointer;
         op.operand_count = 1;
         op.immediate_data = offsetof(ThreadState, xmm[get_guest.ref - X86_REF_XMM0]);
+        op.vector_state = VectorState::PackedByte;
         inst.Replace(op, IROpcode::ReadXmmWordRelative);
         break;
     }
@@ -134,6 +135,7 @@ void replaceStoreGuest(SSAInstruction& inst, SSAInstruction* thread_state_pointe
         op.operands[1] = set_guest.source;
         op.operand_count = 2;
         op.immediate_data = offsetof(ThreadState, xmm[set_guest.ref - X86_REF_XMM0]);
+        op.vector_state = VectorState::PackedByte;
         inst.Replace(op, IROpcode::WriteXmmWordRelative);
         break;
     }
