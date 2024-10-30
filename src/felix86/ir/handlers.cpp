@@ -1040,7 +1040,7 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████
 
 IR_HANDLE(mov_xmm_xmm128) {
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     ir.SetReg(inst->operand_reg, rm);
 }
 
