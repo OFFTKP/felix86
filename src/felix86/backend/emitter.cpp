@@ -481,13 +481,15 @@ void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Ad
     case VectorState::PackedWord:
         AS.VLE16(Vd, Address);
         break;
+    case VectorState::Float:
     case VectorState::PackedDWord:
         AS.VLE32(Vd, Address);
         break;
+    case VectorState::Double:
     case VectorState::PackedQWord:
         AS.VLE64(Vd, Address);
         break;
-    default:
+    case VectorState::Null:
         UNREACHABLE();
     }
 }
@@ -546,13 +548,15 @@ void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::
     case VectorState::PackedWord:
         AS.VSE16(Vs, Address);
         break;
+    case VectorState::Float:
     case VectorState::PackedDWord:
         AS.VSE32(Vs, Address);
         break;
+    case VectorState::Double:
     case VectorState::PackedQWord:
         AS.VSE64(Vs, Address);
         break;
-    default:
+    case VectorState::Null:
         UNREACHABLE();
     }
 }

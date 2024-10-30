@@ -144,4 +144,5 @@ X(VSlli,                                Vector128,                      Vector12
 X(VSrai,                                Vector128,                      Vector128)
 X(VSlideDowni,                          Vector128,                      Vector128)
 X(VSlideUpi,                            Vector128,                      Vector128)
+X(VFAdd,                                Vector128,                      Vector128,                      Vector128)
 X(Count,                                Void)
