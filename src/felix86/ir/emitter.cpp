@@ -1036,6 +1036,10 @@ SSAInstruction* IREmitter::readQWord(SSAInstruction* address) {
 }
 
 SSAInstruction* IREmitter::readXmmWord(SSAInstruction* address, VectorState state) {
+    if (state == VectorState::AnyPacked) {
+        state = VectorState::PackedDWord;
+    }
+
     return insertInstruction(IROpcode::ReadXmmWord, state, {address});
 }
 
@@ -1079,6 +1083,10 @@ void IREmitter::writeQWord(SSAInstruction* address, SSAInstruction* value) {
 }
 
 void IREmitter::writeXmmWord(SSAInstruction* address, SSAInstruction* value, VectorState state) {
+    if (state == VectorState::AnyPacked) {
+        state = VectorState::PackedDWord;
+    }
+
     SSAInstruction* instruction = insertInstruction(IROpcode::WriteXmmWord, state, {address, value});
     instruction->Lock();
 }

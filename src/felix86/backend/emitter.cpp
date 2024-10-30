@@ -489,6 +489,7 @@ void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Ad
     case VectorState::PackedQWord:
         AS.VLE64(Vd, Address);
         break;
+    case VectorState::AnyPacked:
     case VectorState::Null:
         UNREACHABLE();
     }
@@ -556,6 +557,7 @@ void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::
     case VectorState::PackedQWord:
         AS.VSE64(Vs, Address);
         break;
+    case VectorState::AnyPacked:
     case VectorState::Null:
         UNREACHABLE();
     }
