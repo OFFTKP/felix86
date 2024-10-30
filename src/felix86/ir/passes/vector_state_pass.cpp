@@ -123,7 +123,7 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                                     it = block.GetInstructions().insert(it, backend_inst);
                                     continue;
                                 } else {
-                                    IROpcode opcode;
+                                    IROpcode opcode = IROpcode::Null;
                                     switch (next_state) {
                                     case VectorState::PackedByte:
                                         opcode = IROpcode::SetVectorStatePackedByte;
@@ -148,17 +148,19 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                                     continue;
                                 }
                             }
+                            break;
+                        }
                         case VectorState::Null:
                             UNREACHABLE();
                             break;
                         }
-                        }
                     }
-                    break;
                 }
+                break;
+            }
             }
 
-                it++;
-            }
+            it++;
         }
     }
+}
