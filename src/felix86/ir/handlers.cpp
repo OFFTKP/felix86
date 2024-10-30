@@ -1179,7 +1179,7 @@ IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
         rm_op.size = X86_SIZE_QWORD;
         result = ir.VZext(ir.IToV(ir.GetRm(rm_op, VectorState::PackedQWord), VectorState::PackedQWord), X86_SIZE_QWORD);
     } else {
-        result = ir.GetReg(rm_op);
+        result = ir.VZext(ir.GetReg(rm_op), X86_SIZE_QWORD);
     }
 
     ir.SetReg(inst->operand_reg, result);
