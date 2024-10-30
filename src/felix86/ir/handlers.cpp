@@ -1131,6 +1131,14 @@ IR_HANDLE(pand) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb
     ir.PackedRegRm(inst, IROpcode::VAnd, VectorState::AnyPacked);
 }
 
+IR_HANDLE(pandn) {
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::AnyPacked);
+    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+    SSAInstruction* reg_not = ir.VXori(reg, -1, VectorState::AnyPacked);
+    SSAInstruction* result = ir.VAnd(reg_not, rm, VectorState::AnyPacked);
+    ir.SetReg(inst->operand_reg, result);
+}
+
 IR_HANDLE(por) { // por xmm, xmm/m128 - 0x66 0x0f 0xeb
     ir.PackedRegRm(inst, IROpcode::VOr, VectorState::AnyPacked);
 }
@@ -1201,6 +1209,86 @@ IR_HANDLE(mulps) {
 
 IR_HANDLE(mulpd) {
     ir.PackedRegRm(inst, IROpcode::VFMul, VectorState::PackedQWord);
+}
+
+IR_HANDLE(divss) { // divss xmm, xmm32 - 0xf3 0x0f 0x5e
+    ir.ScalarRegRm(inst, IROpcode::VFDiv, VectorState::Float);
+}
+
+IR_HANDLE(divsd) {
+    ir.ScalarRegRm(inst, IROpcode::VFDiv, VectorState::Double);
+}
+
+IR_HANDLE(divps) {
+    ir.PackedRegRm(inst, IROpcode::VFDiv, VectorState::PackedDWord);
+}
+
+IR_HANDLE(divpd) {
+    ir.PackedRegRm(inst, IROpcode::VFDiv, VectorState::PackedQWord);
+}
+
+IR_HANDLE(sqrtss) { // sqrtss xmm, xmm32 - 0xf3 0x0f 0x51
+    ir.ScalarRegRm(inst, IROpcode::VFSqrt, VectorState::Float);
+}
+
+IR_HANDLE(sqrtsd) {
+    ir.ScalarRegRm(inst, IROpcode::VFSqrt, VectorState::Double);
+}
+
+IR_HANDLE(sqrtps) {
+    ir.PackedRegRm(inst, IROpcode::VFSqrt, VectorState::PackedDWord);
+}
+
+IR_HANDLE(sqrtpd) {
+    ir.PackedRegRm(inst, IROpcode::VFSqrt, VectorState::PackedQWord);
+}
+
+IR_HANDLE(minss) { // minss xmm, xmm32 - 0xf3 0x0f 0x5d
+    ir.ScalarRegRm(inst, IROpcode::VFMin, VectorState::Float);
+}
+
+IR_HANDLE(minsd) {
+    ir.ScalarRegRm(inst, IROpcode::VFMin, VectorState::Double);
+}
+
+IR_HANDLE(minps) {
+    ir.PackedRegRm(inst, IROpcode::VFMin, VectorState::PackedDWord);
+}
+
+IR_HANDLE(minpd) {
+    ir.PackedRegRm(inst, IROpcode::VFMin, VectorState::PackedQWord);
+}
+
+IR_HANDLE(maxss) { // maxss xmm, xmm32 - 0xf3 0x0f 0x5f
+    ir.ScalarRegRm(inst, IROpcode::VFMax, VectorState::Float);
+}
+
+IR_HANDLE(maxsd) {
+    ir.ScalarRegRm(inst, IROpcode::VFMax, VectorState::Double);
+}
+
+IR_HANDLE(maxps) {
+    ir.PackedRegRm(inst, IROpcode::VFMax, VectorState::PackedDWord);
+}
+
+IR_HANDLE(maxpd) {
+    ir.PackedRegRm(inst, IROpcode::VFMax, VectorState::PackedQWord);
+}
+
+IR_HANDLE(rsqrtss) { // rsqrtss xmm, xmm32 - 0xf3 0x0f 0x52
+    ir.ScalarRegRm(inst, IROpcode::VFRcpSqrt, VectorState::Float);
+}
+
+IR_HANDLE(rsqrtps) {
+    ir.PackedRegRm(inst, IROpcode::VFRcpSqrt, VectorState::PackedDWord);
+}
+
+IR_HANDLE(rcpss) { // rcpss xmm, xmm32 - 0xf3 0x0f 0x53
+    ir.ScalarRegRm(inst, IROpcode::VFRcp, VectorState::Float);
+}
+
+IR_HANDLE(rcpps) {
+    ir.PackedRegRm(inst, IROpcode::VFRcp, VectorState::PackedDWord);
 }
 
 IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f

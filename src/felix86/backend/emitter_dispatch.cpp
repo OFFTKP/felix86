@@ -755,6 +755,11 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::VXori: {
+        EmitVXori(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        break;
+    }
+
     case IROpcode::VSub: {
         EmitVSub(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
@@ -802,6 +807,36 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
 
     case IROpcode::VFMul: {
         EmitVFMul(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
+    case IROpcode::VFDiv: {
+        EmitVFDiv(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
+    case IROpcode::VFSqrt: {
+        EmitVFSqrt(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        break;
+    }
+
+    case IROpcode::VFRcp: {
+        EmitVFRcp(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        break;
+    }
+
+    case IROpcode::VFRcpSqrt: {
+        EmitVFRcpSqrt(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        break;
+    }
+
+    case IROpcode::VFMin: {
+        EmitVFMin(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
+    case IROpcode::VFMax: {
+        EmitVFMax(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
     }
     }

@@ -144,6 +144,7 @@ private:
     static void EmitVAnd(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVOr(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVXor(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVXori(Backend&, biscuit::Vec, biscuit::Vec, u64);
     static void EmitVSub(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVAdd(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVEqual(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
@@ -160,4 +161,10 @@ private:
     static void EmitVFAdd(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVFSub(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVFMul(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVFDiv(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVFSqrt(Backend&, biscuit::Vec, biscuit::Vec);
+    static void EmitVFRcp(Backend&, biscuit::Vec, biscuit::Vec);
+    static void EmitVFRcpSqrt(Backend&, biscuit::Vec, biscuit::Vec);
+    static void EmitVFMin(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitVFMax(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
 };

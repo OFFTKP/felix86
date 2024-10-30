@@ -622,6 +622,10 @@ SSAInstruction* IREmitter::VXor(SSAInstruction* lhs, SSAInstruction* rhs, Vector
     return insertInstruction(IROpcode::VXor, state, {lhs, rhs});
 }
 
+SSAInstruction* IREmitter::VXori(SSAInstruction* lhs, i64 rhs, VectorState state) {
+    return insertInstruction(IROpcode::VXori, state, {lhs}, rhs);
+}
+
 SSAInstruction* IREmitter::VSplat(SSAInstruction* value, VectorState state) {
     return insertInstruction(IROpcode::VSplat, state, {value});
 }

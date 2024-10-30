@@ -1027,15 +1027,39 @@ void Emitter::EmitVToI(Backend& backend, biscuit::GPR Rd, biscuit::Vec Vs) {
 }
 
 void Emitter::EmitVFAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    AS.VFADD(Vd, Vs1, Vs2);
+    AS.VFADD(Vd, Vs2, Vs1);
 }
 
 void Emitter::EmitVFSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    AS.VFSUB(Vd, Vs1, Vs2);
+    AS.VFSUB(Vd, Vs2, Vs1);
 }
 
 void Emitter::EmitVFMul(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    AS.VFMUL(Vd, Vs1, Vs2);
+    AS.VFMUL(Vd, Vs2, Vs1);
+}
+
+void Emitter::EmitVFDiv(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    AS.VFDIV(Vd, Vs2, Vs1);
+}
+
+void Emitter::EmitVFSqrt(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs) {
+    AS.VFSQRT(Vd, Vs);
+}
+
+void Emitter::EmitVFRcp(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs) {
+    AS.VFREC7(Vd, Vs);
+}
+
+void Emitter::EmitVFRcpSqrt(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs) {
+    AS.VFRSQRT7(Vd, Vs);
+}
+
+void Emitter::EmitVFMin(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    AS.VFMIN(Vd, Vs2, Vs1);
+}
+
+void Emitter::EmitVFMax(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    AS.VFMAX(Vd, Vs2, Vs1);
 }
 
 void Emitter::EmitSetVectorStateFloat(Backend& backend) {
@@ -1078,15 +1102,19 @@ void Emitter::EmitVExtractInteger(Backend& backend, biscuit::GPR, biscuit::Vec, 
 }
 
 void Emitter::EmitVAnd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    AS.VAND(Vd, Vs1, Vs2);
+    AS.VAND(Vd, Vs2, Vs1);
 }
 
 void Emitter::EmitVOr(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    AS.VOR(Vd, Vs1, Vs2);
+    AS.VOR(Vd, Vs2, Vs1);
 }
 
 void Emitter::EmitVXor(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    AS.VXOR(Vd, Vs1, Vs2);
+    AS.VXOR(Vd, Vs2, Vs1);
+}
+
+void Emitter::EmitVXori(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate) {
+    AS.VXOR(Vd, Vs, immediate);
 }
 
 void Emitter::EmitVSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {

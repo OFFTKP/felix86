@@ -122,6 +122,7 @@ struct IREmitter {
     SSAInstruction* VAnd(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VOr(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VXor(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
+    SSAInstruction* VXori(SSAInstruction* lhs, i64 imm, VectorState state);
     SSAInstruction* VInsertInteger(SSAInstruction* integer, SSAInstruction* vector, u8 index, x86_size_e size);
     SSAInstruction* IToV(SSAInstruction* value, VectorState state);
     SSAInstruction* VToI(SSAInstruction* value, VectorState state);

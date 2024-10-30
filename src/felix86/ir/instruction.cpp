@@ -834,6 +834,10 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
+    case IROpcode::VXori: {
+        ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vxori", "src", GetNameString(operands[0]), immediate_data);
+        break;
+    }
     case IROpcode::VAdd: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vadd", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
@@ -912,6 +916,33 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::VFMul: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vfmul", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VFSqrt: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vfsqrt", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::VFRcp: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vfrcp", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::VFRcpSqrt: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vfrcpsqrt", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::VFDiv: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vfdiv", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VFMin: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vfmin", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VFMax: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vfmax", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }
