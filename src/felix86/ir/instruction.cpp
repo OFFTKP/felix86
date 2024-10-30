@@ -158,6 +158,7 @@ void SSAInstruction::checkValidity(IROpcode opcode, const Operands& operands) {
                 ERROR("Invalid operand %d for %s", i, Opcode::GetOpcodeString(IROpcode::name).c_str());                                              \
             }                                                                                                                                        \
         }                                                                                                                                            \
+        break;                                                                                                                                       \
     }
 #include "felix86/ir/opcodes.inc"
 #undef X
