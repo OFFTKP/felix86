@@ -1116,6 +1116,17 @@ IR_HANDLE(movq_rm32_xmm) { // movq rm32, xmm - 0x66 0x0f 0x7e
     ir.SetRm(inst->operand_rm, rm, vector_state);
 }
 
+IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
+    SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        SSAInstruction* rm = ir.VToI(xmm, VectorState::PackedQWord);
+        inst->operand_rm.size = X86_SIZE_QWORD;
+        ir.SetRm(inst->operand_rm, rm);
+    } else {
+        ir.SetReg(inst->operand_rm, ir.VZext(xmm, X86_SIZE_QWORD));
+    }
+}
+
 IR_HANDLE(pand_xmm_xmm128) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
