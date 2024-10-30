@@ -895,6 +895,11 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
+    case IROpcode::VFAdd: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vfadd", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
     }
 
     return ret;
