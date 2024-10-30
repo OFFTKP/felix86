@@ -513,7 +513,7 @@ void IREmitter::ScalarOperation(x86_instruction_t* inst, IROpcode opcode, Vector
         reg = GetReg(inst->operand_reg);
     }
 
-    SSAInstruction* result = insertInstruction(opcode, state, {rm, reg});
+    SSAInstruction* result_almost = insertInstruction(opcode, state, {rm, reg});
 
     // Preserve the top bits of the destination register
     VectorState packed_state;
@@ -530,7 +530,7 @@ void IREmitter::ScalarOperation(x86_instruction_t* inst, IROpcode opcode, Vector
     }
 
     SetVMask(VSplati(0b000000001 /* mask of elements */, state));
-    VMerge(result /* 1's value */, reg /* 0's value */, packed_state);
+    SSAInstruction* result = VMerge(result_almost /* 1's value */, reg /* 0's value */, packed_state);
     SetReg(inst->operand_reg, result);
 }
 
