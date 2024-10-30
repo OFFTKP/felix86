@@ -501,7 +501,7 @@ void IREmitter::Pcmpeq(x86_instruction_t* inst, VectorState state) {
     SetReg(inst->operand_reg, result);
 }
 
-void IREmitter::ScalarOperation(x86_instruction_t* inst, IROpcode opcode, VectorState state) {
+void IREmitter::ScalarRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state) {
     SSAInstruction *rm, *reg;
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         inst->operand_rm.size = X86_SIZE_DWORD;
@@ -513,7 +513,7 @@ void IREmitter::ScalarOperation(x86_instruction_t* inst, IROpcode opcode, Vector
         reg = GetReg(inst->operand_reg);
     }
 
-    SSAInstruction* result_almost = insertInstruction(opcode, state, {rm, reg});
+    SSAInstruction* result_almost = insertInstruction(opcode, state, {reg, rm});
 
     // Preserve the top bits of the destination register
     VectorState packed_state;

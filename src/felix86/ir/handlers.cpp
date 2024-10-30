@@ -1168,7 +1168,7 @@ IR_HANDLE(psubb_xmm_xmm128) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██        ██      ██████
 
 IR_HANDLE(addss) { // addss xmm, xmm32 - 0xf3 0x0f 0x58
-    ir.ScalarOperation(inst, IROpcode::VFAdd, VectorState::Float);
+    ir.ScalarRegRm(inst, IROpcode::VFAdd, VectorState::Float);
 }
 
 IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f

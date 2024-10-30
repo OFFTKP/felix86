@@ -1128,7 +1128,7 @@ void Emitter::EmitVSrai(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 
 }
 
 void Emitter::EmitVMerge(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
-    AS.VMERGE(Vd, Vs1, Vs2);
+    AS.VMERGE(Vd, Vs2, Vs1);
 }
 
 void Emitter::EmitVMergei(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate) {
