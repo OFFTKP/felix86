@@ -504,7 +504,7 @@ void IREmitter::Pcmpeq(x86_instruction_t* inst, VectorState state) {
 void IREmitter::ScalarRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state) {
     SSAInstruction *rm, *reg;
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
-        inst->operand_rm.size = X86_SIZE_DWORD;
+        inst->operand_rm.size = state == VectorState::Float ? X86_SIZE_DWORD : X86_SIZE_QWORD;
         SSAInstruction* mem = GetRm(inst->operand_rm);
         rm = IToV(mem, state);
         reg = GetReg(inst->operand_reg);
