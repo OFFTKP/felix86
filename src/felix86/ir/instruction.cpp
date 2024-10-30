@@ -851,6 +851,11 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}(0x{:x})", GetNameString(name), "vsplati", immediate_data);
         break;
     }
+    case IROpcode::VMerge: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vmerge", "true_value", GetNameString(operands[0]), "false_value",
+                           GetNameString(operands[1]));
+        break;
+    }
     case IROpcode::VMergei: {
         ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vmergei", "false_value", GetNameString(operands[0]), immediate_data);
         break;

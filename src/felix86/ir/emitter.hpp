@@ -107,6 +107,7 @@ struct IREmitter {
     SSAInstruction* VIota(SSAInstruction* mask, VectorState state);
     SSAInstruction* VSplat(SSAInstruction* value, VectorState state);
     SSAInstruction* VSplati(u64 imm, VectorState state);
+    SSAInstruction* VMerge(SSAInstruction* true_value, SSAInstruction* false_value, VectorState state);
     SSAInstruction* VMergei(u64 true_imm, SSAInstruction* false_value, VectorState state);
     SSAInstruction* VZero(VectorState state);
     SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VectorState state, VecMask masked = VecMask::No);
@@ -152,6 +153,7 @@ struct IREmitter {
     void SetVMask(SSAInstruction* mask);
     void Pcmpeq(x86_instruction_t* inst, VectorState state);
     void Punpckl(x86_instruction_t* inst, VectorState state);
+    void ScalarOperation(x86_instruction_t* inst, IROpcode opcode, VectorState state);
 
     void RepStart(IRBlock* loop_block, IRBlock* exit_block);
     void RepEnd(x86_rep_e rep_type, IRBlock* loop_block, IRBlock* exit_block);

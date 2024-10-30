@@ -1127,6 +1127,10 @@ void Emitter::EmitVSrai(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 
     AS.VSRA(Vd, Vs, immediate, masked);
 }
 
+void Emitter::EmitVMerge(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2) {
+    AS.VMERGE(Vd, Vs1, Vs2);
+}
+
 void Emitter::EmitVMergei(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate) {
     AS.VMERGE(Vd, Vs, immediate);
 }

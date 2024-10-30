@@ -501,6 +501,39 @@ void IREmitter::Pcmpeq(x86_instruction_t* inst, VectorState state) {
     SetReg(inst->operand_reg, result);
 }
 
+void IREmitter::ScalarOperation(x86_instruction_t* inst, IROpcode opcode, VectorState state) {
+    SSAInstruction *rm, *reg;
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        inst->operand_rm.size = X86_SIZE_DWORD;
+        SSAInstruction* mem = GetRm(inst->operand_rm);
+        rm = IToV(mem, state);
+        reg = GetReg(inst->operand_reg);
+    } else {
+        rm = GetRm(inst->operand_rm, state);
+        reg = GetReg(inst->operand_reg);
+    }
+
+    SSAInstruction* result = insertInstruction(opcode, state, {rm, reg});
+
+    // Preserve the top bits of the destination register
+    VectorState packed_state;
+    switch (state) {
+    case VectorState::Float:
+        packed_state = VectorState::PackedDWord;
+        break;
+    case VectorState::Double:
+        packed_state = VectorState::PackedQWord;
+        break;
+    default:
+        UNREACHABLE();
+        return;
+    }
+
+    SetVMask(VSplati(0b000000001 /* mask of elements */, state));
+    VMerge(result /* 1's value */, reg /* 0's value */, packed_state);
+    SetReg(inst->operand_reg, result);
+}
+
 void IREmitter::SetVMask(SSAInstruction* mask) {
     SSAInstruction* instruction = insertInstruction(IROpcode::SetVMask, {mask});
     instruction->Lock();
@@ -590,8 +623,16 @@ SSAInstruction* IREmitter::VSplati(u64 imm, VectorState state) {
     return insertInstruction(IROpcode::VSplati, state, {}, imm);
 }
 
+SSAInstruction* IREmitter::VMerge(SSAInstruction* true_value, SSAInstruction* false_value, VectorState state) {
+    SSAInstruction* instruction = insertInstruction(IROpcode::VMerge, state, {true_value, false_value});
+    instruction->SetMasked();
+    return instruction;
+}
+
 SSAInstruction* IREmitter::VMergei(u64 true_imm, SSAInstruction* false_value, VectorState state) {
-    return insertInstruction(IROpcode::VMergei, state, {false_value}, true_imm);
+    SSAInstruction* instruction = insertInstruction(IROpcode::VMergei, state, {false_value}, true_imm);
+    instruction->SetMasked();
+    return instruction;
 }
 
 SSAInstruction* IREmitter::IToV(SSAInstruction* value, VectorState state) {

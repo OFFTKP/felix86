@@ -1168,19 +1168,7 @@ IR_HANDLE(psubb_xmm_xmm128) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██        ██      ██████
 
 IR_HANDLE(addss) { // addss xmm, xmm32 - 0xf3 0x0f 0x58
-    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
-        inst->operand_rm.size = X86_SIZE_DWORD;
-        SSAInstruction* mem = ir.GetRm(inst->operand_rm);
-        SSAInstruction* rm = ir.IToV(mem, VectorState::Float);
-        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* result = ir.VFAdd(reg, rm, VectorState::Float);
-        ir.SetReg(inst->operand_reg, result);
-    } else {
-        SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Float);
-        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* result = ir.VFAdd(reg, rm, VectorState::Float);
-        ir.SetReg(inst->operand_reg, result);
-    }
+    ir.ScalarOperation(inst, IROpcode::VFAdd, VectorState::Float);
 }
 
 IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f

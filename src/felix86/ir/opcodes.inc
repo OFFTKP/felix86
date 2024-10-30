@@ -140,6 +140,7 @@ X(VGather,                              Vector128,                      Vector12
 X(VSplat,                               Vector128,                      Integer64)
 X(VSplati,                              Vector128)
 X(VMergei,                              Vector128,                      Vector128)
+X(VMerge,                               Vector128,                      Vector128,                      Vector128)
 X(VSlli,                                Vector128,                      Vector128)
 X(VSrai,                                Vector128,                      Vector128)
 X(VSlideDowni,                          Vector128,                      Vector128)
