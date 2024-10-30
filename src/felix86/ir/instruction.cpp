@@ -35,6 +35,17 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
             return false;
         }
 
+        // If either are masked the mask at that time (v0) might have been different so we can't CSE
+        // At least not naively.
+        if (operands.masked == VecMask::Yes || other_operands.masked == VecMask::Yes) {
+            return false;
+        }
+
+        // The vector state is global and if it's different we can't optimize them away
+        if (operands.vector_state != other_operands.vector_state) {
+            return false;
+        }
+
         for (u8 i = 0; i < operands.operand_count; i++) {
             if (operands.operands[i] != other_operands.operands[i]) {
                 return false;
@@ -42,12 +53,6 @@ bool SSAInstruction::IsSameExpression(const SSAInstruction& other) const {
         }
 
         if (operands.immediate_data != other_operands.immediate_data) {
-            return false;
-        }
-
-        // If either are masked the mask at that time (v0) might have been different so we can't CSE
-        // At least not naively.
-        if (operands.masked == VecMask::Yes || other_operands.masked == VecMask::Yes) {
             return false;
         }
 

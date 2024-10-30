@@ -27,6 +27,7 @@ struct Operands {
     std::array<SSAInstruction*, 4> operands;
     u64 immediate_data = 0; // for some instructions
     u8 operand_count = 0;
+    VectorState vector_state = VectorState::Null;
     VecMask masked = VecMask::No;
 };
 
@@ -96,18 +97,9 @@ struct SSAInstruction {
         expression_type = ExpressionType::Operands;
     }
 
-    SSAInstruction(IROpcode opcode, VecMask masked, std::initializer_list<SSAInstruction*> operands) : SSAInstruction(opcode, operands) {
-        Operands& op = AsOperands();
-        op.masked = masked;
-    }
-
-    SSAInstruction(IROpcode opcode, VecMask mask, std::initializer_list<SSAInstruction*> operands, u64 immediate)
-        : SSAInstruction(opcode, mask, operands) {
+    SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate) : SSAInstruction(opcode, operands) {
         SetImmediateData(immediate);
     }
-
-    SSAInstruction(IROpcode opcode, std::initializer_list<SSAInstruction*> operands, u64 immediate)
-        : SSAInstruction(opcode, VecMask::No, operands, immediate) {}
 
     SSAInstruction(u64 immediate) : opcode(IROpcode::Immediate), return_type{IRType::Integer64} {
         Operands op;
@@ -334,12 +326,24 @@ struct SSAInstruction {
         return AsOperands().immediate_data;
     }
 
-    VecMask GetMask() const {
+    VectorState GetVectorState() const {
+        return AsOperands().vector_state;
+    }
+
+    VecMask GetMasked() const {
         return AsOperands().masked;
     }
 
     void SetImmediateData(u64 immediate_data) {
         AsOperands().immediate_data = immediate_data;
+    }
+
+    void SetVectorState(VectorState vector_state) {
+        AsOperands().vector_state = vector_state;
+    }
+
+    void SetMasked() {
+        AsOperands().masked = VecMask::Yes;
     }
 
     [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;

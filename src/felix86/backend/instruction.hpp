@@ -32,7 +32,7 @@ struct BackendInstruction {
     }
 
     VecMask GetMask() const {
-        return mask;
+        return masked;
     }
 
     AllocationType GetDesiredType() const {
@@ -43,12 +43,8 @@ struct BackendInstruction {
         name = new_name;
     }
 
-    void SetCurrentState(VectorState state) {
-        current_state = state;
-    }
-
-    VectorState GetCurrentState() const {
-        return current_state;
+    VectorState GetVectorState() const {
+        return vector_state;
     }
 
     static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
@@ -67,7 +63,7 @@ private:
     u32 name;
     IROpcode opcode;
     AllocationType desired_type = AllocationType::Null;
-    VecMask mask = VecMask::No;
+    VecMask masked = VecMask::No;
     u8 operand_count;
-    VectorState current_state = VectorState::Null;
+    VectorState vector_state = VectorState::Null;
 };

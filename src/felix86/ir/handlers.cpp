@@ -1045,34 +1045,31 @@ IR_HANDLE(mov_xmm_xmm128) {
 }
 
 IR_HANDLE(punpcklbw) { // punpcklbw xmm, xmm/m128 - 0x66 0x0f 0x60
-    ir.SetVectorStatePackedByte();
-    ir.Punpckl(inst);
+    ir.Punpckl(inst, VectorState::PackedByte);
 }
 
 IR_HANDLE(punpcklwd) { // punpcklwd xmm, xmm/m128 - 0x66 0x0f 0x61
-    ir.SetVectorStatePackedWord();
-    ir.Punpckl(inst);
+    ir.Punpckl(inst, VectorState::PackedWord);
 }
 
 IR_HANDLE(punpckldq) { // punpckldq xmm, xmm/m128 - 0x66 0x0f 0x62
-    ir.SetVectorStatePackedDWord();
-    ir.Punpckl(inst);
+    ir.Punpckl(inst, VectorState::PackedDWord);
 }
 
 IR_HANDLE(punpcklqdq) { // punpcklqdq xmm, xmm/m128 - 0x66 0x0f 0x6c
-    ir.SetVectorStatePackedQWord();
-    ir.Punpckl(inst);
+    ir.Punpckl(inst, VectorState::PackedQWord);
 }
 
 IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
     x86_size_e size_e = inst->operand_rm.size;
+    VectorState vector_state = VectorState::Null;
     switch (size_e) {
     case X86_SIZE_DWORD: {
-        ir.SetVectorStatePackedDWord();
+        vector_state = VectorState::PackedDWord;
         break;
     }
     case X86_SIZE_QWORD: {
-        ir.SetVectorStatePackedQWord();
+        vector_state = VectorState::PackedQWord;
         break;
     }
     default: {
@@ -1080,35 +1077,33 @@ IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
         break;
     }
     }
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* vector = ir.VZext(ir.IToV(rm), size_e);
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, vector_state);
+    SSAInstruction* vector = ir.VZext(ir.IToV(rm, vector_state), size_e);
     ir.SetReg(inst->operand_reg, vector);
 }
 
 IR_HANDLE(pcmpeqb) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
-    ir.SetVectorStatePackedByte();
-    ir.Pcmpeq(inst);
+    ir.Pcmpeq(inst, VectorState::PackedByte);
 }
 
 IR_HANDLE(pcmpeqw) { // pcmpeqw xmm, xmm/m128 - 0x66 0x0f 0x75
-    ir.SetVectorStatePackedWord();
-    ir.Pcmpeq(inst);
+    ir.Pcmpeq(inst, VectorState::PackedWord);
 }
 
 IR_HANDLE(pcmpeqd) { // pcmpeqd xmm, xmm/m128 - 0x66 0x0f 0x76
-    ir.SetVectorStatePackedDWord();
-    ir.Pcmpeq(inst);
+    ir.Pcmpeq(inst, VectorState::PackedDWord);
 }
 
 IR_HANDLE(movq_rm32_xmm) { // movq rm32, xmm - 0x66 0x0f 0x7e
     x86_size_e size_e = inst->operand_rm.size;
+    VectorState vector_state = VectorState::Null;
     switch (size_e) {
     case X86_SIZE_DWORD: {
-        ir.SetVectorStatePackedDWord();
+        vector_state = VectorState::PackedDWord;
         break;
     }
     case X86_SIZE_QWORD: {
-        ir.SetVectorStatePackedQWord();
+        vector_state = VectorState::PackedQWord;
         break;
     }
     default: {
@@ -1117,39 +1112,35 @@ IR_HANDLE(movq_rm32_xmm) { // movq rm32, xmm - 0x66 0x0f 0x7e
     }
     }
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
-    SSAInstruction* rm = ir.VToI(xmm);
-    ir.SetRm(inst->operand_rm, rm);
+    SSAInstruction* rm = ir.VToI(xmm, vector_state);
+    ir.SetRm(inst->operand_rm, rm, vector_state);
 }
 
 IR_HANDLE(pand_xmm_xmm128) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb
-    ir.SetVectorStatePackedByte();
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VAnd(reg, rm);
+    SSAInstruction* result = ir.VAnd(reg, rm, VectorState::PackedByte);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(por_xmm_xmm128) { // por xmm, xmm/m128 - 0x66 0x0f 0xeb
-    ir.SetVectorStatePackedByte();
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VOr(reg, rm);
+    SSAInstruction* result = ir.VOr(reg, rm, VectorState::PackedByte);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(pxor_xmm_xmm128) { // pxor xmm, xmm/m128 - 0x66 0x0f 0xef
-    ir.SetVectorStatePackedByte();
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VXor(reg, rm);
+    SSAInstruction* result = ir.VXor(reg, rm, VectorState::PackedByte);
     ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(psubb_xmm_xmm128) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
-    ir.SetVectorStatePackedByte();
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* result = ir.VSub(reg, rm);
+    SSAInstruction* result = ir.VSub(reg, rm, VectorState::PackedByte);
     ir.SetReg(inst->operand_reg, result);
 }
 
@@ -1175,8 +1166,7 @@ IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
     SSAInstruction* result;
     if (rm_op.type == X86_OP_TYPE_MEMORY) {
         rm_op.size = X86_SIZE_QWORD;
-        ir.SetVectorStatePackedQWord();
-        result = ir.VZext(ir.IToV(ir.GetRm(rm_op)), X86_SIZE_QWORD);
+        result = ir.VZext(ir.IToV(ir.GetRm(rm_op, VectorState::PackedQWord), VectorState::PackedQWord), X86_SIZE_QWORD);
     } else {
         result = ir.GetReg(rm_op);
     }

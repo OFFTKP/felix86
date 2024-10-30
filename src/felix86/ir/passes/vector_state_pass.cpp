@@ -27,71 +27,84 @@ void PassManager::VectorStatePass(BackendFunction* function) {
             BackendInstruction& inst = *it;
             switch (inst.GetOpcode()) {
             case IROpcode::SetVectorStateFloat: {
-                if (state == VectorState::Float) {
-                    it = block.GetInstructions().erase(it);
-                    continue;
-                }
+                ASSERT(state != VectorState::Float); // would be redundant otherwise
                 state = VectorState::Float;
                 break;
             }
             case IROpcode::SetVectorStateDouble: {
-                if (state == VectorState::Double) {
-                    it = block.GetInstructions().erase(it);
-                    continue;
-                }
+                ASSERT(state != VectorState::Double); // would be redundant otherwise
                 state = VectorState::Double;
                 break;
             }
             case IROpcode::SetVectorStatePackedByte: {
-                if (state == VectorState::PackedByte) {
-                    it = block.GetInstructions().erase(it);
-                    continue;
-                }
+                ASSERT(state != VectorState::PackedByte); // would be redundant otherwise
                 state = VectorState::PackedByte;
                 break;
             }
             case IROpcode::SetVectorStatePackedWord: {
-                if (state == VectorState::PackedWord) {
-                    it = block.GetInstructions().erase(it);
-                    continue;
-                }
+                ASSERT(state != VectorState::PackedWord); // would be redundant otherwise
                 state = VectorState::PackedWord;
                 break;
             }
             case IROpcode::SetVectorStatePackedDWord: {
-                if (state == VectorState::PackedDWord) {
-                    it = block.GetInstructions().erase(it);
-                    continue;
-                }
+                ASSERT(state != VectorState::PackedDWord); // would be redundant otherwise
                 state = VectorState::PackedDWord;
                 break;
             }
             case IROpcode::SetVectorStatePackedQWord: {
-                if (state == VectorState::PackedQWord) {
-                    it = block.GetInstructions().erase(it);
-                    continue;
-                }
+                ASSERT(state != VectorState::PackedQWord); // would be redundant otherwise
                 state = VectorState::PackedQWord;
-                break;
-            }
-            case IROpcode::WriteXmmWord:
-            case IROpcode::WriteXmmWordRelative:
-            case IROpcode::ReadXmmWord:
-            case IROpcode::ReadXmmWordRelative: {
-                if (!IsPacked(state)) {
-                    // Must insert a SetVectorStatePackedByte instruction before this
-                    SSAInstruction inst(IROpcode::SetVectorStatePackedByte, {});
-                    BackendInstruction new_inst = BackendInstruction::FromSSAInstruction(&inst);
-                    it = block.GetInstructions().insert(it, new_inst);
-                    continue;
-                } else {
-                    inst.SetCurrentState(state);
-                }
                 break;
             }
             default: {
                 if (ExitsVM(inst.GetOpcode())) {
                     state = VectorState::Null;
+                } else if (inst.GetVectorState() != VectorState::Null) {
+                    if (inst.GetVectorState() != state) {
+                        // If there's a mismatch between the previous state and this state, we need to insert
+                        // a vsetivli instruction to change the vector state
+                        switch (inst.GetVectorState()) {
+                        case VectorState::Float: {
+                            SSAInstruction inst(IROpcode::SetVectorStateFloat, {});
+                            BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                            it = block.GetInstructions().insert(it, backend_inst);
+                            continue;
+                        }
+                        case VectorState::Double: {
+                            SSAInstruction inst(IROpcode::SetVectorStateDouble, {});
+                            BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                            it = block.GetInstructions().insert(it, backend_inst);
+                            continue;
+                        }
+                        case VectorState::PackedByte: {
+                            SSAInstruction inst(IROpcode::SetVectorStatePackedByte, {});
+                            BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                            it = block.GetInstructions().insert(it, backend_inst);
+                            continue;
+                        }
+                        case VectorState::PackedWord: {
+                            SSAInstruction inst(IROpcode::SetVectorStatePackedWord, {});
+                            BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                            it = block.GetInstructions().insert(it, backend_inst);
+                            continue;
+                        }
+                        case VectorState::PackedDWord: {
+                            SSAInstruction inst(IROpcode::SetVectorStatePackedDWord, {});
+                            BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                            it = block.GetInstructions().insert(it, backend_inst);
+                            continue;
+                        }
+                        case VectorState::PackedQWord: {
+                            SSAInstruction inst(IROpcode::SetVectorStatePackedQWord, {});
+                            BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                            it = block.GetInstructions().insert(it, backend_inst);
+                            continue;
+                        }
+                        case VectorState::Null:
+                            UNREACHABLE();
+                            break;
+                        }
+                    }
                 }
                 break;
             }
