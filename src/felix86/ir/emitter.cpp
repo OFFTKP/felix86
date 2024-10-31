@@ -1497,7 +1497,44 @@ void IREmitter::Group3(x86_instruction_t* inst) {
         break;
     }
     case X86_GROUP3_MUL: {
-        UNIMPLEMENTED();
+        switch (size_e) {
+        case X86_SIZE_BYTE: {
+            SSAInstruction* al = Zext(GetReg(X86_REF_RAX, X86_SIZE_BYTE), X86_SIZE_BYTE);
+            SSAInstruction* se_rm = Zext(rm, X86_SIZE_BYTE);
+            SSAInstruction* mul = Mul(al, se_rm);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD);
+            break;
+        }
+        case X86_SIZE_WORD: {
+            SSAInstruction* ax = Zext(GetReg(X86_REF_RAX, X86_SIZE_WORD), X86_SIZE_WORD);
+            SSAInstruction* se_rm = Zext(rm, X86_SIZE_WORD);
+            SSAInstruction* mul = Mul(ax, se_rm);
+            SSAInstruction* mul_high = Shri(mul, 16);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_WORD);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            SSAInstruction* eax = Zext(GetReg(X86_REF_RAX, X86_SIZE_DWORD), X86_SIZE_DWORD);
+            SSAInstruction* se_rm = Zext(rm, X86_SIZE_DWORD);
+            SSAInstruction* mul = Mul(eax, se_rm);
+            SSAInstruction* mul_high = Shri(mul, 32);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_DWORD);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_DWORD);
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            SSAInstruction* rax = GetReg(X86_REF_RAX, X86_SIZE_QWORD);
+            SSAInstruction* mul = Mul(rax, rm);
+            SSAInstruction* mul_high = Mulhu(rax, rm);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_QWORD);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_QWORD);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
         break;
     }
     case X86_GROUP3_IMUL: {
