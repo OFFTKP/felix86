@@ -129,6 +129,7 @@ struct IREmitter {
     SSAInstruction* VFRcpSqrt(SSAInstruction* value, VectorState state);
     SSAInstruction* VFRcp(SSAInstruction* value, VectorState state);
     SSAInstruction* VFMul(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
+    SSAInstruction* VFDiv(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VFSub(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VInsertInteger(SSAInstruction* integer, SSAInstruction* vector, u8 index, x86_size_e size);
     SSAInstruction* IToV(SSAInstruction* value, VectorState state);
