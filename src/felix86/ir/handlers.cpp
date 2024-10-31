@@ -16,13 +16,18 @@ SSAInstruction* felix86_rcpsqrt(IREmitter& ir, SSAInstruction* reg, SSAInstructi
     // Refine the result using Newton-Raphson iteration
     // y = y * (1.5 - 0.5*x*y*y)
     SSAInstruction* x = rm;
-    SSAInstruction* x_y = ir.VFMul(x, y, state);
-    SSAInstruction* x_y_y = ir.VFMul(x_y, y, state);
-    SSAInstruction* point_five = ir.VSplat(ir.Imm(0x3F00'0000), state);
-    SSAInstruction* one_point_five = ir.VSplat(ir.Imm(0x3FC0'0000), state);
-    SSAInstruction* result = ir.VFMul(ir.VFSub(one_point_five, ir.VFMul(point_five, x_y_y, state), state), y, state);
 
-    return result;
+    for (int i = 0; i < 2; i++) {
+        SSAInstruction* x_y = ir.VFMul(x, y, state);
+        SSAInstruction* x_y_y = ir.VFMul(x_y, y, state);
+        SSAInstruction* point_five = ir.VSplat(ir.Imm(0x3F00'0000), state);
+        SSAInstruction* one_point_five = ir.VSplat(ir.Imm(0x3FC0'0000), state);
+        SSAInstruction* result = ir.VFMul(ir.VFSub(one_point_five, ir.VFMul(point_five, x_y_y, state), state), y, state);
+        x = y;
+        y = result;
+    }
+
+    return y;
 }
 
 SSAInstruction* felix86_rcp(IREmitter& ir, SSAInstruction* reg, SSAInstruction* rm, VectorState state) {
