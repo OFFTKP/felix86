@@ -628,6 +628,14 @@ SSAInstruction* IREmitter::VFRcpSqrt(SSAInstruction* value, VectorState state) {
     return insertInstruction(IROpcode::VFRcpSqrt, state, {value});
 }
 
+SSAInstruction* IREmitter::VFMul(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VFMul, state, {lhs, rhs});
+}
+
+SSAInstruction* IREmitter::VFSub(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VFSub, state, {lhs, rhs});
+}
+
 SSAInstruction* IREmitter::VZext(SSAInstruction* value, x86_size_e size) {
     switch (size) {
     case X86_SIZE_DWORD: {
