@@ -30,7 +30,6 @@ void PassManager::ImmediateTransformationPass(IRFunction* function) {
                         op.immediate_data = diff;
                         op.operands[0] = imm;
                         inst.Replace(op, IROpcode::Addi);
-                        printf("%016lx replaced with %016lx + %016lx\n", this_immediate, other_immediate, diff);
                         replaced = true;
                         break;
                     }
