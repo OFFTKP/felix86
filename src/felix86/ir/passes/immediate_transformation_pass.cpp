@@ -10,6 +10,10 @@ void PassManager::ImmediateTransformationPass(IRFunction* function) {
         for (SSAInstruction& inst : block->GetInstructions()) {
             if (inst.IsImmediate()) {
                 i64 this_immediate = inst.GetImmediateData();
+                if (this_immediate == 0) {
+                    continue;
+                }
+
                 for (SSAInstruction* imm : immediates) {
                     i64 other_immediate = imm->GetImmediateData();
                     i64 diff = this_immediate - other_immediate;
