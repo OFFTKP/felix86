@@ -9,8 +9,8 @@ void PassManager::ImmediateTransformationPass(IRFunction* function) {
         std::vector<SSAInstruction*> immediates;
         for (SSAInstruction& inst : block->GetInstructions()) {
             if (inst.IsImmediate()) {
+                i64 this_immediate = inst.GetImmediateData();
                 for (SSAInstruction* imm : immediates) {
-                    i64 this_immediate = inst.GetImmediateData();
                     i64 other_immediate = imm->GetImmediateData();
                     i64 diff = this_immediate - other_immediate;
                     if (IsValidSigned12BitImm(diff)) {
@@ -21,6 +21,12 @@ void PassManager::ImmediateTransformationPass(IRFunction* function) {
                         inst.Replace(op, IROpcode::Addi);
                         break;
                     }
+                }
+
+                // Small enough that we don't even wanna account for it, it would just be a bigger interval
+                // in reg allocator for no reason
+                if (static_cast<uint64_t>(static_cast<int64_t>(this_immediate << 32) >> 32) == this_immediate) {
+                    continue;
                 }
 
                 immediates.push_back(&inst);
