@@ -145,6 +145,11 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         STRACE("rseq(...) = %016lx", result);
         break;
     }
+    case felix86_x86_64_time: {
+        result = HOST_SYSCALL(time, rdi);
+        STRACE("time(%p) = %016lx", (void*)rdi, result);
+        break;
+    }
     case felix86_x86_64_prlimit64: {
         result = HOST_SYSCALL(prlimit64, rdi, rsi, rdx, r10);
         STRACE("prlimit64(%016lx, %016lx, %016lx, %016lx) = %016lx", rdi, rsi, rdx, r10, result);

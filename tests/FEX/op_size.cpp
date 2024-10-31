@@ -5,6 +5,10 @@
         FEXTestLoader::RunTest("ASM/OpSize/66_" #opcode ".asm");                                                                                     \
     }
 
+CATCH_TEST_CASE("15Byte", "[FEX][OpSize]") {
+    FEXTestLoader::RunTest("ASM/OpSize/15_BYTE.asm");
+}
+
 OP_SIZE(28)
 OP_SIZE(51)
 OP_SIZE(54)
