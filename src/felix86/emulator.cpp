@@ -198,6 +198,7 @@ void* Emulator::compileFunction(u64 rip) {
         } while (changed);
     }
 
+    PassManager::ImmediateTransformationPass(&function);
     PassManager::CriticalEdgeSplittingPass(&function);
 
     if (config.print_blocks) {
