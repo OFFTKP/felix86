@@ -9,8 +9,9 @@ struct Backend;
 
 struct Emitter {
     static void Emit(Backend& backend, const AllocationMap& allocations, const BackendInstruction& instruction);
-    static void EmitJump(Backend& backend, void* target);
-    static void EmitJumpConditional(Backend& backend, biscuit::GPR condition, void* target_true, void* target_false);
+    static void EmitJumpFar(Backend& backend, void* target);
+    static void EmitJump(Backend& backend, Label* target);
+    static void EmitJumpConditional(Backend& backend, biscuit::GPR condition, Label* target_true, Label* target_false);
     static void EmitSetExitReason(Backend&, u64);
     static void EmitPushAllCallerSaved(Backend&);
     static void EmitPopAllCallerSaved(Backend&);

@@ -152,7 +152,7 @@ void Backend::EnterDispatcher(ThreadState* state) {
 
 std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, const AllocationMap& allocations) {
     void* start = as.GetCursorPointer();
-    tsl::robin_map<const BackendBlock*, void*> block_map;
+    tsl::robin_map<const BackendBlock*, Label> block_map;
 
     struct ConditionalJump {
         ptrdiff_t location;
@@ -181,7 +181,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             as.SUB(Registers::StackPointer(), Registers::StackPointer(), t0);
         }
 
-        block_map[block] = as.GetCursorPointer();
+        as.Bind(&block_map[block]);
 
         for (const BackendInstruction& inst : block->GetInstructions()) {
             Emitter::Emit(*this, allocations, inst);
@@ -219,7 +219,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             break;
         }
         case Termination::BackToDispatcher: {
-            Emitter::EmitJump(*this, (void*)compile_next);
+            Emitter::EmitJumpFar(*this, (void*)compile_next);
             break;
         }
         default: {
@@ -235,7 +235,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
         u8* cursor = as.GetCursorPointer();
         as.RewindBuffer(jump.location);
-        Emitter::EmitJump(*this, block_map[jump.target]);
+        Emitter::EmitJump(*this, &block_map[jump.target]);
         as.GetCodeBuffer().SetCursor(cursor);
     }
 
@@ -246,7 +246,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         u8* cursor = as.GetCursorPointer();
         as.RewindBuffer(jump.location);
 
-        Emitter::EmitJumpConditional(*this, jump.allocation.AsGPR(), block_map[jump.target_true], block_map[jump.target_false]);
+        Emitter::EmitJumpConditional(*this, jump.allocation.AsGPR(), &block_map[jump.target_true], &block_map[jump.target_false]);
         as.GetCodeBuffer().SetCursor(cursor);
     }
 

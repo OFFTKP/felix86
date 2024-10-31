@@ -20,7 +20,7 @@ void Pop(Backend& backend, biscuit::GPR Rs) {
 
 void EmitCrash(Backend& backend, ExitReason reason) {
     Emitter::EmitSetExitReason(backend, static_cast<u64>(reason));
-    Emitter::EmitJump(backend, backend.GetCrashTarget());
+    Emitter::EmitJumpFar(backend, backend.GetCrashTarget());
 }
 
 void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
@@ -191,18 +191,18 @@ void Emitter::EmitPopAllCallerSaved(Backend& backend) {
     constexpr i64 size = 8 * (caller_saved_gprs.size() + caller_saved_fprs.size());
     constexpr i64 gprs_size = 8 * caller_saved_gprs.size();
 
-    for (size_t i = 0; i < caller_saved_gprs.size(); i++) {
-        AS.LD(caller_saved_gprs[i], i * 8, Registers::StackPointer());
-    }
-
     for (size_t i = 0; i < caller_saved_fprs.size(); i++) {
         AS.FLD(caller_saved_fprs[i], gprs_size + i * 8, Registers::StackPointer());
+    }
+
+    for (size_t i = 0; i < caller_saved_gprs.size(); i++) {
+        AS.LD(caller_saved_gprs[i], i * 8, Registers::StackPointer());
     }
 
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), size);
 }
 
-void Emitter::EmitJump(Backend& backend, void* target) {
+void Emitter::EmitJumpFar(Backend& backend, void* target) {
     auto my_abs = [](u64 x) -> u64 { return x < 0 ? -x : x; };
 
     // Check if target is in one MB range
@@ -215,16 +215,13 @@ void Emitter::EmitJump(Backend& backend, void* target) {
     }
 }
 
-void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, void* target_true, void* target_false) {
-    Label false_label;
+void Emitter::EmitJump(Backend& backend, Label* target) {
+    AS.J(target);
+}
 
-    // TODO: emit relative jumps if possible
-    AS.BEQZ(condition, &false_label);
-    AS.LI(t0, (u64)target_true);
-    AS.JR(t0);
-    AS.Bind(&false_label);
-    AS.LI(t0, (u64)target_false);
-    AS.JR(t0);
+void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, Label* target_true, Label* target_false) {
+    AS.BEQZ(condition, target_false);
+    AS.J(target_true);
 }
 
 void Emitter::EmitCallHostFunction(Backend& backend, u64 function) {
