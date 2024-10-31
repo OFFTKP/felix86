@@ -632,7 +632,7 @@ IR_HANDLE(mov_r32_imm32) { // mov r16/32/64, imm16/32/64 - 0xb8-0xbf
     ir.SetReg(inst->operand_reg, imm);
 }
 
-IR_HANDLE(group2_rm_imm8) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm8, imm8 - 0xc0
+IR_HANDLE(group2_rm_imm) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm8, imm8 - 0xc0
     ir.Group2(inst, ir.Imm(inst->operand_imm.immediate.data));
 }
 
@@ -666,12 +666,7 @@ IR_HANDLE(ret) { // ret - 0xc3
     ir.Exit();
 }
 
-IR_HANDLE(mov_rm8_imm8) { // mov rm8, imm8 - 0xc6
-    SSAInstruction* imm = ir.Imm(inst->operand_imm.immediate.data);
-    ir.SetRm(inst->operand_rm, imm);
-}
-
-IR_HANDLE(mov_rm32_imm32) { // mov rm16/32/64, imm16/32/64 - 0xc7
+IR_HANDLE(mov_rm_imm) { // mov rm16/32/64, imm16/32/64 - 0xc7
     SSAInstruction* imm = ir.Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     ir.SetRm(inst->operand_rm, imm);
 }
