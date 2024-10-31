@@ -17,7 +17,7 @@ SSAInstruction* felix86_rcpsqrt(IREmitter& ir, SSAInstruction* reg, SSAInstructi
     // y = y * (1.5 - 0.5*x*y*y)
     SSAInstruction* x = rm;
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 5; i++) {
         SSAInstruction* x_y = ir.VFMul(x, y, state);
         SSAInstruction* x_y_y = ir.VFMul(x_y, y, state);
         SSAInstruction* point_five = ir.VSplat(ir.Imm(0x3F00'0000), state);
