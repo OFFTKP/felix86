@@ -1293,7 +1293,7 @@ void IREmitter::Group1(x86_instruction_t* inst) {
 
     x86_size_e size_e = inst->operand_rm.size;
     SSAInstruction* rm = GetRm(inst->operand_rm);
-    SSAInstruction* imm = Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* result = nullptr;
     SSAInstruction* zero = Imm(0);
     SSAInstruction* c = zero;
@@ -1463,7 +1463,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
     switch (opcode) {
     case X86_GROUP3_TEST:
     case X86_GROUP3_TEST_: {
-        SSAInstruction* imm = Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+        SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
         SSAInstruction* masked = And(rm, imm);
         s = IsNegative(masked, size_e);
         z = IsZero(masked, size_e);
