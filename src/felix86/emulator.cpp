@@ -187,7 +187,7 @@ void* Emulator::compileFunction(u64 rip) {
     PassManager::SSAPass(&function);
     PassManager::DeadCodeEliminationPass(&function);
 
-    if (config.optimize) {
+    if (config.optimize && !g_dont_optimize) {
         bool changed = false;
         do {
             changed = false;
@@ -196,9 +196,9 @@ void* Emulator::compileFunction(u64 rip) {
             changed |= PassManager::CopyPropagationPass(&function);
             changed |= PassManager::DeadCodeEliminationPass(&function);
         } while (changed);
+        PassManager::ImmediateTransformationPass(&function);
     }
 
-    PassManager::ImmediateTransformationPass(&function);
     PassManager::CriticalEdgeSplittingPass(&function);
 
     if (config.print_blocks) {

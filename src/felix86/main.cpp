@@ -224,6 +224,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    const char* dont_optimize_env = getenv("FELIX86_NO_OPT");
+    if (dont_optimize_env) {
+        g_dont_optimize = true;
+    }
+
     if (!extensions_manually_specified) {
         CPUInfo cpuinfo;
         Extensions::G = cpuinfo.Has(RISCVExtension::I) && cpuinfo.Has(RISCVExtension::A) && cpuinfo.Has(RISCVExtension::F) &&
