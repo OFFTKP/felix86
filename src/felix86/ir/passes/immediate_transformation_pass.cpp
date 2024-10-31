@@ -14,6 +14,13 @@ void PassManager::ImmediateTransformationPass(IRFunction* function) {
                     continue;
                 }
 
+                // Small enough that we don't even wanna account for it, it would just be a bigger interval
+                // in reg allocator for no reason
+                if (static_cast<uint64_t>(static_cast<int64_t>(this_immediate << 32) >> 32) == (u64)this_immediate) {
+                    continue;
+                }
+
+                bool replaced = false;
                 for (SSAInstruction* imm : immediates) {
                     i64 other_immediate = imm->GetImmediateData();
                     i64 diff = this_immediate - other_immediate;
@@ -24,17 +31,14 @@ void PassManager::ImmediateTransformationPass(IRFunction* function) {
                         op.operands[0] = imm;
                         inst.Replace(op, IROpcode::Addi);
                         printf("%016lx replaced with %016lx + %016lx\n", this_immediate, other_immediate, diff);
+                        replaced = true;
                         break;
                     }
                 }
 
-                // Small enough that we don't even wanna account for it, it would just be a bigger interval
-                // in reg allocator for no reason
-                if (static_cast<uint64_t>(static_cast<int64_t>(this_immediate << 32) >> 32) == (u64)this_immediate) {
-                    continue;
+                if (!replaced) {
+                    immediates.push_back(&inst);
                 }
-
-                immediates.push_back(&inst);
             }
         }
     }
