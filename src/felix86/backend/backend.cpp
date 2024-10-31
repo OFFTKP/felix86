@@ -212,9 +212,8 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             const BackendBlock* target_false = &function.GetBlock(block->GetSuccessor(1));
             conditional_jumps.push_back({offset, condition, target_true, target_false});
             // Some space for the backpatched jump
-            for (int i = 0; i < 18; i++) {
-                as.NOP();
-            }
+            as.NOP();
+            as.NOP();
             as.EBREAK();
             break;
         }
