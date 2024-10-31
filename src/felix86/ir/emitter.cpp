@@ -1,7 +1,6 @@
 #include "felix86/ir/emitter.hpp"
 
-namespace {
-u64 ImmSext(u64 imm, x86_size_e size) {
+u64 IREmitter::ImmSext(u64 imm, x86_size_e size) {
     i64 value = imm;
     switch (size) {
     case X86_SIZE_BYTE:
@@ -20,7 +19,6 @@ u64 ImmSext(u64 imm, x86_size_e size) {
     }
     return value;
 }
-} // namespace
 
 SSAInstruction* IREmitter::GetReg(x86_ref_e reg, x86_size_e size, bool high) {
     ASSERT(!high || size == X86_SIZE_BYTE);
@@ -541,6 +539,46 @@ void IREmitter::PackedRegRm(x86_instruction_t* inst, IROpcode opcode, VectorStat
     SetReg(inst->operand_reg, result);
 }
 
+void IREmitter::ScalarRegRm(x86_instruction_t* inst, VectorFunc func, VectorState state) {
+    SSAInstruction *rm, *reg;
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        inst->operand_rm.size = state == VectorState::Float ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+        SSAInstruction* mem = GetRm(inst->operand_rm);
+        rm = IToV(mem, state);
+        reg = GetReg(inst->operand_reg);
+    } else {
+        rm = GetRm(inst->operand_rm, state);
+        reg = GetReg(inst->operand_reg);
+    }
+
+    SSAInstruction* result_almost = func(*this, reg, rm, state);
+
+    // Preserve the top bits of the destination register
+    VectorState packed_state;
+    switch (state) {
+    case VectorState::Float:
+        packed_state = VectorState::PackedDWord;
+        break;
+    case VectorState::Double:
+        packed_state = VectorState::PackedQWord;
+        break;
+    default:
+        UNREACHABLE();
+        return;
+    }
+
+    SetVMask(VSplati(0b000000001 /* mask of elements */, state));
+    SSAInstruction* result = VMerge(result_almost /* 1's value */, reg /* 0's value */, packed_state);
+    SetReg(inst->operand_reg, result);
+}
+
+void IREmitter::PackedRegRm(x86_instruction_t* inst, VectorFunc func, VectorState state) {
+    SSAInstruction* rm = GetRm(inst->operand_rm, state);
+    SSAInstruction* reg = GetReg(inst->operand_reg);
+    SSAInstruction* result = func(*this, reg, rm, state);
+    SetReg(inst->operand_reg, result);
+}
+
 void IREmitter::SetVMask(SSAInstruction* mask) {
     SSAInstruction* instruction = insertInstruction(IROpcode::SetVMask, {mask});
     instruction->Lock();
@@ -576,6 +614,18 @@ SSAInstruction* IREmitter::VSlideDowni(SSAInstruction* value, u8 shift, VectorSt
 
 SSAInstruction* IREmitter::VSlideUpi(SSAInstruction* value, u8 shift, VectorState state) {
     return insertInstruction(IROpcode::VSlideUpi, state, {value}, shift);
+}
+
+SSAInstruction* IREmitter::VFSqrt(SSAInstruction* value, VectorState state) {
+    return insertInstruction(IROpcode::VFSqrt, state, {value});
+}
+
+SSAInstruction* IREmitter::VFRcp(SSAInstruction* value, VectorState state) {
+    return insertInstruction(IROpcode::VFRcp, state, {value});
+}
+
+SSAInstruction* IREmitter::VFRcpSqrt(SSAInstruction* value, VectorState state) {
+    return insertInstruction(IROpcode::VFRcpSqrt, state, {value});
 }
 
 SSAInstruction* IREmitter::VZext(SSAInstruction* value, x86_size_e size) {
@@ -1243,7 +1293,7 @@ void IREmitter::Group1(x86_instruction_t* inst) {
 
     x86_size_e size_e = inst->operand_rm.size;
     SSAInstruction* rm = GetRm(inst->operand_rm);
-    SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* result = nullptr;
     SSAInstruction* zero = Imm(0);
     SSAInstruction* c = zero;
@@ -1413,7 +1463,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
     switch (opcode) {
     case X86_GROUP3_TEST:
     case X86_GROUP3_TEST_: {
-        SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+        SSAInstruction* imm = Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
         SSAInstruction* masked = And(rm, imm);
         s = IsNegative(masked, size_e);
         z = IsZero(masked, size_e);

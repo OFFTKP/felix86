@@ -4,6 +4,8 @@
 #include "felix86/ir/block.hpp"
 
 struct IREmitter {
+    using VectorFunc = SSAInstruction* (*)(IREmitter&, SSAInstruction*, SSAInstruction*, VectorState);
+
     IREmitter(IRBlock& block, u64 address) : block(&block), current_address(address) {}
 
     void Exit() {
@@ -123,6 +125,9 @@ struct IREmitter {
     SSAInstruction* VOr(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VXor(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VXori(SSAInstruction* lhs, i64 imm, VectorState state);
+    SSAInstruction* VFSqrt(SSAInstruction* value, VectorState state);
+    SSAInstruction* VFRcpSqrt(SSAInstruction* value, VectorState state);
+    SSAInstruction* VFRcp(SSAInstruction* value, VectorState state);
     SSAInstruction* VInsertInteger(SSAInstruction* integer, SSAInstruction* vector, u8 index, x86_size_e size);
     SSAInstruction* IToV(SSAInstruction* value, VectorState state);
     SSAInstruction* VToI(SSAInstruction* value, VectorState state);
@@ -153,14 +158,18 @@ struct IREmitter {
     void SetVMask(SSAInstruction* mask);
     void Pcmpeq(x86_instruction_t* inst, VectorState state);
     void Punpckl(x86_instruction_t* inst, VectorState state);
-    void PackedRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state);
     void ScalarRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state);
+    void PackedRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state);
+    void ScalarRegRm(x86_instruction_t* inst, VectorFunc func, VectorState state);
+    void PackedRegRm(x86_instruction_t* inst, VectorFunc func, VectorState state);
 
     void RepStart(IRBlock* loop_block, IRBlock* exit_block);
     void RepEnd(x86_rep_e rep_type, IRBlock* loop_block, IRBlock* exit_block);
 
     void TerminateJump(IRBlock* target);
     void TerminateJumpConditional(SSAInstruction* cond, IRBlock* target_true, IRBlock* target_false);
+
+    u64 ImmSext(u64 imm, x86_size_e size);
 
     u64 GetCurrentAddress() {
         return current_address;

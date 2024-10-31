@@ -6,27 +6,17 @@
 #include "felix86/ir/instruction.hpp"
 
 namespace {
-u64 ImmSext(u64 imm, x86_size_e size) {
-    i64 value = imm;
-    switch (size) {
-    case X86_SIZE_BYTE:
-        value = (i8)value;
-        break;
-    case X86_SIZE_WORD:
-        value = (i16)value;
-        break;
-    case X86_SIZE_DWORD:
-        value = (i32)value;
-        break;
-    case X86_SIZE_QWORD:
-        break;
-    default:
-        ERROR("Invalid immediate size");
-    }
-    return value;
+SSAInstruction* felix86_sqrt(IREmitter& ir, SSAInstruction*, SSAInstruction* rm, VectorState state) {
+    return ir.VFSqrt(rm, state);
 }
-static_assert(-1ull == 0xffffffffffffffffull);
-} // namespace
+
+SSAInstruction* felix86_rcpsqrt(IREmitter& ir, SSAInstruction* reg, SSAInstruction* rm, VectorState state) {
+    return ir.VFRcpSqrt(rm, state);
+}
+
+SSAInstruction* felix86_rcp(IREmitter& ir, SSAInstruction* reg, SSAInstruction* rm, VectorState state) {
+    return ir.VFRcp(rm, state);
+}
 
 u64 sext_if_64(u64 value, x86_size_e size_e) {
     switch (size_e) {
@@ -71,6 +61,7 @@ x86_size_e sizedown(x86_size_e size_e) {
         return X86_SIZE_BYTE;
     }
 }
+} // namespace
 
 #define IS_LOCK (inst->operand_rm.type == X86_OP_TYPE_MEMORY && inst->operand_rm.memory.lock)
 #define IR_HANDLE(name) void ir_handle_##name(FrontendState* state, IREmitter& ir, x86_instruction_t* inst)
@@ -452,7 +443,7 @@ IR_HANDLE(movsxd) { // movsxd r32/64, rm32/64 - 0x63
 
 IR_HANDLE(push_imm) {
     bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
-    SSAInstruction* imm = ir.Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = ir.Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rsp_sub = ir.Addi(rsp, is_word ? -2 : -8);
     ir.WriteMemory(rsp_sub, imm, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
@@ -461,7 +452,7 @@ IR_HANDLE(push_imm) {
 
 IR_HANDLE(imul_r_rm_imm) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* imm = ir.Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = ir.Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* result = ir.Mul(rm, imm);
     ir.SetReg(inst->operand_reg, result);
 }
@@ -678,7 +669,7 @@ IR_HANDLE(mov_rm8_imm8) { // mov rm8, imm8 - 0xc6
 }
 
 IR_HANDLE(mov_rm32_imm32) { // mov rm16/32/64, imm16/32/64 - 0xc7
-    SSAInstruction* imm = ir.Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = ir.Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     ir.SetRm(inst->operand_rm, imm);
 }
 
@@ -1228,19 +1219,19 @@ IR_HANDLE(divpd) {
 }
 
 IR_HANDLE(sqrtss) { // sqrtss xmm, xmm32 - 0xf3 0x0f 0x51
-    ir.ScalarRegRm(inst, IROpcode::VFSqrt, VectorState::Float);
+    ir.ScalarRegRm(inst, felix86_sqrt, VectorState::Float);
 }
 
 IR_HANDLE(sqrtsd) {
-    ir.ScalarRegRm(inst, IROpcode::VFSqrt, VectorState::Double);
+    ir.ScalarRegRm(inst, felix86_sqrt, VectorState::Double);
 }
 
 IR_HANDLE(sqrtps) {
-    ir.PackedRegRm(inst, IROpcode::VFSqrt, VectorState::PackedDWord);
+    ir.PackedRegRm(inst, felix86_sqrt, VectorState::PackedDWord);
 }
 
 IR_HANDLE(sqrtpd) {
-    ir.PackedRegRm(inst, IROpcode::VFSqrt, VectorState::PackedQWord);
+    ir.PackedRegRm(inst, felix86_sqrt, VectorState::PackedQWord);
 }
 
 IR_HANDLE(minss) { // minss xmm, xmm32 - 0xf3 0x0f 0x5d
@@ -1276,19 +1267,19 @@ IR_HANDLE(maxpd) {
 }
 
 IR_HANDLE(rsqrtss) { // rsqrtss xmm, xmm32 - 0xf3 0x0f 0x52
-    ir.ScalarRegRm(inst, IROpcode::VFRcpSqrt, VectorState::Float);
+    ir.ScalarRegRm(inst, felix86_rcpsqrt, VectorState::Float);
 }
 
 IR_HANDLE(rsqrtps) {
-    ir.PackedRegRm(inst, IROpcode::VFRcpSqrt, VectorState::PackedDWord);
+    ir.PackedRegRm(inst, felix86_rcpsqrt, VectorState::PackedDWord);
 }
 
 IR_HANDLE(rcpss) { // rcpss xmm, xmm32 - 0xf3 0x0f 0x53
-    ir.ScalarRegRm(inst, IROpcode::VFRcp, VectorState::Float);
+    ir.ScalarRegRm(inst, felix86_rcp, VectorState::Float);
 }
 
 IR_HANDLE(rcpps) {
-    ir.PackedRegRm(inst, IROpcode::VFRcp, VectorState::PackedDWord);
+    ir.PackedRegRm(inst, felix86_rcp, VectorState::PackedDWord);
 }
 
 IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f
