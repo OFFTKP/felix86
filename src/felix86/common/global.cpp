@@ -5,6 +5,7 @@ bool g_quiet = false;
 bool g_testing = false;
 bool g_strace = false;
 bool g_dont_optimize = false;
+u32 g_spilled_count = 0;
 
 bool Extensions::G = false;
 bool Extensions::C = false;

@@ -1,11 +1,14 @@
 #pragma once
 
+#include "felix86/common/utility.hpp"
+
 #define SUPPORTED_VLEN 128
 extern bool g_verbose;
 extern bool g_quiet;
 extern bool g_testing;
 extern bool g_strace;
 extern bool g_dont_optimize;
+extern u32 g_spilled_count;
 
 struct Extensions {
     static bool G;

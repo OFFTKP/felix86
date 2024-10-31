@@ -146,6 +146,10 @@ static bool should_consider_vec(const InstructionMap& map, u32 inst) {
 
 static void spill(BackendFunction& function, u32 node, u32 location, AllocationType spill_type) {
     VERBOSE("Spilling %s", GetNameString(node).c_str());
+    g_spilled_count += 1;
+    if (g_spilled_count > 5) {
+        WARN("Function %016lx has spilled %d times", function.GetStartAddress(), g_spilled_count);
+    }
     for (BackendBlock& block : function.GetBlocks()) {
         auto it = block.GetInstructions().begin();
         while (it != block.GetInstructions().end()) {
@@ -306,6 +310,7 @@ static u32 choose(const InstructionMap& instructions, const std::deque<Node>& no
 
 static AllocationMap run(BackendFunction& function, AllocationType type, bool (*should_consider)(const InstructionMap&, u32),
                          const std::vector<u32>& available_colors, u32& spill_location) {
+    g_spilled_count = 0;
     const u32 k = available_colors.size();
     while (true) {
         // Chaitin-Briggs algorithm

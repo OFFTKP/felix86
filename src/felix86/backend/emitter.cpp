@@ -228,7 +228,6 @@ void Emitter::EmitCallHostFunction(Backend& backend, u64 function) {
     // Really naive implementation for now
     EmitPushAllCallerSaved(backend);
 
-    AS.LI(t0, (u64)function);
     AS.MV(a0, Registers::ThreadStatePointer());
     AS.JALR(t0);
 

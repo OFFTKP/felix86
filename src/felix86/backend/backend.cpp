@@ -199,10 +199,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             const BackendBlock* target = &function.GetBlock(block->GetSuccessor(0));
             direct_jumps.push_back({offset, target});
             // Some space for the backpatched jump
-            for (int i = 0; i < 18; i++) {
-                as.NOP();
-            }
-            as.EBREAK();
+            as.NOP();
             break;
         }
         case Termination::JumpConditional: {
@@ -214,7 +211,6 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             // Some space for the backpatched jump
             as.NOP();
             as.NOP();
-            as.EBREAK();
             break;
         }
         case Termination::BackToDispatcher: {
