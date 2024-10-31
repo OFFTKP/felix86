@@ -10,8 +10,6 @@ BackendInstruction BackendInstruction::FromSSAInstruction(const SSAInstruction* 
 
     if (inst->IsGPR()) {
         backend_inst.desired_type = AllocationType::GPR;
-    } else if (inst->IsFPR()) {
-        backend_inst.desired_type = AllocationType::FPR;
     } else if (inst->IsVec()) {
         backend_inst.desired_type = AllocationType::Vec;
     } else if (inst->IsVoid()) {

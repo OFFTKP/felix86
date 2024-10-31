@@ -168,32 +168,20 @@ void EmitAlignmentCheck(Backend& backend, biscuit::GPR address, u8 alignment) {
 
 void Emitter::EmitPushAllCallerSaved(Backend& backend) {
     auto& caller_saved_gprs = Registers::GetCallerSavedGPRs();
-    auto& caller_saved_fprs = Registers::GetCallerSavedFPRs();
 
-    constexpr i64 size = 8 * (caller_saved_gprs.size() + caller_saved_fprs.size());
-    constexpr i64 gprs_size = 8 * caller_saved_gprs.size();
+    constexpr i64 size = 8 * caller_saved_gprs.size();
 
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), -size);
 
     for (size_t i = 0; i < caller_saved_gprs.size(); i++) {
         AS.SD(caller_saved_gprs[i], i * 8, Registers::StackPointer());
     }
-
-    for (size_t i = 0; i < caller_saved_fprs.size(); i++) {
-        AS.FSD(caller_saved_fprs[i], gprs_size + i * 8, Registers::StackPointer());
-    }
 }
 
 void Emitter::EmitPopAllCallerSaved(Backend& backend) {
     auto& caller_saved_gprs = Registers::GetCallerSavedGPRs();
-    auto& caller_saved_fprs = Registers::GetCallerSavedFPRs();
 
-    constexpr i64 size = 8 * (caller_saved_gprs.size() + caller_saved_fprs.size());
-    constexpr i64 gprs_size = 8 * caller_saved_gprs.size();
-
-    for (size_t i = 0; i < caller_saved_fprs.size(); i++) {
-        AS.FLD(caller_saved_fprs[i], gprs_size + i * 8, Registers::StackPointer());
-    }
+    constexpr i64 size = 8 * caller_saved_gprs.size();
 
     for (size_t i = 0; i < caller_saved_gprs.size(); i++) {
         AS.LD(caller_saved_gprs[i], i * 8, Registers::StackPointer());
@@ -249,14 +237,6 @@ void Emitter::EmitMov(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
     AS.MV(Rd, Rs);
 }
 
-void Emitter::EmitMov(Backend& backend, biscuit::FPR Rd, biscuit::FPR Rs) {
-    if (Rd == Rs) {
-        return;
-    }
-
-    AS.FMV_D(Rd, Rs);
-}
-
 void Emitter::EmitMov(Backend& backend, biscuit::Vec Rd, biscuit::Vec Rs) {
     if (Rd == Rs) {
         return;
@@ -275,16 +255,6 @@ void Emitter::EmitStoreSpill(Backend& backend, biscuit::GPR Rd, u32 spill_offset
     }
 }
 
-void Emitter::EmitStoreSpill(Backend& backend, biscuit::FPR Rd, u32 spill_offset) {
-    if (spill_offset < 2048) {
-        AS.FSD(Rd, spill_offset, Registers::StackPointer());
-    } else {
-        AS.LI(t0, spill_offset);
-        AS.ADD(t0, t0, Registers::StackPointer());
-        AS.FSD(Rd, 0, t0);
-    }
-}
-
 void Emitter::EmitStoreSpill(Backend& backend, biscuit::Vec Rd, u32 spill_offset) {
     UNREACHABLE();
 }
@@ -296,16 +266,6 @@ void Emitter::EmitLoadSpill(Backend& backend, biscuit::GPR Rd, u32 spill_offset)
         AS.LI(t0, spill_offset);
         AS.ADD(t0, t0, Registers::StackPointer());
         AS.LD(Rd, 0, t0);
-    }
-}
-
-void Emitter::EmitLoadSpill(Backend& backend, biscuit::FPR Rd, u32 spill_offset) {
-    if (spill_offset < 2048) {
-        AS.FLD(Rd, spill_offset, Registers::StackPointer());
-    } else {
-        AS.LI(t0, spill_offset);
-        AS.ADD(t0, t0, Registers::StackPointer());
-        AS.FLD(Rd, 0, t0);
     }
 }
 

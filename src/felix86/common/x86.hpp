@@ -168,7 +168,6 @@ struct ThreadState {
     // Storage for saved RISC-V registers, per thread, for when it's time to completely
     // exit dispatcher and stop the emulator
     u64 gpr_storage[Registers::GetSavedGPRs().size()]{};
-    u64 fpr_storage[Registers::GetSavedFPRs().size()]{};
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {

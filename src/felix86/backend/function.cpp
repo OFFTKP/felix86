@@ -22,7 +22,7 @@ AllocationType GetTypeFromRef(x86_ref_e ref) {
     case X86_REF_XMM0 ... X86_REF_XMM15:
         return AllocationType::Vec;
     case X86_REF_ST0 ... X86_REF_ST7:
-        return AllocationType::FPR;
+        return AllocationType::Vec;
     case X86_REF_COUNT:
         UNREACHABLE();
         return AllocationType::Null;

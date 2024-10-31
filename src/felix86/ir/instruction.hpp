@@ -15,7 +15,6 @@ enum IRType : u8 {
     Void,
     Integer64,
     Vector128,
-    Float64,
 
     Count,
 };
@@ -385,14 +384,6 @@ struct SSAInstruction {
 
     bool IsGPR() const {
         if (return_type == IRType::Integer64) {
-            return true;
-        }
-
-        return false;
-    }
-
-    bool IsFPR() const {
-        if (return_type == IRType::Float64) {
             return true;
         }
 

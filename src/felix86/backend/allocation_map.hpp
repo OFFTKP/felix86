@@ -15,10 +15,6 @@ struct AllocationMap {
         allocations[name] = gpr;
     }
 
-    void Allocate(u32 name, biscuit::FPR fpr) {
-        allocations[name] = fpr;
-    }
-
     void Allocate(u32 name, biscuit::Vec vec) {
         allocations[name] = vec;
     }
@@ -27,9 +23,6 @@ struct AllocationMap {
         switch (type) {
         case AllocationType::GPR:
             Allocate(name, biscuit::GPR(index));
-            break;
-        case AllocationType::FPR:
-            Allocate(name, biscuit::FPR(index));
             break;
         case AllocationType::Vec:
             Allocate(name, biscuit::Vec(index));
@@ -49,8 +42,6 @@ struct AllocationMap {
         Allocation allocation = GetAllocation(name);
         if (allocation.IsGPR()) {
             return allocation.AsGPR().Index();
-        } else if (allocation.IsFPR()) {
-            return allocation.AsFPR().Index();
         } else if (allocation.IsVec()) {
             return allocation.AsVec().Index();
         } else {

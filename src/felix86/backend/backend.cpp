@@ -52,14 +52,8 @@ void Backend::emitNecessaryStuff() {
     // Save the current register state of callee-saved registers and return address
     as.ADDI(address, a0, offsetof(ThreadState, gpr_storage));
     const auto& saved_gprs = Registers::GetSavedGPRs();
-    const auto& saved_fprs = Registers::GetSavedFPRs();
     for (size_t i = 0; i < saved_gprs.size(); i++) {
         as.SD(saved_gprs[i], i * sizeof(u64), address);
-    }
-
-    as.ADDI(address, address, saved_gprs.size() * sizeof(u64));
-    for (size_t i = 0; i < saved_fprs.size(); i++) {
-        as.FSD(saved_fprs[i], i * sizeof(u64), address);
     }
 
     // Since we picked callee-saved registers, we don't have to save them when calling stuff,
@@ -92,11 +86,6 @@ void Backend::emitNecessaryStuff() {
         as.LD(saved_gprs[i], i * sizeof(u64), address);
     }
 
-    as.ADDI(address, address, saved_gprs.size() * sizeof(u64));
-    for (size_t i = 0; i < saved_fprs.size(); i++) {
-        as.FLD(saved_fprs[i], i * sizeof(u64), address);
-    }
-
     as.RET();
 
     crash_target = as.GetCursorPointer();
@@ -106,11 +95,6 @@ void Backend::emitNecessaryStuff() {
     as.ADDI(address, address, offsetof(ThreadState, gpr_storage));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
         as.LD(saved_gprs[i], i * sizeof(u64), address);
-    }
-
-    as.ADDI(address, address, saved_gprs.size() * sizeof(u64));
-    for (size_t i = 0; i < saved_fprs.size(); i++) {
-        as.FLD(saved_fprs[i], i * sizeof(u64), address);
     }
 
     as.MV(a0, Registers::ThreadStatePointer());

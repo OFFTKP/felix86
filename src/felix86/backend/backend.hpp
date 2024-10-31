@@ -26,7 +26,6 @@ struct Backend {
     }
 
     u8 AvailableGPRs() const;
-    u8 AvailableFPRs() const;
     u8 AvailableVec() const;
 
     void EnterDispatcher(ThreadState* state);

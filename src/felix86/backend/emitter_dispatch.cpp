@@ -92,8 +92,6 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         u32 spill_offset = inst.GetImmediateData();
         if (Rd.IsGPR()) {
             EmitLoadSpill(backend, Rd.AsGPR(), spill_offset);
-        } else if (Rd.IsFPR()) {
-            EmitLoadSpill(backend, Rd.AsFPR(), spill_offset);
         } else if (Rd.IsVec()) {
             EmitLoadSpill(backend, Rd.AsVec(), spill_offset);
         } else {
@@ -107,8 +105,6 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         u32 spill_offset = inst.GetImmediateData();
         if (Rs.IsGPR()) {
             EmitStoreSpill(backend, Rs.AsGPR(), spill_offset);
-        } else if (Rs.IsFPR()) {
-            EmitStoreSpill(backend, Rs.AsFPR(), spill_offset);
         } else if (Rs.IsVec()) {
             EmitStoreSpill(backend, Rs.AsVec(), spill_offset);
         } else {
@@ -122,8 +118,6 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         auto Rs = _Reg_(inst.GetOperand(0));
         if (Rd.IsGPR() && Rs.IsGPR()) {
             EmitMov(backend, Rd.AsGPR(), Rs.AsGPR());
-        } else if (Rd.IsFPR() && Rs.IsFPR()) {
-            EmitMov(backend, Rd.AsFPR(), Rs.AsFPR());
         } else if (Rd.IsVec() && Rs.IsVec()) {
             EmitMov(backend, Rd.AsVec(), Rs.AsVec());
         } else {
