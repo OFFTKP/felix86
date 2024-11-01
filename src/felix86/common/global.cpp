@@ -8,6 +8,7 @@
 #include <vector>
 #include <asm/hwprobe.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 #endif
 
 bool g_verbose = false;
