@@ -7,6 +7,7 @@
 #ifdef __riscv
 #include <vector>
 #include <asm/hwprobe.h>
+#include <sys/syscall.h>
 #endif
 
 bool g_verbose = false;
