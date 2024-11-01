@@ -201,7 +201,7 @@ void* Emulator::compileFunction(u64 rip) {
 
     PassManager::CriticalEdgeSplittingPass(&function);
 
-    if (config.print_blocks) {
+    if (g_print_blocks) {
         fmt::print("{}", function.Print({}));
     }
 
@@ -218,11 +218,11 @@ void* Emulator::compileFunction(u64 rip) {
 
     auto [func, size] = backend.EmitFunction(backend_function, allocations);
 
-    if (config.print_blocks) {
+    if (g_print_blocks) {
         fmt::print("Backend function IR:\n{}\n", backend_function.Print());
     }
 
-    if (config.print_disassembly) {
+    if (g_print_disassembly) {
         fmt::print("Disassembly of function at 0x{:X}:\n", rip);
         fmt::print("{}\n", Disassembler::Disassemble(func, size));
         fflush(stdout);

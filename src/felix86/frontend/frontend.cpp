@@ -690,7 +690,7 @@ void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* b
         frontend_compile_instruction(&state, ir);
     }
 
-    if (emulator.GetConfig().print_state) {
+    if (g_print_state) {
         for (u8 i = 0; i < X86_REF_COUNT; i++) {
             // Writeback all state
             SSAInstruction* value = ir.GetGuest(x86_ref_e(i));
