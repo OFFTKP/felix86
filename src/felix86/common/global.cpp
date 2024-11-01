@@ -121,7 +121,7 @@ void initialize_extensions() {
         };
         // clang-format on
 
-        long result = riscv_hwprobe(pairs.data(), pairs.size(), 0, nullptr, 0);
+        long result = syscall(SYS_riscv_hwprobe, pairs.data(), pairs.size(), 0, nullptr, 0);
         if (result < 0) {
             ERROR("Failed to probe hardware capabilities: %ld", result);
             return;
