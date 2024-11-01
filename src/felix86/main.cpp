@@ -158,16 +158,7 @@ int main(int argc, char* argv[]) {
     LOG("felix86 version %s", FELIX86_VERSION);
 
     initialize_globals();
-
-    if (!g_extensions_manually_specified) {
-        CPUInfo cpuinfo;
-        Extensions::G = cpuinfo.Has(RISCVExtension::I) && cpuinfo.Has(RISCVExtension::A) && cpuinfo.Has(RISCVExtension::F) &&
-                        cpuinfo.Has(RISCVExtension::D) && cpuinfo.Has(RISCVExtension::M);
-        Extensions::V = cpuinfo.Has(RISCVExtension::V);
-        Extensions::C = cpuinfo.Has(RISCVExtension::C);
-        Extensions::VLEN = cpuinfo.GetVlenb() * 8;
-    }
-
+    initialize_extensions();
     print_extensions();
 
     if (!Extensions::G || !Extensions::V || Extensions::VLEN < 128) {

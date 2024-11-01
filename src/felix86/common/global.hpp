@@ -16,6 +16,7 @@ extern u32 g_spilled_count;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
+void initialize_extensions();
 
 struct Extensions {
     static bool G;

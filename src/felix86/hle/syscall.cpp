@@ -177,5 +177,9 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     }
     }
 
+    if (result == -1) {
+        result = -errno;
+    }
+
     state->SetGpr(X86_REF_RAX, result);
 }

@@ -8,6 +8,7 @@ public:
 
     void testRunStarting(Catch::TestRunInfo const&) override {
         initialize_globals();
+        initialize_extensions();
     }
 };
 

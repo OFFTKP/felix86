@@ -1,7 +1,12 @@
 #include <algorithm>
 #include <cstring>
+#include "biscuit/cpuinfo.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+
+#ifdef __riscv
+#include <asm/hwprobe.h>
+#endif
 
 bool g_verbose = false;
 bool g_quiet = false;
@@ -76,6 +81,64 @@ void initialize_globals() {
     if (print_disassembly_env) {
         g_print_disassembly = true;
     }
+}
+
+void initialize_extensions() {
+    if (!g_extensions_manually_specified) {
+        biscuit::CPUInfo cpuinfo;
+        Extensions::VLEN = cpuinfo.GetVlenb() * 8;
+
+#ifdef __riscv
+        // clang-format off
+        std::vector<riscv_hwprobe> pairs = {
+            {RISCV_HWPROBE_KEY_BASE_BEHAVIOR, 0},
+            {RISCV_HWPROBE_KEY_IMA_EXT_0, 0},
+        };
+        // clang-format on
+
+        long result = sys_riscv_hwprobe(pairs.data(), pairs.size(), 0, nullptr, 0);
+        if (result < 0) {
+            ERROR("Failed to probe hardware capabilities: %ld", result);
+            return;
+        }
+
+        for (const auto& pair : pairs) {
+            switch (pair.key) {
+            case RISCV_HWPROBE_KEY_BASE_BEHAVIOR:
+                printf("value: %lx\n", pair.value);
+                break;
+            case RISCV_HWPROBE_KEY_IMA_EXT_0:
+                Extensions::G = pair.value & RISCV_HWPROBE_IMA_FD;
+                Extensions::V = pair.value & RISCV_HWPROBE_IMA_V;
+                Extensions::C = pair.value & RISCV_HWPROBE_IMA_C;
+                Extensions::B = pair.value & (RISCV_HWPROBE_EXT_ZBA | RISCV_HWPROBE_EXT_ZBB | RISCV_HWPROBE_EXT_ZBC | RISCV_HWPROBE_EXT_ZBS);
+                Extensions::Zacas = pair.value & RISCV_HWPROBE_EXT_ZACAS;
+                Extensions::Zicond = pair.value & RISCV_HWPROBE_EXT_ZICOND;
+
+#ifdef RISCV_HWPROBE_EXT_ZAM // remove me when defined
+                Extensions::Zam = pair.value & RISCV_HWPROBE_EXT_ZAM;
+#endif
+#ifdef RISCV_HWPROBE_EXT_ZABHA // remove me when defined
+                Extensions::Zabha = pair.value & RISCV_HWPROBE_EXT_ZABHA;
+#endif
+                break;
+            default:
+                break;
+            }
+        }
+#endif
+    }
+
+#ifdef __riscv
+    if (!Extensions::G) {
+        WARN("G extension was not specified, enabling it by default");
+        Extensions::G = true;
+    }
+
+    if (!Extensions::V) {
+        ERROR("V extension is required for SSE instructions");
+    }
+#endif
 }
 
 bool parse_extensions(const char* arg) {

@@ -959,7 +959,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* eax = ir.GetReg(X86_REF_RAX);
 
-    if (IS_LOCK) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* actual = ir.AmoCAS(address, eax, reg, MemoryOrdering::AqRl, size_e);
@@ -967,14 +967,16 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         ir.SetReg(actual, X86_REF_RAX);
         ir.SetFlag(ir.Equal(actual, reg), X86_REF_ZF);
     } else {
-        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* equal = ir.Equal(eax, rm);
-        SSAInstruction* new_rm = ir.Select(equal, reg, rm);
+        UNREACHABLE();
+        // Think the following is wrong for w/e reason
+        // SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+        // SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        // SSAInstruction* equal = ir.Equal(eax, rm);
+        // SSAInstruction* new_rm = ir.Select(equal, reg, rm);
 
-        ir.SetReg(rm, X86_REF_RAX);
-        ir.SetRm(inst->operand_rm, new_rm);
-        ir.SetFlag(equal, X86_REF_ZF);
+        // ir.SetReg(rm, X86_REF_RAX);
+        // ir.SetRm(inst->operand_rm, new_rm);
+        // ir.SetFlag(equal, X86_REF_ZF);
     }
 }
 
