@@ -960,8 +960,8 @@ void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Conditi
         // Not my favorite of conditional move patterns
         // This was done like that because no other RISC-V instructions
         // need a third read port.
-        AS.CZERO_EQZ(Rd, RsFalse, Condition);
-        AS.CZERO_NEZ(t0, RsTrue, Condition);
+        AS.CZERO_NEZ(Rd, RsFalse, Condition);
+        AS.CZERO_EQZ(t0, RsTrue, Condition);
         AS.OR(Rd, Rd, t0);
     } else {
         if (Rd != RsFalse) {
