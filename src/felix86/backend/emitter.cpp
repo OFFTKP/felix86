@@ -374,6 +374,8 @@ void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
     if (Extensions::B) {
         AS.ANDI(Rd, Rs, 0xFF);
         AS.CPOPW(Rd, Rd);
+        AS.ANDI(Rd, Rd, 1);
+        AS.XORI(Rd, Rd, 1);
     } else {
         // clang-format off
         static bool bitcount[] = {

@@ -26,7 +26,7 @@ Make sure the disk image has enough space to compile.
 ```bash
 qemu-system-riscv64 \
 -machine virt -m 8192 -smp 10 \
--cpu rv64,v=true,vlen=128,vext_spec=v1.0,zacas=true,zam=true,zabha=true,zba=true,zbb=true,zbc=true,zbs=true,rvv_ta_all_1s=true,rvv_ma_all_1s=true \
+-cpu rv64,v=true,vlen=128,vext_spec=v1.0,zacas=true,zabha=true,zba=true,zbb=true,zbc=true,zbs=true,rvv_ta_all_1s=true,rvv_ma_all_1s=true \
 -bios /usr/share/qemu/opensbi-riscv64-generic-fw_dynamic.bin \
 -kernel /usr/share/u-boot-qemu-bin/qemu-riscv64_smode/uboot.elf \
 -device virtio-net-device,netdev=eth0 -netdev user,id=eth0 \
