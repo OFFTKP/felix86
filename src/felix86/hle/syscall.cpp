@@ -41,6 +41,7 @@ consteval int match_host(int syscall) {
 #include "felix86/hle/syscalls_common.inc"
 #undef X
     default:
+        ERROR("Host syscall not found: %d", syscall);
         return -1;
     }
 #undef X
@@ -146,7 +147,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         break;
     }
     case felix86_x86_64_time: {
-        result = HOST_SYSCALL(time, rdi);
+        result = ::time((time_t*)rdi);
         STRACE("time(%p) = %016lx", (void*)rdi, result);
         break;
     }
