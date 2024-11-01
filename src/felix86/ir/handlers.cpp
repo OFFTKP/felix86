@@ -910,7 +910,7 @@ IR_HANDLE(movhps_xmm_m64) {
 
 IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    ir.SetRm(inst->operand_rm, reg);
+    ir.SetRm(inst->operand_rm, reg, VectorState::PackedDWord);
 }
 
 IR_HANDLE(rdtsc) { // rdtsc - 0x0f 0x31
