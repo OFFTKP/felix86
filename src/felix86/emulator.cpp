@@ -187,7 +187,7 @@ void* Emulator::compileFunction(u64 rip) {
     PassManager::SSAPass(&function);
     PassManager::DeadCodeEliminationPass(&function);
 
-    if (config.optimize && !g_dont_optimize) {
+    if (!g_dont_optimize) {
         bool changed = false;
         do {
             changed = false;
