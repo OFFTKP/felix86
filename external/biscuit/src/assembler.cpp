@@ -682,6 +682,16 @@ void Assembler::CZERO_NEZ(GPR rd, GPR value, GPR condition) noexcept {
     EmitRType(m_buffer, 0b0000111, condition, value, 0b111, rd, 0b0110011);
 }
 
+// XTheadCondMov Extension Instructions
+
+void Assembler::TH_MVEQZ(GPR rd, GPR value, GPR condition) noexcept {
+    EmitRType(m_buffer, 0b0100000, condition, value, 0b001, rd, 0b0001011);
+}
+
+void Assembler::TH_MVNEZ(GPR rd, GPR value, GPR condition) noexcept {
+    EmitRType(m_buffer, 0b0100001, condition, value, 0b001, rd, 0b0001011);
+}
+
 // Zicsr Extension Instructions
 
 void Assembler::CSRRC(GPR rd, CSR csr, GPR rs) noexcept {

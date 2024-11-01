@@ -951,10 +951,12 @@ void Emitter::EmitMulhu(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 }
 
 void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Condition, biscuit::GPR RsTrue, biscuit::GPR RsFalse) {
-    if (Extensions::Zicond) {
+    if (Extensions::Xtheadcondmov) {
+        AS.TH_MVEQZ(Rd, RsTrue, Condition);
+    } else if (Extensions::Zicond) {
         // Not my favorite of conditional move instructions
-        AS.CZERO_EQZ(Rd, RsTrue, Condition);
-        AS.CZERO_NEZ(t0, RsFalse, Condition);
+        AS.CZERO_EQZ(t0, RsFalse, Condition);
+        AS.CZERO_NEZ(Rd, RsTrue, Condition);
         AS.OR(Rd, Rd, t0);
     } else {
         if (Rd != RsFalse) {

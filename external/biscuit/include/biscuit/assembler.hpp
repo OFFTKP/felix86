@@ -313,6 +313,10 @@ public:
     void CZERO_EQZ(GPR rd, GPR value, GPR condition) noexcept;
     void CZERO_NEZ(GPR rd, GPR value, GPR condition) noexcept;
 
+    // XTheadCondMov Extension Instructions
+    void TH_MVEQZ(GPR rd, GPR value, GPR condition) noexcept;
+    void TH_MVNEZ(GPR rd, GPR value, GPR condition) noexcept;
+
     // Zicsr Extension Instructions
 
     void CSRRC(GPR rd, CSR csr, GPR rs) noexcept;
