@@ -151,7 +151,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'x': {
-        config->optimize = false;
+        g_dont_optimize = true;
         break;
     }
     case 'E': {
@@ -163,15 +163,15 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'P': {
-        config->print_blocks = true;
+        g_print_blocks = true;
         break;
     }
     case 's': {
-        config->print_state = true;
+        g_print_state = true;
         break;
     }
     case 'd': {
-        config->print_disassembly = true;
+        g_print_disassembly = true;
         break;
     }
     case 't': {
@@ -227,6 +227,26 @@ int main(int argc, char* argv[]) {
     const char* dont_optimize_env = getenv("FELIX86_NO_OPT");
     if (dont_optimize_env) {
         g_dont_optimize = true;
+    }
+
+    const char* strace_env = getenv("FELIX86_STRACE");
+    if (strace_env) {
+        g_strace = true;
+    }
+
+    const char* print_blocks_env = getenv("FELIX86_PRINT_BLOCKS");
+    if (print_blocks_env) {
+        g_print_blocks = true;
+    }
+
+    const char* print_state_env = getenv("FELIX86_PRINT_STATE");
+    if (print_state_env) {
+        g_print_state = true;
+    }
+
+    const char* print_disassembly_env = getenv("FELIX86_PRINT_DISASSEMBLY");
+    if (print_disassembly_env) {
+        g_print_disassembly = true;
     }
 
     if (!extensions_manually_specified) {
