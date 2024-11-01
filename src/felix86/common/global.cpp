@@ -30,6 +30,7 @@ bool Extensions::Zacas = false;
 bool Extensions::Zam = false;
 bool Extensions::Zabha = false;
 bool Extensions::Zicond = false;
+bool Extensions::Xtheadcondmov = false;
 int Extensions::VLEN = 0;
 
 void Extensions::Clear() {
@@ -41,6 +42,7 @@ void Extensions::Clear() {
     Zam = false;
     Zabha = false;
     Zicond = false;
+    Xtheadcondmov = false;
     VLEN = 0;
 }
 
@@ -48,18 +50,32 @@ void initialize_globals() {
     std::string environment;
 
     // Check for FELIX86_EXTENSIONS environment variable
-    const char* extensions_env = getenv("FELIX86_EXTENSIONS");
-    if (extensions_env) {
+    const char* all_extensions_env = getenv("FELIX86_ALL_EXTENSIONS");
+    if (all_extensions_env) {
         if (g_extensions_manually_specified) {
-            WARN("FELIX86_EXTENSIONS environment variable overrides manually specified extensions");
+            WARN("FELIX86_ALL_EXTENSIONS environment variable overrides manually specified extensions");
             Extensions::Clear();
         }
 
-        if (!parse_extensions(extensions_env)) {
+        if (!parse_extensions(all_extensions_env)) {
             WARN("Failed to parse environment variable FELIX86_EXTENSIONS");
         } else {
             g_extensions_manually_specified = true;
-            environment += "\nFELIX86_EXTENSIONS=" + std::string(extensions_env);
+            environment += "\nFELIX86_ALL_EXTENSIONS=" + std::string(all_extensions_env);
+        }
+    }
+
+    const char* extensions_env = getenv("FELIX86_EXTENSIONS");
+    if (extensions_env) {
+        if (g_extensions_manually_specified) {
+            WARN("FELIX86_EXTENSIONS ignored, because extensions specified either with -X or FELIX86_ALL_EXTENSIONS");
+        } else {
+
+            if (!parse_extensions(extensions_env)) {
+                WARN("Failed to parse environment variable FELIX86_EXTENSIONS");
+            } else {
+                environment += "\nFELIX86_EXTENSIONS=" + std::string(extensions_env);
+            }
         }
     }
 
@@ -132,16 +148,16 @@ void initialize_extensions() {
         for (const auto& pair : pairs) {
             switch (pair.key) {
             case RISCV_HWPROBE_KEY_BASE_BEHAVIOR:
-                printf("value: %lx\n", pair.value);
+                ASSERT(pair.value & RISCV_HWPROBE_BASE_BEHAVIOR_IMA);
                 break;
             case RISCV_HWPROBE_KEY_IMA_EXT_0:
                 Extensions::G = pair.value & RISCV_HWPROBE_IMA_FD;
                 Extensions::V = pair.value & RISCV_HWPROBE_IMA_V;
                 Extensions::C = pair.value & RISCV_HWPROBE_IMA_C;
-                Extensions::B = pair.value & (RISCV_HWPROBE_EXT_ZBA | RISCV_HWPROBE_EXT_ZBB | RISCV_HWPROBE_EXT_ZBC | RISCV_HWPROBE_EXT_ZBS);
+                Extensions::B = (pair.value & (RISCV_HWPROBE_EXT_ZBA | RISCV_HWPROBE_EXT_ZBB | RISCV_HWPROBE_EXT_ZBC | RISCV_HWPROBE_EXT_ZBS)) ==
+                                (RISCV_HWPROBE_EXT_ZBA | RISCV_HWPROBE_EXT_ZBB | RISCV_HWPROBE_EXT_ZBC | RISCV_HWPROBE_EXT_ZBS);
                 Extensions::Zacas = pair.value & RISCV_HWPROBE_EXT_ZACAS;
                 Extensions::Zicond = pair.value & RISCV_HWPROBE_EXT_ZICOND;
-
 #ifdef RISCV_HWPROBE_EXT_ZAM // remove me when defined
                 Extensions::Zam = pair.value & RISCV_HWPROBE_EXT_ZAM;
 #endif

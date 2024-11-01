@@ -22,10 +22,16 @@ static struct argp_option options[] = {
     {"host-envs", 'E', 0, 0, "Pass host environment variables to the guest"},
     {"print-functions", 'P', 0, 0, "Print functions as they compile"},
     {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
-    {"dont-optimize", 'x', 0, 0, "Don't apply optimizations on the IR"},
+    {"dont-optimize", 'o', 0, 0, "Don't apply optimizations on the IR"},
     {"print-disassembly", 'd', 0, 0, "Print disassembly of emitted functions"},
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
-    {"extensions", 'e', "EXTENSIONS", 0, "Manually specify available RISC-V extensions as a comma separated list. Eg: -e g,c,v"},
+    {"extensions", 'x', "EXTENSIONS", 0,
+     "Manually specify additional available RISC-V extensions, in addition to the ones detected. Useful because some extensions might not be "
+     "detectable. Usage example: -e zacas,xtheadcondmov"},
+    {"absolute-extensions", 'X', "EXTENSIONS", 0,
+     "Manually specify every available RISC-V extension. When using this, any extension not specified will be considered unavailable. "
+     "Eg: -e g,c,v,b,zacas"},
+
     {0}};
 
 void print_extensions() {
@@ -98,7 +104,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         config->rootfs_path = arg;
         break;
     }
-    case 'x': {
+    case 'o': {
         g_dont_optimize = true;
         break;
     }
@@ -126,11 +132,17 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         g_strace = true;
         break;
     }
-    case 'e': {
+    case 'X': {
         if (!parse_extensions(arg)) {
             argp_usage(state);
         } else {
             g_extensions_manually_specified = true;
+        }
+        break;
+    }
+    case 'x': {
+        if (!parse_extensions(arg)) {
+            argp_usage(state);
         }
         break;
     }

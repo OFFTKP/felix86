@@ -27,6 +27,7 @@ struct Extensions {
     static bool Zam;
     static bool Zabha;
     static bool Zicond;
+    static bool Xtheadcondmov;
     static int VLEN;
 
     static void Clear();
