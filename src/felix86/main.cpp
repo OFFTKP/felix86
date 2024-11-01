@@ -16,7 +16,7 @@ static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
-    {"verbose", 'v', 0, 0, "Produce verbose output"},
+    {"verbose", 'V', 0, 0, "Produce verbose output"},
     {"quiet", 'q', 0, 0, "Don't produce any output"},
     {"print-state", 's', 0, 0, "Print state at the end of each block"},
     {"host-envs", 'E', 0, 0, "Pass host environment variables to the guest"},
@@ -86,7 +86,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
 
     switch (key) {
-    case 'v': {
+    case 'V': {
         enable_verbose();
         break;
     }
@@ -160,11 +160,6 @@ int main(int argc, char* argv[]) {
     initialize_globals();
     initialize_extensions();
     print_extensions();
-
-    if (!Extensions::G || !Extensions::V || Extensions::VLEN < 128) {
-        WARN("Backend is missing some extensions or VLEN < 128 (ours: %d)", Extensions::VLEN);
-        WARN("Illegal instructions may cause crashes");
-    }
 
     if (config.rootfs_path.empty()) {
         ERROR("Rootfs path not specified");

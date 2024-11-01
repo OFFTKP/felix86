@@ -5,6 +5,7 @@
 #include "felix86/common/log.hpp"
 
 #ifdef __riscv
+#include <vector>
 #include <asm/hwprobe.h>
 #endif
 
@@ -42,6 +43,8 @@ void Extensions::Clear() {
 }
 
 void initialize_globals() {
+    std::string environment;
+
     // Check for FELIX86_EXTENSIONS environment variable
     const char* extensions_env = getenv("FELIX86_EXTENSIONS");
     if (extensions_env) {
@@ -54,32 +57,54 @@ void initialize_globals() {
             WARN("Failed to parse environment variable FELIX86_EXTENSIONS");
         } else {
             g_extensions_manually_specified = true;
+            environment += "\nFELIX86_EXTENSIONS=" + std::string(extensions_env);
         }
     }
 
     const char* dont_optimize_env = getenv("FELIX86_NO_OPT");
     if (dont_optimize_env) {
         g_dont_optimize = true;
+        environment += "\nFELIX86_NO_OPT";
     }
 
     const char* strace_env = getenv("FELIX86_STRACE");
     if (strace_env) {
         g_strace = true;
+        environment += "\nFELIX86_STRACE";
     }
 
     const char* print_blocks_env = getenv("FELIX86_PRINT_BLOCKS");
     if (print_blocks_env) {
         g_print_blocks = true;
+        environment += "\nFELIX86_PRINT_BLOCKS";
     }
 
     const char* print_state_env = getenv("FELIX86_PRINT_STATE");
     if (print_state_env) {
         g_print_state = true;
+        environment += "\nFELIX86_PRINT_STATE";
     }
 
     const char* print_disassembly_env = getenv("FELIX86_PRINT_DISASSEMBLY");
     if (print_disassembly_env) {
         g_print_disassembly = true;
+        environment += "\nFELIX86_PRINT_DISASSEMBLY";
+    }
+
+    const char* verbose_env = getenv("FELIX86_VERBOSE");
+    if (verbose_env) {
+        g_verbose = true;
+        environment += "\nFELIX86_VERBOSE";
+    }
+
+    const char* quiet_env = getenv("FELIX86_QUIET");
+    if (quiet_env) {
+        g_quiet = true;
+        environment += "\nFELIX86_QUIET";
+    }
+
+    if (!g_quiet && !environment.empty()) {
+        LOG("Environment:%s", environment.c_str());
     }
 }
 
@@ -96,7 +121,7 @@ void initialize_extensions() {
         };
         // clang-format on
 
-        long result = sys_riscv_hwprobe(pairs.data(), pairs.size(), 0, nullptr, 0);
+        long result = riscv_hwprobe(pairs.data(), pairs.size(), 0, nullptr, 0);
         if (result < 0) {
             ERROR("Failed to probe hardware capabilities: %ld", result);
             return;
