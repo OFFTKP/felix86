@@ -113,7 +113,7 @@ target_link_libraries(felix86 PRIVATE felix86_core)
 
 if (BUILD_TESTS)
     set(FELIX86_TEST_SOURCES
-        tests/FEX/common.cpp
+        tests/common.cpp
         tests/FEX/fex_test_loader.cpp
         tests/FEX/primary.cpp
         tests/FEX/primary_group.cpp

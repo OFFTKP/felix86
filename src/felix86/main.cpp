@@ -15,8 +15,6 @@ const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issue
 static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
-bool extensions_manually_specified = false;
-
 static struct argp_option options[] = {
     {"verbose", 'v', 0, 0, "Produce verbose output"},
     {"quiet", 'q', 0, 0, "Don't produce any output"},
@@ -29,56 +27,6 @@ static struct argp_option options[] = {
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
     {"extensions", 'e', "EXTENSIONS", 0, "Manually specify available RISC-V extensions as a comma separated list. Eg: -e g,c,v"},
     {0}};
-
-static bool parse_extensions(const char* arg) {
-    while (arg) {
-        const char* next = strchr(arg, ',');
-        std::string extension;
-        if (next) {
-            extension = std::string(arg, next - arg);
-            arg = next + 1;
-        } else {
-            extension = arg;
-            arg = nullptr;
-        }
-
-        if (extension.empty()) {
-            continue;
-        }
-
-        std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-
-        if (extension == "g") {
-            Extensions::G = true;
-        } else if (extension == "v") {
-            Extensions::V = true;
-            Extensions::VLEN = 128;
-            WARN("VLEN defaulting to 128");
-        } else if (extension == "c") {
-            Extensions::C = true;
-        } else if (extension == "b") {
-            Extensions::B = true;
-        } else if (extension == "zacas") {
-            Extensions::Zacas = true;
-        } else if (extension == "zam") {
-            Extensions::Zam = true;
-        } else if (extension == "zabha") {
-            Extensions::Zabha = true;
-        } else if (extension == "zicond") {
-            Extensions::Zicond = true;
-        } else {
-            ERROR("Unknown extension: %s", extension.c_str());
-            return false;
-        }
-    }
-
-    if (!Extensions::G) {
-        WARN("G extension was not specified, enabling it by default");
-        Extensions::G = true;
-    }
-
-    return true;
-}
 
 void print_extensions() {
     std::string extensions;
@@ -182,7 +130,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         if (!parse_extensions(arg)) {
             argp_usage(state);
         } else {
-            extensions_manually_specified = true;
+            g_extensions_manually_specified = true;
         }
         break;
     }
@@ -209,47 +157,9 @@ int main(int argc, char* argv[]) {
 
     LOG("felix86 version %s", FELIX86_VERSION);
 
-    // Check for FELIX86_EXTENSIONS environment variable
-    const char* extensions_env = getenv("FELIX86_EXTENSIONS");
-    if (extensions_env) {
-        if (extensions_manually_specified) {
-            WARN("FELIX86_EXTENSIONS environment variable overrides manually specified extensions");
-            Extensions::Clear();
-        }
+    initialize_globals();
 
-        if (!parse_extensions(extensions_env)) {
-            WARN("Failed to parse environment variable FELIX86_EXTENSIONS");
-        } else {
-            extensions_manually_specified = true;
-        }
-    }
-
-    const char* dont_optimize_env = getenv("FELIX86_NO_OPT");
-    if (dont_optimize_env) {
-        g_dont_optimize = true;
-    }
-
-    const char* strace_env = getenv("FELIX86_STRACE");
-    if (strace_env) {
-        g_strace = true;
-    }
-
-    const char* print_blocks_env = getenv("FELIX86_PRINT_BLOCKS");
-    if (print_blocks_env) {
-        g_print_blocks = true;
-    }
-
-    const char* print_state_env = getenv("FELIX86_PRINT_STATE");
-    if (print_state_env) {
-        g_print_state = true;
-    }
-
-    const char* print_disassembly_env = getenv("FELIX86_PRINT_DISASSEMBLY");
-    if (print_disassembly_env) {
-        g_print_disassembly = true;
-    }
-
-    if (!extensions_manually_specified) {
+    if (!g_extensions_manually_specified) {
         CPUInfo cpuinfo;
         Extensions::G = cpuinfo.Has(RISCVExtension::I) && cpuinfo.Has(RISCVExtension::A) && cpuinfo.Has(RISCVExtension::F) &&
                         cpuinfo.Has(RISCVExtension::D) && cpuinfo.Has(RISCVExtension::M);
