@@ -220,6 +220,8 @@ bool parse_extensions(const char* arg) {
             Extensions::Zabha = true;
         } else if (extension == "zicond") {
             Extensions::Zicond = true;
+        } else if (extension == "xtheadcondmov") {
+            Extensions::Xtheadcondmov = true;
         } else {
             ERROR("Unknown extension: %s", extension.c_str());
             return false;

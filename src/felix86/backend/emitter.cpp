@@ -952,9 +952,12 @@ void Emitter::EmitMulhu(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 
 void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Condition, biscuit::GPR RsTrue, biscuit::GPR RsFalse) {
     if (Extensions::Xtheadcondmov) {
-        AS.TH_MVEQZ(Rd, RsTrue, Condition);
+        AS.MV(Rd, RsTrue);
+        AS.TH_MVEQZ(Rd, RsFalse, Condition);
     } else if (Extensions::Zicond) {
-        // Not my favorite of conditional move instructions
+        // Not my favorite of conditional move patterns
+        // This was done like that because no other RISC-V instructions
+        // need a third read port.
         AS.CZERO_EQZ(t0, RsFalse, Condition);
         AS.CZERO_NEZ(Rd, RsTrue, Condition);
         AS.OR(Rd, Rd, t0);
