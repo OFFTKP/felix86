@@ -220,8 +220,19 @@ void Emitter::EmitJump(Backend& backend, Label* target) {
 }
 
 void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, Label* target_true, Label* target_false) {
-    AS.BEQZ(condition, target_false);
-    AS.J(target_true);
+    if (IsValidBTypeImm(target_false->GetLocation().value() - AS.GetCodeBuffer().GetCursorOffset())) {
+        AS.BEQZ(condition, target_false);
+        AS.J(target_true);
+    } else if (IsValidBTypeImm(target_true->GetLocation().value() - AS.GetCodeBuffer().GetCursorOffset())) {
+        AS.BNEZ(condition, target_true);
+        AS.J(target_false);
+    } else {
+        Label false_label;
+        AS.BEQZ(condition, &false_label);
+        AS.J(target_true);
+        AS.Bind(&false_label);
+        AS.J(target_false);
+    }
 }
 
 void Emitter::EmitCallHostFunction(Backend& backend, u64 function) {
