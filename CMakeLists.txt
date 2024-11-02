@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(felix86)
 
 if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
 set(BISCUIT_CODE_BUFFER_MMAP ON)
