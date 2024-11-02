@@ -256,6 +256,7 @@ void Emitter::EmitStoreSpill(Backend& backend, biscuit::GPR Rd, u32 spill_offset
 }
 
 void Emitter::EmitStoreSpill(Backend& backend, biscuit::Vec Rd, u32 spill_offset) {
+    // TODO: need to get what the vectorstate is when emitting spills
     UNREACHABLE();
 }
 
@@ -270,6 +271,7 @@ void Emitter::EmitLoadSpill(Backend& backend, biscuit::GPR Rd, u32 spill_offset)
 }
 
 void Emitter::EmitLoadSpill(Backend& backend, biscuit::Vec Rd, u32 spill_offset) {
+    // TODO: need to get what the vectorstate is when emitting spills
     UNREACHABLE();
 }
 
