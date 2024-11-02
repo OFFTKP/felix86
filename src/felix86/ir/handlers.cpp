@@ -841,7 +841,9 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         break;
     }
     case X86_GROUP5_JMP: {
-        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+        x86_operand_t rm_op = inst->operand_rm;
+        rm_op.size = X86_SIZE_QWORD;
+        SSAInstruction* rm = ir.GetRm(rm_op);
         ir.SetReg(rm, X86_REF_RIP);
         ir.TerminateJump(state->function->GetExit());
         ir.Exit();
