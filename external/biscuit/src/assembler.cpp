@@ -1,7 +1,6 @@
 #include <biscuit/assert.hpp>
 #include <biscuit/assembler.hpp>
 
-void felix86_exit(int code);
 #include <bit>
 #include <cstring>
 #include <utility>
@@ -35,10 +34,6 @@ void Assembler::ADD(GPR rd, GPR lhs, GPR rhs) noexcept {
 }
 
 void Assembler::ADDI(GPR rd, GPR rs, int32_t imm) noexcept {
-    if (rs == x0 && imm == 0 && rd == s4) {
-        printf("SUPERBREAK");
-        felix86_exit(0);
-    }
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs, 0b000, rd, 0b0010011);
 }
 
