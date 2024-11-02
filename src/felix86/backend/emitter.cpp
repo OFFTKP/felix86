@@ -300,6 +300,7 @@ void Emitter::EmitLoadSpill(Backend& backend, biscuit::Vec Rd, u32 spill_offset)
 }
 
 void Emitter::EmitImmediate(Backend& backend, biscuit::GPR Rd, u64 immediate) {
+    ASSERT(immediate != 0);
     AS.LI(Rd, immediate);
 }
 
