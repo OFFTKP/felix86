@@ -12,6 +12,7 @@ bool ExitsVM(IROpcode opcode) {
     case IROpcode::Rdtsc:
     case IROpcode::Div128:
     case IROpcode::Divu128:
+    case IROpcode::CallHostFunction:
         return true;
     default:
         return false;
