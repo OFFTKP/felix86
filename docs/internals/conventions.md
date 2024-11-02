@@ -18,6 +18,8 @@ There's no commit message guide to follow for this project. Describe what your c
 You can use POSIX-only and Linux-only code. This is an emulator that targets Linux only. So if something is technically not POSIX-standard but works on Linux, use it. An example is the /proc/ filesystem which we use for /proc/self/fd/ to find the path
 of file descriptors.
 
+Wrap architecture specific code in ifdefs. Even though the target is risc-v we would like it to be compileable on x86-64 still.
+
 # Sandboxing
 
 felix86 makes a faithful attempt to sandbox the emulated application, but should *not* be considered a security application and has absolutely no security guarantees.
