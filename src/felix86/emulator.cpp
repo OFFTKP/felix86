@@ -51,7 +51,7 @@ void Emulator::Run() {
 
 void Emulator::setupTls(ThreadState* state) {
     // Do something stupid for now
-    state->SetGpr(X86_REF_FS, (u64)new uint8_t[0x1000]);
+    state->SetFSBase((u64)new uint8_t[0x1000]);
 }
 
 void Emulator::setupMainStack(ThreadState* state) {
