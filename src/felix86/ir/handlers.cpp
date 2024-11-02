@@ -595,6 +595,14 @@ IR_HANDLE(mov_moffs_eax) { // mov moffs32, eax - 0xa3
     ir.WriteMemory(ir.Imm(inst->operand_imm.immediate.data), eax, inst->operand_reg.size);
 }
 
+IR_HANDLE(movs) { // movsb - 0xa4
+    x86_size_e size_e = inst->operand_reg.size;
+    SSAInstruction* rsi = ir.GetReg(X86_REF_RSI);
+    SSAInstruction* rdi = ir.GetReg(X86_REF_RDI);
+    SSAInstruction* rsi_val = ir.ReadMemory(rsi, size_e);
+    ir.WriteMemory(rdi, rsi_val, size_e);
+}
+
 IR_HANDLE(test_eax_imm) { // test eax, imm32 - 0xa9
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
