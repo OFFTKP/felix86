@@ -691,6 +691,10 @@ void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* b
     }
 
     if (g_print_state) {
+        // If you use this you gotta make sure to add a GetGuest and StoreGuestToMemory for the registers
+        // you want to print
+        SSAInstruction* inst = ir.GetGuest(X86_REF_R9);
+        ir.StoreGuestToMemory(inst, X86_REF_R9);
         ir.CallHostFunction((u64)print_gprs);
     }
 }
