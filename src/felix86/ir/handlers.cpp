@@ -975,7 +975,7 @@ IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
 
 IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     x86_size_e size_e = inst->operand_reg.size;
-    SSAInstruction* eax = ir.GetReg(X86_REF_RAX);
+    SSAInstruction* eax = ir.GetReg(X86_REF_RAX, size_e);
 
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
@@ -983,7 +983,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         SSAInstruction* actual = ir.AmoCAS(address, eax, reg, MemoryOrdering::AqRl, size_e);
 
         ir.SetReg(actual, X86_REF_RAX, size_e);
-        ir.SetFlag(ir.Equal(actual, reg), X86_REF_ZF);
+        ir.SetFlag(ir.Equal(actual, eax), X86_REF_ZF);
     } else {
         UNREACHABLE();
         // Think the following is wrong for w/e reason

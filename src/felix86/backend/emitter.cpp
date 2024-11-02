@@ -765,9 +765,9 @@ void Emitter::EmitAmoCAS8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addres
 
 void Emitter::EmitAmoCAS16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
                            biscuit::Ordering ordering) {
-    AS.MV(Rd, Expected);
     if (Extensions::Zabha && Extensions::Zacas) {
         EmitAlignmentCheck(backend, Address, 2);
+        AS.MV(Rd, Expected);
         AS.AMOCAS_H(ordering, Rd, Rs, Address);
         EmitZext16(backend, Rd, Rd);
     } else {
@@ -783,9 +783,9 @@ void Emitter::EmitAmoCAS16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 
 void Emitter::EmitAmoCAS32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
                            biscuit::Ordering ordering) {
-    AS.MV(Rd, Expected);
     if (Extensions::Zacas) {
         EmitAlignmentCheck(backend, Address, 4);
+        AS.MV(Rd, Expected);
         AS.AMOCAS_W(ordering, Rd, Rs, Address);
         EmitZext32(backend, Rd, Rd);
     } else {
@@ -801,9 +801,9 @@ void Emitter::EmitAmoCAS32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
 
 void Emitter::EmitAmoCAS64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
                            biscuit::Ordering ordering) {
-    AS.MV(Rd, Expected);
     if (Extensions::Zacas) {
         EmitAlignmentCheck(backend, Address, 8);
+        AS.MV(Rd, Expected);
         AS.AMOCAS_D(ordering, Rd, Rs, Address);
     } else {
         WARN("Non-atomic CAS64 fallback");
