@@ -434,6 +434,18 @@ bool PeepholeSelectImmediate(SSAInstruction& inst) {
     return false;
 }
 
+bool PeepholeSelectSame(SSAInstruction& inst) {
+    SSAInstruction* op2 = inst.GetOperand(1);
+    SSAInstruction* op3 = inst.GetOperand(2);
+
+    if (op2 == op3) {
+        inst.ReplaceWithMov(op2);
+        return true;
+    }
+
+    return false;
+}
+
 // t2 = imm << imm
 bool PeepholeShlImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
@@ -820,6 +832,7 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
             }
             case IROpcode::Select: {
                 CHECK(PeepholeSelectImmediate);
+                CHECK(PeepholeSelectSame);
                 break;
             }
             case IROpcode::Shl: {
