@@ -982,7 +982,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* actual = ir.AmoCAS(address, eax, reg, MemoryOrdering::AqRl, size_e);
 
-        ir.SetReg(actual, X86_REF_RAX);
+        ir.SetReg(actual, X86_REF_RAX, size_e);
         ir.SetFlag(ir.Equal(actual, reg), X86_REF_ZF);
     } else {
         UNREACHABLE();
