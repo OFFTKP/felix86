@@ -983,7 +983,12 @@ void Emitter::EmitMulhu(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 }
 
 void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Condition, biscuit::GPR RsTrue, biscuit::GPR RsFalse) {
-    ASSERT(RsTrue != RsFalse);
+    if (RsTrue == RsFalse) {
+        WARN("Selecting the same register");
+        AS.MV(Rd, RsTrue);
+        return;
+    }
+
     if (Extensions::Xtheadcondmov) {
         if (Rd != RsTrue) {
             if (Rd != RsFalse)
