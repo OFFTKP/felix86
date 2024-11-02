@@ -177,7 +177,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     }
     }
 
-    if (result == -1) {
+    if ((i64)result == -1) {
         result = -errno;
     }
 

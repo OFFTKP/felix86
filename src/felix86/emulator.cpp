@@ -128,6 +128,8 @@ void Emulator::setupMainStack(ThreadState* state) {
     };
 
     VERBOSE("AT_PHDR: %p", auxv_entries[12].a_un.a_ptr);
+    VERBOSE("AT_PHENT: %lu", auxv_entries[13].a_un.a_val);
+    VERBOSE("AT_PHNUM: %lu", auxv_entries[14].a_un.a_val);
     u16 auxv_count = sizeof(auxv_entries) / sizeof(auxv_t);
 
     // This is the varying amount of space needed for the stack
