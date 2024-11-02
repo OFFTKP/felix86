@@ -248,10 +248,12 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             if (phdr.p_filesz > 0) {
-                fseek(file, phdr.p_offset, SEEK_SET);
-                result = fread(addr, 1, phdr.p_filesz, file);
-                VERBOSE("Reading to range %p - %p", addr, addr + phdr.p_filesz);
-                if (result != phdr.p_filesz) {
+                u64 offset = phdr.p_offset - PAGE_OFFSET(phdr.p_vaddr);
+                u64 size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
+                fseek(file, offset, SEEK_SET);
+                result = fread(addr, 1, size, file);
+                VERBOSE("Reading to range %p - %p from offset %08lx", addr, addr + size, offset);
+                if (result != size) {
                     ERROR("Failed to read segment from file %s", path.c_str());
                 }
             }

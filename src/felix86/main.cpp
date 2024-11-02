@@ -77,7 +77,9 @@ void print_extensions() {
         extensions += "zicond";
     }
 
-    LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
+    if (!extensions.empty()) {
+        LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
+    }
 }
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
@@ -169,6 +171,10 @@ int main(int argc, char* argv[]) {
     argp_parse(&argp, argc, argv, 0, 0, &config);
 
     LOG("felix86 version %s", FELIX86_VERSION);
+
+#ifdef __x86_64__
+    WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
+#endif
 
     initialize_globals();
     initialize_extensions();
