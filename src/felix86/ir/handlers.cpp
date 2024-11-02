@@ -595,14 +595,7 @@ IR_HANDLE(mov_moffs_eax) { // mov moffs32, eax - 0xa3
     ir.WriteMemory(ir.Imm(inst->operand_imm.immediate.data), eax, inst->operand_reg.size);
 }
 
-void the_copy(ThreadState* state) {
-    u8 byte1 = *(u8*)state->GetGpr((x86_ref_e)(X86_REF_RSI - X86_REF_RAX));
-    printf("Copying %p (%02x) to %p\n", (void*)state->GetGpr((x86_ref_e)(X86_REF_RDI - X86_REF_RAX)), byte1, (void*)state->GetGpr((x86_ref_e)(X86_REF_RSI - X86_REF_RAX)));
-}
-
 IR_HANDLE(movs) { // movsb - 0xa4
-    ir.CallHostFunction((u64)the_copy);
-
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rsi = ir.GetReg(X86_REF_RSI);
     SSAInstruction* rdi = ir.GetReg(X86_REF_RDI);

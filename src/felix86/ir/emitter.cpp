@@ -1619,7 +1619,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
 
             storePartialState(reg_refs);
 
-            SSAInstruction* instruction = insertInstruction(IROpcode::Div128, {rm});
+            SSAInstruction* instruction = insertInstruction(IROpcode::Divu128, {rm});
             instruction->Lock();
 
             loadPartialState(reg_refs);
