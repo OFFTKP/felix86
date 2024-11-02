@@ -170,23 +170,35 @@ void Emitter::EmitPushAllCallerSaved(Backend& backend) {
     auto& caller_saved_gprs = Registers::GetCallerSavedGPRs();
 
     constexpr i64 size = 8 * caller_saved_gprs.size();
-
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), -size);
 
     for (size_t i = 0; i < caller_saved_gprs.size(); i++) {
         AS.SD(caller_saved_gprs[i], i * 8, Registers::StackPointer());
+    }
+
+    AS.VSETIVLI(x0, SUPPORTED_VLEN / 8, biscuit::SEW::E8);
+
+    for (size_t i = 0; i < 32; i++) {
+        AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), -16);
+        AS.VSE8(Vec(i), Registers::StackPointer());
     }
 }
 
 void Emitter::EmitPopAllCallerSaved(Backend& backend) {
     auto& caller_saved_gprs = Registers::GetCallerSavedGPRs();
 
-    constexpr i64 size = 8 * caller_saved_gprs.size();
+    AS.VSETIVLI(x0, SUPPORTED_VLEN / 8, biscuit::SEW::E8);
+    
+    for (size_t i = 0; i < 32; i++) {
+        AS.VLE8(Vec(i), Registers::StackPointer());
+        AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), 16);
+    }
 
     for (size_t i = 0; i < caller_saved_gprs.size(); i++) {
         AS.LD(caller_saved_gprs[i], i * 8, Registers::StackPointer());
     }
 
+    constexpr i64 size = 8 * caller_saved_gprs.size();
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), size);
 }
 
