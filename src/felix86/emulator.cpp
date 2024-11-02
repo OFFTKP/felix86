@@ -49,11 +49,6 @@ void Emulator::Run() {
     VERBOSE("Main thread exited: %d", (int)state->exit_reason);
 }
 
-void Emulator::setupTls(ThreadState* state) {
-    // Do something stupid for now
-    state->SetFSBase((u64)new uint8_t[0x1000]);
-}
-
 void Emulator::setupMainStack(ThreadState* state) {
     ssize_t argc = config.argv.size();
     if (argc > 1) {

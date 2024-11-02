@@ -601,6 +601,13 @@ IR_HANDLE(movs) { // movsb - 0xa4
     SSAInstruction* rdi = ir.GetReg(X86_REF_RDI);
     SSAInstruction* rsi_val = ir.ReadMemory(rsi, size_e);
     ir.WriteMemory(rdi, rsi_val, size_e);
+
+    u8 immediate = ir.GetBitSize(size_e) / 8;
+    SSAInstruction* imm = ir.Select(ir.GetFlag(X86_REF_DF), ir.Imm(-immediate), ir.Imm(immediate));
+    SSAInstruction* rsi_add = ir.Add(rsi, imm);
+    SSAInstruction* rdi_add = ir.Add(rdi, imm);
+    ir.SetReg(rsi_add, X86_REF_RSI);
+    ir.SetReg(rdi_add, X86_REF_RDI);
 }
 
 IR_HANDLE(test_eax_imm) { // test eax, imm32 - 0xa9
