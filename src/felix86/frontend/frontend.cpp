@@ -689,6 +689,10 @@ void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* b
     while (!ir.IsExit()) {
         frontend_compile_instruction(&state, ir);
     }
+
+    if (g_print_state) {
+        ir.CallHostFunction((u64)print_gprs);
+    }
 }
 
 void frontend_compile_function(Emulator& emulator, IRFunction* function) {

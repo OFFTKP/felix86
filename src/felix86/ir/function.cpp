@@ -28,9 +28,6 @@ IRFunction::IRFunction(u64 address) {
         // during the ssa pass
         SSAInstruction* value = exit_emitter.GetGuest(x86_ref_e(i));
         exit_emitter.StoreGuestToMemory(value, x86_ref_e(i));
-        if (g_print_state) {
-            exit_emitter.CallHostFunction((u64)print_gprs);
-        }
     }
 
     start_address_block = CreateBlockAt(address);
