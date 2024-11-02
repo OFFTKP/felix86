@@ -22,6 +22,7 @@ struct Emulator {
         fs.LoadExecutable(config.executable_path);
         ThreadState* main_state = createThreadState();
         setupMainStack(main_state);
+        setupTls(main_state);
         main_state->SetRip((u64)fs.GetEntrypoint());
     }
 
@@ -56,6 +57,8 @@ struct Emulator {
     static void* CompileNext(Emulator* emulator, ThreadState* state);
 
 private:
+    void setupTls(ThreadState* state);
+
     void setupMainStack(ThreadState* state);
 
     void* compileFunction(u64 rip);

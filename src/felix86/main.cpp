@@ -1,3 +1,4 @@
+#include <thread>
 #include <argp.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/log.hpp"
@@ -203,13 +204,18 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    Emulator emulator(config);
+    std::thread main_thread([argc, &config]() {
+        pthread_setname_np(pthread_self(), "MainThread");
 
-    if (argc == 1) {
-        ERROR("Unimplemented");
-    } else {
-        emulator.Run();
-    }
+        Emulator emulator(config);
+
+        if (argc == 1) {
+            ERROR("Unimplemented");
+        } else {
+            emulator.Run();
+        }
+    });
+    main_thread.join();
 
     felix86_exit(0);
 }
