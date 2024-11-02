@@ -596,7 +596,7 @@ IR_HANDLE(mov_moffs_eax) { // mov moffs32, eax - 0xa3
 }
 
 void the_copy(ThreadState* state) {
-    u8 byte1 = *(u8*)state->GetGpr((x86_ref_e)(X86_REF_RDI - X86_REF_RAX));
+    u8 byte1 = *(u8*)state->GetGpr((x86_ref_e)(X86_REF_RSI - X86_REF_RAX));
     printf("Copying %p (%02x) to %p\n", (void*)state->GetGpr((x86_ref_e)(X86_REF_RDI - X86_REF_RAX)), byte1, (void*)state->GetGpr((x86_ref_e)(X86_REF_RSI - X86_REF_RAX)));
 }
 
