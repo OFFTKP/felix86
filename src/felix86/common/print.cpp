@@ -85,6 +85,7 @@ void print_gprs(ThreadState* state) {
     printf("of = %d\n", state->of);
 
     printf("rip = %016lx\n", state->rip);
+    fflush(stdout);
 }
 
 void print_state(ThreadState* state) {
