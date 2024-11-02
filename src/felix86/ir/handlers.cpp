@@ -1282,11 +1282,6 @@ IR_HANDLE(rcpps) {
     ir.PackedRegRm(inst, felix86_rcp, VectorState::PackedDWord);
 }
 
-IR_HANDLE(movdqu_xmm_xmm128) { // movdqu xmm, xmm128 - 0xf3 0x0f 0x6f
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    ir.SetReg(inst->operand_reg, rm);
-}
-
 IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
     x86_operand_t rm_op = inst->operand_rm;
     SSAInstruction* result;
