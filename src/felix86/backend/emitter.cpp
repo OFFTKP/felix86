@@ -748,12 +748,18 @@ void Emitter::EmitAmoSwap64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addr
 
 void Emitter::EmitAmoCAS8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Expected, biscuit::GPR Rs,
                           biscuit::Ordering ordering) {
-    AS.MV(Rd, Expected);
     if (Extensions::Zabha && Extensions::Zacas) {
+        AS.MV(Rd, Expected);
         AS.AMOCAS_B(ordering, Rd, Rs, Address);
         EmitZext8(backend, Rd, Rd);
     } else {
-        UNIMPLEMENTED();
+        WARN("Non-atomic CAS8 fallback");
+        Label not_same;
+        AS.LB(t0, 0, Address);
+        AS.BNE(t0, Expected, &not_same);
+        AS.SB(Rs, 0, Address);
+        AS.Bind(&not_same);
+        AS.MV(Rd, t0);
     }
 }
 
@@ -765,7 +771,13 @@ void Emitter::EmitAmoCAS16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         AS.AMOCAS_H(ordering, Rd, Rs, Address);
         EmitZext16(backend, Rd, Rd);
     } else {
-        UNIMPLEMENTED();
+        WARN("Non-atomic CAS16 fallback");
+        Label not_same;
+        AS.LH(t0, 0, Address);
+        AS.BNE(t0, Expected, &not_same);
+        AS.SH(Rs, 0, Address);
+        AS.Bind(&not_same);
+        AS.MV(Rd, t0);
     }
 }
 
@@ -777,7 +789,13 @@ void Emitter::EmitAmoCAS32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         AS.AMOCAS_W(ordering, Rd, Rs, Address);
         EmitZext32(backend, Rd, Rd);
     } else {
-        UNIMPLEMENTED();
+        WARN("Non-atomic CAS32 fallback");
+        Label not_same;
+        AS.LW(t0, 0, Address);
+        AS.BNE(t0, Expected, &not_same);
+        AS.SW(Rs, 0, Address);
+        AS.Bind(&not_same);
+        AS.MV(Rd, t0);
     }
 }
 
@@ -788,7 +806,13 @@ void Emitter::EmitAmoCAS64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         EmitAlignmentCheck(backend, Address, 8);
         AS.AMOCAS_D(ordering, Rd, Rs, Address);
     } else {
-        UNIMPLEMENTED();
+        WARN("Non-atomic CAS64 fallback");
+        Label not_same;
+        AS.LD(t0, 0, Address);
+        AS.BNE(t0, Expected, &not_same);
+        AS.SD(Rs, 0, Address);
+        AS.Bind(&not_same);
+        AS.MV(Rd, t0);
     }
 }
 
