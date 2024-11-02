@@ -458,13 +458,13 @@ SSAInstruction* IREmitter::AmoCAS(SSAInstruction* address, SSAInstruction* expec
                                   x86_size_e size) {
     switch (size) {
     case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::AmoSwap8, {address, expected, source}, (u8)ordering);
+        return insertInstruction(IROpcode::AmoCAS8, {address, expected, source}, (u8)ordering);
     case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::AmoSwap16, {address, expected, source}, (u8)ordering);
+        return insertInstruction(IROpcode::AmoCAS16, {address, expected, source}, (u8)ordering);
     case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::AmoSwap32, {address, expected, source}, (u8)ordering);
+        return insertInstruction(IROpcode::AmoCAS32, {address, expected, source}, (u8)ordering);
     case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::AmoSwap64, {address, expected, source}, (u8)ordering);
+        return insertInstruction(IROpcode::AmoCAS64, {address, expected, source}, (u8)ordering);
     default:
         UNREACHABLE();
         return nullptr;
