@@ -583,6 +583,7 @@ void Emitter::EmitAdd(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscu
 }
 
 void Emitter::EmitAddi(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u64 immediate) {
+    ASSERT(Rs != x0);
     if (IsValidSigned12BitImm((i64)immediate)) {
         AS.ADDI(Rd, Rs, (i64)immediate);
     } else {
