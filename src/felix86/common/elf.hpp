@@ -44,6 +44,10 @@ struct Elf {
         return phent;
     }
 
+    u64 GetBRK() const {
+        return (u64)brk_base;
+    }
+
 private:
     bool ok = false;
     bool is_interpreter = false;

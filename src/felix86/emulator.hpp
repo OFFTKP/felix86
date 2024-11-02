@@ -23,6 +23,7 @@ struct Emulator {
         ThreadState* main_state = createThreadState();
         setupMainStack(main_state);
         setupTls(main_state);
+        main_state->brk_current_address = fs.GetBRK();
         main_state->SetRip((u64)fs.GetEntrypoint());
     }
 

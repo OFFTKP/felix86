@@ -77,6 +77,10 @@ struct Filesystem {
         return interpreter;
     }
 
+    u64 GetBRK() {
+        return elf->GetBRK();
+    }
+
 private:
     bool validatePath(const std::filesystem::path& path);
 
