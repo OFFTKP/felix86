@@ -1426,11 +1426,10 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
     }
     case X86_GROUP2_SHR: {
         SSAInstruction* is_zero = Seqz(shift_value);
-        SSAInstruction* shift = Addi(shift_value, 1);
+        SSAInstruction* shift = Addi(shift_value, -1);
         SSAInstruction* mask = Shl(Imm(1), shift);
-        SSAInstruction* msb_mask = Select(is_zero, Imm(0), mask);
         result = Shr(rm, shift_value);
-        c = Equal(And(rm, msb_mask), msb_mask);
+        c = Select(is_zero, Imm(0), Equal(And(rm, mask), mask));
         o = IsNegative(rm, size_e);
         break;
     }
@@ -1440,12 +1439,11 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
         SSAInstruction* shifted_left = Shli(rm, anti_shift);
         SSAInstruction* shift_right = Addi(shift_value, anti_shift);
         SSAInstruction* is_zero = Seqz(shift_value);
-        SSAInstruction* shift = Addi(shift_value, 1);
+        SSAInstruction* shift = Addi(shift_value, -1);
         SSAInstruction* mask = Shl(Imm(1), shift);
-        SSAInstruction* msb_mask = Select(is_zero, Imm(0), mask);
         result = Sar(shifted_left, shift_right);
         o = Imm(0);
-        c = Equal(And(rm, msb_mask), msb_mask);
+        c = Select(is_zero, Imm(0), Equal(And(rm, mask), mask));
         break;
     }
     }
