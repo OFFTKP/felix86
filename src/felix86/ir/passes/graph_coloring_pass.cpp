@@ -90,7 +90,7 @@ struct InstructionMetadata {
 
 using LivenessSet = std::unordered_set<u32>;
 
-using CoalescingHeuristic = bool(*)(BackendFunction& function, InterferenceGraph& graph, u32 k, u32 lhs, u32 rhs);
+using CoalescingHeuristic = bool (*)(BackendFunction& function, InterferenceGraph& graph, u32 k, u32 lhs, u32 rhs);
 
 using InstructionMap = std::unordered_map<u32, InstructionMetadata>;
 
@@ -319,7 +319,7 @@ bool george_coalescing_heuristic(BackendFunction& function, InterferenceGraph& g
             break;
         }
     }
-    
+
     auto& v_neighbors = graph.GetInterferences(v);
     bool v_conquers_u = true;
     for (u32 t : graph.GetInterferences(u)) {
@@ -328,7 +328,7 @@ bool george_coalescing_heuristic(BackendFunction& function, InterferenceGraph& g
             break;
         }
     }
-    
+
     return u_conquers_v || v_conquers_u;
 }
 
@@ -356,15 +356,16 @@ void coalesce(BackendFunction& function, u32 lhs, u32 rhs) {
     }
 }
 
-bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGraph& graph, bool (*should_consider)(const InstructionMap&, u32), u32 k, CoalescingHeuristic heuristic) {
+bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGraph& graph, bool (*should_consider)(const InstructionMap&, u32),
+                  u32 k, CoalescingHeuristic heuristic) {
     bool coalesced = false;
     for (auto& block : function.GetBlocks()) {
         auto it = block.GetInstructions().begin();
         auto end = block.GetInstructions().end();
         while (it != end) {
             BackendInstruction& inst = *it;
-            if (should_consider(map, inst.GetName())) {
-                if (inst.GetOpcode() == IROpcode::Mov) {
+            if (inst.GetOpcode() == IROpcode::Mov) {
+                if (should_consider(map, inst.GetName()), should_consider(map, inst.GetOperand(0))) {
                     u32 lhs = inst.GetName();
                     u32 rhs = inst.GetOperand(0);
                     auto& edges = graph.GetInterferences(lhs);
