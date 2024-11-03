@@ -890,6 +890,16 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vslideupi", "src", GetNameString(operands[0]), immediate_data);
         break;
     }
+    case IROpcode::VSlide1Up: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vslide1up", "integer", GetNameString(operands[0]), "vector",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VSlide1Down: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vslide1down", "integer", GetNameString(operands[0]), "vector",
+                           GetNameString(operands[1]));
+        break;
+    }
     case IROpcode::VGather: {
         ret += fmt::format("{} <- {}({}: {}, {}: {}, {}: {}) ", GetNameString(name), "vgather", "dst", GetNameString(operands[0]), "src",
                            GetNameString(operands[1]), "iota", GetNameString(operands[2]));

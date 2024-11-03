@@ -624,6 +624,14 @@ SSAInstruction* IREmitter::VSlideUpi(SSAInstruction* value, u8 shift, VectorStat
     return insertInstruction(IROpcode::VSlideUpi, state, {value}, shift);
 }
 
+SSAInstruction* IREmitter::VSlide1Up(SSAInstruction* integer, SSAInstruction* vector, VectorState state) {
+    return insertInstruction(IROpcode::VSlide1Up, state, {integer, vector});
+}
+
+SSAInstruction* IREmitter::VSlide1Down(SSAInstruction* integer, SSAInstruction* vector, VectorState state) {
+    return insertInstruction(IROpcode::VSlide1Down, state, {integer, vector});
+}
+
 SSAInstruction* IREmitter::VFSqrt(SSAInstruction* value, VectorState state) {
     return insertInstruction(IROpcode::VFSqrt, state, {value});
 }

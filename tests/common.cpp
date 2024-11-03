@@ -7,6 +7,7 @@ public:
     using Catch::EventListenerBase::EventListenerBase;
 
     void testRunStarting(Catch::TestRunInfo const&) override {
+        g_testing = true;
         initialize_globals();
         initialize_extensions();
     }

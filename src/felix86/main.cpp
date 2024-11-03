@@ -26,10 +26,11 @@ static struct argp_option options[] = {
     {"dont-optimize", 'o', 0, 0, "Don't apply optimizations on the IR"},
     {"print-disassembly", 'd', 0, 0, "Print disassembly of emitted functions"},
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
-    {"extensions", 'x', "EXTENSIONS", 0,
+    {"cache", 'c', 0, 0, "Cache compiled functions for the current executable"},
+    {"extensions", 'x', "EXTS", 0,
      "Manually specify additional available RISC-V extensions, in addition to the ones detected. Useful because some extensions might not be "
      "detectable. Usage example: -e zacas,xtheadcondmov"},
-    {"all-extensions", 'X', "EXTENSIONS", 0,
+    {"all-extensions", 'X', "EXTS", 0,
      "Manually specify every available RISC-V extension. When using this, any extension not specified will be considered unavailable. "
      "Usage example: -e g,c,v,b,zacas"},
 

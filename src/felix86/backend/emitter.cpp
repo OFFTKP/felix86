@@ -1172,14 +1172,18 @@ void Emitter::EmitVIota(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecM
 }
 
 void Emitter::EmitVGather(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2, biscuit::Vec Viota, VecMask masked) {
-    if (Vd != Vs2 && Vd != Viota) {
-        AS.VMV(Vd, Vs1);
-        AS.VRGATHER(Vd, Vs2, Viota, masked);
+    if (masked == VecMask::Yes) {
+        if (Vd != Vs2 && Vd != Viota) {
+            AS.VMV(Vd, Vs1);
+            AS.VRGATHER(Vd, Vs2, Viota, VecMask::Yes);
+        } else {
+            // We don't wanna modify Vs1
+            AS.VMV(v1, Vs1);
+            AS.VRGATHER(v1, Vs2, Viota, VecMask::Yes);
+            AS.VMV(Vd, v1);
+        }
     } else {
-        // We don't wanna modify Vs1
-        AS.VMV(v1, Vs1);
-        AS.VRGATHER(v1, Vs2, Viota, masked);
-        AS.VMV(Vd, v1);
+        AS.VRGATHER(Vd, Vs2, Viota);
     }
 }
 
@@ -1226,4 +1230,12 @@ void Emitter::EmitVSlideUpi(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, 
     } else {
         AS.VSLIDEUP(Vd, Vs, immediate, masked);
     }
+}
+
+void Emitter::EmitVSlide1Up(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs, biscuit::Vec Vs, VecMask masked) {
+    AS.VSLIDE1UP(Vd, Vs, Rs, masked);
+}
+
+void Emitter::EmitVSlide1Down(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs, biscuit::Vec Vs, VecMask masked) {
+    AS.VSLIDE1DOWN(Vd, Vs, Rs, masked);
 }
