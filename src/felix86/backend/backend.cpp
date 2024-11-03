@@ -165,6 +165,8 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
         VERBOSE("Block %d (0x%016lx) corresponds to %p", block->GetIndex(), block->GetStartAddress(), as.GetCursorPointer());
 
+        as.Bind(&block_map[block]);
+
         if (g_print_block_start) {
             Emitter::EmitPushAllCallerSaved(*this);
             as.LI(a0, block->GetStartAddress());
@@ -178,8 +180,6 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             as.LI(t0, allocations.GetSpillSize());
             as.SUB(Registers::StackPointer(), Registers::StackPointer(), t0);
         }
-
-        as.Bind(&block_map[block]);
 
         for (const BackendInstruction& inst : block->GetInstructions()) {
             Emitter::Emit(*this, allocations, inst);
