@@ -1,0 +1,49 @@
+
+add_executable(block_progress_bar block_progress_bar.cpp)
+target_link_libraries(block_progress_bar PRIVATE indicators::indicators)
+
+add_executable(block_progress_bar_iterable block_progress_bar_iterable.cpp)
+target_link_libraries(block_progress_bar_iterable PRIVATE indicators::indicators)
+
+add_executable(multi_threaded_bar multi_threaded_bar.cpp)
+target_link_libraries(multi_threaded_bar PRIVATE indicators::indicators)
+
+add_executable(progress_bar_set_progress progress_bar_set_progress.cpp)
+target_link_libraries(progress_bar_set_progress PRIVATE indicators::indicators)
+
+add_executable(progress_bar_tick progress_bar_tick.cpp)
+target_link_libraries(progress_bar_tick PRIVATE indicators::indicators)
+
+add_executable(progress_bar_countdown progress_bar_countdown.cpp)
+target_link_libraries(progress_bar_countdown PRIVATE indicators::indicators)
+
+add_executable(progress_bar_sstream progress_bar_sstream.cpp)
+target_link_libraries(progress_bar_sstream PRIVATE indicators::indicators)
+
+add_executable(progress_bar_unicode progress_bar_unicode.cpp)
+target_link_libraries(progress_bar_unicode PRIVATE indicators::indicators)
+
+add_executable(progress_spinner progress_spinner.cpp)
+target_link_libraries(progress_spinner PRIVATE indicators::indicators)
+
+add_executable(time_meter time_meter.cpp)
+target_link_libraries(time_meter PRIVATE indicators::indicators)
+
+add_executable(multi_progress_bar multi_progress_bar.cpp)
+target_link_libraries(multi_progress_bar PRIVATE indicators::indicators)
+
+add_executable(multi_block_progress_bar multi_block_progress_bar.cpp)
+target_link_libraries(multi_block_progress_bar PRIVATE indicators::indicators)
+
+add_executable(dynamic_progress dynamic_progress.cpp)
+target_link_libraries(dynamic_progress PRIVATE indicators::indicators)
+
+add_executable(max_progress max_progress.cpp)
+target_link_libraries(max_progress PRIVATE indicators::indicators)
+
+add_executable(indeterminate_progress_bar indeterminate_progress_bar.cpp)
+target_link_libraries(indeterminate_progress_bar PRIVATE indicators::indicators)
+
+add_executable(dynamic_postfix_text dynamic_postfix_text.cpp)
+target_link_libraries(dynamic_postfix_text PRIVATE indicators::indicators)
+
