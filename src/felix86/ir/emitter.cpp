@@ -1712,6 +1712,10 @@ void IREmitter::Group3(x86_instruction_t* inst) {
     }
 }
 
+void IREmitter::Group14(x86_instruction_t* inst) {
+    UNIMPLEMENTED();
+}
+
 SSAInstruction* IREmitter::GetThreadStatePointer() {
     return insertInstruction(IROpcode::GetThreadStatePointer, {});
 }

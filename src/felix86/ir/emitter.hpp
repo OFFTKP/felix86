@@ -155,6 +155,7 @@ struct IREmitter {
     void Group1(x86_instruction_t* inst);
     void Group2(x86_instruction_t* inst, SSAInstruction* shift_amount);
     void Group3(x86_instruction_t* inst);
+    void Group14(x86_instruction_t* inst);
     void Syscall();
     void Cpuid();
     void Rdtsc();

@@ -1094,6 +1094,10 @@ IR_HANDLE(pshufd) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
     ir.SetReg(inst->operand_reg, result);
 }
 
+IR_HANDLE(group14) {
+    ir.Group14(inst);
+}
+
 IR_HANDLE(pmovmskb) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* shifted = ir.VSrli(rm, 7, VectorState::PackedByte);
