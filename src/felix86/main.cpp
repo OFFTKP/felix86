@@ -17,6 +17,7 @@ static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
+    {"aot", 'a', 0, 0, "Ahead-of-time compile the target binary"},
     {"verbose", 'V', 0, 0, "Produce verbose output"},
     {"quiet", 'q', 0, 0, "Don't produce any output"},
     {"print-state", 's', 0, 0, "Print state at the end of each block"},
@@ -96,6 +97,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
 
     switch (key) {
+    case 'a': {
+        g_aot = true;
+        break;
+    }
     case 'V': {
         enable_verbose();
         break;

@@ -18,6 +18,8 @@ std::string ExitReasonToString(ExitReason reason) {
         return "Bad alignment";
     case ExitReason::EXIT_REASON_NO_VECTOR:
         return "Vector extension disabled";
+    case ExitReason::EXIT_REASON_UD2:
+        return "Hit ud2 instruction";
     }
 
     UNREACHABLE();

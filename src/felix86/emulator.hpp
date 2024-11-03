@@ -1,5 +1,6 @@
 #pragma once
 
+#include "felix86/aot/aot.hpp"
 #include "felix86/backend/backend.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
@@ -24,6 +25,11 @@ struct Emulator {
         setupMainStack(main_state);
         main_state->brk_current_address = fs.GetBRK();
         main_state->SetRip((u64)fs.GetEntrypoint());
+
+        if (g_aot) {
+            AOT aot(*this, fs.GetExecutable());
+            aot.CompileAll();
+        }
     }
 
     Emulator(const TestConfig& config) : backend(*this) {
@@ -55,6 +61,10 @@ struct Emulator {
     void Run();
 
     static void* CompileNext(Emulator* emulator, ThreadState* state);
+
+    static void CompileFunction(Emulator* emulator, u64 rip) {
+        emulator->compileFunction(rip);
+    }
 
 private:
     void setupMainStack(ThreadState* state);

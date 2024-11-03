@@ -15,6 +15,7 @@ add_subdirectory(external/xbyak)
 add_subdirectory(external/riscv-disassembler)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
+add_subdirectory(external/indicators)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch")
@@ -36,8 +37,9 @@ set(FELIX86_FRONTEND_SOURCES
 )
 
 set(FELIX86_AOT_SOURCES
-    # src/felix86/aot/control_flow_analysis.cpp
-    # src/felix86/aot/function_start_finder.cpp
+    src/felix86/aot/aot.cpp
+    src/felix86/aot/control_flow_analysis.cpp
+    src/felix86/aot/function_start_finder.cpp
 )
 
 set(FELIX86_IR_SOURCES
@@ -60,6 +62,7 @@ set(FELIX86_IR_SOURCES
 )
 
 set(FELIX86_COMMON_SOURCES
+    src/felix86/common/disk_cache.cpp
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp
     src/felix86/common/global.cpp
@@ -105,7 +108,7 @@ set(FELIX86_INCLUDES
 add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit rvasm)
+target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit rvasm indicators)
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)

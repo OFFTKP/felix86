@@ -78,7 +78,7 @@ IR_HANDLE(error) {
             /* length:          */ 15,
             /* instruction:     */ &zydis_inst))) {
         std::string buffer = fmt::format("{}", zydis_inst.text);
-        ERROR("Hit error instruction: %s", buffer.c_str());
+        ERROR("Hit error instruction: %s (address: %016lx, opcode: %02x)", buffer.c_str(), ir.GetCurrentAddress(), inst->opcode);
     } else {
         ERROR("Hit error instruction and couldn't even disassemble it. Opcode: %02x", inst->opcode);
     }
@@ -473,8 +473,8 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     ir.TerminateJumpConditional(condition_mov, block_true, block_false);
     ir.Exit();
 
-    frontend_compile_block(*state->emulator, state->function, block_false);
-    frontend_compile_block(*state->emulator, state->function, block_true);
+    frontend_compile_block(state->function, block_false);
+    frontend_compile_block(state->function, block_true);
 }
 
 IR_HANDLE(group1) { // add/or/adc/sbb/and/sub/xor/cmp
@@ -731,7 +731,7 @@ IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
     ir.TerminateJump(target);
     ir.Exit();
 
-    frontend_compile_block(*state->emulator, state->function, target);
+    frontend_compile_block(state->function, target);
 }
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
@@ -742,11 +742,17 @@ IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
     ir.TerminateJump(target);
     ir.Exit();
 
-    frontend_compile_block(*state->emulator, state->function, target);
+    frontend_compile_block(state->function, target);
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4
     ir.SetExitReason(EXIT_REASON_HLT);
+    ir.TerminateJump(state->function->GetExit());
+    ir.Exit();
+}
+
+IR_HANDLE(ud2) { // ud2 - 0x0f 0x0b
+    ir.SetExitReason(EXIT_REASON_UD2);
     ir.TerminateJump(state->function->GetExit());
     ir.Exit();
 }
@@ -1077,6 +1083,22 @@ IR_HANDLE(punpckldq) { // punpckldq xmm, xmm/m128 - 0x66 0x0f 0x62
 
 IR_HANDLE(punpcklqdq) { // punpcklqdq xmm, xmm/m128 - 0x66 0x0f 0x6c
     ir.Punpckl(inst, VectorState::PackedQWord);
+}
+
+IR_HANDLE(punpckhbw) { // punpckhbw xmm, xmm/m128 - 0x66 0x0f 0x68
+    ir.Punpckh(inst, VectorState::PackedByte);
+}
+
+IR_HANDLE(punpckhwd) { // punpckhwd xmm, xmm/m128 - 0x66 0x0f 0x69
+    ir.Punpckh(inst, VectorState::PackedWord);
+}
+
+IR_HANDLE(punpckhdq) { // punpckhdq xmm, xmm/m128 - 0x66 0x0f 0x6a
+    ir.Punpckh(inst, VectorState::PackedDWord);
+}
+
+IR_HANDLE(punpckhqdq) { // punpckhqdq xmm, xmm/m128 - 0x66 0x0f 0x6d
+    ir.Punpckh(inst, VectorState::PackedQWord);
 }
 
 IR_HANDLE(pshufd) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70

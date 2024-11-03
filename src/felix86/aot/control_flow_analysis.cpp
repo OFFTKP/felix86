@@ -9,12 +9,12 @@
     Aims to find a good chunk of functions to compile them ahead of time.
 */
 
-void AOT::ControlFlowAnalysis() {
+void AOT::controlFlowAnalysis() {
     std::vector<u64> worklist;
-    worklist.push_back(elf.entry);
+    worklist.push_back((u64)elf->GetEntrypoint());
 
     std::unordered_set<u64> visited;
-    visited.insert(elf.entry);
+    visited.insert((u64)elf->GetEntrypoint());
 
     ZydisDecodedInstruction instruction;
     ZydisDecodedOperand operands[10];
@@ -25,7 +25,7 @@ void AOT::ControlFlowAnalysis() {
         while (true) {
             ZyanStatus status = decodeInstruction(instruction, operands, (u8*)work);
             if (!ZYAN_SUCCESS(status)) {
-                ERROR("Failed to decode instruction at %p", (u8*)work);
+                break;
             }
 
             bool break_outer = false;
@@ -80,13 +80,14 @@ void AOT::ControlFlowAnalysis() {
                 break;
             }
             default: {
-                work += instruction.length;
-                continue;
+                break;
             }
             }
 
             if (break_outer) {
                 break;
+            } else {
+                work += instruction.length;
             }
         }
     }

@@ -672,19 +672,18 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
 
     if (is_rep) {
         ir.RepEnd(rep_type, loop_block, exit_block);
-        frontend_compile_block(*state->emulator, state->function, exit_block);
+        frontend_compile_block(state->function, exit_block);
     }
 
     ir.IncrementAddress(inst.length);
 }
 
-void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* block) {
+void frontend_compile_block(IRFunction* function, IRBlock* block) {
     if (block->IsCompiled()) {
         return;
     }
 
     FrontendState state = {0};
-    state.emulator = &emulator;
     state.function = function;
 
     IREmitter ir(*block, block->GetStartAddress());
@@ -704,8 +703,8 @@ void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* b
     }
 }
 
-void frontend_compile_function(Emulator& emulator, IRFunction* function) {
+void frontend_compile_function(IRFunction* function) {
     IRBlock* block = function->GetBlockAt(function->GetStartAddress());
-    frontend_compile_block(emulator, function, block);
+    frontend_compile_block(function, block);
     function->SetCompiled();
 }

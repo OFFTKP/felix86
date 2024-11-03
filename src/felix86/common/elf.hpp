@@ -48,6 +48,10 @@ struct Elf {
         return (u64)brk_base;
     }
 
+    auto& GetExecutableSegments() {
+        return executable_segments;
+    }
+
 private:
     bool ok = false;
     bool is_interpreter = false;

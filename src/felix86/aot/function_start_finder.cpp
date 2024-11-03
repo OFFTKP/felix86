@@ -174,14 +174,14 @@ enum State {
     prepattern_index = 0;                                                                                                                            \
     state = Scanning
 
-void AOT::FunctionStartFinder() {
+void AOT::functionStartFinder() {
     u64 start_address = 0;
     const std::vector<InstructionWrapper>* prepattern = nullptr;
     size_t prepattern_index = 0;
     const std::vector<InstructionWrapper>* postpattern = nullptr;
     size_t postpattern_index = 0;
     State state = Scanning;
-    for (auto [code, size] : elf.executable_segments) {
+    for (auto [code, size] : elf->GetExecutableSegments()) {
         u8* code_final = code + size;
         while (code < code_final) {
             ZydisDecodedInstruction inst = {};

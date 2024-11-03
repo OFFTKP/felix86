@@ -1233,9 +1233,19 @@ void Emitter::EmitVSlideUpi(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, 
 }
 
 void Emitter::EmitVSlide1Up(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs, biscuit::Vec Vs, VecMask masked) {
-    AS.VSLIDE1UP(Vd, Vs, Rs, masked);
+    if (Vd == Vs) {
+        AS.VMV(v1, Vs);
+        AS.VSLIDE1UP(Vd, v1, Rs, masked);
+    } else {
+        AS.VSLIDE1UP(Vd, Vs, Rs, masked);
+    }
 }
 
 void Emitter::EmitVSlide1Down(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs, biscuit::Vec Vs, VecMask masked) {
-    AS.VSLIDE1DOWN(Vd, Vs, Rs, masked);
+    if (Vd == Vs) {
+        AS.VMV(v1, Vs);
+        AS.VSLIDE1DOWN(Vd, v1, Rs, masked);
+    } else {
+        AS.VSLIDE1DOWN(Vd, Vs, Rs, masked);
+    }
 }

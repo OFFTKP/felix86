@@ -183,13 +183,16 @@ void Emulator::setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::compileFunction(u64 rip) {
-    void* already_compiled = backend.GetCodeAt(rip).first;
-    if (already_compiled) {
-        return already_compiled;
+    {
+        std::lock_guard<std::mutex> lock(compilation_mutex);
+        void* already_compiled = backend.GetCodeAt(rip).first;
+        if (already_compiled) {
+            return already_compiled;
+        }
     }
 
     IRFunction function{rip};
-    frontend_compile_function(*this, &function);
+    frontend_compile_function(&function);
 
     PassManager::SSAPass(&function);
     PassManager::DeadCodeEliminationPass(&function);
@@ -223,6 +226,7 @@ void* Emulator::compileFunction(u64 rip) {
     // Remove unnecessary vector state instructions and add ones needed before stores
     PassManager::VectorStatePass(&backend_function);
 
+    std::lock_guard<std::mutex> lock(compilation_mutex);
     auto [func, size] = backend.EmitFunction(backend_function, allocations);
 
     if (g_print_blocks) {
@@ -239,18 +243,12 @@ void* Emulator::compileFunction(u64 rip) {
 }
 
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
-    void* function;
 
     // Mutex needs to be unlocked before the thread is dispatched
-    {
-        std::lock_guard<std::mutex> lock(emulator->compilation_mutex);
-        VERBOSE("Now compiling: %016lx", thread_state->rip);
-        function = emulator->compileFunction(thread_state->rip);
-    }
+    VERBOSE("Now compiling: %016lx", thread_state->rip);
+    void* function = emulator->compileFunction(thread_state->GetRip());
 
     VERBOSE("Jumping to function %p", function);
-    VERBOSE("Value at 0x4a5a40: %016lx", *(u64*)0x4a5a40);
-    VERBOSE("Value at %p: %016lx\n", addy, *addy);
 
     return function;
 }
