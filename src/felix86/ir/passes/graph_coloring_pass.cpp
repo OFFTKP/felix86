@@ -307,15 +307,29 @@ static u32 choose(const InstructionMap& instructions, const std::deque<Node>& no
 bool george_coalescing_heuristic(BackendFunction& function, InterferenceGraph& graph, u32 k, u32 lhs, u32 rhs) {
     // A conservative heuristic.
     // Safe to coalesce x and y if for every neighbor t of x, either t already interferes with y or t has degree < k
-    auto& edges = graph.GetInterferences(lhs);
-    ASSERT(edges.find(rhs) == edges.end());
-    for (u32 neighbor : edges) {
-        auto& neighbor_edges = graph.GetInterferences(neighbor);
-        if (neighbor_edges.find(rhs) == neighbor_edges.end() && neighbor_edges.size() >= k) {
-            return false;
+    u32 u = lhs;
+    u32 v = rhs;
+
+    auto& u_neighbors = graph.GetInterferences(u);
+    ASSERT(u_neighbors.find(v) == u_neighbors.end());
+    bool u_conquers_v = true;
+    for (u32 t : graph.GetInterferences(v)) {
+        if (u_neighbors.find(t) == u_neighbors.end() && graph.GetInterferences(t).size() >= k) {
+            u_conquers_v = false;
+            break;
         }
     }
-    return true;
+    
+    auto& v_neighbors = graph.GetInterferences(v);
+    bool v_conquers_u = true;
+    for (u32 t : graph.GetInterferences(u)) {
+        if (v_neighbors.find(t) == v_neighbors.end() && graph.GetInterferences(t).size() >= k) {
+            v_conquers_u = false;
+            break;
+        }
+    }
+    
+    return u_conquers_v || v_conquers_u;
 }
 
 bool aggressive_coalescing_heuristic(BackendFunction& function, InterferenceGraph& graph, u32 k, u32 lhs, u32 rhs) {
