@@ -389,6 +389,11 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
                          const std::vector<u32>& available_colors, u32& spill_location) {
     g_spilled_count = 0;
     int coalesce_count = 0;
+    const char* smax = getenv("COL_MAX");
+    int max = 0;
+    if (smax != NULL) {
+        max = atoi(smax);
+    }
     const u32 k = available_colors.size();
     while (true) {
         // Chaitin-Briggs algorithm
@@ -405,7 +410,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             build(function, instructions, graph, should_consider);
             if (g_coalesce) {
                 coalesced = try_coalesce(function, instructions, graph, should_consider, k, george_coalescing_heuristic);
-                if (coalesce_count++ > 1) {
+                if (coalesce_count++ > max) {
                     g_coalesce = false;
                 }
             }
