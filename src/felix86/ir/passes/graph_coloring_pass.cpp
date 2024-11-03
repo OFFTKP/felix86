@@ -370,10 +370,8 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
                     auto& edges = graph.GetInterferences(lhs);
                     if (edges.find(rhs) == edges.end()) {
                         if (heuristic(function, graph, k, lhs, rhs)) {
-                            printf("BEFORE COALESCING: %s\n\n\n\n", function.Print().c_str());
                             coalesce(function, lhs, rhs);
                             it = block.GetInstructions().erase(it);
-                            printf("\n\n\n\n\n AFTER COALESCING: %s\n\n\n\n", function.Print().c_str());
                             return true;
                         }
                     }
