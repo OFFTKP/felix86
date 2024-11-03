@@ -245,6 +245,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     }
 
     VERBOSE("Jumping to function %p", function);
+    VERBOSE("Value at 0x4a5a40: %016lx", *(u64*)0x4a5a40);
 
     return function;
 }
