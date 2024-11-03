@@ -358,7 +358,6 @@ void coalesce(BackendFunction& function, u32 lhs, u32 rhs) {
 
 bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGraph& graph, bool (*should_consider)(const InstructionMap&, u32),
                   u32 k, CoalescingHeuristic heuristic) {
-    bool coalesced = false;
     for (auto& block : function.GetBlocks()) {
         auto it = block.GetInstructions().begin();
         auto end = block.GetInstructions().end();
@@ -371,10 +370,11 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
                     auto& edges = graph.GetInterferences(lhs);
                     if (edges.find(rhs) == edges.end()) {
                         if (heuristic(function, graph, k, lhs, rhs)) {
+                            printf("BEFORE COALESCING: %s\n\n\n\n", function.Print().c_str());
                             coalesce(function, lhs, rhs);
                             it = block.GetInstructions().erase(it);
-                            coalesced = true;
-                            continue;
+                            printf("\n\n\n\n\n AFTER COALESCING: %s\n\n\n\n", function.Print().c_str());
+                            return true;
                         }
                     }
                 }
@@ -382,18 +382,12 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
             ++it;
         }
     }
-    return coalesced;
+    return false;
 }
 
 static AllocationMap run(BackendFunction& function, AllocationType type, bool (*should_consider)(const InstructionMap&, u32),
                          const std::vector<u32>& available_colors, u32& spill_location) {
     g_spilled_count = 0;
-    int coalesce_count = 0;
-    const char* smax = getenv("COL_MAX");
-    int max = 0;
-    if (smax != NULL) {
-        max = atoi(smax);
-    }
     const u32 k = available_colors.size();
     while (true) {
         // Chaitin-Briggs algorithm
@@ -410,9 +404,6 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             build(function, instructions, graph, should_consider);
             if (g_coalesce) {
                 coalesced = try_coalesce(function, instructions, graph, should_consider, k, george_coalescing_heuristic);
-                if (coalesce_count++ > max) {
-                    g_coalesce = false;
-                }
             }
         } while (coalesced);
 
