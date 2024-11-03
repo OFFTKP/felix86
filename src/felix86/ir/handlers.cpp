@@ -1086,9 +1086,9 @@ IR_HANDLE(pshufd) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
     u8 el2 = (imm >> 4) & 0b11;
     u8 el3 = (imm >> 6) & 0b11;
     SSAInstruction* first = ir.VSplati(el3, VectorState::PackedDWord);
-    SSAInstruction* second = ir.VSlide1Up(first, ir.Imm(el2), VectorState::PackedDWord);
-    SSAInstruction* third = ir.VSlide1Up(second, ir.Imm(el1), VectorState::PackedDWord);
-    SSAInstruction* fourth = ir.VSlide1Up(third, ir.Imm(el0), VectorState::PackedDWord);
+    SSAInstruction* second = ir.VSlide1Up(ir.Imm(el2), first, VectorState::PackedDWord);
+    SSAInstruction* third = ir.VSlide1Up(ir.Imm(el1), second, VectorState::PackedDWord);
+    SSAInstruction* fourth = ir.VSlide1Up(ir.Imm(el0), third, VectorState::PackedDWord);
     SSAInstruction* source = ir.GetRm(inst->operand_rm, VectorState::PackedDWord);
     SSAInstruction* result = ir.VGather(source, source, fourth, VectorState::PackedDWord);
     ir.SetReg(inst->operand_reg, result);
