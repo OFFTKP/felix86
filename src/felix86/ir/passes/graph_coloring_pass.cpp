@@ -345,9 +345,12 @@ void coalesce(BackendFunction& function, u32 lhs, u32 rhs) {
     for (BackendBlock& block : function.GetBlocks()) {
         for (BackendInstruction& inst : block.GetInstructions()) {
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                if (inst.GetOperand(i) == lhs) {
-                    inst.SetOperand(i, rhs);
+                if (inst.GetOperand(i) == rhs) {
+                    inst.SetOperand(i, lhs);
                 }
+            }
+            if (inst.GetName() == rhs) {
+                inst.SetName(lhs);
             }
         }
     }

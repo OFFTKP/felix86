@@ -19,6 +19,10 @@ struct BackendInstruction {
         return name;
     }
 
+    void SetName(u32 new_name) {
+        name = new_name;
+    }
+
     u32 GetOperand(u32 index) const {
         return operand_names[index];
     }
