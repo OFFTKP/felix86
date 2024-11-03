@@ -1144,8 +1144,28 @@ IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
     }
 }
 
+IR_HANDLE(pminub) { // pminub xmm, xmm/m128 - 0x66 0x0f 0xda
+    ir.PackedRegRm(inst, IROpcode::VMinu, VectorState::PackedByte);
+}
+
 IR_HANDLE(pand) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb
     ir.PackedRegRm(inst, IROpcode::VAnd, VectorState::AnyPacked);
+}
+
+IR_HANDLE(paddb) { // paddb xmm, xmm/m128 - 0x66 0x0f 0xfc
+    ir.PackedRegRm(inst, IROpcode::VAdd, VectorState::PackedByte);
+}
+
+IR_HANDLE(paddw) { // paddw xmm, xmm/m128 - 0x66 0x0f 0xfd
+    ir.PackedRegRm(inst, IROpcode::VAdd, VectorState::PackedWord);
+}
+
+IR_HANDLE(paddd) { // paddd xmm, xmm/m128 - 0x66 0x0f 0xfe
+    ir.PackedRegRm(inst, IROpcode::VAdd, VectorState::PackedDWord);
+}
+
+IR_HANDLE(paddq) { // paddq xmm, xmm/m128 - 0x66 0x0f 0xd4
+    ir.PackedRegRm(inst, IROpcode::VAdd, VectorState::PackedQWord);
 }
 
 IR_HANDLE(pandn) {
@@ -1166,6 +1186,18 @@ IR_HANDLE(pxor) { // pxor xmm, xmm/m128 - 0x66 0x0f 0xef
 
 IR_HANDLE(psubb) { // psubb xmm, xmm/m128 - 0x66 0x0f 0xf8
     ir.PackedRegRm(inst, IROpcode::VSub, VectorState::PackedByte);
+}
+
+IR_HANDLE(psubw) { // psubw xmm, xmm/m128 - 0x66 0x0f 0xf9
+    ir.PackedRegRm(inst, IROpcode::VSub, VectorState::PackedWord);
+}
+
+IR_HANDLE(psubd) { // psubd xmm, xmm/m128 - 0x66 0x0f 0xfa
+    ir.PackedRegRm(inst, IROpcode::VSub, VectorState::PackedDWord);
+}
+
+IR_HANDLE(psubq) { // psubq xmm, xmm/m128 - 0x66 0x0f 0xfb
+    ir.PackedRegRm(inst, IROpcode::VSub, VectorState::PackedQWord);
 }
 
 // ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██     ███████ ██████
