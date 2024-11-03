@@ -1183,7 +1183,7 @@ void Emitter::EmitVGather(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, b
             AS.VMV(Vd, v1);
         }
     } else {
-        if (Vd == Vs2) {
+        if (Vd == Vs2 || Vd == Viota) {
             AS.VRGATHER(v1, Vs2, Viota, VecMask::No);
             AS.VMV(Vd, v1);
         } else {
