@@ -930,8 +930,9 @@ IR_HANDLE(movhps_xmm_m64) {
         inst->operand_rm.size = X86_SIZE_XMM;
         high = ir.GetReg(inst->operand_rm);
     }
+    SSAInstruction* shifted = ir.VSlideUpi(high, 1, VectorState::PackedQWord);
     ir.SetVMask(ir.VSplati(0b10, VectorState::PackedQWord));
-    SSAInstruction* result = ir.VMerge(high, low, VectorState::PackedQWord);
+    SSAInstruction* result = ir.VMerge(shifted, low, VectorState::PackedQWord);
     ir.SetReg(inst->operand_reg, result);
 }
 
