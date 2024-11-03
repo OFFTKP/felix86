@@ -9,6 +9,7 @@ extern bool g_testing;
 extern bool g_strace;
 extern bool g_dont_optimize;
 extern bool g_print_blocks;
+extern bool g_print_block_start;
 extern bool g_print_state;
 extern bool g_print_disassembly;
 extern bool g_coalesce;

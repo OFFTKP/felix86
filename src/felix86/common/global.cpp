@@ -17,6 +17,7 @@ bool g_testing = false;
 bool g_strace = false;
 bool g_dont_optimize = false;
 bool g_print_blocks = false;
+bool g_print_block_start = false;
 bool g_print_state = false;
 bool g_print_disassembly = false;
 bool g_coalesce = true;
@@ -126,6 +127,12 @@ void initialize_globals() {
     if (dont_coalesce_env) {
         g_coalesce = false;
         environment += "\nFELIX86_NO_COALESCE";
+    }
+
+    const char* print_start_of_block = getenv("FELIX86_PRINT_BLOCK_START");
+    if (print_start_of_block) {
+        g_print_block_start = true;
+        environment += "\nFELIX86_PRINT_BLOCK_START";
     }
 
     if (!g_quiet && !environment.empty()) {
