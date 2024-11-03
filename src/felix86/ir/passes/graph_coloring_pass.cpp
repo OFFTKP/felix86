@@ -194,10 +194,6 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
         const BackendBlock* block = blocks[counter];
         size_t i = block->GetIndex();
         for (const BackendInstruction& inst : block->GetInstructions()) {
-            if (should_consider(instructions, inst.GetName())) {
-                def[i].insert(inst.GetName());
-            }
-
             for (u8 j = 0; j < inst.GetOperandCount(); j++) {
                 if (instructions.at(inst.GetOperand(j)).inst == nullptr) {
                     ERROR("Null operand %d for instruction %s", j, inst.Print().c_str());
@@ -208,6 +204,10 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
                     // Not defined in this block ie. upwards exposed, live range goes outside current block
                     use[i].insert(inst.GetOperand(j));
                 }
+            }
+
+            if (should_consider(instructions, inst.GetName())) {
+                def[i].insert(inst.GetName());
             }
         }
     }
