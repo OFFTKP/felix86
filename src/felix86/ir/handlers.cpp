@@ -1112,7 +1112,7 @@ IR_HANDLE(pshufd) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
     SSAInstruction* third = ir.VSlide1Up(ir.Imm(el1), second, VectorState::PackedDWord);
     SSAInstruction* fourth = ir.VSlide1Up(ir.Imm(el0), third, VectorState::PackedDWord);
     SSAInstruction* source = ir.GetRm(inst->operand_rm, VectorState::PackedDWord);
-    SSAInstruction* result = ir.VGather(source, source, fourth, VectorState::PackedDWord);
+    SSAInstruction* result = ir.VGather(ir.VZero(VectorState::PackedDWord), source, fourth, VectorState::PackedDWord);
     ir.SetReg(inst->operand_reg, result);
 }
 
