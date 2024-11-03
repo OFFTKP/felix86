@@ -12,6 +12,8 @@ extern char** environ;
 
 static char x86_64_string[] = "x86_64";
 
+u64* addy = nullptr;
+
 u64 stack_push(u64 stack, u64 value) {
     stack -= 8;
     *(u64*)stack = value;
@@ -100,6 +102,8 @@ void Emulator::setupMainStack(ThreadState* state) {
     rsp = stack_push(rsp, 0);
     rsp = stack_push(rsp, 0);
     u64 rand_address = rsp;
+
+    addy = (u64*)rand_address;
 
     int result = getrandom((void*)rand_address, 16, 0);
     if (result == -1 || result != 16) {
@@ -246,6 +250,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 
     VERBOSE("Jumping to function %p", function);
     VERBOSE("Value at 0x4a5a40: %016lx", *(u64*)0x4a5a40);
+    VERBOSE("Value at %p: %016lx\n", addy, *addy);
 
     return function;
 }
