@@ -382,8 +382,9 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
 
             if (secondary.decoding_flags & MANDATORY_PREFIX_FLAG) {
                 if (operand_override) {
+                    operand_override = false;
                     secondary = tertiary_table_38_66[opcode];
-                } else if (rep_z_f3) {
+                } else if (rep_nz_f2) {
                     secondary = tertiary_table_38_f2[opcode];
                 }
             }
@@ -394,6 +395,7 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
             if (secondary.decoding_flags & MANDATORY_PREFIX_FLAG) {
                 if (operand_override) {
                     secondary = tertiary_table_3a_66[opcode];
+                    operand_override = false;
                 }
             }
         } else {
@@ -402,10 +404,13 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
             if (secondary.decoding_flags & MANDATORY_PREFIX_FLAG) {
                 if (operand_override) {
                     secondary = secondary_table_66[opcode];
+                    operand_override = false;
                 } else if (rep_z_f3) {
                     secondary = secondary_table_f3[opcode];
+                    rep_z_f3 = false;
                 } else if (rep_nz_f2) {
                     secondary = secondary_table_f2[opcode];
+                    rep_nz_f2 = false;
                 }
             }
         }
