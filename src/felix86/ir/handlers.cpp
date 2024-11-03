@@ -920,10 +920,19 @@ IR_HANDLE(movhps_xmm_m64) {
         ERROR("movhps xmm, m64 but m64 is not a memory operand");
     }
 
-    SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
-    SSAInstruction* m64 = ir.GetRm(inst->operand_rm);
-    SSAInstruction* xmm_dest = ir.VInsertInteger(m64, xmm, 1, X86_SIZE_QWORD);
-    ir.SetReg(inst->operand_reg, xmm_dest);
+    SSAInstruction* low = ir.GetReg(inst->operand_reg);
+    SSAInstruction* high;
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        inst->operand_rm.size = X86_SIZE_QWORD;
+        SSAInstruction* m64 = ir.GetRm(inst->operand_rm);
+        high = ir.VToI(m64, VectorState::PackedQWord);
+    } else {
+        inst->operand_rm.size = X86_SIZE_XMM;
+        high = ir.GetReg(inst->operand_rm);
+    }
+    ir.SetVMask(ir.VSplati(0b10, VectorState::PackedQWord));
+    SSAInstruction* result = ir.VMerge(high, low, VectorState::PackedQWord);
+    ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
