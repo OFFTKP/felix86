@@ -925,7 +925,7 @@ IR_HANDLE(movhps_xmm_m64) {
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         inst->operand_rm.size = X86_SIZE_QWORD;
         SSAInstruction* m64 = ir.GetRm(inst->operand_rm);
-        high = ir.VToI(m64, VectorState::PackedQWord);
+        high = ir.IToV(m64, VectorState::PackedQWord);
     } else {
         inst->operand_rm.size = X86_SIZE_XMM;
         high = ir.GetReg(inst->operand_rm);
