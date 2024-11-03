@@ -34,6 +34,12 @@ struct InterferenceGraph {
         return node;
     }
 
+    u32 Random() {
+        auto it = graph.begin();
+        std::advance(it, rand() % graph.size());
+        return it->first;
+    }
+
     void AddNode(const Node& node) {
         for (u32 edge : node.edges) {
             AddEdge(node.id, edge);
@@ -75,6 +81,10 @@ struct InterferenceGraph {
             }
         }
         return false;
+    }
+
+    void Reserve(size_t size) {
+        graph.reserve(size);
     }
 
 private:
@@ -221,10 +231,8 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
             // j is the index in the postorder list, but we need the index in the blocks list
             size_t i = block->GetIndex();
 
-            LivenessSet in_old = in[i];
-            LivenessSet out_old = out[i];
-
-            in[i].clear();
+            LivenessSet in_old = std::move(in[i]);
+            in[i] = {};
 
             // in[b] = use[b] U (out[b] - def[b])
             in[i].insert(use[i].begin(), use[i].end());
@@ -236,7 +244,8 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
 
             in[i].insert(out_minus_def.begin(), out_minus_def.end());
 
-            out[i].clear();
+            LivenessSet out_old = std::move(out[i]);
+            out[i] = {};
             // out[b] = U (in[s]) for all s in succ[b]
             for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
                 const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
@@ -250,6 +259,8 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
             }
         }
     } while (changed);
+
+    graph.Reserve(instructions.size());
 
     for (const BackendBlock* block : blocks) {
         LivenessSet live_now;
@@ -435,7 +446,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             while (!graph.empty()) {
                 // Pick some vertex using a heuristic and remove it.
                 // If it causes some node to have less than k neighbors, repeat at step 1, otherwise repeat step 2.
-                nodes.push_back(graph.RemoveNode(graph.begin()->first));
+                nodes.push_back(graph.RemoveNode(graph.Random()));
 
                 if (graph.HasLessThanK(k)) {
                     repeat_outer = true;
