@@ -446,6 +446,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             while (!graph.empty()) {
                 // Pick some vertex using a heuristic and remove it.
                 // If it causes some node to have less than k neighbors, repeat at step 1, otherwise repeat step 2.
+                // TODO: pick heuristic that isn't random
                 nodes.push_back(graph.RemoveNode(graph.Random()));
 
                 if (graph.HasLessThanK(k)) {
