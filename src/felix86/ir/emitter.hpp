@@ -116,7 +116,9 @@ struct IREmitter {
     SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VectorState state, VecMask masked = VecMask::No);
     SSAInstruction* VEqual(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VSlli(SSAInstruction* value, u8 shift, VectorState state);
+    SSAInstruction* VSrli(SSAInstruction* value, u8 shift, VectorState state);
     SSAInstruction* VSrai(SSAInstruction* value, u8 shift, VectorState state);
+    SSAInstruction* VMSeqi(SSAInstruction* value, VectorState state, u64 imm);
     SSAInstruction* VSlideUpi(SSAInstruction* value, u8 shift, VectorState state);
     SSAInstruction* VSlideDowni(SSAInstruction* value, u8 shift, VectorState state);
     SSAInstruction* VZext(SSAInstruction* value, x86_size_e size);

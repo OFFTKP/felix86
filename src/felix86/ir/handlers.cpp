@@ -1069,6 +1069,13 @@ IR_HANDLE(punpcklqdq) { // punpcklqdq xmm, xmm/m128 - 0x66 0x0f 0x6c
     ir.Punpckl(inst, VectorState::PackedQWord);
 }
 
+IR_HANDLE(pmovmskb) {
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
+    SSAInstruction* shifted = ir.VSrli(rm, 7, VectorState::PackedByte);
+    SSAInstruction* mask = ir.VMSeqi(shifted, VectorState::PackedByte, 1);
+    ir.SetReg(inst->operand_reg, ir.VToI(mask, VectorState::PackedByte));
+}
+
 IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
     x86_size_e size_e = inst->operand_rm.size;
     VectorState vector_state = VectorState::Null;

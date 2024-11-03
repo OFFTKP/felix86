@@ -188,7 +188,7 @@ void Emitter::EmitPopAllCallerSaved(Backend& backend) {
     auto& caller_saved_gprs = Registers::GetCallerSavedGPRs();
 
     AS.VSETIVLI(x0, SUPPORTED_VLEN / 8, biscuit::SEW::E8);
-    
+
     for (int i = 31; i >= 0; i--) {
         AS.VLE8(Vec(i), Registers::StackPointer());
         AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), 16);
@@ -1191,8 +1191,16 @@ void Emitter::EmitVSlli(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 
     AS.VSLL(Vd, Vs, immediate, masked);
 }
 
+void Emitter::EmitVSrli(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
+    AS.VSRL(Vd, Vs, immediate, masked);
+}
+
 void Emitter::EmitVSrai(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
     AS.VSRA(Vd, Vs, immediate, masked);
+}
+
+void Emitter::EmitVMSeqi(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
+    AS.VMSEQ(Vd, Vs, immediate, masked);
 }
 
 void Emitter::EmitVMerge(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {

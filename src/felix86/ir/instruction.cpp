@@ -865,8 +865,16 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vslli", "src", GetNameString(operands[0]), immediate_data);
         break;
     }
+    case IROpcode::VSrli: {
+        ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vsrli", "src", GetNameString(operands[0]), immediate_data);
+        break;
+    }
     case IROpcode::VSrai: {
         ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vsrai", "src", GetNameString(operands[0]), immediate_data);
+        break;
+    }
+    case IROpcode::VMSeqi: {
+        ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vmseqi", "src", GetNameString(operands[0]), immediate_data);
         break;
     }
     case IROpcode::VSlideDowni: {

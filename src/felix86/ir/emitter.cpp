@@ -604,8 +604,16 @@ SSAInstruction* IREmitter::VSlli(SSAInstruction* value, u8 shift, VectorState st
     return insertInstruction(IROpcode::VSlli, state, {value}, shift);
 }
 
+SSAInstruction* IREmitter::VSrli(SSAInstruction* value, u8 shift, VectorState state) {
+    return insertInstruction(IROpcode::VSrli, state, {value}, shift);
+}
+
 SSAInstruction* IREmitter::VSrai(SSAInstruction* value, u8 shift, VectorState state) {
     return insertInstruction(IROpcode::VSrai, state, {value}, shift);
+}
+
+SSAInstruction* IREmitter::VMSeqi(SSAInstruction* value, VectorState state, u64 imm) {
+    return insertInstruction(IROpcode::VMSeqi, state, {value}, imm);
 }
 
 SSAInstruction* IREmitter::VSlideDowni(SSAInstruction* value, u8 shift, VectorState state) {
