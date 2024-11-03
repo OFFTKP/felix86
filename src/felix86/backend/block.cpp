@@ -50,6 +50,25 @@ std::string BackendBlock::Print() const {
         ret += inst.Print() + "\n";
     }
 
+    switch (termination) {
+    case Termination::BackToDispatcher: {
+        ret += "Back to dispatcher\n";
+        break;
+    }
+    case Termination::Jump: {
+        ret += "Jump to " + std::to_string(successors[0]) + "\n";
+        break;
+    }
+    case Termination::JumpConditional: {
+        ret += "Jump to " + std::to_string(successors[0]) + " if " + condition->Print() + " else " + std::to_string(successors[1]) + "\n";
+        break;
+    }
+    case Termination::Null: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
     ret += "\n\n";
 
     return ret;

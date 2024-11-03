@@ -19,6 +19,7 @@ bool g_dont_optimize = false;
 bool g_print_blocks = false;
 bool g_print_state = false;
 bool g_print_disassembly = false;
+bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
 u32 g_spilled_count = 0;
 
@@ -119,6 +120,12 @@ void initialize_globals() {
     if (quiet_env) {
         g_quiet = true;
         environment += "\nFELIX86_QUIET";
+    }
+
+    const char* dont_coalesce_env = getenv("FELIX86_NO_COALESCE");
+    if (dont_coalesce_env) {
+        g_coalesce = false;
+        environment += "\nFELIX86_NO_COALESCE";
     }
 
     if (!g_quiet && !environment.empty()) {

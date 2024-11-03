@@ -402,7 +402,9 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             graph = InterferenceGraph();
             instructions = create_instruction_map(function);
             build(function, instructions, graph, should_consider);
-            coalesced = try_coalesce(function, instructions, graph, should_consider, k, george_coalescing_heuristic);
+            if (g_coalesce) {
+                coalesced = try_coalesce(function, instructions, graph, should_consider, k, george_coalescing_heuristic);
+            }
         } while (coalesced);
 
         for (auto& [name, edges] : graph) {
