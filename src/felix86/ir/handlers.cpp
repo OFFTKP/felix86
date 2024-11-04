@@ -1018,6 +1018,10 @@ IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
         ir.SetFlag(not_equal, X86_REF_CF);
         break;
     }
+    default: {
+        UNREACHABLE();
+        break;
+    }
     }
 }
 
