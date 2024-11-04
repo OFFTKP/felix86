@@ -992,7 +992,7 @@ IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
     switch (size_e) {
     case X86_SIZE_WORD: {
         SSAInstruction* result_high = ir.Shri(result, 16);
-        SSAInstruction* sext = ir.Sext(result, X86_SIZE_DWORD);
+        SSAInstruction* sext = ir.Sext(result, X86_SIZE_WORD);
         SSAInstruction* masked = ir.And(result_high, ir.Imm(0xffff));
         SSAInstruction* sext_masked = ir.And(sext, ir.Imm(0xffff));
         SSAInstruction* not_equal = ir.NotEqual(masked, sext_masked);
@@ -1002,7 +1002,7 @@ IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
     }
     case X86_SIZE_DWORD: {
         SSAInstruction* result_high = ir.Shri(result, 32);
-        SSAInstruction* sext = ir.Sext(result, X86_SIZE_QWORD);
+        SSAInstruction* sext = ir.Sext(result, X86_SIZE_DWORD);
         SSAInstruction* masked = ir.And(result_high, ir.Imm(0xffffffff));
         SSAInstruction* sext_masked = ir.And(sext, ir.Imm(0xffffffff));
         SSAInstruction* not_equal = ir.NotEqual(masked, sext_masked);
