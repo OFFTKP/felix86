@@ -1159,6 +1159,10 @@ void Emitter::EmitVAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, bisc
     AS.VADD(Vd, Vs2, Vs1);
 }
 
+void Emitter::EmitVAddi(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate) {
+    AS.VADD(Vd, Vs, immediate);
+}
+
 void Emitter::EmitVEqual(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
     AS.VMSEQ(Vd, Vs2, Vs1, masked);
 }

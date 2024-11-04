@@ -126,6 +126,7 @@ struct IREmitter {
     SSAInstruction* VSlide1Down(SSAInstruction* integer, SSAInstruction* vector, VectorState state);
     SSAInstruction* VZext(SSAInstruction* value, x86_size_e size);
     SSAInstruction* VAdd(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
+    SSAInstruction* VAddi(SSAInstruction* lhs, i64 imm, VectorState state);
     SSAInstruction* VSub(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VAnd(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VOr(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);

@@ -135,6 +135,7 @@ X(VXor,                                 Vector128,                      Vector12
 X(VXori,                                Vector128,                      Vector128)
 X(VSub,                                 Vector128,                      Vector128,                      Vector128)
 X(VAdd,                                 Vector128,                      Vector128,                      Vector128)
+X(VAddi,                                Vector128,                      Vector128)
 X(VEqual,                               Vector128,                      Vector128,                      Vector128)
 X(VMinu,                                Vector128,                      Vector128,                      Vector128)
 X(VIota,                                Vector128,                      Vector128)

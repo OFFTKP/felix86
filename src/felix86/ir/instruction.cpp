@@ -845,6 +845,14 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
+    case IROpcode::VAddi: {
+        ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vaddi", "src", GetNameString(operands[0]), immediate_data);
+        break;
+    }
+    case IROpcode::VId: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vid", "src", GetNameString(operands[0]));
+        break;
+    }
     case IROpcode::VIota: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "viota", "src", GetNameString(operands[0]));
         break;

@@ -478,9 +478,9 @@ void IREmitter::Punpckl(x86_instruction_t* inst, VectorState state) {
     // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
     // This means we don't care to reduce the splat to only the first two elements
     SSAInstruction* rm_mask = VSplat(Imm(0b10101010), state);
-    SSAInstruction* rm_iota = VId(state);
     SetVMask(rm_mask);
     SSAInstruction* zero = VZero(state);
+    SSAInstruction* rm_iota = VId(state);
     SSAInstruction* rm_gathered = VGather(zero, rm, rm_iota, state, VecMask::Yes);
     SSAInstruction* reg_mask = VSplat(Imm(0b01010101), state);
     SSAInstruction* reg_iota = VId(state);
@@ -490,43 +490,49 @@ void IREmitter::Punpckl(x86_instruction_t* inst, VectorState state) {
 }
 
 void IREmitter::Punpckh(x86_instruction_t* inst, VectorState state) {
-    u32 mask1, mask2;
+    int num;
     switch (state) {
-    case VectorState::PackedByte:
-        mask1 = 0b01010101'00000000;
-        mask2 = 0b10101010'00000000;
+    case VectorState::PackedByte: {
+        num = 8;
         break;
-    case VectorState::PackedWord:
-        mask1 = 0b0101'0000;
-        mask2 = 0b1010'0000;
+    }
+    case VectorState::PackedWord: {
+        num = 4;
         break;
-    case VectorState::PackedDWord:
-        mask1 = 0b01'00;
-        mask2 = 0b10'00;
+    }
+    case VectorState::PackedDWord: {
+        num = 2;
         break;
-    case VectorState::PackedQWord:
-        mask1 = 0b10;
-        mask2 = 0b10;
+    }
+    case VectorState::PackedQWord: {
+        num = 1;
         break;
-    default:
+    }
+    default: {
         UNREACHABLE();
         return;
+    }
     }
 
     SSAInstruction* rm = GetRm(inst->operand_rm, state);
     SSAInstruction* reg = GetReg(inst->operand_reg);
-    // Essentially two "vdecompress" (viota + vrgather) instructions
-    // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
-    // This means we don't care to reduce the splat to only the first two elements
-    SSAInstruction* rm_mask = VSplat(Imm(mask1), state);
-    SSAInstruction* rm_iota = VIota(rm_mask, state);
+    // Same as punpckl but we add some number to the VId to pick the high elements
+    SSAInstruction* rm_mask = VSplat(Imm(0b10101010), state);
     SetVMask(rm_mask);
     SSAInstruction* zero = VZero(state);
-    SSAInstruction* rm_gathered = VGather(zero, rm, rm_iota, state, VecMask::Yes);
-    SSAInstruction* reg_mask = VSplat(Imm(mask2), state);
-    SSAInstruction* reg_iota = VIota(reg_mask, state);
+    SSAInstruction* rm_iota = VId(state);
+    SSAInstruction* rm_iota_added = rm_iota;
+    if (state != VectorState::PackedQWord) {
+        // We don't wanna add anything to the VId if we're working with packed qword
+        // since it's already gonna pick element 1
+        rm_iota_added = VAddi(rm_iota, num, state);
+    }
+    SSAInstruction* rm_gathered = VGather(zero, rm, rm_iota_added, state, VecMask::Yes);
+    SSAInstruction* reg_mask = VSplat(Imm(0b01010101), state);
     SetVMask(reg_mask);
-    SSAInstruction* result = VGather(rm_gathered, reg, reg_iota, state, VecMask::Yes);
+    SSAInstruction* reg_iota = VId(state);
+    SSAInstruction* reg_iota_added = VAddi(reg_iota, num, state);
+    SSAInstruction* result = VGather(rm_gathered, reg, reg_iota_added, state, VecMask::Yes);
     SetReg(inst->operand_reg, result);
 }
 
@@ -629,6 +635,10 @@ SSAInstruction* IREmitter::VIota(SSAInstruction* mask, VectorState state) {
     return insertInstruction(IROpcode::VIota, state, {mask});
 }
 
+SSAInstruction* IREmitter::VId(VectorState state) {
+    return insertInstruction(IROpcode::VId, state, {});
+}
+
 SSAInstruction* IREmitter::VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VectorState state, VecMask masked) {
     SSAInstruction* instruction = insertInstruction(IROpcode::VGather, state, {dest, source, iota});
     if (masked == VecMask::Yes) {
@@ -723,6 +733,10 @@ SSAInstruction* IREmitter::VEqual(SSAInstruction* lhs, SSAInstruction* rhs, Vect
 
 SSAInstruction* IREmitter::VAdd(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
     return insertInstruction(IROpcode::VAdd, state, {lhs, rhs});
+}
+
+SSAInstruction* IREmitter::VAddi(SSAInstruction* lhs, i64 rhs, VectorState state) {
+    return insertInstruction(IROpcode::VAddi, state, {lhs}, rhs);
 }
 
 SSAInstruction* IREmitter::VSub(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
