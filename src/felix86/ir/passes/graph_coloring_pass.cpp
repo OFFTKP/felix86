@@ -276,6 +276,32 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
                 // Erase the currently defined variable if it exists in the set
                 live_now.erase(inst.GetName());
 
+                // Some instructions, due to RISC-V ISA, can't allocate the same register
+                // to destination and source operands. For example, viota, vslideup, vrgather.
+                // For those, we make it so the operands interfere with the destination so
+                // the register allocator doesn't pick the same register.
+                // This function tells the liveness analysis to erase the current instruction from the set
+                // after adding interferences.
+                switch (inst.GetOpcode()) {
+                case IROpcode::VIota:
+                case IROpcode::VSlide1Up:
+                case IROpcode::VSlideUpi: {
+                    for (u8 i = 0; i < inst.GetOperandCount(); i++) {
+                        live_now.insert(inst.GetOperand(i));
+                    }
+                    break;
+                }
+                case IROpcode::VGather: {
+                    // Doesn't interfere with the first operand
+                    for (u8 i = 1; i < inst.GetOperandCount(); i++) {
+                        live_now.insert(inst.GetOperand(i));
+                    }
+                    break;
+                }
+                default:
+                    break;
+                }
+
                 // in case there's nothing live (which is possible if nothing is read before written)
                 // then we need to add the current instruction to the graph so it gets allocated
                 graph.AddEmpty(inst.GetName());
