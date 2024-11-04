@@ -1138,6 +1138,7 @@ IR_HANDLE(punpckhqdq) { // punpckhqdq xmm, xmm/m128 - 0x66 0x0f 0x6d
 }
 
 IR_HANDLE(pshufd) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
+    ASSERT(inst->operand_rm.size == X86_SIZE_QWORD);
     u8 imm = inst->operand_imm.immediate.data;
     u8 el0 = imm & 0b11;
     u8 el1 = (imm >> 2) & 0b11;
