@@ -5,7 +5,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
-typedef enum : u8 {
+enum class x86_group1_e : u8 {
     X86_GROUP1_ADD = 0,
     X86_GROUP1_OR = 1,
     X86_GROUP1_ADC = 2,
@@ -14,9 +14,9 @@ typedef enum : u8 {
     X86_GROUP1_SUB = 5,
     X86_GROUP1_XOR = 6,
     X86_GROUP1_CMP = 7,
-} x86_group1_e;
+};
 
-typedef enum : u8 {
+enum class x86_group2_e : u8 {
     X86_GROUP2_ROL = 0,
     X86_GROUP2_ROR = 1,
     X86_GROUP2_RCL = 2,
@@ -25,9 +25,9 @@ typedef enum : u8 {
     X86_GROUP2_SHR = 5,
     X86_GROUP2_SAL = 6,
     X86_GROUP2_SAR = 7,
-} x86_group2_e;
+};
 
-typedef enum : u8 {
+enum class x86_group3_e : u8 {
     X86_GROUP3_TEST = 0,
     X86_GROUP3_TEST_ = 1,
     X86_GROUP3_NOT = 2,
@@ -36,14 +36,14 @@ typedef enum : u8 {
     X86_GROUP3_IMUL = 5,
     X86_GROUP3_DIV = 6,
     X86_GROUP3_IDIV = 7,
-} x86_group3_e;
+};
 
-typedef enum : u8 {
+enum class x86_group4_e : u8 {
     X86_GROUP4_INC = 0,
     X86_GROUP4_DEC = 1,
-} x86_group4_e;
+};
 
-typedef enum : u8 {
+enum class x86_group5_e : u8 {
     X86_GROUP5_INC = 0,
     X86_GROUP5_DEC = 1,
     X86_GROUP5_CALL = 2,
@@ -51,14 +51,14 @@ typedef enum : u8 {
     X86_GROUP5_JMP = 4,
     X86_GROUP5_JMPF = 5,
     X86_GROUP5_PUSH = 6,
-} x86_group5_e;
+};
 
-typedef enum : u8 {
+enum class x86_group14_e : u8 {
     X86_GROUP14_PSRLQ = 2,
     X86_GROUP14_PSRLDQ = 3,
     X86_GROUP14_PSLLQ = 6,
     X86_GROUP14_PSLLDQ = 7,
-} x86_group14_e;
+};
 
 enum x86_rep_e {
     NONE,
