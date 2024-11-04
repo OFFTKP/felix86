@@ -921,7 +921,7 @@ IR_HANDLE(syscall) { // syscall - 0x0f 0x05
     ir.Syscall();
 }
 
-IR_HANDLE(movhps_xmm_m64) {
+IR_HANDLE(movhps_xmm_xmm64) {
     SSAInstruction* low = ir.GetReg(inst->operand_reg);
     SSAInstruction* high;
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
@@ -929,13 +929,19 @@ IR_HANDLE(movhps_xmm_m64) {
         SSAInstruction* m64 = ir.GetRm(inst->operand_rm);
         high = ir.IToV(m64, VectorState::PackedQWord);
     } else {
-        inst->operand_rm.size = X86_SIZE_XMM;
         high = ir.GetReg(inst->operand_rm);
     }
     SSAInstruction* shifted = ir.VSlideUpi(high, 1, VectorState::PackedQWord);
     ir.SetVMask(ir.VSplati(0b10, VectorState::PackedQWord));
     SSAInstruction* result = ir.VMerge(shifted, low, VectorState::PackedQWord);
     ir.SetReg(inst->operand_reg, result);
+}
+
+IR_HANDLE(movhps_m64_xmm) {
+    ASSERT(inst->operand_rm.type == X86_OP_TYPE_MEMORY);
+    SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
+    SSAInstruction* slide = ir.VSlideDowni(xmm, 1, VectorState::PackedQWord);
+    ir.SetRm(inst->operand_rm, slide, VectorState::Double);
 }
 
 IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
