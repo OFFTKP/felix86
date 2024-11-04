@@ -612,7 +612,6 @@ void frontend_compile_instruction(FrontendState* state, IREmitter& ir) {
     }
 
     inst.operand_reg.size = size_reg;
-
     if (!rex && inst.operand_reg.size == X86_SIZE_BYTE) {
         int reg_index = (inst.operand_reg.reg.ref - X86_REF_RAX) & 0x7;
         bool high = reg_index >= 4;
