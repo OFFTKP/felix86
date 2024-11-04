@@ -1152,7 +1152,7 @@ void Emitter::EmitVMinu(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, bis
 }
 
 void Emitter::EmitVSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
-    UNREACHABLE();
+    AS.VSUB(Vd, Vs2, Vs1);
 }
 
 void Emitter::EmitVAdd(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
