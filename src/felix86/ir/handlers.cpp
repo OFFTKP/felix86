@@ -987,6 +987,38 @@ IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     SSAInstruction* result = ir.Mul(ir.Sext(reg, size_e), ir.Sext(rm, size_e));
     ir.SetReg(inst->operand_reg, result);
+
+    // Check if top bits are not sign extension of bottom bits
+    switch (size_e) {
+    case X86_SIZE_WORD: {
+        SSAInstruction* result_high = ir.Shri(result, 16);
+        SSAInstruction* sext = ir.Sext(result, X86_SIZE_DWORD);
+        SSAInstruction* masked = ir.And(result_high, ir.Imm(0xffff));
+        SSAInstruction* sext_masked = ir.And(sext, ir.Imm(0xffff));
+        SSAInstruction* not_equal = ir.NotEqual(masked, sext_masked);
+        ir.SetFlag(not_equal, X86_REF_OF);
+        ir.SetFlag(not_equal, X86_REF_CF);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        SSAInstruction* result_high = ir.Shri(result, 32);
+        SSAInstruction* sext = ir.Sext(result, X86_SIZE_QWORD);
+        SSAInstruction* masked = ir.And(result_high, ir.Imm(0xffffffff));
+        SSAInstruction* sext_masked = ir.And(sext, ir.Imm(0xffffffff));
+        SSAInstruction* not_equal = ir.NotEqual(masked, sext_masked);
+        ir.SetFlag(not_equal, X86_REF_OF);
+        ir.SetFlag(not_equal, X86_REF_CF);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        SSAInstruction* result_high = ir.Mulh(reg, rm);
+        SSAInstruction* sext = ir.Sari(result, 63);
+        SSAInstruction* not_equal = ir.NotEqual(result_high, sext);
+        ir.SetFlag(not_equal, X86_REF_OF);
+        ir.SetFlag(not_equal, X86_REF_CF);
+        break;
+    }
+    }
 }
 
 IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
