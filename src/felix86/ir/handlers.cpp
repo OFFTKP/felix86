@@ -922,10 +922,6 @@ IR_HANDLE(syscall) { // syscall - 0x0f 0x05
 }
 
 IR_HANDLE(movhps_xmm_m64) {
-    if (inst->operand_rm.type != X86_OP_TYPE_MEMORY) {
-        ERROR("movhps xmm, m64 but m64 is not a memory operand");
-    }
-
     SSAInstruction* low = ir.GetReg(inst->operand_reg);
     SSAInstruction* high;
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
