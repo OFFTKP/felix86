@@ -477,6 +477,24 @@ void IREmitter::Punpckl(x86_instruction_t* inst, VectorState state) {
     // Essentially two "vdecompress" (viota + vrgather) instructions
     // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
     // This means we don't care to reduce the splat to only the first two elements
+    // Doing iota with these masks essentially creates something like
+    // [3 3 2 2 1 1 0 0] and [4 3 3 2 2 1 1 0]
+    // And the gather itself is also masked
+    // So for the reg it picks:
+    // [h g f e d c b a]
+    // [4 3 3 2 2 1 1 0]
+    // [0 1 0 1 0 1 0 1]
+    // [x d x c x b x a]
+    // And for the rm it picks:
+    // [p o n m l k j i]
+    // [3 3 2 2 1 1 0 0]
+    // [1 0 1 0 1 0 1 0]
+    // [l x k x j x i x]
+    // Which is the correct interleaving of the two vectors
+    // [h g f e d c b a]
+    // [p o n m l k j i]
+    // -----------------
+    // [l d k c j b i a]
     SSAInstruction* rm_mask = VSplat(Imm(0b10101010), state);
     SetVMask(rm_mask);
     SSAInstruction* rm_iota = VIota(rm_mask, state);
