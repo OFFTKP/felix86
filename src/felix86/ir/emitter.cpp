@@ -479,12 +479,12 @@ void IREmitter::Punpckl(x86_instruction_t* inst, VectorState state) {
     // This means we don't care to reduce the splat to only the first two elements
     SSAInstruction* rm_mask = VSplat(Imm(0b10101010), state);
     SetVMask(rm_mask);
+    SSAInstruction* rm_iota = VIota(rm_mask, state);
     SSAInstruction* zero = VZero(state);
-    SSAInstruction* rm_iota = VId(state);
     SSAInstruction* rm_gathered = VGather(zero, rm, rm_iota, state, VecMask::Yes);
     SSAInstruction* reg_mask = VSplat(Imm(0b01010101), state);
-    SSAInstruction* reg_iota = VId(state);
     SetVMask(reg_mask);
+    SSAInstruction* reg_iota = VIota(reg_mask, state);
     SSAInstruction* result = VGather(rm_gathered, reg, reg_iota, state, VecMask::Yes);
     SetReg(inst->operand_reg, result);
 }
@@ -516,21 +516,20 @@ void IREmitter::Punpckh(x86_instruction_t* inst, VectorState state) {
 
     SSAInstruction* rm = GetRm(inst->operand_rm, state);
     SSAInstruction* reg = GetReg(inst->operand_reg);
-    // Same as punpckl but we add some number to the VId to pick the high elements
+    // Like punpckl but we add a number to pick the high elements
     SSAInstruction* rm_mask = VSplat(Imm(0b10101010), state);
     SetVMask(rm_mask);
-    SSAInstruction* zero = VZero(state);
-    SSAInstruction* rm_iota = VId(state);
+    SSAInstruction* rm_iota = VIota(rm_mask, state);
     SSAInstruction* rm_iota_added = rm_iota;
+    // We don't need to add anything for PackedQWord
     if (state != VectorState::PackedQWord) {
-        // We don't wanna add anything to the VId if we're working with packed qword
-        // since it's already gonna pick element 1
         rm_iota_added = VAddi(rm_iota, num, state);
     }
+    SSAInstruction* zero = VZero(state);
     SSAInstruction* rm_gathered = VGather(zero, rm, rm_iota_added, state, VecMask::Yes);
     SSAInstruction* reg_mask = VSplat(Imm(0b01010101), state);
     SetVMask(reg_mask);
-    SSAInstruction* reg_iota = VId(state);
+    SSAInstruction* reg_iota = VIota(reg_mask, state);
     SSAInstruction* reg_iota_added = VAddi(reg_iota, num, state);
     SSAInstruction* result = VGather(rm_gathered, reg, reg_iota_added, state, VecMask::Yes);
     SetReg(inst->operand_reg, result);
