@@ -709,6 +709,11 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::VId: {
+        EmitVId(backend, _Reg_(inst.GetName()));
+        break;
+    }
+
     case IROpcode::VGather: {
         EmitVGather(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), _Reg_(inst.GetOperand(2)), inst.GetMask());
         break;

@@ -108,6 +108,7 @@ struct IREmitter {
     // Compares [Address] with Expected and if equal, stores Source in [Address]. Also returns original value at [Address].
     SSAInstruction* AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size);
     SSAInstruction* VIota(SSAInstruction* mask, VectorState state);
+    SSAInstruction* VId(VectorState state);
     SSAInstruction* VSplat(SSAInstruction* value, VectorState state);
     SSAInstruction* VSplati(u64 imm, VectorState state);
     SSAInstruction* VMerge(SSAInstruction* true_value, SSAInstruction* false_value, VectorState state);

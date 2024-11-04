@@ -478,12 +478,12 @@ void IREmitter::Punpckl(x86_instruction_t* inst, VectorState state) {
     // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
     // This means we don't care to reduce the splat to only the first two elements
     SSAInstruction* rm_mask = VSplat(Imm(0b10101010), state);
-    SSAInstruction* rm_iota = VIota(rm_mask, state);
+    SSAInstruction* rm_iota = VId(state);
     SetVMask(rm_mask);
     SSAInstruction* zero = VZero(state);
     SSAInstruction* rm_gathered = VGather(zero, rm, rm_iota, state, VecMask::Yes);
     SSAInstruction* reg_mask = VSplat(Imm(0b01010101), state);
-    SSAInstruction* reg_iota = VIota(reg_mask, state);
+    SSAInstruction* reg_iota = VId(state);
     SetVMask(reg_mask);
     SSAInstruction* result = VGather(rm_gathered, reg, reg_iota, state, VecMask::Yes);
     SetReg(inst->operand_reg, result);

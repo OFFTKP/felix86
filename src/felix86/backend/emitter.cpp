@@ -1171,6 +1171,10 @@ void Emitter::EmitVIota(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecM
     AS.VIOTA(Vd, Vs, masked);
 }
 
+void Emitter::EmitVId(Backend& backend, biscuit::Vec Vd) {
+    AS.VID(Vd);
+}
+
 void Emitter::EmitVGather(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs1, biscuit::Vec Vs2, biscuit::Vec Viota, VecMask masked) {
     if (masked == VecMask::Yes) {
         if (Vd != Vs2 && Vd != Viota) {
