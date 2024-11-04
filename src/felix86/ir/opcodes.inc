@@ -152,6 +152,7 @@ X(VSrai,                                Vector128,                      Vector12
 X(VMSeqi,                               Vector128,                      Vector128)
 X(VSlideDowni,                          Vector128,                      Vector128)
 X(VSlideUpi,                            Vector128,                      Vector128)
+X(VSlideUpZeroesi,                      Vector128,                      Vector128)
 X(VSlide1Up,                            Vector128,                      Integer64,                      Vector128)
 X(VSlide1Down,                          Vector128,                      Integer64,                      Vector128)
 X(VFAdd,                                Vector128,                      Vector128,                      Vector128)

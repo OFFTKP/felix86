@@ -693,6 +693,10 @@ SSAInstruction* IREmitter::VSlideUpi(SSAInstruction* value, u8 shift, VectorStat
     return insertInstruction(IROpcode::VSlideUpi, state, {value}, shift);
 }
 
+SSAInstruction* IREmitter::VSlideUpZeroesi(SSAInstruction* value, u8 shift, VectorState state) {
+    return insertInstruction(IROpcode::VSlideUpZeroesi, state, {value}, shift);
+}
+
 SSAInstruction* IREmitter::VSlide1Up(SSAInstruction* integer, SSAInstruction* vector, VectorState state) {
     return insertInstruction(IROpcode::VSlide1Up, state, {integer, vector});
 }
@@ -1812,7 +1816,7 @@ void IREmitter::Group14(x86_instruction_t* inst) {
             if (shift > 15) 
                 shift = 16;
             SSAInstruction* reg = GetRm(inst->operand_rm);
-            SSAInstruction* shifted = VSrli(reg, shift, VectorState::PackedByte);
+            SSAInstruction* shifted = VSlideDowni(reg, shift, VectorState::PackedByte);
             SetRm(inst->operand_rm, shifted);
             break;
         }
@@ -1821,7 +1825,7 @@ void IREmitter::Group14(x86_instruction_t* inst) {
             if (shift > 15) 
                 shift = 16;
             SSAInstruction* reg = GetRm(inst->operand_rm);
-            SSAInstruction* shifted = VSlli(reg, shift, VectorState::PackedByte);
+            SSAInstruction* shifted = VSlideUpZeroesi(reg, shift, VectorState::PackedByte);
             SetRm(inst->operand_rm, shifted);
             break;
         }

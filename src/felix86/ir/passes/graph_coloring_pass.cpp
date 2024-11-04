@@ -285,6 +285,7 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
                 switch (inst.GetOpcode()) {
                 case IROpcode::VIota:
                 case IROpcode::VSlide1Up:
+                case IROpcode::VSlideUpZeroesi:
                 case IROpcode::VSlideUpi: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                         if (should_consider(instructions, inst.GetOperand(i))) {
