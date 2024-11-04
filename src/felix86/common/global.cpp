@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <cstring>
+#include <string>
+#include <vector>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -26,27 +28,15 @@ bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
 u32 g_spilled_count = 0;
 
-bool Extensions::G = false;
-bool Extensions::C = false;
-bool Extensions::B = false;
-bool Extensions::V = false;
-bool Extensions::Zacas = false;
-bool Extensions::Zam = false;
-bool Extensions::Zabha = false;
-bool Extensions::Zicond = false;
-bool Extensions::Xtheadcondmov = false;
+#define X(ext) bool Extensions::ext = false;
+FELIX86_EXTENSIONS_TOTAL
+#undef X
 int Extensions::VLEN = 0;
 
 void Extensions::Clear() {
-    G = false;
-    C = false;
-    B = false;
-    V = false;
-    Zacas = false;
-    Zam = false;
-    Zabha = false;
-    Zicond = false;
-    Xtheadcondmov = false;
+#define X(ext) ext = false;
+    FELIX86_EXTENSIONS_TOTAL
+#undef X
     VLEN = 0;
 }
 
@@ -225,29 +215,17 @@ bool parse_extensions(const char* arg) {
 
         std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 
-        if (extension == "g") {
-            Extensions::G = true;
-        } else if (extension == "v") {
-            Extensions::V = true;
+#define X(ext)                                                                                                                                       \
+    if (extension == #ext) {                                                                                                                         \
+        Extensions::ext = true;                                                                                                                      \
+        continue;                                                                                                                                    \
+    }
+        FELIX86_EXTENSIONS_TOTAL
+#undef X
+
+        if (Extensions::V) {
             Extensions::VLEN = 128;
-            WARN("VLEN defaulting to 128");
-        } else if (extension == "c") {
-            Extensions::C = true;
-        } else if (extension == "b") {
-            Extensions::B = true;
-        } else if (extension == "zacas") {
-            Extensions::Zacas = true;
-        } else if (extension == "zam") {
-            Extensions::Zam = true;
-        } else if (extension == "zabha") {
-            Extensions::Zabha = true;
-        } else if (extension == "zicond") {
-            Extensions::Zicond = true;
-        } else if (extension == "xtheadcondmov") {
-            Extensions::Xtheadcondmov = true;
-        } else {
-            ERROR("Unknown extension: %s", extension.c_str());
-            return false;
+            WARN("Setting VLEN to 128");
         }
     }
 

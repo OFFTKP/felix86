@@ -363,6 +363,11 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "+", GetNameString(operands[1]));
         break;
     }
+    case IROpcode::AddShifted: {
+        ret +=
+            fmt::format("{} <- {} {} ({} << {}) ", GetNameString(name), GetNameString(operands[0]), "+", GetNameString(operands[1]), immediate_data);
+        break;
+    }
     case IROpcode::Addi: {
         ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), "+", (i64)immediate_data);
         ;

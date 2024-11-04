@@ -55,6 +55,7 @@ struct IREmitter {
 
     SSAInstruction* Imm(u64 value);
     SSAInstruction* Add(SSAInstruction* lhs, SSAInstruction* rhs);
+    SSAInstruction* AddShifted(SSAInstruction* lhs, SSAInstruction* rhs, u8 shift);
     SSAInstruction* Addi(SSAInstruction* lhs, i64 rhs);
     SSAInstruction* Sub(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* Shl(SSAInstruction* lhs, SSAInstruction* rhs);

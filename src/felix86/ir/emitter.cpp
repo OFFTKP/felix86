@@ -128,6 +128,11 @@ SSAInstruction* IREmitter::Add(SSAInstruction* lhs, SSAInstruction* rhs) {
     return insertInstruction(IROpcode::Add, {lhs, rhs});
 }
 
+SSAInstruction* IREmitter::AddShifted(SSAInstruction* lhs, SSAInstruction* rhs, u8 shift) {
+    ASSERT(shift == 1 || shift == 2 || shift == 3);
+    return insertInstruction(IROpcode::AddShifted, {lhs, rhs}, shift);
+}
+
 SSAInstruction* IREmitter::Addi(SSAInstruction* lhs, i64 rhs) {
     ASSERT(IsValidSigned12BitImm(rhs));
     return insertInstruction(IROpcode::Addi, {lhs}, rhs);
@@ -829,8 +834,12 @@ SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
     SSAInstruction* address = base_final;
     if (index) {
         ASSERT(operand.memory.scale >= 0 && operand.memory.scale <= 3);
-        SSAInstruction* scaled_index = Shli(index, operand.memory.scale);
-        address = Add(base_final, scaled_index);
+        if (Extensions::B || Extensions::Xtheadba) {
+            SSAInstruction* scaled_index = Shli(index, operand.memory.scale);
+            address = Add(base_final, scaled_index);
+        } else {
+            address = AddShifted(base_final, index, operand.memory.scale);
+        }
     }
 
     SSAInstruction* displaced_address = address;
@@ -1781,7 +1790,41 @@ void IREmitter::Group3(x86_instruction_t* inst) {
 }
 
 void IREmitter::Group14(x86_instruction_t* inst) {
-    UNIMPLEMENTED();
+    x86_group14_e opcode = (x86_group14_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    switch (opcode) {
+        case X86_GROUP14_PSRLQ: {
+            u8 shift = inst->operand_imm.immediate.data & 0x3F;
+            SSAInstruction* reg = GetReg(inst->operand_reg.reg.ref);
+            SSAInstruction* shifted = VSrli(reg, shift, VectorState::PackedQWord);
+            SetReg(shifted, inst->operand_reg.reg.ref);
+            break;
+        }
+        case X86_GROUP14_PSLLQ: {
+            u8 shift = inst->operand_imm.immediate.data & 0x3F;
+            SSAInstruction* reg = GetReg(inst->operand_reg.reg.ref);
+            SSAInstruction* shifted = VSlli(reg, shift, VectorState::PackedQWord);
+            SetReg(shifted, inst->operand_reg.reg.ref);
+            break;
+        }
+        case X86_GROUP14_PSRLDQ: {
+            u8 shift = inst->operand_imm.immediate.data & 0x3F;
+            if (shift > 15) 
+                shift = 16;
+            SSAInstruction* reg = GetReg(inst->operand_reg.reg.ref);
+            SSAInstruction* shifted = VSrli(reg, shift, VectorState::PackedByte);
+            SetReg(shifted, inst->operand_reg.reg.ref);
+            break;
+        }
+        case X86_GROUP14_PSLLDQ: {
+            u8 shift = inst->operand_imm.immediate.data & 0x3F;
+            if (shift > 15) 
+                shift = 16;
+            SSAInstruction* reg = GetReg(inst->operand_reg.reg.ref);
+            SSAInstruction* shifted = VSlli(reg, shift, VectorState::PackedByte);
+            SetReg(shifted, inst->operand_reg.reg.ref);
+            break;
+        }
+    }
 }
 
 SSAInstruction* IREmitter::GetThreadStatePointer() {

@@ -586,6 +586,36 @@ void Emitter::EmitAdd(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscu
     AS.ADD(Rd, Rs1, Rs2);
 }
 
+void Emitter::EmitAddShifted(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Shifted, u8 shift) {
+    if (Extensions::B) {
+        switch (shift) {
+        case 0: {
+            AS.ADD(Rd, Rs, Shifted);
+            break;
+        }
+        case 1: {
+            AS.SH1ADD(Rd, Rs, Shifted);
+            break;
+        }
+        case 2: {
+            AS.SH2ADD(Rd, Rs, Shifted);
+            break;
+        }
+        case 3: {
+            AS.SH3ADD(Rd, Rs, Shifted);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+    } else if (Extensions::Xtheadba) {
+        AS.TH_ADDSL(Rd, Rs, Shifted, shift);
+    } else {
+        UNREACHABLE();
+    }
+}
+
 void Emitter::EmitAddi(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u64 immediate) {
     ASSERT(Rs != x0);
     if (IsValidSigned12BitImm((i64)immediate)) {

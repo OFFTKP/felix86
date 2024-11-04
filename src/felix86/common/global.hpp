@@ -23,15 +23,21 @@ void initialize_globals();
 void initialize_extensions();
 
 struct Extensions {
-    static bool G;
-    static bool C;
-    static bool B;
-    static bool V;
-    static bool Zacas;
-    static bool Zam;
-    static bool Zabha;
-    static bool Zicond;
-    static bool Xtheadcondmov;
+#define FELIX86_EXTENSIONS_TOTAL                                                                                                                     \
+    X(G)                                                                                                                                             \
+    X(C)                                                                                                                                             \
+    X(B)                                                                                                                                             \
+    X(V)                                                                                                                                             \
+    X(Zacas)                                                                                                                                         \
+    X(Zam)                                                                                                                                           \
+    X(Zabha)                                                                                                                                         \
+    X(Zicond)                                                                                                                                        \
+    X(Xtheadcondmov)                                                                                                                                 \
+    X(Xtheadba)
+
+#define X(ext) static bool ext;
+    FELIX86_EXTENSIONS_TOTAL
+#undef X
     static int VLEN;
 
     static void Clear();
