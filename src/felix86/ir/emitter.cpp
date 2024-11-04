@@ -1396,7 +1396,7 @@ SSAInstruction* IREmitter::VInsertInteger(SSAInstruction* integer, SSAInstructio
 }
 
 void IREmitter::Group1(x86_instruction_t* inst) {
-    x86_group1_e opcode = (x86_group1_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group1 opcode = (::Group1)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     SSAInstruction* rm = GetRm(inst->operand_rm);
@@ -1408,14 +1408,14 @@ void IREmitter::Group1(x86_instruction_t* inst) {
     SSAInstruction* a = nullptr;
 
     switch (opcode) {
-    case x86_group1_e::X86_GROUP1_ADD: {
+    case Group1::Add: {
         result = Add(rm, imm);
         c = IsCarryAdd(rm, result, size_e);
         o = IsOverflowAdd(rm, imm, result, size_e);
         a = IsAuxAdd(rm, imm);
         break;
     }
-    case x86_group1_e::X86_GROUP1_ADC: {
+    case Group1::Adc: {
         SSAInstruction* carry_in = GetFlag(X86_REF_CF);
         SSAInstruction* imm_carry = Add(imm, carry_in);
         result = Add(rm, imm_carry);
@@ -1424,7 +1424,7 @@ void IREmitter::Group1(x86_instruction_t* inst) {
         a = IsAuxAdd(rm, imm_carry);
         break;
     }
-    case x86_group1_e::X86_GROUP1_SBB: {
+    case Group1::Sbb: {
         SSAInstruction* carry_in = GetFlag(X86_REF_CF);
         SSAInstruction* imm_carry = Add(imm, carry_in);
         result = Sub(rm, imm_carry);
@@ -1433,26 +1433,26 @@ void IREmitter::Group1(x86_instruction_t* inst) {
         a = IsAuxSub(rm, imm_carry);
         break;
     }
-    case x86_group1_e::X86_GROUP1_OR: {
+    case Group1::Or: {
         result = Or(rm, imm);
         break;
     }
-    case x86_group1_e::X86_GROUP1_AND: {
+    case Group1::And: {
         result = And(rm, imm);
         break;
     }
-    case x86_group1_e::X86_GROUP1_SUB: {
+    case Group1::Sub: {
         result = Sub(rm, imm);
         c = IsCarrySub(rm, imm);
         o = IsOverflowSub(rm, imm, result, size_e);
         a = IsAuxSub(rm, imm);
         break;
     }
-    case x86_group1_e::X86_GROUP1_XOR: {
+    case Group1::Xor: {
         result = Xor(rm, imm);
         break;
     }
-    case x86_group1_e::X86_GROUP1_CMP: {
+    case Group1::Cmp: {
         result = Sub(rm, imm);
         c = IsCarrySub(rm, imm);
         o = IsOverflowSub(rm, imm, result, size_e);
@@ -1467,13 +1467,13 @@ void IREmitter::Group1(x86_instruction_t* inst) {
 
     SetCPAZSO(c, p, a, z, s, o);
 
-    if (opcode != x86_group1_e::X86_GROUP1_CMP) {
+    if (opcode != Group1::Cmp) {
         SetRm(inst->operand_rm, result);
     }
 }
 
 void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
-    x86_group2_e opcode = (x86_group2_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group2 opcode = (::Group2)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     u8 shift_mask = size_e == X86_SIZE_QWORD ? 0x3F : 0x1F;
@@ -1488,29 +1488,29 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
     SSAInstruction* o = nullptr;
 
     switch (opcode) {
-    case x86_group2_e::X86_GROUP2_ROL: {
+    case Group2::Rol: {
         result = Rol(rm, shift_value, size_e);
         SSAInstruction* msb = IsNegative(result, size_e);
         c = Andi(result, 1);
         o = Xor(c, msb);
         break;
     }
-    case x86_group2_e::X86_GROUP2_ROR: {
+    case Group2::Ror: {
         result = Ror(rm, shift_value, size_e);
         c = IsNegative(result, size_e);
         WARN("ROR OF unimplemented");
         break;
     }
-    case x86_group2_e::X86_GROUP2_RCL: {
+    case Group2::Rcl: {
         ERROR("Why? :(");
         break;
     }
-    case x86_group2_e::X86_GROUP2_RCR: {
+    case Group2::Rcr: {
         ERROR("Why? :(");
         break;
     }
-    case x86_group2_e::X86_GROUP2_SAL:
-    case x86_group2_e::X86_GROUP2_SHL: {
+    case Group2::Sal:
+    case Group2::Shl: {
         SSAInstruction* shift = Sub(Imm(GetBitSize(size_e)), shift_value);
         SSAInstruction* msb_mask = Shl(Imm(1), shift);
         result = Shl(rm, shift_value);
@@ -1519,7 +1519,7 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
         o = Xor(c, sign);
         break;
     }
-    case x86_group2_e::X86_GROUP2_SHR: {
+    case Group2::Shr: {
         SSAInstruction* is_zero = Seqz(shift_value);
         SSAInstruction* shift = Addi(shift_value, -1);
         SSAInstruction* mask = Shl(Imm(1), shift);
@@ -1528,7 +1528,7 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
         o = IsNegative(rm, size_e);
         break;
     }
-    case x86_group2_e::X86_GROUP2_SAR: {
+    case Group2::Sar: {
         // Shift left to place MSB to bit 63
         u8 anti_shift = 64 - GetBitSize(size_e);
         SSAInstruction* shifted_left = Shli(rm, anti_shift);
@@ -1553,7 +1553,7 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
 }
 
 void IREmitter::Group3(x86_instruction_t* inst) {
-    x86_group3_e opcode = (x86_group3_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group3 opcode = (::Group3)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
     SSAInstruction* rm = GetRm(inst->operand_rm);
@@ -1566,8 +1566,8 @@ void IREmitter::Group3(x86_instruction_t* inst) {
     SSAInstruction* o = nullptr;
 
     switch (opcode) {
-    case x86_group3_e::X86_GROUP3_TEST:
-    case x86_group3_e::X86_GROUP3_TEST_: {
+    case Group3::Test:
+    case Group3::Test_: {
         SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
         SSAInstruction* masked = And(rm, imm);
         s = IsNegative(masked, size_e);
@@ -1575,11 +1575,11 @@ void IREmitter::Group3(x86_instruction_t* inst) {
         p = Parity(masked);
         break;
     }
-    case x86_group3_e::X86_GROUP3_NOT: {
+    case Group3::Not: {
         result = Not(rm);
         break;
     }
-    case x86_group3_e::X86_GROUP3_NEG: {
+    case Group3::Neg: {
         result = Neg(rm);
         z = IsZero(result, size_e);
         c = Seqz(z);
@@ -1589,7 +1589,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
         p = Parity(result);
         break;
     }
-    case x86_group3_e::X86_GROUP3_MUL: {
+    case Group3::Mul: {
         switch (size_e) {
         case X86_SIZE_BYTE: {
             SSAInstruction* al = Zext(GetReg(X86_REF_RAX, X86_SIZE_BYTE), X86_SIZE_BYTE);
@@ -1630,7 +1630,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
         }
         break;
     }
-    case x86_group3_e::X86_GROUP3_IMUL: {
+    case Group3::IMul: {
         switch (size_e) {
         case X86_SIZE_BYTE: {
             SSAInstruction* al = Sext(GetReg(X86_REF_RAX, X86_SIZE_BYTE), X86_SIZE_BYTE);
@@ -1671,7 +1671,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
         }
         break;
     }
-    case x86_group3_e::X86_GROUP3_DIV: {
+    case Group3::Div: {
         switch (size_e) {
         case X86_SIZE_BYTE: {
             // ax / rm, al := quotient, ah := remainder
@@ -1724,7 +1724,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
         }
         break;
     }
-    case x86_group3_e::X86_GROUP3_IDIV: {
+    case Group3::IDiv: {
         switch (size_e) {
         case X86_SIZE_BYTE: {
             // ax / rm, al := quotient, ah := remainder
@@ -1790,24 +1790,24 @@ void IREmitter::Group3(x86_instruction_t* inst) {
 }
 
 void IREmitter::Group14(x86_instruction_t* inst) {
-    x86_group14_e opcode = (x86_group14_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group14 opcode = (::Group14)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
     ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER);
     switch (opcode) {
-        case x86_group14_e::X86_GROUP14_PSRLQ: {
+        case Group14::PSrlQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
             SSAInstruction* reg = GetRm(inst->operand_rm);
             SSAInstruction* shifted = VSrli(reg, shift, VectorState::PackedQWord);
             SetRm(inst->operand_rm, shifted);
             break;
         }
-        case x86_group14_e::X86_GROUP14_PSLLQ: {
+        case Group14::PSllQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
             SSAInstruction* reg = GetRm(inst->operand_rm);
             SSAInstruction* shifted = VSlli(reg, shift, VectorState::PackedQWord);
             SetRm(inst->operand_rm, shifted);
             break;
         }
-        case x86_group14_e::X86_GROUP14_PSRLDQ: {
+        case Group14::PSrlDQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
             if (shift > 15) 
                 shift = 16;
@@ -1816,7 +1816,7 @@ void IREmitter::Group14(x86_instruction_t* inst) {
             SetRm(inst->operand_rm, shifted);
             break;
         }
-        case x86_group14_e::X86_GROUP14_PSLLDQ: {
+        case Group14::PSllDQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
             if (shift > 15) 
                 shift = 16;

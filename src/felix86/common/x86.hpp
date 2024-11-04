@@ -5,59 +5,59 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
-enum class x86_group1_e : u8 {
-    X86_GROUP1_ADD = 0,
-    X86_GROUP1_OR = 1,
-    X86_GROUP1_ADC = 2,
-    X86_GROUP1_SBB = 3,
-    X86_GROUP1_AND = 4,
-    X86_GROUP1_SUB = 5,
-    X86_GROUP1_XOR = 6,
-    X86_GROUP1_CMP = 7,
+enum class Group1 : u8 {
+    Add = 0,
+    Or = 1,
+    Adc = 2,
+    Sbb = 3,
+    And = 4,
+    Sub = 5,
+    Xor = 6,
+    Cmp = 7,
 };
 
-enum class x86_group2_e : u8 {
-    X86_GROUP2_ROL = 0,
-    X86_GROUP2_ROR = 1,
-    X86_GROUP2_RCL = 2,
-    X86_GROUP2_RCR = 3,
-    X86_GROUP2_SHL = 4,
-    X86_GROUP2_SHR = 5,
-    X86_GROUP2_SAL = 6,
-    X86_GROUP2_SAR = 7,
+enum class Group2 : u8 {
+    Rol = 0,
+    Ror = 1,
+    Rcl = 2,
+    Rcr = 3,
+    Shl = 4,
+    Shr = 5,
+    Sal = 6,
+    Sar = 7,
 };
 
-enum class x86_group3_e : u8 {
-    X86_GROUP3_TEST = 0,
-    X86_GROUP3_TEST_ = 1,
-    X86_GROUP3_NOT = 2,
-    X86_GROUP3_NEG = 3,
-    X86_GROUP3_MUL = 4,
-    X86_GROUP3_IMUL = 5,
-    X86_GROUP3_DIV = 6,
-    X86_GROUP3_IDIV = 7,
+enum class Group3 : u8 {
+    Test = 0,
+    Test_ = 1,
+    Not = 2,
+    Neg = 3,
+    Mul = 4,
+    IMul = 5,
+    Div = 6,
+    IDiv = 7,
 };
 
-enum class x86_group4_e : u8 {
-    X86_GROUP4_INC = 0,
-    X86_GROUP4_DEC = 1,
+enum class Group4 : u8 {
+    Inc = 0,
+    Dec = 1,
 };
 
-enum class x86_group5_e : u8 {
-    X86_GROUP5_INC = 0,
-    X86_GROUP5_DEC = 1,
-    X86_GROUP5_CALL = 2,
-    X86_GROUP5_CALLF = 3,
-    X86_GROUP5_JMP = 4,
-    X86_GROUP5_JMPF = 5,
-    X86_GROUP5_PUSH = 6,
+enum class Group5 : u8 {
+    Inc = 0,
+    Dec = 1,
+    Call = 2,
+    CallF = 3,
+    Jmp = 4,
+    JmpF = 5,
+    Push = 6,
 };
 
-enum class x86_group14_e : u8 {
-    X86_GROUP14_PSRLQ = 2,
-    X86_GROUP14_PSRLDQ = 3,
-    X86_GROUP14_PSLLQ = 6,
-    X86_GROUP14_PSLLDQ = 7,
+enum class Group14 : u8 {
+    PSrlQ = 2,
+    PSrlDQ = 3,
+    PSllQ = 6,
+    PSllDQ = 7,
 };
 
 enum x86_rep_e {

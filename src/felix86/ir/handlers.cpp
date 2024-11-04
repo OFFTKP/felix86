@@ -780,7 +780,7 @@ IR_HANDLE(std) { // std - 0xfd
 
 IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
     x86_size_e size_e = inst->operand_reg.size;
-    x86_group4_e opcode = (x86_group4_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
+    Group4 opcode = (Group4)(inst->operand_reg.reg.ref - X86_REF_RAX);
 
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* one = ir.Imm(1);
@@ -790,20 +790,20 @@ IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
     SSAInstruction* a = nullptr;
 
     switch (opcode) {
-    case X86_GROUP4_INC: {
+    case Group4::Inc: {
         result = ir.Addi(rm, 1);
         o = ir.IsOverflowAdd(rm, one, result, size_e);
         a = ir.IsAuxAdd(rm, one);
         break;
     }
-    case X86_GROUP4_DEC: {
+    case Group4::Dec: {
         result = ir.Addi(rm, -1);
         o = ir.IsOverflowSub(rm, one, result, size_e);
         a = ir.IsAuxSub(rm, one);
         break;
     }
     default: {
-        ERROR("Unknown opcode for group4: %02x", opcode);
+        ERROR("Unknown opcode for group4: %02x", (int)opcode);
         break;
     }
     }
@@ -817,9 +817,9 @@ IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
 }
 
 IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
-    x86_group5_e opcode = (x86_group5_e)(inst->operand_reg.reg.ref - X86_REF_RAX);
+    Group5 opcode = (Group5)(inst->operand_reg.reg.ref - X86_REF_RAX);
     switch (opcode) {
-    case X86_GROUP5_INC: {
+    case Group5::Inc: {
         x86_size_e size_e = inst->operand_rm.size;
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         SSAInstruction* one = ir.Imm(1);
@@ -833,7 +833,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         ir.SetRm(inst->operand_rm, result);
         break;
     }
-    case X86_GROUP5_DEC: {
+    case Group5::Dec: {
         x86_size_e size_e = inst->operand_rm.size;
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         SSAInstruction* one = ir.Imm(1);
@@ -847,7 +847,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         ir.SetRm(inst->operand_rm, result);
         break;
     }
-    case X86_GROUP5_CALL: {
+    case Group5::Call: {
         x86_operand_t rm_op = inst->operand_rm;
         rm_op.size = X86_SIZE_QWORD;
         u64 return_address = ir.GetCurrentAddress() + inst->length;
@@ -862,7 +862,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         ir.Exit();
         break;
     }
-    case X86_GROUP5_JMP: {
+    case Group5::Jmp: {
         x86_operand_t rm_op = inst->operand_rm;
         rm_op.size = X86_SIZE_QWORD;
         SSAInstruction* rm = ir.GetRm(rm_op);
@@ -872,7 +872,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         break;
     }
     default: {
-        ERROR("Unimplemented group 5 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
+        ERROR("Unimplemented group 5 opcode: %02x during %016lx", (int)opcode, ir.GetCurrentAddress());
         break;
     }
     }
