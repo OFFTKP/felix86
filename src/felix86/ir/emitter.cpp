@@ -520,11 +520,7 @@ void IREmitter::Punpckh(x86_instruction_t* inst, VectorState state) {
     SSAInstruction* rm_mask = VSplat(Imm(0b10101010), state);
     SetVMask(rm_mask);
     SSAInstruction* rm_iota = VIota(rm_mask, state);
-    SSAInstruction* rm_iota_added = rm_iota;
-    // We don't need to add anything for PackedQWord
-    if (state != VectorState::PackedQWord) {
-        rm_iota_added = VAddi(rm_iota, num, state);
-    }
+    SSAInstruction* rm_iota_added = VAddi(rm_iota, num, state);
     SSAInstruction* zero = VZero(state);
     SSAInstruction* rm_gathered = VGather(zero, rm, rm_iota_added, state, VecMask::Yes);
     SSAInstruction* reg_mask = VSplat(Imm(0b01010101), state);
