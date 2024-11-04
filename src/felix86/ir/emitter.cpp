@@ -1791,37 +1791,38 @@ void IREmitter::Group3(x86_instruction_t* inst) {
 
 void IREmitter::Group14(x86_instruction_t* inst) {
     x86_group14_e opcode = (x86_group14_e)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER);
     switch (opcode) {
         case X86_GROUP14_PSRLQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
-            SSAInstruction* reg = GetReg(inst->operand_reg.reg.ref);
+            SSAInstruction* reg = GetRm(inst->operand_rm);
             SSAInstruction* shifted = VSrli(reg, shift, VectorState::PackedQWord);
-            SetReg(shifted, inst->operand_reg.reg.ref);
+            SetRm(inst->operand_rm, shifted);
             break;
         }
         case X86_GROUP14_PSLLQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
-            SSAInstruction* reg = GetReg(inst->operand_reg.reg.ref);
+            SSAInstruction* reg = GetRm(inst->operand_rm);
             SSAInstruction* shifted = VSlli(reg, shift, VectorState::PackedQWord);
-            SetReg(shifted, inst->operand_reg.reg.ref);
+            SetRm(inst->operand_rm, shifted);
             break;
         }
         case X86_GROUP14_PSRLDQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
             if (shift > 15) 
                 shift = 16;
-            SSAInstruction* reg = GetReg(inst->operand_reg.reg.ref);
+            SSAInstruction* reg = GetRm(inst->operand_rm);
             SSAInstruction* shifted = VSrli(reg, shift, VectorState::PackedByte);
-            SetReg(shifted, inst->operand_reg.reg.ref);
+            SetRm(inst->operand_rm, shifted);
             break;
         }
         case X86_GROUP14_PSLLDQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
             if (shift > 15) 
                 shift = 16;
-            SSAInstruction* reg = GetReg(inst->operand_reg.reg.ref);
+            SSAInstruction* reg = GetRm(inst->operand_rm);
             SSAInstruction* shifted = VSlli(reg, shift, VectorState::PackedByte);
-            SetReg(shifted, inst->operand_reg.reg.ref);
+            SetRm(inst->operand_rm, shifted);
             break;
         }
     }
