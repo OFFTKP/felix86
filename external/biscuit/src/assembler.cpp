@@ -685,7 +685,7 @@ void Assembler::CZERO_NEZ(GPR rd, GPR value, GPR condition) noexcept {
 // XTheadBa Extension Instructions
 
 void Assembler::TH_ADDSL(GPR rd, GPR rs1, GPR rs2, uint32_t shift) noexcept {
-    BISCUIT_ASSERT(shift >= 0 && shift <= 3);
+    BISCUIT_ASSERT(shift <= 3);
     EmitRType(m_buffer, 0b0000000 | shift, rs2, rs1, 0b001, rd, 0b0001011);
 }
 

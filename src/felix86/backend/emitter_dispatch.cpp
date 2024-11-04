@@ -305,6 +305,11 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::AddShifted: {
+        EmitAddShifted(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        break;
+    }
+
     case IROpcode::Addi: {
         EmitAddi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
