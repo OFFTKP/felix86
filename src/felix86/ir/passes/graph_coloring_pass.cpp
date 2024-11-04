@@ -287,14 +287,18 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
                 case IROpcode::VSlide1Up:
                 case IROpcode::VSlideUpi: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                        live_now.insert(inst.GetOperand(i));
+                        if (should_consider(instructions, inst.GetOperand(i))) {
+                            live_now.insert(inst.GetOperand(i));
+                        }
                     }
                     break;
                 }
                 case IROpcode::VGather: {
                     // Doesn't interfere with the first operand
                     for (u8 i = 1; i < inst.GetOperandCount(); i++) {
-                        live_now.insert(inst.GetOperand(i));
+                        if (should_consider(instructions, inst.GetOperand(i))) {
+                            live_now.insert(inst.GetOperand(i));
+                        }
                     }
                     break;
                 }

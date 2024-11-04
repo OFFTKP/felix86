@@ -226,12 +226,12 @@ void* Emulator::compileFunction(u64 rip) {
     // Remove unnecessary vector state instructions and add ones needed before stores
     PassManager::VectorStatePass(&backend_function);
 
-    std::lock_guard<std::mutex> lock(compilation_mutex);
-    auto [func, size] = backend.EmitFunction(backend_function, allocations);
-
     if (g_print_blocks) {
         fmt::print("Backend function IR:\n{}\n", backend_function.Print());
     }
+
+    std::lock_guard<std::mutex> lock(compilation_mutex);
+    auto [func, size] = backend.EmitFunction(backend_function, allocations);
 
     if (g_print_disassembly) {
         fmt::print("Disassembly of function at 0x{:X}:\n", rip);
