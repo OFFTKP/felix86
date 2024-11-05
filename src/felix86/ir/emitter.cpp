@@ -673,8 +673,16 @@ SSAInstruction* IREmitter::VSlli(SSAInstruction* value, u8 shift, VectorState st
     return insertInstruction(IROpcode::VSlli, state, {value}, shift);
 }
 
+SSAInstruction* IREmitter::VSll(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VSll, state, {lhs, rhs});
+}
+
 SSAInstruction* IREmitter::VSrli(SSAInstruction* value, u8 shift, VectorState state) {
     return insertInstruction(IROpcode::VSrli, state, {value}, shift);
+}
+
+SSAInstruction* IREmitter::VSrl(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VSrl, state, {lhs, rhs});
 }
 
 SSAInstruction* IREmitter::VSrai(SSAInstruction* value, u8 shift, VectorState state) {
