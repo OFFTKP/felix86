@@ -204,6 +204,88 @@ static void spill(BackendFunction& function, u32 node, u32 location, AllocationT
     }
 }
 
+static void liveness_worklist(const BackendFunction& function, const std::vector<const BackendBlock*>& blocks, std::vector<LivenessSet>& in,
+                              std::vector<LivenessSet>& out, std::vector<LivenessSet>& use, std::vector<LivenessSet>& def) {
+    std::deque<size_t> worklist;
+    for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
+        worklist.push_back((*it)->GetIndex());
+    }
+    while (!worklist.empty()) {
+        const BackendBlock& block = function.GetBlock(worklist.front());
+        worklist.pop_front();
+
+        size_t i = block.GetIndex();
+
+        LivenessSet in_old = in[i];
+        LivenessSet out_old = out[i];
+
+        out[i].clear();
+        // out[b] = U (in[s]) for all s in succ[b]
+        for (u8 k = 0; k < block.GetSuccessorCount(); k++) {
+            u32 succ_index = block.GetSuccessor(k);
+            out[i].insert(in[succ_index].begin(), in[succ_index].end());
+        }
+
+        LivenessSet out_minus_def = out[i];
+        for (u32 def_inst : def[i]) {
+            out_minus_def.erase(def_inst);
+        }
+
+        in[i].clear();
+        // in[b] = use[b] U (out[b] - def[b])
+        in[i].insert(use[i].begin(), use[i].end());
+        in[i].insert(out_minus_def.begin(), out_minus_def.end());
+
+        if (in[i] != in_old) {
+            for (u32 k = 0; k < block.GetPredecessorCount(); k++) {
+                if (std::find(worklist.begin(), worklist.end(), block.GetPredecessor(k)) == worklist.end())
+                    worklist.push_back(block.GetPredecessor(k));
+            }
+        }
+    }
+}
+
+static void liveness_iterative(const BackendFunction& function, const std::vector<const BackendBlock*>& blocks, std::vector<LivenessSet>& in,
+                               std::vector<LivenessSet>& out, std::vector<LivenessSet>& use, std::vector<LivenessSet>& def) {
+    bool changed;
+    do {
+        changed = false;
+        for (size_t j = 0; j < blocks.size(); j++) {
+            const BackendBlock* block = blocks[j];
+
+            // j is the index in the postorder list, but we need the index in the blocks list
+            size_t i = block->GetIndex();
+
+            LivenessSet out_old = out[i];
+            out[i].clear();
+            // out[b] = U (in[s]) for all s in succ[b]
+            for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
+                const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
+                u32 succ_index = succ->GetIndex();
+                out[i].insert(in[succ_index].begin(), in[succ_index].end());
+            }
+
+            LivenessSet in_old = in[i];
+            in[i].clear();
+
+            // in[b] = use[b] U (out[b] - def[b])
+            in[i].insert(use[i].begin(), use[i].end());
+
+            LivenessSet out_minus_def = out[i];
+            for (u32 def_inst : def[i]) {
+                out_minus_def.erase(def_inst);
+            }
+
+            in[i].insert(out_minus_def.begin(), out_minus_def.end());
+
+            // check for changes
+            if (!changed) {
+                changed = in[i] != in_old || out[i] != out_old;
+            }
+        }
+    } while (changed);
+}
+
 static void build(BackendFunction& function, std::vector<const BackendBlock*> blocks, const InstructionMap& instructions, InterferenceGraph& graph,
                   bool (*should_consider)(const InstructionMap&, u32)) {
     std::vector<LivenessSet> in(blocks.size());
@@ -240,43 +322,30 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
         }
     }
 
-    std::deque<size_t> worklist;
-    for (size_t i = 0; i < blocks.size(); i++) {
-        worklist.push_back(i);
-    }
-    while (!worklist.empty()) {
-        const BackendBlock* block = blocks[worklist.front()];
-        worklist.pop_front();
-
-        LivenessSet in_old = in[block->GetIndex()];
-
-        size_t i = block->GetIndex();
-        out[i].clear();
-        // out[b] = U (in[s]) for all s in succ[b]
-        for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
-            const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
-            u32 succ_index = succ->GetIndex();
-            out[i].insert(in[succ_index].begin(), in[succ_index].end());
-        }
-
-        LivenessSet out_minus_def = out[i];
-        for (u32 def_inst : def[i]) {
-            out_minus_def.erase(def_inst);
-        }
-
-        in[i].clear();
-        // in[b] = use[b] U (out[b] - def[b])
-        in[i].insert(use[i].begin(), use[i].end());
-        in[i].insert(out_minus_def.begin(), out_minus_def.end());
-
-        if (in[i] != in_old) {
-            for (u8 k = 0; k < block->GetPredecessorCount(); k++) {
-                const BackendBlock* pred = &function.GetBlock(block->GetPredecessor(k));
-                u32 pred_index = pred->GetIndex();
-                worklist.push_back(pred_index);
-            }
-        }
-    }
+    // auto in_copy = in;
+    // auto out_copy = out;
+    // auto use_copy = use;
+    // auto def_copy = def;
+    liveness_iterative(function, blocks, in, out, use, def);
+    // liveness_worklist(function, blocks, in, out, use, def);
+    // for (size_t i = 0; i < blocks.size(); i++) {
+    //     if (in[i] != in_copy[i] || out[i] != out_copy[i] || use[i] != use_copy[i] || def[i] != def_copy[i]) {
+    //         for (size_t j = 0; j < in[i].size(); j++) {
+    //             printf("in[%zu]: %s\n", i, GetNameString(j).c_str());
+    //         }
+    //         for (size_t j = 0; j < out[i].size(); j++) {
+    //             printf("out[%zu]: %s\n", i, GetNameString(j).c_str());
+    //         }
+    //         for (size_t j = 0; j < in_copy[i].size(); j++) {
+    //             printf("in_copy[%zu]: %s\n", i, GetNameString(j).c_str());
+    //         }
+    //         for (size_t j = 0; j < out_copy[i].size(); j++) {
+    //             printf("out_copy[%zu]: %s\n", i, GetNameString(j).c_str());
+    //         }
+    //         printf("Sizes: in: %zu, out: %zu, in_copy: %zu, out_copy: %zu\n", in[i].size(), out[i].size(), in_copy[i].size(), out_copy[i].size());
+    //         ERROR("Liveness analysis failed");
+    //     }
+    // }
 
     graph.Reserve(instructions.size());
 
