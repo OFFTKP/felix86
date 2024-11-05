@@ -356,28 +356,28 @@ void Emitter::EmitZext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitZext16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    AS.SLLI(Rd, Rs, 48);
-    AS.SRLI(Rd, Rd, 48);
+    if (Extensions::B) {
+        AS.ZEXTH(Rd, Rs);
+    } else {
+        AS.SLLI(Rd, Rs, 48);
+        AS.SRLI(Rd, Rd, 48);
+    }
 }
 
 void Emitter::EmitZext32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    AS.SLLI(Rd, Rs, 32);
-    AS.SRLI(Rd, Rd, 32);
+    if (Extensions::B) {
+        AS.ZEXTW(Rd, Rs);
+    } else {
+        AS.SLLI(Rd, Rs, 32);
+        AS.SRLI(Rd, Rd, 32);
+    }
 }
 
 void Emitter::EmitClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    AS.CLZ(Rd, Rs);
-}
-
-void Emitter::EmitCtzh(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    SoftwareCtz(backend, Rd, Rs, 16);
-}
-
-void Emitter::EmitCtzw(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
     if (Extensions::B) {
-        AS.CTZW(Rd, Rs);
+        AS.CLZ(Rd, Rs);
     } else {
-        SoftwareCtz(backend, Rd, Rs, 32);
+        ERROR("IMPLME: SoftwareClz");
     }
 }
 
@@ -423,6 +423,7 @@ void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
             0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
             1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
         };
+        static_assert(sizeof(bitcount) == 256, "Invalid bitcount table size");
         // clang-format on
 
         AS.LI(t0, (u64)&bitcount);

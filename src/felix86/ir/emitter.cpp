@@ -210,14 +210,6 @@ SSAInstruction* IREmitter::Ctz(SSAInstruction* value) {
     return insertInstruction(IROpcode::Ctz, {value});
 }
 
-SSAInstruction* IREmitter::Ctzh(SSAInstruction* value) {
-    return insertInstruction(IROpcode::Ctzh, {value});
-}
-
-SSAInstruction* IREmitter::Ctzw(SSAInstruction* value) {
-    return insertInstruction(IROpcode::Ctzw, {value});
-}
-
 SSAInstruction* IREmitter::Parity(SSAInstruction* value) {
     return insertInstruction(IROpcode::Parity, {value});
 }

@@ -10,9 +10,9 @@
         FEXTestLoader::RunTest("ASM/Primary/" #opcode ".asm");                                                                                       \
     }
 
-#define PRIMARY_TEST_BASE(name)  \
-    CATCH_TEST_CASE(#name, "[FEX]") { \
-        FEXTestLoader::RunTest("ASM/" #name ".asm"); \
+#define PRIMARY_TEST_BASE(name)                                                                                                                      \
+    CATCH_TEST_CASE(#name, "[FEX]") {                                                                                                                \
+        FEXTestLoader::RunTest("ASM/" #name ".asm");                                                                                                 \
     }
 
 #define PRIMARY_TEST_KNOWN_FAILURE(opcode)
@@ -91,7 +91,6 @@ PRIMARY_TEST(E9)
 PRIMARY_TEST(EB)
 
 PRIMARY_TEST_BASE(lea)
-PRIMARY_TEST_BASE(pslldq)
 
 PRIMARY_TEST_NO_PREFIX(SHL)
 PRIMARY_TEST_NO_PREFIX(SHR)

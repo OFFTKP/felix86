@@ -265,16 +265,6 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
-    case IROpcode::Ctzh: {
-        EmitCtzh(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
-        break;
-    }
-
-    case IROpcode::Ctzw: {
-        EmitCtzw(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
-        break;
-    }
-
     case IROpcode::Ctz: {
         EmitCtz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
         break;

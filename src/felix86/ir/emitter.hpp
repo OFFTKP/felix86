@@ -69,8 +69,6 @@ struct IREmitter {
     SSAInstruction* Select(SSAInstruction* cond, SSAInstruction* true_value, SSAInstruction* false_value);
     SSAInstruction* Clz(SSAInstruction* value);
     SSAInstruction* Ctz(SSAInstruction* value);
-    SSAInstruction* Ctzh(SSAInstruction* value);
-    SSAInstruction* Ctzw(SSAInstruction* value);
     SSAInstruction* Parity(SSAInstruction* value);
     SSAInstruction* And(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* Andi(SSAInstruction* lhs, u64 rhs);

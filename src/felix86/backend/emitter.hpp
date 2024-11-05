@@ -35,8 +35,6 @@ private:
     static void EmitZext16(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitZext32(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitClz(Backend&, biscuit::GPR, biscuit::GPR);
-    static void EmitCtzh(Backend&, biscuit::GPR, biscuit::GPR);
-    static void EmitCtzw(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitCtz(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitNot(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitNeg(Backend&, biscuit::GPR, biscuit::GPR);

@@ -47,8 +47,6 @@ X(Mul,                                  Integer64,                      Integer6
 X(Mulh,                                 Integer64,                      Integer64,                      Integer64)
 X(Mulhu,                                Integer64,                      Integer64,                      Integer64)
 X(Clz,                                  Integer64,                      Integer64)
-X(Ctzh,                                 Integer64,                      Integer64)
-X(Ctzw,                                 Integer64,                      Integer64)
 X(Ctz,                                  Integer64,                      Integer64)
 X(Shl,                                  Integer64,                      Integer64,                      Integer64)
 X(Shli,                                 Integer64,                      Integer64)

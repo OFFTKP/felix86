@@ -1061,7 +1061,6 @@ IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
     SSAInstruction* zero = ir.IsZero(rm, size_e);
     SSAInstruction* clz = ir.Clz(rm);
     // CLZ always deals on 64-bit values, so we need to subtract the result from 63
-    // TODO: make clzw and clzh instead
     SSAInstruction* sub = ir.Sub(ir.Imm(63), clz);
     ir.SetReg(inst->operand_reg, sub);
     ir.SetFlag(zero, X86_REF_ZF);
@@ -1071,25 +1070,7 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* z = ir.IsZero(rm, size_e);
-    SSAInstruction* ctz;
-    switch (size_e) {
-    case X86_SIZE_QWORD: {
-        ctz = ir.Ctz(rm);
-        break;
-    }
-    case X86_SIZE_DWORD: {
-        ctz = ir.Ctzw(rm);
-        break;
-    }
-    case X86_SIZE_WORD: {
-        ctz = ir.Ctzh(rm);
-        break;
-    }
-    default: {
-        ERROR("Unknown size for bsf: %d", size_e);
-        return;
-    }
-    }
+    SSAInstruction* ctz = ir.Ctz(rm); // in x86 result is undefined if it's zero so we don't care
     ir.SetReg(inst->operand_reg, ctz);
     ir.SetFlag(z, X86_REF_ZF);
 }

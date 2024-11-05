@@ -684,14 +684,6 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "clz", "src", GetNameString(operands[0]));
         break;
     }
-    case IROpcode::Ctzh: {
-        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "ctzh", "src", GetNameString(operands[0]));
-        break;
-    }
-    case IROpcode::Ctzw: {
-        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "ctzw", "src", GetNameString(operands[0]));
-        break;
-    }
     case IROpcode::Ctz: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "ctz", "src", GetNameString(operands[0]));
         break;
