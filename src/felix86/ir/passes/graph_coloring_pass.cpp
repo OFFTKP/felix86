@@ -11,6 +11,15 @@ struct Node {
     Node& operator=(const Node&) = delete;
 };
 
+struct InstructionMetadata {
+    BackendInstruction* inst = nullptr;
+    u32 spill_cost = 0; // sum of uses + defs (loads and stores that would have to be inserted)
+    u32 interferences = 0;
+    bool infinite_cost = false;
+};
+
+using InstructionMap = std::unordered_map<u32, InstructionMetadata>;
+
 struct InterferenceGraph {
     void AddEdge(u32 a, u32 b) {
         graph[b].edges.insert(a);
@@ -37,13 +46,21 @@ struct InterferenceGraph {
         return id;
     }
 
-    u32 Worst() {
-        u32 max = 0;
+    u32 Worst(const InstructionMap& instructions) {
+        u32 min = std::numeric_limits<u32>::max();
         u32 chosen = 0;
         for (const auto& [id, edges] : graph) {
-            if (!edges.removed && edges.edges.size() > max) {
-                max = edges.edges.size();
-                chosen = id;
+            if (!edges.removed) {
+                if (edges.edges.size() == 0)
+                    continue;
+                if (instructions.at(id).infinite_cost)
+                    continue;
+                float spill_cost = instructions.at(id).spill_cost;
+                float cost = spill_cost / edges.edges.size();
+                if (cost < min) {
+                    min = cost;
+                    chosen = id;
+                }
             }
         }
         return chosen;
@@ -110,18 +127,9 @@ private:
     std::unordered_map<u32, Edges> graph;
 };
 
-struct InstructionMetadata {
-    BackendInstruction* inst = nullptr;
-    u32 spill_cost = 0; // sum of uses + defs (loads and stores that would have to be inserted)
-    u32 interferences = 0;
-    bool infinite_cost = false;
-};
-
 using LivenessSet = std::unordered_set<u32>;
 
 using CoalescingHeuristic = bool (*)(BackendFunction& function, InterferenceGraph& graph, u32 k, u32 lhs, u32 rhs);
-
-using InstructionMap = std::unordered_map<u32, InstructionMetadata>;
 
 static bool reserved_gpr(const BackendInstruction& inst) {
     switch (inst.GetOpcode()) {
@@ -547,7 +555,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             while (!graph.empty()) {
                 // Pick some vertex using a heuristic and remove it.
                 // If it causes some node to have less than k neighbors, repeat at step 1, otherwise repeat step 2.
-                nodes.push_back(graph.RemoveNode(graph.Worst()));
+                nodes.push_back(graph.RemoveNode(graph.Worst(instructions)));
 
                 if (graph.HasLessThanK(k)) {
                     repeat_outer = true;
