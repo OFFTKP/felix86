@@ -187,6 +187,16 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, result);
         break;
     }
+    case felix86_x86_64_write: {
+        result = HOST_SYSCALL(write, rdi, (const void*)rsi, rdx);
+        STRACE("write(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_exit_group: {
+        VERBOSE("Emulator called exit_group(%d)", (int)rdi);
+        result = HOST_SYSCALL(exit_group, rdi);
+        break;
+    }
     default: {
         ERROR("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
         break;
