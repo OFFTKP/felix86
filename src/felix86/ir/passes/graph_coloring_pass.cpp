@@ -6,6 +6,9 @@
 struct Node {
     u32 id;
     std::unordered_set<u32> edges;
+
+    Node(const Node&) = delete;
+    Node& operator=(const Node&) = delete;
 };
 
 struct InterferenceGraph {
@@ -209,6 +212,13 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
     std::vector<LivenessSet> out(blocks.size());
     std::vector<LivenessSet> use(blocks.size());
     std::vector<LivenessSet> def(blocks.size());
+
+    for (size_t i = 0; i < blocks.size(); i++) {
+        in[i].reserve(blocks[i]->GetInstructions().size());
+        out[i].reserve(blocks[i]->GetInstructions().size());
+        use[i].reserve(blocks[i]->GetInstructions().size());
+        def[i].reserve(blocks[i]->GetInstructions().size());
+    }
 
     for (size_t counter = 0; counter < blocks.size(); counter++) {
         const BackendBlock* block = blocks[counter];
