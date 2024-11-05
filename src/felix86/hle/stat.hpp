@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include "felix86/common/utility.hpp"
 
-struct x64Stat {
+struct __attribute__((packed)) x64Stat {
     x64Stat() = delete;
 
     x64Stat(const struct stat& host_stat) {
