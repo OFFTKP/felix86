@@ -10,8 +10,8 @@ struct Node {
 
 struct InterferenceGraph {
     void AddEdge(u32 a, u32 b) {
-        graph[b].insert(a);
-        graph[a].insert(b);
+        graph[b].edges.insert(a);
+        graph[a].edges.insert(b);
     }
 
     void AddEmpty(u32 id) {
@@ -20,18 +20,18 @@ struct InterferenceGraph {
     }
 
     void RemoveEdge(u32 a, u32 b) {
-        graph[a].erase(b);
-        graph[b].erase(a);
+        graph[a].edges.erase(b);
+        graph[b].edges.erase(a);
     }
 
-    Node RemoveNode(u32 id) {
-        Node node = {id, graph[id]};
-        for (u32 edge : graph[id]) {
-            graph[edge].erase(id);
+    u32 RemoveNode(u32 id) {
+        auto& edges = graph[id].edges;
+        for (u32 edge : edges) {
+            graph[edge].edges.erase(id);
         }
 
-        graph.erase(id);
-        return node;
+        graph[id].removed = true;
+        return id;
     }
 
     u32 Random() {
@@ -47,7 +47,7 @@ struct InterferenceGraph {
     }
 
     const std::unordered_set<u32>& GetInterferences(u32 inst) {
-        return graph[inst];
+        return graph[inst].edges;
     }
 
     auto begin() {
@@ -63,7 +63,12 @@ struct InterferenceGraph {
     }
 
     bool empty() {
-        return graph.empty();
+        for (const auto& [id, edges] : graph) {
+            if (!edges.removed) {
+                return false;
+            }
+        }
+        return true;
     }
 
     void clear() {
@@ -76,7 +81,7 @@ struct InterferenceGraph {
 
     bool HasLessThanK(u32 k) {
         for (const auto& [id, edges] : graph) {
-            if (edges.size() < k) {
+            if (edges.edges.size() < k && !edges.removed) {
                 return true;
             }
         }
@@ -88,7 +93,12 @@ struct InterferenceGraph {
     }
 
 private:
-    std::unordered_map<u32, std::unordered_set<u32>> graph;
+    struct Edges {
+        bool removed;
+        std::unordered_set<u32> edges;
+    };
+
+    std::unordered_map<u32, Edges> graph;
 };
 
 struct InstructionMetadata {
@@ -324,11 +334,11 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
     }
 }
 
-static u32 choose(const InstructionMap& instructions, const std::deque<Node>& nodes) {
+static u32 choose(const InstructionMap& instructions, const std::deque<u32>& nodes) {
     float min = std::numeric_limits<float>::max();
     u32 chosen = 0;
 
-    for (auto& [node, edges] : nodes) {
+    for (auto& node : nodes) {
         float spill_cost = instructions.at(node).spill_cost;
         float degree = instructions.at(node).interferences;
         if (degree == 0)
@@ -431,7 +441,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
     const u32 k = available_colors.size();
     while (true) {
         // Chaitin-Briggs algorithm
-        std::deque<Node> nodes;
+        std::deque<u32> nodes;
         InterferenceGraph graph;
         InstructionMap instructions;
         AllocationMap allocations;
@@ -449,7 +459,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
 
         for (auto& [name, edges] : graph) {
             ASSERT_MSG(instructions.find(name) != instructions.end(), "Instruction %s not found in map", GetNameString(name).c_str());
-            instructions.at(name).interferences = edges.size();
+            instructions.at(name).interferences = edges.edges.size();
         }
 
         while (true) {
@@ -458,7 +468,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
                 // Pick any node with degree less than k and put it on the stack
                 std::stack<u32> to_remove;
                 for (auto& [id, edges] : graph) {
-                    if (edges.size() < k) {
+                    if (edges.edges.size() < k && !edges.removed) {
                         to_remove.push(id);
                     }
                 }
@@ -496,10 +506,11 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
         bool colored = true;
 
         while (!nodes.empty()) {
-            Node node = nodes.back();
+            u32 id = nodes.back();
+            const auto& edges = graph.GetInterferences(id);
 
             std::vector<u32> colors = available_colors;
-            for (u32 neighbor : node.edges) {
+            for (u32 neighbor : edges) {
                 if (allocations.IsAllocated(neighbor)) {
                     u32 allocation = allocations.GetAllocationIndex(neighbor);
                     std::erase(colors, allocation);
@@ -511,7 +522,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
                 break;
             }
 
-            allocations.Allocate(node.id, type, colors[0]);
+            allocations.Allocate(id, type, colors[0]);
             nodes.pop_back();
         }
 
