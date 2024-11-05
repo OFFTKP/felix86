@@ -37,10 +37,16 @@ struct InterferenceGraph {
         return id;
     }
 
-    u32 Random() {
-        auto it = graph.begin();
-        std::advance(it, rand() % graph.size());
-        return it->first;
+    u32 Worst() {
+        u32 max = 0;
+        u32 chosen = 0;
+        for (const auto& [id, edges] : graph) {
+            if (!edges.removed && edges.edges.size() > max) {
+                max = edges.edges.size();
+                chosen = id;
+            }
+        }
+        return chosen;
     }
 
     void AddNode(const Node& node) {
@@ -207,8 +213,8 @@ static void spill(BackendFunction& function, u32 node, u32 location, AllocationT
 static void liveness_worklist(const BackendFunction& function, const std::vector<const BackendBlock*>& blocks, std::vector<LivenessSet>& in,
                               std::vector<LivenessSet>& out, std::vector<LivenessSet>& use, std::vector<LivenessSet>& def) {
     std::deque<size_t> worklist;
-    for (auto it = blocks.rbegin(); it != blocks.rend(); ++it) {
-        worklist.push_back((*it)->GetIndex());
+    for (u32 i = 0; i < blocks.size(); i++) {
+        worklist.push_back(blocks[i]->GetIndex());
     }
     while (!worklist.empty()) {
         const BackendBlock& block = function.GetBlock(worklist.front());
@@ -217,7 +223,6 @@ static void liveness_worklist(const BackendFunction& function, const std::vector
         size_t i = block.GetIndex();
 
         LivenessSet in_old = in[i];
-        LivenessSet out_old = out[i];
 
         out[i].clear();
         // out[b] = U (in[s]) for all s in succ[b]
@@ -237,9 +242,11 @@ static void liveness_worklist(const BackendFunction& function, const std::vector
         in[i].insert(out_minus_def.begin(), out_minus_def.end());
 
         if (in[i] != in_old) {
-            for (u32 k = 0; k < block.GetPredecessorCount(); k++) {
-                if (std::find(worklist.begin(), worklist.end(), block.GetPredecessor(k)) == worklist.end())
-                    worklist.push_back(block.GetPredecessor(k));
+            for (u8 k = 0; k < block.GetPredecessorCount(); k++) {
+                u32 pred_index = block.GetPredecessor(k);
+                if (std::find(worklist.begin(), worklist.end(), pred_index) == worklist.end()) {
+                    worklist.push_back(pred_index);
+                }
             }
         }
     }
@@ -256,26 +263,24 @@ static void liveness_iterative(const BackendFunction& function, const std::vecto
             // j is the index in the postorder list, but we need the index in the blocks list
             size_t i = block->GetIndex();
 
+            LivenessSet in_old = in[i];
             LivenessSet out_old = out[i];
+
             out[i].clear();
             // out[b] = U (in[s]) for all s in succ[b]
             for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
-                const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
-                u32 succ_index = succ->GetIndex();
+                u32 succ_index = block->GetSuccessor(k);
                 out[i].insert(in[succ_index].begin(), in[succ_index].end());
             }
-
-            LivenessSet in_old = in[i];
-            in[i].clear();
-
-            // in[b] = use[b] U (out[b] - def[b])
-            in[i].insert(use[i].begin(), use[i].end());
 
             LivenessSet out_minus_def = out[i];
             for (u32 def_inst : def[i]) {
                 out_minus_def.erase(def_inst);
             }
 
+            in[i].clear();
+            // in[b] = use[b] U (out[b] - def[b])
+            in[i].insert(use[i].begin(), use[i].end());
             in[i].insert(out_minus_def.begin(), out_minus_def.end());
 
             // check for changes
@@ -322,30 +327,7 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
         }
     }
 
-    // auto in_copy = in;
-    // auto out_copy = out;
-    // auto use_copy = use;
-    // auto def_copy = def;
-    liveness_iterative(function, blocks, in, out, use, def);
-    // liveness_worklist(function, blocks, in, out, use, def);
-    // for (size_t i = 0; i < blocks.size(); i++) {
-    //     if (in[i] != in_copy[i] || out[i] != out_copy[i] || use[i] != use_copy[i] || def[i] != def_copy[i]) {
-    //         for (size_t j = 0; j < in[i].size(); j++) {
-    //             printf("in[%zu]: %s\n", i, GetNameString(j).c_str());
-    //         }
-    //         for (size_t j = 0; j < out[i].size(); j++) {
-    //             printf("out[%zu]: %s\n", i, GetNameString(j).c_str());
-    //         }
-    //         for (size_t j = 0; j < in_copy[i].size(); j++) {
-    //             printf("in_copy[%zu]: %s\n", i, GetNameString(j).c_str());
-    //         }
-    //         for (size_t j = 0; j < out_copy[i].size(); j++) {
-    //             printf("out_copy[%zu]: %s\n", i, GetNameString(j).c_str());
-    //         }
-    //         printf("Sizes: in: %zu, out: %zu, in_copy: %zu, out_copy: %zu\n", in[i].size(), out[i].size(), in_copy[i].size(), out_copy[i].size());
-    //         ERROR("Liveness analysis failed");
-    //     }
-    // }
+    liveness_worklist(function, blocks, in, out, use, def);
 
     graph.Reserve(instructions.size());
 
@@ -565,8 +547,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             while (!graph.empty()) {
                 // Pick some vertex using a heuristic and remove it.
                 // If it causes some node to have less than k neighbors, repeat at step 1, otherwise repeat step 2.
-                // TODO: pick heuristic that isn't random
-                nodes.push_back(graph.RemoveNode(graph.Random()));
+                nodes.push_back(graph.RemoveNode(graph.Worst()));
 
                 if (graph.HasLessThanK(k)) {
                     repeat_outer = true;

@@ -18,7 +18,7 @@ struct IRBlock {
         termination = Termination::Jump;
         successors[0] = target;
 
-        successors[0]->addPredecessor(this);
+        successors[0]->AddPredecessor(this);
     }
 
     void TerminateJumpConditional(SSAInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
@@ -36,8 +36,8 @@ struct IRBlock {
         this->condition = condition;
         condition->Lock(); // this is used by the termination, don't optimize away
 
-        successors[0]->addPredecessor(this);
-        successors[1]->addPredecessor(this);
+        successors[0]->AddPredecessor(this);
+        successors[1]->AddPredecessor(this);
     }
 
     using iterator = std::list<SSAInstruction>::iterator;
@@ -171,6 +171,10 @@ struct IRBlock {
         return dominance_frontiers;
     }
 
+    void AddPredecessor(IRBlock* pred) {
+        predecessors.push_back(pred);
+    }
+
     void AddDominanceFrontier(IRBlock* block) {
         dominance_frontiers.push_back(block);
     }
@@ -186,10 +190,6 @@ struct IRBlock {
     [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
 private:
-    void addPredecessor(IRBlock* pred) {
-        predecessors.push_back(pred);
-    }
-
     [[nodiscard]] std::string printBlock() const;
 
     [[nodiscard]] std::string printTermination() const;

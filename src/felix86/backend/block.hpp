@@ -58,6 +58,10 @@ struct BackendBlock {
         return successors;
     }
 
+    const std::vector<u32>& GetPredecessors() const {
+        return predecessors;
+    }
+
     u32 GetSuccessor(u32 index) const {
         return successors[index];
     }

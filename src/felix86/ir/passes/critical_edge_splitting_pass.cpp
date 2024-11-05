@@ -18,6 +18,7 @@ void PassManager::CriticalEdgeSplittingPass(IRFunction* function) {
         successor->RemovePredecessor(block);
         IRBlock* new_block = function->CreateBlock();
         new_block->TerminateJump(successor);
+        new_block->AddPredecessor(block);
         block->ReplaceSuccessor(successor, new_block);
 
         if (successor->HasPhis()) {
