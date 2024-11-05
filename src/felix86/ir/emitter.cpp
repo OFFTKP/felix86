@@ -1800,14 +1800,24 @@ void IREmitter::Group14(x86_instruction_t* inst) {
         case Group14::PSrlQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
             SSAInstruction* reg = GetRm(inst->operand_rm);
-            SSAInstruction* shifted = VSrli(reg, shift, VectorState::PackedQWord);
+            SSAInstruction* shifted;
+            if (shift > 31) {
+                shifted = VSrl(reg, Imm(shift), VectorState::PackedQWord);
+            } else {
+                shifted = VSrli(reg, shift, VectorState::PackedQWord);
+            }
             SetRm(inst->operand_rm, shifted);
             break;
         }
         case Group14::PSllQ: {
             u8 shift = inst->operand_imm.immediate.data & 0x3F;
             SSAInstruction* reg = GetRm(inst->operand_rm);
-            SSAInstruction* shifted = VSlli(reg, shift, VectorState::PackedQWord);
+            SSAInstruction* shifted;
+            if (shift > 31) {
+                shifted = VSll(reg, Imm(shift), VectorState::PackedQWord);
+            } else {
+                shifted = VSlli(reg, shift, VectorState::PackedQWord);
+            }
             SetRm(inst->operand_rm, shifted);
             break;
         }

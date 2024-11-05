@@ -883,8 +883,18 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vslli", "src", GetNameString(operands[0]), immediate_data);
         break;
     }
+    case IROpcode::VSll: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vsll", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
     case IROpcode::VSrli: {
         ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vsrli", "src", GetNameString(operands[0]), immediate_data);
+        break;
+    }
+    case IROpcode::VSrl: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vsrl", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
         break;
     }
     case IROpcode::VSrai: {

@@ -1228,8 +1228,16 @@ void Emitter::EmitVSplati(Backend& backend, biscuit::Vec Vd, u64 immediate) {
     AS.VMV(Vd, immediate);
 }
 
+void Emitter::EmitVSll(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VSLL(Vd, Vs2, Vs1, masked);
+}
+
 void Emitter::EmitVSlli(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
     AS.VSLL(Vd, Vs, immediate, masked);
+}
+
+void Emitter::EmitVSrl(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VSRL(Vd, Vs2, Vs1, masked);
 }
 
 void Emitter::EmitVSrli(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
