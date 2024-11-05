@@ -129,7 +129,7 @@ SSAInstruction* IREmitter::Add(SSAInstruction* lhs, SSAInstruction* rhs) {
 }
 
 SSAInstruction* IREmitter::AddShifted(SSAInstruction* lhs, SSAInstruction* rhs, u8 shift) {
-    ASSERT(shift == 1 || shift == 2 || shift == 3);
+    ASSERT(shift <= 3);
     return insertInstruction(IROpcode::AddShifted, {lhs, rhs}, shift);
 }
 
