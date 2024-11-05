@@ -191,6 +191,7 @@ void* Emulator::compileFunction(u64 rip) {
         }
     }
 
+    VERBOSE("Now compiling: %016lx", rip);
     IRFunction function{rip};
     frontend_compile_function(&function);
 
@@ -245,7 +246,6 @@ void* Emulator::compileFunction(u64 rip) {
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 
     // Mutex needs to be unlocked before the thread is dispatched
-    VERBOSE("Now compiling: %016lx", thread_state->rip);
     void* function = emulator->compileFunction(thread_state->GetRip());
 
     VERBOSE("Jumping to function %p", function);
