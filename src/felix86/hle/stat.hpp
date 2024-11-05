@@ -70,4 +70,4 @@ private:
 };
 
 static_assert(std::is_trivial<x64Stat>::value);
-static_assert(sizeof(x64Stat) == sizeof(struct stat));
+static_assert(sizeof(x64Stat) == 144);
