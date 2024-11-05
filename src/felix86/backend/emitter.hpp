@@ -156,9 +156,9 @@ private:
     static void EmitVSplati(Backend&, biscuit::Vec, u64);
     static void EmitVMerge(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVMergei(Backend&, biscuit::Vec, biscuit::Vec, u64);
-    static void EmitVSll(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVSll(Backend&, biscuit::Vec, biscuit::Vec, biscuit::GPR, VecMask);
     static void EmitVSlli(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
-    static void EmitVSrl(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVSrl(Backend&, biscuit::Vec, biscuit::Vec, biscuit::GPR, VecMask);
     static void EmitVSrli(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVSrai(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVMSeqi(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);

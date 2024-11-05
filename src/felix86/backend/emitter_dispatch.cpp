@@ -789,8 +789,18 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::VSll: {
+        EmitVSll(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        break;
+    }
+
     case IROpcode::VSlli: {
         EmitVSlli(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VSrl: {
+        EmitVSrl(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
