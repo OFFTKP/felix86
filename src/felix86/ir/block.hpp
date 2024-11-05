@@ -151,6 +151,10 @@ struct IRBlock {
         return predecessors;
     }
 
+    const std::vector<IRBlock*>& GetPredecessors() const {
+        return predecessors;
+    }
+
     Termination GetTermination() const {
         return termination;
     }

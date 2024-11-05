@@ -50,12 +50,20 @@ struct BackendBlock {
         }
     }
 
+    u32 GetPredecessorCount() const {
+        return predecessors.size();
+    }
+
     const std::array<u32, 2>& GetSuccessors() const {
         return successors;
     }
 
     u32 GetSuccessor(u32 index) const {
         return successors[index];
+    }
+
+    u32 GetPredecessor(u32 index) const {
+        return predecessors[index];
     }
 
     u32 GetIndex() const {
@@ -81,6 +89,7 @@ private:
     Termination termination = Termination::Null;
     const BackendInstruction* condition = nullptr;
     std::list<BackendInstruction> instructions{};
+    std::vector<u32> predecessors;
     std::array<u32, 2> successors = {UINT32_MAX, UINT32_MAX};
     u32 list_index = 0;
     u32 next_name = 0;

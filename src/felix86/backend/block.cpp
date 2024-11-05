@@ -38,6 +38,10 @@ BackendBlock BackendBlock::FromIRBlock(const IRBlock* block, std::vector<NamedPh
         }
     }
 
+    for (auto& pred : block->GetPredecessors()) {
+        backend_block.predecessors.push_back(pred->GetIndex());
+    }
+
     return backend_block;
 }
 

@@ -204,10 +204,8 @@ static void spill(BackendFunction& function, u32 node, u32 location, AllocationT
     }
 }
 
-static void build(BackendFunction& function, const InstructionMap& instructions, InterferenceGraph& graph,
+static void build(BackendFunction& function, std::vector<const BackendBlock*> blocks, const InstructionMap& instructions, InterferenceGraph& graph,
                   bool (*should_consider)(const InstructionMap&, u32)) {
-    std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
-
     std::vector<LivenessSet> in(blocks.size());
     std::vector<LivenessSet> out(blocks.size());
     std::vector<LivenessSet> use(blocks.size());
@@ -242,43 +240,43 @@ static void build(BackendFunction& function, const InstructionMap& instructions,
         }
     }
 
-    bool changed;
-    do {
-        changed = false;
-        for (size_t j = 0; j < blocks.size(); j++) {
-            const BackendBlock* block = blocks[j];
+    std::deque<size_t> worklist;
+    for (size_t i = 0; i < blocks.size(); i++) {
+        worklist.push_back(i);
+    }
+    while (!worklist.empty()) {
+        const BackendBlock* block = blocks[worklist.front()];
+        worklist.pop_front();
 
-            // j is the index in the postorder list, but we need the index in the blocks list
-            size_t i = block->GetIndex();
+        LivenessSet in_old = in[block->GetIndex()];
 
-            LivenessSet in_old = std::move(in[i]);
-            in[i] = {};
+        size_t i = block->GetIndex();
+        out[i].clear();
+        // out[b] = U (in[s]) for all s in succ[b]
+        for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
+            const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
+            u32 succ_index = succ->GetIndex();
+            out[i].insert(in[succ_index].begin(), in[succ_index].end());
+        }
 
-            // in[b] = use[b] U (out[b] - def[b])
-            in[i].insert(use[i].begin(), use[i].end());
+        LivenessSet out_minus_def = out[i];
+        for (u32 def_inst : def[i]) {
+            out_minus_def.erase(def_inst);
+        }
 
-            LivenessSet out_minus_def = out[i];
-            for (u32 def_inst : def[i]) {
-                out_minus_def.erase(def_inst);
-            }
+        in[i].clear();
+        // in[b] = use[b] U (out[b] - def[b])
+        in[i].insert(use[i].begin(), use[i].end());
+        in[i].insert(out_minus_def.begin(), out_minus_def.end());
 
-            in[i].insert(out_minus_def.begin(), out_minus_def.end());
-
-            LivenessSet out_old = std::move(out[i]);
-            out[i] = {};
-            // out[b] = U (in[s]) for all s in succ[b]
-            for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
-                const BackendBlock* succ = &function.GetBlock(block->GetSuccessor(k));
-                u32 succ_index = succ->GetIndex();
-                out[i].insert(in[succ_index].begin(), in[succ_index].end());
-            }
-
-            // check for changes
-            if (!changed) {
-                changed = in[i] != in_old || out[i] != out_old;
+        if (in[i] != in_old) {
+            for (u8 k = 0; k < block->GetPredecessorCount(); k++) {
+                const BackendBlock* pred = &function.GetBlock(block->GetPredecessor(k));
+                u32 pred_index = pred->GetIndex();
+                worklist.push_back(pred_index);
             }
         }
-    } while (changed);
+    }
 
     graph.Reserve(instructions.size());
 
@@ -449,6 +447,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
                          const std::vector<u32>& available_colors, u32& spill_location) {
     g_spilled_count = 0;
     const u32 k = available_colors.size();
+    std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
     while (true) {
         // Chaitin-Briggs algorithm
         std::deque<u32> nodes;
@@ -461,7 +460,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             coalesced = false;
             graph = InterferenceGraph();
             instructions = create_instruction_map(function);
-            build(function, instructions, graph, should_consider);
+            build(function, blocks, instructions, graph, should_consider);
             if (g_coalesce) {
                 coalesced = try_coalesce(function, instructions, graph, should_consider, k, george_coalescing_heuristic);
             }
