@@ -847,10 +847,10 @@ SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
     if (index) {
         ASSERT(operand.memory.scale >= 0 && operand.memory.scale <= 3);
         if (Extensions::B || Extensions::Xtheadba) {
+            address = AddShifted(base_final, index, operand.memory.scale);
+        } else {
             SSAInstruction* scaled_index = Shli(index, operand.memory.scale);
             address = Add(base_final, scaled_index);
-        } else {
-            address = AddShifted(base_final, index, operand.memory.scale);
         }
     }
 
@@ -1805,48 +1805,48 @@ void IREmitter::Group14(x86_instruction_t* inst) {
     ::Group14 opcode = (::Group14)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
     ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER);
     switch (opcode) {
-        case Group14::PSrlQ: {
-            u8 shift = inst->operand_imm.immediate.data & 0x3F;
-            SSAInstruction* reg = GetRm(inst->operand_rm);
-            SSAInstruction* shifted;
-            if (shift > 31) {
-                shifted = VSrl(reg, Imm(shift), VectorState::PackedQWord);
-            } else {
-                shifted = VSrli(reg, shift, VectorState::PackedQWord);
-            }
-            SetRm(inst->operand_rm, shifted);
-            break;
+    case Group14::PSrlQ: {
+        u8 shift = inst->operand_imm.immediate.data & 0x3F;
+        SSAInstruction* reg = GetRm(inst->operand_rm);
+        SSAInstruction* shifted;
+        if (shift > 31) {
+            shifted = VSrl(reg, Imm(shift), VectorState::PackedQWord);
+        } else {
+            shifted = VSrli(reg, shift, VectorState::PackedQWord);
         }
-        case Group14::PSllQ: {
-            u8 shift = inst->operand_imm.immediate.data & 0x3F;
-            SSAInstruction* reg = GetRm(inst->operand_rm);
-            SSAInstruction* shifted;
-            if (shift > 31) {
-                shifted = VSll(reg, Imm(shift), VectorState::PackedQWord);
-            } else {
-                shifted = VSlli(reg, shift, VectorState::PackedQWord);
-            }
-            SetRm(inst->operand_rm, shifted);
-            break;
+        SetRm(inst->operand_rm, shifted);
+        break;
+    }
+    case Group14::PSllQ: {
+        u8 shift = inst->operand_imm.immediate.data & 0x3F;
+        SSAInstruction* reg = GetRm(inst->operand_rm);
+        SSAInstruction* shifted;
+        if (shift > 31) {
+            shifted = VSll(reg, Imm(shift), VectorState::PackedQWord);
+        } else {
+            shifted = VSlli(reg, shift, VectorState::PackedQWord);
         }
-        case Group14::PSrlDQ: {
-            u8 shift = inst->operand_imm.immediate.data & 0x3F;
-            if (shift > 15) 
-                shift = 16;
-            SSAInstruction* reg = GetRm(inst->operand_rm);
-            SSAInstruction* shifted = VSlideDowni(reg, shift, VectorState::PackedByte);
-            SetRm(inst->operand_rm, shifted);
-            break;
-        }
-        case Group14::PSllDQ: {
-            u8 shift = inst->operand_imm.immediate.data & 0x3F;
-            if (shift > 15) 
-                shift = 16;
-            SSAInstruction* reg = GetRm(inst->operand_rm);
-            SSAInstruction* shifted = VSlideUpZeroesi(reg, shift, VectorState::PackedByte);
-            SetRm(inst->operand_rm, shifted);
-            break;
-        }
+        SetRm(inst->operand_rm, shifted);
+        break;
+    }
+    case Group14::PSrlDQ: {
+        u8 shift = inst->operand_imm.immediate.data & 0x3F;
+        if (shift > 15)
+            shift = 16;
+        SSAInstruction* reg = GetRm(inst->operand_rm);
+        SSAInstruction* shifted = VSlideDowni(reg, shift, VectorState::PackedByte);
+        SetRm(inst->operand_rm, shifted);
+        break;
+    }
+    case Group14::PSllDQ: {
+        u8 shift = inst->operand_imm.immediate.data & 0x3F;
+        if (shift > 15)
+            shift = 16;
+        SSAInstruction* reg = GetRm(inst->operand_rm);
+        SSAInstruction* shifted = VSlideUpZeroesi(reg, shift, VectorState::PackedByte);
+        SetRm(inst->operand_rm, shifted);
+        break;
+    }
     }
 }
 

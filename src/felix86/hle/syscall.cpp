@@ -1,9 +1,11 @@
 #include <errno.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/filesystem.hpp"
+#include "felix86/hle/stat.hpp"
 #include "felix86/hle/syscall.hpp"
 
 // We add felix86_${ARCH}_ in front of the linux related identifiers to avoid
@@ -132,10 +134,9 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     }
     case felix86_x86_64_set_robust_list: {
         state->robust_futex_list = rdi;
-
         if (rsi != sizeof(u64) * 3) {
             WARN("Struct size is wrong during set_robust_list");
-            result = EINVAL;
+            result = -EINVAL;
         }
         STRACE("set_robust_list(%016lx, %016lx) = %016lx", rdi, rsi, result);
         break;
@@ -169,6 +170,16 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     case felix86_x86_64_mprotect: {
         result = HOST_SYSCALL(mprotect, rdi, rsi, rdx);
         STRACE("mprotect(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
+        break;
+    }
+    case felix86_x86_64_fstat: {
+        x64Stat* guest_stat = (x64Stat*)rsi;
+        struct stat host_stat;
+        result = HOST_SYSCALL(fstat, rdi, &host_stat);
+        if (result != -1) {
+            *guest_stat = host_stat;
+        }
+        STRACE("fstat(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     default: {
