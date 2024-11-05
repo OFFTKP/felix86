@@ -216,9 +216,13 @@ bool parse_extensions(const char* arg) {
         std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 
 #define X(ext)                                                                                                                                       \
-    if (extension == #ext) {                                                                                                                         \
-        Extensions::ext = true;                                                                                                                      \
-        continue;                                                                                                                                    \
+    {                                                                                                                                                \
+        std::string lower = #ext;                                                                                                                    \
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);                                                                        \
+        if (extension == lower) {                                                                                                                    \
+            Extensions::ext = true;                                                                                                                  \
+            continue;                                                                                                                                \
+        }                                                                                                                                            \
     }
         FELIX86_EXTENSIONS_TOTAL
 #undef X
