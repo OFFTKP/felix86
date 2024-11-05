@@ -226,11 +226,11 @@ bool parse_extensions(const char* arg) {
     }
         FELIX86_EXTENSIONS_TOTAL
 #undef X
+    }
 
-        if (Extensions::V) {
-            Extensions::VLEN = 128;
-            WARN("Setting VLEN to 128");
-        }
+    if (Extensions::V) {
+        Extensions::VLEN = 128;
+        WARN("Setting VLEN to 128");
     }
 
     if (!Extensions::G) {
