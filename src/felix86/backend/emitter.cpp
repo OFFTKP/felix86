@@ -594,15 +594,15 @@ void Emitter::EmitAddShifted(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs,
             break;
         }
         case 1: {
-            AS.SH1ADD(Rd, Rs, Shifted);
+            AS.SH1ADD(Rd, Shifted, Rs);
             break;
         }
         case 2: {
-            AS.SH2ADD(Rd, Rs, Shifted);
+            AS.SH2ADD(Rd, Shifted, Rs);
             break;
         }
         case 3: {
-            AS.SH3ADD(Rd, Rs, Shifted);
+            AS.SH3ADD(Rd, Shifted, Rs);
             break;
         }
         default: {

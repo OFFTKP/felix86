@@ -78,7 +78,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     u64 r10 = state->GetGpr(X86_REF_R10);
     u64 r8 = state->GetGpr(X86_REF_R8);
     u64 r9 = state->GetGpr(X86_REF_R9);
-    u64 result = 0;
+    ssize_t result = 0;
 
     Filesystem& fs = emulator->GetFilesystem();
 
@@ -188,7 +188,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     }
     }
 
-    if ((i64)result == -1) {
+    if (result == -1) {
         result = -errno;
     }
 
