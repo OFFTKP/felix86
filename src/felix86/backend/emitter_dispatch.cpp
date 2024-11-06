@@ -604,16 +604,6 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
-    case IROpcode::Rol8: {
-        EmitRol8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::Rol16: {
-        EmitRol16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
     case IROpcode::Rol32: {
         EmitRol32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
@@ -621,16 +611,6 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
 
     case IROpcode::Rol64: {
         EmitRol64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::Ror8: {
-        EmitRor8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
-        break;
-    }
-
-    case IROpcode::Ror16: {
-        EmitRor16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
     }
 

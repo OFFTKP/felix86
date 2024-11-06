@@ -584,16 +584,6 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "*", GetNameString(operands[1]));
         break;
     }
-    case IROpcode::Rol8: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "rol8", "src", GetNameString(operands[0]), "amount",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::Rol16: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "rol16", "src", GetNameString(operands[0]), "amount",
-                           GetNameString(operands[1]));
-        break;
-    }
     case IROpcode::Rol32: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "rol32", "src", GetNameString(operands[0]), "amount",
                            GetNameString(operands[1]));
@@ -601,16 +591,6 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::Rol64: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "rol64", "src", GetNameString(operands[0]), "amount",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::Ror8: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "ror8", "src", GetNameString(operands[0]), "amount",
-                           GetNameString(operands[1]));
-        break;
-    }
-    case IROpcode::Ror16: {
-        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "ror16", "src", GetNameString(operands[0]), "amount",
                            GetNameString(operands[1]));
         break;
     }

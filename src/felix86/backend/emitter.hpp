@@ -109,12 +109,8 @@ private:
     static void EmitShri(Backend&, biscuit::GPR, biscuit::GPR, i64);
     static void EmitSar(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitSari(Backend&, biscuit::GPR, biscuit::GPR, i64);
-    static void EmitRol8(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitRol16(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitRol32(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitRol64(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitRor8(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
-    static void EmitRor16(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitRor32(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitRor64(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitDiv(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);

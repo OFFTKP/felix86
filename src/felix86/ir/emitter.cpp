@@ -186,10 +186,16 @@ SSAInstruction* IREmitter::Sari(SSAInstruction* lhs, i64 rhs) {
 
 SSAInstruction* IREmitter::Rol(SSAInstruction* lhs, SSAInstruction* rhs, x86_size_e size) {
     switch (size) {
-    case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::Rol8, {lhs, rhs});
-    case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::Rol16, {lhs, rhs});
+    case x86_size_e::X86_SIZE_BYTE: {
+        SSAInstruction* left_shift = Shl(lhs, rhs);
+        SSAInstruction* right_shift = Shr(lhs, Andi(Neg(rhs), 7));
+        return Zext(Or(left_shift, right_shift), X86_SIZE_BYTE);
+    }
+    case x86_size_e::X86_SIZE_WORD: {
+        SSAInstruction* left_shift = Shl(lhs, Andi(rhs, 15));
+        SSAInstruction* right_shift = Shr(lhs, Andi(Neg(rhs), 15));
+        return Zext(Or(left_shift, right_shift), X86_SIZE_WORD);
+    }
     case x86_size_e::X86_SIZE_DWORD:
         return insertInstruction(IROpcode::Rol32, {lhs, rhs});
     case x86_size_e::X86_SIZE_QWORD:
@@ -202,10 +208,16 @@ SSAInstruction* IREmitter::Rol(SSAInstruction* lhs, SSAInstruction* rhs, x86_siz
 
 SSAInstruction* IREmitter::Ror(SSAInstruction* lhs, SSAInstruction* rhs, x86_size_e size) {
     switch (size) {
-    case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::Ror8, {lhs, rhs});
-    case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::Ror16, {lhs, rhs});
+    case x86_size_e::X86_SIZE_BYTE: {
+        SSAInstruction* left_shift = Shl(lhs, Andi(Neg(rhs), 7));
+        SSAInstruction* right_shift = Shr(lhs, Andi(rhs, 7));
+        return Zext(Or(left_shift, right_shift), X86_SIZE_BYTE);
+    }
+    case x86_size_e::X86_SIZE_WORD: {
+        SSAInstruction* left_shift = Shl(lhs, Andi(Neg(rhs), 15));
+        SSAInstruction* right_shift = Shr(lhs, Andi(rhs, 15));
+        return Zext(Or(left_shift, right_shift), X86_SIZE_WORD);
+    }
     case x86_size_e::X86_SIZE_DWORD:
         return insertInstruction(IROpcode::Ror32, {lhs, rhs});
     case x86_size_e::X86_SIZE_QWORD:

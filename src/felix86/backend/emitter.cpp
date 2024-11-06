@@ -975,50 +975,12 @@ void Emitter::EmitSari(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, i64 i
     }
 }
 
-void Emitter::EmitRol8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    AS.ANDI(t0, Rs2, 0x7);
-    AS.SLLW(Rd, Rs1, t0);
-    AS.NEG(t0, t0);
-    AS.ANDI(t0, t0, 0x7);
-    AS.SRLW(t0, Rs1, t0);
-    AS.OR(Rd, Rd, t0);
-    AS.ANDI(Rd, Rd, 0xFF);
-}
-
-void Emitter::EmitRol16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    AS.ANDI(t0, Rs2, 0xF);
-    AS.SLLW(Rd, Rs1, t0);
-    AS.NEG(t0, t0);
-    AS.ANDI(t0, t0, 0xF);
-    AS.SRLW(t0, Rs1, t0);
-    AS.OR(Rd, Rd, t0);
-    AS.ZEXTH(Rd, Rd);
-}
-
 void Emitter::EmitRol32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
     AS.ROLW(Rd, Rs1, Rs2);
 }
 
 void Emitter::EmitRol64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
     AS.ROL(Rd, Rs1, Rs2);
-}
-
-void Emitter::EmitRor8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    AS.ANDI(t0, Rs2, 0x7);
-    AS.SRLW(Rd, Rs1, t0);
-    AS.NEG(t0, t0);
-    AS.ANDI(t0, t0, 0x7);
-    AS.SLLW(t0, Rs1, t0);
-    AS.OR(Rd, Rd, t0);
-}
-
-void Emitter::EmitRor16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    AS.ANDI(t0, Rs2, 0xF);
-    AS.SRLW(Rd, Rs1, t0);
-    AS.NEG(t0, t0);
-    AS.ANDI(t0, t0, 0xF);
-    AS.SLLW(t0, Rs1, t0);
-    AS.OR(Rd, Rd, t0);
 }
 
 void Emitter::EmitRor32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
