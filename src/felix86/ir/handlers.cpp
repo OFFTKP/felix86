@@ -1037,13 +1037,13 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         ir.SetReg(actual, X86_REF_RAX, size_e);
         ir.SetFlag(ir.Equal(actual, eax), X86_REF_ZF);
     } else {
-        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        SSAInstruction* rm = ir.GetReg(inst->operand_rm.reg.ref, size_e);
         SSAInstruction* equal = ir.Equal(eax, rm);
-        SSAInstruction* new_rm = ir.Select(equal, reg, rm);
-
-        ir.SetReg(rm, X86_REF_RAX, size_e);
+        SSAInstruction* rm_full = ir.GetReg(inst->operand_rm.reg.ref, X86_SIZE_QWORD);
+        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        SSAInstruction* new_rm = ir.Select(equal, reg, rm_full);
         ir.SetRm(inst->operand_rm, new_rm);
+        ir.SetReg(rm, X86_REF_RAX, size_e);
         ir.SetFlag(equal, X86_REF_ZF);
         printf("size: %d\n", size_e);
     }
