@@ -1496,8 +1496,8 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
     case Group2::Rol: {
         result = Rol(rm, shift_value, size_e);
         SSAInstruction* msb = IsNegative(result, size_e);
-        c = Andi(result, 1);
-        o = Xor(c, msb);
+        c = Select(Seqz(shift_value), GetFlag(X86_REF_CF), Andi(result, 1));
+        o = Select(Seqz(shift_value), GetFlag(X86_REF_OF), Xor(c, msb));
         break;
     }
     case Group2::Ror: {
