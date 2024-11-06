@@ -1133,6 +1133,31 @@ IR_HANDLE(pshufd) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
     ir.SetReg(inst->operand_reg, result);
 }
 
+// These names lmao
+IR_HANDLE(shufpd) {
+    u8 imm = inst->operand_imm.immediate.data;
+    SSAInstruction *src1, *src2;
+
+    if ((imm & 0b01) == 0) {
+        src1 = ir.VToI(ir.GetReg(inst->operand_reg), VectorState::PackedQWord);
+    } else {
+        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        SSAInstruction* slide = ir.VSlideDowni(reg, 1, VectorState::PackedQWord);
+        src1 = ir.VToI(slide, VectorState::PackedQWord);
+    }
+
+    if ((imm & 0b10) == 0) {
+        src2 = ir.VToI(ir.GetRm(inst->operand_rm, VectorState::PackedQWord), VectorState::PackedQWord);
+    } else {
+        SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedQWord);
+        src2 = ir.VSlideDowni(rm, 1, VectorState::PackedQWord);
+    }
+
+    // Slide it up and insert src1
+    SSAInstruction* result = ir.VSlide1Up(src1, src2, VectorState::PackedQWord);
+    ir.SetReg(inst->operand_reg, result);
+}
+
 IR_HANDLE(group14) {
     ir.Group14(inst);
 }
