@@ -24,6 +24,7 @@ void EmitCrash(Backend& backend, ExitReason reason) {
 }
 
 void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
+    ASSERT(Rd != Rs);
     const auto& gprs = Registers::GetAllocatableGPRs();
     biscuit::GPR mask = Push(backend, gprs[0]);
     biscuit::GPR counter = Push(backend, gprs[1]);
@@ -50,6 +51,7 @@ using Operation = std::function<void(biscuit::Assembler&, biscuit::GPR, biscuit:
 
 void SoftwareAtomicFetchRMW8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Address, biscuit::Ordering ordering,
                              Operation operation) {
+    ASSERT(Rd != Rs && Rd != Address);
     if (ordering != biscuit::Ordering::AQRL) {
         UNIMPLEMENTED();
     }
@@ -103,6 +105,7 @@ void SoftwareAtomicFetchRMW8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs,
 
 void SoftwareAtomicFetchRMW16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Address, biscuit::Ordering ordering,
                               Operation operation) {
+    ASSERT(Rd != Rs && Rd != Address);
     if (ordering != biscuit::Ordering::AQRL) {
         UNIMPLEMENTED();
     }

@@ -477,6 +477,7 @@ void coalesce(BackendFunction& function, u32 lhs, u32 rhs) {
 
 bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGraph& graph, bool (*should_consider)(const InstructionMap&, u32),
                   u32 k, CoalescingHeuristic heuristic) {
+    bool coalesced = false;
     for (auto& block : function.GetBlocks()) {
         auto it = block.GetInstructions().begin();
         auto end = block.GetInstructions().end();
@@ -491,7 +492,14 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
                         if (heuristic(function, graph, k, lhs, rhs)) {
                             coalesce(function, lhs, rhs);
                             it = block.GetInstructions().erase(it);
-                            return true;
+                            coalesced = true;
+                            // Merge interferences into rhs
+                            for (u32 neighbor : edges) {
+                                if (neighbor != rhs) {
+                                    graph.AddEdge(rhs, neighbor);
+                                }
+                            }
+                            continue;
                         }
                     }
                 }
@@ -499,7 +507,7 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
             ++it;
         }
     }
-    return false;
+    return coalesced;
 }
 
 static AllocationMap run(BackendFunction& function, AllocationType type, bool (*should_consider)(const InstructionMap&, u32),

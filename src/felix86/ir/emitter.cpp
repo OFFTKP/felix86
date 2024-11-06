@@ -864,7 +864,6 @@ SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
 
     SSAInstruction* base_final = base;
     if (operand.memory.fs_override) {
-        WARN("Accessing FS base register");
         SSAInstruction* fs = getGuest(X86_REF_FS);
         base_final = Add(base, fs);
     } else if (operand.memory.gs_override) {

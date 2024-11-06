@@ -33,9 +33,6 @@ enum {
 };
 
 consteval int match_host(int syscall) {
-#if defined(__x86_64__)
-    return syscall;
-#elif defined(__riscv)
 #define X(name)                                                                                                                                      \
     case felix86_x86_64_##name:                                                                                                                      \
         return felix86_riscv64_##name;
@@ -47,16 +44,9 @@ consteval int match_host(int syscall) {
         return -1;
     }
 #undef X
-#else
-#error "What are you trying to compile on!?"
-#endif
 }
 
-#ifdef __x86_64__
-static_assert(match_host(felix86_x86_64_setxattr) == felix86_x86_64_setxattr);
-#elif defined(__riscv)
 static_assert(match_host(felix86_x86_64_setxattr) == felix86_riscv64_setxattr);
-#endif
 
 const char* print_syscall_name(u64 syscall_number) {
     switch (syscall_number) {
