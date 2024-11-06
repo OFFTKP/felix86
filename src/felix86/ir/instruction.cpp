@@ -692,6 +692,16 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "not", "src", GetNameString(operands[0]));
         break;
     }
+    case IROpcode::CZeroEqz: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "czero_eqz", "src", GetNameString(operands[0]), "cond",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::CZeroNez: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "czero_nez", "src", GetNameString(operands[0]), "cond",
+                           GetNameString(operands[1]));
+        break;
+    }
     case IROpcode::Parity: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "parity", "src", GetNameString(operands[0]));
         break;

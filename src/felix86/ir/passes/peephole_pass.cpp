@@ -446,6 +446,40 @@ bool PeepholeSelectSame(SSAInstruction& inst) {
     return false;
 }
 
+bool PeepholeCZeroEqz(SSAInstruction& inst) {
+    SSAInstruction* value = inst.GetOperand(0);
+    SSAInstruction* cond = inst.GetOperand(1);
+
+    if (cond->IsImmediate()) {
+        if (cond->GetImmediateData() == 0) {
+            inst.ReplaceWithImmediate(0);
+            return true;
+        } else {
+            inst.ReplaceWithMov(value);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool PeepholeCZeroNez(SSAInstruction& inst) {
+    SSAInstruction* value = inst.GetOperand(0);
+    SSAInstruction* cond = inst.GetOperand(1);
+
+    if (cond->IsImmediate()) {
+        if (cond->GetImmediateData() == 0) {
+            inst.ReplaceWithMov(value);
+            return true;
+        } else {
+            inst.ReplaceWithImmediate(0);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // t2 = imm << imm
 bool PeepholeShlImmediates(SSAInstruction& inst) {
     const SSAInstruction* op1 = inst.GetOperand(0);
@@ -833,6 +867,14 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
             case IROpcode::Select: {
                 CHECK(PeepholeSelectImmediate);
                 CHECK(PeepholeSelectSame);
+                break;
+            }
+            case IROpcode::CZeroEqz: {
+                CHECK(PeepholeCZeroEqz);
+                break;
+            }
+            case IROpcode::CZeroNez: {
+                CHECK(PeepholeCZeroNez);
                 break;
             }
             case IROpcode::Shl: {

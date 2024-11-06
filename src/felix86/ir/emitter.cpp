@@ -468,6 +468,14 @@ SSAInstruction* IREmitter::AmoCAS(SSAInstruction* address, SSAInstruction* expec
     }
 }
 
+SSAInstruction* IREmitter::CZeroEqz(SSAInstruction* value, SSAInstruction* cond) {
+    return insertInstruction(IROpcode::CZeroEqz, {value, cond});
+}
+
+SSAInstruction* IREmitter::CZeroNez(SSAInstruction* value, SSAInstruction* cond) {
+    return insertInstruction(IROpcode::CZeroNez, {value, cond});
+}
+
 void IREmitter::Punpckl(x86_instruction_t* inst, VectorState state) {
     SSAInstruction* rm = GetRm(inst->operand_rm, state);
     SSAInstruction* reg = GetReg(inst->operand_reg);

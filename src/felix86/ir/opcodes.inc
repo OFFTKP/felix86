@@ -101,6 +101,8 @@ X(AmoCAS16,                             Integer64,                      Integer6
 X(AmoCAS32,                             Integer64,                      Integer64,                      Integer64,                     Integer64)
 X(AmoCAS64,                             Integer64,                      Integer64,                      Integer64,                     Integer64)
 X(AmoCAS128,                            Void)
+X(CZeroEqz,                             Integer64,                      Integer64,                      Integer64)
+X(CZeroNez,                             Integer64,                      Integer64,                      Integer64)
 X(SetLessThanSigned,                    Integer64,                      Integer64,                      Integer64)
 X(SetLessThanUnsigned,                  Integer64,                      Integer64,                      Integer64)
 X(ReadByte,                             Integer64,                      Integer64)

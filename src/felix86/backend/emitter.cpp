@@ -847,6 +847,32 @@ void Emitter::EmitAmoCAS64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
     }
 }
 
+void Emitter::EmitCZeroEqz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Cond) {
+    if (Extensions::Zicond) {
+        AS.CZERO_EQZ(Rd, Rs, Cond);
+    } else {
+        Label eqz;
+        if (Rd != Rs)
+            AS.MV(Rd, Rs);
+        AS.BNEZ(Cond, &eqz);
+        AS.LI(Rd, 0);
+        AS.Bind(&eqz);
+    }
+}
+
+void Emitter::EmitCZeroNez(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Cond) {
+    if (Extensions::Zicond) {
+        AS.CZERO_NEZ(Rd, Rs, Cond);
+    } else {
+        Label nez;
+        if (Rd != Rs)
+            AS.MV(Rd, Rs);
+        AS.BEQZ(Cond, &nez);
+        AS.LI(Rd, 0);
+        AS.Bind(&nez);
+    }
+}
+
 void Emitter::EmitSub(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
     AS.SUB(Rd, Rs1, Rs2);
 }

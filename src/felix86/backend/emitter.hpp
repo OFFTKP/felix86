@@ -88,6 +88,8 @@ private:
     static void EmitAmoCAS16(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
     static void EmitAmoCAS32(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
     static void EmitAmoCAS64(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
+    static void EmitCZeroEqz(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
+    static void EmitCZeroNez(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitSub(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitAnd(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitAndi(Backend&, biscuit::GPR, biscuit::GPR, u64);
