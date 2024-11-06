@@ -139,6 +139,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             interpreter = g_rootfs_path / interpreter_str;
+            printf("interpreter path: %s\n", interpreter.c_str());
             break;
         }
         case PT_GNU_STACK: {
