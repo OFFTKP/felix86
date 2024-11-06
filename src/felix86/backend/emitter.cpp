@@ -1004,11 +1004,21 @@ void Emitter::EmitRol64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bis
 }
 
 void Emitter::EmitRor8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    UNIMPLEMENTED();
+    AS.ANDI(t0, Rs2, 0x7);
+    AS.SRLW(Rd, Rs1, t0);
+    AS.NEG(t0, t0);
+    AS.ANDI(t0, t0, 0x7);
+    AS.SLLW(t0, Rs1, t0);
+    AS.OR(Rd, Rd, t0);
 }
 
 void Emitter::EmitRor16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    UNIMPLEMENTED();
+    AS.ANDI(t0, Rs2, 0x1F);
+    AS.SRLW(Rd, Rs1, t0);
+    AS.NEG(t0, t0);
+    AS.ANDI(t0, t0, 0x1F);
+    AS.SLLW(t0, Rs1, t0);
+    AS.OR(Rd, Rd, t0);
 }
 
 void Emitter::EmitRor32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
