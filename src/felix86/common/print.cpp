@@ -72,33 +72,32 @@ std::string print_guest_register(x86_ref_e guest) {
 void print_gprs(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
         std::string guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
-        printf("%s", guest.c_str());
-        printf(" = %016lx\n", state->gprs[i]);
+        PLAIN("%s", guest.c_str());
+        PLAIN(" = %016lx", state->gprs[i]);
     }
 
-    printf("cf = %d\n", state->cf);
-    printf("pf = %d\n", state->pf);
-    printf("af = %d\n", state->af);
-    printf("zf = %d\n", state->zf);
-    printf("sf = %d\n", state->sf);
-    printf("df = %d\n", state->df);
-    printf("of = %d\n", state->of);
+    PLAIN("cf = %d", state->cf);
+    PLAIN("pf = %d", state->pf);
+    PLAIN("af = %d", state->af);
+    PLAIN("zf = %d", state->zf);
+    PLAIN("sf = %d", state->sf);
+    PLAIN("df = %d", state->df);
+    PLAIN("of = %d", state->of);
 
-    printf("from = %p\n", __builtin_return_address(0));
-    fflush(stdout);
+    PLAIN("from = %p", __builtin_return_address(0));
 }
 
 void print_state(ThreadState* state) {
     print_gprs(state);
 
     for (int i = 0; i < 16; i++) {
-        printf("xmm%d = {", i);
+        PLAIN("xmm%d = {", i);
         for (int j = 0; j < 2; j++) {
-            printf("%016lx", state->xmm[i].data[j]);
+            PLAIN("%016lx", state->xmm[i].data[j]);
             if (j != 1) {
-                printf(", ");
+                PLAIN(", ");
             }
         }
-        printf("}\n");
+        PLAIN("}");
     }
 }

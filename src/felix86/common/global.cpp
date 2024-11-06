@@ -26,6 +26,7 @@ bool g_print_disassembly = false;
 bool g_cache_functions = false;
 bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
+int g_output_fd = 1;
 u32 g_spilled_count = 0;
 
 #define X(ext) bool Extensions::ext = false;

@@ -186,6 +186,8 @@ int main(int argc, char* argv[]) {
     initialize_extensions();
     print_extensions();
 
+    g_output_fd = dup(STDOUT_FILENO);
+
     if (config.rootfs_path.empty()) {
         ERROR("Rootfs path not specified");
         return 1;

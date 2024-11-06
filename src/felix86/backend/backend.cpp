@@ -137,8 +137,7 @@ void Backend::EnterDispatcher(ThreadState* state) {
 }
 
 void print_address(u64 address) {
-    fmt::print("Entering block 0x{:016x}\n", address);
-    fflush(stdout);
+    PLAIN("Entering block 0x%016lx", address);
 }
 
 std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, const AllocationMap& allocations) {

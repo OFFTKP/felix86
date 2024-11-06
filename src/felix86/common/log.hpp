@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "felix86/common/exit.hpp"
 #include "felix86/common/global.hpp"
 
@@ -15,39 +16,51 @@
 #define LOG(format, ...)                                                                                                                             \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
-            printf(ANSI_COLOR_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                     \
+            dprintf(g_output_fd, ANSI_COLOR_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
+            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
-        printf(ANSI_COLOR_RED "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                             \
+        dprintf(g_output_fd, ANSI_COLOR_RED "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                               \
+        fsync(g_output_fd);                                                                                                                          \
         felix86_exit(1);                                                                                                                             \
     } while (0)
 #define WARN(format, ...)                                                                                                                            \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
-            printf(ANSI_COLOR_YELLOW "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                      \
+            dprintf(g_output_fd, ANSI_COLOR_YELLOW "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                        \
+            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)
 #define VERBOSE(format, ...)                                                                                                                         \
     do {                                                                                                                                             \
         if (g_verbose && !g_quiet) {                                                                                                                 \
-            printf(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                     \
+            dprintf(g_output_fd, ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                       \
+            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)
 
 #define STRACE(format, ...)                                                                                                                          \
     do {                                                                                                                                             \
         if (g_strace && !g_quiet) {                                                                                                                  \
-            printf(ANSI_COLOR_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                     \
+            dprintf(g_output_fd, ANSI_COLOR_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
+            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)
 
 #define SUCCESS(format, ...)                                                                                                                         \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
-            printf(ANSI_COLOR_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                    \
+            dprintf(g_output_fd, ANSI_COLOR_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                      \
+            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
+    } while (0)
+
+#define PLAIN(format, ...)                                                                                                                           \
+    do {                                                                                                                                             \
+        dprintf(g_output_fd, format, ##__VA_ARGS__);                                                                                                 \
+        fsync(g_output_fd);                                                                                                                          \
     } while (0)
 
 #define UNREACHABLE() ERROR("Unreachable code hit")

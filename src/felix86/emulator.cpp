@@ -235,9 +235,8 @@ void* Emulator::compileFunction(u64 rip) {
     auto [func, size] = backend.EmitFunction(backend_function, allocations);
 
     if (g_print_disassembly) {
-        fmt::print("Disassembly of function at 0x{:X}:\n", rip);
-        fmt::print("{}\n", Disassembler::Disassemble(func, size));
-        fflush(stdout);
+        PLAIN("Disassembly of function at 0x%lx:\n", rip);
+        PLAIN("%s", Disassembler::Disassemble(func, size).c_str());
     }
 
     return func;
