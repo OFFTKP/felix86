@@ -972,6 +972,13 @@ IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
     ir.SetRm(inst->operand_rm, reg, VectorState::PackedDWord);
 }
 
+IR_HANDLE(mov_xmm_m64) { // movlpd xmm, m64 - 0x0f 0x12
+    // Just load a double from memory directly into an xmm - thus using vector loads
+    // instead of gpr loads and then moving to vector
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Double);
+    ir.SetReg(inst->operand_reg, rm);
+}
+
 IR_HANDLE(rdtsc) { // rdtsc - 0x0f 0x31
     ir.Rdtsc();
 }
