@@ -208,6 +208,12 @@ struct IREmitter {
 
     void CallHostFunction(u64 function_address);
 
+    SSAInstruction* Set8Low(SSAInstruction* old, SSAInstruction* value);
+    SSAInstruction* Set8High(SSAInstruction* old, SSAInstruction* value);
+    SSAInstruction* Set16(SSAInstruction* old, SSAInstruction* value);
+    SSAInstruction* Set32(SSAInstruction* value);
+    SSAInstruction* Set(SSAInstruction* old, SSAInstruction* value, x86_size_e size, bool high);
+
 private:
     SSAInstruction* getGuest(x86_ref_e ref);
     SSAInstruction* setGuest(x86_ref_e ref, SSAInstruction* value);

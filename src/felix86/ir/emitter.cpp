@@ -1133,9 +1133,7 @@ void IREmitter::setGpr8Low(x86_ref_e ref, SSAInstruction* value) {
     }
 
     SSAInstruction* old = getGpr64(ref);
-    SSAInstruction* masked_old = Andi(old, 0xFFFFFFFFFFFFFF00);
-    SSAInstruction* masked_value = Zext(value, X86_SIZE_BYTE);
-    SSAInstruction* new_value = Or(masked_old, masked_value);
+    SSAInstruction* new_value = Set8Low(old, value);
     setGuest(ref, new_value);
 }
 
@@ -1145,10 +1143,7 @@ void IREmitter::setGpr8High(x86_ref_e ref, SSAInstruction* value) {
     }
 
     SSAInstruction* old = getGpr64(ref);
-    SSAInstruction* masked_old = And(old, Imm(0xFFFFFFFFFFFF00FF));
-    SSAInstruction* masked_value = Zext(value, X86_SIZE_BYTE);
-    SSAInstruction* shifted_value = Shli(masked_value, 8);
-    SSAInstruction* new_value = Or(masked_old, shifted_value);
+    SSAInstruction* new_value = Set8High(old, value);
     setGuest(ref, new_value);
 }
 
@@ -1158,9 +1153,7 @@ void IREmitter::setGpr16(x86_ref_e ref, SSAInstruction* value) {
     }
 
     SSAInstruction* old = getGpr64(ref);
-    SSAInstruction* masked_old = And(old, Imm(0xFFFFFFFFFFFF0000));
-    SSAInstruction* masked_value = Zext(value, X86_SIZE_WORD);
-    SSAInstruction* new_value = Or(masked_old, masked_value);
+    SSAInstruction* new_value = Set16(old, value);
     setGuest(ref, new_value);
 }
 
@@ -1169,7 +1162,7 @@ void IREmitter::setGpr32(x86_ref_e ref, SSAInstruction* value) {
         ERROR("Invalid register reference");
     }
 
-    setGuest(ref, Zext(value, X86_SIZE_DWORD));
+    setGuest(ref, Set32(value));
 }
 
 void IREmitter::setGpr64(x86_ref_e ref, SSAInstruction* value) {
@@ -1897,4 +1890,46 @@ void IREmitter::TerminateJumpConditional(SSAInstruction* condition, IRBlock* tar
 void IREmitter::CallHostFunction(u64 function_address) {
     SSAInstruction* instruction = insertInstruction(IROpcode::CallHostFunction, {}, function_address);
     instruction->Lock();
+}
+
+SSAInstruction* IREmitter::Set8High(SSAInstruction* old, SSAInstruction* value) {
+    SSAInstruction* masked_old = And(old, Imm(0xFFFFFFFFFFFF00FF));
+    SSAInstruction* masked_value = Zext(value, X86_SIZE_BYTE);
+    SSAInstruction* shifted_value = Shli(masked_value, 8);
+    SSAInstruction* new_value = Or(masked_old, shifted_value);
+    return new_value;
+}
+
+SSAInstruction* IREmitter::Set8Low(SSAInstruction* old, SSAInstruction* value) {
+    SSAInstruction* masked_old = Andi(old, 0xFFFFFFFFFFFFFF00);
+    SSAInstruction* masked_value = Zext(value, X86_SIZE_BYTE);
+    SSAInstruction* new_value = Or(masked_old, masked_value);
+    return new_value;
+}
+
+SSAInstruction* IREmitter::Set16(SSAInstruction* old, SSAInstruction* value) {
+    SSAInstruction* masked_old = And(old, Imm(0xFFFFFFFFFFFF0000));
+    SSAInstruction* masked_value = Zext(value, X86_SIZE_WORD);
+    SSAInstruction* new_value = Or(masked_old, masked_value);
+    return new_value;
+}
+
+SSAInstruction* IREmitter::Set32(SSAInstruction* value) {
+    return Zext(value, X86_SIZE_DWORD);
+}
+
+SSAInstruction* IREmitter::Set(SSAInstruction* old, SSAInstruction* value, x86_size_e size_e, bool high) {
+    switch (size_e) {
+    case X86_SIZE_BYTE:
+        return high ? Set8High(old, value) : Set8Low(old, value);
+    case X86_SIZE_WORD:
+        return Set16(old, value);
+    case X86_SIZE_DWORD:
+        return Set32(value);
+    case X86_SIZE_QWORD:
+        return value;
+    default:
+        ERROR("Invalid size");
+        return nullptr;
+    }
 }
