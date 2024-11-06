@@ -170,16 +170,16 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         if (result != -1) {
             *guest_stat = host_stat;
             // print every stat member
-            STRACE("st_dev : %ld\n", guest_stat->st_dev);
-            STRACE("st_ino : %ld\n", guest_stat->st_ino);
-            STRACE("st_mode : %d\n", guest_stat->st_mode);
-            STRACE("st_nlink : %ld\n", guest_stat->st_nlink);
-            STRACE("st_uid : %d\n", guest_stat->st_uid);
-            STRACE("st_gid : %d\n", guest_stat->st_gid);
-            STRACE("st_rdev : %ld\n", guest_stat->st_rdev);
-            STRACE("st_size : %ld\n", guest_stat->st_size);
-            STRACE("st_blksize : %ld\n", guest_stat->st_blksize);
-            STRACE("st_blocks : %ld\n", guest_stat->st_blocks);
+            STRACE("st_dev : %ld", guest_stat->st_dev);
+            STRACE("st_ino : %ld", guest_stat->st_ino);
+            STRACE("st_mode : %d", guest_stat->st_mode);
+            STRACE("st_nlink : %ld", guest_stat->st_nlink);
+            STRACE("st_uid : %d", guest_stat->st_uid);
+            STRACE("st_gid : %d", guest_stat->st_gid);
+            STRACE("st_rdev : %ld", guest_stat->st_rdev);
+            STRACE("st_size : %ld", guest_stat->st_size);
+            STRACE("st_blksize : %ld", guest_stat->st_blksize);
+            STRACE("st_blocks : %ld", guest_stat->st_blocks);
         }
         break;
     }
