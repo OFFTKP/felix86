@@ -1147,7 +1147,7 @@ IR_HANDLE(shufpd) {
     }
 
     if ((imm & 0b10) == 0) {
-        src2 = ir.VToI(ir.GetRm(inst->operand_rm, VectorState::PackedQWord), VectorState::PackedQWord);
+        src2 = ir.GetRm(inst->operand_rm, VectorState::PackedQWord);
     } else {
         SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedQWord);
         src2 = ir.VSlideDowni(rm, 1, VectorState::PackedQWord);
