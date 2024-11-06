@@ -986,10 +986,10 @@ void Emitter::EmitRol8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bisc
 }
 
 void Emitter::EmitRol16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    AS.ANDI(t0, Rs2, 0x1F);
+    AS.ANDI(t0, Rs2, 0xF);
     AS.SLLW(Rd, Rs1, t0);
     AS.NEG(t0, t0);
-    AS.ANDI(t0, t0, 0x1F);
+    AS.ANDI(t0, t0, 0xF);
     AS.SRLW(t0, Rs1, t0);
     AS.OR(Rd, Rd, t0);
     AS.ZEXTH(Rd, Rd);
@@ -1013,10 +1013,10 @@ void Emitter::EmitRor8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, bisc
 }
 
 void Emitter::EmitRor16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
-    AS.ANDI(t0, Rs2, 0x1F);
+    AS.ANDI(t0, Rs2, 0xF);
     AS.SRLW(Rd, Rs1, t0);
     AS.NEG(t0, t0);
-    AS.ANDI(t0, t0, 0x1F);
+    AS.ANDI(t0, t0, 0xF);
     AS.SLLW(t0, Rs1, t0);
     AS.OR(Rd, Rd, t0);
 }
