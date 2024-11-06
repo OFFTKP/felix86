@@ -1,7 +1,7 @@
 #include "fex_test_loader.hpp"
 
 #define PRIMARY_GROUP(opcode)                                                                                                                        \
-    CATCH_TEST_CASE("PrimaryGroup_" #opcode, "[FEX][PrimaryGroup]") {                                                                                \
+    CATCH_TEST_CASE(#opcode, "PrimaryGroup") {                                                                                                       \
         FEXTestLoader::RunTest("ASM/PrimaryGroup/" #opcode ".asm");                                                                                  \
     }
 
@@ -32,10 +32,14 @@ PRIMARY_GROUP(1_83_05)
 PRIMARY_GROUP(1_83_06)
 PRIMARY_GROUP(1_83_07)
 
+PRIMARY_GROUP(2_C0_00)
+PRIMARY_GROUP(2_C0_01)
 PRIMARY_GROUP(2_C0_04)
 PRIMARY_GROUP(2_C0_05)
 PRIMARY_GROUP(2_C0_07)
 
+PRIMARY_GROUP(2_C1_00)
+PRIMARY_GROUP(2_C1_01)
 PRIMARY_GROUP(2_C1_04)
 PRIMARY_GROUP(2_C1_05)
 PRIMARY_GROUP(2_C1_05_2)
