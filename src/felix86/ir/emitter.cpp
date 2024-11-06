@@ -1,5 +1,23 @@
 #include "felix86/ir/emitter.hpp"
 
+namespace {
+SSAInstruction* SecondMSB(IREmitter& ir, SSAInstruction* value, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE:
+        return ir.Andi(ir.Shri(value, 6), 1);
+    case X86_SIZE_WORD:
+        return ir.Andi(ir.Shri(value, 14), 1);
+    case X86_SIZE_DWORD:
+        return ir.Andi(ir.Shri(value, 30), 1);
+    case X86_SIZE_QWORD:
+        return ir.Andi(ir.Shri(value, 62), 1);
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+}
+} // namespace
+
 u64 IREmitter::ImmSext(u64 imm, x86_size_e size) {
     i64 value = imm;
     switch (size) {
@@ -911,7 +929,7 @@ SSAInstruction* IREmitter::IsNegative(SSAInstruction* value, x86_size_e size) {
     case X86_SIZE_DWORD:
         return Andi(Shri(value, 31), 1);
     case X86_SIZE_QWORD:
-        return Andi(Shri(value, 63), 1);
+        return Shri(value, 63);
     default:
         UNREACHABLE();
         return nullptr;
@@ -1502,8 +1520,8 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
     }
     case Group2::Ror: {
         result = Ror(rm, shift_value, size_e);
-        c = IsNegative(result, size_e);
-        WARN("ROR OF unimplemented");
+        c = Select(Seqz(shift_value), GetFlag(X86_REF_CF), IsNegative(result, size_e));
+        o = Select(Seqz(shift_value), GetFlag(X86_REF_OF), Xor(c, SecondMSB(*this, result, size_e)));
         break;
     }
     case Group2::Rcl: {
