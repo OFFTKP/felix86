@@ -7,6 +7,12 @@
 
 namespace {
 
+void felix86_rdtsc(ThreadState* state) {
+    WARN("Rdtsc called, ignoring...");
+    state->SetGpr(X86_REF_RAX, 0);
+    state->SetGpr(X86_REF_RDX, 0);
+}
+
 biscuit::GPR Push(Backend& backend, biscuit::GPR Rs) {
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), -8);
     AS.SD(Rs, 0, Registers::StackPointer());
@@ -308,7 +314,13 @@ void Emitter::EmitImmediate(Backend& backend, biscuit::GPR Rd, u64 immediate) {
 }
 
 void Emitter::EmitRdtsc(Backend& backend) {
-    UNREACHABLE();
+    EmitPushAllCallerSaved(backend);
+
+    AS.MV(a0, Registers::ThreadStatePointer());
+    AS.LI(a1, (u64)felix86_rdtsc);
+    AS.JALR(a1);
+
+    EmitPopAllCallerSaved(backend);
 }
 
 void Emitter::EmitSyscall(Backend& backend) {
