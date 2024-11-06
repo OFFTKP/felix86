@@ -138,7 +138,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 ERROR("Failed to read interpreter from file %s", path.c_str());
             }
 
-            interpreter = std::filesystem::path(interpreter_str);
+            interpreter = g_rootfs_path / interpreter_str;
             break;
         }
         case PT_GNU_STACK: {

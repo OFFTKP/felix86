@@ -110,7 +110,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'p': {
-        config->rootfs_path = arg;
+        g_rootfs_path = arg;
         break;
     }
     case 'o': {
@@ -187,6 +187,7 @@ int main(int argc, char* argv[]) {
     print_extensions();
 
     g_output_fd = dup(STDOUT_FILENO);
+    config.rootfs_path = g_rootfs_path;
 
     if (config.rootfs_path.empty()) {
         ERROR("Rootfs path not specified");

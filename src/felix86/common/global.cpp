@@ -28,6 +28,7 @@ bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
 int g_output_fd = 1;
 u32 g_spilled_count = 0;
+std::filesystem::path g_rootfs_path{};
 
 #define X(ext) bool Extensions::ext = false;
 FELIX86_EXTENSIONS_TOTAL
@@ -126,6 +127,15 @@ void initialize_globals() {
     if (print_start_of_block_env) {
         g_print_block_start = true;
         environment += "\nFELIX86_PRINT_BLOCK_START";
+    }
+
+    const char* rootfs_path = getenv("FELIX86_ROOTFS");
+    if (rootfs_path) {
+        if (!g_rootfs_path.empty()) {
+            WARN("Rootfs overwritten by environment variable FELIX86_ROOTFS");
+        }
+        g_rootfs_path = rootfs_path;
+        environment += "\nFELIX86_ROOTFS=" + std::string(rootfs_path);
     }
 
     if (!g_testing) {
