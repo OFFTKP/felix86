@@ -1042,7 +1042,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         SSAInstruction* equal = ir.Equal(eax, rm);
         SSAInstruction* new_rm = ir.Select(equal, reg, rm);
 
-        ir.SetReg(rm, X86_REF_RAX);
+        ir.SetReg(rm, X86_REF_RAX, size_e);
         ir.SetRm(inst->operand_rm, new_rm);
         ir.SetFlag(equal, X86_REF_ZF);
     }
