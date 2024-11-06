@@ -202,6 +202,31 @@ IR_HANDLE(or_eax_imm) { // add ax/eax/rax, imm16/32/64 - 0x0D
     ir.SetCPAZSO(zero, p, nullptr, z, s, zero);
 }
 
+IR_HANDLE(sbb_rm_reg) { // sbb rm16/32/64, r16/32/64 - 0x19
+    x86_size_e size_e = inst->operand_reg.size;
+    SSAInstruction *rm, *result;
+    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+    SSAInstruction* carry_in = ir.GetFlag(X86_REF_CF);
+
+    if (IS_LOCK) {
+        ERROR("Why :(");
+        return;
+    } else {
+        rm = ir.GetRm(inst->operand_rm);
+        result = ir.Sub(ir.Sub(rm, reg), carry_in);
+        ir.SetRm(inst->operand_rm, result);
+    }
+
+    SSAInstruction* c = ir.IsCarrySbb(rm, reg, carry_in, size_e);
+    SSAInstruction* p = ir.Parity(result);
+    SSAInstruction* a = ir.IsAuxSbb(rm, reg, carry_in);
+    SSAInstruction* z = ir.IsZero(result, size_e);
+    SSAInstruction* s = ir.IsNegative(result, size_e);
+    SSAInstruction* o = ir.IsOverflowSub(rm, reg, result, size_e);
+
+    ir.SetCPAZSO(c, p, a, z, s, o);
+}
+
 IR_HANDLE(and_rm_reg) { // and rm16/32/64, r16/32/64 - 0x21
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction *rm, *result;

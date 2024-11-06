@@ -152,10 +152,12 @@ struct IREmitter {
     SSAInstruction* IsCarryAdd(SSAInstruction* source, SSAInstruction* result, x86_size_e size);
     SSAInstruction* IsCarryAdc(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* carry, x86_size_e size_e);
     SSAInstruction* IsCarrySbb(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* carry, x86_size_e size_e);
+    SSAInstruction* IsOverflowSbb(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* carry, SSAInstruction* result, x86_size_e size_e);
     SSAInstruction* IsAuxAdd(SSAInstruction* source1, SSAInstruction* source2);
     SSAInstruction* IsOverflowAdd(SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e);
     SSAInstruction* IsCarrySub(SSAInstruction* source1, SSAInstruction* source2);
     SSAInstruction* IsAuxSub(SSAInstruction* source1, SSAInstruction* source2);
+    SSAInstruction* IsAuxSbb(SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* carry);
     SSAInstruction* IsOverflowSub(SSAInstruction* source1, SSAInstruction* source2, SSAInstruction* result, x86_size_e size_e);
     SSAInstruction* GetThreadStatePointer();
     void Group1(x86_instruction_t* inst);

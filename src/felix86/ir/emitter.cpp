@@ -1321,6 +1321,13 @@ SSAInstruction* IREmitter::IsCarrySbb(SSAInstruction* lhs, SSAInstruction* rhs, 
     return Or(carry1, carry2);
 }
 
+SSAInstruction* IREmitter::IsOverflowSbb(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* carry, SSAInstruction* result, x86_size_e size_e) {
+    SSAInstruction* sum = Sub(lhs, rhs);
+    SSAInstruction* of1 = IsOverflowSub(lhs, rhs, sum, size_e);
+    SSAInstruction* of2 = IsOverflowSub(sum, carry, result, size_e);
+    return Or(of1, of2);
+}
+
 SSAInstruction* IREmitter::IsAuxAdd(SSAInstruction* lhs, SSAInstruction* rhs) {
     SSAInstruction* and1 = Andi(lhs, 0xF);
     SSAInstruction* and2 = Andi(rhs, 0xF);
@@ -1352,6 +1359,14 @@ SSAInstruction* IREmitter::IsAuxSub(SSAInstruction* lhs, SSAInstruction* rhs) {
     SSAInstruction* and2 = Andi(rhs, 0xF);
 
     return LessThanUnsigned(and1, and2);
+}
+
+SSAInstruction* IREmitter::IsAuxSbb(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* carry) {
+    SSAInstruction* sum = Sub(lhs, rhs);
+    SSAInstruction* and1 = IsAuxSub(lhs, rhs);
+    SSAInstruction* and2 = IsAuxSub(sum, carry);
+
+    return Or(and1, and2);
 }
 
 SSAInstruction* IREmitter::IsOverflowSub(SSAInstruction* lhs, SSAInstruction* rhs, SSAInstruction* result, x86_size_e size_e) {
