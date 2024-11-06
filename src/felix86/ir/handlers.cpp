@@ -1042,7 +1042,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         SSAInstruction* rm_full = ir.GetReg(inst->operand_rm.reg.ref, X86_SIZE_QWORD);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* new_rm = ir.Select(equal, reg, rm_full);
-        ir.SetRm(inst->operand_rm, new_rm);
+        ir.SetReg(new_rm, inst->operand_rm.reg.ref, X86_SIZE_QWORD);
         ir.SetReg(rm, X86_REF_RAX, size_e);
         ir.SetFlag(equal, X86_REF_ZF);
         printf("size: %d\n", size_e);
