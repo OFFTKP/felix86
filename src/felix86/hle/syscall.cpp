@@ -166,10 +166,21 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         x64Stat* guest_stat = (x64Stat*)rsi;
         struct stat host_stat;
         result = HOST_SYSCALL(fstat, rdi, &host_stat);
+        STRACE("fstat(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         if (result != -1) {
             *guest_stat = host_stat;
+            // print every stat member
+            STRACE("st_dev : %ld\n", guest_stat->st_dev);
+            STRACE("st_ino : %ld\n", guest_stat->st_ino);
+            STRACE("st_mode : %d\n", guest_stat->st_mode);
+            STRACE("st_nlink : %ld\n", guest_stat->st_nlink);
+            STRACE("st_uid : %d\n", guest_stat->st_uid);
+            STRACE("st_gid : %d\n", guest_stat->st_gid);
+            STRACE("st_rdev : %ld\n", guest_stat->st_rdev);
+            STRACE("st_size : %ld\n", guest_stat->st_size);
+            STRACE("st_blksize : %ld\n", guest_stat->st_blksize);
+            STRACE("st_blocks : %ld\n", guest_stat->st_blocks);
         }
-        STRACE("fstat(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_ioctl: {

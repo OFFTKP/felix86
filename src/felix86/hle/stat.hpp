@@ -46,7 +46,6 @@ struct __attribute__((packed)) x64Stat {
         return host_stat;
     }
 
-private:
     u64 st_dev;
     u64 st_ino;
     u64 st_nlink;
