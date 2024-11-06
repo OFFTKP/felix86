@@ -1045,6 +1045,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         ir.SetReg(rm, X86_REF_RAX, size_e);
         ir.SetRm(inst->operand_rm, new_rm);
         ir.SetFlag(equal, X86_REF_ZF);
+        printf("size: %d\n", size_e);
     }
 }
 
