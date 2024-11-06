@@ -649,6 +649,16 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::CZeroEqz: {
+        EmitCZeroEqz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
+    case IROpcode::CZeroNez: {
+        EmitCZeroNez(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        break;
+    }
+
     case IROpcode::IToV: {
         EmitIToV(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
         break;
