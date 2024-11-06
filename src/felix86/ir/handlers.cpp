@@ -1037,16 +1037,14 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         ir.SetReg(actual, X86_REF_RAX, size_e);
         ir.SetFlag(ir.Equal(actual, eax), X86_REF_ZF);
     } else {
-        UNREACHABLE();
-        // Think the following is wrong for w/e reason
-        // SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-        // SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        // SSAInstruction* equal = ir.Equal(eax, rm);
-        // SSAInstruction* new_rm = ir.Select(equal, reg, rm);
+        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        SSAInstruction* equal = ir.Equal(eax, rm);
+        SSAInstruction* new_rm = ir.Select(equal, reg, rm);
 
-        // ir.SetReg(rm, X86_REF_RAX);
-        // ir.SetRm(inst->operand_rm, new_rm);
-        // ir.SetFlag(equal, X86_REF_ZF);
+        ir.SetReg(rm, X86_REF_RAX);
+        ir.SetRm(inst->operand_rm, new_rm);
+        ir.SetFlag(equal, X86_REF_ZF);
     }
 }
 
