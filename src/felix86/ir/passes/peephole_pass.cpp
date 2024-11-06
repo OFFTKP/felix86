@@ -81,7 +81,7 @@ bool PeepholeAddImmediates(SSAInstruction& inst) {
     return false;
 }
 
-bool PeepholeAddiImmediates(SSAInstruction& inst) {
+bool PeepholeAddiImmediate(SSAInstruction& inst) {
     const SSAInstruction* op = inst.GetOperand(0);
 
     if (op->IsImmediate()) {
@@ -176,6 +176,47 @@ bool PeepholeAndZero(SSAInstruction& inst) {
             inst.ReplaceWithImmediate(0);
             return true;
         }
+    }
+
+    return false;
+}
+
+// t2 = t1 & 0xFFFFFFFFFFFFFFFF
+bool PeepholeAndOnes(SSAInstruction& inst) {
+    for (u8 i = 0; i < 2; i++) {
+        if (IsImmediate(inst.GetOperand(i), 0xFFFFFFFFFFFFFFFF)) {
+            inst.ReplaceWithMov(inst.GetOperand(!i));
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool PeepholeAndiImmediate(SSAInstruction& inst) {
+    const SSAInstruction* op = inst.GetOperand(0);
+
+    if (op->IsImmediate()) {
+        inst.ReplaceWithImmediate(op->GetImmediateData() & inst.GetImmediateData());
+        return true;
+    }
+
+    return false;
+}
+
+bool PeepholeAndiZero(SSAInstruction& inst) {
+    if (inst.GetImmediateData() == 0) {
+        inst.ReplaceWithImmediate(0);
+        return true;
+    }
+
+    return false;
+}
+
+bool PeepholeAndiOnes(SSAInstruction& inst) {
+    if (inst.GetImmediateData() == 0xFFFFFFFFFFFFFFFF) {
+        inst.ReplaceWithMov(inst.GetOperand(0));
+        return true;
     }
 
     return false;
@@ -386,6 +427,47 @@ bool PeepholeOrZero(SSAInstruction& inst) {
             inst.ReplaceWithMov(inst.GetOperand(!i));
             return true;
         }
+    }
+
+    return false;
+}
+
+// t2 = t1 | 0xFFFFFFFFFFFFFFFF
+bool PeepholeOrOnes(SSAInstruction& inst) {
+    for (u8 i = 0; i < 2; i++) {
+        if (IsImmediate(inst.GetOperand(i), 0xFFFFFFFFFFFFFFFF) && IsInteger64(inst.GetOperand(!i))) {
+            inst.ReplaceWithImmediate(0xFFFFFFFFFFFFFFFF);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool PeepholeOriImmediate(SSAInstruction& inst) {
+    const SSAInstruction* op = inst.GetOperand(0);
+
+    if (inst.IsImmediate()) {
+        inst.ReplaceWithImmediate(op->GetImmediateData() | inst.GetImmediateData());
+        return true;
+    }
+
+    return false;
+}
+
+bool PeepholeOriZero(SSAInstruction& inst) {
+    if (inst.GetImmediateData() == 0) {
+        inst.ReplaceWithMov(inst.GetOperand(0));
+        return true;
+    }
+
+    return false;
+}
+
+bool PeepholeOriOnes(SSAInstruction& inst) {
+    if (inst.GetImmediateData() == 0xFFFFFFFFFFFFFFFF) {
+        inst.ReplaceWithImmediate(0xFFFFFFFFFFFFFFFF);
+        return true;
     }
 
     return false;
@@ -712,6 +794,38 @@ bool PeepholeXor12BitImmediate(SSAInstruction& inst) {
     return Peephole12BitImmediate(inst, IROpcode::Xori);
 }
 
+bool PeepholeXoriImmediate(SSAInstruction& inst) {
+    const SSAInstruction* op = inst.GetOperand(0);
+
+    if (op->IsImmediate()) {
+        inst.ReplaceWithImmediate(op->GetImmediateData() ^ inst.GetImmediateData());
+        return true;
+    }
+
+    return false;
+}
+
+bool PeepholeXoriZero(SSAInstruction& inst) {
+    if (inst.GetImmediateData() == 0) {
+        inst.ReplaceWithMov(inst.GetOperand(0));
+        return true;
+    }
+
+    return false;
+}
+
+bool PeepholeXoriOnes(SSAInstruction& inst) {
+    if (inst.GetImmediateData() == 0xFFFFFFFFFFFFFFFF) {
+        Operands op;
+        op.operands[0] = inst.GetOperand(0);
+        op.operand_count = 1;
+        inst.Replace(op, IROpcode::Not);
+        return true;
+    }
+
+    return false;
+}
+
 // t2 = t1 ^ t1
 bool PeepholeXorSame(SSAInstruction& inst) {
     SSAInstruction* op1 = inst.GetOperand(0);
@@ -730,6 +844,20 @@ bool PeepholeXorZero(SSAInstruction& inst) {
     for (u8 i = 0; i < 2; i++) {
         if (IsImmediate(inst.GetOperand(i), 0) && IsInteger64(inst.GetOperand(!i))) {
             inst.ReplaceWithMov(inst.GetOperand(!i));
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool PeepholeXorOnes(SSAInstruction& inst) {
+    for (u8 i = 0; i < 2; i++) {
+        if (IsImmediate(inst.GetOperand(i), 0xFFFFFFFFFFFFFFFF) && IsInteger64(inst.GetOperand(!i))) {
+            Operands op;
+            op.operands[0] = inst.GetOperand(!i);
+            op.operand_count = 1;
+            inst.Replace(op, IROpcode::Not);
             return true;
         }
     }
@@ -781,7 +909,7 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 break;
             }
             case IROpcode::Addi: {
-                CHECK(PeepholeAddiImmediates);
+                CHECK(PeepholeAddiImmediate);
                 CHECK(PeepholeAddiZero);
                 break;
             }
@@ -789,22 +917,43 @@ bool PassManager::peepholePassBlock(IRBlock* block) {
                 CHECK(PeepholeAndImmediates);
                 CHECK(PeepholeAnd12BitImmediate);
                 CHECK(PeepholeAndZero);
+                CHECK(PeepholeAndOnes);
                 CHECK(PeepholeAndTwice);
                 CHECK(PeepholeAndSame);
+                break;
+            }
+            case IROpcode::Andi: {
+                CHECK(PeepholeAndiImmediate);
+                CHECK(PeepholeAndiZero);
+                CHECK(PeepholeAndiOnes);
                 break;
             }
             case IROpcode::Or: {
                 CHECK(PeepholeOrImmediates);
                 CHECK(PeepholeOr12BitImmediate);
                 CHECK(PeepholeOrZero);
+                CHECK(PeepholeOrOnes);
                 CHECK(PeepholeOrSame);
+                break;
+            }
+            case IROpcode::Ori: {
+                CHECK(PeepholeOriImmediate);
+                CHECK(PeepholeOriZero);
+                CHECK(PeepholeOriOnes);
                 break;
             }
             case IROpcode::Xor: {
                 CHECK(PeepholeXorImmediates);
                 CHECK(PeepholeXor12BitImmediate);
                 CHECK(PeepholeXorZero);
+                CHECK(PeepholeXorOnes);
                 CHECK(PeepholeXorSame);
+                break;
+            }
+            case IROpcode::Xori: {
+                CHECK(PeepholeXoriImmediate);
+                CHECK(PeepholeXoriZero);
+                CHECK(PeepholeXoriOnes);
                 break;
             }
             case IROpcode::Div: {

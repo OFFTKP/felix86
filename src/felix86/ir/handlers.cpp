@@ -1044,7 +1044,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         SSAInstruction* is_true = ir.CZeroNez(rm_full, equal);
         SSAInstruction* is_false = ir.CZeroEqz(reg, equal);
         SSAInstruction* new_rm = ir.Or(is_true, is_false);
-        ir.SetReg(new_rm, inst->operand_rm.reg.ref, X86_SIZE_QWORD);
+        ir.SetReg(new_rm, inst->operand_rm.reg.ref, size_e);
         ir.SetReg(rm, X86_REF_RAX, size_e);
         ir.SetFlag(equal, X86_REF_ZF);
     }
