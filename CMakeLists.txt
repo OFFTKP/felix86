@@ -1,20 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(felix86)
+include(CheckGit.cmake)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-configure_file(src/felix86/common/git_version.cpp.in git_version.cpp @ONLY)
-add_custom_target(AlwaysCheckGit COMMAND ${CMAKE_COMMAND}
-    -DRUN_CHECK_GIT_VERSION=1
-    -DGIT_HASH_CACHE=${GIT_HASH_CACHE}
-    -P ${CURRENT_LIST_DIR}/CheckGit.cmake
-    BYPRODUCTS ${post_configure_file}
-)
-
-add_library(git_version STATIC git_version.cpp)
+CheckGitSetup()
 
 set(BISCUIT_CODE_BUFFER_MMAP ON)
 set(BUILD_TESTING OFF)
