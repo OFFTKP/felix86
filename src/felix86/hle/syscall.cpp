@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "felix86/common/log.hpp"
@@ -196,6 +197,36 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     case felix86_x86_64_exit_group: {
         VERBOSE("Emulator called exit_group(%d)", (int)rdi);
         result = HOST_SYSCALL(exit_group, rdi);
+        break;
+    }
+    case felix86_x86_64_access: {
+        result = fs.FAccessAt(AT_FDCWD, (const char*)rsi, rdi, 0);
+        STRACE("access(%s, %d) = %d", (const char*)rsi, (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_read: {
+        result = HOST_SYSCALL(read, rdi, (void*)rsi, rdx);
+        STRACE("read(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_openat: {
+        result = fs.OpenAt(rdi, (const char*)rsi, rdx, r10);
+        STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
+        break;
+    }
+    case felix86_x86_64_pread64: {
+        result = HOST_SYSCALL(pread64, rdi, (void*)rsi, rdx, r10);
+        STRACE("pread64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
+        break;
+    }
+    case felix86_x86_64_mmap: {
+        result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, result);
+        break;
+    }
+    case felix86_x86_64_munmap: {
+        result = HOST_SYSCALL(munmap, rdi, rsi);
+        STRACE("munmap(%p, %016lx) = %016lx", (void*)rdi, rsi, result);
         break;
     }
     default: {

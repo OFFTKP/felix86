@@ -54,9 +54,8 @@ bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
     return true;
 }
 
-ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 bufsiz) {
+std::optional<std::filesystem::path> Filesystem::AtPath(u32 dirfd, const char* pathname) {
     std::filesystem::path path = pathname;
-
     if (path.is_relative()) {
         if (dirfd == AT_FDCWD) {
             path = cwd_path / path;
@@ -67,7 +66,8 @@ ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 b
             bool is_dir = S_ISDIR(dirfd_stat.st_mode);
             if (!is_dir) {
                 WARN("dirfd is not a directory");
-                return -ENOTDIR;
+                error = -ENOTDIR;
+                return std::nullopt;
             }
 
             // This is not POSIX portable but should work on Linux which is what we're targeting
@@ -77,7 +77,8 @@ ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 b
             ssize_t res = readlink(result_path, dirfd_path, sizeof(dirfd_path));
             if (res == -1) {
                 WARN("Failed to readlink dirfd");
-                return -ENOENT;
+                error = -ENOENT;
+                return std::nullopt;
             }
             result_path[res] = '\0';
 
@@ -87,38 +88,65 @@ ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 b
             // Sanity check that the directory was not moved or something
             if (result_path_stat.st_dev != dirfd_stat.st_dev || result_path_stat.st_ino != dirfd_stat.st_ino) {
                 WARN("dirfd sanity check failed");
-                return -ENOENT;
+                error = -ENOENT;
+                return std::nullopt;
             }
 
             path = std::filesystem::path(result_path) / path;
         }
     } else if (path.is_absolute()) {
         if (path == proc_self_exe) { // special case for /proc/self/exe
-            std::string exe = executable_path.string();
-            if (exe.size() > bufsiz) {
-                WARN("Buffer too small for readlinkat");
-                return -EINVAL;
-            }
-
-            // readlink/readlinkat doesn't null terminate the buffer
-            memcpy(buf, exe.c_str(), exe.size());
-            return exe.size();
+            path = executable_path.string();
         } else {
-            path = rootfs_path / path;
+            path = rootfs_path / path.relative_path();
         }
     } else {
         UNREACHABLE();
     }
 
     if (!validatePath(path)) {
-        return -ENOENT;
+        error = -ENOENT;
+        return std::nullopt;
     }
 
+    return path;
+}
+
+ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 bufsiz) {
+    auto path_opt = AtPath(dirfd, pathname);
+
+    if (!path_opt) {
+        return -error;
+    }
+
+    std::filesystem::path path = path_opt.value();
     return readlink(path.c_str(), buf, bufsiz);
 }
 
 ssize_t Filesystem::ReadLink(const char* pathname, char* buf, u32 bufsiz) {
     return ReadLinkAt(AT_FDCWD, pathname, buf, bufsiz);
+}
+
+int Filesystem::FAccessAt(int dirfd, const char* pathname, int mode, int flags) {
+    auto path_opt = AtPath(dirfd, pathname);
+
+    if (!path_opt) {
+        return -error;
+    }
+
+    std::filesystem::path path = path_opt.value();
+    return faccessat(AT_FDCWD, path.c_str(), mode, flags);
+}
+
+int Filesystem::OpenAt(int dirfd, const char* pathname, int flags, int mode) {
+    auto path_opt = AtPath(dirfd, pathname);
+
+    if (!path_opt) {
+        return -error;
+    }
+
+    std::filesystem::path path = path_opt.value();
+    return openat(AT_FDCWD, path.c_str(), flags, mode);
 }
 
 bool Filesystem::validatePath(const std::filesystem::path& path) {

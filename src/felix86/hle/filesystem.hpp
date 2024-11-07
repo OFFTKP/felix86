@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 #include <linux/limits.h>
 #include "felix86/common/elf.hpp"
 #include "felix86/common/log.hpp"
@@ -65,6 +66,12 @@ struct Filesystem {
 
     ssize_t ReadLink(const char* pathname, char* buf, u32 bufsiz);
 
+    int FAccessAt(int dirfd, const char* pathname, int mode, int flags);
+
+    int OpenAt(int dirfd, const char* pathname, int flags, int mode);
+
+    std::optional<std::filesystem::path> AtPath(u32 dirfd, const char* pathname);
+
     std::filesystem::path GetRootFSPath() {
         return rootfs_path;
     }
@@ -81,6 +88,10 @@ struct Filesystem {
         return elf->GetBRK();
     }
 
+    int Error() {
+        return error;
+    }
+
 private:
     bool validatePath(const std::filesystem::path& path);
 
@@ -90,4 +101,5 @@ private:
     std::filesystem::path cwd_path;
     std::shared_ptr<Elf> elf;
     std::shared_ptr<Elf> interpreter;
+    int error = 0;
 };
