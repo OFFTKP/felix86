@@ -59,7 +59,7 @@
 
 #define PLAIN(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
-        dprintf(g_output_fd, format, ##__VA_ARGS__);                                                                                                 \
+        dprintf(g_output_fd, format "\n", ##__VA_ARGS__);                                                                                            \
         fsync(g_output_fd);                                                                                                                          \
     } while (0)
 
