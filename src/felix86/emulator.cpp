@@ -44,7 +44,7 @@ void Emulator::Run() {
 
     VERBOSE("Executable: %016lx - %016lx", g_executable_start, g_executable_end);
     if (g_interpreter_start) {
-        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start, g_interpreter_end);
+        VERBOSE("Interpreter: %016lx - %016lxg", g_interpreter_start, g_interpreter_end);
     }
 
     VERBOSE("Entering main thread :)");

@@ -302,11 +302,11 @@ void Elf::Load(const std::filesystem::path& path) {
         }
         VERBOSE("BRK base at %p", brk_base);
 
-        g_executable_start = lowest_vaddr;
-        g_executable_end = highest_vaddr;
+        g_executable_start = base_address + lowest_vaddr;
+        g_executable_end = base_address + highest_vaddr;
     } else {
-        g_interpreter_start = lowest_vaddr;
-        g_interpreter_end = highest_vaddr;
+        g_interpreter_start = base_address + lowest_vaddr;
+        g_interpreter_end = base_address + highest_vaddr;
     }
 
     phdr = (u8*)(base_address + lowest_vaddr + ehdr.e_phoff);
