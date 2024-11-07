@@ -10,7 +10,8 @@
 #pragma message("felix86 should only be compiled for RISC-V")
 #endif
 
-const char* argp_program_version = "felix86 " FELIX86_VERSION;
+std::string version_full = "felix86 " FELIX86_VERSION "." + std::string(g_git_hash);
+const char* argp_program_version = version_full.c_str();
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";
 
 static char doc[] = "felix86 - a userspace x86_64 emulator";
@@ -176,7 +177,7 @@ int main(int argc, char* argv[]) {
 
     argp_parse(&argp, argc, argv, 0, 0, &config);
 
-    LOG("felix86 version %s.%s", FELIX86_VERSION, g_git_hash);
+    LOG("%s", version_full.c_str());
 
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
