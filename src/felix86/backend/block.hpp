@@ -87,6 +87,15 @@ struct BackendBlock {
         return start_address;
     }
 
+    u64 GetStartAddressOffset() const {
+        if (start_address >= g_executable_start && start_address < g_executable_end) {
+            return start_address - g_executable_start;
+        } else if (start_address >= g_interpreter_start && start_address < g_interpreter_end) {
+            return start_address - g_interpreter_start;
+        }
+        return start_address;
+    }
+
     [[nodiscard]] std::string Print() const;
 
 private:
