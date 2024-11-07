@@ -164,7 +164,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
         const BackendBlock* block = *it;
 
-        VERBOSE("Block %d (0x%016lx) corresponds to %p", block->GetIndex(), block->GetStartAddress(), as.GetCursorPointer());
+        VERBOSE("Block %d (0x%016lx) corresponds to %p", block->GetIndex(), block->GetStartAddressOffset(), as.GetCursorPointer());
 
         as.Bind(&block_map[block]);
 
