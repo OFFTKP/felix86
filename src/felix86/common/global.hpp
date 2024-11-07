@@ -20,6 +20,8 @@ extern bool g_extensions_manually_specified;
 extern int g_output_fd;
 extern u32 g_spilled_count;
 extern std::filesystem::path g_rootfs_path;
+extern u64 g_interpreter_start, g_interpreter_end;
+extern u64 g_executable_start, g_executable_end;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();

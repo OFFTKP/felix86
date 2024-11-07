@@ -54,7 +54,7 @@ bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
     return true;
 }
 
-std::optional<std::filesystem::path> Filesystem::AtPath(u32 dirfd, const char* pathname) {
+std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* pathname) {
     std::filesystem::path path = pathname;
     if (path.is_relative()) {
         if (dirfd == AT_FDCWD) {
@@ -112,7 +112,7 @@ std::optional<std::filesystem::path> Filesystem::AtPath(u32 dirfd, const char* p
     return path;
 }
 
-ssize_t Filesystem::ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 bufsiz) {
+ssize_t Filesystem::ReadLinkAt(int dirfd, const char* pathname, char* buf, u32 bufsiz) {
     auto path_opt = AtPath(dirfd, pathname);
 
     if (!path_opt) {

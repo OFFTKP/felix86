@@ -247,7 +247,14 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     // Mutex needs to be unlocked before the thread is dispatched
     void* function = emulator->compileFunction(thread_state->GetRip());
 
-    VERBOSE("Jumping to function %p", function);
+    void* offset = function;
+    u64 address = (u64)function;
+    if (address >= g_interpreter_start && address < g_interpreter_end) {
+        offset = (void*)(address - g_interpreter_start);
+    } else if (address >= g_executable_start && address < g_executable_end) {
+        offset = (void*)((u64)address - g_executable_start);
+    }
+    VERBOSE("Jumping to function %p", offset);
 
     return function;
 }

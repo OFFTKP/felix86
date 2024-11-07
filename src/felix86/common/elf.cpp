@@ -301,6 +301,12 @@ void Elf::Load(const std::filesystem::path& path) {
             ERROR("Failed to allocate memory for brk in file %s", path.c_str());
         }
         VERBOSE("BRK base at %p", brk_base);
+
+        g_executable_start = lowest_vaddr;
+        g_executable_end = highest_vaddr;
+    } else {
+        g_interpreter_start = lowest_vaddr;
+        g_interpreter_end = highest_vaddr;
     }
 
     phdr = (u8*)(base_address + lowest_vaddr + ehdr.e_phoff);

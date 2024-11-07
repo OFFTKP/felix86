@@ -30,6 +30,11 @@ int g_output_fd = 1;
 u32 g_spilled_count = 0;
 std::filesystem::path g_rootfs_path{};
 
+u64 g_interpreter_start = 0;
+u64 g_interpreter_end = 0;
+u64 g_executable_start = 0;
+u64 g_executable_end = 0;
+
 #define X(ext) bool Extensions::ext = false;
 FELIX86_EXTENSIONS_TOTAL
 #undef X

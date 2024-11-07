@@ -62,7 +62,7 @@ struct Filesystem {
         }
     }
 
-    ssize_t ReadLinkAt(u32 dirfd, const char* pathname, char* buf, u32 bufsiz);
+    ssize_t ReadLinkAt(int dirfd, const char* pathname, char* buf, u32 bufsiz);
 
     ssize_t ReadLink(const char* pathname, char* buf, u32 bufsiz);
 
@@ -70,7 +70,7 @@ struct Filesystem {
 
     int OpenAt(int dirfd, const char* pathname, int flags, int mode);
 
-    std::optional<std::filesystem::path> AtPath(u32 dirfd, const char* pathname);
+    std::optional<std::filesystem::path> AtPath(int dirfd, const char* pathname);
 
     std::filesystem::path GetRootFSPath() {
         return rootfs_path;
