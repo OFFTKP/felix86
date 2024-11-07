@@ -205,8 +205,8 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         break;
     }
     case felix86_x86_64_access: {
-        result = fs.FAccessAt(AT_FDCWD, (const char*)rsi, rdi, 0);
-        STRACE("access(%s, %d) = %d", (const char*)rsi, (int)rdi, (int)result);
+        result = fs.FAccessAt(AT_FDCWD, (const char*)rdi, rsi, 0);
+        STRACE("access(%s, %d) = %d", (const char*)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_read: {
