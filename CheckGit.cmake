@@ -1,6 +1,6 @@
 set(CURRENT_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
 if (NOT DEFINED pre_configure_dir)
-    set(pre_configure_dir ${CMAKE_CURRENT_LIST_DIR})
+    set(pre_configure_dir ${CMAKE_CURRENT_LIST_DIR}/src/felix86/common)
 endif ()
 
 if (NOT DEFINED post_configure_dir)
@@ -36,10 +36,6 @@ function(CheckGitVersion)
     if (NOT EXISTS ${post_configure_dir})
         file(MAKE_DIRECTORY ${post_configure_dir})
     endif ()
-
-    if (NOT EXISTS ${post_configure_dir}/git_version.cpp)
-        file(COPY src/felix86/common/git_version.cpp.in DESTINATION ${post_configure_dir})
-    endif()
 
     if (NOT DEFINED GIT_HASH_CACHE)
         set(GIT_HASH_CACHE "INVALID")
