@@ -896,6 +896,15 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         ir.Exit();
         break;
     }
+    case Group5::Push: {
+        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+        bool is_word = inst->operand_rm.size == X86_SIZE_WORD;
+        SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
+        SSAInstruction* rsp_sub = ir.Addi(rsp, is_word ? -2 : -8);
+        ir.WriteMemory(rsp_sub, rm, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
+        ir.SetReg(rsp_sub, X86_REF_RSP);
+        break;
+    }
     default: {
         ERROR("Unimplemented group 5 opcode: %02x during %016lx", (int)opcode, ir.GetCurrentAddress());
         break;
