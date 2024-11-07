@@ -1088,9 +1088,8 @@ IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
     SSAInstruction* clz = ir.Clz(rm);
     // CLZ always deals on 64-bit values, so we need to subtract the result from 63
     SSAInstruction* sub = ir.Sub(ir.Imm(63), clz);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    inst->operand_reg.size = X86_SIZE_QWORD;
-    ir.SetReg(inst->operand_reg, ir.Select(zero, reg, ir.Set(reg, sub, size_e, inst->operand_reg.reg.high8)));
+    SSAInstruction* reg = ir.GetGuest(inst->operand_reg.reg.ref);
+    ir.SetReg(ir.Select(zero, reg, ir.Set(reg, sub, size_e, inst->operand_reg.reg.high8)), inst->operand_reg.reg.ref, X86_SIZE_QWORD);
     ir.SetFlag(zero, X86_REF_ZF);
 }
 
