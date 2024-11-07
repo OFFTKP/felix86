@@ -6,6 +6,16 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+configure_file(src/felix86/common/git_version.cpp.in git_version.cpp @ONLY)
+add_custom_target(AlwaysCheckGit COMMAND ${CMAKE_COMMAND}
+    -DRUN_CHECK_GIT_VERSION=1
+    -DGIT_HASH_CACHE=${GIT_HASH_CACHE}
+    -P ${CURRENT_LIST_DIR}/CheckGit.cmake
+    BYPRODUCTS ${post_configure_file}
+)
+
+add_library(git_version STATIC git_version.cpp)
+
 set(BISCUIT_CODE_BUFFER_MMAP ON)
 set(BUILD_TESTING OFF)
 add_subdirectory(external/biscuit)
@@ -108,7 +118,7 @@ set(FELIX86_INCLUDES
 add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
-target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit rvasm indicators)
+target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit rvasm indicators git_version)
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)
