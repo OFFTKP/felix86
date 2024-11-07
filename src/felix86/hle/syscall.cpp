@@ -163,6 +163,11 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         STRACE("mprotect(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
         break;
     }
+    case felix86_x86_64_close: {
+        result = HOST_SYSCALL(close, rdi);
+        STRACE("close(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_fstat: {
         x64Stat* guest_stat = (x64Stat*)rsi;
         struct stat host_stat;
