@@ -1073,14 +1073,14 @@ void Emitter::EmitSelect(Backend& backend, biscuit::GPR Rd, biscuit::GPR Conditi
         AS.CZERO_EQZ(Rd, RsTrue, Condition);
         AS.OR(Rd, Rd, t0);
     } else {
-        if (Rd != RsFalse) {
+        if (Rd != RsFalse && Rd != Condition) {
             Label true_label;
             AS.MV(Rd, RsTrue);
             AS.BNEZ(Condition, &true_label);
             AS.MV(Rd, RsFalse);
             AS.Bind(&true_label);
         } else {
-            // If Rd == RsFalse we can't do this shorthand mode above.
+            // If Rd == RsFalse || Rd == Condition we can't do this shorthand mode above.
             Label true_label, end_label;
             AS.BNEZ(Condition, &true_label);
             AS.MV(Rd, RsFalse);
