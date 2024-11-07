@@ -47,7 +47,9 @@ void Emulator::Run() {
         VERBOSE("Interpreter: %016lx - %016lxg", g_interpreter_start, g_interpreter_end);
     }
 
-    VERBOSE("Entrypoint: %016lx", fs.GetEntrypoint());
+    if (!g_testing) {
+        VERBOSE("Entrypoint: %016lx", (u64)fs.GetEntrypoint());
+    }
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();
@@ -251,7 +253,7 @@ void* Emulator::compileFunction(u64 rip) {
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 
     // Mutex needs to be unlocked before the thread is dispatched
-    void* function = emulator->compileFunction(thread_state->GetRip());
+    void* volatile function = emulator->compileFunction(thread_state->GetRip());
 
     u64 address = thread_state->GetRip();
     if (address >= g_interpreter_start && address < g_interpreter_end) {
