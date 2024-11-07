@@ -921,8 +921,8 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
         if (opcode == 0xD0) { // xgetbv
             // That's probably fine for now
             xcr0_reg_t xcr0 = {};
-            xcr0.x87 = 1;
-            xcr0.sse = 1;
+            // xcr0.x87 = 1;
+            // xcr0.sse = 1;
             u32 rax = xcr0.raw;
             u32 rdx = xcr0.raw >> 32;
             ir.SetReg(ir.Imm(rax), X86_REF_RAX);
