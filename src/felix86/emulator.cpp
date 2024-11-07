@@ -44,7 +44,7 @@ void Emulator::Run() {
 
     VERBOSE("Executable: %016lx - %016lx", g_executable_start, g_executable_end);
     if (g_interpreter_start) {
-        VERBOSE("Interpreter: %016lx - %016lxg", g_interpreter_start, g_interpreter_end);
+        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start, g_interpreter_end);
     }
 
     if (!g_testing) {
@@ -80,15 +80,12 @@ void Emulator::setupMainStack(ThreadState* state) {
 
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
-    VERBOSE("Pushing: %s -> %s", path, program_name);
 
     rsp = stack_push_string(rsp, x86_64_string);
     const char* platform_name = (const char*)rsp;
-    VERBOSE("Pushing: %s -> %s", x86_64_string, platform_name);
 
     for (ssize_t i = 0; i < argc; i++) {
         rsp = stack_push_string(rsp, config.argv[i].c_str());
-        VERBOSE("Pushing: %s -> %p", config.argv[i].c_str(), (void*)rsp);
         argv_addresses[i] = rsp;
     }
 

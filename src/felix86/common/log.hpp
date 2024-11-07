@@ -29,7 +29,7 @@
 #define WARN(format, ...)                                                                                                                            \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
-            dprintf(g_output_fd, ANSI_COLOR_YELLOW "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                        \
+            dprintf(g_output_fd, ANSI_COLOR_YELLOW format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                     \
             fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)

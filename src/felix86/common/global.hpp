@@ -22,6 +22,9 @@ extern u32 g_spilled_count;
 extern std::filesystem::path g_rootfs_path;
 extern u64 g_interpreter_start, g_interpreter_end;
 extern u64 g_executable_start, g_executable_end;
+extern thread_local ThreadState* g_thread_state;
+extern u64 g_interpreter_base_hint;
+extern u64 g_executable_base_hint;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
