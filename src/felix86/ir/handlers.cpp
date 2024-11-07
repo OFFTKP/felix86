@@ -1090,7 +1090,7 @@ IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
     SSAInstruction* sub = ir.Sub(ir.Imm(63), clz);
     SSAInstruction* old = ir.GetGuest(inst->operand_reg.reg.ref);
     SSAInstruction* result = ir.Set(old, sub, size_e, inst->operand_reg.reg.high8);
-    ir.SetReg(inst->operand_reg, ir.Select(zero, old, result));
+    ir.SetGuest(inst->operand_reg.reg.ref, ir.Select(zero, old, result));
     ir.SetFlag(zero, X86_REF_ZF);
 }
 
