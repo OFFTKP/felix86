@@ -469,6 +469,18 @@ IR_HANDLE(movsxd) { // movsxd r32/64, rm32/64 - 0x63
     ir.SetReg(inst->operand_reg, serm);
 }
 
+IR_HANDLE(movsxb) { // movsx r16/32/64, rm8 - 0x0f be
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* serm = ir.Sext(rm, X86_SIZE_BYTE);
+    ir.SetReg(inst->operand_reg, serm);
+}
+
+IR_HANDLE(movsxw) {
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* serm = ir.Sext(rm, X86_SIZE_WORD);
+    ir.SetReg(inst->operand_reg, serm);
+}
+
 IR_HANDLE(push_imm) {
     bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
     SSAInstruction* imm = ir.Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
