@@ -363,6 +363,8 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
                 case IROpcode::VIota:
                 case IROpcode::VSlide1Up:
                 case IROpcode::VSlideUpZeroesi:
+                case IROpcode::VMerge:
+                case IROpcode::VMergei:
                 case IROpcode::VSlideUpi: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                         if (should_consider(instructions, inst.GetOperand(i))) {
