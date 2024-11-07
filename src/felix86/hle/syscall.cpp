@@ -194,6 +194,11 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         STRACE("write(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_writev: {
+        result = HOST_SYSCALL(writev, rdi, (const struct iovec*)rsi, rdx);
+        STRACE("writev(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_exit_group: {
         VERBOSE("Emulator called exit_group(%d)", (int)rdi);
         result = HOST_SYSCALL(exit_group, rdi);
