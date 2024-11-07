@@ -982,8 +982,10 @@ IR_HANDLE(mov_xmm_m64) { // movlpd xmm, m64 - 0x0f 0x12
 IR_HANDLE(movh_xmm_m64) { // movhpd xmm, m64 - 0x0f 0x16
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Double);
     SSAInstruction* id = ir.VId(VectorState::PackedQWord);
+    SSAInstruction* shifted = ir.VSlideUpi(rm, 1, VectorState::PackedQWord);
+    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     ir.SetVMask(id);
-    SSAInstruction* result = ir.VMerge(ir.VSlideUpi(rm, 1, VectorState::PackedQWord), ir.GetReg(inst->operand_reg), VectorState::PackedQWord);
+    SSAInstruction* result = ir.VMerge(shifted, reg, VectorState::PackedQWord);
     ir.SetReg(inst->operand_reg, result);
 }
 
