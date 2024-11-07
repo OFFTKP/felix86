@@ -47,6 +47,7 @@ void Emulator::Run() {
         VERBOSE("Interpreter: %016lx - %016lxg", g_interpreter_start, g_interpreter_end);
     }
 
+    VERBOSE("Entrypoint: %016lx", fs.GetEntrypoint());
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();
