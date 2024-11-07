@@ -42,6 +42,11 @@ void Emulator::Run() {
         ERROR("Expected exactly one thread state during Emulator::Run, the main thread");
     }
 
+    VERBOSE("Executable: %016lx - %016lx", g_executable_start, g_executable_end);
+    if (g_interpreter_start) {
+        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start, g_interpreter_end);
+    }
+
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();
@@ -252,7 +257,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     if (address >= g_interpreter_start && address < g_interpreter_end) {
         offset = (void*)(address - g_interpreter_start);
     } else if (address >= g_executable_start && address < g_executable_end) {
-        offset = (void*)((u64)address - g_executable_start);
+        offset = (void*)(address - g_executable_start);
     }
     VERBOSE("Jumping to function %p", offset);
 
