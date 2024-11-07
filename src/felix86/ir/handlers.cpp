@@ -960,7 +960,7 @@ IR_HANDLE(movhps_xmm_xmm64) {
     ir.SetReg(inst->operand_reg, result);
 }
 
-IR_HANDLE(movhps_m64_xmm) {
+IR_HANDLE(movh_m64_xmm) {
     ASSERT(inst->operand_rm.type == X86_OP_TYPE_MEMORY);
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
     SSAInstruction* slide = ir.VSlideDowni(xmm, 1, VectorState::PackedQWord);
