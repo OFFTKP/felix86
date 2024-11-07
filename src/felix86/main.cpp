@@ -176,7 +176,7 @@ int main(int argc, char* argv[]) {
 
     argp_parse(&argp, argc, argv, 0, 0, &config);
 
-    LOG("felix86 version %s", FELIX86_VERSION);
+    LOG("felix86 version %s.%s", FELIX86_VERSION, g_git_hash);
 
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
