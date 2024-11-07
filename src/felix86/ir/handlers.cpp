@@ -946,27 +946,6 @@ IR_HANDLE(syscall) { // syscall - 0x0f 0x05
     ir.Syscall();
 }
 
-IR_HANDLE(movhps_xmm_xmm64) {
-    SSAInstruction* low = ir.GetReg(inst->operand_reg);
-    SSAInstruction* high;
-    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
-        high = ir.GetRm(inst->operand_rm, VectorState::Double);
-    } else {
-        high = ir.GetReg(inst->operand_rm);
-    }
-    SSAInstruction* shifted = ir.VSlideUpi(high, 1, VectorState::PackedQWord);
-    ir.SetVMask(ir.VSplati(0b10, VectorState::PackedQWord));
-    SSAInstruction* result = ir.VMerge(shifted, low, VectorState::PackedQWord);
-    ir.SetReg(inst->operand_reg, result);
-}
-
-IR_HANDLE(movh_m64_xmm) {
-    ASSERT(inst->operand_rm.type == X86_OP_TYPE_MEMORY);
-    SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
-    SSAInstruction* slide = ir.VSlideDowni(xmm, 1, VectorState::PackedQWord);
-    ir.SetRm(inst->operand_rm, slide, VectorState::Double);
-}
-
 IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     ir.SetRm(inst->operand_rm, reg, VectorState::PackedDWord);
@@ -977,6 +956,13 @@ IR_HANDLE(mov_xmm_m64) { // movlpd xmm, m64 - 0x0f 0x12
     // instead of gpr loads and then moving to vector
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Double);
     ir.SetReg(inst->operand_reg, rm);
+}
+
+IR_HANDLE(movh_m64_xmm) {
+    ASSERT(inst->operand_rm.type == X86_OP_TYPE_MEMORY);
+    SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
+    SSAInstruction* slide = ir.VSlideDowni(xmm, 1, VectorState::PackedQWord);
+    ir.SetRm(inst->operand_rm, slide, VectorState::Double);
 }
 
 IR_HANDLE(movh_xmm_m64) { // movhpd xmm, m64 - 0x0f 0x16
