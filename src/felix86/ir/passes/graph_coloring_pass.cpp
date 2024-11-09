@@ -563,8 +563,9 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
         // Try to color the nodes
         bool colored = true;
 
-        while (!nodes.empty()) {
-            Node& node = nodes.back();
+        auto it = nodes.rbegin();
+        for (it = nodes.rbegin(); it != nodes.rend();) {
+            Node& node = *it;
 
             std::vector<u32> colors = available_colors;
             for (u32 neighbor : node.edges) {
@@ -576,17 +577,18 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
 
             if (colors.empty()) {
                 colored = false;
-                break;
+                it++;
+                continue;
             }
 
+            it = decltype(it)(nodes.erase(std::next(it).base()));
             allocations.Allocate(node.id, type, colors[0]);
-            nodes.pop_back();
         }
 
         if (colored) {
             return allocations;
         } else {
-            // Must spill one of the nodes
+            // Let's spill all the remaining nodes
             u32 chosen_node = choose(instructions, nodes);
             spill(function, chosen_node, spill_location, type);
             spill_location += type == AllocationType::Vec ? 16 : 8;
