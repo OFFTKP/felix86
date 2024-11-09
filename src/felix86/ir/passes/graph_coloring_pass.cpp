@@ -578,17 +578,23 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             if (colors.empty()) {
                 colored = false;
                 it++;
+
+                // According to Briggs thesis on register allocation:
+                // Select may discover that it has no color available for some node.
+                // In that case it leaves the node uncolored and continues with the next node.
                 continue;
             }
 
+            // it's just the erase equivalent when working with rbegin/rend
             it = decltype(it)(nodes.erase(std::next(it).base()));
             allocations.Allocate(node.id, type, colors[0]);
         }
 
         if (colored) {
+            // Allocation has succeeded, they all got colored
             return allocations;
         } else {
-            // Let's spill all the remaining nodes
+            // Must spill one of the nodes
             u32 chosen_node = choose(instructions, nodes);
             spill(function, chosen_node, spill_location, type);
             spill_location += type == AllocationType::Vec ? 16 : 8;
