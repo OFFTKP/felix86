@@ -53,6 +53,30 @@ void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     Pop(backend, mask);
 }
 
+void SoftwareClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
+    ASSERT(Rd != Rs);
+    const auto& gprs = Registers::GetAllocatableGPRs();
+    biscuit::GPR mask = Push(backend, gprs[0]);
+    biscuit::GPR counter = Push(backend, gprs[1]);
+    AS.LI(mask, 0x8000000000000000);
+
+    Label loop, end;
+    AS.Bind(&loop);
+    AS.AND(Rd, Rs, mask);
+    AS.BNEZ(Rd, &end);
+    AS.ADDI(counter, counter, 1);
+    AS.SRLI(mask, mask, 1);
+    AS.LI(Rd, size);
+    AS.SLTU(Rd, counter, Rd);
+    AS.BNEZ(Rd, &loop);
+
+    AS.Bind(&end);
+    AS.MV(Rd, counter);
+
+    Pop(backend, counter);
+    Pop(backend, mask);
+}
+
 using Operation = std::function<void(biscuit::Assembler&, biscuit::GPR, biscuit::GPR, biscuit::GPR)>;
 
 void SoftwareAtomicFetchRMW8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Address, biscuit::Ordering ordering,
@@ -392,7 +416,7 @@ void Emitter::EmitClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
     if (Extensions::B) {
         AS.CLZ(Rd, Rs);
     } else {
-        ERROR("IMPLME: SoftwareClz");
+        SoftwareClz(backend, Rd, Rs, 64);
     }
 }
 
