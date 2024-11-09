@@ -527,8 +527,6 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             instructions.at(name).interferences = edges.edges.size();
         }
 
-        const InterferenceGraph original_graph = graph;
-
         while (true) {
             // While there's vertices with degree less than k
             while (graph.HasLessThanK(k)) {
@@ -536,6 +534,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
                 for (auto& [id, edges] : graph) {
                     if (edges.edges.size() < k) {
                         nodes.push_back(graph.RemoveNode(id));
+                        break;
                     }
                 }
                 // Removing nodes might have created more with degree less than k, repeat
@@ -564,19 +563,11 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
         // Try to color the nodes
         bool colored = true;
 
-        InterferenceGraph rebuilt_graph;
         while (!nodes.empty()) {
             Node& node = nodes.back();
-            const auto& edges = node.edges;
-
-            for (u32 edge : edges) {
-                if (rebuilt_graph.find(edge) == rebuilt_graph.end()) {
-                    rebuilt_graph.AddEdge(node.id, edge);
-                }
-            }
 
             std::vector<u32> colors = available_colors;
-            for (u32 neighbor : rebuilt_graph.GetInterferences(node.id)) {
+            for (u32 neighbor : node.edges) {
                 if (allocations.IsAllocated(neighbor)) {
                     u32 allocation = allocations.GetAllocationIndex(neighbor);
                     std::erase(colors, allocation);
