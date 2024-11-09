@@ -5,6 +5,12 @@ Compilation and usage instructions can be found [here](./docs/how-to-use.md).
 
 Want to contribute but don't know what to do? [Check this out](./docs/internals/contributing.md).
 
+## Features
+- Just-in-time recompiler with global graph coloring register allocator and a variety of optimizations
+- Uses RISC-V Vector Extension for SIMD instructions
+- Utilizes B extension if available for bit manipulation instructions like `bsr`
+- Support for a variety of optional extensions such as XThead custom extensions
+
 ## Similar projects
 felix86 is very early in development, and will not support AArch64.
 If you want a more mature x86-64 userspace emulator, use one of these:

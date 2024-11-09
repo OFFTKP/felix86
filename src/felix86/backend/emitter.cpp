@@ -75,7 +75,7 @@ void SoftwareClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     const auto& gprs = Registers::GetAllocatableGPRs();
     biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs}));
     biscuit::GPR counter = Push(backend, PickNot(gprs, {Rd, Rs, mask}));
-    AS.LI(mask, (1 << (size - 1)));
+    AS.LI(mask, (1ull << (size - 1)));
     AS.LI(counter, 0);
 
     Label loop, end;
