@@ -534,12 +534,11 @@ IR_HANDLE(test_rm_reg) { // test rm8, r8 - 0x84
 
 IR_HANDLE(xchg_rm_reg) { // xchg rm8, r8 - 0x86
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY && false) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* swapped_reg = ir.AmoSwap(address, reg, MemoryOrdering::AqRl, inst->operand_reg.size);
         ir.SetReg(inst->operand_reg, swapped_reg);
     } else {
-        WARN("Hardcoded non atomic path for xchg, fix me");
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         ir.SetRm(inst->operand_rm, reg);
         ir.SetReg(inst->operand_reg, rm);
@@ -1078,7 +1077,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* eax = ir.GetReg(X86_REF_RAX, size_e);
 
-    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY && false) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* actual = ir.AmoCAS(address, eax, reg, MemoryOrdering::AqRl, size_e);
@@ -1086,6 +1085,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         ir.SetReg(actual, X86_REF_RAX, size_e);
         ir.SetFlag(ir.Equal(actual, eax), X86_REF_ZF);
     } else {
+        WARN("Hardcoded non-atomic path for cmpxchg, fix this");
         SSAInstruction* rm = ir.GetReg(inst->operand_rm.reg.ref, size_e);
         SSAInstruction* equal = ir.Equal(eax, rm);
         SSAInstruction* rm_full = ir.GetReg(inst->operand_rm.reg.ref, X86_SIZE_QWORD);
