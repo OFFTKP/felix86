@@ -48,6 +48,7 @@ void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs}));
     biscuit::GPR counter = Push(backend, PickNot(gprs, {Rd, Rs, mask}));
     AS.LI(mask, 1);
+    AS.LI(counter, 0);
 
     Label loop, end;
     AS.Bind(&loop);
@@ -75,6 +76,7 @@ void SoftwareClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs}));
     biscuit::GPR counter = Push(backend, PickNot(gprs, {Rd, Rs, mask}));
     AS.LI(mask, (1 << (size - 1)));
+    AS.LI(counter, 0);
 
     Label loop, end;
     AS.Bind(&loop);
@@ -97,7 +99,7 @@ using Operation = std::function<void(biscuit::Assembler&, biscuit::GPR, biscuit:
 
 void SoftwareAtomicFetchRMW8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Address, biscuit::Ordering ordering,
                              Operation operation) {
-    ASSERT(Rd != Rs && Rd != Address);
+    ASSERT(Rd != Rs && Rd != Address && Rs != Address);
     if (ordering != biscuit::Ordering::AQRL) {
         UNIMPLEMENTED();
     }
@@ -151,7 +153,7 @@ void SoftwareAtomicFetchRMW8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs,
 
 void SoftwareAtomicFetchRMW16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Address, biscuit::Ordering ordering,
                               Operation operation) {
-    ASSERT(Rd != Rs && Rd != Address);
+    ASSERT(Rd != Rs && Rd != Address && Rs != Address);
     if (ordering != biscuit::Ordering::AQRL) {
         UNIMPLEMENTED();
     }
@@ -276,6 +278,8 @@ void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, Labe
         AS.BNEZ(condition, target_true);
         AS.J(target_false);
     } else {
+        // TODO: if the labels are too far we need to increment the nop backpatching space
+        // and insert a literal pc-relative load
         Label false_label;
         AS.BEQZ(condition, &false_label);
         AS.J(target_true);
