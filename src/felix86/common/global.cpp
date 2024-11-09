@@ -258,6 +258,16 @@ bool parse_extensions(const char* arg) {
     }
         FELIX86_EXTENSIONS_TOTAL
 #undef X
+
+        {
+            std::string lower = "xthead";
+            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+            if (extension == lower) {
+                Extensions::Xtheadcondmov = true;
+                Extensions::Xtheadba = true;
+                continue;
+            }
+        }
     }
 
     if (Extensions::V) {

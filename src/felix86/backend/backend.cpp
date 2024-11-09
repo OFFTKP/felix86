@@ -9,6 +9,11 @@ using namespace biscuit;
 
 constexpr static u64 code_cache_size = 32 * 1024 * 1024;
 
+// If you don't flush the cache the code will randomly SIGILL
+static inline void flush_icache_riscv() {
+    asm volatile("fence.i" ::: "memory");
+}
+
 namespace {
 std::string ExitReasonToString(ExitReason reason) {
     switch (reason) {
@@ -249,6 +254,9 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     u64 size = (u64)end - (u64)start;
 
     map[function.GetStartAddress()] = {start, size};
+
+    // Make code visible to instruction fetches.
+    flush_icache_riscv();
 
     return {start, size};
 }
