@@ -1119,10 +1119,12 @@ IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
 IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* z = ir.IsZero(rm, size_e);
+    SSAInstruction* zero = ir.IsZero(rm, size_e);
     SSAInstruction* ctz = ir.Ctz(rm); // in x86 result is undefined if it's zero so we don't care
-    ir.SetReg(inst->operand_reg, ctz);
-    ir.SetFlag(z, X86_REF_ZF);
+    SSAInstruction* old = ir.GetGuest(inst->operand_reg.reg.ref);
+    SSAInstruction* result = ir.Set(old, ctz, size_e, inst->operand_reg.reg.high8);
+    ir.SetGuest(inst->operand_reg.reg.ref, ir.Select(zero, old, result));
+    ir.SetFlag(zero, X86_REF_ZF);
 }
 
 // ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██      ██████   ██████

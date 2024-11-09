@@ -1,5 +1,20 @@
 # How to use
 
+## Required architecture
+You need either an emulator like QEmu or a board with `rv64gv`.
+Any extra extensions might be utilized, but `G` and `V` are mandatory.
+
+felix86 is going to tell you which extensions it detects on your system.
+If you have an extension but it's unable to detect it, you can use the environment variable:
+```
+FELIX86_EXTENSIONS=v,b
+```
+to specify any extra extensions on top of the ones it detects, or:
+```
+FELIX86_ALL_EXTENSIONS=g,c,v,b
+```
+to specify all available extensions.
+
 ## Using on RISC-V hardware
 
 Simply compile felix86 with CMake
