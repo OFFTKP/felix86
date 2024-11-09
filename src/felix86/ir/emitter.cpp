@@ -466,36 +466,52 @@ SSAInstruction* IREmitter::AmoXor(SSAInstruction* address, SSAInstruction* sourc
 }
 
 SSAInstruction* IREmitter::AmoSwap(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
+    SSAInstruction* instruction;
     switch (size) {
     case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::AmoSwap8, {address, source}, (u8)ordering);
+        instruction = insertInstruction(IROpcode::AmoSwap8, {address, source}, (u8)ordering);
+        break;
     case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::AmoSwap16, {address, source}, (u8)ordering);
+        instruction = insertInstruction(IROpcode::AmoSwap16, {address, source}, (u8)ordering);
+        break;
     case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::AmoSwap32, {address, source}, (u8)ordering);
+        instruction = insertInstruction(IROpcode::AmoSwap32, {address, source}, (u8)ordering);
+        break;
     case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::AmoSwap64, {address, source}, (u8)ordering);
+        instruction = insertInstruction(IROpcode::AmoSwap64, {address, source}, (u8)ordering);
+        break;
     default:
         UNREACHABLE();
         return nullptr;
     }
+
+    instruction->Lock();
+    return instruction;
 }
 
 SSAInstruction* IREmitter::AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering,
                                   x86_size_e size) {
+    SSAInstruction* instruction;
     switch (size) {
     case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::AmoCAS8, {address, expected, source}, (u8)ordering);
+        instruction = insertInstruction(IROpcode::AmoCAS8, {address, expected, source}, (u8)ordering);
+        break;
     case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::AmoCAS16, {address, expected, source}, (u8)ordering);
+        instruction = insertInstruction(IROpcode::AmoCAS16, {address, expected, source}, (u8)ordering);
+        break;
     case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::AmoCAS32, {address, expected, source}, (u8)ordering);
+        instruction = insertInstruction(IROpcode::AmoCAS32, {address, expected, source}, (u8)ordering);
+        break;
     case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::AmoCAS64, {address, expected, source}, (u8)ordering);
+        instruction = insertInstruction(IROpcode::AmoCAS64, {address, expected, source}, (u8)ordering);
+        break;
     default:
         UNREACHABLE();
         return nullptr;
     }
+
+    instruction->Lock();
+    return instruction;
 }
 
 SSAInstruction* IREmitter::CZeroEqz(SSAInstruction* value, SSAInstruction* cond) {
