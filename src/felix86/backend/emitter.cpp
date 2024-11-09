@@ -30,7 +30,10 @@ void EmitCrash(Backend& backend, ExitReason reason) {
 }
 
 void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
-    ASSERT(Rd != Rs);
+    if (Rd == Rs) {
+        AS.MV(t0, Rs);
+        Rs = t0;
+    }
     const auto& gprs = Registers::GetAllocatableGPRs();
     biscuit::GPR mask = Push(backend, gprs[0]);
     biscuit::GPR counter = Push(backend, gprs[1]);
@@ -54,7 +57,10 @@ void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
 }
 
 void SoftwareClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
-    ASSERT(Rd != Rs);
+    if (Rd == Rs) {
+        AS.MV(t0, Rs);
+        Rs = t0;
+    }
     const auto& gprs = Registers::GetAllocatableGPRs();
     biscuit::GPR mask = Push(backend, gprs[0]);
     biscuit::GPR counter = Push(backend, gprs[1]);
