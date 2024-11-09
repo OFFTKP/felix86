@@ -909,8 +909,9 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         break;
     }
     case Group5::Push: {
-        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         bool is_word = inst->operand_rm.size == X86_SIZE_WORD;
+        inst->operand_rm.size = is_word ? X86_SIZE_WORD : X86_SIZE_QWORD;
+        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
         SSAInstruction* rsp_sub = ir.Addi(rsp, is_word ? -2 : -8);
         ir.WriteMemory(rsp_sub, rm, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
