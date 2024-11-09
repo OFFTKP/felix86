@@ -6,9 +6,6 @@
 struct Node {
     u32 id;
     std::unordered_set<u32> edges;
-
-    Node(const Node&) = delete;
-    Node& operator=(const Node&) = delete;
 };
 
 struct InstructionMetadata {
@@ -36,31 +33,29 @@ struct InterferenceGraph {
         graph[b].edges.erase(a);
     }
 
-    u32 RemoveNode(u32 id) {
+    Node RemoveNode(u32 id) {
+        Node node = {id, graph[id].edges};
         auto& edges = graph[id].edges;
         for (u32 edge : edges) {
             graph[edge].edges.erase(id);
         }
-
-        graph[id].removed = true;
-        return id;
+        graph.erase(id);
+        return node;
     }
 
     u32 Worst(const InstructionMap& instructions) {
         u32 min = std::numeric_limits<u32>::max();
         u32 chosen = 0;
         for (const auto& [id, edges] : graph) {
-            if (!edges.removed) {
-                if (edges.edges.size() == 0)
-                    continue;
-                if (instructions.at(id).infinite_cost)
-                    continue;
-                float spill_cost = instructions.at(id).spill_cost;
-                float cost = spill_cost / edges.edges.size();
-                if (cost < min) {
-                    min = cost;
-                    chosen = id;
-                }
+            if (edges.edges.size() == 0)
+                continue;
+            if (instructions.at(id).infinite_cost)
+                continue;
+            float spill_cost = instructions.at(id).spill_cost;
+            float cost = spill_cost / edges.edges.size();
+            if (cost < min) {
+                min = cost;
+                chosen = id;
             }
         }
         return chosen;
@@ -89,12 +84,7 @@ struct InterferenceGraph {
     }
 
     bool empty() {
-        for (const auto& [id, edges] : graph) {
-            if (!edges.removed) {
-                return false;
-            }
-        }
-        return true;
+        return graph.empty();
     }
 
     void clear() {
@@ -107,7 +97,7 @@ struct InterferenceGraph {
 
     bool HasLessThanK(u32 k) {
         for (const auto& [id, edges] : graph) {
-            if (edges.edges.size() < k && !edges.removed) {
+            if (edges.edges.size() < k) {
                 return true;
             }
         }
@@ -120,7 +110,6 @@ struct InterferenceGraph {
 
 private:
     struct Edges {
-        bool removed;
         std::unordered_set<u32> edges;
     };
 
@@ -401,21 +390,21 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
     }
 }
 
-static u32 choose(const InstructionMap& instructions, const std::deque<u32>& nodes) {
+static u32 choose(const InstructionMap& instructions, const std::deque<Node>& nodes) {
     float min = std::numeric_limits<float>::max();
     u32 chosen = 0;
 
     for (auto& node : nodes) {
-        float spill_cost = instructions.at(node).spill_cost;
-        float degree = instructions.at(node).interferences;
+        float spill_cost = instructions.at(node.id).spill_cost;
+        float degree = instructions.at(node.id).interferences;
         if (degree == 0)
             continue;
-        if (instructions.at(node).infinite_cost)
+        if (instructions.at(node.id).infinite_cost)
             continue;
         float cost = spill_cost / degree;
         if (cost < min) {
             min = cost;
-            chosen = node;
+            chosen = node.id;
         }
     }
 
@@ -517,7 +506,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
     std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
     while (true) {
         // Chaitin-Briggs algorithm
-        std::deque<u32> nodes;
+        std::deque<Node> nodes;
         InterferenceGraph graph;
         InstructionMap instructions;
         AllocationMap allocations;
@@ -538,21 +527,16 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             instructions.at(name).interferences = edges.edges.size();
         }
 
+        const InterferenceGraph original_graph = graph;
+
         while (true) {
             // While there's vertices with degree less than k
             while (graph.HasLessThanK(k)) {
                 // Pick any node with degree less than k and put it on the stack
-                std::stack<u32> to_remove;
                 for (auto& [id, edges] : graph) {
-                    if (edges.edges.size() < k && !edges.removed) {
-                        to_remove.push(id);
+                    if (edges.edges.size() < k) {
+                        nodes.push_back(graph.RemoveNode(id));
                     }
-                }
-
-                while (!to_remove.empty()) {
-                    u32 id = to_remove.top();
-                    to_remove.pop();
-                    nodes.push_back(graph.RemoveNode(id));
                 }
                 // Removing nodes might have created more with degree less than k, repeat
             }
@@ -580,12 +564,19 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
         // Try to color the nodes
         bool colored = true;
 
+        InterferenceGraph rebuilt_graph;
         while (!nodes.empty()) {
-            u32 id = nodes.back();
-            const auto& edges = graph.GetInterferences(id);
+            Node& node = nodes.back();
+            const auto& edges = node.edges;
+
+            for (u32 edge : edges) {
+                if (rebuilt_graph.find(edge) == rebuilt_graph.end()) {
+                    rebuilt_graph.AddEdge(node.id, edge);
+                }
+            }
 
             std::vector<u32> colors = available_colors;
-            for (u32 neighbor : edges) {
+            for (u32 neighbor : rebuilt_graph.GetInterferences(node.id)) {
                 if (allocations.IsAllocated(neighbor)) {
                     u32 allocation = allocations.GetAllocationIndex(neighbor);
                     std::erase(colors, allocation);
@@ -597,7 +588,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
                 break;
             }
 
-            allocations.Allocate(id, type, colors[0]);
+            allocations.Allocate(node.id, type, colors[0]);
             nodes.pop_back();
         }
 
