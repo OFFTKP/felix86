@@ -24,6 +24,16 @@ void Pop(Backend& backend, biscuit::GPR Rs) {
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), 8);
 }
 
+biscuit::GPR PickNot(const auto& gprs, std::initializer_list<biscuit::GPR> exclude) {
+    for (const auto& gpr : gprs) {
+        if (std::find(exclude.begin(), exclude.end(), gpr) == exclude.end()) {
+            return gpr;
+        }
+    }
+    UNREACHABLE();
+    return x0;
+}
+
 void EmitCrash(Backend& backend, ExitReason reason) {
     Emitter::EmitSetExitReason(backend, static_cast<u64>(reason));
     Emitter::EmitJumpFar(backend, backend.GetCrashTarget());
@@ -35,8 +45,8 @@ void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
         Rs = t0;
     }
     const auto& gprs = Registers::GetAllocatableGPRs();
-    biscuit::GPR mask = Push(backend, gprs[0]);
-    biscuit::GPR counter = Push(backend, gprs[1]);
+    biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs}));
+    biscuit::GPR counter = Push(backend, PickNot(gprs, {Rd, Rs, mask}));
     AS.LI(mask, 1);
 
     Label loop, end;
@@ -62,9 +72,9 @@ void SoftwareClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
         Rs = t0;
     }
     const auto& gprs = Registers::GetAllocatableGPRs();
-    biscuit::GPR mask = Push(backend, gprs[0]);
-    biscuit::GPR counter = Push(backend, gprs[1]);
-    AS.LI(mask, 0x8000000000000000);
+    biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs}));
+    biscuit::GPR counter = Push(backend, PickNot(gprs, {Rd, Rs, mask}));
+    AS.LI(mask, (1 << (size - 1)));
 
     Label loop, end;
     AS.Bind(&loop);
@@ -99,12 +109,12 @@ void SoftwareAtomicFetchRMW8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs,
 
     const auto& gprs = Registers::GetAllocatableGPRs();
 
-    biscuit::GPR scratch = Push(backend, gprs[0]);
-    biscuit::GPR scratch2 = Push(backend, gprs[1]);
-    biscuit::GPR mask = Push(backend, gprs[2]);
-    biscuit::GPR mask_not = Push(backend, gprs[3]);
-    biscuit::GPR Rs_shifted = Push(backend, gprs[4]);
-    biscuit::GPR address_aligned = Push(backend, gprs[5]);
+    biscuit::GPR scratch = Push(backend, PickNot(gprs, {Rd, Rs, Address}));
+    biscuit::GPR scratch2 = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch}));
+    biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2}));
+    biscuit::GPR mask_not = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask}));
+    biscuit::GPR Rs_shifted = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask, mask_not}));
+    biscuit::GPR address_aligned = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask, mask_not, Rs_shifted}));
 
     AS.ANDI(mask, Address, 3);
     AS.SLLIW(mask, mask, 3);
@@ -151,12 +161,12 @@ void SoftwareAtomicFetchRMW16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs
     const auto& gprs = Registers::GetAllocatableGPRs();
 
     // TODO: obviously this is horrible but also one day we'll have 8/16 bit atomics <- clueless
-    biscuit::GPR scratch = Push(backend, gprs[0]);
-    biscuit::GPR scratch2 = Push(backend, gprs[1]);
-    biscuit::GPR mask = Push(backend, gprs[2]);
-    biscuit::GPR mask_not = Push(backend, gprs[3]);
-    biscuit::GPR Rs_shifted = Push(backend, gprs[4]);
-    biscuit::GPR address_aligned = Push(backend, gprs[5]);
+    biscuit::GPR scratch = Push(backend, PickNot(gprs, {Rd, Rs, Address}));
+    biscuit::GPR scratch2 = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch}));
+    biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2}));
+    biscuit::GPR mask_not = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask}));
+    biscuit::GPR Rs_shifted = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask, mask_not}));
+    biscuit::GPR address_aligned = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask, mask_not, Rs_shifted}));
 
     AS.ANDI(mask, Address, 3);
     AS.LI(scratch, 0xFFFF);
