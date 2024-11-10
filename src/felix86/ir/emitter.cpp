@@ -415,7 +415,9 @@ SSAInstruction* IREmitter::StoreConditional32(SSAInstruction* address, SSAInstru
 
 SSAInstruction* IREmitter::atomic8(SSAInstruction* address, SSAInstruction* source, IROpcode opcode) {
     if (Extensions::Zabha) {
-        return insertInstruction(opcode, {address, source}, (u8)biscuit::Ordering::AQRL);
+        SSAInstruction* instruction = insertInstruction(opcode, {address, source}, (u8)biscuit::Ordering::AQRL);
+        instruction->Lock();
+        return instruction;
     }
 
     IRBlock* header = function.CreateBlock();
@@ -490,11 +492,11 @@ SSAInstruction* IREmitter::atomic8(SSAInstruction* address, SSAInstruction* sour
 
     SetBlock(conclusion);
 
-    // Shift the value back to the correct place
-    SSAInstruction* result_shifted = Shr(result, shift_amount);
-    SSAInstruction* result_masked = Andi(result_shifted, 0xFF);
+    // Return the original loaded value
+    SSAInstruction* load_shifted = Shr(load, shift_amount);
+    SSAInstruction* load_masked = Andi(load_shifted, 0xFF);
 
-    return result_masked;
+    return load_masked;
 }
 
 SSAInstruction* IREmitter::AmoAdd(SSAInstruction* address, SSAInstruction* source, biscuit::Ordering ordering, x86_size_e size) {
@@ -505,19 +507,21 @@ SSAInstruction* IREmitter::AmoAdd(SSAInstruction* address, SSAInstruction* sourc
         break;
     case x86_size_e::X86_SIZE_WORD:
         instruction = insertInstruction(IROpcode::AmoAdd16, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_DWORD:
         instruction = insertInstruction(IROpcode::AmoAdd32, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_QWORD:
         instruction = insertInstruction(IROpcode::AmoAdd64, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     default:
         UNREACHABLE();
         return nullptr;
     }
 
-    instruction->Lock();
     return instruction;
 }
 
@@ -529,19 +533,21 @@ SSAInstruction* IREmitter::AmoAnd(SSAInstruction* address, SSAInstruction* sourc
         break;
     case x86_size_e::X86_SIZE_WORD:
         instruction = insertInstruction(IROpcode::AmoAnd16, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_DWORD:
         instruction = insertInstruction(IROpcode::AmoAnd32, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_QWORD:
         instruction = insertInstruction(IROpcode::AmoAnd64, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     default:
         UNREACHABLE();
         return nullptr;
     }
 
-    instruction->Lock();
     return instruction;
 }
 
@@ -553,19 +559,21 @@ SSAInstruction* IREmitter::AmoOr(SSAInstruction* address, SSAInstruction* source
         break;
     case x86_size_e::X86_SIZE_WORD:
         instruction = insertInstruction(IROpcode::AmoOr16, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_DWORD:
         instruction = insertInstruction(IROpcode::AmoOr32, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_QWORD:
         instruction = insertInstruction(IROpcode::AmoOr64, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     default:
         UNREACHABLE();
         return nullptr;
     }
 
-    instruction->Lock();
     return instruction;
 }
 
@@ -577,19 +585,21 @@ SSAInstruction* IREmitter::AmoXor(SSAInstruction* address, SSAInstruction* sourc
         break;
     case x86_size_e::X86_SIZE_WORD:
         instruction = insertInstruction(IROpcode::AmoXor16, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_DWORD:
         instruction = insertInstruction(IROpcode::AmoXor32, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_QWORD:
         instruction = insertInstruction(IROpcode::AmoXor64, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     default:
         UNREACHABLE();
         return nullptr;
     }
 
-    instruction->Lock();
     return instruction;
 }
 
@@ -601,19 +611,21 @@ SSAInstruction* IREmitter::AmoSwap(SSAInstruction* address, SSAInstruction* sour
         break;
     case x86_size_e::X86_SIZE_WORD:
         instruction = insertInstruction(IROpcode::AmoSwap16, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_DWORD:
         instruction = insertInstruction(IROpcode::AmoSwap32, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     case x86_size_e::X86_SIZE_QWORD:
         instruction = insertInstruction(IROpcode::AmoSwap64, {address, source}, (u8)ordering);
+        instruction->Lock();
         break;
     default:
         UNREACHABLE();
         return nullptr;
     }
 
-    instruction->Lock();
     return instruction;
 }
 
@@ -1604,7 +1616,6 @@ void IREmitter::Group1(x86_instruction_t* inst) {
     ::Group1 opcode = (::Group1)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
-    SSAInstruction* rm = GetRm(inst->operand_rm);
     SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* result = nullptr;
     SSAInstruction* zero = Imm(0);
@@ -1612,9 +1623,19 @@ void IREmitter::Group1(x86_instruction_t* inst) {
     SSAInstruction* o = zero;
     SSAInstruction* a = nullptr;
 
+    bool is_lock = inst->operand_rm.type == X86_OP_TYPE_MEMORY && inst->operand_rm.memory.lock;
+
     switch (opcode) {
     case Group1::Add: {
-        result = Add(rm, imm);
+        SSAInstruction* rm;
+        if (is_lock) {
+            SSAInstruction* address = Lea(inst->operand_rm);
+            rm = AmoAdd(address, imm, biscuit::Ordering::AQRL, size_e);
+            result = Add(rm, imm);
+        } else {
+            rm = GetRm(inst->operand_rm);
+            result = Add(rm, imm);
+        }
         c = IsCarryAdd(rm, result, size_e);
         o = IsOverflowAdd(rm, imm, result, size_e);
         a = IsAuxAdd(rm, imm);
@@ -1623,7 +1644,15 @@ void IREmitter::Group1(x86_instruction_t* inst) {
     case Group1::Adc: {
         SSAInstruction* carry_in = GetFlag(X86_REF_CF);
         SSAInstruction* imm_carry = Add(imm, carry_in);
-        result = Add(rm, imm_carry);
+        SSAInstruction* rm;
+        if (is_lock) {
+            SSAInstruction* address = Lea(inst->operand_rm);
+            rm = AmoAdd(address, imm_carry, biscuit::Ordering::AQRL, size_e);
+            result = Add(rm, imm_carry);
+        } else {
+            rm = GetRm(inst->operand_rm);
+            result = Add(rm, imm_carry);
+        }
         c = IsCarryAdc(rm, imm, carry_in, size_e);
         o = IsOverflowAdd(rm, imm_carry, result, size_e);
         a = IsAuxAdd(rm, imm_carry);
@@ -1632,32 +1661,73 @@ void IREmitter::Group1(x86_instruction_t* inst) {
     case Group1::Sbb: {
         SSAInstruction* carry_in = GetFlag(X86_REF_CF);
         SSAInstruction* imm_carry = Add(imm, carry_in);
-        result = Sub(rm, imm_carry);
+        SSAInstruction* rm;
+        if (is_lock) {
+            SSAInstruction* address = Lea(inst->operand_rm);
+            SSAInstruction* rm = AmoAdd(address, Neg(imm_carry), biscuit::Ordering::AQRL, size_e);
+            result = Sub(rm, imm_carry);
+        } else {
+            SSAInstruction* rm = GetRm(inst->operand_rm);
+            result = Sub(rm, imm_carry);
+        }
         c = IsCarrySbb(rm, imm, carry_in, size_e);
         o = IsOverflowSub(rm, imm_carry, result, size_e);
         a = IsAuxSub(rm, imm_carry);
         break;
     }
     case Group1::Or: {
-        result = Or(rm, imm);
+        SSAInstruction* rm;
+        if (is_lock) {
+            SSAInstruction* address = Lea(inst->operand_rm);
+            rm = AmoOr(address, imm, biscuit::Ordering::AQRL, size_e);
+            result = Or(rm, imm);
+        } else {
+            rm = GetRm(inst->operand_rm);
+            result = Or(rm, imm);
+        }
         break;
     }
     case Group1::And: {
-        result = And(rm, imm);
+        SSAInstruction* rm;
+        if (is_lock) {
+            SSAInstruction* address = Lea(inst->operand_rm);
+            rm = AmoAnd(address, imm, biscuit::Ordering::AQRL, size_e);
+            result = And(rm, imm);
+        } else {
+            rm = GetRm(inst->operand_rm);
+            result = And(rm, imm);
+        }
         break;
     }
     case Group1::Sub: {
-        result = Sub(rm, imm);
+        SSAInstruction* rm;
+        if (is_lock) {
+            SSAInstruction* address = Lea(inst->operand_rm);
+            rm = AmoAdd(address, Neg(imm), biscuit::Ordering::AQRL, size_e);
+            result = Sub(rm, imm);
+        } else {
+            rm = GetRm(inst->operand_rm);
+            result = Sub(rm, imm);
+        }
         c = IsCarrySub(rm, imm);
         o = IsOverflowSub(rm, imm, result, size_e);
         a = IsAuxSub(rm, imm);
         break;
     }
     case Group1::Xor: {
-        result = Xor(rm, imm);
+        SSAInstruction* rm;
+        if (is_lock) {
+            SSAInstruction* address = Lea(inst->operand_rm);
+            rm = AmoXor(address, imm, biscuit::Ordering::AQRL, size_e);
+            result = Xor(rm, imm);
+        } else {
+            rm = GetRm(inst->operand_rm);
+            result = Xor(rm, imm);
+        }
         break;
     }
     case Group1::Cmp: {
+        SSAInstruction* rm = GetRm(inst->operand_rm);
         result = Sub(rm, imm);
         c = IsCarrySub(rm, imm);
         o = IsOverflowSub(rm, imm, result, size_e);
