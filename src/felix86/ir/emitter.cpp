@@ -420,6 +420,9 @@ SSAInstruction* IREmitter::atomic8(SSAInstruction* address, SSAInstruction* sour
         return instruction;
     }
 
+    ASSERT(current_address != 0);
+    u64 next_address = GetNextAddress();
+
     IRBlock* header = function.CreateBlock();
     IRBlock* loop = function.CreateBlock();
     IRBlock* conclusion = function.CreateBlock();
@@ -495,6 +498,11 @@ SSAInstruction* IREmitter::atomic8(SSAInstruction* address, SSAInstruction* sour
     // Return the original loaded value
     SSAInstruction* load_shifted = Shr(load, shift_amount);
     SSAInstruction* load_masked = Andi(load_shifted, 0xFF);
+
+    IRBlock* next_block = CreateBlockAt(next_address);
+    TerminateJump(next_block);
+
+    SetBlock(next_block);
 
     return load_masked;
 }
