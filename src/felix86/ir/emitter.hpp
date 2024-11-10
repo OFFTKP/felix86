@@ -193,16 +193,19 @@ struct IREmitter {
     u64 ImmSext(u64 imm, x86_size_e size);
 
     u64 GetCurrentAddress() {
+        ASSERT(current_address != IR_NO_ADDRESS);
         return current_address;
     }
 
     u64 GetNextAddress() {
+        ASSERT(current_address != IR_NO_ADDRESS);
         return current_address + instruction->length;
     }
 
     void SetBlock(IRBlock* block) {
         ASSERT(block);
         this->block = block;
+        current_address = block->GetStartAddress();
     }
 
     void SetInstruction(x86_instruction_t* instruction) {
@@ -233,6 +236,10 @@ struct IREmitter {
     }
 
     void CallHostFunction(u64 function_address);
+
+    IRFunction& GetFunction() {
+        return function;
+    }
 
     SSAInstruction* Set8Low(SSAInstruction* old, SSAInstruction* value);
     SSAInstruction* Set8High(SSAInstruction* old, SSAInstruction* value);

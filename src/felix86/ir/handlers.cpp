@@ -504,14 +504,16 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     SSAInstruction* condition_mov = ir.Snez(condition);
     u64 jump_address_false = ir.GetNextAddress();
     u64 jump_address_true = ir.GetNextAddress() + immediate;
+    printf("current: %lx, false: %lx, true: %lx\n", ir.GetCurrentAddress(), jump_address_false, jump_address_true);
+    printf("false: %lx, true: %lx\n", jump_address_false, jump_address_true);
 
     IRBlock* block_true = ir.CreateBlockAt(jump_address_true);
     IRBlock* block_false = ir.CreateBlockAt(jump_address_false);
     ir.TerminateJumpConditional(condition_mov, block_true, block_false);
     ir.Exit();
 
-    frontend_compile_block(ir, block_false);
-    frontend_compile_block(ir, block_true);
+    frontend_compile_block(ir.GetFunction(), block_false);
+    frontend_compile_block(ir.GetFunction(), block_true);
 }
 
 IR_HANDLE(group1) { // add/or/adc/sbb/and/sub/xor/cmp
@@ -767,7 +769,7 @@ IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
     ir.TerminateJump(target);
     ir.Exit();
 
-    frontend_compile_block(ir, target);
+    frontend_compile_block(ir.GetFunction(), target);
 }
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
@@ -778,7 +780,7 @@ IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
     ir.TerminateJump(target);
     ir.Exit();
 
-    frontend_compile_block(ir, target);
+    frontend_compile_block(ir.GetFunction(), target);
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4

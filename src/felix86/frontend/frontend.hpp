@@ -4,5 +4,5 @@
 
 struct IREmitter;
 
-void frontend_compile_block(IREmitter& ir, IRBlock* block);
-void frontend_compile_function(IRFunction* function);
+void frontend_compile_block(IRFunction& function, IRBlock* block);
+void frontend_compile_function(IRFunction& function);

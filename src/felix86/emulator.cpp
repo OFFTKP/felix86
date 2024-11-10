@@ -53,7 +53,6 @@ void Emulator::Run() {
 
     VERBOSE("Entering main thread :)");
 
-    compileFunction(0x10'0000);
     ThreadState* state = &thread_states.back();
     backend.EnterDispatcher(state);
 
@@ -200,7 +199,7 @@ void* Emulator::compileFunction(u64 rip) {
 
     VERBOSE("Now compiling: %016lx", rip);
     IRFunction function{rip};
-    frontend_compile_function(&function);
+    frontend_compile_function(function);
 
     PassManager::SSAPass(&function);
     PassManager::DeadCodeEliminationPass(&function);

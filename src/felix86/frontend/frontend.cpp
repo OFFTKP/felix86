@@ -672,18 +672,18 @@ void frontend_compile_instruction(IREmitter& ir) {
 
     if (is_rep) {
         ir.RepEnd(rep_type, loop_block, exit_block);
-        frontend_compile_block(ir, exit_block);
+        frontend_compile_block(ir.GetFunction(), exit_block);
     }
 
     ir.IncrementAddress(inst.length);
 }
 
-void frontend_compile_block(IREmitter& ir, IRBlock* block) {
+void frontend_compile_block(IRFunction& function, IRBlock* block) {
     if (block->IsCompiled()) {
         return;
     }
 
-    ir.SetBlock(block);
+    IREmitter ir(function, *block, block->GetStartAddress());
     block->SetCompiled();
 
     while (!ir.IsExit()) {
@@ -699,9 +699,8 @@ void frontend_compile_block(IREmitter& ir, IRBlock* block) {
     }
 }
 
-void frontend_compile_function(IRFunction* function) {
-    IRBlock* block = function->GetBlockAt(function->GetStartAddress());
-    IREmitter ir(*function, *block, block->GetStartAddress());
-    frontend_compile_block(ir, block);
-    function->SetCompiled();
+void frontend_compile_function(IRFunction& function) {
+    IRBlock* block = function.GetBlockAt(function.GetStartAddress());
+    frontend_compile_block(function, block);
+    function.SetCompiled();
 }
