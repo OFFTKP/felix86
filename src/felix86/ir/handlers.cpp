@@ -67,7 +67,7 @@ x86_size_e sizedown(x86_size_e size_e) {
 } // namespace
 
 #define IS_LOCK (inst->operand_rm.type == X86_OP_TYPE_MEMORY && inst->operand_rm.memory.lock)
-#define IR_HANDLE(name) void ir_handle_##name(FrontendState* state, IREmitter& ir, x86_instruction_t* inst)
+#define IR_HANDLE(name) void ir_handle_##name(IREmitter& ir, x86_instruction_t* inst)
 
 IR_HANDLE(error) {
     ZydisDisassembledInstruction zydis_inst;
@@ -97,7 +97,7 @@ IR_HANDLE(add_rm_reg) { // add rm8, r8 - 0x00
 
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        rm = ir.AmoAdd(address, reg, MemoryOrdering::AqRl, size_e);
+        rm = ir.AmoAdd(address, reg, biscuit::Ordering::AQRL, size_e);
         result = ir.Add(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -156,7 +156,7 @@ IR_HANDLE(or_rm_reg) { // or rm16/32/64, r16/32/64 - 0x09
 
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        rm = ir.AmoOr(address, reg, MemoryOrdering::AqRl, size_e);
+        rm = ir.AmoOr(address, reg, biscuit::Ordering::AQRL, size_e);
         result = ir.Or(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -234,7 +234,7 @@ IR_HANDLE(and_rm_reg) { // and rm16/32/64, r16/32/64 - 0x21
 
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        rm = ir.AmoAnd(address, reg, MemoryOrdering::AqRl, size_e);
+        rm = ir.AmoAnd(address, reg, biscuit::Ordering::AQRL, size_e);
         result = ir.And(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -288,7 +288,7 @@ IR_HANDLE(sub_rm_reg) { // sub rm16/32/64, r16/32/64 - 0x29
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* neg_reg = ir.Neg(reg);
-        rm = ir.AmoAdd(address, neg_reg, MemoryOrdering::AqRl, size_e);
+        rm = ir.AmoAdd(address, neg_reg, biscuit::Ordering::AQRL, size_e);
         result = ir.Sub(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -347,7 +347,7 @@ IR_HANDLE(xor_rm_reg) { // xor rm8, r8 - 0x30
 
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        rm = ir.AmoXor(address, reg, MemoryOrdering::AqRl, size_e);
+        rm = ir.AmoXor(address, reg, biscuit::Ordering::AQRL, size_e);
         result = ir.Xor(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -505,13 +505,13 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     u64 jump_address_false = ir.GetCurrentAddress() + inst->length;
     u64 jump_address_true = ir.GetCurrentAddress() + inst->length + immediate;
 
-    IRBlock* block_true = state->function->CreateBlockAt(jump_address_true);
-    IRBlock* block_false = state->function->CreateBlockAt(jump_address_false);
+    IRBlock* block_true = ir.CreateBlockAt(jump_address_true);
+    IRBlock* block_false = ir.CreateBlockAt(jump_address_false);
     ir.TerminateJumpConditional(condition_mov, block_true, block_false);
     ir.Exit();
 
-    frontend_compile_block(state->function, block_false);
-    frontend_compile_block(state->function, block_true);
+    frontend_compile_block(ir, block_false);
+    frontend_compile_block(ir, block_true);
 }
 
 IR_HANDLE(group1) { // add/or/adc/sbb/and/sub/xor/cmp
@@ -536,7 +536,7 @@ IR_HANDLE(xchg_rm_reg) { // xchg rm8, r8 - 0x86
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        SSAInstruction* swapped_reg = ir.AmoSwap(address, reg, MemoryOrdering::AqRl, inst->operand_reg.size);
+        SSAInstruction* swapped_reg = ir.AmoSwap(address, reg, biscuit::Ordering::AQRL, inst->operand_reg.size);
         ir.SetReg(inst->operand_reg, swapped_reg);
     } else {
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
@@ -703,7 +703,7 @@ IR_HANDLE(ret_imm) {
     SSAInstruction* rsp_add = ir.Add(rsp, imm);
     ir.SetReg(rsp_add, X86_REF_RSP);
     ir.SetReg(rip, X86_REF_RIP);
-    ir.TerminateJump(state->function->GetExit());
+    ir.TerminateJump(ir.GetExit());
     ir.Exit();
 }
 
@@ -713,7 +713,7 @@ IR_HANDLE(ret) { // ret - 0xc3
     SSAInstruction* rsp_add = ir.Addi(rsp, 8);
     ir.SetReg(rsp_add, X86_REF_RSP);
     ir.SetReg(rip, X86_REF_RIP);
-    ir.TerminateJump(state->function->GetExit());
+    ir.TerminateJump(ir.GetExit());
     ir.Exit();
 }
 
@@ -755,7 +755,7 @@ IR_HANDLE(call_rel32) { // call rel32 - 0xe8
     ir.WriteMemory(rsp_sub, return_rip, X86_SIZE_QWORD);
     ir.SetReg(rsp_sub, X86_REF_RSP);
     ir.SetReg(rip, X86_REF_RIP);
-    ir.TerminateJump(state->function->GetExit());
+    ir.TerminateJump(ir.GetExit());
     ir.Exit();
 }
 
@@ -763,33 +763,33 @@ IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
     u64 displacement = (i64)(i32)inst->operand_imm.immediate.data;
     u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
 
-    IRBlock* target = state->function->CreateBlockAt(jump_address);
+    IRBlock* target = ir.CreateBlockAt(jump_address);
     ir.TerminateJump(target);
     ir.Exit();
 
-    frontend_compile_block(state->function, target);
+    frontend_compile_block(ir, target);
 }
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
     u64 displacement = (i64)(i8)inst->operand_imm.immediate.data;
     u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
 
-    IRBlock* target = state->function->CreateBlockAt(jump_address);
+    IRBlock* target = ir.CreateBlockAt(jump_address);
     ir.TerminateJump(target);
     ir.Exit();
 
-    frontend_compile_block(state->function, target);
+    frontend_compile_block(ir, target);
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4
     ir.SetExitReason(EXIT_REASON_HLT);
-    ir.TerminateJump(state->function->GetExit());
+    ir.TerminateJump(ir.GetExit());
     ir.Exit();
 }
 
 IR_HANDLE(ud2) { // ud2 - 0x0f 0x0b
     ir.SetExitReason(EXIT_REASON_UD2);
-    ir.TerminateJump(state->function->GetExit());
+    ir.TerminateJump(ir.GetExit());
     ir.Exit();
 }
 
@@ -894,7 +894,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         ir.WriteMemory(rsp_sub, return_rip, X86_SIZE_QWORD);
         ir.SetReg(rsp_sub, X86_REF_RSP);
         ir.SetReg(rip, X86_REF_RIP);
-        ir.TerminateJump(state->function->GetExit());
+        ir.TerminateJump(ir.GetExit());
         ir.Exit();
         break;
     }
@@ -903,7 +903,7 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         rm_op.size = X86_SIZE_QWORD;
         SSAInstruction* rm = ir.GetRm(rm_op);
         ir.SetReg(rm, X86_REF_RIP);
-        ir.TerminateJump(state->function->GetExit());
+        ir.TerminateJump(ir.GetExit());
         ir.Exit();
         break;
     }
@@ -1080,7 +1080,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY && false) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* actual = ir.AmoCAS(address, eax, reg, MemoryOrdering::AqRl, size_e);
+        SSAInstruction* actual = ir.AmoCAS(address, eax, reg, biscuit::Ordering::AQRL, size_e);
 
         ir.SetReg(actual, X86_REF_RAX, size_e);
         ir.SetFlag(ir.Equal(actual, eax), X86_REF_ZF);

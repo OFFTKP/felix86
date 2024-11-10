@@ -139,11 +139,8 @@ static InstructionMap create_instruction_map(BackendFunction& function) {
             instructions[inst.GetName()].inst = &inst;
             instructions[inst.GetName()].spill_cost += 1;
 
-            if (inst.GetOpcode() == IROpcode::LoadSpill) {
-                // Don't pick them again
+            if (inst.IsLocked()) {
                 instructions[inst.GetName()].infinite_cost = true;
-            } else if (inst.GetOpcode() == IROpcode::StoreSpill) {
-                instructions[inst.GetOperand(0)].infinite_cost = true;
             }
 
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {

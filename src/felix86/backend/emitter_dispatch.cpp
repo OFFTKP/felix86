@@ -305,6 +305,17 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::LoadReserved32: {
+        EmitLoadReserved32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), (biscuit::Ordering)inst.GetImmediateData());
+        break;
+    }
+
+    case IROpcode::StoreConditional32: {
+        EmitStoreConditional32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)),
+                               (biscuit::Ordering)inst.GetImmediateData());
+        break;
+    }
+
     case IROpcode::AmoAdd8: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
         EmitAmoAdd8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);

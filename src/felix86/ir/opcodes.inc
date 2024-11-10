@@ -97,6 +97,8 @@ X(AmoCAS16,                             Integer64,                      Integer6
 X(AmoCAS32,                             Integer64,                      Integer64,                      Integer64,                     Integer64)
 X(AmoCAS64,                             Integer64,                      Integer64,                      Integer64,                     Integer64)
 X(AmoCAS128,                            Void)
+X(LoadReserved32,                       Integer64,                      Integer64)
+X(StoreConditional32,                   Integer64,                      Integer64,                      Integer64)
 X(CZeroEqz,                             Integer64,                      Integer64,                      Integer64)
 X(CZeroNez,                             Integer64,                      Integer64,                      Integer64)
 X(SetLessThanSigned,                    Integer64,                      Integer64,                      Integer64)

@@ -401,75 +401,203 @@ SSAInstruction* IREmitter::Zext(SSAInstruction* value, x86_size_e size) {
     }
 }
 
-SSAInstruction* IREmitter::AmoAdd(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
-    switch (size) {
-    case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::AmoAdd8, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::AmoAdd16, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::AmoAdd32, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::AmoAdd64, {address, source}, (u8)ordering);
-    default:
+SSAInstruction* IREmitter::LoadReserved32(SSAInstruction* address, biscuit::Ordering ordering) {
+    SSAInstruction* load = insertInstruction(IROpcode::LoadReserved32, {address}, (u8)ordering);
+    load->Lock();
+    return load;
+}
+
+SSAInstruction* IREmitter::StoreConditional32(SSAInstruction* address, SSAInstruction* value, biscuit::Ordering ordering) {
+    SSAInstruction* store = insertInstruction(IROpcode::StoreConditional32, {address, value}, (u8)ordering);
+    store->Lock();
+    return store;
+}
+
+SSAInstruction* IREmitter::atomic8(SSAInstruction* address, SSAInstruction* source, IROpcode opcode) {
+    if (Extensions::Zabha) {
+        return insertInstruction(opcode, {address, source}, (u8)biscuit::Ordering::AQRL);
+    }
+
+    IRBlock* header = function.CreateBlock();
+    IRBlock* loop = function.CreateBlock();
+    IRBlock* conclusion = function.CreateBlock();
+    TerminateJump(header);
+
+    SetBlock(header);
+
+    // Mask the address to grab a whole word
+    SSAInstruction* masked_address = Andi(address, (i64)-4);
+
+    // Creates a shift amount based on the 3 lowest bits of address, which indicates
+    // where in the 32-bit word the byte is.
+    // Thus shift amount is 8 * (address & 3) (0, 8, 16, ..., 56)
+    SSAInstruction* bits = Andi(address, 3);
+    SSAInstruction* shift_amount = Shli(bits, 3);
+    SSAInstruction* mask = Imm(0xFF);
+    SSAInstruction* shifted_mask = Shl(mask, shift_amount);
+
+    // Shift the amount we are operating on too
+    SSAInstruction* shifted_source = Shl(source, shift_amount);
+    shifted_source->Lock();
+    SSAInstruction* not_shifted_mask = Not(shifted_mask);
+    not_shifted_mask->Lock();
+
+    TerminateJump(loop);
+
+    SetBlock(loop);
+
+    // We don't want anything in here to be spilled as it could cause issues
+    // so we lock every instruction inside the loop
+    SSAInstruction* load = LoadReserved32(masked_address, biscuit::Ordering::AQRL);
+    SSAInstruction* result;
+    switch (opcode) {
+    case IROpcode::AmoAdd8: {
+        result = Add(load, shifted_source);
+        break;
+    }
+    case IROpcode::AmoAnd8: {
+        result = And(load, shifted_source);
+        break;
+    }
+    case IROpcode::AmoOr8: {
+        result = Or(load, shifted_source);
+        break;
+    }
+    case IROpcode::AmoXor8: {
+        result = Xor(load, shifted_source);
+        break;
+    }
+    case IROpcode::AmoSwap8: {
+        result = shifted_source;
+        break;
+    }
+    default: {
         UNREACHABLE();
         return nullptr;
     }
-}
-
-SSAInstruction* IREmitter::AmoAnd(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
-    switch (size) {
-    case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::AmoAnd8, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::AmoAnd16, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::AmoAnd32, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::AmoAnd64, {address, source}, (u8)ordering);
-    default:
-        UNREACHABLE();
-        return nullptr;
     }
+    result->Lock();
+    SSAInstruction* masked_load = And(load, not_shifted_mask);
+    masked_load->Lock();
+    SSAInstruction* masked_result = And(result, shifted_mask);
+    masked_result->Lock();
+    SSAInstruction* new_value = Or(masked_load, masked_result);
+    new_value->Lock();
+    SSAInstruction* success = StoreConditional32(masked_address, new_value, biscuit::Ordering::RL);
+
+    // Jump to loop if store didn't return zero
+    TerminateJumpConditional(success, loop, conclusion);
+
+    SetBlock(conclusion);
+
+    // Shift the value back to the correct place
+    SSAInstruction* result_shifted = Shr(result, shift_amount);
+    SSAInstruction* result_masked = Andi(result_shifted, 0xFF);
+
+    return result_masked;
 }
 
-SSAInstruction* IREmitter::AmoOr(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
-    switch (size) {
-    case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::AmoOr8, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::AmoOr16, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::AmoOr32, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::AmoOr64, {address, source}, (u8)ordering);
-    default:
-        UNREACHABLE();
-        return nullptr;
-    }
-}
-
-SSAInstruction* IREmitter::AmoXor(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
-    switch (size) {
-    case x86_size_e::X86_SIZE_BYTE:
-        return insertInstruction(IROpcode::AmoXor8, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_WORD:
-        return insertInstruction(IROpcode::AmoXor16, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::AmoXor32, {address, source}, (u8)ordering);
-    case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::AmoXor64, {address, source}, (u8)ordering);
-    default:
-        UNREACHABLE();
-        return nullptr;
-    }
-}
-
-SSAInstruction* IREmitter::AmoSwap(SSAInstruction* address, SSAInstruction* source, MemoryOrdering ordering, x86_size_e size) {
+SSAInstruction* IREmitter::AmoAdd(SSAInstruction* address, SSAInstruction* source, biscuit::Ordering ordering, x86_size_e size) {
     SSAInstruction* instruction;
     switch (size) {
     case x86_size_e::X86_SIZE_BYTE:
-        instruction = insertInstruction(IROpcode::AmoSwap8, {address, source}, (u8)ordering);
+        instruction = atomic8(address, source, IROpcode::AmoAdd8);
+        break;
+    case x86_size_e::X86_SIZE_WORD:
+        instruction = insertInstruction(IROpcode::AmoAdd16, {address, source}, (u8)ordering);
+        break;
+    case x86_size_e::X86_SIZE_DWORD:
+        instruction = insertInstruction(IROpcode::AmoAdd32, {address, source}, (u8)ordering);
+        break;
+    case x86_size_e::X86_SIZE_QWORD:
+        instruction = insertInstruction(IROpcode::AmoAdd64, {address, source}, (u8)ordering);
+        break;
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* IREmitter::AmoAnd(SSAInstruction* address, SSAInstruction* source, biscuit::Ordering ordering, x86_size_e size) {
+    SSAInstruction* instruction;
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        instruction = atomic8(address, source, IROpcode::AmoAnd8);
+        break;
+    case x86_size_e::X86_SIZE_WORD:
+        instruction = insertInstruction(IROpcode::AmoAnd16, {address, source}, (u8)ordering);
+        break;
+    case x86_size_e::X86_SIZE_DWORD:
+        instruction = insertInstruction(IROpcode::AmoAnd32, {address, source}, (u8)ordering);
+        break;
+    case x86_size_e::X86_SIZE_QWORD:
+        instruction = insertInstruction(IROpcode::AmoAnd64, {address, source}, (u8)ordering);
+        break;
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* IREmitter::AmoOr(SSAInstruction* address, SSAInstruction* source, biscuit::Ordering ordering, x86_size_e size) {
+    SSAInstruction* instruction;
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        instruction = atomic8(address, source, IROpcode::AmoOr8);
+        break;
+    case x86_size_e::X86_SIZE_WORD:
+        instruction = insertInstruction(IROpcode::AmoOr16, {address, source}, (u8)ordering);
+        break;
+    case x86_size_e::X86_SIZE_DWORD:
+        instruction = insertInstruction(IROpcode::AmoOr32, {address, source}, (u8)ordering);
+        break;
+    case x86_size_e::X86_SIZE_QWORD:
+        instruction = insertInstruction(IROpcode::AmoOr64, {address, source}, (u8)ordering);
+        break;
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* IREmitter::AmoXor(SSAInstruction* address, SSAInstruction* source, biscuit::Ordering ordering, x86_size_e size) {
+    SSAInstruction* instruction;
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        instruction = atomic8(address, source, IROpcode::AmoXor8);
+        break;
+    case x86_size_e::X86_SIZE_WORD:
+        instruction = insertInstruction(IROpcode::AmoXor16, {address, source}, (u8)ordering);
+        break;
+    case x86_size_e::X86_SIZE_DWORD:
+        instruction = insertInstruction(IROpcode::AmoXor32, {address, source}, (u8)ordering);
+        break;
+    case x86_size_e::X86_SIZE_QWORD:
+        instruction = insertInstruction(IROpcode::AmoXor64, {address, source}, (u8)ordering);
+        break;
+    default:
+        UNREACHABLE();
+        return nullptr;
+    }
+
+    instruction->Lock();
+    return instruction;
+}
+
+SSAInstruction* IREmitter::AmoSwap(SSAInstruction* address, SSAInstruction* source, biscuit::Ordering ordering, x86_size_e size) {
+    SSAInstruction* instruction;
+    switch (size) {
+    case x86_size_e::X86_SIZE_BYTE:
+        instruction = atomic8(address, source, IROpcode::AmoSwap8);
         break;
     case x86_size_e::X86_SIZE_WORD:
         instruction = insertInstruction(IROpcode::AmoSwap16, {address, source}, (u8)ordering);
@@ -489,7 +617,7 @@ SSAInstruction* IREmitter::AmoSwap(SSAInstruction* address, SSAInstruction* sour
     return instruction;
 }
 
-SSAInstruction* IREmitter::AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, MemoryOrdering ordering,
+SSAInstruction* IREmitter::AmoCAS(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source, biscuit::Ordering ordering,
                                   x86_size_e size) {
     SSAInstruction* instruction;
     switch (size) {

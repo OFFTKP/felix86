@@ -51,6 +51,10 @@ struct BackendInstruction {
         return vector_state;
     }
 
+    bool IsLocked() const {
+        return locked;
+    }
+
     static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
 
     static BackendInstruction FromMove(u32 lhs, u32 rhs, AllocationType type);
@@ -70,4 +74,5 @@ private:
     VecMask masked = VecMask::No;
     u8 operand_count;
     VectorState vector_state = VectorState::Null;
+    bool locked = false;
 };

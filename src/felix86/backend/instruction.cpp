@@ -7,6 +7,7 @@ BackendInstruction BackendInstruction::FromSSAInstruction(const SSAInstruction* 
     backend_inst.immediate_data = inst->GetImmediateData();
     backend_inst.masked = inst->GetMasked();
     backend_inst.vector_state = inst->GetVectorState();
+    backend_inst.locked = inst->IsLocked();
 
     if (inst->IsGPR()) {
         backend_inst.desired_type = AllocationType::GPR;
@@ -44,6 +45,7 @@ BackendInstruction BackendInstruction::FromStoreSpill(u32 name, u32 value, u32 s
     inst.operand_count = 1;
     inst.operand_names[0] = value;
     inst.desired_type = AllocationType::Null;
+    inst.locked = true;
     return inst;
 }
 
@@ -54,6 +56,7 @@ BackendInstruction BackendInstruction::FromLoadSpill(u32 name, u32 spill_offset,
     inst.immediate_data = spill_offset;
     inst.operand_count = 0;
     inst.desired_type = type;
+    inst.locked = true;
     return inst;
 }
 

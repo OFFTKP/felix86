@@ -95,115 +95,6 @@ void SoftwareClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     Pop(backend, mask);
 }
 
-using Operation = std::function<void(biscuit::Assembler&, biscuit::GPR, biscuit::GPR, biscuit::GPR)>;
-
-void SoftwareAtomicFetchRMW8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Address, biscuit::Ordering ordering,
-                             Operation operation) {
-    ASSERT(Rd != Rs && Rd != Address && Rs != Address);
-    if (ordering != biscuit::Ordering::AQRL) {
-        UNIMPLEMENTED();
-    }
-
-    // Since there's no 8-bit atomics yet, we need to emulate the RMW operations using 32-bit SC/LL.
-    // We need a mask for the byte we want to modify and a mask for the bytes we want to stay the same
-    // Load the word, do the operation, mask the resulting byte and the initial bytes, or them together and SC.
-    // Also save the initial read value in Rd
-
-    const auto& gprs = Registers::GetAllocatableGPRs();
-
-    biscuit::GPR scratch = Push(backend, PickNot(gprs, {Rd, Rs, Address}));
-    biscuit::GPR scratch2 = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch}));
-    biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2}));
-    biscuit::GPR mask_not = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask}));
-    biscuit::GPR Rs_shifted = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask, mask_not}));
-    biscuit::GPR address_aligned = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask, mask_not, Rs_shifted}));
-
-    AS.ANDI(mask, Address, 3);
-    AS.SLLIW(mask, mask, 3);
-    AS.SLLW(Rs_shifted, Rs, mask);
-    AS.LI(scratch, 0xFF);
-    AS.SLLW(mask, scratch, mask); // mask now contains a mask for the relevant byte
-    AS.NOT(mask_not, mask);
-    AS.ANDI(address_aligned, Address, -4);
-
-    biscuit::Label loop;
-
-    AS.Bind(&loop);
-    AS.LR_W(biscuit::Ordering::AQRL, Rd, address_aligned);
-    operation(AS, scratch2, Rd, Rs_shifted);
-    AS.AND(scratch2, scratch2, mask);
-    AS.AND(scratch, Rd, mask_not);
-    AS.OR(scratch, scratch, scratch2);
-    AS.SC_W(biscuit::Ordering::RL, scratch2, scratch, address_aligned);
-    AS.BNEZ(scratch2, &loop);
-
-    // Shift the loaded value to the correct place
-    AS.ANDI(scratch, Address, 3);
-    AS.SLLIW(scratch, scratch, 3);
-    AS.SRAW(Rd, Rd, scratch);
-    AS.ANDI(Rd, Rd, 0xFF);
-
-    Pop(backend, address_aligned);
-    Pop(backend, Rs_shifted);
-    Pop(backend, mask_not);
-    Pop(backend, mask);
-    Pop(backend, scratch2);
-    Pop(backend, scratch);
-}
-
-void SoftwareAtomicFetchRMW16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR Address, biscuit::Ordering ordering,
-                              Operation operation) {
-    ASSERT(Rd != Rs && Rd != Address && Rs != Address);
-    if (ordering != biscuit::Ordering::AQRL) {
-        UNIMPLEMENTED();
-    }
-
-    // See SoftwareAtomicFetchRMW8
-
-    const auto& gprs = Registers::GetAllocatableGPRs();
-
-    // TODO: obviously this is horrible but also one day we'll have 8/16 bit atomics <- clueless
-    biscuit::GPR scratch = Push(backend, PickNot(gprs, {Rd, Rs, Address}));
-    biscuit::GPR scratch2 = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch}));
-    biscuit::GPR mask = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2}));
-    biscuit::GPR mask_not = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask}));
-    biscuit::GPR Rs_shifted = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask, mask_not}));
-    biscuit::GPR address_aligned = Push(backend, PickNot(gprs, {Rd, Rs, Address, scratch, scratch2, mask, mask_not, Rs_shifted}));
-
-    AS.ANDI(mask, Address, 3);
-    AS.LI(scratch, 0xFFFF);
-    AS.SLLIW(mask, mask, 3);
-    AS.SLLW(Rs_shifted, Rs, mask);
-    AS.SLLW(mask, scratch, mask);
-    AS.ANDI(address_aligned, Address, -4);
-    AS.NOT(mask_not, mask);
-
-    biscuit::Label loop;
-
-    AS.Bind(&loop);
-    AS.LR_W(biscuit::Ordering::AQRL, Rd, address_aligned);
-    operation(AS, scratch2, Rd, Rs_shifted);
-    AS.AND(scratch2, scratch2, mask);
-    AS.AND(scratch, Rd, mask_not);
-    AS.OR(scratch, scratch, scratch2);
-    AS.SC_W(biscuit::Ordering::RL, scratch2, scratch, address_aligned);
-    AS.BNEZ(scratch2, &loop);
-
-    // Shift the nibble accordingly
-    AS.ANDI(scratch, Address, 3);
-    AS.SLLIW(scratch, scratch, 3);
-    AS.SRAW(Rd, Rd, scratch);
-    AS.SLLI(Rd, Rd, 48);
-    AS.SRLI(Rd, Rd, 48);
-
-    Pop(backend, address_aligned);
-    Pop(backend, Rs_shifted);
-    Pop(backend, mask_not);
-    Pop(backend, mask);
-    Pop(backend, scratch2);
-    Pop(backend, scratch);
-}
-
 // Sanity check for alignment until we have unaligned atomic extensions
 void EmitAlignmentCheck(Backend& backend, biscuit::GPR address, u8 alignment) {
     if (!Extensions::Zam) {
@@ -693,12 +584,20 @@ void Emitter::EmitAddi(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u64 i
     }
 }
 
+void Emitter::EmitLoadReserved32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::Ordering ordering) {
+    AS.LR_W(ordering, Rd, Address);
+}
+
+void Emitter::EmitStoreConditional32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
+    AS.SC_W(ordering, Rd, Rs, Address);
+}
+
 void Emitter::EmitAmoAdd8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address, biscuit::GPR Rs, biscuit::Ordering ordering) {
     if (Extensions::Zabha) {
         AS.AMOADD_B(ordering, Rd, Rs, Address);
         EmitZext8(backend, Rd, Rd);
     } else {
-        SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::ADD);
+        UNREACHABLE();
     }
 }
 
@@ -708,7 +607,7 @@ void Emitter::EmitAmoAdd16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         AS.AMOADD_H(ordering, Rd, Rs, Address);
         EmitZext16(backend, Rd, Rd);
     } else {
-        SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::ADD);
+        UNREACHABLE();
     }
 }
 
@@ -727,7 +626,7 @@ void Emitter::EmitAmoAnd8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addres
         AS.AMOAND_B(ordering, Rd, Rs, Address);
         EmitZext8(backend, Rd, Rd);
     } else {
-        SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::AND);
+        UNREACHABLE();
     }
 }
 
@@ -737,7 +636,7 @@ void Emitter::EmitAmoAnd16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         AS.AMOAND_H(ordering, Rd, Rs, Address);
         EmitZext16(backend, Rd, Rd);
     } else {
-        SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::AND);
+        UNREACHABLE();
     }
 }
 
@@ -757,7 +656,7 @@ void Emitter::EmitAmoOr8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Address
         AS.AMOOR_B(ordering, Rd, Rs, Address);
         EmitZext8(backend, Rd, Rd);
     } else {
-        SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::OR);
+        UNREACHABLE();
     }
 }
 
@@ -767,7 +666,7 @@ void Emitter::EmitAmoOr16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addres
         AS.AMOOR_H(ordering, Rd, Rs, Address);
         EmitZext16(backend, Rd, Rd);
     } else {
-        SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::OR);
+        UNREACHABLE();
     }
 }
 
@@ -787,7 +686,7 @@ void Emitter::EmitAmoXor8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addres
         AS.AMOXOR_B(ordering, Rd, Rs, Address);
         EmitZext8(backend, Rd, Rd);
     } else {
-        SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::XOR);
+        UNREACHABLE();
     }
 }
 
@@ -797,7 +696,7 @@ void Emitter::EmitAmoXor16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         AS.AMOXOR_H(ordering, Rd, Rs, Address);
         EmitZext16(backend, Rd, Rd);
     } else {
-        SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, &biscuit::Assembler::XOR);
+        UNREACHABLE();
     }
 }
 
@@ -817,8 +716,7 @@ void Emitter::EmitAmoSwap8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         AS.AMOSWAP_B(ordering, Rd, Rs, Address);
         EmitZext8(backend, Rd, Rd);
     } else {
-        auto mv = [](biscuit::Assembler& as, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR) { as.MV(Rd, Rs); };
-        SoftwareAtomicFetchRMW8(backend, Rd, Rs, Address, ordering, mv);
+        UNREACHABLE();
     }
 }
 
@@ -828,8 +726,7 @@ void Emitter::EmitAmoSwap16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addr
         AS.AMOSWAP_H(ordering, Rd, Rs, Address);
         EmitZext16(backend, Rd, Rd);
     } else {
-        auto mv = [](biscuit::Assembler& as, biscuit::GPR Rd, biscuit::GPR Rs, biscuit::GPR) { as.MV(Rd, Rs); };
-        SoftwareAtomicFetchRMW16(backend, Rd, Rs, Address, ordering, mv);
+        UNREACHABLE();
     }
 }
 
