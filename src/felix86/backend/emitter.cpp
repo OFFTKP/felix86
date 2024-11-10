@@ -538,8 +538,12 @@ void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Ad
     case VectorState::PackedQWord:
         AS.VLE64(Vd, Address);
         break;
-    case VectorState::AnyPacked:
     case VectorState::Null:
+        // This is null when we want to do a full register load because the target and host vlen match
+        ASSERT(Extensions::VLEN == SUPPORTED_VLEN);
+        AS.VL1RE8(Vd, Address);
+        break;
+    case VectorState::AnyPacked:
         UNREACHABLE();
     }
 }
@@ -606,8 +610,12 @@ void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::
     case VectorState::PackedQWord:
         AS.VSE64(Vs, Address);
         break;
-    case VectorState::AnyPacked:
     case VectorState::Null:
+        // This is null when we want to do a full register load because the target and host vlen match
+        ASSERT(Extensions::VLEN == SUPPORTED_VLEN);
+        AS.VS1R(Vs, Address); // use this one because we expect the address to be aligned
+        break;
+    case VectorState::AnyPacked:
         UNREACHABLE();
     }
 }

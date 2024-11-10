@@ -1247,6 +1247,11 @@ SSAInstruction* IREmitter::readXmmWord(SSAInstruction* address, VectorState stat
         state = VectorState::PackedDWord;
     }
 
+    // If our vlen and supported (target) vlen match, we can just do full load/stores
+    if (Extensions::VLEN == SUPPORTED_VLEN && state != VectorState::Float && state != VectorState::Double) {
+        state = VectorState::Null;
+    }
+
     return insertInstruction(IROpcode::ReadXmmWord, state, {address});
 }
 
@@ -1292,6 +1297,11 @@ void IREmitter::writeQWord(SSAInstruction* address, SSAInstruction* value) {
 void IREmitter::writeXmmWord(SSAInstruction* address, SSAInstruction* value, VectorState state) {
     if (state == VectorState::AnyPacked) {
         state = VectorState::PackedDWord;
+    }
+
+    // If our vlen and supported (target) vlen match, we can just do full load/stores
+    if (Extensions::VLEN == SUPPORTED_VLEN && state != VectorState::Float && state != VectorState::Double) {
+        state = VectorState::Null;
     }
 
     SSAInstruction* instruction = insertInstruction(IROpcode::WriteXmmWord, state, {address, value});
