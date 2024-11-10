@@ -502,8 +502,8 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     i64 immediate = sext(inst->operand_imm.immediate.data, size_e);
     SSAInstruction* condition = ir.GetCC(inst->opcode);
     SSAInstruction* condition_mov = ir.Snez(condition);
-    u64 jump_address_false = ir.GetCurrentAddress() + inst->length;
-    u64 jump_address_true = ir.GetCurrentAddress() + inst->length + immediate;
+    u64 jump_address_false = ir.GetNextAddress();
+    u64 jump_address_true = ir.GetNextAddress() + immediate;
 
     IRBlock* block_true = ir.CreateBlockAt(jump_address_true);
     IRBlock* block_false = ir.CreateBlockAt(jump_address_false);

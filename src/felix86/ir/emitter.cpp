@@ -1664,10 +1664,10 @@ void IREmitter::Group1(x86_instruction_t* inst) {
         SSAInstruction* rm;
         if (is_lock) {
             SSAInstruction* address = Lea(inst->operand_rm);
-            SSAInstruction* rm = AmoAdd(address, Neg(imm_carry), biscuit::Ordering::AQRL, size_e);
+            rm = AmoAdd(address, Neg(imm_carry), biscuit::Ordering::AQRL, size_e);
             result = Sub(rm, imm_carry);
         } else {
-            SSAInstruction* rm = GetRm(inst->operand_rm);
+            rm = GetRm(inst->operand_rm);
             result = Sub(rm, imm_carry);
         }
         c = IsCarrySbb(rm, imm, carry_in, size_e);

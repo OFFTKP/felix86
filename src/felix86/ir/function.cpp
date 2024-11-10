@@ -202,7 +202,12 @@ static void postorder_creation(IRFunction* function, std::vector<IRBlock*>& orde
     postorder(entry, order);
 
     if (order.size() != function->GetBlocks().size()) {
-        ERROR("Postorder traversal did not visit all blocks: %zu vs %zu", order.size(), function->GetBlocks().size());
+        WARN("Postorder traversal did not visit all blocks: %zu vs %zu", order.size(), function->GetBlocks().size());
+        for (auto& block : function->GetBlocks()) {
+            if (!block->IsVisited()) {
+                ERROR("Unvisited block: %s", block->GetName().c_str());
+            }
+        }
     }
 }
 
