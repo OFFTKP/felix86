@@ -1,0 +1,25 @@
+%ifdef CONFIG
+{
+  "RegData": {
+    "RCX": "0x0000000000000000"
+  }
+}
+%endif
+bits 64
+
+lea rsp, [rsp - 128]
+
+mov byte[rsp + 0x00], 0x12
+mov byte[rsp + 0x01], 0x34
+mov byte[rsp + 0x02], 0x56
+mov byte[rsp + 0x03], 0x78
+mov byte[rsp + 0x04], 0x9a
+mov byte[rsp + 0x05], 0xbc
+mov byte[rsp + 0x06], 0xde
+mov byte[rsp + 0x07], 0xf0
+
+lock add byte[rsp + 0x00], 0x01
+
+movzx rcx, byte[rsp + 0x00]
+
+hlt

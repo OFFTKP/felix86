@@ -5,7 +5,6 @@
   }
 }
 %endif
-
 bits 64
 
 lea rsp, [rsp - 384] ; bytes in the stack

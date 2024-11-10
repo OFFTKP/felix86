@@ -656,17 +656,17 @@ void frontend_compile_instruction(IREmitter& ir) {
     bool is_rep = rep_type != NONE;
     IRBlock* loop_block = nullptr;
     IRBlock* exit_block = nullptr;
+    ir.SetInstruction(&inst);
 
     if (is_rep) {
         loop_block = ir.CreateBlock();
-        exit_block = ir.CreateBlockAt(ir.GetCurrentAddress() + inst.length);
+        exit_block = ir.CreateBlockAt(ir.GetNextAddress());
         ir.RepStart(loop_block, exit_block);
 
         // Write the instruction in the loop body
         ir.SetBlock(loop_block);
     }
 
-    ir.SetInstruction(&inst);
     // Call actual decoding function
     fn(ir, &inst);
 
