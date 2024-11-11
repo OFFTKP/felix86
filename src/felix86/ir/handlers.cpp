@@ -539,7 +539,6 @@ IR_HANDLE(xchg_rm_reg) { // xchg rm8, r8 - 0x86
         SSAInstruction* swapped_reg = ir.AmoSwap(address, reg, inst->operand_reg.size);
         ir.SetReg(inst->operand_reg, swapped_reg);
     } else {
-        WARN("Hardcoded non-atomic path for xchg, fix this");
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         ir.SetRm(inst->operand_rm, reg);
         ir.SetReg(inst->operand_reg, rm);
@@ -1080,9 +1079,9 @@ IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
 
 IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     x86_size_e size_e = inst->operand_reg.size;
-    SSAInstruction* eax = ir.GetReg(X86_REF_RAX, size_e);
 
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        SSAInstruction* eax = ir.GetReg(X86_REF_RAX, size_e);
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* actual = ir.AmoCAS(address, eax, reg, size_e);
@@ -1090,17 +1089,29 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         ir.SetReg(actual, X86_REF_RAX, size_e);
         ir.SetFlag(ir.Equal(actual, eax), X86_REF_ZF);
     } else {
-        WARN("FIXME cmpxchg");
-        SSAInstruction* rm = ir.GetReg(inst->operand_rm.reg.ref, size_e);
+        IRBlock* equal_block = ir.CreateBlock();
+        IRBlock* not_equal_block = ir.CreateBlock();
+        IRBlock* next_instruction_target = ir.CreateBlockAt(ir.GetNextAddress());
+
+        SSAInstruction* eax = ir.GetReg(X86_REF_RAX, size_e);
+        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         SSAInstruction* equal = ir.Equal(eax, rm);
-        SSAInstruction* rm_full = ir.GetReg(inst->operand_rm.reg.ref, X86_SIZE_QWORD);
-        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* is_true = ir.Set(rm_full, reg, size_e, inst->operand_rm.reg.high8);
-        SSAInstruction* is_false = rm_full;
-        // TODO: use actual new blocks instead of select bs
-        ir.SetReg(ir.Select(equal, is_true, is_false), inst->operand_rm.reg.ref, X86_SIZE_QWORD);
-        ir.SetReg(rm, X86_REF_RAX, size_e);
         ir.SetFlag(equal, X86_REF_ZF);
+
+        ir.TerminateJumpConditional(equal, equal_block, not_equal_block);
+        ir.SetBlock(equal_block);
+
+        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        ir.SetRm(inst->operand_rm, reg);
+
+        ir.TerminateJump(next_instruction_target);
+        ir.SetBlock(not_equal_block);
+
+        ir.SetReg(rm, X86_REF_RAX, size_e);
+        ir.TerminateJump(next_instruction_target);
+        ir.Exit();
+
+        frontend_compile_block(ir.GetFunction(), next_instruction_target);
     }
 }
 
