@@ -51,6 +51,16 @@ void Extensions::Clear() {
     VLEN = 0;
 }
 
+bool is_truthy(const char* str) {
+    if (!str) {
+        return false;
+    }
+
+    std::string lower = str;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    return lower == "true" || lower == "1" || lower == "yes" || lower == "on" || lower == "y" || lower == "enable";
+}
+
 void initialize_globals() {
     std::string environment;
 
@@ -85,55 +95,55 @@ void initialize_globals() {
     }
 
     const char* dont_optimize_env = getenv("FELIX86_NO_OPT");
-    if (dont_optimize_env) {
+    if (is_truthy(dont_optimize_env)) {
         g_dont_optimize = true;
         environment += "\nFELIX86_NO_OPT";
     }
 
     const char* strace_env = getenv("FELIX86_STRACE");
-    if (strace_env) {
+    if (is_truthy(strace_env)) {
         g_strace = true;
         environment += "\nFELIX86_STRACE";
     }
 
     const char* print_blocks_env = getenv("FELIX86_PRINT_BLOCKS");
-    if (print_blocks_env) {
+    if (is_truthy(print_blocks_env)) {
         g_print_blocks = true;
         environment += "\nFELIX86_PRINT_BLOCKS";
     }
 
     const char* print_state_env = getenv("FELIX86_PRINT_STATE");
-    if (print_state_env) {
+    if (is_truthy(print_state_env)) {
         g_print_state = true;
         environment += "\nFELIX86_PRINT_STATE";
     }
 
     const char* print_disassembly_env = getenv("FELIX86_PRINT_DISASSEMBLY");
-    if (print_disassembly_env) {
+    if (is_truthy(print_disassembly_env)) {
         g_print_disassembly = true;
         environment += "\nFELIX86_PRINT_DISASSEMBLY";
     }
 
     const char* verbose_env = getenv("FELIX86_VERBOSE");
-    if (verbose_env) {
+    if (is_truthy(verbose_env)) {
         g_verbose = true;
         environment += "\nFELIX86_VERBOSE";
     }
 
     const char* quiet_env = getenv("FELIX86_QUIET");
-    if (quiet_env) {
+    if (is_truthy(quiet_env)) {
         g_quiet = true;
         environment += "\nFELIX86_QUIET";
     }
 
     const char* dont_coalesce_env = getenv("FELIX86_NO_COALESCE");
-    if (dont_coalesce_env) {
+    if (is_truthy(dont_coalesce_env)) {
         g_coalesce = false;
         environment += "\nFELIX86_NO_COALESCE";
     }
 
     const char* print_start_of_block_env = getenv("FELIX86_PRINT_BLOCK_START");
-    if (print_start_of_block_env) {
+    if (is_truthy(print_start_of_block_env)) {
         g_print_block_start = true;
         environment += "\nFELIX86_PRINT_BLOCK_START";
     }
@@ -161,7 +171,7 @@ void initialize_globals() {
 
     if (!g_testing) {
         const char* cache_env = getenv("FELIX86_CACHE");
-        if (cache_env) {
+        if (is_truthy(cache_env)) {
             g_cache_functions = true;
         }
     }
