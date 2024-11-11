@@ -534,7 +534,7 @@ IR_HANDLE(test_rm_reg) { // test rm8, r8 - 0x84
 
 IR_HANDLE(xchg_rm_reg) { // xchg rm8, r8 - 0x86
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY && false) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* swapped_reg = ir.AmoSwap(address, reg, inst->operand_reg.size);
         ir.SetReg(inst->operand_reg, swapped_reg);
