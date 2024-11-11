@@ -11,7 +11,8 @@ IRFunction::IRFunction(u64 address) {
     entry->SetIndex(0);
     exit->SetIndex(1);
 
-    IREmitter entry_emitter(*this, *entry, IR_NO_ADDRESS);
+    IREmitter entry_emitter(*this);
+    entry_emitter.SetBlock(entry);
     thread_state_pointer = entry_emitter.GetThreadStatePointer();
 
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
@@ -21,7 +22,8 @@ IRFunction::IRFunction(u64 address) {
         entry_emitter.SetGuest(x86_ref_e(i), value);
     }
 
-    IREmitter exit_emitter(*this, *exit, IR_NO_ADDRESS);
+    IREmitter exit_emitter(*this);
+    exit_emitter.SetBlock(exit);
     for (u8 i = 0; i < X86_REF_COUNT; i++) {
         // Emit get_guest for every piece of state and store it to memory
         // These get_guests will be replaced with movs from a temporary or a phi

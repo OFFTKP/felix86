@@ -434,7 +434,6 @@ SSAInstruction* IREmitter::atomic8(SSAInstruction* address, SSAInstruction* sour
         return instruction;
     }
 
-    u64 next_address = GetNextAddress();
     IRBlock* header = CreateBlock();
     IRBlock* loop = CreateBlock();
     IRBlock* conclusion = CreateBlock();
@@ -510,11 +509,9 @@ SSAInstruction* IREmitter::atomic8(SSAInstruction* address, SSAInstruction* sour
     SSAInstruction* load_shifted = Shr(load, shift_amount);
     SSAInstruction* load_masked = Andi(load_shifted, 0xFF);
 
-    IRBlock* next_block = CreateBlockAt(next_address);
+    IRBlock* next_block = CreateBlock();
     TerminateJump(next_block);
-    Exit();
-
-    frontend_compile_block(GetFunction(), next_block);
+    SetBlock(next_block);
 
     return load_masked;
 }
@@ -526,7 +523,6 @@ SSAInstruction* IREmitter::atomic16(SSAInstruction* address, SSAInstruction* sou
         return instruction;
     }
 
-    u64 next_address = GetNextAddress();
     IRBlock* header = CreateBlock();
     IRBlock* loop = CreateBlock();
     IRBlock* conclusion = CreateBlock();
@@ -603,11 +599,9 @@ SSAInstruction* IREmitter::atomic16(SSAInstruction* address, SSAInstruction* sou
     SSAInstruction* load_shifted = Shr(load, shift_amount);
     SSAInstruction* load_masked = Zext(load_shifted, X86_SIZE_WORD);
 
-    IRBlock* next_block = CreateBlockAt(next_address);
+    IRBlock* next_block = CreateBlock();
     TerminateJump(next_block);
-    Exit();
-
-    frontend_compile_block(GetFunction(), next_block);
+    SetBlock(next_block);
 
     return load_masked;
 }
@@ -617,11 +611,9 @@ SSAInstruction* IREmitter::cas32(SSAInstruction* address, SSAInstruction* expect
         return insertInstruction(IROpcode::AmoCAS32, {address, expected, source}, (u8)biscuit::Ordering::AQRL);
     }
 
-    ASSERT(current_address != 0);
-    u64 next_address = GetNextAddress();
     IRBlock* loop = CreateBlock();
     IRBlock* cmp_true = CreateBlock();
-    IRBlock* next_block = CreateBlockAt(next_address);
+    IRBlock* next_block = CreateBlock();
 
     TerminateJump(loop);
     SetBlock(loop);
@@ -636,9 +628,7 @@ SSAInstruction* IREmitter::cas32(SSAInstruction* address, SSAInstruction* expect
 
     SSAInstruction* condition = Snez(success);
     TerminateJumpConditional(condition, loop, next_block);
-    Exit();
-
-    frontend_compile_block(GetFunction(), next_block);
+    SetBlock(next_block);
 
     return load;
 }
@@ -648,11 +638,9 @@ SSAInstruction* IREmitter::cas64(SSAInstruction* address, SSAInstruction* expect
         return insertInstruction(IROpcode::AmoCAS64, {address, expected, source}, (u8)biscuit::Ordering::AQRL);
     }
 
-    ASSERT(current_address != 0);
-    u64 next_address = GetNextAddress();
     IRBlock* loop = CreateBlock();
     IRBlock* cmp_true = CreateBlock();
-    IRBlock* next_block = CreateBlockAt(next_address);
+    IRBlock* next_block = CreateBlock();
 
     TerminateJump(loop);
     SetBlock(loop);
@@ -667,9 +655,7 @@ SSAInstruction* IREmitter::cas64(SSAInstruction* address, SSAInstruction* expect
 
     SSAInstruction* condition = Snez(success);
     TerminateJumpConditional(condition, loop, next_block);
-    Exit();
-
-    frontend_compile_block(GetFunction(), next_block);
+    SetBlock(next_block);
 
     return load;
 }
@@ -2317,17 +2303,25 @@ void IREmitter::RepEnd(x86_rep_e rep_type, IRBlock* loop_block, IRBlock* exit_bl
 
     SSAInstruction* final_condition = Snez(Or(rcx_zero, condition));
     TerminateJumpConditional(final_condition, exit_block, loop_block);
-    Exit();
 }
 
 void IREmitter::TerminateJump(IRBlock* target) {
     ASSERT_MSG(block->GetTermination() == Termination::Null, "Block %s already has a termination", block->GetName().c_str());
     block->TerminateJump(target);
+
+    if (target->GetStartAddress() != IR_NO_ADDRESS)
+        compile_queue.push_back(target);
 }
 
 void IREmitter::TerminateJumpConditional(SSAInstruction* condition, IRBlock* target_true, IRBlock* target_false) {
     ASSERT_MSG(block->GetTermination() == Termination::Null, "Block %s already has a termination", block->GetName().c_str());
     block->TerminateJumpConditional(condition, target_true, target_false);
+
+    if (target_true->GetStartAddress() != IR_NO_ADDRESS)
+        compile_queue.push_back(target_true);
+
+    if (target_false->GetStartAddress() != IR_NO_ADDRESS)
+        compile_queue.push_back(target_false);
 }
 
 void IREmitter::CallHostFunction(u64 function_address) {

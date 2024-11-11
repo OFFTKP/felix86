@@ -51,6 +51,7 @@ void Emulator::Run() {
         VERBOSE("Entrypoint: %016lx", (u64)fs.GetEntrypoint());
     }
 
+    compileFunction(0x403785);
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();

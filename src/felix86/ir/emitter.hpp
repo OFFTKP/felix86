@@ -8,15 +8,7 @@
 struct IREmitter {
     using VectorFunc = SSAInstruction* (*)(IREmitter&, SSAInstruction*, SSAInstruction*, VectorState);
 
-    IREmitter(IRFunction& function, IRBlock& block, u64 address) : function(function), block(&block), current_address(address) {}
-
-    void Exit() {
-        exit = true;
-    }
-
-    bool IsExit() const {
-        return exit;
-    }
+    IREmitter(IRFunction& function) : function(function) {}
 
     void IncrementAddress(u64 increment) {
         current_address += increment;
@@ -208,6 +200,7 @@ struct IREmitter {
 
     void SetBlock(IRBlock* block) {
         ASSERT(block);
+        ASSERT(this->block != block);
         this->block = block;
         current_address = block->GetStartAddress();
     }
@@ -227,6 +220,15 @@ struct IREmitter {
 
     IRBlock* GetExit() {
         return function.GetExit();
+    }
+
+    IRBlock* PopQueue() {
+        if (compile_queue.empty())
+            return nullptr;
+
+        IRBlock* block = compile_queue.back();
+        compile_queue.pop_back();
+        return block;
     }
 
     u16 GetBitSize(x86_size_e size);
@@ -294,5 +296,5 @@ private:
     x86_instruction_t* instruction = nullptr;
 
     u64 current_address = 0;
-    bool exit = false;
+    std::vector<IRBlock*> compile_queue;
 };

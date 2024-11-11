@@ -107,7 +107,7 @@ instruction_metadata_t tertiary_table_38_f2[] = {
 #undef X
 };
 
-void frontend_compile_block(Emulator& emulator, IRFunction* function, IRBlock* block);
+void frontend_compile_block(IREmitter& ir, IRFunction* function, IRBlock* block);
 
 u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_b, bool rex_x, bool rex_r, modrm_t modrm, sib_t sib) {
     operand_reg->type = X86_OP_TYPE_REGISTER;
@@ -658,6 +658,7 @@ void frontend_compile_instruction(IREmitter& ir) {
     IRBlock* exit_block = nullptr;
     ir.SetInstruction(&inst);
 
+    // TODO: Move these RepStart and RepEnd to handlers themselves
     if (is_rep) {
         loop_block = ir.CreateBlock();
         exit_block = ir.CreateBlockAt(ir.GetNextAddress());
@@ -672,21 +673,16 @@ void frontend_compile_instruction(IREmitter& ir) {
 
     if (is_rep) {
         ir.RepEnd(rep_type, loop_block, exit_block);
-        frontend_compile_block(ir.GetFunction(), exit_block);
     }
 
     ir.IncrementAddress(inst.length);
 }
 
-void frontend_compile_block(IRFunction& function, IRBlock* block) {
-    if (block->IsCompiled()) {
-        return;
-    }
-
-    IREmitter ir(function, *block, block->GetStartAddress());
+void frontend_compile_block(IREmitter& ir, IRFunction& function, IRBlock* block) {
+    ASSERT(!block->IsCompiled());
     block->SetCompiled();
 
-    while (!ir.IsExit()) {
+    while (block->GetTermination() == Termination::Null) {
         frontend_compile_instruction(ir);
     }
 
@@ -700,7 +696,20 @@ void frontend_compile_block(IRFunction& function, IRBlock* block) {
 }
 
 void frontend_compile_function(IRFunction& function) {
+    IREmitter ir(function);
+
     IRBlock* block = function.GetBlockAt(function.GetStartAddress());
-    frontend_compile_block(function, block);
+    ir.SetBlock(block);
+    frontend_compile_block(ir, function, block);
+
+    IRBlock* queued_block = ir.PopQueue();
+    while (queued_block) {
+        if (!queued_block->IsCompiled()) {
+            ir.SetBlock(queued_block);
+            frontend_compile_block(ir, function, queued_block);
+        }
+        queued_block = ir.PopQueue();
+    }
+
     function.SetCompiled();
 }

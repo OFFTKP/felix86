@@ -508,10 +508,6 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     IRBlock* block_true = ir.CreateBlockAt(jump_address_true);
     IRBlock* block_false = ir.CreateBlockAt(jump_address_false);
     ir.TerminateJumpConditional(condition_mov, block_true, block_false);
-    ir.Exit();
-
-    frontend_compile_block(ir.GetFunction(), block_false);
-    frontend_compile_block(ir.GetFunction(), block_true);
 }
 
 IR_HANDLE(group1) { // add/or/adc/sbb/and/sub/xor/cmp
@@ -704,7 +700,6 @@ IR_HANDLE(ret_imm) {
     ir.SetReg(rsp_add, X86_REF_RSP);
     ir.SetReg(rip, X86_REF_RIP);
     ir.TerminateJump(ir.GetExit());
-    ir.Exit();
 }
 
 IR_HANDLE(ret) { // ret - 0xc3
@@ -714,7 +709,6 @@ IR_HANDLE(ret) { // ret - 0xc3
     ir.SetReg(rsp_add, X86_REF_RSP);
     ir.SetReg(rip, X86_REF_RIP);
     ir.TerminateJump(ir.GetExit());
-    ir.Exit();
 }
 
 IR_HANDLE(mov_rm_imm) { // mov rm16/32/64, imm16/32/64 - 0xc7
@@ -756,7 +750,6 @@ IR_HANDLE(call_rel32) { // call rel32 - 0xe8
     ir.SetReg(rsp_sub, X86_REF_RSP);
     ir.SetReg(rip, X86_REF_RIP);
     ir.TerminateJump(ir.GetExit());
-    ir.Exit();
 }
 
 IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
@@ -765,9 +758,6 @@ IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
 
     IRBlock* target = ir.CreateBlockAt(jump_address);
     ir.TerminateJump(target);
-    ir.Exit();
-
-    frontend_compile_block(ir.GetFunction(), target);
 }
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
@@ -776,21 +766,16 @@ IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
 
     IRBlock* target = ir.CreateBlockAt(jump_address);
     ir.TerminateJump(target);
-    ir.Exit();
-
-    frontend_compile_block(ir.GetFunction(), target);
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4
     ir.SetExitReason(EXIT_REASON_HLT);
     ir.TerminateJump(ir.GetExit());
-    ir.Exit();
 }
 
 IR_HANDLE(ud2) { // ud2 - 0x0f 0x0b
     ir.SetExitReason(EXIT_REASON_UD2);
     ir.TerminateJump(ir.GetExit());
-    ir.Exit();
 }
 
 IR_HANDLE(group3) { // test/not/neg/mul/imul/div/idiv rm - 0xf6/0xf7
@@ -895,7 +880,6 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         ir.SetReg(rsp_sub, X86_REF_RSP);
         ir.SetReg(rip, X86_REF_RIP);
         ir.TerminateJump(ir.GetExit());
-        ir.Exit();
         break;
     }
     case Group5::Jmp: {
@@ -904,7 +888,6 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
         SSAInstruction* rm = ir.GetRm(rm_op);
         ir.SetReg(rm, X86_REF_RIP);
         ir.TerminateJump(ir.GetExit());
-        ir.Exit();
         break;
     }
     case Group5::Push: {
@@ -1097,9 +1080,6 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
 
         ir.SetReg(actual, X86_REF_RAX, size_e);
         ir.TerminateJump(next_instruction_target);
-        ir.Exit();
-
-        frontend_compile_block(ir.GetFunction(), next_instruction_target);
     } else {
         IRBlock* equal_block = ir.CreateBlock();
         IRBlock* not_equal_block = ir.CreateBlock();
@@ -1121,9 +1101,6 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
 
         ir.SetReg(rm, X86_REF_RAX, size_e);
         ir.TerminateJump(next_instruction_target);
-        ir.Exit();
-
-        frontend_compile_block(ir.GetFunction(), next_instruction_target);
     }
 }
 
@@ -1151,9 +1128,6 @@ IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
     ir.SetReg(inst->operand_reg, sub);
 
     ir.TerminateJump(next_instruction_target);
-    ir.Exit();
-
-    frontend_compile_block(ir.GetFunction(), next_instruction_target);
 }
 
 IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
@@ -1174,9 +1148,6 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
     ir.SetReg(inst->operand_reg, ctz);
 
     ir.TerminateJump(next_instruction_target);
-    ir.Exit();
-
-    frontend_compile_block(ir.GetFunction(), next_instruction_target);
 }
 
 // ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██      ██████   ██████
