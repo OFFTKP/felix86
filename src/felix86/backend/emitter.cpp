@@ -39,6 +39,7 @@ void EmitCrash(Backend& backend, ExitReason reason) {
     Emitter::EmitJumpFar(backend, backend.GetCrashTarget());
 }
 
+// TODO: pull out to ir emitter
 void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     if (Rd == Rs) {
         AS.MV(t0, Rs);
@@ -67,6 +68,7 @@ void SoftwareCtz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     Pop(backend, mask);
 }
 
+// TODO: pull out to ir emitter
 void SoftwareClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, u32 size) {
     if (Rd == Rs) {
         AS.MV(t0, Rs);
@@ -271,21 +273,13 @@ void Emitter::EmitCpuid(Backend& backend) {
 }
 
 void Emitter::EmitSext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Extensions::B) {
-        AS.SEXTB(Rd, Rs);
-    } else {
-        AS.SLLI(Rd, Rs, 56);
-        AS.SRAI(Rd, Rd, 56);
-    }
+    ASSERT(Extensions::B);
+    AS.SEXTB(Rd, Rs);
 }
 
 void Emitter::EmitSext16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Extensions::B) {
-        AS.SEXTH(Rd, Rs);
-    } else {
-        AS.SLLI(Rd, Rs, 48);
-        AS.SRAI(Rd, Rd, 48);
-    }
+    ASSERT(Extensions::B);
+    AS.SEXTH(Rd, Rs);
 }
 
 void Emitter::EmitSext32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
@@ -297,21 +291,13 @@ void Emitter::EmitZext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitZext16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Extensions::B) {
-        AS.ZEXTH(Rd, Rs);
-    } else {
-        AS.SLLI(Rd, Rs, 48);
-        AS.SRLI(Rd, Rd, 48);
-    }
+    ASSERT(Extensions::B);
+    AS.ZEXTH(Rd, Rs);
 }
 
 void Emitter::EmitZext32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    if (Extensions::B) {
-        AS.ZEXTW(Rd, Rs);
-    } else {
-        AS.SLLI(Rd, Rs, 32);
-        AS.SRLI(Rd, Rd, 32);
-    }
+    ASSERT(Extensions::B);
+    AS.ZEXTW(Rd, Rs);
 }
 
 void Emitter::EmitClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
@@ -339,6 +325,7 @@ void Emitter::EmitNeg(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
+    // TODO: pull both of these out to ir emitter
     if (Extensions::B) {
         AS.ANDI(Rd, Rs, 0xFF);
         AS.CPOPW(Rd, Rd);

@@ -175,7 +175,7 @@ static struct argp argp = {options, parse_opt, args_doc, doc};
 int main(int argc, char* argv[]) {
     Config config = {};
 
-    argp_parse(&argp, argc, argv, 0, 0, &config);
+    argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &config);
 
     LOG("%s", version_full.c_str());
 
