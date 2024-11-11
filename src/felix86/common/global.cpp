@@ -6,6 +6,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "fmt/format.h"
+#include "version.hpp"
 
 #ifdef __riscv
 #include <vector>
@@ -49,6 +50,11 @@ void Extensions::Clear() {
     FELIX86_EXTENSIONS_TOTAL
 #undef X
     VLEN = 0;
+}
+
+const char* get_version_full() {
+    static std::string version = "felix86 " FELIX86_VERSION "." + std::string(g_git_hash);
+    return version.c_str();
 }
 
 bool is_truthy(const char* str) {

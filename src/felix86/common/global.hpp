@@ -30,6 +30,7 @@ extern const char* g_git_hash;
 bool parse_extensions(const char* ext);
 void initialize_globals();
 void initialize_extensions();
+const char* get_version_full();
 
 struct Extensions {
 #define FELIX86_EXTENSIONS_TOTAL                                                                                                                     \

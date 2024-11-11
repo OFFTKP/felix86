@@ -11,7 +11,7 @@
 #pragma message("felix86 should only be compiled for RISC-V")
 #endif
 
-std::string version_full = "felix86 " FELIX86_VERSION "." + std::string(g_git_hash);
+std::string version_full = get_version_full();
 const char* argp_program_version = version_full.c_str();
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";
 
