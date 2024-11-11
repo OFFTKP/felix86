@@ -156,7 +156,19 @@ BackendFunction BackendFunction::FromIRFunction(const IRFunction* function) {
         for (auto& pred : block->GetPredecessors()) {
             backend_block.AddPredecessor(backend_function.blocks[pred->GetIndex()]);
         }
+    }
 
+    for (size_t i = 0; i < blocks.size(); i++) {
+        if (phis[i].empty()) {
+            continue;
+        }
+
+        BreakupPhis(&backend_function, blocks[i], phis[i]);
+    }
+
+    for (size_t i = 0; i < blocks.size(); i++) {
+        IRBlock* block = blocks[i];
+        BackendBlock& backend_block = *backend_function.blocks[i];
         BackendInstruction termination_instruction;
         switch (block->GetTermination()) {
         case Termination::Jump:
@@ -175,14 +187,6 @@ BackendFunction BackendFunction::FromIRFunction(const IRFunction* function) {
             break;
         }
         backend_block.instructions.push_back(termination_instruction);
-    }
-
-    for (size_t i = 0; i < blocks.size(); i++) {
-        if (phis[i].empty()) {
-            continue;
-        }
-
-        BreakupPhis(&backend_function, blocks[i], phis[i]);
     }
 
     backend_function.start_address = function->GetStartAddress();
