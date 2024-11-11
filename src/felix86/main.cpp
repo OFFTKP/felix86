@@ -1,6 +1,7 @@
+#include <csetjmp>
 #include <thread>
 #include <argp.h>
-#include "biscuit/cpuinfo.hpp"
+#include <fmt/format.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/version.hpp"
 #include "felix86/emulator.hpp"
@@ -85,6 +86,8 @@ void print_extensions() {
     }
 }
 
+int guest_arg_start_index = -1;
+
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     Config* config = (Config*)state->input;
 
@@ -94,6 +97,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
 
         config->argv.push_back(arg);
+        guest_arg_start_index = state->next;
+        state->next = state->argc; // tell argp to stop
         return 0;
     }
 
@@ -176,8 +181,22 @@ int main(int argc, char* argv[]) {
     Config config = {};
 
     argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &config);
+    if (guest_arg_start_index != -1) {
+        char** argv_next = &argv[guest_arg_start_index];
+        while (*argv_next) {
+            config.argv.push_back(*argv_next);
+            argv_next++;
+        }
+    }
 
     LOG("%s", version_full.c_str());
+
+    std::string args = "Arguments: ";
+    for (const auto& arg : config.argv) {
+        args += arg;
+        args += " ";
+    }
+    VERBOSE("%s", args.c_str());
 
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
