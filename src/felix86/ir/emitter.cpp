@@ -199,9 +199,21 @@ SSAInstruction* IREmitter::Rol(SSAInstruction* lhs, SSAInstruction* rhs, x86_siz
         return Zext(Or(left_shift, right_shift), X86_SIZE_WORD);
     }
     case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::Rol32, {lhs, rhs});
+        if (Extensions::B) {
+            return insertInstruction(IROpcode::Rol32, {lhs, rhs});
+        } else {
+            SSAInstruction* left_shift = Shl(lhs, Andi(rhs, 31));
+            SSAInstruction* right_shift = Shr(lhs, Andi(Neg(rhs), 31));
+            return Zext(Or(left_shift, right_shift), X86_SIZE_DWORD);
+        }
     case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::Rol64, {lhs, rhs});
+        if (Extensions::B) {
+            return insertInstruction(IROpcode::Rol64, {lhs, rhs});
+        } else {
+            SSAInstruction* left_shift = Shl(lhs, Andi(rhs, 63));
+            SSAInstruction* right_shift = Shr(lhs, Andi(Neg(rhs), 63));
+            return Or(left_shift, right_shift);
+        }
     default:
         UNREACHABLE();
         return nullptr;
@@ -221,9 +233,21 @@ SSAInstruction* IREmitter::Ror(SSAInstruction* lhs, SSAInstruction* rhs, x86_siz
         return Zext(Or(left_shift, right_shift), X86_SIZE_WORD);
     }
     case x86_size_e::X86_SIZE_DWORD:
-        return insertInstruction(IROpcode::Ror32, {lhs, rhs});
+        if (Extensions::B) {
+            return insertInstruction(IROpcode::Ror32, {lhs, rhs});
+        } else {
+            SSAInstruction* left_shift = Shl(lhs, Andi(Neg(rhs), 31));
+            SSAInstruction* right_shift = Shr(lhs, Andi(rhs, 31));
+            return Zext(Or(left_shift, right_shift), X86_SIZE_DWORD);
+        }
     case x86_size_e::X86_SIZE_QWORD:
-        return insertInstruction(IROpcode::Ror64, {lhs, rhs});
+        if (Extensions::B) {
+            return insertInstruction(IROpcode::Ror64, {lhs, rhs});
+        } else {
+            SSAInstruction* left_shift = Shl(lhs, Andi(Neg(rhs), 63));
+            SSAInstruction* right_shift = Shr(lhs, Andi(rhs, 63));
+            return Or(left_shift, right_shift);
+        }
     default:
         UNREACHABLE();
         return nullptr;
