@@ -89,10 +89,12 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         switch (rdi) {
         case felix86_x86_64_ARCH_SET_GS: {
             state->gsbase = rsi;
+            result = 0;
             break;
         }
         case felix86_x86_64_ARCH_SET_FS: {
             state->fsbase = rsi;
+            result = 0;
             break;
         }
         case felix86_x86_64_ARCH_GET_FS: {
@@ -125,12 +127,13 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         break;
     }
     case felix86_x86_64_set_robust_list: {
-        state->robust_futex_list = rdi;
-        if (rsi != sizeof(u64) * 3) {
-            WARN("Struct size is wrong during set_robust_list");
-            result = -EINVAL;
-        }
-        STRACE("set_robust_list(%016lx, %016lx) = %016lx", rdi, rsi, result);
+        // state->robust_futex_list = rdi;
+        // if (rsi != sizeof(u64) * 3) {
+        //     WARN("Struct size is wrong during set_robust_list");
+        //     result = -EINVAL;
+        // }
+        // STRACE("set_robust_list(%016lx, %016lx) = %016lx", rdi, rsi, result);
+        result = -ENOSYS;
         break;
     }
     case felix86_x86_64_rseq: {
@@ -252,7 +255,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         }
         strcpy(guest_uname->sysname, "Linux");
         strcpy(guest_uname->release, "5.0.0");
-        std::string version = std::string("#") + get_version_full() + " SMP " __DATE__ " " __TIME__;
+        std::string version = "#1 SMP " __DATE__ " " __TIME__;
         strcpy(guest_uname->version, version.c_str());
         strcpy(guest_uname->machine, "x86_64");
         result = 0;
