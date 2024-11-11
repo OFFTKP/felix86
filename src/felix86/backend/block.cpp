@@ -32,16 +32,6 @@ BackendBlock BackendBlock::FromIRBlock(const IRBlock* block, std::vector<NamedPh
     backend_block.next_name = highest_name + 1;
     backend_block.start_address = block->GetStartAddress();
 
-    for (size_t i = 0; i < 2; i++) {
-        if (block->GetSuccessor(i)) {
-            backend_block.successors[i] = block->GetSuccessor(i)->GetIndex();
-        }
-    }
-
-    for (auto& pred : block->GetPredecessors()) {
-        backend_block.predecessors.push_back(pred->GetIndex());
-    }
-
     return backend_block;
 }
 
@@ -60,11 +50,12 @@ std::string BackendBlock::Print() const {
         break;
     }
     case Termination::Jump: {
-        ret += "Jump to " + std::to_string(successors[0]) + "\n";
+        ret += "Jump to " + std::to_string(successors[0]->GetIndex()) + "\n";
         break;
     }
     case Termination::JumpConditional: {
-        ret += "Jump to " + std::to_string(successors[0]) + " if " + condition->Print() + " else " + std::to_string(successors[1]) + "\n";
+        ret += "Jump to " + std::to_string(successors[0]->GetIndex()) + " if " + GetNameString(condition->GetName()) + " else " +
+               std::to_string(successors[1]->GetIndex()) + "\n";
         break;
     }
     case Termination::Null: {

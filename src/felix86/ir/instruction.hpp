@@ -8,7 +8,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/riscv.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/frontend/instruction.hpp"
+#include "felix86/common/x86.hpp"
 #include "felix86/ir/opcode.hpp"
 
 enum IRType : u8 {
@@ -20,6 +20,7 @@ enum IRType : u8 {
 };
 
 struct SSAInstruction;
+struct BackendInstruction;
 struct IRBlock;
 
 struct Operands {

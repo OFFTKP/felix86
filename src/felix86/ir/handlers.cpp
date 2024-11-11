@@ -97,7 +97,7 @@ IR_HANDLE(add_rm_reg) { // add rm8, r8 - 0x00
 
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        rm = ir.AmoAdd(address, reg, biscuit::Ordering::AQRL, size_e);
+        rm = ir.AmoAdd(address, reg, size_e);
         result = ir.Add(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -156,7 +156,7 @@ IR_HANDLE(or_rm_reg) { // or rm16/32/64, r16/32/64 - 0x09
 
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        rm = ir.AmoOr(address, reg, biscuit::Ordering::AQRL, size_e);
+        rm = ir.AmoOr(address, reg, size_e);
         result = ir.Or(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -234,7 +234,7 @@ IR_HANDLE(and_rm_reg) { // and rm16/32/64, r16/32/64 - 0x21
 
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        rm = ir.AmoAnd(address, reg, biscuit::Ordering::AQRL, size_e);
+        rm = ir.AmoAnd(address, reg, size_e);
         result = ir.And(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -288,7 +288,7 @@ IR_HANDLE(sub_rm_reg) { // sub rm16/32/64, r16/32/64 - 0x29
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* neg_reg = ir.Neg(reg);
-        rm = ir.AmoAdd(address, neg_reg, biscuit::Ordering::AQRL, size_e);
+        rm = ir.AmoAdd(address, neg_reg, size_e);
         result = ir.Sub(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -347,7 +347,7 @@ IR_HANDLE(xor_rm_reg) { // xor rm8, r8 - 0x30
 
     if (IS_LOCK) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        rm = ir.AmoXor(address, reg, biscuit::Ordering::AQRL, size_e);
+        rm = ir.AmoXor(address, reg, size_e);
         result = ir.Xor(rm, reg);
     } else {
         rm = ir.GetRm(inst->operand_rm);
@@ -504,8 +504,6 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     SSAInstruction* condition_mov = ir.Snez(condition);
     u64 jump_address_false = ir.GetNextAddress();
     u64 jump_address_true = ir.GetNextAddress() + immediate;
-    printf("current: %lx, false: %lx, true: %lx\n", ir.GetCurrentAddress(), jump_address_false, jump_address_true);
-    printf("false: %lx, true: %lx\n", jump_address_false, jump_address_true);
 
     IRBlock* block_true = ir.CreateBlockAt(jump_address_true);
     IRBlock* block_false = ir.CreateBlockAt(jump_address_false);
@@ -536,11 +534,12 @@ IR_HANDLE(test_rm_reg) { // test rm8, r8 - 0x84
 
 IR_HANDLE(xchg_rm_reg) { // xchg rm8, r8 - 0x86
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY && false) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
-        SSAInstruction* swapped_reg = ir.AmoSwap(address, reg, biscuit::Ordering::AQRL, inst->operand_reg.size);
+        SSAInstruction* swapped_reg = ir.AmoSwap(address, reg, inst->operand_reg.size);
         ir.SetReg(inst->operand_reg, swapped_reg);
     } else {
+        WARN("Hardcoded non-atomic path for xchg, fix this");
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         ir.SetRm(inst->operand_rm, reg);
         ir.SetReg(inst->operand_reg, rm);
@@ -977,8 +976,12 @@ IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
 IR_HANDLE(mov_xmm_m64) { // movlpd xmm, m64 - 0x0f 0x12
     // Just load a double from memory directly into an xmm - thus using vector loads
     // instead of gpr loads and then moving to vector
+    SSAInstruction* old = ir.GetReg(inst->operand_reg);
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Double);
-    ir.SetReg(inst->operand_reg, rm);
+    SSAInstruction* mask = ir.VSplati(0b10, VectorState::PackedQWord);
+    ir.SetVMask(mask);
+    SSAInstruction* result = ir.VMerge(old, rm, VectorState::PackedQWord);
+    ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(movh_m64_xmm) {
@@ -1079,54 +1082,78 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* eax = ir.GetReg(X86_REF_RAX, size_e);
 
-    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY && false) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* actual = ir.AmoCAS(address, eax, reg, biscuit::Ordering::AQRL, size_e);
+        SSAInstruction* actual = ir.AmoCAS(address, eax, reg, size_e);
 
         ir.SetReg(actual, X86_REF_RAX, size_e);
         ir.SetFlag(ir.Equal(actual, eax), X86_REF_ZF);
     } else {
-        WARN("Hardcoded non-atomic path for cmpxchg, fix this");
+        WARN("FIXME cmpxchg");
         SSAInstruction* rm = ir.GetReg(inst->operand_rm.reg.ref, size_e);
         SSAInstruction* equal = ir.Equal(eax, rm);
         SSAInstruction* rm_full = ir.GetReg(inst->operand_rm.reg.ref, X86_SIZE_QWORD);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* is_true = ir.Set(rm_full, reg, size_e, inst->operand_rm.reg.high8);
         SSAInstruction* is_false = rm_full;
+        // TODO: use actual new blocks instead of select bs
         ir.SetReg(ir.Select(equal, is_true, is_false), inst->operand_rm.reg.ref, X86_SIZE_QWORD);
         ir.SetReg(rm, X86_REF_RAX, size_e);
         ir.SetFlag(equal, X86_REF_ZF);
     }
 }
 
-IR_HANDLE(movzx_r_rm) { // movzx r32/64, rm16 - 0x0f 0xb7
+IR_HANDLE(movzx) { // movzx r32/64, rm16 - 0x0f 0xb7
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    ir.SetReg(rm, inst->operand_reg.reg.ref);
+    ir.SetReg(inst->operand_reg, rm);
 }
 
 IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
+    IRBlock* next_instruction_target = ir.CreateBlockAt(ir.GetNextAddress());
+    IRBlock* not_zero_target = ir.CreateBlock();
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* zero = ir.IsZero(rm, size_e);
+    SSAInstruction* is_zero = ir.IsZero(rm, size_e);
+    ir.SetFlag(is_zero, X86_REF_ZF);
+
+    SSAInstruction* not_zero = ir.IsNotZero(rm, size_e);
+
+    // We wanna leave reg untouched if it's zero
+    ir.TerminateJumpConditional(not_zero, not_zero_target, next_instruction_target);
+    ir.SetBlock(not_zero_target);
+
     SSAInstruction* clz = ir.Clz(rm);
-    // CLZ always deals on 64-bit values, so we need to subtract the result from 63
     SSAInstruction* sub = ir.Sub(ir.Imm(63), clz);
-    SSAInstruction* old = ir.GetGuest(inst->operand_reg.reg.ref);
-    SSAInstruction* result = ir.Set(old, sub, size_e, inst->operand_reg.reg.high8);
-    ir.SetGuest(inst->operand_reg.reg.ref, ir.Select(zero, old, result));
-    ir.SetFlag(zero, X86_REF_ZF);
+    ir.SetReg(inst->operand_reg, sub);
+
+    ir.TerminateJump(next_instruction_target);
+    ir.Exit();
+
+    frontend_compile_block(ir.GetFunction(), next_instruction_target);
 }
 
 IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
+    IRBlock* next_instruction_target = ir.CreateBlockAt(ir.GetNextAddress());
+    IRBlock* not_zero_target = ir.CreateBlock();
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* zero = ir.IsZero(rm, size_e);
-    SSAInstruction* ctz = ir.Ctz(rm); // in x86 result is undefined if it's zero so we don't care
-    SSAInstruction* old = ir.GetGuest(inst->operand_reg.reg.ref);
-    SSAInstruction* result = ir.Set(old, ctz, size_e, inst->operand_reg.reg.high8);
-    ir.SetGuest(inst->operand_reg.reg.ref, ir.Select(zero, old, result));
-    ir.SetFlag(zero, X86_REF_ZF);
+    SSAInstruction* is_zero = ir.IsZero(rm, size_e);
+    ir.SetFlag(is_zero, X86_REF_ZF);
+
+    SSAInstruction* not_zero = ir.IsNotZero(rm, size_e);
+
+    // We wanna leave reg untouched if it's zero
+    ir.TerminateJumpConditional(not_zero, not_zero_target, next_instruction_target);
+    ir.SetBlock(not_zero_target);
+
+    SSAInstruction* ctz = ir.Ctz(rm);
+    ir.SetReg(inst->operand_reg, ctz);
+
+    ir.TerminateJump(next_instruction_target);
+    ir.Exit();
+
+    frontend_compile_block(ir.GetFunction(), next_instruction_target);
 }
 
 // ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██      ██████   ██████

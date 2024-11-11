@@ -3,7 +3,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86.hpp"
 
-typedef struct {
+struct x86_operand_t {
     union {
         struct {
             u64 displacement;
@@ -32,7 +32,7 @@ typedef struct {
 
     x86_size_e size;
     x86_operand_type_e type;
-} x86_operand_t;
+};
 
 typedef struct {
     x86_operand_t operand_rm;

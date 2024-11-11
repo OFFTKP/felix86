@@ -65,7 +65,9 @@ private:
     static void EmitAddShifted(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, u8);
     static void EmitAddi(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitLoadReserved32(Backend&, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
+    static void EmitLoadReserved64(Backend&, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
     static void EmitStoreConditional32(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
+    static void EmitStoreConditional64(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
     static void EmitAmoAdd8(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
     static void EmitAmoAdd16(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);
     static void EmitAmoAdd32(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, biscuit::Ordering);

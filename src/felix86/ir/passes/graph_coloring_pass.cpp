@@ -134,8 +134,8 @@ static bool reserved_gpr(const BackendInstruction& inst) {
 
 static InstructionMap create_instruction_map(BackendFunction& function) {
     InstructionMap instructions;
-    for (BackendBlock& block : function.GetBlocks()) {
-        for (BackendInstruction& inst : block.GetInstructions()) {
+    for (BackendBlock* block : function.GetBlocks()) {
+        for (BackendInstruction& inst : block->GetInstructions()) {
             instructions[inst.GetName()].inst = &inst;
             instructions[inst.GetName()].spill_cost += 1;
 
@@ -152,13 +152,13 @@ static InstructionMap create_instruction_map(BackendFunction& function) {
 }
 
 static bool should_consider_gpr(const InstructionMap& map, u32 inst) {
-    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map");
+    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map: %s", GetNameString(inst).c_str());
     const BackendInstruction* instruction = map.at(inst).inst;
     return instruction->GetDesiredType() == AllocationType::GPR && !reserved_gpr(*instruction);
 }
 
 static bool should_consider_vec(const InstructionMap& map, u32 inst) {
-    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map");
+    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map: %s", GetNameString(inst).c_str());
     const BackendInstruction* instruction = map.at(inst).inst;
     return instruction->GetDesiredType() == AllocationType::Vec;
 }
@@ -169,24 +169,24 @@ static void spill(BackendFunction& function, u32 node, u32 location, AllocationT
     if (g_spilled_count > 5) {
         WARN("Function %016lx has spilled %d times", function.GetStartAddress(), g_spilled_count);
     }
-    for (BackendBlock& block : function.GetBlocks()) {
-        auto it = block.GetInstructions().begin();
-        while (it != block.GetInstructions().end()) {
+    for (BackendBlock* block : function.GetBlocks()) {
+        auto it = block->GetInstructions().begin();
+        while (it != block->GetInstructions().end()) {
             BackendInstruction& inst = *it;
             if (inst.GetName() == node) {
-                u32 name = block.GetNextName();
+                u32 name = block->GetNextName();
                 BackendInstruction store = BackendInstruction::FromStoreSpill(name, node, location);
                 // Insert right after this instruction
                 auto next = std::next(it);
-                block.GetInstructions().insert(next, store);
+                block->GetInstructions().insert(next, store);
                 it = next;
             } else {
                 for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                     if (inst.GetOperand(i) == node) {
-                        u32 name = block.GetNextName();
+                        u32 name = block->GetNextName();
                         BackendInstruction load = BackendInstruction::FromLoadSpill(name, location, spill_type);
                         // Insert right before this instruction
-                        it = block.GetInstructions().insert(it, load);
+                        it = block->GetInstructions().insert(it, load);
 
                         // Replace all operands
                         for (u8 j = 0; j < inst.GetOperandCount(); j++) {
@@ -211,17 +211,17 @@ static void liveness_worklist(const BackendFunction& function, const std::vector
         worklist.push_back(blocks[i]->GetIndex());
     }
     while (!worklist.empty()) {
-        const BackendBlock& block = function.GetBlock(worklist.front());
+        const BackendBlock* block = &function.GetBlock(worklist.front());
         worklist.pop_front();
 
-        size_t i = block.GetIndex();
+        size_t i = block->GetIndex();
 
         LivenessSet in_old = in[i];
 
         out[i].clear();
         // out[b] = U (in[s]) for all s in succ[b]
-        for (u8 k = 0; k < block.GetSuccessorCount(); k++) {
-            u32 succ_index = block.GetSuccessor(k);
+        for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
+            u32 succ_index = block->GetSuccessor(k)->GetIndex();
             out[i].insert(in[succ_index].begin(), in[succ_index].end());
         }
 
@@ -236,8 +236,8 @@ static void liveness_worklist(const BackendFunction& function, const std::vector
         in[i].insert(out_minus_def.begin(), out_minus_def.end());
 
         if (in[i] != in_old) {
-            for (u8 k = 0; k < block.GetPredecessorCount(); k++) {
-                u32 pred_index = block.GetPredecessor(k);
+            for (u8 k = 0; k < block->GetPredecessorCount(); k++) {
+                u32 pred_index = block->GetPredecessor(k)->GetIndex();
                 if (std::find(worklist.begin(), worklist.end(), pred_index) == worklist.end()) {
                     worklist.push_back(pred_index);
                 }
@@ -263,7 +263,7 @@ static void liveness_iterative(const BackendFunction& function, const std::vecto
             out[i].clear();
             // out[b] = U (in[s]) for all s in succ[b]
             for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
-                u32 succ_index = block->GetSuccessor(k);
+                u32 succ_index = block->GetSuccessor(k)->GetIndex();
                 out[i].insert(in[succ_index].begin(), in[succ_index].end());
             }
 
@@ -447,8 +447,8 @@ bool aggressive_coalescing_heuristic(BackendFunction& function, InterferenceGrap
 
 void coalesce(BackendFunction& function, u32 lhs, u32 rhs) {
     VERBOSE("Coalesced %s and %s", GetNameString(lhs).c_str(), GetNameString(rhs).c_str());
-    for (BackendBlock& block : function.GetBlocks()) {
-        for (BackendInstruction& inst : block.GetInstructions()) {
+    for (BackendBlock* block : function.GetBlocks()) {
+        for (BackendInstruction& inst : block->GetInstructions()) {
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                 if (inst.GetOperand(i) == lhs) {
                     inst.SetOperand(i, rhs);
@@ -465,8 +465,8 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
                   u32 k, CoalescingHeuristic heuristic) {
     bool coalesced = false;
     for (auto& block : function.GetBlocks()) {
-        auto it = block.GetInstructions().begin();
-        auto end = block.GetInstructions().end();
+        auto it = block->GetInstructions().begin();
+        auto end = block->GetInstructions().end();
         while (it != end) {
             BackendInstruction& inst = *it;
             if (inst.GetOpcode() == IROpcode::Mov) {
@@ -477,7 +477,7 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
                     if (edges.find(rhs) == edges.end()) {
                         if (heuristic(function, graph, k, lhs, rhs)) {
                             coalesce(function, lhs, rhs);
-                            it = block.GetInstructions().erase(it);
+                            it = block->GetInstructions().erase(it);
                             coalesced = true;
                             // Merge interferences into rhs
                             for (u32 neighbor : edges) {
@@ -625,8 +625,8 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
         allocations.Allocate(name, biscuit::Vec(allocation));
     }
 
-    for (BackendBlock& block : function.GetBlocks()) {
-        for (BackendInstruction& inst : block.GetInstructions()) {
+    for (BackendBlock* block : function.GetBlocks()) {
+        for (BackendInstruction& inst : block->GetInstructions()) {
             if (inst.GetOpcode() == IROpcode::GetThreadStatePointer) {
                 allocations.Allocate(inst.GetName(), Registers::ThreadStatePointer());
             } else if (inst.GetOpcode() == IROpcode::Immediate && inst.GetImmediateData() == 0) {

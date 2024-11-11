@@ -4,7 +4,7 @@ project(felix86)
 include(CheckGit.cmake)
 
 if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
 CheckGitSetup()
@@ -52,6 +52,7 @@ set(FELIX86_IR_SOURCES
     src/felix86/ir/handlers.cpp
     src/felix86/ir/instruction.cpp
     src/felix86/ir/opcode.cpp
+    src/felix86/ir/passes/block_shenanigans_pass.cpp
     src/felix86/ir/passes/copy_propagation_pass.cpp
     src/felix86/ir/passes/critical_edge_splitting_pass.cpp
     src/felix86/ir/passes/dead_code_elimination_pass.cpp

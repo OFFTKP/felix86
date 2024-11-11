@@ -437,8 +437,16 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- lr.w {}", GetNameString(name), GetNameString(operands[0]));
         break;
     }
+    case IROpcode::LoadReserved64: {
+        ret += fmt::format("{} <- lr.d {}", GetNameString(name), GetNameString(operands[0]));
+        break;
+    }
     case IROpcode::StoreConditional32: {
         ret += fmt::format("sc.w {}, {}", GetNameString(operands[0]), GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::StoreConditional64: {
+        ret += fmt::format("sc.d {}, {}", GetNameString(operands[0]), GetNameString(operands[1]));
         break;
     }
     case IROpcode::AmoAdd8: {

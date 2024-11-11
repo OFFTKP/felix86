@@ -310,8 +310,19 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::LoadReserved64: {
+        EmitLoadReserved64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), (biscuit::Ordering)inst.GetImmediateData());
+        break;
+    }
+
     case IROpcode::StoreConditional32: {
         EmitStoreConditional32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)),
+                               (biscuit::Ordering)inst.GetImmediateData());
+        break;
+    }
+
+    case IROpcode::StoreConditional64: {
+        EmitStoreConditional64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)),
                                (biscuit::Ordering)inst.GetImmediateData());
         break;
     }

@@ -27,6 +27,8 @@ struct PassManager {
 
     static void ImmediateTransformationPass(IRFunction* function);
 
+    static void BlockShenanigansPass(BackendFunction* function);
+
 private:
     // Only used by the SSA pass to get rid of unused writebacks and replace store/loads with actual writes/reads
     static void extraneousWritebackPass(IRFunction* function);

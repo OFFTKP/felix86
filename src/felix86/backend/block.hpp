@@ -18,10 +18,6 @@ struct BackendBlock {
         return termination;
     }
 
-    const BackendInstruction* GetCondition() const {
-        return condition;
-    }
-
     const std::list<BackendInstruction>& GetInstructions() const {
         return instructions;
     }
@@ -54,24 +50,44 @@ struct BackendBlock {
         return predecessors.size();
     }
 
-    const std::array<u32, 2>& GetSuccessors() const {
+    const std::array<BackendBlock*, 2>& GetSuccessors() const {
         return successors;
     }
 
-    const std::vector<u32>& GetPredecessors() const {
+    const std::vector<BackendBlock*>& GetPredecessors() const {
         return predecessors;
     }
 
-    u32 GetSuccessor(u32 index) const {
+    BackendBlock* GetSuccessor(u32 index) const {
         return successors[index];
     }
 
-    u32 GetPredecessor(u32 index) const {
+    void SetSuccessor(u32 index, BackendBlock* value) {
+        successors[index] = value;
+    }
+
+    BackendBlock* GetPredecessor(u32 index) const {
         return predecessors[index];
+    }
+
+    void AddPredecessor(BackendBlock* value) {
+        predecessors.push_back(value);
+    }
+
+    void SetPredecessor(u32 index, BackendBlock* value) {
+        predecessors[index] = value;
     }
 
     u32 GetIndex() const {
         return list_index;
+    }
+
+    void SetIndex(u32 index) {
+        list_index = index;
+    }
+
+    const BackendInstruction* GetCondition() const {
+        return condition;
     }
 
     void InsertAtEnd(BackendInstruction&& instruction) {
@@ -87,6 +103,14 @@ struct BackendBlock {
         return start_address;
     }
 
+    void SetVisited(bool value) const {
+        visited = value;
+    }
+
+    bool IsVisited() const {
+        return visited;
+    }
+
     u64 GetStartAddressOffset() const {
         if (start_address >= g_executable_start && start_address < g_executable_end) {
             return start_address - g_executable_start;
@@ -96,15 +120,26 @@ struct BackendBlock {
         return start_address;
     }
 
+    void RemovePredecessor(BackendBlock* block) {
+        for (auto it = predecessors.begin(); it != predecessors.end(); ++it) {
+            if (*it == block) {
+                predecessors.erase(it);
+                return;
+            }
+        }
+        UNREACHABLE();
+    }
+
     [[nodiscard]] std::string Print() const;
 
 private:
     Termination termination = Termination::Null;
     const BackendInstruction* condition = nullptr;
     std::list<BackendInstruction> instructions{};
-    std::vector<u32> predecessors;
-    std::array<u32, 2> successors = {UINT32_MAX, UINT32_MAX};
+    std::vector<BackendBlock*> predecessors;
+    std::array<BackendBlock*, 2> successors = {nullptr, nullptr};
+    u64 start_address = 0;
     u32 list_index = 0;
     u32 next_name = 0;
-    u64 start_address = 0;
+    mutable bool visited = false;
 };

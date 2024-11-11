@@ -5,6 +5,11 @@
 
 struct BackendFunction {
     BackendFunction() = default;
+    ~BackendFunction() {
+        for (BackendBlock* block : blocks) {
+            delete block;
+        }
+    }
     BackendFunction(const BackendFunction&) = delete;
     BackendFunction& operator=(const BackendFunction&) = delete;
     BackendFunction(BackendFunction&&) = default;
@@ -12,20 +17,20 @@ struct BackendFunction {
 
     static BackendFunction FromIRFunction(const IRFunction* function);
 
-    const std::vector<BackendBlock>& GetBlocks() const {
+    const std::vector<BackendBlock*>& GetBlocks() const {
         return blocks;
     }
 
-    std::vector<BackendBlock>& GetBlocks() {
+    std::vector<BackendBlock*>& GetBlocks() {
         return blocks;
     }
 
     const BackendBlock& GetBlock(u32 index) const {
-        return blocks[index];
+        return *blocks[index];
     }
 
     BackendBlock& GetBlock(u32 index) {
-        return blocks[index];
+        return *blocks[index];
     }
 
     std::vector<const BackendBlock*> GetBlocksPostorder() const;
@@ -36,7 +41,19 @@ struct BackendFunction {
         return start_address;
     }
 
+    void RemoveBlock(u32 block) {
+        auto it = blocks.begin();
+        while (it != blocks.end()) {
+            if ((*it)->GetIndex() == block) {
+                blocks.erase(it);
+                return;
+            }
+            ++it;
+        }
+        ASSERT(false);
+    }
+
 private:
-    std::vector<BackendBlock> blocks;
+    std::vector<BackendBlock*> blocks;
     u64 start_address = 0;
 };

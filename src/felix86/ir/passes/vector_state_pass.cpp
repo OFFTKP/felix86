@@ -22,9 +22,9 @@ bool ExitsVM(IROpcode opcode) {
 void PassManager::VectorStatePass(BackendFunction* function) {
     // Block local for now
     for (auto& block : function->GetBlocks()) {
-        auto it = block.GetInstructions().begin();
+        auto it = block->GetInstructions().begin();
         VectorState state = VectorState::Null;
-        while (it != block.GetInstructions().end()) {
+        while (it != block->GetInstructions().end()) {
             BackendInstruction& inst = *it;
             switch (inst.GetOpcode()) {
             case IROpcode::SetVectorStateFloat: {
@@ -68,37 +68,37 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                         case VectorState::Float: {
                             SSAInstruction inst(IROpcode::SetVectorStateFloat, {});
                             BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
-                            it = block.GetInstructions().insert(it, backend_inst);
+                            it = block->GetInstructions().insert(it, backend_inst);
                             continue;
                         }
                         case VectorState::Double: {
                             SSAInstruction inst(IROpcode::SetVectorStateDouble, {});
                             BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
-                            it = block.GetInstructions().insert(it, backend_inst);
+                            it = block->GetInstructions().insert(it, backend_inst);
                             continue;
                         }
                         case VectorState::PackedByte: {
                             SSAInstruction inst(IROpcode::SetVectorStatePackedByte, {});
                             BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
-                            it = block.GetInstructions().insert(it, backend_inst);
+                            it = block->GetInstructions().insert(it, backend_inst);
                             continue;
                         }
                         case VectorState::PackedWord: {
                             SSAInstruction inst(IROpcode::SetVectorStatePackedWord, {});
                             BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
-                            it = block.GetInstructions().insert(it, backend_inst);
+                            it = block->GetInstructions().insert(it, backend_inst);
                             continue;
                         }
                         case VectorState::PackedDWord: {
                             SSAInstruction inst(IROpcode::SetVectorStatePackedDWord, {});
                             BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
-                            it = block.GetInstructions().insert(it, backend_inst);
+                            it = block->GetInstructions().insert(it, backend_inst);
                             continue;
                         }
                         case VectorState::PackedQWord: {
                             SSAInstruction inst(IROpcode::SetVectorStatePackedQWord, {});
                             BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
-                            it = block.GetInstructions().insert(it, backend_inst);
+                            it = block->GetInstructions().insert(it, backend_inst);
                             continue;
                         }
                         case VectorState::AnyPacked: {
@@ -109,7 +109,7 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                                 // Scan forward to find the next state usage.
                                 auto it2 = it;
                                 VectorState next_state = VectorState::Null;
-                                while (it2 != block.GetInstructions().end()) {
+                                while (it2 != block->GetInstructions().end()) {
                                     if (it2->GetVectorState() != VectorState::Null) {
                                         next_state = it2->GetVectorState();
                                         break;
@@ -121,7 +121,7 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                                     // Didn't find further usages, so just give it some packed state
                                     SSAInstruction inst(IROpcode::SetVectorStatePackedDWord, {});
                                     BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
-                                    it = block.GetInstructions().insert(it, backend_inst);
+                                    it = block->GetInstructions().insert(it, backend_inst);
                                     continue;
                                 } else {
                                     IROpcode opcode = IROpcode::Null;
@@ -148,7 +148,7 @@ void PassManager::VectorStatePass(BackendFunction* function) {
 
                                     SSAInstruction inst(opcode, {});
                                     BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
-                                    it = block.GetInstructions().insert(it, backend_inst);
+                                    it = block->GetInstructions().insert(it, backend_inst);
                                     continue;
                                 }
                             }

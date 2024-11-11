@@ -132,12 +132,30 @@ BackendFunction BackendFunction::FromIRFunction(const IRFunction* function) {
     BackendFunction backend_function;
     backend_function.blocks.resize(blocks.size());
 
+    for (size_t i = 0; i < blocks.size(); i++) {
+        backend_function.blocks[i] = new BackendBlock();
+    }
+
     // Separate the phis from the instructions so we can
     // convert them to moves
     std::vector<std::vector<NamedPhi>> phis(blocks.size());
 
     for (size_t i = 0; i < blocks.size(); i++) {
-        backend_function.blocks[i] = BackendBlock::FromIRBlock(blocks[i], phis[i]);
+        *backend_function.blocks[i] = BackendBlock::FromIRBlock(blocks[i], phis[i]);
+    }
+
+    for (size_t j = 0; j < blocks.size(); j++) {
+        IRBlock* block = blocks[j];
+        BackendBlock& backend_block = *backend_function.blocks[j];
+        for (size_t i = 0; i < 2; i++) {
+            if (block->GetSuccessor(i)) {
+                backend_block.SetSuccessor(i, backend_function.blocks[block->GetSuccessor(i)->GetIndex()]);
+            }
+        }
+
+        for (auto& pred : block->GetPredecessors()) {
+            backend_block.AddPredecessor(backend_function.blocks[pred->GetIndex()]);
+        }
     }
 
     for (size_t i = 0; i < blocks.size(); i++) {
@@ -153,31 +171,29 @@ BackendFunction BackendFunction::FromIRFunction(const IRFunction* function) {
     return backend_function;
 }
 
-static void postorder(u32 current, const std::vector<BackendBlock>& blocks, std::vector<const BackendBlock*>& output, bool* visited) {
-    if (visited[current]) {
+static void postorder(const BackendBlock* block, std::vector<const BackendBlock*>& output) {
+    if (block->IsVisited()) {
         return;
     }
 
-    visited[current] = true;
-
-    const BackendBlock* block = &blocks[current];
+    block->SetVisited(true);
 
     for (u8 i = 0; i < block->GetSuccessorCount(); i++) {
-        postorder(block->GetSuccessors()[i], blocks, output, visited);
+        postorder(block->GetSuccessors()[i], output);
     }
 
     output.push_back(block); // TODO: don't use vector in the future
 }
 
 static void postorder_creation(const BackendFunction* function, std::vector<const BackendBlock*>& order) {
-    const std::vector<BackendBlock>& blocks = function->GetBlocks();
+    for (auto& block : function->GetBlocks()) {
+        block->SetVisited(false);
+    }
 
-    bool* visited = (bool*)alloca(function->GetBlocks().size());
-    memset(visited, 0, function->GetBlocks().size());
-    postorder(0, blocks, order, visited);
+    postorder(&function->GetBlock(0), order);
 
     for (size_t i = 0; i < function->GetBlocks().size(); i++) {
-        ASSERT(visited[i]);
+        ASSERT(function->GetBlock(i).IsVisited());
     }
 }
 
