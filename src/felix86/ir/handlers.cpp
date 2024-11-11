@@ -1081,13 +1081,25 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
     x86_size_e size_e = inst->operand_reg.size;
 
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        IRBlock* next_instruction_target = ir.CreateBlockAt(ir.GetNextAddress());
+        IRBlock* equal_block = ir.CreateBlock();
+
         SSAInstruction* eax = ir.GetReg(X86_REF_RAX, size_e);
         SSAInstruction* address = ir.Lea(inst->operand_rm);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* actual = ir.AmoCAS(address, eax, reg, size_e);
 
+        SSAInstruction* equal = ir.Equal(actual, eax);
+        ir.SetFlag(equal, X86_REF_ZF);
+
+        ir.TerminateJumpConditional(equal, equal_block, next_instruction_target);
+        ir.SetBlock(equal_block);
+
         ir.SetReg(actual, X86_REF_RAX, size_e);
-        ir.SetFlag(ir.Equal(actual, eax), X86_REF_ZF);
+        ir.TerminateJump(next_instruction_target);
+        ir.Exit();
+
+        frontend_compile_block(ir.GetFunction(), next_instruction_target);
     } else {
         IRBlock* equal_block = ir.CreateBlock();
         IRBlock* not_equal_block = ir.CreateBlock();
