@@ -1075,7 +1075,7 @@ IR_HANDLE(cmpxchg) { // cmpxchg - 0x0f 0xb0-0xb1
         SSAInstruction* equal = ir.Equal(actual, eax);
         ir.SetFlag(equal, X86_REF_ZF);
 
-        ir.TerminateJumpConditional(equal, equal_block, next_instruction_target);
+        ir.TerminateJumpConditional(equal, next_instruction_target, equal_block);
         ir.SetBlock(equal_block);
 
         ir.SetReg(actual, X86_REF_RAX, size_e);
