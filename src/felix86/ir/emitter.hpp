@@ -282,7 +282,8 @@ private:
     SSAInstruction* insertInstruction(IROpcode opcode, VectorState state, std::initializer_list<SSAInstruction*> operands);
     SSAInstruction* insertInstruction(IROpcode opcode, VectorState state, std::initializer_list<SSAInstruction*> operands, u64 imm);
     SSAInstruction* atomic8(SSAInstruction* address, SSAInstruction* source, IROpcode opcode);
-    SSAInstruction* softwareAtomic16(SSAInstruction* address, SSAInstruction* source, IROpcode opcode);
+    SSAInstruction* atomic16(SSAInstruction* address, SSAInstruction* source, IROpcode opcode);
+    SSAInstruction* cas32(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source);
     SSAInstruction* cas64(SSAInstruction* address, SSAInstruction* expected, SSAInstruction* source);
 
     void loadPartialState(std::span<const x86_ref_e> refs);

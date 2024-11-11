@@ -783,13 +783,7 @@ void Emitter::EmitAmoCAS32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Addre
         AS.AMOCAS_W(ordering, Rd, Rs, Address);
         EmitZext32(backend, Rd, Rd);
     } else {
-        WARN("Non-atomic CAS32 fallback");
-        Label not_same;
-        AS.LW(t0, 0, Address);
-        AS.BNE(t0, Expected, &not_same);
-        AS.SW(Rs, 0, Address);
-        AS.Bind(&not_same);
-        AS.MV(Rd, t0);
+        UNREACHABLE();
     }
 }
 
