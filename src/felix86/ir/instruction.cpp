@@ -359,6 +359,18 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("store_to_vm {}, {}", print_guest_register(ref), GetNameString(operands[0]));
         break;
     }
+    case IROpcode::Jump: {
+        ret += fmt::format("jump");
+        break;
+    }
+    case IROpcode::JumpConditional: {
+        ret += fmt::format("jump if {}", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::BackToDispatcher: {
+        ret += fmt::format("back_to_dispatcher");
+        break;
+    }
     case IROpcode::Add: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "+", GetNameString(operands[1]));
         break;

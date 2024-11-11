@@ -4,7 +4,7 @@
 #define _Reg_(name) (allocation_map.GetAllocation(name))
 
 // Dispatch to correct function
-void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const BackendInstruction& inst) {
+void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const BackendBlock& block, const BackendInstruction& inst) {
     switch (inst.GetOpcode()) {
     // Should not exist in the backend IR representation, replaced by simpler stuff
     case IROpcode::Null: {
@@ -123,6 +123,25 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         } else {
             ERROR("Rd type: %d, Rs type: %d", (int)Rd.GetAllocationType(), (int)Rs.GetAllocationType());
         }
+        break;
+    }
+
+    case IROpcode::Jump: {
+        Label* target = block.GetSuccessor(0)->GetLabel();
+        EmitJump(backend, target);
+        break;
+    }
+
+    case IROpcode::JumpConditional: {
+        auto condition = _Reg_(inst.GetOperand(0));
+        Label* target_true = block.GetSuccessor(0)->GetLabel();
+        Label* target_false = block.GetSuccessor(1)->GetLabel();
+        EmitJumpConditional(backend, condition, target_true, target_false);
+        break;
+    }
+
+    case IROpcode::BackToDispatcher: {
+        EmitJumpFar(backend, backend.GetCompileNext());
         break;
     }
 

@@ -66,13 +66,16 @@ struct BackendInstruction {
     [[nodiscard]] std::string Print() const;
 
 private:
-    u64 immediate_data;
-    std::array<u32, 4> operand_names;
-    u32 name;
-    IROpcode opcode;
+    friend struct BackendBlock;
+    friend struct BackendFunction;
+
+    u64 immediate_data = 0;
+    std::array<u32, 4> operand_names{};
+    u32 name = 0;
+    IROpcode opcode = IROpcode::Null;
     AllocationType desired_type = AllocationType::Null;
     VecMask masked = VecMask::No;
-    u8 operand_count;
+    u8 operand_count = 0;
     VectorState vector_state = VectorState::Null;
     bool locked = false;
 };

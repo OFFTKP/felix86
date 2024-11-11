@@ -152,23 +152,6 @@ void print_address(u64 address) {
 
 std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, const AllocationMap& allocations) {
     void* start = as.GetCursorPointer();
-    tsl::robin_map<const BackendBlock*, Label> block_map;
-
-    struct ConditionalJump {
-        ptrdiff_t location;
-        Allocation allocation;
-        const BackendBlock* target_true;
-        const BackendBlock* target_false;
-    };
-
-    struct DirectJump {
-        ptrdiff_t location;
-        const BackendBlock* target;
-    };
-
-    std::vector<ConditionalJump> conditional_jumps;
-    std::vector<DirectJump> direct_jumps;
-
     std::vector<const BackendBlock*> blocks_postorder = function.GetBlocksPostorder();
 
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
@@ -176,7 +159,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
         VERBOSE("Block %d (0x%016lx) corresponds to %p", block->GetIndex(), block->GetStartAddress(), as.GetCursorPointer());
 
-        as.Bind(&block_map[block]);
+        as.Bind(block->GetLabel());
 
         if (g_print_block_start) {
             Emitter::EmitPushAllCallerSaved(*this);
@@ -193,7 +176,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         }
 
         for (const BackendInstruction& inst : block->GetInstructions()) {
-            Emitter::Emit(*this, allocations, inst);
+            Emitter::Emit(*this, allocations, *block, inst);
         }
 
         if (block->GetIndex() == 1 && allocations.GetSpillSize() > 0) {
@@ -201,58 +184,6 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             as.LI(t0, allocations.GetSpillSize());
             as.ADD(Registers::StackPointer(), Registers::StackPointer(), t0);
         }
-
-        switch (block->GetTermination()) {
-        case Termination::Null: {
-            UNREACHABLE();
-            break;
-        }
-        case Termination::Jump: {
-            ptrdiff_t offset = as.GetCodeBuffer().GetCursorOffset();
-            const BackendBlock* target = block->GetSuccessor(0);
-            direct_jumps.push_back({offset, target});
-            // Some space for the backpatched jump
-            as.NOP();
-            break;
-        }
-        case Termination::JumpConditional: {
-            ptrdiff_t offset = as.GetCodeBuffer().GetCursorOffset();
-            Allocation condition = allocations.GetAllocation(block->GetCondition()->GetName());
-            const BackendBlock* target_true = block->GetSuccessor(0);
-            const BackendBlock* target_false = block->GetSuccessor(1);
-            conditional_jumps.push_back({offset, condition, target_true, target_false});
-            // Some space for the backpatched jump, it can be up to 3 instructions
-            as.NOP();
-            as.NOP();
-            as.NOP();
-            break;
-        }
-        case Termination::BackToDispatcher: {
-            Emitter::EmitJumpFar(*this, (void*)compile_next);
-            break;
-        }
-        }
-    }
-
-    for (const DirectJump& jump : direct_jumps) {
-        if (block_map.find(jump.target) == block_map.end()) {
-            ERROR("Block not found");
-        }
-
-        ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
-        as.RewindBuffer(jump.location);
-        Emitter::EmitJump(*this, &block_map[jump.target]);
-        as.AdvanceBuffer(cursor);
-    }
-
-    for (const ConditionalJump& jump : conditional_jumps) {
-        ASSERT(block_map.find(jump.target_true) != block_map.end());
-        ASSERT(block_map.find(jump.target_false) != block_map.end());
-
-        ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
-        as.RewindBuffer(jump.location);
-        Emitter::EmitJumpConditional(*this, jump.allocation, &block_map[jump.target_true], &block_map[jump.target_false]);
-        as.AdvanceBuffer(cursor);
     }
 
     void* end = as.GetCursorPointer();

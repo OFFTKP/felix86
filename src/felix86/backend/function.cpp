@@ -156,6 +156,25 @@ BackendFunction BackendFunction::FromIRFunction(const IRFunction* function) {
         for (auto& pred : block->GetPredecessors()) {
             backend_block.AddPredecessor(backend_function.blocks[pred->GetIndex()]);
         }
+
+        BackendInstruction termination_instruction;
+        switch (block->GetTermination()) {
+        case Termination::Jump:
+            termination_instruction.opcode = IROpcode::Jump;
+            break;
+        case Termination::JumpConditional:
+            termination_instruction.opcode = IROpcode::JumpConditional;
+            termination_instruction.operand_count = 1;
+            termination_instruction.operand_names[0] = block->GetCondition()->GetName();
+            break;
+        case Termination::BackToDispatcher:
+            termination_instruction.opcode = IROpcode::BackToDispatcher;
+            break;
+        case Termination::Null:
+            UNREACHABLE();
+            break;
+        }
+        backend_block.instructions.push_back(termination_instruction);
     }
 
     for (size_t i = 0; i < blocks.size(); i++) {

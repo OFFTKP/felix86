@@ -44,6 +44,10 @@ struct Backend {
         return crash_target;
     }
 
+    void* GetCompileNext() {
+        return compile_next;
+    }
+
 private:
     static u8* allocateCodeCache();
     static void deallocateCodeCache(u8* memory);

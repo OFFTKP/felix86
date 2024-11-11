@@ -6,9 +6,10 @@
 #include "felix86/backend/instruction.hpp"
 
 struct Backend;
+struct BackendBlock;
 
 struct Emitter {
-    static void Emit(Backend& backend, const AllocationMap& allocations, const BackendInstruction& instruction);
+    static void Emit(Backend& backend, const AllocationMap& allocations, const BackendBlock& block, const BackendInstruction& instruction);
     static void EmitJumpFar(Backend& backend, void* target);
     static void EmitJump(Backend& backend, Label* target);
     static void EmitJumpConditional(Backend& backend, biscuit::GPR condition, Label* target_true, Label* target_false);

@@ -4,7 +4,6 @@
 BackendBlock BackendBlock::FromIRBlock(const IRBlock* block, std::vector<NamedPhi>& phis) {
     BackendBlock backend_block;
     backend_block.list_index = block->GetIndex();
-    backend_block.termination = block->GetTermination();
 
     u32 highest_name = 0;
 
@@ -17,10 +16,6 @@ BackendBlock BackendBlock::FromIRBlock(const IRBlock* block, std::vector<NamedPh
             ASSERT(inst.IsOperands());
 
             backend_block.instructions.push_back(BackendInstruction::FromSSAInstruction(&inst));
-
-            if (&inst == block->GetCondition()) {
-                backend_block.condition = &backend_block.instructions.back();
-            }
         } else if (inst.GetOpcode() == IROpcode::Phi) {
             NamedPhi named_phi;
             named_phi.name = inst.GetName();
@@ -42,26 +37,6 @@ std::string BackendBlock::Print() const {
 
     for (const BackendInstruction& inst : instructions) {
         ret += inst.Print() + "\n";
-    }
-
-    switch (termination) {
-    case Termination::BackToDispatcher: {
-        ret += "Back to dispatcher\n";
-        break;
-    }
-    case Termination::Jump: {
-        ret += "Jump to " + std::to_string(successors[0]->GetIndex()) + "\n";
-        break;
-    }
-    case Termination::JumpConditional: {
-        ret += "Jump to " + std::to_string(successors[0]->GetIndex()) + " if " + GetNameString(condition->GetName()) + " else " +
-               std::to_string(successors[1]->GetIndex()) + "\n";
-        break;
-    }
-    case Termination::Null: {
-        UNREACHABLE();
-        break;
-    }
     }
 
     ret += "\n\n";

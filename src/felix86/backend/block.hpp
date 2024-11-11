@@ -14,10 +14,6 @@ struct NamedPhi {
 struct BackendBlock {
     static BackendBlock FromIRBlock(const IRBlock* block, std::vector<NamedPhi>& phis);
 
-    Termination GetTermination() const {
-        return termination;
-    }
-
     const std::list<BackendInstruction>& GetInstructions() const {
         return instructions;
     }
@@ -27,23 +23,15 @@ struct BackendBlock {
     }
 
     u32 GetSuccessorCount() const {
-        switch (termination) {
-        case Termination::Jump:
-            return 1;
-        case Termination::JumpConditional:
-            return 2;
-        case Termination::BackToDispatcher:
-            return 0;
-        case Termination::Null: {
-            UNREACHABLE();
-            return 0;
+        u8 count = 0;
+        for (int i = 0; i < 2; i++) {
+            if (successors[i] != nullptr) {
+                count++;
+            } else {
+                break;
+            }
         }
-        default: {
-            // uhhh gcc warning
-            UNREACHABLE();
-            return 0;
-        }
-        }
+        return count;
     }
 
     u32 GetPredecessorCount() const {
@@ -66,6 +54,10 @@ struct BackendBlock {
         successors[index] = value;
     }
 
+    Label* GetLabel() const {
+        return &label;
+    }
+
     BackendBlock* GetPredecessor(u32 index) const {
         return predecessors[index];
     }
@@ -84,10 +76,6 @@ struct BackendBlock {
 
     void SetIndex(u32 index) {
         list_index = index;
-    }
-
-    const BackendInstruction* GetCondition() const {
-        return condition;
     }
 
     void InsertAtEnd(BackendInstruction&& instruction) {
@@ -133,8 +121,9 @@ struct BackendBlock {
     [[nodiscard]] std::string Print() const;
 
 private:
-    Termination termination = Termination::Null;
-    const BackendInstruction* condition = nullptr;
+    friend struct BackendFunction;
+
+    mutable Label label;
     std::list<BackendInstruction> instructions{};
     std::vector<BackendBlock*> predecessors;
     std::array<BackendBlock*, 2> successors = {nullptr, nullptr};

@@ -8,8 +8,10 @@ void PassManager::BlockShenanigansPass(BackendFunction* function) {
     // Skip entry & exit block
     for (size_t i = 2; i < function->GetBlocks().size(); i++) {
         BackendBlock* block = &function->GetBlock(i);
-        if (block->GetInstructions().empty()) {
-            if (block->GetTermination() != Termination::Jump) {
+
+        // Single jump instruction
+        if (block->GetInstructions().size() == 1) {
+            if (block->GetSuccessorCount() != 1) {
                 continue;
             }
 

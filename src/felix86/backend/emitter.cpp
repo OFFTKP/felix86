@@ -162,21 +162,12 @@ void Emitter::EmitJump(Backend& backend, Label* target) {
 }
 
 void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, Label* target_true, Label* target_false) {
-    if (IsValidBTypeImm(target_false->GetLocation().value() - AS.GetCodeBuffer().GetCursorOffset())) {
-        AS.BEQZ(condition, target_false);
-        AS.J(target_true);
-    } else if (IsValidBTypeImm(target_true->GetLocation().value() - AS.GetCodeBuffer().GetCursorOffset())) {
-        AS.BNEZ(condition, target_true);
-        AS.J(target_false);
-    } else {
-        // TODO: if the labels are too far we need to increment the nop backpatching space
-        // and insert a literal pc-relative load
-        Label false_label;
-        AS.BEQZ(condition, &false_label);
-        AS.J(target_true);
-        AS.Bind(&false_label);
-        AS.J(target_false);
-    }
+    // TODO: optimizations for nearby labels
+    Label false_label;
+    AS.BEQZ(condition, &false_label);
+    AS.J(target_true);
+    AS.Bind(&false_label);
+    AS.J(target_false);
 }
 
 void Emitter::EmitCallHostFunction(Backend& backend, u64 function) {
