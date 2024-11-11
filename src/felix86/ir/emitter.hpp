@@ -11,6 +11,7 @@ struct IREmitter {
     IREmitter(IRFunction& function) : function(function) {}
 
     void IncrementAddress(u64 increment) {
+        ASSERT(current_address != IR_NO_ADDRESS);
         current_address += increment;
     }
 
@@ -198,11 +199,19 @@ struct IREmitter {
         return current_address + instruction->length;
     }
 
+    void SetAddress(u64 address) {
+        current_address = address;
+    }
+
     void SetBlock(IRBlock* block) {
         ASSERT(block);
         ASSERT(this->block != block);
         this->block = block;
-        current_address = block->GetStartAddress();
+    }
+
+    IRBlock* GetCurrentBlock() {
+        ASSERT(block);
+        return block;
     }
 
     void SetInstruction(x86_instruction_t* instruction) {

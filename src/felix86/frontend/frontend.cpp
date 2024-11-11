@@ -682,7 +682,9 @@ void frontend_compile_block(IREmitter& ir, IRFunction& function, IRBlock* block)
     ASSERT(!block->IsCompiled());
     block->SetCompiled();
 
-    while (block->GetTermination() == Termination::Null) {
+    // Since compiling instructions might change the current block (due to some instruction that needs multiple blocks, for example)
+    // we check that the *current* block has no termination, rather than the original block
+    while (ir.GetCurrentBlock()->GetTermination() == Termination::Null) {
         frontend_compile_instruction(ir);
     }
 
@@ -700,12 +702,14 @@ void frontend_compile_function(IRFunction& function) {
 
     IRBlock* block = function.GetBlockAt(function.GetStartAddress());
     ir.SetBlock(block);
+    ir.SetAddress(block->GetStartAddress());
     frontend_compile_block(ir, function, block);
 
     IRBlock* queued_block = ir.PopQueue();
     while (queued_block) {
         if (!queued_block->IsCompiled()) {
             ir.SetBlock(queued_block);
+            ir.SetAddress(queued_block->GetStartAddress());
             frontend_compile_block(ir, function, queued_block);
         }
         queued_block = ir.PopQueue();
