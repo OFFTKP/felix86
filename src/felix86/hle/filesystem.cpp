@@ -95,11 +95,7 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
             path = std::filesystem::path(result_path) / path;
         }
     } else if (path.is_absolute()) {
-        if (path == proc_self_exe) { // special case for /proc/self/exe
-            path = executable_path.string();
-        } else {
-            path = rootfs_path / path.relative_path();
-        }
+        path = rootfs_path / path.relative_path();
     } else {
         UNREACHABLE();
     }
@@ -113,6 +109,14 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
 }
 
 ssize_t Filesystem::ReadLinkAt(int dirfd, const char* pathname, char* buf, u32 bufsiz) {
+    if (std::string(pathname) == proc_self_exe) {
+        std::string executable_path_string = executable_path.string();
+        // readlink does not append a null terminator
+        size_t written_size = std::min(executable_path_string.size(), (size_t)bufsiz);
+        memcpy(buf, executable_path_string.c_str(), written_size);
+        return written_size;
+    }
+
     auto path_opt = AtPath(dirfd, pathname);
 
     if (!path_opt) {

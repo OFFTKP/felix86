@@ -203,13 +203,15 @@ void Elf::Load(const std::filesystem::path& path) {
     u64 base_address = 0;
     if (ehdr.e_type == ET_DYN) {
         u64 base_hint = is_interpreter ? g_interpreter_base_hint : g_executable_base_hint;
+        int flags = MAP_PRIVATE | MAP_ANONYMOUS;
         if (base_hint) {
             ASSERT(g_interpreter_base_hint != g_executable_base_hint);
+            flags |= MAP_FIXED;
         }
-        program = (u8*)mmap((void*)base_hint, highest_vaddr, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+        program = (u8*)mmap((void*)base_hint, highest_vaddr, PROT_NONE, flags, -1, 0);
         base_address = (u64)program;
         if (program == MAP_FAILED) {
-            ERROR("Failed to allocate memory for ELF file %s", path.c_str());
+            ERROR("Failed to allocate memory for ELF file %s, errno: %d", path.c_str(), -errno);
         }
     } else {
         program = NULL;
