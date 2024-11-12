@@ -1,8 +1,8 @@
 %ifdef CONFIG
 {
   "RegData": {
-    "RAX": "0x00FF",
-    "XMM2": ["0xFFFFFFFFFFFFFFFF", "0"]
+    "XMM2": ["0xFFFFFFFFFFFFFFFF", "0"],
+    "RAX": "0x00FF"
   },
   "MemoryRegions": {
     "0x100000000": "4096"
