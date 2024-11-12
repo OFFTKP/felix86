@@ -261,7 +261,8 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     } else if (address >= g_executable_start && address < g_executable_end) {
         address = address - g_executable_start;
     }
-    VERBOSE("Jumping to function %016lx, located at %p", address, function);
+
+    VERBOSE("Jumping to function %016lx (%016lx), located at %p", thread_state->GetRip(), address, function);
 
     return function;
 }
