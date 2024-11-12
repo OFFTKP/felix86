@@ -2050,7 +2050,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
     switch (opcode) {
     case Group3::Test:
     case Group3::Test_: {
-        SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+        SSAInstruction* imm = Imm(inst->operand_imm.immediate.data);
         SSAInstruction* masked = And(rm, imm);
         s = IsNegative(masked, size_e);
         z = IsZero(masked, size_e);
