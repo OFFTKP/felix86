@@ -925,11 +925,8 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
     case 2: {
         if (opcode == 0xD0) { // xgetbv
             // That's probably fine for now
-            xcr0_reg_t xcr0 = {};
-            xcr0.x87 = 1;
-            xcr0.sse = 1;
-            u32 rax = xcr0.raw;
-            u32 rdx = xcr0.raw >> 32;
+            u32 rax = 0b11;
+            u32 rdx = 0;
             ir.SetReg(ir.Imm(rax), X86_REF_RAX);
             ir.SetReg(ir.Imm(rdx), X86_REF_RDX);
             WARN("XGETBV");
@@ -1241,7 +1238,7 @@ IR_HANDLE(group14) {
 
 IR_HANDLE(pmovmskb) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
-    SSAInstruction* mask = ir.VMSltx(rm, ir.Imm(0), VectorState::PackedByte);
+    SSAInstruction* mask = ir.VMSlt(rm, ir.Imm(0), VectorState::PackedByte);
     static_assert(SUPPORTED_VLEN == 128); // if vlen changes, change the zext below
     ir.SetReg(inst->operand_reg, ir.Zext(ir.VToI(mask, VectorState::PackedWord), X86_SIZE_WORD));
 }
