@@ -117,7 +117,7 @@ void Emulator::setupMainStack(ThreadState* state) {
         return;
     }
 
-    auxv_t auxv_entries[17] = {
+    auxv_t auxv_entries[18] = {
         {AT_PAGESZ, {4096}},
         {AT_EXECFN, {(u64)program_name}},
         {AT_CLKTCK, {100}},
@@ -134,6 +134,7 @@ void Emulator::setupMainStack(ThreadState* state) {
         {AT_PHENT, {elf->GetPhent()}},
         {AT_PHNUM, {elf->GetPhnum()}},
         {AT_RANDOM, {rand_address}},
+        {AT_HWCAP, {0xBFEBFBFF}},
         {AT_NULL, {0}} // null terminator
     };
 
@@ -141,7 +142,7 @@ void Emulator::setupMainStack(ThreadState* state) {
     VERBOSE("AT_PHENT: %lu", auxv_entries[13].a_un.a_val);
     VERBOSE("AT_PHNUM: %lu", auxv_entries[14].a_un.a_val);
     VERBOSE("AT_RANDOM: %p", auxv_entries[15].a_un.a_ptr);
-    u16 auxv_count = sizeof(auxv_entries) / sizeof(auxv_t);
+    u16 auxv_count = std::size(auxv_entries);
 
     // This is the varying amount of space needed for the stack
     // past our own information block

@@ -50,9 +50,9 @@ void felix86_cpuid(ThreadState* thread_state) {
     }
     case 1: {
         eax = 0x000106A2;
-        ebx = 0xFFFFFFFF;
-        ecx = 0xFFFFFFFF;
-        edx = 0xFFFFFFFF;
+        ebx = 0x00100800;
+        ecx = 0x00BCE3BD;
+        edx = 0xBFEBFBFF;
         break;
     }
     case 2: {
