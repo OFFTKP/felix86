@@ -1553,21 +1553,6 @@ IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
 //    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██        ██    ██ ██    ██          ██ ██   ██
 //    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██         ██████   ██████      ██████  ██   ██
 
-IR_HANDLE(pcmpistri_xmm_xmm128_cb) { // pcmpistri xmm, xmm/m128, imm8 - 0x66 0x0f 0x3a 0x63
-    ERROR("Impl me, output xmm + rcx + flags reg?");
-    // SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    // SSAInstruction* imm = ir.Imm(inst->operand_imm.immediate.data);
-    // SSAInstruction* result = ir_emit_vector_packed_compare_implicit_string_index(BLOCK, rm, imm);
-    // ir.SetReg(inst->operand_reg, result);
-
-    // x86_ref_e outputs[] = {X86_REF_RCX, X86_REF_CF, X86_REF_ZF, X86_REF_SF, X86_REF_OF};
-    // ir_emit_hint_outputs(BLOCK, outputs, 5);
-
-    // SSAInstruction* zero = ir.Imm(0);
-    // ir.SetFlag(X86_REF_PF, zero);
-    // ir.SetFlag(X86_REF_AF, zero);
-}
-
 // ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ███████ ██████      ██████   █████
 //    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██      ██           ██          ██ ██   ██
 //    ██    █████   ██████     ██    ██ ███████ ██████    ████       █████    █████       █████  ███████
