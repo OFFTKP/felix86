@@ -3,6 +3,20 @@
 #include "felix86/ir/emitter.hpp"
 
 namespace {
+u64 sext_if_64(u64 value, x86_size_e size_e) {
+    switch (size_e) {
+    case X86_SIZE_BYTE:
+    case X86_SIZE_WORD:
+    case X86_SIZE_DWORD:
+        return value;
+    case X86_SIZE_QWORD:
+        return (i64)(i32)value;
+    default:
+        ERROR("Invalid immediate size");
+        return 0;
+    }
+}
+
 SSAInstruction* SecondMSB(IREmitter& ir, SSAInstruction* value, x86_size_e size) {
     switch (size) {
     case X86_SIZE_BYTE:
@@ -2050,7 +2064,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
     switch (opcode) {
     case Group3::Test:
     case Group3::Test_: {
-        SSAInstruction* imm = Imm(inst->operand_imm.immediate.data);
+        SSAInstruction* imm = Imm(sext_if_64(inst->operand_imm.immediate.data, inst->operand_imm.size));
         SSAInstruction* masked = And(rm, imm);
         s = IsNegative(masked, size_e);
         z = IsZero(masked, size_e);
