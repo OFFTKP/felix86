@@ -1242,9 +1242,8 @@ IR_HANDLE(group14) {
 IR_HANDLE(pmovmskb) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* mask = ir.VMSltx(rm, ir.Imm(0), VectorState::PackedByte);
-    // static_assert(SUPPORTED_VLEN == 128); // if vlen changes, change the zext below
-    // ir.SetReg(inst->operand_reg, ir.Zext(ir.VToI(mask, VectorState::PackedByte), X86_SIZE_WORD));
-    ir.SetRm(inst->operand_rm, mask, VectorState::PackedByte);
+    static_assert(SUPPORTED_VLEN == 128); // if vlen changes, change the zext below
+    ir.SetReg(inst->operand_reg, ir.Zext(ir.VToI(mask, VectorState::PackedWord), X86_SIZE_WORD));
 }
 
 IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
