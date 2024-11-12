@@ -801,13 +801,12 @@ IR_HANDLE(std) { // std - 0xfd
 }
 
 IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
-    x86_size_e size_e = inst->operand_reg.size;
+    x86_size_e size_e = inst->operand_rm.size;
     Group4 opcode = (Group4)(inst->operand_reg.reg.ref - X86_REF_RAX);
 
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
     SSAInstruction* one = ir.Imm(1);
     SSAInstruction* result = nullptr;
-    SSAInstruction* c = nullptr;
     SSAInstruction* o = nullptr;
     SSAInstruction* a = nullptr;
 
@@ -834,7 +833,7 @@ IR_HANDLE(group4) { // inc/dec rm8 - 0xfe
     SSAInstruction* z = ir.IsZero(result, size_e);
     SSAInstruction* s = ir.IsNegative(result, size_e);
 
-    ir.SetCPAZSO(c, p, a, z, s, o);
+    ir.SetCPAZSO(nullptr, p, a, z, s, o);
     ir.SetRm(inst->operand_rm, result);
 }
 
