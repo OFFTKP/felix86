@@ -222,13 +222,6 @@ void felix86_cpuid(ThreadState* thread_state) {
     }
     }
 
-    if (leaf == 1 || leaf == 0x80000001) {
-        eax = -1;
-        ebx = -1;
-        ecx = -1;
-        edx = -1;
-    }
-
     STRACE("CPUID(%08x, %08x) -> %08x %08x %08x %08x", leaf, subleaf, eax, ebx, ecx, edx);
     thread_state->SetGpr(X86_REF_RAX, eax);
     thread_state->SetGpr(X86_REF_RBX, ebx);
