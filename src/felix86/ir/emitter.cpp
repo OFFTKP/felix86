@@ -2033,6 +2033,10 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
 void IREmitter::Group3(x86_instruction_t* inst) {
     ::Group3 opcode = (::Group3)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
+    if (inst->operand_rm.memory.lock) {
+        WARN("Ignoring lock prefix during group3 instruction");
+    }
+
     x86_size_e size_e = inst->operand_rm.size;
     SSAInstruction* rm = GetRm(inst->operand_rm);
     SSAInstruction* result = nullptr;
