@@ -1006,6 +1006,7 @@ IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
 IR_HANDLE(bt) { // bt - 0x0f 0xa3
     // TODO: use B extension bit test whenever possible
     if (inst->operand_rm.type == X86_OP_TYPE_REGISTER) {
+        WARN("BT");
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* shift = ir.Andi(reg, ir.GetBitSize(inst->operand_reg.size) - 1);
