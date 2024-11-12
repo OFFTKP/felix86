@@ -94,7 +94,7 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
 
             path = std::filesystem::path(result_path) / path;
         }
-    } else if (path.is_absolute()) {
+    } else if (path.is_absolute() && !validatePath(path)) {
         path = rootfs_path / path.relative_path();
     } else {
         UNREACHABLE();
