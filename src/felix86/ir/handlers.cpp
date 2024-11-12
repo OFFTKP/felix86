@@ -1241,7 +1241,7 @@ IR_HANDLE(group14) {
 
 IR_HANDLE(pmovmskb) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
-    SSAInstruction* mask = ir.VEqual(rm, ir.VSplati(0x80, VectorState::PackedByte), VectorState::PackedByte);
+    SSAInstruction* mask = ir.VEqual(rm, ir.VSplat(ir.Imm(0x80), VectorState::PackedByte), VectorState::PackedByte);
     static_assert(SUPPORTED_VLEN == 128); // if vlen changes, change the zext below
     ir.SetReg(inst->operand_reg, ir.Zext(ir.VToI(mask, VectorState::PackedByte), X86_SIZE_WORD));
 }
