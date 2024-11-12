@@ -1,17 +1,17 @@
 #include "FEX/fex_test_loader.hpp"
 
 #define PRIMARY_TEST(opcode)                                                                                                                         \
-    CATCH_TEST_CASE(#opcode, "Primary") {                                                                                                            \
+    CATCH_TEST_CASE(#opcode, "[Primary]") {                                                                                                          \
         FEXTestLoader::RunTest("ASM/Primary/Primary_" #opcode ".asm");                                                                               \
     }
 
 #define PRIMARY_TEST_NO_PREFIX(opcode)                                                                                                               \
-    CATCH_TEST_CASE(#opcode, "Primary") {                                                                                                            \
+    CATCH_TEST_CASE(#opcode, "[Primary]") {                                                                                                          \
         FEXTestLoader::RunTest("ASM/Primary/" #opcode ".asm");                                                                                       \
     }
 
 #define PRIMARY_TEST_BASE(name)                                                                                                                      \
-    CATCH_TEST_CASE(#name, "[FEX]") {                                                                                                                \
+    CATCH_TEST_CASE(#name, "[Primary]") {                                                                                                            \
         FEXTestLoader::RunTest("ASM/" #name ".asm");                                                                                                 \
     }
 

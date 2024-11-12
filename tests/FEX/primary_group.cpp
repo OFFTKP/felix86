@@ -1,7 +1,7 @@
 #include "fex_test_loader.hpp"
 
 #define PRIMARY_GROUP(opcode)                                                                                                                        \
-    CATCH_TEST_CASE(#opcode, "PrimaryGroup") {                                                                                                       \
+    CATCH_TEST_CASE(#opcode, "[PrimaryGroup]") {                                                                                                     \
         FEXTestLoader::RunTest("ASM/PrimaryGroup/" #opcode ".asm");                                                                                  \
     }
 

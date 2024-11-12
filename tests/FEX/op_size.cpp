@@ -1,11 +1,11 @@
 #include "fex_test_loader.hpp"
 
 #define OP_SIZE(opcode)                                                                                                                              \
-    CATCH_TEST_CASE("66_" #opcode, "OpSize") {                                                                                                       \
+    CATCH_TEST_CASE("66_" #opcode, "[OpSize]") {                                                                                                     \
         FEXTestLoader::RunTest("ASM/OpSize/66_" #opcode ".asm");                                                                                     \
     }
 
-CATCH_TEST_CASE("15Byte", "OpSize") {
+CATCH_TEST_CASE("15Byte", "[OpSize]") {
     FEXTestLoader::RunTest("ASM/OpSize/15_BYTE.asm");
 }
 
