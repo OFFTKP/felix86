@@ -162,7 +162,6 @@ bool Filesystem::validatePath(const std::filesystem::path& path) {
     // To check that it's part of the sandbox, we check that the path is
     // a subpath of the rootfs path
     if (string.find(rootfs_path_string) != 0) {
-        ERROR("Path %s is not part of the sandbox", string.c_str());
         return false;
     }
 
