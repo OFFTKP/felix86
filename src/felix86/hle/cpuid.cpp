@@ -37,6 +37,8 @@ void felix86_cpuid(ThreadState* thread_state) {
     u32 ebx = 0;
     u32 ecx = thread_state->GetGpr(X86_REF_RCX);
     u32 edx = 0;
+    u32 leaf = eax;
+    u32 subleaf = ecx;
     VERBOSE("CPUID: %08x %08x", eax, ecx);
     switch (eax) {
     case 0: {
@@ -219,6 +221,8 @@ void felix86_cpuid(ThreadState* thread_state) {
         break;
     }
     }
+
+    STRACE("CPUID(%08x, %08x) -> %08x %08x %08x %08x", leaf, subleaf, eax, ebx, ecx, edx);
 
     thread_state->SetGpr(X86_REF_RAX, eax);
     thread_state->SetGpr(X86_REF_RBX, ebx);
