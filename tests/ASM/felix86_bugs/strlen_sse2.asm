@@ -7,7 +7,7 @@
 %endif
 bits 64
 
-lea rdi, [test_str]
+lea rdi, [rel test_str]
 call strlen_sse2
 hlt
 
