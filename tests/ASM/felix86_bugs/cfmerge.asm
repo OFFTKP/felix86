@@ -3,7 +3,7 @@
   "RegData": {
     "R8": "0x1",
     "R9": "0x0"
-  },
+  }
 }
 %endif
 bits 64

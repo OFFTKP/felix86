@@ -1006,12 +1006,16 @@ IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
 
 IR_HANDLE(bt) { // bt - 0x0f 0xa3
     // TODO: use B extension bit test whenever possible
-    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* shift = ir.Andi(reg, ir.GetBitSize(inst->operand_reg.size) - 1);
-    SSAInstruction* bit = ir.Shr(rm, shift);
-    SSAInstruction* result = ir.Andi(bit, 1);
-    ir.SetFlag(result, X86_REF_CF);
+    if (inst->operand_rm.type == X86_OP_TYPE_REGISTER) {
+        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        SSAInstruction* shift = ir.Andi(reg, ir.GetBitSize(inst->operand_reg.size) - 1);
+        SSAInstruction* bit = ir.Shr(rm, shift);
+        SSAInstruction* result = ir.Andi(bit, 1);
+        ir.SetFlag(result, X86_REF_CF);
+    } else {
+        UNREACHABLE();
+    }
 }
 
 IR_HANDLE(imul_r32_rm32) { // imul r32/64, rm32/64 - 0x0f 0xaf
