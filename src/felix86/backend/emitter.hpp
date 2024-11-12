@@ -163,6 +163,7 @@ private:
     static void EmitVSrli(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVSrai(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVMSeqi(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
+    static void EmitVMSlt(Backend&, biscuit::Vec, biscuit::Vec, biscuit::GPR, VecMask);
     static void EmitVSlideUpi(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVSlideUpZeroesi(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);
     static void EmitVSlideDowni(Backend&, biscuit::Vec, biscuit::Vec, u64, VecMask);

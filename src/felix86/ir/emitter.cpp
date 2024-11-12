@@ -1074,6 +1074,10 @@ SSAInstruction* IREmitter::VMSeqi(SSAInstruction* value, VectorState state, u64 
     return insertInstruction(IROpcode::VMSeqi, state, {value}, imm);
 }
 
+SSAInstruction* IREmitter::VMSltx(SSAInstruction* value, SSAInstruction* reg, VectorState state) {
+    return insertInstruction(IROpcode::VMSltx, state, {value, reg});
+}
+
 SSAInstruction* IREmitter::VSlideDowni(SSAInstruction* value, u8 shift, VectorState state) {
     return insertInstruction(IROpcode::VSlideDowni, state, {value}, shift);
 }

@@ -1195,6 +1195,10 @@ void Emitter::EmitVMSeqi(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64
     AS.VMSEQ(Vd, Vs, immediate, masked);
 }
 
+void Emitter::EmitVMSlt(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, biscuit::GPR Rs, VecMask masked) {
+    AS.VMSLT(Vd, Vs, Rs, masked);
+}
+
 void Emitter::EmitVMerge(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VMERGE(Vd, Vs1, Vs2);
 }

@@ -122,6 +122,7 @@ struct IREmitter {
     SSAInstruction* VSrli(SSAInstruction* value, u8 shift, VectorState state);
     SSAInstruction* VSrai(SSAInstruction* value, u8 shift, VectorState state);
     SSAInstruction* VMSeqi(SSAInstruction* value, VectorState state, u64 imm);
+    SSAInstruction* VMSltx(SSAInstruction* value, SSAInstruction* reg, VectorState state);
     SSAInstruction* VSlideUpi(SSAInstruction* value, u8 shift, VectorState state);
     SSAInstruction* VSlideUpZeroesi(SSAInstruction* value, u8 shift, VectorState state);
     SSAInstruction* VSlideDowni(SSAInstruction* value, u8 shift, VectorState state);
