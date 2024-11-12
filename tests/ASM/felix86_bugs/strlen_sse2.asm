@@ -128,4 +128,5 @@ strlen_sse2:
     sub     rax, rdi
     ret
 
+align 16
 test_str db "Hello, World!", 0
