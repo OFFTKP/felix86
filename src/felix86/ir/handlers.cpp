@@ -634,8 +634,8 @@ IR_HANDLE(movs) { // movsb - 0xa4
     SSAInstruction* rsi_val = ir.ReadMemory(rsi, size_e);
     ir.WriteMemory(rdi, rsi_val, size_e);
 
-    u8 immediate = ir.GetBitSize(size_e) / 8;
-    SSAInstruction* imm = ir.Select(ir.GetFlag(X86_REF_DF), ir.Imm(-immediate), ir.Imm(immediate));
+    int bit_size = ir.GetBitSize(size_e) / 8;
+    SSAInstruction* imm = ir.Select(ir.GetFlag(X86_REF_DF), ir.Imm(-bit_size), ir.Imm(bit_size));
     SSAInstruction* rsi_add = ir.Add(rsi, imm);
     SSAInstruction* rdi_add = ir.Add(rdi, imm);
     ir.SetReg(rsi_add, X86_REF_RSI);
@@ -664,8 +664,9 @@ IR_HANDLE(stosd) { // stosd - 0xab
     SSAInstruction* rax = ir.GetReg(X86_REF_RAX, size_e);
     ir.WriteMemory(rdi, rax, size_e);
 
-    // Assume DF is 0 for now
-    SSAInstruction* rdi_add = ir.Addi(rdi, ir.GetBitSize(size_e) / 8);
+    int bit_size = ir.GetBitSize(size_e) / 8;
+    SSAInstruction* imm = ir.Select(ir.GetFlag(X86_REF_DF), ir.Imm(-bit_size), ir.Imm(bit_size));
+    SSAInstruction* rdi_add = ir.Add(rdi, imm);
     ir.SetReg(rdi_add, X86_REF_RDI, address_size);
 }
 
