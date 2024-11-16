@@ -924,10 +924,10 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
     case 2: {
         if (opcode == 0xD0) { // xgetbv
             // That's probably fine for now
-            u32 rax = 0b11;
-            u32 rdx = 0;
-            ir.SetReg(ir.Imm(rax), X86_REF_RAX);
-            ir.SetReg(ir.Imm(rdx), X86_REF_RDX);
+            // u32 rax = 0b11;
+            // u32 rdx = 0;
+            ir.SetReg(ir.Imm(-1), X86_REF_RAX);
+            ir.SetReg(ir.Imm(-1), X86_REF_RDX);
             WARN("XGETBV");
         } else if (opcode == 0xD1) { // xsetbv
             ERROR("XSETBV instruction not implemented");
@@ -1006,7 +1006,6 @@ IR_HANDLE(cpuid) { // cpuid - 0x0f 0xa2
 IR_HANDLE(bt) { // bt - 0x0f 0xa3
     // TODO: use B extension bit test whenever possible
     if (inst->operand_rm.type == X86_OP_TYPE_REGISTER) {
-        WARN("BT");
         SSAInstruction* rm = ir.GetRm(inst->operand_rm);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* shift = ir.Andi(reg, ir.GetBitSize(inst->operand_reg.size) - 1);
