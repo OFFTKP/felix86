@@ -2304,6 +2304,22 @@ void IREmitter::Group14(x86_instruction_t* inst) {
     }
 }
 
+void IREmitter::Group15(x86_instruction_t* inst) {
+    ::Group15 opcode = (::Group15)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    switch (opcode) {
+    case Group15::SFence: {
+        // there's also a memory encoding, this should catch it if it happens
+        ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER);
+        SFence();
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+}
+
 SSAInstruction* IREmitter::GetThreadStatePointer() {
     return insertInstruction(IROpcode::GetThreadStatePointer, {});
 }
@@ -2401,4 +2417,13 @@ SSAInstruction* IREmitter::Set(SSAInstruction* old, SSAInstruction* value, x86_s
         ERROR("Invalid size");
         return nullptr;
     }
+}
+
+void IREmitter::Fence(FenceOrder pred, FenceOrder succ) {
+    SSAInstruction* fence = insertInstruction(IROpcode::Fence, {}, (u64)pred << 4 | (u64)succ);
+    fence->Lock();
+}
+
+void IREmitter::SFence() {
+    Fence(FenceOrder::RW, FenceOrder::RW);
 }

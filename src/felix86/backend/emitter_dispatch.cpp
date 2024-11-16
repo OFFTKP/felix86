@@ -914,5 +914,10 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         EmitVFMax(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
         break;
     }
+
+    case IROpcode::Fence: {
+        EmitFence(backend, (FenceOrder)(inst.GetImmediateData() >> 4), (FenceOrder)(inst.GetImmediateData() & 0b1111));
+        break;
+    }
     }
 }

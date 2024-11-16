@@ -1208,6 +1208,10 @@ IR_HANDLE(group14) {
     ir.Group14(inst);
 }
 
+IR_HANDLE(group15) {
+    ir.Group15(inst);
+}
+
 IR_HANDLE(pmovmskb) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* mask = ir.VMSlt(rm, ir.Imm(0), VectorState::PackedByte);

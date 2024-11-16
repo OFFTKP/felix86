@@ -60,6 +60,17 @@ enum class Group14 : u8 {
     PSllDQ = 7,
 };
 
+enum class Group15 : u8 {
+    FxSave = 0,
+    FxrStor = 1,
+    LdMxcsr = 2,
+    StMxcsr = 3,
+    XSave = 4,
+    LFence = 5,
+    MFence = 6,
+    SFence = 7,
+};
+
 enum x86_rep_e {
     NONE,
     REP,

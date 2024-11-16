@@ -179,4 +179,5 @@ private:
     static void EmitVFRcpSqrt(Backend&, biscuit::Vec, biscuit::Vec);
     static void EmitVFMin(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVFMax(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
+    static void EmitFence(Backend&, biscuit::FenceOrder, biscuit::FenceOrder);
 };

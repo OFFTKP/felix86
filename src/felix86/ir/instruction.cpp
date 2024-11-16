@@ -330,6 +330,9 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     case IROpcode::SetVMask: {
         return fmt::format("SetVMask({})", GetNameString(operands[0]));
     }
+    case IROpcode::Fence: {
+        return fmt::format("Fence({}, {})", (u8)immediate_data >> 4, (u8)immediate_data & 0xF);
+    }
     case IROpcode::Immediate: {
         ret += fmt::format("{} <- 0x{:x}", GetNameString(name), immediate_data);
         break;

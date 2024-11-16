@@ -165,9 +165,12 @@ struct IREmitter {
     void Group2(x86_instruction_t* inst, SSAInstruction* shift_amount);
     void Group3(x86_instruction_t* inst);
     void Group14(x86_instruction_t* inst);
+    void Group15(x86_instruction_t* inst);
     void Syscall();
     void Cpuid();
     void Rdtsc();
+    void Fence(FenceOrder pred, FenceOrder succ);
+    void SFence();
     SSAInstruction* GetCC(u8 opcode);
     void SetCC(x86_instruction_t* inst);
     void SetCPAZSO(SSAInstruction* c, SSAInstruction* p, SSAInstruction* a, SSAInstruction* z, SSAInstruction* s, SSAInstruction* o);

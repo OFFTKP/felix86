@@ -1240,3 +1240,7 @@ void Emitter::EmitVSlide1Up(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs, 
 void Emitter::EmitVSlide1Down(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs, biscuit::Vec Vs, VecMask masked) {
     AS.VSLIDE1DOWN(Vd, Vs, Rs, masked);
 }
+
+void Emitter::EmitFence(Backend& backend, biscuit::FenceOrder pred, biscuit::FenceOrder succ) {
+    AS.FENCE(pred, succ);
+}
