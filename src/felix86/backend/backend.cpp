@@ -230,10 +230,11 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     for (auto& [offset, label] : jumps) {
         ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
         as.RewindBuffer(offset);
-        if (IsValidJTypeImm(*label->GetLocation())) {
+        void* target = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label->GetLocation()));
+        void* here = as.GetCursorPointer();
+        if (false && IsValidJTypeImm((ptrdiff_t)target - (ptrdiff_t)here)) {
             Emitter::EmitJump(*this, label);
         } else {
-            void* target = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label->GetLocation()));
             Emitter::EmitJumpFar(*this, target);
         }
         as.AdvanceBuffer(current_offset);
@@ -242,11 +243,12 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     for (auto& [offset, condition, label_true, label_false] : jumps_conditional) {
         ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
         as.RewindBuffer(offset);
-        if (IsValidJTypeImm(*label_true->GetLocation()) && IsValidJTypeImm(*label_false->GetLocation())) {
+        void* target_true = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_true->GetLocation()));
+        void* target_false = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_false->GetLocation()));
+        void* here = as.GetCursorPointer();
+        if (false && IsValidJTypeImm((ptrdiff_t)target_true - (ptrdiff_t)here) && IsValidJTypeImm((ptrdiff_t)target_false - (ptrdiff_t)here)) {
             Emitter::EmitJumpConditional(*this, condition, label_true, label_false);
         } else {
-            void* target_true = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_true->GetLocation()));
-            void* target_false = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_false->GetLocation()));
             Emitter::EmitJumpConditionalFar(*this, condition, target_true, target_false);
         }
         as.AdvanceBuffer(current_offset);
