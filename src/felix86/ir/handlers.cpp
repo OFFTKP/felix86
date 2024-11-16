@@ -924,10 +924,8 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
     case 2: {
         if (opcode == 0xD0) { // xgetbv
             // That's probably fine for now
-            // u32 rax = 0b11;
-            // u32 rdx = 0;
-            ir.SetReg(ir.Imm(-1), X86_REF_RAX);
-            ir.SetReg(ir.Imm(-1), X86_REF_RDX);
+            ir.SetReg(ir.Imm(0b11), X86_REF_RAX);
+            ir.SetReg(ir.Imm(0), X86_REF_RDX);
             WARN("XGETBV");
         } else if (opcode == 0xD1) { // xsetbv
             ERROR("XSETBV instruction not implemented");
