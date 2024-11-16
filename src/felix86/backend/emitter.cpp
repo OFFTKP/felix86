@@ -147,11 +147,9 @@ void Emitter::EmitPopAllCallerSaved(Backend& backend) {
 }
 
 void Emitter::EmitJumpFar(Backend& backend, void* target) {
-    auto my_abs = [](u64 x) -> u64 { return x < 0 ? -x : x; };
-
     // Check if target is in one MB range
     void* cursor = AS.GetCursorPointer();
-    if (my_abs((u64)cursor - (u64)target) > 0x100000) {
+    if (!IsValidJTypeImm((u64)cursor - (u64)target)) {
         AS.LI(t0, (u64)target);
         AS.JR(t0);
     } else {
