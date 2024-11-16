@@ -1,3 +1,4 @@
+#include <csignal>
 #include <elf.h>
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -52,6 +53,8 @@ void Emulator::Run() {
     }
 
     VERBOSE("Entering main thread :)");
+
+    raise(SIGTRAP);
 
     ThreadState* state = &thread_states.back();
     backend.EnterDispatcher(state);
