@@ -146,8 +146,8 @@ void Backend::EnterDispatcher(ThreadState* state) {
     enter_dispatcher(state);
 }
 
-void print_address(u64 address) {
-    PLAIN("Entering block 0x%016lx", address);
+void print_address(u64 address, int index) {
+    PLAIN("Entering block 0x%016lx (%d)", address, index);
 }
 
 std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, const AllocationMap& allocations) {
@@ -179,6 +179,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         if (g_print_block_start) {
             Emitter::EmitPushAllCallerSaved(*this);
             as.LI(a0, block->GetStartAddress());
+            as.LI(a1, block->GetIndex());
             as.LI(t0, (u64)print_address);
             as.JALR(t0);
             Emitter::EmitPopAllCallerSaved(*this);
@@ -232,7 +233,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         as.RewindBuffer(offset);
         void* target = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label->GetLocation()));
         void* here = as.GetCursorPointer();
-        if (false && IsValidJTypeImm((ptrdiff_t)target - (ptrdiff_t)here)) {
+        if (IsValidJTypeImm((ptrdiff_t)target - (ptrdiff_t)here)) {
             Emitter::EmitJump(*this, label);
         } else {
             Emitter::EmitJumpFar(*this, target);
@@ -246,7 +247,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         void* target_true = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_true->GetLocation()));
         void* target_false = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_false->GetLocation()));
         void* here = as.GetCursorPointer();
-        if (false && IsValidJTypeImm((ptrdiff_t)target_true - (ptrdiff_t)here) && IsValidJTypeImm((ptrdiff_t)target_false - (ptrdiff_t)here)) {
+        if (IsValidJTypeImm((ptrdiff_t)target_true - (ptrdiff_t)here) && IsValidJTypeImm((ptrdiff_t)target_false - (ptrdiff_t)here)) {
             Emitter::EmitJumpConditional(*this, condition, label_true, label_false);
         } else {
             Emitter::EmitJumpConditionalFar(*this, condition, target_true, target_false);
