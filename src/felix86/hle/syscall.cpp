@@ -260,6 +260,18 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         result = 0;
         break;
     }
+    case felix86_x86_64_statfs: {
+        std::optional<std::filesystem::path> path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            result = -EACCES;
+            break;
+        }
+
+        result = HOST_SYSCALL(statfs, path->c_str(), (struct statfs*)rsi);
+        STRACE("statfs(%s, %p) = %d", path->c_str(), (void*)rsi, (int)result);
+        break;
+    }
     default: {
         ERROR("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
         break;
