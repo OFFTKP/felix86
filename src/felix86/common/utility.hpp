@@ -24,6 +24,10 @@ std::string GetNameString(u32 name);
     return value >= -4096 && value <= 4095;
 }
 
+[[nodiscard]] constexpr bool IsValidJTypeImm(ptrdiff_t value) {
+    return value >= -0x80000 && value <= 0x7FFFF;
+}
+
 void felix86_div128(struct ThreadState* state, u64 divisor);
 void felix86_divu128(struct ThreadState* state, u64 divisor);
 

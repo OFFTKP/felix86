@@ -264,10 +264,10 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
         address = address - g_executable_start;
     }
 
-#if 1
+#if 0
     // Hack to break on a specific address
     u64 addy = thread_state->GetRip();
-    if (addy == 0x2'0001'8ef0 || addy == 0x1'0001'8ef0) {
+    if (addy == 0x1'0000'ed69) {
         raise(SIGTRAP);
     }
 #endif

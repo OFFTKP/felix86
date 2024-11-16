@@ -154,6 +154,21 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     void* start = as.GetCursorPointer();
     std::vector<const BackendBlock*> blocks_postorder = function.GetBlocksPostorder();
 
+    struct Jump {
+        ptrdiff_t offset;
+        Label* label;
+    };
+
+    struct JumpConditional {
+        ptrdiff_t offset;
+        biscuit::GPR condition;
+        Label* label_true;
+        Label* label_false;
+    };
+
+    std::vector<Jump> jumps;
+    std::vector<JumpConditional> jumps_conditional;
+
     for (auto it = blocks_postorder.rbegin(); it != blocks_postorder.rend(); it++) {
         const BackendBlock* block = *it;
 
@@ -176,7 +191,28 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         }
 
         for (const BackendInstruction& inst : block->GetInstructions()) {
-            Emitter::Emit(*this, allocations, *block, inst);
+            if (inst.GetOpcode() == IROpcode::Jump) {
+                Jump jump;
+                jump.offset = as.GetCodeBuffer().GetCursorOffset();
+                jump.label = block->GetSuccessor(0)->GetLabel();
+                jumps.push_back(jump);
+                // TODO: make it smaller when we implement literals in jumpfar and jumpconditionalfar
+                for (int i = 0; i < 30; i++) {
+                    as.NOP();
+                }
+            } else if (inst.GetOpcode() == IROpcode::JumpConditional) {
+                JumpConditional jump;
+                jump.offset = as.GetCodeBuffer().GetCursorOffset();
+                jump.condition = allocations.GetAllocation(inst.GetOperand(0)).AsGPR();
+                jump.label_true = block->GetSuccessor(0)->GetLabel();
+                jump.label_false = block->GetSuccessor(1)->GetLabel();
+                jumps_conditional.push_back(jump);
+                for (int i = 0; i < 30; i++) {
+                    as.NOP();
+                }
+            } else {
+                Emitter::Emit(*this, allocations, *block, inst);
+            }
         }
 
         if (block->GetIndex() == 1 && allocations.GetSpillSize() > 0) {
@@ -190,6 +226,31 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     u64 size = (u64)end - (u64)start;
 
     map[function.GetStartAddress()] = {start, size};
+
+    for (auto& [offset, label] : jumps) {
+        ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
+        as.RewindBuffer(offset);
+        if (IsValidJTypeImm(*label->GetLocation())) {
+            Emitter::EmitJump(*this, label);
+        } else {
+            void* target = (void*)(offset + *label->GetLocation());
+            Emitter::EmitJumpFar(*this, target);
+        }
+        as.AdvanceBuffer(current_offset);
+    }
+
+    for (auto& [offset, condition, label_true, label_false] : jumps_conditional) {
+        ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
+        as.RewindBuffer(offset);
+        if (IsValidJTypeImm(*label_true->GetLocation()) && IsValidJTypeImm(*label_false->GetLocation())) {
+            Emitter::EmitJumpConditional(*this, condition, label_true, label_false);
+        } else {
+            void* target_true = (void*)(offset + *label_true->GetLocation());
+            void* target_false = (void*)(offset + *label_false->GetLocation());
+            Emitter::EmitJumpConditionalFar(*this, condition, target_true, target_false);
+        }
+        as.AdvanceBuffer(current_offset);
+    }
 
     // Make code visible to instruction fetches.
     flush_icache();

@@ -172,6 +172,16 @@ void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, Labe
     AS.J(target_false);
 }
 
+void Emitter::EmitJumpConditionalFar(Backend& backend, biscuit::GPR condition, void* target_true, void* target_false) {
+    Label false_label;
+    AS.BEQZ(condition, &false_label);
+    AS.LI(t0, (u64)target_true);
+    AS.JR(t0);
+    AS.Bind(&false_label);
+    AS.LI(t0, (u64)target_false);
+    AS.JR(t0);
+}
+
 void Emitter::EmitCallHostFunction(Backend& backend, u64 function) {
     // Really naive implementation for now
     EmitPushAllCallerSaved(backend);
