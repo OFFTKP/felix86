@@ -265,5 +265,8 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 
     VERBOSE("Jumping to function %016lx (%016lx), located at %p", thread_state->GetRip(), address, function);
 
+    volatile int* volatile mem = (int*)(0x2'0003'7c68);
+    *mem = 1;
+
     return function;
 }
