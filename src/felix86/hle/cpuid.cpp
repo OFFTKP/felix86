@@ -127,7 +127,7 @@ void felix86_cpuid(ThreadState* thread_state) {
     }
 
     if (!found) {
-        ERROR("Unknown CPUID(%08x, %08x)", leaf, subleaf);
+        WARN("Unknown CPUID(%08x, %08x)", leaf, subleaf);
     }
 
     STRACE("CPUID(%08x, %08x) -> %08x %08x %08x %08x", leaf, subleaf, eax, ebx, ecx, edx);
