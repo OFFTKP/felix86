@@ -54,8 +54,6 @@ void Emulator::Run() {
 
     VERBOSE("Entering main thread :)");
 
-    raise(SIGTRAP);
-
     ThreadState* state = &thread_states.back();
     backend.EnterDispatcher(state);
 
@@ -265,6 +263,14 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     } else if (address >= g_executable_start && address < g_executable_end) {
         address = address - g_executable_start;
     }
+
+#if 1
+    // Hack to break on a specific address
+    u64 addy = thread_state->GetRip();
+    if (addy == 0x2'0001'8ef0 || addy == 0x1'0001'8ef0) {
+        raise(SIGTRAP);
+    }
+#endif
 
     VERBOSE("Jumping to function %016lx (%016lx), located at %p", thread_state->GetRip(), address, function);
 
