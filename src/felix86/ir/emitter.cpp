@@ -99,7 +99,7 @@ void IREmitter::SetFlag(SSAInstruction* value, x86_ref_e ref) {
 
 SSAInstruction* IREmitter::GetRm(const x86_operand_t& operand, VectorState vector_state) {
     if (operand.type == X86_OP_TYPE_REGISTER) {
-        return GetReg(operand.reg.ref, operand.size);
+        return GetReg(operand.reg.ref, operand.size, operand.reg.high8);
     } else {
         SSAInstruction* address = Lea(operand);
         return ReadMemory(address, operand.size, vector_state);
@@ -108,7 +108,7 @@ SSAInstruction* IREmitter::GetRm(const x86_operand_t& operand, VectorState vecto
 
 void IREmitter::SetRm(const x86_operand_t& operand, SSAInstruction* value, VectorState vector_state) {
     if (operand.type == X86_OP_TYPE_REGISTER) {
-        SetReg(value, operand.reg.ref, operand.size);
+        SetReg(value, operand.reg.ref, operand.size, operand.reg.high8);
     } else {
         SSAInstruction* address = Lea(operand);
         WriteMemory(address, value, operand.size, vector_state);
@@ -1190,13 +1190,13 @@ SSAInstruction* IREmitter::Lea(const x86_operand_t& operand) {
     x86_size_e address_size = operand.memory.address_override ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     SSAInstruction *base, *index;
     if (operand.memory.base != X86_REF_COUNT) {
-        base = GetReg(operand.memory.base, address_size);
+        base = GetReg(operand.memory.base, address_size, false);
     } else {
         base = Imm(0);
     }
 
     if (operand.memory.index != X86_REF_COUNT) {
-        index = GetReg(operand.memory.index, address_size);
+        index = GetReg(operand.memory.index, address_size, false);
     } else {
         index = nullptr;
     }
@@ -2058,36 +2058,36 @@ void IREmitter::Group3(x86_instruction_t* inst) {
     case Group3::Mul: {
         switch (size_e) {
         case X86_SIZE_BYTE: {
-            SSAInstruction* al = Zext(GetReg(X86_REF_RAX, X86_SIZE_BYTE), X86_SIZE_BYTE);
+            SSAInstruction* al = Zext(GetReg(X86_REF_RAX, X86_SIZE_BYTE, false), X86_SIZE_BYTE);
             SSAInstruction* se_rm = Zext(rm, X86_SIZE_BYTE);
             SSAInstruction* mul = Mul(al, se_rm);
-            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD, false);
             break;
         }
         case X86_SIZE_WORD: {
-            SSAInstruction* ax = Zext(GetReg(X86_REF_RAX, X86_SIZE_WORD), X86_SIZE_WORD);
+            SSAInstruction* ax = Zext(GetReg(X86_REF_RAX, X86_SIZE_WORD, false), X86_SIZE_WORD);
             SSAInstruction* se_rm = Zext(rm, X86_SIZE_WORD);
             SSAInstruction* mul = Mul(ax, se_rm);
             SSAInstruction* mul_high = Shri(mul, 16);
-            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD);
-            SetReg(mul_high, X86_REF_RDX, X86_SIZE_WORD);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD, false);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_WORD, false);
             break;
         }
         case X86_SIZE_DWORD: {
-            SSAInstruction* eax = Zext(GetReg(X86_REF_RAX, X86_SIZE_DWORD), X86_SIZE_DWORD);
+            SSAInstruction* eax = Zext(GetReg(X86_REF_RAX, X86_SIZE_DWORD, false), X86_SIZE_DWORD);
             SSAInstruction* se_rm = Zext(rm, X86_SIZE_DWORD);
             SSAInstruction* mul = Mul(eax, se_rm);
             SSAInstruction* mul_high = Shri(mul, 32);
-            SetReg(mul, X86_REF_RAX, X86_SIZE_DWORD);
-            SetReg(mul_high, X86_REF_RDX, X86_SIZE_DWORD);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_DWORD, false);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_DWORD, false);
             break;
         }
         case X86_SIZE_QWORD: {
-            SSAInstruction* rax = GetReg(X86_REF_RAX, X86_SIZE_QWORD);
+            SSAInstruction* rax = GetReg(X86_REF_RAX, X86_SIZE_QWORD, false);
             SSAInstruction* mul = Mul(rax, rm);
             SSAInstruction* mul_high = Mulhu(rax, rm);
-            SetReg(mul, X86_REF_RAX, X86_SIZE_QWORD);
-            SetReg(mul_high, X86_REF_RDX, X86_SIZE_QWORD);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_QWORD, false);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_QWORD, false);
             break;
         }
         default: {
@@ -2099,36 +2099,36 @@ void IREmitter::Group3(x86_instruction_t* inst) {
     case Group3::IMul: {
         switch (size_e) {
         case X86_SIZE_BYTE: {
-            SSAInstruction* al = Sext(GetReg(X86_REF_RAX, X86_SIZE_BYTE), X86_SIZE_BYTE);
+            SSAInstruction* al = Sext(GetReg(X86_REF_RAX, X86_SIZE_BYTE, false), X86_SIZE_BYTE);
             SSAInstruction* se_rm = Sext(rm, X86_SIZE_BYTE);
             SSAInstruction* mul = Mul(al, se_rm);
-            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD, false);
             break;
         }
         case X86_SIZE_WORD: {
-            SSAInstruction* ax = Sext(GetReg(X86_REF_RAX, X86_SIZE_WORD), X86_SIZE_WORD);
+            SSAInstruction* ax = Sext(GetReg(X86_REF_RAX, X86_SIZE_WORD, false), X86_SIZE_WORD);
             SSAInstruction* se_rm = Sext(rm, X86_SIZE_WORD);
             SSAInstruction* mul = Mul(ax, se_rm);
             SSAInstruction* mul_high = Shri(mul, 16);
-            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD);
-            SetReg(mul_high, X86_REF_RDX, X86_SIZE_WORD);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_WORD, false);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_WORD, false);
             break;
         }
         case X86_SIZE_DWORD: {
-            SSAInstruction* eax = Sext(GetReg(X86_REF_RAX, X86_SIZE_DWORD), X86_SIZE_DWORD);
+            SSAInstruction* eax = Sext(GetReg(X86_REF_RAX, X86_SIZE_DWORD, false), X86_SIZE_DWORD);
             SSAInstruction* se_rm = Sext(rm, X86_SIZE_DWORD);
             SSAInstruction* mul = Mul(eax, se_rm);
             SSAInstruction* mul_high = Shri(mul, 32);
-            SetReg(mul, X86_REF_RAX, X86_SIZE_DWORD);
-            SetReg(mul_high, X86_REF_RDX, X86_SIZE_DWORD);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_DWORD, false);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_DWORD, false);
             break;
         }
         case X86_SIZE_QWORD: {
-            SSAInstruction* rax = GetReg(X86_REF_RAX, X86_SIZE_QWORD);
+            SSAInstruction* rax = GetReg(X86_REF_RAX, X86_SIZE_QWORD, false);
             SSAInstruction* mul = Mul(rax, rm);
             SSAInstruction* mul_high = Mulh(rax, rm);
-            SetReg(mul, X86_REF_RAX, X86_SIZE_QWORD);
-            SetReg(mul_high, X86_REF_RDX, X86_SIZE_QWORD);
+            SetReg(mul, X86_REF_RAX, X86_SIZE_QWORD, false);
+            SetReg(mul_high, X86_REF_RDX, X86_SIZE_QWORD, false);
             break;
         }
         default: {
@@ -2141,35 +2141,35 @@ void IREmitter::Group3(x86_instruction_t* inst) {
         switch (size_e) {
         case X86_SIZE_BYTE: {
             // ax / rm, al := quotient, ah := remainder
-            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD);
+            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD, false);
             SSAInstruction* quotient = Divuw(ax, rm);
             SSAInstruction* remainder = Remuw(ax, rm);
-            SetReg(quotient, X86_REF_RAX, X86_SIZE_BYTE);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_BYTE, false);
             SetReg(remainder, X86_REF_RAX, X86_SIZE_BYTE, true);
             break;
         }
         case X86_SIZE_WORD: {
             // dx:ax / rm, ax := quotient, dx := remainder
-            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD);
-            SSAInstruction* dx = GetReg(X86_REF_RDX, X86_SIZE_WORD);
+            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD, false);
+            SSAInstruction* dx = GetReg(X86_REF_RDX, X86_SIZE_WORD, false);
             SSAInstruction* dx_shifted = Shli(dx, 16);
             SSAInstruction* dx_ax = Or(dx_shifted, ax);
             SSAInstruction* quotient = Divuw(dx_ax, rm);
-            SetReg(quotient, X86_REF_RAX, X86_SIZE_WORD);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_WORD, false);
             SSAInstruction* remainder = Remuw(dx_ax, rm);
-            SetReg(remainder, X86_REF_RDX, X86_SIZE_WORD);
+            SetReg(remainder, X86_REF_RDX, X86_SIZE_WORD, false);
             break;
         }
         case X86_SIZE_DWORD: {
             // edx:eax / rm, eax := quotient, edx := remainder
-            SSAInstruction* eax = GetReg(X86_REF_RAX, X86_SIZE_DWORD);
-            SSAInstruction* edx = GetReg(X86_REF_RDX, X86_SIZE_DWORD);
+            SSAInstruction* eax = GetReg(X86_REF_RAX, X86_SIZE_DWORD, false);
+            SSAInstruction* edx = GetReg(X86_REF_RDX, X86_SIZE_DWORD, false);
             SSAInstruction* edx_shifted = Shli(edx, 32);
             SSAInstruction* edx_eax = Or(edx_shifted, eax);
             SSAInstruction* quotient = Divu(edx_eax, rm);
-            SetReg(quotient, X86_REF_RAX, X86_SIZE_DWORD);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_DWORD, false);
             SSAInstruction* remainder = Remu(edx_eax, rm);
-            SetReg(remainder, X86_REF_RDX, X86_SIZE_DWORD);
+            SetReg(remainder, X86_REF_RDX, X86_SIZE_DWORD, false);
             break;
         }
         case X86_SIZE_QWORD: {
@@ -2197,35 +2197,35 @@ void IREmitter::Group3(x86_instruction_t* inst) {
             SSAInstruction* ax = Sext(GetReg(X86_REF_RAX), X86_SIZE_WORD);
             SSAInstruction* se_rm = Sext(rm, X86_SIZE_BYTE);
             SSAInstruction* quotient = Divw(ax, se_rm);
-            SetReg(quotient, X86_REF_RAX, X86_SIZE_BYTE);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_BYTE, false);
             SSAInstruction* remainder = Remw(ax, se_rm);
             SetReg(remainder, X86_REF_RAX, X86_SIZE_BYTE, true);
             break;
         }
         case X86_SIZE_WORD: {
             // dx:ax / rm, ax := quotient, dx := remainder
-            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD);
-            SSAInstruction* dx = GetReg(X86_REF_RDX, X86_SIZE_WORD);
+            SSAInstruction* ax = GetReg(X86_REF_RAX, X86_SIZE_WORD, false);
+            SSAInstruction* dx = GetReg(X86_REF_RDX, X86_SIZE_WORD, false);
             SSAInstruction* dx_shifted = Shli(dx, 16);
             SSAInstruction* dx_ax = Or(dx_shifted, ax);
             SSAInstruction* se_rm = Sext(rm, X86_SIZE_WORD);
             SSAInstruction* quotient = Divw(dx_ax, se_rm);
-            SetReg(quotient, X86_REF_RAX, X86_SIZE_WORD);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_WORD, false);
             SSAInstruction* remainder = Remw(dx_ax, se_rm);
-            SetReg(remainder, X86_REF_RDX, X86_SIZE_WORD);
+            SetReg(remainder, X86_REF_RDX, X86_SIZE_WORD, false);
             break;
         }
         case X86_SIZE_DWORD: {
             // edx:eax / rm, eax := quotient, edx := remainder
-            SSAInstruction* eax = GetReg(X86_REF_RAX, X86_SIZE_DWORD);
-            SSAInstruction* edx = GetReg(X86_REF_RDX, X86_SIZE_DWORD);
+            SSAInstruction* eax = GetReg(X86_REF_RAX, X86_SIZE_DWORD, false);
+            SSAInstruction* edx = GetReg(X86_REF_RDX, X86_SIZE_DWORD, false);
             SSAInstruction* edx_shifted = Shli(edx, 32);
             SSAInstruction* edx_eax = Or(edx_shifted, eax);
             SSAInstruction* se_rm = Sext(rm, X86_SIZE_DWORD);
             SSAInstruction* quotient = Div(edx_eax, se_rm);
-            SetReg(quotient, X86_REF_RAX, X86_SIZE_DWORD);
+            SetReg(quotient, X86_REF_RAX, X86_SIZE_DWORD, false);
             SSAInstruction* remainder = Rem(edx_eax, se_rm);
-            SetReg(remainder, X86_REF_RDX, X86_SIZE_DWORD);
+            SetReg(remainder, X86_REF_RDX, X86_SIZE_DWORD, false);
             break;
         }
         case X86_SIZE_QWORD: {

@@ -15,19 +15,19 @@ struct IREmitter {
         current_address += increment;
     }
 
-    SSAInstruction* GetReg(x86_ref_e reg, x86_size_e size, bool high = false);
+    SSAInstruction* GetReg(x86_ref_e reg, x86_size_e size, bool high);
     SSAInstruction* GetReg(const x86_operand_t& operand) {
         ASSERT(operand.type == X86_OP_TYPE_REGISTER);
-        return GetReg(operand.reg.ref, operand.size);
+        return GetReg(operand.reg.ref, operand.size, operand.reg.high8);
     }
     SSAInstruction* GetReg(x86_ref_e reg) {
         return getGuest(reg);
     }
 
-    void SetReg(SSAInstruction* value, x86_ref_e reg, x86_size_e size, bool high = false);
+    void SetReg(SSAInstruction* value, x86_ref_e reg, x86_size_e size, bool high);
     void SetReg(const x86_operand_t& operand, SSAInstruction* value) {
         ASSERT(operand.type == X86_OP_TYPE_REGISTER);
-        SetReg(value, operand.reg.ref, operand.size);
+        SetReg(value, operand.reg.ref, operand.size, operand.reg.high8);
     }
     void SetReg(SSAInstruction* value, x86_ref_e reg) {
         setGuest(reg, value);
