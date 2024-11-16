@@ -3,8 +3,6 @@
 #include "felix86/common/progress.hpp"
 #include "felix86/emulator.hpp"
 
-ZydisDecoder AOT::decoder{};
-
 AOT::AOT(Emulator& emulator, std::shared_ptr<Elf> elf) : emulator(emulator), elf(elf) {}
 
 struct CompilerPool {
@@ -63,8 +61,4 @@ void AOT::CompileAll() {
     pool.Run();
     bar.completed();
     g_quiet = quiet;
-}
-
-ZyanStatus AOT::decodeInstruction(ZydisDecodedInstruction& inst, ZydisDecodedOperand* operands, u8* data, u64 size) {
-    return ZydisDecoderDecodeFull(&decoder, data, size, &inst, operands);
 }

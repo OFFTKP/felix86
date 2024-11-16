@@ -1,6 +1,7 @@
 #include <vector>
 #include <Zydis/Utils.h>
 #include "felix86/aot/aot.hpp"
+#include "felix86/common/decoder.hpp"
 #include "felix86/common/log.hpp"
 
 /**
@@ -23,7 +24,7 @@ void AOT::controlFlowAnalysis() {
         worklist.pop_back();
 
         while (true) {
-            ZyanStatus status = decodeInstruction(instruction, operands, (u8*)work);
+            ZyanStatus status = Decoder::decodeInstruction(instruction, operands, (u8*)work);
             if (!ZYAN_SUCCESS(status)) {
                 break;
             }

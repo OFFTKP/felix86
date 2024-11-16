@@ -1,5 +1,6 @@
 #include "felix86/aot/aot.hpp"
 
+#include "felix86/common/decoder.hpp"
 #include "felix86/common/log.hpp"
 
 enum class InstructionWrapperType : u8 {
@@ -187,7 +188,7 @@ void AOT::functionStartFinder() {
             ZydisDecodedInstruction inst = {};
             ZydisDecodedOperand operands[10] = {};
 
-            ZyanStatus result = decodeInstruction(inst, operands, code, code_final - code);
+            ZyanStatus result = Decoder::decodeInstruction(inst, operands, code, code_final - code);
             if (!ZYAN_SUCCESS(result)) {
                 code++;
                 // If we were in some pattern, since we hit a bad instruction let's go back

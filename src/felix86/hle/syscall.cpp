@@ -179,7 +179,6 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         STRACE("fstat(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         if (result != -1) {
             *guest_stat = host_stat;
-            // print every stat member
             STRACE("st_dev : %ld", guest_stat->st_dev);
             STRACE("st_ino : %ld", guest_stat->st_ino);
             STRACE("st_mode : %d", guest_stat->st_mode);

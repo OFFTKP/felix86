@@ -66,6 +66,7 @@ set(FELIX86_IR_SOURCES
 )
 
 set(FELIX86_COMMON_SOURCES
+    src/felix86/common/decoder.cpp
     src/felix86/common/disk_cache.cpp
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp

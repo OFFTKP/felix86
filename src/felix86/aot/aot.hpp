@@ -1,9 +1,6 @@
 #pragma once
 
 #include <unordered_set>
-#include "Zycore/Status.h"
-#include "Zydis/Decoder.h"
-#include "Zydis/DecoderTypes.h"
 #include "felix86/common/elf.hpp"
 #include "felix86/common/utility.hpp"
 
@@ -26,6 +23,4 @@ private:
     Emulator& emulator;
     std::shared_ptr<Elf> elf;
     std::unordered_set<u64> addresses;
-    static ZydisDecoder decoder;
-    static ZyanStatus decodeInstruction(ZydisDecodedInstruction& inst, ZydisDecodedOperand* operands, u8* data, u64 size = 20);
 };
