@@ -21,36 +21,6 @@ SSAInstruction* felix86_rcp(IREmitter& ir, SSAInstruction* reg, SSAInstruction* 
     return ir.VFDiv(one, rm, state);
 }
 
-u64 sext_if_64(u64 value, x86_size_e size_e) {
-    switch (size_e) {
-    case X86_SIZE_BYTE:
-    case X86_SIZE_WORD:
-    case X86_SIZE_DWORD:
-        return value;
-    case X86_SIZE_QWORD:
-        return (i64)(i32)value;
-    default:
-        ERROR("Invalid immediate size");
-        return 0;
-    }
-}
-
-u64 sext(u64 value, x86_size_e size_e) {
-    switch (size_e) {
-    case X86_SIZE_BYTE:
-        return (i64)(i8)value;
-    case X86_SIZE_WORD:
-        return (i64)(i16)value;
-    case X86_SIZE_DWORD:
-        return (i64)(i32)value;
-    case X86_SIZE_QWORD:
-        return value;
-    default:
-        ERROR("Invalid immediate size");
-        return 0;
-    }
-}
-
 x86_size_e sizedown(x86_size_e size_e) {
     switch (size_e) {
     case X86_SIZE_WORD:
@@ -483,7 +453,7 @@ IR_HANDLE(movsxw) {
 
 IR_HANDLE(push_imm) {
     bool is_word = inst->operand_reg.size == X86_SIZE_WORD;
-    SSAInstruction* imm = ir.Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = ir.Imm(sext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rsp_sub = ir.Addi(rsp, is_word ? -2 : -8);
     ir.WriteMemory(rsp_sub, imm, is_word ? X86_SIZE_WORD : X86_SIZE_QWORD);
@@ -492,7 +462,7 @@ IR_HANDLE(push_imm) {
 
 IR_HANDLE(imul_r_rm_imm) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm);
-    SSAInstruction* imm = ir.Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = ir.Imm(sext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* result = ir.Mul(rm, imm);
     ir.SetReg(inst->operand_reg, result);
 }
@@ -713,7 +683,7 @@ IR_HANDLE(ret) { // ret - 0xc3
 }
 
 IR_HANDLE(mov_rm_imm) { // mov rm16/32/64, imm16/32/64 - 0xc7
-    SSAInstruction* imm = ir.Imm(ir.ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = ir.Imm(sext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     ir.SetRm(inst->operand_rm, imm);
 }
 

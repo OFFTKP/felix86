@@ -188,8 +188,6 @@ struct IREmitter {
     void TerminateJump(IRBlock* target);
     void TerminateJumpConditional(SSAInstruction* cond, IRBlock* target_true, IRBlock* target_false);
 
-    u64 ImmSext(u64 imm, x86_size_e size);
-
     u64 GetCurrentAddress() {
         ASSERT(current_address != IR_NO_ADDRESS);
         return current_address;

@@ -40,3 +40,33 @@ void felix86_divu128(ThreadState* state, u64 divisor) {
     state->gprs[X86_REF_RAX - X86_REF_RAX] = quotient;
     state->gprs[X86_REF_RDX - X86_REF_RAX] = remainder;
 }
+
+u64 sext(u64 value, u8 size) {
+    switch (size) {
+    case X86_SIZE_BYTE:
+        return (i64)(i8)value;
+    case X86_SIZE_WORD:
+        return (i64)(i16)value;
+    case X86_SIZE_DWORD:
+        return (i64)(i32)value;
+    case X86_SIZE_QWORD:
+        return value;
+    default:
+        UNREACHABLE();
+        return 0;
+    }
+}
+
+u64 sext_if_64(u64 value, u8 size_e) {
+    switch (size_e) {
+    case X86_SIZE_BYTE:
+    case X86_SIZE_WORD:
+    case X86_SIZE_DWORD:
+        return value;
+    case X86_SIZE_QWORD:
+        return (i64)(i32)value;
+    default:
+        ERROR("Invalid immediate size");
+        return 0;
+    }
+}

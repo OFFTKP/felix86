@@ -795,6 +795,7 @@ void Emitter::EmitCZeroEqz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, b
     if (Extensions::Zicond) {
         AS.CZERO_EQZ(Rd, Rs, Cond);
     } else {
+        ASSERT(Rd != Cond);
         Label eqz;
         if (Rd != Rs)
             AS.MV(Rd, Rs);
@@ -808,6 +809,7 @@ void Emitter::EmitCZeroNez(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs, b
     if (Extensions::Zicond) {
         AS.CZERO_NEZ(Rd, Rs, Cond);
     } else {
+        ASSERT(Rd != Cond);
         Label nez;
         if (Rd != Rs)
             AS.MV(Rd, Rs);

@@ -3,20 +3,6 @@
 #include "felix86/ir/emitter.hpp"
 
 namespace {
-u64 sext_if_64(u64 value, x86_size_e size_e) {
-    switch (size_e) {
-    case X86_SIZE_BYTE:
-    case X86_SIZE_WORD:
-    case X86_SIZE_DWORD:
-        return value;
-    case X86_SIZE_QWORD:
-        return (i64)(i32)value;
-    default:
-        ERROR("Invalid immediate size");
-        return 0;
-    }
-}
-
 SSAInstruction* SecondMSB(IREmitter& ir, SSAInstruction* value, x86_size_e size) {
     switch (size) {
     case X86_SIZE_BYTE:
@@ -33,26 +19,6 @@ SSAInstruction* SecondMSB(IREmitter& ir, SSAInstruction* value, x86_size_e size)
     }
 }
 } // namespace
-
-u64 IREmitter::ImmSext(u64 imm, x86_size_e size) {
-    i64 value = imm;
-    switch (size) {
-    case X86_SIZE_BYTE:
-        value = (i8)value;
-        break;
-    case X86_SIZE_WORD:
-        value = (i16)value;
-        break;
-    case X86_SIZE_DWORD:
-        value = (i32)value;
-        break;
-    case X86_SIZE_QWORD:
-        break;
-    default:
-        ERROR("Invalid immediate size");
-    }
-    return value;
-}
 
 SSAInstruction* IREmitter::GetReg(x86_ref_e reg, x86_size_e size, bool high) {
     ASSERT(!high || size == X86_SIZE_BYTE);
@@ -1833,7 +1799,7 @@ void IREmitter::Group1(x86_instruction_t* inst) {
     ::Group1 opcode = (::Group1)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
 
     x86_size_e size_e = inst->operand_rm.size;
-    SSAInstruction* imm = Imm(ImmSext(inst->operand_imm.immediate.data, inst->operand_imm.size));
+    SSAInstruction* imm = Imm(sext(inst->operand_imm.immediate.data, inst->operand_imm.size));
     SSAInstruction* result = nullptr;
     SSAInstruction* zero = Imm(0);
     SSAInstruction* c = zero;

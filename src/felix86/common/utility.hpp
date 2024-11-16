@@ -26,3 +26,6 @@ std::string GetNameString(u32 name);
 
 void felix86_div128(struct ThreadState* state, u64 divisor);
 void felix86_divu128(struct ThreadState* state, u64 divisor);
+
+u64 sext(u64 value, u8 size);
+u64 sext_if_64(u64 value, u8 size_e);
