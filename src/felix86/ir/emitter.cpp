@@ -425,24 +425,28 @@ SSAInstruction* IREmitter::Zext(SSAInstruction* value, x86_size_e size) {
 
 SSAInstruction* IREmitter::LoadReserved32(SSAInstruction* address, biscuit::Ordering ordering) {
     SSAInstruction* load = insertInstruction(IROpcode::LoadReserved32, {address}, (u8)ordering);
+    block->SetCriticalSection();
     load->Lock();
     return load;
 }
 
 SSAInstruction* IREmitter::LoadReserved64(SSAInstruction* address, biscuit::Ordering ordering) {
     SSAInstruction* load = insertInstruction(IROpcode::LoadReserved64, {address}, (u8)ordering);
+    block->SetCriticalSection();
     load->Lock();
     return load;
 }
 
 SSAInstruction* IREmitter::StoreConditional32(SSAInstruction* address, SSAInstruction* value, biscuit::Ordering ordering) {
     SSAInstruction* store = insertInstruction(IROpcode::StoreConditional32, {address, value}, (u8)ordering);
+    block->SetCriticalSection();
     store->Lock();
     return store;
 }
 
 SSAInstruction* IREmitter::StoreConditional64(SSAInstruction* address, SSAInstruction* value, biscuit::Ordering ordering) {
     SSAInstruction* store = insertInstruction(IROpcode::StoreConditional64, {address, value}, (u8)ordering);
+    block->SetCriticalSection();
     store->Lock();
     return store;
 }

@@ -26,6 +26,7 @@ BackendBlock BackendBlock::FromIRBlock(const IRBlock* block, std::vector<NamedPh
 
     backend_block.next_name = highest_name + 1;
     backend_block.start_address = block->GetStartAddress();
+    backend_block.critical = block->IsCriticalSection();
 
     return backend_block;
 }

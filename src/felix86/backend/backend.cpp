@@ -176,7 +176,8 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
         as.Bind(block->GetLabel());
 
-        if (g_print_block_start) {
+        // Must not insert so many instructions to blocks that are during lr/sc
+        if (g_print_block_start && !block->IsCriticalSection()) {
             Emitter::EmitPushAllCallerSaved(*this);
             as.LI(a0, block->GetStartAddress());
             as.LI(a1, block->GetIndex());

@@ -118,6 +118,10 @@ struct BackendBlock {
         UNREACHABLE();
     }
 
+    bool IsCriticalSection() const {
+        return critical;
+    }
+
     [[nodiscard]] std::string Print() const;
 
 private:
@@ -131,4 +135,5 @@ private:
     u32 list_index = 0;
     u32 next_name = 0;
     mutable bool visited = false;
+    bool critical = false;
 };

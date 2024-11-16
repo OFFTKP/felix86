@@ -187,6 +187,14 @@ struct IRBlock {
 
     bool IsUsedInPhi(SSAInstruction* instr) const;
 
+    bool IsCriticalSection() const {
+        return critical;
+    }
+
+    void SetCriticalSection() {
+        critical = true;
+    }
+
     [[nodiscard]] std::string Print(const std::function<std::string(const SSAInstruction*)>& callback) const;
 
 private:
@@ -202,8 +210,9 @@ private:
     IRBlock* immediate_dominator = nullptr;
     Termination termination = Termination::Null;
     const SSAInstruction* condition = nullptr;
-    bool compiled = false;
-    mutable bool visited = false;
     u32 list_index = 0;
     u32 next_name = 1;
+    bool compiled = false;
+    mutable bool visited = false;
+    bool critical = false;
 };
