@@ -230,8 +230,11 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     map[function.GetStartAddress()] = {start, size};
 
     for (auto& [offset, label] : jumps) {
+        ASSERT(label->GetLocation().has_value());
+
         ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
         as.RewindBuffer(offset);
+
         void* target = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label->GetLocation()));
         void* here = as.GetCursorPointer();
         if (IsValidJTypeImm((ptrdiff_t)target - (ptrdiff_t)here)) {
@@ -239,12 +242,17 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         } else {
             Emitter::EmitJumpFar(*this, target);
         }
+
         as.AdvanceBuffer(current_offset);
     }
 
     for (auto& [offset, condition, label_true, label_false] : jumps_conditional) {
+        ASSERT(label_true->GetLocation().has_value());
+        ASSERT(label_false->GetLocation().has_value());
+
         ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
         as.RewindBuffer(offset);
+
         void* target_true = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_true->GetLocation()));
         void* target_false = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_false->GetLocation()));
         void* here = as.GetCursorPointer();
@@ -253,6 +261,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         } else {
             Emitter::EmitJumpConditionalFar(*this, condition, target_true, target_false);
         }
+
         as.AdvanceBuffer(current_offset);
     }
 
