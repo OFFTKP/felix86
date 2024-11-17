@@ -3,6 +3,8 @@
 // Gets rid of terminations and replaces them with jump instructions
 // Should be executed last
 void PassManager::BlockShenanigansPass(BackendFunction* function) {
+    // example failure: libc.so.6 0xAB560
+    ERROR("FIXME: this pass is buggy and broken, causes bugs apparently the deleted blocks remain used sometimes?");
     std::vector<u32> to_remove;
 
     // Skip entry & exit block
