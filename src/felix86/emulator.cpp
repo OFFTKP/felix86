@@ -237,7 +237,7 @@ void* Emulator::compileFunction(u64 rip) {
     // Remove unnecessary vector state instructions and add ones needed before stores
     PassManager::VectorStatePass(&backend_function);
 
-    PassManager::BlockShenanigansPass(&backend_function);
+    // PassManager::BlockShenanigansPass(&backend_function);
 
     if (g_print_blocks) {
         fmt::print("Backend function IR:\n{}\n", backend_function.Print());
