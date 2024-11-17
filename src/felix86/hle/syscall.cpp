@@ -198,12 +198,12 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         break;
     }
     case felix86_x86_64_write: {
-        result = HOST_SYSCALL(write, rdi, (const void*)rsi, rdx);
+        result = HOST_SYSCALL(write, rdi, rsi, rdx);
         STRACE("write(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_writev: {
-        result = HOST_SYSCALL(writev, rdi, (const struct iovec*)rsi, rdx);
+        result = HOST_SYSCALL(writev, rdi, rsi, rdx);
         STRACE("writev(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
@@ -218,8 +218,13 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         break;
     }
     case felix86_x86_64_read: {
-        result = HOST_SYSCALL(read, rdi, (void*)rsi, rdx);
+        result = HOST_SYSCALL(read, rdi, rsi, rdx);
         STRACE("read(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_getdents64: {
+        result = HOST_SYSCALL(getdents64, rdi, rsi, rdx);
+        STRACE("getdents64(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_openat: {
@@ -228,7 +233,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         break;
     }
     case felix86_x86_64_pread64: {
-        result = HOST_SYSCALL(pread64, rdi, (void*)rsi, rdx, r10);
+        result = HOST_SYSCALL(pread64, rdi, rsi, rdx, r10);
         STRACE("pread64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
