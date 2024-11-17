@@ -203,6 +203,8 @@ void* Emulator::compileFunction(u64 rip) {
     IRFunction function{rip};
     frontend_compile_function(function);
 
+    VERBOSE("Hash: %016lx", function.GetHash());
+
     PassManager::SSAPass(&function);
     PassManager::DeadCodeEliminationPass(&function);
 

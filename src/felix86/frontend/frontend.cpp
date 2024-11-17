@@ -1,10 +1,10 @@
 #include <Zydis/Zydis.h>
 #include <fmt/format.h>
 #include "felix86/common/global.hpp"
+#include "felix86/common/hash.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/print.hpp"
 #include "felix86/common/x86.hpp"
-#include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/frontend/instruction.hpp"
 #include "felix86/ir/handlers.hpp"
@@ -184,8 +184,8 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
     return 0;
 }
 
-void frontend_compile_instruction(IREmitter& ir) {
-    u8* data = (u8*)ir.GetCurrentAddress();
+void frontend_compile_instruction(IREmitter& ir, u64& hash) {
+    const u8* const data = (u8*)ir.GetCurrentAddress();
 
     x86_instruction_t inst = {};
     int index = 0;
@@ -642,6 +642,10 @@ void frontend_compile_instruction(IREmitter& ir) {
 
     inst.length = index;
 
+    // Hash every instruction that comprises the function to be able to lookup
+    // the function cache
+    hash = felix86_hash(data, inst.length, hash);
+
     ZydisDisassembledInstruction zydis_inst;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(
             /* machine_mode:    */ ZYDIS_MACHINE_MODE_LONG_64,
@@ -685,7 +689,7 @@ void frontend_compile_block(IREmitter& ir, IRFunction& function, IRBlock* block)
     // Since compiling instructions might change the current block (due to some instruction that needs multiple blocks, for example)
     // we check that the *current* block has no termination, rather than the original block
     while (ir.GetCurrentBlock()->GetTermination() == Termination::Null) {
-        frontend_compile_instruction(ir);
+        frontend_compile_instruction(ir, function.GetHashRef());
     }
 
     if (g_print_state) {

@@ -5,7 +5,7 @@
 
 using namespace biscuit;
 
-constexpr static u64 code_cache_size = 32 * 1024 * 1024;
+constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
 // If you don't flush the cache the code will randomly SIGILL
 static inline void flush_icache() {

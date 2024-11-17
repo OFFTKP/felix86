@@ -73,9 +73,18 @@ struct IRFunction {
 
     std::vector<IRBlock*> GetBlocksPostorder();
 
+    u64& GetHashRef() {
+        return hash;
+    }
+
+    u64 GetHash() const {
+        return hash;
+    }
+
 private:
     void deallocateAll();
 
+    u64 hash = 0;
     IRBlock* entry = nullptr;
     IRBlock* exit = nullptr;
     IRBlock* start_address_block = nullptr;
