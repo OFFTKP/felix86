@@ -921,7 +921,7 @@ IR_HANDLE(mov_xmm128_xmm) { // movups/movaps xmm128, xmm - 0x0f 0x29
     ir.SetRm(inst->operand_rm, reg, VectorState::PackedDWord);
 }
 
-IR_HANDLE(mov_xmm_m64) { // movlpd xmm, m64 - 0x0f 0x12
+IR_HANDLE(mov_xmm_m64) { // movlpd xmm, m64 - 0x66 0x0f 0x12
     // Just load a double from memory directly into an xmm - thus using vector loads
     // instead of gpr loads and then moving to vector
     SSAInstruction* old = ir.GetReg(inst->operand_reg);
@@ -930,6 +930,20 @@ IR_HANDLE(mov_xmm_m64) { // movlpd xmm, m64 - 0x0f 0x12
     ir.SetVMask(mask);
     SSAInstruction* result = ir.VMerge(old, rm, VectorState::PackedQWord);
     ir.SetReg(inst->operand_reg, result);
+}
+
+IR_HANDLE(movhlps_movlps) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        // It's a movlps, same as movlpd for all we care
+        return ir_handle_mov_xmm_m64(ir, inst);
+    } else {
+        SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedQWord);
+        SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
+        SSAInstruction* slide = ir.VSlideDowni(rm, 1, VectorState::PackedQWord);
+        ir.SetVMask(ir.VSplati(0b10, VectorState::PackedQWord));
+        SSAInstruction* result = ir.VMerge(xmm, slide, VectorState::PackedQWord);
+        ir.SetReg(inst->operand_reg, result);
+    }
 }
 
 IR_HANDLE(movh_m64_xmm) {
