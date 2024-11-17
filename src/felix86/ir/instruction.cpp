@@ -849,8 +849,23 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
+    case IROpcode::VMin: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vmin", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
     case IROpcode::VMinu: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vminu", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VMax: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vmax", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VMaxu: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vmaxu", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));
         break;
     }

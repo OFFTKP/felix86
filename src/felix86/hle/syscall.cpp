@@ -152,6 +152,11 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         STRACE("prlimit64(%016lx, %016lx, %016lx, %016lx) = %016lx", rdi, rsi, rdx, r10, result);
         break;
     }
+    case felix86_x86_64_readlink: {
+        result = fs.ReadLink((const char*)rdi, (char*)rsi, rdx);
+        STRACE("readlink(%s, %s, %d) = %d", (const char*)rdi, (char*)rsi, (int)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_readlinkat: {
         result = fs.ReadLinkAt(rdi, (const char*)rsi, (char*)rdx, r10);
         STRACE("readlinkat(%d, %s, %s, %d) = %d", (int)rdi, (const char*)rsi, (char*)rdx, (int)r10, (int)result);

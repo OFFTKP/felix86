@@ -885,11 +885,9 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██
 
 IR_HANDLE(group7) { // group 7 - 0x0f 0x01
-    // TODO: this is a mess
-    // maybe needs its own table ...
     u8 opcode = inst->operand_imm.immediate.data;
     modrm_t modrm; // we take it in as an immediate instead of as a modrm because
-                   // we don't want to potentially get a SIB too
+                   // it's easier to parse it this way since we have the opcode byte in whole
     modrm.raw = opcode;
     switch (modrm.reg) {
     case 2: {
@@ -1302,6 +1300,10 @@ IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
 
 IR_HANDLE(pminub) { // pminub xmm, xmm/m128 - 0x66 0x0f 0xda
     ir.PackedRegRm(inst, IROpcode::VMinu, VectorState::PackedByte);
+}
+
+IR_HANDLE(pmaxub) { // pmaxub xmm, xmm/m128 - 0x66 0x0f 0xde
+    ir.PackedRegRm(inst, IROpcode::VMaxu, VectorState::PackedByte);
 }
 
 IR_HANDLE(pand) { // pand xmm, xmm/m128 - 0x66 0x0f 0xdb

@@ -1130,8 +1130,20 @@ void Emitter::EmitVXori(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 
     AS.VXOR(Vd, Vs, immediate);
 }
 
+void Emitter::EmitVMin(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
+    AS.VMIN(Vd, Vs2, Vs1);
+}
+
 void Emitter::EmitVMinu(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
     AS.VMINU(Vd, Vs2, Vs1);
+}
+
+void Emitter::EmitVMax(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
+    AS.VMAX(Vd, Vs2, Vs1);
+}
+
+void Emitter::EmitVMaxu(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
+    AS.VMAXU(Vd, Vs2, Vs1);
 }
 
 void Emitter::EmitVSub(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1) {
