@@ -19,6 +19,7 @@ struct TestConfig {
 
 struct Emulator {
     Emulator(const Config& config) : config(config), backend(*this) {
+        g_emulator = this;
         fs.LoadRootFS(config.rootfs_path);
         fs.LoadExecutable(config.executable_path);
         ThreadState* main_state = createThreadState();
@@ -33,6 +34,7 @@ struct Emulator {
     }
 
     Emulator(const TestConfig& config) : backend(*this) {
+        g_emulator = this;
         ThreadState* main_state = createThreadState();
         main_state->SetRip((u64)config.entrypoint);
         testing = true;

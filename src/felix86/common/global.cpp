@@ -5,6 +5,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
+#include "felix86/emulator.hpp"
 #include "fmt/format.h"
 #include "version.hpp"
 
@@ -34,6 +35,7 @@ std::filesystem::path g_rootfs_path{};
 thread_local ThreadState* g_thread_state;
 u64 g_executable_base_hint = 0;
 u64 g_interpreter_base_hint = 0;
+Emulator* g_emulator = nullptr;
 
 u64 g_interpreter_start = 0;
 u64 g_interpreter_end = 0;

@@ -1,5 +1,4 @@
 #include <deque>
-#include <stack>
 #include <unordered_set>
 #include "felix86/ir/passes/passes.hpp"
 
@@ -287,16 +286,23 @@ static void liveness_iterative(const BackendFunction& function, const std::vecto
 
 static void build(BackendFunction& function, std::vector<const BackendBlock*> blocks, const InstructionMap& instructions, InterferenceGraph& graph,
                   bool (*should_consider)(const InstructionMap&, u32)) {
-    std::vector<LivenessSet> in(blocks.size());
-    std::vector<LivenessSet> out(blocks.size());
-    std::vector<LivenessSet> use(blocks.size());
-    std::vector<LivenessSet> def(blocks.size());
+    static std::vector<LivenessSet> in(blocks.size());
+    static std::vector<LivenessSet> out(blocks.size());
+    static std::vector<LivenessSet> use(blocks.size());
+    static std::vector<LivenessSet> def(blocks.size());
+
+    if (in.size() < blocks.size()) {
+        in.resize(blocks.size());
+        out.resize(blocks.size());
+        use.resize(blocks.size());
+        def.resize(blocks.size());
+    }
 
     for (size_t i = 0; i < blocks.size(); i++) {
-        in[i].reserve(blocks[i]->GetInstructions().size());
-        out[i].reserve(blocks[i]->GetInstructions().size());
-        use[i].reserve(blocks[i]->GetInstructions().size());
-        def[i].reserve(blocks[i]->GetInstructions().size());
+        in[i].clear();
+        out[i].clear();
+        use[i].clear();
+        def[i].clear();
     }
 
     for (size_t counter = 0; counter < blocks.size(); counter++) {
