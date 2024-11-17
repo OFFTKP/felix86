@@ -224,15 +224,13 @@ static void liveness_worklist(const BackendFunction& function, const std::vector
             out[i].insert(in[succ_index].begin(), in[succ_index].end());
         }
 
-        LivenessSet out_minus_def = out[i];
-        for (u32 def_inst : def[i]) {
-            out_minus_def.erase(def_inst);
-        }
-
         in[i].clear();
         // in[b] = use[b] U (out[b] - def[b])
         in[i].insert(use[i].begin(), use[i].end());
-        in[i].insert(out_minus_def.begin(), out_minus_def.end());
+        in[i].insert(out[i].begin(), out[i].end());
+        for (u32 def_inst : def[i]) {
+            in[i].erase(def_inst);
+        }
 
         if (in[i] != in_old) {
             for (u8 k = 0; k < block->GetPredecessorCount(); k++) {
