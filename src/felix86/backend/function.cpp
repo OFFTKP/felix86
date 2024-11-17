@@ -218,6 +218,8 @@ static void postorder_creation(const BackendFunction* function, std::vector<cons
     for (size_t i = 0; i < function->GetBlocks().size(); i++) {
         ASSERT(function->GetBlock(i).IsVisited());
     }
+
+    ASSERT(order.size() == function->GetBlocks().size());
 }
 
 std::vector<const BackendBlock*> BackendFunction::GetBlocksPostorder() const {

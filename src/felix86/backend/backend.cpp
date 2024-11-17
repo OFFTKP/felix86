@@ -155,11 +155,13 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
     std::vector<const BackendBlock*> blocks_postorder = function.GetBlocksPostorder();
 
     struct Jump {
+        u32 index;
         ptrdiff_t offset;
         Label* label;
     };
 
     struct JumpConditional {
+        u32 index;
         ptrdiff_t offset;
         biscuit::GPR condition;
         Label* label_true;
@@ -195,6 +197,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         for (const BackendInstruction& inst : block->GetInstructions()) {
             if (inst.GetOpcode() == IROpcode::Jump) {
                 Jump jump;
+                jump.index = block->GetIndex();
                 jump.offset = as.GetCodeBuffer().GetCursorOffset();
                 jump.label = block->GetSuccessor(0)->GetLabel();
                 jumps.push_back(jump);
@@ -204,6 +207,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
                 }
             } else if (inst.GetOpcode() == IROpcode::JumpConditional) {
                 JumpConditional jump;
+                jump.index = block->GetIndex();
                 jump.offset = as.GetCodeBuffer().GetCursorOffset();
                 jump.condition = allocations.GetAllocation(inst.GetOperand(0)).AsGPR();
                 jump.label_true = block->GetSuccessor(0)->GetLabel();
@@ -229,8 +233,8 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
     map[function.GetStartAddress()] = {start, size};
 
-    for (auto& [offset, label] : jumps) {
-        ASSERT(label->GetLocation().has_value());
+    for (auto& [index, offset, label] : jumps) {
+        ASSERT_MSG(label->GetLocation().has_value(), "Jump target has no location for block %d", index);
 
         ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
         as.RewindBuffer(offset);
@@ -246,9 +250,9 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         as.AdvanceBuffer(current_offset);
     }
 
-    for (auto& [offset, condition, label_true, label_false] : jumps_conditional) {
-        ASSERT(label_true->GetLocation().has_value());
-        ASSERT(label_false->GetLocation().has_value());
+    for (auto& [index, offset, condition, label_true, label_false] : jumps_conditional) {
+        ASSERT_MSG(label_true->GetLocation().has_value(), "True label has no location for block %d", index);
+        ASSERT_MSG(label_false->GetLocation().has_value(), "False label has no location for block %d", index);
 
         ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
         as.RewindBuffer(offset);
