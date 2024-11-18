@@ -197,6 +197,23 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_newfstatat: {
+        std::optional<std::filesystem::path> path = fs.AtPath(rdi, (const char*)rsi);
+
+        if (!path) {
+            result = -EACCES;
+            break;
+        }
+
+        x64Stat* guest_stat = (x64Stat*)rdx;
+        struct stat host_stat;
+        result = HOST_SYSCALL(newfstatat, rdi, path->c_str(), &host_stat, r10);
+        STRACE("newfstatat(%d, %s, %p, %d) = %d", (int)rdi, path->c_str(), (void*)rdx, (int)r10, (int)result);
+        if (result != -1) {
+            *guest_stat = host_stat;
+        }
+        break;
+    }
     case felix86_x86_64_ioctl: {
         result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
         STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, result);
