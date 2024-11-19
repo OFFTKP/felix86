@@ -1,3 +1,4 @@
+#include <csignal>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -73,6 +74,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     ssize_t result = -1;
 
     Filesystem& fs = emulator->GetFilesystem();
+    SignalHandler& signals = emulator->GetSignalHandler();
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
@@ -269,6 +271,41 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
         STRACE("munmap(%p, %016lx) = %016lx", (void*)rdi, rsi, result);
         break;
     }
+    case felix86_x86_64_getuid: {
+        result = HOST_SYSCALL(getuid);
+        STRACE("getuid() = %d", (int)result);
+        break;
+    }
+    case felix86_x86_64_geteuid: {
+        result = HOST_SYSCALL(geteuid);
+        STRACE("geteuid() = %d", (int)result);
+        break;
+    }
+    case felix86_x86_64_getgid: {
+        result = HOST_SYSCALL(getgid);
+        STRACE("getgid() = %d", (int)result);
+        break;
+    }
+    case felix86_x86_64_setfsgid: {
+        result = HOST_SYSCALL(setfsgid, rdi);
+        STRACE("setfsgid(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_setfsuid: {
+        result = HOST_SYSCALL(setfsuid, rdi);
+        STRACE("setfsuid(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_getppid: {
+        result = HOST_SYSCALL(getppid);
+        STRACE("getppid() = %d", (int)result);
+        break;
+    }
+    case felix86_x86_64_getpid: {
+        result = HOST_SYSCALL(getpid);
+        STRACE("getpid() = %d", (int)result);
+        break;
+    }
     case felix86_x86_64_uname: {
         struct utsname host_uname;
         struct utsname* guest_uname = (struct utsname*)rdi;
@@ -297,6 +334,27 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
 
         result = HOST_SYSCALL(statfs, path->c_str(), (struct statfs*)rsi);
         STRACE("statfs(%s, %p) = %d", path->c_str(), (void*)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_rt_sigaction: {
+        struct sigaction* act = (struct sigaction*)rsi;
+        bool sigaction = act->sa_flags & SA_SIGINFO;
+        void* handler = sigaction ? (void*)act->sa_sigaction : (void*)act->sa_handler;
+        RegisteredSignal old = signals.RegisterSignalHandler(rdi, handler, act->sa_mask, act->sa_flags);
+        struct sigaction* old_act = (struct sigaction*)rsi;
+        if (old_act) {
+            bool was_sigaction = old.flags & SA_SIGINFO;
+            if (was_sigaction) {
+                old_act->sa_sigaction = (decltype(old_act->sa_sigaction))old.handler;
+            } else {
+                old_act->sa_handler = (decltype(old_act->sa_handler))old.handler;
+            }
+            old_act->sa_flags = old.flags;
+            old_act->sa_mask = old.mask;
+        }
+        result = 0;
+        WARN("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
+        STRACE("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
         break;
     }
     default: {

@@ -5,6 +5,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/hle/filesystem.hpp"
+#include "felix86/hle/signals.hpp"
 
 struct Config {
     std::filesystem::path rootfs_path;
@@ -46,6 +47,10 @@ struct Emulator {
         return fs;
     }
 
+    SignalHandler& GetSignalHandler() {
+        return signal_handler;
+    }
+
     Config& GetConfig() {
         return config;
     }
@@ -84,5 +89,6 @@ private:
     Config config;
     Backend backend;
     Filesystem fs;
+    SignalHandler signal_handler;
     bool testing = false;
 };
