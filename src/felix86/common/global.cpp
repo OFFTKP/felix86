@@ -10,13 +10,6 @@
 #include "fmt/format.h"
 #include "version.hpp"
 
-#ifdef __riscv
-#include <vector>
-#include <asm/hwprobe.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-#endif
-
 bool g_verbose = false;
 bool g_quiet = false;
 bool g_aot = false;
@@ -195,46 +188,14 @@ void initialize_extensions() {
     if (!g_extensions_manually_specified) {
         biscuit::CPUInfo cpuinfo;
         Extensions::VLEN = cpuinfo.GetVlenb() * 8;
-
-#ifdef __riscv
-        // clang-format off
-        std::vector<riscv_hwprobe> pairs = {
-            {RISCV_HWPROBE_KEY_BASE_BEHAVIOR, 0},
-            {RISCV_HWPROBE_KEY_IMA_EXT_0, 0},
-        };
-        // clang-format on
-
-        long result = syscall(SYS_riscv_hwprobe, pairs.data(), pairs.size(), 0, nullptr, 0);
-        if (result < 0) {
-            ERROR("Failed to probe hardware capabilities: %ld", result);
-            return;
-        }
-
-        for (const auto& pair : pairs) {
-            switch (pair.key) {
-            case RISCV_HWPROBE_KEY_BASE_BEHAVIOR:
-                ASSERT(pair.value & RISCV_HWPROBE_BASE_BEHAVIOR_IMA);
-                break;
-            case RISCV_HWPROBE_KEY_IMA_EXT_0:
-                Extensions::G = pair.value & RISCV_HWPROBE_IMA_FD;
-                Extensions::V = pair.value & RISCV_HWPROBE_IMA_V;
-                Extensions::C = pair.value & RISCV_HWPROBE_IMA_C;
-                Extensions::B = (pair.value & (RISCV_HWPROBE_EXT_ZBA | RISCV_HWPROBE_EXT_ZBB | RISCV_HWPROBE_EXT_ZBC | RISCV_HWPROBE_EXT_ZBS)) ==
-                                (RISCV_HWPROBE_EXT_ZBA | RISCV_HWPROBE_EXT_ZBB | RISCV_HWPROBE_EXT_ZBC | RISCV_HWPROBE_EXT_ZBS);
-                Extensions::Zacas = pair.value & RISCV_HWPROBE_EXT_ZACAS;
-                Extensions::Zicond = pair.value & RISCV_HWPROBE_EXT_ZICOND;
-#ifdef RISCV_HWPROBE_EXT_ZAM // remove me when defined
-                Extensions::Zam = pair.value & RISCV_HWPROBE_EXT_ZAM;
-#endif
-#ifdef RISCV_HWPROBE_EXT_ZABHA // remove me when defined
-                Extensions::Zabha = pair.value & RISCV_HWPROBE_EXT_ZABHA;
-#endif
-                break;
-            default:
-                break;
-            }
-        }
-#endif
+        Extensions::G = cpuinfo.Has(RISCVExtension::I) && cpuinfo.Has(RISCVExtension::M) && cpuinfo.Has(RISCVExtension::A) &&
+                        cpuinfo.Has(RISCVExtension::F) && cpuinfo.Has(RISCVExtension::D);
+        Extensions::V = cpuinfo.Has(RISCVExtension::V);
+        Extensions::C = cpuinfo.Has(RISCVExtension::C);
+        Extensions::B = cpuinfo.Has(RISCVExtension::Zba) && cpuinfo.Has(RISCVExtension::Zbb) && cpuinfo.Has(RISCVExtension::Zbc) &&
+                        cpuinfo.Has(RISCVExtension::Zbs);
+        Extensions::Zacas = cpuinfo.Has(RISCVExtension::Zacas);
+        Extensions::Zicond = cpuinfo.Has(RISCVExtension::Zicond);
     }
 
 #ifdef __riscv
