@@ -252,7 +252,8 @@ bool parse_extensions(const char* arg) {
     }
 
     if (Extensions::V) {
-        Extensions::VLEN = 128;
+        biscuit::CPUInfo cpuinfo;
+        Extensions::VLEN = cpuinfo.GetVlenb() * 8;
         WARN("Setting VLEN to 128");
     }
 
