@@ -281,13 +281,21 @@ void Emitter::EmitCpuid(Backend& backend) {
 }
 
 void Emitter::EmitSext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    ASSERT(Extensions::B);
-    AS.SEXTB(Rd, Rs);
+    if (Extensions::B) {
+        AS.SEXTB(Rd, Rs);
+    } else {
+        AS.SLLI(Rd, Rs, 56);
+        AS.SRAI(Rd, Rd, 56);
+    }
 }
 
 void Emitter::EmitSext16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    ASSERT(Extensions::B);
-    AS.SEXTH(Rd, Rs);
+    if (Extensions::B) {
+        AS.SEXTH(Rd, Rs);
+    } else {
+        AS.SLLI(Rd, Rs, 48);
+        AS.SRAI(Rd, Rd, 48);
+    }
 }
 
 void Emitter::EmitSext32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
@@ -299,13 +307,21 @@ void Emitter::EmitZext8(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitZext16(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    ASSERT(Extensions::B);
-    AS.ZEXTH(Rd, Rs);
+    if (Extensions::B) {
+        AS.ZEXTH(Rd, Rs);
+    } else {
+        AS.SLLI(Rd, Rs, 48);
+        AS.SRLI(Rd, Rd, 48);
+    }
 }
 
 void Emitter::EmitZext32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
-    ASSERT(Extensions::B);
-    AS.ZEXTW(Rd, Rs);
+    if (Extensions::B) {
+        AS.ZEXTW(Rd, Rs);
+    } else {
+        AS.SLLI(Rd, Rs, 32);
+        AS.SRLI(Rd, Rd, 32);
+    }
 }
 
 void Emitter::EmitClz(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {

@@ -379,17 +379,9 @@ SSAInstruction* IREmitter::GreaterThanUnsigned(SSAInstruction* lhs, SSAInstructi
 SSAInstruction* IREmitter::Sext(SSAInstruction* value, x86_size_e size) {
     switch (size) {
     case x86_size_e::X86_SIZE_BYTE:
-        if (Extensions::B) {
-            return insertInstruction(IROpcode::Sext8, {value});
-        } else {
-            return Sari(Shli(value, 56), 56);
-        }
+        return insertInstruction(IROpcode::Sext8, {value});
     case x86_size_e::X86_SIZE_WORD:
-        if (Extensions::B) {
-            return insertInstruction(IROpcode::Sext16, {value});
-        } else {
-            return Sari(Shli(value, 48), 48);
-        }
+        return insertInstruction(IROpcode::Sext16, {value});
     case x86_size_e::X86_SIZE_DWORD:
         return insertInstruction(IROpcode::Sext32, {value});
     case x86_size_e::X86_SIZE_QWORD:
@@ -404,17 +396,9 @@ SSAInstruction* IREmitter::Zext(SSAInstruction* value, x86_size_e size) {
     case x86_size_e::X86_SIZE_BYTE:
         return insertInstruction(IROpcode::Zext8, {value});
     case x86_size_e::X86_SIZE_WORD:
-        if (Extensions::B) {
-            return insertInstruction(IROpcode::Zext16, {value});
-        } else {
-            return Shri(Shli(value, 48), 48);
-        }
+        return insertInstruction(IROpcode::Zext16, {value});
     case x86_size_e::X86_SIZE_DWORD:
-        if (Extensions::B) {
-            return insertInstruction(IROpcode::Zext32, {value});
-        } else {
-            return Shri(Shli(value, 32), 32);
-        }
+        return insertInstruction(IROpcode::Zext32, {value});
     case x86_size_e::X86_SIZE_QWORD:
         return value;
     default:
