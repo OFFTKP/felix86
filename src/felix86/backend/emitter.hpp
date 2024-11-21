@@ -135,6 +135,8 @@ private:
     static void EmitVToI(Backend&, biscuit::GPR, biscuit::Vec);
     static void EmitSetVectorStateFloat(Backend&);
     static void EmitSetVectorStateDouble(Backend&);
+    static void EmitSetVectorStateFloatBytes(Backend&);
+    static void EmitSetVectorStateDoubleBytes(Backend&);
     static void EmitSetVectorStatePackedByte(Backend&);
     static void EmitSetVectorStatePackedWord(Backend&);
     static void EmitSetVectorStatePackedDWord(Backend&);

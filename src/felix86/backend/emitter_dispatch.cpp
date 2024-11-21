@@ -55,6 +55,16 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::SetVectorStateFloatBytes: {
+        EmitSetVectorStateFloatBytes(backend);
+        break;
+    }
+
+    case IROpcode::SetVectorStateDoubleBytes: {
+        EmitSetVectorStateDoubleBytes(backend);
+        break;
+    }
+
     case IROpcode::SetVectorStatePackedByte: {
         EmitSetVectorStatePackedByte(backend);
         break;

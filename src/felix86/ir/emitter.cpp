@@ -1558,6 +1558,13 @@ SSAInstruction* IREmitter::readXmmWord(SSAInstruction* address, VectorState stat
         state = VectorState::PackedDWord;
     }
 
+    // Misaligned vector load/stores can be slow or unsupported on some CPUs
+    if (state == VectorState::Float) {
+        state = VectorState::FloatBytes;
+    } else if (state == VectorState::Double) {
+        state = VectorState::DoubleBytes;
+    }
+
     // If our vlen and supported (target) vlen match, we can just do full load/stores
     if (Extensions::VLEN == SUPPORTED_VLEN && state != VectorState::Float && state != VectorState::Double) {
         // TODO: Needs testing with 256-bit vectors to make sure it doesn't break anything

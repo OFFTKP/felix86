@@ -107,6 +107,8 @@ enum class VectorState {
     Null,
     Float,
     Double,
+    FloatBytes,
+    DoubleBytes,
     PackedByte,
     PackedWord,
     PackedDWord,

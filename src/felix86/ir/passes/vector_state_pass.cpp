@@ -37,6 +37,16 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                 state = VectorState::Double;
                 break;
             }
+            case IROpcode::SetVectorStateFloatBytes: {
+                ASSERT(state != VectorState::FloatBytes); // would be redundant otherwise
+                state = VectorState::FloatBytes;
+                break;
+            }
+            case IROpcode::SetVectorStateDoubleBytes: {
+                ASSERT(state != VectorState::DoubleBytes); // would be redundant otherwise
+                state = VectorState::DoubleBytes;
+                break;
+            }
             case IROpcode::SetVectorStatePackedByte: {
                 ASSERT(state != VectorState::PackedByte); // would be redundant otherwise
                 state = VectorState::PackedByte;
@@ -73,6 +83,18 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                         }
                         case VectorState::Double: {
                             SSAInstruction inst(IROpcode::SetVectorStateDouble, {});
+                            BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                            it = block->GetInstructions().insert(it, backend_inst);
+                            continue;
+                        }
+                        case VectorState::FloatBytes: {
+                            SSAInstruction inst(IROpcode::SetVectorStateFloatBytes, {});
+                            BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
+                            it = block->GetInstructions().insert(it, backend_inst);
+                            continue;
+                        }
+                        case VectorState::DoubleBytes: {
+                            SSAInstruction inst(IROpcode::SetVectorStateDoubleBytes, {});
                             BackendInstruction backend_inst = BackendInstruction::FromSSAInstruction(&inst);
                             it = block->GetInstructions().insert(it, backend_inst);
                             continue;
@@ -126,6 +148,8 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                                 } else {
                                     IROpcode opcode = IROpcode::Null;
                                     switch (next_state) {
+                                    case VectorState::FloatBytes:
+                                    case VectorState::DoubleBytes:
                                     case VectorState::PackedByte:
                                         opcode = IROpcode::SetVectorStatePackedByte;
                                         break;
@@ -135,9 +159,9 @@ void PassManager::VectorStatePass(BackendFunction* function) {
                                     case VectorState::AnyPacked:
                                     case VectorState::PackedDWord:
                                     case VectorState::Float:
-                                    case VectorState::Double:
                                         opcode = IROpcode::SetVectorStatePackedDWord;
                                         break;
+                                    case VectorState::Double:
                                     case VectorState::PackedQWord:
                                         opcode = IROpcode::SetVectorStatePackedQWord;
                                         break;

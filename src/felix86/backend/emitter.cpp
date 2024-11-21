@@ -418,6 +418,8 @@ void Emitter::EmitReadQWord(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) 
 void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Address, VectorState state) {
     switch (state) {
     case VectorState::PackedByte:
+    case VectorState::FloatBytes:
+    case VectorState::DoubleBytes:
         AS.VLE8(Vd, Address);
         break;
     case VectorState::PackedWord:
@@ -490,6 +492,8 @@ void Emitter::EmitWriteQWord(Backend& backend, biscuit::GPR Address, biscuit::GP
 void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::Vec Vs, VectorState state) {
     switch (state) {
     case VectorState::PackedByte:
+    case VectorState::FloatBytes:
+    case VectorState::DoubleBytes:
         AS.VSE8(Vs, Address);
         break;
     case VectorState::PackedWord:
@@ -1099,6 +1103,18 @@ void Emitter::EmitSetVectorStateFloat(Backend& backend) {
 void Emitter::EmitSetVectorStateDouble(Backend& backend) {
     // Operate on one element, 64-bits
     AS.VSETIVLI(x0, 1, SEW::E64);
+}
+
+void Emitter::EmitSetVectorStateFloatBytes(Backend& backend) {
+    // Operate on 4 8-bit elements, 32-bits
+    // So that loads can be misaligned
+    AS.VSETIVLI(x0, 4, SEW::E8);
+}
+
+void Emitter::EmitSetVectorStateDoubleBytes(Backend& backend) {
+    // Operate on 8 8-bit elements, 64-bits
+    // So that loads can be misaligned
+    AS.VSETIVLI(x0, 8, SEW::E8);
 }
 
 void Emitter::EmitSetVectorStatePackedByte(Backend& backend) {
