@@ -2,7 +2,7 @@
 #include "felix86/hle/signals.hpp"
 
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
-    ERROR("Received signal: %d", sig);
+    WARN("Received signal: %d", sig);
 }
 
 SignalHandler::SignalHandler() : handlers(32) {
