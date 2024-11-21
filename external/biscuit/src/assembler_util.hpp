@@ -204,6 +204,26 @@ inline void EmitFENCE(CodeBuffer& buffer, uint32_t fm, FenceOrder pred, FenceOrd
     // clang-format on
 }
 
+// Maybe OPs (see Zcmop/Zimop extension)
+inline void EmitMOP_R(CodeBuffer& buffer, uint32_t op, GPR rd, GPR rs) {
+    constexpr auto base = 0x81C04073U;
+    const auto encoded_op = ((op & 0b11) << 20) | ((op & 0b1100) << 24) | (op & 0b10000) << 26;
+
+    buffer.Emit32(base | encoded_op | (rd.Index() << 7) | (rs.Index() << 15));
+}
+inline void EmitMOP_RR(CodeBuffer& buffer, uint32_t op, GPR rd, GPR rs1, GPR rs2) {
+    constexpr auto base = 0x82004073U;
+    const auto encoded_op = ((op & 0b11) << 26) | ((op & 0b100) << 28);
+
+    buffer.Emit32(base | encoded_op | (rd.Index() << 7) | (rs1.Index() << 15) | (rs2.Index() << 20));
+}
+inline void EmitCMOP(CodeBuffer& buffer, uint32_t op) {
+    constexpr auto base = 0x6081U;
+    const auto encoded_op = (op & 0b1110) << 7;
+
+    buffer.Emit16(base | encoded_op);
+}
+
 // Internal helpers for siloing away particular comparisons for behavior.
 constexpr bool IsRV32(ArchFeature feature) {
     return feature == ArchFeature::RV32;

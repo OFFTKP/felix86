@@ -14,45 +14,52 @@ to how [Xbyak](https://github.com/herumi/xbyak) allows for runtime code generati
 
 Includes both 32-bit and 64-bit instructions in the following:
 
-| Feature   | Version |
-|:----------|:-------:|
-| A         | 2.1     |
-| B         | 1.0     |
-| C         | 2.0     |
-| D         | 2.2     |
-| F         | 2.2     |
-| H         | 1.0     |
-| K         | 1.0.1   |
-| M         | 2.0     |
-| N         | 1.1     |
-| Q         | 2.2     |
-| RV32I     | 2.1     |
-| RV64I     | 2.1     |
-| S         | 1.12    |
-| V         | 1.0     |
-| Sstc      | 0.5.4   |
-| Zabha     | 1.0     |
-| Zacas     | 1.0     |
-| Zawrs     | 1.01    |
-| Zcb       | 1.0.4   |
-| Zcmp      | 1.0.4   |
-| Zcmt      | 1.0.4   |
-| Zfa       | 1.0     |
-| Zfbfmin   | 1.0 rc2 |
-| Zfh       | 1.0     |
-| Zfhmin    | 1.0     |
-| Zicbom    | 1.0     |
-| Zicbop    | 1.0     |
-| Zicboz    | 1.0     |
-| Zicond    | 1.0.1   |
-| Zicsr     | 2.0     |
-| Zifencei  | 2.0     |
-| Zihintntl | 1.0     |
-| Zvbb      | 1.0     |
-| Zvbc      | 1.0     |
-| Zvfbfmin  | 1.0 rc2 |
-| Zvfbfwma  | 1.0 rc2 |
-| Zvkn      | 1.0     |
+| Feature       | Version |
+|:--------------|:-------:|
+| A             | 2.1     |
+| B             | 1.0     |
+| C             | 2.0     |
+| D             | 2.2     |
+| F             | 2.2     |
+| H             | 1.0     |
+| K             | 1.0.1   |
+| M             | 2.0     |
+| N             | 1.1     |
+| Q             | 2.2     |
+| RV32I         | 2.1     |
+| RV64I         | 2.1     |
+| S             | 1.12    |
+| V             | 1.0     |
+| Ssctr         | 1.0 rc6 |
+| Sstc          | 0.5.4   |
+| XTheadBa      | 1.0     |
+| XTheadCondMov | 1.0     |
+| Zabha         | 1.0     |
+| Zacas         | 1.0     |
+| Zawrs         | 1.01    |
+| Zcb           | 1.0.4   |
+| Zclsd         | 0.10    |
+| Zcmp          | 1.0.4   |
+| Zcmt          | 1.0.4   |
+| Zfa           | 1.0     |
+| Zfbfmin       | 1.0     |
+| Zfh           | 1.0     |
+| Zfhmin        | 1.0     |
+| Zicbom        | 1.0     |
+| Zicbop        | 1.0     |
+| Zicboz        | 1.0     |
+| Zicfilp       | 1.0     |
+| Zicfiss       | 1.0     |
+| Zicond        | 1.0.1   |
+| Zicsr         | 2.0     |
+| Zifencei      | 2.0     |
+| Zihintntl     | 1.0     |
+| Zilsd         | 0.10    |
+| Zvbb          | 1.0     |
+| Zvbc          | 1.0     |
+| Zvfbfmin      | 1.0     |
+| Zvfbfwma      | 1.0     |
+| Zvkn          | 1.0     |
 
 Note that usually only extensions considered ratified will be implemented
 as non-ratified documents are considerably more likely to have

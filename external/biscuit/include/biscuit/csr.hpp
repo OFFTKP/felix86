@@ -23,6 +23,8 @@ enum class CSR : uint32_t {
     FRM            = 0x002, // Floating-point Dynamic Rounding Mode
     FCSR           = 0x003, // Floating-point Control and Status Register (frm + fflags)
 
+    SSP            = 0x011, // Shadow stack pointer
+
     JVT            = 0x017, // Table jump base vector and control register
 
     Cycle          = 0xC00, // Cycle counter for RDCYCLE instruction.
@@ -107,6 +109,10 @@ enum class CSR : uint32_t {
     STVal          = 0x143, // Supervisor bad address or instruction
     SIP            = 0x144, // Supervisor interrupt pending.
 
+    SCTRCTL        = 0x14E, // Supervisor control transfer records control register
+    SCTRStatus     = 0x14F, // Supervisor control transfer records status register
+    SCTRDepth      = 0x15F, // Supervisor control transfer records depth register
+
     SISelect       = 0x150, // Supervisor indirect register select
     SIReg          = 0x151, // Supervisor indirect register alias
 
@@ -169,6 +175,8 @@ enum class CSR : uint32_t {
     VSTVal         = 0x243, // Virtual supervisor bad address or instruction
     VSIP           = 0x244, // Virtual supervisor interrupt pending
 
+    VSCTRCTL       = 0x24E, // Virtual supervisor control transfer records control register
+
     VSISelect      = 0x250, // Virtual supervisor indirect register select
     VSIReg         = 0x251, // Virtual supervisor indirect register alias
 
@@ -212,6 +220,8 @@ enum class CSR : uint32_t {
     MIP            = 0x344, // Machine interrupt pending
     MTInst         = 0x34A, // Machine trap instruction (transformed)
     MTVal2         = 0x34B, // Machine bad guest physical address
+
+    MCTRCTL        = 0x34E, // Machine control transfer records control register
 
     MISelect       = 0x350, // Machine indirect register select
     MIReg          = 0x351, // Machine indirect register alias
@@ -416,7 +426,19 @@ enum class CSR : uint32_t {
     TData1         = 0x7A1, // First Debug/Trace trigger data register
     TData2         = 0x7A2, // Second Debug/Trace trigger data register
     TData3         = 0x7A3, // Third Debug/Trace trigger data register
+    TInfo          = 0x7A4, // Trigger info
+    TControl       = 0x7A5, // Trigger control
     MContext       = 0x7A8, // Machine-mode context register
+    MSContext      = 0x7AA, // Machine supervisor context
+    // TData Aliases
+    MControl       = 0x7A1, // Match control
+    MControl6      = 0x7A1, // Match control type 6
+    ICount         = 0x7A1, // Instruction count
+    ITrigger       = 0x7A1, // Interrupt trigger
+    ETrigger       = 0x7A1, // Exception trigger
+    TMEXTrigger    = 0x7A1, // External trigger
+    TExtra32       = 0x7A3, // Trigger extra (RV32)
+    TExtra64       = 0x7A3, // Trigger extra (RV64)
 
     DCSR           = 0x7B0, // Debug control and status register
     DPC            = 0x7B1, // Debug PC

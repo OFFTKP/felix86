@@ -235,6 +235,14 @@ TEST_CASE("MRET", "[rvpriv]") {
     REQUIRE(value == 0x30200073);
 }
 
+TEST_CASE("SCTRCLR", "[rvpriv]") {
+    uint32_t value = 0;
+    auto as = MakeAssembler32(value);
+
+    as.SCTRCLR();
+    REQUIRE(value == 0x10400073);
+}
+
 TEST_CASE("SFENCE.INVAL.IR", "[rvpriv]") {
     uint32_t value = 0;
     auto as = MakeAssembler32(value);

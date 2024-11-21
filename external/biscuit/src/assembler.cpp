@@ -1,6 +1,7 @@
 #include <biscuit/assert.hpp>
 #include <biscuit/assembler.hpp>
 
+#include <array>
 #include <bit>
 #include <cstring>
 #include <utility>
@@ -526,7 +527,7 @@ void Assembler::ADDW(GPR rd, GPR lhs, GPR rhs) noexcept {
 }
 
 void Assembler::LD(GPR rd, int32_t imm, GPR rs) noexcept {
-    BISCUIT_ASSERT(IsRV64(m_features));
+    BISCUIT_ASSERT(IsRV32OrRV64(m_features));
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs, 0b011, rd, 0b0000011);
 }
@@ -538,7 +539,7 @@ void Assembler::LWU(GPR rd, int32_t imm, GPR rs) noexcept {
 }
 
 void Assembler::SD(GPR rs2, int32_t imm, GPR rs1) noexcept {
-    BISCUIT_ASSERT(IsRV64(m_features));
+    BISCUIT_ASSERT(IsRV32OrRV64(m_features));
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
     EmitSType(m_buffer, static_cast<uint32_t>(imm), rs2, rs1, 0b011, 0b0100011);
 }
@@ -682,13 +683,6 @@ void Assembler::CZERO_NEZ(GPR rd, GPR value, GPR condition) noexcept {
     EmitRType(m_buffer, 0b0000111, condition, value, 0b111, rd, 0b0110011);
 }
 
-// XTheadBa Extension Instructions
-
-void Assembler::TH_ADDSL(GPR rd, GPR rs1, GPR rs2, uint32_t shift) noexcept {
-    BISCUIT_ASSERT(shift <= 3);
-    EmitRType(m_buffer, 0b0000000 | shift, rs2, rs1, 0b001, rd, 0b0001011);
-}
-
 // XTheadCondMov Extension Instructions
 
 void Assembler::TH_MVEQZ(GPR rd, GPR value, GPR condition) noexcept {
@@ -697,6 +691,13 @@ void Assembler::TH_MVEQZ(GPR rd, GPR value, GPR condition) noexcept {
 
 void Assembler::TH_MVNEZ(GPR rd, GPR value, GPR condition) noexcept {
     EmitRType(m_buffer, 0b0100001, condition, value, 0b001, rd, 0b0001011);
+}
+
+// XTheadBa Extension Instructions
+
+void Assembler::TH_ADDSL(GPR rd, GPR rs1, GPR rs2, uint32_t shift) noexcept {
+    BISCUIT_ASSERT(shift <= 3);
+    EmitRType(m_buffer, 0b0000000 | shift, rs2, rs1, 0b001, rd, 0b0001011);
 }
 
 // Zicsr Extension Instructions
@@ -1275,6 +1276,31 @@ void Assembler::PREFETCH_W(GPR rs, int32_t offset) noexcept {
     EmitIType(m_buffer, static_cast<uint32_t>(offset) | 0b11, rs, 0b110, x0, 0b0010011);
 }
 
+// Control flow integrity instructions
+
+void Assembler::SSAMOSWAP_D(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    BISCUIT_ASSERT(IsRV64(m_features));
+    EmitAtomic(m_buffer, 0b01001, ordering, rs2, rs1, 0b011, rd, 0b0101111);
+}
+void Assembler::SSAMOSWAP_W(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept {
+    EmitAtomic(m_buffer, 0b01001, ordering, rs2, rs1, 0b010, rd, 0b0101111);
+}
+void Assembler::SSRDP(GPR rd) noexcept {
+    BISCUIT_ASSERT(rd != x0);
+    EmitMOP_R(m_buffer, 28, rd, x0);
+}
+void Assembler::SSPOPCHK(GPR rs) noexcept {
+    BISCUIT_ASSERT(rs == x1 || rs == x5);
+    EmitMOP_R(m_buffer, 28, x0, rs);
+}
+void Assembler::SSPUSH(GPR rs) noexcept {
+    BISCUIT_ASSERT(rs == x1 || rs == x5);
+    EmitMOP_RR(m_buffer, 7, x0, x0, rs);
+}
+void Assembler::LPAD(int32_t imm) noexcept {
+    EmitUType(m_buffer, static_cast<uint32_t>(imm), x0, 0b0010111);
+}
+
 // Privileged Instructions
 
 void Assembler::HFENCE_GVMA(GPR rs1, GPR rs2) noexcept {
@@ -1350,6 +1376,10 @@ void Assembler::HSV_W(GPR rs2, GPR rs1) noexcept {
 
 void Assembler::MRET() noexcept {
     m_buffer.Emit32(0x30200073);
+}
+
+void Assembler::SCTRCLR() noexcept {
+    m_buffer.Emit32(0x10400073);
 }
 
 void Assembler::SFENCE_INVAL_IR() noexcept {
@@ -1476,6 +1506,50 @@ void Assembler::ResolveLabelOffsets(Label* label) {
         }
 
         std::memcpy(ptr, &instruction, inst_size);
+    }
+}
+
+void Assembler::ResolveLiteralOffsetsRaw(ptrdiff_t location, const std::set<ptrdiff_t>& offsets) {
+    const auto is_auipc_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b0010111;
+    };
+
+    const auto is_gpr_load_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b0000011;
+    };
+
+    for (const auto offset : offsets) {
+        const auto address = m_buffer.GetOffsetAddress(offset);
+        auto* const ptr = reinterpret_cast<uint8_t*>(address);
+
+        std::array<uint32_t, 2> instructions{};
+        std::memcpy(&instructions[0], ptr, sizeof(uint32_t));
+        std::memcpy(&instructions[1], ptr + sizeof(uint32_t), sizeof(uint32_t));
+
+        // Given all load instructions we need to patch have 0 encoded as
+        // their load offset, we don't need to worry about any masking work.
+        //
+        // It's enough to verify that the immediate is going to be valid
+        // and then OR it into the instruction.
+
+        const auto encoded_offset = location - offset;
+
+        BISCUIT_ASSERT(is_auipc_type(instructions[0]));
+
+        // Make sure the distance is within the bounds of a 32-bit signed integer.
+        BISCUIT_ASSERT((static_cast<int64_t>(encoded_offset << 32) >> 32) == encoded_offset);
+
+        if (is_gpr_load_type(instructions[1])) {
+            const auto high20 = static_cast<uint32_t>(encoded_offset & 0xFFFFF000);
+            const auto low12 = static_cast<uint32_t>(encoded_offset & 0xFFF);
+            instructions[0] |= high20;
+            instructions[1] |= low12 << 20;
+        } else {
+            BISCUIT_ASSERT(false);
+        }
+
+        std::memcpy(ptr, &instructions[0], sizeof(uint32_t));
+        std::memcpy(ptr + sizeof(uint32_t), &instructions[1], sizeof(uint32_t));
     }
 }
 

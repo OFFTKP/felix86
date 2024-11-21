@@ -89,14 +89,14 @@ public:
     /// Retrieves the pointer to an arbitrary location within the buffer.
     [[nodiscard]] uint8_t* GetOffsetPointer(ptrdiff_t offset) noexcept {
         auto pointer = m_buffer + offset;
-        BISCUIT_ASSERT(pointer >= m_buffer && pointer <= m_buffer + m_capacity);
+        BISCUIT_ASSERT(pointer >= m_buffer && pointer < m_buffer + m_capacity);
         return pointer;
     }
 
     /// Retrieves the pointer to an arbitrary location within the buffer.
     [[nodiscard]] const uint8_t* GetOffsetPointer(ptrdiff_t offset) const noexcept {
         auto pointer = m_buffer + offset;
-        BISCUIT_ASSERT(pointer >= m_buffer && pointer <= m_buffer + m_capacity);
+        BISCUIT_ASSERT(pointer >= m_buffer && pointer < m_buffer + m_capacity);
         return pointer;
     }
 
@@ -127,7 +127,7 @@ public:
      */
     void AdvanceCursor(ptrdiff_t offset) noexcept {
         auto* forward = m_buffer + offset;
-        BISCUIT_ASSERT(m_cursor <= forward && forward <= m_buffer + m_capacity);
+        BISCUIT_ASSERT(m_cursor <= forward && forward < m_buffer + m_capacity);
         m_cursor = forward;
     }
 

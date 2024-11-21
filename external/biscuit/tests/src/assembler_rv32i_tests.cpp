@@ -347,7 +347,7 @@ TEST_CASE("LI", "[rv32i]") {
     as.RewindBuffer();
     vals = {};
 
-    as.LI(x1, -1);
+    as.LI(x1, uint64_t(-1));
     // addi x1, x0, -1
     compare_vals(0xFFF00093, 0x00000000);
     as.RewindBuffer();
@@ -373,13 +373,13 @@ TEST_CASE("LI", "[rv32i]") {
     as.RewindBuffer();
     vals = {};
 
-    as.LI(x1, ~0xFFF);
+    as.LI(x1, ~0xFFFULL);
     // lui x1, -1
     compare_vals(0xFFFFF0B7, 0x00000000);
     as.RewindBuffer();
     vals = {};
 
-    as.LI(x1, INT32_MIN);
+    as.LI(x1, uint64_t(INT32_MIN));
     // lui x1, -524288
     compare_vals(0x800000B7, 0x00000000);
     as.RewindBuffer();

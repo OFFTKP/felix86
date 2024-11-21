@@ -81,11 +81,12 @@ TEST_CASE("LD", "[rv64i]") {
 
 TEST_CASE("LI (RV64)", "[rv64i]") {
     // Up to 8 instructions can be generated
-    std::array<uint32_t, 8> vals{};
+    constexpr size_t MAX_INSTS = 8;
+    std::array<uint32_t, MAX_INSTS> vals{};
     auto as = MakeAssembler64(vals);
 
     const auto compare_vals = [&vals]<typename... Args>(const Args&... args) {
-        static_assert(sizeof...(args) <= vals.size());
+        static_assert(sizeof...(args) <= MAX_INSTS);
 
         size_t i = 0;
         for (const auto arg : {args...}) {
@@ -102,7 +103,7 @@ TEST_CASE("LI (RV64)", "[rv64i]") {
     as.RewindBuffer();
     vals = {};
 
-    as.LI(x1, -1);
+    as.LI(x1, uint64_t(-1));
     // addiw x1, x0, -1
     compare_vals(0xFFF0009BU, 0x00000000U);
     as.RewindBuffer();
@@ -128,13 +129,13 @@ TEST_CASE("LI (RV64)", "[rv64i]") {
     as.RewindBuffer();
     vals = {};
 
-    as.LI(x1, ~0xFFF);
+    as.LI(x1, ~0xFFFULL);
     // lui x1, -1
     compare_vals(0xFFFFF0B7U, 0x00000000U);
     as.RewindBuffer();
     vals = {};
 
-    as.LI(x1, INT32_MIN);
+    as.LI(x1, uint64_t(INT32_MIN));
     // lui x1, -524288
     compare_vals(0x800000B7U, 0x00000000U);
     as.RewindBuffer();

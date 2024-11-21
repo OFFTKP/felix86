@@ -1,13 +1,14 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
 #include <biscuit/code_buffer.hpp>
 #include <biscuit/csr.hpp>
 #include <biscuit/isa.hpp>
 #include <biscuit/label.hpp>
+#include <biscuit/literal.hpp>
 #include <biscuit/registers.hpp>
 #include <biscuit/vector.hpp>
+#include <cstddef>
+#include <cstdint>
 
 namespace biscuit {
 
@@ -61,7 +62,8 @@ public:
      * @note The caller is responsible for managing the lifetime of the given memory.
      *       CodeBuffer will *not* free the memory once it goes out of scope.
      */
-    [[nodiscard]] explicit Assembler(uint8_t* buffer, size_t capacity, ArchFeature features = ArchFeature::RV64);
+    [[nodiscard]] explicit Assembler(uint8_t* buffer, size_t capacity,
+                                     ArchFeature features = ArchFeature::RV64);
 
     // Copy constructor and assignment.
     Assembler(const Assembler&) = delete;
@@ -114,9 +116,10 @@ public:
     /**
      * Allows advancing of the code buffer cursor.
      * 
-     * @param offset The offset to move the cursor by.
+     * @param offset The offset to advance the cursor by.
      *
-     * @note The offset may not exceed the remaining bytes in the buffer.
+     * @note The offset may not be smaller than the current cursor offset 
+     *       and may not be larger than the current buffer capacity.
      */
     void AdvanceBuffer(ptrdiff_t offset) {
         m_buffer.AdvanceCursor(offset);
@@ -148,6 +151,16 @@ public:
      * @param label A non-null valid label to bind.
      */
     void Bind(Label* label);
+
+    /**
+     * Places a literal at the current offset within the code buffer.
+     *
+     * @param literal A non-null valid literal to place.
+    */
+    template <typename T>
+    void Place(Literal<T>* literal) {
+        PlaceAtOffset(literal, m_buffer.GetCursorOffset());
+    }
 
     // RV32I Instructions
 
@@ -267,6 +280,15 @@ public:
     void ADDIW(GPR rd, GPR rs, int32_t imm) noexcept;
     void ADDW(GPR rd, GPR lhs, GPR rhs) noexcept;
     void LD(GPR rd, int32_t imm, GPR rs) noexcept;
+    template <typename T>
+    void LD(GPR rd, Literal<T>* literal) noexcept {
+        static_assert(sizeof(T) >= 8);
+        const auto offset = LinkAndGetOffset(literal);
+        const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        AUIPC(rd, hi20);
+        LD(rd, lo12, rd);
+    }
     void LWU(GPR rd, int32_t imm, GPR rs) noexcept;
     void SD(GPR rs2, int32_t imm, GPR rs1) noexcept;
 
@@ -324,12 +346,13 @@ public:
     void CZERO_EQZ(GPR rd, GPR value, GPR condition) noexcept;
     void CZERO_NEZ(GPR rd, GPR value, GPR condition) noexcept;
 
-    // XTheadBa Extension Instructions
-    void TH_ADDSL(GPR rd, GPR rs1, GPR rs2, uint32_t shift) noexcept;
 
     // XTheadCondMov Extension Instructions
     void TH_MVEQZ(GPR rd, GPR value, GPR condition) noexcept;
     void TH_MVNEZ(GPR rd, GPR value, GPR condition) noexcept;
+
+    // XTheadBa Extension Instructions
+    void TH_ADDSL(GPR rd, GPR rs1, GPR rs2, uint32_t shift) noexcept;
 
     // Zicsr Extension Instructions
 
@@ -830,6 +853,17 @@ public:
     void PREFETCH_R(GPR rs, int32_t offset = 0) noexcept;
     void PREFETCH_W(GPR rs, int32_t offset = 0) noexcept;
 
+    // Control Flow Integrity Extension Instructions (Zicfiss and Zicfilp)
+
+    void SSAMOSWAP_D(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void SSAMOSWAP_W(Ordering ordering, GPR rd, GPR rs2, GPR rs1) noexcept;
+    void SSRDP(GPR rd) noexcept;
+    void SSPOPCHK(GPR rs2) noexcept;
+    void SSPUSH(GPR rs2) noexcept;
+    void C_SSPOPCHK() noexcept;
+    void C_SSPUSH() noexcept;
+    void LPAD(int32_t imm) noexcept;
+
     // Privileged Instructions
 
     void HFENCE_GVMA(GPR rs1, GPR rs2) noexcept;
@@ -850,6 +884,7 @@ public:
     void HSV_H(GPR rs2, GPR rs1) noexcept;
     void HSV_W(GPR rs2, GPR rs1) noexcept;
     void MRET() noexcept;
+    void SCTRCLR() noexcept;
     void SFENCE_INVAL_IR() noexcept;
     void SFENCE_VMA(GPR rs1, GPR rs2) noexcept;
     void SFENCE_W_INVAL() noexcept;
@@ -1507,6 +1542,44 @@ private:
     // branch offsets into the branch instructions that
     // requires them.
     void ResolveLabelOffsets(Label* label);
+
+    // Places a literal at the given offset.
+    template<typename T>
+    void PlaceAtOffset(Literal<T>* literal, Literal<T>::LocationOffset offset) {
+        BISCUIT_ASSERT(literal != nullptr);
+        BISCUIT_ASSERT(offset >= 0 && offset <= m_buffer.GetCursorOffset());
+
+        const T& value = literal->Place(offset);
+        ResolveLiteralOffsetsRaw(literal->m_location.value(), literal->m_offsets);
+        literal->ClearOffsets();
+
+        m_buffer.Emit(value);
+    }
+
+    // Links the given literal and returns the offset to it.
+    template<typename T>
+    ptrdiff_t LinkAndGetOffset(Literal<T>* literal) {
+        BISCUIT_ASSERT(literal != nullptr);
+
+        // If we have a placed literal, then it's straightforward to calculate
+        // the offsets.
+        if (literal->IsPlaced()) {
+            const auto cursor_address = m_buffer.GetCursorAddress();
+            const auto literal_offset = m_buffer.GetOffsetAddress(*literal->GetLocation());
+            return static_cast<ptrdiff_t>(literal_offset - cursor_address);
+        }
+
+        // If we don't have a placed literal, we return an offset of zero.
+        // While the emitter will emit a bogus load instruction initially,
+        // the offset will be patched over once the literal has been properly
+        // placed at a location.
+        literal->AddOffset(m_buffer.GetCursorOffset());
+        return 0;
+    }
+
+    // Resolves all literal offsets and patches any necessary
+    // offsets into the load instructions that require them.
+    void ResolveLiteralOffsetsRaw(ptrdiff_t location, const std::set<ptrdiff_t>& offsets);
 
     CodeBuffer m_buffer;
     ArchFeature m_features = ArchFeature::RV64;

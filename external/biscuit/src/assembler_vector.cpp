@@ -764,18 +764,36 @@ void Assembler::VREMU(Vec vd, Vec vs2, GPR rs1, VecMask mask) noexcept {
 }
 
 void Assembler::VRGATHER(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
+    // For any vrgather instruction, the destination vector register group cannot overlap
+    // with the source vector register groups, otherwise the instruction encoding is reserved.
+    BISCUIT_ASSERT(vd != vs2);
+    BISCUIT_ASSERT(vd != vs1);
+
     EmitVectorOPIVV(m_buffer, 0b001100, mask, vs2, vs1, vd);
 }
 
 void Assembler::VRGATHER(Vec vd, Vec vs2, GPR rs1, VecMask mask) noexcept {
+    // For any vrgather instruction, the destination vector register group cannot overlap
+    // with the source vector register groups, otherwise the instruction encoding is reserved.
+    BISCUIT_ASSERT(vd != vs2);
+
     EmitVectorOPIVX(m_buffer, 0b001100, mask, vs2, rs1, vd);
 }
 
 void Assembler::VRGATHER(Vec vd, Vec vs2, uint32_t uimm, VecMask mask) noexcept {
+    // For any vrgather instruction, the destination vector register group cannot overlap
+    // with the source vector register groups, otherwise the instruction encoding is reserved.
+    BISCUIT_ASSERT(vd != vs2);
+
     EmitVectorOPIVUI(m_buffer, 0b001100, mask, vs2, uimm, vd);
 }
 
 void Assembler::VRGATHEREI16(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
+    // For any vrgather instruction, the destination vector register group cannot overlap
+    // with the source vector register groups, otherwise the instruction encoding is reserved.
+    BISCUIT_ASSERT(vd != vs2);
+    BISCUIT_ASSERT(vd != vs1);
+
     EmitVectorOPIVV(m_buffer, 0b001110, mask, vs2, vs1, vd);
 }
 
