@@ -753,13 +753,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             coalesced = false;
             graph = InterferenceGraph();
             instructions = create_instruction_map(function);
-            build(function, blocks, graph, should_consider);
-
-            InterferenceGraph second_graph;
-            build2(function, blocks, second_graph, should_consider);
-
-            bool eq = graph == second_graph;
-            ASSERT(eq);
+            build2(function, blocks, graph, should_consider);
 
             if (g_coalesce) {
                 coalesced = try_coalesce(function, instructions, graph, should_consider, k, george_coalescing_heuristic);
