@@ -1468,7 +1468,7 @@ SSAInstruction* IREmitter::getGpr32(x86_ref_e ref) {
 }
 
 SSAInstruction* IREmitter::getGpr64(x86_ref_e ref) {
-    if (ref < X86_REF_RAX || ref > X86_REF_R15) {
+    if ((ref < X86_REF_RAX || ref > X86_REF_R15) && ref != X86_REF_RIP) {
         ERROR("Invalid register reference");
     }
 
