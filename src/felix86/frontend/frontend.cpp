@@ -633,8 +633,9 @@ void frontend_compile_instruction(IREmitter& ir, u64& hash) {
         inst.operand_rm.memory.gs_override = gs_override;
         inst.operand_rm.memory.lock = lock;
         if (inst.operand_rm.memory.base == X86_REF_RIP) {
-            inst.operand_rm.memory.displacement += ir.GetCurrentAddress() + index;
-            inst.operand_rm.memory.base = X86_REF_COUNT;
+            // The RIP during the block is at the start of the block, so we need to add the index of the
+            // instruction to get the correct address
+            inst.operand_rm.memory.displacement += index;
         }
     } else if (inst.operand_rm.type != X86_OP_TYPE_NONE) {
         ERROR("Invalid operand type");

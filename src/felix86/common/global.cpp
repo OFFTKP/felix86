@@ -173,8 +173,10 @@ void initialize_globals() {
     }
 
     if (!g_testing) {
-        const char* cache_env = getenv("FELIX86_CACHE");
+        const char* cache_env = getenv("FELIX86_NO_CACHE");
         if (is_truthy(cache_env)) {
+            g_cache_functions = false;
+        } else {
             g_cache_functions = true;
         }
     }
