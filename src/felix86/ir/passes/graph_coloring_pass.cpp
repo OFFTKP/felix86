@@ -313,7 +313,9 @@ static void liveness_worklist2(BackendFunction& function, std::vector<const Back
         worklist.push_back(blocks[i]->GetIndex());
     }
 
-    auto clear_set = [&](std::vector<u8>& vec) { std::fill(vec.begin(), vec.end(), 0); };
+    auto clear_set = [&](std::vector<u8>& vec) { memset(vec.data(), 0, vec.size()); };
+
+    std::vector<u8> in_old(insts.size());
 
     while (!worklist.empty()) {
         const BackendBlock* block = &function.GetBlock(worklist.front());
@@ -321,7 +323,7 @@ static void liveness_worklist2(BackendFunction& function, std::vector<const Back
 
         size_t i = block->GetIndex();
 
-        std::vector<u8> in_old = in[i];
+        memcpy(in_old.data(), in[i].data(), in[i].size());
 
         clear_set(out[i]);
         // out[b] = U (in[s]) for all s in succ[b]
@@ -531,8 +533,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                     ERROR("Null operand %d for instruction %s", j, inst.Print().c_str());
                 }
 
-                if (should_consider(get_instruction(inst.GetOperand(j))) &&
-                    std::find(def[i].begin(), def[i].end(), inst.GetOperand(j)) == def[i].end()) {
+                if (should_consider(get_instruction(inst.GetOperand(j))) && def[i][get_index(inst.GetOperand(j))] == 0) {
                     // Not defined in this block ie. upwards exposed, live range goes outside current block
                     u32 operand_index = get_index(inst.GetOperand(j));
                     use[i][operand_index] = 1;
