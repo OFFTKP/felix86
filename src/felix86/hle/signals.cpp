@@ -25,10 +25,13 @@ SignalHandler::~SignalHandler() {
     // }
 }
 
-RegisteredSignal SignalHandler::RegisterSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
+void SignalHandler::RegisterSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
     ASSERT(sig > 0 && sig < 32);
-    RegisteredSignal old = handlers[sig];
     handlers[sig] = {handler, mask, flags};
     WARN("Registering signal handler for signal %d", sig);
-    return old;
+}
+
+RegisteredSignal SignalHandler::GetSignalHandler(int sig) {
+    ASSERT(sig > 0 && sig < 32);
+    return handlers[sig];
 }

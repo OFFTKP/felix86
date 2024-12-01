@@ -338,11 +338,15 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     }
     case felix86_x86_64_rt_sigaction: {
         struct sigaction* act = (struct sigaction*)rsi;
-        bool sigaction = act->sa_flags & SA_SIGINFO;
-        void* handler = sigaction ? (void*)act->sa_sigaction : (void*)act->sa_handler;
-        RegisteredSignal old = signals.RegisterSignalHandler(rdi, handler, act->sa_mask, act->sa_flags);
-        struct sigaction* old_act = (struct sigaction*)rsi;
+        if (act) {
+            bool sigaction = act->sa_flags & SA_SIGINFO;
+            void* handler = sigaction ? (void*)act->sa_sigaction : (void*)act->sa_handler;
+            signals.RegisterSignalHandler(rdi, handler, act->sa_mask, act->sa_flags);
+        }
+
+        struct sigaction* old_act = (struct sigaction*)rdx;
         if (old_act) {
+            RegisteredSignal old = signals.GetSignalHandler(rdi);
             bool was_sigaction = old.flags & SA_SIGINFO;
             if (was_sigaction) {
                 old_act->sa_sigaction = (decltype(old_act->sa_sigaction))old.handler;
@@ -352,6 +356,7 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
             old_act->sa_flags = old.flags;
             old_act->sa_mask = old.mask;
         }
+
         result = 0;
         WARN("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
         STRACE("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
