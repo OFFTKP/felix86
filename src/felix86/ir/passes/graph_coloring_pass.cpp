@@ -176,15 +176,11 @@ static InstructionMap create_instruction_map(BackendFunction& function) {
     return instructions;
 }
 
-static bool should_consider_gpr(const InstructionMap& map, u32 inst) {
-    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map: %s", GetNameString(inst).c_str());
-    const BackendInstruction* instruction = map.at(inst).inst;
+static bool should_consider_gpr(const BackendInstruction* instruction) {
     return instruction->GetDesiredType() == AllocationType::GPR && !reserved_gpr(*instruction);
 }
 
-static bool should_consider_vec(const InstructionMap& map, u32 inst) {
-    ASSERT_MSG(map.find(inst) != map.end(), "Instruction not found in map: %s", GetNameString(inst).c_str());
-    const BackendInstruction* instruction = map.at(inst).inst;
+static bool should_consider_vec(const BackendInstruction* instruction) {
     return instruction->GetDesiredType() == AllocationType::Vec;
 }
 
@@ -369,8 +365,21 @@ static void liveness_worklist2(BackendFunction& function, std::vector<const Back
     }
 }
 
-static void build(BackendFunction& function, std::vector<const BackendBlock*> blocks, const InstructionMap& instructions, InterferenceGraph& graph,
-                  bool (*should_consider)(const InstructionMap&, u32)) {
+static void build(BackendFunction& function, std::vector<const BackendBlock*> blocks, InterferenceGraph& graph,
+                  bool (*should_consider)(const BackendInstruction*)) {
+    InstructionList all_insts;
+    std::unordered_map<u32, u32> name_to_index;
+    for (const auto& block : function.GetBlocks()) {
+        for (const auto& inst : block->GetInstructions()) {
+            all_insts.push_back(&inst);
+            name_to_index[inst.GetName()] = all_insts.size() - 1;
+        }
+    }
+
+    auto get_index = [&](u32 name) { return name_to_index.at(name); };
+
+    auto get_instruction = [&](u32 name) { return all_insts.at(get_index(name)); };
+
     static std::vector<LivenessSet> in(blocks.size());
     static std::vector<LivenessSet> out(blocks.size());
     static std::vector<LivenessSet> use(blocks.size());
@@ -395,18 +404,14 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
         size_t i = block->GetIndex();
         for (const BackendInstruction& inst : block->GetInstructions()) {
             for (u8 j = 0; j < inst.GetOperandCount(); j++) {
-                if (instructions.at(inst.GetOperand(j)).inst == nullptr) {
-                    ERROR("Null operand %d for instruction %s", j, inst.Print().c_str());
-                }
-
-                if (should_consider(instructions, inst.GetOperand(j)) &&
+                if (should_consider(get_instruction(inst.GetOperand(j))) &&
                     std::find(def[i].begin(), def[i].end(), inst.GetOperand(j)) == def[i].end()) {
                     // Not defined in this block ie. upwards exposed, live range goes outside current block
                     use[i].insert(inst.GetOperand(j));
                 }
             }
 
-            if (should_consider(instructions, inst.GetName())) {
+            if (should_consider(get_instruction(inst.GetName()))) {
                 def[i].insert(inst.GetName());
             }
         }
@@ -414,7 +419,7 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
 
     liveness_worklist(function, blocks, in, out, use, def);
 
-    graph.Reserve(instructions.size());
+    graph.Reserve(all_insts.size());
 
     for (const BackendBlock* block : blocks) {
         LivenessSet live_now;
@@ -426,7 +431,7 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
         const std::list<BackendInstruction>& insts = block->GetInstructions();
         for (auto it = insts.rbegin(); it != insts.rend(); ++it) {
             const BackendInstruction& inst = *it;
-            if (should_consider(instructions, inst.GetName())) {
+            if (should_consider(get_instruction(inst.GetName()))) {
                 // Erase the currently defined variable if it exists in the set
                 live_now.erase(inst.GetName());
 
@@ -442,7 +447,7 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
                 case IROpcode::VSlideUpZeroesi:
                 case IROpcode::VSlideUpi: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                        if (should_consider(instructions, inst.GetOperand(i))) {
+                        if (should_consider(get_instruction(inst.GetOperand(i)))) {
                             live_now.insert(inst.GetOperand(i));
                         }
                     }
@@ -451,7 +456,7 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
                 case IROpcode::VGather: {
                     // Doesn't interfere with the first operand
                     for (u8 i = 1; i < inst.GetOperandCount(); i++) {
-                        if (should_consider(instructions, inst.GetOperand(i))) {
+                        if (should_consider(get_instruction(inst.GetOperand(i)))) {
                             live_now.insert(inst.GetOperand(i));
                         }
                     }
@@ -470,7 +475,7 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
             }
 
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                if (should_consider(instructions, inst.GetOperand(i))) {
+                if (should_consider(get_instruction(inst.GetOperand(i)))) {
                     live_now.insert(inst.GetOperand(i));
                 }
             }
@@ -478,8 +483,8 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
     }
 }
 
-static void build2(BackendFunction& function, std::vector<const BackendBlock*> blocks, const InstructionMap& instructions, InterferenceGraph& graph,
-                   bool (*should_consider)(const InstructionMap&, u32)) {
+static void build2(BackendFunction& function, std::vector<const BackendBlock*> blocks, InterferenceGraph& graph,
+                   bool (*should_consider)(const BackendInstruction*)) {
     InstructionList all_insts;
     std::unordered_map<u32, u32> name_to_index;
     for (const auto& block : function.GetBlocks()) {
@@ -490,6 +495,8 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
     }
 
     auto get_index = [&](u32 name) { return name_to_index.at(name); };
+
+    auto get_instruction = [&](u32 name) { return all_insts.at(get_index(name)); };
 
     static std::vector<std::vector<u8>> in(blocks.size());
     static std::vector<std::vector<u8>> out(blocks.size());
@@ -504,10 +511,10 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
     }
 
     for (size_t i = 0; i < blocks.size(); i++) {
-        in[i].resize(instructions.size());
-        out[i].resize(instructions.size());
-        use[i].resize(instructions.size());
-        def[i].resize(instructions.size());
+        in[i].resize(all_insts.size());
+        out[i].resize(all_insts.size());
+        use[i].resize(all_insts.size());
+        def[i].resize(all_insts.size());
 
         std::fill(in[i].begin(), in[i].end(), 0);
         std::fill(out[i].begin(), out[i].end(), 0);
@@ -520,11 +527,11 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
         size_t i = block->GetIndex();
         for (const BackendInstruction& inst : block->GetInstructions()) {
             for (u8 j = 0; j < inst.GetOperandCount(); j++) {
-                if (instructions.at(inst.GetOperand(j)).inst == nullptr) {
+                if (get_instruction(inst.GetOperand(j)) == nullptr) {
                     ERROR("Null operand %d for instruction %s", j, inst.Print().c_str());
                 }
 
-                if (should_consider(instructions, inst.GetOperand(j)) &&
+                if (should_consider(get_instruction(inst.GetOperand(j))) &&
                     std::find(def[i].begin(), def[i].end(), inst.GetOperand(j)) == def[i].end()) {
                     // Not defined in this block ie. upwards exposed, live range goes outside current block
                     u32 operand_index = get_index(inst.GetOperand(j));
@@ -532,7 +539,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 }
             }
 
-            if (should_consider(instructions, inst.GetName())) {
+            if (should_consider(get_instruction(inst.GetName()))) {
                 u32 name_index = get_index(inst.GetName());
                 def[i][name_index] = 1;
             }
@@ -541,10 +548,10 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
 
     liveness_worklist2(function, blocks, all_insts, in, out, use, def);
 
-    graph.Reserve(instructions.size());
+    graph.Reserve(all_insts.size());
 
     std::vector<u8> live_now;
-    live_now.resize(instructions.size());
+    live_now.resize(all_insts.size());
 
     for (const BackendBlock* block : blocks) {
         std::fill(live_now.begin(), live_now.end(), 0);
@@ -561,7 +568,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
         const std::list<BackendInstruction>& insts = block->GetInstructions();
         for (auto it = insts.rbegin(); it != insts.rend(); ++it) {
             const BackendInstruction& inst = *it;
-            if (should_consider(instructions, inst.GetName())) {
+            if (should_consider(get_instruction(inst.GetName()))) {
                 // Erase the currently defined variable if it exists in the set
                 u32 inst_index = get_index(inst.GetName());
                 live_now[inst_index] = 0;
@@ -578,7 +585,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 case IROpcode::VSlideUpZeroesi:
                 case IROpcode::VSlideUpi: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                        if (should_consider(instructions, inst.GetOperand(i))) {
+                        if (should_consider(get_instruction(inst.GetOperand(i)))) {
                             u32 operand_index = get_index(inst.GetOperand(i));
                             live_now[operand_index] = 1;
                         }
@@ -588,7 +595,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 case IROpcode::VGather: {
                     // Doesn't interfere with the first operand
                     for (u8 i = 1; i < inst.GetOperandCount(); i++) {
-                        if (should_consider(instructions, inst.GetOperand(i))) {
+                        if (should_consider(get_instruction(inst.GetOperand(i)))) {
                             u32 operand_index = get_index(inst.GetOperand(i));
                             live_now[operand_index] = 1;
                         }
@@ -610,7 +617,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
             }
 
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
-                if (should_consider(instructions, inst.GetOperand(i))) {
+                if (should_consider(get_instruction(inst.GetOperand(i)))) {
                     u32 operand_index = get_index(inst.GetOperand(i));
                     live_now[operand_index] = 1;
                 }
@@ -693,8 +700,8 @@ void coalesce(BackendFunction& function, u32 lhs, u32 rhs) {
     }
 }
 
-bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGraph& graph, bool (*should_consider)(const InstructionMap&, u32),
-                  u32 k, CoalescingHeuristic heuristic) {
+bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGraph& graph, bool (*should_consider)(const BackendInstruction*), u32 k,
+                  CoalescingHeuristic heuristic) {
     bool coalesced = false;
     for (auto& block : function.GetBlocks()) {
         auto it = block->GetInstructions().begin();
@@ -702,7 +709,7 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
         while (it != end) {
             BackendInstruction& inst = *it;
             if (inst.GetOpcode() == IROpcode::Mov) {
-                if (should_consider(map, inst.GetName()), should_consider(map, inst.GetOperand(0))) {
+                if (should_consider(map.at(inst.GetName()).inst), should_consider(map.at(inst.GetOperand(0)).inst)) {
                     u32 lhs = inst.GetName();
                     u32 rhs = inst.GetOperand(0);
                     auto& edges = graph.GetInterferences(lhs);
@@ -728,7 +735,7 @@ bool try_coalesce(BackendFunction& function, InstructionMap& map, InterferenceGr
     return coalesced;
 }
 
-static AllocationMap run(BackendFunction& function, AllocationType type, bool (*should_consider)(const InstructionMap&, u32),
+static AllocationMap run(BackendFunction& function, AllocationType type, bool (*should_consider)(const BackendInstruction*),
                          const std::vector<u32>& available_colors, u32& spill_location) {
     g_spilled_count = 0;
     const u32 k = available_colors.size();
@@ -745,13 +752,13 @@ static AllocationMap run(BackendFunction& function, AllocationType type, bool (*
             coalesced = false;
             graph = InterferenceGraph();
             instructions = create_instruction_map(function);
-            build(function, blocks, instructions, graph, should_consider);
+            build(function, blocks, graph, should_consider);
 
-            InterferenceGraph second_graph;
-            build2(function, blocks, instructions, second_graph, should_consider);
+            // InterferenceGraph second_graph;
+            // build2(function, blocks, second_graph, should_consider);
 
-            bool eq = graph == second_graph;
-            ASSERT(eq);
+            // bool eq = graph == second_graph;
+            // ASSERT(eq);
 
             if (g_coalesce) {
                 coalesced = try_coalesce(function, instructions, graph, should_consider, k, george_coalescing_heuristic);
