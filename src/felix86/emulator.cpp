@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/random.h>
 #include "felix86/backend/disassembler.hpp"
+#include "felix86/common/disk_cache.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
 #include "felix86/ir/passes/passes.hpp"
@@ -205,6 +206,17 @@ void* Emulator::compileFunction(u64 rip) {
 
     VERBOSE("Hash: %016lx", function.GetHash());
 
+    // Check disk cache if enabled
+    if (g_cache_functions) {
+        std::string hex_hash = fmt::format("{:016x}", function.GetHash());
+        if (DiskCache::Has(hex_hash)) {
+            std::vector<u8> func = DiskCache::Read(hex_hash);
+            std::lock_guard<std::mutex> lock(compilation_mutex);
+            void* start = backend.AddCodeAt(rip, func.data(), func.size());
+            return start;
+        }
+    }
+
     PassManager::SSAPass(&function);
     PassManager::DeadCodeEliminationPass(&function);
 
@@ -249,6 +261,11 @@ void* Emulator::compileFunction(u64 rip) {
     if (g_print_disassembly) {
         PLAIN("Disassembly of function at 0x%lx:\n", rip);
         PLAIN("%s", Disassembler::Disassemble(func, size).c_str());
+    }
+
+    if (g_cache_functions) {
+        std::string hex_hash = fmt::format("{:016x}", function.GetHash());
+        DiskCache::Write(hex_hash, func, size);
     }
 
     return func;

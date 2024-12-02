@@ -1,10 +1,20 @@
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
-#include <nlohmann/json.hpp>
+#include <vector>
 #include "felix86/common/disk_cache.hpp"
 #include "felix86/common/log.hpp"
 
-DiskCache::DiskCache(const std::string& hash, Backend& backend) {
+std::vector<std::string> files;
+std::filesystem::path functions_dir;
+
+bool initialized = false;
+
+void initialize() {
+    if (initialized) {
+        return;
+    }
+
     std::filesystem::path cache_dir;
     const char* cache_home = getenv("XDG_CACHE_HOME");
     if (cache_home == nullptr) {
@@ -17,21 +27,53 @@ DiskCache::DiskCache(const std::string& hash, Backend& backend) {
         cache_dir = std::filesystem::path(cache_home) / "felix86";
     }
 
-    cache_dir /= hash;
-
     if (!std::filesystem::exists(cache_dir)) {
         std::filesystem::create_directories(cache_dir);
     }
 
-    if (!std::filesystem::exists(cache_dir / "metadata.json")) {
-        std::ofstream metadata_file(cache_dir / "metadata.json");
-        metadata_file << "{}";
+    functions_dir = cache_dir / "functions";
+    if (!std::filesystem::exists(functions_dir)) {
+        std::filesystem::create_directories(functions_dir);
     }
 
-    nlohmann::json metadata = nlohmann::json::parse(std::ifstream(cache_dir / "metadata.json"));
-    for (auto& [key, value] : metadata.items()) {
+    for (const auto& entry : std::filesystem::directory_iterator(functions_dir)) {
+        files.push_back(entry.path().filename().string());
     }
 
-    // The problem is loading functions for dynlibs too
-    UNIMPLEMENTED();
+    initialized = true;
+}
+
+bool DiskCache::Has(const std::string& key) {
+    initialize();
+    return std::find(files.begin(), files.end(), key) != files.end();
+}
+
+std::vector<u8> DiskCache::Read(const std::string& key) {
+    initialize();
+
+    std::filesystem::path file_path = functions_dir / key;
+    ASSERT(std::filesystem::exists(file_path));
+    ASSERT(std::filesystem::is_regular_file(file_path));
+
+    std::ifstream file(file_path, std::ios::binary);
+    ASSERT(file.is_open());
+
+    file.seekg(0, std::ios::end);
+    size_t size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<u8> data(size);
+    file.read(reinterpret_cast<char*>(data.data()), size);
+
+    return data;
+}
+
+void DiskCache::Write(const std::string& key, void* data, size_t size) {
+    initialize();
+
+    std::filesystem::path file_path = functions_dir / key;
+    std::ofstream file(file_path, std::ios::binary);
+    ASSERT(file.is_open());
+
+    file.write(reinterpret_cast<char*>(data), size);
 }
