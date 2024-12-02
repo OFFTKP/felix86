@@ -27,9 +27,7 @@ struct Backend {
 
     void* AddCodeAt(u64 address, void* code, u64 size) {
         void* start = as.GetCursorPointer();
-        printf("cursor before: %p\n", start);
-        as.GetCodeBuffer().Emit(std::span((u8*)code, size));
-        printf("cursor after: %p\n", as.GetCursorPointer());
+        as.GetCodeBuffer().Emit(code, size);
         map[address] = {start, size};
         return start;
     }
