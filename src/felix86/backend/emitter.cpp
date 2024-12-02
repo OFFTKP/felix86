@@ -148,12 +148,14 @@ void Emitter::EmitPopAllCallerSaved(Backend& backend) {
 
 void Emitter::EmitJumpFar(Backend& backend, void* target) {
     // Check if target is in one MB range
-    void* cursor = AS.GetCursorPointer();
+    u8* cursor = AS.GetCursorPointer();
     if (!IsValidJTypeImm((u64)cursor - (u64)target)) {
-        AS.LI(t0, (u64)target);
+        Literal literal(target);
+        AS.LD(t0, &literal); // AUIPC + LD
         AS.JR(t0);
+        AS.Place(&literal);
     } else {
-        AS.J((u64)target - (u64)cursor);
+        UNREACHABLE();
     }
 }
 
@@ -173,11 +175,17 @@ void Emitter::EmitJumpConditional(Backend& backend, biscuit::GPR condition, Labe
 void Emitter::EmitJumpConditionalFar(Backend& backend, biscuit::GPR condition, void* target_true, void* target_false) {
     Label false_label;
     AS.BEQZ(condition, &false_label);
-    AS.LI(t0, (u64)target_true);
+
+    Literal true_literal(target_true);
+    AS.LD(t0, &true_literal); // AUIPC + LD
     AS.JR(t0);
+    AS.Place(&true_literal);
+
     AS.Bind(&false_label);
-    AS.LI(t0, (u64)target_false);
+    Literal false_literal(target_false);
+    AS.LD(t0, &false_literal); // AUIPC + LD
     AS.JR(t0);
+    AS.Place(&false_literal);
 }
 
 void Emitter::EmitCallHostFunction(Backend& backend, u64 function) {

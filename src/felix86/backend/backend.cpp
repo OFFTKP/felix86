@@ -203,10 +203,11 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
                 jump.offset = as.GetCodeBuffer().GetCursorOffset();
                 jump.label = block->GetSuccessor(0)->GetLabel();
                 jumps.push_back(jump);
-                // TODO: make it smaller when we implement literals in jumpfar and jumpconditionalfar
-                for (int i = 0; i < 30; i++) {
-                    as.NOP();
-                }
+                as.EBREAK(); // AUIPC
+                as.EBREAK(); // LD
+                as.EBREAK(); // JR
+                as.EBREAK(); // Two instructions worth of space to hold the address literal
+                as.EBREAK();
             } else if (inst.GetOpcode() == IROpcode::JumpConditional) {
                 JumpConditional jump;
                 jump.index = block->GetIndex();
@@ -215,9 +216,22 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
                 jump.label_true = block->GetSuccessor(0)->GetLabel();
                 jump.label_false = block->GetSuccessor(1)->GetLabel();
                 jumps_conditional.push_back(jump);
-                for (int i = 0; i < 30; i++) {
-                    as.NOP();
-                }
+
+                as.EBREAK(); // BEQZ
+
+                // True jump
+                as.EBREAK(); // AUIPC
+                as.EBREAK(); // LD
+                as.EBREAK(); // JR
+                as.EBREAK(); // Two instructions worth of space to hold the address literal
+                as.EBREAK();
+
+                // False jump
+                as.EBREAK(); // AUIPC
+                as.EBREAK(); // LD
+                as.EBREAK(); // JR
+                as.EBREAK(); // Two instructions worth of space to hold the address literal
+                as.EBREAK();
             } else {
                 Emitter::Emit(*this, allocations, *block, inst);
             }
@@ -242,12 +256,14 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
         as.RewindBuffer(offset);
 
         void* target = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label->GetLocation()));
-        void* here = as.GetCursorPointer();
+        u8* here = as.GetCursorPointer();
         if (IsValidJTypeImm((ptrdiff_t)target - (ptrdiff_t)here)) {
             Emitter::EmitJump(*this, label);
         } else {
             Emitter::EmitJumpFar(*this, target);
         }
+        u8* after = as.GetCursorPointer();
+        ASSERT(after - here <= 4 * 5); // there's 5 instructions worth of space for this backpatched jump
 
         as.AdvanceBuffer(current_offset);
     }
@@ -261,12 +277,14 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
         void* target_true = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_true->GetLocation()));
         void* target_false = (void*)(as.GetCodeBuffer().GetOffsetAddress(*label_false->GetLocation()));
-        void* here = as.GetCursorPointer();
+        u8* here = as.GetCursorPointer();
         if (IsValidJTypeImm((ptrdiff_t)target_true - (ptrdiff_t)here) && IsValidJTypeImm((ptrdiff_t)target_false - (ptrdiff_t)here)) {
             Emitter::EmitJumpConditional(*this, condition, label_true, label_false);
         } else {
             Emitter::EmitJumpConditionalFar(*this, condition, target_true, target_false);
         }
+        u8* after = as.GetCursorPointer();
+        ASSERT(after - here <= 4 * 11); // there's 11 instructions worth of space for this backpatched jump
 
         as.AdvanceBuffer(current_offset);
     }
