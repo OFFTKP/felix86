@@ -208,6 +208,7 @@ void* Emulator::compileFunction(u64 rip) {
 
     // Check disk cache if enabled
     if (g_cache_functions) {
+        ASSERT(!g_testing);
         std::string hex_hash = fmt::format("{:016x}", function.GetHash());
         if (DiskCache::Has(hex_hash)) {
             std::vector<u8> func = DiskCache::Read(hex_hash);
@@ -264,6 +265,7 @@ void* Emulator::compileFunction(u64 rip) {
     }
 
     if (g_cache_functions) {
+        ASSERT(!g_testing);
         std::string hex_hash = fmt::format("{:016x}", function.GetHash());
         DiskCache::Write(hex_hash, func, size);
     }
