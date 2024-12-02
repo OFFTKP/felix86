@@ -898,6 +898,9 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
             WARN("XGETBV");
         } else if (opcode == 0xD1) { // xsetbv
             ERROR("XSETBV instruction not implemented");
+        } else if (opcode == 0xD5) {
+            ir.SetExitReason(EXIT_REASON_TSX);
+            ir.TerminateJump(ir.GetExit());
         } else {
             ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
         }

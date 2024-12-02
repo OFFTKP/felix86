@@ -29,6 +29,8 @@ std::string ExitReasonToString(ExitReason reason) {
         return "Vector extension disabled";
     case ExitReason::EXIT_REASON_UD2:
         return "Hit ud2 instruction";
+    case ExitReason::EXIT_REASON_TSX:
+        return "Hit tsx instruction";
     }
 
     UNREACHABLE();
