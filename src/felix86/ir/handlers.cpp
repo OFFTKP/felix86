@@ -899,7 +899,7 @@ IR_HANDLE(group7) { // group 7 - 0x0f 0x01
         } else if (opcode == 0xD1) { // xsetbv
             ERROR("XSETBV instruction not implemented");
         } else {
-            ERROR("LGDT instruction not implemented");
+            ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
         }
         break;
     }
