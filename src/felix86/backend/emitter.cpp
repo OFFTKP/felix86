@@ -155,7 +155,7 @@ void Emitter::EmitJumpFar(Backend& backend, void* target) {
         AS.JR(t0);
         AS.Place(&literal);
     } else {
-        UNREACHABLE();
+        AS.J((u64)target - (u64)cursor);
     }
 }
 
