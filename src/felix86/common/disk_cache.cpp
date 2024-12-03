@@ -64,6 +64,7 @@ SerializedFunction DiskCache::Read(const std::string& key) {
 
     SerializedFunction function;
     std::vector<u8>& data = function.GetData();
+    data.resize(size);
     file.read(reinterpret_cast<char*>(data.data()), size);
 
     return function;
