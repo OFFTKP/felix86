@@ -88,4 +88,6 @@ BackendBlock BackendBlock::Deserialize(const SerializedFunction& function, std::
     for (u32 i = 0; i < inst_count; i++) {
         block.instructions.push_back(BackendInstruction::Deserialize(function));
     }
+
+    return block;
 }

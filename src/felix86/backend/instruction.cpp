@@ -86,9 +86,12 @@ BackendInstruction BackendInstruction::Deserialize(const SerializedFunction& fun
     for (int i = 0; i < inst.operand_count; i++) {
         inst.operand_names[i] = function.Pop<u32>();
     }
+
     inst.immediate_data = function.Pop<u64>();
     inst.opcode = static_cast<IROpcode>(function.Pop<u8>());
     inst.desired_type = static_cast<AllocationType>(function.Pop<u8>());
     inst.masked = static_cast<VecMask>(function.Pop<u8>());
     inst.vector_state = static_cast<VectorState>(function.Pop<u8>());
+
+    return inst;
 }
