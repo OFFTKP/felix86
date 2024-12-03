@@ -712,10 +712,11 @@ IR_HANDLE(group2_rm32_cl) { // rol/ror/rcl/rcr/shl/shr/sal/sar rm16/32/64, cl - 
 
 IR_HANDLE(call_rel32) { // call rel32 - 0xe8
     u64 displacement = (i64)(i32)inst->operand_imm.immediate.data;
-    u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
-    u64 return_address = ir.GetCurrentAddress() + inst->length;
-    SSAInstruction* rip = ir.Imm(jump_address);
-    SSAInstruction* return_rip = ir.Imm(return_address);
+    u64 offset = ir.GetCurrentAddress() - ir.GetFunction().GetStartAddress();
+    u64 jump_address = offset + inst->length + displacement;
+    u64 return_address = offset + inst->length;
+    SSAInstruction* rip = ir.Add(ir.GetReg(X86_REF_RIP), ir.Imm(jump_address));
+    SSAInstruction* return_rip = ir.Add(ir.GetReg(X86_REF_RIP), ir.Imm(return_address));
     SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
     SSAInstruction* rsp_sub = ir.Addi(rsp, -8);
     ir.WriteMemory(rsp_sub, return_rip, X86_SIZE_QWORD);
@@ -842,10 +843,11 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
     case Group5::Call: {
         x86_operand_t rm_op = inst->operand_rm;
         rm_op.size = X86_SIZE_QWORD;
-        u64 return_address = ir.GetCurrentAddress() + inst->length;
+        u64 offset = ir.GetCurrentAddress() - ir.GetFunction().GetStartAddress();
+        u64 return_address = offset + inst->length;
         SSAInstruction* rip = ir.GetRm(rm_op);
         SSAInstruction* rsp = ir.GetReg(X86_REF_RSP);
-        SSAInstruction* return_rip = ir.Imm(return_address);
+        SSAInstruction* return_rip = ir.Add(ir.GetReg(X86_REF_RIP), ir.Imm(return_address));
         SSAInstruction* rsp_sub = ir.Addi(rsp, -8);
         ir.WriteMemory(rsp_sub, return_rip, X86_SIZE_QWORD);
         ir.SetReg(rsp_sub, X86_REF_RSP);
