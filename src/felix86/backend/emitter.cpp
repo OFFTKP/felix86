@@ -28,7 +28,8 @@ biscuit::GPR PickNot(const auto& gprs, std::initializer_list<biscuit::GPR> exclu
 
 void EmitCrash(Backend& backend, ExitReason reason) {
     Emitter::EmitSetExitReason(backend, static_cast<u64>(reason));
-    Emitter::EmitJumpFar(backend, backend.GetCrashTarget());
+    AS.LD(t0, offsetof(ThreadState, crash_handler), Registers::ThreadStatePointer());
+    AS.JR(t0);
 }
 
 // TODO: pull out to ir emitter
