@@ -1,5 +1,6 @@
 #pragma once
 
+#include "felix86/common/hash.hpp"
 #include "felix86/ir/block.hpp"
 #include "felix86/ir/dominator_tree.hpp"
 #include "tsl/robin_map.h"
@@ -73,18 +74,18 @@ struct IRFunction {
 
     std::vector<IRBlock*> GetBlocksPostorder();
 
-    u64& GetHashRef() {
+    Hash& GetHashRef() {
         return hash;
     }
 
-    u64 GetHash() const {
+    Hash GetHash() const {
         return hash;
     }
 
 private:
     void deallocateAll();
 
-    u64 hash = 0;
+    Hash hash{};
     IRBlock* entry = nullptr;
     IRBlock* exit = nullptr;
     IRBlock* start_address_block = nullptr;

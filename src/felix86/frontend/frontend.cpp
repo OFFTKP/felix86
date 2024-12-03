@@ -184,7 +184,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
     return 0;
 }
 
-void frontend_compile_instruction(IREmitter& ir, u64& hash) {
+void frontend_compile_instruction(IREmitter& ir, Hash& hash) {
     const u8* const data = (u8*)ir.GetCurrentAddress();
 
     x86_instruction_t inst = {};

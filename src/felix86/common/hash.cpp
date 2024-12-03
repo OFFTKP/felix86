@@ -1,6 +1,7 @@
+#include <openssl/md5.h>
 #include "felix86/common/hash.hpp"
-#include "xxhash.h"
 
-u64 felix86_hash(const void* data, size_t size, u64 seed) {
-    return XXH64(data, size, seed);
+Hash felix86_hash(const void* data, size_t size, Hash seed) {
+    MD5((const u8*)data, size, (u8*)&seed.values);
+    return seed;
 }
