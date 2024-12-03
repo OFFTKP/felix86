@@ -1,17 +1,9 @@
 #include "felix86/backend/backend.hpp"
 #include "felix86/backend/emitter.hpp"
-#include "felix86/hle/cpuid.hpp"
-#include "felix86/hle/syscall.hpp"
 
 #define AS (backend.GetAssembler())
 
 namespace {
-
-void felix86_rdtsc(ThreadState* state) {
-    WARN("Rdtsc called, ignoring...");
-    state->SetGpr(X86_REF_RAX, 0);
-    state->SetGpr(X86_REF_RDX, 0);
-}
 
 biscuit::GPR Push(Backend& backend, biscuit::GPR Rs) {
     AS.ADDI(Registers::StackPointer(), Registers::StackPointer(), -8);
@@ -270,9 +262,9 @@ void Emitter::EmitImmediate(Backend& backend, biscuit::GPR Rd, u64 immediate) {
 void Emitter::EmitRdtsc(Backend& backend) {
     EmitPushAllCallerSaved(backend);
 
+    AS.LD(t0, offsetof(ThreadState, rdtsc_handler), Registers::ThreadStatePointer());
     AS.MV(a0, Registers::ThreadStatePointer());
-    AS.LI(a1, (u64)felix86_rdtsc);
-    AS.JALR(a1);
+    AS.JALR(t0);
 
     EmitPopAllCallerSaved(backend);
 }
@@ -280,10 +272,9 @@ void Emitter::EmitRdtsc(Backend& backend) {
 void Emitter::EmitSyscall(Backend& backend) {
     EmitPushAllCallerSaved(backend);
 
-    AS.LI(a0, (u64)&backend.GetEmulator()); // TODO: maybe make Emulator class global...
-    AS.MV(a1, Registers::ThreadStatePointer());
-    AS.LI(a2, (u64)felix86_syscall); // TODO: remove when moving code buffer close to text?
-    AS.JALR(a2);
+    AS.LD(t0, offsetof(ThreadState, syscall_handler), Registers::ThreadStatePointer());
+    AS.MV(a0, Registers::ThreadStatePointer());
+    AS.JALR(t0);
 
     EmitPopAllCallerSaved(backend);
 }
@@ -291,9 +282,9 @@ void Emitter::EmitSyscall(Backend& backend) {
 void Emitter::EmitCpuid(Backend& backend) {
     EmitPushAllCallerSaved(backend);
 
+    AS.LD(t0, offsetof(ThreadState, cpuid_handler), Registers::ThreadStatePointer());
     AS.MV(a0, Registers::ThreadStatePointer());
-    AS.LI(a1, (u64)felix86_cpuid);
-    AS.JALR(a1);
+    AS.JALR(t0);
 
     EmitPopAllCallerSaved(backend);
 }
@@ -404,17 +395,25 @@ void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
 }
 
 void Emitter::EmitDiv128(Backend& backend, biscuit::GPR Rs) {
-    Push(backend, a1);
+    EmitPushAllCallerSaved(backend);
+
+    AS.LD(t0, offsetof(ThreadState, div128_handler), Registers::ThreadStatePointer());
+    AS.MV(a0, Registers::ThreadStatePointer());
     AS.MV(a1, Rs);
-    EmitCallHostFunction(backend, (u64)felix86_div128);
-    Pop(backend, a1);
+    AS.JALR(t0);
+
+    EmitPopAllCallerSaved(backend);
 }
 
 void Emitter::EmitDivu128(Backend& backend, biscuit::GPR Rs) {
-    Push(backend, a1);
+    EmitPushAllCallerSaved(backend);
+
+    AS.LD(t0, offsetof(ThreadState, divu128_handler), Registers::ThreadStatePointer());
+    AS.MV(a0, Registers::ThreadStatePointer());
     AS.MV(a1, Rs);
-    EmitCallHostFunction(backend, (u64)felix86_divu128);
-    Pop(backend, a1);
+    AS.JALR(t0);
+
+    EmitPopAllCallerSaved(backend);
 }
 
 void Emitter::EmitReadByte(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {

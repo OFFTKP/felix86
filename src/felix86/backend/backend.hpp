@@ -47,8 +47,8 @@ struct Backend {
         return emulator;
     }
 
-    void* GetCrashTarget() {
-        return crash_target;
+    void* GetCrashHandler() {
+        return crash_handler;
     }
 
     void* GetCompileNext() {
@@ -71,5 +71,5 @@ private:
     void (*enter_dispatcher)(ThreadState*) = nullptr;
     void* exit_dispatcher = nullptr;
     void* compile_next = nullptr;
-    void* crash_target = nullptr;
+    void* crash_handler = nullptr;
 };

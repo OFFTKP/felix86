@@ -174,6 +174,15 @@ struct ThreadState {
     u64 clear_child_tid{};
     u64 brk_current_address{};
 
+    // Addresses that the JIT will load and call/jump to if necessary
+    u64 compile_next{};
+    u64 crash_handler{};
+    u64 syscall_handler{};
+    u64 cpuid_handler{};
+    u64 rdtsc_handler{};
+    u64 div128_handler{};
+    u64 divu128_handler{};
+
     u8 exit_reason{};
 
     // Storage for saved RISC-V registers, per thread, for when it's time to completely

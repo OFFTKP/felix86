@@ -2364,6 +2364,7 @@ void IREmitter::TerminateJumpConditional(SSAInstruction* condition, IRBlock* tar
 }
 
 void IREmitter::CallHostFunction(u64 function_address) {
+    ASSERT_MSG(!g_cache_functions, "CallHostFunction is not supported when caching functions");
     SSAInstruction* instruction = insertInstruction(IROpcode::CallHostFunction, {}, function_address);
     instruction->Lock();
 }

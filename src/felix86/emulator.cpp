@@ -8,6 +8,9 @@
 #include "felix86/common/disk_cache.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/frontend/frontend.hpp"
+#include "felix86/hle/cpuid.hpp"
+#include "felix86/hle/rdtsc.hpp"
+#include "felix86/hle/syscall.hpp"
 #include "felix86/ir/passes/passes.hpp"
 
 extern char** environ;
@@ -298,4 +301,18 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     VERBOSE("Jumping to function %016lx (%016lx), located at %p", thread_state->GetRip(), address, function);
 
     return function;
+}
+
+ThreadState* Emulator::createThreadState() {
+    thread_states.push_back(ThreadState{});
+
+    ThreadState* thread_state = &thread_states.back();
+    thread_state->syscall_handler = (u64)felix86_syscall;
+    thread_state->cpuid_handler = (u64)felix86_cpuid;
+    thread_state->rdtsc_handler = (u64)felix86_rdtsc;
+    thread_state->compile_next = (u64)backend.GetCompileNext();
+    thread_state->crash_handler = (u64)backend.GetCrashHandler();
+    thread_state->div128_handler = (u64)felix86_div128;
+    thread_state->divu128_handler = (u64)felix86_divu128;
+    return thread_state;
 }

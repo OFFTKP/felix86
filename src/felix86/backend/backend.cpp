@@ -101,7 +101,7 @@ void Backend::emitNecessaryStuff() {
 
     as.RET();
 
-    crash_target = as.GetCursorPointer();
+    crash_handler = as.GetCursorPointer();
 
     // Load the old state and print a message
     as.MV(address, Registers::ThreadStatePointer());
@@ -118,7 +118,7 @@ void Backend::emitNecessaryStuff() {
 
     VERBOSE("Enter dispatcher at: %p", enter_dispatcher);
     VERBOSE("Exit dispatcher at: %p", exit_dispatcher);
-    VERBOSE("Crash target at: %p", crash_target);
+    VERBOSE("Crash target at: %p", crash_handler);
     VERBOSE("Compile next at: %p", compile_next);
 }
 

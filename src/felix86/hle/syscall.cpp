@@ -63,7 +63,7 @@ const char* print_syscall_name(u64 syscall_number) {
     }
 }
 
-void felix86_syscall(Emulator* emulator, ThreadState* state) {
+void felix86_syscall(ThreadState* state) {
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 rdi = state->GetGpr(X86_REF_RDI);
     u64 rsi = state->GetGpr(X86_REF_RSI);
@@ -73,8 +73,8 @@ void felix86_syscall(Emulator* emulator, ThreadState* state) {
     u64 r9 = state->GetGpr(X86_REF_R9);
     ssize_t result = -1;
 
-    Filesystem& fs = emulator->GetFilesystem();
-    SignalHandler& signals = emulator->GetSignalHandler();
+    Filesystem& fs = g_emulator->GetFilesystem();
+    SignalHandler& signals = g_emulator->GetSignalHandler();
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {

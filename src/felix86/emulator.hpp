@@ -78,11 +78,7 @@ private:
 
     void* compileFunction(u64 rip);
 
-    ThreadState* createThreadState() {
-        thread_states.push_back(ThreadState{});
-        ThreadState* thread_state = &thread_states.back();
-        return thread_state;
-    }
+    ThreadState* createThreadState();
 
     std::mutex compilation_mutex; // to synchronize compilation and function lookup
     std::list<ThreadState> thread_states;
