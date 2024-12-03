@@ -149,11 +149,13 @@ void Emitter::EmitPopAllCallerSaved(Backend& backend) {
 void Emitter::EmitJumpFar(Backend& backend, void* target) {
     // Check if target is in one MB range
     u8* cursor = AS.GetCursorPointer();
-    if (!IsValidJTypeImm((u64)cursor - (u64)target)) {
-        Literal literal(target);
-        AS.LD(t0, &literal); // AUIPC + LD
+    if (!IsValidJTypeImm((u64)target - (u64)cursor)) {
+        u64 offset = (u64)target - (u64)cursor;
+        const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        AS.AUIPC(t0, hi20);
+        AS.ADDI(t0, t0, lo12);
         AS.JR(t0);
-        AS.Place(&literal);
     } else {
         AS.J((u64)target - (u64)cursor);
     }
@@ -176,16 +178,24 @@ void Emitter::EmitJumpConditionalFar(Backend& backend, biscuit::GPR condition, v
     Label false_label;
     AS.BEQZ(condition, &false_label);
 
-    Literal true_literal(target_true);
-    AS.LD(t0, &true_literal); // AUIPC + LD
-    AS.JR(t0);
-    AS.Place(&true_literal);
+    {
+        u64 offset = (u64)target_true - (u64)AS.GetCursorPointer();
+        const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        AS.AUIPC(t0, hi20);
+        AS.ADDI(t0, t0, lo12);
+        AS.JR(t0);
+    }
 
-    AS.Bind(&false_label);
-    Literal false_literal(target_false);
-    AS.LD(t0, &false_literal); // AUIPC + LD
-    AS.JR(t0);
-    AS.Place(&false_literal);
+    {
+        AS.Bind(&false_label);
+        u64 offset = (u64)target_false - (u64)AS.GetCursorPointer();
+        const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        AS.AUIPC(t0, hi20);
+        AS.ADDI(t0, t0, lo12);
+        AS.JR(t0);
+    }
 }
 
 void Emitter::EmitCallHostFunction(Backend& backend, u64 function) {
