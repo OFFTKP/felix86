@@ -2,6 +2,7 @@
 
 #include <variant>
 #include "biscuit/registers.hpp"
+#include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
 enum class AllocationType : u8 {
@@ -44,6 +45,17 @@ struct Allocation {
 
     AllocationType GetAllocationType() const {
         return (AllocationType)allocation.index();
+    }
+
+    u32 GetIndex() const {
+        if (IsGPR()) {
+            return AsGPR().Index();
+        } else if (IsVec()) {
+            return AsVec().Index();
+        } else {
+            UNREACHABLE();
+            return 0;
+        }
     }
 
     operator biscuit::GPR() const {

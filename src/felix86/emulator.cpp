@@ -211,10 +211,12 @@ void* Emulator::compileFunction(u64 rip) {
         ASSERT(!g_testing);
         std::string hex_hash = fmt::format("{:016x}", function.GetHash());
         if (DiskCache::Has(hex_hash)) {
-            std::vector<u8> func = DiskCache::Read(hex_hash);
+            SerializedFunction func = DiskCache::Read(hex_hash);
+            BackendFunction backend_function = BackendFunction::Deserialize(func);
+            backend_function.SetStartAddress(rip);
+            AllocationMap allocations = AllocationMap::Deserialize(func);
             std::lock_guard<std::mutex> lock(compilation_mutex);
-            void* start = backend.AddCodeAt(rip, func.data(), func.size());
-            return start;
+            return backend.EmitFunction(backend_function, allocations).first;
         }
     }
 
@@ -256,8 +258,9 @@ void* Emulator::compileFunction(u64 rip) {
         fmt::print("Backend function IR:\n{}\n", backend_function.Print());
     }
 
-    std::lock_guard<std::mutex> lock(compilation_mutex);
+    compilation_mutex.lock();
     auto [func, size] = backend.EmitFunction(backend_function, allocations);
+    compilation_mutex.unlock();
 
     if (g_print_disassembly) {
         PLAIN("Disassembly of function at 0x%lx:\n", rip);
@@ -267,7 +270,11 @@ void* Emulator::compileFunction(u64 rip) {
     if (g_cache_functions) {
         ASSERT(!g_testing);
         std::string hex_hash = fmt::format("{:016x}", function.GetHash());
-        DiskCache::Write(hex_hash, func, size);
+        SerializedFunction serialized_function = backend_function.Serialize();
+        allocations.Serialize(serialized_function);
+        ASSERT(serialized_function.AllPopped());
+        auto& data = serialized_function.GetData();
+        DiskCache::Write(hex_hash, (void*)data.data(), data.size());
     }
 
     return func;

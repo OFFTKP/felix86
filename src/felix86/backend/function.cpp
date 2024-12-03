@@ -1,4 +1,5 @@
 #include "felix86/backend/function.hpp"
+#include "felix86/common/version.hpp"
 
 namespace {
 struct ParallelMove {
@@ -238,4 +239,64 @@ std::string BackendFunction::Print() const {
     }
 
     return ret;
+}
+
+/**
+    Serialized function format, likely to change in the future
+    u32 version
+    u32 block_count
+
+    // block_count times, in order from 0 to block_count - 1
+    {
+        u64 start_address
+
+        u32 predecessor_count
+        // predecessor_count times
+        {
+            u32 index
+        }
+
+        u32 successor_count
+        // successor_count times
+        {
+            u32 index
+        }
+
+        u32 instruction_count
+        // instruction_count times
+        {
+            instruction serialized data, see BackendInstruction::Serialize
+        }
+    }
+*/
+
+SerializedFunction BackendFunction::Serialize() const {
+    SerializedFunction function;
+    function.Push(FELIX86_VERSION_U32);
+    function.Push((u32)blocks.size());
+
+    for (size_t i = 0; i < blocks.size(); i++) {
+        // Make sure that each block index is correct in case we change stuff in the future
+        ASSERT(blocks[i]->GetIndex() == i);
+        blocks[i]->Serialize(function);
+    }
+
+    return function;
+}
+
+BackendFunction BackendFunction::Deserialize(const SerializedFunction& data) {
+    ASSERT(data.Pop<u32>() == FELIX86_VERSION_U32);
+
+    BackendFunction function;
+    function.blocks.resize(data.Pop<u32>());
+
+    for (size_t i = 0; i < function.blocks.size(); i++) {
+        function.blocks[i] = new BackendBlock();
+    }
+
+    for (size_t i = 0; i < function.blocks.size(); i++) {
+        *function.blocks[i] = BackendBlock::Deserialize(data, function.blocks);
+    }
+
+    return function;
 }

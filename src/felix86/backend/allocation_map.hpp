@@ -2,6 +2,7 @@
 
 #include <tsl/robin_map.h>
 #include "felix86/backend/allocation.hpp"
+#include "felix86/backend/serialized_function.hpp"
 #include "felix86/common/log.hpp"
 
 struct AllocationMap {
@@ -72,6 +73,29 @@ struct AllocationMap {
 
     auto size() const {
         return allocations.size();
+    }
+
+    void Serialize(SerializedFunction& function) const {
+        function.Push(spill_size);
+        function.Push(allocations.size());
+        for (const auto& [name, allocation] : allocations) {
+            function.Push(name);
+            function.Push((u8)allocation.GetAllocationType());
+            function.Push((u8)allocation.GetIndex());
+        }
+    }
+
+    static AllocationMap Deserialize(const SerializedFunction& function) {
+        AllocationMap allocations;
+        allocations.spill_size = function.Pop<u32>();
+        u32 count = function.Pop<u32>();
+        for (u32 i = 0; i < count; i++) {
+            u32 name = function.Pop<u32>();
+            AllocationType type = (AllocationType)function.Pop<u8>();
+            u32 index = function.Pop<u8>();
+            allocations.Allocate(name, type, index);
+        }
+        return allocations;
     }
 
 private:

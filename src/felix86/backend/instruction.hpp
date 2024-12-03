@@ -2,6 +2,7 @@
 
 #include <array>
 #include "felix86/backend/allocation.hpp"
+#include "felix86/backend/serialized_function.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/instruction.hpp"
 #include "felix86/ir/opcode.hpp"
@@ -64,6 +65,10 @@ struct BackendInstruction {
     static BackendInstruction FromLoadSpill(u32 name, u32 spill_offset, AllocationType type);
 
     [[nodiscard]] std::string Print() const;
+
+    void Serialize(SerializedFunction& function) const;
+
+    static BackendInstruction Deserialize(const SerializedFunction& function);
 
 private:
     friend struct BackendBlock;

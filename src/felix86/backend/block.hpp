@@ -2,7 +2,6 @@
 
 #include <list>
 #include "felix86/backend/instruction.hpp"
-#include "felix86/common/termination.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/ir/block.hpp"
 
@@ -10,6 +9,8 @@ struct NamedPhi {
     const Phi* phi = nullptr;
     u32 name = 0;
 };
+
+struct SerializedFunction;
 
 struct BackendBlock {
     static BackendBlock FromIRBlock(const IRBlock* block, std::vector<NamedPhi>& phis);
@@ -123,6 +124,10 @@ struct BackendBlock {
     }
 
     [[nodiscard]] std::string Print() const;
+
+    void Serialize(SerializedFunction& function) const;
+
+    static BackendBlock Deserialize(const SerializedFunction& function, std::vector<BackendBlock*> blocks);
 
 private:
     friend struct BackendFunction;

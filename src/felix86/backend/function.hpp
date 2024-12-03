@@ -1,6 +1,7 @@
 #pragma once
 
 #include "felix86/backend/block.hpp"
+#include "felix86/backend/serialized_function.hpp"
 #include "felix86/ir/function.hpp"
 
 struct BackendFunction {
@@ -41,6 +42,10 @@ struct BackendFunction {
         return start_address;
     }
 
+    void SetStartAddress(u64 address) {
+        start_address = address;
+    }
+
     void RemoveBlock(u32 block) {
         auto it = blocks.begin();
         while (it != blocks.end()) {
@@ -52,6 +57,9 @@ struct BackendFunction {
         }
         ASSERT(false);
     }
+
+    SerializedFunction Serialize() const;
+    static BackendFunction Deserialize(const SerializedFunction& data);
 
 private:
     std::vector<BackendBlock*> blocks;

@@ -1,4 +1,5 @@
 #include "felix86/backend/block.hpp"
+#include "felix86/backend/serialized_function.hpp"
 #include "felix86/common/log.hpp"
 
 BackendBlock BackendBlock::FromIRBlock(const IRBlock* block, std::vector<NamedPhi>& phis) {
@@ -43,4 +44,48 @@ std::string BackendBlock::Print() const {
     ret += "\n\n";
 
     return ret;
+}
+
+void BackendBlock::Serialize(SerializedFunction& function) const {
+    function.Push(start_address);
+
+    function.Push(GetPredecessorCount());
+    for (const BackendBlock* pred : predecessors) {
+        function.Push(pred->GetIndex());
+    }
+
+    function.Push(GetSuccessorCount());
+    for (const BackendBlock* succ : successors) {
+        if (succ) {
+            function.Push(succ->GetIndex());
+        }
+    }
+
+    function.Push(static_cast<u32>(instructions.size()));
+    for (const BackendInstruction& inst : instructions) {
+        inst.Serialize(function);
+    }
+}
+
+BackendBlock BackendBlock::Deserialize(const SerializedFunction& function, std::vector<BackendBlock*> blocks) {
+    BackendBlock block;
+    block.start_address = function.Pop<u64>();
+
+    u32 pred_count = function.Pop<u32>();
+    for (u32 i = 0; i < pred_count; i++) {
+        u32 index = function.Pop<u32>();
+        block.predecessors.push_back(blocks[index]);
+    }
+
+    u32 succ_count = function.Pop<u32>();
+    ASSERT(succ_count <= 2);
+    for (u32 i = 0; i < succ_count; i++) {
+        u32 index = function.Pop<u32>();
+        block.successors[i] = blocks[index];
+    }
+
+    u32 inst_count = function.Pop<u32>();
+    for (u32 i = 0; i < inst_count; i++) {
+        block.instructions.push_back(BackendInstruction::Deserialize(function));
+    }
 }

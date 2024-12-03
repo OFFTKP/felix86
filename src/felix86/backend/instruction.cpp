@@ -65,3 +65,30 @@ extern std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* op
 std::string BackendInstruction::Print() const {
     return ::Print(opcode, X86_REF_COUNT, name, operand_names.data(), immediate_data);
 }
+
+void BackendInstruction::Serialize(SerializedFunction& function) const {
+    function.Push(name);
+    function.Push(operand_count);
+    for (int i = 0; i < operand_count; i++) {
+        function.Push(operand_names[i]);
+    }
+    function.Push(immediate_data);
+    function.Push(static_cast<u8>(opcode));
+    function.Push(static_cast<u8>(desired_type));
+    function.Push(static_cast<u8>(masked));
+    function.Push(static_cast<u8>(vector_state));
+}
+
+BackendInstruction BackendInstruction::Deserialize(const SerializedFunction& function) {
+    BackendInstruction inst;
+    inst.name = function.Pop<u32>();
+    inst.operand_count = function.Pop<u8>();
+    for (int i = 0; i < inst.operand_count; i++) {
+        inst.operand_names[i] = function.Pop<u32>();
+    }
+    inst.immediate_data = function.Pop<u64>();
+    inst.opcode = static_cast<IROpcode>(function.Pop<u8>());
+    inst.desired_type = static_cast<AllocationType>(function.Pop<u8>());
+    inst.masked = static_cast<VecMask>(function.Pop<u8>());
+    inst.vector_state = static_cast<VectorState>(function.Pop<u8>());
+}
