@@ -399,8 +399,8 @@ void Emitter::EmitDiv128(Backend& backend, biscuit::GPR Rs) {
     EmitPushAllCallerSaved(backend);
 
     AS.LD(t0, offsetof(ThreadState, div128_handler), Registers::ThreadStatePointer());
+    AS.MV(a1, Rs); // a1 must be set first because Rs may be a0
     AS.MV(a0, Registers::ThreadStatePointer());
-    AS.MV(a1, Rs);
     AS.JALR(t0);
 
     EmitPopAllCallerSaved(backend);
@@ -410,8 +410,8 @@ void Emitter::EmitDivu128(Backend& backend, biscuit::GPR Rs) {
     EmitPushAllCallerSaved(backend);
 
     AS.LD(t0, offsetof(ThreadState, divu128_handler), Registers::ThreadStatePointer());
+    AS.MV(a1, Rs); // a1 must be set first because Rs may be a0
     AS.MV(a0, Registers::ThreadStatePointer());
-    AS.MV(a1, Rs);
     AS.JALR(t0);
 
     EmitPopAllCallerSaved(backend);

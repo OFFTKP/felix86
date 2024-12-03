@@ -182,6 +182,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
         // Must not insert so many instructions to blocks that are during lr/sc
         if (g_print_block_start && !block->IsCriticalSection()) {
+            ASSERT(!g_cache_functions);
             Emitter::EmitPushAllCallerSaved(*this);
             as.LI(a0, block->GetStartAddress());
             as.LI(a1, block->GetIndex());
