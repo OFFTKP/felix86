@@ -77,7 +77,7 @@ struct AllocationMap {
 
     void Serialize(SerializedFunction& function) const {
         function.Push(spill_size);
-        function.Push(allocations.size());
+        function.Push((u32)allocations.size());
         for (const auto& [name, allocation] : allocations) {
             function.Push(name);
             function.Push((u8)allocation.GetAllocationType());
