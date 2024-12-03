@@ -2,4 +2,4 @@
 
 #include "felix86/emulator.hpp"
 
-void felix86_syscall(Emulator* emulator, ThreadState* state);
+void felix86_syscall(ThreadState* state);
