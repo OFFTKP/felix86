@@ -211,10 +211,11 @@ void* Emulator::compileFunction(u64 rip) {
         ASSERT(!g_testing);
         std::string hex_hash = fmt::format("{:016x}", function.GetHash());
         if (DiskCache::Has(hex_hash)) {
-            SerializedFunction func = DiskCache::Read(hex_hash);
-            BackendFunction backend_function = BackendFunction::Deserialize(func);
+            SerializedFunction serialized_function = DiskCache::Read(hex_hash);
+            BackendFunction backend_function = BackendFunction::Deserialize(serialized_function);
             backend_function.SetStartAddress(rip);
-            AllocationMap allocations = AllocationMap::Deserialize(func);
+            AllocationMap allocations = AllocationMap::Deserialize(serialized_function);
+            ASSERT(serialized_function.AllPopped());
             std::lock_guard<std::mutex> lock(compilation_mutex);
             return backend.EmitFunction(backend_function, allocations).first;
         }
@@ -249,7 +250,7 @@ void* Emulator::compileFunction(u64 rip) {
 
     AllocationMap allocations = ir_graph_coloring_pass(backend_function);
 
-    // Remove unnecessary vector state instructions and add ones needed before stores
+    // Add vector state instructions where necessary
     PassManager::VectorStatePass(&backend_function);
 
     // PassManager::BlockShenanigansPass(&backend_function);
@@ -272,7 +273,6 @@ void* Emulator::compileFunction(u64 rip) {
         std::string hex_hash = fmt::format("{:016x}", function.GetHash());
         SerializedFunction serialized_function = backend_function.Serialize();
         allocations.Serialize(serialized_function);
-        ASSERT(serialized_function.AllPopped());
         auto& data = serialized_function.GetData();
         DiskCache::Write(hex_hash, (void*)data.data(), data.size());
     }
