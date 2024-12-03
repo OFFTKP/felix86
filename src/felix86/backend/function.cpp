@@ -242,6 +242,7 @@ std::string BackendFunction::Print() const {
 }
 
 /**
+    This is unused but kept in case I ever need it again
     Serialized function format, likely to change in the future
     u32 version
     u32 block_count

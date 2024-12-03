@@ -25,6 +25,13 @@ struct Backend {
         return {nullptr, 0};
     }
 
+    void* AddCodeAt(u64 address, void* code, u64 size) {
+        void* start = as.GetCursorPointer();
+        as.GetCodeBuffer().Emit(code, size);
+        map[address] = {start, size};
+        return start;
+    }
+
     u8 AvailableGPRs() const;
     u8 AvailableVec() const;
 

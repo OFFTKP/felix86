@@ -204,10 +204,8 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
                 jump.label = block->GetSuccessor(0)->GetLabel();
                 jumps.push_back(jump);
                 as.EBREAK(); // AUIPC
-                as.EBREAK(); // LD
+                as.EBREAK(); // ADDI
                 as.EBREAK(); // JR
-                as.EBREAK(); // Two instructions worth of space to hold the address literal
-                as.EBREAK();
             } else if (inst.GetOpcode() == IROpcode::JumpConditional) {
                 JumpConditional jump;
                 jump.index = block->GetIndex();
@@ -221,17 +219,13 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
 
                 // True jump
                 as.EBREAK(); // AUIPC
-                as.EBREAK(); // LD
+                as.EBREAK(); // ADDI
                 as.EBREAK(); // JR
-                as.EBREAK(); // Two instructions worth of space to hold the address literal
-                as.EBREAK();
 
                 // False jump
                 as.EBREAK(); // AUIPC
-                as.EBREAK(); // LD
+                as.EBREAK(); // ADDI
                 as.EBREAK(); // JR
-                as.EBREAK(); // Two instructions worth of space to hold the address literal
-                as.EBREAK();
             } else {
                 Emitter::Emit(*this, allocations, *block, inst);
             }
@@ -263,7 +257,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             Emitter::EmitJumpFar(*this, target);
         }
         u8* after = as.GetCursorPointer();
-        ASSERT(after - here <= 4 * 5); // there's 5 instructions worth of space for this backpatched jump
+        ASSERT(after - here <= 4 * 3); // there's 5 instructions worth of space for this backpatched jump
 
         as.AdvanceBuffer(current_offset);
     }
@@ -284,7 +278,7 @@ std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, con
             Emitter::EmitJumpConditionalFar(*this, condition, target_true, target_false);
         }
         u8* after = as.GetCursorPointer();
-        ASSERT(after - here <= 4 * 11); // there's 11 instructions worth of space for this backpatched jump
+        ASSERT(after - here <= 4 * 7); // there's 11 instructions worth of space for this backpatched jump
 
         as.AdvanceBuffer(current_offset);
     }

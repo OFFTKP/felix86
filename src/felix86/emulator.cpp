@@ -211,13 +211,11 @@ void* Emulator::compileFunction(u64 rip) {
         ASSERT(!g_testing);
         std::string hex_hash = fmt::format("{:016x}{:016x}", function.GetHash().values[1], function.GetHash().values[0]);
         if (DiskCache::Has(hex_hash)) {
-            SerializedFunction serialized_function = DiskCache::Read(hex_hash);
-            BackendFunction backend_function = BackendFunction::Deserialize(serialized_function);
-            backend_function.SetStartAddress(rip);
-            AllocationMap allocations = AllocationMap::Deserialize(serialized_function);
-            ASSERT(serialized_function.AllPopped());
-            std::lock_guard<std::mutex> lock(compilation_mutex);
-            return backend.EmitFunction(backend_function, allocations).first;
+            std::vector<u8> function = DiskCache::Read(hex_hash);
+            compilation_mutex.lock();
+            void* start = backend.AddCodeAt(rip, function.data(), function.size());
+            compilation_mutex.unlock();
+            return start;
         }
     }
 
@@ -271,10 +269,7 @@ void* Emulator::compileFunction(u64 rip) {
     if (g_cache_functions) {
         ASSERT(!g_testing);
         std::string hex_hash = fmt::format("{:016x}{:016x}", function.GetHash().values[1], function.GetHash().values[0]);
-        SerializedFunction serialized_function = backend_function.Serialize();
-        allocations.Serialize(serialized_function);
-        auto& data = serialized_function.GetData();
-        DiskCache::Write(hex_hash, (void*)data.data(), data.size());
+        DiskCache::Write(hex_hash, func, size);
     }
 
     return func;

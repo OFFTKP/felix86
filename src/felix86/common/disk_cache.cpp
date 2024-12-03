@@ -48,7 +48,7 @@ bool DiskCache::Has(const std::string& key) {
     return std::find(files.begin(), files.end(), key) != files.end();
 }
 
-SerializedFunction DiskCache::Read(const std::string& key) {
+std::vector<u8> DiskCache::Read(const std::string& key) {
     initialize();
 
     std::filesystem::path file_path = functions_dir / key;
@@ -62,12 +62,11 @@ SerializedFunction DiskCache::Read(const std::string& key) {
     size_t size = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    SerializedFunction function;
-    std::vector<u8>& data = function.GetData();
+    std::vector<u8> data;
     data.resize(size);
     file.read(reinterpret_cast<char*>(data.data()), size);
 
-    return function;
+    return data;
 }
 
 void DiskCache::Write(const std::string& key, void* data, size_t size) {
