@@ -2,6 +2,7 @@
 #include <thread>
 #include <argp.h>
 #include <fmt/format.h>
+#include "felix86/common/disk_cache.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/version.hpp"
 #include "felix86/emulator.hpp"
@@ -29,7 +30,7 @@ static struct argp_option options[] = {
     {"dont-optimize", 'o', 0, 0, "Don't apply optimizations on the IR"},
     {"print-disassembly", 'd', 0, 0, "Print disassembly of emitted functions"},
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
-    {"cache", 'c', 0, 0, "Cache compiled functions for the current executable"},
+    {"clear-cache", 'c', 0, 0, "Clear the compiled function cache"},
     {"extensions", 'x', "EXTS", 0,
      "Manually specify additional available RISC-V extensions, in addition to the ones detected. Useful because some extensions might not be "
      "detectable. Usage example: -e zacas,xtheadcondmov"},
@@ -129,6 +130,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             config->envp.push_back(*envp);
             envp++;
         }
+        break;
+    }
+    case 'c': {
+        DiskCache::Clear();
+        LOG("Function cache cleared!");
         break;
     }
     case 'P': {

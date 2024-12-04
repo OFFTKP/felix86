@@ -78,3 +78,11 @@ void DiskCache::Write(const std::string& key, void* data, size_t size) {
 
     file.write(reinterpret_cast<char*>(data), size);
 }
+
+void DiskCache::Clear() {
+    initialize();
+
+    for (const auto& entry : std::filesystem::directory_iterator(functions_dir)) {
+        std::filesystem::remove(entry.path());
+    }
+}
