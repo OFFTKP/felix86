@@ -152,6 +152,14 @@ void print_address(u64 address, int index) {
     PLAIN("Entering block 0x%016lx (%d)", address, index);
 }
 
+void* Backend::AddCodeAt(u64 address, void* code, u64 size) {
+    void* start = as.GetCursorPointer();
+    as.GetCodeBuffer().Emit(code, size);
+    flush_icache();
+    map[address] = {start, size};
+    return start;
+}
+
 std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, const AllocationMap& allocations) {
     void* start = as.GetCursorPointer();
     std::vector<const BackendBlock*> blocks_postorder = function.GetBlocksPostorder();
