@@ -299,6 +299,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 #endif
 
     VERBOSE("Jumping to function %016lx (%016lx), located at %p", thread_state->GetRip(), address, function);
+    VERBOSE("Now cache has %d bytes", emulator->backend.GetAssembler().GetCodeBuffer().GetSizeInBytes());
 
     return function;
 }
