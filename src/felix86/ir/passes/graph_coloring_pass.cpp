@@ -686,7 +686,6 @@ bool aggressive_coalescing_heuristic(BackendFunction& function, InterferenceGrap
 }
 
 void coalesce(BackendFunction& function, u32 lhs, u32 rhs) {
-    VERBOSE("Coalesced %s and %s", GetNameString(lhs).c_str(), GetNameString(rhs).c_str());
     for (BackendBlock* block : function.GetBlocks()) {
         for (BackendInstruction& inst : block->GetInstructions()) {
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
