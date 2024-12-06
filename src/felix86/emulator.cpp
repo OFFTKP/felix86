@@ -300,6 +300,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 
     VERBOSE("Jumping to function %016lx (%016lx), located at %p", thread_state->GetRip(), address, function);
     VERBOSE("Now cache has %d bytes", emulator->backend.GetAssembler().GetCodeBuffer().GetSizeInBytes());
+    VERBOSE("Func is at offset: %016lx", (u64)function - (u64)emulator->backend.GetAssembler().GetCodeBuffer().GetOffsetAddress(0));
 
     return function;
 }
