@@ -218,6 +218,7 @@ void* Emulator::compileFunction(u64 rip) {
             compilation_mutex.lock();
             void* start = backend.AddCodeAt(rip, function.data(), function.size());
             compilation_mutex.unlock();
+            VERBOSE("Size:: %lu", function.size());
             return start;
         }
     }
@@ -274,6 +275,8 @@ void* Emulator::compileFunction(u64 rip) {
         std::string hex_hash = fmt::format("{:016x}{:016x}", function.GetHash().values[1], function.GetHash().values[0]);
         DiskCache::Write(hex_hash, func, size);
     }
+
+    VERBOSE("Size:: %lu", size);
 
     return func;
 }
