@@ -218,7 +218,6 @@ void* Emulator::compileFunction(u64 rip) {
             compilation_mutex.lock();
             void* start = backend.AddCodeAt(rip, function.data(), function.size());
             compilation_mutex.unlock();
-            VERBOSE("Size:: %lu", function.size());
             return start;
         }
     }
@@ -276,8 +275,6 @@ void* Emulator::compileFunction(u64 rip) {
         DiskCache::Write(hex_hash, func, size);
     }
 
-    VERBOSE("Size:: %lu", size);
-
     return func;
 }
 
@@ -302,8 +299,6 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 #endif
 
     VERBOSE("Jumping to function %016lx (%016lx), located at %p", thread_state->GetRip(), address, function);
-    VERBOSE("Now cache has %d bytes", emulator->backend.GetAssembler().GetCodeBuffer().GetSizeInBytes());
-    VERBOSE("Func is at offset: %016lx", (u64)function - (u64)emulator->backend.GetAssembler().GetCodeBuffer().GetOffsetAddress(0));
 
     return function;
 }
