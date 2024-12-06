@@ -1,5 +1,6 @@
 #include <Zydis/Zydis.h>
 #include <fmt/format.h>
+#include <openssl/md5.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/hash.hpp"
 #include "felix86/common/log.hpp"
@@ -184,7 +185,7 @@ u8 decode_modrm(x86_operand_t* operand_rm, x86_operand_t* operand_reg, bool rex_
     return 0;
 }
 
-void frontend_compile_instruction(IREmitter& ir, Hash& hash) {
+void frontend_compile_instruction(IREmitter& ir, MD5_CTX& ctx) {
     const u8* const data = (u8*)ir.GetCurrentAddress();
 
     x86_instruction_t inst = {};
@@ -649,7 +650,7 @@ void frontend_compile_instruction(IREmitter& ir, Hash& hash) {
 
     // Hash every instruction that comprises the function to be able to lookup
     // the function cache
-    hash = felix86_hash(data, inst.length, hash);
+    MD5_Update(&ctx, data, inst.length);
 
     ZydisDisassembledInstruction zydis_inst;
     if (ZYAN_SUCCESS(ZydisDisassembleIntel(
@@ -687,14 +688,14 @@ void frontend_compile_instruction(IREmitter& ir, Hash& hash) {
     ir.IncrementAddress(inst.length);
 }
 
-void frontend_compile_block(IREmitter& ir, IRFunction& function, IRBlock* block) {
+void frontend_compile_block(IREmitter& ir, IRFunction& function, IRBlock* block, MD5_CTX& ctx) {
     ASSERT(!block->IsCompiled());
     block->SetCompiled();
 
     // Since compiling instructions might change the current block (due to some instruction that needs multiple blocks, for example)
     // we check that the *current* block has no termination, rather than the original block
     while (ir.GetCurrentBlock()->GetTermination() == Termination::Null) {
-        frontend_compile_instruction(ir, function.GetHashRef());
+        frontend_compile_instruction(ir, ctx);
     }
 
     if (g_print_state) {
@@ -709,20 +710,27 @@ void frontend_compile_block(IREmitter& ir, IRFunction& function, IRBlock* block)
 void frontend_compile_function(IRFunction& function) {
     IREmitter ir(function);
 
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+
     IRBlock* block = function.GetBlockAt(function.GetStartAddress());
     ir.SetBlock(block);
     ir.SetAddress(block->GetStartAddress());
-    frontend_compile_block(ir, function, block);
+    frontend_compile_block(ir, function, block, ctx);
 
     IRBlock* queued_block = ir.PopQueue();
     while (queued_block) {
         if (!queued_block->IsCompiled()) {
             ir.SetBlock(queued_block);
             ir.SetAddress(queued_block->GetStartAddress());
-            frontend_compile_block(ir, function, queued_block);
+            frontend_compile_block(ir, function, queued_block, ctx);
         }
         queued_block = ir.PopQueue();
     }
+
+    Hash function_hash;
+    MD5_Final((u8*)&function_hash, &ctx);
+    function.GetHashRef() = function_hash; // TODO: change to SetHash, remove GetHashRef
 
     function.SetCompiled();
 }
