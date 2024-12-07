@@ -1234,9 +1234,8 @@ IR_HANDLE(bswap) { // bswap - 0x0f 0xc8
         } else {
             UNREACHABLE();
         }
-
-        ir.SetReg(inst->operand_reg, result);
     }
+    ir.SetReg(inst->operand_reg, result);
 }
 
 // ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██      ██████   ██████
