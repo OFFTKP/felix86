@@ -215,6 +215,15 @@ int main(int argc, char* argv[]) {
     g_output_fd = dup(STDOUT_FILENO);
     config.rootfs_path = g_rootfs_path;
 
+    // Sanitize the executable path
+    std::string path = config.argv[0];
+    path = path.substr(g_rootfs_path.string().size());
+    ASSERT(!path.empty());
+    if (path[0] != '/') {
+        path = "/" + path;
+    }
+    config.argv[0] = path;
+
     if (config.rootfs_path.empty()) {
         ERROR("Rootfs path not specified");
         return 1;
