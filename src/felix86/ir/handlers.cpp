@@ -1605,19 +1605,19 @@ IR_HANDLE(rcpps) {
 }
 
 IR_HANDLE(movss) {
-    SSAInstruction* value;
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         inst->operand_rm.size = X86_SIZE_DWORD;
         SSAInstruction* integer = ir.GetRm(inst->operand_rm);
-        value = ir.IToV(integer, VectorState::Float);
+        SSAInstruction* value = ir.IToV(integer, VectorState::Float);
+        ir.SetReg(inst->operand_reg, value);
     } else {
-        value = ir.GetRm(inst->operand_rm, VectorState::Float);
+        SSAInstruction* value = ir.GetRm(inst->operand_rm, VectorState::Float);
+        SSAInstruction* mask = ir.VSplati(0b0001, VectorState::Float);
+        SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
+        ir.SetVMask(mask);
+        SSAInstruction* result = ir.VMerge(value, xmm, VectorState::PackedDWord);
+        ir.SetReg(inst->operand_reg, result);
     }
-    SSAInstruction* mask = ir.VSplati(0b0001, VectorState::Float);
-    SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
-    ir.SetVMask(mask);
-    SSAInstruction* result = ir.VMerge(value, xmm, VectorState::PackedDWord);
-    ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
