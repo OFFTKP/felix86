@@ -1604,21 +1604,15 @@ IR_HANDLE(palignr) { // 0x66 0x0f 0x3a 0x0f - palignr xmm, xmm/m128, imm8
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
 
-    // Realistically imm shouldn't be more than 32 but vslide only allows up to 31
-    // and it's simple to cover every case with this loop
-    SSAInstruction* slide_down = reg;
-    for (int i = imm; i > 0;) {
-        int shift = i > 31 ? 31 : i;
-        slide_down = ir.VSlideDowni(slide_down, shift, VectorState::PackedByte);
-        i -= shift;
+    SSAInstruction* result;
+    if (imm < 32) {
+        SSAInstruction* slide_down = ir.VSlideDowni(reg, imm, VectorState::PackedByte);
+        SSAInstruction* slide_up = ir.VSlideUpZeroesi(rm, 32 - imm, VectorState::PackedByte);
+        result = ir.VOr(slide_down, slide_up, VectorState::PackedByte);
+    } else {
+        result = ir.VZero(VectorState::PackedByte);
     }
-    SSAInstruction* slide_up = rm;
-    for (int i = imm; i > 0;) {
-        int shift = i > 31 ? 31 : i;
-        slide_up = ir.VSlideUpZeroesi(slide_up, shift, VectorState::PackedByte);
-        i -= shift;
-    }
-    SSAInstruction* result = ir.VOr(slide_down, slide_up, VectorState::PackedByte);
+
     ir.SetReg(inst->operand_reg, result);
 }
 
