@@ -1608,13 +1608,15 @@ IR_HANDLE(palignr) { // 0x66 0x0f 0x3a 0x0f - palignr xmm, xmm/m128, imm8
     // and it's simple to cover every case with this loop
     SSAInstruction* slide_down = rm;
     for (int i = imm; i > 0;) {
-        slide_down = ir.VSlideDowni(slide_down, i & 31, VectorState::PackedByte);
-        i -= i & 31;
+        int shift = i > 31 ? 31 : i;
+        slide_down = ir.VSlideDowni(slide_down, shift, VectorState::PackedByte);
+        i -= shift;
     }
     SSAInstruction* slide_up = reg;
     for (int i = imm; i > 0;) {
-        slide_up = ir.VSlideUpZeroesi(slide_up, i & 31, VectorState::PackedByte);
-        i -= i & 31;
+        int shift = i > 31 ? 31 : i;
+        slide_up = ir.VSlideUpZeroesi(slide_up, shift, VectorState::PackedByte);
+        i -= shift;
     }
     SSAInstruction* result = ir.VOr(slide_down, slide_up, VectorState::PackedByte);
     ir.SetReg(inst->operand_reg, result);
