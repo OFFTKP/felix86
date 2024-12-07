@@ -1616,7 +1616,7 @@ IR_HANDLE(movss) {
     SSAInstruction* mask = ir.VSplati(0b0001, VectorState::Float);
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
     ir.SetVMask(mask);
-    SSAInstruction* result = ir.VMerge(value, xmm, VectorState::Float);
+    SSAInstruction* result = ir.VMerge(value, xmm, VectorState::PackedDWord);
     ir.SetReg(inst->operand_reg, result);
 }
 
