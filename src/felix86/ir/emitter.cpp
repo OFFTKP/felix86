@@ -2298,6 +2298,12 @@ void IREmitter::Group14(x86_instruction_t* inst) {
 void IREmitter::Group15(x86_instruction_t* inst) {
     ::Group15 opcode = (::Group15)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
     switch (opcode) {
+    case Group15::LFence: {
+        // there's also a memory encoding, this should catch it if it happens
+        ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER);
+        Fence(FenceOrder::RW, FenceOrder::RW); // just make a full fence for now, TODO: we can optimize this some day
+        break;
+    }
     case Group15::SFence: {
         // there's also a memory encoding, this should catch it if it happens
         ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER);
