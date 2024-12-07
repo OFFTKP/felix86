@@ -1607,8 +1607,12 @@ IR_HANDLE(palignr) { // 0x66 0x0f 0x3a 0x0f - palignr xmm, xmm/m128, imm8
     SSAInstruction* result;
     if (imm < 32) {
         SSAInstruction* slide_down = ir.VSlideDowni(reg, imm, VectorState::PackedByte);
-        SSAInstruction* slide_up = ir.VSlideUpZeroesi(rm, 32 - imm, VectorState::PackedByte);
-        result = ir.VOr(slide_down, slide_up, VectorState::PackedByte);
+        if (16 - imm > 0) {
+            SSAInstruction* slide_up = ir.VSlideUpZeroesi(rm, 16 - imm, VectorState::PackedByte);
+            result = ir.VOr(slide_down, slide_up, VectorState::PackedByte);
+        } else {
+            result = ir.VSlideDowni(rm, imm - 16, VectorState::PackedByte);
+        }
     } else {
         result = ir.VZero(VectorState::PackedByte);
     }
