@@ -312,6 +312,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("geteuid() = %d", (int)result);
         break;
     }
+    case felix86_x86_64_getegid: {
+        result = HOST_SYSCALL(getegid);
+        STRACE("getegid() = %d", (int)result);
+        break;
+    }
     case felix86_x86_64_getgid: {
         result = HOST_SYSCALL(getgid);
         STRACE("getgid() = %d", (int)result);
