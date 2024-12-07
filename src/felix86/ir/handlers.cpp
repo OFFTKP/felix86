@@ -1599,6 +1599,21 @@ IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
 //    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██    ██        ██    ██ ██    ██          ██ ██   ██
 //    ██    ███████ ██   ██    ██    ██ ██   ██ ██   ██    ██         ██████   ██████      ██████  ██   ██
 
+IR_HANDLE(palignr) { // 0x66 0x0f 0x3a 0x0f - palignr xmm, xmm/m128, imm8
+    u8 imm = inst->operand_imm.immediate.data;
+    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
+    SSAInstruction* slide_down = ir.VSlideDowni(rm, imm, VectorState::PackedByte);
+    SSAInstruction* slide_up = reg;
+    // We can't (afaik) slide it up and insert zeroes more than once per instruction
+    // The VSlideUp variant leaves the bottom bits untouched
+    for (u8 i = 0; i < imm; i++) {
+        slide_up = ir.VSlide1Up(ir.Imm(0), slide_up, VectorState::PackedByte);
+    }
+    SSAInstruction* result = ir.VOr(slide_down, slide_up, VectorState::PackedByte);
+    ir.SetReg(inst->operand_reg, result);
+}
+
 // ████████ ███████ ██████  ████████ ██  █████  ██████  ██    ██     ███████ ██████      ██████   █████
 //    ██    ██      ██   ██    ██    ██ ██   ██ ██   ██  ██  ██      ██           ██          ██ ██   ██
 //    ██    █████   ██████     ██    ██ ███████ ██████    ████       █████    █████       █████  ███████

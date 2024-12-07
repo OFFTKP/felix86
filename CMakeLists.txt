@@ -132,6 +132,7 @@ if (BUILD_TESTS)
         tests/FEX/secondary.cpp
         tests/FEX/secondary_modrm.cpp
         tests/FEX/rep.cpp
+        tests/FEX/tertiary.cpp
         tests/FEX/two_byte.cpp
         tests/FEX/felix86_bugs.cpp
     )
