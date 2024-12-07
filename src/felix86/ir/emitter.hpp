@@ -49,6 +49,8 @@ struct IREmitter {
     void StoreGuestToMemory(SSAInstruction* value, x86_ref_e ref);
 
     SSAInstruction* Imm(u64 value);
+    SSAInstruction* BSwap32(SSAInstruction* value);
+    SSAInstruction* BSwap64(SSAInstruction* value);
     SSAInstruction* Add(SSAInstruction* lhs, SSAInstruction* rhs);
     SSAInstruction* AddShifted(SSAInstruction* lhs, SSAInstruction* rhs, u8 shift);
     SSAInstruction* Addi(SSAInstruction* lhs, i64 rhs);

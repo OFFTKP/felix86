@@ -1190,6 +1190,55 @@ IR_HANDLE(xadd) { // xadd - 0x0f 0xc0
     }
 }
 
+IR_HANDLE(bswap) { // bswap - 0x0f 0xc8
+    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+    SSAInstruction* result = nullptr;
+    if (Extensions::B) {
+        if (inst->operand_reg.size == X86_SIZE_DWORD) {
+            result = ir.BSwap32(reg);
+        } else if (inst->operand_reg.size == X86_SIZE_QWORD) {
+            result = ir.BSwap64(reg);
+        } else {
+            UNREACHABLE();
+        }
+    } else {
+        if (inst->operand_reg.size == X86_SIZE_DWORD) {
+            SSAInstruction* byte1 = ir.Andi(reg, 0xFF);
+            SSAInstruction* byte2 = ir.Andi(ir.Shri(reg, 8), 0xFF);
+            SSAInstruction* byte3 = ir.Andi(ir.Shri(reg, 16), 0xFF);
+            SSAInstruction* byte4 = ir.Andi(ir.Shri(reg, 24), 0xFF);
+            SSAInstruction* shifted_byte1 = ir.Shli(byte1, 24);
+            SSAInstruction* shifted_byte2 = ir.Shli(byte2, 16);
+            SSAInstruction* shifted_byte3 = ir.Shli(byte3, 8);
+            result = ir.Or(ir.Or(ir.Or(shifted_byte1, shifted_byte2), shifted_byte3), byte4);
+        } else if (inst->operand_reg.size == X86_SIZE_QWORD) {
+            SSAInstruction* byte1 = ir.Andi(reg, 0xFF);
+            SSAInstruction* byte2 = ir.Andi(ir.Shri(reg, 8), 0xFF);
+            SSAInstruction* byte3 = ir.Andi(ir.Shri(reg, 16), 0xFF);
+            SSAInstruction* byte4 = ir.Andi(ir.Shri(reg, 24), 0xFF);
+            SSAInstruction* byte5 = ir.Andi(ir.Shri(reg, 32), 0xFF);
+            SSAInstruction* byte6 = ir.Andi(ir.Shri(reg, 40), 0xFF);
+            SSAInstruction* byte7 = ir.Andi(ir.Shri(reg, 48), 0xFF);
+            SSAInstruction* byte8 = ir.Andi(ir.Shri(reg, 56), 0xFF);
+            SSAInstruction* shifted_byte1 = ir.Shli(byte1, 56);
+            SSAInstruction* shifted_byte2 = ir.Shli(byte2, 48);
+            SSAInstruction* shifted_byte3 = ir.Shli(byte3, 40);
+            SSAInstruction* shifted_byte4 = ir.Shli(byte4, 32);
+            SSAInstruction* shifted_byte5 = ir.Shli(byte5, 24);
+            SSAInstruction* shifted_byte6 = ir.Shli(byte6, 16);
+            SSAInstruction* shifted_byte7 = ir.Shli(byte7, 8);
+            result = ir.Or(
+                ir.Or(ir.Or(ir.Or(ir.Or(ir.Or(ir.Or(shifted_byte1, shifted_byte2), shifted_byte3), shifted_byte4), shifted_byte5), shifted_byte6),
+                      shifted_byte7),
+                byte8);
+        } else {
+            UNREACHABLE();
+        }
+
+        ir.SetReg(inst->operand_reg, result);
+    }
+}
+
 // ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██      ██████   ██████
 // ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██   ██  ██  ██      ██       ██
 // ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████       ███████  ███████

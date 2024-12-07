@@ -63,6 +63,8 @@ private:
     static void EmitWriteDWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitWriteQWordRelative(Backend&, biscuit::GPR, biscuit::GPR, u64);
     static void EmitWriteXmmWordRelative(Backend&, biscuit::GPR, biscuit::Vec, u64, VectorState);
+    static void EmitBSwap32(Backend&, biscuit::GPR, biscuit::GPR);
+    static void EmitBSwap64(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitAdd(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR);
     static void EmitAddShifted(Backend&, biscuit::GPR, biscuit::GPR, biscuit::GPR, u8);
     static void EmitAddi(Backend&, biscuit::GPR, biscuit::GPR, u64);

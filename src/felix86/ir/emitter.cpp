@@ -124,6 +124,14 @@ SSAInstruction* IREmitter::Imm(u64 value) {
     return block->InsertAtEnd(std::move(instruction));
 }
 
+SSAInstruction* IREmitter::BSwap32(SSAInstruction* value) {
+    return insertInstruction(IROpcode::BSwap32, {value});
+}
+
+SSAInstruction* IREmitter::BSwap64(SSAInstruction* value) {
+    return insertInstruction(IROpcode::BSwap64, {value});
+}
+
 SSAInstruction* IREmitter::Add(SSAInstruction* lhs, SSAInstruction* rhs) {
     return insertInstruction(IROpcode::Add, {lhs, rhs});
 }

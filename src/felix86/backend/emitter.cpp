@@ -566,6 +566,17 @@ void Emitter::EmitWriteXmmWordRelative(Backend& backend, biscuit::GPR Address, b
     }
 }
 
+void Emitter::EmitBSwap32(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
+    ASSERT(Extensions::B);
+    AS.REV8(Rd, Rs);
+    AS.SRLI(Rd, Rd, 32);
+}
+
+void Emitter::EmitBSwap64(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
+    ASSERT(Extensions::B);
+    AS.REV8(Rd, Rs);
+}
+
 void Emitter::EmitAdd(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs1, biscuit::GPR Rs2) {
     AS.ADD(Rd, Rs1, Rs2);
 }

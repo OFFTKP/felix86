@@ -380,6 +380,14 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("back_to_dispatcher");
         break;
     }
+    case IROpcode::BSwap32: {
+        ret += fmt::format("{} <- bswap32 {}", GetNameString(name), GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::BSwap64: {
+        ret += fmt::format("{} <- bswap64 {}", GetNameString(name), GetNameString(operands[0]));
+        break;
+    }
     case IROpcode::Add: {
         ret += fmt::format("{} <- {} {} {}", GetNameString(name), GetNameString(operands[0]), "+", GetNameString(operands[1]));
         break;
@@ -391,7 +399,6 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
     }
     case IROpcode::Addi: {
         ret += fmt::format("{} <- {} {} 0x{:x}", GetNameString(name), GetNameString(operands[0]), "+", (i64)immediate_data);
-        ;
         break;
     }
     case IROpcode::Sub: {
