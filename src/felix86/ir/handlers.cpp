@@ -1603,12 +1603,15 @@ IR_HANDLE(palignr) { // 0x66 0x0f 0x3a 0x0f - palignr xmm, xmm/m128, imm8
     u8 imm = inst->operand_imm.immediate.data;
     SSAInstruction* reg = ir.GetReg(inst->operand_reg);
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
-    SSAInstruction* slide_down = ir.VSlideDowni(rm, imm, VectorState::PackedByte);
+    SSAInstruction* slide_down = rm;
+    for (int i = imm; i > 0;) {
+        ir.VSlideDowni(rm, i & 31, VectorState::PackedByte);
+        i -= i & 31;
+    }
     SSAInstruction* slide_up = reg;
-    // We can't (afaik) slide it up and insert zeroes more than once per instruction
-    // The VSlideUp variant leaves the bottom bits untouched
-    for (u8 i = 0; i < imm; i++) {
-        slide_up = ir.VSlide1Up(ir.Imm(0), slide_up, VectorState::PackedByte);
+    for (int i = imm; i > 0;) {
+        ir.VSlideUpZeroesi(reg, i & 31, VectorState::PackedByte);
+        i -= i & 31;
     }
     SSAInstruction* result = ir.VOr(slide_down, slide_up, VectorState::PackedByte);
     ir.SetReg(inst->operand_reg, result);
