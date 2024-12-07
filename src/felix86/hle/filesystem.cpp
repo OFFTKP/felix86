@@ -167,3 +167,36 @@ bool Filesystem::validatePath(const std::filesystem::path& path) {
 
     return true;
 }
+
+int Filesystem::Chdir(const char* path) {
+    std::filesystem::path new_cwd = path;
+    new_cwd = new_cwd.lexically_normal();
+    if (new_cwd.is_relative()) {
+        new_cwd = cwd_path / new_cwd;
+    } else {
+        new_cwd = rootfs_path / new_cwd.relative_path();
+    }
+
+    if (!validatePath(new_cwd)) {
+        return -ENOENT;
+    }
+
+    cwd_path = new_cwd;
+    return 0;
+}
+
+int Filesystem::GetCwd(char* buf, u32 bufsiz) {
+    std::string cwd_string = cwd_path.string();
+    cwd_string = cwd_string.substr(rootfs_path_string.size());
+    if (cwd_string.empty()) {
+        cwd_string = "/";
+    }
+
+    if (cwd_string[0] != '/') {
+        cwd_string = "/" + cwd_string;
+    }
+
+    size_t written_size = std::min(cwd_string.size(), (size_t)bufsiz);
+    memcpy(buf, cwd_string.c_str(), written_size);
+    return written_size;
+}

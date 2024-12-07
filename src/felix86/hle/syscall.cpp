@@ -1,6 +1,7 @@
 #include <csignal>
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -179,6 +180,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("close(%d) = %d", (int)rdi, (int)result);
         break;
     }
+    case felix86_x86_64_getcwd: {
+        result = fs.GetCwd((char*)rdi, rsi);
+        STRACE("getcwd(%p, %d) = %d", (void*)rdi, (int)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_poll: {
+        result = poll((struct pollfd*)rdi, rsi, rdx);
+        STRACE("poll(%p, %d, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_fstat: {
         x64Stat* guest_stat = (x64Stat*)rsi;
         struct stat host_stat;
@@ -197,6 +208,26 @@ void felix86_syscall(ThreadState* state) {
             STRACE("st_blksize : %ld", guest_stat->st_blksize);
             STRACE("st_blocks : %ld", guest_stat->st_blocks);
         }
+        break;
+    }
+    case felix86_x86_64_fadvise64: {
+        result = HOST_SYSCALL(fadvise64, rdi, rsi, rdx, r10);
+        STRACE("fadvise64(%d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)result);
+        break;
+    }
+    case felix86_x86_64_fcntl: {
+        result = HOST_SYSCALL(fcntl, rdi, rsi, rdx);
+        STRACE("fcntl(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_chdir: {
+        result = fs.Chdir((const char*)rdi);
+        STRACE("chdir(%s) = %d", (const char*)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_fchdir: {
+        result = HOST_SYSCALL(fchdir, rdi);
+        STRACE("fchdir(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_newfstatat: {
@@ -360,6 +391,11 @@ void felix86_syscall(ThreadState* state) {
         result = 0;
         WARN("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
         STRACE("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
+        break;
+    }
+    case felix86_x86_64_futex: {
+        result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("futex(%p, %d, %d, %p, %p, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9, (int)result);
         break;
     }
     default: {

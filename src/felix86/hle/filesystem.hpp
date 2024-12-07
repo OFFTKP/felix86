@@ -70,6 +70,10 @@ struct Filesystem {
 
     int OpenAt(int dirfd, const char* pathname, int flags, int mode);
 
+    int Chdir(const char* pathname);
+
+    int GetCwd(char* buf, u32 bufsiz);
+
     std::optional<std::filesystem::path> AtPath(int dirfd, const char* pathname);
 
     std::filesystem::path GetRootFSPath() {
