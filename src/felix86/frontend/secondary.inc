@@ -3,7 +3,7 @@
 // The ones with MANDATORY_PREFIX_FLAG may use a different table
 
 X(0x00, error, NO_FLAG, NO_IMMEDIATE)
-X(0x01, group7, NO_FLAG, BYTE_IMMEDIATE)
+X(0x01, group7, MODRM_FLAG, NO_IMMEDIATE)
 X(0x02, error, NO_FLAG, NO_IMMEDIATE)
 X(0x03, error, NO_FLAG, NO_IMMEDIATE)
 X(0x04, error, NO_FLAG, NO_IMMEDIATE)

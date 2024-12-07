@@ -1791,7 +1791,7 @@ SSAInstruction* IREmitter::VInsertInteger(SSAInstruction* integer, SSAInstructio
 }
 
 void IREmitter::Group1(x86_instruction_t* inst) {
-    ::Group1 opcode = (::Group1)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group1 opcode = (::Group1)(inst->operand_reg.reg.ref & 0x7);
 
     x86_size_e size_e = inst->operand_rm.size;
     SSAInstruction* imm = Imm(sext(inst->operand_imm.immediate.data, inst->operand_imm.size));
@@ -1926,7 +1926,7 @@ void IREmitter::Group1(x86_instruction_t* inst) {
 }
 
 void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
-    ::Group2 opcode = (::Group2)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group2 opcode = (::Group2)(inst->operand_reg.reg.ref & 0x7);
 
     x86_size_e size_e = inst->operand_rm.size;
     u8 shift_mask = size_e == X86_SIZE_QWORD ? 0x3F : 0x1F;
@@ -2006,7 +2006,7 @@ void IREmitter::Group2(x86_instruction_t* inst, SSAInstruction* shift_amount) {
 }
 
 void IREmitter::Group3(x86_instruction_t* inst) {
-    ::Group3 opcode = (::Group3)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group3 opcode = (::Group3)(inst->operand_reg.reg.ref & 0x7);
 
     if (inst->operand_rm.memory.lock) {
         WARN("Ignoring lock prefix during group3 instruction");
@@ -2247,7 +2247,7 @@ void IREmitter::Group3(x86_instruction_t* inst) {
 }
 
 void IREmitter::Group14(x86_instruction_t* inst) {
-    ::Group14 opcode = (::Group14)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group14 opcode = (::Group14)(inst->operand_reg.reg.ref & 0x7);
     ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER);
     switch (opcode) {
     case Group14::PSrlQ: {
@@ -2296,7 +2296,7 @@ void IREmitter::Group14(x86_instruction_t* inst) {
 }
 
 void IREmitter::Group15(x86_instruction_t* inst) {
-    ::Group15 opcode = (::Group15)((inst->operand_reg.reg.ref & 0x7) - X86_REF_RAX);
+    ::Group15 opcode = (::Group15)(inst->operand_reg.reg.ref & 0x7);
     switch (opcode) {
     case Group15::LFence: {
         // there's also a memory encoding, this should catch it if it happens

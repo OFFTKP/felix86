@@ -887,29 +887,48 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██
 
 IR_HANDLE(group7) { // group 7 - 0x0f 0x01
-    u8 opcode = inst->operand_imm.immediate.data;
-    modrm_t modrm; // we take it in as an immediate instead of as a modrm because
-                   // it's easier to parse it this way since we have the opcode byte in whole
-    modrm.raw = opcode;
-    switch (modrm.reg) {
+    u8 opcode = inst->operand_reg.reg.ref & 0x7;
+    u8 second_opcode = inst->operand_rm.reg.ref & 0x7;
+    switch (opcode) {
     case 2: {
-        if (opcode == 0xD0) { // xgetbv
-            // That's probably fine for now
+        switch (second_opcode) {
+        case 0: { // xgetbv
             ir.SetReg(ir.Imm(0b11), X86_REF_RAX);
             ir.SetReg(ir.Imm(0), X86_REF_RDX);
-            WARN("XGETBV");
-        } else if (opcode == 0xD1) { // xsetbv
-            ERROR("XSETBV instruction not implemented");
-        } else if (opcode == 0xD5) {
+            break;
+        }
+        case 5: {
             ir.SetExitReason(EXIT_REASON_TSX);
             ir.TerminateJump(ir.GetExit());
-        } else {
-            ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
+            break;
+        }
+        default: {
+            ERROR("Unimplemented group 7 opcode: %02x %02x during %016lx", opcode, second_opcode, ir.GetCurrentAddress());
+        }
+        }
+        break;
+    }
+    case 5: {
+        ASSERT(inst->operand_rm.type == X86_OP_TYPE_MEMORY);
+        switch (second_opcode) {
+        case 1: { // rstorssp
+            ir.SetExitReason(EXIT_REASON_CET);
+            ir.TerminateJump(ir.GetExit());
+            break;
+        }
+        case 2: { // saveprevssp
+            ir.SetExitReason(EXIT_REASON_CET);
+            ir.TerminateJump(ir.GetExit());
+            break;
+        }
+        default: {
+            ERROR("Unimplemented group 7 opcode: %02x %02x during %016lx", opcode, second_opcode, ir.GetCurrentAddress());
+        }
         }
         break;
     }
     default: {
-        ERROR("Unimplemented group 7 opcode: %02x during %016lx", opcode, ir.GetCurrentAddress());
+        ERROR("Unimplemented group 7 opcode: %02x %02x during %016lx", opcode, second_opcode, ir.GetCurrentAddress());
         break;
     }
     }

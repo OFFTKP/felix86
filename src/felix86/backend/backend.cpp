@@ -31,6 +31,8 @@ std::string ExitReasonToString(ExitReason reason) {
         return "Hit ud2 instruction";
     case ExitReason::EXIT_REASON_TSX:
         return "Hit tsx instruction";
+    case ExitReason::EXIT_REASON_CET:
+        return "Hit cet instruction";
     }
 
     UNREACHABLE();
