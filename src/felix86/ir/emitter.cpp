@@ -2305,7 +2305,7 @@ void IREmitter::Group15(x86_instruction_t* inst) {
         break;
     }
     default: {
-        UNREACHABLE();
+        ASSERT_MSG(false, "Invalid group 15 opcode: %d", (int)opcode);
         break;
     }
     }

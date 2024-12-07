@@ -1137,6 +1137,22 @@ IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
     ir.TerminateJump(next_instruction_target);
 }
 
+IR_HANDLE(xadd) { // xadd - 0x0f 0xc0
+    x86_size_e size_e = inst->operand_reg.size;
+    if (IS_LOCK) {
+        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        SSAInstruction* address = ir.Lea(inst->operand_rm);
+        SSAInstruction* old_rm = ir.AmoAdd(address, reg, size_e);
+        ir.SetReg(inst->operand_reg, old_rm);
+    } else {
+        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+        SSAInstruction* result = ir.Add(reg, rm);
+        ir.SetReg(inst->operand_reg, rm);
+        ir.SetRm(inst->operand_rm, result);
+    }
+}
+
 // ███████ ███████  ██████  ██████  ███    ██ ██████   █████  ██████  ██    ██      ██████   ██████
 // ██      ██      ██      ██    ██ ████   ██ ██   ██ ██   ██ ██   ██  ██  ██      ██       ██
 // ███████ █████   ██      ██    ██ ██ ██  ██ ██   ██ ███████ ██████    ████       ███████  ███████
