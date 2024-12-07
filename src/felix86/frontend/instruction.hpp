@@ -40,4 +40,5 @@ typedef struct {
     x86_operand_t operand_imm;
     u8 opcode;
     u8 length;
+    u8 modrm;
 } x86_instruction_t;

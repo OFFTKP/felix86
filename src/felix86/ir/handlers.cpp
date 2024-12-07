@@ -887,8 +887,9 @@ IR_HANDLE(group5) { // inc/dec/call/jmp/push rm32 - 0xff
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██
 
 IR_HANDLE(group7) { // group 7 - 0x0f 0x01
-    u8 opcode = inst->operand_reg.reg.ref & 0x7;
-    u8 second_opcode = inst->operand_rm.reg.ref & 0x7;
+    modrm_t modrm = {.raw = inst->modrm};
+    u8 opcode = modrm.reg;
+    u8 second_opcode = modrm.rm;
     switch (opcode) {
     case 2: {
         switch (second_opcode) {

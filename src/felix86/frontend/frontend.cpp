@@ -443,6 +443,8 @@ void frontend_compile_instruction(IREmitter& ir, MD5_CTX& ctx) {
             sib.raw = data[index++];
         }
 
+        inst.modrm = modrm.raw;
+
         u8 displacement_size = decode_modrm(&inst.operand_rm, &inst.operand_reg, rex_b, rex_x, rex_r, modrm, sib);
         switch (displacement_size) {
         case 1: {
