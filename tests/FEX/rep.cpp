@@ -10,6 +10,7 @@
         FEXTestLoader::RunTest("ASM/REPNE/F2_" #opcode ".asm");                                                                                      \
     }
 
+REP_TEST(10)
 REP_TEST(51)
 REP_TEST(52)
 REP_TEST(53)
