@@ -1622,7 +1622,7 @@ IR_HANDLE(movss_xmm_xmm32) {
 
 IR_HANDLE(movss_xmm32_xmm) {
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
-        SSAInstruction* integer = ir.GetReg(inst->operand_rm);
+        SSAInstruction* integer = ir.GetReg(inst->operand_reg);
         SSAInstruction* value = ir.VToI(integer, VectorState::Float);
         inst->operand_rm.size = X86_SIZE_DWORD;
         ir.SetRm(inst->operand_rm, value);
