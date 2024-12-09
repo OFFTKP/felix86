@@ -1086,6 +1086,14 @@ SSAInstruction* IREmitter::VFRcpSqrt(SSAInstruction* value, VectorState state) {
     return insertInstruction(IROpcode::VFRcpSqrt, state, {value});
 }
 
+SSAInstruction* IREmitter::VCvtSToF(SSAInstruction* value, VectorState state) {
+    return insertInstruction(IROpcode::VCvtS32ToF, state, {value});
+}
+
+SSAInstruction* IREmitter::VNCvtSToF(SSAInstruction* value, VectorState state) {
+    return insertInstruction(IROpcode::VCvtS64ToF, state, {value});
+}
+
 SSAInstruction* IREmitter::VFMul(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
     return insertInstruction(IROpcode::VFMul, state, {lhs, rhs});
 }

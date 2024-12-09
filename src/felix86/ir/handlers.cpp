@@ -1476,6 +1476,21 @@ IR_HANDLE(psubq) { // psubq xmm, xmm/m128 - 0x66 0x0f 0xfb
 //      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██           ██
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██        ██      ██████
 
+IR_HANDLE(cvtsi2ss) { // cvtsi2ss xmm, r/m32 - 0xf3 0x0f 0x2a
+    x86_size_e size_e = inst->operand_rm.size;
+    if (size_e == X86_SIZE_DWORD) {
+        SSAInstruction* rm = ir.IToV(ir.GetRm(inst->operand_rm), VectorState::PackedDWord);
+        SSAInstruction* cvt = ir.VCvtSToF(rm, VectorState::Float);
+        SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+        ir.SetVMask(ir.VSplati(0b1, VectorState::PackedDWord));
+        SSAInstruction* result = ir.VMerge(cvt, reg, VectorState::PackedDWord);
+        ir.SetReg(inst->operand_reg, result);
+    } else {
+        // Narrowing convert, TODO
+        UNREACHABLE();
+    }
+}
+
 IR_HANDLE(addss) { // addss xmm, xmm32 - 0xf3 0x0f 0x58
     ir.ScalarRegRm(inst, IROpcode::VFAdd, VectorState::Float);
 }

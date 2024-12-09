@@ -175,6 +175,8 @@ X(VFMul,                                Vector128,                      Vector12
 X(VFSqrt,                               Vector128,                      Vector128)
 X(VFRcp,                                Vector128,                      Vector128)
 X(VFRcpSqrt,                            Vector128,                      Vector128)
+X(VCvtSToF,                             Vector128,                      Vector128)
+X(VNCvtSToF,                            Vector128,                      Vector128)
 X(VFMin,                                Vector128,                      Vector128,                      Vector128)
 X(VFMax,                                Vector128,                      Vector128,                      Vector128)
 X(Fence,                                Void)
