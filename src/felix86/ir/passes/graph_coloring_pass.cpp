@@ -447,7 +447,8 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
                 case IROpcode::VIota:
                 case IROpcode::VSlide1Up:
                 case IROpcode::VSlideUpZeroesi:
-                case IROpcode::VSlideUpi: {
+                case IROpcode::VSlideUpi:
+                case IROpcode::VNCvtSToF: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                         if (should_consider(get_instruction(inst.GetOperand(i)))) {
                             live_now.insert(inst.GetOperand(i));
