@@ -1315,12 +1315,12 @@ void Emitter::EmitVSlide1Down(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs
     AS.VSLIDE1DOWN(Vd, Vs, Rs, masked);
 }
 
-void Emitter::EmitVCvtSToF(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs) {
-    AS.VFCVT_F_X(Vd, Vs);
+void Emitter::EmitVCvtSToF(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
+    AS.VFCVT_F_X(Vd, Vs, masked);
 }
 
-void Emitter::EmitVNCvtSToF(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs) {
-    AS.VFNCVT_F_X(Vd, Vs);
+void Emitter::EmitVNCvtSToF(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
+    AS.VFNCVT_F_X(Vd, Vs, masked);
 }
 
 void Emitter::EmitFence(Backend& backend, biscuit::FenceOrder pred, biscuit::FenceOrder succ) {

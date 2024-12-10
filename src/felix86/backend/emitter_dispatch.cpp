@@ -943,12 +943,12 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
     }
 
     case IROpcode::VCvtSToF: {
-        EmitVCvtSToF(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitVCvtSToF(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VNCvtSToF: {
-        EmitVNCvtSToF(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitVNCvtSToF(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
