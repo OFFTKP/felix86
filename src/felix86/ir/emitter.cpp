@@ -1086,12 +1086,20 @@ SSAInstruction* IREmitter::VFRcpSqrt(SSAInstruction* value, VectorState state) {
     return insertInstruction(IROpcode::VFRcpSqrt, state, {value});
 }
 
-SSAInstruction* IREmitter::VCvtSToF(SSAInstruction* value, VectorState state) {
-    return insertInstruction(IROpcode::VCvtSToF, state, {value});
+SSAInstruction* IREmitter::VCvtSToF(SSAInstruction* value, VectorState state, VecMask masked) {
+    SSAInstruction* instruction = insertInstruction(IROpcode::VCvtSToF, state, {value});
+    if (masked == VecMask::Yes) {
+        instruction->SetMasked();
+    }
+    return instruction;
 }
 
-SSAInstruction* IREmitter::VNCvtSToF(SSAInstruction* value, VectorState state) {
-    return insertInstruction(IROpcode::VNCvtSToF, state, {value});
+SSAInstruction* IREmitter::VNCvtSToF(SSAInstruction* value, VectorState state, VecMask masked) {
+    SSAInstruction* instruction = insertInstruction(IROpcode::VNCvtSToF, state, {value});
+    if (masked == VecMask::Yes) {
+        instruction->SetMasked();
+    }
+    return instruction;
 }
 
 SSAInstruction* IREmitter::VFMul(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
