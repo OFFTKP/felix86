@@ -447,8 +447,7 @@ static void build(BackendFunction& function, std::vector<const BackendBlock*> bl
                 case IROpcode::VIota:
                 case IROpcode::VSlide1Up:
                 case IROpcode::VSlideUpZeroesi:
-                case IROpcode::VSlideUpi:
-                case IROpcode::VNCvtSToF: {
+                case IROpcode::VSlideUpi: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                         if (should_consider(get_instruction(inst.GetOperand(i)))) {
                             live_now.insert(inst.GetOperand(i));
@@ -585,8 +584,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 case IROpcode::VIota:
                 case IROpcode::VSlide1Up:
                 case IROpcode::VSlideUpZeroesi:
-                case IROpcode::VSlideUpi:
-                case IROpcode::VNCvtSToF: {
+                case IROpcode::VSlideUpi: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                         if (should_consider(get_instruction(inst.GetOperand(i)))) {
                             u32 operand_index = get_index(inst.GetOperand(i));
