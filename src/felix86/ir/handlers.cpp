@@ -1486,7 +1486,8 @@ IR_HANDLE(cvtsi2ss) { // cvtsi2ss xmm, r/m32 - 0xf3 0x0f 0x2a
         SSAInstruction* result = ir.VMerge(cvt, reg, VectorState::PackedDWord);
         ir.SetReg(inst->operand_reg, result);
     } else {
-        SSAInstruction* rm = ir.IToV(ir.GetRm(inst->operand_rm), VectorState::PackedQWord);
+        // SSAInstruction* rm = ir.IToV(ir.GetRm(inst->operand_rm), VectorState::PackedQWord);
+        SSAInstruction* rm = ir.VSplati(1, VectorState::PackedQWord);
         SSAInstruction* cvt = ir.VNCvtSToF(rm, VectorState::Float);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         ir.SetVMask(ir.VSplati(0b1, VectorState::PackedDWord));
