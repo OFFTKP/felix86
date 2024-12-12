@@ -847,6 +847,26 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         break;
     }
 
+    case IROpcode::VLessThanSigned: {
+        EmitVLessThanSigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VLessThanUnsigned: {
+        EmitVLessThanUnsigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VGreaterThanSigned: {
+        EmitVGreaterThanSigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        break;
+    }
+
+    case IROpcode::VGreaterThanUnsigned: {
+        EmitVGreaterThanUnsigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        break;
+    }
+
     case IROpcode::VSll: {
         EmitVSll(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
         break;

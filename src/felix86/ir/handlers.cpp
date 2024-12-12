@@ -1359,6 +1359,18 @@ IR_HANDLE(movq_xmm_rm32) { // movq xmm, rm32 - 0x66 0x0f 0x6e
     ir.SetReg(inst->operand_reg, vector);
 }
 
+IR_HANDLE(pcmpgtb) { // pcmpgtb xmm, xmm/m128 - 0x66 0x0f 0x64
+    ir.Pcmpgt(inst, VectorState::PackedByte);
+}
+
+IR_HANDLE(pcmpgtw) { // pcmpgtw xmm, xmm/m128 - 0x66 0x0f 0x65
+    ir.Pcmpgt(inst, VectorState::PackedWord);
+}
+
+IR_HANDLE(pcmpgtd) { // pcmpgtd xmm, xmm/m128 - 0x66 0x0f 0x66
+    ir.Pcmpgt(inst, VectorState::PackedDWord);
+}
+
 IR_HANDLE(pcmpeqb) { // pcmpeqb xmm, xmm/m128 - 0x66 0x0f 0x74
     ir.Pcmpeq(inst, VectorState::PackedByte);
 }

@@ -158,6 +158,10 @@ private:
     static void EmitVAdd(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVAddi(Backend&, biscuit::Vec, biscuit::Vec, u64);
     static void EmitVEqual(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVLessThanSigned(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVLessThanUnsigned(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVGreaterThanSigned(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVGreaterThanUnsigned(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVIota(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVId(Backend&, biscuit::Vec);
     static void EmitVGather(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);

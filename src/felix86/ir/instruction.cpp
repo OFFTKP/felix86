@@ -983,6 +983,26 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
                            GetNameString(operands[1]));
         break;
     }
+    case IROpcode::VLessThanSigned: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vltsigned", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VLessThanUnsigned: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vltunsigned", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VGreaterThanSigned: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vgtsigned", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VGreaterThanUnsigned: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vgtunsigned", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
     case IROpcode::VSub: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vsub", "src1", GetNameString(operands[0]), "src2",
                            GetNameString(operands[1]));

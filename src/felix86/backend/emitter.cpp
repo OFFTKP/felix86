@@ -1224,6 +1224,22 @@ void Emitter::EmitVEqual(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, bi
     AS.VMSEQ(Vd, Vs2, Vs1, masked);
 }
 
+void Emitter::EmitVLessThanSigned(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VMSLT(Vd, Vs2, Vs1, masked);
+}
+
+void Emitter::EmitVLessThanUnsigned(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VMSLTU(Vd, Vs2, Vs1, masked);
+}
+
+void Emitter::EmitVGreaterThanSigned(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VMSLT(Vd, Vs1, Vs2, masked);
+}
+
+void Emitter::EmitVGreaterThanUnsigned(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VMSLTU(Vd, Vs1, Vs2, masked);
+}
+
 void Emitter::EmitSetVMask(Backend& backend, biscuit::Vec Vs) {
     AS.VMV(v0, Vs);
 }

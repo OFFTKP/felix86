@@ -921,6 +921,16 @@ void IREmitter::Pcmpeq(x86_instruction_t* inst, VectorState state) {
     SetReg(inst->operand_reg, result);
 }
 
+void IREmitter::Pcmpgt(x86_instruction_t* inst, VectorState state) {
+    SSAInstruction* rm = GetRm(inst->operand_rm, state);
+    SSAInstruction* reg = GetReg(inst->operand_reg);
+    SSAInstruction* mask = VGreaterThanSigned(reg, rm, state);
+    // Splat 0xFF or 0 based on the mask
+    SetVMask(mask);
+    SSAInstruction* result = VMergei(-1ull, VZero(state), state);
+    SetReg(inst->operand_reg, result);
+}
+
 void IREmitter::ScalarRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state) {
     SSAInstruction *rm, *reg;
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
@@ -1152,6 +1162,22 @@ SSAInstruction* IREmitter::VZext(SSAInstruction* value, x86_size_e size) {
 
 SSAInstruction* IREmitter::VEqual(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
     return insertInstruction(IROpcode::VEqual, state, {lhs, rhs});
+}
+
+SSAInstruction* IREmitter::VLessThanSigned(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VLessThanSigned, state, {lhs, rhs});
+}
+
+SSAInstruction* IREmitter::VLessThanUnsigned(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VLessThanUnsigned, state, {lhs, rhs});
+}
+
+SSAInstruction* IREmitter::VGreaterThanSigned(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VGreaterThanSigned, state, {lhs, rhs});
+}
+
+SSAInstruction* IREmitter::VGreaterThanUnsigned(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VGreaterThanUnsigned, state, {lhs, rhs});
 }
 
 SSAInstruction* IREmitter::VAdd(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {

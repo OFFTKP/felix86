@@ -118,6 +118,10 @@ struct IREmitter {
     SSAInstruction* VZero(VectorState state);
     SSAInstruction* VGather(SSAInstruction* dest, SSAInstruction* source, SSAInstruction* iota, VectorState state, VecMask masked = VecMask::No);
     SSAInstruction* VEqual(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
+    SSAInstruction* VLessThanSigned(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
+    SSAInstruction* VLessThanUnsigned(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
+    SSAInstruction* VGreaterThanSigned(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
+    SSAInstruction* VGreaterThanUnsigned(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state);
     SSAInstruction* VSll(SSAInstruction* value, SSAInstruction* shift, VectorState state);
     SSAInstruction* VSlli(SSAInstruction* value, u8 shift, VectorState state);
     SSAInstruction* VSrl(SSAInstruction* value, SSAInstruction* shift, VectorState state);
@@ -184,6 +188,7 @@ struct IREmitter {
     void SetFlags(SSAInstruction* flags);
     void SetVMask(SSAInstruction* mask);
     void Pcmpeq(x86_instruction_t* inst, VectorState state);
+    void Pcmpgt(x86_instruction_t* inst, VectorState state);
     void Punpckl(x86_instruction_t* inst, VectorState state);
     void Punpckh(x86_instruction_t* inst, VectorState state);
     void ScalarRegRm(x86_instruction_t* inst, IROpcode opcode, VectorState state);
