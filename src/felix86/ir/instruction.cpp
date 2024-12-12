@@ -1025,11 +1025,19 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         break;
     }
     case IROpcode::VCvtSToF: {
-        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vcvts32tof", "src", GetNameString(operands[0]));
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vcvtstof", "src", GetNameString(operands[0]));
         break;
     }
     case IROpcode::VNCvtSToF: {
-        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vcvts64tof", "src", GetNameString(operands[0]));
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vncvtstof", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::VCvtFToS: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vcvtfstos", "src", GetNameString(operands[0]));
+        break;
+    }
+    case IROpcode::VWCvtFToS: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vwcvtftos", "src", GetNameString(operands[0]));
         break;
     }
     case IROpcode::VFDiv: {

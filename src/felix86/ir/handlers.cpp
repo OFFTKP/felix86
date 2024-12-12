@@ -1477,6 +1477,7 @@ IR_HANDLE(psubq) { // psubq xmm, xmm/m128 - 0x66 0x0f 0xfb
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██        ██      ██████
 
 IR_HANDLE(cvtsi2ss) { // cvtsi2ss xmm, r/m32 - 0xf3 0x0f 0x2a
+    // TODO: rounding mode
     x86_size_e size_e = inst->operand_rm.size;
     if (size_e == X86_SIZE_DWORD) {
         SSAInstruction* rm = ir.IToV(ir.GetRm(inst->operand_rm), VectorState::PackedDWord);
@@ -1492,6 +1493,36 @@ IR_HANDLE(cvtsi2ss) { // cvtsi2ss xmm, r/m32 - 0xf3 0x0f 0x2a
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
         SSAInstruction* result = ir.VMerge(cvt, reg, VectorState::PackedDWord);
         ir.SetReg(inst->operand_reg, result);
+    }
+}
+
+IR_HANDLE(cvttss2si) { // cvttss2si r32, xmm32 - 0xf3 0x0f 0x2c
+    // TODO: rounding mode
+    x86_size_e size_e = inst->operand_reg.size;
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Float);
+    if (size_e == X86_SIZE_DWORD) {
+        SSAInstruction* cvt = ir.VCvtFToS(rm, VectorState::Float);
+        SSAInstruction* integer = ir.VToI(cvt, VectorState::Float);
+        ir.SetReg(inst->operand_reg, integer);
+    } else {
+        SSAInstruction* cvt = ir.VWCvtFToS(rm, VectorState::Double);
+        SSAInstruction* integer = ir.VToI(cvt, VectorState::Double);
+        ir.SetReg(inst->operand_reg, integer);
+    }
+}
+
+IR_HANDLE(cvtss2si) { // cvtss2si r32, xmm32 - 0xf3 0x0f 0x2d
+    // TODO: rounding mode
+    x86_size_e size_e = inst->operand_reg.size;
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Float);
+    if (size_e == X86_SIZE_DWORD) {
+        SSAInstruction* cvt = ir.VCvtFToS(rm, VectorState::Float);
+        SSAInstruction* integer = ir.VToI(cvt, VectorState::Float);
+        ir.SetReg(inst->operand_reg, integer);
+    } else {
+        SSAInstruction* cvt = ir.VWCvtFToS(rm, VectorState::Double);
+        SSAInstruction* integer = ir.VToI(cvt, VectorState::Double);
+        ir.SetReg(inst->operand_reg, integer);
     }
 }
 
