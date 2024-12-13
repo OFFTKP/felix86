@@ -347,6 +347,21 @@ void felix86_syscall(ThreadState* state) {
         STRACE("socket(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_connect: {
+        result = HOST_SYSCALL(connect, rdi, rsi, rdx);
+        STRACE("connect(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_sendto: {
+        result = HOST_SYSCALL(sendto, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("sendto(%d, %p, %d, %d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (int)r9, (int)result);
+        break;
+    }
+    case felix86_x86_64_recvfrom: {
+        result = HOST_SYSCALL(recvfrom, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("recvfrom(%d, %p, %d, %d, %p, %p) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (void*)r9, (int)result);
+        break;
+    }
     case felix86_x86_64_uname: {
         struct utsname host_uname;
         struct utsname* guest_uname = (struct utsname*)rdi;
