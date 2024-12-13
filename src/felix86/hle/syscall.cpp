@@ -250,6 +250,8 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_ioctl: {
         result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
         STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, result);
+        printf("testing1\n");
+        printf("testing2\n");
         break;
     }
     case felix86_x86_64_write: {
