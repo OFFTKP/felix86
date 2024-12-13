@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -250,8 +251,6 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_ioctl: {
         result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
         STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, result);
-        printf("testing1\n");
-        printf("testing2\n");
         break;
     }
     case felix86_x86_64_write: {
@@ -418,6 +417,36 @@ void felix86_syscall(ThreadState* state) {
         result = 0;
         WARN("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
         STRACE("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
+        break;
+    }
+    case felix86_x86_64_prctl: {
+        int option = rdi;
+        switch (option) {
+        case PR_GET_AUXV: {
+            if (r10 || r8) {
+                result = -EINVAL;
+            } else {
+                void* addr = (void*)rsi;
+                size_t size = rdx;
+                auto [auxv_addr, auxv_size] = g_emulator->GetAuxv();
+                size_t actual_size = std::min(size, auxv_size);
+                memcpy(addr, auxv_addr, actual_size);
+                result = actual_size;
+            }
+            break;
+        }
+        case PR_SET_SECCOMP:
+        case PR_GET_SECCOMP: {
+            WARN("prctl(SECCOMP) not implemented");
+            result = -EINVAL;
+            break;
+        }
+        default: {
+            result = HOST_SYSCALL(prctl, rdi, rsi, rdx, r10, r8);
+            break;
+        }
+        }
+        STRACE("prctl(%d, %016lx, %016lx, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, r10, r8, result);
         break;
     }
     case felix86_x86_64_futex: {

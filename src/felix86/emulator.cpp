@@ -170,6 +170,9 @@ void Emulator::setupMainStack(ThreadState* state) {
         rsp = stack_push(rsp, auxv_entries[i].a_type);
     }
 
+    auxv_base = (void*)rsp;
+    auxv_size = auxv_count * 16;
+
     // End of environment variables
     rsp = stack_push(rsp, 0);
 

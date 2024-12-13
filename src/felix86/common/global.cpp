@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstring>
 #include <string>
+#include <fcntl.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -170,6 +171,17 @@ void initialize_globals() {
     if (interpreter_base) {
         g_interpreter_base_hint = std::stoull(interpreter_base, nullptr, 16);
         environment += "\nFELIX86_INTERPRETER_BASE=" + fmt::format("{:016x}", g_interpreter_base_hint);
+    }
+
+    const char* log_file = getenv("FELIX86_LOG_FILE");
+    if (log_file) {
+        int fd = open(log_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd == -1) {
+            ERROR("Failed to open log file %s: %s", log_file, strerror(errno));
+        } else {
+            g_output_fd = fd;
+            environment += "\nFELIX86_LOG_FILE=" + std::string(log_file);
+        }
     }
 
     if (!g_testing) {

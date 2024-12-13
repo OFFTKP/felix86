@@ -73,6 +73,10 @@ struct Emulator {
         emulator->compileFunction(rip);
     }
 
+    std::pair<void*, size_t> GetAuxv() {
+        return {auxv_base, auxv_size};
+    }
+
 private:
     void setupMainStack(ThreadState* state);
 
@@ -87,4 +91,6 @@ private:
     Filesystem fs;
     SignalHandler signal_handler;
     bool testing = false;
+    void* auxv_base = nullptr;
+    size_t auxv_size = 0;
 };
