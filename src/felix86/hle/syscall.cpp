@@ -420,6 +420,9 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_prctl: {
+#ifndef PR_GET_AUXV
+#define PR_GET_AUXV 0x41555856
+#endif
         int option = rdi;
         switch (option) {
         case PR_GET_AUXV: {
