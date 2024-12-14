@@ -5,8 +5,8 @@
 #include "felix86/common/utility.hpp"
 
 struct RegisteredSignal {
-    void* handler = (void*)SIG_DFL;
-    sigset_t mask = {};
+    void* handler = (void*)SIG_DFL; // handler function of signal
+    sigset_t mask = {};             // blocked during execution of this handler
     int flags = 0;
 };
 

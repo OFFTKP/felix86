@@ -457,6 +457,40 @@ void felix86_syscall(ThreadState* state) {
         STRACE("futex(%p, %d, %d, %p, %p, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9, (int)result);
         break;
     }
+    case felix86_x86_64_rt_sigprocmask: {
+        int how = rdi;
+        sigset_t* set = (sigset_t*)rsi;
+        sigset_t* oldset = (sigset_t*)rdx;
+
+        if (set) {
+            for (int i = 1; i <= 64; i++) {
+                int res = sigismember(set, i);
+                if (res == 1) {
+                    if (how == SIG_BLOCK) {
+                        state->SetSignalMask(i, true);
+                    } else if (how == SIG_UNBLOCK) {
+                        state->SetSignalMask(i, false);
+                    } else if (how == SIG_SETMASK) {
+                        state->SetSignalMask(i, true);
+                    }
+                } else if (res == 0) {
+                    if (how == SIG_SETMASK) {
+                        state->SetSignalMask(i, false);
+                    }
+                }
+            }
+        }
+
+        if (oldset) {
+            sigemptyset(oldset);
+            for (int i = 1; i <= 64; i++) {
+                if (state->GetSignalMask(i)) {
+                    sigaddset(oldset, i);
+                }
+            }
+        }
+        break;
+    }
     default: {
         ERROR("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
         break;

@@ -174,6 +174,8 @@ struct ThreadState {
     u64 clear_child_tid{};
     u64 brk_current_address{};
 
+    std::array<bool, 64> masked_signals{};
+
     // Addresses that the JIT will load and call/jump to if necessary
     u64 compile_next{};
     u64 crash_handler{};
@@ -185,8 +187,9 @@ struct ThreadState {
 
     u8 exit_reason{};
 
-    // Storage for saved RISC-V registers, per thread, for when it's time to completely
+    // Storage for saved RISC-V registers, per thread, to restore when it's time to completely
     // exit dispatcher and stop the emulator
+    // TODO: this is unnecessary, use the stack
     u64 gpr_storage[Registers::GetSavedGPRs().size()]{};
 
     u64 GetGpr(x86_ref_e ref) const {
@@ -296,6 +299,24 @@ struct ThreadState {
 
     void SetFSBase(u64 value) {
         fsbase = value;
+    }
+
+    void SetSignalMask(int signal, bool value) {
+        if (signal < 1 || signal > 64) {
+            ERROR("Invalid signal number: %d", signal);
+            return;
+        }
+
+        masked_signals[signal - 1] = value;
+    }
+
+    bool GetSignalMask(int signal) const {
+        if (signal < 1 || signal > 64) {
+            ERROR("Invalid signal number: %d", signal);
+            return false;
+        }
+
+        return masked_signals[signal - 1];
     }
 };
 

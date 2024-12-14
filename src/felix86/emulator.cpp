@@ -317,5 +317,6 @@ ThreadState* Emulator::createThreadState() {
     thread_state->crash_handler = (u64)backend.GetCrashHandler();
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;
+    std::fill(thread_state->masked_signals.begin(), thread_state->masked_signals.end(), false);
     return thread_state;
 }
