@@ -1513,17 +1513,17 @@ IR_HANDLE(cvtsi2sd) { // cvtsi2sd xmm, r/m32 - 0xf2 0x0f 0x2a
     x86_size_e size_e = inst->operand_rm.size;
     if (size_e == X86_SIZE_DWORD) {
         SSAInstruction* rm = ir.IToV(ir.GetRm(inst->operand_rm), VectorState::PackedDWord);
-        ir.SetVMask(ir.VSplati(0b1, VectorState::PackedDWord));
+        ir.SetVMask(ir.VSplati(0b1, VectorState::PackedQWord));
         SSAInstruction* cvt = ir.VWCvtSToF(rm, VectorState::Float, VecMask::Yes);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* result = ir.VMerge(cvt, reg, VectorState::PackedDWord);
+        SSAInstruction* result = ir.VMerge(cvt, reg, VectorState::PackedQWord);
         ir.SetReg(inst->operand_reg, result);
     } else {
         SSAInstruction* rm = ir.IToV(ir.GetRm(inst->operand_rm), VectorState::PackedQWord);
-        ir.SetVMask(ir.VSplati(0b1, VectorState::PackedDWord));
+        ir.SetVMask(ir.VSplati(0b1, VectorState::PackedQWord));
         SSAInstruction* cvt = ir.VCvtSToF(rm, VectorState::Double, VecMask::Yes);
         SSAInstruction* reg = ir.GetReg(inst->operand_reg);
-        SSAInstruction* result = ir.VMerge(cvt, reg, VectorState::PackedDWord);
+        SSAInstruction* result = ir.VMerge(cvt, reg, VectorState::PackedQWord);
         ir.SetReg(inst->operand_reg, result);
     }
 }
@@ -1538,6 +1538,21 @@ IR_HANDLE(cvttss2si) { // cvttss2si r32, xmm32 - 0xf3 0x0f 0x2c
         ir.SetReg(inst->operand_reg, integer);
     } else {
         SSAInstruction* cvt = ir.VWCvtFToS(rm, VectorState::Float);
+        SSAInstruction* integer = ir.VToI(cvt, VectorState::Double);
+        ir.SetReg(inst->operand_reg, integer);
+    }
+}
+
+IR_HANDLE(cvttsd2si) { // cvttsd2si r32, xmm32 - 0xf2 0x0f 0x2c
+    // TODO: rounding mode
+    x86_size_e size_e = inst->operand_reg.size;
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Float);
+    if (size_e == X86_SIZE_DWORD) {
+        SSAInstruction* cvt = ir.VNCvtFToS(rm, VectorState::Float);
+        SSAInstruction* integer = ir.VToI(cvt, VectorState::Float);
+        ir.SetReg(inst->operand_reg, integer);
+    } else {
+        SSAInstruction* cvt = ir.VCvtFToS(rm, VectorState::Float);
         SSAInstruction* integer = ir.VToI(cvt, VectorState::Double);
         ir.SetReg(inst->operand_reg, integer);
     }
