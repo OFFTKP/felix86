@@ -1335,6 +1335,10 @@ void Emitter::EmitVCvtSToF(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, V
     AS.VFCVT_F_X(Vd, Vs, masked);
 }
 
+void Emitter::EmitVWCvtSToF(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
+    AS.VFWCVT_F_X(Vd, Vs, masked);
+}
+
 void Emitter::EmitVNCvtSToF(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
     AS.VFNCVT_F_X(Vd, Vs, masked);
 }

@@ -145,6 +145,7 @@ struct IREmitter {
     SSAInstruction* VFSqrt(SSAInstruction* value, VectorState state);
     SSAInstruction* VFRcpSqrt(SSAInstruction* value, VectorState state);
     SSAInstruction* VCvtSToF(SSAInstruction* value, VectorState state, VecMask mask = VecMask::No);
+    SSAInstruction* VWCvtSToF(SSAInstruction* value, VectorState state, VecMask mask = VecMask::No);
     SSAInstruction* VNCvtSToF(SSAInstruction* value, VectorState state, VecMask mask = VecMask::No);
     SSAInstruction* VCvtFToS(SSAInstruction* value, VectorState state, VecMask mask = VecMask::No);
     SSAInstruction* VWCvtFToS(SSAInstruction* value, VectorState state, VecMask mask = VecMask::No);

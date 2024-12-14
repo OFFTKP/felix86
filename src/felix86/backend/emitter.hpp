@@ -182,6 +182,7 @@ private:
     static void EmitVSlide1Up(Backend&, biscuit::Vec, biscuit::GPR, biscuit::Vec, VecMask);
     static void EmitVSlide1Down(Backend&, biscuit::Vec, biscuit::GPR, biscuit::Vec, VecMask);
     static void EmitVCvtSToF(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVWCvtSToF(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVNCvtSToF(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVCvtFToS(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVWCvtFToS(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
