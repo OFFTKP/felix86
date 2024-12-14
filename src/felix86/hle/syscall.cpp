@@ -494,6 +494,12 @@ void felix86_syscall(ThreadState* state) {
                 }
             }
         }
+
+        if (how != SIG_BLOCK && how != SIG_UNBLOCK && how != SIG_SETMASK) {
+            result = -EINVAL;
+        } else {
+            result = 0;
+        }
         break;
     }
     default: {
