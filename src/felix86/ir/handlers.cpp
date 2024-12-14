@@ -1548,7 +1548,7 @@ IR_HANDLE(cvttsd2si) { // cvttsd2si r32, xmm32 - 0xf2 0x0f 0x2c
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Float);
     if (size_e == X86_SIZE_DWORD) {
-        SSAInstruction* cvt = ir.VNCvtFToSRtz(ir.VZero(VectorState::Float), VectorState::PackedDWord);
+        SSAInstruction* cvt = ir.VNCvtFToSRtz(ir.VZero(VectorState::Float), VectorState::Float);
         SSAInstruction* integer = ir.VToI(cvt, VectorState::Float);
         ir.SetReg(inst->operand_reg, integer);
     } else {
