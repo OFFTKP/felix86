@@ -1553,7 +1553,7 @@ IR_HANDLE(cvttsd2si) { // cvttsd2si r32, xmm32 - 0xf2 0x0f 0x2c
         SSAInstruction* integer = ir.VToI(cvt, VectorState::Float);
         ir.SetReg(inst->operand_reg, integer);
     } else {
-        SSAInstruction* cvt = ir.VCvtFToSRtz(rm, VectorState::Float);
+        SSAInstruction* cvt = ir.VCvtFToSRtz(rm, VectorState::Double);
         SSAInstruction* integer = ir.VToI(cvt, VectorState::Double);
         ir.SetReg(inst->operand_reg, integer);
     }
