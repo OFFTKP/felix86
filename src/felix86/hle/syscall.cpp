@@ -343,6 +343,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("getpid() = %d", (int)result);
         break;
     }
+    case felix86_x86_64_gettid: {
+        result = HOST_SYSCALL(gettid);
+        STRACE("gettid() = %d", (int)result);
+        break;
+    }
     case felix86_x86_64_socket: {
         result = HOST_SYSCALL(socket, rdi, rsi, rdx);
         STRACE("socket(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
