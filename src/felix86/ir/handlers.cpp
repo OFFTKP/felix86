@@ -1548,12 +1548,11 @@ IR_HANDLE(cvttsd2si) { // cvttsd2si r32, xmm32 - 0xf2 0x0f 0x2c
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Float);
     if (size_e == X86_SIZE_DWORD) {
-        ir.SetVMask(ir.VSplati(0b1, VectorState::PackedDWord));
-        SSAInstruction* cvt = ir.VNCvtFToS(rm, VectorState::PackedQWord, VecMask::Yes);
+        SSAInstruction* cvt = ir.VNCvtFToSRtz(ir.VZero(VectorState::Float), VectorState::PackedDWord, VecMask::Yes);
         SSAInstruction* integer = ir.VToI(cvt, VectorState::Float);
         ir.SetReg(inst->operand_reg, integer);
     } else {
-        SSAInstruction* cvt = ir.VCvtFToS(rm, VectorState::Float);
+        SSAInstruction* cvt = ir.VCvtFToSRtz(rm, VectorState::Float);
         SSAInstruction* integer = ir.VToI(cvt, VectorState::Double);
         ir.SetReg(inst->operand_reg, integer);
     }
@@ -1564,11 +1563,11 @@ IR_HANDLE(cvtss2si) { // cvtss2si r32, xmm32 - 0xf3 0x0f 0x2d
     x86_size_e size_e = inst->operand_reg.size;
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::Float);
     if (size_e == X86_SIZE_DWORD) {
-        SSAInstruction* cvt = ir.VCvtFToS(rm, VectorState::Float);
+        SSAInstruction* cvt = ir.VCvtFToSRtz(rm, VectorState::Float);
         SSAInstruction* integer = ir.VToI(cvt, VectorState::Float);
         ir.SetReg(inst->operand_reg, integer);
     } else {
-        SSAInstruction* cvt = ir.VWCvtFToS(rm, VectorState::Double);
+        SSAInstruction* cvt = ir.VWCvtFToSRtz(rm, VectorState::Double);
         SSAInstruction* integer = ir.VToI(cvt, VectorState::Double);
         ir.SetReg(inst->operand_reg, integer);
     }

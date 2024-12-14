@@ -1347,12 +1347,24 @@ void Emitter::EmitVCvtFToS(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, V
     AS.VFCVT_X_F(Vd, Vs, masked);
 }
 
+void Emitter::EmitVCvtFToSRtz(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
+    AS.VFCVT_RTZ_X_F(Vd, Vs, masked);
+}
+
 void Emitter::EmitVNCvtFToS(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
     AS.VFNCVT_X_F(Vd, Vs, masked);
 }
 
+void Emitter::EmitVNCvtFToSRtz(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
+    AS.VFNCVT_RTZ_X_F(Vd, Vs, masked);
+}
+
 void Emitter::EmitVWCvtFToS(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
     AS.VFWCVT_X_F(Vd, Vs, masked);
+}
+
+void Emitter::EmitVWCvtFToSRtz(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, VecMask masked) {
+    AS.VFWCVT_RTZ_X_F(Vd, Vs, masked);
 }
 
 void Emitter::EmitFence(Backend& backend, biscuit::FenceOrder pred, biscuit::FenceOrder succ) {

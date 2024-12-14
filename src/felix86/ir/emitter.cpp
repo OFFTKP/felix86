@@ -1128,6 +1128,14 @@ SSAInstruction* IREmitter::VCvtFToS(SSAInstruction* value, VectorState state, Ve
     return instruction;
 }
 
+SSAInstruction* IREmitter::VCvtFToSRtz(SSAInstruction* value, VectorState state, VecMask masked) {
+    SSAInstruction* instruction = insertInstruction(IROpcode::VCvtFToSRtz, state, {value});
+    if (masked == VecMask::Yes) {
+        instruction->SetMasked();
+    }
+    return instruction;
+}
+
 SSAInstruction* IREmitter::VNCvtFToS(SSAInstruction* value, VectorState state, VecMask masked) {
     SSAInstruction* instruction = insertInstruction(IROpcode::VNCvtFToS, state, {value});
     if (masked == VecMask::Yes) {
@@ -1136,8 +1144,24 @@ SSAInstruction* IREmitter::VNCvtFToS(SSAInstruction* value, VectorState state, V
     return instruction;
 }
 
+SSAInstruction* IREmitter::VNCvtFToSRtz(SSAInstruction* value, VectorState state, VecMask masked) {
+    SSAInstruction* instruction = insertInstruction(IROpcode::VNCvtFToSRtz, state, {value});
+    if (masked == VecMask::Yes) {
+        instruction->SetMasked();
+    }
+    return instruction;
+}
+
 SSAInstruction* IREmitter::VWCvtFToS(SSAInstruction* value, VectorState state, VecMask masked) {
     SSAInstruction* instruction = insertInstruction(IROpcode::VWCvtFToS, state, {value});
+    if (masked == VecMask::Yes) {
+        instruction->SetMasked();
+    }
+    return instruction;
+}
+
+SSAInstruction* IREmitter::VWCvtFToSRtz(SSAInstruction* value, VectorState state, VecMask masked) {
+    SSAInstruction* instruction = insertInstruction(IROpcode::VWCvtFToSRtz, state, {value});
     if (masked == VecMask::Yes) {
         instruction->SetMasked();
     }

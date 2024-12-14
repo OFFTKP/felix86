@@ -185,8 +185,11 @@ private:
     static void EmitVWCvtSToF(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVNCvtSToF(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVCvtFToS(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVCvtFToSRtz(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVNCvtFToS(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVNCvtFToSRtz(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVWCvtFToS(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVWCvtFToSRtz(Backend&, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVFAdd(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVFSub(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVFMul(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
