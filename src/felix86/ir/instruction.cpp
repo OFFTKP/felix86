@@ -1060,6 +1060,10 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vcvtfstos", "src", GetNameString(operands[0]));
         break;
     }
+    case IROpcode::VNCvtFToS: {
+        ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vncvtfstos", "src", GetNameString(operands[0]));
+        break;
+    }
     case IROpcode::VWCvtFToS: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vwcvtftos", "src", GetNameString(operands[0]));
         break;
