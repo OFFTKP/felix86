@@ -590,7 +590,9 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 case IROpcode::VWCvtFToS:
                 case IROpcode::VNCvtSToF:
                 case IROpcode::VNCvtFToS:
-                case IROpcode::VWCvtSToF: {
+                case IROpcode::VWCvtSToF:
+                case IROpcode::VWCvtFToSRtz:
+                case IROpcode::VNCvtFToSRtz: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                         if (should_consider(get_instruction(inst.GetOperand(i)))) {
                             u32 operand_index = get_index(inst.GetOperand(i));
