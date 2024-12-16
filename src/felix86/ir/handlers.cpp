@@ -1281,7 +1281,7 @@ IR_HANDLE(comisd) {
     ir.TerminateJump(next_instruction_target);
     ir.SetBlock(not_equal_block);
 
-    SSAInstruction* less = ir.VFLessThan(xmm1, xmm2, VectorState::Double);
+    SSAInstruction* less = ir.VToI(ir.VFLessThan(xmm1, xmm2, VectorState::Double), VectorState::Double);
 
     IRBlock* less_block = ir.CreateBlock();
     IRBlock* greater_block = ir.CreateBlock();
