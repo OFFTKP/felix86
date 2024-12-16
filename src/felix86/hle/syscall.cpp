@@ -211,6 +211,11 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_statx: {
+        result = fs.Statx(rdi, (const char*)rsi, rdx, r10, (struct statx*)r8);
+        STRACE("statx(%d, %s, %d, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
+        break;
+    }
     case felix86_x86_64_fadvise64: {
         result = HOST_SYSCALL(fadvise64, rdi, rsi, rdx, r10);
         STRACE("fadvise64(%d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)result);

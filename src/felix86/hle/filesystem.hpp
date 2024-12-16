@@ -74,6 +74,8 @@ struct Filesystem {
 
     int GetCwd(char* buf, u32 bufsiz);
 
+    int Statx(int dirfd, const char* pathname, int flags, int mask, struct statx* statxbuf);
+
     std::optional<std::filesystem::path> AtPath(int dirfd, const char* pathname);
 
     std::filesystem::path GetRootFSPath() {

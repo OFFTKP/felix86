@@ -98,6 +98,13 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
         path = rootfs_path / path.relative_path();
     }
 
+    char resolved_path[PATH_MAX];
+    if (realpath(path.c_str(), resolved_path) == nullptr) {
+        ERROR("Failed to resolve path %s", path.c_str());
+    }
+
+    path = resolved_path;
+
     if (!validatePath(path)) {
         error = -ENOENT;
         return std::nullopt;
@@ -138,6 +145,17 @@ int Filesystem::FAccessAt(int dirfd, const char* pathname, int mode, int flags) 
 
     std::filesystem::path path = path_opt.value();
     return faccessat(AT_FDCWD, path.c_str(), mode, flags);
+}
+
+int Filesystem::Statx(int dirfd, const char* pathname, int flags, int mask, struct statx* statxbuf) {
+    auto path_opt = AtPath(dirfd, pathname);
+
+    if (!path_opt) {
+        return -error;
+    }
+
+    std::filesystem::path path = path_opt.value();
+    return statx(AT_FDCWD, path.c_str(), flags, mask, statxbuf);
 }
 
 int Filesystem::OpenAt(int dirfd, const char* pathname, int flags, int mode) {
