@@ -1154,6 +1154,15 @@ IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
     ir.TerminateJump(next_instruction_target);
 }
 
+IR_HANDLE(btc_imm) {
+    ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER); // TODO: bitstring stuff
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* mask = ir.Shli(ir.Imm(1), inst->operand_imm.immediate.data);
+    SSAInstruction* result = ir.Xor(rm, mask);
+    ir.SetRm(inst->operand_rm, result);
+    ir.SetFlag(ir.Andi(ir.Shri(result, inst->operand_imm.immediate.data), 1), X86_REF_CF);
+}
+
 IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
     IRBlock* next_instruction_target = ir.CreateBlockAt(ir.GetNextAddress());
     IRBlock* not_zero_target = ir.CreateBlock();
@@ -1245,6 +1254,10 @@ IR_HANDLE(bswap) { // bswap - 0x0f 0xc8
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████
 
 IR_HANDLE(comisd) {
+    ir.SetFlag(ir.Imm(0), X86_REF_OF);
+    ir.SetFlag(ir.Imm(0), X86_REF_SF);
+    ir.SetFlag(ir.Imm(0), X86_REF_AF);
+
     IRBlock* next_instruction_target = ir.CreateBlockAt(ir.GetNextAddress());
     SSAInstruction* xmm1 = ir.GetReg(inst->operand_reg);
     SSAInstruction* xmm2 = ir.GetRm(inst->operand_rm, VectorState::Double);
