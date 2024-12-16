@@ -1706,11 +1706,10 @@ IR_HANDLE(movss_xmm_xmm32) {
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
         inst->operand_rm.size = X86_SIZE_DWORD;
         SSAInstruction* integer = ir.GetRm(inst->operand_rm);
-        SSAInstruction* value = ir.IToV(integer, VectorState::Float);
         SSAInstruction* mask = ir.VSplati(0b0001, VectorState::Float);
-        SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
+        SSAInstruction* value = ir.IToV(integer, VectorState::Float);
         ir.SetVMask(mask);
-        SSAInstruction* result = ir.VMerge(value, xmm, VectorState::PackedDWord);
+        SSAInstruction* result = ir.VMerge(value, ir.VZero(VectorState::PackedDWord), VectorState::PackedDWord);
         ir.SetReg(inst->operand_reg, result);
     } else {
         SSAInstruction* value = ir.GetRm(inst->operand_rm, VectorState::Float);
