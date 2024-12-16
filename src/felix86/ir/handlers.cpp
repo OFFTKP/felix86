@@ -1244,6 +1244,65 @@ IR_HANDLE(bswap) { // bswap - 0x0f 0xc8
 //      ██ ██      ██      ██    ██ ██  ██ ██ ██   ██ ██   ██ ██   ██    ██        ██    ██ ██    ██
 // ███████ ███████  ██████  ██████  ██   ████ ██████  ██   ██ ██   ██    ██         ██████   ██████
 
+IR_HANDLE(comisd) {
+    IRBlock* next_instruction_target = ir.CreateBlockAt(ir.GetNextAddress());
+    SSAInstruction* xmm1 = ir.GetReg(inst->operand_reg);
+    SSAInstruction* xmm2 = ir.GetRm(inst->operand_rm, VectorState::Double);
+    // NaN is not equal itself
+    SSAInstruction* is_nan1 = ir.VToI(ir.VFNotEqual(xmm1, xmm1, VectorState::Double), VectorState::Double);
+    SSAInstruction* is_nan2 = ir.VToI(ir.VFNotEqual(xmm2, xmm2, VectorState::Double), VectorState::Double);
+    SSAInstruction* is_nan = ir.Or(is_nan1, is_nan2);
+
+    IRBlock* nan_block = ir.CreateBlock();
+    IRBlock* not_nan_block = ir.CreateBlock();
+
+    ir.TerminateJumpConditional(is_nan, nan_block, not_nan_block);
+    ir.SetBlock(nan_block);
+
+    ir.SetFlag(ir.Imm(1), X86_REF_ZF);
+    ir.SetFlag(ir.Imm(1), X86_REF_PF);
+    ir.SetFlag(ir.Imm(1), X86_REF_CF);
+
+    ir.TerminateJump(next_instruction_target);
+    ir.SetBlock(not_nan_block);
+
+    SSAInstruction* not_equal = ir.VToI(ir.VFNotEqual(xmm1, xmm2, VectorState::Double), VectorState::Double);
+
+    IRBlock* equal_block = ir.CreateBlock();
+    IRBlock* not_equal_block = ir.CreateBlock();
+
+    ir.TerminateJumpConditional(not_equal, not_equal_block, equal_block);
+    ir.SetBlock(equal_block);
+
+    ir.SetFlag(ir.Imm(1), X86_REF_ZF);
+    ir.SetFlag(ir.Imm(0), X86_REF_PF);
+    ir.SetFlag(ir.Imm(0), X86_REF_CF);
+
+    ir.TerminateJump(next_instruction_target);
+    ir.SetBlock(not_equal_block);
+
+    SSAInstruction* less = ir.VFLessThan(xmm1, xmm2, VectorState::Double);
+
+    IRBlock* less_block = ir.CreateBlock();
+    IRBlock* greater_block = ir.CreateBlock();
+
+    ir.TerminateJumpConditional(less, less_block, greater_block);
+    ir.SetBlock(less_block);
+
+    ir.SetFlag(ir.Imm(0), X86_REF_ZF);
+    ir.SetFlag(ir.Imm(0), X86_REF_PF);
+    ir.SetFlag(ir.Imm(1), X86_REF_CF);
+
+    ir.TerminateJump(next_instruction_target);
+    ir.SetBlock(greater_block);
+
+    ir.SetFlag(ir.Imm(0), X86_REF_ZF);
+    ir.SetFlag(ir.Imm(0), X86_REF_PF);
+    ir.SetFlag(ir.Imm(0), X86_REF_CF);
+
+    ir.TerminateJump(next_instruction_target);
+}
+
 IR_HANDLE(mov_xmm_xmm128) {
     SSAInstruction* rm = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     ir.SetReg(inst->operand_reg, rm);

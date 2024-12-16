@@ -1044,6 +1044,16 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vfrcpsqrt", "src", GetNameString(operands[0]));
         break;
     }
+    case IROpcode::VFNotEqual: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vfneq", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
+    case IROpcode::VFLessThan: {
+        ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vflt", "src1", GetNameString(operands[0]), "src2",
+                           GetNameString(operands[1]));
+        break;
+    }
     case IROpcode::VCvtSToF: {
         ret += fmt::format("{} <- {}({}: {})", GetNameString(name), "vcvtstof", "src", GetNameString(operands[0]));
         break;

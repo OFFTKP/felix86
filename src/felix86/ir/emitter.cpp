@@ -1096,6 +1096,14 @@ SSAInstruction* IREmitter::VFRcpSqrt(SSAInstruction* value, VectorState state) {
     return insertInstruction(IROpcode::VFRcpSqrt, state, {value});
 }
 
+SSAInstruction* IREmitter::VFNotEqual(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VFNotEqual, state, {lhs, rhs});
+}
+
+SSAInstruction* IREmitter::VFLessThan(SSAInstruction* lhs, SSAInstruction* rhs, VectorState state) {
+    return insertInstruction(IROpcode::VFLessThan, state, {lhs, rhs});
+}
+
 SSAInstruction* IREmitter::VCvtSToF(SSAInstruction* value, VectorState state, VecMask masked) {
     SSAInstruction* instruction = insertInstruction(IROpcode::VCvtSToF, state, {value});
     if (masked == VecMask::Yes) {

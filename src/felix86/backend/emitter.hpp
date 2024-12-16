@@ -197,6 +197,8 @@ private:
     static void EmitVFSqrt(Backend&, biscuit::Vec, biscuit::Vec);
     static void EmitVFRcp(Backend&, biscuit::Vec, biscuit::Vec);
     static void EmitVFRcpSqrt(Backend&, biscuit::Vec, biscuit::Vec);
+    static void EmitVFNotEqual(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
+    static void EmitVFLessThan(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec, VecMask);
     static void EmitVFMin(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitVFMax(Backend&, biscuit::Vec, biscuit::Vec, biscuit::Vec);
     static void EmitFence(Backend&, biscuit::FenceOrder, biscuit::FenceOrder);

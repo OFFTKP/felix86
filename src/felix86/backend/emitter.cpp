@@ -1367,6 +1367,14 @@ void Emitter::EmitVWCvtFToSRtz(Backend& backend, biscuit::Vec Vd, biscuit::Vec V
     AS.VFWCVT_RTZ_X_F(Vd, Vs, masked);
 }
 
+void Emitter::EmitVFNotEqual(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VMFNE(Vd, Vs2, Vs1, masked);
+}
+
+void Emitter::EmitVFLessThan(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs2, biscuit::Vec Vs1, VecMask masked) {
+    AS.VMFLT(Vd, Vs2, Vs1, masked);
+}
+
 void Emitter::EmitFence(Backend& backend, biscuit::FenceOrder pred, biscuit::FenceOrder succ) {
     AS.FENCE(pred, succ);
 }
