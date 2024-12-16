@@ -98,12 +98,14 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
         path = rootfs_path / path.relative_path();
     }
 
-    char resolved_path[PATH_MAX];
-    if (realpath(path.c_str(), resolved_path) == nullptr) {
-        ERROR("Failed to resolve path %s", path.c_str());
-    }
+    if (std::filesystem::exists(path) && std::filesystem::is_symlink(path)) {
+        char resolved_path[PATH_MAX];
+        if (realpath(path.c_str(), resolved_path) == nullptr) {
+            ERROR("Failed to resolve path %s", path.c_str());
+        }
 
-    path = resolved_path;
+        path = resolved_path;
+    }
 
     if (!validatePath(path)) {
         error = -ENOENT;
