@@ -1734,6 +1734,38 @@ IR_HANDLE(movss_xmm32_xmm) {
     }
 }
 
+IR_HANDLE(movsd_xmm_xmm64) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        inst->operand_rm.size = X86_SIZE_QWORD;
+        SSAInstruction* integer = ir.GetRm(inst->operand_rm);
+        SSAInstruction* value = ir.VZext(ir.IToV(integer, VectorState::Double), X86_SIZE_QWORD);
+        ir.SetReg(inst->operand_reg, value);
+    } else {
+        SSAInstruction* value = ir.GetRm(inst->operand_rm, VectorState::Double);
+        SSAInstruction* mask = ir.VSplati(0b0001, VectorState::Double);
+        SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
+        ir.SetVMask(mask);
+        SSAInstruction* result = ir.VMerge(value, xmm, VectorState::PackedQWord);
+        ir.SetReg(inst->operand_reg, result);
+    }
+}
+
+IR_HANDLE(movsd_xmm64_xmm) {
+    if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
+        SSAInstruction* integer = ir.GetReg(inst->operand_reg);
+        SSAInstruction* value = ir.VToI(integer, VectorState::Double);
+        inst->operand_rm.size = X86_SIZE_QWORD;
+        ir.SetRm(inst->operand_rm, value);
+    } else {
+        SSAInstruction* value = ir.GetReg(inst->operand_reg);
+        SSAInstruction* mask = ir.VSplati(0b0001, VectorState::Double);
+        SSAInstruction* xmm = ir.GetRm(inst->operand_rm, VectorState::Double);
+        ir.SetVMask(mask);
+        SSAInstruction* result = ir.VMerge(value, xmm, VectorState::PackedQWord);
+        ir.SetRm(inst->operand_reg, result, VectorState::Double);
+    }
+}
+
 IR_HANDLE(movq_xmm_xmm64) { // movq xmm, xmm64 - 0xf3 0x0f 0x7e
     x86_operand_t rm_op = inst->operand_rm;
     SSAInstruction* result;
