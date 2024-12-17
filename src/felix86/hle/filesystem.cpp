@@ -127,7 +127,7 @@ ssize_t Filesystem::ReadLinkAt(int dirfd, const char* pathname, char* buf, u32 b
     auto path_opt = AtPath(dirfd, pathname);
 
     if (!path_opt) {
-        return -error;
+        return error;
     }
 
     std::filesystem::path path = path_opt.value();
@@ -142,7 +142,7 @@ int Filesystem::FAccessAt(int dirfd, const char* pathname, int mode, int flags) 
     auto path_opt = AtPath(dirfd, pathname);
 
     if (!path_opt) {
-        return -error;
+        return error;
     }
 
     std::filesystem::path path = path_opt.value();
@@ -153,7 +153,7 @@ int Filesystem::Statx(int dirfd, const char* pathname, int flags, int mask, stru
     auto path_opt = AtPath(dirfd, pathname);
 
     if (!path_opt) {
-        return -error;
+        return error;
     }
 
     std::filesystem::path path = path_opt.value();
@@ -164,7 +164,7 @@ int Filesystem::OpenAt(int dirfd, const char* pathname, int flags, int mode) {
     auto path_opt = AtPath(dirfd, pathname);
 
     if (!path_opt) {
-        return -error;
+        return error;
     }
 
     std::filesystem::path path = path_opt.value();
