@@ -2,9 +2,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sys/ioctl.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <termios.h>
+#undef VMIN
 #include <unistd.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
@@ -208,6 +211,8 @@ void felix86_syscall(ThreadState* state) {
             STRACE("st_size : %ld", guest_stat->st_size);
             STRACE("st_blksize : %ld", guest_stat->st_blksize);
             STRACE("st_blocks : %ld", guest_stat->st_blocks);
+        } else {
+            STRACE("fstat failed: %d", errno);
         }
         break;
     }
@@ -256,6 +261,21 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_ioctl: {
         result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
         STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, result);
+
+#if 1
+        if (g_strace) {
+            // TCSETSW
+            termios* term = (termios*)rdx;
+            switch (rsi) {
+            case TCSETS:
+            case TCSETSW:
+            case TCSETSF: {
+                auto oflag = term->c_oflag;
+                // todo, output the flag properties
+            }
+            }
+        }
+#endif
         break;
     }
     case felix86_x86_64_write: {
