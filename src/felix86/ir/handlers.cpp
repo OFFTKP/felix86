@@ -1163,6 +1163,35 @@ IR_HANDLE(btc_imm) {
     ir.SetFlag(ir.Andi(ir.Shri(result, inst->operand_imm.immediate.data), 1), X86_REF_CF);
 }
 
+IR_HANDLE(btc) {
+    ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER); // TODO: bitstring stuff
+    SSAInstruction* rm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* reg = ir.GetReg(inst->operand_reg);
+    SSAInstruction* shift = nullptr;
+    switch (inst->operand_reg.size) {
+    case X86_SIZE_WORD: {
+        shift = ir.Andi(reg, 15);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        shift = ir.Andi(reg, 31);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        shift = ir.Andi(reg, 63);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+    SSAInstruction* mask = ir.Shl(ir.Imm(1), shift);
+    SSAInstruction* result = ir.Xor(rm, mask);
+    ir.SetRm(inst->operand_rm, result);
+    ir.SetFlag(ir.Andi(ir.Shr(result, shift), 1), X86_REF_CF);
+}
+
 IR_HANDLE(bsf) { // bsf - 0x0f 0xbc
     IRBlock* next_instruction_target = ir.CreateBlockAt(ir.GetNextAddress());
     IRBlock* not_zero_target = ir.CreateBlock();
