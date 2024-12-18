@@ -1783,17 +1783,16 @@ IR_HANDLE(pshuflw) { // pshuflw xmm, xmm/m128, imm8 - 0xf2 0x0f 0x70
     u8 el2 = (imm >> 4) & 0b11;
     u8 el3 = (imm >> 6) & 0b11;
     // TODO: use literal load from memory here eventually
-    SSAInstruction* first = ir.VSplati(el3, VectorState::PackedWord);
+    SSAInstruction* id = ir.VId(VectorState::PackedWord);
+    // Slide down 4 words, so then the register looks like 8 7 6 5, then we can slide up the other 4 elements
+    SSAInstruction* slid = ir.VSlideDowni(id, 4, VectorState::PackedWord);
+    SSAInstruction* first = ir.VSlide1Up(ir.Imm(el3), slid, VectorState::PackedWord);
     SSAInstruction* second = ir.VSlide1Up(ir.Imm(el2), first, VectorState::PackedWord);
     SSAInstruction* third = ir.VSlide1Up(ir.Imm(el1), second, VectorState::PackedWord);
     SSAInstruction* fourth = ir.VSlide1Up(ir.Imm(el0), third, VectorState::PackedWord);
     SSAInstruction* source = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
     SSAInstruction* result = ir.VGather(ir.VZero(VectorState::PackedWord), source, fourth, VectorState::PackedWord);
-    SSAInstruction* old_reg = ir.GetReg(inst->operand_reg);
-    SSAInstruction* mask = ir.VSplati(0b1, VectorState::PackedQWord);
-    ir.SetVMask(mask);
-    SSAInstruction* merged = ir.VMerge(result, old_reg, VectorState::PackedQWord);
-    ir.SetReg(inst->operand_reg, merged);
+    ir.SetReg(inst->operand_reg, result);
 }
 
 IR_HANDLE(movss_xmm_xmm32) {
