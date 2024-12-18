@@ -1360,6 +1360,7 @@ IR_HANDLE(pshufd) { // pshufd xmm, xmm/m128, imm8 - 0x66 0x0f 0x70
     u8 el1 = (imm >> 2) & 0b11;
     u8 el2 = (imm >> 4) & 0b11;
     u8 el3 = (imm >> 6) & 0b11;
+    // TODO: use literal load from memory here eventually
     SSAInstruction* first = ir.VSplati(el3, VectorState::PackedDWord);
     SSAInstruction* second = ir.VSlide1Up(ir.Imm(el2), first, VectorState::PackedDWord);
     SSAInstruction* third = ir.VSlide1Up(ir.Imm(el1), second, VectorState::PackedDWord);
@@ -1772,6 +1773,27 @@ IR_HANDLE(rcpss) { // rcpss xmm, xmm32 - 0xf3 0x0f 0x53
 
 IR_HANDLE(rcpps) {
     ir.PackedRegRm(inst, felix86_rcp, VectorState::PackedDWord);
+}
+
+IR_HANDLE(pshuflw) { // pshuflw xmm, xmm/m128, imm8 - 0xf2 0x0f 0x70
+    ASSERT(inst->operand_rm.size == X86_SIZE_XMM);
+    u8 imm = inst->operand_imm.immediate.data;
+    u8 el0 = imm & 0b11;
+    u8 el1 = (imm >> 2) & 0b11;
+    u8 el2 = (imm >> 4) & 0b11;
+    u8 el3 = (imm >> 6) & 0b11;
+    // TODO: use literal load from memory here eventually
+    SSAInstruction* first = ir.VSplati(el3, VectorState::PackedWord);
+    SSAInstruction* second = ir.VSlide1Up(ir.Imm(el2), first, VectorState::PackedWord);
+    SSAInstruction* third = ir.VSlide1Up(ir.Imm(el1), second, VectorState::PackedWord);
+    SSAInstruction* fourth = ir.VSlide1Up(ir.Imm(el0), third, VectorState::PackedWord);
+    SSAInstruction* source = ir.GetRm(inst->operand_rm, VectorState::PackedByte);
+    SSAInstruction* result = ir.VGather(ir.VZero(VectorState::PackedWord), source, fourth, VectorState::PackedWord);
+    SSAInstruction* old_reg = ir.GetReg(inst->operand_reg);
+    SSAInstruction* mask = ir.VSplati(0b1, VectorState::PackedQWord);
+    ir.SetVMask(mask);
+    SSAInstruction* merged = ir.VMerge(result, old_reg, VectorState::PackedQWord);
+    ir.SetReg(inst->operand_reg, merged);
 }
 
 IR_HANDLE(movss_xmm_xmm32) {
