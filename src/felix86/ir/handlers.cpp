@@ -1478,6 +1478,15 @@ IR_HANDLE(movq_rm32_xmm) { // movq rm32, xmm - 0x66 0x0f 0x7e
     ir.SetRm(inst->operand_rm, rm, VectorState::PackedByte);
 }
 
+IR_HANDLE(pextrw_reg_xmm) {
+    ASSERT(inst->operand_rm.type == X86_OP_TYPE_REGISTER);
+    u8 shift = inst->operand_imm.immediate.data & 0b111;
+    SSAInstruction* xmm = ir.GetRm(inst->operand_rm);
+    SSAInstruction* slide = ir.VSlideDowni(xmm, shift, VectorState::PackedWord);
+    SSAInstruction* integer = ir.VToI(slide, VectorState::PackedWord);
+    ir.SetReg(inst->operand_reg, ir.And(integer, ir.Imm(0xFFFF)));
+}
+
 IR_HANDLE(movq_xmm64_xmm) { // movq xmm64, xmm - 0x66 0x0f 0xd6
     SSAInstruction* xmm = ir.GetReg(inst->operand_reg);
     if (inst->operand_rm.type == X86_OP_TYPE_MEMORY) {
