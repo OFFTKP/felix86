@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include "felix86/backend/registers.hpp"
-#include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
 enum class Group1 : u8 {

@@ -6,6 +6,7 @@
 #include <sys/mman.h>
 #include <sys/personality.h>
 #include <sys/resource.h>
+#include "felix86/common/debug.hpp"
 #include "felix86/common/elf.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -313,6 +314,7 @@ void Elf::Load(const std::filesystem::path& path) {
     } else {
         g_interpreter_start = base_address + lowest_vaddr;
         g_interpreter_end = base_address + highest_vaddr;
+        MemoryMetadata::AddInterpreterRegion(g_interpreter_start, g_interpreter_end);
     }
 
     phdr = (u8*)(base_address + lowest_vaddr + ehdr.e_phoff);

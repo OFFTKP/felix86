@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "felix86/common/debug.hpp"
 #include "felix86/common/exit.hpp"
 #include "felix86/common/global.hpp"
 
@@ -23,6 +24,8 @@
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
         dprintf(g_output_fd, ANSI_COLOR_RED "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                               \
+        dprintf(g_output_fd, ANSI_COLOR_RED "PC: %016lx - %s:%016lx\n" ANSI_COLOR_RESET, current_rip(),                                              \
+                MemoryMetadata::GetRegionName(current_rip()).c_str(), MemoryMetadata::GetOffset(current_rip()));                                     \
         fsync(g_output_fd);                                                                                                                          \
         felix86_exit(1);                                                                                                                             \
     } while (0)

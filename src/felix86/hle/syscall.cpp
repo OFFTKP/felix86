@@ -9,6 +9,7 @@
 #include <termios.h>
 #undef VMIN
 #include <unistd.h>
+#include "felix86/common/debug.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/emulator.hpp"
@@ -67,6 +68,11 @@ const char* print_syscall_name(u64 syscall_number) {
         return "Unknown";
     }
 }
+
+bool detecting_memory_region = false;
+std::string name = {};
+u64 min_address = ULONG_MAX;
+u64 max_address = 0;
 
 void felix86_syscall(ThreadState* state) {
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
@@ -182,6 +188,11 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_close: {
         result = HOST_SYSCALL(close, rdi);
         STRACE("close(%d) = %d", (int)rdi, (int)result);
+        if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
+            detecting_memory_region = false;
+            ASSERT(result != -1);
+            MemoryMetadata::AddRegion(name, min_address, max_address);
+        }
         break;
     }
     case felix86_x86_64_getcwd: {
@@ -316,6 +327,14 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_openat: {
         result = fs.OpenAt(rdi, (const char*)rsi, rdx, r10);
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
+
+        if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
+            ASSERT(!detecting_memory_region);
+            detecting_memory_region = true;
+            name = std::filesystem::path((const char*)rsi).filename().string();
+            min_address = ULONG_MAX;
+            max_address = 0;
+        }
         break;
     }
     case felix86_x86_64_pread64: {
@@ -326,6 +345,15 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_mmap: {
         result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
         STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, result);
+
+        if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
+            if (result < min_address) {
+                min_address = result;
+            }
+            if (result + rsi > max_address) {
+                max_address = result + rsi;
+            }
+        }
         break;
     }
     case felix86_x86_64_munmap: {

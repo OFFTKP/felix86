@@ -70,3 +70,7 @@ u64 sext_if_64(u64 value, u8 size_e) {
         return 0;
     }
 }
+
+u64 current_rip() {
+    return g_thread_state->rip;
+}
