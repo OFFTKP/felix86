@@ -2410,7 +2410,6 @@ void IREmitter::Group14(x86_instruction_t* inst) {
 }
 
 void IREmitter::Group15(x86_instruction_t* inst) {
-    // TODO: this is not right, theres stuff like incsspd that are reg = 5
     ::Group15 opcode = (::Group15)(inst->operand_reg.reg.ref & 0x7);
     switch (opcode) {
     case Group15::LFence: {
