@@ -28,8 +28,12 @@ struct Emulator {
         main_state->brk_current_address = fs.GetBRK();
         main_state->SetRip((u64)fs.GetEntrypoint());
 
+        AOT aot(*this, fs.GetExecutable());
+        if (g_preload) {
+            aot.PreloadAll();
+        }
+
         if (g_aot) {
-            AOT aot(*this, fs.GetExecutable());
             aot.CompileAll();
         }
     }
@@ -65,6 +69,10 @@ struct Emulator {
         return backend.GetCodeAt(rip);
     }
 
+    Backend& GetBackend() {
+        return backend;
+    }
+
     void Run();
 
     static void* CompileNext(Emulator* emulator, ThreadState* state);
@@ -76,6 +84,8 @@ struct Emulator {
     std::pair<void*, size_t> GetAuxv() {
         return {auxv_base, auxv_size};
     }
+
+    void* LoadFromCache(const std::string& hash);
 
 private:
     void setupMainStack(ThreadState* state);

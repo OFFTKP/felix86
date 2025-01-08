@@ -1,7 +1,9 @@
 #include "felix86/aot/aot.hpp"
+#include "felix86/common/disk_cache.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/progress.hpp"
 #include "felix86/emulator.hpp"
+#include "felix86/frontend/frontend.hpp"
 
 AOT::AOT(Emulator& emulator, std::shared_ptr<Elf> elf) : emulator(emulator), elf(elf) {}
 
@@ -49,10 +51,7 @@ private:
 };
 
 void AOT::CompileAll() {
-    controlFlowAnalysis();
-    functionStartFinder();
-
-    LOG("AOT: Found %lu functions", addresses.size());
+    runAnalysis();
 
     bool quiet = g_quiet;
     g_quiet = true;
@@ -61,4 +60,32 @@ void AOT::CompileAll() {
     pool.Run();
     bar.completed();
     g_quiet = quiet;
+}
+
+void AOT::PreloadAll() {
+    runAnalysis();
+
+    for (u64 address : addresses) {
+        IRFunction function(address);
+        frontend_compile_function(function);
+
+        Hash hash = function.GetHash();
+        std::string hex_hash = hash.ToString();
+
+        if (DiskCache::Has(hex_hash)) {
+            emulator.LoadFromCache(hex_hash);
+        }
+    }
+}
+
+void AOT::runAnalysis() {
+    if (analyzed) {
+        return;
+    }
+
+    controlFlowAnalysis();
+    functionStartFinder();
+    analyzed = true;
+
+    LOG("AOT: Found %lu functions", addresses.size());
 }

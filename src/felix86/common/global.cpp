@@ -22,6 +22,7 @@ bool g_print_block_start = false;
 bool g_print_state = false;
 bool g_print_disassembly = false;
 bool g_cache_functions = false;
+bool g_preload = false;
 bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
 int g_output_fd = 1;
@@ -190,6 +191,13 @@ void initialize_globals() {
             g_cache_functions = false;
         } else {
             g_cache_functions = true;
+
+            const char* preload_env = getenv("FELIX86_NO_PRELOAD");
+            if (is_truthy(preload_env)) {
+                g_preload = false;
+            } else {
+                g_preload = true;
+            }
         }
     }
 

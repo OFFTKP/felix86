@@ -215,13 +215,9 @@ void* Emulator::compileFunction(u64 rip) {
     // Check disk cache if enabled
     if (g_cache_functions) {
         ASSERT(!g_testing);
-        std::string hex_hash = fmt::format("{:016x}{:016x}", function.GetHash().values[1], function.GetHash().values[0]);
+        std::string hex_hash = function.GetHash().ToString();
         if (DiskCache::Has(hex_hash)) {
-            std::vector<u8> function = DiskCache::Read(hex_hash);
-            compilation_mutex.lock();
-            void* start = backend.AddCodeAt(rip, function.data(), function.size());
-            compilation_mutex.unlock();
-            return start;
+            return LoadFromCache(hex_hash);
         }
     }
 
@@ -274,11 +270,23 @@ void* Emulator::compileFunction(u64 rip) {
 
     if (g_cache_functions) {
         ASSERT(!g_testing);
-        std::string hex_hash = fmt::format("{:016x}{:016x}", function.GetHash().values[1], function.GetHash().values[0]);
+        std::string hex_hash = function.GetHash().ToString();
         DiskCache::Write(hex_hash, func, size);
     }
 
     return func;
+}
+
+void* Emulator::LoadFromCache(const std::string& hash) {
+    ASSERT(g_cache_functions);
+    ASSERT(DiskCache::Has(hash));
+    ASSERT(!g_testing);
+
+    std::vector<u8> function = DiskCache::Read(hash);
+    compilation_mutex.lock();
+    void* start = backend.AddCodeAt(0, function.data(), function.size());
+    compilation_mutex.unlock();
+    return start;
 }
 
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {

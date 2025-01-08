@@ -10,6 +10,13 @@ struct Emulator;
 // They are not very good but they can find some stuff for now
 struct AOT {
     AOT(Emulator& emulator, std::shared_ptr<Elf> elf);
+    AOT(const AOT&) = delete;
+    AOT& operator=(const AOT&) = delete;
+    AOT(AOT&&) = delete;
+    AOT& operator=(AOT&&) = delete;
+    ~AOT() = default;
+
+    void PreloadAll();
 
     void CompileAll();
 
@@ -20,7 +27,10 @@ private:
     // Scan the executable for instructions that might appear at the start of a function on x86-64
     void functionStartFinder();
 
+    void runAnalysis();
+
     Emulator& emulator;
+    bool analyzed = false;
     std::shared_ptr<Elf> elf;
     std::unordered_set<u64> addresses;
 };
