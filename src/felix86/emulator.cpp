@@ -229,7 +229,7 @@ void* Emulator::compileFunction(u64 rip) {
         do {
             changed = false;
             changed |= PassManager::PeepholePass(&function);
-            changed |= PassManager::LocalCSEPass(&function);
+            // changed |= PassManager::LocalCSEPass(&function);
             changed |= PassManager::CopyPropagationPass(&function);
             changed |= PassManager::DeadCodeEliminationPass(&function);
         } while (changed);
