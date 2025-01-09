@@ -196,7 +196,8 @@ void initialize_globals() {
             if (is_truthy(preload_env)) {
                 g_preload = false;
             } else {
-                g_preload = true;
+                g_preload = false;
+                // g_preload = true; TODO: fix preloading
             }
         }
     }
