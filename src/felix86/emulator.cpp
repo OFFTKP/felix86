@@ -217,7 +217,7 @@ void* Emulator::compileFunction(u64 rip) {
         ASSERT(!g_testing);
         std::string hex_hash = function.GetHash().ToString();
         if (DiskCache::Has(hex_hash)) {
-            return LoadFromCache(hex_hash);
+            return LoadFromCache(rip, hex_hash);
         }
     }
 
@@ -277,14 +277,14 @@ void* Emulator::compileFunction(u64 rip) {
     return func;
 }
 
-void* Emulator::LoadFromCache(const std::string& hash) {
+void* Emulator::LoadFromCache(u64 rip, const std::string& hash) {
     ASSERT(g_cache_functions);
     ASSERT(DiskCache::Has(hash));
     ASSERT(!g_testing);
 
     std::vector<u8> function = DiskCache::Read(hash);
     compilation_mutex.lock();
-    void* start = backend.AddCodeAt(0, function.data(), function.size());
+    void* start = backend.AddCodeAt(rip, function.data(), function.size());
     compilation_mutex.unlock();
     return start;
 }

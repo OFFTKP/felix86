@@ -73,7 +73,7 @@ void AOT::PreloadAll() {
         std::string hex_hash = hash.ToString();
 
         if (DiskCache::Has(hex_hash)) {
-            emulator.LoadFromCache(hex_hash);
+            emulator.LoadFromCache(address, hex_hash);
         }
     }
 }

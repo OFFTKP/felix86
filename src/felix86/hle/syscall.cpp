@@ -306,6 +306,7 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_exit_group: {
         VERBOSE("Emulator called exit_group(%d)", (int)rdi);
+        // TODO: can we make felix into a child process and exit that instead of exiting the entire thing instead?
         result = HOST_SYSCALL(exit_group, rdi);
         break;
     }

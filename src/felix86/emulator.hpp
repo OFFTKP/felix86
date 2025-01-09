@@ -85,7 +85,7 @@ struct Emulator {
         return {auxv_base, auxv_size};
     }
 
-    void* LoadFromCache(const std::string& hash);
+    void* LoadFromCache(u64 rip, const std::string& hash);
 
 private:
     void setupMainStack(ThreadState* state);
