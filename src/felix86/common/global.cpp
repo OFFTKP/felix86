@@ -29,7 +29,8 @@ bool g_include_comments = false;
 
 // Having too many basic blocks in a function can cause the register allocator to take insanely long times
 // So a block limit can sacrifice some potential runtime performance for way better compilation times
-int g_block_limit = 0;
+constexpr int default_block_limit = 1;
+int g_block_limit = default_block_limit;
 int g_output_fd = 1;
 u32 g_spilled_count = 0;
 std::filesystem::path g_rootfs_path{};
@@ -150,6 +151,10 @@ void initialize_globals() {
     if (block_limit_env) {
         g_block_limit = std::stoi(block_limit_env);
         environment += "\nFELIX86_BLOCK_LIMIT=" + std::string(block_limit_env);
+        if (g_block_limit) {
+            WARN("Invalid block limit, setting to default");
+            g_block_limit = default_block_limit;
+        }
     }
 
     const char* dont_coalesce_env = getenv("FELIX86_NO_COALESCE");

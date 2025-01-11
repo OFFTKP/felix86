@@ -207,12 +207,12 @@ int main(int argc, char* argv[]) {
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
+    g_output_fd = dup(STDOUT_FILENO);
 
     initialize_globals();
     initialize_extensions();
     print_extensions();
 
-    g_output_fd = dup(STDOUT_FILENO);
     config.rootfs_path = g_rootfs_path;
 
     // Sanitize the executable path
