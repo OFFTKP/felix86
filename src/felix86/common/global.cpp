@@ -149,10 +149,10 @@ void initialize_globals() {
 
     const char* block_limit_env = getenv("FELIX86_BLOCK_LIMIT");
     if (block_limit_env) {
-        g_block_limit = std::stoi(block_limit_env);
+        g_block_limit = std::atoi(block_limit_env);
         environment += "\nFELIX86_BLOCK_LIMIT=" + std::string(block_limit_env);
-        if (g_block_limit) {
-            WARN("Invalid block limit, setting to default");
+        if (g_block_limit <= 0) {
+            WARN("Block limit is less than or equal to 0, setting to default value of %d", default_block_limit);
             g_block_limit = default_block_limit;
         }
     }
