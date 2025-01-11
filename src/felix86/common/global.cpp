@@ -151,8 +151,8 @@ void initialize_globals() {
     if (block_limit_env) {
         g_block_limit = std::atoi(block_limit_env);
         environment += "\nFELIX86_BLOCK_LIMIT=" + std::string(block_limit_env);
-        if (g_block_limit <= 0) {
-            WARN("Block limit is less than or equal to 0, setting to default value of %d", default_block_limit);
+        if (g_block_limit < 0) {
+            WARN("Block limit is less than 0, setting to default value of %d", default_block_limit);
             g_block_limit = default_block_limit;
         }
     }
@@ -216,6 +216,10 @@ void initialize_globals() {
                 // g_preload = true; TODO: fix preloading
             }
         }
+    }
+
+    if (g_cache_functions) {
+        ERROR("Function caching was broken by the block limit, fix me");
     }
 
     if (!g_quiet && !environment.empty()) {
