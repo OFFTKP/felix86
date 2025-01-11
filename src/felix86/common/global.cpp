@@ -218,9 +218,10 @@ void initialize_globals() {
         }
     }
 
-    const char* env_file = getenv("FELIX86_ENV_PATH");
+    const char* env_file = getenv("FELIX86_ENV_FILE");
     if (env_file) {
-        environment += "\nFELIX86_ENV_PATH=" + std::string(env_file);
+        // Handled in main
+        environment += "\nFELIX86_ENV_FILE=" + std::string(env_file);
     }
 
     if (g_cache_functions) {

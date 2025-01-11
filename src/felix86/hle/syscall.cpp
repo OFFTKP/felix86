@@ -1,6 +1,7 @@
 #include <csignal>
 #include <errno.h>
 #include <fcntl.h>
+#include <openssl/md5.h>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
@@ -296,7 +297,18 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_write: {
         result = HOST_SYSCALL(write, rdi, rsi, rdx);
-        STRACE("write(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
+
+        if (g_strace) {
+            // Instead of stracing the data itself, we strace the hash
+            // This is to avoid printing out data that might take up a lot of terminal space
+            MD5_CTX md5;
+            MD5_Init(&md5);
+            MD5_Update(&md5, (const char*)rsi, rdx);
+            unsigned char md5_hash[MD5_DIGEST_LENGTH];
+            MD5_Final(md5_hash, &md5);
+            std::string hex_hash = fmt::format("{:016x}{:016x}", *(u64*)md5_hash, *(u64*)(md5_hash + 8));
+            STRACE("write(%d, md5 of data: %s, %d) = %d", (int)rdi, md5_hash, (int)rdx, (int)result);
+        }
         break;
     }
     case felix86_x86_64_writev: {
