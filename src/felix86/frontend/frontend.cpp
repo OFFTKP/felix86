@@ -654,15 +654,17 @@ void frontend_compile_instruction(IREmitter& ir, MD5_CTX& ctx) {
     // the function cache
     MD5_Update(&ctx, data, inst.length);
 
-    ZydisDisassembledInstruction zydis_inst;
-    if (ZYAN_SUCCESS(ZydisDisassembleIntel(
-            /* machine_mode:    */ ZYDIS_MACHINE_MODE_LONG_64,
-            /* runtime_address: */ ir.GetCurrentAddress(),
-            /* buffer:          */ data,
-            /* length:          */ 15,
-            /* instruction:     */ &zydis_inst))) {
-        std::string buffer = fmt::format("{:016x} {}", ir.GetCurrentAddress(), zydis_inst.text);
-        ir.Comment(buffer);
+    if (g_include_comments) {
+        ZydisDisassembledInstruction zydis_inst;
+        if (ZYAN_SUCCESS(ZydisDisassembleIntel(
+                /* machine_mode:    */ ZYDIS_MACHINE_MODE_LONG_64,
+                /* runtime_address: */ ir.GetCurrentAddress(),
+                /* buffer:          */ data,
+                /* length:          */ 15,
+                /* instruction:     */ &zydis_inst))) {
+            std::string buffer = fmt::format("{:016x} {}", ir.GetCurrentAddress(), zydis_inst.text);
+            ir.Comment(buffer);
+        }
     }
 
     bool is_rep = rep_type != NONE;
