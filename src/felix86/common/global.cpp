@@ -218,6 +218,11 @@ void initialize_globals() {
         }
     }
 
+    const char* env_file = getenv("FELIX86_ENV_PATH");
+    if (env_file) {
+        environment += "\nFELIX86_ENV_PATH=" + std::string(env_file);
+    }
+
     if (g_cache_functions) {
         ERROR("Function caching was broken by the block limit, fix me");
     }

@@ -1,4 +1,5 @@
 #include <csetjmp>
+#include <fstream>
 #include <thread>
 #include <argp.h>
 #include <fmt/format.h>
@@ -212,6 +213,20 @@ int main(int argc, char* argv[]) {
     initialize_globals();
     initialize_extensions();
     print_extensions();
+
+    const char* env_file = getenv("FELIX86_ENV_PATH");
+    if (env_file) {
+        std::string env_path = env_file;
+        if (std::filesystem::exists(env_path)) {
+            std::ifstream env_stream(env_path);
+            std::string line;
+            while (std::getline(env_stream, line)) {
+                config.envp.push_back(line);
+            }
+        } else {
+            ERROR("Environment variable file %s does not exist", env_file);
+        }
+    }
 
     config.rootfs_path = g_rootfs_path;
 
