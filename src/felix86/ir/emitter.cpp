@@ -2483,6 +2483,32 @@ void IREmitter::TerminateJumpConditional(SSAInstruction* condition, IRBlock* tar
         compile_queue.push_back(target_false);
 }
 
+void IREmitter::TerminateJump(u64 target) {
+    ASSERT_MSG(block->GetTermination() == Termination::Null, "Block %s already has a termination", block->GetName().c_str());
+
+    int block_count = function.GetBlocks().size();
+    if (g_block_limit != 0 && block_count >= g_block_limit) {
+        // The block limit has been reached, update the rip and exit to dispatcher instead
+        SetReg(Imm(target), X86_REF_RIP);
+        block->TerminateJump(GetExit());
+    } else {
+        TerminateJump(CreateBlockAt(target));
+    }
+}
+
+void IREmitter::TerminateJumpConditional(SSAInstruction* condition, u64 target_true, u64 target_false) {
+    ASSERT_MSG(block->GetTermination() == Termination::Null, "Block %s already has a termination", block->GetName().c_str());
+
+    int block_count = function.GetBlocks().size();
+    if (g_block_limit != 0 && block_count >= g_block_limit) {
+        // The block limit has been reached, update the rip conditionally and exit to dispatcher instead
+        SetReg(Select(condition, Imm(target_true), Imm(target_false)), X86_REF_RIP);
+        block->TerminateJump(GetExit());
+    } else {
+        TerminateJumpConditional(condition, CreateBlockAt(target_true), CreateBlockAt(target_false));
+    }
+}
+
 void IREmitter::CallHostFunction(u64 function_address) {
     ASSERT_MSG(!g_cache_functions, "CallHostFunction is not supported when caching functions");
     SSAInstruction* instruction = insertInstruction(IROpcode::CallHostFunction, {}, function_address);

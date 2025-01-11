@@ -209,6 +209,9 @@ struct IREmitter {
     void TerminateJump(IRBlock* target);
     void TerminateJumpConditional(SSAInstruction* cond, IRBlock* target_true, IRBlock* target_false);
 
+    void TerminateJump(u64 address);
+    void TerminateJumpConditional(SSAInstruction* cond, u64 address_true, u64 address_false);
+
     u64 GetCurrentAddress() {
         ASSERT(current_address != IR_NO_ADDRESS);
         return current_address;

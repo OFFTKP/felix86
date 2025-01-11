@@ -26,6 +26,10 @@ bool g_preload = false;
 bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
 bool g_include_comments = false;
+
+// Having too many basic blocks in a function can cause the register allocator to take insanely long times
+// So a block limit can sacrifice some potential runtime performance for way better compilation times
+int g_block_limit = 0;
 int g_output_fd = 1;
 u32 g_spilled_count = 0;
 std::filesystem::path g_rootfs_path{};
@@ -140,6 +144,12 @@ void initialize_globals() {
     if (is_truthy(quiet_env)) {
         g_quiet = true;
         environment += "\nFELIX86_QUIET";
+    }
+
+    const char* block_limit_env = getenv("FELIX86_BLOCK_LIMIT");
+    if (block_limit_env) {
+        g_block_limit = std::stoi(block_limit_env);
+        environment += "\nFELIX86_BLOCK_LIMIT=" + std::string(block_limit_env);
     }
 
     const char* dont_coalesce_env = getenv("FELIX86_NO_COALESCE");

@@ -474,10 +474,7 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     SSAInstruction* condition_mov = ir.Snez(condition);
     u64 jump_address_false = ir.GetNextAddress();
     u64 jump_address_true = ir.GetNextAddress() + immediate;
-
-    IRBlock* block_true = ir.CreateBlockAt(jump_address_true);
-    IRBlock* block_false = ir.CreateBlockAt(jump_address_false);
-    ir.TerminateJumpConditional(condition_mov, block_true, block_false);
+    ir.TerminateJumpConditional(condition_mov, jump_address_true, jump_address_false);
 }
 
 IR_HANDLE(group1) { // add/or/adc/sbb/and/sub/xor/cmp
@@ -728,17 +725,13 @@ IR_HANDLE(call_rel32) { // call rel32 - 0xe8
 IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
     u64 displacement = (i64)(i32)inst->operand_imm.immediate.data;
     u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
-
-    IRBlock* target = ir.CreateBlockAt(jump_address);
-    ir.TerminateJump(target);
+    ir.TerminateJump(jump_address);
 }
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
     u64 displacement = (i64)(i8)inst->operand_imm.immediate.data;
     u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
-
-    IRBlock* target = ir.CreateBlockAt(jump_address);
-    ir.TerminateJump(target);
+    ir.TerminateJump(jump_address);
 }
 
 IR_HANDLE(hlt) { // hlt - 0xf4
