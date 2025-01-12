@@ -224,10 +224,6 @@ void initialize_globals() {
         environment += "\nFELIX86_ENV_FILE=" + std::string(env_file);
     }
 
-    if (g_cache_functions) {
-        ERROR("Function caching was broken by the block limit, fix me");
-    }
-
     if (!g_quiet && !environment.empty()) {
         LOG("Environment:%s", environment.c_str());
     }
