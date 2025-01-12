@@ -8,8 +8,6 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86.hpp"
 
-#include <tsl/robin_map.h>
-
 struct Emulator;
 
 // There is a single backend that services all threads. A mutex is locked to synchronize.
@@ -61,7 +59,7 @@ private:
 
     u8* memory = nullptr;
     biscuit::Assembler as{};
-    tsl::robin_map<u64, std::pair<void*, u64>> map{}; // map functions to host code
+    std::unordered_map<u64, std::pair<void*, u64>> map{}; // map functions to host code
 
     void (*enter_dispatcher)(ThreadState*) = nullptr;
     void* exit_dispatcher = nullptr;
