@@ -472,8 +472,9 @@ IR_HANDLE(jcc_rel) { // jcc rel8 - 0x70-0x7f
     i64 immediate = sext(inst->operand_imm.immediate.data, size_e);
     SSAInstruction* condition = ir.GetCC(inst->opcode);
     SSAInstruction* condition_mov = ir.Snez(condition);
-    u64 jump_address_false = ir.GetNextAddress();
-    u64 jump_address_true = ir.GetNextAddress() + immediate;
+    u64 offset = ir.GetCurrentAddress() - ir.GetFunction().GetStartAddress();
+    u64 jump_address_false = offset + inst->length;
+    u64 jump_address_true = offset + inst->length + immediate;
     ir.TerminateJumpConditional(condition_mov, jump_address_true, jump_address_false);
 }
 
@@ -724,13 +725,15 @@ IR_HANDLE(call_rel32) { // call rel32 - 0xe8
 
 IR_HANDLE(jmp_rel32) { // jmp rel32 - 0xe9
     u64 displacement = (i64)(i32)inst->operand_imm.immediate.data;
-    u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
+    u64 offset = ir.GetCurrentAddress() - ir.GetFunction().GetStartAddress();
+    u64 jump_address = offset + inst->length + displacement;
     ir.TerminateJump(jump_address);
 }
 
 IR_HANDLE(jmp_rel8) { // jmp rel8 - 0xeb
     u64 displacement = (i64)(i8)inst->operand_imm.immediate.data;
-    u64 jump_address = ir.GetCurrentAddress() + inst->length + displacement;
+    u64 offset = ir.GetCurrentAddress() - ir.GetFunction().GetStartAddress();
+    u64 jump_address = offset + inst->length + displacement;
     ir.TerminateJump(jump_address);
 }
 

@@ -2483,28 +2483,36 @@ void IREmitter::TerminateJumpConditional(SSAInstruction* condition, IRBlock* tar
         compile_queue.push_back(target_false);
 }
 
-void IREmitter::TerminateJump(u64 target) {
+void IREmitter::TerminateJump(u64 offset) {
     ASSERT_MSG(block->GetTermination() == Termination::Null, "Block %s already has a termination", block->GetName().c_str());
 
     int block_count = function.GetBlocks().size();
     if (g_block_limit != 0 && block_count >= g_block_limit) {
         // The block limit has been reached, update the rip and exit to dispatcher instead
-        SetReg(Imm(target), X86_REF_RIP);
+        SSAInstruction* rip = GetReg(X86_REF_RIP);
+        SSAInstruction* new_rip = Add(rip, Imm(offset));
+        SetReg(new_rip, X86_REF_RIP);
         block->TerminateJump(GetExit());
     } else {
+        u64 target = function.GetStartAddress() + offset;
         TerminateJump(CreateBlockAt(target));
     }
 }
 
-void IREmitter::TerminateJumpConditional(SSAInstruction* condition, u64 target_true, u64 target_false) {
+void IREmitter::TerminateJumpConditional(SSAInstruction* condition, u64 offset_true, u64 offset_false) {
     ASSERT_MSG(block->GetTermination() == Termination::Null, "Block %s already has a termination", block->GetName().c_str());
 
     int block_count = function.GetBlocks().size();
     if (g_block_limit != 0 && block_count >= g_block_limit) {
         // The block limit has been reached, update the rip conditionally and exit to dispatcher instead
-        SetReg(Select(condition, Imm(target_true), Imm(target_false)), X86_REF_RIP);
+        SSAInstruction* rip = GetReg(X86_REF_RIP);
+        SSAInstruction* new_rip_true = Add(rip, Imm(offset_true));
+        SSAInstruction* new_rip_false = Add(rip, Imm(offset_false));
+        SetReg(Select(condition, new_rip_true, new_rip_false), X86_REF_RIP);
         block->TerminateJump(GetExit());
     } else {
+        u64 target_true = function.GetStartAddress() + offset_true;
+        u64 target_false = function.GetStartAddress() + offset_false;
         TerminateJumpConditional(condition, CreateBlockAt(target_true), CreateBlockAt(target_false));
     }
 }
