@@ -78,7 +78,7 @@ void Backend::emitNecessaryStuff() {
     // Jump
     Label exit_dispatcher_label;
 
-    compile_next = (decltype(compile_next))as.GetCursorPointer();
+    compile_next_handler = (decltype(compile_next_handler))as.GetCursorPointer();
 
     // If it's not zero it has some exit reason, exit the dispatcher
     as.LB(a0, offsetof(ThreadState, exit_reason), Registers::ThreadStatePointer());
@@ -121,7 +121,7 @@ void Backend::emitNecessaryStuff() {
     VERBOSE("Enter dispatcher at: %p", enter_dispatcher);
     VERBOSE("Exit dispatcher at: %p", exit_dispatcher);
     VERBOSE("Crash target at: %p", crash_handler);
-    VERBOSE("Compile next at: %p", compile_next);
+    VERBOSE("Compile next at: %p", compile_next_handler);
 }
 
 void Backend::resetCodeCache() {

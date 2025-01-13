@@ -152,7 +152,7 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
 
     case IROpcode::BackToDispatcher: {
         Assembler& as = backend.GetAssembler();
-        as.LD(t0, offsetof(ThreadState, compile_next), Registers::ThreadStatePointer());
+        as.LD(t0, offsetof(ThreadState, compile_next_handler), Registers::ThreadStatePointer());
         as.JR(t0);
         break;
     }

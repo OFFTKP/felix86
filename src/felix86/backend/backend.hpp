@@ -45,7 +45,7 @@ struct Backend {
     }
 
     void* GetCompileNext() {
-        return compile_next;
+        return compile_next_handler;
     }
 
 private:
@@ -63,6 +63,6 @@ private:
 
     void (*enter_dispatcher)(ThreadState*) = nullptr;
     void* exit_dispatcher = nullptr;
-    void* compile_next = nullptr;
+    void* compile_next_handler = nullptr;
     void* crash_handler = nullptr;
 };

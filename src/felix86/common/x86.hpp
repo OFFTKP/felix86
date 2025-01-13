@@ -176,7 +176,7 @@ struct ThreadState {
     std::array<bool, 64> masked_signals{};
 
     // Addresses that the JIT will load and call/jump to if necessary
-    u64 compile_next{};
+    u64 compile_next_handler{};
     u64 crash_handler{};
     u64 syscall_handler{};
     u64 cpuid_handler{};

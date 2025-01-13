@@ -321,7 +321,7 @@ ThreadState* Emulator::createThreadState() {
     thread_state->syscall_handler = (u64)felix86_syscall;
     thread_state->cpuid_handler = (u64)felix86_cpuid;
     thread_state->rdtsc_handler = (u64)felix86_rdtsc;
-    thread_state->compile_next = (u64)backend.GetCompileNext();
+    thread_state->compile_next_handler = (u64)backend.GetCompileNext();
     thread_state->crash_handler = (u64)backend.GetCrashHandler();
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;
