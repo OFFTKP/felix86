@@ -205,55 +205,40 @@ static void spill(BackendFunction& function, u32 node, u32 location, AllocationT
     }
 }
 
-static void liveness_worklist2(BackendFunction& function, std::vector<const BackendBlock*> blocks, const InstructionList& insts,
-                               std::vector<std::vector<u8>>& in, std::vector<std::vector<u8>>& out, std::vector<std::vector<u8>>& use,
-                               std::vector<std::vector<u8>>& def) {
-    std::deque<size_t> worklist;
+static void liveness_worklist2(BackendFunction& function, std::vector<const BackendBlock*> blocks, std::vector<std::unordered_set<u32>>& in,
+                               std::vector<std::unordered_set<u32>>& out, const std::vector<std::unordered_set<u32>>& use,
+                               const std::vector<std::unordered_set<u32>>& def) {
+    std::deque<u32> worklist;
     for (u32 i = 0; i < blocks.size(); i++) {
         worklist.push_back(blocks[i]->GetIndex());
     }
-
-    auto clear_set = [&](std::vector<u8>& vec) { memset(vec.data(), 0, vec.size()); };
-
-    std::vector<u8> in_old(insts.size());
 
     while (!worklist.empty()) {
         const BackendBlock* block = &function.GetBlock(worklist.front());
         worklist.pop_front();
 
         size_t i = block->GetIndex();
+        auto in_old = in[i];
 
-        memcpy(in_old.data(), in[i].data(), in[i].size());
-
-        clear_set(out[i]);
+        out[i].clear();
         // out[b] = U (in[s]) for all s in succ[b]
         for (u8 k = 0; k < block->GetSuccessorCount(); k++) {
             u32 succ_index = block->GetSuccessor(k)->GetIndex();
-            for (u32 l = 0; l < in[succ_index].size(); l++) {
-                if (in[succ_index][l] == 1) {
-                    out[i][l] = 1;
-                }
+            for (u32 item : in[succ_index]) {
+                out[i].insert(item);
             }
         }
 
-        clear_set(in[i]);
+        in[i].clear();
         // in[b] = use[b] U (out[b] - def[b])
-        for (u32 l = 0; l < out[i].size(); l++) {
-            if (out[i][l] == 1) {
-                in[i][l] = 1;
+        for (u32 item : out[i]) {
+            if (!def[i].contains(item)) {
+                in[i].insert(item);
             }
         }
 
-        for (u32 l = 0; l < def[i].size(); l++) {
-            if (def[i][l] == 1) {
-                in[i][l] = 0;
-            }
-        }
-
-        for (u32 l = 0; l < use[i].size(); l++) {
-            if (use[i][l] == 1) {
-                in[i][l] = 1;
-            }
+        for (u32 item : use[i]) {
+            in[i].insert(item);
         }
 
         if (in[i] != in_old) {
@@ -293,73 +278,39 @@ static bool should_consider_op(const BackendInstruction* inst, u8 index, bool is
 
 static void build2(BackendFunction& function, std::vector<const BackendBlock*> blocks, InterferenceGraph& graph, bool is_vec) {
     InstructionList all_insts;
-    std::unordered_map<u32, u32> name_to_index;
-    for (const auto& block : function.GetBlocks()) {
-        for (const auto& inst : block->GetInstructions()) {
-            all_insts.push_back(&inst);
-            name_to_index[inst.GetName()] = all_insts.size() - 1;
-        }
-    }
 
-    auto get_index = [&](u32 name) { return name_to_index.at(name); };
-
-    static std::vector<std::vector<u8>> in(blocks.size());
-    static std::vector<std::vector<u8>> out(blocks.size());
-    static std::vector<std::vector<u8>> use(blocks.size());
-    static std::vector<std::vector<u8>> def(blocks.size());
-
-    if (in.size() < blocks.size()) {
-        in.resize(blocks.size());
-        out.resize(blocks.size());
-        use.resize(blocks.size());
-        def.resize(blocks.size());
-    }
-
-    for (size_t i = 0; i < blocks.size(); i++) {
-        in[i].resize(all_insts.size());
-        out[i].resize(all_insts.size());
-        use[i].resize(all_insts.size());
-        def[i].resize(all_insts.size());
-
-        std::fill(in[i].begin(), in[i].end(), 0);
-        std::fill(out[i].begin(), out[i].end(), 0);
-        std::fill(use[i].begin(), use[i].end(), 0);
-        std::fill(def[i].begin(), def[i].end(), 0);
-    }
+    std::vector<std::unordered_set<u32>> in(blocks.size());
+    std::vector<std::unordered_set<u32>> out(blocks.size());
+    std::vector<std::unordered_set<u32>> use(blocks.size());
+    std::vector<std::unordered_set<u32>> def(blocks.size());
 
     for (size_t counter = 0; counter < blocks.size(); counter++) {
         const BackendBlock* block = blocks[counter];
         size_t i = block->GetIndex();
         for (const BackendInstruction& inst : block->GetInstructions()) {
             for (u8 j = 0; j < inst.GetOperandCount(); j++) {
-                if (should_consider_op(&inst, j, is_vec) && def[i][get_index(inst.GetOperand(j))] == 0) {
+                if (should_consider_op(&inst, j, is_vec) && !def[i].contains(inst.GetOperand(j))) {
                     // Not defined in this block ie. upwards exposed, live range goes outside current block
-                    u32 operand_index = get_index(inst.GetOperand(j));
-                    use[i][operand_index] = 1;
+                    use[i].insert(inst.GetOperand(j));
                 }
             }
 
             if (should_consider(&inst, is_vec)) {
-                u32 name_index = get_index(inst.GetName());
-                def[i][name_index] = 1;
+                def[i].insert(inst.GetName());
             }
         }
     }
 
-    liveness_worklist2(function, blocks, all_insts, in, out, use, def);
-
-    graph.Reserve(all_insts.size());
+    liveness_worklist2(function, blocks, in, out, use, def);
 
     for (const BackendBlock* block : blocks) {
-        std::vector<u32> live_now;
+        std::unordered_set<u32> live_now;
 
         // We are gonna walk the block backwards, first add all definitions that have lifetime
         // that extends past this basic block
         // live_now.insert(out[block->GetIndex()].begin(), out[block->GetIndex()].end());
-        for (u32 i = 0; i < out[block->GetIndex()].size(); i++) {
-            if (out[block->GetIndex()][i] == 1) {
-                live_now.push_back(all_insts[i]->GetName());
-            }
+        for (u32 item : out[block->GetIndex()]) {
+            live_now.insert(item);
         }
 
         const std::list<BackendInstruction>& insts = block->GetInstructions();
@@ -367,9 +318,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
             const BackendInstruction& inst = *it;
             if (should_consider(&inst, is_vec)) {
                 // Erase the currently defined variable if it exists in the set
-                if (std::find(live_now.begin(), live_now.end(), inst.GetName()) != live_now.end()) {
-                    live_now.erase(std::remove(live_now.begin(), live_now.end(), inst.GetName()), live_now.end());
-                }
+                live_now.erase(inst.GetName());
 
                 // Some instructions, due to RISC-V ISA, can't allocate the same register
                 // to destination and source operands. For example, viota, vslideup, vrgather.
@@ -390,7 +339,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 case IROpcode::VNCvtFToSRtz: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                         if (should_consider_op(&inst, i, is_vec)) {
-                            live_now.push_back(inst.GetOperand(i));
+                            live_now.insert(inst.GetOperand(i));
                         }
                     }
                     break;
@@ -399,7 +348,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                     // Doesn't interfere with the first operand
                     for (u8 i = 1; i < inst.GetOperandCount(); i++) {
                         if (should_consider_op(&inst, i, is_vec)) {
-                            live_now.push_back(inst.GetOperand(i));
+                            live_now.insert(inst.GetOperand(i));
                         }
                     }
                     break;
@@ -411,14 +360,14 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 // in case there's nothing live (which is possible if nothing is read before written)
                 // then we need to add the current instruction to the graph so it gets allocated
                 graph.AddEmpty(inst.GetName());
-                for (u32 i = 0; i < live_now.size(); i++) {
-                    graph.AddEdge(inst.GetName(), live_now[i]);
+                for (u32 item : live_now) {
+                    graph.AddEdge(inst.GetName(), item);
                 }
             }
 
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                 if (should_consider_op(&inst, i, is_vec)) {
-                    live_now.push_back(inst.GetOperand(i));
+                    live_now.insert(inst.GetOperand(i));
                 }
             }
         }
