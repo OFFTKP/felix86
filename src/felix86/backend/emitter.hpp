@@ -17,15 +17,15 @@ struct Emitter {
     static void EmitSetExitReason(Backend&, u64);
     static void EmitPushAllCallerSaved(Backend&);
     static void EmitPopAllCallerSaved(Backend&);
+    static void EmitStoreSpill(Backend&, biscuit::GPR, u32);
+    static void EmitStoreSpill(Backend&, biscuit::Vec, u32);
+    static void EmitLoadSpill(Backend&, biscuit::GPR, u32);
+    static void EmitLoadSpill(Backend&, biscuit::Vec, u32);
 
 private:
     static void EmitCallHostFunction(Backend&, u64);
     static void EmitMov(Backend&, biscuit::GPR, biscuit::GPR);
     static void EmitMov(Backend&, biscuit::Vec, biscuit::Vec);
-    static void EmitStoreSpill(Backend&, biscuit::GPR, u32);
-    static void EmitStoreSpill(Backend&, biscuit::Vec, u32);
-    static void EmitLoadSpill(Backend&, biscuit::GPR, u32);
-    static void EmitLoadSpill(Backend&, biscuit::Vec, u32);
     static void EmitImmediate(Backend&, biscuit::GPR, u64);
     static void EmitRdtsc(Backend&);
     static void EmitSyscall(Backend&);

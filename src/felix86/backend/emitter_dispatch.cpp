@@ -1,11 +1,80 @@
 #include "felix86/backend/backend.hpp"
 #include "felix86/backend/emitter.hpp"
 
-#define _Reg_(name) (allocation_map.GetAllocation(name))
+struct DeferredSpill {
+    DeferredSpill(Backend& backend) : backend(backend) {}
+    ~DeferredSpill() {
+        if (active) {
+            if (alloc.IsGPR()) {
+                Emitter::EmitStoreSpill(backend, alloc.AsGPR(), spill_location);
+            } else if (alloc.IsVec()) {
+                Emitter::EmitStoreSpill(backend, alloc.AsVec(), spill_location);
+            } else {
+                UNREACHABLE();
+            }
+        }
+    }
+
+    void Enable(Allocation alloc, u32 spill_location) {
+        active = true;
+        this->alloc = alloc;
+        this->spill_location = spill_location;
+    }
+
+    Backend& backend;
+    bool active = false;
+    Allocation alloc;
+    u32 spill_location;
+};
+
+auto RegR = [](Backend& bd, Assembler& as, AllocationMap& allocation_map, u32 name) -> Allocation {
+    AllocationType type = allocation_map.GetAllocationType(name);
+    if (type == AllocationType::GPR) {
+        return allocation_map.GetAllocation(name).AsGPR();
+    } else if (type == AllocationType::StaticSpillGPR) {
+        biscuit::GPR reg = allocation_map.GetAllocation(name);
+        Emitter::EmitLoadSpill(bd, reg, allocation_map.GetSpillLocation(name));
+        return reg;
+    } else if (type == AllocationType::Vec) {
+        return allocation_map.GetAllocation(name).AsVec();
+    } else if (type == AllocationType::StaticSpillVec) {
+        biscuit::Vec reg = allocation_map.GetAllocation(name);
+        Emitter::EmitLoadSpill(bd, reg, allocation_map.GetSpillLocation(name));
+        return reg;
+    } else {
+        UNREACHABLE();
+        return x0;
+    }
+};
+
+auto RegW = [](DeferredSpill& def, Backend& bd, Assembler& as, AllocationMap& allocation_map, u32 name) -> Allocation {
+    AllocationType type = allocation_map.GetAllocationType(name);
+    if (type == AllocationType::GPR) {
+        return allocation_map.GetAllocation(name).AsGPR();
+    } else if (type == AllocationType::StaticSpillGPR) {
+        biscuit::GPR reg = allocation_map.GetAllocation(name);
+        def.Enable(reg, allocation_map.GetSpillLocation(name));
+        return reg;
+    } else if (type == AllocationType::Vec) {
+        return allocation_map.GetAllocation(name).AsVec();
+    } else if (type == AllocationType::StaticSpillVec) {
+        biscuit::Vec reg = allocation_map.GetAllocation(name);
+        def.Enable(reg, allocation_map.GetSpillLocation(name));
+        return reg;
+    } else {
+        UNREACHABLE();
+        return x0;
+    }
+};
+
+#define _RegR_(name) RegR(backend, backend.GetAssembler(), allocation_map, name)
+#define _RegW_(name) RegW(deferred_spill, backend, backend.GetAssembler(), allocation_map, name)
 
 // Dispatch to correct function
 void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const BackendBlock& block, const BackendInstruction& inst) {
     allocation_map.ResetSpillRegisters();
+
+    DeferredSpill deferred_spill(backend);
     switch (inst.GetOpcode()) {
     // Should not exist in the backend IR representation, replaced by simpler stuff
     case IROpcode::Null: {
@@ -99,7 +168,7 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
     }
 
     case IROpcode::LoadSpill: {
-        auto Rd = _Reg_(inst.GetName());
+        auto Rd = allocation_map.GetAllocation(inst.GetName());
         u32 spill_offset = inst.GetImmediateData();
         if (Rd.IsGPR()) {
             EmitLoadSpill(backend, Rd.AsGPR(), spill_offset);
@@ -112,7 +181,7 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
     }
 
     case IROpcode::StoreSpill: {
-        auto Rs = _Reg_(inst.GetOperand(0));
+        auto Rs = _RegR_(inst.GetOperand(0));
         u32 spill_offset = inst.GetImmediateData();
         if (Rs.IsGPR()) {
             EmitStoreSpill(backend, Rs.AsGPR(), spill_offset);
@@ -125,8 +194,8 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
     }
 
     case IROpcode::Mov: {
-        auto Rd = _Reg_(inst.GetName());
-        auto Rs = _Reg_(inst.GetOperand(0));
+        auto Rd = _RegW_(inst.GetName());
+        auto Rs = _RegR_(inst.GetOperand(0));
         if (Rd.IsGPR() && Rs.IsGPR()) {
             if (Rd.AsGPR() == Registers::Zero()) {
                 ERROR("Name %s is zero\n", GetNameString(inst.GetName()).c_str());
@@ -147,7 +216,7 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
     }
 
     case IROpcode::JumpConditional: {
-        auto condition = _Reg_(inst.GetOperand(0));
+        auto condition = _RegR_(inst.GetOperand(0));
         Label* target_true = block.GetSuccessor(0)->GetLabel();
         Label* target_false = block.GetSuccessor(1)->GetLabel();
         EmitJumpConditional(backend, condition, target_true, target_false);
@@ -162,52 +231,52 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
     }
 
     case IROpcode::ReadByteRelative: {
-        EmitReadByteRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitReadByteRelative(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::ReadWordRelative: {
-        EmitReadWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitReadWordRelative(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::ReadDWordRelative: {
-        EmitReadDWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitReadDWordRelative(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::ReadQWordRelative: {
-        EmitReadQWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitReadQWordRelative(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::ReadXmmWordRelative: {
-        EmitReadXmmWordRelative(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetVectorState());
+        EmitReadXmmWordRelative(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetVectorState());
         break;
     }
 
     case IROpcode::WriteByteRelative: {
-        EmitWriteByteRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        EmitWriteByteRelative(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::WriteWordRelative: {
-        EmitWriteWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        EmitWriteWordRelative(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::WriteDWordRelative: {
-        EmitWriteDWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        EmitWriteDWordRelative(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::WriteQWordRelative: {
-        EmitWriteQWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        EmitWriteQWordRelative(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::WriteXmmWordRelative: {
-        EmitWriteXmmWordRelative(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData(), inst.GetVectorState());
+        EmitWriteXmmWordRelative(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetImmediateData(), inst.GetVectorState());
         break;
     }
 
@@ -217,7 +286,7 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
             break;
         }
 
-        EmitImmediate(backend, _Reg_(inst.GetName()), inst.GetImmediateData());
+        EmitImmediate(backend, _RegW_(inst.GetName()), inst.GetImmediateData());
         break;
     }
     case IROpcode::Rdtsc: {
@@ -236,283 +305,283 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
     }
 
     case IROpcode::Div128: {
-        EmitDiv128(backend, _Reg_(inst.GetOperand(0)));
+        EmitDiv128(backend, _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Divu128: {
-        EmitDivu128(backend, _Reg_(inst.GetOperand(0)));
+        EmitDivu128(backend, _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::ReadByte: {
-        EmitReadByte(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitReadByte(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::ReadWord: {
-        EmitReadWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitReadWord(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::ReadDWord: {
-        EmitReadDWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitReadDWord(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::ReadQWord: {
-        EmitReadQWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitReadQWord(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::ReadXmmWord: {
-        EmitReadXmmWord(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetVectorState());
+        EmitReadXmmWord(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetVectorState());
         break;
     }
 
     case IROpcode::Sext8: {
-        EmitSext8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitSext8(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Sext16: {
-        EmitSext16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitSext16(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Sext32: {
-        EmitSext32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitSext32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Not: {
-        EmitNot(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitNot(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Neg: {
-        EmitNeg(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitNeg(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Clz: {
-        EmitClz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitClz(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Ctz: {
-        EmitCtz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitCtz(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Parity: {
-        EmitParity(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitParity(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Zext8: {
-        EmitZext8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitZext8(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Zext16: {
-        EmitZext16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitZext16(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Zext32: {
-        EmitZext32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitZext32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::BSwap32: {
-        EmitBSwap32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitBSwap32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::BSwap64: {
-        EmitBSwap64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitBSwap64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Add: {
-        EmitAdd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitAdd(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::AddShifted: {
-        EmitAddShifted(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        EmitAddShifted(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::Addi: {
-        EmitAddi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitAddi(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::LoadReserved32: {
-        EmitLoadReserved32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), (biscuit::Ordering)inst.GetImmediateData());
+        EmitLoadReserved32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), (biscuit::Ordering)inst.GetImmediateData());
         break;
     }
 
     case IROpcode::LoadReserved64: {
-        EmitLoadReserved64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), (biscuit::Ordering)inst.GetImmediateData());
+        EmitLoadReserved64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), (biscuit::Ordering)inst.GetImmediateData());
         break;
     }
 
     case IROpcode::StoreConditional32: {
-        EmitStoreConditional32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)),
+        EmitStoreConditional32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)),
                                (biscuit::Ordering)inst.GetImmediateData());
         break;
     }
 
     case IROpcode::StoreConditional64: {
-        EmitStoreConditional64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)),
+        EmitStoreConditional64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)),
                                (biscuit::Ordering)inst.GetImmediateData());
         break;
     }
 
     case IROpcode::AmoAdd8: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoAdd8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoAdd8(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoAdd16: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoAdd16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoAdd16(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoAdd32: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoAdd32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoAdd32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoAdd64: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoAdd64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoAdd64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoAnd8: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoAnd8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoAnd8(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoAnd16: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoAnd16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoAnd16(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoAnd32: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoAnd32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoAnd32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoAnd64: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoAnd64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoAnd64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoOr8: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoOr8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoOr8(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoOr16: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoOr16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoOr16(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoOr32: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoOr32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoOr32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoOr64: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoOr64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoOr64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoXor8: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoXor8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoXor8(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoXor16: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoXor16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoXor16(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoXor32: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoXor32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoXor32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoXor64: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoXor64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoXor64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoSwap8: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoSwap8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoSwap8(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoSwap16: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoSwap16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoSwap16(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoSwap32: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoSwap32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoSwap32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoSwap64: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoSwap64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), ordering);
+        EmitAmoSwap64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), ordering);
         break;
     }
 
     case IROpcode::AmoCAS8: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoCAS8(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), _Reg_(inst.GetOperand(2)), ordering);
+        EmitAmoCAS8(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), _RegR_(inst.GetOperand(2)), ordering);
         break;
     }
 
     case IROpcode::AmoCAS16: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoCAS16(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), _Reg_(inst.GetOperand(2)), ordering);
+        EmitAmoCAS16(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), _RegR_(inst.GetOperand(2)), ordering);
         break;
     }
 
     case IROpcode::AmoCAS32: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoCAS32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), _Reg_(inst.GetOperand(2)), ordering);
+        EmitAmoCAS32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), _RegR_(inst.GetOperand(2)), ordering);
         break;
     }
 
     case IROpcode::AmoCAS64: {
         Ordering ordering = (Ordering)(inst.GetImmediateData() & 0b11);
-        EmitAmoCAS64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), _Reg_(inst.GetOperand(2)), ordering);
+        EmitAmoCAS64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), _RegR_(inst.GetOperand(2)), ordering);
         break;
     }
 
@@ -522,512 +591,513 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
     }
 
     case IROpcode::Sub: {
-        EmitSub(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitSub(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::And: {
-        EmitAnd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitAnd(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Andi: {
-        EmitAndi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitAndi(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::Or: {
-        EmitOr(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitOr(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Ori: {
-        EmitOri(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitOri(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::Xor: {
-        EmitXor(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitXor(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Xori: {
-        EmitXori(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitXori(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::Shl: {
-        EmitShl(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitShl(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Shli: {
-        EmitShli(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitShli(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::Shr: {
-        EmitShr(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitShr(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Shri: {
-        EmitShri(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitShri(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::Sar: {
-        EmitSar(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitSar(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Sari: {
-        EmitSari(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitSari(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::Mul: {
-        EmitMul(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitMul(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Mulh: {
-        EmitMulh(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitMulh(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Mulhu: {
-        EmitMulhu(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitMulhu(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Div: {
-        EmitDiv(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitDiv(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Divu: {
-        EmitDivu(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitDivu(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Rem: {
-        EmitRem(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitRem(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Remu: {
-        EmitRemu(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitRemu(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Divw: {
-        EmitDivw(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitDivw(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Divuw: {
-        EmitDivuw(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitDivuw(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Remw: {
-        EmitRemw(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitRemw(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Remuw: {
-        EmitRemuw(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitRemuw(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Seqz: {
-        EmitSeqz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitSeqz(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Snez: {
-        EmitSnez(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitSnez(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::Equal: {
-        EmitEqual(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitEqual(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::NotEqual: {
-        EmitNotEqual(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitNotEqual(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::SetLessThanSigned: {
-        EmitSetLessThanSigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitSetLessThanSigned(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::SetLessThanUnsigned: {
-        EmitSetLessThanUnsigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitSetLessThanUnsigned(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Rol32: {
-        EmitRol32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitRol32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Rol64: {
-        EmitRol64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitRol64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Ror32: {
-        EmitRor32(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitRor32(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Ror64: {
-        EmitRor64(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitRor64(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::Select: {
-        EmitSelect(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), _Reg_(inst.GetOperand(2)));
+        EmitSelect(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), _RegR_(inst.GetOperand(2)));
         break;
     }
 
     case IROpcode::CZeroEqz: {
-        EmitCZeroEqz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitCZeroEqz(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::CZeroNez: {
-        EmitCZeroNez(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitCZeroNez(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::IToV: {
-        EmitIToV(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitIToV(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::VToI: {
-        EmitVToI(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitVToI(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::VInsertInteger: {
-        EmitVInsertInteger(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetImmediateData());
+        EmitVInsertInteger(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::VExtractInteger: {
-        EmitVExtractInteger(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitVExtractInteger(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::WriteByte: {
-        EmitWriteByte(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitWriteByte(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::WriteWord: {
-        EmitWriteWord(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitWriteWord(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::WriteDWord: {
-        EmitWriteDWord(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitWriteDWord(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::WriteQWord: {
-        EmitWriteQWord(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitWriteQWord(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::WriteXmmWord: {
-        EmitWriteXmmWord(backend, _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetVectorState());
+        EmitWriteXmmWord(backend, _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetVectorState());
         break;
     }
 
     case IROpcode::SetVMask: {
-        EmitSetVMask(backend, _Reg_(inst.GetOperand(0)));
+        EmitSetVMask(backend, _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::VIota: {
-        EmitVIota(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVIota(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VId: {
-        EmitVId(backend, _Reg_(inst.GetName()));
+        EmitVId(backend, _RegW_(inst.GetName()));
         break;
     }
 
     case IROpcode::VGather: {
-        EmitVGather(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), _Reg_(inst.GetOperand(2)), inst.GetMask());
+        EmitVGather(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), _RegR_(inst.GetOperand(2)),
+                    inst.GetMask());
         break;
     }
 
     case IROpcode::VSplat: {
-        EmitVSplat(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitVSplat(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::VSplati: {
-        EmitVSplati(backend, _Reg_(inst.GetName()), inst.GetImmediateData());
+        EmitVSplati(backend, _RegW_(inst.GetName()), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::VMerge: {
-        EmitVMerge(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVMerge(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VMergei: {
-        EmitVMergei(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitVMergei(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::VAnd: {
-        EmitVAnd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVAnd(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VOr: {
-        EmitVOr(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVOr(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VXor: {
-        EmitVXor(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVXor(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VMin: {
-        EmitVMin(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVMin(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VMinu: {
-        EmitVMinu(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVMinu(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VMax: {
-        EmitVMax(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVMax(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VMaxu: {
-        EmitVMaxu(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVMaxu(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VXori: {
-        EmitVXori(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitVXori(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::VSub: {
-        EmitVSub(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVSub(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VAdd: {
-        EmitVAdd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVAdd(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VAddi: {
-        EmitVAddi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData());
+        EmitVAddi(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData());
         break;
     }
 
     case IROpcode::VEqual: {
-        EmitVEqual(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVEqual(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VLessThanSigned: {
-        EmitVLessThanSigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVLessThanSigned(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VLessThanUnsigned: {
-        EmitVLessThanUnsigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVLessThanUnsigned(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VGreaterThanSigned: {
-        EmitVGreaterThanSigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVGreaterThanSigned(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VGreaterThanUnsigned: {
-        EmitVGreaterThanUnsigned(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVGreaterThanUnsigned(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VSll: {
-        EmitVSll(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVSll(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VSlli: {
-        EmitVSlli(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        EmitVSlli(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
 
     case IROpcode::VSrl: {
-        EmitVSrl(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVSrl(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VSrli: {
-        EmitVSrli(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        EmitVSrli(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
 
     case IROpcode::VSrai: {
-        EmitVSrai(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        EmitVSrai(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
 
     case IROpcode::VMSeqi: {
-        EmitVMSeqi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        EmitVMSeqi(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
 
     case IROpcode::VMSlt: {
-        EmitVMSlt(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVMSlt(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VSlideDowni: {
-        EmitVSlideDowni(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        EmitVSlideDowni(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
 
     case IROpcode::VSlideUpi: {
-        EmitVSlideUpi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        EmitVSlideUpi(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
 
     case IROpcode::VSlideUpZeroesi: {
-        EmitVSlideUpZeroesi(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        EmitVSlideUpZeroesi(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
         break;
     }
 
     case IROpcode::VSlide1Up: {
-        EmitVSlide1Up(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVSlide1Up(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VSlide1Down: {
-        EmitVSlide1Down(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVSlide1Down(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VFAdd: {
-        EmitVFAdd(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVFAdd(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VFSub: {
-        EmitVFSub(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVFSub(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VFMul: {
-        EmitVFMul(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVFMul(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VFDiv: {
-        EmitVFDiv(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVFDiv(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VFSqrt: {
-        EmitVFSqrt(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitVFSqrt(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::VFRcp: {
-        EmitVFRcp(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitVFRcp(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::VFRcpSqrt: {
-        EmitVFRcpSqrt(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)));
+        EmitVFRcpSqrt(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)));
         break;
     }
 
     case IROpcode::VFNotEqual: {
-        EmitVFNotEqual(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVFNotEqual(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VFLessThan: {
-        EmitVFLessThan(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)), inst.GetMask());
+        EmitVFLessThan(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
     }
 
     case IROpcode::VCvtSToF: {
-        EmitVCvtSToF(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVCvtSToF(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VWCvtSToF: {
-        EmitVWCvtSToF(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVWCvtSToF(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VNCvtSToF: {
-        EmitVNCvtSToF(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVNCvtSToF(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VCvtFToS: {
-        EmitVCvtFToS(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVCvtFToS(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VCvtFToSRtz: {
-        EmitVCvtFToSRtz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVCvtFToSRtz(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VNCvtFToS: {
-        EmitVNCvtFToS(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVNCvtFToS(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VNCvtFToSRtz: {
-        EmitVNCvtFToSRtz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVNCvtFToSRtz(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VWCvtFToS: {
-        EmitVWCvtFToS(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVWCvtFToS(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VWCvtFToSRtz: {
-        EmitVWCvtFToSRtz(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), inst.GetMask());
+        EmitVWCvtFToSRtz(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetMask());
         break;
     }
 
     case IROpcode::VFMin: {
-        EmitVFMin(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVFMin(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 
     case IROpcode::VFMax: {
-        EmitVFMax(backend, _Reg_(inst.GetName()), _Reg_(inst.GetOperand(0)), _Reg_(inst.GetOperand(1)));
+        EmitVFMax(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)));
         break;
     }
 

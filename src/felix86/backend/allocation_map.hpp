@@ -75,6 +75,18 @@ struct AllocationMap {
         return it->second;
     }
 
+    AllocationType GetAllocationType(u32 name) const {
+        auto it = allocations.find(name);
+        ASSERT_MSG(it != allocations.end(), "Allocation not found for name %s", GetNameString(name).c_str());
+        return it->second.GetAllocationType();
+    }
+
+    u32 GetSpillLocation(u32 name) const {
+        auto it = allocations.find(name);
+        ASSERT_MSG(it != allocations.end(), "Allocation not found for name %s", GetNameString(name).c_str());
+        return it->second.GetSpillLocation();
+    }
+
     void ResetSpillRegisters() {
         if (available_spill_gprs.size() != 3) {
             available_spill_gprs.clear();
