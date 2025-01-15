@@ -4,10 +4,10 @@
 
 struct Node {
     u32 id{};
-    std::vector<Node*> edges{};
+    std::unordered_set<Node*> edges{};
 
     Node(u32 id) : id(id) {}
-    Node(u32 id, const std::vector<Node*>& edges) : id(id), edges(edges) {}
+    Node(u32 id, const std::unordered_set<Node*>& edges) : id(id), edges(edges) {}
     Node(const Node& other) = delete;
     Node(Node&& other) = default;
     Node& operator=(const Node& other) = delete;
@@ -45,13 +45,8 @@ struct InterferenceGraph {
         Node* na = graph[a];
         Node* nb = graph[b];
 
-        if (std::find(na->edges.begin(), na->edges.end(), nb) == na->edges.end()) {
-            na->edges.push_back(nb);
-        }
-
-        if (std::find(nb->edges.begin(), nb->edges.end(), na) == nb->edges.end()) {
-            nb->edges.push_back(na);
-        }
+        na->edges.insert(nb);
+        nb->edges.insert(na);
     }
 
     // I forgot why this function was needed, TODO: remove
@@ -66,8 +61,7 @@ struct InterferenceGraph {
         for (Node* edge : node->edges) {
             ASSERT(edge);
             ASSERT(edge != node);
-            ASSERT(std::find(edge->edges.begin(), edge->edges.end(), node) != edge->edges.end());
-            edge->edges.erase(std::remove(edge->edges.begin(), edge->edges.end(), node), edge->edges.end());
+            edge->edges.erase(node);
         }
         CopiedNode node_copy{*node};
         graph.erase(id);
@@ -471,8 +465,7 @@ bool try_coalesce(BackendFunction& function, InterferenceGraph& graph, bool is_v
                             it = block->GetInstructions().erase(it);
                             coalesced = true;
                             // Merge interferences into rhs
-                            std::vector<Node*> neighbors = node->edges;
-                            for (Node* neighbor : neighbors) {
+                            for (Node* neighbor : node->edges) {
                                 u32 neighbor_id = neighbor->id;
                                 if (neighbor_id != rhs) {
                                     graph.AddEdge(rhs, neighbor_id);
