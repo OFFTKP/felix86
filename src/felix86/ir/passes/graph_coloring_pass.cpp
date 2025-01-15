@@ -45,8 +45,13 @@ struct InterferenceGraph {
         Node* na = graph[a];
         Node* nb = graph[b];
 
-        na->edges.push_back(nb);
-        nb->edges.push_back(na);
+        if (std::find(na->edges.begin(), na->edges.end(), nb) == na->edges.end()) {
+            na->edges.push_back(nb);
+        }
+
+        if (std::find(nb->edges.begin(), nb->edges.end(), na) == nb->edges.end()) {
+            nb->edges.push_back(na);
+        }
     }
 
     // I forgot why this function was needed, TODO: remove
@@ -57,11 +62,14 @@ struct InterferenceGraph {
 
     CopiedNode RemoveNode(u32 id) {
         Node* node = graph[id];
+        ASSERT(node);
         for (Node* edge : node->edges) {
+            ASSERT(edge);
+            ASSERT(edge != node);
+            ASSERT(std::find(edge->edges.begin(), edge->edges.end(), node) != edge->edges.end());
             edge->edges.erase(std::remove(edge->edges.begin(), edge->edges.end(), node), edge->edges.end());
         }
         CopiedNode node_copy{*node};
-        delete node;
         graph.erase(id);
         return node_copy;
     }
@@ -69,6 +77,7 @@ struct InterferenceGraph {
     u32 Worst(const InstructionMap& instructions) {
         u32 min = std::numeric_limits<u32>::max();
         u32 chosen = 0;
+        bool valid = false;
         for (const auto& [id, node] : graph) {
             if (node->edges.size() == 0)
                 continue;
@@ -79,8 +88,10 @@ struct InterferenceGraph {
             if (cost < min) {
                 min = cost;
                 chosen = id;
+                valid = true;
             }
         }
+        ASSERT(valid);
         return chosen;
     }
 
