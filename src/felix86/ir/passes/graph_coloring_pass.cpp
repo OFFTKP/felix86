@@ -38,10 +38,6 @@ using InstructionList = std::vector<const BackendInstruction*>;
 
 struct InterferenceGraph {
     void AddEdge(u32 a, u32 b) {
-        if (graph.find(a) == graph.end())
-            graph[a] = new Node{a};
-        if (graph.find(b) == graph.end())
-            graph[b] = new Node{b};
         Node* na = graph[a];
         Node* nb = graph[b];
 
@@ -298,6 +294,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
 
             if (should_consider(&inst, is_vec)) {
                 def[i].insert(inst.GetName());
+                graph.AddEmpty(inst.GetName());
             }
         }
     }
@@ -360,7 +357,6 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
 
                 // in case there's nothing live (which is possible if nothing is read before written)
                 // then we need to add the current instruction to the graph so it gets allocated
-                graph.AddEmpty(inst.GetName());
                 for (u32 item : live_now) {
                     graph.AddEdge(inst.GetName(), item);
                 }

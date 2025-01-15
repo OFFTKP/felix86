@@ -59,7 +59,6 @@ void Emulator::Run() {
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();
-
     backend.EnterDispatcher(state);
 
     VERBOSE("Bye-bye main thread :(");
@@ -249,7 +248,7 @@ void* Emulator::compileFunction(u64 rip) {
 
     BackendFunction backend_function = BackendFunction::FromIRFunction(&function);
 
-    AllocationMap allocations = ir_graph_coloring_pass(backend_function);
+    AllocationMap allocations = ir_linear_scan_pass(backend_function);
 
     // Add vector state instructions where necessary
     PassManager::VectorStatePass(&backend_function);
