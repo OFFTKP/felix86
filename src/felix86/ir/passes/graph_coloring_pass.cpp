@@ -549,7 +549,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, const s
             std::vector<u32> colors = available_colors;
             for (u32 neighbor : node.edges) {
                 if (allocations.IsAllocated(neighbor)) {
-                    u32 allocation = allocations.GetAllocationIndex(neighbor);
+                    u32 allocation = allocations.GetAllocation(neighbor).GetIndex();
                     std::erase(colors, allocation);
                 }
             }

@@ -162,7 +162,7 @@ void* Backend::AddCodeAt(u64 address, void* code, u64 size) {
     return start;
 }
 
-std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, const AllocationMap& allocations) {
+std::pair<void*, u64> Backend::EmitFunction(const BackendFunction& function, AllocationMap& allocations) {
     void* start = as.GetCursorPointer();
     std::vector<const BackendBlock*> blocks_postorder = function.GetBlocksPostorder();
 

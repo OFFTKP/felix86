@@ -30,7 +30,7 @@ struct Backend {
 
     void EnterDispatcher(ThreadState* state);
 
-    std::pair<void*, u64> EmitFunction(const BackendFunction& function, const AllocationMap& allocations);
+    std::pair<void*, u64> EmitFunction(const BackendFunction& function, AllocationMap& allocations);
 
     Assembler& GetAssembler() {
         return as;

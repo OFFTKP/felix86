@@ -56,6 +56,15 @@ public:
         return total_vecs;
     }
 
+    // The 3 last registers are used to house spills
+    constexpr static const auto GetAllocatableGPRsLinear() {
+        return std::array{total_gprs.begin(), total_gprs.end() - 3};
+    }
+
+    constexpr static const auto GetAllocatableVecsLinear() {
+        return std::array{total_vecs.begin(), total_vecs.end() - 3};
+    }
+
     static u8 GetGPRIndex(biscuit::GPR reg) {
         for (size_t i = 0; i < total_gprs.size(); i++) {
             if (total_gprs[i] == reg) {

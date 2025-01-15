@@ -4,7 +4,8 @@
 #define _Reg_(name) (allocation_map.GetAllocation(name))
 
 // Dispatch to correct function
-void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const BackendBlock& block, const BackendInstruction& inst) {
+void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const BackendBlock& block, const BackendInstruction& inst) {
+    allocation_map.ResetSpillRegisters();
     switch (inst.GetOpcode()) {
     // Should not exist in the backend IR representation, replaced by simpler stuff
     case IROpcode::Null: {

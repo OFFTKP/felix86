@@ -74,7 +74,7 @@ static void liveness_worklist2(BackendFunction& function, std::vector<const Back
 }
 
 AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> blocks, std::vector<u32>& available_colors, bool is_vec,
-                  u32& spill_location) {
+                  u32& spill_location, u32 spill_register) {
     AllocationMap allocations;
 
     std::vector<std::unordered_set<u32>> in(blocks.size());
@@ -182,8 +182,6 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
     };
 
     auto spill_at_interval = [&](LiveInterval& intr) {
-        WARN("SPILLING");
-        exit(1);
         ASSERT(!active_intervals.empty());
         LiveInterval* spill_interval = active_intervals.back();
 
@@ -212,12 +210,18 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
     }
 
     for (auto& interval : sorted_intervals) {
-        ASSERT(!interval.spilled);
-        ASSERT(interval.register_id != UINT32_MAX);
-        if (is_vec) {
-            allocations.Allocate(interval.name, AllocationType::Vec, interval.register_id);
+        if (!interval.spilled) {
+            if (is_vec) {
+                allocations.Allocate(interval.name, AllocationType::Vec, interval.register_id);
+            } else {
+                allocations.Allocate(interval.name, AllocationType::GPR, interval.register_id);
+            }
         } else {
-            allocations.Allocate(interval.name, AllocationType::GPR, interval.register_id);
+            if (is_vec) {
+                allocations.Spill(interval.name, AllocationType::StaticSpillVec, interval.spill_location);
+            } else {
+                allocations.Spill(interval.name, AllocationType::StaticSpillGPR, interval.spill_location);
+            }
         }
     }
 
@@ -227,19 +231,28 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
 AllocationMap ir_linear_scan_pass(BackendFunction& function) {
     std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
 
+    g_spilled_count = 0;
+
     std::vector<u32> available_gprs, available_vecs;
-    for (auto& gpr : Registers::GetAllocatableGPRs()) {
-        available_gprs.push_back(gpr.Index());
+    for (auto& gpr : Registers::GetAllocatableGPRsLinear()) {
+        available_gprs.push_back(gpr->Index());
     }
 
-    for (auto& vec : Registers::GetAllocatableVecs()) {
-        available_vecs.push_back(vec.Index());
+    for (auto& vec : Registers::GetAllocatableVecsLinear()) {
+        available_vecs.push_back(vec->Index());
     }
+
+    // Reserve the last register for holding spill locations temporarily
+    u32 spill_gpr = available_gprs.back();
+    available_gprs.pop_back();
+
+    u32 spill_vec = available_vecs.back();
+    available_vecs.pop_back();
 
     u32 spill_location = 0;
 
-    AllocationMap gpr_map = run(function, blocks, available_gprs, false, spill_location);
-    AllocationMap vec_map = run(function, blocks, available_vecs, true, spill_location);
+    AllocationMap gpr_map = run(function, blocks, available_gprs, false, spill_location, spill_gpr);
+    AllocationMap vec_map = run(function, blocks, available_vecs, true, spill_location, spill_vec);
 
     AllocationMap allocations;
 
