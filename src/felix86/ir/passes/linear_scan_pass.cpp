@@ -89,66 +89,69 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         u32 spill_location = 0;
         bool spilled = false;
     };
-    std::unordered_map<u32, LiveInterval> intervals;
-
-    for (size_t counter = 0; counter < blocks.size(); counter++) {
-        const BackendBlock* block = blocks[counter];
-        size_t i = block->GetIndex();
-        for (const BackendInstruction& inst : block->GetInstructions()) {
-            for (u8 j = 0; j < inst.GetOperandCount(); j++) {
-                if (should_consider_op(&inst, j, is_vec) && !def[i].contains(inst.GetOperand(j))) {
-                    // Not defined in this block ie. upwards exposed, live range goes outside current block
-                    use[i].insert(inst.GetOperand(j));
-                }
-            }
-
-            if (should_consider(&inst, is_vec)) {
-                def[i].insert(inst.GetName());
-            }
-        }
-    }
-
-    liveness_worklist2(function, blocks, in, out, use, def);
-
-    u32 position = 0;
-    for (size_t counter = 0; counter < blocks.size(); counter++) {
-        const BackendBlock* block = blocks[counter];
-        size_t i = block->GetIndex();
-
-        for (u32 input : in[i]) {
-            intervals[input].start = std::min(intervals[input].start, position);
-            intervals[input].end = std::max(intervals[input].end, position);
-        }
-
-        for (const BackendInstruction& inst : block->GetInstructions()) {
-            for (u8 j = 0; j < inst.GetOperandCount(); j++) {
-                if (should_consider_op(&inst, j, is_vec)) {
-                    intervals[inst.GetOperand(j)].start = std::min(intervals[inst.GetOperand(j)].start, position);
-                    intervals[inst.GetOperand(j)].end = std::max(intervals[inst.GetOperand(j)].end, position);
-                }
-            }
-
-            if (should_consider(&inst, is_vec)) {
-                intervals[inst.GetName()].start = std::min(intervals[inst.GetName()].start, position);
-                intervals[inst.GetName()].end = std::max(intervals[inst.GetName()].end, position);
-            }
-
-            position += 1;
-        }
-
-        for (u32 output : out[i]) {
-            intervals[output].start = std::min(intervals[output].start, position);
-            intervals[output].end = std::max(intervals[output].end, position);
-        }
-    }
-
-    // Sort them based on start position
     std::vector<std::pair<u32, LiveInterval>> sorted_intervals;
-    for (const auto& [id, interval] : intervals) {
-        sorted_intervals.push_back({id, interval});
-    }
 
-    std::sort(sorted_intervals.begin(), sorted_intervals.end(), [](const auto& a, const auto& b) { return a.second.start < b.second.start; });
+    // Get intervals then put them in sorted_intervals
+    {
+        std::unordered_map<u32, LiveInterval> intervals;
+
+        for (size_t counter = 0; counter < blocks.size(); counter++) {
+            const BackendBlock* block = blocks[counter];
+            size_t i = block->GetIndex();
+            for (const BackendInstruction& inst : block->GetInstructions()) {
+                for (u8 j = 0; j < inst.GetOperandCount(); j++) {
+                    if (should_consider_op(&inst, j, is_vec) && !def[i].contains(inst.GetOperand(j))) {
+                        // Not defined in this block ie. upwards exposed, live range goes outside current block
+                        use[i].insert(inst.GetOperand(j));
+                    }
+                }
+
+                if (should_consider(&inst, is_vec)) {
+                    def[i].insert(inst.GetName());
+                }
+            }
+        }
+
+        liveness_worklist2(function, blocks, in, out, use, def);
+
+        u32 position = 0;
+        for (size_t counter = 0; counter < blocks.size(); counter++) {
+            const BackendBlock* block = blocks[counter];
+            size_t i = block->GetIndex();
+
+            for (u32 input : in[i]) {
+                intervals[input].start = std::min(intervals[input].start, position);
+                intervals[input].end = std::max(intervals[input].end, position);
+            }
+
+            for (const BackendInstruction& inst : block->GetInstructions()) {
+                for (u8 j = 0; j < inst.GetOperandCount(); j++) {
+                    if (should_consider_op(&inst, j, is_vec)) {
+                        intervals[inst.GetOperand(j)].start = std::min(intervals[inst.GetOperand(j)].start, position);
+                        intervals[inst.GetOperand(j)].end = std::max(intervals[inst.GetOperand(j)].end, position);
+                    }
+                }
+
+                if (should_consider(&inst, is_vec)) {
+                    intervals[inst.GetName()].start = std::min(intervals[inst.GetName()].start, position);
+                    intervals[inst.GetName()].end = std::max(intervals[inst.GetName()].end, position);
+                }
+
+                position += 1;
+            }
+
+            for (u32 output : out[i]) {
+                intervals[output].start = std::min(intervals[output].start, position);
+                intervals[output].end = std::max(intervals[output].end, position);
+            }
+        }
+
+        // Sort them based on start position
+        for (const auto& [id, interval] : intervals) {
+            sorted_intervals.push_back({id, interval});
+        }
+        std::sort(sorted_intervals.begin(), sorted_intervals.end(), [](const auto& a, const auto& b) { return a.second.start < b.second.start; });
+    }
 
     std::list<LiveInterval> active_intervals;
 
@@ -203,9 +206,8 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         }
     }
 
-    for (auto& [id, interval] : intervals) {
+    for (auto& [id, interval] : sorted_intervals) {
         ASSERT(!interval.spilled);
-        ASSERT(interval.register_id != UINT32_MAX);
         if (is_vec) {
             allocations.Allocate(id, AllocationType::Vec, interval.register_id);
         } else {
