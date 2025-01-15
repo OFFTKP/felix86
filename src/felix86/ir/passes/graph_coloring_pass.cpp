@@ -96,10 +96,10 @@ struct InterferenceGraph {
         return false;
     }
 
-    const std::vector<Node*>& GetInterferences(u32 inst) {
-        if (graph.find(inst) == graph.end())
-            graph[inst] = new Node{inst};
-        return graph[inst]->edges;
+    Node* GetNode(u32 id) {
+        if (graph.find(id) == graph.end())
+            graph[id] = new Node{id};
+        return graph[id];
     }
 
     auto begin() {
@@ -402,18 +402,21 @@ bool __attribute__((noinline)) george_coalescing_heuristic(BackendFunction& func
     u32 u = lhs;
     u32 v = rhs;
 
-    auto& u_neighbors = graph.GetInterferences(u);
+    Node* nu = graph.GetNode(u);
+    Node* nv = graph.GetNode(v);
+
+    auto& u_neighbors = nu->edges;
     bool u_conquers_v = true;
-    for (Node* t : graph.GetInterferences(v)) {
+    for (Node* t : nv->edges) {
         if (std::find(u_neighbors.begin(), u_neighbors.end(), t) == u_neighbors.end() && t->edges.size() >= k) {
             u_conquers_v = false;
             break;
         }
     }
 
-    auto& v_neighbors = graph.GetInterferences(v);
+    auto& v_neighbors = nv->edges;
     bool v_conquers_u = true;
-    for (Node* t : graph.GetInterferences(u)) {
+    for (Node* t : nu->edges) {
         if (std::find(v_neighbors.begin(), v_neighbors.end(), t) == v_neighbors.end() && t->edges.size() >= k) {
             v_conquers_u = false;
             break;
@@ -450,20 +453,20 @@ bool try_coalesce(BackendFunction& function, InterferenceGraph& graph, bool is_v
                     u32 lhs = inst.GetName();
                     u32 rhs = inst.GetOperand(0);
                     AllocationType rhs_type = inst.GetOperandDesiredType(0);
-                    auto& edges = graph.GetInterferences(lhs);
+                    Node* node = graph.GetNode(lhs);
                     if (!graph.Interferes(lhs, rhs)) {
                         if (heuristic(function, graph, k, lhs, rhs)) {
                             coalesce(function, lhs, rhs, rhs_type);
                             it = block->GetInstructions().erase(it);
                             coalesced = true;
                             // Merge interferences into rhs
-                            for (Node* neighbor : edges) {
-                                if (neighbor->id != rhs) {
-                                    graph.AddEdge(rhs, neighbor->id);
+                            std::vector<Node*> neighbors = node->edges;
+                            for (Node* neighbor : neighbors) {
+                                u32 neighbor_id = neighbor->id;
+                                if (neighbor_id != rhs) {
+                                    graph.AddEdge(rhs, neighbor_id);
                                 }
                             }
-                            // Remove lhs from graph
-                            graph.RemoveNode(lhs);
                             continue;
                         }
                     }
