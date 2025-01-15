@@ -170,12 +170,12 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
             }
 
             it = active_intervals.erase(it);
+            ASSERT(it->register_id != UINT32_MAX);
             available_colors.push_back(it->register_id);
         }
     };
 
     auto spill_at_interval = [&](LiveInterval& intr) {
-        exit(1);
         ASSERT(!active_intervals.empty());
         LiveInterval& spill_interval = active_intervals.back();
 
@@ -210,6 +210,7 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
             allocations.Allocate(id, AllocationType::Vec, interval.register_id);
         } else {
             allocations.Allocate(id, AllocationType::GPR, interval.register_id);
+            printf("Allocating %s to %d\n", GetNameString(id).c_str(), interval.register_id);
         }
     }
 
