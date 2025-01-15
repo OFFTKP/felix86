@@ -257,11 +257,23 @@ AllocationMap ir_linear_scan_pass(BackendFunction& function) {
     AllocationMap allocations;
 
     for (auto& [name, allocation] : gpr_map) {
-        allocations.Allocate(name, biscuit::GPR(allocation));
+        if (allocation.GetAllocationType() == AllocationType::GPR) {
+            allocations.Allocate(name, biscuit::GPR(allocation));
+        } else if (allocation.GetAllocationType() == AllocationType::StaticSpillGPR) {
+            allocations.Spill(name, AllocationType::StaticSpillGPR, allocation.GetSpillLocation());
+        } else {
+            UNREACHABLE();
+        }
     }
 
     for (auto& [name, allocation] : vec_map) {
-        allocations.Allocate(name, biscuit::Vec(allocation));
+        if (allocation.GetAllocationType() == AllocationType::Vec) {
+            allocations.Allocate(name, biscuit::Vec(allocation));
+        } else if (allocation.GetAllocationType() == AllocationType::StaticSpillVec) {
+            allocations.Spill(name, AllocationType::StaticSpillVec, allocation.GetSpillLocation());
+        } else {
+            UNREACHABLE();
+        }
     }
 
     for (BackendBlock* block : function.GetBlocks()) {

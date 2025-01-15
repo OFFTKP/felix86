@@ -88,6 +88,17 @@ struct Allocation {
         }
     }
 
+    u32 GetSpillLocation() const {
+        if (IsSpillGPR()) {
+            return AsSpillGPR().index;
+        } else if (IsSpillVec()) {
+            return AsSpillVec().location;
+        } else {
+            UNREACHABLE();
+            return 0;
+        }
+    }
+
     operator biscuit::GPR() const {
         return AsGPR();
     }
