@@ -87,9 +87,10 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         u32 end = 0;
         u32 register_id = UINT32_MAX;
         u32 spill_location = 0;
+        u32 name = 0;
         bool spilled = false;
     };
-    std::vector<std::pair<u32, LiveInterval>> sorted_intervals;
+    std::vector<LiveInterval> sorted_intervals;
 
     // Get intervals then put them in sorted_intervals
     {
@@ -148,9 +149,10 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
 
         // Sort them based on start position
         for (const auto& [id, interval] : intervals) {
-            sorted_intervals.push_back({id, interval});
+            sorted_intervals.push_back(interval);
+            sorted_intervals.back().name = id;
         }
-        std::sort(sorted_intervals.begin(), sorted_intervals.end(), [](const auto& a, const auto& b) { return a.second.start < b.second.start; });
+        std::sort(sorted_intervals.begin(), sorted_intervals.end(), [](const auto& a, const auto& b) { return a.start < b.start; });
     }
 
     std::list<LiveInterval> active_intervals;
@@ -167,14 +169,15 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
     };
 
     auto expire_old_intervals = [&](LiveInterval& intr) {
-        for (auto it = active_intervals.begin(); it != active_intervals.end();) {
+        auto it = active_intervals.begin();
+        while (it != active_intervals.end()) {
             if (it->end >= intr.start) {
                 return;
             }
 
-            it = active_intervals.erase(it);
             ASSERT(it->register_id != UINT32_MAX);
             available_colors.push_back(it->register_id);
+            it = active_intervals.erase(it);
         }
     };
 
@@ -195,7 +198,7 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         }
     };
 
-    for (auto& [id, interval] : sorted_intervals) {
+    for (auto& interval : sorted_intervals) {
         expire_old_intervals(interval);
         if (available_colors.empty()) {
             spill_at_interval(interval);
@@ -206,13 +209,12 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         }
     }
 
-    for (auto& [id, interval] : sorted_intervals) {
+    for (auto& interval : sorted_intervals) {
         ASSERT(!interval.spilled);
         if (is_vec) {
-            allocations.Allocate(id, AllocationType::Vec, interval.register_id);
+            allocations.Allocate(interval.name, AllocationType::Vec, interval.register_id);
         } else {
-            allocations.Allocate(id, AllocationType::GPR, interval.register_id);
-            printf("Allocating %s to %d\n", GetNameString(id).c_str(), interval.register_id);
+            allocations.Allocate(interval.name, AllocationType::GPR, interval.register_id);
         }
     }
 
