@@ -963,6 +963,10 @@ std::string Print(IROpcode opcode, x86_ref_e ref, u32 name, const u32* operands,
         ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vslideupzeroesi", "src", GetNameString(operands[0]), immediate_data);
         break;
     }
+    case IROpcode::VSlideDownZeroesi: {
+        ret += fmt::format("{} <- {}({}: {}, 0x{:x})", GetNameString(name), "vslidedownzeroesi", "src", GetNameString(operands[0]), immediate_data);
+        break;
+    }
     case IROpcode::VSlide1Up: {
         ret += fmt::format("{} <- {}({}: {}, {}: {})", GetNameString(name), "vslide1up", "integer", GetNameString(operands[0]), "vector",
                            GetNameString(operands[1]));

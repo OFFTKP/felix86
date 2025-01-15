@@ -1076,6 +1076,10 @@ SSAInstruction* IREmitter::VSlideUpZeroesi(SSAInstruction* value, u8 shift, Vect
     return insertInstruction(IROpcode::VSlideUpZeroesi, state, {value}, shift);
 }
 
+SSAInstruction* IREmitter::VSlideDownZeroesi(SSAInstruction* value, u8 shift, VectorState state) {
+    return insertInstruction(IROpcode::VSlideDownZeroesi, state, {value}, shift);
+}
+
 SSAInstruction* IREmitter::VSlide1Up(SSAInstruction* integer, SSAInstruction* vector, VectorState state) {
     return insertInstruction(IROpcode::VSlide1Up, state, {integer, vector});
 }
@@ -1194,13 +1198,13 @@ SSAInstruction* IREmitter::VZext(SSAInstruction* value, x86_size_e size) {
         u8 element_count = SUPPORTED_VLEN / 32;
         u8 shift_count = element_count - 1;
         SSAInstruction* upped = VSlideUpi(value, shift_count, VectorState::PackedDWord);
-        return VSlideDowni(upped, shift_count, VectorState::PackedDWord);
+        return VSlideDownZeroesi(upped, shift_count, VectorState::PackedDWord);
     }
     case X86_SIZE_QWORD: {
         u8 element_count = SUPPORTED_VLEN / 64;
         u8 shift_count = element_count - 1;
         SSAInstruction* upped = VSlideUpi(value, shift_count, VectorState::PackedQWord);
-        return VSlideDowni(upped, shift_count, VectorState::PackedQWord);
+        return VSlideDownZeroesi(upped, shift_count, VectorState::PackedQWord);
     }
     default:
         UNREACHABLE();

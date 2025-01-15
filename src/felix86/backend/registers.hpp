@@ -60,7 +60,7 @@ public:
     // The 3 last registers are used to house spills
     constexpr static const std::vector<u32> GetAllocatableGPRsLinear() {
         std::vector<u32> gprs;
-        for (size_t i = 0; i < total_gprs.size() - 15; i++) {
+        for (size_t i = 0; i < total_gprs.size() - 3; i++) {
             gprs.push_back(total_gprs[i].Index());
         }
         return gprs;

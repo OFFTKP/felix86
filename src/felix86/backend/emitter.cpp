@@ -1322,6 +1322,12 @@ void Emitter::EmitVSlideUpZeroesi(Backend& backend, biscuit::Vec Vd, biscuit::Ve
     AS.VSLIDEUP(Vd, Vs, immediate, masked);
 }
 
+void Emitter::EmitVSlideDownZeroesi(Backend& backend, biscuit::Vec Vd, biscuit::Vec Vs, u64 immediate, VecMask masked) {
+    ASSERT(Vd != Vs);
+    AS.VMV(Vd, 0);
+    AS.VSLIDEDOWN(Vd, Vs, immediate, masked);
+}
+
 void Emitter::EmitVSlide1Up(Backend& backend, biscuit::Vec Vd, biscuit::GPR Rs, biscuit::Vec Vs, VecMask masked) {
     ASSERT(Vd != Vs);
     AS.VSLIDE1UP(Vd, Vs, Rs, masked);

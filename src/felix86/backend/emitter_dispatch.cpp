@@ -991,6 +991,11 @@ void Emitter::Emit(Backend& backend, AllocationMap& allocation_map, const Backen
         break;
     }
 
+    case IROpcode::VSlideDownZeroesi: {
+        EmitVSlideDownZeroesi(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), inst.GetImmediateData(), inst.GetMask());
+        break;
+    }
+
     case IROpcode::VSlide1Up: {
         EmitVSlide1Up(backend, _RegW_(inst.GetName()), _RegR_(inst.GetOperand(0)), _RegR_(inst.GetOperand(1)), inst.GetMask());
         break;
