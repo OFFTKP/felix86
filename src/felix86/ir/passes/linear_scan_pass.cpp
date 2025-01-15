@@ -205,6 +205,7 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
 
     for (auto& [id, interval] : intervals) {
         ASSERT(!interval.spilled);
+        ASSERT(interval.register_id != UINT32_MAX);
         if (is_vec) {
             allocations.Allocate(id, AllocationType::Vec, interval.register_id);
         } else {
