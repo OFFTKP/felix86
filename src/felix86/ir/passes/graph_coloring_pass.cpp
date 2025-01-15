@@ -350,18 +350,15 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
 
     graph.Reserve(all_insts.size());
 
-    std::vector<u8> live_now;
-    live_now.resize(all_insts.size());
-
     for (const BackendBlock* block : blocks) {
-        std::fill(live_now.begin(), live_now.end(), 0);
+        std::vector<u32> live_now;
 
         // We are gonna walk the block backwards, first add all definitions that have lifetime
         // that extends past this basic block
         // live_now.insert(out[block->GetIndex()].begin(), out[block->GetIndex()].end());
         for (u32 i = 0; i < out[block->GetIndex()].size(); i++) {
             if (out[block->GetIndex()][i] == 1) {
-                live_now[i] = 1;
+                live_now.push_back(all_insts[i]->GetName());
             }
         }
 
@@ -370,8 +367,9 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
             const BackendInstruction& inst = *it;
             if (should_consider(&inst, is_vec)) {
                 // Erase the currently defined variable if it exists in the set
-                u32 inst_index = get_index(inst.GetName());
-                live_now[inst_index] = 0;
+                if (std::find(live_now.begin(), live_now.end(), inst.GetName()) != live_now.end()) {
+                    live_now.erase(std::remove(live_now.begin(), live_now.end(), inst.GetName()), live_now.end());
+                }
 
                 // Some instructions, due to RISC-V ISA, can't allocate the same register
                 // to destination and source operands. For example, viota, vslideup, vrgather.
@@ -392,8 +390,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 case IROpcode::VNCvtFToSRtz: {
                     for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                         if (should_consider_op(&inst, i, is_vec)) {
-                            u32 operand_index = get_index(inst.GetOperand(i));
-                            live_now[operand_index] = 1;
+                            live_now.push_back(inst.GetOperand(i));
                         }
                     }
                     break;
@@ -402,8 +399,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                     // Doesn't interfere with the first operand
                     for (u8 i = 1; i < inst.GetOperandCount(); i++) {
                         if (should_consider_op(&inst, i, is_vec)) {
-                            u32 operand_index = get_index(inst.GetOperand(i));
-                            live_now[operand_index] = 1;
+                            live_now.push_back(inst.GetOperand(i));
                         }
                     }
                     break;
@@ -416,16 +412,13 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 // then we need to add the current instruction to the graph so it gets allocated
                 graph.AddEmpty(inst.GetName());
                 for (u32 i = 0; i < live_now.size(); i++) {
-                    if (live_now[i] == 1) {
-                        graph.AddEdge(inst.GetName(), all_insts[i]->GetName());
-                    }
+                    graph.AddEdge(inst.GetName(), live_now[i]);
                 }
             }
 
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
                 if (should_consider_op(&inst, i, is_vec)) {
-                    u32 operand_index = get_index(inst.GetOperand(i));
-                    live_now[operand_index] = 1;
+                    live_now.push_back(inst.GetOperand(i));
                 }
             }
         }
@@ -495,7 +488,6 @@ bool aggressive_coalescing_heuristic(BackendFunction& function, InterferenceGrap
 }
 
 void coalesce(BackendFunction& function, u32 lhs, u32 rhs, AllocationType rhs_type) {
-    printf("Coalescing %s and %s\n", GetNameString(lhs).c_str(), GetNameString(rhs).c_str());
     for (BackendBlock* block : function.GetBlocks()) {
         for (BackendInstruction& inst : block->GetInstructions()) {
             for (u8 i = 0; i < inst.GetOperandCount(); i++) {
@@ -680,7 +672,6 @@ AllocationMap ir_graph_coloring_pass(BackendFunction& function) {
                 allocations.Allocate(inst.GetName(), Registers::ThreadStatePointer());
             } else if (inst.GetOpcode() == IROpcode::Immediate && inst.GetImmediateData() == 0) {
                 allocations.Allocate(inst.GetName(), Registers::Zero());
-                printf("Allocating 0 to %s\n", GetNameString(inst.GetName()).c_str());
             }
         }
     }
