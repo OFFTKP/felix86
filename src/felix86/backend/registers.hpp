@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <vector>
 #include "biscuit/assembler.hpp"
 #include "biscuit/registers.hpp"
 #include "felix86/common/log.hpp"
@@ -57,12 +58,20 @@ public:
     }
 
     // The 3 last registers are used to house spills
-    constexpr static const auto GetAllocatableGPRsLinear() {
-        return std::array{total_gprs.begin(), total_gprs.end() - 3};
+    constexpr static const std::vector<u32> GetAllocatableGPRsLinear() {
+        std::vector<u32> gprs;
+        for (size_t i = 0; i < total_gprs.size() - 3; i++) {
+            gprs.push_back(total_gprs[i].Index());
+        }
+        return gprs;
     }
 
     constexpr static const auto GetAllocatableVecsLinear() {
-        return std::array{total_vecs.begin(), total_vecs.end() - 3};
+        std::vector<u32> vecs;
+        for (size_t i = 0; i < total_vecs.size() - 3; i++) {
+            vecs.push_back(total_vecs[i].Index());
+        }
+        return vecs;
     }
 
     static u8 GetGPRIndex(biscuit::GPR reg) {

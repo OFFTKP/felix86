@@ -74,7 +74,7 @@ static void liveness_worklist2(BackendFunction& function, std::vector<const Back
 }
 
 AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> blocks, std::vector<u32>& available_colors, bool is_vec,
-                  u32& spill_location, u32 spill_register) {
+                  u32& spill_location) {
     AllocationMap allocations;
 
     std::vector<std::unordered_set<u32>> in(blocks.size());
@@ -187,6 +187,7 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
 
         if (spill_interval->end > intr.start) {
             intr.register_id = spill_interval->register_id;
+            spill_interval->register_id = UINT32_MAX;
             spill_interval->spilled = true;
             spill_interval->spill_location = spill_location;
             spill_location += is_vec ? 16 : 8;
@@ -225,6 +226,11 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         }
     }
 
+    for (LiveInterval& interval : sorted_intervals) {
+        printf("Interval %s: %u - %u, register %u, spilled %d, spill location %u\n", GetNameString(interval.name).c_str(), interval.start,
+               interval.end, interval.register_id, interval.spilled, interval.spill_location);
+    }
+
     return allocations;
 }
 
@@ -233,26 +239,13 @@ AllocationMap ir_linear_scan_pass(BackendFunction& function) {
 
     g_spilled_count = 0;
 
-    std::vector<u32> available_gprs, available_vecs;
-    for (auto& gpr : Registers::GetAllocatableGPRsLinear()) {
-        available_gprs.push_back(gpr->Index());
-    }
-
-    for (auto& vec : Registers::GetAllocatableVecsLinear()) {
-        available_vecs.push_back(vec->Index());
-    }
-
-    // Reserve the last register for holding spill locations temporarily
-    u32 spill_gpr = available_gprs.back();
-    available_gprs.pop_back();
-
-    u32 spill_vec = available_vecs.back();
-    available_vecs.pop_back();
+    std::vector<u32> available_gprs = Registers::GetAllocatableGPRsLinear();
+    std::vector<u32> available_vecs = Registers::GetAllocatableVecsLinear();
 
     u32 spill_location = 0;
 
-    AllocationMap gpr_map = run(function, blocks, available_gprs, false, spill_location, spill_gpr);
-    AllocationMap vec_map = run(function, blocks, available_vecs, true, spill_location, spill_vec);
+    AllocationMap gpr_map = run(function, blocks, available_gprs, false, spill_location);
+    AllocationMap vec_map = run(function, blocks, available_vecs, true, spill_location);
 
     AllocationMap allocations;
 

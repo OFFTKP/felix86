@@ -59,6 +59,7 @@ void Emulator::Run() {
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();
+    compileFunction(0x10'0000);
     backend.EnterDispatcher(state);
 
     VERBOSE("Bye-bye main thread :(");
