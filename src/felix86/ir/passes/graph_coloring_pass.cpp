@@ -328,6 +328,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
                 case IROpcode::VIota:
                 case IROpcode::VSlide1Up:
                 case IROpcode::VSlideUpZeroesi:
+                case IROpcode::VSlideDownZeroesi:
                 case IROpcode::VSlideUpi:
                 case IROpcode::VWCvtFToS:
                 case IROpcode::VNCvtSToF:
