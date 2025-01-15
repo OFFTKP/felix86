@@ -21,9 +21,6 @@ add_subdirectory(external/fmt)
 add_subdirectory(external/indicators)
 add_subdirectory(external/xxHash)
 
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch")
 

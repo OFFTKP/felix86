@@ -366,7 +366,7 @@ void Emitter::EmitParity(Backend& backend, biscuit::GPR Rd, biscuit::GPR Rs) {
         AS.ANDI(Rd, Rd, 1);
         AS.XORI(Rd, Rd, 1);
     } else {
-        // ASSERT_MSG(!g_cache_functions, "TODO: function caching doesn't work here");
+        ASSERT_MSG(!g_cache_functions, "TODO: function caching doesn't work here");
         // clang-format off
         static bool bitcount[] = {
             1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
