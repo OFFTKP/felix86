@@ -182,6 +182,8 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
     };
 
     auto spill_at_interval = [&](LiveInterval& intr) {
+        WARN("SPILLING");
+        exit(1);
         ASSERT(!active_intervals.empty());
         LiveInterval& spill_interval = active_intervals.back();
 
