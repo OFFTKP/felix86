@@ -155,28 +155,28 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         std::sort(sorted_intervals.begin(), sorted_intervals.end(), [](const auto& a, const auto& b) { return a.start < b.start; });
     }
 
-    std::list<LiveInterval> active_intervals;
+    std::list<LiveInterval*> active_intervals;
 
     auto add_to_active = [&](LiveInterval& intr) {
         for (auto it = active_intervals.begin(); it != active_intervals.end(); it++) {
-            if (it->end > intr.end) {
-                active_intervals.insert(it, intr);
+            if ((*it)->end > intr.end) {
+                active_intervals.insert(it, &intr);
                 return;
             }
         }
 
-        active_intervals.push_back(intr);
+        active_intervals.push_back(&intr);
     };
 
     auto expire_old_intervals = [&](LiveInterval& intr) {
         auto it = active_intervals.begin();
         while (it != active_intervals.end()) {
-            if (it->end >= intr.start) {
+            if ((*it)->end >= intr.start) {
                 return;
             }
 
-            ASSERT(it->register_id != UINT32_MAX);
-            available_colors.push_back(it->register_id);
+            ASSERT((*it)->register_id != UINT32_MAX);
+            available_colors.push_back((*it)->register_id);
             it = active_intervals.erase(it);
         }
     };
@@ -185,12 +185,12 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         WARN("SPILLING");
         exit(1);
         ASSERT(!active_intervals.empty());
-        LiveInterval& spill_interval = active_intervals.back();
+        LiveInterval* spill_interval = active_intervals.back();
 
-        if (spill_interval.end > intr.start) {
-            intr.register_id = spill_interval.register_id;
-            spill_interval.spilled = true;
-            spill_interval.spill_location = spill_location;
+        if (spill_interval->end > intr.start) {
+            intr.register_id = spill_interval->register_id;
+            spill_interval->spilled = true;
+            spill_interval->spill_location = spill_location;
             spill_location += is_vec ? 16 : 8;
             active_intervals.pop_back();
             add_to_active(intr);
@@ -213,6 +213,7 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
 
     for (auto& interval : sorted_intervals) {
         ASSERT(!interval.spilled);
+        ASSERT(interval.register_id != UINT32_MAX);
         if (is_vec) {
             allocations.Allocate(interval.name, AllocationType::Vec, interval.register_id);
         } else {
