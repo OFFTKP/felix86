@@ -20,7 +20,7 @@ Do note that I haven't fully read through all of these, most of them were used a
 - [Optimal register allocation for SSA-form programs in polynomial time](http://web.cs.ucla.edu/~palsberg/course/cs232/papers/HackGoos-ipl06.pdf)
 - [Linear scan register allocation](https://web.cs.ucla.edu/~palsberg/course/cs132/linearscan.pdf), as opposed to graph coloring register allocation 
 - [Efficiently Computing Static Single Assignment Form and the Control Dependence Graph](https://www.cs.utexas.edu/%7Epingali/CS380C/2010/papers/ssaCytron.pdf), the classical SSA paper, must read
-- [A Simple, Fast Dominance Algorithm](./dom14.pdf), Cooper et al. dominance algorithm including finding dominance frontiers
+- [A Simple, Fast Dominance Algorithm](http://www.hipersoft.rice.edu/grads/publications/dom14.pdf), Cooper et al. dominance algorithm including finding dominance frontiers
 - [A Fast Algorithm for Finding Dominators in a Flowgraph](https://www.cs.princeton.edu/courses/archive/fall03/cs528/handouts/a%20fast%20algorithm%20for%20finding.pdf), Lengauer-Tarjan dominance algorithm
 - [Simple and Efficient Construction of Static Single Assignment Form](https://link.springer.com/chapter/10.1007/978-3-642-37051-9_6), an alternative way of constructing SSA form employed by Yuzu's & shadPS4 shader recompiler among others
 - [SSA book](https://pfalcon.github.io/ssabook/latest/book-v1.pdf)

@@ -28,8 +28,9 @@ struct BackendInstruction {
         return operand_names[index];
     }
 
-    void SetOperand(u32 index, u32 value) {
+    void SetOperand(u32 index, u32 value, AllocationType type) {
         operand_names[index] = value;
+        operand_desired_types[index] = type;
     }
 
     u8 GetOperandCount() const {
@@ -44,8 +45,8 @@ struct BackendInstruction {
         return desired_type;
     }
 
-    void Rename(u32 new_name) {
-        name = new_name;
+    AllocationType GetOperandDesiredType(u32 index) const {
+        return operand_desired_types[index];
     }
 
     VectorState GetVectorState() const {
@@ -58,11 +59,13 @@ struct BackendInstruction {
 
     static BackendInstruction FromSSAInstruction(const SSAInstruction* inst);
 
-    static BackendInstruction FromMove(u32 lhs, u32 rhs, AllocationType type);
+    static BackendInstruction FromMove(u32 lhs, u32 rhs, AllocationType lhs_type, AllocationType rhs_type);
 
     static BackendInstruction FromStoreSpill(u32 name, u32 value, u32 spill_offset);
 
     static BackendInstruction FromLoadSpill(u32 name, u32 spill_offset, AllocationType type);
+
+    static AllocationType GetAllocationType(const SSAInstruction* inst);
 
     [[nodiscard]] std::string Print() const;
 
@@ -79,6 +82,7 @@ private:
     u32 name = 0;
     IROpcode opcode = IROpcode::Null;
     AllocationType desired_type = AllocationType::Null;
+    std::array<AllocationType, 4> operand_desired_types{};
     VecMask masked = VecMask::No;
     u8 operand_count = 0;
     VectorState vector_state = VectorState::Null;

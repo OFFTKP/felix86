@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tsl/robin_map.h>
+#include <unordered_map>
 #include "felix86/backend/allocation.hpp"
 #include "felix86/backend/serialized_function.hpp"
 #include "felix86/common/log.hpp"
@@ -99,6 +99,6 @@ struct AllocationMap {
     }
 
 private:
-    tsl::robin_map<u32, Allocation> allocations;
+    std::unordered_map<u32, Allocation> allocations;
     u32 spill_size = 0;
 };

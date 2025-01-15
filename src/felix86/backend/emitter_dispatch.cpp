@@ -127,6 +127,9 @@ void Emitter::Emit(Backend& backend, const AllocationMap& allocation_map, const 
         auto Rd = _Reg_(inst.GetName());
         auto Rs = _Reg_(inst.GetOperand(0));
         if (Rd.IsGPR() && Rs.IsGPR()) {
+            if (Rd.AsGPR() == Registers::Zero()) {
+                ERROR("Name %s is zero\n", GetNameString(inst.GetName()).c_str());
+            }
             EmitMov(backend, Rd.AsGPR(), Rs.AsGPR());
         } else if (Rd.IsVec() && Rs.IsVec()) {
             EmitMov(backend, Rd.AsVec(), Rs.AsVec());

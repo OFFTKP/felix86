@@ -4,6 +4,7 @@
 namespace {
 struct ParallelMove {
     std::vector<AllocationType> types_lhs;
+    std::vector<AllocationType> types_rhs;
     std::vector<u32> names_lhs;
     std::vector<u32> names_rhs;
 };
@@ -47,7 +48,6 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
 
     auto& dst = move.names_lhs;
     auto& src = move.names_rhs;
-    auto type = move.types_lhs;
 
     std::function<void(int)> move_one = [&](int i) {
         if (src[i] != dst[i]) {
@@ -61,7 +61,7 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
                         break;
                     }
                     case Being_moved: {
-                        BackendInstruction instr = BackendInstruction::FromMove(block->GetNextName(), src[j], type[j]);
+                        BackendInstruction instr = BackendInstruction::FromMove(block->GetNextName(), src[j], move.types_lhs[j], move.types_rhs[j]);
                         src[j] = instr.GetName();
                         WARN("Parallel move cycle detected, breaking it");
                         block->InsertAtEnd(std::move(instr));
@@ -74,7 +74,7 @@ void InsertParallelMove(BackendBlock* block, ParallelMove& move) {
                 }
             }
 
-            BackendInstruction instr = BackendInstruction::FromMove(dst[i], src[i], type[i]);
+            BackendInstruction instr = BackendInstruction::FromMove(dst[i], src[i], move.types_lhs[i], move.types_rhs[i]);
             block->InsertAtEnd(std::move(instr));
             status[i] = Moved;
         }
@@ -102,6 +102,7 @@ void BreakupPhis(BackendFunction* function, IRBlock* block, const std::vector<Na
 
         ParallelMove move = {};
         move.types_lhs.resize(phis.size());
+        move.types_rhs.resize(phis.size());
         move.names_lhs.resize(phis.size());
         move.names_rhs.resize(phis.size());
 
@@ -109,15 +110,18 @@ void BreakupPhis(BackendFunction* function, IRBlock* block, const std::vector<Na
             const NamedPhi& named_phi = phis[j];
             u32 name = named_phi.name;
             u32 value = 0;
+            AllocationType type_rhs = AllocationType::Null;
             for (size_t k = 0; k < named_phi.phi->blocks.size(); k++) {
                 if (named_phi.phi->blocks[k] == ir_pred) {
                     value = named_phi.phi->values[k]->GetName();
+                    type_rhs = BackendInstruction::GetAllocationType(named_phi.phi->values[k]);
                     break;
                 }
             }
             ASSERT_MSG(value != 0, "Phi predecessor not found");
 
             move.types_lhs[j] = GetTypeFromRef(named_phi.phi->ref);
+            move.types_rhs[j] = type_rhs;
             move.names_lhs[j] = name;
             move.names_rhs[j] = value;
         }

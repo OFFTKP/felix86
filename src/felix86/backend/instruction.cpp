@@ -8,32 +8,41 @@ BackendInstruction BackendInstruction::FromSSAInstruction(const SSAInstruction* 
     backend_inst.masked = inst->GetMasked();
     backend_inst.vector_state = inst->GetVectorState();
     backend_inst.locked = inst->IsLocked();
-
-    if (inst->IsGPR()) {
-        backend_inst.desired_type = AllocationType::GPR;
-    } else if (inst->IsVec()) {
-        backend_inst.desired_type = AllocationType::Vec;
-    } else if (inst->IsVoid()) {
-        backend_inst.desired_type = AllocationType::Null;
-    } else {
-        UNREACHABLE();
-    }
+    backend_inst.desired_type = GetAllocationType(inst);
 
     backend_inst.operand_count = inst->GetOperandCount();
     for (u8 i = 0; i < inst->GetOperandCount(); i++) {
         backend_inst.operand_names[i] = inst->GetOperandName(i);
+        backend_inst.operand_desired_types[i] = GetAllocationType(inst->GetOperand(i));
     }
 
     return backend_inst;
 }
 
-BackendInstruction BackendInstruction::FromMove(u32 lhs, u32 rhs, AllocationType type) {
+AllocationType BackendInstruction::GetAllocationType(const SSAInstruction* inst) {
+    auto should_allocate_gpr = [](const SSAInstruction* inst) {
+        bool not_zero = !inst->IsImmediate() || (inst->IsImmediate() && inst->GetImmediateData() != 0);
+        return inst->IsGPR() && inst->GetOpcode() != IROpcode::GetThreadStatePointer && not_zero;
+    };
+
+    if (should_allocate_gpr(inst)) {
+        return AllocationType::GPR;
+    } else if (inst->IsVec()) {
+        return AllocationType::Vec;
+    } else {
+        // If it's a zero immediate or thread state pointer or void we don't allocate it here
+        return AllocationType::Null;
+    }
+}
+
+BackendInstruction BackendInstruction::FromMove(u32 lhs, u32 rhs, AllocationType lhs_type, AllocationType rhs_type) {
     BackendInstruction inst;
     inst.opcode = IROpcode::Mov;
     inst.name = lhs;
     inst.operand_names[0] = rhs;
     inst.operand_count = 1;
-    inst.desired_type = type;
+    inst.desired_type = lhs_type;
+    inst.operand_desired_types[0] = rhs_type;
     return inst;
 }
 
