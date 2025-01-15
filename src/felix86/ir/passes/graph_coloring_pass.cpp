@@ -3,8 +3,26 @@
 #include "felix86/ir/passes/passes.hpp"
 
 struct Node {
-    u32 id;
-    std::unordered_set<u32> edges;
+    u32 id{};
+    std::vector<Node*> edges{};
+
+    Node(u32 id) : id(id) {}
+    Node(u32 id, const std::vector<Node*>& edges) : id(id), edges(edges) {}
+    Node(const Node& other) = delete;
+    Node(Node&& other) = default;
+    Node& operator=(const Node& other) = delete;
+    Node& operator=(Node&& other) = default;
+};
+
+struct CopiedNode {
+    u32 id{};
+    std::vector<u32> edges{};
+
+    CopiedNode(const Node& node) : id(node.id) {
+        for (const Node* edge : node.edges) {
+            edges.push_back(edge->id);
+        }
+    }
 };
 
 struct InstructionMetadata {
@@ -20,40 +38,44 @@ using InstructionList = std::vector<const BackendInstruction*>;
 
 struct InterferenceGraph {
     void AddEdge(u32 a, u32 b) {
-        graph[b].edges.insert(a);
-        graph[a].edges.insert(b);
+        if (graph.find(a) == graph.end())
+            graph[a] = new Node{a};
+        if (graph.find(b) == graph.end())
+            graph[b] = new Node{b};
+        Node* na = graph[a];
+        Node* nb = graph[b];
+
+        na->edges.push_back(nb);
+        nb->edges.push_back(na);
     }
 
+    // I forgot why this function was needed, TODO: remove
     void AddEmpty(u32 id) {
         if (graph.find(id) == graph.end())
-            graph[id] = {};
+            graph[id] = new Node{id};
     }
 
-    void RemoveEdge(u32 a, u32 b) {
-        graph[a].edges.erase(b);
-        graph[b].edges.erase(a);
-    }
-
-    Node RemoveNode(u32 id) {
-        Node node = {id, graph[id].edges};
-        auto& edges = graph[id].edges;
-        for (u32 edge : edges) {
-            graph[edge].edges.erase(id);
+    CopiedNode RemoveNode(u32 id) {
+        Node* node = graph[id];
+        for (Node* edge : node->edges) {
+            edge->edges.erase(std::remove(edge->edges.begin(), edge->edges.end(), node), edge->edges.end());
         }
+        CopiedNode node_copy{*node};
+        delete node;
         graph.erase(id);
-        return node;
+        return node_copy;
     }
 
     u32 Worst(const InstructionMap& instructions) {
         u32 min = std::numeric_limits<u32>::max();
         u32 chosen = 0;
-        for (const auto& [id, edges] : graph) {
-            if (edges.edges.size() == 0)
+        for (const auto& [id, node] : graph) {
+            if (node->edges.size() == 0)
                 continue;
             if (instructions.at(id).infinite_cost)
                 continue;
             float spill_cost = instructions.at(id).spill_cost;
-            float cost = spill_cost / edges.edges.size();
+            float cost = spill_cost / node->edges.size();
             if (cost < min) {
                 min = cost;
                 chosen = id;
@@ -62,14 +84,22 @@ struct InterferenceGraph {
         return chosen;
     }
 
-    void AddNode(const Node& node) {
-        for (u32 edge : node.edges) {
-            AddEdge(node.id, edge);
+    bool Interferes(u32 lhs, u32 rhs) {
+        ASSERT(graph.find(lhs) != graph.end());
+        Node* a = graph[lhs];
+        for (Node* b : a->edges) {
+            if (b->id == rhs) {
+                return true;
+            }
         }
+
+        return false;
     }
 
-    const std::unordered_set<u32>& GetInterferences(u32 inst) {
-        return graph[inst].edges;
+    const std::vector<Node*>& GetInterferences(u32 inst) {
+        if (graph.find(inst) == graph.end())
+            graph[inst] = new Node{inst};
+        return graph[inst]->edges;
     }
 
     auto begin() {
@@ -97,48 +127,16 @@ struct InterferenceGraph {
     }
 
     bool HasLessThanK(u32 k) {
-        for (const auto& [id, edges] : graph) {
-            if (edges.edges.size() < k) {
+        for (const auto& [id, node] : graph) {
+            if (node->edges.size() < k) {
                 return true;
             }
         }
         return false;
     }
 
-    void Reserve(size_t size) {
-        graph.reserve(size);
-    }
-
-    bool operator==(const InterferenceGraph& other) const {
-        if (graph.size() != other.graph.size()) {
-            return false;
-        }
-
-        for (const auto& [id, edges] : graph) {
-            if (other.graph.find(id) == other.graph.end()) {
-                return false;
-            }
-
-            if (edges.edges.size() != other.graph.at(id).edges.size()) {
-                return false;
-            }
-
-            for (u32 edge : edges.edges) {
-                if (other.graph.at(id).edges.find(edge) == other.graph.at(id).edges.end()) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
 private:
-    struct Edges {
-        std::unordered_set<u32> edges;
-    };
-
-    std::unordered_map<u32, Edges> graph;
+    std::unordered_map<u32, Node*> graph;
 };
 
 using LivenessSet = std::unordered_set<u32>;
@@ -277,8 +275,6 @@ static bool should_consider_op(const BackendInstruction* inst, u8 index, bool is
 }
 
 static void build2(BackendFunction& function, std::vector<const BackendBlock*> blocks, InterferenceGraph& graph, bool is_vec) {
-    InstructionList all_insts;
-
     std::vector<std::unordered_set<u32>> in(blocks.size());
     std::vector<std::unordered_set<u32>> out(blocks.size());
     std::vector<std::unordered_set<u32>> use(blocks.size());
@@ -374,7 +370,7 @@ static void build2(BackendFunction& function, std::vector<const BackendBlock*> b
     }
 }
 
-static u32 choose(const InstructionMap& instructions, const std::deque<Node>& nodes, bool is_vec) {
+static u32 choose(const InstructionMap& instructions, const std::deque<CopiedNode>& nodes, bool is_vec) {
     float min = std::numeric_limits<float>::max();
     u32 chosen = 0;
 
@@ -400,17 +396,16 @@ static u32 choose(const InstructionMap& instructions, const std::deque<Node>& no
     return chosen;
 }
 
-bool george_coalescing_heuristic(BackendFunction& function, InterferenceGraph& graph, u32 k, u32 lhs, u32 rhs) {
+bool __attribute__((noinline)) george_coalescing_heuristic(BackendFunction& function, InterferenceGraph& graph, u32 k, u32 lhs, u32 rhs) {
     // A conservative heuristic.
     // Safe to coalesce x and y if for every neighbor t of x, either t already interferes with y or t has degree < k
     u32 u = lhs;
     u32 v = rhs;
 
     auto& u_neighbors = graph.GetInterferences(u);
-    ASSERT(u_neighbors.find(v) == u_neighbors.end());
     bool u_conquers_v = true;
-    for (u32 t : graph.GetInterferences(v)) {
-        if (u_neighbors.find(t) == u_neighbors.end() && graph.GetInterferences(t).size() >= k) {
+    for (Node* t : graph.GetInterferences(v)) {
+        if (std::find(u_neighbors.begin(), u_neighbors.end(), t) == u_neighbors.end() && t->edges.size() >= k) {
             u_conquers_v = false;
             break;
         }
@@ -418,22 +413,14 @@ bool george_coalescing_heuristic(BackendFunction& function, InterferenceGraph& g
 
     auto& v_neighbors = graph.GetInterferences(v);
     bool v_conquers_u = true;
-    for (u32 t : graph.GetInterferences(u)) {
-        if (v_neighbors.find(t) == v_neighbors.end() && graph.GetInterferences(t).size() >= k) {
+    for (Node* t : graph.GetInterferences(u)) {
+        if (std::find(v_neighbors.begin(), v_neighbors.end(), t) == v_neighbors.end() && t->edges.size() >= k) {
             v_conquers_u = false;
             break;
         }
     }
 
     return u_conquers_v || v_conquers_u;
-}
-
-bool aggressive_coalescing_heuristic(BackendFunction& function, InterferenceGraph& graph, u32 k, u32 lhs, u32 rhs) {
-    // An aggressive heuristic.
-    // Coalesce every move that doesn't interfere.
-    auto& edges = graph.GetInterferences(lhs);
-    ASSERT(edges.find(rhs) == edges.end());
-    return true;
 }
 
 void coalesce(BackendFunction& function, u32 lhs, u32 rhs, AllocationType rhs_type) {
@@ -464,17 +451,19 @@ bool try_coalesce(BackendFunction& function, InterferenceGraph& graph, bool is_v
                     u32 rhs = inst.GetOperand(0);
                     AllocationType rhs_type = inst.GetOperandDesiredType(0);
                     auto& edges = graph.GetInterferences(lhs);
-                    if (edges.find(rhs) == edges.end()) {
+                    if (!graph.Interferes(lhs, rhs)) {
                         if (heuristic(function, graph, k, lhs, rhs)) {
                             coalesce(function, lhs, rhs, rhs_type);
                             it = block->GetInstructions().erase(it);
                             coalesced = true;
                             // Merge interferences into rhs
-                            for (u32 neighbor : edges) {
-                                if (neighbor != rhs) {
-                                    graph.AddEdge(rhs, neighbor);
+                            for (Node* neighbor : edges) {
+                                if (neighbor->id != rhs) {
+                                    graph.AddEdge(rhs, neighbor->id);
                                 }
                             }
+                            // Remove lhs from graph
+                            graph.RemoveNode(lhs);
                             continue;
                         }
                     }
@@ -492,7 +481,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, const s
     std::vector<const BackendBlock*> blocks = function.GetBlocksPostorder();
     while (true) {
         // Chaitin-Briggs algorithm
-        std::deque<Node> nodes;
+        std::deque<CopiedNode> nodes;
         InterferenceGraph graph;
         InstructionMap instructions;
         AllocationMap allocations;
@@ -509,17 +498,17 @@ static AllocationMap run(BackendFunction& function, AllocationType type, const s
             }
         } while (coalesced);
 
-        for (auto& [name, edges] : graph) {
+        for (auto& [name, node] : graph) {
             ASSERT_MSG(instructions.find(name) != instructions.end(), "Instruction %s not found in map", GetNameString(name).c_str());
-            instructions.at(name).interferences = edges.edges.size();
+            instructions.at(name).interferences = node->edges.size();
         }
 
         while (true) {
             // While there's vertices with degree less than k
             while (graph.HasLessThanK(k)) {
                 // Pick any node with degree less than k and put it on the stack
-                for (auto& [id, edges] : graph) {
-                    if (edges.edges.size() < k) {
+                for (auto& [id, node] : graph) {
+                    if (node->edges.size() < k) {
                         nodes.push_back(graph.RemoveNode(id));
                         break;
                     }
@@ -552,7 +541,7 @@ static AllocationMap run(BackendFunction& function, AllocationType type, const s
 
         auto it = nodes.rbegin();
         for (it = nodes.rbegin(); it != nodes.rend();) {
-            Node& node = *it;
+            CopiedNode& node = *it;
 
             std::vector<u32> colors = available_colors;
             for (u32 neighbor : node.edges) {
