@@ -226,11 +226,6 @@ AllocationMap run(BackendFunction& function, std::vector<const BackendBlock*> bl
         }
     }
 
-    for (LiveInterval& interval : sorted_intervals) {
-        printf("Interval %s: %u - %u, register %u, spilled %d, spill location %u\n", GetNameString(interval.name).c_str(), interval.start,
-               interval.end, interval.register_id, interval.spilled, interval.spill_location);
-    }
-
     return allocations;
 }
 
