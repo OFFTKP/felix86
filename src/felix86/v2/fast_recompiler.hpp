@@ -81,6 +81,8 @@ private:
 
     void emitDispatcher();
 
+    void writebackDirtyState();
+
     void loadGPR(x86_ref_e reg, biscuit::GPR target);
 
     RegisterMetadata& getMetadata(x86_ref_e reg);

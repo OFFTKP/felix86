@@ -715,19 +715,19 @@ void FastRecompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR re
 
         switch (operand->size) {
         case 8: {
-            as.SB(address, 0, reg);
+            as.SB(reg, 0, address);
             break;
         }
         case 16: {
-            as.SH(address, 0, reg);
+            as.SH(reg, 0, address);
             break;
         }
         case 32: {
-            as.SW(address, 0, reg);
+            as.SW(reg, 0, address);
             break;
         }
         case 64: {
-            as.SD(address, 0, reg);
+            as.SD(reg, 0, address);
             break;
         }
         default: {
@@ -831,8 +831,54 @@ void FastRecompiler::setExitReason(ExitReason reason) {
     popScratch();
 }
 
+void FastRecompiler::writebackDirtyState() {
+    for (int i = 0; i < 16; i++) {
+        if (metadata[i].dirty) {
+            as.SD(allocatedGPR((x86_ref_e)(X86_REF_RAX + i)), offsetof(ThreadState, gpr_storage) + i * sizeof(u64), threadStatePointer());
+        }
+    }
+
+    for (int i = 0; i < 16; i++) {
+        x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
+        if (getMetadata(ref).dirty) {
+            ERROR("IMPLME");
+        }
+    }
+
+    if (getMetadata(X86_REF_CF).dirty) {
+        as.SB(allocatedGPR(X86_REF_CF), offsetof(ThreadState, cf), threadStatePointer());
+    }
+
+    if (getMetadata(X86_REF_PF).dirty) {
+        as.SB(allocatedGPR(X86_REF_PF), offsetof(ThreadState, pf), threadStatePointer());
+    }
+
+    if (getMetadata(X86_REF_AF).dirty) {
+        as.SB(allocatedGPR(X86_REF_AF), offsetof(ThreadState, af), threadStatePointer());
+    }
+
+    if (getMetadata(X86_REF_ZF).dirty) {
+        as.SB(allocatedGPR(X86_REF_ZF), offsetof(ThreadState, zf), threadStatePointer());
+    }
+
+    if (getMetadata(X86_REF_SF).dirty) {
+        as.SB(allocatedGPR(X86_REF_SF), offsetof(ThreadState, sf), threadStatePointer());
+    }
+
+    if (getMetadata(X86_REF_OF).dirty) {
+        as.SB(allocatedGPR(X86_REF_OF), offsetof(ThreadState, of), threadStatePointer());
+    }
+
+    for (int i = 0; i < metadata.size(); i++) {
+        metadata[i].dirty = false;
+        metadata[i].loaded = false;
+    }
+}
+
 void FastRecompiler::backToDispatcher() {
     // TODO: stuff for block linking
+    writebackDirtyState();
+
     biscuit::GPR address = scratch();
     as.LD(address, offsetof(ThreadState, compile_next_handler), threadStatePointer());
     as.JR(address);
