@@ -1,0 +1,3 @@
+X(MOV)
+X(ADD)
+X(HLT)

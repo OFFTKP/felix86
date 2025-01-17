@@ -99,6 +99,7 @@ set(FELIX86_HLE_SOURCES
 
 set(FELIX86_V2_SOURCES
     src/felix86/v2/fast_recompiler.cpp
+    src/felix86/v2/handlers.cpp
 )
 
 set(FELIX86_CORE_SOURCES

@@ -18,6 +18,24 @@ struct FastRecompiler {
 
     void* compile(u64 rip);
 
+    inline Assembler& getAssembler() {
+        return as;
+    }
+
+    biscuit::GPR scratch();
+
+    biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
+
+    void setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg);
+
+    biscuit::GPR lea(ZydisDecodedOperand* operand);
+
+    void stopCompiling();
+
+    void setExitReason(ExitReason reason);
+
+    void backToDispatcher();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -43,16 +61,29 @@ private:
 
     void compileSequence(u64 rip);
 
-    // Get the allocated register for the given register reference
-    biscuit::GPR gpr(x86_ref_e reg);
+    // Get the register and load the value into it if needed
+    biscuit::GPR gpr(ZydisRegister reg);
 
-    biscuit::Vec vec(x86_ref_e reg);
+    biscuit::Vec vec(ZydisRegister reg);
+
+    x86_ref_e zydisToRef(ZydisRegister reg);
+
+    // Get the allocated register for the given register reference
+    biscuit::GPR allocatedGPR(x86_ref_e reg);
+
+    biscuit::Vec allocatedVec(x86_ref_e reg);
 
     constexpr biscuit::GPR threadStatePointer();
 
-    constexpr biscuit::GPR scratch(int index);
+    void popScratch();
+
+    void resetScratch();
 
     void emitDispatcher();
+
+    void loadGPR(x86_ref_e reg, biscuit::GPR target);
+
+    RegisterMetadata& getMetadata(x86_ref_e reg);
 
     // Scan until a control flow instruction to see if anything uses the flags, or if anything modifies them.
     // If something uses the flags they are set to ABSOLUTELY_NEEDED. If nothing is found that uses them they remain at MAYBE_NEEDED.
@@ -80,4 +111,6 @@ private:
     std::unordered_map<u64, std::pair<void*, u64>> map{};
 
     bool compiling{};
+
+    int scratch_index = 0;
 };
