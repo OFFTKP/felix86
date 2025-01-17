@@ -26,6 +26,7 @@ bool g_preload = false;
 bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
 bool g_include_comments = false;
+bool g_graph_coloring = false;
 bool g_profile_compilation = false;
 std::chrono::milliseconds g_compilation_total_time = std::chrono::milliseconds(0);
 
@@ -163,6 +164,12 @@ void initialize_globals() {
     if (is_truthy(dont_coalesce_env)) {
         g_coalesce = false;
         environment += "\nFELIX86_NO_COALESCE";
+    }
+
+    const char* graph_coloring_env = getenv("FELIX86_GRAPH_COLORING");
+    if (is_truthy(graph_coloring_env)) {
+        g_graph_coloring = true;
+        environment += "\nFELIX86_GRAPH_COLORING";
     }
 
     const char* print_start_of_block_env = getenv("FELIX86_PRINT_BLOCK_START");

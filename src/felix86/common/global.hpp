@@ -20,6 +20,7 @@ extern bool g_extensions_manually_specified;
 extern bool g_preload;
 extern bool g_include_comments;
 extern bool g_profile_compilation;
+extern bool g_graph_coloring;
 extern std::chrono::milliseconds g_compilation_total_time;
 extern int g_block_limit;
 extern int g_output_fd;

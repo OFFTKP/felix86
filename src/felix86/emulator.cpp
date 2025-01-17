@@ -253,8 +253,12 @@ void* Emulator::compileFunction(u64 rip) {
 
     BackendFunction backend_function = BackendFunction::FromIRFunction(&function);
 
-    AllocationMap allocations = ir_linear_scan_pass(backend_function);
-    // AllocationMap allocations = ir_graph_coloring_pass(backend_function);
+    AllocationMap allocations;
+    if (g_graph_coloring) {
+        allocations = ir_graph_coloring_pass(backend_function);
+    } else {
+        allocations = ir_linear_scan_pass(backend_function);
+    }
 
     // Add vector state instructions where necessary
     PassManager::VectorStatePass(&backend_function);
