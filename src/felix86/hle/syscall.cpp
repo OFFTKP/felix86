@@ -191,6 +191,8 @@ void felix86_syscall(ThreadState* state) {
         // TODO: better implementation where it closes an emulated stdout instead
         if (rdi != 1 && rdi != 2) {
             result = HOST_SYSCALL(close, rdi);
+        } else {
+            result = 0;
         }
         STRACE("close(%d) = %d", (int)rdi, (int)result);
         if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {

@@ -2429,7 +2429,7 @@ void IREmitter::Group15(x86_instruction_t* inst) {
         break;
     }
     default: {
-        ASSERT_MSG(false, "Invalid group 15 opcode: %d", (int)opcode);
+        WARN("Invalid group 15 opcode: %d, crash incoming?", (int)opcode);
         break;
     }
     }
