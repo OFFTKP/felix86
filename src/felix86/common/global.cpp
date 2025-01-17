@@ -185,7 +185,7 @@ void initialize_globals() {
         g_profile_compilation = true;
         environment += "\nFELIX86_PROFILE_COMPILATION";
 
-        std::atexit([]() { PLAIN("Total compilation time: %ldms", g_compilation_total_time.count()); });
+        std::atexit([]() { printf("Total compilation time: %ldms", g_compilation_total_time.count()); });
     }
 
     const char* executable_base = getenv("FELIX86_EXECUTABLE_BASE");
