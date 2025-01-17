@@ -97,6 +97,10 @@ set(FELIX86_HLE_SOURCES
     src/felix86/hle/syscall.cpp
 )
 
+set(FELIX86_V2_SOURCES
+    src/felix86/v2/fast_recompiler.cpp
+)
+
 set(FELIX86_CORE_SOURCES
     ${FELIX86_COMMON_SOURCES}
     ${FELIX86_AOT_SOURCES}
@@ -104,6 +108,7 @@ set(FELIX86_CORE_SOURCES
     ${FELIX86_IR_SOURCES}
     ${FELIX86_BACKEND_SOURCES}
     ${FELIX86_HLE_SOURCES}
+    ${FELIX86_V2_SOURCES}
     src/felix86/emulator.cpp
 )
 

@@ -293,6 +293,11 @@ void* Emulator::compileFunction(u64 rip) {
     return func;
 }
 
+void* Emulator::compileFunctionFast(u64 rip) {
+    std::lock_guard<std::mutex> lock(compilation_mutex);
+    return fast_recompiler.compile(rip);
+}
+
 void* Emulator::LoadFromCache(u64 rip, const std::string& hash) {
     ASSERT(g_cache_functions);
     ASSERT(DiskCache::Has(hash));
@@ -308,7 +313,12 @@ void* Emulator::LoadFromCache(u64 rip, const std::string& hash) {
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 
     // Mutex needs to be unlocked before the thread is dispatched
-    void* volatile function = emulator->compileFunction(thread_state->GetRip());
+    void* volatile function;
+    if (g_fast_recompiler) {
+        function = emulator->compileFunctionFast(thread_state->GetRip());
+    } else {
+        function = emulator->compileFunction(thread_state->GetRip());
+    }
 
     u64 address = thread_state->GetRip();
     if (address >= g_interpreter_start && address < g_interpreter_end) {

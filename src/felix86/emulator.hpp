@@ -6,6 +6,7 @@
 #include "felix86/common/x86.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/signals.hpp"
+#include "felix86/v2/fast_recompiler.hpp"
 
 struct Config {
     std::filesystem::path rootfs_path;
@@ -19,7 +20,7 @@ struct TestConfig {
 };
 
 struct Emulator {
-    Emulator(const Config& config) : config(config), backend(*this) {
+    Emulator(const Config& config) : config(config), backend(*this), fast_recompiler(*this) {
         g_emulator = this;
         fs.LoadRootFS(config.rootfs_path);
         fs.LoadExecutable(config.executable_path);
@@ -38,7 +39,7 @@ struct Emulator {
         }
     }
 
-    Emulator(const TestConfig& config) : backend(*this) {
+    Emulator(const TestConfig& config) : backend(*this), fast_recompiler(*this) {
         g_emulator = this;
         ThreadState* main_state = createThreadState();
         main_state->SetRip((u64)config.entrypoint);
@@ -92,6 +93,8 @@ private:
 
     void* compileFunction(u64 rip);
 
+    void* compileFunctionFast(u64 rip);
+
     ThreadState* createThreadState();
 
     std::mutex compilation_mutex; // to synchronize compilation and function lookup
@@ -100,6 +103,7 @@ private:
     Backend backend;
     Filesystem fs;
     SignalHandler signal_handler;
+    FastRecompiler fast_recompiler;
     bool testing = false;
     void* auxv_base = nullptr;
     size_t auxv_size = 0;

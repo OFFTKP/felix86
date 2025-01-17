@@ -27,6 +27,7 @@ public:
         return x2;
     }
 
+    // TODO: change to x27 for consistency with fast
     constexpr static biscuit::GPR ThreadStatePointer() {
         return x9; // saved register so that when we exit VM we don't have to save it
     }

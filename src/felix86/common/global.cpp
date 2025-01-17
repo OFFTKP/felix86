@@ -27,6 +27,7 @@ bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
 bool g_include_comments = false;
 bool g_graph_coloring = false;
+bool g_fast_recompiler = false;
 bool g_profile_compilation = false;
 std::chrono::milliseconds g_compilation_total_time = std::chrono::milliseconds(0);
 
@@ -185,6 +186,12 @@ void initialize_globals() {
         }
         g_rootfs_path = rootfs_path;
         environment += "\nFELIX86_ROOTFS=" + std::string(rootfs_path);
+    }
+
+    const char* fast_recompiler_env = getenv("FELIX86_FAST_RECOMPILER");
+    if (is_truthy(fast_recompiler_env)) {
+        g_fast_recompiler = true;
+        environment += "\nFELIX86_FAST_RECOMPILER";
     }
 
     const char* profile_compilation_env = getenv("FELIX86_PROFILE_COMPILATION");
