@@ -593,6 +593,11 @@ biscuit::GPR FastRecompiler::getOperandGPR(ZydisDecodedOperand* operand) {
 
         return address;
     }
+    case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
+        biscuit::GPR imm = scratch();
+        as.LI(imm, operand->imm.value.u);
+        return imm;
+    }
     default: {
         UNREACHABLE();
         return x0;
