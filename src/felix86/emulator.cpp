@@ -59,7 +59,11 @@ void Emulator::Run() {
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();
-    backend.EnterDispatcher(state);
+    if (g_fast_recompiler) {
+        fast_recompiler.enterDispatcher(state);
+    } else {
+        backend.EnterDispatcher(state);
+    }
 
     VERBOSE("Bye-bye main thread :(");
     VERBOSE("Main thread exited: %d", (int)state->exit_reason);
@@ -347,8 +351,8 @@ ThreadState* Emulator::createThreadState() {
     thread_state->syscall_handler = (u64)felix86_syscall;
     thread_state->cpuid_handler = (u64)felix86_cpuid;
     thread_state->rdtsc_handler = (u64)felix86_rdtsc;
-    thread_state->compile_next_handler = (u64)backend.GetCompileNext();
-    thread_state->crash_handler = (u64)backend.GetCrashHandler();
+    thread_state->compile_next_handler = g_fast_recompiler ? (u64)fast_recompiler.getCompileNext() : (u64)backend.GetCompileNext();
+    thread_state->crash_handler = g_fast_recompiler ? 0 : (u64)backend.GetCrashHandler();
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;
     std::fill(thread_state->masked_signals.begin(), thread_state->masked_signals.end(), false);

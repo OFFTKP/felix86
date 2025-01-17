@@ -834,7 +834,7 @@ void FastRecompiler::setExitReason(ExitReason reason) {
 void FastRecompiler::writebackDirtyState() {
     for (int i = 0; i < 16; i++) {
         if (metadata[i].dirty) {
-            as.SD(allocatedGPR((x86_ref_e)(X86_REF_RAX + i)), offsetof(ThreadState, gpr_storage) + i * sizeof(u64), threadStatePointer());
+            as.SD(allocatedGPR((x86_ref_e)(X86_REF_RAX + i)), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
         }
     }
 
@@ -883,4 +883,13 @@ void FastRecompiler::backToDispatcher() {
     as.LD(address, offsetof(ThreadState, compile_next_handler), threadStatePointer());
     as.JR(address);
     popScratch();
+}
+
+void FastRecompiler::enterDispatcher(ThreadState* state) {
+    g_thread_state = state;
+    enter_dispatcher(state);
+}
+
+void* FastRecompiler::getCompileNext() {
+    return compile_next_handler;
 }

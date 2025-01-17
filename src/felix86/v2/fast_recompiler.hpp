@@ -36,6 +36,10 @@ struct FastRecompiler {
 
     void backToDispatcher();
 
+    void enterDispatcher(ThreadState* state);
+
+    void* getCompileNext();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
