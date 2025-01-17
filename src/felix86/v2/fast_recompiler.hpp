@@ -24,7 +24,11 @@ struct FastRecompiler {
 
     biscuit::GPR scratch();
 
+    void popScratch();
+
     biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
+
+    x86_size_e getOperandSize(ZydisDecodedOperand* operand);
 
     void setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg);
 
@@ -40,6 +44,14 @@ struct FastRecompiler {
 
     void* getCompileNext();
 
+    bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
+
+    void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
+
+    biscuit::GPR flag(x86_ref_e ref);
+
+    biscuit::GPR flagW(x86_ref_e ref);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -48,19 +60,9 @@ private:
                              // if a syscall happens for example, this would be set to false so we load it again
     };
 
-    enum FlagNeed {
-        NOT_NEEDED = 0,        // not set by this instruction
-        MAYBE_NEEDED = 1,      // we don't know if it's used so it must be set
-        ABSOLUTELY_NEEDED = 2, // a use is found and this flag must be set
-    };
-
-    struct FlagsNeeded {
-        FlagNeed cf = NOT_NEEDED;
-        FlagNeed pf = NOT_NEEDED;
-        FlagNeed af = NOT_NEEDED;
-        FlagNeed zf = NOT_NEEDED;
-        FlagNeed sf = NOT_NEEDED;
-        FlagNeed of = NOT_NEEDED;
+    struct FlagAccess {
+        bool modification; // true if modified, false if used
+        u64 position;
     };
 
     void compileSequence(u64 rip);
@@ -72,14 +74,14 @@ private:
 
     x86_ref_e zydisToRef(ZydisRegister reg);
 
+    x86_size_e zydisToSize(ZydisRegister reg);
+
     // Get the allocated register for the given register reference
     biscuit::GPR allocatedGPR(x86_ref_e reg);
 
     biscuit::Vec allocatedVec(x86_ref_e reg);
 
     constexpr biscuit::GPR threadStatePointer();
-
-    void popScratch();
 
     void resetScratch();
 
@@ -91,10 +93,7 @@ private:
 
     RegisterMetadata& getMetadata(x86_ref_e reg);
 
-    // Scan until a control flow instruction to see if anything uses the flags, or if anything modifies them.
-    // If something uses the flags they are set to ABSOLUTELY_NEEDED. If nothing is found that uses them they remain at MAYBE_NEEDED.
-    // If something overwrites them they are set to NOT_NEEDED.
-    FlagsNeeded scanFlagUsageAhead(u64 rip, FlagsNeeded flags);
+    void scanFlagUsageAhead(u64 rip);
 
     ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
@@ -119,4 +118,6 @@ private:
     bool compiling{};
 
     int scratch_index = 0;
+
+    std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 };

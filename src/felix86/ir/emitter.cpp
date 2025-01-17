@@ -1897,10 +1897,11 @@ u16 IREmitter::GetBitSize(x86_size_e size) {
         return 64;
     case X86_SIZE_XMM:
         return 128;
+    default: {
+        ERROR("Invalid register size");
+        return 0;
     }
-
-    ERROR("Invalid register size");
-    return 0;
+    }
 }
 
 SSAInstruction* IREmitter::VInsertInteger(SSAInstruction* integer, SSAInstruction* vector, u8 index, x86_size_e size) {

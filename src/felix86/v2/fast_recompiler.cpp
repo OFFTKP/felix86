@@ -2,7 +2,7 @@
 #include "felix86/emulator.hpp"
 #include "felix86/v2/fast_recompiler.hpp"
 
-#define X(name) void fast_##name(FastRecompiler& rec, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+#define X(name) void fast_##name(FastRecompiler& rec, u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 #include "felix86/v2/handlers.inc"
 #undef X
 
@@ -113,13 +113,15 @@ void* FastRecompiler::compile(u64 rip) {
 
 void FastRecompiler::compileSequence(u64 rip) {
     compiling = true;
+    scanFlagUsageAhead(rip);
+
     while (compiling) {
         resetScratch();
         ZydisMnemonic mnemonic = decode(rip, instruction, operands);
         switch (mnemonic) {
 #define X(name)                                                                                                                                      \
     case ZYDIS_MNEMONIC_##name:                                                                                                                      \
-        fast_##name(*this, instruction, operands);                                                                                                   \
+        fast_##name(*this, rip, instruction, operands);                                                                                              \
         break;
 #include "felix86/v2/handlers.inc"
 #undef X
@@ -425,12 +427,7 @@ x86_ref_e FastRecompiler::zydisToRef(ZydisRegister reg) {
     return ref;
 }
 
-biscuit::GPR FastRecompiler::gpr(ZydisRegister reg) {
-    x86_ref_e ref = zydisToRef(reg);
-    biscuit::GPR gpr = allocatedGPR(ref);
-
-    loadGPR(ref, gpr);
-
+x86_size_e FastRecompiler::zydisToSize(ZydisRegister reg) {
     switch (reg) {
     case ZYDIS_REGISTER_AL:
     case ZYDIS_REGISTER_CL:
@@ -448,66 +445,68 @@ biscuit::GPR FastRecompiler::gpr(ZydisRegister reg) {
     case ZYDIS_REGISTER_R13B:
     case ZYDIS_REGISTER_R14B:
     case ZYDIS_REGISTER_R15B: {
-        biscuit::GPR gpr8 = scratch();
-        as.ANDI(gpr8, gpr, 0xff);
-        return gpr8;
+        return X86_SIZE_BYTE;
     }
     case ZYDIS_REGISTER_AH:
     case ZYDIS_REGISTER_CH:
     case ZYDIS_REGISTER_DH:
     case ZYDIS_REGISTER_BH: {
-        biscuit::GPR gpr8 = scratch();
-        as.SRLI(gpr8, gpr, 8);
-        as.ANDI(gpr8, gpr8, 0xff);
-        return gpr8;
+        return X86_SIZE_BYTE_HIGH;
     }
-    case ZYDIS_REGISTER_AX:
-    case ZYDIS_REGISTER_CX:
-    case ZYDIS_REGISTER_DX:
-    case ZYDIS_REGISTER_BX:
-    case ZYDIS_REGISTER_SP:
-    case ZYDIS_REGISTER_BP:
-    case ZYDIS_REGISTER_SI:
-    case ZYDIS_REGISTER_DI:
-    case ZYDIS_REGISTER_R8W:
-    case ZYDIS_REGISTER_R9W:
-    case ZYDIS_REGISTER_R10W:
-    case ZYDIS_REGISTER_R11W:
-    case ZYDIS_REGISTER_R12W:
-    case ZYDIS_REGISTER_R13W:
-    case ZYDIS_REGISTER_R14W:
-    case ZYDIS_REGISTER_R15W: {
-        biscuit::GPR gpr16 = scratch();
-        if (Extensions::B) {
-            as.ZEXTH(gpr16, gpr);
-        } else {
-            as.SLLI(gpr16, gpr, 48);
-            as.SRLI(gpr16, gpr16, 48);
-        }
-        return gpr16;
+    case ZYDIS_REGISTER_AX ... ZYDIS_REGISTER_R15W: {
+        return X86_SIZE_WORD;
     }
-    case ZYDIS_REGISTER_EAX:
-    case ZYDIS_REGISTER_ECX:
-    case ZYDIS_REGISTER_EDX:
-    case ZYDIS_REGISTER_EBX:
-    case ZYDIS_REGISTER_ESP:
-    case ZYDIS_REGISTER_EBP:
-    case ZYDIS_REGISTER_ESI:
-    case ZYDIS_REGISTER_EDI:
-    case ZYDIS_REGISTER_R8D:
-    case ZYDIS_REGISTER_R9D:
-    case ZYDIS_REGISTER_R10D:
-    case ZYDIS_REGISTER_R11D:
-    case ZYDIS_REGISTER_R12D:
-    case ZYDIS_REGISTER_R13D:
-    case ZYDIS_REGISTER_R14D:
-    case ZYDIS_REGISTER_R15D: {
-        biscuit::GPR gpr32 = scratch();
-        as.ZEXTW(gpr32, gpr);
-        return gpr32;
+    case ZYDIS_REGISTER_EAX ... ZYDIS_REGISTER_R15D: {
+        return X86_SIZE_DWORD;
+    }
+    case ZYDIS_REGISTER_RAX ... ZYDIS_REGISTER_R15: {
+        return X86_SIZE_QWORD;
+    }
+    case ZYDIS_REGISTER_XMM0 ... ZYDIS_REGISTER_XMM15: {
+        return X86_SIZE_XMM;
     }
     default: {
+        UNREACHABLE();
+        return X86_SIZE_BYTE;
+    }
+    }
+}
+
+biscuit::GPR FastRecompiler::gpr(ZydisRegister reg) {
+    x86_ref_e ref = zydisToRef(reg);
+    x86_size_e size = zydisToSize(reg);
+    biscuit::GPR gpr = allocatedGPR(ref);
+
+    loadGPR(ref, gpr);
+
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        biscuit::GPR gpr8 = scratch();
+        zext(gpr8, gpr, X86_SIZE_BYTE);
+        return gpr8;
+    }
+    case X86_SIZE_BYTE_HIGH: {
+        biscuit::GPR gpr8 = scratch();
+        as.SRLI(gpr8, gpr, 8);
+        zext(gpr8, gpr8, X86_SIZE_BYTE);
+        return gpr8;
+    }
+    case X86_SIZE_WORD: {
+        biscuit::GPR gpr16 = scratch();
+        zext(gpr16, gpr, X86_SIZE_WORD);
+        return gpr16;
+    }
+    case X86_SIZE_DWORD: {
+        biscuit::GPR gpr32 = scratch();
+        zext(gpr32, gpr, X86_SIZE_DWORD);
+        return gpr32;
+    }
+    case X86_SIZE_QWORD: {
         return gpr;
+    }
+    default: {
+        UNREACHABLE();
+        return x0;
     }
     }
 }
@@ -560,6 +559,35 @@ FastRecompiler::RegisterMetadata& FastRecompiler::getMetadata(x86_ref_e reg) {
     }
 }
 
+x86_size_e FastRecompiler::getOperandSize(ZydisDecodedOperand* operand) {
+    switch (operand->type) {
+    case ZYDIS_OPERAND_TYPE_REGISTER: {
+        return zydisToSize(operand->reg.value);
+    }
+    case ZYDIS_OPERAND_TYPE_MEMORY: {
+        switch (operand->size) {
+        case 8:
+            return X86_SIZE_BYTE;
+        case 16:
+            return X86_SIZE_WORD;
+        case 32:
+            return X86_SIZE_DWORD;
+        case 64:
+            return X86_SIZE_QWORD;
+        case 128:
+            return X86_SIZE_XMM;
+        default:
+            UNREACHABLE();
+            return X86_SIZE_BYTE;
+        }
+    }
+    default: {
+        UNREACHABLE();
+        return X86_SIZE_BYTE;
+    }
+    }
+}
+
 biscuit::GPR FastRecompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
@@ -606,29 +634,28 @@ biscuit::GPR FastRecompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     }
 }
 
+biscuit::GPR FastRecompiler::flag(x86_ref_e ref) {
+    biscuit::GPR reg = allocatedGPR(ref);
+    loadGPR(ref, reg);
+    return reg;
+}
+
+biscuit::GPR FastRecompiler::flagW(x86_ref_e ref) {
+    biscuit::GPR reg = allocatedGPR(ref);
+    RegisterMetadata& meta = getMetadata(ref);
+    meta.dirty = true;
+    return reg;
+}
+
 void FastRecompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         x86_ref_e ref = zydisToRef(operand->reg.value);
+        x86_size_e size = zydisToSize(operand->reg.value);
         biscuit::GPR dest = allocatedGPR(ref);
 
-        switch (operand->reg.value) {
-        case ZYDIS_REGISTER_AL:
-        case ZYDIS_REGISTER_CL:
-        case ZYDIS_REGISTER_DL:
-        case ZYDIS_REGISTER_BL:
-        case ZYDIS_REGISTER_SPL:
-        case ZYDIS_REGISTER_BPL:
-        case ZYDIS_REGISTER_SIL:
-        case ZYDIS_REGISTER_DIL:
-        case ZYDIS_REGISTER_R8B:
-        case ZYDIS_REGISTER_R9B:
-        case ZYDIS_REGISTER_R10B:
-        case ZYDIS_REGISTER_R11B:
-        case ZYDIS_REGISTER_R12B:
-        case ZYDIS_REGISTER_R13B:
-        case ZYDIS_REGISTER_R14B:
-        case ZYDIS_REGISTER_R15B: {
+        switch (size) {
+        case X86_SIZE_BYTE: {
             biscuit::GPR gpr8 = scratch();
             as.ANDI(gpr8, reg, 0xff);
             as.ANDI(dest, dest, ~0xff);
@@ -636,14 +663,12 @@ void FastRecompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR re
             popScratch();
             break;
         }
-        case ZYDIS_REGISTER_AH:
-        case ZYDIS_REGISTER_CH:
-        case ZYDIS_REGISTER_DH:
-        case ZYDIS_REGISTER_BH: {
+        case X86_SIZE_BYTE_HIGH: {
             biscuit::GPR gpr8 = scratch();
             biscuit::GPR mask = scratch();
             as.LI(mask, 0xff00);
-            as.AND(gpr8, reg, mask);
+            as.SLLI(gpr8, reg, 8);
+            as.AND(gpr8, gpr8, mask);
             as.NOT(mask, mask);
             as.AND(dest, dest, mask);
             as.OR(dest, dest, gpr8);
@@ -651,22 +676,7 @@ void FastRecompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR re
             popScratch();
             break;
         }
-        case ZYDIS_REGISTER_AX:
-        case ZYDIS_REGISTER_CX:
-        case ZYDIS_REGISTER_DX:
-        case ZYDIS_REGISTER_BX:
-        case ZYDIS_REGISTER_SP:
-        case ZYDIS_REGISTER_BP:
-        case ZYDIS_REGISTER_SI:
-        case ZYDIS_REGISTER_DI:
-        case ZYDIS_REGISTER_R8W:
-        case ZYDIS_REGISTER_R9W:
-        case ZYDIS_REGISTER_R10W:
-        case ZYDIS_REGISTER_R11W:
-        case ZYDIS_REGISTER_R12W:
-        case ZYDIS_REGISTER_R13W:
-        case ZYDIS_REGISTER_R14W:
-        case ZYDIS_REGISTER_R15W: {
+        case X86_SIZE_WORD: {
             biscuit::GPR gpr16 = scratch();
             if (Extensions::B) {
                 as.ZEXTH(gpr16, reg);
@@ -680,27 +690,16 @@ void FastRecompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR re
             popScratch();
             break;
         }
-        case ZYDIS_REGISTER_EAX:
-        case ZYDIS_REGISTER_ECX:
-        case ZYDIS_REGISTER_EDX:
-        case ZYDIS_REGISTER_EBX:
-        case ZYDIS_REGISTER_ESP:
-        case ZYDIS_REGISTER_EBP:
-        case ZYDIS_REGISTER_ESI:
-        case ZYDIS_REGISTER_EDI:
-        case ZYDIS_REGISTER_R8D:
-        case ZYDIS_REGISTER_R9D:
-        case ZYDIS_REGISTER_R10D:
-        case ZYDIS_REGISTER_R11D:
-        case ZYDIS_REGISTER_R12D:
-        case ZYDIS_REGISTER_R13D:
-        case ZYDIS_REGISTER_R14D:
-        case ZYDIS_REGISTER_R15D: {
+        case X86_SIZE_DWORD: {
             as.ZEXTW(dest, reg);
             break;
         }
-        default: {
+        case X86_SIZE_QWORD: {
             as.MV(dest, reg);
+            break;
+        }
+        default: {
+            UNREACHABLE();
             break;
         }
         }
@@ -749,8 +748,41 @@ void FastRecompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
         return;
     }
 
-    as.LD(gpr, offsetof(ThreadState, gpr_storage) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
     meta.loaded = true;
+    if (reg >= X86_REF_RAX && reg <= X86_REF_R15) {
+        as.LD(gpr, offsetof(ThreadState, gpr_storage) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+    } else {
+        switch (reg) {
+        case X86_REF_CF: {
+            as.LB(gpr, offsetof(ThreadState, cf), threadStatePointer());
+            break;
+        }
+        case X86_REF_PF: {
+            as.LB(gpr, offsetof(ThreadState, pf), threadStatePointer());
+            break;
+        }
+        case X86_REF_AF: {
+            as.LB(gpr, offsetof(ThreadState, af), threadStatePointer());
+            break;
+        }
+        case X86_REF_ZF: {
+            as.LB(gpr, offsetof(ThreadState, zf), threadStatePointer());
+            break;
+        }
+        case X86_REF_SF: {
+            as.LB(gpr, offsetof(ThreadState, sf), threadStatePointer());
+            break;
+        }
+        case X86_REF_OF: {
+            as.LB(gpr, offsetof(ThreadState, of), threadStatePointer());
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+    }
 }
 
 biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
@@ -892,4 +924,135 @@ void FastRecompiler::enterDispatcher(ThreadState* state) {
 
 void* FastRecompiler::getCompileNext() {
     return compile_next_handler;
+}
+
+void FastRecompiler::scanFlagUsageAhead(u64 rip) {
+    for (int i = 0; i < 6; i++) {
+        flag_access_cpazso[i].clear();
+    }
+
+    while (true) {
+        ZydisDecodedInstruction instruction;
+        ZydisDecodedOperand operands[10];
+        ZydisMnemonic mnemonic = decode(rip, instruction, operands);
+        bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
+        bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET;
+        bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
+        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
+        bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
+
+        if (is_jump || is_ret || is_call || is_illegal || is_hlt) {
+            break;
+        }
+
+        if (instruction.attributes & ZYDIS_ATTRIB_CPUFLAG_ACCESS) {
+            u32 changed =
+                instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
+            u32 used = instruction.cpu_flags->tested;
+
+            if (used & ZYDIS_CPUFLAG_CF) {
+                flag_access_cpazso[0].push_back({false, rip});
+            } else if (changed & ZYDIS_CPUFLAG_CF) {
+                flag_access_cpazso[0].push_back({true, rip});
+            }
+
+            if (used & ZYDIS_CPUFLAG_PF) {
+                flag_access_cpazso[1].push_back({false, rip});
+            } else if (changed & ZYDIS_CPUFLAG_PF) {
+                flag_access_cpazso[1].push_back({true, rip});
+            }
+
+            if (used & ZYDIS_CPUFLAG_AF) {
+                flag_access_cpazso[2].push_back({false, rip});
+            } else if (changed & ZYDIS_CPUFLAG_AF) {
+                flag_access_cpazso[2].push_back({true, rip});
+            }
+
+            if (used & ZYDIS_CPUFLAG_ZF) {
+                flag_access_cpazso[3].push_back({false, rip});
+            } else if (changed & ZYDIS_CPUFLAG_ZF) {
+                flag_access_cpazso[3].push_back({true, rip});
+            }
+
+            if (used & ZYDIS_CPUFLAG_SF) {
+                flag_access_cpazso[4].push_back({false, rip});
+            } else if (changed & ZYDIS_CPUFLAG_SF) {
+                flag_access_cpazso[4].push_back({true, rip});
+            }
+
+            if (used & ZYDIS_CPUFLAG_OF) {
+                flag_access_cpazso[5].push_back({false, rip});
+            } else if (changed & ZYDIS_CPUFLAG_OF) {
+                flag_access_cpazso[5].push_back({true, rip});
+            }
+        }
+
+        rip += instruction.length;
+    }
+}
+
+bool FastRecompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
+    int index = 0;
+    switch (ref) {
+    case X86_REF_CF: {
+        index = 0;
+        break;
+    case X86_REF_PF:
+        index = 1;
+        break;
+    case X86_REF_AF:
+        index = 2;
+        break;
+    case X86_REF_ZF:
+        index = 3;
+        break;
+    case X86_REF_SF:
+        index = 4;
+        break;
+    case X86_REF_OF:
+        index = 5;
+        break;
+    default:
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    for (auto& [changed, r] : flag_access_cpazso[index]) {
+        if (r > rip && changed) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void FastRecompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        as.ANDI(dest, src, 0xff);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        if (Extensions::B) {
+            as.ZEXTH(dest, src);
+        } else {
+            as.SLLI(dest, src, 48);
+            as.SRLI(dest, dest, 48);
+        }
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.ZEXTW(dest, src);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        as.MV(dest, src);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
 }
