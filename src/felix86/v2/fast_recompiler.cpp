@@ -128,6 +128,7 @@ void FastRecompiler::compileSequence(u64 rip) {
             break;
         }
         }
+        rip += instruction.length;
     }
 }
 
