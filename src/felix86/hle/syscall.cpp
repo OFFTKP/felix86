@@ -187,7 +187,11 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_close: {
-        result = HOST_SYSCALL(close, rdi);
+        // Don't close our stdout
+        // TODO: better implementation where it closes an emulated stdout instead
+        if (rdi != 1 && rdi != 2) {
+            result = HOST_SYSCALL(close, rdi);
+        }
         STRACE("close(%d) = %d", (int)rdi, (int)result);
         if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             detecting_memory_region = false;
@@ -318,6 +322,7 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_exit_group: {
         VERBOSE("Emulator called exit_group(%d)", (int)rdi);
+        STRACE("exit_group(%d)", (int)rdi);
         // TODO: can we make felix into a child process and exit that instead of exiting the entire thing instead?
         // result = HOST_SYSCALL(exit_group, rdi);
         exit(0);
