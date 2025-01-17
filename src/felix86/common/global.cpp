@@ -26,6 +26,8 @@ bool g_preload = false;
 bool g_coalesce = true;
 bool g_extensions_manually_specified = false;
 bool g_include_comments = false;
+bool g_profile_compilation = false;
+std::chrono::milliseconds g_compilation_total_time = std::chrono::milliseconds(0);
 
 // Having too many basic blocks in a function can cause the register allocator to take insanely long times
 // So a block limit can sacrifice some potential runtime performance for way better compilation times
@@ -178,6 +180,14 @@ void initialize_globals() {
         environment += "\nFELIX86_ROOTFS=" + std::string(rootfs_path);
     }
 
+    const char* profile_compilation_env = getenv("FELIX86_PROFILE_COMPILATION");
+    if (is_truthy(profile_compilation_env)) {
+        g_profile_compilation = true;
+        environment += "\nFELIX86_PROFILE_COMPILATION";
+
+        std::atexit([]() { PLAIN("Total compilation time: %ldms", g_compilation_total_time.count()); });
+    }
+
     const char* executable_base = getenv("FELIX86_EXECUTABLE_BASE");
     if (executable_base) {
         g_executable_base_hint = std::stoull(executable_base, nullptr, 16);
@@ -205,6 +215,7 @@ void initialize_globals() {
         const char* cache_env = getenv("FELIX86_NO_CACHE");
         if (is_truthy(cache_env)) {
             g_cache_functions = false;
+            environment += "\nFELIX86_NO_CACHE";
         } else {
             g_cache_functions = true;
 

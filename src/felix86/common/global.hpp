@@ -19,6 +19,8 @@ extern bool g_coalesce;
 extern bool g_extensions_manually_specified;
 extern bool g_preload;
 extern bool g_include_comments;
+extern bool g_profile_compilation;
+extern std::chrono::milliseconds g_compilation_total_time;
 extern int g_block_limit;
 extern int g_output_fd;
 extern u32 g_spilled_count;

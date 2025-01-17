@@ -206,6 +206,11 @@ void* Emulator::compileFunction(u64 rip) {
         }
     }
 
+    std::chrono::high_resolution_clock::time_point start;
+    if (g_profile_compilation) {
+        start = std::chrono::high_resolution_clock::now();
+    }
+
     VERBOSE("Now compiling: %016lx", rip);
     IRFunction function{rip};
     frontend_compile_function(function);
@@ -273,6 +278,12 @@ void* Emulator::compileFunction(u64 rip) {
         ASSERT(!g_testing);
         std::string hex_hash = function.GetHash().ToString();
         DiskCache::Write(hex_hash, func, size);
+    }
+
+    if (g_profile_compilation) {
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        g_compilation_total_time += duration;
     }
 
     return func;
