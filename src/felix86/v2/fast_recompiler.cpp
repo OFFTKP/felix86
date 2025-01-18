@@ -616,6 +616,7 @@ biscuit::GPR FastRecompiler::flagW(x86_ref_e ref) {
     biscuit::GPR reg = allocatedGPR(ref);
     RegisterMetadata& meta = getMetadata(ref);
     meta.dirty = true;
+    meta.loaded = true;
     return reg;
 }
 
@@ -1165,8 +1166,11 @@ void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR
 
 void FastRecompiler::expirePendingLinks(u64 rip) {
     if (pending_links.find(rip) == pending_links.end()) {
+        VERBOSE("No links found for 0x%016lx", rip);
         return;
     }
+
+    VERBOSE("Expiring links for 0x%016lx", rip);
 
     ASSERT(map.find(rip) != map.end());
 
