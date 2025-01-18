@@ -187,11 +187,6 @@ struct ThreadState {
 
     u8 exit_reason{};
 
-    // Storage for saved RISC-V registers, per thread, to restore when it's time to completely
-    // exit dispatcher and stop the emulator
-    // TODO: this is unnecessary, use the stack
-    u64 gpr_storage[Registers::GetSavedGPRs().size()]{};
-
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
             ERROR("Invalid GPR reference: %d", ref);

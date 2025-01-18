@@ -763,7 +763,7 @@ void FastRecompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
 
     meta.loaded = true;
     if (reg >= X86_REF_RAX && reg <= X86_REF_R15) {
-        as.LD(gpr, offsetof(ThreadState, gpr_storage) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+        as.LD(gpr, offsetof(ThreadState, gprs) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
     } else {
         switch (reg) {
         case X86_REF_CF: {

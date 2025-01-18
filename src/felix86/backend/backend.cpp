@@ -62,13 +62,11 @@ void Backend::emitNecessaryStuff() {
     // Give it an initial valid state
     as.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
 
-    biscuit::GPR address = t0;
-
     // Save the current register state of callee-saved registers and return address
-    as.ADDI(address, a0, offsetof(ThreadState, gpr_storage));
     const auto& saved_gprs = Registers::GetSavedGPRs();
+    as.ADDI(sp, sp, -((int)saved_gprs.size() * 8));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
-        as.SD(saved_gprs[i], i * sizeof(u64), address);
+        as.SD(saved_gprs[i], i * sizeof(u64), sp);
     }
 
     // Since we picked callee-saved registers, we don't have to save them when calling stuff,
@@ -94,23 +92,21 @@ void Backend::emitNecessaryStuff() {
 
     as.Bind(&exit_dispatcher_label);
 
-    // Load the old state
-    as.MV(address, Registers::ThreadStatePointer());
-    as.ADDI(address, address, offsetof(ThreadState, gpr_storage));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
-        as.LD(saved_gprs[i], i * sizeof(u64), address);
+        as.LD(saved_gprs[i], i * sizeof(u64), sp);
     }
+
+    as.ADDI(sp, sp, (int)saved_gprs.size() * 8);
 
     as.RET();
 
     crash_handler = as.GetCursorPointer();
 
-    // Load the old state and print a message
-    as.MV(address, Registers::ThreadStatePointer());
-    as.ADDI(address, address, offsetof(ThreadState, gpr_storage));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
-        as.LD(saved_gprs[i], i * sizeof(u64), address);
+        as.LD(saved_gprs[i], i * sizeof(u64), sp);
     }
+
+    as.ADDI(sp, sp, (int)saved_gprs.size() * 8);
 
     as.MV(a0, Registers::ThreadStatePointer());
     as.LI(a1, (u64)PrintExitReason);
