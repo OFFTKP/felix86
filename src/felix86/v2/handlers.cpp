@@ -497,6 +497,11 @@ FAST_HANDLE(JMP) {
     }
 }
 
+FAST_HANDLE(LEA) {
+    biscuit::GPR address = rec.lea(&operands[1]);
+    rec.setOperandGPR(&operands[0], address);
+}
+
 FAST_HANDLE(DIV) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
@@ -553,6 +558,38 @@ FAST_HANDLE(DIV) {
         UNREACHABLE();
         break;
     }
+    }
+}
+
+FAST_HANDLE(TEST) {
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    AS.AND(result, dst, src);
+
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.LI(cf, 0);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.LI(of, 0);
     }
 }
 
