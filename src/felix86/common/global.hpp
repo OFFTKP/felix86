@@ -22,7 +22,7 @@ extern bool g_include_comments;
 extern bool g_profile_compilation;
 extern bool g_graph_coloring;
 extern bool g_fast_recompiler;
-extern std::chrono::milliseconds g_compilation_total_time;
+extern std::chrono::nanoseconds g_compilation_total_time;
 extern int g_block_limit;
 extern int g_output_fd;
 extern u32 g_spilled_count;

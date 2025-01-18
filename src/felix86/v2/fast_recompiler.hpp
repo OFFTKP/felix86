@@ -8,6 +8,11 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86.hpp"
 
+struct HandlerMetadata {
+    u64 rip;
+    u64 block_start;
+};
+
 struct FastRecompiler {
     FastRecompiler(Emulator& emulator);
     ~FastRecompiler();
@@ -30,13 +35,19 @@ struct FastRecompiler {
 
     x86_size_e getOperandSize(ZydisDecodedOperand* operand);
 
+    biscuit::GPR getRefGPR(x86_ref_e ref, x86_size_e size);
+
     void setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg);
+
+    void setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg);
 
     biscuit::GPR lea(ZydisDecodedOperand* operand);
 
     void stopCompiling();
 
     void setExitReason(ExitReason reason);
+
+    void writebackDirtyState();
 
     void backToDispatcher();
 
@@ -51,6 +62,24 @@ struct FastRecompiler {
     biscuit::GPR flag(x86_ref_e ref);
 
     biscuit::GPR flagW(x86_ref_e ref);
+
+    void updateParity(biscuit::GPR result);
+
+    void updateZero(biscuit::GPR result);
+
+    void updateSign(biscuit::GPR result, x86_size_e size);
+
+    int getBitSize(x86_size_e size);
+
+    u64 getSignMask(x86_size_e size_e);
+
+    void setRip(biscuit::GPR reg);
+
+    biscuit::GPR getRip();
+
+    void jumpAndLink(u64 rip);
+
+    void jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false);
 
 private:
     struct RegisterMetadata {
@@ -87,8 +116,6 @@ private:
 
     void emitDispatcher();
 
-    void writebackDirtyState();
-
     void loadGPR(x86_ref_e reg, biscuit::GPR target);
 
     RegisterMetadata& getMetadata(x86_ref_e reg);
@@ -96,6 +123,8 @@ private:
     void scanFlagUsageAhead(u64 rip);
 
     ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+
+    void expirePendingLinks(u64 rip);
 
     Emulator& emulator;
 
@@ -120,4 +149,6 @@ private:
     int scratch_index = 0;
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
+
+    std::unordered_map<u64, std::vector<u64>> pending_links{};
 };

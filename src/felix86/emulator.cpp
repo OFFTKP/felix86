@@ -290,7 +290,7 @@ void* Emulator::compileFunction(u64 rip) {
 
     if (g_profile_compilation) {
         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-        std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
         g_compilation_total_time += duration;
     }
 

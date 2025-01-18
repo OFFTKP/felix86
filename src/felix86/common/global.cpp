@@ -29,7 +29,7 @@ bool g_include_comments = false;
 bool g_graph_coloring = false;
 bool g_fast_recompiler = false;
 bool g_profile_compilation = false;
-std::chrono::milliseconds g_compilation_total_time = std::chrono::milliseconds(0);
+std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
 
 // Having too many basic blocks in a function can cause the register allocator to take insanely long times
 // So a block limit can sacrifice some potential runtime performance for way better compilation times
@@ -199,7 +199,7 @@ void initialize_globals() {
         g_profile_compilation = true;
         environment += "\nFELIX86_PROFILE_COMPILATION";
 
-        std::atexit([]() { printf("Total compilation time: %ldms\n", g_compilation_total_time.count()); });
+        std::atexit([]() { printf("Total compilation time: %ldms\n", g_compilation_total_time.count() / 1000000); });
     }
 
     const char* executable_base = getenv("FELIX86_EXECUTABLE_BASE");

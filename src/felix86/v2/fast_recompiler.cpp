@@ -2,7 +2,8 @@
 #include "felix86/emulator.hpp"
 #include "felix86/v2/fast_recompiler.hpp"
 
-#define X(name) void fast_##name(FastRecompiler& rec, u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+#define X(name)                                                                                                                                      \
+    void fast_##name(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 #include "felix86/v2/handlers.inc"
 #undef X
 
@@ -105,6 +106,8 @@ void* FastRecompiler::compile(u64 rip) {
 
     map[rip] = {start, (u64)as.GetCursorPointer() - (u64)start};
 
+    expirePendingLinks(rip);
+
     // Make code visible to instruction fetches.
     flushICache();
 
@@ -115,13 +118,15 @@ void FastRecompiler::compileSequence(u64 rip) {
     compiling = true;
     scanFlagUsageAhead(rip);
 
+    HandlerMetadata meta = {rip, rip};
+
     while (compiling) {
         resetScratch();
-        ZydisMnemonic mnemonic = decode(rip, instruction, operands);
+        ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
         switch (mnemonic) {
 #define X(name)                                                                                                                                      \
     case ZYDIS_MNEMONIC_##name:                                                                                                                      \
-        fast_##name(*this, rip, instruction, operands);                                                                                              \
+        fast_##name(*this, meta, instruction, operands);                                                                                             \
         break;
 #include "felix86/v2/handlers.inc"
 #undef X
@@ -130,7 +135,7 @@ void FastRecompiler::compileSequence(u64 rip) {
             break;
         }
         }
-        rip += instruction.length;
+        meta.rip += instruction.length;
     }
 }
 
@@ -475,40 +480,7 @@ x86_size_e FastRecompiler::zydisToSize(ZydisRegister reg) {
 biscuit::GPR FastRecompiler::gpr(ZydisRegister reg) {
     x86_ref_e ref = zydisToRef(reg);
     x86_size_e size = zydisToSize(reg);
-    biscuit::GPR gpr = allocatedGPR(ref);
-
-    loadGPR(ref, gpr);
-
-    switch (size) {
-    case X86_SIZE_BYTE: {
-        biscuit::GPR gpr8 = scratch();
-        zext(gpr8, gpr, X86_SIZE_BYTE);
-        return gpr8;
-    }
-    case X86_SIZE_BYTE_HIGH: {
-        biscuit::GPR gpr8 = scratch();
-        as.SRLI(gpr8, gpr, 8);
-        zext(gpr8, gpr8, X86_SIZE_BYTE);
-        return gpr8;
-    }
-    case X86_SIZE_WORD: {
-        biscuit::GPR gpr16 = scratch();
-        zext(gpr16, gpr, X86_SIZE_WORD);
-        return gpr16;
-    }
-    case X86_SIZE_DWORD: {
-        biscuit::GPR gpr32 = scratch();
-        zext(gpr32, gpr, X86_SIZE_DWORD);
-        return gpr32;
-    }
-    case X86_SIZE_QWORD: {
-        return gpr;
-    }
-    default: {
-        UNREACHABLE();
-        return x0;
-    }
-    }
+    return getRefGPR(ref, size);
 }
 
 biscuit::Vec FastRecompiler::vec(ZydisRegister reg) {
@@ -647,66 +619,107 @@ biscuit::GPR FastRecompiler::flagW(x86_ref_e ref) {
     return reg;
 }
 
+biscuit::GPR FastRecompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
+    biscuit::GPR gpr = allocatedGPR(ref);
+
+    loadGPR(ref, gpr);
+
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        biscuit::GPR gpr8 = scratch();
+        zext(gpr8, gpr, X86_SIZE_BYTE);
+        return gpr8;
+    }
+    case X86_SIZE_BYTE_HIGH: {
+        biscuit::GPR gpr8 = scratch();
+        as.SRLI(gpr8, gpr, 8);
+        zext(gpr8, gpr8, X86_SIZE_BYTE);
+        return gpr8;
+    }
+    case X86_SIZE_WORD: {
+        biscuit::GPR gpr16 = scratch();
+        zext(gpr16, gpr, X86_SIZE_WORD);
+        return gpr16;
+    }
+    case X86_SIZE_DWORD: {
+        biscuit::GPR gpr32 = scratch();
+        zext(gpr32, gpr, X86_SIZE_DWORD);
+        return gpr32;
+    }
+    case X86_SIZE_QWORD: {
+        return gpr;
+    }
+    default: {
+        UNREACHABLE();
+        return x0;
+    }
+    }
+}
+
+void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
+    biscuit::GPR dest = allocatedGPR(ref);
+
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        biscuit::GPR gpr8 = scratch();
+        as.ANDI(gpr8, reg, 0xff);
+        as.ANDI(dest, dest, ~0xff);
+        as.OR(dest, dest, gpr8);
+        popScratch();
+        break;
+    }
+    case X86_SIZE_BYTE_HIGH: {
+        biscuit::GPR gpr8 = scratch();
+        biscuit::GPR mask = scratch();
+        as.LI(mask, 0xff00);
+        as.SLLI(gpr8, reg, 8);
+        as.AND(gpr8, gpr8, mask);
+        as.NOT(mask, mask);
+        as.AND(dest, dest, mask);
+        as.OR(dest, dest, gpr8);
+        popScratch();
+        popScratch();
+        break;
+    }
+    case X86_SIZE_WORD: {
+        biscuit::GPR gpr16 = scratch();
+        if (Extensions::B) {
+            as.ZEXTH(gpr16, reg);
+        } else {
+            as.SLLI(gpr16, reg, 48);
+            as.SRLI(gpr16, gpr16, 48);
+        }
+        as.SRLI(dest, dest, 16);
+        as.SLLI(dest, dest, 16);
+        as.OR(dest, dest, gpr16);
+        popScratch();
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.ZEXTW(dest, reg);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        as.MV(dest, reg);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    RegisterMetadata& meta = getMetadata(ref);
+    meta.dirty = true;
+    meta.loaded = true; // since the value is fresh it's as if we read it from memory
+}
+
 void FastRecompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         x86_ref_e ref = zydisToRef(operand->reg.value);
         x86_size_e size = zydisToSize(operand->reg.value);
-        biscuit::GPR dest = allocatedGPR(ref);
-
-        switch (size) {
-        case X86_SIZE_BYTE: {
-            biscuit::GPR gpr8 = scratch();
-            as.ANDI(gpr8, reg, 0xff);
-            as.ANDI(dest, dest, ~0xff);
-            as.OR(dest, dest, gpr8);
-            popScratch();
-            break;
-        }
-        case X86_SIZE_BYTE_HIGH: {
-            biscuit::GPR gpr8 = scratch();
-            biscuit::GPR mask = scratch();
-            as.LI(mask, 0xff00);
-            as.SLLI(gpr8, reg, 8);
-            as.AND(gpr8, gpr8, mask);
-            as.NOT(mask, mask);
-            as.AND(dest, dest, mask);
-            as.OR(dest, dest, gpr8);
-            popScratch();
-            popScratch();
-            break;
-        }
-        case X86_SIZE_WORD: {
-            biscuit::GPR gpr16 = scratch();
-            if (Extensions::B) {
-                as.ZEXTH(gpr16, reg);
-            } else {
-                as.SLLI(gpr16, reg, 48);
-                as.SRLI(gpr16, gpr16, 48);
-            }
-            as.SRLI(dest, dest, 16);
-            as.SLLI(dest, dest, 16);
-            as.OR(dest, dest, gpr16);
-            popScratch();
-            break;
-        }
-        case X86_SIZE_DWORD: {
-            as.ZEXTW(dest, reg);
-            break;
-        }
-        case X86_SIZE_QWORD: {
-            as.MV(dest, reg);
-            break;
-        }
-        default: {
-            UNREACHABLE();
-            break;
-        }
-        }
-
-        RegisterMetadata& meta = getMetadata(ref);
-        meta.dirty = true;
-        meta.loaded = true; // since the value is fresh it's as if we read it from memory
+        setRefGPR(ref, size, reg);
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -908,9 +921,6 @@ void FastRecompiler::writebackDirtyState() {
 }
 
 void FastRecompiler::backToDispatcher() {
-    // TODO: stuff for block linking
-    writebackDirtyState();
-
     biscuit::GPR address = scratch();
     as.LD(address, offsetof(ThreadState, compile_next_handler), threadStatePointer());
     as.JR(address);
@@ -1055,4 +1065,119 @@ void FastRecompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) 
         break;
     }
     }
+}
+
+int FastRecompiler::getBitSize(x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE:
+        return 8;
+    case X86_SIZE_WORD:
+        return 16;
+    case X86_SIZE_DWORD:
+        return 32;
+    case X86_SIZE_QWORD:
+        return 64;
+    case X86_SIZE_XMM:
+        return 128;
+    default:
+        UNREACHABLE();
+        return 0;
+    }
+}
+
+u64 FastRecompiler::getSignMask(x86_size_e size_e) {
+    u16 size = getBitSize(size_e);
+    return 1ull << (size - 1);
+}
+
+void FastRecompiler::updateParity(biscuit::GPR result) {
+    if (Extensions::B) {
+        biscuit::GPR pf = flagW(X86_REF_PF);
+        as.ANDI(pf, result, 0xFF);
+        as.CPOPW(pf, pf);
+        as.ANDI(pf, pf, 1);
+        as.XORI(pf, pf, 1);
+    } else {
+        ERROR("This needs B extension");
+    }
+}
+
+void FastRecompiler::updateZero(biscuit::GPR result) {
+    biscuit::GPR zf = flagW(X86_REF_ZF);
+    as.SEQZ(zf, result);
+}
+
+void FastRecompiler::updateSign(biscuit::GPR result, x86_size_e size) {
+    biscuit::GPR sf = flagW(X86_REF_SF);
+    as.SRLI(sf, result, getBitSize(size) - 1);
+    as.ANDI(sf, sf, 1);
+}
+
+void FastRecompiler::setRip(biscuit::GPR rip) {
+    as.SD(rip, offsetof(ThreadState, rip), threadStatePointer());
+}
+
+biscuit::GPR FastRecompiler::getRip() {
+    biscuit::GPR rip = scratch();
+    as.LD(rip, offsetof(ThreadState, rip), threadStatePointer());
+    return rip;
+}
+
+void FastRecompiler::jumpAndLink(u64 rip) {
+    if (map.find(rip) == map.end()) {
+        biscuit::GPR address = scratch();
+        // 3 instructions of space to be overwritten with:
+        // AUIPC
+        // ADDI
+        // JR
+        u64 link_me = (u64)as.GetCodeBuffer().GetCursorOffset();
+        as.NOP();
+        as.LD(address, offsetof(ThreadState, compile_next_handler), threadStatePointer());
+        as.JR(address);
+        popScratch();
+
+        pending_links[rip].push_back(link_me);
+    } else {
+        u64 target = (u64)map[rip].first;
+        u64 offset = target - (u64)as.GetCursorPointer();
+        const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        biscuit::GPR reg = scratch();
+        as.AUIPC(reg, hi20);
+        as.ADDI(reg, reg, lo12);
+        as.JR(reg);
+        popScratch();
+    }
+}
+
+void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false) {
+    Label false_label;
+    as.BEQZ(condition, &false_label);
+
+    setRip(gpr_true);
+    jumpAndLink(rip_true);
+
+    as.Bind(&false_label);
+
+    setRip(gpr_false);
+    jumpAndLink(rip_false);
+}
+
+void FastRecompiler::expirePendingLinks(u64 rip) {
+    if (pending_links.find(rip) == pending_links.end()) {
+        return;
+    }
+
+    ASSERT(map.find(rip) != map.end());
+
+    auto& links = pending_links[rip];
+    for (u64 link : links) {
+        auto current_offset = as.GetCodeBuffer().GetCursorOffset();
+
+        as.RewindBuffer(link);
+        jumpAndLink(rip);
+        as.AdvanceBuffer(current_offset);
+    }
+
+    pending_links.erase(rip);
 }
