@@ -88,6 +88,10 @@ struct Emulator {
 
     void* LoadFromCache(u64 rip, const std::string& hash);
 
+    u64 GetCodeCacheSize() {
+        return backend.GetCodeCacheSize();
+    }
+
 private:
     void setupMainStack(ThreadState* state);
 

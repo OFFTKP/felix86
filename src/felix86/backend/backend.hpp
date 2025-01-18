@@ -48,6 +48,10 @@ struct Backend {
         return compile_next_handler;
     }
 
+    u64 GetCodeCacheSize() const {
+        return as.GetCursorPointer() - memory;
+    }
+
 private:
     static u8* allocateCodeCache();
     static void deallocateCodeCache(u8* memory);

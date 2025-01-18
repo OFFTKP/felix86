@@ -29,6 +29,7 @@ bool g_include_comments = false;
 bool g_graph_coloring = false;
 bool g_fast_recompiler = false;
 bool g_profile_compilation = false;
+u64 g_dispatcher_exit_count = 0;
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
 
 // Having too many basic blocks in a function can cause the register allocator to take insanely long times
@@ -199,7 +200,11 @@ void initialize_globals() {
         g_profile_compilation = true;
         environment += "\nFELIX86_PROFILE_COMPILATION";
 
-        std::atexit([]() { printf("Total compilation time: %ldms\n", g_compilation_total_time.count() / 1000000); });
+        std::atexit([]() {
+            printf("Total compilation time: %ldms\n", g_compilation_total_time.count() / 1000000);
+            printf("Total dispatcher exits: %ld\n", g_dispatcher_exit_count);
+            printf("Total code cache size: %ldKB\n", g_emulator->GetCodeCacheSize() / 1024);
+        });
     }
 
     const char* executable_base = getenv("FELIX86_EXECUTABLE_BASE");

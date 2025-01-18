@@ -210,11 +210,6 @@ void* Emulator::compileFunction(u64 rip) {
         }
     }
 
-    std::chrono::high_resolution_clock::time_point start;
-    if (g_profile_compilation) {
-        start = std::chrono::high_resolution_clock::now();
-    }
-
     VERBOSE("Now compiling: %016lx", rip);
     IRFunction function{rip};
     frontend_compile_function(function);
@@ -288,12 +283,6 @@ void* Emulator::compileFunction(u64 rip) {
         DiskCache::Write(hex_hash, func, size);
     }
 
-    if (g_profile_compilation) {
-        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-        std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-        g_compilation_total_time += duration;
-    }
-
     return func;
 }
 
@@ -315,6 +304,11 @@ void* Emulator::LoadFromCache(u64 rip, const std::string& hash) {
 }
 
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
+    std::chrono::high_resolution_clock::time_point start;
+    if (g_profile_compilation) {
+        g_dispatcher_exit_count++;
+        start = std::chrono::high_resolution_clock::now();
+    }
 
     // Mutex needs to be unlocked before the thread is dispatched
     void* volatile function;
@@ -322,6 +316,12 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
         function = emulator->compileFunctionFast(thread_state->GetRip());
     } else {
         function = emulator->compileFunction(thread_state->GetRip());
+    }
+
+    if (g_profile_compilation) {
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        g_compilation_total_time += duration;
     }
 
     u64 address = thread_state->GetRip();
