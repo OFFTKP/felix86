@@ -89,6 +89,8 @@ struct FastRecompiler {
         return x27; // saved register so that when we exit VM we don't have to save it
     }
 
+    void setFlagUndefined(x86_ref_e ref);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

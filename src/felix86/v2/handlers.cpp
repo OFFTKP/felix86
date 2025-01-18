@@ -195,6 +195,8 @@ FAST_HANDLE(OR) {
     }
 
     rec.setOperandGPR(&operands[0], result);
+
+    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(XOR) {
@@ -229,6 +231,8 @@ FAST_HANDLE(XOR) {
     }
 
     rec.setOperandGPR(&operands[0], result);
+
+    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(AND) {
@@ -263,6 +267,8 @@ FAST_HANDLE(AND) {
     }
 
     rec.setOperandGPR(&operands[0], result);
+
+    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(HLT) {
@@ -427,7 +433,21 @@ FAST_HANDLE(SHR) {
         AS.ANDI(of, of, 1);
     }
 
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
     rec.setOperandGPR(&operands[0], result);
+
+    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(JMP) {
@@ -521,6 +541,13 @@ FAST_HANDLE(DIV) {
         break;
     }
     }
+
+    rec.setFlagUndefined(X86_REF_CF);
+    rec.setFlagUndefined(X86_REF_PF);
+    rec.setFlagUndefined(X86_REF_AF);
+    rec.setFlagUndefined(X86_REF_ZF);
+    rec.setFlagUndefined(X86_REF_SF);
+    rec.setFlagUndefined(X86_REF_OF);
 }
 
 FAST_HANDLE(TEST) {
@@ -553,6 +580,8 @@ FAST_HANDLE(TEST) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         AS.LI(of, 0);
     }
+
+    rec.setFlagUndefined(X86_REF_AF);
 }
 
 void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {

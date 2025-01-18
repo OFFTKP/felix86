@@ -1209,3 +1209,11 @@ void FastRecompiler::addi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
         popScratch();
     }
 }
+
+void FastRecompiler::setFlagUndefined(x86_ref_e ref) {
+    // Once a flag has been set to undefined state it doesn't need to be written back
+    // it's as if it was written with a random value, which we don't care to emulate
+    RegisterMetadata& meta = getMetadata(ref);
+    meta.loaded = false;
+    meta.dirty = false;
+}
