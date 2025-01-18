@@ -271,10 +271,6 @@ biscuit::Vec FastRecompiler::allocatedVec(x86_ref_e reg) {
     }
 }
 
-constexpr biscuit::GPR FastRecompiler::threadStatePointer() {
-    return x27; // saved register so that when we exit VM we don't have to save it
-}
-
 biscuit::GPR FastRecompiler::scratch() {
     switch (scratch_index++) {
     case 0:

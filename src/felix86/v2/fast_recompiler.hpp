@@ -85,7 +85,9 @@ struct FastRecompiler {
 
     void jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false);
 
-    constexpr biscuit::GPR threadStatePointer();
+    constexpr biscuit::GPR threadStatePointer() {
+        return x27; // saved register so that when we exit VM we don't have to save it
+    }
 
 private:
     struct RegisterMetadata {
