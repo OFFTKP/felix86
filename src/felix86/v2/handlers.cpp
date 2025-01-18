@@ -546,13 +546,13 @@ FAST_HANDLE(JZ) {
     JCC(rec, meta, instruction, operands, zf);
 }
 
-FAST_HANDLE(JC) {
+FAST_HANDLE(JB) {
     biscuit::GPR cf = rec.flag(X86_REF_CF);
 
     JCC(rec, meta, instruction, operands, cf);
 }
 
-FAST_HANDLE(JNC) {
+FAST_HANDLE(JNB) {
     biscuit::GPR cond = rec.scratch();
     biscuit::GPR cf = rec.flag(X86_REF_CF);
     AS.XORI(cond, cf, 1);
