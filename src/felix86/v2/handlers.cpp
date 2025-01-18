@@ -331,14 +331,7 @@ FAST_HANDLE(RET) {
         imm += operands[0].imm.value.u;
     }
 
-    if (imm >= 2048) {
-        biscuit::GPR scratch2 = rec.scratch();
-        AS.LI(scratch2, imm);
-        AS.ADD(rsp, rsp, scratch2);
-        rec.popScratch();
-    } else {
-        AS.ADDI(rsp, rsp, imm);
-    }
+    rec.addi(rsp, rsp, imm);
 
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
     rec.setRip(scratch);
@@ -450,8 +443,9 @@ FAST_HANDLE(JMP) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
+        u64 offset = meta.rip - meta.block_start + instruction.length;
         biscuit::GPR scratch = rec.getRip();
-        rec.addi(scratch, scratch, displacement);
+        rec.addi(scratch, scratch, offset + displacement);
         rec.setRip(scratch);
         rec.writebackDirtyState();
         rec.jumpAndLink(meta.rip + instruction.length + displacement);
