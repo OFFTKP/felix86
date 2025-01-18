@@ -497,23 +497,79 @@ FAST_HANDLE(JMP) {
     }
 }
 
-FAST_HANDLE(JBE) {
+void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
     u64 address_false = meta.rip - meta.block_start + instruction.length;
     u64 address_true = address_false + immediate;
 
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
-    biscuit::GPR zf = rec.flag(X86_REF_ZF);
     biscuit::GPR rip_true = rec.getRip();
     biscuit::GPR rip_false = rec.scratch();
 
     rec.addi(rip_false, rip_true, address_false);
     rec.addi(rip_true, rip_false, immediate);
 
-    AS.OR(cond, cf, zf);
-
     rec.writebackDirtyState();
     rec.jumpAndLinkConditional(cond, rip_true, rip_false, address_true, address_false);
     rec.stopCompiling();
+}
+
+FAST_HANDLE(JBE) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    AS.OR(cond, cf, zf);
+
+    JCC(rec, meta, instruction, operands, cond);
+}
+
+FAST_HANDLE(JNBE) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    AS.OR(cond, cf, zf);
+    AS.XORI(cond, cond, 1);
+
+    JCC(rec, meta, instruction, operands, cond);
+}
+
+FAST_HANDLE(JNZ) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    AS.XORI(cond, zf, 1);
+
+    JCC(rec, meta, instruction, operands, cond);
+}
+
+FAST_HANDLE(JZ) {
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+
+    JCC(rec, meta, instruction, operands, zf);
+}
+
+FAST_HANDLE(JC) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+
+    JCC(rec, meta, instruction, operands, cf);
+}
+
+FAST_HANDLE(JNC) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    AS.XORI(cond, cf, 1);
+
+    JCC(rec, meta, instruction, operands, cond);
+}
+
+FAST_HANDLE(JP) {
+    biscuit::GPR pf = rec.flag(X86_REF_PF);
+
+    JCC(rec, meta, instruction, operands, pf);
+}
+
+FAST_HANDLE(JNP) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR pf = rec.flag(X86_REF_PF);
+    AS.XORI(cond, pf, 1);
+
+    JCC(rec, meta, instruction, operands, cond);
 }
