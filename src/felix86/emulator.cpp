@@ -59,6 +59,7 @@ void Emulator::Run() {
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();
+    g_thread_state = state;
     if (g_fast_recompiler) {
         fast_recompiler.enterDispatcher(state);
     } else {

@@ -483,6 +483,7 @@ FAST_HANDLE(JMP) {
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
         biscuit::GPR scratch = rec.getRip();
+        rec.addi(scratch, scratch, displacement);
         rec.setRip(scratch);
         rec.writebackDirtyState();
         rec.jumpAndLink(meta.rip + instruction.length + displacement);

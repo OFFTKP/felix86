@@ -142,7 +142,6 @@ void Backend::EnterDispatcher(ThreadState* state) {
         ERROR("Dispatcher not initialized??");
     }
 
-    g_thread_state = state;
     enter_dispatcher(state);
 }
 
