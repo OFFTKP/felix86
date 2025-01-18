@@ -59,6 +59,10 @@ struct FastRecompiler {
 
     void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
 
+    u64 sextImmediate(u64 imm, ZyanU8 size);
+
+    void addi(biscuit::GPR dest, biscuit::GPR src, u64 imm);
+
     biscuit::GPR flag(x86_ref_e ref);
 
     biscuit::GPR flagW(x86_ref_e ref);

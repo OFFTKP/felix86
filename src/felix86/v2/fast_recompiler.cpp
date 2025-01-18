@@ -131,7 +131,7 @@ void FastRecompiler::compileSequence(u64 rip) {
 #include "felix86/v2/handlers.inc"
 #undef X
         default: {
-            ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)mnemonic);
+            ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);
             break;
         }
         }
@@ -1180,4 +1180,35 @@ void FastRecompiler::expirePendingLinks(u64 rip) {
     }
 
     pending_links.erase(rip);
+}
+
+u64 FastRecompiler::sextImmediate(u64 imm, ZyanU8 size) {
+    switch (size) {
+    case 8: {
+        return (i64)(i8)imm;
+    }
+    case 16: {
+        return (i64)(i16)imm;
+    }
+    case 32: {
+        return (i64)(i32)imm;
+    }
+    case 64: {
+        return imm;
+    }
+    default: {
+        UNREACHABLE();
+        return 0;
+    }
+    }
+}
+
+void FastRecompiler::addi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
+    if ((i64)imm >= -2048 && (i64)imm < 2048) {
+        as.ADDI(dst, src, imm);
+    } else {
+        as.LI(scratch(), imm);
+        as.ADD(dst, src, scratch());
+        popScratch();
+    }
 }
