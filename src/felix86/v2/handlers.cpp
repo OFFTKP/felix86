@@ -508,6 +508,9 @@ void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstructi
     rec.addi(rip_false, rip_true, address_false);
     rec.addi(rip_true, rip_false, immediate);
 
+    address_false += meta.block_start;
+    address_true += meta.block_start;
+
     rec.writebackDirtyState();
     rec.jumpAndLinkConditional(cond, rip_true, rip_false, address_true, address_false);
     rec.stopCompiling();
