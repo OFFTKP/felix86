@@ -85,6 +85,8 @@ struct FastRecompiler {
 
     void jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false);
 
+    constexpr biscuit::GPR threadStatePointer();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -113,8 +115,6 @@ private:
     biscuit::GPR allocatedGPR(x86_ref_e reg);
 
     biscuit::Vec allocatedVec(x86_ref_e reg);
-
-    constexpr biscuit::GPR threadStatePointer();
 
     void resetScratch();
 

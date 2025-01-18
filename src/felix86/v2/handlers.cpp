@@ -497,6 +497,65 @@ FAST_HANDLE(JMP) {
     }
 }
 
+FAST_HANDLE(DIV) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[0]);
+
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        biscuit::GPR mod = rec.scratch();
+        biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+
+        AS.REMUW(mod, ax, src);
+        AS.DIVUW(ax, ax, src);
+
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE, ax);
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, mod);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+        biscuit::GPR dx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_WORD);
+        AS.SLLIW(dx, dx, 16);
+        AS.OR(dx, dx, ax);
+
+        AS.DIVUW(ax, dx, src);
+        AS.REMUW(dx, dx, src);
+
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, dx);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+        biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_DWORD);
+        AS.SLLI(edx, edx, 32);
+        AS.OR(edx, edx, eax);
+
+        AS.DIVU(eax, edx, src);
+        AS.REMU(edx, edx, src);
+
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, eax);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        rec.writebackDirtyState();
+
+        biscuit::GPR address = rec.scratch();
+        AS.LD(address, offsetof(ThreadState, divu128_handler), rec.threadStatePointer());
+        AS.MV(a0, rec.threadStatePointer());
+        AS.MV(a1, src);
+        AS.JALR(address);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+}
+
 void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
     u64 address_false = meta.rip - meta.block_start + instruction.length;

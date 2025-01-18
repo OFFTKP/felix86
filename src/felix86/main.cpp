@@ -185,6 +185,25 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
+#if 0 // for testing zydis behavior on specific instructions
+    ZydisDecoder decoder;
+    ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+
+    u8 data[] = {
+        0x48,
+        0xf7,
+        0xf6,
+    };
+
+    ZydisDecodedInstruction instruction;
+    ZydisDecodedOperand operands[10];
+    ZyanStatus status = ZydisDecoderDecodeFull(&decoder, data, sizeof(data), &instruction, operands);
+    ASSERT(ZYAN_SUCCESS(status));
+
+    printf("operand count: %d\n", instruction.operand_count_visible);
+    printf("op 0: %d\n", operands[0].reg.value);
+#endif
+
     Config config = {};
 
     argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &config);

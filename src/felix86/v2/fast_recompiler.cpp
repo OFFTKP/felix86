@@ -1166,11 +1166,8 @@ void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR
 
 void FastRecompiler::expirePendingLinks(u64 rip) {
     if (pending_links.find(rip) == pending_links.end()) {
-        VERBOSE("No links found for 0x%016lx", rip);
         return;
     }
-
-    VERBOSE("Expiring links for 0x%016lx", rip);
 
     ASSERT(map.find(rip) != map.end());
 
