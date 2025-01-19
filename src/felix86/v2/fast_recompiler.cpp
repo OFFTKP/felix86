@@ -447,8 +447,9 @@ x86_ref_e FastRecompiler::zydisToRef(ZydisRegister reg) {
         break;
     }
     default: {
-        UNREACHABLE();
-        return X86_REF_RAX;
+        ERROR("Unhandled register %s", ZydisRegisterGetString(reg));
+        ref = X86_REF_RAX;
+        break;
     }
     }
 
