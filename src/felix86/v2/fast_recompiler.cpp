@@ -1172,8 +1172,8 @@ void FastRecompiler::jumpAndLink(u64 rip) {
 void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false) {
     bool ok = false;
     if (map.find(rip_true) != map.end()) {
-        // The +4 is due to the setRip emitting an SD instruction
-        auto offset_true = (u64)map[rip_true].first - (u64)as.GetCursorPointer() + 4;
+        // The -4 is due to the setRip emitting an SD instruction
+        auto offset_true = (u64)map[rip_true].first - (u64)as.GetCursorPointer() - 4;
         if (IsValidBTypeImm(offset_true)) {
             setRip(gpr_true);
             as.BNEZ(condition, offset_true);
@@ -1181,7 +1181,7 @@ void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR
             jumpAndLink(rip_false);
             ok = true;
         } else if (map.find(rip_false) != map.end()) {
-            auto offset_false = (u64)map[rip_false].first - (u64)as.GetCursorPointer() + 4;
+            auto offset_false = (u64)map[rip_false].first - (u64)as.GetCursorPointer() - 4;
             if (IsValidBTypeImm(offset_false)) {
                 setRip(gpr_false);
                 as.BEQZ(condition, offset_false);
@@ -1191,7 +1191,7 @@ void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR
             }
         }
     } else if (map.find(rip_false) != map.end()) {
-        auto offset_false = (u64)map[rip_false].first - (u64)as.GetCursorPointer() + 4;
+        auto offset_false = (u64)map[rip_false].first - (u64)as.GetCursorPointer() - 4;
         if (IsValidBTypeImm(offset_false)) {
             setRip(gpr_false);
             as.BEQZ(condition, offset_false);
