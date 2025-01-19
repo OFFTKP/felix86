@@ -619,6 +619,10 @@ biscuit::GPR FastRecompiler::flagW(x86_ref_e ref) {
 biscuit::GPR FastRecompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
     biscuit::GPR gpr = allocatedGPR(ref);
 
+    if (getMetadata(ref).loaded) {
+        return gpr;
+    }
+
     loadGPR(ref, gpr);
 
     switch (size) {
@@ -1142,7 +1146,6 @@ void FastRecompiler::jumpAndLink(u64 rip) {
             if (offset != 3 * 4) {
                 as.J(offset);
             } else {
-                WARN("INLINE JUM");
                 as.NOP(); // offset is just ahead, inline it
             }
             as.NOP();
