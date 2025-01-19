@@ -738,6 +738,17 @@ FAST_HANDLE(LAHF) {
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, result);
 }
 
+FAST_HANDLE(XCHG) {
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    AS.MV(temp, src);
+
+    rec.setOperandGPR(&operands[1], dst);
+    rec.setOperandGPR(&operands[0], temp);
+}
+
 void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
     u64 address_false = meta.rip - meta.block_start + instruction.length;
