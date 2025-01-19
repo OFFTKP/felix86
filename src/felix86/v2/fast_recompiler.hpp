@@ -139,6 +139,8 @@ struct FastRecompiler {
 
     void repzEpilogue(Label* loop_body, bool is_repz);
 
+    bool isGPR(ZydisRegister reg);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

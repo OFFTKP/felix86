@@ -743,6 +743,10 @@ biscuit::GPR FastRecompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
     }
 }
 
+bool FastRecompiler::isGPR(ZydisRegister reg) {
+    return zydisToRef(reg) >= X86_REF_RAX && zydisToRef(reg) <= X86_REF_R15;
+}
+
 biscuit::Vec FastRecompiler::getRefVec(x86_ref_e ref) {
     biscuit::Vec vec = allocatedVec(ref);
 
