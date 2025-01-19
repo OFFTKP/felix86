@@ -6,6 +6,8 @@
 
 #define AS (rec.getAssembler())
 
+#define IS_MMX (instruction.attributes & (ZYDIS_ATTRIB_FPU_STATE_CR | ZYDIS_ATTRIB_FPU_STATE_CW))
+
 FAST_HANDLE(MOV) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     rec.setOperandGPR(&operands[0], src);
@@ -386,7 +388,7 @@ FAST_HANDLE(PUSH) {
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
 
     if (size == X86_SIZE_WORD) {
-        AS.SW(src, 0, rsp);
+        AS.SH(src, 0, rsp);
     } else {
         AS.SD(src, 0, rsp);
     }
@@ -398,7 +400,7 @@ FAST_HANDLE(POP) {
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
 
     if (size == X86_SIZE_WORD) {
-        AS.LW(dst, 0, rsp);
+        AS.LHU(dst, 0, rsp);
     } else {
         AS.LD(dst, 0, rsp);
     }
@@ -409,6 +411,8 @@ FAST_HANDLE(POP) {
 }
 
 FAST_HANDLE(NOP) {}
+
+FAST_HANDLE(ENDBR64) {}
 
 FAST_HANDLE(SHR) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
@@ -479,6 +483,34 @@ FAST_HANDLE(SHR) {
     rec.setOperandGPR(&operands[0], result);
 
     rec.setFlagUndefined(X86_REF_AF);
+}
+
+FAST_HANDLE(MOVQ) {
+    ASSERT(!IS_MMX);
+
+    if (instruction.attributes & ZYDIS_ATTRIB_XMM_STATE_CW) {
+        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        AS.VMV(v0, 0b10);
+
+        // Zero upper 64-bit (this will be useful for when we get to AVX)
+        AS.VXOR(dst, dst, dst, VecMask::Yes);
+        AS.VMV_SX(dst, src);
+
+        rec.setOperandVec(&operands[0], dst);
+    } else if (instruction.attributes & ZYDIS_ATTRIB_XMM_STATE_CR) {
+        biscuit::GPR dst = rec.scratch();
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        AS.VMV_XS(dst, src);
+
+        rec.setOperandGPR(&operands[0], dst);
+    } else {
+        UNREACHABLE();
+    }
 }
 
 FAST_HANDLE(JMP) {

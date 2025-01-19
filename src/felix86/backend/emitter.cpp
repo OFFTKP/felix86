@@ -457,6 +457,7 @@ void Emitter::EmitReadXmmWord(Backend& backend, biscuit::Vec Vd, biscuit::GPR Ad
         ASSERT(Extensions::VLEN == SUPPORTED_VLEN);
         AS.VL1RE8(Vd, Address);
         break;
+    default:
     case VectorState::AnyPacked:
         UNREACHABLE();
     }
@@ -531,6 +532,7 @@ void Emitter::EmitWriteXmmWord(Backend& backend, biscuit::GPR Address, biscuit::
         ASSERT(Extensions::VLEN == SUPPORTED_VLEN);
         AS.VS1R(Vs, Address); // use this one because we expect the address to be aligned
         break;
+    default:
     case VectorState::AnyPacked:
         UNREACHABLE();
     }

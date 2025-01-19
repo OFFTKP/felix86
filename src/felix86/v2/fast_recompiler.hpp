@@ -5,6 +5,7 @@
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
 #include "biscuit/registers.hpp"
+#include "felix86/common/riscv.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86.hpp"
 
@@ -29,17 +30,29 @@ struct FastRecompiler {
 
     biscuit::GPR scratch();
 
+    biscuit::Vec scratchVec();
+
     void popScratch();
+
+    void popScratchVec();
 
     biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
 
     x86_size_e getOperandSize(ZydisDecodedOperand* operand);
 
+    biscuit::Vec getOperandVec(ZydisDecodedOperand* operand);
+
     biscuit::GPR getRefGPR(x86_ref_e ref, x86_size_e size);
+
+    biscuit::Vec getRefVec(x86_ref_e ref);
 
     void setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg);
 
+    void setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec reg);
+
     void setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg);
+
+    void setRefVec(x86_ref_e ref, biscuit::Vec vec);
 
     biscuit::GPR lea(ZydisDecodedOperand* operand);
 
@@ -95,6 +108,17 @@ struct FastRecompiler {
 
     x86_size_e zydisToSize(ZydisRegister reg);
 
+    // Get the allocated register for the given register reference
+    biscuit::GPR allocatedGPR(x86_ref_e reg);
+
+    biscuit::Vec allocatedVec(x86_ref_e reg);
+
+    void setVectorState(SEW sew, int elem_count);
+
+    u16 maxVlen() {
+        return max_vlen;
+    }
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -115,16 +139,13 @@ private:
 
     biscuit::Vec vec(ZydisRegister reg);
 
-    // Get the allocated register for the given register reference
-    biscuit::GPR allocatedGPR(x86_ref_e reg);
-
-    biscuit::Vec allocatedVec(x86_ref_e reg);
-
     void resetScratch();
 
     void emitDispatcher();
 
-    void loadGPR(x86_ref_e reg, biscuit::GPR target);
+    void loadGPR(x86_ref_e reg, biscuit::GPR gpr);
+
+    void loadVec(x86_ref_e reg, biscuit::Vec vec);
 
     RegisterMetadata& getMetadata(x86_ref_e reg);
 
@@ -156,7 +177,13 @@ private:
 
     int scratch_index = 0;
 
+    int vector_scratch_index = 0;
+
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 
     std::unordered_map<u64, std::vector<u64>> pending_links{};
+
+    SEW current_sew = SEW::E1024;
+    u8 current_vlen = 0;
+    u16 max_vlen = 128;
 };

@@ -73,7 +73,7 @@ void FastRecompiler::emitDispatcher() {
     Label exit_dispatcher_label;
 
     // If it's not zero it has some exit reason, exit the dispatcher
-    as.LB(a0, offsetof(ThreadState, exit_reason), threadStatePointer());
+    as.LBU(a0, offsetof(ThreadState, exit_reason), threadStatePointer());
     as.BNEZ(a0, &exit_dispatcher_label);
     as.LI(a0, (u64)&emulator);
     as.MV(a1, threadStatePointer());
@@ -288,13 +288,39 @@ biscuit::GPR FastRecompiler::scratch() {
     }
 }
 
-void FastRecompiler::resetScratch() {
-    scratch_index = 0;
+biscuit::Vec FastRecompiler::scratchVec() {
+    switch (vector_scratch_index++) {
+    case 0:
+        return v26;
+    case 1:
+        return v27;
+    case 2:
+        return v28;
+    case 3:
+        return v29;
+    case 4:
+        return v30;
+    case 5:
+        return v31;
+    default:
+        ERROR("Tried to use more than 6 scratch registers");
+        return v0;
+    }
+}
+
+void FastRecompiler::popScratchVec() {
+    vector_scratch_index--;
+    ASSERT(vector_scratch_index >= 0);
 }
 
 void FastRecompiler::popScratch() {
     scratch_index--;
     ASSERT(scratch_index >= 0);
+}
+
+void FastRecompiler::resetScratch() {
+    scratch_index = 0;
+    vector_scratch_index = 0;
 }
 
 x86_ref_e FastRecompiler::zydisToRef(ZydisRegister reg) {
@@ -482,9 +508,8 @@ biscuit::GPR FastRecompiler::gpr(ZydisRegister reg) {
 
 biscuit::Vec FastRecompiler::vec(ZydisRegister reg) {
     ASSERT(reg >= ZYDIS_REGISTER_XMM0 && reg <= ZYDIS_REGISTER_XMM15);
-    biscuit::Vec vec = allocatedVec(zydisToRef(reg));
-    ERROR("todo: loadvec, metadata vector state");
-    return vec;
+    x86_ref_e ref = zydisToRef(reg);
+    return getRefVec(ref);
 }
 
 ZydisMnemonic FastRecompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
@@ -583,15 +608,15 @@ biscuit::GPR FastRecompiler::getOperandGPR(ZydisDecodedOperand* operand) {
 
         switch (operand->size) {
         case 8: {
-            as.LB(address, 0, address);
+            as.LBU(address, 0, address);
             break;
         }
         case 16: {
-            as.LH(address, 0, address);
+            as.LHU(address, 0, address);
             break;
         }
         case 32: {
-            as.LW(address, 0, address);
+            as.LWU(address, 0, address);
             break;
         }
         case 64: {
@@ -614,6 +639,45 @@ biscuit::GPR FastRecompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     default: {
         UNREACHABLE();
         return x0;
+    }
+    }
+}
+
+biscuit::Vec FastRecompiler::getOperandVec(ZydisDecodedOperand* operand) {
+    switch (operand->type) {
+    case ZYDIS_OPERAND_TYPE_REGISTER: {
+        biscuit::Vec reg = vec(operand->reg.value);
+        return reg;
+    }
+    case ZYDIS_OPERAND_TYPE_MEMORY: {
+        biscuit::GPR address = lea(operand);
+        biscuit::Vec vec = scratchVec();
+
+        switch (operand->size) {
+        case 32: {
+            setVectorState(SEW::E32, 1);
+            as.VLE32(vec, address);
+            break;
+        }
+        case 64: {
+            setVectorState(SEW::E64, 1);
+            as.VLE64(vec, address);
+            break;
+        }
+        case 128: {
+            setVectorState(SEW::E64, 2);
+            as.VLE64(vec, address);
+            break;
+        }
+        }
+
+        popScratch();
+
+        return vec;
+    }
+    default: {
+        UNREACHABLE();
+        return v0;
     }
     }
 }
@@ -667,6 +731,14 @@ biscuit::GPR FastRecompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
         return x0;
     }
     }
+}
+
+biscuit::Vec FastRecompiler::getRefVec(x86_ref_e ref) {
+    biscuit::Vec vec = allocatedVec(ref);
+
+    loadVec(ref, vec);
+
+    return vec;
 }
 
 void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
@@ -733,6 +805,18 @@ void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg)
     meta.loaded = true; // since the value is fresh it's as if we read it from memory
 }
 
+void FastRecompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
+    biscuit::Vec dest = allocatedVec(ref);
+
+    if (dest != vec) {
+        as.VMV(dest, vec);
+    }
+
+    RegisterMetadata& meta = getMetadata(ref);
+    meta.dirty = true;
+    meta.loaded = true; // since the value is fresh it's as if we read it from memory
+}
+
 void FastRecompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
@@ -774,6 +858,19 @@ void FastRecompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR re
     }
 }
 
+void FastRecompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
+    switch (operand->type) {
+    case ZYDIS_OPERAND_TYPE_REGISTER: {
+        x86_ref_e ref = zydisToRef(operand->reg.value);
+        setRefVec(ref, vec);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+    }
+    }
+}
+
 void FastRecompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
     RegisterMetadata& meta = getMetadata(reg);
     if (meta.loaded) {
@@ -786,27 +883,27 @@ void FastRecompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
     } else {
         switch (reg) {
         case X86_REF_CF: {
-            as.LB(gpr, offsetof(ThreadState, cf), threadStatePointer());
+            as.LBU(gpr, offsetof(ThreadState, cf), threadStatePointer());
             break;
         }
         case X86_REF_PF: {
-            as.LB(gpr, offsetof(ThreadState, pf), threadStatePointer());
+            as.LBU(gpr, offsetof(ThreadState, pf), threadStatePointer());
             break;
         }
         case X86_REF_AF: {
-            as.LB(gpr, offsetof(ThreadState, af), threadStatePointer());
+            as.LBU(gpr, offsetof(ThreadState, af), threadStatePointer());
             break;
         }
         case X86_REF_ZF: {
-            as.LB(gpr, offsetof(ThreadState, zf), threadStatePointer());
+            as.LBU(gpr, offsetof(ThreadState, zf), threadStatePointer());
             break;
         }
         case X86_REF_SF: {
-            as.LB(gpr, offsetof(ThreadState, sf), threadStatePointer());
+            as.LBU(gpr, offsetof(ThreadState, sf), threadStatePointer());
             break;
         }
         case X86_REF_OF: {
-            as.LB(gpr, offsetof(ThreadState, of), threadStatePointer());
+            as.LBU(gpr, offsetof(ThreadState, of), threadStatePointer());
             break;
         }
         default: {
@@ -815,6 +912,32 @@ void FastRecompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
         }
         }
     }
+}
+
+void FastRecompiler::loadVec(x86_ref_e reg, biscuit::Vec vec) {
+    RegisterMetadata& meta = getMetadata(reg);
+    if (meta.loaded) {
+        return;
+    }
+
+    meta.loaded = true;
+    biscuit::GPR address = scratch();
+    u64 offset = offsetof(ThreadState, xmm) + (reg - X86_REF_XMM0) * 16;
+    as.ADDI(address, threadStatePointer(), offset);
+    setVectorState(SEW::E64, max_vlen / 64);
+    as.VLE64(vec, address);
+    popScratch();
+}
+
+void FastRecompiler::setVectorState(SEW sew, int vlen) {
+    if (current_sew == sew && current_vlen == vlen) {
+        return;
+    }
+
+    current_sew = sew;
+    current_vlen = vlen;
+
+    as.VSETIVLI(x0, vlen, sew);
 }
 
 biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
