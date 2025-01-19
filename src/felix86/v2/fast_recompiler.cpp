@@ -1137,13 +1137,20 @@ void FastRecompiler::jumpAndLink(u64 rip) {
     } else {
         u64 target = (u64)map[rip].first;
         u64 offset = target - (u64)as.GetCursorPointer();
-        const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
-        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        biscuit::GPR reg = scratch();
-        as.AUIPC(reg, hi20);
-        as.ADDI(reg, reg, lo12);
-        as.JR(reg);
-        popScratch();
+
+        if (IsValidJTypeImm(offset)) {
+            as.J(offset);
+            as.NOP();
+            as.NOP();
+        } else {
+            const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+            const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+            biscuit::GPR reg = scratch();
+            as.AUIPC(reg, hi20);
+            as.ADDI(reg, reg, lo12);
+            as.JR(reg);
+            popScratch();
+        }
     }
 }
 
