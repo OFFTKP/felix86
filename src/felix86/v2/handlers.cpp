@@ -714,6 +714,37 @@ FAST_HANDLE(DEC) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
+FAST_HANDLE(LAHF) {
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR scratch = rec.scratch();
+
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR pf = rec.flag(X86_REF_PF);
+    AS.SLLI(scratch, pf, 2);
+    AS.OR(result, cf, scratch);
+
+    biscuit::GPR af = rec.flag(X86_REF_AF);
+    AS.SLLI(scratch, af, 4);
+    AS.OR(result, result, scratch);
+
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    AS.SLLI(scratch, zf, 6);
+    AS.OR(result, scratch, scratch);
+
+    biscuit::GPR sf = rec.flag(X86_REF_SF);
+    AS.SLLI(scratch, sf, 7);
+    AS.OR(result, result, scratch);
+
+    biscuit::GPR df = rec.flag(X86_REF_DF);
+    AS.SLLI(scratch, df, 10);
+
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+    AS.SLLI(scratch, of, 11);
+    AS.OR(result, result, scratch);
+
+    rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, result);
+}
+
 void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
     u64 address_false = meta.rip - meta.block_start + instruction.length;
