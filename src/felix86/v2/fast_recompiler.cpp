@@ -634,7 +634,7 @@ biscuit::GPR FastRecompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         biscuit::GPR imm = scratch();
-        as.LI(imm, operand->imm.value.u);
+        as.LI(imm, sextImmediate(operand->imm.value.u, operand->imm.size));
         return imm;
     }
     default: {
@@ -1437,4 +1437,22 @@ void FastRecompiler::setFlagUndefined(x86_ref_e ref) {
     RegisterMetadata& meta = getMetadata(ref);
     meta.loaded = false;
     meta.dirty = false;
+}
+
+void FastRecompiler::sextb(biscuit::GPR dest, biscuit::GPR src) {
+    if (Extensions::B) {
+        as.SEXTB(dest, src);
+    } else {
+        as.SLLI(dest, src, 56);
+        as.SRAI(dest, dest, 56);
+    }
+}
+
+void FastRecompiler::sexth(biscuit::GPR dest, biscuit::GPR src) {
+    if (Extensions::B) {
+        as.SEXTH(dest, src);
+    } else {
+        as.SLLI(dest, src, 48);
+        as.SRAI(dest, dest, 48);
+    }
 }

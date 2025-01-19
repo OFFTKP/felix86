@@ -121,6 +121,10 @@ struct FastRecompiler {
         return max_vlen;
     }
 
+    void sextb(biscuit::GPR dest, biscuit::GPR src);
+
+    void sexth(biscuit::GPR dest, biscuit::GPR src);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

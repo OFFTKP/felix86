@@ -879,3 +879,176 @@ FAST_HANDLE(MOVSXD) {
         UNREACHABLE(); // possible but why?
     }
 }
+
+FAST_HANDLE(IMUL) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    u8 opcount = instruction.operand_count_visible;
+    if (opcount == 1) {
+        biscuit::GPR src = rec.getOperandGPR(&operands[0]);
+        switch (size) {
+        case X86_SIZE_BYTE: {
+            biscuit::GPR result = rec.scratch();
+            biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
+            biscuit::GPR sext = rec.scratch();
+            rec.sextb(sext, al);
+            rec.sextb(result, al);
+            AS.MULW(result, sext, src);
+            rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, result);
+
+            if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+                biscuit::GPR cf = rec.flagW(X86_REF_CF);
+                biscuit::GPR of = rec.flagW(X86_REF_OF);
+                rec.sextb(cf, result);
+                AS.XOR(of, cf, result);
+                AS.SNEZ(of, of);
+                AS.MV(cf, of);
+            }
+            break;
+        }
+        case X86_SIZE_WORD: {
+            biscuit::GPR result = rec.scratch();
+            biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+            AS.MULW(result, ax, src);
+            rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, result);
+
+            if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+                biscuit::GPR cf = rec.flagW(X86_REF_CF);
+                biscuit::GPR of = rec.flagW(X86_REF_OF);
+
+                rec.sexth(cf, result);
+                AS.XOR(of, cf, result);
+                AS.SNEZ(of, of);
+                AS.MV(cf, of);
+            }
+
+            AS.SRAIW(result, result, 16);
+            rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, result);
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            biscuit::GPR result = rec.scratch();
+            biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+            AS.MUL(result, eax, src);
+            rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, result);
+
+            if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+                biscuit::GPR cf = rec.flagW(X86_REF_CF);
+                biscuit::GPR of = rec.flagW(X86_REF_OF);
+
+                AS.ADDIW(cf, result, 0);
+                AS.XOR(of, cf, result);
+                AS.SNEZ(of, of);
+                AS.MV(cf, of);
+            }
+
+            AS.SRLI(result, result, 32);
+            rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, result);
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            biscuit::GPR result = rec.scratch();
+            biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
+            AS.MULH(result, rax, src);
+            AS.MUL(rax, rax, src);
+            rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rax);
+            rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, result);
+
+            if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+                biscuit::GPR cf = rec.flagW(X86_REF_CF);
+                biscuit::GPR of = rec.flagW(X86_REF_OF);
+
+                AS.SRAI(cf, rax, 63);
+                AS.XOR(of, cf, result);
+                AS.SNEZ(of, of);
+                AS.MV(cf, of);
+            }
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+
+        rec.setFlagUndefined(X86_REF_AF);
+        rec.setFlagUndefined(X86_REF_PF);
+        rec.setFlagUndefined(X86_REF_ZF);
+        rec.setFlagUndefined(X86_REF_SF);
+    } else if (opcount == 2 || opcount == 3) {
+        biscuit::GPR dst, src1, src2;
+
+        if (opcount == 2) {
+            dst = rec.getOperandGPR(&operands[0]);
+            src1 = dst;
+            src2 = rec.getOperandGPR(&operands[1]);
+        } else {
+            dst = rec.getOperandGPR(&operands[0]);
+            src1 = rec.getOperandGPR(&operands[1]);
+            src2 = rec.getOperandGPR(&operands[2]);
+        }
+
+        switch (size) {
+        case X86_SIZE_WORD: {
+            biscuit::GPR result = rec.scratch();
+            rec.sexth(dst, src1);
+            rec.sexth(result, src2);
+            AS.MULW(result, result, dst);
+            rec.setOperandGPR(&operands[0], result);
+
+            if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+                biscuit::GPR cf = rec.flagW(X86_REF_CF);
+                biscuit::GPR of = rec.flagW(X86_REF_OF);
+                rec.sexth(cf, result);
+                AS.XOR(of, cf, result);
+                AS.SNEZ(of, of);
+                AS.MV(cf, of);
+            }
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            biscuit::GPR result = rec.scratch();
+            AS.ADDIW(dst, src1, 0);
+            AS.ADDIW(result, src2, 0);
+            AS.MUL(result, result, dst);
+            rec.setOperandGPR(&operands[0], result);
+
+            if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+                biscuit::GPR cf = rec.flagW(X86_REF_CF);
+                biscuit::GPR of = rec.flagW(X86_REF_OF);
+                AS.ADDIW(cf, result, 0);
+                AS.XOR(of, cf, result);
+                AS.SNEZ(of, of);
+                AS.MV(cf, of);
+            }
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            biscuit::GPR result = rec.scratch();
+            AS.MULH(result, src1, src2);
+            AS.MUL(dst, src1, src2);
+            rec.setOperandGPR(&operands[0], dst);
+
+            if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+                biscuit::GPR cf = rec.flagW(X86_REF_CF);
+                biscuit::GPR of = rec.flagW(X86_REF_OF);
+                AS.SRAI(cf, dst, 63);
+                AS.XOR(of, cf, result);
+                AS.SNEZ(of, of);
+                AS.MV(cf, of);
+            }
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+
+        rec.setFlagUndefined(X86_REF_AF);
+        rec.setFlagUndefined(X86_REF_PF);
+        rec.setFlagUndefined(X86_REF_ZF);
+        rec.setFlagUndefined(X86_REF_SF);
+    } else {
+        UNREACHABLE();
+    }
+}
