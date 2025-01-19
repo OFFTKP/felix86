@@ -550,6 +550,21 @@ x86_size_e FastRecompiler::getOperandSize(ZydisDecodedOperand* operand) {
             return X86_SIZE_BYTE;
         }
     }
+    case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
+        switch (operand->imm.size) {
+        case 8:
+            return X86_SIZE_BYTE;
+        case 16:
+            return X86_SIZE_WORD;
+        case 32:
+            return X86_SIZE_DWORD;
+        case 64:
+            return X86_SIZE_QWORD;
+        default:
+            UNREACHABLE();
+            return X86_SIZE_BYTE;
+        }
+    }
     default: {
         UNREACHABLE();
         return X86_SIZE_BYTE;
