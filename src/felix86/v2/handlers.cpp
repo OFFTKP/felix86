@@ -8,6 +8,8 @@
 
 #define IS_MMX (instruction.attributes & (ZYDIS_ATTRIB_FPU_STATE_CR | ZYDIS_ATTRIB_FPU_STATE_CW))
 
+#define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
+
 FAST_HANDLE(MOV) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     rec.setOperandGPR(&operands[0], src);
@@ -1558,7 +1560,7 @@ FAST_HANDLE(SQRTPD) {
 
 FAST_HANDLE(MOVSB) {
     Label loop_end, loop_body;
-    if (instruction.attributes & ZYDIS_ATTRIB_HAS_REP) {
+    if (HAS_REP) {
         rec.repPrologue(&loop_end);
         AS.Bind(&loop_body);
     }
@@ -1610,7 +1612,7 @@ FAST_HANDLE(MOVSQ) {
 
 FAST_HANDLE(STOSB) {
     Label loop_end, loop_body;
-    if (instruction.attributes & ZYDIS_ATTRIB_HAS_REP) {
+    if (HAS_REP) {
         rec.repPrologue(&loop_end);
         AS.Bind(&loop_body);
     }
@@ -1637,7 +1639,7 @@ FAST_HANDLE(STOSB) {
 
     rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
 
-    if (instruction.attributes & ZYDIS_ATTRIB_HAS_REP) {
+    if (HAS_REP) {
         rec.repEpilogue(&loop_body);
         AS.Bind(&loop_end);
     }
