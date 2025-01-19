@@ -123,6 +123,9 @@ void FastRecompiler::compileSequence(u64 rip) {
 
     current_meta = &meta;
 
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+
     while (compiling) {
         resetScratch();
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
