@@ -1592,7 +1592,7 @@ FAST_HANDLE(MOVSB) {
     rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
     rec.setRefGPR(X86_REF_RSI, X86_SIZE_QWORD, rsi);
 
-    if (instruction.attributes & ZYDIS_ATTRIB_HAS_REP) {
+    if (HAS_REP) {
         rec.repEpilogue(&loop_body);
         AS.Bind(&loop_end);
     }

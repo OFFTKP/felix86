@@ -640,7 +640,7 @@ biscuit::GPR FastRecompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         biscuit::GPR imm = scratch();
-        as.LI(imm, sextImmediate(operand->imm.value.u, operand->imm.size));
+        as.LI(imm, operand->imm.value.s);
         return imm;
     }
     default: {
