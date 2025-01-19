@@ -121,6 +121,8 @@ void FastRecompiler::compileSequence(u64 rip) {
 
     HandlerMetadata meta = {rip, rip};
 
+    current_meta = &meta;
+
     while (compiling) {
         resetScratch();
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
@@ -138,6 +140,8 @@ void FastRecompiler::compileSequence(u64 rip) {
         }
         meta.rip += instruction.length;
     }
+
+    current_meta = nullptr;
 }
 
 biscuit::GPR FastRecompiler::allocatedGPR(x86_ref_e reg) {
@@ -961,7 +965,7 @@ biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
         as.LD(address, offsetof(ThreadState, rip), threadStatePointer());
-        addi(address, address, operand->mem.disp.value);
+        addi(address, address, operand->mem.disp.value + instruction.length + current_meta->rip - current_meta->block_start);
         return address;
     }
 

@@ -203,6 +203,7 @@ private:
 
     std::unordered_map<u64, std::vector<u64>> pending_links{};
 
+    HandlerMetadata* current_meta{};
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
     u16 max_vlen = 128;
