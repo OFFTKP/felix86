@@ -129,6 +129,7 @@ FAST_HANDLE(CMP) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
         AS.SLTU(cf, dst, src);
+        printf("emit cf\n");
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -408,6 +409,7 @@ FAST_HANDLE(POP) {
     int imm = size == X86_SIZE_WORD ? 2 : 8;
     AS.ADDI(rsp, rsp, imm);
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+    rec.setOperandGPR(&operands[0], dst);
 }
 
 FAST_HANDLE(NOP) {}
