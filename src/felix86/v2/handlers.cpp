@@ -619,6 +619,71 @@ FAST_HANDLE(TEST) {
     rec.setFlagUndefined(X86_REF_AF);
 }
 
+FAST_HANDLE(INC) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    AS.ADDI(dst, dst, 1);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        biscuit::GPR af = rec.flagW(X86_REF_AF);
+        AS.ANDI(af, dst, 0xF);
+        AS.SEQZ(af, af);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        rec.zext(of, dst, size);
+        AS.SEQZ(of, of);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(dst);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(dst);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(dst, size);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(DEC) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        biscuit::GPR af = rec.flagW(X86_REF_AF);
+        AS.ANDI(af, dst, 0xF);
+        AS.SEQZ(af, af);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.SEQZ(of, dst);
+    }
+
+    AS.ADDI(dst, dst, -1);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(dst);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(dst);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(dst, size);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+}
+
 void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
     u64 address_false = meta.rip - meta.block_start + instruction.length;
@@ -695,6 +760,53 @@ FAST_HANDLE(JNP) {
     biscuit::GPR cond = rec.scratch();
     biscuit::GPR pf = rec.flag(X86_REF_PF);
     AS.XORI(cond, pf, 1);
+
+    JCC(rec, meta, instruction, operands, cond);
+}
+
+FAST_HANDLE(JNL) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR sf = rec.flag(X86_REF_SF);
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+    AS.SUB(cond, sf, of);
+    AS.SEQZ(cond, cond);
+
+    JCC(rec, meta, instruction, operands, cond);
+}
+
+FAST_HANDLE(JNLE) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR sf = rec.flag(X86_REF_SF);
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    AS.XOR(cond, sf, of);
+    AS.OR(cond, cond, zf);
+    AS.XORI(cond, cond, 1);
+
+    JCC(rec, meta, instruction, operands, cond);
+}
+
+FAST_HANDLE(JO) {
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+
+    JCC(rec, meta, instruction, operands, of);
+}
+
+FAST_HANDLE(JNO) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+    AS.XORI(cond, of, 1);
+
+    JCC(rec, meta, instruction, operands, cond);
+}
+
+FAST_HANDLE(JLE) {
+    biscuit::GPR cond = rec.scratch();
+    biscuit::GPR sf = rec.flag(X86_REF_SF);
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    AS.XOR(cond, sf, of);
+    AS.OR(cond, cond, zf);
 
     JCC(rec, meta, instruction, operands, cond);
 }
