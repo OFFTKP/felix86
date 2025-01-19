@@ -1714,3 +1714,28 @@ FAST_HANDLE(MOVHPS) {
         UNREACHABLE();
     }
 }
+
+FAST_HANDLE(SHUFPD) {
+    u8 imm = operands[2].imm.value.u;
+    biscuit::GPR temp = rec.scratch();
+    biscuit::Vec vtemp = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+
+    if ((imm & 1) == 0) {
+        AS.VMV_XS(temp, src);
+    } else {
+        AS.VSLIDEDOWN(vtemp, src, 1);
+        AS.VMV_XS(temp, vtemp);
+    }
+
+    if ((imm & 0b10) != 0) {
+        AS.VSLIDEDOWN(dst, dst, 1);
+    }
+
+    AS.VSLIDE1UP(dst, dst, temp);
+
+    rec.setOperandVec(&operands[0], dst);
+}
