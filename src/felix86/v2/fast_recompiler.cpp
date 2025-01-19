@@ -1036,6 +1036,10 @@ biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
         popScratch();
     }
 
+    if (instruction.address_width == 32) {
+        zext(address, address, X86_SIZE_DWORD);
+    }
+
     return address;
 }
 
