@@ -413,58 +413,145 @@ FAST_HANDLE(NOP) {}
 
 FAST_HANDLE(ENDBR64) {}
 
-FAST_HANDLE(SHR) {
-    x86_size_e size = rec.getOperandSize(&operands[0]);
+FAST_HANDLE(SHL) {
     biscuit::GPR result = rec.scratch();
+    x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
 
-    switch (operands[1].type) {
-    case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
-        u8 imm = operands[1].imm.value.u;
-        AS.SRLI(result, dst, imm);
-
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-            biscuit::GPR cf = rec.flagW(X86_REF_CF);
-            if (imm == 0) {
-                AS.MV(cf, x0);
-            } else {
-                AS.SRLI(cf, dst, imm - 1);
-                AS.ANDI(cf, cf, 1);
-            }
-        }
-        break;
+    if (instruction.operand_width == 64) {
+        AS.ANDI(src, src, 0x3F);
+    } else {
+        AS.ANDI(src, src, 0x1F);
     }
-    case ZYDIS_OPERAND_TYPE_REGISTER: {
-        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-        AS.SRL(result, dst, src);
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-            Label not_zero, end;
-            biscuit::GPR cf = rec.flagW(X86_REF_CF);
-            AS.SEQZ(cf, src);
-            AS.BEQZ(cf, &not_zero);
-            AS.MV(cf, x0);
-            AS.J(&end);
+    Label zero_source;
 
-            AS.Bind(&not_zero);
-            AS.ADDI(cf, src, -1);
-            AS.SRL(cf, dst, cf);
-            AS.ANDI(cf, cf, 1);
+    AS.BNEZ(src, &zero_source);
 
-            AS.Bind(&end);
-        }
-        break;
+    AS.SLL(result, dst, src);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
     }
-    default: {
-        UNREACHABLE();
-        break;
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result);
     }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.LI(cf, rec.getBitSize(size));
+        AS.SUB(cf, cf, src);
+        AS.SRL(cf, dst, cf);
+        AS.ANDI(cf, cf, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.SRLI(of, result, rec.getBitSize(size) - 1);
+        AS.ANDI(of, of, 1);
+        AS.XOR(of, of, rec.flag(X86_REF_CF));
+    }
+
+    rec.setOperandGPR(&operands[0], result);
+
+    AS.Bind(&zero_source);
+}
+
+FAST_HANDLE(SHR) {
+    biscuit::GPR result = rec.scratch();
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+
+    if (instruction.operand_width == 64) {
+        AS.ANDI(src, src, 0x3F);
+    } else {
+        AS.ANDI(src, src, 0x1F);
+    }
+
+    Label zero_source;
+
+    AS.BNEZ(src, &zero_source);
+
+    AS.SRL(result, dst, src);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.ADDI(cf, src, -1);
+        AS.SRL(cf, dst, cf);
+        AS.ANDI(cf, cf, 1);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         AS.SRLI(of, dst, rec.getBitSize(size) - 1);
         AS.ANDI(of, of, 1);
+    }
+
+    rec.setOperandGPR(&operands[0], result);
+
+    AS.Bind(&zero_source);
+}
+
+FAST_HANDLE(SAR) {
+    biscuit::GPR result = rec.scratch();
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+
+    if (instruction.operand_width == 64) {
+        AS.ANDI(src, src, 0x3F);
+    } else {
+        AS.ANDI(src, src, 0x1F);
+    }
+
+    Label zero_source;
+
+    AS.BNEZ(src, &zero_source);
+
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        AS.SLLI(result, dst, 56);
+        AS.SRAI(result, result, 56);
+        AS.SRA(result, result, src);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        AS.SLLI(result, dst, 48);
+        AS.SRAI(result, result, 48);
+        AS.SRA(result, result, src);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        AS.SRAW(result, dst, src);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        AS.SRA(result, dst, src);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -479,9 +566,21 @@ FAST_HANDLE(SHR) {
         rec.updateSign(result, size);
     }
 
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.ADDI(cf, src, -1);
+        AS.SRL(cf, dst, cf);
+        AS.ANDI(cf, cf, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.MV(of, x0);
+    }
+
     rec.setOperandGPR(&operands[0], result);
 
-    rec.setFlagUndefined(X86_REF_AF);
+    AS.Bind(&zero_source);
 }
 
 FAST_HANDLE(MOVQ) {
