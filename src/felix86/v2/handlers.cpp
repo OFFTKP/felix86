@@ -1244,7 +1244,8 @@ FAST_HANDLE(IMUL) {
     }
 }
 
-void PUNPCK(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PUNPCKL(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew,
+             u8 vlen) {
     // Essentially two "vdecompress" (viota + vrgather) instructions
     // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
     // This means we don't care to reduce the splat to only the first two elements
@@ -1286,8 +1287,20 @@ void PUNPCK(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstru
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(PUNPCKLBW) {
+    PUNPCKL(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PUNPCKLWD) {
+    PUNPCKL(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
+}
+
+FAST_HANDLE(PUNPCKLDQ) {
+    PUNPCKL(rec, meta, instruction, operands, SEW::E32, rec.maxVlen() / 32);
+}
+
 FAST_HANDLE(PUNPCKLQDQ) {
-    PUNPCK(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
+    PUNPCKL(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
 }
 
 FAST_HANDLE(MOVAPD) {
