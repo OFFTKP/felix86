@@ -1015,21 +1015,21 @@ FAST_HANDLE(JNLE) {
 }
 
 void CMOV(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
 
     if (Extensions::Xtheadcondmov) {
         AS.TH_MVNEZ(dst, src, cond);
     } else if (Extensions::Zicond) {
         biscuit::GPR tmp = rec.scratch();
-        AS.CZERO_EQZ(dst, src, cond);
         AS.CZERO_NEZ(tmp, dst, cond);
+        AS.CZERO_EQZ(dst, src, cond);
         AS.OR(dst, dst, tmp);
     } else {
-        Label true_label;
-        AS.BNEZ(cond, &true_label);
+        Label false_label;
+        AS.BEQZ(cond, &false_label);
         AS.MV(dst, src);
-        AS.Bind(&true_label);
+        AS.Bind(&false_label);
     }
 
     rec.setOperandGPR(&operands[0], dst);
