@@ -331,7 +331,7 @@ FAST_HANDLE(CALL) {
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
-        u64 displacement = (i64)(i32)operands[0].imm.value.u;
+        u64 displacement = rec.sextImmediate(operands[0].imm.value.u, rec.getOperandSize(&operands[0]));
         u64 return_offset = meta.rip - meta.block_start + instruction.length;
 
         biscuit::GPR scratch = rec.getRip();

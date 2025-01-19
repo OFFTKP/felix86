@@ -703,7 +703,8 @@ void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg)
         break;
     }
     case X86_SIZE_QWORD: {
-        as.MV(dest, reg);
+        if (dest != reg)
+            as.MV(dest, reg);
         break;
     }
     default: {
@@ -1259,8 +1260,9 @@ void FastRecompiler::addi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
     if ((i64)imm >= -2048 && (i64)imm < 2048) {
         as.ADDI(dst, src, imm);
     } else {
-        as.LI(scratch(), imm);
-        as.ADD(dst, src, scratch());
+        biscuit::GPR reg = scratch();
+        as.LI(reg, imm);
+        as.ADD(dst, src, reg);
         popScratch();
     }
 }
