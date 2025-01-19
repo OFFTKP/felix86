@@ -101,10 +101,11 @@ void* FastRecompiler::compile(u64 rip) {
 
     void* start = as.GetCursorPointer();
 
-    // A sequence of code. This is so that we can also call it recursively.
-    compileSequence(rip);
-
+    // Map it immediately so we can optimize conditional branch to self
     map[rip] = {start, (u64)as.GetCursorPointer() - (u64)start};
+
+    // A sequence of code. This is so that we can also call it recursively later.
+    compileSequence(rip);
 
     expirePendingLinks(rip);
 
@@ -1169,16 +1170,48 @@ void FastRecompiler::jumpAndLink(u64 rip) {
 }
 
 void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false) {
-    Label false_label;
-    as.BEQZ(condition, &false_label);
+    bool ok = false;
+    if (map.find(rip_true) != map.end()) {
+        auto offset_true = (u64)map[rip_true].first - (u64)as.GetCursorPointer();
+        if (IsValidBTypeImm(offset_true)) {
+            setRip(gpr_true);
+            as.BNEZ(condition, offset_true);
+            setRip(gpr_false);
+            jumpAndLink(rip_false);
+            ok = true;
+        } else if (map.find(rip_false) != map.end()) {
+            auto offset_false = (u64)map[rip_false].first - (u64)as.GetCursorPointer();
+            if (IsValidBTypeImm(offset_false)) {
+                setRip(gpr_false);
+                as.BEQZ(condition, offset_false);
+                setRip(gpr_true);
+                jumpAndLink(rip_true);
+                ok = true;
+            }
+        }
+    } else if (map.find(rip_false) != map.end()) {
+        auto offset_false = (u64)map[rip_false].first - (u64)as.GetCursorPointer();
+        if (IsValidBTypeImm(offset_false)) {
+            setRip(gpr_false);
+            as.BEQZ(condition, offset_false);
+            setRip(gpr_true);
+            jumpAndLink(rip_true);
+            ok = true;
+        }
+    }
 
-    setRip(gpr_true);
-    jumpAndLink(rip_true);
+    if (!ok) {
+        Label false_label;
+        as.BEQZ(condition, &false_label);
 
-    as.Bind(&false_label);
+        setRip(gpr_true);
+        jumpAndLink(rip_true);
 
-    setRip(gpr_false);
-    jumpAndLink(rip_false);
+        as.Bind(&false_label);
+
+        setRip(gpr_false);
+        jumpAndLink(rip_false);
+    }
 }
 
 void FastRecompiler::expirePendingLinks(u64 rip) {
