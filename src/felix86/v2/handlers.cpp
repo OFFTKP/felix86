@@ -608,7 +608,7 @@ FAST_HANDLE(MOVQ) {
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER);
 
-        if (rec.isGPR(operands[0].reg.value)) {
+        if (rec.isGPR(operands[1].reg.value)) {
             biscuit::GPR src = rec.getOperandGPR(&operands[1]);
             biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
@@ -620,6 +620,14 @@ FAST_HANDLE(MOVQ) {
             AS.VMV_SX(dst, src);
 
             rec.setOperandVec(&operands[0], dst);
+        } else if (rec.isGPR(operands[0].reg.value)) {
+            biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+            biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+            rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+            AS.VMV_XS(dst, src);
+
+            rec.setOperandGPR(&operands[0], dst);
         } else {
             biscuit::Vec dst = rec.getOperandVec(&operands[0]);
             biscuit::Vec src = rec.getOperandVec(&operands[1]);
