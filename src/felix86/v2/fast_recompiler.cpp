@@ -619,10 +619,6 @@ biscuit::GPR FastRecompiler::flagW(x86_ref_e ref) {
 biscuit::GPR FastRecompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
     biscuit::GPR gpr = allocatedGPR(ref);
 
-    if (getMetadata(ref).loaded) {
-        return gpr;
-    }
-
     loadGPR(ref, gpr);
 
     switch (size) {
@@ -697,7 +693,8 @@ void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg)
         break;
     }
     case X86_SIZE_DWORD: {
-        as.ZEXTW(dest, reg);
+        as.SLLI(dest, reg, 32);
+        as.SRLI(dest, dest, 32);
         break;
     }
     case X86_SIZE_QWORD: {
@@ -1054,7 +1051,8 @@ void FastRecompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) 
         break;
     }
     case X86_SIZE_DWORD: {
-        as.ZEXTW(dest, src);
+        as.SLLI(dest, src, 32);
+        as.SRLI(dest, dest, 32);
         break;
     }
     case X86_SIZE_QWORD: {
