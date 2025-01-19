@@ -957,7 +957,6 @@ void FastRecompiler::setVectorState(SEW sew, int vlen) {
 biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
     biscuit::GPR address = scratch();
 
-    u8 scale = 0;
     biscuit::GPR base, index;
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
@@ -971,21 +970,17 @@ biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
 
     if (operand->mem.index != ZYDIS_REGISTER_NONE) {
         index = gpr(operand->mem.index);
-        scale = operand->mem.scale;
-        if (scale != 0) {
+        u8 scale = operand->mem.scale;
+        if (scale != 1) {
             if (Extensions::B) {
                 switch (scale) {
-                case 0: {
-                    as.ADD(address, address, index);
-                    break;
-                }
-                case 1:
+                case 2:
                     as.SH1ADD(address, address, index);
                     break;
-                case 2:
+                case 4:
                     as.SH2ADD(address, address, index);
                     break;
-                case 3: {
+                case 8: {
                     as.SH3ADD(address, address, index);
                     break;
                 }
@@ -995,6 +990,20 @@ biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
                 }
                 }
             } else {
+                switch (scale) {
+                case 2:
+                    scale = 1;
+                    break;
+                case 4:
+                    scale = 2;
+                    break;
+                case 8:
+                    scale = 3;
+                    break;
+                default:
+                    UNREACHABLE();
+                    break;
+                }
                 if (operand->mem.disp.value == 0) {
                     // Can use the address register directly as there's only zero there
                     as.SLLI(address, index, scale);
