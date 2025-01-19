@@ -1289,3 +1289,9 @@ void PUNPCK(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstru
 FAST_HANDLE(PUNPCKLQDQ) {
     PUNPCK(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
 }
+
+FAST_HANDLE(MOVAPD) {
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    rec.setOperandVec(&operands[0], src);
+}
