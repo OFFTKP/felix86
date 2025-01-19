@@ -866,6 +866,17 @@ void FastRecompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec ve
         setRefVec(ref, vec);
         break;
     }
+    case ZYDIS_OPERAND_TYPE_MEMORY: {
+        switch (operand->size) {
+        case 128: {
+            biscuit::GPR address = lea(operand);
+            setVectorState(SEW::E64, 2);
+            as.VSE64(vec, address);
+            break;
+        }
+        }
+        break;
+    }
     default: {
         UNREACHABLE();
     }
@@ -946,6 +957,12 @@ biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
 
     u8 scale = 0;
     biscuit::GPR base, index;
+
+    if (operand->mem.base == ZYDIS_REGISTER_RIP) {
+        as.LD(address, offsetof(ThreadState, rip), threadStatePointer());
+        addi(address, address, operand->mem.disp.value);
+        return address;
+    }
 
     // Load displacement first
     as.LI(address, operand->mem.disp.value);
@@ -1396,6 +1413,10 @@ u64 FastRecompiler::sextImmediate(u64 imm, ZyanU8 size) {
 }
 
 void FastRecompiler::addi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
+    if (imm == 0 && dst == src) {
+        return;
+    }
+
     if ((i64)imm >= -2048 && (i64)imm < 2048) {
         as.ADDI(dst, src, imm);
     } else {
