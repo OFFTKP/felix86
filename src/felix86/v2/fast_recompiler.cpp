@@ -1189,10 +1189,12 @@ bool FastRecompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
     }
 
     for (auto& [changed, r] : flag_access_cpazso[index]) {
+        if (r > rip && !changed) {
+            return true;
+        }
+
         if (r > rip && changed) {
             return false;
-        } else if (r > rip && !changed) {
-            return true;
         }
     }
 

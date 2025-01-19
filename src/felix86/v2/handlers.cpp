@@ -866,3 +866,16 @@ FAST_HANDLE(JLE) {
 
     JCC(rec, meta, instruction, operands, cond);
 }
+
+FAST_HANDLE(MOVSXD) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+
+    if (size == X86_SIZE_QWORD) {
+        biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+        AS.ADDIW(dst, src, 0);
+        rec.setOperandGPR(&operands[0], dst);
+    } else {
+        UNREACHABLE(); // possible but why?
+    }
+}
