@@ -1566,8 +1566,9 @@ FAST_HANDLE(MOVSB) {
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
     biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
     biscuit::GPR temp = rec.scratch();
-    rec.readMemory(temp, rsi, 0, rec.zydisToSize(instruction.operand_width));
-    rec.writeMemory(temp, rdi, 0, rec.zydisToSize(instruction.operand_width));
+    u8 width = instruction.operand_width;
+    rec.readMemory(temp, rsi, 0, rec.zydisToSize(width));
+    rec.writeMemory(temp, rdi, 0, rec.zydisToSize(width));
 
     AS.LB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
 
@@ -1575,14 +1576,14 @@ FAST_HANDLE(MOVSB) {
 
     AS.BEQZ(temp, &false_label);
 
-    AS.ADDI(rdi, rdi, -8);
-    AS.ADDI(rsi, rsi, -8);
+    AS.ADDI(rdi, rdi, -width / 8);
+    AS.ADDI(rsi, rsi, -width / 8);
     AS.J(&end);
 
     AS.Bind(&false_label);
 
-    AS.ADDI(rdi, rdi, 8);
-    AS.ADDI(rsi, rsi, 8);
+    AS.ADDI(rdi, rdi, width / 8);
+    AS.ADDI(rsi, rsi, width / 8);
 
     AS.Bind(&end);
 
@@ -1614,9 +1615,10 @@ FAST_HANDLE(STOSB) {
         AS.Bind(&loop_body);
     }
 
+    u8 width = instruction.operand_width;
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
-    biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, rec.zydisToSize(instruction.operand_width));
-    rec.writeMemory(rax, rdi, 0, rec.zydisToSize(instruction.operand_width));
+    biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, rec.zydisToSize(width));
+    rec.writeMemory(rax, rdi, 0, rec.zydisToSize(width));
 
     biscuit::GPR temp = rec.scratch();
     AS.LB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
@@ -1625,12 +1627,12 @@ FAST_HANDLE(STOSB) {
 
     AS.BEQZ(temp, &false_label);
 
-    AS.ADDI(rdi, rdi, -8);
+    AS.ADDI(rdi, rdi, -width / 8);
     AS.J(&end);
 
     AS.Bind(&false_label);
 
-    AS.ADDI(rdi, rdi, 8);
+    AS.ADDI(rdi, rdi, width / 8);
     AS.Bind(&end);
 
     rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
