@@ -1062,12 +1062,16 @@ void FastRecompiler::writebackDirtyState() {
         }
     }
 
+    biscuit::GPR address = scratch();
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
         if (getMetadata(ref).dirty) {
-            ERROR("IMPLME");
+            setVectorState(SEW::E64, maxVlen() / 64);
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * 16);
+            as.VSE64(allocatedVec(ref), address);
         }
     }
+    popScratch();
 
     if (getMetadata(X86_REF_CF).dirty) {
         as.SB(allocatedGPR(X86_REF_CF), offsetof(ThreadState, cf), threadStatePointer());
