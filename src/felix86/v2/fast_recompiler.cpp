@@ -1328,7 +1328,9 @@ void FastRecompiler::jumpAndLink(u64 rip) {
         as.JR(address);
         popScratch();
 
-        pending_links[rip].push_back(link_me);
+        if (!g_dont_link) {
+            pending_links[rip].push_back(link_me);
+        }
     } else {
         u64 target = (u64)map[rip].first;
         u64 offset = target - (u64)as.GetCursorPointer();
@@ -1400,6 +1402,10 @@ void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR
 }
 
 void FastRecompiler::expirePendingLinks(u64 rip) {
+    if (g_dont_link) {
+        return;
+    }
+
     if (pending_links.find(rip) == pending_links.end()) {
         return;
     }

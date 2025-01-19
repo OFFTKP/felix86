@@ -24,6 +24,7 @@ bool g_print_disassembly = false;
 bool g_cache_functions = false;
 bool g_preload = false;
 bool g_coalesce = true;
+bool g_dont_link = false;
 bool g_extensions_manually_specified = false;
 bool g_include_comments = false;
 bool g_graph_coloring = false;
@@ -166,6 +167,12 @@ void initialize_globals() {
     if (is_truthy(dont_coalesce_env)) {
         g_coalesce = false;
         environment += "\nFELIX86_NO_COALESCE";
+    }
+
+    const char* dont_link_env = getenv("FELIX86_NO_LINK");
+    if (is_truthy(dont_link_env)) {
+        g_dont_link = true;
+        environment += "\nFELIX86_NO_LINK";
     }
 
     const char* graph_coloring_env = getenv("FELIX86_GRAPH_COLORING");
