@@ -1243,3 +1243,49 @@ FAST_HANDLE(IMUL) {
         UNREACHABLE();
     }
 }
+
+void PUNPCK(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    // Essentially two "vdecompress" (viota + vrgather) instructions
+    // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
+    // This means we don't care to reduce the splat to only the first two elements
+    // Doing iota with these masks essentially creates something like
+    // [3 3 2 2 1 1 0 0] and [4 3 3 2 2 1 1 0]
+    // And the gather itself is also masked
+    // So for the reg it picks:
+    // [h g f e d c b a]
+    // [4 3 3 2 2 1 1 0]
+    // [0 1 0 1 0 1 0 1]
+    // [x d x c x b x a]
+    // And for the rm it picks:
+    // [p o n m l k j i]
+    // [3 3 2 2 1 1 0 0]
+    // [1 0 1 0 1 0 1 0]
+    // [l x k x j x i x]
+    // Which is the correct interleaving of the two vectors
+    // [h g f e d c b a]
+    // [p o n m l k j i]
+    // -----------------
+    // [l d k c j b i a]
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    AS.LI(mask, 0b10101010);
+
+    rec.setVectorState(sew, vlen);
+    AS.VMV(v0, mask);
+    AS.VIOTA(iota, v0);
+    AS.VMV(result, 0);
+    AS.VRGATHER(result, src, iota, VecMask::Yes);
+
+    AS.VSRL(v0, v0, 1);
+    AS.VIOTA(iota, v0);
+    AS.VRGATHER(result, dst, iota, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(PUNPCKLQDQ) {
+    PUNPCK(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
+}
