@@ -1348,25 +1348,31 @@ FAST_HANDLE(PUNPCKLQDQ) {
 
 FAST_HANDLE(MOVAPD) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     rec.setOperandVec(&operands[0], src);
 }
 
 FAST_HANDLE(MOVAPS) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     rec.setOperandVec(&operands[0], src);
 }
 
 FAST_HANDLE(MOVUPD) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     rec.setOperandVec(&operands[0], src);
 }
 
 FAST_HANDLE(MOVUPS) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    rec.setOperandVec(&operands[0], src);
+}
+
+FAST_HANDLE(MOVDQA) {
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setOperandVec(&operands[0], src);
+}
+
+FAST_HANDLE(MOVDQU) {
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setOperandVec(&operands[0], src);
 }
 
