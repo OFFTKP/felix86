@@ -693,8 +693,12 @@ void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg)
         break;
     }
     case X86_SIZE_DWORD: {
-        as.SLLI(dest, reg, 32);
-        as.SRLI(dest, dest, 32);
+        if (Extensions::B) {
+            as.ZEXTW(dest, reg);
+        } else {
+            as.SLLI(dest, reg, 32);
+            as.SRLI(dest, dest, 32);
+        }
         break;
     }
     case X86_SIZE_QWORD: {
@@ -1051,8 +1055,12 @@ void FastRecompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) 
         break;
     }
     case X86_SIZE_DWORD: {
-        as.SLLI(dest, src, 32);
-        as.SRLI(dest, dest, 32);
+        if (Extensions::B) {
+            as.ZEXTW(dest, src);
+        } else {
+            as.SLLI(dest, src, 32);
+            as.SRLI(dest, dest, 32);
+        }
         break;
     }
     case X86_SIZE_QWORD: {

@@ -515,7 +515,7 @@ FAST_HANDLE(DIV) {
     }
     case X86_SIZE_DWORD: {
         biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
-        biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_DWORD);
+        biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
         AS.SLLI(edx, edx, 32);
         AS.OR(edx, edx, eax);
 
