@@ -1555,3 +1555,54 @@ FAST_HANDLE(SQRTPD) {
     AS.VFSQRT(dst, src);
     rec.setOperandVec(&operands[0], dst);
 }
+
+FAST_HANDLE(MOVSB) {
+    Label loop_end, loop_body;
+    if (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP)) {
+        rec.repPrologue(&loop_end);
+        AS.Bind(&loop_body);
+    }
+
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
+    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
+    biscuit::GPR temp = rec.scratch();
+    rec.readMemory(temp, rsi, 0, rec.zydisToSize(instruction.operand_width));
+    rec.writeMemory(temp, rdi, 0, rec.zydisToSize(instruction.operand_width));
+
+    AS.LB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
+
+    Label end, false_label;
+
+    AS.BEQZ(temp, &false_label);
+
+    AS.ADDI(rdi, rdi, -8);
+    AS.ADDI(rsi, rsi, -8);
+    AS.J(&end);
+
+    AS.Bind(&false_label);
+
+    AS.ADDI(rdi, rdi, 8);
+    AS.ADDI(rsi, rsi, 8);
+
+    AS.Bind(&end);
+
+    rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
+    rec.setRefGPR(X86_REF_RSI, X86_SIZE_QWORD, rsi);
+
+    if (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP)) {
+        rec.repEpilogue(&loop_body);
+        AS.Bind(&loop_end);
+    }
+}
+
+FAST_HANDLE(MOVSW) {
+    fast_MOVSB(rec, meta, instruction, operands);
+}
+
+FAST_HANDLE(MOVSD) {
+    fast_MOVSB(rec, meta, instruction, operands);
+}
+
+FAST_HANDLE(MOVSQ) {
+    fast_MOVSB(rec, meta, instruction, operands);
+}

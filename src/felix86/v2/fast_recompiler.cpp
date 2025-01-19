@@ -1562,4 +1562,87 @@ biscuit::GPR FastRecompiler::getCond(int cond) {
         return cond;
     }
     }
+
+    UNREACHABLE();
+    return x0;
+}
+
+void FastRecompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        as.LBU(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        as.LHU(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.LWU(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        as.LD(dest, offset, address);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+}
+
+void FastRecompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        as.SB(src, offset, address);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        as.SH(src, offset, address);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.SW(src, offset, address);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        as.SD(src, offset, address);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+}
+
+x86_size_e FastRecompiler::zydisToSize(ZyanU8 size) {
+    switch (size) {
+    case 8:
+        return X86_SIZE_BYTE;
+    case 16:
+        return X86_SIZE_WORD;
+    case 32:
+        return X86_SIZE_DWORD;
+    case 64:
+        return X86_SIZE_QWORD;
+    case 128:
+        return X86_SIZE_XMM;
+    default:
+        UNREACHABLE();
+        return X86_SIZE_BYTE;
+    }
+}
+
+void FastRecompiler::repPrologue(Label* loop_end) {
+    biscuit::GPR rcx = getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    as.BEQZ(rcx, loop_end);
+}
+
+void FastRecompiler::repEpilogue(Label* loop_body) {
+    biscuit::GPR rcx = getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    as.ADDI(rcx, rcx, -1);
+    setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
+    as.BNEZ(rcx, loop_body);
 }

@@ -110,6 +110,8 @@ struct FastRecompiler {
 
     x86_size_e zydisToSize(ZydisRegister reg);
 
+    x86_size_e zydisToSize(ZyanU8 size);
+
     // Get the allocated register for the given register reference
     biscuit::GPR allocatedGPR(x86_ref_e reg);
 
@@ -126,6 +128,14 @@ struct FastRecompiler {
     void sexth(biscuit::GPR dest, biscuit::GPR src);
 
     biscuit::GPR getCond(int cond);
+
+    void readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
+
+    void writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
+
+    void repPrologue(Label* loop_end);
+
+    void repEpilogue(Label* loop_body);
 
 private:
     struct RegisterMetadata {
