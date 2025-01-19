@@ -735,8 +735,8 @@ FAST_HANDLE(LAHF) {
     AS.SLLI(scratch, sf, 7);
     AS.OR(result, result, scratch);
 
-    biscuit::GPR df = rec.flag(X86_REF_DF);
-    AS.SLLI(scratch, df, 10);
+    AS.LBU(scratch, offsetof(ThreadState, df), rec.threadStatePointer());
+    AS.SLLI(scratch, scratch, 10);
 
     biscuit::GPR of = rec.flag(X86_REF_OF);
     AS.SLLI(scratch, of, 11);

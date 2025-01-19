@@ -208,9 +208,6 @@ biscuit::GPR FastRecompiler::allocatedGPR(x86_ref_e reg) {
     case X86_REF_OF: {
         return biscuit::x26;
     }
-    case X86_REF_DF: {
-        return scratch();
-    }
     default: {
         UNREACHABLE();
         return x0;
@@ -919,10 +916,6 @@ void FastRecompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
         }
         case X86_REF_OF: {
             as.LBU(gpr, offsetof(ThreadState, of), threadStatePointer());
-            break;
-        }
-        case X86_REF_DF: {
-            as.LBU(gpr, offsetof(ThreadState, df), threadStatePointer());
             break;
         }
         default: {
