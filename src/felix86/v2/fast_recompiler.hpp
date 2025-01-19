@@ -125,6 +125,8 @@ struct FastRecompiler {
 
     void sexth(biscuit::GPR dest, biscuit::GPR src);
 
+    biscuit::GPR getCond(int cond);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

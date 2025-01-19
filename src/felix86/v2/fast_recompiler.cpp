@@ -1479,3 +1479,81 @@ void FastRecompiler::sexth(biscuit::GPR dest, biscuit::GPR src) {
         as.SRAI(dest, dest, 48);
     }
 }
+
+biscuit::GPR FastRecompiler::getCond(int cond) {
+    switch (cond & 0xF) {
+    case 0:
+        return flag(X86_REF_OF);
+    case 1: {
+        biscuit::GPR of = scratch();
+        as.XORI(of, flag(X86_REF_OF), 1);
+        return of;
+    }
+    case 2:
+        return flag(X86_REF_CF);
+    case 3: {
+        biscuit::GPR cf = scratch();
+        as.XORI(cf, flag(X86_REF_CF), 1);
+        return cf;
+    }
+    case 4:
+        return flag(X86_REF_ZF);
+    case 5: {
+        biscuit::GPR zf = scratch();
+        as.XORI(zf, flag(X86_REF_ZF), 1);
+        return zf;
+    }
+    case 6: {
+        biscuit::GPR cond = scratch();
+        as.OR(cond, flag(X86_REF_CF), flag(X86_REF_ZF));
+        return cond;
+    }
+    case 7: {
+        biscuit::GPR cond = scratch();
+        biscuit::GPR temp = scratch();
+        as.XORI(cond, flag(X86_REF_CF), 1);
+        as.XORI(temp, flag(X86_REF_ZF), 1);
+        as.AND(cond, cond, temp);
+        popScratch();
+        return cond;
+    }
+    case 8:
+        return flag(X86_REF_SF);
+    case 9: {
+        biscuit::GPR sf = scratch();
+        as.XORI(sf, flag(X86_REF_SF), 1);
+        return sf;
+    }
+    case 10:
+        return flag(X86_REF_PF);
+    case 11: {
+        biscuit::GPR pf = scratch();
+        as.XORI(pf, flag(X86_REF_PF), 1);
+        return pf;
+    }
+    case 12: {
+        biscuit::GPR cond = scratch();
+        as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
+        return cond;
+    }
+    case 13: {
+        biscuit::GPR cond = scratch();
+        as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
+        as.XORI(cond, cond, 1);
+        return cond;
+    }
+    case 14: {
+        biscuit::GPR cond = scratch();
+        as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
+        as.OR(cond, cond, flag(X86_REF_ZF));
+        return cond;
+    }
+    case 15: {
+        biscuit::GPR cond = scratch();
+        as.XOR(cond, flag(X86_REF_SF), flag(X86_REF_OF));
+        as.OR(cond, cond, flag(X86_REF_ZF));
+        as.XORI(cond, cond, 1);
+        return cond;
+    }
+    }
+}

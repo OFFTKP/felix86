@@ -950,112 +950,153 @@ void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstructi
     rec.stopCompiling();
 }
 
-FAST_HANDLE(JBE) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
-    biscuit::GPR zf = rec.flag(X86_REF_ZF);
-    AS.OR(cond, cf, zf);
-
-    JCC(rec, meta, instruction, operands, cond);
-}
-
-FAST_HANDLE(JNBE) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
-    biscuit::GPR zf = rec.flag(X86_REF_ZF);
-    AS.OR(cond, cf, zf);
-    AS.XORI(cond, cond, 1);
-
-    JCC(rec, meta, instruction, operands, cond);
-}
-
-FAST_HANDLE(JNZ) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR zf = rec.flag(X86_REF_ZF);
-    AS.XORI(cond, zf, 1);
-
-    JCC(rec, meta, instruction, operands, cond);
-}
-
-FAST_HANDLE(JZ) {
-    biscuit::GPR zf = rec.flag(X86_REF_ZF);
-
-    JCC(rec, meta, instruction, operands, zf);
-}
-
-FAST_HANDLE(JB) {
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
-
-    JCC(rec, meta, instruction, operands, cf);
-}
-
-FAST_HANDLE(JNB) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
-    AS.XORI(cond, cf, 1);
-
-    JCC(rec, meta, instruction, operands, cond);
-}
-
-FAST_HANDLE(JP) {
-    biscuit::GPR pf = rec.flag(X86_REF_PF);
-
-    JCC(rec, meta, instruction, operands, pf);
-}
-
-FAST_HANDLE(JNP) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR pf = rec.flag(X86_REF_PF);
-    AS.XORI(cond, pf, 1);
-
-    JCC(rec, meta, instruction, operands, cond);
-}
-
-FAST_HANDLE(JNL) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR sf = rec.flag(X86_REF_SF);
-    biscuit::GPR of = rec.flag(X86_REF_OF);
-    AS.SUB(cond, sf, of);
-    AS.SEQZ(cond, cond);
-
-    JCC(rec, meta, instruction, operands, cond);
-}
-
-FAST_HANDLE(JNLE) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR sf = rec.flag(X86_REF_SF);
-    biscuit::GPR of = rec.flag(X86_REF_OF);
-    biscuit::GPR zf = rec.flag(X86_REF_ZF);
-    AS.XOR(cond, sf, of);
-    AS.OR(cond, cond, zf);
-    AS.XORI(cond, cond, 1);
-
-    JCC(rec, meta, instruction, operands, cond);
-}
-
 FAST_HANDLE(JO) {
-    biscuit::GPR of = rec.flag(X86_REF_OF);
-
-    JCC(rec, meta, instruction, operands, of);
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
 }
 
 FAST_HANDLE(JNO) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR of = rec.flag(X86_REF_OF);
-    AS.XORI(cond, of, 1);
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
 
-    JCC(rec, meta, instruction, operands, cond);
+FAST_HANDLE(JB) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JNB) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JZ) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JNZ) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JBE) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JNBE) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JP) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JNP) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JS) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JNS) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JL) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(JNL) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
 }
 
 FAST_HANDLE(JLE) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR sf = rec.flag(X86_REF_SF);
-    biscuit::GPR of = rec.flag(X86_REF_OF);
-    biscuit::GPR zf = rec.flag(X86_REF_ZF);
-    AS.XOR(cond, sf, of);
-    AS.OR(cond, cond, zf);
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
 
-    JCC(rec, meta, instruction, operands, cond);
+FAST_HANDLE(JNLE) {
+    JCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+void CMOV(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    if (Extensions::Xtheadcondmov) {
+        AS.TH_MVNEZ(dst, src, cond);
+    } else if (Extensions::Zicond) {
+        biscuit::GPR tmp = rec.scratch();
+        AS.CZERO_EQZ(dst, src, cond);
+        AS.CZERO_NEZ(tmp, dst, cond);
+        AS.OR(dst, dst, tmp);
+    } else {
+        Label true_label;
+        AS.BNEZ(cond, &true_label);
+        AS.MV(dst, src);
+        AS.Bind(&true_label);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(CMOVO) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVNO) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVB) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVNB) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVZ) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVNZ) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVBE) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVNBE) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVP) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVNP) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVS) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVNS) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVL) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVNL) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVLE) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(CMOVNLE) {
+    CMOV(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
 }
 
 FAST_HANDLE(MOVSXD) {
