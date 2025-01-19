@@ -1334,3 +1334,29 @@ FAST_HANDLE(RDTSC) {
     AS.SRLI(tsc, tsc, 32);
     rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, tsc);
 }
+
+FAST_HANDLE(CPUID) {
+    rec.writebackDirtyState();
+
+    biscuit::GPR address = rec.scratch();
+    AS.LD(address, offsetof(ThreadState, cpuid_handler), rec.threadStatePointer());
+    AS.MV(a0, rec.threadStatePointer());
+    AS.JALR(address);
+}
+
+FAST_HANDLE(SYSCALL) {
+    rec.writebackDirtyState();
+
+    biscuit::GPR address = rec.scratch();
+    AS.LD(address, offsetof(ThreadState, syscall_handler), rec.threadStatePointer());
+    AS.MV(a0, rec.threadStatePointer());
+    AS.JALR(address);
+}
+
+FAST_HANDLE(MOVZX) {
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    x86_size_e size = rec.getOperandSize(&operands[1]);
+    rec.zext(result, src, size);
+    rec.setOperandGPR(&operands[0], result);
+}
