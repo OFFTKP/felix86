@@ -190,9 +190,10 @@ int main(int argc, char* argv[]) {
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
 
     u8 data[] = {
-        0x48,
-        0xf7,
-        0xf6,
+        0x4c,
+        0x8d,
+        0x14,
+        0x82,
     };
 
     ZydisDecodedInstruction instruction;
@@ -201,7 +202,7 @@ int main(int argc, char* argv[]) {
     ASSERT(ZYAN_SUCCESS(status));
 
     printf("operand count: %d\n", instruction.operand_count_visible);
-    printf("op 0: %d\n", operands[0].reg.value);
+    printf("op 0: %d\n", operands[1].mem.scale);
 #endif
 
     Config config = {};

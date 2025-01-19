@@ -975,13 +975,13 @@ biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
             if (Extensions::B) {
                 switch (scale) {
                 case 2:
-                    as.SH1ADD(address, address, index);
+                    as.SH1ADD(address, index, address);
                     break;
                 case 4:
-                    as.SH2ADD(address, address, index);
+                    as.SH2ADD(address, index, address);
                     break;
                 case 8: {
-                    as.SH3ADD(address, address, index);
+                    as.SH3ADD(address, index, address);
                     break;
                 }
                 default: {
