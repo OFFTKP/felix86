@@ -837,6 +837,29 @@ FAST_HANDLE(LAHF) {
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, result);
 }
 
+FAST_HANDLE(SAHF) {
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    biscuit::GPR pf = rec.flagW(X86_REF_PF);
+    biscuit::GPR af = rec.flagW(X86_REF_AF);
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+    biscuit::GPR sf = rec.flagW(X86_REF_SF);
+    biscuit::GPR ah = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH);
+
+    AS.ANDI(cf, ah, 1);
+
+    AS.SRLI(pf, ah, 2);
+    AS.ANDI(pf, pf, 1);
+
+    AS.SRLI(af, ah, 4);
+    AS.ANDI(af, af, 1);
+
+    AS.SRLI(zf, ah, 6);
+    AS.ANDI(zf, zf, 1);
+
+    AS.SRLI(sf, ah, 7);
+    AS.ANDI(sf, sf, 1);
+}
+
 FAST_HANDLE(XCHG) {
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
