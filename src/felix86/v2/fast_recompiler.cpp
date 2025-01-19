@@ -887,6 +887,18 @@ void FastRecompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec ve
             as.VSE64(vec, address);
             break;
         }
+        case 64: {
+            biscuit::GPR address = lea(operand);
+            setVectorState(SEW::E64, 1);
+            as.VSE64(vec, address);
+            break;
+        }
+        case 32: {
+            biscuit::GPR address = lea(operand);
+            setVectorState(SEW::E32, 1);
+            as.VSE32(vec, address);
+            break;
+        }
         }
         break;
     }
