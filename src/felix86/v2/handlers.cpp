@@ -491,42 +491,39 @@ FAST_HANDLE(DIV) {
     switch (size) {
     case X86_SIZE_BYTE: {
         biscuit::GPR mod = rec.scratch();
-        biscuit::GPR div = rec.scratch();
         biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
 
-        AS.DIVUW(div, ax, src);
         AS.REMUW(mod, ax, src);
+        AS.DIVUW(ax, ax, src);
 
-        rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE, div);
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE, ax);
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, mod);
         break;
     }
     case X86_SIZE_WORD: {
-        biscuit::GPR scratch = rec.scratch();
         biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
         biscuit::GPR dx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_WORD);
         AS.SLLIW(dx, dx, 16);
         AS.OR(dx, dx, ax);
 
         AS.DIVUW(ax, dx, src);
-        AS.REMUW(scratch, dx, src);
+        AS.REMUW(dx, dx, src);
 
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
-        rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, scratch);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, dx);
         break;
     }
     case X86_SIZE_DWORD: {
-        biscuit::GPR scratch = rec.scratch();
         biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
         biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_DWORD);
         AS.SLLI(edx, edx, 32);
         AS.OR(edx, edx, eax);
 
         AS.DIVU(eax, edx, src);
-        AS.REMU(scratch, edx, src);
+        AS.REMU(edx, edx, src);
 
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, eax);
-        rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, scratch);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
         break;
     }
     case X86_SIZE_QWORD: {

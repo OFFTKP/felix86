@@ -1139,7 +1139,12 @@ void FastRecompiler::jumpAndLink(u64 rip) {
         u64 offset = target - (u64)as.GetCursorPointer();
 
         if (IsValidJTypeImm(offset)) {
-            as.J(offset);
+            if (offset != 3 * 4) {
+                as.J(offset);
+            } else {
+                WARN("INLINE JUM");
+                as.NOP(); // offset is just ahead, inline it
+            }
             as.NOP();
             as.NOP();
         } else {
