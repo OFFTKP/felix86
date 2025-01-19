@@ -427,7 +427,7 @@ FAST_HANDLE(SHL) {
 
     Label zero_source;
 
-    AS.BNEZ(src, &zero_source);
+    AS.BEQZ(src, &zero_source);
 
     AS.SLL(result, dst, src);
 
@@ -477,7 +477,7 @@ FAST_HANDLE(SHR) {
 
     Label zero_source;
 
-    AS.BNEZ(src, &zero_source);
+    AS.BEQZ(src, &zero_source);
 
     AS.SRL(result, dst, src);
 
@@ -525,7 +525,7 @@ FAST_HANDLE(SAR) {
 
     Label zero_source;
 
-    AS.BNEZ(src, &zero_source);
+    AS.BEQZ(src, &zero_source);
 
     switch (size) {
     case X86_SIZE_BYTE: {
