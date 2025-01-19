@@ -275,15 +275,17 @@ biscuit::Vec FastRecompiler::allocatedVec(x86_ref_e reg) {
 biscuit::GPR FastRecompiler::scratch() {
     switch (scratch_index++) {
     case 0:
-        return x28;
+        return x1;
     case 1:
-        return x29;
+        return x28;
     case 2:
-        return x30;
+        return x29;
     case 3:
+        return x30;
+    case 4:
         return x31;
     default:
-        ERROR("Tried to use more than 4 scratch registers");
+        ERROR("Tried to use more than 5 scratch registers");
         return x0;
     }
 }
