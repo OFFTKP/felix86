@@ -1646,3 +1646,18 @@ void FastRecompiler::repEpilogue(Label* loop_body) {
     setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
     as.BNEZ(rcx, loop_body);
 }
+
+void FastRecompiler::repzEpilogue(Label* loop_body, bool is_repz) {
+    biscuit::GPR rcx = getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    as.ADDI(rcx, rcx, -1);
+    setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
+    as.BNEZ(rcx, loop_body);
+
+    if (is_repz) {
+        biscuit::GPR zf = flag(X86_REF_ZF);
+        as.BNEZ(zf, loop_body);
+    } else {
+        biscuit::GPR zf = flag(X86_REF_ZF);
+        as.BEQZ(zf, loop_body);
+    }
+}

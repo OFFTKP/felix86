@@ -137,6 +137,8 @@ struct FastRecompiler {
 
     void repEpilogue(Label* loop_body);
 
+    void repzEpilogue(Label* loop_body, bool is_repz);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
