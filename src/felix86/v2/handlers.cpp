@@ -767,6 +767,28 @@ FAST_HANDLE(CDQE) {
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, eax);
 }
 
+FAST_HANDLE(CWD) {
+    biscuit::GPR sext = rec.scratch();
+    biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+    rec.sexth(sext, ax);
+    AS.SRLI(sext, sext, 16);
+    rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, sext);
+}
+
+FAST_HANDLE(CDQ) {
+    biscuit::GPR sext = rec.scratch();
+    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+    AS.SRAIW(sext, eax, 31);
+    rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, sext);
+}
+
+FAST_HANDLE(CQO) {
+    biscuit::GPR sext = rec.scratch();
+    biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
+    AS.SRAI(sext, rax, 63);
+    rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, sext);
+}
+
 void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
     u64 address_false = meta.rip - meta.block_start + instruction.length;
