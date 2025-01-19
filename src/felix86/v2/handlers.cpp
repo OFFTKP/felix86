@@ -486,9 +486,7 @@ FAST_HANDLE(SHR) {
 }
 
 FAST_HANDLE(MOVQ) {
-    ASSERT(!IS_MMX);
-
-    if (instruction.attributes & ZYDIS_ATTRIB_XMM_STATE_CW) {
+    if (instruction.opcode == 0x6E) {
         biscuit::GPR src = rec.getOperandGPR(&operands[1]);
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
@@ -500,7 +498,7 @@ FAST_HANDLE(MOVQ) {
         AS.VMV_SX(dst, src);
 
         rec.setOperandVec(&operands[0], dst);
-    } else if (instruction.attributes & ZYDIS_ATTRIB_XMM_STATE_CR) {
+    } else if (instruction.opcode == 0x7E) {
         biscuit::GPR dst = rec.scratch();
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
