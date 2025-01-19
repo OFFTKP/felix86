@@ -871,6 +871,26 @@ FAST_HANDLE(XCHG) {
     rec.setOperandGPR(&operands[0], temp);
 }
 
+FAST_HANDLE(CLD) {
+    AS.SB(x0, offsetof(ThreadState, df), rec.threadStatePointer());
+}
+
+FAST_HANDLE(STD) {
+    biscuit::GPR df = rec.scratch();
+    AS.LI(df, 1);
+    AS.SB(df, offsetof(ThreadState, df), rec.threadStatePointer());
+}
+
+FAST_HANDLE(CLC) {
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    AS.MV(cf, x0);
+}
+
+FAST_HANDLE(STC) {
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    AS.LI(cf, 1);
+}
+
 FAST_HANDLE(CBW) {
     biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
     rec.sextb(al, al);
