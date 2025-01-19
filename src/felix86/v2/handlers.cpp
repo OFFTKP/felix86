@@ -380,14 +380,13 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(PUSH) {
-    x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
-    int imm = size == X86_SIZE_WORD ? -2 : -8;
+    int imm = instruction.operand_width == 16 ? -2 : -8;
     AS.ADDI(rsp, rsp, imm);
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
 
-    if (size == X86_SIZE_WORD) {
+    if (instruction.operand_width == 16) {
         AS.SH(src, 0, rsp);
     } else {
         AS.SD(src, 0, rsp);
@@ -395,17 +394,16 @@ FAST_HANDLE(PUSH) {
 }
 
 FAST_HANDLE(POP) {
-    x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
 
-    if (size == X86_SIZE_WORD) {
+    if (instruction.operand_width == 16) {
         AS.LHU(dst, 0, rsp);
     } else {
         AS.LD(dst, 0, rsp);
     }
 
-    int imm = size == X86_SIZE_WORD ? 2 : 8;
+    int imm = instruction.operand_width == 16 ? 2 : 8;
     AS.ADDI(rsp, rsp, imm);
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
     rec.setOperandGPR(&operands[0], dst);
