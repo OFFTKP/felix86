@@ -749,6 +749,24 @@ FAST_HANDLE(XCHG) {
     rec.setOperandGPR(&operands[0], temp);
 }
 
+FAST_HANDLE(CBW) {
+    biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
+    rec.sextb(al, al);
+    rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, al);
+}
+
+FAST_HANDLE(CWDE) {
+    biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+    rec.sexth(ax, ax);
+    rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, ax);
+}
+
+FAST_HANDLE(CDQE) {
+    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+    AS.ADDIW(eax, eax, 0);
+    rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, eax);
+}
+
 void JCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(operands[0].imm.value.u, operands[0].imm.size);
     u64 address_false = meta.rip - meta.block_start + instruction.length;
