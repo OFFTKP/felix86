@@ -129,7 +129,6 @@ FAST_HANDLE(CMP) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
         AS.SLTU(cf, dst, src);
-        printf("emit cf\n");
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -731,7 +730,7 @@ FAST_HANDLE(LAHF) {
 
     biscuit::GPR zf = rec.flag(X86_REF_ZF);
     AS.SLLI(scratch, zf, 6);
-    AS.OR(result, scratch, scratch);
+    AS.OR(result, result, scratch);
 
     biscuit::GPR sf = rec.flag(X86_REF_SF);
     AS.SLLI(scratch, sf, 7);
