@@ -200,13 +200,44 @@ FAST_HANDLE(OR) {
 }
 
 FAST_HANDLE(XOR) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+
+    // Optimize this common case since xor is used to zero out a register frequently
+    if ((size == X86_SIZE_DWORD || size == X86_SIZE_QWORD) && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+        operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value == operands[1].reg.value) {
+        rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, x0);
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            AS.MV(cf, x0);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+            rec.updateParity(x0);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+            rec.updateZero(x0);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+            rec.updateSign(x0, size);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+            AS.MV(of, x0);
+        }
+
+        rec.setFlagUndefined(X86_REF_AF);
+        return;
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     AS.XOR(result, dst, src);
-
-    x86_size_e size = rec.getOperandSize(&operands[0]);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);

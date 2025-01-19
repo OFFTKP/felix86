@@ -91,6 +91,10 @@ struct FastRecompiler {
 
     void setFlagUndefined(x86_ref_e ref);
 
+    x86_ref_e zydisToRef(ZydisRegister reg);
+
+    x86_size_e zydisToSize(ZydisRegister reg);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -110,10 +114,6 @@ private:
     biscuit::GPR gpr(ZydisRegister reg);
 
     biscuit::Vec vec(ZydisRegister reg);
-
-    x86_ref_e zydisToRef(ZydisRegister reg);
-
-    x86_size_e zydisToSize(ZydisRegister reg);
 
     // Get the allocated register for the given register reference
     biscuit::GPR allocatedGPR(x86_ref_e reg);
