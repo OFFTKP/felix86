@@ -734,13 +734,7 @@ FAST_HANDLE(LAHF) {
     biscuit::GPR sf = rec.flag(X86_REF_SF);
     AS.SLLI(scratch, sf, 7);
     AS.OR(result, result, scratch);
-
-    AS.LBU(scratch, offsetof(ThreadState, df), rec.threadStatePointer());
-    AS.SLLI(scratch, scratch, 10);
-
-    biscuit::GPR of = rec.flag(X86_REF_OF);
-    AS.SLLI(scratch, of, 11);
-    AS.OR(result, result, scratch);
+    AS.ORI(result, result, 0b10); // bit 1 is always set
 
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, result);
 }
