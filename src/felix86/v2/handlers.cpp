@@ -11,7 +11,7 @@
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
 FAST_HANDLE(MOV) {
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
     rec.setOperandGPR(&operands[0], src);
 }
 
@@ -169,12 +169,13 @@ FAST_HANDLE(CMP) {
 
 FAST_HANDLE(OR) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
 
     AS.OR(result, dst, src);
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
+    rec.zext(result, result, size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
@@ -238,10 +239,11 @@ FAST_HANDLE(XOR) {
     }
 
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
 
     AS.XOR(result, dst, src);
+    rec.zext(result, result, size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
@@ -272,12 +274,13 @@ FAST_HANDLE(XOR) {
 
 FAST_HANDLE(AND) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
 
     AS.AND(result, dst, src);
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
+    rec.zext(result, result, size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
@@ -744,8 +747,9 @@ FAST_HANDLE(DIV) {
 
 FAST_HANDLE(TEST) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
 
     if (dst == src) {
         result = dst;
@@ -754,6 +758,7 @@ FAST_HANDLE(TEST) {
     }
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
+    rec.zext(result, result, size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);

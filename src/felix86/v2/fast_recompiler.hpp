@@ -38,7 +38,7 @@ struct FastRecompiler {
 
     biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
 
-    biscuit::GPR getOperandGPRDontLoad(ZydisDecodedOperand* operand);
+    biscuit::GPR getOperandGPRDontZext(ZydisDecodedOperand* operand);
 
     x86_size_e getOperandSize(ZydisDecodedOperand* operand);
 
