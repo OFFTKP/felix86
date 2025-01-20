@@ -1824,26 +1824,24 @@ FAST_HANDLE(SETNLE) {
 }
 
 FAST_HANDLE(NOT) {
-    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
-    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
-    AS.NOT(dst, src);
+    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
+    AS.NOT(dst, dst);
     rec.setOperandGPR(&operands[0], dst);
 }
 
 FAST_HANDLE(NEG) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
     if (size == X86_SIZE_BYTE) {
-        rec.sextb(dst, src);
+        rec.sextb(dst, dst);
         AS.NEG(dst, dst);
     } else if (size == X86_SIZE_WORD) {
-        rec.sexth(dst, src);
+        rec.sexth(dst, dst);
         AS.NEG(dst, dst);
     } else if (size == X86_SIZE_DWORD) {
-        AS.SUBW(dst, x0, src);
+        AS.SUBW(dst, x0, dst);
     } else if (size == X86_SIZE_QWORD) {
-        AS.NEG(dst, src);
+        AS.NEG(dst, dst);
     } else {
         UNREACHABLE();
     }
