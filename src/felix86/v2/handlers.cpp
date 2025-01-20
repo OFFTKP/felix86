@@ -2542,3 +2542,15 @@ FAST_HANDLE(PSRLQ) {
     }
     rec.setOperandVec(&operands[0], dst);
 }
+
+FAST_HANDLE(SFENCE) {
+    AS.FENCE(); // just make a full fence for now, TODO: we can optimize this some day
+}
+
+FAST_HANDLE(LFENCE) {
+    AS.FENCE(); // just make a full fence for now, TODO: we can optimize this some day
+}
+
+FAST_HANDLE(MFENCE) {
+    AS.FENCE(); // just make a full fence for now, TODO: we can optimize this some day
+}
