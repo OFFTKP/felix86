@@ -1740,9 +1740,9 @@ FAST_HANDLE(SHUFPD) {
         AS.VSLIDEDOWN(dst, dst, 1);
     }
 
-    AS.VSLIDE1UP(dst, dst, temp);
+    AS.VSLIDE1UP(vtemp, dst, temp);
 
-    rec.setOperandVec(&operands[0], dst);
+    rec.setOperandVec(&operands[0], vtemp);
 }
 
 FAST_HANDLE(LEAVE) {
