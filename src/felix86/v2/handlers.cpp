@@ -662,6 +662,7 @@ FAST_HANDLE(MOVQ) {
         biscuit::GPR dst = rec.scratch();
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV_XS(dst, src);
 
         rec.setOperandGPR(&operands[0], dst);
@@ -672,7 +673,7 @@ FAST_HANDLE(MOVQ) {
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV(v0, 0b10);
 
-        // Zero upper 64-bit (this will be useful for when we get to AVX)
+        // Zero upper 64-bit elements (this will be useful for when we get to AVX)
         AS.VXOR(dst, dst, dst, VecMask::Yes);
         AS.VMV_SX(dst, src);
 
@@ -687,7 +688,7 @@ FAST_HANDLE(MOVQ) {
             rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
             AS.VMV(v0, 0b10);
 
-            // Zero upper 64-bit (this will be useful for when we get to AVX)
+            // Zero upper 64-bit elements (this will be useful for when we get to AVX)
             AS.VXOR(dst, dst, dst, VecMask::Yes);
             AS.VMV_SX(dst, src);
 
@@ -705,6 +706,64 @@ FAST_HANDLE(MOVQ) {
             biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
             rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+            AS.VMV(dst, 0);
+            AS.VMV(v0, 0b01);
+            AS.VOR(dst, dst, src, VecMask::Yes);
+
+            rec.setOperandVec(&operands[0], dst);
+        }
+    }
+}
+
+FAST_HANDLE(MOVD) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::GPR dst = rec.scratch();
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+        rec.setVectorState(SEW::E32, rec.maxVlen() / 64);
+        AS.VMV_XS(dst, src);
+
+        rec.setOperandGPR(&operands[0], dst);
+    } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+
+        rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+        AS.VMV(v0, 0b1110);
+
+        // Zero upper 32-bit elements (this will be useful for when we get to AVX)
+        AS.VXOR(dst, dst, dst, VecMask::Yes);
+        AS.VMV_SX(dst, src);
+
+        rec.setOperandVec(&operands[0], dst);
+    } else if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER);
+
+        if (rec.isGPR(operands[1].reg.value)) {
+            biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+            biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+
+            rec.setVectorState(SEW::E32, rec.maxVlen() / 64);
+            AS.VMV(v0, 0b1110);
+
+            // Zero upper 32-bit elements (this will be useful for when we get to AVX)
+            AS.VXOR(dst, dst, dst, VecMask::Yes);
+            AS.VMV_SX(dst, src);
+
+            rec.setOperandVec(&operands[0], dst);
+        } else if (rec.isGPR(operands[0].reg.value)) {
+            biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+            biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+            rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+            AS.VMV_XS(dst, src);
+
+            rec.setOperandGPR(&operands[0], dst);
+        } else {
+            biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+            biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+            rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
             AS.VMV(dst, 0);
             AS.VMV(v0, 0b01);
             AS.VOR(dst, dst, src, VecMask::Yes);
