@@ -1858,7 +1858,7 @@ FAST_HANDLE(PMOVMSKB) {
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
     AS.VMSLT(temp, src, x0);
 
-    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VMV_XS(scratch, temp);
 
     rec.setOperandGPR(&operands[0], scratch);
