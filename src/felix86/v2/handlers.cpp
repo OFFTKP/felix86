@@ -1019,7 +1019,6 @@ FAST_HANDLE(LAHF) {
 
 FAST_HANDLE(SAHF) {
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
-    biscuit::GPR pf = rec.flagW(X86_REF_PF);
     biscuit::GPR af = rec.flagW(X86_REF_AF);
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
     biscuit::GPR sf = rec.flagW(X86_REF_SF);
@@ -1027,8 +1026,10 @@ FAST_HANDLE(SAHF) {
 
     AS.ANDI(cf, ah, 1);
 
+    biscuit::GPR pf = rec.scratch();
     AS.SRLI(pf, ah, 2);
     AS.ANDI(pf, pf, 1);
+    AS.SB(pf, offsetof(ThreadState, pf), rec.threadStatePointer());
 
     AS.SRLI(af, ah, 4);
     AS.ANDI(af, af, 1);
@@ -1383,7 +1384,6 @@ FAST_HANDLE(IMUL) {
         }
 
         rec.setFlagUndefined(X86_REF_AF);
-        rec.setFlagUndefined(X86_REF_PF);
         rec.setFlagUndefined(X86_REF_ZF);
         rec.setFlagUndefined(X86_REF_SF);
     } else if (opcount == 2 || opcount == 3) {
@@ -1457,7 +1457,6 @@ FAST_HANDLE(IMUL) {
         }
 
         rec.setFlagUndefined(X86_REF_AF);
-        rec.setFlagUndefined(X86_REF_PF);
         rec.setFlagUndefined(X86_REF_ZF);
         rec.setFlagUndefined(X86_REF_SF);
     } else {
@@ -1546,7 +1545,6 @@ FAST_HANDLE(MUL) {
     }
 
     rec.setFlagUndefined(X86_REF_AF);
-    rec.setFlagUndefined(X86_REF_PF);
     rec.setFlagUndefined(X86_REF_ZF);
     rec.setFlagUndefined(X86_REF_SF);
 }

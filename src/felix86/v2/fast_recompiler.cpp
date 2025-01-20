@@ -34,15 +34,14 @@ static void deallocateCodeCache(u8* memory) {
 FastRecompiler::FastRecompiler(Emulator& emulator) : emulator(emulator), code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
     for (int i = 0; i < 16; i++) {
         metadata[i].reg = (x86_ref_e)(X86_REF_RAX + i);
-        metadata[i + 16 + 6].reg = (x86_ref_e)(X86_REF_XMM0 + i);
+        metadata[i + 16 + 5].reg = (x86_ref_e)(X86_REF_XMM0 + i);
     }
 
     metadata[16].reg = X86_REF_CF;
-    metadata[17].reg = X86_REF_PF;
-    metadata[18].reg = X86_REF_AF;
-    metadata[19].reg = X86_REF_ZF;
-    metadata[20].reg = X86_REF_SF;
-    metadata[21].reg = X86_REF_OF;
+    metadata[17].reg = X86_REF_AF;
+    metadata[18].reg = X86_REF_ZF;
+    metadata[19].reg = X86_REF_SF;
+    metadata[20].reg = X86_REF_OF;
 
     emitDispatcher();
 
@@ -538,23 +537,20 @@ FastRecompiler::RegisterMetadata& FastRecompiler::getMetadata(x86_ref_e reg) {
     case X86_REF_CF: {
         return metadata[16];
     }
-    case X86_REF_PF: {
+    case X86_REF_AF: {
         return metadata[17];
     }
-    case X86_REF_AF: {
+    case X86_REF_ZF: {
         return metadata[18];
     }
-    case X86_REF_ZF: {
+    case X86_REF_SF: {
         return metadata[19];
     }
-    case X86_REF_SF: {
+    case X86_REF_OF: {
         return metadata[20];
     }
-    case X86_REF_OF: {
-        return metadata[21];
-    }
     case X86_REF_XMM0 ... X86_REF_XMM15: {
-        return metadata[reg - X86_REF_XMM0 + 16 + 6];
+        return metadata[reg - X86_REF_XMM0 + 16 + 5];
     }
     default: {
         UNREACHABLE();
@@ -718,6 +714,12 @@ biscuit::Vec FastRecompiler::getOperandVec(ZydisDecodedOperand* operand) {
 }
 
 biscuit::GPR FastRecompiler::flag(x86_ref_e ref) {
+    if (ref == X86_REF_PF) {
+        biscuit::GPR reg = scratch();
+        as.LBU(reg, offsetof(ThreadState, pf), threadStatePointer());
+        return reg;
+    }
+
     biscuit::GPR reg = allocatedGPR(ref);
     loadGPR(ref, reg);
     return reg;
@@ -948,10 +950,6 @@ void FastRecompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
             as.LBU(gpr, offsetof(ThreadState, cf), threadStatePointer());
             break;
         }
-        case X86_REF_PF: {
-            as.LBU(gpr, offsetof(ThreadState, pf), threadStatePointer());
-            break;
-        }
         case X86_REF_AF: {
             as.LBU(gpr, offsetof(ThreadState, af), threadStatePointer());
             break;
@@ -1126,7 +1124,9 @@ void FastRecompiler::writebackDirtyState() {
     }
 
     if (getMetadata(X86_REF_PF).dirty) {
-        as.SB(allocatedGPR(X86_REF_PF), offsetof(ThreadState, pf), threadStatePointer());
+        biscuit::GPR pf = flag(X86_REF_PF);
+        as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
+        popScratch();
     }
 
     if (getMetadata(X86_REF_AF).dirty) {
@@ -1335,11 +1335,13 @@ u64 FastRecompiler::getSignMask(x86_size_e size_e) {
 
 void FastRecompiler::updateParity(biscuit::GPR result) {
     if (Extensions::B) {
-        biscuit::GPR pf = flagW(X86_REF_PF);
+        biscuit::GPR pf = scratch();
         as.ANDI(pf, result, 0xFF);
         as.CPOPW(pf, pf);
         as.ANDI(pf, pf, 1);
         as.XORI(pf, pf, 1);
+        as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
+        popScratch();
     } else {
         ERROR("This needs B extension");
     }
