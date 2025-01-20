@@ -9,17 +9,6 @@
 
 constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
-// If you don't flush the cache the code will randomly SIGILL
-static inline void flushICache() {
-#if defined(__riscv)
-    asm volatile("fence.i" ::: "memory");
-#elif defined(__aarch64__)
-#pragma message("Don't forget to implement me")
-#elif defined(__x86_64__)
-    // No need to flush the cache on x86
-#endif
-}
-
 static u8* allocateCodeCache() {
     u8 prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     u8 flags = MAP_PRIVATE | MAP_ANONYMOUS;
@@ -91,18 +80,18 @@ void FastRecompiler::emitDispatcher() {
 
     as.JR(ra);
 
-    flushICache();
+    flush_icache();
 }
 
 void* FastRecompiler::compile(u64 rip) {
-    if (map.find(rip) != map.end()) {
-        return map[rip].first;
+    if (block_metadata.find(rip) != block_metadata.end()) {
+        return block_metadata[rip].address;
     }
 
     void* start = as.GetCursorPointer();
 
     // Map it immediately so we can optimize conditional branch to self
-    map[rip] = {start, (u64)as.GetCursorPointer() - (u64)start};
+    block_metadata[rip] = {start, {}};
 
     // A sequence of code. This is so that we can also call it recursively later.
     compileSequence(rip);
@@ -110,7 +99,7 @@ void* FastRecompiler::compile(u64 rip) {
     expirePendingLinks(rip);
 
     // Make code visible to instruction fetches.
-    flushICache();
+    flush_icache();
 
     return start;
 }
@@ -683,21 +672,34 @@ biscuit::Vec FastRecompiler::getOperandVec(ZydisDecodedOperand* operand) {
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR address = lea(operand);
         biscuit::Vec vec = scratchVec();
+        u64 current = (u64)as.GetCursorPointer();
 
         switch (operand->size) {
         case 32: {
-            setVectorState(SEW::E32, 1);
+            if (!setVectorState(SEW::E32, 1)) {
+                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
+            }
             as.VLE32(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+            registerVLE(current, SEW::E32, 1, vec, address);
             break;
         }
         case 64: {
-            setVectorState(SEW::E64, 1);
+            if (!setVectorState(SEW::E64, 1)) {
+                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
+            }
             as.VLE64(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+            registerVLE(current, SEW::E64, 1, vec, address);
             break;
         }
         case 128: {
-            setVectorState(SEW::E64, 2);
+            if (!setVectorState(SEW::E64, 2)) {
+                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
+            }
             as.VLE64(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+            registerVLE(current, SEW::E64, 2, vec, address);
             break;
         }
         }
@@ -907,23 +909,36 @@ void FastRecompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec ve
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
+        u64 current = (u64)as.GetCursorPointer();
         switch (operand->size) {
         case 128: {
             biscuit::GPR address = lea(operand);
-            setVectorState(SEW::E64, 2);
+            if (!setVectorState(SEW::E64, 2)) {
+                as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
+            }
             as.VSE64(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+            registerVSE(current, SEW::E64, 2, vec, address);
             break;
         }
         case 64: {
             biscuit::GPR address = lea(operand);
-            setVectorState(SEW::E64, 1);
+            if (!setVectorState(SEW::E64, 1)) {
+                as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
+            }
             as.VSE64(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+            registerVSE(current, SEW::E64, 1, vec, address);
             break;
         }
         case 32: {
             biscuit::GPR address = lea(operand);
-            setVectorState(SEW::E32, 1);
+            if (!setVectorState(SEW::E32, 1)) {
+                as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
+            }
             as.VSE32(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+            registerVSE(current, SEW::E32, 1, vec, address);
             break;
         }
         }
@@ -989,15 +1004,16 @@ void FastRecompiler::loadVec(x86_ref_e reg, biscuit::Vec vec) {
     popScratch();
 }
 
-void FastRecompiler::setVectorState(SEW sew, int vlen) {
+bool FastRecompiler::setVectorState(SEW sew, int vlen) {
     if (current_sew == sew && current_vlen == vlen) {
-        return;
+        return false;
     }
 
     current_sew = sew;
     current_vlen = vlen;
 
     as.VSETIVLI(x0, vlen, sew);
+    return true;
 }
 
 biscuit::GPR FastRecompiler::lea(ZydisDecodedOperand* operand) {
@@ -1363,7 +1379,7 @@ biscuit::GPR FastRecompiler::getRip() {
 }
 
 void FastRecompiler::jumpAndLink(u64 rip) {
-    if (map.find(rip) == map.end()) {
+    if (block_metadata.find(rip) == block_metadata.end()) {
         biscuit::GPR address = scratch();
         // 3 instructions of space to be overwritten with:
         // AUIPC
@@ -1376,10 +1392,10 @@ void FastRecompiler::jumpAndLink(u64 rip) {
         popScratch();
 
         if (!g_dont_link) {
-            pending_links[rip].push_back(link_me);
+            block_metadata[rip].pending_links.push_back(link_me);
         }
     } else {
-        u64 target = (u64)map[rip].first;
+        u64 target = (u64)block_metadata[rip].address;
         u64 offset = target - (u64)as.GetCursorPointer();
 
         if (IsValidJTypeImm(offset)) {
@@ -1404,17 +1420,17 @@ void FastRecompiler::jumpAndLink(u64 rip) {
 
 void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false) {
     bool ok = false;
-    if (map.find(rip_true) != map.end()) {
+    if (block_metadata.find(rip_true) != block_metadata.end()) {
         // The -4 is due to the setRip emitting an SD instruction
-        auto offset_true = (u64)map[rip_true].first - (u64)as.GetCursorPointer() - 4;
+        auto offset_true = (u64)block_metadata[rip_true].address - (u64)as.GetCursorPointer() - 4;
         if (IsValidBTypeImm(offset_true)) {
             setRip(gpr_true);
             as.BNEZ(condition, offset_true);
             setRip(gpr_false);
             jumpAndLink(rip_false);
             ok = true;
-        } else if (map.find(rip_false) != map.end()) {
-            auto offset_false = (u64)map[rip_false].first - (u64)as.GetCursorPointer() - 4;
+        } else if (block_metadata.find(rip_false) != block_metadata.end()) {
+            auto offset_false = (u64)block_metadata[rip_false].address - (u64)as.GetCursorPointer() - 4;
             if (IsValidBTypeImm(offset_false)) {
                 setRip(gpr_false);
                 as.BEQZ(condition, offset_false);
@@ -1423,8 +1439,8 @@ void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR
                 ok = true;
             }
         }
-    } else if (map.find(rip_false) != map.end()) {
-        auto offset_false = (u64)map[rip_false].first - (u64)as.GetCursorPointer() - 4;
+    } else if (block_metadata.find(rip_false) != block_metadata.end()) {
+        auto offset_false = (u64)block_metadata[rip_false].address - (u64)as.GetCursorPointer() - 4;
         if (IsValidBTypeImm(offset_false)) {
             setRip(gpr_false);
             as.BEQZ(condition, offset_false);
@@ -1453,13 +1469,11 @@ void FastRecompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
-    if (pending_links.find(rip) == pending_links.end()) {
+    if (block_metadata.find(rip) == block_metadata.end()) {
         return;
     }
 
-    ASSERT(map.find(rip) != map.end());
-
-    auto& links = pending_links[rip];
+    auto& links = block_metadata[rip].pending_links;
     for (u64 link : links) {
         auto current_offset = as.GetCodeBuffer().GetCursorOffset();
 
@@ -1468,7 +1482,7 @@ void FastRecompiler::expirePendingLinks(u64 rip) {
         as.AdvanceBuffer(current_offset);
     }
 
-    pending_links.erase(rip);
+    links.clear();
 }
 
 u64 FastRecompiler::sextImmediate(u64 imm, ZyanU8 size) {
@@ -1728,4 +1742,34 @@ void FastRecompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
         break;
     }
     }
+}
+
+BlockMetadata& FastRecompiler::getBlockMetadata(u64 rip) {
+    ASSERT(block_metadata.find(rip) != block_metadata.end());
+    return block_metadata[rip];
+}
+
+void FastRecompiler::registerVLE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, biscuit::GPR address) {
+    VectorMemoryAccess& vma = vector_memory_access[rip];
+    vma.rip = rip;
+    vma.sew = sew;
+    vma.len = len;
+    vma.load = true;
+    vma.dest = dst;
+    vma.address = address;
+}
+
+void FastRecompiler::registerVSE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, biscuit::GPR address) {
+    VectorMemoryAccess& vma = vector_memory_access[rip];
+    vma.rip = rip;
+    vma.sew = sew;
+    vma.len = len;
+    vma.load = false;
+    vma.dest = dst;
+    vma.address = address;
+}
+
+VectorMemoryAccess FastRecompiler::getVectorMemoryAccess(u64 rip) {
+    ASSERT(vector_memory_access.find(rip) != vector_memory_access.end());
+    return vector_memory_access[rip];
 }

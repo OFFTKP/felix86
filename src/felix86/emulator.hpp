@@ -52,10 +52,6 @@ struct Emulator {
         return fs;
     }
 
-    SignalHandler& GetSignalHandler() {
-        return signal_handler;
-    }
-
     Config& GetConfig() {
         return config;
     }
@@ -72,6 +68,10 @@ struct Emulator {
 
     Backend& GetBackend() {
         return backend;
+    }
+
+    Assembler& GetAssembler() {
+        return fast_recompiler.getAssembler();
     }
 
     void Run();
@@ -92,6 +92,10 @@ struct Emulator {
         return backend.GetCodeCacheSize();
     }
 
+    FastRecompiler& GetRecompiler() {
+        return fast_recompiler;
+    }
+
 private:
     void setupMainStack(ThreadState* state);
 
@@ -106,7 +110,6 @@ private:
     Config config;
     Backend backend;
     Filesystem fs;
-    SignalHandler signal_handler;
     FastRecompiler fast_recompiler;
     bool testing = false;
     void* auxv_base = nullptr;

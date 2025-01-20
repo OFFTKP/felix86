@@ -234,6 +234,8 @@ int main(int argc, char* argv[]) {
     initialize_extensions();
     print_extensions();
 
+    Signals::initialize();
+
     const char* env_file = getenv("FELIX86_ENV_FILE");
     if (env_file) {
         std::string env_path = env_file;

@@ -44,7 +44,6 @@ thread_local ThreadState* g_thread_state;
 u64 g_executable_base_hint = 0;
 u64 g_interpreter_base_hint = 0;
 Emulator* g_emulator = nullptr;
-SignalHandler g_signal_handler;
 
 u64 g_interpreter_start = 0;
 u64 g_interpreter_end = 0;

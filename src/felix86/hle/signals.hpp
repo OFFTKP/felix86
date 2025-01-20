@@ -10,13 +10,8 @@ struct RegisteredSignal {
     int flags = 0;
 };
 
-struct SignalHandler {
-    SignalHandler();
-    ~SignalHandler();
-
-    void RegisterSignalHandler(int sig, void* handler, sigset_t mask, int flags);
-    [[nodiscard]] RegisteredSignal GetSignalHandler(int sig);
-
-private:
-    std::vector<RegisteredSignal> handlers;
+struct Signals {
+    static void initialize();
+    static void registerSignalHandler(int sig, void* handler, sigset_t mask, int flags);
+    [[nodiscard]] static RegisteredSignal getSignalHandler(int sig);
 };

@@ -86,7 +86,6 @@ void felix86_syscall(ThreadState* state) {
     ssize_t result = -1;
 
     Filesystem& fs = g_emulator->GetFilesystem();
-    SignalHandler& signals = g_emulator->GetSignalHandler();
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
@@ -483,12 +482,12 @@ void felix86_syscall(ThreadState* state) {
         if (act) {
             bool sigaction = act->sa_flags & SA_SIGINFO;
             void* handler = sigaction ? (void*)act->sa_sigaction : (void*)act->sa_handler;
-            signals.RegisterSignalHandler(rdi, handler, act->sa_mask, act->sa_flags);
+            Signals::registerSignalHandler(rdi, handler, act->sa_mask, act->sa_flags);
         }
 
         struct sigaction* old_act = (struct sigaction*)rdx;
         if (old_act) {
-            RegisteredSignal old = signals.GetSignalHandler(rdi);
+            RegisteredSignal old = Signals::getSignalHandler(rdi);
             bool was_sigaction = old.flags & SA_SIGINFO;
             if (was_sigaction) {
                 old_act->sa_sigaction = (decltype(old_act->sa_sigaction))old.handler;

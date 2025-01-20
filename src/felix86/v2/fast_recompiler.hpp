@@ -14,6 +14,20 @@ struct HandlerMetadata {
     u64 block_start;
 };
 
+struct BlockMetadata {
+    void* address = nullptr;
+    std::vector<u64> pending_links{};
+};
+
+struct VectorMemoryAccess {
+    u64 rip;
+    biscuit::Vec dest;
+    biscuit::GPR address;
+    u16 len;
+    SEW sew;
+    bool load;
+};
+
 struct FastRecompiler {
     FastRecompiler(Emulator& emulator);
     ~FastRecompiler();
@@ -100,7 +114,7 @@ struct FastRecompiler {
 
     void jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false);
 
-    constexpr biscuit::GPR threadStatePointer() {
+    constexpr static biscuit::GPR threadStatePointer() {
         return x27; // saved register so that when we exit VM we don't have to save it
     }
 
@@ -117,7 +131,7 @@ struct FastRecompiler {
 
     biscuit::Vec allocatedVec(x86_ref_e reg);
 
-    void setVectorState(SEW sew, int elem_count);
+    bool setVectorState(SEW sew, int elem_count);
 
     u16 maxVlen() {
         return max_vlen;
@@ -142,6 +156,14 @@ struct FastRecompiler {
     void repzEpilogue(Label* loop_body, bool is_repz);
 
     bool isGPR(ZydisRegister reg);
+
+    BlockMetadata& getBlockMetadata(u64 rip);
+
+    void registerVLE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, biscuit::GPR address);
+
+    void registerVSE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, biscuit::GPR address);
+
+    VectorMemoryAccess getVectorMemoryAccess(u64 rip);
 
 private:
     struct RegisterMetadata {
@@ -195,7 +217,7 @@ private:
     // 16 gprs, 6 flags, 16 xmm registers
     std::array<RegisterMetadata, 16 + 6 + 16> metadata{};
 
-    std::unordered_map<u64, std::pair<void*, u64>> map{};
+    std::unordered_map<u64, BlockMetadata> block_metadata{};
 
     bool compiling{};
 
@@ -205,7 +227,7 @@ private:
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 
-    std::unordered_map<u64, std::vector<u64>> pending_links{};
+    std::unordered_map<u64, VectorMemoryAccess> vector_memory_access{};
 
     HandlerMetadata* current_meta{};
     SEW current_sew = SEW::E1024;

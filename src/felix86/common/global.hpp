@@ -36,7 +36,6 @@ extern u64 g_interpreter_base_hint;
 extern u64 g_executable_base_hint;
 extern const char* g_git_hash;
 extern struct Emulator* g_emulator;
-extern struct SignalHandler g_signal_handler;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
