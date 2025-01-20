@@ -2343,3 +2343,38 @@ FAST_HANDLE(BSWAP) {
 
     rec.setOperandGPR(&operands[0], dst);
 }
+
+FAST_HANDLE(MOVLPD) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        AS.VMV(v0, 0b10);
+        AS.VMERGE(dst, src, dst);
+
+        rec.setOperandVec(&operands[0], dst);
+    } else if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setOperandVec(&operands[0], src);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+FAST_HANDLE(MOVLPS) {
+    fast_MOVLPD(rec, meta, instruction, operands);
+}
+
+FAST_HANDLE(MOVHLPS) {
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER);
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VSLIDEDOWN(temp, src, 1);
+    AS.VMV(v0, 0b10);
+    AS.VMERGE(dst, temp, dst);
+    rec.setOperandVec(&operands[0], dst);
+}
