@@ -1275,7 +1275,8 @@ bool FastRecompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
 
 void FastRecompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) {
     switch (size) {
-    case X86_SIZE_BYTE: {
+    case X86_SIZE_BYTE:
+    case X86_SIZE_BYTE_HIGH: {
         as.ANDI(dest, src, 0xff);
         break;
     }
@@ -1298,7 +1299,8 @@ void FastRecompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) 
         break;
     }
     case X86_SIZE_QWORD: {
-        as.MV(dest, src);
+        if (dest != src)
+            as.MV(dest, src);
         break;
     }
     default: {
