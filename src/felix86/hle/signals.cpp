@@ -72,13 +72,13 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 break;
             }
             }
+        } else {
+            ERROR("SIGBUS code: %d", info->si_code);
         }
         break;
     }
     case SIGSEGV: {
-        if (is_in_jit_code(pc)) {
-            ERROR("SIGSEGV code: %d", info->si_code);
-        }
+        ERROR("SIGSEGV code: %d", info->si_code);
         break;
     }
     }
