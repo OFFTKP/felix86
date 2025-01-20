@@ -2033,6 +2033,10 @@ FAST_HANDLE(MOVHPS) {
     }
 }
 
+FAST_HANDLE(MOVHPD) {
+    fast_MOVHPS(rec, meta, instruction, operands);
+}
+
 FAST_HANDLE(SHUFPD) {
     u8 imm = operands[2].imm.value.u;
     biscuit::GPR temp = rec.scratch();
@@ -2344,7 +2348,7 @@ FAST_HANDLE(BSWAP) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
-FAST_HANDLE(MOVLPD) {
+FAST_HANDLE(MOVLPS) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -2362,8 +2366,8 @@ FAST_HANDLE(MOVLPD) {
     }
 }
 
-FAST_HANDLE(MOVLPS) {
-    fast_MOVLPD(rec, meta, instruction, operands);
+FAST_HANDLE(MOVLPD) {
+    fast_MOVLPS(rec, meta, instruction, operands);
 }
 
 FAST_HANDLE(MOVHLPS) {
