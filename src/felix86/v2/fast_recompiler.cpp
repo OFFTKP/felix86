@@ -1313,6 +1313,7 @@ void FastRecompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) 
 int FastRecompiler::getBitSize(x86_size_e size) {
     switch (size) {
     case X86_SIZE_BYTE:
+    case X86_SIZE_BYTE_HIGH:
         return 8;
     case X86_SIZE_WORD:
         return 16;
