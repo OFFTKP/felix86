@@ -491,6 +491,10 @@ FAST_HANDLE(RDSSPD) {}
 
 FAST_HANDLE(RDSSPQ) {}
 
+FAST_HANDLE(RSTORSSP) {}
+
+FAST_HANDLE(SAVEPREVSSP) {}
+
 FAST_HANDLE(SHL) {
     biscuit::GPR result = rec.scratch();
     x86_size_e size = rec.getOperandSize(&operands[0]);
