@@ -909,10 +909,10 @@ void FastRecompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec ve
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
+        biscuit::GPR address = lea(operand);
         u64 current = (u64)as.GetCursorPointer();
         switch (operand->size) {
         case 128: {
-            biscuit::GPR address = lea(operand);
             if (!setVectorState(SEW::E64, 2)) {
                 as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
             }
@@ -922,7 +922,6 @@ void FastRecompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec ve
             break;
         }
         case 64: {
-            biscuit::GPR address = lea(operand);
             if (!setVectorState(SEW::E64, 1)) {
                 as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
             }
@@ -932,7 +931,6 @@ void FastRecompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec ve
             break;
         }
         case 32: {
-            biscuit::GPR address = lea(operand);
             if (!setVectorState(SEW::E32, 1)) {
                 as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
             }
