@@ -165,6 +165,8 @@ struct FastRecompiler {
 
     VectorMemoryAccess getVectorMemoryAccess(u64 rip);
 
+    bool blockExists(u64 rip);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

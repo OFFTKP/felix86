@@ -84,7 +84,7 @@ void FastRecompiler::emitDispatcher() {
 }
 
 void* FastRecompiler::compile(u64 rip) {
-    if (block_metadata.find(rip) != block_metadata.end() && block_metadata[rip].address) {
+    if (blockExists(rip)) {
         return block_metadata[rip].address;
     }
 
@@ -1379,7 +1379,7 @@ biscuit::GPR FastRecompiler::getRip() {
 }
 
 void FastRecompiler::jumpAndLink(u64 rip) {
-    if (block_metadata.find(rip) == block_metadata.end()) {
+    if (blockExists(rip)) {
         biscuit::GPR address = scratch();
         // 3 instructions of space to be overwritten with:
         // AUIPC
@@ -1420,7 +1420,7 @@ void FastRecompiler::jumpAndLink(u64 rip) {
 
 void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false) {
     bool ok = false;
-    if (block_metadata.find(rip_true) != block_metadata.end()) {
+    if (blockExists(rip_true)) {
         // The -4 is due to the setRip emitting an SD instruction
         auto offset_true = (u64)block_metadata[rip_true].address - (u64)as.GetCursorPointer() - 4;
         if (IsValidBTypeImm(offset_true)) {
@@ -1429,7 +1429,7 @@ void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR
             setRip(gpr_false);
             jumpAndLink(rip_false);
             ok = true;
-        } else if (block_metadata.find(rip_false) != block_metadata.end()) {
+        } else if (blockExists(rip_false)) {
             auto offset_false = (u64)block_metadata[rip_false].address - (u64)as.GetCursorPointer() - 4;
             if (IsValidBTypeImm(offset_false)) {
                 setRip(gpr_false);
@@ -1439,7 +1439,7 @@ void FastRecompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR
                 ok = true;
             }
         }
-    } else if (block_metadata.find(rip_false) != block_metadata.end()) {
+    } else if (blockExists(rip_false)) {
         auto offset_false = (u64)block_metadata[rip_false].address - (u64)as.GetCursorPointer() - 4;
         if (IsValidBTypeImm(offset_false)) {
             setRip(gpr_false);
@@ -1469,7 +1469,7 @@ void FastRecompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
-    if (block_metadata.find(rip) == block_metadata.end()) {
+    if (!blockExists(rip)) {
         return;
     }
 
@@ -1772,4 +1772,8 @@ void FastRecompiler::registerVSE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, bi
 VectorMemoryAccess FastRecompiler::getVectorMemoryAccess(u64 rip) {
     ASSERT(vector_memory_access.find(rip) != vector_memory_access.end());
     return vector_memory_access[rip];
+}
+
+bool FastRecompiler::blockExists(u64 rip) {
+    return block_metadata[rip].address != nullptr;
 }
