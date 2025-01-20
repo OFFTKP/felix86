@@ -1379,7 +1379,7 @@ biscuit::GPR FastRecompiler::getRip() {
 }
 
 void FastRecompiler::jumpAndLink(u64 rip) {
-    if (blockExists(rip)) {
+    if (!blockExists(rip)) {
         biscuit::GPR address = scratch();
         // 3 instructions of space to be overwritten with:
         // AUIPC
