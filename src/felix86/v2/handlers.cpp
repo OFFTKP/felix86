@@ -745,6 +745,79 @@ FAST_HANDLE(DIV) {
     rec.setFlagUndefined(X86_REF_OF);
 }
 
+FAST_HANDLE(IDIV) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[0]);
+
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        biscuit::GPR mod = rec.scratch();
+        biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+        biscuit::GPR ax_sext = rec.scratch();
+
+        rec.sextb(ax_sext, ax);
+        rec.sextb(ax, src);
+
+        AS.REMW(mod, ax_sext, ax);
+        AS.DIVW(ax, ax_sext, ax);
+
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE, ax);
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, mod);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        biscuit::GPR src_sext = rec.scratch();
+        biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+        biscuit::GPR dx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_WORD);
+        AS.SLLIW(dx, dx, 16);
+        AS.OR(dx, dx, ax);
+
+        rec.sexth(src_sext, src);
+
+        AS.DIVW(ax, dx, src);
+        AS.REMW(dx, dx, src);
+
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, dx);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+        biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
+        AS.SLLI(edx, edx, 32);
+        AS.OR(edx, edx, eax);
+
+        AS.DIV(eax, edx, src);
+        AS.REM(edx, edx, src);
+
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, eax);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        rec.writebackDirtyState();
+
+        biscuit::GPR address = rec.scratch();
+        AS.LD(address, offsetof(ThreadState, div128_handler), rec.threadStatePointer());
+        AS.MV(a0, rec.threadStatePointer());
+        AS.MV(a1, src);
+        AS.JALR(address);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    rec.setFlagUndefined(X86_REF_CF);
+    rec.setFlagUndefined(X86_REF_PF);
+    rec.setFlagUndefined(X86_REF_AF);
+    rec.setFlagUndefined(X86_REF_ZF);
+    rec.setFlagUndefined(X86_REF_SF);
+    rec.setFlagUndefined(X86_REF_OF);
+}
+
 FAST_HANDLE(TEST) {
     biscuit::GPR result = rec.scratch();
 
@@ -1321,6 +1394,92 @@ FAST_HANDLE(IMUL) {
     } else {
         UNREACHABLE();
     }
+}
+
+FAST_HANDLE(MUL) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[0]);
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
+        AS.MULW(result, al, src);
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, result);
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+            AS.SRLI(cf, result, 8);
+            AS.ANDI(cf, cf, 8);
+            AS.SNEZ(cf, cf);
+            AS.MV(of, cf);
+        }
+        break;
+    }
+    case X86_SIZE_WORD: {
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+        AS.MULW(result, ax, src);
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, result);
+
+        AS.SRLIW(result, result, 16);
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+            // Should be already zexted due to srliw
+            AS.SNEZ(cf, result);
+            AS.MV(of, cf);
+        }
+
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, result);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+        AS.MUL(result, eax, src);
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, result);
+        AS.SRLI(result, result, 32);
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+
+            AS.SNEZ(cf, result);
+            AS.MV(of, cf);
+        }
+
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, result);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
+        AS.MULHU(result, rax, src);
+        AS.MUL(rax, rax, src);
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rax);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, result);
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+
+            AS.SNEZ(cf, result);
+            AS.MV(of, cf);
+        }
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    rec.setFlagUndefined(X86_REF_AF);
+    rec.setFlagUndefined(X86_REF_PF);
+    rec.setFlagUndefined(X86_REF_ZF);
+    rec.setFlagUndefined(X86_REF_SF);
 }
 
 void PUNPCKL(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew,
