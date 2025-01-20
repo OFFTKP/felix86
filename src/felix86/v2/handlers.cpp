@@ -1590,6 +1590,55 @@ void PUNPCKL(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstr
     rec.setOperandVec(&operands[0], result);
 }
 
+void PUNPCKH(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew,
+             u8 vlen) {
+    // Like PUNPCKL but we add a number to iota to pick the high elements
+    int num = 0;
+    switch (sew) {
+    case SEW::E8: {
+        num = 8;
+        break;
+    }
+    case SEW::E16: {
+        num = 4;
+        break;
+    }
+    case SEW::E32: {
+        num = 2;
+        break;
+    }
+    case SEW::E64: {
+        num = 1;
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    AS.LI(mask, 0b10101010);
+
+    rec.setVectorState(sew, vlen);
+    AS.VMV(v0, mask);
+    AS.VIOTA(iota, v0);
+    AS.VMV(result, 0);
+    AS.VADD(iota, iota, num);
+    AS.VRGATHER(result, src, iota, VecMask::Yes);
+
+    AS.VSRL(v0, v0, 1);
+    AS.VIOTA(iota, v0);
+    AS.VADD(iota, iota, num);
+    AS.VRGATHER(result, dst, iota, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(PUNPCKLBW) {
     PUNPCKL(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
 }
@@ -1604,6 +1653,22 @@ FAST_HANDLE(PUNPCKLDQ) {
 
 FAST_HANDLE(PUNPCKLQDQ) {
     PUNPCKL(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
+}
+
+FAST_HANDLE(PUNPCKHBW) {
+    PUNPCKH(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PUNPCKHWD) {
+    PUNPCKH(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
+}
+
+FAST_HANDLE(PUNPCKHDQ) {
+    PUNPCKH(rec, meta, instruction, operands, SEW::E32, rec.maxVlen() / 32);
+}
+
+FAST_HANDLE(PUNPCKHQDQ) {
+    PUNPCKH(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
 }
 
 FAST_HANDLE(MOVAPD) {
@@ -1744,6 +1809,14 @@ void PADD(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruct
     rec.setOperandVec(&operands[0], dst);
 }
 
+void PSUB(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    AS.VSUB(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PADDB) {
     PADD(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
 }
@@ -1758,6 +1831,22 @@ FAST_HANDLE(PADDD) {
 
 FAST_HANDLE(PADDQ) {
     PADD(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
+}
+
+FAST_HANDLE(PSUBB) {
+    PSUB(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PSUBW) {
+    PSUB(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
+}
+
+FAST_HANDLE(PSUBD) {
+    PSUB(rec, meta, instruction, operands, SEW::E32, rec.maxVlen() / 32);
+}
+
+FAST_HANDLE(PSUBQ) {
+    PSUB(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
 }
 
 FAST_HANDLE(ADDPS) {
@@ -2089,4 +2178,85 @@ FAST_HANDLE(PMOVMSKB) {
         rec.zext(scratch, scratch, X86_SIZE_DWORD);
 
     rec.setOperandGPR(&operands[0], scratch);
+}
+
+void PCMPEQ(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    biscuit::Vec zero = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    AS.VMV(zero, 0);
+    AS.VMSEQ(v0, dst, src);
+    AS.VMERGE(dst, zero, -1ll);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+void PCMPGT(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    biscuit::Vec zero = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    AS.VMV(zero, 0);
+    AS.VMSLT(v0, src, dst);
+    AS.VMERGE(dst, zero, -1ll);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PCMPEQB) {
+    PCMPEQ(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PCMPEQW) {
+    PCMPEQ(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
+}
+
+FAST_HANDLE(PCMPEQD) {
+    PCMPEQ(rec, meta, instruction, operands, SEW::E32, rec.maxVlen() / 32);
+}
+
+FAST_HANDLE(PCMPEQQ) {
+    PCMPEQ(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
+}
+
+FAST_HANDLE(PCMPGTB) {
+    PCMPGT(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PCMPGTW) {
+    PCMPGT(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
+}
+
+FAST_HANDLE(PCMPGTD) {
+    PCMPGT(rec, meta, instruction, operands, SEW::E32, rec.maxVlen() / 32);
+}
+
+FAST_HANDLE(PCMPGTQ) {
+    PCMPGT(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
+}
+
+FAST_HANDLE(PSHUFD) {
+    u8 imm = operands[2].imm.value.u;
+    u8 el0 = imm & 0b11;
+    u8 el1 = (imm >> 2) & 0b11;
+    u8 el2 = (imm >> 4) & 0b11;
+    u8 el3 = (imm >> 6) & 0b11;
+
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::GPR temp = rec.scratch();
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMV(iota, el3);
+    AS.LI(temp, el2);
+    AS.VSLIDE1UP(iota, iota, temp);
+    AS.LI(temp, el1);
+    AS.VSLIDE1UP(iota, iota, temp);
+    AS.LI(temp, el0);
+    AS.VSLIDE1UP(iota, iota, temp);
+
+    biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    AS.VMV(dst, 0);
+    AS.VRGATHER(dst, src, iota);
+
+    rec.setOperandVec(&operands[0], dst);
 }
