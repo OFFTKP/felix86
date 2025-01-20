@@ -84,14 +84,14 @@ void FastRecompiler::emitDispatcher() {
 }
 
 void* FastRecompiler::compile(u64 rip) {
-    if (block_metadata.find(rip) != block_metadata.end()) {
+    if (block_metadata.find(rip) != block_metadata.end() && block_metadata[rip].address) {
         return block_metadata[rip].address;
     }
 
     void* start = as.GetCursorPointer();
 
     // Map it immediately so we can optimize conditional branch to self
-    block_metadata[rip] = {start, {}};
+    block_metadata[rip].address = start;
 
     // A sequence of code. This is so that we can also call it recursively later.
     compileSequence(rip);
