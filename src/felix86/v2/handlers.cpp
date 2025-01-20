@@ -1744,3 +1744,12 @@ FAST_HANDLE(SHUFPD) {
 
     rec.setOperandVec(&operands[0], dst);
 }
+
+FAST_HANDLE(LEAVE) {
+    x86_size_e size = rec.zydisToSize(instruction.operand_width);
+    biscuit::GPR rbp = rec.getRefGPR(X86_REF_RBP, X86_SIZE_QWORD);
+    AS.ADDI(rbp, rbp, 8);
+    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rbp);
+    rec.readMemory(rbp, rbp, -8, size);
+    rec.setRefGPR(X86_REF_RBP, X86_SIZE_QWORD, rbp);
+}
