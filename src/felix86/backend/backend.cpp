@@ -7,17 +7,6 @@ using namespace biscuit;
 
 constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
-// If you don't flush the cache the code will randomly SIGILL
-static inline void flush_icache() {
-#if defined(__riscv)
-    asm volatile("fence.i" ::: "memory");
-#elif defined(__aarch64__)
-#pragma message("Don't forget to implement me")
-#elif defined(__x86_64__)
-    // No need to flush the cache on x86
-#endif
-}
-
 namespace {
 std::string ExitReasonToString(ExitReason reason) {
     switch (reason) {
