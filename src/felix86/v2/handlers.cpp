@@ -1822,3 +1822,44 @@ FAST_HANDLE(SETLE) {
 FAST_HANDLE(SETNLE) {
     SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
 }
+
+FAST_HANDLE(NOT) {
+    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
+    AS.NOT(dst, src);
+    rec.setOperandGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(NEG) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    if (size == X86_SIZE_BYTE) {
+        rec.sextb(dst, src);
+        AS.NEG(dst, dst);
+    } else if (size == X86_SIZE_WORD) {
+        rec.sexth(dst, src);
+        AS.NEG(dst, dst);
+    } else if (size == X86_SIZE_DWORD) {
+        AS.SUBW(dst, x0, src);
+    } else if (size == X86_SIZE_QWORD) {
+        AS.NEG(dst, src);
+    } else {
+        UNREACHABLE();
+    }
+    rec.setOperandGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVMSKB) {
+    biscuit::GPR scratch = rec.scratch();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec temp = rec.scratchVec();
+
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VMSLT(temp, src, x0);
+
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMV_XS(scratch, temp);
+
+    rec.setOperandGPR(&operands[0], scratch);
+}

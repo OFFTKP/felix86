@@ -127,6 +127,8 @@ struct FastRecompiler {
 
     void sexth(biscuit::GPR dest, biscuit::GPR src);
 
+    void sext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
+
     biscuit::GPR getCond(int cond);
 
     void readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);

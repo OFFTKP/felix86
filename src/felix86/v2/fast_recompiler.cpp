@@ -1710,3 +1710,24 @@ void FastRecompiler::repzEpilogue(Label* loop_body, bool is_repz) {
         as.BEQZ(zf, loop_body);
     }
 }
+
+void FastRecompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        sextb(dst, src);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        sexth(dst, src);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.ADDIW(dst, src, 0);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+}
