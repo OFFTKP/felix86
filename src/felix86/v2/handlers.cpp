@@ -2478,3 +2478,67 @@ FAST_HANDLE(ROL) {
 
     AS.Bind(&zero_source);
 }
+
+FAST_HANDLE(PSLLDQ) {
+    u8 imm = operands[1].imm.value.u;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    if (imm > 15) {
+        AS.VMV(dst, 0);
+    } else {
+        biscuit::Vec temp = rec.scratchVec();
+        AS.VMV(temp, 0);
+        AS.VSLIDEUP(temp, dst, imm);
+    }
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PSRLDQ) {
+    u8 imm = operands[1].imm.value.u;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    if (imm > 15) {
+        AS.VMV(dst, 0);
+    } else {
+        biscuit::Vec temp = rec.scratchVec();
+        AS.VMV(temp, 0);
+        AS.VSLIDEDOWN(temp, dst, imm);
+    }
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PSLLQ) {
+    u8 shift = operands[1].imm.value.u;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    if (shift > 63) {
+        AS.VMV(dst, 0);
+    } else {
+        if (shift <= 31) {
+            AS.VSLL(dst, dst, shift);
+        } else {
+            biscuit::GPR sh = rec.scratch();
+            AS.LI(sh, shift);
+            AS.VSLL(dst, dst, sh);
+        }
+    }
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PSRLQ) {
+    u8 shift = operands[1].imm.value.u;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    if (shift > 63) {
+        AS.VMV(dst, 0);
+    } else {
+        if (shift <= 31) {
+            AS.VSRL(dst, dst, shift);
+        } else {
+            biscuit::GPR sh = rec.scratch();
+            AS.LI(sh, shift);
+            AS.VSRL(dst, dst, sh);
+        }
+    }
+    rec.setOperandVec(&operands[0], dst);
+}
