@@ -2260,3 +2260,89 @@ FAST_HANDLE(PSHUFD) {
 
     rec.setOperandVec(&operands[0], dst);
 }
+
+FAST_HANDLE(BSF) {
+    ASSERT(Extensions::B);
+    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+
+    Label end;
+    AS.BEQZ(src, &end);
+    AS.CTZ(dst, src);
+    rec.setOperandGPR(&operands[0], dst);
+
+    AS.Bind(&end);
+    AS.SEQZ(zf, src);
+
+    rec.setFlagUndefined(X86_REF_CF);
+    rec.setFlagUndefined(X86_REF_OF);
+    rec.setFlagUndefined(X86_REF_SF);
+    rec.setFlagUndefined(X86_REF_AF);
+    rec.setFlagUndefined(X86_REF_PF);
+}
+
+FAST_HANDLE(BTC) {
+    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::GPR mask = rec.scratch();
+    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+
+    u8 bit_size = operands[0].size;
+    AS.ANDI(shift, bit, bit_size - 1);
+    AS.SRL(cf, dst, shift);
+    AS.ANDI(cf, cf, 1);
+    AS.LI(mask, 1);
+    AS.SLL(mask, mask, shift);
+    AS.XOR(dst, dst, mask);
+
+    rec.setOperandGPR(&operands[0], dst);
+    rec.setFlagUndefined(X86_REF_OF);
+    rec.setFlagUndefined(X86_REF_SF);
+    rec.setFlagUndefined(X86_REF_AF);
+    rec.setFlagUndefined(X86_REF_PF);
+}
+
+FAST_HANDLE(BSR) {
+    ASSERT(Extensions::B);
+    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+
+    Label end;
+    AS.BEQZ(src, &end);
+    AS.CLZ(dst, src);
+    AS.XORI(dst, dst, rec.getBitSize(size) - 1);
+    rec.setOperandGPR(&operands[0], dst);
+
+    AS.Bind(&end);
+    AS.SEQZ(zf, src);
+
+    rec.setFlagUndefined(X86_REF_CF);
+    rec.setFlagUndefined(X86_REF_OF);
+    rec.setFlagUndefined(X86_REF_SF);
+    rec.setFlagUndefined(X86_REF_AF);
+    rec.setFlagUndefined(X86_REF_PF);
+}
+
+FAST_HANDLE(BSWAP) {
+    ASSERT(Extensions::B);
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    if (size == X86_SIZE_DWORD) {
+        AS.REV8(dst, dst);
+        AS.SRLI(dst, dst, 32);
+    } else {
+        AS.REV8(dst, dst);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+}

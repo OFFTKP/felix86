@@ -1207,7 +1207,7 @@ IR_HANDLE(bsr) { // bsr - 0x0f 0xbd
     ir.SetBlock(not_zero_target);
 
     SSAInstruction* clz = ir.Clz(rm);
-    SSAInstruction* sub = ir.Sub(ir.Imm(63), clz);
+    SSAInstruction* sub = ir.Sub(ir.Imm(ir.GetBitSize(size_e) - 1), clz);
     ir.SetReg(inst->operand_reg, sub);
 
     ir.TerminateJump(next_instruction_target);
