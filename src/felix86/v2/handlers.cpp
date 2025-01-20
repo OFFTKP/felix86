@@ -2554,3 +2554,27 @@ FAST_HANDLE(LFENCE) {
 FAST_HANDLE(MFENCE) {
     AS.FENCE(); // just make a full fence for now, TODO: we can optimize this some day
 }
+
+FAST_HANDLE(MOVSX) {
+    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    x86_size_e size = rec.getOperandSize(&operands[1]);
+
+    switch (size) {
+    case X86_SIZE_BYTE:
+    case X86_SIZE_BYTE_HIGH: {
+        rec.sextb(dst, src);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        rec.sexth(dst, src);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+}
