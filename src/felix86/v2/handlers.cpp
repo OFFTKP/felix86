@@ -8,7 +8,7 @@
 
 #define IS_MMX (instruction.attributes & (ZYDIS_ATTRIB_FPU_STATE_CR | ZYDIS_ATTRIB_FPU_STATE_CW))
 
-#define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
+#define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
 FAST_HANDLE(MOV) {
     biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
