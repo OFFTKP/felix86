@@ -1713,7 +1713,7 @@ FAST_HANDLE(MOVHPS) {
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VSLIDEUP(temp, src, 1);
         AS.VMV(v0, 0b10);
-        AS.VMERGE(dst, temp, dst);
+        AS.VMERGE(dst, dst, temp);
         rec.setOperandVec(&operands[0], dst);
     } else {
         UNREACHABLE();
