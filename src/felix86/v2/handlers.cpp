@@ -2305,16 +2305,17 @@ FAST_HANDLE(PSHUFD) {
     u8 el3 = (imm >> 6) & 0b11;
 
     biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec iota2 = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    AS.VMV(iota, el3);
+    AS.VMV(iota2, el3);
     AS.LI(temp, el2);
-    AS.VSLIDE1UP(iota, iota, temp);
+    AS.VSLIDE1UP(iota, iota2, temp);
     AS.LI(temp, el1);
-    AS.VSLIDE1UP(iota, iota, temp);
+    AS.VSLIDE1UP(iota2, iota, temp);
     AS.LI(temp, el0);
-    AS.VSLIDE1UP(iota, iota, temp);
+    AS.VSLIDE1UP(iota, iota2, temp);
 
     biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
