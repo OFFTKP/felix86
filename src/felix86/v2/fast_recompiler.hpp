@@ -165,6 +165,8 @@ struct FastRecompiler {
 
     VectorMemoryAccess getVectorMemoryAccess(u64 rip);
 
+    void vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask = VecMask::No);
+
     bool blockExists(u64 rip);
 
 private:

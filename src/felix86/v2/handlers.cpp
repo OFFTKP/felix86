@@ -1640,11 +1640,11 @@ void PUNPCKL(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstr
     AS.VMV(v0, mask);
     AS.VIOTA(iota, v0);
     AS.VMV(result, 0);
-    AS.VRGATHER(result, src, iota, VecMask::Yes);
+    rec.vrgather(result, src, iota, VecMask::Yes);
 
     AS.VSRL(v0, v0, 1);
     AS.VIOTA(iota, v0);
-    AS.VRGATHER(result, dst, iota, VecMask::Yes);
+    rec.vrgather(result, dst, iota, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }
@@ -1688,12 +1688,12 @@ void PUNPCKH(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstr
     AS.VIOTA(iota, v0);
     AS.VMV(result, 0);
     AS.VADD(iota, iota, num);
-    AS.VRGATHER(result, src, iota, VecMask::Yes);
+    rec.vrgather(result, src, iota, VecMask::Yes);
 
     AS.VSRL(v0, v0, 1);
     AS.VIOTA(iota, v0);
     AS.VADD(iota, iota, num);
-    AS.VRGATHER(result, dst, iota, VecMask::Yes);
+    rec.vrgather(result, dst, iota, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }
@@ -2319,7 +2319,7 @@ FAST_HANDLE(PSHUFD) {
     biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     AS.VMV(dst, 0);
-    AS.VRGATHER(dst, src, iota);
+    rec.vrgather(dst, src, iota);
 
     rec.setOperandVec(&operands[0], dst);
 }

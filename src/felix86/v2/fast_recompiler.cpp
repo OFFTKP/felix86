@@ -1777,3 +1777,14 @@ VectorMemoryAccess FastRecompiler::getVectorMemoryAccess(u64 rip) {
 bool FastRecompiler::blockExists(u64 rip) {
     return block_metadata[rip].address != nullptr;
 }
+
+void FastRecompiler::vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask) {
+    if (dst == src || dst == iota) {
+        biscuit::Vec temp = scratchVec();
+        as.VRGATHER(temp, src, iota, mask);
+        as.VMV(dst, temp);
+        popScratch();
+    } else {
+        as.VRGATHER(dst, src, iota, mask);
+    }
+}
