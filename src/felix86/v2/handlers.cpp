@@ -2281,7 +2281,6 @@ FAST_HANDLE(BSF) {
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
     rec.setFlagUndefined(X86_REF_AF);
-    rec.setFlagUndefined(X86_REF_PF);
 }
 
 FAST_HANDLE(BTC) {
@@ -2304,7 +2303,6 @@ FAST_HANDLE(BTC) {
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
     rec.setFlagUndefined(X86_REF_AF);
-    rec.setFlagUndefined(X86_REF_PF);
 }
 
 FAST_HANDLE(BSR) {
@@ -2329,7 +2327,6 @@ FAST_HANDLE(BSR) {
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
     rec.setFlagUndefined(X86_REF_AF);
-    rec.setFlagUndefined(X86_REF_PF);
 }
 
 FAST_HANDLE(BSWAP) {
