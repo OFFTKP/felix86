@@ -807,7 +807,6 @@ FAST_HANDLE(DIV) {
     }
 
     rec.setFlagUndefined(X86_REF_CF);
-    rec.setFlagUndefined(X86_REF_PF);
     rec.setFlagUndefined(X86_REF_AF);
     rec.setFlagUndefined(X86_REF_ZF);
     rec.setFlagUndefined(X86_REF_SF);
@@ -880,7 +879,6 @@ FAST_HANDLE(IDIV) {
     }
 
     rec.setFlagUndefined(X86_REF_CF);
-    rec.setFlagUndefined(X86_REF_PF);
     rec.setFlagUndefined(X86_REF_AF);
     rec.setFlagUndefined(X86_REF_ZF);
     rec.setFlagUndefined(X86_REF_SF);
