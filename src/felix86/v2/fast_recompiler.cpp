@@ -201,20 +201,17 @@ biscuit::GPR FastRecompiler::allocatedGPR(x86_ref_e reg) {
     case X86_REF_CF: {
         return biscuit::x21;
     }
-    case X86_REF_PF: {
+    case X86_REF_AF: {
         return biscuit::x22;
     }
-    case X86_REF_AF: {
+    case X86_REF_ZF: {
         return biscuit::x23;
     }
-    case X86_REF_ZF: {
+    case X86_REF_SF: {
         return biscuit::x24;
     }
-    case X86_REF_SF: {
-        return biscuit::x25;
-    }
     case X86_REF_OF: {
-        return biscuit::x26;
+        return biscuit::x25;
     }
     default: {
         UNREACHABLE();
@@ -285,15 +282,17 @@ biscuit::GPR FastRecompiler::scratch() {
     case 0:
         return x1;
     case 1:
-        return x28;
+        return x26;
     case 2:
-        return x29;
+        return x28;
     case 3:
-        return x30;
+        return x29;
     case 4:
+        return x30;
+    case 5:
         return x31;
     default:
-        ERROR("Tried to use more than 5 scratch registers");
+        ERROR("Tried to use more than 6 scratch registers");
         return x0;
     }
 }
