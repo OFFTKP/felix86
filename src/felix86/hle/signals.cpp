@@ -79,6 +79,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         if (is_in_jit_code(pc)) {
             ERROR("SIGSEGV code: %d", info->si_code);
         }
+        break;
     }
     }
 }
@@ -91,6 +92,7 @@ void Signals::initialize() {
     sigemptyset(&sa.sa_mask);
 
     sigaction(SIGBUS, &sa, nullptr);
+    sigaction(SIGSEGV, &sa, nullptr);
 }
 
 void Signals::registerSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
