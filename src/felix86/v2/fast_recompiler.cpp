@@ -47,6 +47,7 @@ FastRecompiler::FastRecompiler(Emulator& emulator) : emulator(emulator), code_ca
     emitDispatcher();
 
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+    ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
 }
 
 FastRecompiler::~FastRecompiler() {

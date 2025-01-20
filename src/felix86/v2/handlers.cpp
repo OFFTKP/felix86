@@ -1753,3 +1753,72 @@ FAST_HANDLE(LEAVE) {
     rec.readMemory(rbp, rbp, -8, size);
     rec.setRefGPR(X86_REF_RBP, X86_SIZE_QWORD, rbp);
 }
+
+void SETCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+    rec.setOperandGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(SETO) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETNO) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETB) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETNB) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETZ) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETNZ) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETBE) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETNBE) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETP) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETNP) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETS) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETNS) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETL) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETNL) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETLE) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
+
+FAST_HANDLE(SETNLE) {
+    SETCC(rec, meta, instruction, operands, rec.getCond(instruction.opcode & 0xF));
+}
