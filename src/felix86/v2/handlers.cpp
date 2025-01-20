@@ -2442,3 +2442,34 @@ FAST_HANDLE(MOVHLPS) {
     AS.VMERGE(dst, temp, dst);
     rec.setOperandVec(&operands[0], dst);
 }
+
+FAST_HANDLE(ROL) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR count = rec.getOperandGPR(&operands[1]);
+
+    Label zero_source;
+
+    AS.BEQZ(dst, &zero_source);
+
+    AS.ANDI(count, count, rec.getBitSize(size) - 1);
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR neg_count = rec.scratch();
+    AS.NEG(neg_count, count);
+    AS.ANDI(neg_count, neg_count, rec.getBitSize(size) - 1);
+    AS.SLL(temp, dst, count);
+    AS.SRL(neg_count, dst, neg_count);
+    AS.OR(dst, temp, neg_count);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.ANDI(cf, dst, 1);
+        AS.SRLI(of, dst, rec.getBitSize(size) - 1);
+        AS.XOR(of, of, cf);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+
+    AS.Bind(&zero_source);
+}
