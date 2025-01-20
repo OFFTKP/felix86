@@ -1123,12 +1123,6 @@ void FastRecompiler::writebackDirtyState() {
         as.SB(allocatedGPR(X86_REF_CF), offsetof(ThreadState, cf), threadStatePointer());
     }
 
-    if (getMetadata(X86_REF_PF).dirty) {
-        biscuit::GPR pf = flag(X86_REF_PF);
-        as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
-        popScratch();
-    }
-
     if (getMetadata(X86_REF_AF).dirty) {
         as.SB(allocatedGPR(X86_REF_AF), offsetof(ThreadState, af), threadStatePointer());
     }
