@@ -234,6 +234,7 @@ FAST_HANDLE(ADC) {
         AS.SNEZ(scratch, scratch);
         AS.OR(of, of, scratch);
         rec.popScratch();
+        rec.popScratch();
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
