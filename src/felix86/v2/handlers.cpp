@@ -1475,8 +1475,8 @@ FAST_HANDLE(IMUL) {
         switch (size) {
         case X86_SIZE_BYTE: {
             biscuit::GPR result = rec.scratch();
-            biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
             biscuit::GPR sext = rec.scratch();
+            biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
             rec.sextb(sext, al);
             rec.sextb(result, al);
             AS.MULW(result, sext, src);
@@ -1494,8 +1494,10 @@ FAST_HANDLE(IMUL) {
         }
         case X86_SIZE_WORD: {
             biscuit::GPR result = rec.scratch();
+            biscuit::GPR sext = rec.scratch();
             biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
-            AS.MULW(result, ax, src);
+            rec.sexth(sext, ax);
+            AS.MULW(result, sext, src);
             rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, result);
 
             if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
@@ -1514,8 +1516,10 @@ FAST_HANDLE(IMUL) {
         }
         case X86_SIZE_DWORD: {
             biscuit::GPR result = rec.scratch();
+            biscuit::GPR sext = rec.scratch();
             biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
-            AS.MUL(result, eax, src);
+            AS.ADDIW(sext, eax, 0);
+            AS.MUL(result, sext, src);
             rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, result);
 
             if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
