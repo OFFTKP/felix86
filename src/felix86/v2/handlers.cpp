@@ -2649,12 +2649,18 @@ FAST_HANDLE(PALIGNR) {
 
     // Use two register grouping
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
-    AS.VMV(result, 0);
-    AS.VSLIDEDOWN(result, src, imm);
-    AS.VAND(result, result, 0, VecMask::Yes);
 
-    AS.VSLIDEUP(slide_up, dst, 16 - imm);
-    AS.VOR(result, result, slide_up);
+    if (16 - imm > 0) {
+        AS.VMV(result, 0);
+        AS.VSLIDEDOWN(result, src, imm);
+        AS.VAND(result, result, 0, VecMask::Yes);
+        AS.VMV(slide_up, 0);
+        AS.VSLIDEUP(slide_up, dst, 16 - imm);
+        AS.VOR(result, result, slide_up);
+    } else {
+        AS.VMV(result, 0);
+        AS.VSLIDEDOWN(result, dst, imm);
+    }
 
     rec.setOperandVec(&operands[0], result);
 }
