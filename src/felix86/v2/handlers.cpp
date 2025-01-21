@@ -2632,6 +2632,7 @@ FAST_HANDLE(PALIGNR) {
         if (16 - imm > 0) {
             biscuit::Vec slide_down = rec.scratchVec();
             biscuit::Vec slide_up = rec.scratchVec();
+            AS.VMV(slide_down, 0);
             AS.VSLIDEDOWN(slide_down, src, imm);
             AS.VMV(slide_up, 0);
             AS.VSLIDEUP(slide_up, dst, 16 - imm);
