@@ -357,5 +357,10 @@ ThreadState* Emulator::createThreadState() {
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;
     std::fill(thread_state->masked_signals.begin(), thread_state->masked_signals.end(), false);
+
+    for (int i = 0; i < 16; i++) {
+        thread_state->SetXmmReg((x86_ref_e)(X86_REF_XMM0 + i), {(u64)rand() << 32 | (u64)rand, (u64)rand() << 32 | (u64)rand()});
+    }
+
     return thread_state;
 }
