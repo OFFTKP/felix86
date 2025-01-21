@@ -2963,7 +2963,7 @@ FAST_HANDLE(MFENCE) {
 }
 
 FAST_HANDLE(MOVSX) {
-    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     x86_size_e size = rec.getOperandSize(&operands[1]);
 
