@@ -31,6 +31,7 @@ bool g_graph_coloring = false;
 bool g_fast_recompiler = false;
 bool g_profile_compilation = false;
 u64 g_dispatcher_exit_count = 0;
+std::vector<u64> g_breakpoints;
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
 
 // Having too many basic blocks in a function can cause the register allocator to take insanely long times

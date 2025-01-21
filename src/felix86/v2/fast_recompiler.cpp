@@ -126,6 +126,14 @@ void FastRecompiler::compileSequence(u64 rip) {
     compiling = true;
     scanFlagUsageAhead(rip);
 
+    if (std::find(g_breakpoints.begin(), g_breakpoints.end(), rip) != g_breakpoints.end()) {
+        if (Extensions::C) {
+            as.C_EBREAK();
+        } else {
+            as.EBREAK();
+        }
+    }
+
     HandlerMetadata meta = {rip, rip};
 
     current_meta = &meta;

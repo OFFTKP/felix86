@@ -1080,8 +1080,8 @@ FAST_HANDLE(IDIV) {
 FAST_HANDLE(TEST) {
     biscuit::GPR result = rec.scratch();
 
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
 
     AS.AND(result, dst, src);
 

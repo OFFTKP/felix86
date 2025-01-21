@@ -37,3 +37,7 @@ u64 sext_if_64(u64 value, u8 size_e);
 u64 current_rip();
 
 void flush_icache();
+
+int guest_breakpoint(u64 address);
+
+int clear_breakpoints();

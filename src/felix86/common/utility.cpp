@@ -85,3 +85,14 @@ void flush_icache() {
     // No need to flush the cache on x86
 #endif
 }
+
+int guest_breakpoint(u64 address) {
+    g_breakpoints.push_back(address);
+    return g_breakpoints.size();
+}
+
+int clear_breakpoints() {
+    int count = g_breakpoints.size();
+    g_breakpoints.clear();
+    return count;
+}
