@@ -2684,6 +2684,29 @@ FAST_HANDLE(BT) {
     rec.setFlagUndefined(X86_REF_AF);
 }
 
+FAST_HANDLE(BTS) {
+    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+
+    u8 bit_size = operands[0].size;
+    AS.ANDI(shift, bit, bit_size - 1);
+    AS.SRL(cf, dst, shift);
+    AS.ANDI(cf, cf, 1);
+    biscuit::GPR one = rec.scratch();
+    AS.LI(one, 1);
+    AS.SLL(one, one, shift);
+    AS.OR(dst, dst, one);
+
+    rec.setOperandGPR(&operands[0], dst);
+
+    rec.setFlagUndefined(X86_REF_OF);
+    rec.setFlagUndefined(X86_REF_SF);
+    rec.setFlagUndefined(X86_REF_AF);
+}
+
 FAST_HANDLE(BSR) {
     ASSERT(Extensions::B);
     ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
