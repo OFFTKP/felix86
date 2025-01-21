@@ -3399,3 +3399,16 @@ FAST_HANDLE(RSQRTSS) {
 
     rec.setOperandVec(&operands[0], result);
 }
+
+FAST_HANDLE(MOVLHPS) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VMV(v0, 0b10);
+    AS.VMV(temp, dst);
+    AS.VMV(iota, 0);
+    AS.VRGATHER(temp, src, iota, VecMask::Yes); // make only high element pick low from src
+    rec.setOperandVec(&operands[0], temp);
+}
