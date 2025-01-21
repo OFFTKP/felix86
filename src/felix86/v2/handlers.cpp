@@ -3073,3 +3073,10 @@ FAST_HANDLE(CVTSI2SD) {
 
     rec.setOperandVec(&operands[0], dst);
 }
+
+FAST_HANDLE(XGETBV) {
+    biscuit::GPR scratch = rec.scratch();
+    AS.LI(scratch, 0b11);
+    rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, scratch);
+    rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, x0);
+}
