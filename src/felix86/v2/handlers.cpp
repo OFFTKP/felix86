@@ -2631,6 +2631,13 @@ FAST_HANDLE(PALIGNR) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+
+    if (imm > 31) {
+        AS.VMV(dst, 0);
+        rec.setOperandVec(&operands[0], dst);
+        return;
+    }
+
     AS.VMV(grp1, dst);
     AS.VMV(grp2, src);
 
