@@ -2631,6 +2631,7 @@ FAST_HANDLE(PALIGNR) {
     // ASSERT(grp1.Index() == grp2.Index() - 1);
 
     biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec mask = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -2643,9 +2644,12 @@ FAST_HANDLE(PALIGNR) {
     }
 
     // Use two register grouping
-    rec.setVectorState(SEW::E8, 31); // max element count, so that the top elements get filled with 0
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VMV(mask, -1);
     AS.VMV(result, 0);
     AS.VSLIDEDOWN(result, src, imm);
+    AS.VSLIDEDOWN(mask, mask, imm);
+    AS.VAND(result, result, mask);
 
     rec.setOperandVec(&operands[0], result);
 }
