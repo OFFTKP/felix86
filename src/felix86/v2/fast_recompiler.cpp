@@ -126,7 +126,9 @@ void FastRecompiler::compileSequence(u64 rip) {
     compiling = true;
     scanFlagUsageAhead(rip);
 
-    if (std::find(g_breakpoints.begin(), g_breakpoints.end(), rip) != g_breakpoints.end()) {
+    if (g_breakpoints.find(rip) != g_breakpoints.end()) {
+        u64 current_address = (u64)as.GetCursorPointer();
+        g_breakpoints[rip].push_back(current_address);
         if (Extensions::C) {
             as.C_EBREAK();
         } else {

@@ -87,7 +87,7 @@ void flush_icache() {
 }
 
 int guest_breakpoint(u64 address) {
-    g_breakpoints.push_back(address);
+    g_breakpoints[address] = {};
     return g_breakpoints.size();
 }
 
