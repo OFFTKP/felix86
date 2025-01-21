@@ -73,8 +73,11 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
         default: {
             struct sigaction old_sa;
-            sigaction(sig, nullptr, &old_sa);
-            sigaction(sig, SIG_DFL, nullptr);
+            struct sigaction def_sa;
+            def_sa.sa_handler = SIG_DFL;
+            def_sa.sa_flags = 0;
+            sigemptyset(&def_sa.sa_mask);
+            sigaction(sig, &def_sa, &old_sa);
             raise(sig);
             sigaction(sig, &old_sa, nullptr);
             break;
