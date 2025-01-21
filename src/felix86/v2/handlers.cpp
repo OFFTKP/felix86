@@ -2643,7 +2643,8 @@ FAST_HANDLE(PALIGNR) {
     }
 
     // Use two register grouping
-    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    rec.setVectorState(SEW::E8, 31); // max element count, so that the top elements get filled with 0
+    AS.VMV(result, 0);
     AS.VSLIDEDOWN(result, src, imm);
 
     rec.setOperandVec(&operands[0], result);
