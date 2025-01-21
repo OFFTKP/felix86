@@ -3068,6 +3068,7 @@ FAST_HANDLE(CVTSI2SD) {
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV(v0, 1);
         rec.setVectorState(SEW::E32, 1);
+        AS.VMV(temp, 0);
         AS.VMV_SX(temp, src);
         AS.VFWCVT_F_X(temp2, temp);
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
