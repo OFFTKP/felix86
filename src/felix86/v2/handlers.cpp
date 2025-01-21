@@ -2534,8 +2534,8 @@ FAST_HANDLE(ROR) {
 
     Label zero_count;
 
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
-    biscuit::GPR of = rec.flag(X86_REF_OF);
+    biscuit::GPR cf = rec.flagWR(X86_REF_CF);
+    biscuit::GPR of = rec.flagWR(X86_REF_OF);
     AS.ANDI(count, count, rec.getBitSize(size) == 64 ? 63 : 31);
     AS.BEQZ(count, &zero_count);
 

@@ -96,6 +96,8 @@ struct FastRecompiler {
 
     biscuit::GPR flagW(x86_ref_e ref);
 
+    biscuit::GPR flagWR(x86_ref_e ref);
+
     void updateParity(biscuit::GPR result);
 
     void updateZero(biscuit::GPR result);

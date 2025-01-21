@@ -737,6 +737,15 @@ biscuit::GPR FastRecompiler::flagW(x86_ref_e ref) {
     return reg;
 }
 
+biscuit::GPR FastRecompiler::flagWR(x86_ref_e ref) {
+    biscuit::GPR reg = allocatedGPR(ref);
+    RegisterMetadata& meta = getMetadata(ref);
+    meta.dirty = true;
+    meta.loaded = true;
+    loadGPR(ref, reg);
+    return reg;
+}
+
 biscuit::GPR FastRecompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
     biscuit::GPR gpr = allocatedGPR(ref);
 
