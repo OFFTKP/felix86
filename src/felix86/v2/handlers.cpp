@@ -2614,10 +2614,9 @@ FAST_HANDLE(PSHUFLW) {
     AS.LI(temp, el0);
     AS.VSLIDE1UP(iota2, iota, temp);
 
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec result = rec.scratchVec();
-    AS.VMV(result, dst);
+    AS.VMV(result, 0);
     AS.VRGATHER(result, src, iota2);
 
     rec.setOperandVec(&operands[0], result);
