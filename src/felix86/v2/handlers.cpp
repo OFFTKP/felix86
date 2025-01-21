@@ -551,7 +551,7 @@ FAST_HANDLE(PUSH) {
 }
 
 FAST_HANDLE(POP) {
-    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
 
     if (instruction.operand_width == 16) {
@@ -1481,7 +1481,7 @@ FAST_HANDLE(MOVSXD) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
 
     if (size == X86_SIZE_QWORD) {
-        biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
         AS.ADDIW(dst, src, 0);
         rec.setOperandGPR(&operands[0], dst);
     } else {
