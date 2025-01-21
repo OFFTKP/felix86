@@ -29,51 +29,56 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
     switch (sig) {
     case SIGBUS: {
-        if (is_in_jit_code(pc)) {
-            switch (info->si_code) {
-            case BUS_ADRALN: {
-                // Go back one instruction, we are going to overwrite it with vsetivli.
-                // It's guaranteed to be either a vsetivli or a nop.
-                context->uc_mcontext.__gregs[REG_PC] = pc - 4;
+        switch (info->si_code) {
+        case BUS_ADRALN: {
+            ASSERT(is_in_jit_code(pc));
+            // Go back one instruction, we are going to overwrite it with vsetivli.
+            // It's guaranteed to be either a vsetivli or a nop.
+            context->uc_mcontext.__gregs[REG_PC] = pc - 4;
 
-                Assembler& as = recompiler.getAssembler();
-                VectorMemoryAccess vma = recompiler.getVectorMemoryAccess(pc - 4);
+            Assembler& as = recompiler.getAssembler();
+            VectorMemoryAccess vma = recompiler.getVectorMemoryAccess(pc - 4);
 
-                ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
-                as.RewindBuffer(pc - as.GetCodeBuffer().GetOffsetAddress(0) - 4); // go to vsetivli
-                switch (vma.sew) {
-                case SEW::E64: {
-                    as.VSETIVLI(x0, vma.len * 8, SEW::E8);
-                    if (vma.load) {
-                        as.VLE8(vma.dest, vma.address);
-                    } else {
-                        as.VSE8(vma.dest, vma.address);
-                    }
-                    as.VSETIVLI(x0, vma.len, vma.sew);
-                    break;
+            ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
+            as.RewindBuffer(pc - as.GetCodeBuffer().GetOffsetAddress(0) - 4); // go to vsetivli
+            switch (vma.sew) {
+            case SEW::E64: {
+                as.VSETIVLI(x0, vma.len * 8, SEW::E8);
+                if (vma.load) {
+                    as.VLE8(vma.dest, vma.address);
+                } else {
+                    as.VSE8(vma.dest, vma.address);
                 }
-                case SEW::E32: {
-                    as.VSETIVLI(x0, vma.len * 4, SEW::E8);
-                    if (vma.load) {
-                        as.VLE8(vma.dest, vma.address);
-                    } else {
-                        as.VSE8(vma.dest, vma.address);
-                    }
-                    as.VSETIVLI(x0, vma.len, vma.sew);
-                    break;
+                as.VSETIVLI(x0, vma.len, vma.sew);
+                break;
+            }
+            case SEW::E32: {
+                as.VSETIVLI(x0, vma.len * 4, SEW::E8);
+                if (vma.load) {
+                    as.VLE8(vma.dest, vma.address);
+                } else {
+                    as.VSE8(vma.dest, vma.address);
                 }
-                default: {
-                    UNREACHABLE();
-                    break;
-                }
-                }
-                as.AdvanceBuffer(cursor);
-                flush_icache();
+                as.VSETIVLI(x0, vma.len, vma.sew);
+                break;
+            }
+            default: {
+                UNREACHABLE();
                 break;
             }
             }
-        } else {
-            ERROR("SIGBUS code: %d", info->si_code);
+            as.AdvanceBuffer(cursor);
+            flush_icache();
+            break;
+        }
+        default: {
+            struct sigaction old_sa;
+            sigaction(sig, nullptr, &old_sa);
+            sigaction(sig, SIG_DFL, nullptr);
+            raise(sig);
+            sigaction(sig, &old_sa, nullptr);
+            break;
+        }
         }
         break;
     }
