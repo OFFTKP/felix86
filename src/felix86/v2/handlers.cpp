@@ -2964,3 +2964,25 @@ FAST_HANDLE(PEXTRW) {
 
     rec.setOperandGPR(&operands[0], dst);
 }
+
+FAST_HANDLE(CMPXCHG) {
+    x86_size_e size = rec.zydisToSize(instruction.operand_width);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+
+    Label end, equal;
+    AS.BEQ(dst, rax, &equal);
+
+    // Not equal
+    AS.LI(zf, 0);
+    rec.setRefGPR(X86_REF_RAX, size, dst);
+    AS.J(&end);
+
+    AS.Bind(&equal);
+    AS.LI(zf, 1);
+    rec.setOperandGPR(&operands[0], src);
+
+    AS.Bind(&end);
+}
