@@ -641,7 +641,7 @@ biscuit::GPR FastRecompiler::getOperandGPR(ZydisDecodedOperand* operand) {
 biscuit::GPR FastRecompiler::getOperandGPRDontZext(ZydisDecodedOperand* operand) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
-        biscuit::GPR reg = getRefGPR(zydisToRef(operand->reg.value), X86_SIZE_QWORD);
+        biscuit::GPR reg = allocatedGPR(zydisToRef(operand->reg.value));
         loadGPR(zydisToRef(operand->reg.value), reg);
 
         if (zydisToSize(operand->reg.value) == X86_SIZE_BYTE_HIGH) {
