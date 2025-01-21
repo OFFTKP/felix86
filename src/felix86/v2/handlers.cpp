@@ -3223,7 +3223,7 @@ FAST_HANDLE(RCPSS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, 1);
-    AS.VMV(temp, 1);
+    AS.VMV(temp, 0x3F800000);
     AS.VFDIV(temp, temp, src);
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
@@ -3241,7 +3241,7 @@ FAST_HANDLE(RSQRTSS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, 1);
-    AS.VMV(temp, 1);
+    AS.VMV(temp, 0x3F800000);
     AS.VFSQRT(temp2, src);
     AS.VFDIV(temp, temp, temp2);
 
