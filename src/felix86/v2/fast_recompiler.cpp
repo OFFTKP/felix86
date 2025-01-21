@@ -138,6 +138,7 @@ void FastRecompiler::compileSequence(u64 rip) {
 
     current_sew = SEW::E1024;
     current_vlen = 0;
+    current_grouping = 1;
 
     while (compiling) {
         resetScratch();
@@ -1037,15 +1038,16 @@ void FastRecompiler::loadVec(x86_ref_e reg, biscuit::Vec vec) {
     popScratch();
 }
 
-bool FastRecompiler::setVectorState(SEW sew, int vlen) {
-    if (current_sew == sew && current_vlen == vlen) {
+bool FastRecompiler::setVectorState(SEW sew, int vlen, int grouping) {
+    if (current_sew == sew && current_vlen == vlen && current_grouping) {
         return false;
     }
 
     current_sew = sew;
     current_vlen = vlen;
+    current_grouping = grouping;
 
-    as.VSETIVLI(x0, vlen, sew);
+    as.VSETIVLI(x0, vlen, sew, (LMUL)grouping);
     return true;
 }
 
