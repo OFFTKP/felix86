@@ -2571,6 +2571,8 @@ FAST_HANDLE(PSHUFD) {
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec iota2 = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec result = rec.scratchVec();
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.VMV(iota2, el3);
@@ -2581,8 +2583,6 @@ FAST_HANDLE(PSHUFD) {
     AS.LI(temp, el0);
     AS.VSLIDE1UP(iota, iota2, temp);
 
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec result = rec.scratchVec();
     AS.VMV(result, 0);
     AS.VRGATHER(result, src, iota);
 
@@ -2599,6 +2599,8 @@ FAST_HANDLE(PSHUFLW) {
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec iota2 = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec result = rec.scratchVec();
 
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
     AS.VMV(iota, 0);
@@ -2614,8 +2616,6 @@ FAST_HANDLE(PSHUFLW) {
     AS.LI(temp, el0);
     AS.VSLIDE1UP(iota2, iota, temp);
 
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec result = rec.scratchVec();
     AS.VMV(result, 0);
     AS.VRGATHER(result, src, iota2);
 
@@ -2631,9 +2631,8 @@ FAST_HANDLE(PALIGNR) {
         biscuit::Vec result = rec.scratchVec();
         if (16 - imm > 0) {
             biscuit::Vec slide_down = rec.scratchVec();
-            rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
-            AS.VSLIDEDOWN(slide_down, src, imm);
             biscuit::Vec slide_up = rec.scratchVec();
+            AS.VSLIDEDOWN(slide_down, src, imm);
             AS.VMV(slide_up, 0);
             AS.VSLIDEUP(slide_up, dst, 16 - imm);
             AS.VOR(result, slide_down, slide_up);
