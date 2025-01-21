@@ -2632,6 +2632,7 @@ FAST_HANDLE(PALIGNR) {
 
     biscuit::GPR temp = rec.scratch();
     biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec slide_up = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -2651,6 +2652,9 @@ FAST_HANDLE(PALIGNR) {
     AS.VMV(result, 0);
     AS.VSLIDEDOWN(result, src, imm);
     AS.VAND(result, result, 0, VecMask::Yes);
+
+    AS.VSLIDEUP(slide_up, dst, 16 - imm);
+    AS.VOR(result, result, slide_up);
 
     rec.setOperandVec(&operands[0], result);
 }
