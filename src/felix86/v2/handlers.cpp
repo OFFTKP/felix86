@@ -2624,8 +2624,11 @@ FAST_HANDLE(PSHUFLW) {
 
 FAST_HANDLE(PALIGNR) {
     u8 imm = operands[2].imm.value.u;
-    biscuit::Vec grp1 = rec.scratchVec();
-    biscuit::Vec grp2 = rec.scratchVec();
+    // biscuit::Vec grp1 = rec.scratchVec();
+    // biscuit::Vec grp2 = rec.scratchVec();
+
+    // // They need to be consecutive registers
+    // ASSERT(grp1.Index() == grp2.Index() - 1);
 
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -2638,15 +2641,8 @@ FAST_HANDLE(PALIGNR) {
         return;
     }
 
-    AS.VMV(grp1, dst);
-    AS.VMV(grp2, src);
-
-    // Use two register grouping
-    rec.setVectorState(SEW::E16, rec.maxVlen() / 16, LMUL::M2);
-    AS.VSLIDEDOWN(grp1, grp1, imm);
-
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VMV(dst, grp2);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VSLIDEDOWN(dst, dst, imm);
 
     rec.setOperandVec(&operands[0], dst);
 }
