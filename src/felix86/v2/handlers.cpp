@@ -500,11 +500,12 @@ FAST_HANDLE(SHL) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR count = rec.scratch();
 
     if (instruction.operand_width == 64) {
-        AS.ANDI(src, src, 0x3F);
+        AS.ANDI(count, src, 0x3F);
     } else {
-        AS.ANDI(src, src, 0x1F);
+        AS.ANDI(count, src, 0x1F);
     }
 
     Label zero_source;
@@ -521,9 +522,9 @@ FAST_HANDLE(SHL) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
         rec.flag(X86_REF_SF);
 
-    AS.BEQZ(src, &zero_source);
+    AS.BEQZ(count, &zero_source);
 
-    AS.SLL(result, dst, src);
+    AS.SLL(result, dst, count);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
         rec.updateParity(result);
@@ -540,7 +541,7 @@ FAST_HANDLE(SHL) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
         AS.LI(cf, rec.getBitSize(size));
-        AS.SUB(cf, cf, src);
+        AS.SUB(cf, cf, count);
         AS.SRL(cf, dst, cf);
         AS.ANDI(cf, cf, 1);
     }
@@ -562,11 +563,12 @@ FAST_HANDLE(SHR) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR count = rec.scratch();
 
     if (instruction.operand_width == 64) {
-        AS.ANDI(src, src, 0x3F);
+        AS.ANDI(count, src, 0x3F);
     } else {
-        AS.ANDI(src, src, 0x1F);
+        AS.ANDI(count, src, 0x1F);
     }
 
     Label zero_source;
@@ -583,9 +585,9 @@ FAST_HANDLE(SHR) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
         rec.flag(X86_REF_SF);
 
-    AS.BEQZ(src, &zero_source);
+    AS.BEQZ(count, &zero_source);
 
-    AS.SRL(result, dst, src);
+    AS.SRL(result, dst, count);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
         rec.updateParity(result);
@@ -601,7 +603,7 @@ FAST_HANDLE(SHR) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.ADDI(cf, src, -1);
+        AS.ADDI(cf, count, -1);
         AS.SRL(cf, dst, cf);
         AS.ANDI(cf, cf, 1);
     }
@@ -622,11 +624,12 @@ FAST_HANDLE(SAR) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR count = rec.scratch();
 
     if (instruction.operand_width == 64) {
-        AS.ANDI(src, src, 0x3F);
+        AS.ANDI(count, src, 0x3F);
     } else {
-        AS.ANDI(src, src, 0x1F);
+        AS.ANDI(count, src, 0x1F);
     }
 
     Label zero_source;
@@ -643,27 +646,27 @@ FAST_HANDLE(SAR) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
         rec.flag(X86_REF_SF);
 
-    AS.BEQZ(src, &zero_source);
+    AS.BEQZ(count, &zero_source);
 
     switch (size) {
     case X86_SIZE_BYTE: {
         AS.SLLI(result, dst, 56);
         AS.SRAI(result, result, 56);
-        AS.SRA(result, result, src);
+        AS.SRA(result, result, count);
         break;
     }
     case X86_SIZE_WORD: {
         AS.SLLI(result, dst, 48);
         AS.SRAI(result, result, 48);
-        AS.SRA(result, result, src);
+        AS.SRA(result, result, count);
         break;
     }
     case X86_SIZE_DWORD: {
-        AS.SRAW(result, dst, src);
+        AS.SRAW(result, dst, count);
         break;
     }
     case X86_SIZE_QWORD: {
-        AS.SRA(result, dst, src);
+        AS.SRA(result, dst, count);
         break;
     }
     default: {
@@ -686,7 +689,7 @@ FAST_HANDLE(SAR) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.ADDI(cf, src, -1);
+        AS.ADDI(cf, count, -1);
         AS.SRL(cf, dst, cf);
         AS.ANDI(cf, cf, 1);
     }
@@ -2502,13 +2505,14 @@ FAST_HANDLE(MOVHLPS) {
 FAST_HANDLE(ROL) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-    biscuit::GPR count = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR count = rec.scratch();
 
     Label zero_count;
 
     biscuit::GPR cf = rec.flagWR(X86_REF_CF);
     biscuit::GPR of = rec.flagWR(X86_REF_OF);
-    AS.ANDI(count, count, rec.getBitSize(size) == 64 ? 63 : 31);
+    AS.ANDI(count, src, rec.getBitSize(size) == 64 ? 63 : 31);
     AS.BEQZ(count, &zero_count);
 
     biscuit::GPR temp = rec.scratch();
@@ -2530,13 +2534,14 @@ FAST_HANDLE(ROL) {
 FAST_HANDLE(ROR) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-    biscuit::GPR count = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR count = rec.scratch();
 
     Label zero_count;
 
     biscuit::GPR cf = rec.flagWR(X86_REF_CF);
     biscuit::GPR of = rec.flagWR(X86_REF_OF);
-    AS.ANDI(count, count, rec.getBitSize(size) == 64 ? 63 : 31);
+    AS.ANDI(count, src, rec.getBitSize(size) == 64 ? 63 : 31);
     AS.BEQZ(count, &zero_count);
 
     biscuit::GPR temp = rec.scratch();
