@@ -2149,6 +2149,44 @@ FAST_HANDLE(SQRTPD) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(DIVPS) {
+    biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VFDIV(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(DIVPD) {
+    biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VFDIV(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(RCPPS) {
+    biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec ones = rec.scratchVec();
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMV(ones, 0x3f800000);
+    AS.VFDIV(dst, ones, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(RSQRTPS) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec ones = rec.scratchVec();
+    biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMV(ones, 0x3f800000);
+    AS.VFSQRT(temp, src);
+    AS.VFDIV(dst, ones, temp);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(MOVSB) {
     Label loop_end, loop_body;
     if (HAS_REP) {
