@@ -510,16 +510,16 @@ FAST_HANDLE(SHL) {
     Label zero_source;
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF))
-        rec.flagW(X86_REF_CF);
+        rec.flag(X86_REF_CF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF))
-        rec.flagW(X86_REF_OF);
+        rec.flag(X86_REF_OF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF))
-        rec.flagW(X86_REF_ZF);
+        rec.flag(X86_REF_ZF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
-        rec.flagW(X86_REF_SF);
+        rec.flag(X86_REF_SF);
 
     AS.BEQZ(src, &zero_source);
 
@@ -572,16 +572,16 @@ FAST_HANDLE(SHR) {
     Label zero_source;
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF))
-        rec.flagW(X86_REF_CF);
+        rec.flag(X86_REF_CF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF))
-        rec.flagW(X86_REF_OF);
+        rec.flag(X86_REF_OF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF))
-        rec.flagW(X86_REF_ZF);
+        rec.flag(X86_REF_ZF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
-        rec.flagW(X86_REF_SF);
+        rec.flag(X86_REF_SF);
 
     AS.BEQZ(src, &zero_source);
 
@@ -632,16 +632,16 @@ FAST_HANDLE(SAR) {
     Label zero_source;
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF))
-        rec.flagW(X86_REF_CF);
+        rec.flag(X86_REF_CF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF))
-        rec.flagW(X86_REF_OF);
+        rec.flag(X86_REF_OF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF))
-        rec.flagW(X86_REF_ZF);
+        rec.flag(X86_REF_ZF);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
-        rec.flagW(X86_REF_SF);
+        rec.flag(X86_REF_SF);
 
     AS.BEQZ(src, &zero_source);
 
@@ -2506,9 +2506,9 @@ FAST_HANDLE(ROL) {
 
     Label zero_count;
 
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
-    biscuit::GPR of = rec.flagW(X86_REF_OF);
-    AS.ANDI(count, count, rec.getBitSize(size) - 1);
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR of = rec.flag(X86_REF_OF);
+    AS.ANDI(count, count, rec.getBitSize(size) == 64 ? 63 : 31);
     AS.BEQZ(count, &zero_count);
 
     biscuit::GPR temp = rec.scratch();
@@ -2534,8 +2534,8 @@ FAST_HANDLE(ROR) {
 
     Label zero_count;
 
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
-    biscuit::GPR of = rec.flagW(X86_REF_OF);
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR of = rec.flag(X86_REF_OF);
     AS.ANDI(count, count, rec.getBitSize(size) == 64 ? 63 : 31);
     AS.BEQZ(count, &zero_count);
 
