@@ -3058,30 +3058,18 @@ FAST_HANDLE(MAXSD) {
 
 FAST_HANDLE(CVTSI2SD) {
     x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
-    biscuit::Vec temp = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
 
     if (gpr_size == X86_SIZE_DWORD) {
+        AS.FCVT_D_W(ft0, src);
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-        AS.VMV(v0, 1);
-        rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-        AS.VMV(temp, 0);
-        AS.VMV_SX(temp, src);
-        AS.VFWCVT_F_X(temp2, temp);
-        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-        AS.VMERGE(result, dst, temp2);
-        rec.setOperandVec(&operands[0], result);
+        AS.VFMV_SF(dst, ft0);
     } else {
+        AS.FCVT_D_L(ft0, src);
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-        AS.VMV(v0, 1);
-        rec.setVectorState(SEW::E64, 1);
-        AS.VMV_SX(temp, src);
-        AS.VFCVT_F_X(temp2, temp);
-        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-        AS.VMERGE(result, dst, temp2);
-        rec.setOperandVec(&operands[0], result);
+        AS.VFMV_SF(dst, ft0);
     }
+
+    rec.setOperandVec(&operands[0], dst);
 }
