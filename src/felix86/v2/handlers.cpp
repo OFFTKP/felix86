@@ -2644,13 +2644,12 @@ FAST_HANDLE(PALIGNR) {
         return;
     }
 
-    AS.LI(temp, ~((1 << (16 - imm)) - 1));
-    AS.VMV_SX(v0, temp);
-
     // Use two register grouping
-    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
 
     if (16 - imm > 0) {
+        AS.LI(temp, ~((1 << (16 - imm)) - 1));
+        AS.VMV_SX(v0, temp);
+        rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
         AS.VMV(result, 0);
         AS.VSLIDEDOWN(result, src, imm);
         AS.VAND(result, result, 0, VecMask::Yes);
@@ -2658,8 +2657,12 @@ FAST_HANDLE(PALIGNR) {
         AS.VSLIDEUP(slide_up, dst, 16 - imm);
         AS.VOR(result, result, slide_up);
     } else {
+        AS.LI(temp, ~((1 << imm) - 1));
+        AS.VMV_SX(v0, temp);
+        rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
         AS.VMV(result, 0);
         AS.VSLIDEDOWN(result, dst, imm - 16);
+        AS.VAND(result, result, 0, VecMask::Yes);
     }
 
     rec.setOperandVec(&operands[0], result);
