@@ -1022,21 +1022,24 @@ FAST_HANDLE(IDIV) {
 
         rec.sexth(src_sext, src);
 
-        AS.DIVW(ax, dx, src);
-        AS.REMW(dx, dx, src);
+        AS.DIVW(ax, dx, src_sext);
+        AS.REMW(dx, dx, src_sext);
 
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
         rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, dx);
         break;
     }
     case X86_SIZE_DWORD: {
+        biscuit::GPR src_sext = rec.scratch();
         biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
         biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
         AS.SLLI(edx, edx, 32);
         AS.OR(edx, edx, eax);
 
-        AS.DIV(eax, edx, src);
-        AS.REM(edx, edx, src);
+        AS.ADDIW(src_sext, src, 0);
+
+        AS.DIV(eax, edx, src_sext);
+        AS.REM(edx, edx, src_sext);
 
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, eax);
         rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
@@ -1115,7 +1118,7 @@ FAST_HANDLE(INC) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        rec.zext(of, dst, size);
+        AS.XORI(of, dst, -1);
         AS.SEQZ(of, of);
     }
 
