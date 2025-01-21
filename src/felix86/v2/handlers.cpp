@@ -3067,7 +3067,7 @@ FAST_HANDLE(CVTSI2SD) {
     if (gpr_size == X86_SIZE_DWORD) {
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV(v0, 1);
-        rec.setVectorState(SEW::E32, 1);
+        rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
         AS.VMV(temp, 0);
         AS.VMV_SX(temp, src);
         AS.VFWCVT_F_X(temp2, temp);
