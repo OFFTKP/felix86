@@ -2139,8 +2139,7 @@ FAST_HANDLE(LEAVE) {
 }
 
 void SETCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
-    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
-    rec.setOperandGPR(&operands[0], dst);
+    rec.setOperandGPR(&operands[0], cond);
 }
 
 FAST_HANDLE(SETO) {

@@ -219,7 +219,7 @@ private:
     void* compile_next_handler{};
 
     // 16 gprs, 6 flags, 16 xmm registers
-    std::array<RegisterMetadata, 16 + 6 + 16> metadata{};
+    std::array<RegisterMetadata, 16 + 5 + 16> metadata{};
 
     std::unordered_map<u64, BlockMetadata> block_metadata{};
 
