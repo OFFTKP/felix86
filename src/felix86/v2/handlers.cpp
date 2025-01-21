@@ -3041,6 +3041,27 @@ void SCALAR(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstru
     rec.setOperandVec(&operands[0], result);
 }
 
+void SCALAR(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
+            void (Assembler::*func)(Vec, Vec, VecMask)) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    (AS.*func)(temp, src, VecMask::No);
+
+    if (sew == SEW::E32) {
+        rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    } else {
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    }
+
+    biscuit::Vec result = rec.scratchVec();
+    AS.VMV(v0, 1);
+    AS.VMERGE(result, dst, temp);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(DIVSS) {
     SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFDIV);
 }
@@ -3187,4 +3208,48 @@ FAST_HANDLE(CVTSS2SI) {
     }
 
     rec.setOperandGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(SQRTSS) {
+    SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFSQRT);
+}
+
+FAST_HANDLE(SQRTSD) {
+    SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFSQRT);
+}
+
+FAST_HANDLE(RCPSS) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, 1);
+    AS.VMV(temp, 1);
+    AS.VFDIV(temp, temp, src);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+
+    biscuit::Vec result = rec.scratchVec();
+    AS.VMV(v0, 1);
+    AS.VMERGE(result, dst, temp);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(RSQRTSS) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, 1);
+    AS.VMV(temp, 1);
+    AS.VFSQRT(temp2, src);
+    AS.VFDIV(temp, temp, temp2);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+
+    biscuit::Vec result = rec.scratchVec();
+    AS.VMV(v0, 1);
+    AS.VMERGE(result, dst, temp);
+
+    rec.setOperandVec(&operands[0], result);
 }
