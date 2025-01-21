@@ -78,32 +78,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
         break;
     }
-    case SIGTRAP: {
-        bool found = false;
-        if (is_in_jit_code(pc)) {
-            // Search to see if it is our trap
-            for (auto& bp : g_breakpoints) {
-                for (u64 location : bp.second) {
-                    if (location == pc) {
-                        // Skip the breakpoint (for some reason gdb doesn't already do this) and continue
-                        printf("Guest breakpoint %016lx hit at %016lx\n", bp.first, pc);
-                        context->uc_mcontext.__gregs[REG_PC] = pc + 4;
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (found) {
-                    break;
-                }
-            }
-        }
-
-        if (!found) {
-            ERROR("Unhandled SIGTRAP at PC: %016lx", pc);
-        }
-        break;
-    }
     default: {
         ERROR("Unhandled signal: %d", sig);
         break;
@@ -119,7 +93,6 @@ void Signals::initialize() {
     sigemptyset(&sa.sa_mask);
 
     sigaction(SIGBUS, &sa, nullptr);
-    sigaction(SIGTRAP, &sa, nullptr);
 }
 
 void Signals::registerSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
