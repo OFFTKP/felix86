@@ -186,8 +186,8 @@ void Elf::Load(const std::filesystem::path& path) {
 
     u64 stack_hint = 0x7FFFFFFFF000 - max_stack_size;
 
-    stack_base =
-        (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+    stack_base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_READ | PROT_WRITE,
+                           MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
     if (stack_base == MAP_FAILED) {
         ERROR("Failed to allocate stack for ELF file %s", path.c_str());
     }
