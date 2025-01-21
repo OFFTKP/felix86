@@ -2186,7 +2186,9 @@ FAST_HANDLE(RCPPS) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec ones = rec.scratchVec();
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    AS.VMV(ones, 0x3f800000);
+    biscuit::GPR scratch = rec.scratch();
+    AS.LI(scratch, 0x3f800000);
+    AS.VMV(ones, scratch);
     AS.VFDIV(dst, ones, src);
     rec.setOperandVec(&operands[0], dst);
 }
@@ -2197,7 +2199,9 @@ FAST_HANDLE(RSQRTPS) {
     biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    AS.VMV(ones, 0x3f800000);
+    biscuit::GPR scratch = rec.scratch();
+    AS.LI(scratch, 0x3f800000);
+    AS.VMV(ones, ones);
     AS.VFSQRT(temp, src);
     AS.VFDIV(dst, ones, temp);
     rec.setOperandVec(&operands[0], dst);
@@ -3259,7 +3263,9 @@ FAST_HANDLE(RCPSS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, 1);
-    AS.VMV(temp, 0x3F800000);
+    biscuit::GPR ones = rec.scratch();
+    AS.LI(ones, 0x3F800000);
+    AS.VMV(temp, ones);
     AS.VFDIV(temp, temp, src);
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
@@ -3277,7 +3283,9 @@ FAST_HANDLE(RSQRTSS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, 1);
-    AS.VMV(temp, 0x3F800000);
+    biscuit::GPR ones = rec.scratch();
+    AS.LI(ones, 0x3F800000);
+    AS.VMV(temp, ones);
     AS.VFSQRT(temp2, src);
     AS.VFDIV(temp, temp, temp2);
 
