@@ -1120,7 +1120,7 @@ FAST_HANDLE(INC) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
         biscuit::GPR af = rec.flagW(X86_REF_AF);
-        AS.ANDI(af, dst, 0xF);
+        AS.ANDI(af, res, 0xF);
         AS.SEQZ(af, af);
     }
 
@@ -1135,15 +1135,15 @@ FAST_HANDLE(INC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(dst);
+        rec.updateParity(res);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(dst);
+        rec.updateZero(res);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(dst, size);
+        rec.updateSign(res, size);
     }
 
     rec.setOperandGPR(&operands[0], res);
@@ -1173,15 +1173,15 @@ FAST_HANDLE(DEC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(dst);
+        rec.updateParity(res);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(dst);
+        rec.updateZero(res);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(dst, size);
+        rec.updateSign(res, size);
     }
 
     rec.setOperandGPR(&operands[0], res);
