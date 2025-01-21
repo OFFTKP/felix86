@@ -2641,8 +2641,9 @@ FAST_HANDLE(PALIGNR) {
         return;
     }
 
+    // Use two register grouping
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
-    AS.VSLIDEDOWN(dst, dst, imm);
+    AS.VSLIDEDOWN(dst, src, imm);
 
     rec.setOperandVec(&operands[0], dst);
 }
