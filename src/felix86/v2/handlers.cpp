@@ -2256,9 +2256,14 @@ FAST_HANDLE(MOVSD_sse) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-        AS.VMV(dst, 0);
         AS.VMV(v0, 1);
-        AS.VOR(dst, dst, src);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            // Only when src is memory are the upper bits zeroed
+            AS.VMV(dst, 0);
+            AS.VOR(dst, dst, src, VecMask::Yes);
+        } else {
+            AS.VMERGE(dst, dst, src);
+        }
         rec.setOperandVec(&operands[0], dst);
     }
 }
@@ -3085,15 +3090,52 @@ FAST_HANDLE(CVTSI2SD) {
 
     if (gpr_size == X86_SIZE_DWORD) {
         AS.FCVT_D_W(ft0, src);
-        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        rec.setVectorState(SEW::E64, 1);
         AS.VFMV_SF(dst, ft0);
     } else {
         AS.FCVT_D_L(ft0, src);
-        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        rec.setVectorState(SEW::E64, 1);
         AS.VFMV_SF(dst, ft0);
     }
 
     rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTSI2SS) {
+    x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+
+    if (gpr_size == X86_SIZE_DWORD) {
+        AS.FCVT_S_W(ft0, src);
+        rec.setVectorState(SEW::E32, 1);
+        AS.VFMV_SF(dst, ft0);
+
+    } else {
+        AS.FCVT_S_L(ft0, src);
+        rec.setVectorState(SEW::E32, 1);
+        AS.VFMV_SF(dst, ft0);
+    }
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTTSS2SI) {
+    x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    if (gpr_size == X86_SIZE_DWORD) {
+        rec.setVectorState(SEW::E32, 1);
+        AS.VFMV_FS(ft0, src);
+        AS.FCVT_W_S(dst, ft0, RMode::RTZ);
+    } else {
+        rec.setVectorState(SEW::E32, 1);
+        AS.VFMV_FS(ft0, src);
+        AS.FCVT_L_S(dst, ft0, RMode::RTZ);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
 }
 
 FAST_HANDLE(XGETBV) {
@@ -3111,9 +3153,14 @@ FAST_HANDLE(MOVSS) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-        AS.VMV(dst, 0);
         AS.VMV(v0, 1);
-        AS.VOR(dst, dst, src);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            // Only when src is memory are the upper bits zeroed
+            AS.VMV(dst, 0);
+            AS.VOR(dst, dst, src, VecMask::Yes);
+        } else {
+            AS.VMERGE(dst, dst, src);
+        }
         rec.setOperandVec(&operands[0], dst);
     }
 }
