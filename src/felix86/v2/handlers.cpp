@@ -10,6 +10,25 @@
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
+void is_overflow_sub(FastRecompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
+    biscuit::GPR scratch = rec.scratch();
+    AS.XOR(scratch, lhs, rhs);
+    AS.XOR(of, lhs, result);
+    AS.AND(of, of, scratch);
+    AS.LI(scratch, sign_mask);
+    AS.AND(of, of, scratch);
+    AS.SNEZ(of, of);
+}
+
+void is_overflow_add(FastRecompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
+    biscuit::GPR scratch = rec.scratch();
+    AS.XOR(scratch, result, lhs);
+    AS.XOR(of, result, rhs);
+    AS.AND(of, of, scratch);
+    AS.LI(scratch, sign_mask);
+    AS.AND(of, of, scratch);
+    AS.SNEZ(of, of);
+}
 FAST_HANDLE(MOV) {
     biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
     rec.setOperandGPR(&operands[0], src);
@@ -53,14 +72,8 @@ FAST_HANDLE(ADD) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        biscuit::GPR scratch = rec.scratch();
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        AS.XOR(scratch, result, dst);
-        AS.XOR(of, result, src);
-        AS.AND(of, of, scratch);
-        AS.LI(scratch, sign_mask);
-        AS.AND(of, of, scratch);
-        AS.SNEZ(of, of);
+        is_overflow_add(rec, of, dst, src, result, sign_mask);
         rec.popScratch();
     }
 
@@ -104,14 +117,8 @@ FAST_HANDLE(SUB) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        biscuit::GPR scratch = rec.scratch();
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        AS.XOR(scratch, dst, src);
-        AS.XOR(of, dst, result);
-        AS.AND(of, of, scratch);
-        AS.LI(scratch, sign_mask);
-        AS.AND(of, of, scratch);
-        AS.SNEZ(of, of);
+        is_overflow_sub(rec, of, dst, src, result, sign_mask);
         rec.popScratch();
     }
 
@@ -542,7 +549,7 @@ FAST_HANDLE(PUSH) {
 }
 
 FAST_HANDLE(POP) {
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
 
     if (instruction.operand_width == 16) {
@@ -1107,8 +1114,9 @@ FAST_HANDLE(TEST) {
 FAST_HANDLE(INC) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR res = rec.scratch();
 
-    AS.ADDI(dst, dst, 1);
+    AS.ADDI(res, dst, 1);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
         biscuit::GPR af = rec.flagW(X86_REF_AF);
@@ -1118,9 +1126,12 @@ FAST_HANDLE(INC) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        AS.XORI(of, dst, -1);
-        rec.zext(of, of, size);
-        AS.SEQZ(of, of);
+        biscuit::GPR one = rec.scratch();
+        u64 sign_mask = rec.getSignMask(size);
+        AS.LI(one, 1);
+        is_overflow_add(rec, of, dst, one, res, sign_mask);
+        rec.popScratch();
+        rec.popScratch();
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -1135,12 +1146,13 @@ FAST_HANDLE(INC) {
         rec.updateSign(dst, size);
     }
 
-    rec.setOperandGPR(&operands[0], dst);
+    rec.setOperandGPR(&operands[0], res);
 }
 
 FAST_HANDLE(DEC) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR res = rec.scratch();
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
         biscuit::GPR af = rec.flagW(X86_REF_AF);
@@ -1148,12 +1160,17 @@ FAST_HANDLE(DEC) {
         AS.SEQZ(af, af);
     }
 
+    AS.ADDI(res, dst, -1);
+
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        AS.SEQZ(of, dst);
+        biscuit::GPR one = rec.scratch();
+        u64 sign_mask = rec.getSignMask(size);
+        AS.LI(one, 1);
+        is_overflow_sub(rec, of, dst, one, res, sign_mask);
+        rec.popScratch();
+        rec.popScratch();
     }
-
-    AS.ADDI(dst, dst, -1);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
         rec.updateParity(dst);
@@ -1167,7 +1184,7 @@ FAST_HANDLE(DEC) {
         rec.updateSign(dst, size);
     }
 
-    rec.setOperandGPR(&operands[0], dst);
+    rec.setOperandGPR(&operands[0], res);
 }
 
 FAST_HANDLE(LAHF) {
