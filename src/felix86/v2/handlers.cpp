@@ -2647,7 +2647,7 @@ FAST_HANDLE(PALIGNR) {
     // Use two register grouping
 
     if (16 - imm > 0) {
-        AS.LI(temp, ~((1 << (16 - imm)) - 1));
+        AS.LI(temp, ~((1ull << (16 - imm)) - 1));
         AS.VMV_SX(v0, temp);
         rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
         AS.VMV(result, 0);
@@ -2657,7 +2657,7 @@ FAST_HANDLE(PALIGNR) {
         AS.VSLIDEUP(slide_up, dst, 16 - imm);
         AS.VOR(result, result, slide_up);
     } else {
-        AS.LI(temp, ~((1 << imm) - 1));
+        AS.LI(temp, ~((1ull << (32 - imm)) - 1));
         AS.VMV_SX(v0, temp);
         rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
         AS.VMV(result, 0);
