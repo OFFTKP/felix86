@@ -2659,7 +2659,7 @@ FAST_HANDLE(PALIGNR) {
         AS.VOR(result, result, slide_up);
     } else {
         AS.VMV(result, 0);
-        AS.VSLIDEDOWN(result, dst, imm);
+        AS.VSLIDEDOWN(result, dst, imm - 16);
     }
 
     rec.setOperandVec(&operands[0], result);
