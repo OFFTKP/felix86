@@ -5,6 +5,7 @@
   }
 }
 %endif
+bits 64
 
 ; Uses CX and BX and stores result in r15
 ; OF:CF
