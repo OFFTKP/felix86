@@ -1119,6 +1119,7 @@ FAST_HANDLE(INC) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         AS.XORI(of, dst, -1);
+        rec.zext(of, of, size);
         AS.SEQZ(of, of);
     }
 
