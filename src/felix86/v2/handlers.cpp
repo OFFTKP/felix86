@@ -169,10 +169,83 @@ FAST_HANDLE(SBB) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR scratch = rec.scratch();
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        biscuit::GPR cf = rec.flagWR(X86_REF_CF);
+        rec.zext(scratch, result, size);
         AS.SLTU(cf, dst, src);
-        AS.SLTU(scratch, result, cf);
+        AS.SLTU(scratch, scratch, cf);
         AS.OR(cf, cf, scratch);
+        rec.popScratch();
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    rec.setOperandGPR(&operands[0], result_2);
+}
+
+FAST_HANDLE(ADC) {
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR result_2 = rec.scratch();
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    u64 sign_mask = rec.getSignMask(size);
+
+    AS.ADD(result, dst, src);
+    AS.ADD(result_2, result, cf);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        biscuit::GPR af = rec.flagW(X86_REF_AF);
+        biscuit::GPR scratch = rec.scratch();
+        AS.ANDI(af, result, 0xF);
+        AS.ANDI(scratch, dst, 0xF);
+        AS.SLTU(af, af, scratch);
+        AS.ANDI(scratch, result_2, 0xF);
+        AS.SEQZ(scratch, scratch);
+        AS.OR(af, af, scratch);
+        rec.popScratch();
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR scratch = rec.scratch();
+        biscuit::GPR scratch2 = rec.scratch();
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.XOR(scratch, result, dst);
+        AS.XOR(of, result, src);
+        AS.AND(of, of, scratch);
+        AS.LI(scratch, sign_mask);
+        AS.AND(of, of, scratch);
+        AS.SNEZ(of, of);
+        AS.XOR(scratch2, result_2, cf);
+        AS.XOR(scratch, result_2, result);
+        AS.AND(scratch, scratch, scratch2);
+        AS.LI(scratch2, sign_mask);
+        AS.AND(scratch, scratch, scratch2);
+        AS.SNEZ(scratch, scratch);
+        AS.OR(of, of, scratch);
+        rec.popScratch();
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR scratch = rec.scratch();
+        biscuit::GPR scratch2 = rec.scratch();
+        biscuit::GPR cf = rec.flagWR(X86_REF_CF);
+        rec.zext(scratch, result, size);
+        rec.zext(scratch2, result_2, size);
+        AS.SLTU(scratch, scratch, dst);
+        AS.SLTU(scratch2, scratch2, cf);
+        AS.OR(cf, cf, scratch);
+        rec.popScratch();
         rec.popScratch();
     }
 
