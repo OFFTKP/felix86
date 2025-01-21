@@ -2986,3 +2986,101 @@ FAST_HANDLE(CMPXCHG) {
 
     AS.Bind(&end);
 }
+
+void SCALAR(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
+            void (Assembler::*func)(Vec, Vec, Vec, VecMask)) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    (AS.*func)(temp, dst, src, VecMask::No);
+
+    if (sew == SEW::E32) {
+        rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    } else {
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    }
+
+    biscuit::Vec result = rec.scratchVec();
+    AS.VMV(v0, 1);
+    AS.VMERGE(result, dst, temp);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(DIVSS) {
+    SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFDIV);
+}
+
+FAST_HANDLE(DIVSD) {
+    SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFDIV);
+}
+
+FAST_HANDLE(ADDSS) {
+    SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFADD);
+}
+
+FAST_HANDLE(ADDSD) {
+    SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFADD);
+}
+
+FAST_HANDLE(SUBSS) {
+    SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFSUB);
+}
+
+FAST_HANDLE(SUBSD) {
+    SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFSUB);
+}
+
+FAST_HANDLE(MULSS) {
+    SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFMUL);
+}
+
+FAST_HANDLE(MULSD) {
+    SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFMUL);
+}
+
+FAST_HANDLE(MINSS) {
+    SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFMIN);
+}
+
+FAST_HANDLE(MINSD) {
+    SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFMIN);
+}
+
+FAST_HANDLE(MAXSS) {
+    SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFMAX);
+}
+
+FAST_HANDLE(MAXSD) {
+    SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFMAX);
+}
+
+FAST_HANDLE(CVTSI2SD) {
+    x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+
+    if (gpr_size == X86_SIZE_DWORD) {
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        AS.VMV(v0, 1);
+        rec.setVectorState(SEW::E32, 1);
+        AS.VMV_SX(temp, src);
+        AS.VFWCVT_F_X(temp2, temp);
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        AS.VMERGE(result, dst, temp2);
+        rec.setOperandVec(&operands[0], result);
+    } else {
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        AS.VMV(v0, 1);
+        rec.setVectorState(SEW::E64, 1);
+        AS.VMV_SX(temp, src);
+        AS.VFCVT_F_X(temp2, temp);
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        AS.VMERGE(result, dst, temp2);
+        rec.setOperandVec(&operands[0], result);
+    }
+}
