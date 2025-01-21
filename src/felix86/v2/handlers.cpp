@@ -2247,8 +2247,30 @@ FAST_HANDLE(MOVSW) {
     fast_MOVSB(rec, meta, instruction, operands);
 }
 
+// The rep movsd and sse movsd have the same mnemonic, so we differentiate it like this
+FAST_HANDLE(MOVSD_sse) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setOperandVec(&operands[0], src);
+    } else {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+        AS.VMV(dst, 0);
+        AS.VMV(v0, 1);
+        AS.VOR(dst, dst, src);
+        rec.setOperandVec(&operands[0], dst);
+    }
+}
+
 FAST_HANDLE(MOVSD) {
-    fast_MOVSB(rec, meta, instruction, operands);
+    if (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2) {
+        fast_MOVSD_sse(rec, meta, instruction, operands);
+    } else if (instruction.meta.isa_set == ZYDIS_ISA_SET_I386) {
+        fast_MOVSB(rec, meta, instruction, operands);
+    } else {
+        UNREACHABLE();
+    }
 }
 
 FAST_HANDLE(MOVSQ) {
@@ -3079,4 +3101,19 @@ FAST_HANDLE(XGETBV) {
     AS.LI(scratch, 0b11);
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, scratch);
     rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, x0);
+}
+
+FAST_HANDLE(MOVSS) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setOperandVec(&operands[0], src);
+    } else {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+        AS.VMV(dst, 0);
+        AS.VMV(v0, 1);
+        AS.VOR(dst, dst, src);
+        rec.setOperandVec(&operands[0], dst);
+    }
 }
