@@ -2764,7 +2764,7 @@ FAST_HANDLE(MOVSX) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
-FAST_HANDLE(COMISD) {
+void COMIS(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew) {
     biscuit::GPR nan_1 = rec.scratch();
     biscuit::GPR nan_2 = rec.scratch();
     biscuit::Vec temp = rec.scratchVec();
@@ -2784,7 +2784,7 @@ FAST_HANDLE(COMISD) {
 
     Label end, nan, equal, less_than;
 
-    rec.setVectorState(SEW::E64, 1);
+    rec.setVectorState(sew, 1);
 
     AS.VMFNE(temp, dst, dst);
     AS.VMV_XS(nan_1, temp);
@@ -2844,4 +2844,20 @@ FAST_HANDLE(COMISD) {
     AS.SB(cf, offsetof(ThreadState, pf), rec.threadStatePointer());
 
     AS.Bind(&end);
+}
+
+FAST_HANDLE(COMISD) {
+    COMIS(rec, meta, instruction, operands, SEW::E64);
+}
+
+FAST_HANDLE(UCOMISD) {
+    COMIS(rec, meta, instruction, operands, SEW::E64);
+}
+
+FAST_HANDLE(COMISS) {
+    COMIS(rec, meta, instruction, operands, SEW::E32);
+}
+
+FAST_HANDLE(UCOMISS) {
+    COMIS(rec, meta, instruction, operands, SEW::E32);
 }
