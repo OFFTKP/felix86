@@ -2756,15 +2756,15 @@ FAST_HANDLE(ROR) {
 FAST_HANDLE(PSLLDQ) {
     u8 imm = operands[1].imm.value.u;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec temp = rec.scratchVec();
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
     if (imm > 15) {
-        AS.VMV(dst, 0);
+        AS.VMV(temp, 0);
     } else {
-        biscuit::Vec temp = rec.scratchVec();
         AS.VMV(temp, 0);
         AS.VSLIDEUP(temp, dst, imm);
     }
-    rec.setOperandVec(&operands[0], dst);
+    rec.setOperandVec(&operands[0], temp);
 }
 
 FAST_HANDLE(PSRLDQ) {
