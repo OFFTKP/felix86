@@ -3165,6 +3165,24 @@ FAST_HANDLE(CVTTSS2SI) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
+FAST_HANDLE(CVTTSD2SI) {
+    x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    if (gpr_size == X86_SIZE_DWORD) {
+        rec.setVectorState(SEW::E64, 1);
+        AS.VFMV_FS(ft0, src);
+        AS.FCVT_W_D(dst, ft0, RMode::RTZ);
+    } else {
+        rec.setVectorState(SEW::E64, 1);
+        AS.VFMV_FS(ft0, src);
+        AS.FCVT_L_D(dst, ft0, RMode::RTZ);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+}
+
 FAST_HANDLE(XGETBV) {
     biscuit::GPR scratch = rec.scratch();
     AS.LI(scratch, 0b11);
@@ -3205,6 +3223,24 @@ FAST_HANDLE(CVTSS2SI) {
         rec.setVectorState(SEW::E32, 1);
         AS.VFMV_FS(ft0, src);
         AS.FCVT_L_S(dst, ft0);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTSD2SI) {
+    x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    if (gpr_size == X86_SIZE_DWORD) {
+        rec.setVectorState(SEW::E64, 1);
+        AS.VFMV_FS(ft0, src);
+        AS.FCVT_W_D(dst, ft0);
+    } else {
+        rec.setVectorState(SEW::E64, 1);
+        AS.VFMV_FS(ft0, src);
+        AS.FCVT_L_D(dst, ft0);
     }
 
     rec.setOperandGPR(&operands[0], dst);
