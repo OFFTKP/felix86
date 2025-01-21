@@ -2623,6 +2623,31 @@ FAST_HANDLE(PSHUFLW) {
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(PALIGNR) {
+    u8 imm = operands[2].imm.value.u;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    if (imm < 32) {
+        biscuit::Vec result = rec.scratchVec();
+        if (16 - imm > 0) {
+            biscuit::Vec slide_down = rec.scratchVec();
+            rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+            AS.VSLIDEDOWN(slide_down, src, imm);
+            biscuit::Vec slide_up = rec.scratchVec();
+            AS.VMV(slide_up, 0);
+            AS.VSLIDEUP(slide_up, dst, 16 - imm);
+            AS.VOR(result, slide_down, slide_up);
+        } else {
+            AS.VSLIDEDOWN(result, dst, imm - 16);
+        }
+        rec.setOperandVec(&operands[0], result);
+    } else {
+        AS.VMV(dst, 0);
+        rec.setOperandVec(&operands[0], dst);
+    }
+}
+
 FAST_HANDLE(BSF) {
     ASSERT(Extensions::B);
     ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
