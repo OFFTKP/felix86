@@ -2916,7 +2916,7 @@ void COMIS(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruc
     AS.BNEZ(nan_1, &nan);
 
     // Check for equality
-    AS.VMFNE(temp, dst, src);
+    AS.VMFEQ(temp, dst, src);
     AS.VMV_XS(nan_1, temp);
     AS.ANDI(nan_1, nan_1, 1);
 
