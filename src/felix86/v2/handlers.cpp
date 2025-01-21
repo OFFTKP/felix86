@@ -2902,6 +2902,9 @@ void COMIS(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruc
 
     rec.setVectorState(sew, 1);
 
+    AS.LI(nan_1, 0);
+    AS.LI(nan_2, 0);
+
     AS.VMFNE(temp, dst, dst);
     AS.VMV_XS(nan_1, temp);
 
