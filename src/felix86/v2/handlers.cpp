@@ -1964,12 +1964,12 @@ FAST_HANDLE(POR) {
 }
 
 FAST_HANDLE(PANDN) {
-    biscuit::Vec src_not = rec.scratchVec();
+    biscuit::Vec dst_not = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VXOR(src_not, src, -1);
-    AS.VAND(dst, dst, src_not);
+    AS.VXOR(dst_not, dst, -1);
+    AS.VAND(dst, dst_not, src);
     rec.setOperandVec(&operands[0], dst);
 }
 
