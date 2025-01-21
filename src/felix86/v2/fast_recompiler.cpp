@@ -645,7 +645,9 @@ biscuit::GPR FastRecompiler::getOperandGPRDontZext(ZydisDecodedOperand* operand)
         loadGPR(zydisToRef(operand->reg.value), reg);
 
         if (zydisToSize(operand->reg.value) == X86_SIZE_BYTE_HIGH) {
-            as.SRLI(reg, reg, 8);
+            biscuit::GPR tmp = scratch();
+            as.SRLI(tmp, reg, 8);
+            return tmp;
         }
 
         return reg;
