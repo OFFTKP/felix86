@@ -2931,3 +2931,17 @@ FAST_HANDLE(COMISS) {
 FAST_HANDLE(UCOMISS) {
     COMIS(rec, meta, instruction, operands, SEW::E32);
 }
+
+FAST_HANDLE(PEXTRW) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    u8 imm = operands[2].imm.value.u & 0b111;
+
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VSLIDEDOWN(temp, src, imm);
+    AS.VMV_XS(dst, temp);
+    rec.zext(dst, dst, X86_SIZE_WORD);
+
+    rec.setOperandGPR(&operands[0], dst);
+}
