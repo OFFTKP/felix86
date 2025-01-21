@@ -133,7 +133,7 @@ struct FastRecompiler {
 
     biscuit::Vec allocatedVec(x86_ref_e reg);
 
-    bool setVectorState(SEW sew, int elem_count, int grouping = 1);
+    bool setVectorState(SEW sew, int elem_count, LMUL grouping = LMUL::M1);
 
     u16 maxVlen() {
         return max_vlen;
@@ -238,6 +238,6 @@ private:
     HandlerMetadata* current_meta{};
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
-    u8 current_grouping = 1;
+    LMUL current_grouping = LMUL::M1;
     u16 max_vlen = 128;
 };
