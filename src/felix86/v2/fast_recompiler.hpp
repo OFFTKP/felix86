@@ -100,7 +100,7 @@ struct FastRecompiler {
 
     void updateParity(biscuit::GPR result);
 
-    void updateZero(biscuit::GPR result);
+    void updateZero(biscuit::GPR result, x86_size_e size);
 
     void updateSign(biscuit::GPR result, x86_size_e size);
 

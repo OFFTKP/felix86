@@ -64,7 +64,7 @@ FAST_HANDLE(ADD) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -109,7 +109,7 @@ FAST_HANDLE(SUB) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -185,7 +185,7 @@ FAST_HANDLE(SBB) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -258,7 +258,7 @@ FAST_HANDLE(ADC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -297,7 +297,7 @@ FAST_HANDLE(CMP) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -337,7 +337,7 @@ FAST_HANDLE(OR) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -372,7 +372,8 @@ FAST_HANDLE(XOR) {
         }
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-            rec.updateZero(x0);
+            biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+            AS.LI(zf, 1);
         }
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -405,7 +406,7 @@ FAST_HANDLE(XOR) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -442,7 +443,7 @@ FAST_HANDLE(AND) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -612,7 +613,7 @@ FAST_HANDLE(SHL) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -675,7 +676,7 @@ FAST_HANDLE(SHR) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -761,7 +762,7 @@ FAST_HANDLE(SAR) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -1096,7 +1097,7 @@ FAST_HANDLE(TEST) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result);
+        rec.updateZero(result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -1139,7 +1140,7 @@ FAST_HANDLE(INC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(res);
+        rec.updateZero(res, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -1177,7 +1178,7 @@ FAST_HANDLE(DEC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(res);
+        rec.updateZero(res, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {

@@ -1384,9 +1384,10 @@ void FastRecompiler::updateParity(biscuit::GPR result) {
     }
 }
 
-void FastRecompiler::updateZero(biscuit::GPR result) {
+void FastRecompiler::updateZero(biscuit::GPR result, x86_size_e size) {
     biscuit::GPR zf = flagW(X86_REF_ZF);
-    as.SEQZ(zf, result);
+    zext(zf, result, size);
+    as.SEQZ(zf, zf);
 }
 
 void FastRecompiler::updateSign(biscuit::GPR result, x86_size_e size) {
