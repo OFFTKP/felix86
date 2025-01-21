@@ -86,8 +86,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
         break;
     }
-    case SIGSEGV: {
-        ERROR("SIGSEGV code: %d", info->si_code);
+    default: {
+        ERROR("Unhandled signal: %d", sig);
         break;
     }
     }
@@ -101,7 +101,6 @@ void Signals::initialize() {
     sigemptyset(&sa.sa_mask);
 
     sigaction(SIGBUS, &sa, nullptr);
-    sigaction(SIGSEGV, &sa, nullptr);
 }
 
 void Signals::registerSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
