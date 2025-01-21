@@ -1519,7 +1519,8 @@ FAST_HANDLE(IMUL) {
             biscuit::GPR sext = rec.scratch();
             biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
             rec.sexth(sext, ax);
-            AS.MULW(result, sext, src);
+            rec.sexth(result, src);
+            AS.MULW(result, sext, result);
             rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, result);
 
             if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
@@ -1541,7 +1542,8 @@ FAST_HANDLE(IMUL) {
             biscuit::GPR sext = rec.scratch();
             biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
             AS.ADDIW(sext, eax, 0);
-            AS.MUL(result, sext, src);
+            AS.ADDIW(result, src, 0);
+            AS.MUL(result, sext, result);
             rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, result);
 
             if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
