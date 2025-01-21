@@ -2911,6 +2911,7 @@ void COMIS(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruc
     AS.VMFNE(temp2, src, src);
     AS.VMV_XS(nan_2, temp2);
     AS.OR(nan_1, nan_1, nan_2);
+    AS.ANDI(nan_1, nan_1, 1);
 
     AS.BNEZ(nan_1, &nan);
 
