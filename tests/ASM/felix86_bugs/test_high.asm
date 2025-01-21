@@ -7,8 +7,9 @@
 %endif
 bits 64
 
+xor ebx, ebx
 mov rax, 0x8000
 test ah, 0x80
-setne rbx
+setne bl
 
 hlt
