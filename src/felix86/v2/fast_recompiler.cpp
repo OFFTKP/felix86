@@ -20,6 +20,24 @@ static void deallocateCodeCache(u8* memory) {
     munmap(memory, code_cache_size);
 }
 
+// Some instructions modify the flags conditionally or sometimes they don't modify them at all.
+// This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
+// and previous instructions need to know that.
+static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
+    switch (mnemonic) {
+    case ZYDIS_MNEMONIC_SHL:
+    case ZYDIS_MNEMONIC_SHR:
+    case ZYDIS_MNEMONIC_SAR:
+    case ZYDIS_MNEMONIC_ROL:
+    case ZYDIS_MNEMONIC_ROR: {
+        return flag == X86_REF_CF || flag == X86_REF_OF;
+    }
+    default: {
+        return false;
+    }
+    }
+}
+
 FastRecompiler::FastRecompiler(Emulator& emulator) : emulator(emulator), code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
     for (int i = 0; i < 16; i++) {
         metadata[i].reg = (x86_ref_e)(X86_REF_RAX + i);
@@ -1210,37 +1228,37 @@ void FastRecompiler::scanFlagUsageAhead(u64 rip) {
                 instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
             u32 used = instruction.cpu_flags->tested;
 
-            if (used & ZYDIS_CPUFLAG_CF) {
+            if (used & ZYDIS_CPUFLAG_CF || flag_passthrough(instruction.mnemonic, X86_REF_CF)) {
                 flag_access_cpazso[0].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_CF) {
                 flag_access_cpazso[0].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_PF) {
+            if (used & ZYDIS_CPUFLAG_PF || flag_passthrough(instruction.mnemonic, X86_REF_PF)) {
                 flag_access_cpazso[1].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_PF) {
                 flag_access_cpazso[1].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_AF) {
+            if (used & ZYDIS_CPUFLAG_AF || flag_passthrough(instruction.mnemonic, X86_REF_AF)) {
                 flag_access_cpazso[2].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_AF) {
                 flag_access_cpazso[2].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_ZF) {
+            if (used & ZYDIS_CPUFLAG_ZF || flag_passthrough(instruction.mnemonic, X86_REF_ZF)) {
                 flag_access_cpazso[3].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_ZF) {
                 flag_access_cpazso[3].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_SF) {
+            if (used & ZYDIS_CPUFLAG_SF || flag_passthrough(instruction.mnemonic, X86_REF_SF)) {
                 flag_access_cpazso[4].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_SF) {
                 flag_access_cpazso[4].push_back({true, rip});
             }
 
-            if (used & ZYDIS_CPUFLAG_OF) {
+            if (used & ZYDIS_CPUFLAG_OF || flag_passthrough(instruction.mnemonic, X86_REF_OF)) {
                 flag_access_cpazso[5].push_back({false, rip});
             } else if (changed & ZYDIS_CPUFLAG_OF) {
                 flag_access_cpazso[5].push_back({true, rip});
