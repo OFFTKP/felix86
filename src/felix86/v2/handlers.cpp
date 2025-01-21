@@ -2641,8 +2641,8 @@ FAST_HANDLE(PALIGNR) {
     AS.VMV(grp1, dst);
     AS.VMV(grp2, src);
 
-    // Use grouping to use two registers
-    rec.setVectorState(SEW::E16, rec.maxVlen() / 16, 2);
+    // Use two register grouping
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16, LMUL::M2);
     AS.VSLIDEDOWN(grp1, grp1, imm);
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
