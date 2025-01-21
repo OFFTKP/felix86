@@ -29,6 +29,7 @@ void is_overflow_add(FastRecompiler& rec, biscuit::GPR of, biscuit::GPR lhs, bis
     AS.AND(of, of, scratch);
     AS.SNEZ(of, of);
 }
+
 FAST_HANDLE(MOV) {
     biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
     rec.setOperandGPR(&operands[0], src);
@@ -1079,13 +1080,12 @@ FAST_HANDLE(IDIV) {
 FAST_HANDLE(TEST) {
     biscuit::GPR result = rec.scratch();
 
-    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     AS.AND(result, dst, src);
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    rec.zext(result, result, size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
