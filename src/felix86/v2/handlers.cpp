@@ -2201,7 +2201,7 @@ FAST_HANDLE(RSQRTPS) {
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     biscuit::GPR scratch = rec.scratch();
     AS.LI(scratch, 0x3f800000);
-    AS.VMV(ones, ones);
+    AS.VMV(ones, scratch);
     AS.VFSQRT(temp, src);
     AS.VFDIV(dst, ones, temp);
     rec.setOperandVec(&operands[0], dst);
