@@ -2763,3 +2763,85 @@ FAST_HANDLE(MOVSX) {
 
     rec.setOperandGPR(&operands[0], dst);
 }
+
+FAST_HANDLE(COMISD) {
+    biscuit::GPR nan_1 = rec.scratch();
+    biscuit::GPR nan_2 = rec.scratch();
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+    biscuit::GPR af = rec.flagW(X86_REF_AF);
+    biscuit::GPR sf = rec.flagW(X86_REF_SF);
+    biscuit::GPR of = rec.flagW(X86_REF_OF);
+
+    AS.LI(of, 0);
+    AS.LI(af, 0);
+    AS.LI(sf, 0);
+
+    Label end, nan, equal, less_than;
+
+    rec.setVectorState(SEW::E64, 1);
+
+    AS.VMFNE(temp, dst, dst);
+    AS.VMV_XS(nan_1, temp);
+
+    AS.VMFNE(temp2, src, src);
+    AS.VMV_XS(nan_2, temp2);
+    AS.OR(nan_1, nan_1, nan_2);
+
+    AS.BNEZ(nan_1, &nan);
+
+    // Check for equality
+    AS.VMFNE(temp, dst, src);
+    AS.VMV_XS(nan_1, temp);
+
+    AS.BNEZ(nan_1, &equal);
+
+    // Check for less than
+    AS.VMSLT(temp, dst, src);
+    AS.VMV_XS(nan_1, temp);
+
+    AS.BNEZ(nan_1, &less_than);
+
+    // Greater than
+    // ZF: 0, PF: 0, CF: 0
+    AS.LI(zf, 0);
+    AS.LI(cf, 0);
+    AS.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
+
+    AS.J(&end);
+
+    AS.Bind(&less_than);
+
+    // Less than
+    // ZF: 0, PF: 0, CF: 1
+    AS.LI(zf, 0);
+    AS.LI(cf, 1);
+    AS.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
+
+    AS.J(&end);
+
+    AS.Bind(&equal);
+
+    // Equal
+    // ZF: 1, PF: 0, CF: 0
+    AS.LI(zf, 1);
+    AS.LI(cf, 0);
+    AS.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
+
+    AS.J(&end);
+
+    AS.Bind(&nan);
+
+    // Unordered
+    // ZF: 1, PF: 1, CF: 1
+    AS.LI(zf, 1);
+    AS.LI(cf, 1);
+    AS.SB(cf, offsetof(ThreadState, pf), rec.threadStatePointer());
+
+    AS.Bind(&end);
+}
