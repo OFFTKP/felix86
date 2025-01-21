@@ -2630,6 +2630,7 @@ FAST_HANDLE(PALIGNR) {
     // // They need to be consecutive registers
     // ASSERT(grp1.Index() == grp2.Index() - 1);
 
+    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -2642,8 +2643,8 @@ FAST_HANDLE(PALIGNR) {
     }
 
     // Use two register grouping
-    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
-    AS.VSLIDEDOWN(dst, src, imm);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VSLIDEDOWN(result, src, imm);
 
     rec.setOperandVec(&operands[0], dst);
 }
