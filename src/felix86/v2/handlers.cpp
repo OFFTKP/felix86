@@ -2315,23 +2315,26 @@ FAST_HANDLE(SHUFPD) {
     u8 imm = operands[2].imm.value.u;
     biscuit::GPR temp = rec.scratch();
     biscuit::Vec vtemp = rec.scratchVec();
+    biscuit::Vec vsrc = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
 
-    if ((imm & 1) == 0) {
-        AS.VMV_XS(temp, src);
+    if ((imm & 0b1) == 0) {
+        AS.VMV_XS(temp, dst);
     } else {
-        AS.VSLIDEDOWN(vtemp, src, 1);
+        AS.VSLIDEDOWN(vtemp, dst, 1);
         AS.VMV_XS(temp, vtemp);
     }
 
     if ((imm & 0b10) != 0) {
-        AS.VSLIDEDOWN(dst, dst, 1);
+        AS.VSLIDEDOWN(vsrc, src, 1);
+    } else {
+        vsrc = src;
     }
 
-    AS.VSLIDE1UP(vtemp, dst, temp);
+    AS.VSLIDE1UP(vtemp, vsrc, temp);
 
     rec.setOperandVec(&operands[0], vtemp);
 }
