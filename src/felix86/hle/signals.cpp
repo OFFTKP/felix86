@@ -72,6 +72,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             break;
         }
         default: {
+            ERROR("Unhandled SIGBUS code: %d", info->si_code);
             struct sigaction old_sa;
             struct sigaction def_sa;
             def_sa.sa_handler = SIG_DFL;
