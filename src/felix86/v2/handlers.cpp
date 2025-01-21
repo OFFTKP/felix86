@@ -2918,12 +2918,14 @@ void COMIS(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruc
     // Check for equality
     AS.VMFNE(temp, dst, src);
     AS.VMV_XS(nan_1, temp);
+    AS.ANDI(nan_1, nan_1, 1);
 
     AS.BNEZ(nan_1, &equal);
 
     // Check for less than
     AS.VMSLT(temp, dst, src);
     AS.VMV_XS(nan_1, temp);
+    AS.ANDI(nan_1, nan_1, 1);
 
     AS.BNEZ(nan_1, &less_than);
 
