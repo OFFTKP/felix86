@@ -2085,6 +2085,38 @@ FAST_HANDLE(SUBPD) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(MINPS) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VFMIN(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(MINPD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VFMIN(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(MAXPS) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VFMAX(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(MAXPD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VFMAX(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(MULPS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
