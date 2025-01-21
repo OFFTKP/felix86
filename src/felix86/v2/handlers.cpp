@@ -3170,3 +3170,21 @@ FAST_HANDLE(MOVSS) {
         rec.setOperandVec(&operands[0], dst);
     }
 }
+
+FAST_HANDLE(CVTSS2SI) {
+    x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    if (gpr_size == X86_SIZE_DWORD) {
+        rec.setVectorState(SEW::E32, 1);
+        AS.VFMV_FS(ft0, src);
+        AS.FCVT_W_S(dst, ft0);
+    } else {
+        rec.setVectorState(SEW::E32, 1);
+        AS.VFMV_FS(ft0, src);
+        AS.FCVT_L_S(dst, ft0);
+    }
+
+    rec.setOperandGPR(&operands[0], dst);
+}
