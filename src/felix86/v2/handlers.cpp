@@ -2536,7 +2536,7 @@ FAST_HANDLE(ROR) {
 
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
     biscuit::GPR of = rec.flagW(X86_REF_OF);
-    AS.ANDI(count, count, rec.getBitSize(size) - 1);
+    AS.ANDI(count, count, rec.getBitSize(size) == 64 ? 63 : 31);
     AS.BEQZ(count, &zero_count);
 
     biscuit::GPR temp = rec.scratch();
