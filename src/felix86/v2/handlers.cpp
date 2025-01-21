@@ -2646,7 +2646,7 @@ FAST_HANDLE(PALIGNR) {
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
     AS.VSLIDEDOWN(result, src, imm);
 
-    rec.setOperandVec(&operands[0], dst);
+    rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(BSF) {
