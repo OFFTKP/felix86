@@ -2606,19 +2606,19 @@ FAST_HANDLE(PSHUFLW) {
     // Slide down 4 words, so then the register looks like 8 7 6 5, then we can slide up the other 4 elements
     AS.VSLIDEDOWN(iota2, iota2, 4);
     AS.LI(temp, el3);
-    AS.VMV(iota2, temp);
+    AS.VSLIDE1UP(iota, iota2, temp);
     AS.LI(temp, el2);
-    AS.VSLIDE1UP(iota, iota2, temp);
-    AS.LI(temp, el1);
     AS.VSLIDE1UP(iota2, iota, temp);
-    AS.LI(temp, el0);
+    AS.LI(temp, el1);
     AS.VSLIDE1UP(iota, iota2, temp);
+    AS.LI(temp, el0);
+    AS.VSLIDE1UP(iota2, iota, temp);
 
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec result = rec.scratchVec();
     AS.VMV(result, dst);
-    AS.VRGATHER(result, src, iota);
+    AS.VRGATHER(result, src, iota2);
 
     rec.setOperandVec(&operands[0], result);
 }
