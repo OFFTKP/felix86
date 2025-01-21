@@ -129,7 +129,7 @@ void FastRecompiler::compileSequence(u64 rip) {
     if (g_breakpoints.find(rip) != g_breakpoints.end()) {
         u64 current_address = (u64)as.GetCursorPointer();
         g_breakpoints[rip].push_back(current_address);
-        as.EBREAK();
+        as.GetCodeBuffer().Emit32(0); // UNIMP instruction
     }
 
     HandlerMetadata meta = {rip, rip};
