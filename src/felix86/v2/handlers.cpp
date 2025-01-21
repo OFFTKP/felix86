@@ -2504,13 +2504,13 @@ FAST_HANDLE(ROL) {
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR count = rec.getOperandGPR(&operands[1]);
 
-    Label zero_source;
+    Label zero_count;
 
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
     biscuit::GPR of = rec.flagW(X86_REF_OF);
-    AS.BEQZ(dst, &zero_source);
-
     AS.ANDI(count, count, rec.getBitSize(size) - 1);
+    AS.BEQZ(count, &zero_count);
+
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR neg_count = rec.scratch();
     AS.NEG(neg_count, count);
@@ -2524,7 +2524,7 @@ FAST_HANDLE(ROL) {
 
     rec.setOperandGPR(&operands[0], dst);
 
-    AS.Bind(&zero_source);
+    AS.Bind(&zero_count);
 }
 
 FAST_HANDLE(ROR) {
@@ -2532,13 +2532,13 @@ FAST_HANDLE(ROR) {
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR count = rec.getOperandGPR(&operands[1]);
 
-    Label zero_source;
+    Label zero_count;
 
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
     biscuit::GPR of = rec.flagW(X86_REF_OF);
-    AS.BEQZ(dst, &zero_source);
-
     AS.ANDI(count, count, rec.getBitSize(size) - 1);
+    AS.BEQZ(count, &zero_count);
+
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR neg_count = rec.scratch();
     AS.NEG(neg_count, count);
@@ -2554,7 +2554,7 @@ FAST_HANDLE(ROR) {
 
     rec.setOperandGPR(&operands[0], dst);
 
-    AS.Bind(&zero_source);
+    AS.Bind(&zero_count);
 }
 
 FAST_HANDLE(PSLLDQ) {
