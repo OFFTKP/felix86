@@ -2581,12 +2581,46 @@ FAST_HANDLE(PSHUFD) {
     AS.LI(temp, el0);
     AS.VSLIDE1UP(iota, iota2, temp);
 
-    biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    AS.VMV(dst, 0);
-    rec.vrgather(dst, src, iota);
+    biscuit::Vec result = rec.scratchVec();
+    AS.VMV(result, 0);
+    AS.VRGATHER(result, src, iota);
 
-    rec.setOperandVec(&operands[0], dst);
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(PSHUFLW) {
+    u8 imm = operands[2].imm.value.u;
+    u8 el0 = imm & 0b11;
+    u8 el1 = (imm >> 2) & 0b11;
+    u8 el2 = (imm >> 4) & 0b11;
+    u8 el3 = (imm >> 6) & 0b11;
+
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec iota2 = rec.scratchVec();
+    biscuit::GPR temp = rec.scratch();
+
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMV(iota, 0);
+    AS.VID(iota2);
+    // Slide down 4 words, so then the register looks like 8 7 6 5, then we can slide up the other 4 elements
+    AS.VSLIDEDOWN(iota2, iota2, 4);
+    AS.LI(temp, el3);
+    AS.VMV(iota2, temp);
+    AS.LI(temp, el2);
+    AS.VSLIDE1UP(iota, iota2, temp);
+    AS.LI(temp, el1);
+    AS.VSLIDE1UP(iota2, iota, temp);
+    AS.LI(temp, el0);
+    AS.VSLIDE1UP(iota, iota2, temp);
+
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec result = rec.scratchVec();
+    AS.VMV(result, dst);
+    AS.VRGATHER(result, src, iota);
+
+    rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(BSF) {
