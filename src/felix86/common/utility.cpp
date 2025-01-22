@@ -86,8 +86,20 @@ void flush_icache() {
 #endif
 }
 
-int guest_breakpoint(u64 address) {
-    g_breakpoints[address] = {};
+int guest_breakpoint(const char* region, u64 address) {
+    auto [start, end] = MemoryMetadata::GetRegionByName(region);
+
+    if (start == 0 && end == 0) {
+        printf("Region %s not found\n", region);
+        return -1;
+    }
+
+    if (address >= (end - start)) {
+        printf("Address %016lx is out of bounds for region %s\n", address, region);
+        return -1;
+    }
+
+    g_breakpoints[address + start] = {};
     return g_breakpoints.size();
 }
 

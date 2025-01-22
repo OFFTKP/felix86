@@ -10,6 +10,8 @@ struct MemoryMetadata {
 
     static std::string GetRegionName(u64 address);
 
+    static std::pair<u64, u64> GetRegionByName(const std::string& name);
+
     static bool IsInInterpreterRegion(u64 address);
 
     static u64 GetOffset(u64 address);

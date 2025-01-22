@@ -59,3 +59,12 @@ bool MemoryMetadata::IsInInterpreterRegion(u64 address) {
     }
     return false;
 }
+
+std::pair<u64, u64> MemoryMetadata::GetRegionByName(const std::string& name) {
+    for (const Region& region : regions) {
+        if (region.name == name) {
+            return {region.start, region.end};
+        }
+    }
+    return {0, 0};
+}
