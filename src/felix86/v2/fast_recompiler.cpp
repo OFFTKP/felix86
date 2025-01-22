@@ -821,10 +821,9 @@ biscuit::Vec FastRecompiler::getRefVec(x86_ref_e ref) {
 }
 
 void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
-    biscuit::GPR dest = allocatedGPR(ref);
-
     switch (size) {
     case X86_SIZE_BYTE: {
+        biscuit::GPR dest = getRefGPR(ref, size);
         biscuit::GPR gpr8 = scratch();
         as.ANDI(gpr8, reg, 0xff);
         as.ANDI(dest, dest, ~0xff);
@@ -833,6 +832,7 @@ void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg)
         break;
     }
     case X86_SIZE_BYTE_HIGH: {
+        biscuit::GPR dest = getRefGPR(ref, size);
         biscuit::GPR gpr8 = scratch();
         biscuit::GPR mask = scratch();
         as.LI(mask, 0xff00);
@@ -846,6 +846,7 @@ void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg)
         break;
     }
     case X86_SIZE_WORD: {
+        biscuit::GPR dest = getRefGPR(ref, size);
         biscuit::GPR gpr16 = scratch();
         if (Extensions::B) {
             as.ZEXTH(gpr16, reg);
@@ -860,6 +861,7 @@ void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg)
         break;
     }
     case X86_SIZE_DWORD: {
+        biscuit::GPR dest = allocatedGPR(ref); // don't need to load as the entire register is overwritten
         if (Extensions::B) {
             as.ZEXTW(dest, reg);
         } else {
@@ -869,6 +871,7 @@ void FastRecompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg)
         break;
     }
     case X86_SIZE_QWORD: {
+        biscuit::GPR dest = allocatedGPR(ref); // don't need to load as the entire register is overwritten
         if (dest != reg)
             as.MV(dest, reg);
         break;

@@ -2393,6 +2393,7 @@ FAST_HANDLE(LEAVE) {
 }
 
 void SETCC(FastRecompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+    AS.ANDI(cond, cond, 1);
     rec.setOperandGPR(&operands[0], cond);
 }
 
