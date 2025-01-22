@@ -3822,8 +3822,7 @@ FAST_HANDLE(SHLD) {
         } else {
             UNREACHABLE();
         }
-    } else {
-        result = x0;
+        rec.setOperandGPR(&operands[0], result);
     }
 
     if (imm > 0) {
@@ -3843,8 +3842,6 @@ FAST_HANDLE(SHLD) {
             AS.ANDI(of, of, 1);
         }
     }
-
-    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(FNSTCW) {
