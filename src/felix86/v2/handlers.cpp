@@ -2479,7 +2479,7 @@ FAST_HANDLE(NEG) {
         rec.sextb(result, dst);
         AS.NEG(result, result);
     } else if (size == X86_SIZE_WORD) {
-        rec.sexth(result, result);
+        rec.sexth(result, dst);
         AS.NEG(result, result);
     } else if (size == X86_SIZE_DWORD) {
         AS.SUBW(result, x0, dst);
@@ -2812,7 +2812,7 @@ FAST_HANDLE(BSWAP) {
 
     if (size == X86_SIZE_DWORD) {
         AS.REV8(result, dst);
-        AS.SRLI(result, dst, 32);
+        AS.SRLI(result, result, 32);
     } else {
         AS.REV8(result, dst);
     }
