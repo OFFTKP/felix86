@@ -3803,18 +3803,24 @@ FAST_HANDLE(SHLD) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
 
-    if (operand_size == 64) {
-        biscuit::GPR temp = rec.scratch();
-        u8 shift = 64 - imm;
-        AS.SLLI(result, dst, imm);
-        AS.SRLI(temp, src, shift);
-        AS.OR(result, result, temp);
-    } else if (operand_size == 32) {
-        biscuit::GPR temp = rec.scratch();
-        u8 shift = operand_size - imm;
-        AS.SLLIW(result, dst, imm);
-        AS.SRLIW(temp, src, shift);
-        AS.OR(result, result, temp);
+    if (imm != 0) {
+        if (operand_size == 64) {
+            biscuit::GPR temp = rec.scratch();
+            u8 shift = 64 - imm;
+            AS.SLLI(result, dst, imm);
+            AS.SRLI(temp, src, shift);
+            AS.OR(result, result, temp);
+        } else if (operand_size == 32 || operand_size == 16) {
+            biscuit::GPR temp = rec.scratch();
+            u8 shift = operand_size - imm;
+            AS.SLLIW(result, dst, imm);
+            AS.SRLIW(temp, src, shift);
+            AS.OR(result, result, temp);
+        } else {
+            UNREACHABLE();
+        }
+    } else {
+        result = x0;
     }
 
     if (imm > 0) {
