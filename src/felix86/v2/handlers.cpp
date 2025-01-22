@@ -3491,3 +3491,75 @@ FAST_HANDLE(WRFSBASE) {
         AS.SD(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
     }
 }
+
+FAST_HANDLE(XADD) {
+    // Unlikely a smaller xadd is used, and risc-v doesn't support amoadd.b amoadd.h without a specific extension
+    // and we'd have to emulate it with lr/sc so let's postpone it for now
+    ASSERT(instruction.operand_width == 32 || instruction.operand_width == 64);
+
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst;
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    if (!needs_atomic) {
+        dst = rec.getOperandGPR(&operands[0]);
+        AS.ADD(result, dst, src);
+    } else {
+        // In this case the add+writeback needs to happen atomically
+        biscuit::GPR address = rec.lea(&operands[0]);
+
+        if (instruction.operand_width == 32) {
+            AS.AMOADD_W(Ordering::AQRL, result, src, address);
+        } else {
+            AS.AMOADD_D(Ordering::AQRL, result, src, address);
+        }
+
+        // Still perform the addition in registers to calculate the flags
+        // AMOADD stores the loaded value in Rd
+        AS.ADD(result, result, src);
+        rec.popScratch(); // pop LEA scratch
+    }
+
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    u64 sign_mask = rec.getSignMask(size);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        rec.zext(cf, result, size);
+        AS.SLTU(cf, cf, dst);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        biscuit::GPR af = rec.flagW(X86_REF_AF);
+        biscuit::GPR scratch = rec.scratch();
+        AS.ANDI(af, result, 0xF);
+        AS.ANDI(scratch, dst, 0xF);
+        AS.SLTU(af, af, scratch);
+        rec.popScratch();
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        is_overflow_add(rec, of, dst, src, result, sign_mask);
+        rec.popScratch();
+    }
+
+    rec.setOperandGPR(&operands[1], dst);
+
+    // In this case we also need to writeback the result, otherwise amoadd will do it for us
+    if (!needs_atomic) {
+        rec.setOperandGPR(&operands[0], result);
+    }
+}
