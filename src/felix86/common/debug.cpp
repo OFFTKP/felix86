@@ -11,6 +11,16 @@ struct Region {
 
 bool interpreter_added = false;
 std::vector<Region> regions;
+std::unordered_map<std::string, std::vector<u64>> deferred_breakpoints;
+
+void check_deferred_breakpoints(const std::string& name) {
+    if (deferred_breakpoints.find(name) != deferred_breakpoints.end()) {
+        for (u64 offset : deferred_breakpoints[name]) {
+            guest_breakpoint(name.c_str(), offset);
+        }
+        deferred_breakpoints.erase(name);
+    }
+}
 
 void MemoryMetadata::AddRegion(const std::string& name, u64 start, u64 end) {
     Region region;
@@ -19,6 +29,7 @@ void MemoryMetadata::AddRegion(const std::string& name, u64 start, u64 end) {
     region.end = end;
     regions.push_back(region);
     VERBOSE("Added region %s: %016lx-%016lx", name.c_str(), start, end);
+    check_deferred_breakpoints(name);
 }
 
 void MemoryMetadata::AddInterpreterRegion(u64 start, u64 end) {
@@ -31,6 +42,7 @@ void MemoryMetadata::AddInterpreterRegion(u64 start, u64 end) {
     region.is_interpreter = true;
     regions.push_back(region);
     VERBOSE("Added interpreter region: %016lx-%016lx", start, end);
+    check_deferred_breakpoints("Interpreter");
 }
 
 std::string MemoryMetadata::GetRegionName(u64 address) {
@@ -67,4 +79,8 @@ std::pair<u64, u64> MemoryMetadata::GetRegionByName(const std::string& name) {
         }
     }
     return {0, 0};
+}
+
+void MemoryMetadata::AddDeferredBreakpoint(const std::string& name, u64 offset) {
+    deferred_breakpoints[name].push_back(offset);
 }

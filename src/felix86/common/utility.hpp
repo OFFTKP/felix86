@@ -38,7 +38,7 @@ u64 current_rip();
 
 void flush_icache();
 
-int guest_breakpoint(u64 address);
+int guest_breakpoint(const char* name, u64 address);
 
 int clear_breakpoints();
 

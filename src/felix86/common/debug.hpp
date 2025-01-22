@@ -15,4 +15,6 @@ struct MemoryMetadata {
     static bool IsInInterpreterRegion(u64 address);
 
     static u64 GetOffset(u64 address);
+
+    static void AddDeferredBreakpoint(const std::string& name, u64 offset);
 };
