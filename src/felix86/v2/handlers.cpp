@@ -2786,8 +2786,19 @@ FAST_HANDLE(BSR) {
 
     Label end;
     AS.BEQZ(src, &end);
-    AS.CLZ(result, src);
-    AS.XORI(result, result, instruction.operand_width - 1);
+    if (instruction.operand_width == 64) {
+        AS.CLZ(result, src);
+        AS.XORI(result, result, 63);
+    } else if (instruction.operand_width == 32) {
+        AS.CLZW(result, src);
+        AS.XORI(result, result, 31);
+    } else if (instruction.operand_width == 16) {
+        AS.SLLI(result, src, 16);
+        AS.CLZW(result, result);
+        AS.XORI(result, result, 15);
+    } else {
+        UNREACHABLE();
+    }
     rec.setOperandGPR(&operands[0], result);
 
     AS.Bind(&end);

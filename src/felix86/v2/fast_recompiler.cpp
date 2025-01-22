@@ -153,7 +153,7 @@ void FastRecompiler::compileSequence(u64 rip) {
 #undef X
         default: {
             ZydisDisassembledInstruction disassembled;
-            if (ZYAN_SUCCESS(ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (u8*)rip, 15, &disassembled))) {
+            if (ZYAN_SUCCESS(ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled))) {
                 ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
             } else {
                 ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);

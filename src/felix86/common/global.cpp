@@ -149,7 +149,8 @@ void initialize_globals() {
 
     const char* quiet_env = getenv("FELIX86_QUIET");
     if (is_truthy(quiet_env)) {
-        g_quiet = true;
+        if (!g_testing)
+            g_quiet = true;
         environment += "\nFELIX86_QUIET";
     }
 
