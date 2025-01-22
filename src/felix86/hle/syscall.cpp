@@ -201,6 +201,11 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_setpgid: {
+        result = HOST_SYSCALL(setpgid, rdi, rsi);
+        STRACE("setpgid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_getpgrp: {
         result = getpgrp();
         STRACE("getpgrp() = %d", (int)result);
@@ -229,6 +234,16 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_dup: {
         result = HOST_SYSCALL(dup, rdi);
         STRACE("dup(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_dup2: {
+        result = dup2(rdi, rsi);
+        STRACE("dup2(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_dup3: {
+        result = HOST_SYSCALL(dup3, rdi, rsi, rdx);
+        STRACE("dup3(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_fstat: {
@@ -266,6 +281,11 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_fcntl: {
         result = HOST_SYSCALL(fcntl, rdi, rsi, rdx);
         STRACE("fcntl(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_pselect6: {
+        result = HOST_SYSCALL(pselect6, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("pselect6(%d, %p, %p, %p, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (void*)r10, (void*)r8, (void*)r9, (int)result);
         break;
     }
     case felix86_x86_64_chdir: {
