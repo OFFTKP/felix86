@@ -12,7 +12,7 @@ bits 64
 mov rax, 0xDEADBEEFBAD0DAD1
 
 ; Starting address to store to
-mov rdi, 0xe8000000
+mov rdi, 0xe0000000
 
 ; How many elements we want to store
 mov rcx, 0x0
@@ -24,7 +24,7 @@ cld
 rep stosw
 
 mov r11, 0
-mov r10, 0xe8000000
+mov r10, 0xe0000000
 
 movzx r12, word [r10 + 0]
 add r11, r12

@@ -17,7 +17,7 @@ bits 64
 mov rax, 0xDEADBEEFBAD0DAD1
 
 ; Starting address to store to
-mov rdi, 0xe8000000
+mov rdi, 0xe0000000
 
 pxor xmm0, xmm0
 pxor xmm1, xmm1

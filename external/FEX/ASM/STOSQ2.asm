@@ -13,7 +13,7 @@
 bits 64
 
 ; Starting address to store to
-mov rdi, 0xe8000000
+mov rdi, 0xe0000000
 ; Store value
 mov rax, 0xDEADBEEFBAD0DAD1
 mov [rdi], rax
@@ -27,7 +27,7 @@ rep STOSQ
 
 ; Reload what we just stored
 ; Ensure that STOSQ didn't write
-mov rdi, 0xe8000000
+mov rdi, 0xe0000000
 mov rax, [rdi]
 
 hlt
