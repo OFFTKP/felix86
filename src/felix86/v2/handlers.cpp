@@ -2621,12 +2621,6 @@ FAST_HANDLE(PSHUFLW) {
 
 FAST_HANDLE(PALIGNR) {
     u8 imm = operands[2].imm.value.u;
-    // biscuit::Vec grp1 = rec.scratchVec();
-    // biscuit::Vec grp2 = rec.scratchVec();
-
-    // // They need to be consecutive registers
-    // ASSERT(grp1.Index() == grp2.Index() - 1);
-
     biscuit::GPR temp = rec.scratch();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec slide_up = rec.scratchVec();
@@ -2905,8 +2899,11 @@ FAST_HANDLE(PSRLDQ) {
     if (imm > 15) {
         AS.VMV(temp, 0);
     } else {
-        AS.VMV(temp, 0);
+        biscuit::GPR mask = rec.scratch();
+        AS.LI(mask, ~((1ull << (32 - imm)) - 1));
+        AS.VMV_SX(v0, mask);
         AS.VSLIDEDOWN(temp, dst, imm);
+        AS.VAND(temp, temp, 0, VecMask::Yes);
     }
     rec.setOperandVec(&operands[0], temp);
 }
