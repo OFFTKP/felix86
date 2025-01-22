@@ -17,6 +17,7 @@ void check_deferred_breakpoints(const std::string& name) {
     if (deferred_breakpoints.find(name) != deferred_breakpoints.end()) {
         for (u64 offset : deferred_breakpoints[name]) {
             guest_breakpoint(name.c_str(), offset);
+            LOG("Added deferred breakpoint %s@%016lx", name.c_str(), offset);
         }
         deferred_breakpoints.erase(name);
     }
