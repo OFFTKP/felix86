@@ -36,40 +36,8 @@ add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CP
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
-set(FELIX86_FRONTEND_SOURCES
-    src/felix86/frontend/frontend.cpp
-)
-
-set(FELIX86_AOT_SOURCES
-    src/felix86/aot/aot.cpp
-    src/felix86/aot/control_flow_analysis.cpp
-    src/felix86/aot/function_start_finder.cpp
-)
-
-set(FELIX86_IR_SOURCES
-    src/felix86/ir/block.cpp
-    src/felix86/ir/emitter.cpp
-    src/felix86/ir/function.cpp
-    src/felix86/ir/handlers.cpp
-    src/felix86/ir/instruction.cpp
-    src/felix86/ir/opcode.cpp
-    src/felix86/ir/passes/block_shenanigans_pass.cpp
-    src/felix86/ir/passes/copy_propagation_pass.cpp
-    src/felix86/ir/passes/critical_edge_splitting_pass.cpp
-    src/felix86/ir/passes/dead_code_elimination_pass.cpp
-    src/felix86/ir/passes/extraneous_writeback_pass.cpp
-    src/felix86/ir/passes/graph_coloring_pass.cpp
-    src/felix86/ir/passes/immediate_transformation_pass.cpp
-    src/felix86/ir/passes/linear_scan_pass.cpp
-    src/felix86/ir/passes/local_cse_pass.cpp
-    src/felix86/ir/passes/peephole_pass.cpp
-    src/felix86/ir/passes/ssa_pass.cpp
-    src/felix86/ir/passes/vector_state_pass.cpp
-)
-
 set(FELIX86_COMMON_SOURCES
     src/felix86/common/debug.cpp
-    src/felix86/common/decoder.cpp
     src/felix86/common/disk_cache.cpp
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp
@@ -78,15 +46,6 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/log.cpp
     src/felix86/common/print.cpp
     src/felix86/common/utility.cpp
-)
-
-set(FELIX86_BACKEND_SOURCES
-    src/felix86/backend/backend.cpp
-    src/felix86/backend/block.cpp
-    src/felix86/backend/emitter.cpp
-    src/felix86/backend/emitter_dispatch.cpp
-    src/felix86/backend/function.cpp
-    src/felix86/backend/instruction.cpp
 )
 
 set(FELIX86_HLE_SOURCES
@@ -98,16 +57,12 @@ set(FELIX86_HLE_SOURCES
 )
 
 set(FELIX86_V2_SOURCES
-    src/felix86/v2/fast_recompiler.cpp
+    src/felix86/v2/recompiler.cpp
     src/felix86/v2/handlers.cpp
 )
 
 set(FELIX86_CORE_SOURCES
     ${FELIX86_COMMON_SOURCES}
-    ${FELIX86_AOT_SOURCES}
-    ${FELIX86_FRONTEND_SOURCES}
-    ${FELIX86_IR_SOURCES}
-    ${FELIX86_BACKEND_SOURCES}
     ${FELIX86_HLE_SOURCES}
     ${FELIX86_V2_SOURCES}
     src/felix86/emulator.cpp

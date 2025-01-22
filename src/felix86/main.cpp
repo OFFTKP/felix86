@@ -3,7 +3,6 @@
 #include <thread>
 #include <argp.h>
 #include <fmt/format.h>
-#include "felix86/common/disk_cache.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/version.hpp"
 #include "felix86/emulator.hpp"
@@ -21,20 +20,12 @@ static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
-    {"aot", 'a', 0, 0, "Ahead-of-time compile the target binary"},
     {"verbose", 'V', 0, 0, "Produce verbose output"},
     {"quiet", 'q', 0, 0, "Don't produce any output"},
-    {"print-state", 's', 0, 0, "Print state at the end of each block"},
     {"host-envs", 'E', 0, 0, "Pass host environment variables to the guest"},
     {"print-functions", 'P', 0, 0, "Print functions as they compile"},
     {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
-    {"dont-optimize", 'o', 0, 0, "Don't apply optimizations on the IR"},
-    {"print-disassembly", 'd', 0, 0, "Print disassembly of emitted functions"},
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
-    {"clear-cache", 'c', 0, 0, "Clear the compiled function cache"},
-    {"extensions", 'x', "EXTS", 0,
-     "Manually specify additional available RISC-V extensions, in addition to the ones detected. Useful because some extensions might not be "
-     "detectable. Usage example: -e zacas,xtheadcondmov"},
     {"all-extensions", 'X', "EXTS", 0,
      "Manually specify every available RISC-V extension. When using this, any extension not specified will be considered unavailable. "
      "Usage example: -e g,c,v,b,zacas"},
@@ -105,10 +96,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
 
     switch (key) {
-    case 'a': {
-        g_aot = true;
-        break;
-    }
     case 'V': {
         enable_verbose();
         break;
@@ -121,33 +108,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         g_rootfs_path = arg;
         break;
     }
-    case 'o': {
-        g_dont_optimize = true;
-        break;
-    }
     case 'E': {
         char** envp = environ;
         while (*envp) {
             config->envp.push_back(*envp);
             envp++;
         }
-        break;
-    }
-    case 'c': {
-        DiskCache::Clear();
-        LOG("Function cache cleared!");
-        break;
-    }
-    case 'P': {
-        g_print_blocks = true;
-        break;
-    }
-    case 's': {
-        g_print_state = true;
-        break;
-    }
-    case 'd': {
-        g_print_disassembly = true;
         break;
     }
     case 't': {
@@ -159,12 +125,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             argp_usage(state);
         } else {
             g_extensions_manually_specified = true;
-        }
-        break;
-    }
-    case 'x': {
-        if (!parse_extensions(arg)) {
-            argp_usage(state);
         }
         break;
     }

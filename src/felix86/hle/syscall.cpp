@@ -1,6 +1,7 @@
 #include <csignal>
 #include <errno.h>
 #include <fcntl.h>
+#include <fmt/format.h>
 #include <openssl/md5.h>
 #include <poll.h>
 #include <sys/ioctl.h>

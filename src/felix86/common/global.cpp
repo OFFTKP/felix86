@@ -7,39 +7,20 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/emulator.hpp"
-#include "felix86/hle/signals.hpp"
 #include "fmt/format.h"
 #include "version.hpp"
 
 bool g_verbose = false;
 bool g_quiet = false;
-bool g_aot = false;
 bool g_testing = false;
 bool g_strace = false;
-bool g_dont_optimize = false;
-bool g_print_blocks = false;
-bool g_print_block_start = false;
-bool g_print_state = false;
-bool g_print_disassembly = false;
-bool g_cache_functions = false;
-bool g_preload = false;
-bool g_coalesce = true;
-bool g_dont_link = false;
 bool g_extensions_manually_specified = false;
-bool g_include_comments = false;
-bool g_graph_coloring = false;
-bool g_fast_recompiler = false;
 bool g_profile_compilation = false;
 u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
 
-// Having too many basic blocks in a function can cause the register allocator to take insanely long times
-// So a block limit can sacrifice some potential runtime performance for way better compilation times
-constexpr int default_block_limit = 1;
-int g_block_limit = default_block_limit;
 int g_output_fd = 1;
-u32 g_spilled_count = 0;
 std::filesystem::path g_rootfs_path{};
 thread_local ThreadState* g_thread_state;
 u64 g_executable_base_hint = 0;
@@ -102,7 +83,6 @@ void initialize_globals() {
         if (g_extensions_manually_specified) {
             WARN("FELIX86_EXTENSIONS ignored, because extensions specified either with -X or FELIX86_ALL_EXTENSIONS");
         } else {
-
             if (!parse_extensions(extensions_env)) {
                 WARN("Failed to parse environment variable FELIX86_EXTENSIONS");
             } else {
@@ -111,34 +91,10 @@ void initialize_globals() {
         }
     }
 
-    const char* dont_optimize_env = getenv("FELIX86_NO_OPT");
-    if (is_truthy(dont_optimize_env)) {
-        g_dont_optimize = true;
-        environment += "\nFELIX86_NO_OPT";
-    }
-
     const char* strace_env = getenv("FELIX86_STRACE");
     if (is_truthy(strace_env)) {
         g_strace = true;
         environment += "\nFELIX86_STRACE";
-    }
-
-    const char* print_blocks_env = getenv("FELIX86_PRINT_BLOCKS");
-    if (is_truthy(print_blocks_env)) {
-        g_print_blocks = true;
-        environment += "\nFELIX86_PRINT_BLOCKS";
-    }
-
-    const char* print_state_env = getenv("FELIX86_PRINT_STATE");
-    if (is_truthy(print_state_env)) {
-        g_print_state = true;
-        environment += "\nFELIX86_PRINT_STATE";
-    }
-
-    const char* print_disassembly_env = getenv("FELIX86_PRINT_DISASSEMBLY");
-    if (is_truthy(print_disassembly_env)) {
-        g_print_disassembly = true;
-        environment += "\nFELIX86_PRINT_DISASSEMBLY";
     }
 
     const char* verbose_env = getenv("FELIX86_VERBOSE");
@@ -154,40 +110,6 @@ void initialize_globals() {
         environment += "\nFELIX86_QUIET";
     }
 
-    const char* block_limit_env = getenv("FELIX86_BLOCK_LIMIT");
-    if (block_limit_env) {
-        g_block_limit = std::atoi(block_limit_env);
-        environment += "\nFELIX86_BLOCK_LIMIT=" + std::string(block_limit_env);
-        if (g_block_limit < 0) {
-            WARN("Block limit is less than 0, setting to default value of %d", default_block_limit);
-            g_block_limit = default_block_limit;
-        }
-    }
-
-    const char* dont_coalesce_env = getenv("FELIX86_NO_COALESCE");
-    if (is_truthy(dont_coalesce_env)) {
-        g_coalesce = false;
-        environment += "\nFELIX86_NO_COALESCE";
-    }
-
-    const char* dont_link_env = getenv("FELIX86_NO_LINK");
-    if (is_truthy(dont_link_env)) {
-        g_dont_link = true;
-        environment += "\nFELIX86_NO_LINK";
-    }
-
-    const char* graph_coloring_env = getenv("FELIX86_GRAPH_COLORING");
-    if (is_truthy(graph_coloring_env)) {
-        g_graph_coloring = true;
-        environment += "\nFELIX86_GRAPH_COLORING";
-    }
-
-    const char* print_start_of_block_env = getenv("FELIX86_PRINT_BLOCK_START");
-    if (is_truthy(print_start_of_block_env)) {
-        g_print_block_start = true;
-        environment += "\nFELIX86_PRINT_BLOCK_START";
-    }
-
     const char* rootfs_path = getenv("FELIX86_ROOTFS");
     if (rootfs_path) {
         if (!g_rootfs_path.empty()) {
@@ -195,12 +117,6 @@ void initialize_globals() {
         }
         g_rootfs_path = rootfs_path;
         environment += "\nFELIX86_ROOTFS=" + std::string(rootfs_path);
-    }
-
-    const char* fast_recompiler_env = getenv("FELIX86_FAST_RECOMPILER");
-    if (is_truthy(fast_recompiler_env)) {
-        g_fast_recompiler = true;
-        environment += "\nFELIX86_FAST_RECOMPILER";
     }
 
     const char* profile_compilation_env = getenv("FELIX86_PROFILE_COMPILATION");
@@ -211,7 +127,6 @@ void initialize_globals() {
         std::atexit([]() {
             printf("Total compilation time: %ldms\n", g_compilation_total_time.count() / 1000000);
             printf("Total dispatcher exits: %ld\n", g_dispatcher_exit_count);
-            printf("Total code cache size: %ldKB\n", g_emulator->GetCodeCacheSize() / 1024);
         });
     }
 
@@ -235,24 +150,6 @@ void initialize_globals() {
         } else {
             g_output_fd = fd;
             environment += "\nFELIX86_LOG_FILE=" + std::string(log_file);
-        }
-    }
-
-    if (!g_testing) {
-        const char* cache_env = getenv("FELIX86_NO_CACHE");
-        if (is_truthy(cache_env)) {
-            g_cache_functions = false;
-            environment += "\nFELIX86_NO_CACHE";
-        } else {
-            g_cache_functions = true;
-
-            const char* preload_env = getenv("FELIX86_NO_PRELOAD");
-            if (is_truthy(preload_env)) {
-                g_preload = false;
-            } else {
-                g_preload = false;
-                // g_preload = true; TODO: fix preloading
-            }
         }
     }
 

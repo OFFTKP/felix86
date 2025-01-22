@@ -45,3 +45,6 @@ int clear_breakpoints();
 void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64);
 
 void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64);
+
+namespace biscuit {}
+using namespace biscuit;

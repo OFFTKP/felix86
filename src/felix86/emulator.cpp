@@ -1,17 +1,15 @@
+#include <chrono>
 #include <csignal>
+#include <vector>
 #include <elf.h>
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <stdlib.h>
 #include <sys/random.h>
-#include "felix86/backend/disassembler.hpp"
-#include "felix86/common/disk_cache.hpp"
 #include "felix86/emulator.hpp"
-#include "felix86/frontend/frontend.hpp"
 #include "felix86/hle/cpuid.hpp"
 #include "felix86/hle/rdtsc.hpp"
 #include "felix86/hle/syscall.hpp"
-#include "felix86/ir/passes/passes.hpp"
 
 extern char** environ;
 
@@ -60,11 +58,7 @@ void Emulator::Run() {
 
     ThreadState* state = &thread_states.back();
     g_thread_state = state;
-    if (g_fast_recompiler) {
-        fast_recompiler.enterDispatcher(state);
-    } else {
-        backend.EnterDispatcher(state);
-    }
+    recompiler.enterDispatcher(state);
 
     VERBOSE("Bye-bye main thread :(");
     VERBOSE("Main thread exited: %d", (int)state->exit_reason);
@@ -203,105 +197,8 @@ void Emulator::setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::compileFunction(u64 rip) {
-    {
-        std::lock_guard<std::mutex> lock(compilation_mutex);
-        void* already_compiled = backend.GetCodeAt(rip).first;
-        if (already_compiled) {
-            return already_compiled;
-        }
-    }
-
-    VERBOSE("Now compiling: %016lx", rip);
-    IRFunction function{rip};
-    frontend_compile_function(function);
-
-    VERBOSE("Hash: %016lx-%016lx", function.GetHash().values[1], function.GetHash().values[0]);
-
-    // Check disk cache if enabled
-    if (g_cache_functions) {
-        ASSERT(!g_testing);
-        std::string hex_hash = function.GetHash().ToString();
-        if (DiskCache::Has(hex_hash)) {
-            return LoadFromCache(rip, hex_hash);
-        }
-    }
-
-    PassManager::SSAPass(&function);
-    PassManager::DeadCodeEliminationPass(&function);
-
-    if (!g_dont_optimize) {
-        bool changed = false;
-        do {
-            changed = false;
-            changed |= PassManager::PeepholePass(&function);
-            // changed |= PassManager::LocalCSEPass(&function);
-            changed |= PassManager::CopyPropagationPass(&function);
-            changed |= PassManager::DeadCodeEliminationPass(&function);
-        } while (changed);
-        PassManager::ImmediateTransformationPass(&function);
-    }
-
-    PassManager::CriticalEdgeSplittingPass(&function);
-
-    if (g_print_blocks) {
-        fmt::print("{}", function.Print({}));
-    }
-
-    if (!function.Validate()) {
-        ERROR("Function did not validate");
-    }
-
-    BackendFunction backend_function = BackendFunction::FromIRFunction(&function);
-
-    AllocationMap allocations;
-    if (g_graph_coloring) {
-        allocations = ir_graph_coloring_pass(backend_function);
-    } else {
-        allocations = ir_linear_scan_pass(backend_function);
-    }
-
-    // Add vector state instructions where necessary
-    PassManager::VectorStatePass(&backend_function);
-
-    // PassManager::BlockShenanigansPass(&backend_function);
-
-    if (g_print_blocks) {
-        fmt::print("Backend function IR:\n{}\n", backend_function.Print());
-    }
-
-    compilation_mutex.lock();
-    auto [func, size] = backend.EmitFunction(backend_function, allocations);
-    compilation_mutex.unlock();
-
-    if (g_print_disassembly) {
-        PLAIN("Disassembly of function at 0x%lx:\n", rip);
-        PLAIN("%s", Disassembler::Disassemble(func, size).c_str());
-    }
-
-    if (g_cache_functions) {
-        ASSERT(!g_testing);
-        std::string hex_hash = function.GetHash().ToString();
-        DiskCache::Write(hex_hash, func, size);
-    }
-
-    return func;
-}
-
-void* Emulator::compileFunctionFast(u64 rip) {
     std::lock_guard<std::mutex> lock(compilation_mutex);
-    return fast_recompiler.compile(rip);
-}
-
-void* Emulator::LoadFromCache(u64 rip, const std::string& hash) {
-    ASSERT(g_cache_functions);
-    ASSERT(DiskCache::Has(hash));
-    ASSERT(!g_testing);
-
-    std::vector<u8> function = DiskCache::Read(hash);
-    compilation_mutex.lock();
-    void* start = backend.AddCodeAt(rip, function.data(), function.size());
-    compilation_mutex.unlock();
-    return start;
+    return recompiler.compile(rip);
 }
 
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
@@ -313,11 +210,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 
     // Mutex needs to be unlocked before the thread is dispatched
     void* volatile function;
-    if (g_fast_recompiler) {
-        function = emulator->compileFunctionFast(thread_state->GetRip());
-    } else {
-        function = emulator->compileFunction(thread_state->GetRip());
-    }
+    function = emulator->compileFunction(thread_state->GetRip());
 
     if (g_profile_compilation) {
         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
@@ -353,8 +246,8 @@ ThreadState* Emulator::createThreadState() {
     thread_state->syscall_handler = (u64)felix86_syscall;
     thread_state->cpuid_handler = (u64)felix86_cpuid;
     thread_state->rdtsc_handler = (u64)felix86_rdtsc;
-    thread_state->compile_next_handler = g_fast_recompiler ? (u64)fast_recompiler.getCompileNext() : (u64)backend.GetCompileNext();
-    thread_state->crash_handler = g_fast_recompiler ? 0 : (u64)backend.GetCrashHandler();
+    thread_state->compile_next_handler = (u64)recompiler.getCompileNext();
+    thread_state->crash_handler = 0;
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;
     std::fill(thread_state->masked_signals.begin(), thread_state->masked_signals.end(), false);

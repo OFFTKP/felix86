@@ -1,7 +1,8 @@
 #pragma once
 
 #include <string>
-#include "felix86/backend/serialized_function.hpp"
+#include <vector>
+#include "felix86/common/utility.hpp"
 
 struct DiskCache {
     static bool Has(const std::string& key);

@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
-#include "biscuit/registers.hpp"
+#include "biscuit/assembler.hpp"
 #include "felix86/common/riscv.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86.hpp"
@@ -28,13 +28,13 @@ struct VectorMemoryAccess {
     bool load;
 };
 
-struct FastRecompiler {
-    FastRecompiler(Emulator& emulator);
-    ~FastRecompiler();
-    FastRecompiler(const FastRecompiler&) = delete;
-    FastRecompiler& operator=(const FastRecompiler&) = delete;
-    FastRecompiler(FastRecompiler&&) = delete;
-    FastRecompiler& operator=(FastRecompiler&&) = delete;
+struct Recompiler {
+    Recompiler(Emulator& emulator);
+    ~Recompiler();
+    Recompiler(const Recompiler&) = delete;
+    Recompiler& operator=(const Recompiler&) = delete;
+    Recompiler(Recompiler&&) = delete;
+    Recompiler& operator=(Recompiler&&) = delete;
 
     void* compile(u64 rip);
 

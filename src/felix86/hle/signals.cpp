@@ -24,8 +24,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
 
-    ASSERT(FastRecompiler::threadStatePointer() == x27);
-    FastRecompiler& recompiler = g_emulator->GetRecompiler();
+    ASSERT(Recompiler::threadStatePointer() == x27);
+    Recompiler& recompiler = g_emulator->GetRecompiler();
 
     switch (sig) {
     case SIGBUS: {
