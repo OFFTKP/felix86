@@ -2900,7 +2900,7 @@ FAST_HANDLE(PSRLDQ) {
         AS.VMV(temp, 0);
     } else {
         biscuit::GPR mask = rec.scratch();
-        AS.LI(mask, ~((1ull << (32 - imm)) - 1));
+        AS.LI(mask, ~((1ull << (16 - imm)) - 1));
         AS.VMV_SX(v0, mask);
         AS.VSLIDEDOWN(temp, dst, imm);
         AS.VAND(temp, temp, 0, VecMask::Yes);
