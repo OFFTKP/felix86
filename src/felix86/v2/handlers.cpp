@@ -2903,7 +2903,7 @@ FAST_HANDLE(PSRLDQ) {
         AS.LI(mask, ~((1ull << (16 - imm)) - 1));
         AS.VMV_SX(v0, mask);
         AS.VSLIDEDOWN(temp, dst, imm);
-        AS.VAND(temp, temp, 0, VecMask::Yes);
+        AS.VAND(temp, temp, 0, VecMask::No);
     }
     rec.setOperandVec(&operands[0], temp);
 }
