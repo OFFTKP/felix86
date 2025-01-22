@@ -375,6 +375,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("faccessat2(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
+    case felix86_x86_64_pipe2: {
+        result = HOST_SYSCALL(pipe2, rdi, rsi);
+        STRACE("pipe2(%p, %d) = %d", (void*)rdi, (int)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_pipe: {
+        result = pipe((int*)rdi);
+        STRACE("pipe(%p) = %d", (void*)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_read: {
         result = HOST_SYSCALL(read, rdi, rsi, rdx);
         STRACE("read(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);

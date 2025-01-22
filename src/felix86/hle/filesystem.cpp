@@ -11,6 +11,13 @@
 
 const char* proc_self_exe = "/proc/self/exe";
 
+constexpr static auto devices = {
+    "/dev/null",
+    "/dev/zero",
+    "/dev/urandom",
+    "/dev/random",
+};
+
 bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
     if (!rootfs_path.empty()) {
         ERROR("Rootfs already loaded");
@@ -55,6 +62,13 @@ bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
 }
 
 std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* pathname) {
+    // Check if it's a special device path that we allow access to
+    for (auto& device : devices) {
+        if (std::string(pathname) == device) {
+            return std::filesystem::path(pathname);
+        }
+    }
+
     std::filesystem::path path = pathname;
     if (path.is_relative()) {
         if (dirfd == AT_FDCWD) {
