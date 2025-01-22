@@ -2908,7 +2908,7 @@ FAST_HANDLE(PSRLDQ) {
         AS.VMV(temp, 0);
         AS.VSLIDEDOWN(temp, dst, imm);
     }
-    rec.setOperandVec(&operands[0], dst);
+    rec.setOperandVec(&operands[0], temp);
 }
 
 FAST_HANDLE(PSLLQ) {
