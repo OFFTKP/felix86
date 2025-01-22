@@ -38,7 +38,7 @@ bsr r11d, ebx
 bsr r10,  rbx
 
 bsr r9w, cx
-bsr r8d, ebx
-bsr rsi, rbx
+bsr r8d, ecx
+bsr rsi, rcx
 
 hlt

@@ -2569,6 +2569,26 @@ FAST_HANDLE(NEG) {
     rec.setOperandGPR(&operands[0], result);
 }
 
+FAST_HANDLE(PACKUSWB) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VNCLIPU(temp, src, 0);
+    AS.VNCLIPU(temp2, dst, 0);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VMV(v0, 1);
+    AS.VMV(result, 0);
+    AS.VSLIDEUP(result, temp, 1);
+    AS.VOR(result, result, temp2, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(PMOVMSKB) {
     biscuit::GPR scratch = rec.scratch();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
