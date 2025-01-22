@@ -3421,7 +3421,11 @@ FAST_HANDLE(FXSAVE) {
     AS.MV(a1, address);
     AS.LI(a2, 0);
     AS.JALR(t0);
+
+    Label end;
+    AS.J(&end);
     AS.Place(&literal);
+    AS.Bind(&end);
 }
 
 FAST_HANDLE(FXSAVE64) {
@@ -3435,7 +3439,11 @@ FAST_HANDLE(FXSAVE64) {
     AS.MV(a1, address);
     AS.LI(a2, 1);
     AS.JALR(t0);
+
+    Label end;
+    AS.J(&end);
     AS.Place(&literal);
+    AS.Bind(&end);
 }
 
 FAST_HANDLE(FXRSTOR) {
@@ -3449,7 +3457,11 @@ FAST_HANDLE(FXRSTOR) {
     AS.MV(a1, address);
     AS.LI(a2, 0);
     AS.JALR(t0);
+
+    Label end;
+    AS.J(&end);
     AS.Place(&literal);
+    AS.Bind(&end);
 }
 
 FAST_HANDLE(FXRSTOR64) {
@@ -3463,5 +3475,9 @@ FAST_HANDLE(FXRSTOR64) {
     AS.MV(a1, address);
     AS.LI(a2, 1);
     AS.JALR(t0);
+
+    Label end;
+    AS.J(&end);
     AS.Place(&literal);
+    AS.Bind(&end);
 }
