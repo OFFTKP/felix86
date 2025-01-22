@@ -3481,3 +3481,13 @@ FAST_HANDLE(FXRSTOR64) {
     AS.Place(&literal);
     AS.Bind(&end);
 }
+
+FAST_HANDLE(WRFSBASE) {
+    biscuit::GPR reg = rec.getOperandGPRDontZext(&operands[0]);
+
+    if (instruction.operand_width == 32) {
+        AS.SW(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+    } else {
+        AS.SD(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+    }
+}
