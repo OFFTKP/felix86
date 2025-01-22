@@ -2661,7 +2661,7 @@ FAST_HANDLE(PALIGNR) {
 
 FAST_HANDLE(BSF) {
     ASSERT(Extensions::B);
-    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+    ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
 
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -2682,7 +2682,7 @@ FAST_HANDLE(BSF) {
 }
 
 FAST_HANDLE(BTC) {
-    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+    ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR mask = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
@@ -2704,7 +2704,7 @@ FAST_HANDLE(BTC) {
 }
 
 FAST_HANDLE(BT) {
-    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+    ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -2721,7 +2721,7 @@ FAST_HANDLE(BT) {
 }
 
 FAST_HANDLE(BTS) {
-    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+    ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -2744,7 +2744,7 @@ FAST_HANDLE(BTS) {
 }
 
 FAST_HANDLE(BTR) {
-    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+    ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -2769,7 +2769,7 @@ FAST_HANDLE(BTR) {
 
 FAST_HANDLE(BSR) {
     ASSERT(Extensions::B);
-    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
+    ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
