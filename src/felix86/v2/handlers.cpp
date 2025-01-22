@@ -3843,3 +3843,11 @@ FAST_HANDLE(SHLD) {
 
     rec.setOperandGPR(&operands[0], result);
 }
+
+FAST_HANDLE(FNSTCW) {
+    WARN("FNSTCW is not implemented, ignoring");
+}
+
+FAST_HANDLE(FLDCW) {
+    WARN("FLDCW is not implemented, ignoring");
+}
