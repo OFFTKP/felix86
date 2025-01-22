@@ -2293,11 +2293,12 @@ FAST_HANDLE(STOSB) {
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, rec.zydisToSize(width));
     biscuit::GPR temp = rec.scratch();
-    AS.LB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
+    biscuit::GPR df = rec.scratch();
+    AS.LB(df, offsetof(ThreadState, df), rec.threadStatePointer());
 
     Label end;
     AS.LI(temp, -width / 8);
-    AS.BNEZ(temp, &end);
+    AS.BNEZ(df, &end);
     AS.LI(temp, width / 8);
     AS.Bind(&end);
 
