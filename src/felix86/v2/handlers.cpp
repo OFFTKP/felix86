@@ -3823,6 +3823,8 @@ FAST_HANDLE(SHLD) {
             UNREACHABLE();
         }
         rec.setOperandGPR(&operands[0], result);
+    } else {
+        rec.setOperandGPR(&operands[0], dst);
     }
 
     if (imm > 0) {
