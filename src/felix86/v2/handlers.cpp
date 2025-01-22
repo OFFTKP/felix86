@@ -2570,25 +2570,26 @@ FAST_HANDLE(NEG) {
 }
 
 FAST_HANDLE(PACKUSWB) {
-    biscuit::Vec temp = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    AS.VMV(src, 0);
-    AS.VMV(dst, 0);
+    // While this instruction seems like a perfect target for VNCLIPU, my board (?) decides to throw a SIGILL
+    // no matter what I do, so I'm just gonna do a function.
+    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
+    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
 
-    rec.setVectorState(SEW::E8, 8);
-    AS.VNCLIPU(temp, src, 0);
-    AS.VNCLIPU(temp2, dst, 0);
+    rec.writebackDirtyState();
 
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VMV(v0, 1);
-    AS.VMV(result, 0);
-    AS.VSLIDEUP(result, temp, 1);
-    AS.VOR(result, result, temp2, VecMask::Yes);
+    AS.LI(t0, (u64)&felix86_packuswb);
 
-    rec.setOperandVec(&operands[0], result);
+    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0));
+
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
+        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0));
+    } else {
+        biscuit::GPR temp = rec.lea(&operands[1]);
+        AS.MV(a1, temp);
+    }
+
+    AS.JALR(t0);
 }
 
 FAST_HANDLE(PMOVMSKB) {
@@ -3615,37 +3616,25 @@ FAST_HANDLE(MOVLHPS) {
 FAST_HANDLE(FXSAVE) {
     rec.writebackDirtyState();
 
-    Literal literal((u64)&felix86_fxsave);
-    AS.LD(t0, &literal);
+    AS.LI(t0, (u64)&felix86_fxsave);
 
     biscuit::GPR address = rec.lea(&operands[0]);
     AS.MV(a0, rec.threadStatePointer());
     AS.MV(a1, address);
     AS.LI(a2, 0);
     AS.JALR(t0);
-
-    Label end;
-    AS.J(&end);
-    AS.Place(&literal);
-    AS.Bind(&end);
 }
 
 FAST_HANDLE(FXSAVE64) {
     rec.writebackDirtyState();
 
-    Literal literal((u64)&felix86_fxsave);
-    AS.LD(t0, &literal);
+    AS.LI(t0, (u64)&felix86_fxsave);
 
     biscuit::GPR address = rec.lea(&operands[0]);
     AS.MV(a0, rec.threadStatePointer());
     AS.MV(a1, address);
     AS.LI(a2, 1);
     AS.JALR(t0);
-
-    Label end;
-    AS.J(&end);
-    AS.Place(&literal);
-    AS.Bind(&end);
 }
 
 FAST_HANDLE(FXRSTOR) {

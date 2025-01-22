@@ -125,3 +125,35 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
         memcpy(state->xmm, (u8*)address + 160, 8 * 16);
     }
 }
+
+void felix86_packuswb(u8* dst, u8* src) {
+    u16* src16 = (u16*)src;
+    u16* dst16 = (u16*)dst;
+    for (int i = 0; i < 8; i++) {
+        i16 value = *dst++;
+        u8 result;
+        if (value < 0) {
+            result = 0;
+        } else if (value > 255) {
+            result = 255;
+        } else {
+            result = (u8)value;
+        }
+        dst[i] = result;
+    }
+
+    for (int i = 8; i < 16; i++) {
+        i16 value = *src++;
+        u8 result;
+        if (value < 0) {
+            result = 0;
+        } else if (value > 255) {
+            result = 255;
+        } else {
+            result = (u8)value;
+        }
+        dst[i] = result;
+    }
+    (void)src16;
+    (void)dst16;
+}

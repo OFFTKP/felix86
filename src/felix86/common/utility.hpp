@@ -46,5 +46,7 @@ void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64);
 
 void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64);
 
+void felix86_packuswb(u8* dst, u8* src);
+
 namespace biscuit {}
 using namespace biscuit;
