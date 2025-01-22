@@ -400,8 +400,8 @@ void felix86_syscall(ThreadState* state) {
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
 
         if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-            ASSERT(!detecting_memory_region); // TODO: some programs may open libraries that need other libraries, so this detection needs to happen
-                                              // with a stack
+            WARN("Our library detection is failing"); // TODO: some programs may open libraries that need other libraries, so this detection needs to
+                                                      // happen with a stack
             detecting_memory_region = true;
             name = std::filesystem::path((const char*)rsi).filename().string();
             min_address = ULONG_MAX;
