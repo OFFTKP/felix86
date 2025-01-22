@@ -2591,7 +2591,35 @@ FAST_HANDLE(PSHUFD) {
 }
 
 FAST_HANDLE(SHUFPS) {
-    fast_PSHUFD(rec, meta, instruction, operands);
+    u8 imm = operands[2].imm.value.u;
+    u8 el0 = imm & 0b11;
+    u8 el1 = (imm >> 2) & 0b11;
+    u8 el2 = (imm >> 4) & 0b11;
+    u8 el3 = (imm >> 6) & 0b11;
+
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec iota2 = rec.scratchVec();
+    biscuit::GPR temp = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec result = rec.scratchVec();
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMV(iota2, el3);
+    AS.LI(temp, el2);
+    AS.VSLIDE1UP(iota, iota2, temp);
+    AS.LI(temp, el1);
+    AS.VSLIDE1UP(iota2, iota, temp);
+    AS.LI(temp, el0);
+    AS.VSLIDE1UP(iota, iota2, temp);
+
+    AS.VMV(v0, 0b11);
+    AS.VMV(result, 0);
+    AS.VRGATHER(result, dst, iota, VecMask::Yes);
+    AS.VMV(v0, 0b1100);
+    AS.VRGATHER(result, src, iota, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(PSHUFLW) {
