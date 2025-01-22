@@ -2111,11 +2111,91 @@ FAST_HANDLE(PMINUB) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PMINUW) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMINU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMINUD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMINU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PMAXUB) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
     AS.VMAXU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMAXUW) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMAXU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMAXUD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMAXU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMINSB) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VMIN(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMINSH) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMIN(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMINSD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMIN(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMAXSB) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VMAX(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMAXSH) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMAX(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMAXSD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMAX(dst, dst, src);
     rec.setOperandVec(&operands[0], dst);
 }
 
