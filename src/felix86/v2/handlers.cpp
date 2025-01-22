@@ -2901,10 +2901,10 @@ FAST_HANDLE(PSRLDQ) {
     u8 imm = operands[1].imm.value.u;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    biscuit::Vec temp = rec.scratchVec();
     if (imm > 15) {
-        AS.VMV(dst, 0);
+        AS.VMV(temp, 0);
     } else {
-        biscuit::Vec temp = rec.scratchVec();
         AS.VMV(temp, 0);
         AS.VSLIDEDOWN(temp, dst, imm);
     }
