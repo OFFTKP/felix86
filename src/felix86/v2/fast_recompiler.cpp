@@ -1,4 +1,5 @@
 #include <sys/mman.h>
+#include "Zydis/Disassembler.h"
 #include "felix86/emulator.hpp"
 #include "felix86/v2/fast_recompiler.hpp"
 
@@ -151,7 +152,12 @@ void FastRecompiler::compileSequence(u64 rip) {
 #include "felix86/v2/handlers.inc"
 #undef X
         default: {
-            ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);
+            ZydisDisassembledInstruction disassembled;
+            if (ZYAN_SUCCESS(ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (u8*)rip, 15, &disassembled))) {
+                ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
+            } else {
+                ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);
+            }
             break;
         }
         }
