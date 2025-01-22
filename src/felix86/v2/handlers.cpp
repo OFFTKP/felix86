@@ -2583,11 +2583,12 @@ FAST_HANDLE(PACKUSWB) {
 
     AS.LI(t0, (u64)&felix86_packuswb);
 
-    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0));
+    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
 
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
-        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0));
+        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
+        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
     } else {
         AS.MV(a1, temp);
     }
