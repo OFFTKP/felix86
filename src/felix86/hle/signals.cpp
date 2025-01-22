@@ -103,7 +103,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
 
         if (!found) {
-            ERROR("Unhandled SIGILL at PC: %016lx", pc);
+            ERROR("Unhandled SIGILL (%d) at PC: %016lx", info->si_code, pc);
         }
         break;
     }

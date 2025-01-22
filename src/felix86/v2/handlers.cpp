@@ -2575,6 +2575,8 @@ FAST_HANDLE(PACKUSWB) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    AS.VMV(src, 0);
+    AS.VMV(dst, 0);
 
     rec.setVectorState(SEW::E8, 8);
     AS.VNCLIPU(temp, src, 0);
