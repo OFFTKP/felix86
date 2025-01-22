@@ -96,3 +96,19 @@ int clear_breakpoints() {
     g_breakpoints.clear();
     return count;
 }
+
+void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
+    if (fxsave64) {
+        memcpy((u8*)address + 160, state->xmm, 16 * 16);
+    } else {
+        memcpy((u8*)address + 160, state->xmm, 8 * 16);
+    }
+}
+
+void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
+    if (fxrstor64) {
+        memcpy(state->xmm, (u8*)address + 160, 16 * 16);
+    } else {
+        memcpy(state->xmm, (u8*)address + 160, 8 * 16);
+    }
+}

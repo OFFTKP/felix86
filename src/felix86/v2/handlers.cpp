@@ -3412,3 +3412,69 @@ FAST_HANDLE(MOVLHPS) {
     AS.VRGATHER(temp, src, iota, VecMask::Yes); // make only high element pick low from src
     rec.setOperandVec(&operands[0], temp);
 }
+
+FAST_HANDLE(FXSAVE) {
+    rec.writebackDirtyState();
+
+    u64 offset = (u64)&felix86_fxsave - (u64)AS.GetCursorPointer();
+    const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    AS.AUIPC(t0, hi20);
+    AS.ADDI(t0, t0, lo12);
+
+    biscuit::GPR address = rec.lea(&operands[0]);
+    AS.MV(a0, rec.threadStatePointer());
+    AS.MV(a1, address);
+    AS.LI(a2, 0);
+    AS.JALR(t0);
+}
+
+FAST_HANDLE(FXSAVE64) {
+    rec.writebackDirtyState();
+
+    u64 offset = (u64)&felix86_fxsave - (u64)AS.GetCursorPointer();
+    const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    AS.AUIPC(t0, hi20);
+    AS.ADDI(t0, t0, lo12);
+
+    biscuit::GPR address = rec.lea(&operands[0]);
+    AS.MV(a0, rec.threadStatePointer());
+    AS.MV(a1, address);
+    AS.LI(a2, 1);
+    AS.JALR(t0);
+}
+
+FAST_HANDLE(FXRSTOR) {
+    rec.writebackDirtyState();
+
+    u64 offset = (u64)&felix86_fxrstor - (u64)AS.GetCursorPointer();
+    ASSERT(offset < 0x80000000);
+    const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    AS.AUIPC(t0, hi20);
+    AS.ADDI(t0, t0, lo12);
+
+    biscuit::GPR address = rec.lea(&operands[0]);
+    AS.MV(a0, rec.threadStatePointer());
+    AS.MV(a1, address);
+    AS.LI(a2, 0);
+    AS.JALR(t0);
+}
+
+FAST_HANDLE(FXRSTOR64) {
+    rec.writebackDirtyState();
+
+    u64 offset = (u64)&felix86_fxrstor - (u64)AS.GetCursorPointer();
+    ASSERT(offset < 0x80000000);
+    const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    AS.AUIPC(t0, hi20);
+    AS.ADDI(t0, t0, lo12);
+
+    biscuit::GPR address = rec.lea(&operands[0]);
+    AS.MV(a0, rec.threadStatePointer());
+    AS.MV(a1, address);
+    AS.LI(a2, 1);
+    AS.JALR(t0);
+}
