@@ -2667,8 +2667,6 @@ FAST_HANDLE(PALIGNR) {
 
 FAST_HANDLE(BSF) {
     ASSERT(Extensions::B);
-    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
-
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -2780,9 +2778,6 @@ FAST_HANDLE(BTR) {
 
 FAST_HANDLE(BSR) {
     ASSERT(Extensions::B);
-    ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
-    WARN("BSR");
-
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
