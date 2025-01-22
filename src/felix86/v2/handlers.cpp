@@ -3791,3 +3791,49 @@ FAST_HANDLE(CMPSD) {
         ERROR("Unimplemented: cmpsd (the string one)");
     }
 }
+
+FAST_HANDLE(SHLD) {
+    u8 imm = operands[2].imm.value.u;
+    u8 operand_size = instruction.operand_width;
+    if (operand_size == 64)
+        imm &= 63;
+    else
+        imm &= 31;
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR result = rec.scratch();
+
+    if (operand_size == 64) {
+        biscuit::GPR temp = rec.scratch();
+        u8 shift = 64 - imm;
+        AS.SLLI(result, dst, imm);
+        AS.SRLI(temp, src, shift);
+        AS.OR(result, result, temp);
+    } else if (operand_size == 32) {
+        biscuit::GPR temp = rec.scratch();
+        u8 shift = operand_size - imm;
+        AS.SLLIW(result, dst, imm);
+        AS.SRLIW(temp, src, shift);
+        AS.OR(result, result, temp);
+    }
+
+    if (imm > 0) {
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            u8 shift = operand_size - imm;
+            AS.SRLI(cf, dst, shift);
+            AS.ANDI(cf, cf, 1);
+        }
+    }
+
+    if (imm == 1) {
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+            AS.XOR(of, result, dst);
+            AS.SRLI(of, of, operand_size - 1);
+            AS.ANDI(of, of, 1);
+        }
+    }
+
+    rec.setOperandGPR(&operands[0], result);
+}
