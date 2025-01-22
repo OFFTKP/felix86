@@ -1203,6 +1203,10 @@ void Recompiler::writebackDirtyState() {
         metadata[i].dirty = false;
         metadata[i].loaded = false;
     }
+
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+    current_grouping = LMUL::M1;
 }
 
 void Recompiler::backToDispatcher() {
