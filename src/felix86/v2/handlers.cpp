@@ -3738,6 +3738,7 @@ FAST_HANDLE(CMPSD_sse) {
 
         // After checking if either are nan, also check if they are equal
         AS.FLT_D(nan, ft0, ft1);
+        AS.XORI(nan, nan, 1);
         AS.OR(result, result, nan);
         break;
     }
@@ -3755,6 +3756,7 @@ FAST_HANDLE(CMPSD_sse) {
 
         // After checking if either are nan, also check if they are equal
         AS.FLE_D(nan, ft0, ft1);
+        AS.XORI(nan, nan, 1);
         AS.OR(result, result, nan);
         break;
     }
