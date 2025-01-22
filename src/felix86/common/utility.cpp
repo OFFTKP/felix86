@@ -127,8 +127,8 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
 }
 
 void felix86_packuswb(u8* dst, u8* src) {
-    u16* src16 = (u16*)src;
-    u16* dst16 = (u16*)dst;
+    i16* src16 = (i16*)src;
+    i16* dst16 = (i16*)dst;
     for (int i = 0; i < 8; i++) {
         i16 value = *dst16++;
         u8 result;
