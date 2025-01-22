@@ -201,6 +201,11 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_getpgrp: {
+        result = getpgrp();
+        STRACE("getpgrp() = %d", (int)result);
+        break;
+    }
     case felix86_x86_64_getcwd: {
         result = fs.GetCwd((char*)rdi, rsi);
         STRACE("getcwd(%p, %d) = %d", (void*)rdi, (int)rsi, (int)result);

@@ -2772,7 +2772,6 @@ FAST_HANDLE(BSR) {
     ASSERT(operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY);
     WARN("BSR");
 
-    x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
@@ -2780,7 +2779,7 @@ FAST_HANDLE(BSR) {
     Label end;
     AS.BEQZ(src, &end);
     AS.CLZ(dst, src);
-    AS.XORI(dst, dst, rec.getBitSize(size) - 1);
+    AS.XORI(dst, dst, instruction.operand_width - 1);
     rec.setOperandGPR(&operands[0], dst);
 
     AS.Bind(&end);
