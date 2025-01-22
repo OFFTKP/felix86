@@ -2159,7 +2159,7 @@ FAST_HANDLE(PMINSB) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PMINSH) {
+FAST_HANDLE(PMINSW) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
@@ -2183,7 +2183,7 @@ FAST_HANDLE(PMAXSB) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PMAXSH) {
+FAST_HANDLE(PMAXSW) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
