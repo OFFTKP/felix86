@@ -90,12 +90,13 @@ int guest_breakpoint(const char* region, u64 address) {
     auto [start, end] = MemoryMetadata::GetRegionByName(region);
 
     if (start == 0 && end == 0) {
-        printf("Region %s not found\n", region);
+        WARN("Region %s not found, breakpoint will be added later if loaded\n", region);
+        MemoryMetadata::AddDeferredBreakpoint(region, address);
         return -1;
     }
 
     if (address >= (end - start)) {
-        printf("Address %016lx is out of bounds for region %s\n", address, region);
+        WARN("Address %016lx is out of bounds for region %s\n", address, region);
         return -1;
     }
 
