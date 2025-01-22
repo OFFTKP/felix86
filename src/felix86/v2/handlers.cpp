@@ -2590,6 +2590,10 @@ FAST_HANDLE(PSHUFD) {
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(SHUFPS) {
+    fast_PSHUFD(rec, meta, instruction, operands);
+}
+
 FAST_HANDLE(PSHUFLW) {
     u8 imm = operands[2].imm.value.u;
     u8 el0 = imm & 0b11;
