@@ -2757,6 +2757,7 @@ FAST_HANDLE(BTR) {
     biscuit::GPR one = rec.scratch();
     AS.LI(one, 1);
     AS.SLL(one, one, shift);
+    AS.NOT(one, one);
     AS.AND(dst, dst, one);
 
     rec.setOperandGPR(&operands[0], dst);
