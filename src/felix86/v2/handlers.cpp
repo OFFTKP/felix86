@@ -2575,6 +2575,10 @@ FAST_HANDLE(PACKUSWB) {
     x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
     ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
 
+    biscuit::GPR temp;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        temp = rec.lea(&operands[1]);
+    }
     rec.writebackDirtyState();
 
     AS.LI(t0, (u64)&felix86_packuswb);
@@ -2585,7 +2589,6 @@ FAST_HANDLE(PACKUSWB) {
         x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
         AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0));
     } else {
-        biscuit::GPR temp = rec.lea(&operands[1]);
         AS.MV(a1, temp);
     }
 
@@ -3614,11 +3617,11 @@ FAST_HANDLE(MOVLHPS) {
 }
 
 FAST_HANDLE(FXSAVE) {
+    biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
 
     AS.LI(t0, (u64)&felix86_fxsave);
 
-    biscuit::GPR address = rec.lea(&operands[0]);
     AS.MV(a0, rec.threadStatePointer());
     AS.MV(a1, address);
     AS.LI(a2, 0);
@@ -3626,11 +3629,11 @@ FAST_HANDLE(FXSAVE) {
 }
 
 FAST_HANDLE(FXSAVE64) {
+    biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
 
     AS.LI(t0, (u64)&felix86_fxsave);
 
-    biscuit::GPR address = rec.lea(&operands[0]);
     AS.MV(a0, rec.threadStatePointer());
     AS.MV(a1, address);
     AS.LI(a2, 1);
@@ -3638,12 +3641,12 @@ FAST_HANDLE(FXSAVE64) {
 }
 
 FAST_HANDLE(FXRSTOR) {
+    biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
 
     Literal literal((u64)&felix86_fxrstor);
     AS.LD(t0, &literal);
 
-    biscuit::GPR address = rec.lea(&operands[0]);
     AS.MV(a0, rec.threadStatePointer());
     AS.MV(a1, address);
     AS.LI(a2, 0);
@@ -3656,12 +3659,12 @@ FAST_HANDLE(FXRSTOR) {
 }
 
 FAST_HANDLE(FXRSTOR64) {
+    biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
 
     Literal literal((u64)&felix86_fxrstor);
     AS.LD(t0, &literal);
 
-    biscuit::GPR address = rec.lea(&operands[0]);
     AS.MV(a0, rec.threadStatePointer());
     AS.MV(a1, address);
     AS.LI(a2, 1);
