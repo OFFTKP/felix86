@@ -2223,6 +2223,7 @@ FAST_HANDLE(MOVSB) {
 
     AS.LB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
 
+    // TODO: move this stuff outside the loop like in STOS
     Label end, false_label;
 
     AS.BEQZ(temp, &false_label);
@@ -2288,37 +2289,32 @@ FAST_HANDLE(MOVSQ) {
 
 FAST_HANDLE(STOSB) {
     Label loop_end, loop_body;
+    u8 width = instruction.operand_width;
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
+    biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, rec.zydisToSize(width));
+    biscuit::GPR temp = rec.scratch();
+    AS.LB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
+
+    Label end;
+    AS.LI(temp, -width / 8);
+    AS.BNEZ(temp, &end);
+    AS.LI(temp, width / 8);
+    AS.Bind(&end);
+
     if (HAS_REP) {
         rec.repPrologue(&loop_end);
         AS.Bind(&loop_body);
     }
 
-    u8 width = instruction.operand_width;
-    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
-    biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, rec.zydisToSize(width));
     rec.writeMemory(rax, rdi, 0, rec.zydisToSize(width));
-
-    biscuit::GPR temp = rec.scratch();
-    AS.LB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
-
-    Label end, false_label;
-
-    AS.BEQZ(temp, &false_label);
-
-    AS.ADDI(rdi, rdi, -width / 8);
-    AS.J(&end);
-
-    AS.Bind(&false_label);
-
-    AS.ADDI(rdi, rdi, width / 8);
-    AS.Bind(&end);
-
-    rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
+    AS.ADD(rdi, rdi, temp);
 
     if (HAS_REP) {
         rec.repEpilogue(&loop_body);
         AS.Bind(&loop_end);
     }
+
+    rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
 }
 
 FAST_HANDLE(STOSW) {
