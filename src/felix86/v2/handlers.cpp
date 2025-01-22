@@ -2894,16 +2894,18 @@ FAST_HANDLE(PSLLDQ) {
 FAST_HANDLE(PSRLDQ) {
     u8 imm = operands[1].imm.value.u;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
     biscuit::Vec temp = rec.scratchVec();
     if (imm > 15) {
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV(temp, 0);
     } else {
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         biscuit::GPR mask = rec.scratch();
         AS.LI(mask, ~((1ull << (16 - imm)) - 1));
         AS.VMV_SX(v0, mask);
+        rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
         AS.VSLIDEDOWN(temp, dst, imm);
-        AS.VAND(temp, temp, 0, VecMask::No);
+        AS.VAND(temp, temp, 0, VecMask::Yes);
     }
     rec.setOperandVec(&operands[0], temp);
 }
