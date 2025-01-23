@@ -1479,10 +1479,10 @@ FAST_HANDLE(CMOVNLE) {
 }
 
 FAST_HANDLE(MOVSXD) {
-    x86_size_e size = rec.getOperandSize(&operands[0]);
+    x86_size_e size = rec.getOperandSize(&operands[1]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
 
-    if (size == X86_SIZE_QWORD) {
+    if (size == X86_SIZE_DWORD) {
         biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
         AS.ADDIW(dst, src, 0);
         rec.setOperandGPR(&operands[0], dst);
@@ -3758,20 +3758,24 @@ FAST_HANDLE(XADD) {
     if (!needs_atomic) {
         dst = rec.getOperandGPR(&operands[0]);
         AS.ADD(result, dst, src);
+        rec.setOperandGPR(&operands[1], dst);
     } else {
         // In this case the add+writeback needs to happen atomically
         biscuit::GPR address = rec.lea(&operands[0]);
 
+        dst = rec.scratch();
         if (instruction.operand_width == 32) {
-            AS.AMOADD_W(Ordering::AQRL, result, src, address);
+            AS.AMOADD_W(Ordering::AQRL, dst, src, address);
         } else {
-            AS.AMOADD_D(Ordering::AQRL, result, src, address);
+            AS.AMOADD_D(Ordering::AQRL, dst, src, address);
         }
 
         // Still perform the addition in registers to calculate the flags
         // AMOADD stores the loaded value in Rd
-        AS.ADD(result, result, src);
+        AS.ADD(result, dst, src);
+        rec.setOperandGPR(&operands[1], dst);
         rec.popScratch(); // pop LEA scratch
+        rec.popScratch();
     }
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
@@ -3809,8 +3813,6 @@ FAST_HANDLE(XADD) {
         is_overflow_add(rec, of, dst, src, result, sign_mask);
         rec.popScratch();
     }
-
-    rec.setOperandGPR(&operands[1], dst);
 
     // In this case we also need to writeback the result, otherwise amoadd will do it for us
     if (!needs_atomic) {
