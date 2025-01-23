@@ -59,14 +59,16 @@ Recompiler::Recompiler(Emulator& emulator) : emulator(emulator), code_cache(allo
 
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
+
+    std::atexit([]() {
+        for (auto mnemonic : seen) {
+            printf("%s\n", ZydisMnemonicGetString(mnemonic));
+        }
+    });
 }
 
 Recompiler::~Recompiler() {
     deallocateCodeCache(code_cache);
-
-    for (auto mnemonic : seen) {
-        printf("%s\n", ZydisMnemonicGetString(mnemonic));
-    }
 }
 
 void Recompiler::emitDispatcher() {
