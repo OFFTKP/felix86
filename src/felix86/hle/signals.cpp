@@ -3,7 +3,7 @@
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/signals.hpp"
 
-std::array<RegisteredSignal, 32> handlers{};
+std::array<RegisteredSignal, 64> handlers{};
 
 bool is_in_jit_code(uintptr_t ptr) {
     uintptr_t start = g_emulator->GetAssembler().GetCodeBuffer().GetOffsetAddress(0);
@@ -126,12 +126,12 @@ void Signals::initialize() {
 }
 
 void Signals::registerSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
-    ASSERT(sig > 0 && sig < 32);
+    ASSERT(sig > 0 && sig < 64);
     handlers[sig] = {handler, mask, flags};
     WARN("Registering signal handler for signal %d", sig);
 }
 
 RegisteredSignal Signals::getSignalHandler(int sig) {
-    ASSERT(sig > 0 && sig < 32);
+    ASSERT(sig > 0 && sig < 64);
     return handlers[sig];
 }
