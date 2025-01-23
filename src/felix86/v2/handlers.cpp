@@ -3747,9 +3747,6 @@ FAST_HANDLE(WRFSBASE) {
 }
 
 FAST_HANDLE(XADD) {
-    // Unlikely a smaller xadd is used, and risc-v doesn't support amoadd.b amoadd.h without a specific extension
-    // and we'd have to emulate it with lr/sc so let's postpone it for now
-    ASSERT(instruction.operand_width == 32 || instruction.operand_width == 64);
 
     biscuit::GPR result = rec.scratch();
     biscuit::GPR dst;
@@ -3760,6 +3757,10 @@ FAST_HANDLE(XADD) {
         AS.ADD(result, dst, src);
         rec.setOperandGPR(&operands[1], dst);
     } else {
+        // Unlikely a smaller xadd is used, and risc-v doesn't support amoadd.b amoadd.h without a specific extension
+        // and we'd have to emulate it with lr/sc so let's postpone it for now
+        ASSERT(instruction.operand_width == 32 || instruction.operand_width == 64);
+
         // In this case the add+writeback needs to happen atomically
         biscuit::GPR address = rec.lea(&operands[0]);
 
