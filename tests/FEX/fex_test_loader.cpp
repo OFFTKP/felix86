@@ -184,10 +184,6 @@ void FEXTestLoader::Run() {
         auto stuff = mmap((void*)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
         munmap_me.push_back({stuff, size});
     }
-    for (int i = 0; i < 16; i++) {
-        emulator->GetTestState()->SetGpr((x86_ref_e)(X86_REF_RAX + i), (u64)rand() << 32 | rand());
-        emulator->GetTestState()->SetXmmReg((x86_ref_e)(X86_REF_XMM0 + i), {(u64)rand() << 32 | rand(), (u64)rand() << 32 | rand()});
-    }
     emulator->GetTestState()->SetGpr(X86_REF_RSP, 0xC000'0000 + 4096);
     emulator->Run();
     Validate();
