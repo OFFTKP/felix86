@@ -311,6 +311,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
         g_executable_start = base_address + lowest_vaddr;
         g_executable_end = base_address + highest_vaddr;
+        MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
     } else {
         g_interpreter_start = base_address + lowest_vaddr;
         g_interpreter_end = base_address + highest_vaddr;
