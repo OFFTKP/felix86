@@ -166,7 +166,12 @@ void Recompiler::compileSequence(u64 rip) {
 
         // When we want to print all instructions used
         static std::unordered_set<ZydisMnemonic> seen;
-        if (seen.find(mnemonic) == seen.end()) {
+        static bool start = false;
+
+        if (rip == 0x401690) {
+            start = true;
+        }
+        if (start && seen.find(mnemonic) == seen.end()) {
             seen.insert(mnemonic);
             fflush(stdout);
             printf("Instruction %s\n", ZydisMnemonicGetString(mnemonic));
