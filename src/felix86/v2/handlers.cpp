@@ -139,7 +139,7 @@ FAST_HANDLE(SBB) {
     AS.SUB(result_2, result, cf);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
+        rec.updateParity(result_2);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
@@ -186,11 +186,11 @@ FAST_HANDLE(SBB) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result, size);
+        rec.updateZero(result_2, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
+        rec.updateSign(result_2, size);
     }
 
     rec.setOperandGPR(&operands[0], result_2);
@@ -209,7 +209,7 @@ FAST_HANDLE(ADC) {
     AS.ADD(result_2, result, cf);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
+        rec.updateParity(result_2);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
@@ -259,11 +259,11 @@ FAST_HANDLE(ADC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result, size);
+        rec.updateZero(result_2, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
+        rec.updateSign(result_2, size);
     }
 
     rec.setOperandGPR(&operands[0], result_2);
