@@ -401,12 +401,18 @@ void felix86_syscall(ThreadState* state) {
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
 
         if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-            WARN("Our library detection is failing"); // TODO: some programs may open libraries that need other libraries, so this detection needs to
-                                                      // happen with a stack
-            detecting_memory_region = true;
+            if (detecting_memory_region) {
+                WARN("Our library detection is failing"); // TODO: some programs may open libraries that need other libraries, so this detection needs
+                                                          // to happen with a stack
+            }
+
             name = std::filesystem::path((const char*)rsi).filename().string();
-            min_address = ULONG_MAX;
-            max_address = 0;
+
+            if (name.find(".so") != std::string::npos) {
+                detecting_memory_region = true;
+                min_address = ULONG_MAX;
+                max_address = 0;
+            }
         }
         break;
     }
