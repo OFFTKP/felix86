@@ -219,6 +219,9 @@ int main(int argc, char* argv[]) {
 
     // Sanitize the executable path
     std::string path = config.argv[0];
+    if (path.size() < g_rootfs_path.string().size()) {
+        ERROR("Executable path is not part of the rootfs");
+    }
     path = path.substr(g_rootfs_path.string().size());
     ASSERT(!path.empty());
     if (path[0] != '/') {

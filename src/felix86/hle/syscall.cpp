@@ -207,6 +207,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("setpgid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_getrusage: {
+        result = HOST_SYSCALL(getrusage, rdi, (struct rusage*)rsi);
+        STRACE("getrusage(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_getpgrp: {
         result = getpgrp();
         STRACE("getpgrp() = %d", (int)result);

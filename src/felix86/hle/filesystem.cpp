@@ -221,6 +221,12 @@ int Filesystem::Chdir(const char* path) {
 
 int Filesystem::GetCwd(char* buf, u32 bufsiz) {
     std::string cwd_string = cwd_path.string();
+
+    if (cwd_string.size() < rootfs_path_string.size()) {
+        ERROR("cwd is not part of the rootfs");
+        return -ENOENT;
+    }
+
     cwd_string = cwd_string.substr(rootfs_path_string.size());
     if (cwd_string.empty()) {
         cwd_string = "/";
