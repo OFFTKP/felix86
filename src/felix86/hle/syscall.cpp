@@ -616,6 +616,11 @@ void felix86_syscall(ThreadState* state) {
         size_t size = std::min(rsi, sizeof(clone_args));
         memcpy(&args, (void*)rdi, size);
 
+        if (args.flags & CLONE_CLEAR_SIGHAND) { // we don't support this
+            result = -EINVAL;
+            break;
+        }
+
         long result = Threads::Clone3(&args, size);
 
         if (result != 0) { // Parent

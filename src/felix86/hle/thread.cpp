@@ -11,7 +11,6 @@
 #endif
 
 long Threads::Clone3(clone_args* args, size_t size) {
-    ASSERT(!(args->flags & CLONE_CLEAR_SIGHAND));
 #define add(x)                                                                                                                                       \
     if (args->flags & x) {                                                                                                                           \
         flags += #x ", ";                                                                                                                            \
