@@ -23,7 +23,7 @@ struct Emulator {
         g_emulator = this;
         fs.LoadRootFS(config.rootfs_path);
         fs.LoadExecutable(config.executable_path);
-        ThreadState* main_state = createThreadState();
+        ThreadState* main_state = CreateThreadState();
         setupMainStack(main_state);
         main_state->brk_current_address = fs.GetBRK();
         main_state->SetRip((u64)fs.GetEntrypoint());
@@ -31,7 +31,7 @@ struct Emulator {
 
     Emulator(const TestConfig& config) : recompiler(*this) {
         g_emulator = this;
-        ThreadState* main_state = createThreadState();
+        ThreadState* main_state = CreateThreadState();
         main_state->SetRip((u64)config.entrypoint);
         testing = true;
     }
@@ -58,6 +58,8 @@ struct Emulator {
 
     void Run();
 
+    void StartThread(ThreadState* state);
+
     static void* CompileNext(Emulator* emulator, ThreadState* state);
 
     static void CompileFunction(Emulator* emulator, u64 rip) {
@@ -72,12 +74,12 @@ struct Emulator {
         return recompiler;
     }
 
+    ThreadState* CreateThreadState();
+
 private:
     void setupMainStack(ThreadState* state);
 
     void* compileFunction(u64 rip);
-
-    ThreadState* createThreadState();
 
     std::mutex compilation_mutex; // to synchronize compilation and function lookup
     std::list<ThreadState> thread_states;

@@ -4,6 +4,7 @@
 #include <fmt/format.h>
 #include <openssl/md5.h>
 #include <poll.h>
+#include <sched.h>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -18,6 +19,7 @@
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/stat.hpp"
 #include "felix86/hle/syscall.hpp"
+#include "felix86/hle/thread.hpp"
 
 // We add felix86_${ARCH}_ in front of the linux related identifiers to avoid
 // naming conflicts
@@ -607,6 +609,20 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_futex: {
         result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
         STRACE("futex(%p, %d, %d, %p, %p, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9, (int)result);
+        break;
+    }
+    case felix86_x86_64_clone3: {
+        clone_args args;
+        size_t size = std::min(rsi, sizeof(clone_args));
+        memcpy(&args, (void*)rdi, size);
+
+        long result = Threads::Clone3(&args, size);
+
+        if (result != 0) { // Parent
+            ERROR("parent");
+        }
+
+        ERROR("child");
         break;
     }
     case felix86_x86_64_rt_sigprocmask: {

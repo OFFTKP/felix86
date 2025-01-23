@@ -58,10 +58,10 @@ void Emulator::Run() {
 
     ThreadState* state = &thread_states.back();
     g_thread_state = state;
-    recompiler.enterDispatcher(state);
+    StartThread(state);
 
     VERBOSE("Bye-bye main thread :(");
-    VERBOSE("Main thread exited: %d", (int)state->exit_reason);
+    VERBOSE("Main thread exited with reason %d", (int)state->exit_reason);
 }
 
 void Emulator::setupMainStack(ThreadState* state) {
@@ -239,7 +239,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     return function;
 }
 
-ThreadState* Emulator::createThreadState() {
+ThreadState* Emulator::CreateThreadState() {
     thread_states.push_back(ThreadState{});
 
     ThreadState* thread_state = &thread_states.back();
@@ -252,4 +252,9 @@ ThreadState* Emulator::createThreadState() {
     thread_state->divu128_handler = (u64)felix86_divu128;
     std::fill(thread_state->masked_signals.begin(), thread_state->masked_signals.end(), false);
     return thread_state;
+}
+
+void Emulator::StartThread(ThreadState* state) {
+    recompiler.enterDispatcher(state);
+    VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }
