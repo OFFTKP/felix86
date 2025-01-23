@@ -1,5 +1,6 @@
 #include <unordered_set>
 #include <sys/mman.h>
+#include <unistd.h>
 #include "Zydis/Disassembler.h"
 #include "felix86/emulator.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -167,7 +168,9 @@ void Recompiler::compileSequence(u64 rip) {
         static std::unordered_set<ZydisMnemonic> seen;
         if (seen.find(mnemonic) == seen.end()) {
             seen.insert(mnemonic);
-            printf("Instruction %s", ZydisMnemonicGetString(mnemonic));
+            fflush(stdout);
+            printf("Instruction %s\n", ZydisMnemonicGetString(mnemonic));
+            fflush(stdout);
         }
 
         // Checks that we didn't forget to emulate any flags
