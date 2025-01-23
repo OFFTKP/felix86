@@ -104,6 +104,11 @@ int guest_breakpoint(const char* region, u64 address) {
     return g_breakpoints.size();
 }
 
+int guest_breakpoint_abs(u64 address) {
+    g_breakpoints[address] = {};
+    return g_breakpoints.size();
+}
+
 int clear_breakpoints() {
     int count = g_breakpoints.size();
     g_breakpoints.clear();
