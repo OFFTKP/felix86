@@ -234,7 +234,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 #endif
 
     VERBOSE("Jumping to function %s@0x%lx (%lx), located at %p", MemoryMetadata::GetRegionName(thread_state->GetRip()).c_str(),
-            thread_state->GetRip(), MemoryMetadata::GetOffset(thread_state->GetRip()), function);
+            MemoryMetadata::GetOffset(thread_state->GetRip()), thread_state->GetRip(), function);
 
     return function;
 }
