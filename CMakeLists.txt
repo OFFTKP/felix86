@@ -54,7 +54,7 @@ set(FELIX86_HLE_SOURCES
     src/felix86/hle/rdtsc.cpp
     src/felix86/hle/signals.cpp
     src/felix86/hle/syscall.cpp
-    src/felix86/hle/threads.cpp
+    src/felix86/hle/thread.cpp
 )
 
 set(FELIX86_V2_SOURCES
