@@ -31,7 +31,7 @@ void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit
 }
 
 FAST_HANDLE(MOV) {
-    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     rec.setOperandGPR(&operands[0], src);
 }
 
@@ -320,8 +320,8 @@ FAST_HANDLE(CMP) {
 
 FAST_HANDLE(OR) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     AS.OR(result, dst, src);
 
@@ -391,8 +391,8 @@ FAST_HANDLE(XOR) {
     }
 
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     AS.XOR(result, dst, src);
     rec.zext(result, result, size);
@@ -426,8 +426,8 @@ FAST_HANDLE(XOR) {
 
 FAST_HANDLE(AND) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     AS.AND(result, dst, src);
 
@@ -949,7 +949,7 @@ FAST_HANDLE(DIV) {
         AS.REMUW(mod, ax, src);
         AS.DIVUW(ax, ax, src);
 
-        rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE, ax);
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE, ax); // TODO: word write
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, mod);
         break;
     }
@@ -1080,8 +1080,8 @@ FAST_HANDLE(IDIV) {
 FAST_HANDLE(TEST) {
     biscuit::GPR result = rec.scratch();
 
-    biscuit::GPR src = rec.getOperandGPRDontZext(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     AS.AND(result, dst, src);
 
@@ -1281,14 +1281,14 @@ FAST_HANDLE(CWDE) {
 }
 
 FAST_HANDLE(CDQE) {
-    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
     AS.ADDIW(eax, eax, 0);
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, eax);
 }
 
 FAST_HANDLE(CWD) {
     biscuit::GPR sext = rec.scratch();
-    biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+    biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
     rec.sexth(sext, ax);
     AS.SRLI(sext, sext, 16);
     rec.setRefGPR(X86_REF_RDX, X86_SIZE_WORD, sext);
@@ -2467,6 +2467,7 @@ FAST_HANDLE(SHUFPD) {
 
 FAST_HANDLE(LEAVE) {
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
+    ASSERT(size == X86_SIZE_QWORD);
     biscuit::GPR rbp = rec.getRefGPR(X86_REF_RBP, X86_SIZE_QWORD);
     AS.ADDI(rbp, rbp, 8);
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rbp);
@@ -2544,7 +2545,7 @@ FAST_HANDLE(SETNLE) {
 
 FAST_HANDLE(NOT) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     AS.NOT(result, dst);
     rec.setOperandGPR(&operands[0], result);
 }
@@ -2552,7 +2553,7 @@ FAST_HANDLE(NOT) {
 FAST_HANDLE(NEG) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR dst = rec.getOperandGPRDontZext(&operands[0]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     if (size == X86_SIZE_BYTE) {
         rec.sextb(result, dst);
         AS.NEG(result, result);
@@ -3737,7 +3738,7 @@ FAST_HANDLE(FXRSTOR64) {
 }
 
 FAST_HANDLE(WRFSBASE) {
-    biscuit::GPR reg = rec.getOperandGPRDontZext(&operands[0]);
+    biscuit::GPR reg = rec.getOperandGPR(&operands[0]);
 
     if (instruction.operand_width == 32) {
         AS.SW(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());

@@ -52,8 +52,6 @@ struct Recompiler {
 
     biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
 
-    biscuit::GPR getOperandGPRDontZext(ZydisDecodedOperand* operand);
-
     x86_size_e getOperandSize(ZydisDecodedOperand* operand);
 
     biscuit::Vec getOperandVec(ZydisDecodedOperand* operand);

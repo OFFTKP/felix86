@@ -679,33 +679,6 @@ biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     }
 }
 
-biscuit::GPR Recompiler::getOperandGPRDontZext(ZydisDecodedOperand* operand) {
-    switch (operand->type) {
-    case ZYDIS_OPERAND_TYPE_REGISTER: {
-        biscuit::GPR reg = allocatedGPR(zydisToRef(operand->reg.value));
-        loadGPR(zydisToRef(operand->reg.value), reg);
-
-        if (zydisToSize(operand->reg.value) == X86_SIZE_BYTE_HIGH) {
-            biscuit::GPR tmp = scratch();
-            as.SRLI(tmp, reg, 8);
-            return tmp;
-        }
-
-        return reg;
-    }
-    case ZYDIS_OPERAND_TYPE_MEMORY: {
-        return getOperandGPR(operand);
-    }
-    case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
-        return getOperandGPR(operand);
-    }
-    default: {
-        UNREACHABLE();
-        return x0;
-    }
-    }
-}
-
 biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
