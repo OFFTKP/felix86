@@ -3748,7 +3748,6 @@ FAST_HANDLE(WRFSBASE) {
 }
 
 FAST_HANDLE(XADD) {
-
     biscuit::GPR result = rec.scratch();
     biscuit::GPR dst;
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
