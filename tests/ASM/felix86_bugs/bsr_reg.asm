@@ -16,7 +16,7 @@
 bits 64
 
 mov rax, 0xFFFFFFFFFFFFFFFF
-mov ebx, 0x1010101010101010
+mov rbx, 0x1010101010101010
 mov ecx, 0
 
 mov r15, -1
