@@ -132,8 +132,9 @@ void Signals::registerSignalHandler(int sig, void* handler, sigset_t mask, int f
 }
 
 RegisteredSignal Signals::getSignalHandler(int sig) {
-    if (sig > 0 && sig < 64) {
-        return handlers[sig - 1];
+    u8 sig_index = sig - 1;
+    if (sig_index >= 0 && sig_index <= 63) {
+        return handlers[sig_index];
     } else {
         WARN("Trying to get signal %d, but it is out of bounds", sig);
         return {nullptr, {}, 0};
