@@ -169,6 +169,8 @@ struct Recompiler {
 
     bool blockExists(u64 rip);
 
+    biscuit::GPR getFlags();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

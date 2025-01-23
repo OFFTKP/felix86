@@ -163,26 +163,28 @@ void Recompiler::compileSequence(u64 rip) {
         }
         }
 
-        u32 changed = instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1;
+        if (mnemonic != ZYDIS_MNEMONIC_SYSCALL) {
+            u32 changed = instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1;
 
-        if ((changed & ZYDIS_CPUFLAG_CF) && shouldEmitFlag(meta.rip, X86_REF_CF) && !getMetadata(X86_REF_CF).dirty) {
-            ERROR("Instruction %s should've modified CF", ZydisMnemonicGetString(mnemonic));
-        }
+            if ((changed & ZYDIS_CPUFLAG_CF) && shouldEmitFlag(meta.rip, X86_REF_CF) && !getMetadata(X86_REF_CF).dirty) {
+                ERROR("Instruction %s should've modified CF", ZydisMnemonicGetString(mnemonic));
+            }
 
-        if ((changed & ZYDIS_CPUFLAG_AF) && shouldEmitFlag(meta.rip, X86_REF_AF) && !getMetadata(X86_REF_AF).dirty) {
-            ERROR("Instruction %s should've modified AF", ZydisMnemonicGetString(mnemonic));
-        }
+            if ((changed & ZYDIS_CPUFLAG_AF) && shouldEmitFlag(meta.rip, X86_REF_AF) && !getMetadata(X86_REF_AF).dirty) {
+                ERROR("Instruction %s should've modified AF", ZydisMnemonicGetString(mnemonic));
+            }
 
-        if ((changed & ZYDIS_CPUFLAG_ZF) && shouldEmitFlag(meta.rip, X86_REF_ZF) && !getMetadata(X86_REF_ZF).dirty) {
-            ERROR("Instruction %s should've modified ZF", ZydisMnemonicGetString(mnemonic));
-        }
+            if ((changed & ZYDIS_CPUFLAG_ZF) && shouldEmitFlag(meta.rip, X86_REF_ZF) && !getMetadata(X86_REF_ZF).dirty) {
+                ERROR("Instruction %s should've modified ZF", ZydisMnemonicGetString(mnemonic));
+            }
 
-        if ((changed & ZYDIS_CPUFLAG_SF) && shouldEmitFlag(meta.rip, X86_REF_SF) && !getMetadata(X86_REF_SF).dirty) {
-            ERROR("Instruction %s should've modified SF", ZydisMnemonicGetString(mnemonic));
-        }
+            if ((changed & ZYDIS_CPUFLAG_SF) && shouldEmitFlag(meta.rip, X86_REF_SF) && !getMetadata(X86_REF_SF).dirty) {
+                ERROR("Instruction %s should've modified SF", ZydisMnemonicGetString(mnemonic));
+            }
 
-        if ((changed & ZYDIS_CPUFLAG_OF) && shouldEmitFlag(meta.rip, X86_REF_OF) && !getMetadata(X86_REF_OF).dirty) {
-            ERROR("Instruction %s should've modified OF", ZydisMnemonicGetString(mnemonic));
+            if ((changed & ZYDIS_CPUFLAG_OF) && shouldEmitFlag(meta.rip, X86_REF_OF) && !getMetadata(X86_REF_OF).dirty) {
+                ERROR("Instruction %s should've modified OF", ZydisMnemonicGetString(mnemonic));
+            }
         }
 
         meta.rip += instruction.length;
@@ -1827,4 +1829,31 @@ void Recompiler::vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota,
     } else {
         as.VRGATHER(dst, src, iota, mask);
     }
+}
+
+biscuit::GPR Recompiler::getFlags() {
+    biscuit::GPR reg = scratch();
+    biscuit::GPR temp = scratch();
+    biscuit::GPR cf = flag(X86_REF_CF);
+    biscuit::GPR pf = flag(X86_REF_PF);
+    biscuit::GPR af = flag(X86_REF_AF);
+    biscuit::GPR zf = flag(X86_REF_ZF);
+    biscuit::GPR sf = flag(X86_REF_SF);
+    biscuit::GPR of = flag(X86_REF_OF);
+    as.LBU(temp, offsetof(ThreadState, df), threadStatePointer());
+    as.SLLI(temp, temp, 10);
+    as.SLLI(reg, of, 11);
+    as.OR(reg, reg, temp);
+    as.SLLI(temp, sf, 7);
+    as.OR(reg, reg, temp);
+    as.SLLI(temp, zf, 6);
+    as.OR(reg, reg, temp);
+    as.SLLI(temp, af, 4);
+    as.OR(reg, reg, temp);
+    as.SLLI(temp, pf, 2);
+    as.OR(reg, reg, temp);
+    as.OR(reg, reg, cf);
+    as.ORI(reg, reg, 0b10); // bit 1 always set in flags
+    popScratch();
+    return reg;
 }
