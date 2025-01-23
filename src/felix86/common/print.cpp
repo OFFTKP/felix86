@@ -73,7 +73,7 @@ void print_gprs(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
         std::string guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
         PLAIN("%s", guest.c_str());
-        PLAIN(" = %016lx", state->gprs[i]);
+        PLAIN(" = %lx", state->gprs[i]);
     }
 
     PLAIN("cf = %d", state->cf);
@@ -83,21 +83,16 @@ void print_gprs(ThreadState* state) {
     PLAIN("sf = %d", state->sf);
     PLAIN("df = %d", state->df);
     PLAIN("of = %d", state->of);
-
-    PLAIN("from = %p", __builtin_return_address(0));
 }
 
 void print_state(ThreadState* state) {
     print_gprs(state);
 
     for (int i = 0; i < 16; i++) {
-        PLAIN("xmm%d = {", i);
-        for (int j = 0; j < 2; j++) {
-            PLAIN("%016lx", state->xmm[i].data[j]);
-            if (j != 1) {
-                PLAIN(", ");
-            }
+        if (state->xmm[i].data[1] == 0) {
+            PLAIN("xmm%d = %lx", i, state->xmm[i].data[0]);
+        } else {
+            PLAIN("xmm%d = %lx%lx", i, state->xmm[i].data[1], state->xmm[i].data[0]);
         }
-        PLAIN("}");
     }
 }
