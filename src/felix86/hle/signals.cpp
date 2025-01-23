@@ -127,11 +127,15 @@ void Signals::initialize() {
 
 void Signals::registerSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
     ASSERT(sig > 0 && sig < 64);
-    handlers[sig] = {handler, mask, flags};
+    handlers[sig - 1] = {handler, mask, flags};
     WARN("Registering signal handler for signal %d", sig);
 }
 
 RegisteredSignal Signals::getSignalHandler(int sig) {
-    ASSERT(sig > 0 && sig < 64);
-    return handlers[sig];
+    if (sig > 0 && sig < 64) {
+        return handlers[sig - 1];
+    } else {
+        WARN("Trying to get signal %d, but it is out of bounds", sig);
+        return {nullptr, {}, 0};
+    }
 }
