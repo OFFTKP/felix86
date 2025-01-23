@@ -42,6 +42,7 @@ struct Extensions {
     X(Zam)                                                                                                                                           \
     X(Zabha)                                                                                                                                         \
     X(Zicond)                                                                                                                                        \
+    X(Zfa)                                                                                                                                           \
     X(Xtheadcondmov)                                                                                                                                 \
     X(Xtheadba)
 

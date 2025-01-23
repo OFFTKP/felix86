@@ -2625,10 +2625,21 @@ void ROUND(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction
     rec.setVectorState(sew, vlen);
     AS.VFMV_FS(ft0, src);
 
-    if (sew == SEW::E64) {
-        AS.FROUND_D(ft1, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+    if (Extensions::Zfa) {
+        if (sew == SEW::E64) {
+            AS.FROUND_D(ft1, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+        } else {
+            AS.FROUND_S(ft1, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+        }
     } else {
-        AS.FROUND_S(ft1, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+        biscuit::GPR temp = rec.scratch();
+        if (sew == SEW::E64) {
+            AS.FCVT_L_D(temp, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+            AS.FCVT_D_L(ft1, temp);
+        } else {
+            AS.FCVT_L_S(temp, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+            AS.FCVT_S_L(ft1, temp);
+        }
     }
 
     AS.VFMV_SF(dst, ft1);

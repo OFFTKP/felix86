@@ -73,6 +73,11 @@ void print_extensions() {
             extensions += ",";
         extensions += "zicond";
     }
+    if (Extensions::Zfa) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zfa";
+    }
 
     if (!extensions.empty()) {
         LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
