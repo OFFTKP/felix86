@@ -163,6 +163,13 @@ void Recompiler::compileSequence(u64 rip) {
         }
         }
 
+        // When we want to print all instructions used
+        static std::unordered_set<ZydisMnemonic> seen;
+        if (seen.find(mnemonic) == seen.end()) {
+            seen.insert(mnemonic);
+            printf("Instruction %s", ZydisMnemonicGetString(mnemonic));
+        }
+
         // Checks that we didn't forget to emulate any flags
         // if (mnemonic != ZYDIS_MNEMONIC_SYSCALL) {
         //     u32 changed = instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1;
