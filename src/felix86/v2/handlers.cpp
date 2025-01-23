@@ -1009,14 +1009,17 @@ FAST_HANDLE(IDIV) {
     switch (size) {
     case X86_SIZE_BYTE: {
         biscuit::GPR mod = rec.scratch();
-        biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+        biscuit::GPR divisor = rec.scratch();
         biscuit::GPR ax_sext = rec.scratch();
+        biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
 
-        rec.sextb(ax_sext, ax);
-        rec.sextb(ax, src);
+        rec.sexth(ax_sext, ax);
+        rec.sextb(divisor, src);
 
-        AS.REMW(mod, ax_sext, ax);
-        AS.DIVW(ax, ax_sext, ax);
+        AS.REMW(mod, ax_sext, divisor);
+        AS.DIVW(ax, ax_sext, divisor);
+
+        rec.popScratch();
 
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE, ax);
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, mod);
