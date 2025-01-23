@@ -12,8 +12,6 @@ constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
 constexpr static std::array saved_gprs = {ra, sp, gp, tp, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11};
 
-std::unordered_set<ZydisMnemonic> seen;
-
 static u8* allocateCodeCache() {
     u8 prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     u8 flags = MAP_PRIVATE | MAP_ANONYMOUS;
@@ -59,12 +57,6 @@ Recompiler::Recompiler(Emulator& emulator) : emulator(emulator), code_cache(allo
 
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
-
-    std::atexit([]() {
-        for (auto mnemonic : seen) {
-            printf("%s\n", ZydisMnemonicGetString(mnemonic));
-        }
-    });
 }
 
 Recompiler::~Recompiler() {
@@ -153,7 +145,6 @@ void Recompiler::compileSequence(u64 rip) {
     while (compiling) {
         resetScratch();
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
-        seen.insert(mnemonic);
         switch (mnemonic) {
 #define X(name)                                                                                                                                      \
     case ZYDIS_MNEMONIC_##name:                                                                                                                      \
