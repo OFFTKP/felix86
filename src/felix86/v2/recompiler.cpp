@@ -163,8 +163,7 @@ void Recompiler::compileSequence(u64 rip) {
         }
         }
 
-        u32 changed =
-            instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
+        u32 changed = instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1;
 
         if ((changed & ZYDIS_CPUFLAG_CF) && shouldEmitFlag(meta.rip, X86_REF_CF) && !getMetadata(X86_REF_CF).dirty) {
             ERROR("Instruction %s should've modified CF", ZydisMnemonicGetString(mnemonic));
