@@ -131,7 +131,6 @@ void felix86_packuswb(u8* dst, u8* src) {
     i16* dst16 = (i16*)dst;
     for (int i = 0; i < 8; i++) {
         i16 value = *dst16++;
-        printf("value: %d %d\n", i, value);
         u8 result;
         if (value < 0) {
             result = 0;
@@ -140,14 +139,12 @@ void felix86_packuswb(u8* dst, u8* src) {
         } else {
             result = (u8)value;
         }
-        printf("res: %d\n", result);
         dst[i] = result;
     }
 
     for (int i = 8; i < 16; i++) {
         i16 value = *src16++;
         u8 result;
-        printf("value: %d %d\n", i, value);
         if (value < 0) {
             result = 0;
         } else if (value > SCHAR_MAX) {
@@ -155,7 +152,6 @@ void felix86_packuswb(u8* dst, u8* src) {
         } else {
             result = (u8)value;
         }
-        printf("res: %d\n", result);
         dst[i] = result;
     }
 }

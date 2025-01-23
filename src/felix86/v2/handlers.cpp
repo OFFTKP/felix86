@@ -2596,6 +2596,54 @@ FAST_HANDLE(PACKUSWB) {
     AS.JALR(t0);
 }
 
+enum class x86RoundingMode { Nearest = 0, Down = 1, Up = 2, Truncate = 3 };
+
+RMode rounding_mode(x86RoundingMode mode) {
+    switch (mode) {
+    case x86RoundingMode::Nearest:
+        return RMode::RNE;
+    case x86RoundingMode::Down:
+        return RMode::RDN;
+    case x86RoundingMode::Up:
+        return RMode::RUP;
+    case x86RoundingMode::Truncate:
+        return RMode::RTZ;
+    default:
+        UNREACHABLE();
+    }
+}
+
+void ROUND(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    u8 imm = operands[2].imm.value.u;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    if (!(imm & 0b1000)) {
+        WARN("Ignore precision bit not set for roundsd/roundss");
+    }
+    ASSERT(!(imm & 0b100)); // rounding mode not from mxscr
+
+    rec.setVectorState(sew, vlen);
+    AS.VFMV_FS(ft0, src);
+
+    if (sew == SEW::E64) {
+        AS.FROUND_D(ft1, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+    } else {
+        AS.FROUND_S(ft1, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+    }
+
+    AS.VFMV_SF(dst, ft1);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(ROUNDSS) {
+    ROUND(rec, meta, instruction, operands, SEW::E32, 1);
+}
+
+FAST_HANDLE(ROUNDSD) {
+    ROUND(rec, meta, instruction, operands, SEW::E64, 1);
+}
+
 FAST_HANDLE(PMOVMSKB) {
     biscuit::GPR scratch = rec.scratch();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
