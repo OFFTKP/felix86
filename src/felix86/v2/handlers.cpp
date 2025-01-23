@@ -3379,6 +3379,44 @@ FAST_HANDLE(CMPXCHG) {
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
 
     Label end, equal;
+
+    biscuit::GPR result = rec.scratch();
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.SLTU(cf, dst, rax);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        biscuit::GPR af = rec.flagW(X86_REF_AF);
+        biscuit::GPR scratch = rec.scratch();
+        AS.ANDI(af, rax, 0xF);
+        AS.ANDI(scratch, dst, 0xF);
+        AS.SLTU(af, scratch, af);
+        rec.popScratch();
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR scratch = rec.scratch();
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        u64 sign_mask = rec.getSignMask(size);
+        AS.XOR(scratch, dst, rax);
+        AS.XOR(of, dst, result);
+        AS.AND(of, of, scratch);
+        AS.LI(scratch, sign_mask);
+        AS.AND(of, of, scratch);
+        AS.SNEZ(of, of);
+        rec.popScratch();
+    }
+
     AS.BEQ(dst, rax, &equal);
 
     // Not equal
