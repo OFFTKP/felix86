@@ -171,6 +171,9 @@ void Recompiler::compileSequence(u64 rip) {
             break;
         }
         }
+
+        writebackDirtyState();
+
         meta.rip += instruction.length;
     }
 
