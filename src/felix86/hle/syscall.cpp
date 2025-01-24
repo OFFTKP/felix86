@@ -388,6 +388,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("pipe2(%p, %d) = %d", (void*)rdi, (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_memfd_create: {
+        result = HOST_SYSCALL(memfd_create, (const char*)rdi, rsi);
+        STRACE("memfd_create(%s, %d) = %d", (const char*)rdi, (int)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_ftruncate: {
+        result = HOST_SYSCALL(ftruncate, rdi, rsi);
+        STRACE("ftruncate(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_pipe: {
         result = pipe((int*)rdi);
         STRACE("pipe(%p) = %d", (void*)rdi, (int)result);
@@ -403,22 +413,31 @@ void felix86_syscall(ThreadState* state) {
         STRACE("getdents64(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_mkdir: {
+        auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            result = -EACCES;
+            break;
+        }
+
+        result = mkdir(path->c_str(), rsi);
+        STRACE("mkdir(%s, %d) = %d", (char*)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_openat: {
         result = fs.OpenAt(rdi, (const char*)rsi, rdx, r10);
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
 
         if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-            if (detecting_memory_region) {
-                WARN("Our library detection is failing"); // TODO: some programs may open libraries that need other libraries, so this detection needs
-                                                          // to happen with a stack
-            }
-
             name = std::filesystem::path((const char*)rsi).filename().string();
 
             if (name.find(".so") != std::string::npos) {
                 detecting_memory_region = true;
                 min_address = ULONG_MAX;
                 max_address = 0;
+            } else {
+                name = {};
             }
         }
         break;
