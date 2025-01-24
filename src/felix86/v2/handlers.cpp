@@ -4090,7 +4090,7 @@ FAST_HANDLE(SHLD_imm) {
             UNREACHABLE();
         }
     } else {
-        rec.setOperandGPR(&operands[0], dst);
+        rec.setOperandGPR(&operands[0], dst); // for zero extension
     }
 
     if (imm > 0) {
@@ -4111,7 +4111,7 @@ FAST_HANDLE(SHLD_imm) {
         }
     }
 
-    if (imm != 0) {
+    if (imm != 0) { // after the flags have been set
         rec.setOperandGPR(&operands[0], result);
     }
 }
@@ -4130,6 +4130,7 @@ FAST_HANDLE(SHLD) {
 
         Label end;
         AS.ANDI(shift, shift, mask);
+        AS.MV(result, dst);
         AS.BEQZ(shift, &end);
         AS.LI(shift_sub, operand_size);
         AS.SUB(shift_sub, shift_sub, shift);
@@ -4163,9 +4164,8 @@ FAST_HANDLE(SHLD) {
             AS.ANDI(of, of, 1);
         }
 
-        rec.setOperandGPR(&operands[0], result);
-
         AS.Bind(&end);
+        rec.setOperandGPR(&operands[0], result);
     }
 }
 
