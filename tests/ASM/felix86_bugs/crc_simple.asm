@@ -1,7 +1,7 @@
 %ifdef CONFIG
 {
   "RegData": {
-    "RBX": "0",
+    "RBX": "0"
   }
 }
 %endif
