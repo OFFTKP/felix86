@@ -4128,17 +4128,17 @@ FAST_HANDLE(SHLD) {
         Label end;
         AS.BEQZ(shift, &end);
         AS.ANDI(shift, shift, mask);
+        AS.LI(shift_sub, operand_size);
+        AS.SUB(shift_sub, shift_sub, shift);
 
         if (operand_size == 64) {
             biscuit::GPR temp = rec.scratch();
             AS.SLL(result, dst, shift);
-            AS.XORI(shift_sub, shift, 63);
             AS.SRL(temp, src, shift_sub);
             AS.OR(result, result, temp);
             rec.popScratch();
         } else if (operand_size == 32 || operand_size == 16) {
             biscuit::GPR temp = rec.scratch();
-            AS.XORI(shift_sub, shift, operand_size - 1);
             AS.SLLW(result, dst, shift);
             AS.SRLW(temp, src, shift_sub);
             AS.OR(result, result, temp);
