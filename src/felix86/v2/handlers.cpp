@@ -1944,6 +1944,35 @@ FAST_HANDLE(SYSCALL) {
     AS.JALR(address);
 }
 
+FAST_HANDLE(CRC32) {
+    ASSERT(Extensions::B);
+    u8 source_size = operands[1].size;
+    u8 dest_size = operands[0].size;
+
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+
+    if (dest_size == 64) {
+        switch (source_size) {
+        case 8: {
+
+            break;
+        }
+        case 64: {
+            biscuit::GPR temp = rec.scratch();
+            biscuit::GPR temp2 = rec.scratch();
+            AS.REV8(temp, src);
+            AS.BREV8(temp, temp);
+            rec.setOperandGPR(&operands[0], temp);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+    }
+}
+
 FAST_HANDLE(MOVZX) {
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
