@@ -108,7 +108,12 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         break;
     }
     default: {
-        ERROR("Unhandled signal: %d", sig);
+        ERROR("Unhandled signal %d", sig);
+        if (handler[sig - 1].handler) {
+            ERROR("Implme");
+        } else {
+            ERROR("Unhandled signal %d", sig);
+        }
         break;
     }
     }
@@ -121,8 +126,9 @@ void Signals::initialize() {
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
-    sigaction(SIGBUS, &sa, nullptr);
-    sigaction(SIGILL, &sa, nullptr);
+    for (int i = 0; i < 64; i++) {
+        sigaction(i, &sa, nullptr);
+    }
 }
 
 void Signals::registerSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
