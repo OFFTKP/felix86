@@ -3245,6 +3245,28 @@ FAST_HANDLE(PSLLD) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PSRLD) {
+    u8 shift = rec.getImmediate(&operands[1]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    if (shift > 32) {
+        AS.VMV(dst, 0);
+    } else {
+        AS.VSRL(dst, dst, shift);
+    }
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PSRAD) {
+    u8 shift = rec.getImmediate(&operands[1]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    if (shift > 31)
+        shift = 31;
+    AS.VSRA(dst, dst, shift);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PSRLQ) {
     u8 shift = rec.getImmediate(&operands[1]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
