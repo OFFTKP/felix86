@@ -4089,7 +4089,6 @@ FAST_HANDLE(SHLD_imm) {
         } else {
             UNREACHABLE();
         }
-        rec.setOperandGPR(&operands[0], result);
     } else {
         rec.setOperandGPR(&operands[0], dst);
     }
@@ -4110,6 +4109,10 @@ FAST_HANDLE(SHLD_imm) {
             AS.SRLI(of, of, operand_size - 1);
             AS.ANDI(of, of, 1);
         }
+    }
+
+    if (imm != 0) {
+        rec.setOperandGPR(&operands[0], result);
     }
 }
 
@@ -4146,7 +4149,6 @@ FAST_HANDLE(SHLD) {
         } else {
             UNREACHABLE();
         }
-        rec.setOperandGPR(&operands[0], result);
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
             biscuit::GPR cf = rec.flagW(X86_REF_CF);
@@ -4160,6 +4162,8 @@ FAST_HANDLE(SHLD) {
             AS.SRLI(of, of, operand_size - 1);
             AS.ANDI(of, of, 1);
         }
+
+        rec.setOperandGPR(&operands[0], result);
 
         AS.Bind(&end);
     }
