@@ -6,7 +6,7 @@
 #include "felix86/common/utility.hpp"
 
 struct Threads {
-    static long Clone3(clone_args* args);
+    static long Clone3(ThreadState* current_state, clone_args* args);
 
-    static long Clone(clone_args* args);
+    static long Clone(ThreadState* current_state, clone_args* args);
 };

@@ -622,7 +622,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
 
-        long result = Threads::Clone3(&args);
+        long result = Threads::Clone3(state, &args);
 
         if (result != 0) { // Parent
             ERROR("parent");
@@ -639,13 +639,7 @@ void felix86_syscall(ThreadState* state) {
         args.parent_tid = rdx;
         args.child_tid = r10;
         args.tls = r8;
-        result = Threads::Clone(&args);
-
-        if (result != 0) { // Parent
-            ERROR("parent");
-        }
-
-        ERROR("child");
+        result = Threads::Clone(state, &args);
         break;
     }
     case felix86_x86_64_rt_sigprocmask: {

@@ -1,5 +1,6 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/emulator.hpp"
 #include "felix86/hle/thread.hpp"
 
 #ifndef CLONE_CLEAR_SIGHAND
@@ -57,12 +58,33 @@ static std::string flags_to_string(u64 f) {
     return flags;
 }
 
-long Threads::Clone3(clone_args* args) {
+long Threads::Clone3(ThreadState* current_state, clone_args* args) {
     exit(1);
 }
 
-long Threads::Clone(clone_args* args) {
+long Threads::Clone(ThreadState* current_state, clone_args* args) {
     std::string flags = flags_to_string(args->flags);
     STRACE("clone({%s}, %llx, %llx, %llx, %llx)", flags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
-    exit(1);
+
+    u64 allowed_flags = CLONE_VM | CLONE_VFORK;
+    if (args->flags & ~allowed_flags) {
+        ERROR("Unsupported flags %016llx", args->flags & ~allowed_flags);
+        return -EINVAL;
+    }
+
+    ThreadState* new_state = g_emulator->CreateThreadState();
+    new_state->gprs[X86_REF_RSP] = args->stack;
+    new_state->rip = current_state->gprs[X86_REF_RCX]; // instruction after syscall is stored to rcx when syscall is called
+    new_state->fsbase = args->tls;
+
+    long result = syscall(SYS_clone, args->flags, args->stack, args->parent_tid, args->child_tid, args->tls);
+
+    if (result == 0) {
+        g_emulator->StartThread(new_state);
+        UNREACHABLE();
+    } else {
+        printf("Boop\n");
+    }
+
+    return result;
 }
