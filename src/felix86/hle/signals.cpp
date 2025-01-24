@@ -109,7 +109,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     default: {
         ERROR("Unhandled signal %d", sig);
-        if (handler[sig - 1].handler) {
+        if (handlers[sig - 1].handler) {
             ERROR("Implme");
         } else {
             ERROR("Unhandled signal %d", sig);
