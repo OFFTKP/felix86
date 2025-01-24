@@ -2924,6 +2924,30 @@ FAST_HANDLE(BSF) {
     rec.setFlagUndefined(X86_REF_AF);
 }
 
+FAST_HANDLE(TZCNT) {
+    ASSERT(Extensions::B);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    (void)dst; // must be loaded since conditional code follows
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+
+    Label end;
+    AS.LI(result, instruction.operand_width);
+    AS.BEQZ(src, &end);
+    AS.CTZ(result, src);
+    AS.J(&end);
+
+    AS.Bind(&end);
+    rec.setOperandGPR(&operands[0], result);
+    AS.SEQZ(zf, src);
+
+    rec.setFlagUndefined(X86_REF_CF);
+    rec.setFlagUndefined(X86_REF_OF);
+    rec.setFlagUndefined(X86_REF_SF);
+    rec.setFlagUndefined(X86_REF_AF);
+}
+
 FAST_HANDLE(BTC) {
     ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::GPR shift = rec.scratch();
