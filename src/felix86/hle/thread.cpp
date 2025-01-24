@@ -67,7 +67,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     STRACE("clone({%s}, %llx, %llx, %llx, %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
 
     u64 flags = args->flags & ~CSIGNAL;
-    u64 allowed_flags = CLONE_VM | CLONE_VFORK;
+    u64 allowed_flags = CLONE_VM | CLONE_VFORK | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID;
     if (flags & ~allowed_flags) {
         ERROR("Unsupported flags %016lx", flags & ~allowed_flags);
         return -EINVAL;
