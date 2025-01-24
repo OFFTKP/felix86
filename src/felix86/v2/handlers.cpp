@@ -4060,7 +4060,7 @@ FAST_HANDLE(CMPSD) {
     }
 }
 
-FAST_HANDLE(SHLD) {
+FAST_HANDLE(SHLD_imm) {
     u8 imm = operands[2].imm.value.u;
     u8 operand_size = instruction.operand_width;
     if (operand_size == 64)
@@ -4074,25 +4074,17 @@ FAST_HANDLE(SHLD) {
     if (imm != 0) {
         if (operand_size == 64) {
             biscuit::GPR temp = rec.scratch();
-            biscuit::GPR mask = rec.scratch();
             u8 shift = 64 - imm;
             AS.SLLI(result, dst, imm);
             AS.SRLI(temp, src, shift);
-            AS.LI(mask, (1 << imm) - 1);
-            AS.AND(temp, temp, mask);
             AS.OR(result, result, temp);
-            rec.popScratch();
             rec.popScratch();
         } else if (operand_size == 32 || operand_size == 16) {
             biscuit::GPR temp = rec.scratch();
-            biscuit::GPR mask = rec.scratch();
             u8 shift = operand_size - imm;
             AS.SLLIW(result, dst, imm);
             AS.SRLIW(temp, src, shift);
-            AS.LI(mask, (1 << imm) - 1);
-            AS.AND(temp, temp, mask);
             AS.OR(result, result, temp);
-            rec.popScratch();
             rec.popScratch();
         } else {
             UNREACHABLE();
@@ -4118,6 +4110,58 @@ FAST_HANDLE(SHLD) {
             AS.SRLI(of, of, operand_size - 1);
             AS.ANDI(of, of, 1);
         }
+    }
+}
+
+FAST_HANDLE(SHLD) {
+    if (operands[2].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        fast_SHLD_imm(rec, meta, instruction, operands);
+    } else {
+        u8 operand_size = instruction.operand_width;
+        u8 mask = operand_size == 64 ? 63 : 31;
+        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+        biscuit::GPR shift = rec.getOperandGPR(&operands[2]);
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR shift_sub = rec.scratch();
+
+        Label end;
+        AS.BEQZ(shift, &end);
+        AS.ANDI(shift, shift, mask);
+
+        if (operand_size == 64) {
+            biscuit::GPR temp = rec.scratch();
+            AS.SLL(result, dst, shift);
+            AS.XORI(shift_sub, shift, 63);
+            AS.SRL(temp, src, shift_sub);
+            AS.OR(result, result, temp);
+            rec.popScratch();
+        } else if (operand_size == 32 || operand_size == 16) {
+            biscuit::GPR temp = rec.scratch();
+            AS.XORI(shift_sub, shift, operand_size - 1);
+            AS.SLLW(result, dst, shift);
+            AS.SRLW(temp, src, shift_sub);
+            AS.OR(result, result, temp);
+            rec.popScratch();
+        } else {
+            UNREACHABLE();
+        }
+        rec.setOperandGPR(&operands[0], result);
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            AS.SRL(cf, dst, shift_sub);
+            AS.ANDI(cf, cf, 1);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+            AS.XOR(of, result, dst);
+            AS.SRLI(of, of, operand_size - 1);
+            AS.ANDI(of, of, 1);
+        }
+
+        AS.Bind(&end);
     }
 }
 
