@@ -647,6 +647,18 @@ void felix86_syscall(ThreadState* state) {
         STRACE("wait4(%d, %p, %d, %p) = %d", (int)rdi, (void*)rsi, (int)rdx, (void*)r10, (int)result);
         break;
     }
+    case felix86_x86_64_unlink: {
+        std::optional<std::filesystem::path> path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            result = fs.Error();
+            break;
+        }
+
+        unlink(path->c_str());
+        result = 0;
+        break;
+    }
     case felix86_x86_64_rt_sigprocmask: {
         int how = rdi;
         sigset_t* set = (sigset_t*)rsi;
