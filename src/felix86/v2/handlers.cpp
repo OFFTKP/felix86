@@ -3393,6 +3393,8 @@ FAST_HANDLE(CMPXCHG) {
 
     biscuit::GPR result = rec.scratch();
 
+    AS.SUB(result, rax, dst);
+
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
         AS.SLTU(cf, rax, dst);
