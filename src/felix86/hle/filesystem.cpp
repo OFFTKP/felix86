@@ -69,6 +69,12 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
         }
     }
 
+    // Check if it starts with /run/user/1000
+    constexpr static const char* run_user_1000 = "/run/user/1000";
+    if (strncmp(pathname, run_user_1000, strlen(run_user_1000)) == 0) {
+        return std::filesystem::path(pathname);
+    }
+
     std::filesystem::path path = pathname;
     if (path.is_relative()) {
         if (dirfd == AT_FDCWD) {
