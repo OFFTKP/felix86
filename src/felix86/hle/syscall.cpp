@@ -547,6 +547,26 @@ void felix86_syscall(ThreadState* state) {
         STRACE("statfs(%s, %p) = %d", path->c_str(), (void*)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_getsockname: {
+        result = HOST_SYSCALL(getsockname, rdi, (struct sockaddr*)rsi, (socklen_t*)rdx);
+        STRACE("getsockname(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_recvmsg: {
+        result = HOST_SYSCALL(recvmsg, rdi, (struct msghdr*)rsi, rdx);
+        STRACE("recvmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_sendmsg: {
+        result = HOST_SYSCALL(sendmsg, rdi, (struct msghdr*)rsi, rdx);
+        STRACE("sendmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_flock: {
+        result = HOST_SYSCALL(flock, rdi, rsi);
+        STRACE("flock(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_rt_sigaction: {
         struct sigaction* act = (struct sigaction*)rsi;
         if (act) {
@@ -657,6 +677,11 @@ void felix86_syscall(ThreadState* state) {
 
         unlink(path->c_str());
         result = 0;
+        break;
+    }
+    case felix86_x86_64_getpeername: {
+        result = HOST_SYSCALL(getpeername, rdi, (struct sockaddr*)rsi, (socklen_t*)rdx);
+        STRACE("getpeername(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_rt_sigprocmask: {
