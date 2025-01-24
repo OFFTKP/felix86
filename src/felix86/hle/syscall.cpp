@@ -613,6 +613,7 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_clone3: {
         clone_args args;
+        memset(&args, 0, sizeof(clone_args));
         size_t size = std::min(rsi, sizeof(clone_args));
         memcpy(&args, (void*)rdi, size);
 
@@ -621,7 +622,24 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
 
-        long result = Threads::Clone3(&args, size);
+        long result = Threads::Clone3(&args);
+
+        if (result != 0) { // Parent
+            ERROR("parent");
+        }
+
+        ERROR("child");
+        break;
+    }
+    case felix86_x86_64_clone: {
+        clone_args args;
+        memset(&args, 0, sizeof(clone_args));
+        args.flags = rdi;
+        args.stack = rsi;
+        args.parent_tid = rdx;
+        args.child_tid = r10;
+        args.tls = r8;
+        result = Threads::Clone(&args);
 
         if (result != 0) { // Parent
             ERROR("parent");

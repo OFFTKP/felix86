@@ -10,9 +10,9 @@
 #define CLONE_INTO_CGROUP 0x200000000ULL
 #endif
 
-long Threads::Clone3(clone_args* args, size_t size) {
+static std::string flags_to_string(u64 f) {
 #define add(x)                                                                                                                                       \
-    if (args->flags & x) {                                                                                                                           \
+    if (f & x) {                                                                                                                                     \
         flags += #x ", ";                                                                                                                            \
     }
 
@@ -46,7 +46,7 @@ long Threads::Clone3(clone_args* args, size_t size) {
 
     // Make sure we didn't miss any flags that are added in the future
     u64 mask = (0x200000000ULL << 1) - 1;
-    ASSERT((args->flags & ~mask) == 0);
+    ASSERT((f & ~mask) == 0);
 
     if (!flags.empty()) {
         // Remove the last ", "
@@ -54,5 +54,15 @@ long Threads::Clone3(clone_args* args, size_t size) {
         flags.pop_back();
     }
 
+    return flags;
+}
+
+long Threads::Clone3(clone_args* args) {
+    exit(1);
+}
+
+long Threads::Clone(clone_args* args) {
+    std::string flags = flags_to_string(args->flags);
+    STRACE("clone({%s}, %llx, %llx, %llx, %llx)", flags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
     exit(1);
 }
