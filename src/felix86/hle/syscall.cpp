@@ -642,6 +642,11 @@ void felix86_syscall(ThreadState* state) {
         result = Threads::Clone(state, &args);
         break;
     }
+    case felix86_x86_64_wait4: {
+        result = HOST_SYSCALL(wait4, rdi, rsi, rdx, r10);
+        STRACE("wait4(%d, %p, %d, %p) = %d", (int)rdi, (void*)rsi, (int)rdx, (void*)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_rt_sigprocmask: {
         int how = rdi;
         sigset_t* set = (sigset_t*)rsi;

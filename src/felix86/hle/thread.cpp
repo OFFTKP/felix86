@@ -75,16 +75,15 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
 
     ThreadState* new_state = g_emulator->CreateThreadState();
     new_state->gprs[X86_REF_RSP] = args->stack;
-    new_state->rip = current_state->gprs[X86_REF_RCX]; // instruction after syscall is stored to rcx when syscall is called
+    new_state->rip = current_state->gprs[X86_REF_RCX]; // rip after syscall is stored to rcx when syscall is called
     new_state->fsbase = args->tls;
 
     long result = syscall(SYS_clone, args->flags, args->stack, args->parent_tid, args->child_tid, args->tls);
 
     if (result == 0) {
+        // Start the child at the instruction after the syscall
         g_emulator->StartThread(new_state);
         UNREACHABLE();
-    } else {
-        printf("Boop\n");
     }
 
     return result;
