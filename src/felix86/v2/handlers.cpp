@@ -4121,13 +4121,13 @@ FAST_HANDLE(SHLD) {
         u8 mask = operand_size == 64 ? 63 : 31;
         biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
         biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-        biscuit::GPR shift = rec.getOperandGPR(&operands[2]);
+        biscuit::GPR shift = rec.getOperandGPR(&operands[2]); // it's ok to modify if reg, since it can only be cl and that comes as scratch
         biscuit::GPR result = rec.scratch();
         biscuit::GPR shift_sub = rec.scratch();
 
         Label end;
-        AS.BEQZ(shift, &end);
         AS.ANDI(shift, shift, mask);
+        AS.BEQZ(shift, &end);
         AS.LI(shift_sub, operand_size);
         AS.SUB(shift_sub, shift_sub, shift);
 
