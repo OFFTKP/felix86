@@ -4100,6 +4100,18 @@ FAST_HANDLE(SHLD_imm) {
             AS.SRLI(cf, dst, shift);
             AS.ANDI(cf, cf, 1);
         }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+            rec.updateZero(result, rec.zydisToSize(operand_size));
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+            rec.updateSign(result, rec.zydisToSize(operand_size));
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+            rec.updateParity(result);
+        }
     }
 
     if (imm == 1) {
@@ -4162,6 +4174,18 @@ FAST_HANDLE(SHLD) {
             AS.XOR(of, result, dst);
             AS.SRLI(of, of, operand_size - 1);
             AS.ANDI(of, of, 1);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+            rec.updateZero(result, rec.zydisToSize(operand_size));
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+            rec.updateSign(result, rec.zydisToSize(operand_size));
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+            rec.updateParity(result);
         }
 
         AS.Bind(&end);
