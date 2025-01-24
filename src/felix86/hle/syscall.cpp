@@ -631,6 +631,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("futex(%p, %d, %d, %p, %p, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9, (int)result);
         break;
     }
+    case felix86_x86_64_sched_getaffinity: {
+        result = HOST_SYSCALL(sched_getaffinity, rdi, rsi, rdx);
+        STRACE("sched_getaffinity(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_mincore: {
+        result = HOST_SYSCALL(mincore, rdi, rsi, rdx);
+        STRACE("mincore(%p, %d, %p) = %d", (void*)rdi, (int)rsi, (void*)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_clone3: {
         clone_args args;
         memset(&args, 0, sizeof(clone_args));
