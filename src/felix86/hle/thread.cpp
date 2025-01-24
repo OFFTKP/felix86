@@ -63,12 +63,13 @@ long Threads::Clone3(ThreadState* current_state, clone_args* args) {
 }
 
 long Threads::Clone(ThreadState* current_state, clone_args* args) {
-    std::string flags = flags_to_string(args->flags);
-    STRACE("clone({%s}, %llx, %llx, %llx, %llx)", flags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
+    std::string sflags = flags_to_string(args->flags);
+    STRACE("clone({%s}, %llx, %llx, %llx, %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
 
+    u64 flags = args->flags & ~CSIGNAL;
     u64 allowed_flags = CLONE_VM | CLONE_VFORK;
-    if (args->flags & ~allowed_flags) {
-        ERROR("Unsupported flags %016llx", args->flags & ~allowed_flags);
+    if (flags & ~allowed_flags) {
+        ERROR("Unsupported flags %016lx", flags & ~allowed_flags);
         return -EINVAL;
     }
 
