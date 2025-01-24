@@ -4074,16 +4074,26 @@ FAST_HANDLE(SHLD) {
     if (imm != 0) {
         if (operand_size == 64) {
             biscuit::GPR temp = rec.scratch();
+            biscuit::GPR mask = rec.scratch();
             u8 shift = 64 - imm;
             AS.SLLI(result, dst, imm);
             AS.SRLI(temp, src, shift);
+            AS.LI(mask, (1 << imm) - 1);
+            AS.AND(temp, temp, mask);
             AS.OR(result, result, temp);
+            rec.popScratch();
+            rec.popScratch();
         } else if (operand_size == 32 || operand_size == 16) {
             biscuit::GPR temp = rec.scratch();
+            biscuit::GPR mask = rec.scratch();
             u8 shift = operand_size - imm;
             AS.SLLIW(result, dst, imm);
             AS.SRLIW(temp, src, shift);
+            AS.LI(mask, (1 << imm) - 1);
+            AS.AND(temp, temp, mask);
             AS.OR(result, result, temp);
+            rec.popScratch();
+            rec.popScratch();
         } else {
             UNREACHABLE();
         }
