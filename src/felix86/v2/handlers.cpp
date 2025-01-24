@@ -3395,7 +3395,7 @@ FAST_HANDLE(CMPXCHG) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.SLTU(cf, dst, rax);
+        AS.SLTU(cf, rax, dst);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -3407,7 +3407,7 @@ FAST_HANDLE(CMPXCHG) {
         biscuit::GPR scratch = rec.scratch();
         AS.ANDI(af, rax, 0xF);
         AS.ANDI(scratch, dst, 0xF);
-        AS.SLTU(af, scratch, af);
+        AS.SLTU(af, af, scratch);
         rec.popScratch();
     }
 
