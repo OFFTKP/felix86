@@ -171,6 +171,8 @@ struct Recompiler {
 
     biscuit::GPR getFlags();
 
+    u64 getImmediate(ZydisDecodedOperand* operand);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

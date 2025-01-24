@@ -763,6 +763,11 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
     }
 }
 
+u64 Recompiler::getImmediate(ZydisDecodedOperand* operand) {
+    ASSERT(operand->type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
+    return operand->imm.value.u;
+}
+
 biscuit::GPR Recompiler::flag(x86_ref_e ref) {
     if (ref == X86_REF_PF) {
         biscuit::GPR reg = scratch();
