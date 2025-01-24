@@ -3237,7 +3237,7 @@ FAST_HANDLE(PSLLD) {
     u8 shift = rec.getImmediate(&operands[1]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    if (shift > 32) {
+    if (shift > 31) {
         AS.VMV(dst, 0);
     } else {
         AS.VSLL(dst, dst, shift);
@@ -3249,7 +3249,7 @@ FAST_HANDLE(PSRLD) {
     u8 shift = rec.getImmediate(&operands[1]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    if (shift > 32) {
+    if (shift > 31) {
         AS.VMV(dst, 0);
     } else {
         AS.VSRL(dst, dst, shift);
