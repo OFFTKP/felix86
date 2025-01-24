@@ -165,19 +165,19 @@ void Recompiler::compileSequence(u64 rip) {
         }
 
         // When we want to print all instructions used
-        static std::unordered_set<ZydisMnemonic> seen;
-        static bool start = true;
+        // static std::unordered_set<ZydisMnemonic> seen;
+        // static bool start = true;
 
-        if (rip == 0x401690) {
-            start = true;
-        }
+        // if (rip == 0x401690) {
+        //     start = true;
+        // }
 
-        if (start && seen.find(mnemonic) == seen.end()) {
-            seen.insert(mnemonic);
-            fflush(stdout);
-            printf("Instruction %s\n", ZydisMnemonicGetString(mnemonic));
-            fflush(stdout);
-        }
+        // if (start && seen.find(mnemonic) == seen.end()) {
+        //     seen.insert(mnemonic);
+        //     fflush(stdout);
+        //     printf("Instruction %s\n", ZydisMnemonicGetString(mnemonic));
+        //     fflush(stdout);
+        // }
 
         // Checks that we didn't forget to emulate any flags
         // if (mnemonic != ZYDIS_MNEMONIC_SYSCALL) {
