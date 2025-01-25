@@ -323,6 +323,11 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_sigaltstack: {
+        result = HOST_SYSCALL(sigaltstack, rdi, rsi);
+        STRACE("sigaltstack(%p, %p) = %d", (void*)rdi, (void*)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_ioctl: {
         result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
         STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, result);
