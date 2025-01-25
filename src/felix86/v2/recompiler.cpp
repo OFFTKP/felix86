@@ -207,16 +207,6 @@ void Recompiler::compileSequence(u64 rip) {
         meta.rip += instruction.length;
     }
 
-    u64 time = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    std::filesystem::path path = std::filesystem::current_path() / (std::string("code_cache") + std::to_string(time) + ".bin");
-    FILE* file = fopen(path.c_str(), "wb");
-    if (!file) {
-        ERROR("Failed to open file %s", path.c_str());
-    }
-    printf("size: %d\n", as.GetCodeBuffer().GetSizeInBytes());
-    fwrite(code_cache, 1, as.GetCodeBuffer().GetSizeInBytes(), file);
-    fclose(file);
-
     current_meta = nullptr;
 }
 
