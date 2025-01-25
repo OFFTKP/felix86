@@ -83,16 +83,16 @@ adc rbx, rcx
 
 %assign i 0
 %rep 256
-adc bl, [rel .data1 + i]
+adc ebx, [rel .data4 + i]
 %assign i i+1
 %endrep
+
 
 %assign i 0
 %rep 256
-adc bx, [rel .data2 + i]
+adc rbx, [rel .data8 + i]
 %assign i i+1
 %endrep
-
 
 
 
