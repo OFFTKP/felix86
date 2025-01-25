@@ -57,7 +57,6 @@ void Emulator::Run() {
     VERBOSE("Entering main thread :)");
 
     ThreadState* state = &thread_states.back();
-    g_thread_state = state;
     StartThread(state);
 
     VERBOSE("Bye-bye main thread :(");
@@ -254,7 +253,10 @@ ThreadState* Emulator::CreateThreadState() {
     thread_state->compile_next_handler = (u64)recompiler.getCompileNext();
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;
-    std::fill(thread_state->masked_signals.begin(), thread_state->masked_signals.end(), false);
+
+    ASSERT(g_thread_state == nullptr);
+    g_thread_state = thread_state;
+
     return thread_state;
 }
 

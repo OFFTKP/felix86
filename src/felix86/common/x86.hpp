@@ -3,79 +3,7 @@
 #include <array>
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
-
-enum class Group1 : u8 {
-    Add = 0,
-    Or = 1,
-    Adc = 2,
-    Sbb = 3,
-    And = 4,
-    Sub = 5,
-    Xor = 6,
-    Cmp = 7,
-};
-
-enum class Group2 : u8 {
-    Rol = 0,
-    Ror = 1,
-    Rcl = 2,
-    Rcr = 3,
-    Shl = 4,
-    Shr = 5,
-    Sal = 6,
-    Sar = 7,
-};
-
-enum class Group3 : u8 {
-    Test = 0,
-    Test_ = 1,
-    Not = 2,
-    Neg = 3,
-    Mul = 4,
-    IMul = 5,
-    Div = 6,
-    IDiv = 7,
-};
-
-enum class Group4 : u8 {
-    Inc = 0,
-    Dec = 1,
-};
-
-enum class Group5 : u8 {
-    Inc = 0,
-    Dec = 1,
-    Call = 2,
-    CallF = 3,
-    Jmp = 4,
-    JmpF = 5,
-    Push = 6,
-};
-
-enum class Group14 : u8 {
-    PSrlQ = 2,
-    PSrlDQ = 3,
-    PSllQ = 6,
-    PSllDQ = 7,
-};
-
-enum class Group15 : u8 {
-    FxSave = 0,
-    FxrStor = 1,
-    LdMxcsr = 2,
-    StMxcsr = 3,
-    XSave = 4,
-    LFence = 5,
-    MFence = 6,
-    SFence = 7,
-};
-
-enum x86_rep_e {
-    NONE,
-    REP,
-    REP_Z,
-    REP_NZ,
-};
+#include "felix86/hle/signals.hpp"
 
 typedef enum : u8 {
     X86_REF_RAX,
@@ -133,13 +61,6 @@ typedef enum : u8 {
 } x86_ref_e;
 
 typedef enum : u8 {
-    X86_OP_TYPE_NONE,
-    X86_OP_TYPE_MEMORY,
-    X86_OP_TYPE_REGISTER,
-    X86_OP_TYPE_IMMEDIATE,
-} x86_operand_type_e;
-
-typedef enum : u8 {
     X86_SIZE_BYTE,
     X86_SIZE_WORD,
     X86_SIZE_DWORD,
@@ -169,14 +90,16 @@ struct ThreadState {
     u64 gsbase{};
     u64 fsbase{};
 
-    u64 robust_futex_list{};
     u64 set_child_tid{};
     u64 clear_child_tid{};
     u64 brk_current_address{};
 
-    std::array<bool, 64> masked_signals{};
+    // Two processes can share the same signal handler table
+    std::shared_ptr<SignalHandlerTable> signal_handlers{};
+    u64 signal_mask;
 
     // Addresses that the JIT will load and call/jump to if necessary
+    // TODO: we no longer cache code, remove these and replace jumps with direct ones
     u64 compile_next_handler{};
     u64 syscall_handler{};
     u64 cpuid_handler{};
@@ -279,29 +202,13 @@ struct ThreadState {
         rip = value;
     }
 
-    u64 GetGSBase() const {
-        return gsbase;
-    }
-
-    void SetGSBase(u64 value) {
-        gsbase = value;
-    }
-
-    u64 GetFSBase() const {
-        return fsbase;
-    }
-
-    void SetFSBase(u64 value) {
-        fsbase = value;
-    }
-
     void SetSignalMask(int signal, bool value) {
         if (signal < 1 || signal > 64) {
             ERROR("Invalid signal number: %d", signal);
             return;
         }
 
-        masked_signals[signal - 1] = value;
+        masked[signal - 1] = value;
     }
 
     bool GetSignalMask(int signal) const {
@@ -310,7 +217,7 @@ struct ThreadState {
             return false;
         }
 
-        return masked_signals[signal - 1];
+        return masked[signal - 1];
     }
 };
 

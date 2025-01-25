@@ -3,8 +3,6 @@
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/signals.hpp"
 
-std::array<RegisteredSignal, 64> handlers{};
-
 bool is_in_jit_code(uintptr_t ptr) {
     uintptr_t start = g_emulator->GetAssembler().GetCodeBuffer().GetOffsetAddress(0);
     uintptr_t end = g_emulator->GetAssembler().GetCodeBuffer().GetCursorAddress();
@@ -24,7 +22,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
 
-    ASSERT(Recompiler::threadStatePointer() == x27);
     Recompiler& recompiler = g_emulator->GetRecompiler();
 
     switch (sig) {
@@ -108,7 +105,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         break;
     }
     default: {
-        if (handlers[sig - 1].handler) {
+        if ((*g_thread_state->signal_handlers)[sig - 1].handler) {
             // There's a guest signal handler for this signal.
             // If the signal happened inside the JIT code, we need to do some sort of state reconstruction at the end
             // of the guest signal handler.
@@ -133,24 +130,19 @@ void Signals::initialize() {
     sigaction(SIGILL, &sa, nullptr);
 }
 
-void Signals::registerSignalHandler(int sig, void* handler, sigset_t mask, int flags) {
+void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags) {
     ASSERT(sig > 0 && sig < 64);
-    handlers[sig - 1] = {handler, mask, flags};
-    WARN("Registering signal handler for signal %d", sig);
 
     struct sigaction sa;
     sa.sa_sigaction = signal_handler;
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
     sigaction(sig, &sa, nullptr);
+
+    (*state->signal_handlers)[sig - 1] = {handler, mask, flags};
 }
 
-RegisteredSignal Signals::getSignalHandler(int sig) {
-    u8 sig_index = sig - 1;
-    if (sig_index >= 0 && sig_index <= 63) {
-        return handlers[sig_index];
-    } else {
-        WARN("Trying to get signal %d, but it is out of bounds", sig);
-        return {nullptr, {}, 0};
-    }
+RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
+    ASSERT(sig > 0 && sig < 64);
+    return (*state->signal_handlers)[sig - 1];
 }

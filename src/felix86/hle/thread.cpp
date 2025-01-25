@@ -67,7 +67,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     STRACE("clone({%s}, %llx, %llx, %llx, %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
 
     u64 flags = args->flags & ~CSIGNAL;
-    u64 allowed_flags = CLONE_VM | CLONE_VFORK | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID;
+    u64 allowed_flags = CLONE_VM | CLONE_VFORK | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND | CLONE_FILES | CLONE_FS | CLONE_IO;
     if (flags & ~allowed_flags) {
         ERROR("Unsupported flags %016lx", flags & ~allowed_flags);
         return -EINVAL;
@@ -76,9 +76,24 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     ThreadState* new_state = g_emulator->CreateThreadState();
     new_state->gprs[X86_REF_RSP] = args->stack;
     new_state->rip = current_state->gprs[X86_REF_RCX]; // rip after syscall is stored to rcx when syscall is called
-    new_state->fsbase = args->tls;
 
-    long result = syscall(SYS_clone, args->flags, args->stack, args->parent_tid, args->child_tid, args->tls);
+    if (args->flags & CLONE_SETTLS) {
+        args->flags &= ~CLONE_SETTLS; // we don't want that passed to the host clone syscall
+        new_state->fsbase = args->tls;
+    } else if (args->tls) {
+        ERROR("TLS specified but CLONE_SETTLS not set");
+    }
+
+    if (args->flags & CLONE_SIGHAND) {
+        // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
+        ASSERT(args->flags & CLONE_VM);
+        new_state->signal_handlers = current_state->signal_handlers;
+    } else {
+        // otherwise it gets a copy
+        new_state->signal_handlers = std::make_shared<SignalHandlerTable>(*current_state->signal_handlers);
+    }
+
+    long result = syscall(SYS_clone, args->flags, args->stack, args->parent_tid, args->child_tid, 0);
 
     if (result == 0) {
         // Start the child at the instruction after the syscall

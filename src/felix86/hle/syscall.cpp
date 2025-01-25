@@ -89,6 +89,8 @@ void felix86_syscall(ThreadState* state) {
 
     Filesystem& fs = g_emulator->GetFilesystem();
 
+    ASSERT(state == g_thread_state);
+
     switch (syscall_number) {
     case felix86_x86_64_brk: {
         if (rdi == 0) {
@@ -142,12 +144,6 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_set_robust_list: {
-        // state->robust_futex_list = rdi;
-        // if (rsi != sizeof(u64) * 3) {
-        //     WARN("Struct size is wrong during set_robust_list");
-        //     result = -EINVAL;
-        // }
-        // STRACE("set_robust_list(%016lx, %016lx) = %016lx", rdi, rsi, result);
         result = -ENOSYS;
         break;
     }
@@ -320,11 +316,6 @@ void felix86_syscall(ThreadState* state) {
         if (result != -1) {
             *guest_stat = host_stat;
         }
-        break;
-    }
-    case felix86_x86_64_sigaltstack: {
-        result = HOST_SYSCALL(sigaltstack, rdi, rsi);
-        STRACE("sigaltstack(%p, %p) = %d", (void*)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_sysinfo: {
@@ -592,12 +583,12 @@ void felix86_syscall(ThreadState* state) {
         if (act) {
             bool sigaction = act->sa_flags & SA_SIGINFO;
             void* handler = sigaction ? (void*)act->sa_sigaction : (void*)act->sa_handler;
-            Signals::registerSignalHandler(rdi, handler, act->sa_mask, act->sa_flags);
+            Signals::registerSignalHandler(state, rdi, handler, act->sa_mask, act->sa_flags);
         }
 
         struct sigaction* old_act = (struct sigaction*)rdx;
         if (old_act) {
-            RegisteredSignal old = Signals::getSignalHandler(rdi);
+            RegisteredSignal old = Signals::getSignalHandler(state, rdi);
             bool was_sigaction = old.flags & SA_SIGINFO;
             if (was_sigaction) {
                 old_act->sa_sigaction = (decltype(old_act->sa_sigaction))old.handler;
@@ -609,7 +600,6 @@ void felix86_syscall(ThreadState* state) {
         }
 
         result = 0;
-        WARN("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
         STRACE("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
         break;
     }
@@ -716,41 +706,28 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_rt_sigprocmask: {
         int how = rdi;
-        sigset_t* set = (sigset_t*)rsi;
-        sigset_t* oldset = (sigset_t*)rdx;
+        u64* set = (u64*)rsi;
+        u64* oldset = (u64*)rdx;
 
+        u64 old_set = state->signal_mask;
         if (set) {
-            for (int i = 1; i <= 64; i++) {
-                int res = sigismember(set, i);
-                if (res == 1) {
-                    if (how == SIG_BLOCK) {
-                        state->SetSignalMask(i, true);
-                    } else if (how == SIG_UNBLOCK) {
-                        state->SetSignalMask(i, false);
-                    } else if (how == SIG_SETMASK) {
-                        state->SetSignalMask(i, true);
-                    }
-                } else if (res == 0) {
-                    if (how == SIG_SETMASK) {
-                        state->SetSignalMask(i, false);
-                    }
-                }
+            if (how == SIG_BLOCK) {
+                state->signal_mask |= *set;
+            } else if (how == SIG_UNBLOCK) {
+                state->signal_mask &= ~(*set);
+            } else if (how == SIG_SETMASK) {
+                state->signal_mask = *set;
+            } else {
+                result = -EINVAL;
+                break;
             }
+
+            u64 host_mask = state->signal_mask & Signals::hostSignalMask();
+            syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(u64));
         }
 
         if (oldset) {
-            sigemptyset(oldset);
-            for (int i = 1; i <= 64; i++) {
-                if (state->GetSignalMask(i)) {
-                    sigaddset(oldset, i);
-                }
-            }
-        }
-
-        if (how != SIG_BLOCK && how != SIG_UNBLOCK && how != SIG_SETMASK) {
-            result = -EINVAL;
-        } else {
-            result = 0;
+            *oldset = old_set;
         }
         break;
     }

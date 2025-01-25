@@ -1238,7 +1238,6 @@ void Recompiler::backToDispatcher() {
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
-    g_thread_state = state;
     enter_dispatcher(state);
 }
 

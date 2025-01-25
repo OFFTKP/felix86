@@ -1,7 +1,7 @@
 #pragma once
 
+#include <array>
 #include <csignal>
-#include <vector>
 #include "felix86/common/utility.hpp"
 
 struct RegisteredSignal {
@@ -10,8 +10,13 @@ struct RegisteredSignal {
     int flags = 0;
 };
 
+using SignalHandlerTable = std::array<RegisteredSignal, 64>;
+
 struct Signals {
     static void initialize();
-    static void registerSignalHandler(int sig, void* handler, sigset_t mask, int flags);
-    [[nodiscard]] static RegisteredSignal getSignalHandler(int sig);
+    static void registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags);
+    [[nodiscard]] static RegisteredSignal getSignalHandler(ThreadState* state, int sig);
+    static constexpr u64 hostSignalMask() {
+        return ~((1ULL << SIGBUS) | (1ULL << SIGILL));
+    }
 };
