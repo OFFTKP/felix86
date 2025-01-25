@@ -164,19 +164,8 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         exit(1);
     }
 
+    printf("bytes read: %ld\n", bytes_read);
     memcpy((void*)0x10'0000, buffer.data(), bytes_read);
-
-    int i = 0;
-    while (i < bytes_read) {
-        for (int j = 0; j < 16; j++) {
-            if (i >= bytes_read) {
-                break;
-            }
-            printf("%02X ", buffer[i]);
-            i++;
-        }
-        printf("\n");
-    }
 
     TestConfig config = {};
     config.entrypoint = (void*)0x10'0000;

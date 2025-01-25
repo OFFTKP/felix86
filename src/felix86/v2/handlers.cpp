@@ -10,18 +10,6 @@
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
-void print_u64_sbb(u64* ptr) {
-    u64 dst = ptr[0];
-    u64 src = ptr[1];
-    bool cf = ptr[2];
-    u64 value = ptr[3];
-    printf("sbb 0x%016lx - 0x%016lx - %d = 0x%016lx\n", dst, src, cf, value);
-}
-
-// void print_u64_adc(u64 dst, u64 src, bool cf, u64 value) {
-//     printf("adc 0x%016lx + 0x%016lx + %d = 0x%016lx\n", dst, src, cf, value);
-// }
-
 void is_overflow_sub(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
     biscuit::GPR scratch = rec.scratch();
     AS.XOR(scratch, lhs, rhs);
@@ -148,17 +136,8 @@ FAST_HANDLE(SBB) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     u64 sign_mask = rec.getSignMask(size);
 
-    biscuit::GPR address = rec.scratch();
-    AS.LI(address, (u64)&put_me_here);
-    AS.SD(src, 0, address);
-    AS.SD(dst, 8, address);
-    AS.SD(cf, 16, address);
-
     AS.SUB(result, dst, src);
     AS.SUB(result_2, result, cf);
-    AS.LI(address, (u64)&put_me_here);
-    AS.SD(result_2, 24, address);
-    rec.popScratch();
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
         rec.updateParity(result_2);
@@ -216,12 +195,6 @@ FAST_HANDLE(SBB) {
     }
 
     rec.setOperandGPR(&operands[0], result_2);
-
-    rec.writebackDirtyState();
-
-    AS.LI(a0, (u64)&put_me_here);
-    AS.LI(t0, (u64)&print_u64_sbb);
-    AS.JALR(t0);
 }
 
 FAST_HANDLE(ADC) {
