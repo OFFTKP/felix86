@@ -17,7 +17,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
     std::string spath = path.string();
     ssize_t bytes_read;
-    buffer.resize(1024 * 1024);
+    buffer.resize(10 * 1024 * 1024);
 
     std::ifstream file(path);
     std::string line;
