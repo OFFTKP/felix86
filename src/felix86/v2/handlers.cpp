@@ -179,8 +179,8 @@ FAST_HANDLE(SBB) {
         biscuit::GPR scratch = rec.scratch();
         biscuit::GPR cf = rec.flagWR(X86_REF_CF);
         rec.zext(scratch, result, size);
-        AS.SLTU(cf, dst, src);
         AS.SLTU(scratch, scratch, cf);
+        AS.SLTU(cf, dst, src);
         AS.OR(cf, cf, scratch);
         rec.popScratch();
     }
