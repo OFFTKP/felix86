@@ -96,7 +96,7 @@ struct ThreadState {
 
     // Two processes can share the same signal handler table
     std::shared_ptr<SignalHandlerTable> signal_handlers{};
-    u64 signal_mask;
+    u64 signal_mask{};
 
     // Addresses that the JIT will load and call/jump to if necessary
     // TODO: we no longer cache code, remove these and replace jumps with direct ones
@@ -200,24 +200,6 @@ struct ThreadState {
 
     void SetRip(u64 value) {
         rip = value;
-    }
-
-    void SetSignalMask(int signal, bool value) {
-        if (signal < 1 || signal > 64) {
-            ERROR("Invalid signal number: %d", signal);
-            return;
-        }
-
-        masked[signal - 1] = value;
-    }
-
-    bool GetSignalMask(int signal) const {
-        if (signal < 1 || signal > 64) {
-            ERROR("Invalid signal number: %d", signal);
-            return false;
-        }
-
-        return masked[signal - 1];
     }
 };
 
