@@ -17,7 +17,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
     std::string spath = path.string();
     ssize_t bytes_read;
-    buffer.resize(10 * 1024 * 1024);
+    buffer.resize(1024 * 1024);
 
     std::ifstream file(path);
     std::string line;
@@ -65,16 +65,16 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         exit(1);
     } else {
         close(pipefd[1]);
-        bytes_read = read(pipefd[0], buffer.data(), buffer.size());
-        if (bytes_read == -1) {
-            ERROR("Failed to read from pipe");
-        }
-        close(pipefd[0]);
         int status;
         waitpid(fork_result, &status, 0);
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
             ERROR("nasm failed with exit code: %d", WEXITSTATUS(status));
         }
+        bytes_read = read(pipefd[0], buffer.data(), buffer.size());
+        if (bytes_read == -1) {
+            ERROR("Failed to read from pipe");
+        }
+        close(pipefd[0]);
     }
 
     // At this point buffer should contain the compiled binary as raw bytes and
