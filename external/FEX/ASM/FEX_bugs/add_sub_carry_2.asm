@@ -1,7 +1,8 @@
 %ifdef CONFIG
 {
   "RegData": {
-    "RAX": "0xedededee26260e6c"
+    "RAX": "0xedededee26260e6c",
+    "RBX": "0x121212129498c16d"
   }
 }
 %endif
@@ -70,6 +71,42 @@ sbb eax, [rel .data4 + i]
 sbb rax, [rel .data8 + i]
 %assign i i+1
 %endrep
+
+
+
+
+clc
+adc bl, cl
+adc bx, cx
+adc ebx, ecx
+adc rbx, rcx
+
+
+%assign i 0
+%rep 256
+adc bl, [rel .data1 + i]
+%assign i i+1
+%endrep
+
+%assign i 0
+%rep 256
+adc bx, [rel .data2 + i]
+%assign i i+1
+%endrep
+
+%assign i 0
+%rep 256
+adc ebx, [rel .data4 + i]
+%assign i i+1
+%endrep
+
+
+%assign i 0
+%rep 256
+adc rbx, [rel .data8 + i]
+%assign i i+1
+%endrep
+
 
 
 hlt
