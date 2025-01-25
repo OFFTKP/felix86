@@ -10,6 +10,14 @@
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
+void print_u64_sbb(u64 value) {
+    printf("sbb 0x%016lx\n", value);
+}
+
+void print_u64_adc(u64 value) {
+    printf("adc 0x%016lx\n", value);
+}
+
 void is_overflow_sub(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
     biscuit::GPR scratch = rec.scratch();
     AS.XOR(scratch, lhs, rhs);
@@ -196,6 +204,10 @@ FAST_HANDLE(SBB) {
     rec.setOperandGPR(&operands[0], result_2);
 
     rec.writebackDirtyState();
+
+    AS.MV(a0, result_2);
+    AS.LI(t0, (u64)&print_u64_sbb);
+    AS.JALR(t0);
 }
 
 FAST_HANDLE(ADC) {
@@ -271,6 +283,10 @@ FAST_HANDLE(ADC) {
     rec.setOperandGPR(&operands[0], result_2);
 
     rec.writebackDirtyState();
+
+    AS.MV(a0, result_2);
+    AS.LI(t0, (u64)&print_u64_adc);
+    AS.JALR(t0);
 }
 
 FAST_HANDLE(CMP) {
