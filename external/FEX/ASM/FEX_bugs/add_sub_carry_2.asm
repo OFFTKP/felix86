@@ -93,18 +93,6 @@ adc bx, [rel .data2 + i]
 %assign i i+1
 %endrep
 
-%assign i 0
-%rep 256
-adc ebx, [rel .data4 + i]
-%assign i i+1
-%endrep
-
-
-%assign i 0
-%rep 256
-adc rbx, [rel .data8 + i]
-%assign i i+1
-%endrep
 
 
 
