@@ -182,7 +182,6 @@ FAST_HANDLE(SBB) {
         AS.SLTU(scratch, scratch, cf);
         AS.SLTU(cf, dst, src);
         AS.OR(cf, cf, scratch);
-        AS.LI(cf, 1);
         rec.popScratch();
     }
 
