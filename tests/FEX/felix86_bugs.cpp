@@ -12,6 +12,7 @@
     }
 
 FEX_BUG_TEST(xor_flags)
+FEX_BUG_TEST(SHRD_OF)
 FEX_BUG_TEST(Test_JP)
 FEX_BUG_TEST(IMUL_garbagedata_negative)
 FEX_BUG_TEST(LongSignedDivide)

@@ -4120,137 +4120,195 @@ FAST_HANDLE(CMPSD) {
     }
 }
 
-FAST_HANDLE(SHLD_imm) {
-    u8 imm = rec.getImmediate(&operands[2]);
-    u8 operand_size = instruction.operand_width;
-    if (operand_size == 64)
-        imm &= 63;
-    else
-        imm &= 31;
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR result = rec.scratch();
+// FAST_HANDLE(SHLD_imm) {
+//     u8 imm = rec.getImmediate(&operands[2]);
+//     u8 operand_size = instruction.operand_width;
+//     if (operand_size == 64)
+//         imm &= 63;
+//     else
+//         imm &= 31;
+//     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+//     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+//     biscuit::GPR result = rec.scratch();
 
-    if (imm != 0) {
-        if (operand_size == 64) {
-            biscuit::GPR temp = rec.scratch();
-            u8 shift = 64 - imm;
-            AS.SLLI(result, dst, imm);
-            AS.SRLI(temp, src, shift);
-            AS.OR(result, result, temp);
-            rec.popScratch();
-        } else if (operand_size == 32 || operand_size == 16) {
-            biscuit::GPR temp = rec.scratch();
-            u8 shift = operand_size - imm;
-            AS.SLLIW(result, dst, imm);
-            AS.SRLIW(temp, src, shift);
-            AS.OR(result, result, temp);
-            rec.popScratch();
-        } else {
-            UNREACHABLE();
-        }
-    } else {
-        rec.setOperandGPR(&operands[0], dst); // for zero extension
-    }
+//     if (imm != 0) {
+//         if (operand_size == 64) {
+//             biscuit::GPR temp = rec.scratch();
+//             u8 shift = 64 - imm;
+//             AS.SLLI(result, dst, imm);
+//             AS.SRLI(temp, src, shift);
+//             AS.OR(result, result, temp);
+//             rec.popScratch();
+//         } else if (operand_size == 32 || operand_size == 16) {
+//             biscuit::GPR temp = rec.scratch();
+//             u8 shift = operand_size - imm;
+//             AS.SLLIW(result, dst, imm);
+//             AS.SRLIW(temp, src, shift);
+//             AS.OR(result, result, temp);
+//             rec.popScratch();
+//         } else {
+//             UNREACHABLE();
+//         }
+//     } else {
+//         rec.setOperandGPR(&operands[0], dst); // for zero extension
+//     }
 
-    if (imm > 0) {
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-            biscuit::GPR cf = rec.flagW(X86_REF_CF);
-            u8 shift = operand_size - imm;
-            AS.SRLI(cf, dst, shift);
-            AS.ANDI(cf, cf, 1);
-        }
+//     if (imm > 0) {
+//         if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+//             biscuit::GPR cf = rec.flagW(X86_REF_CF);
+//             u8 shift = operand_size - imm;
+//             AS.SRLI(cf, dst, shift);
+//             AS.ANDI(cf, cf, 1);
+//         }
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-            rec.updateZero(result, rec.zydisToSize(operand_size));
-        }
+//         if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+//             rec.updateZero(result, rec.zydisToSize(operand_size));
+//         }
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-            rec.updateSign(result, rec.zydisToSize(operand_size));
-        }
+//         if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+//             rec.updateSign(result, rec.zydisToSize(operand_size));
+//         }
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-            rec.updateParity(result);
-        }
-    }
+//         if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+//             rec.updateParity(result);
+//         }
+//     }
 
-    if (imm == 1) {
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-            biscuit::GPR of = rec.flagW(X86_REF_OF);
-            AS.XOR(of, result, dst);
-            AS.SRLI(of, of, operand_size - 1);
-            AS.ANDI(of, of, 1);
-        }
-    }
+//     if (imm == 1) {
+//         if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+//             biscuit::GPR of = rec.flagW(X86_REF_OF);
+//             AS.XOR(of, result, dst);
+//             AS.SRLI(of, of, operand_size - 1);
+//             AS.ANDI(of, of, 1);
+//         }
+//     }
 
-    if (imm != 0) { // after the flags have been set
-        rec.setOperandGPR(&operands[0], result);
-    }
-}
+//     if (imm != 0) { // after the flags have been set
+//         rec.setOperandGPR(&operands[0], result);
+//     }
+// }
 
 FAST_HANDLE(SHLD) {
-    if (operands[2].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        fast_SHLD_imm(rec, meta, instruction, operands);
+    u8 operand_size = instruction.operand_width;
+    u8 mask = operand_size == 64 ? 63 : 31;
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR shift = rec.getOperandGPR(&operands[2]); // it's ok to modify if reg, since it can only be cl and that comes as scratch
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR shift_sub = rec.scratch();
+
+    Label end;
+    AS.ANDI(shift, shift, mask);
+    AS.MV(result, dst);
+    AS.BEQZ(shift, &end);
+    AS.LI(shift_sub, operand_size);
+    AS.SUB(shift_sub, shift_sub, shift);
+
+    if (operand_size == 64) {
+        biscuit::GPR temp = rec.scratch();
+        AS.SLL(result, dst, shift);
+        AS.SRL(temp, src, shift_sub);
+        AS.OR(result, result, temp);
+        rec.popScratch();
+    } else if (operand_size == 32 || operand_size == 16) {
+        biscuit::GPR temp = rec.scratch();
+        AS.SLLW(result, dst, shift);
+        AS.SRLW(temp, src, shift_sub);
+        AS.OR(result, result, temp);
+        rec.popScratch();
     } else {
-        u8 operand_size = instruction.operand_width;
-        u8 mask = operand_size == 64 ? 63 : 31;
-        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-        biscuit::GPR shift = rec.getOperandGPR(&operands[2]); // it's ok to modify if reg, since it can only be cl and that comes as scratch
-        biscuit::GPR result = rec.scratch();
-        biscuit::GPR shift_sub = rec.scratch();
-
-        Label end;
-        AS.ANDI(shift, shift, mask);
-        AS.MV(result, dst);
-        AS.BEQZ(shift, &end);
-        AS.LI(shift_sub, operand_size);
-        AS.SUB(shift_sub, shift_sub, shift);
-
-        if (operand_size == 64) {
-            biscuit::GPR temp = rec.scratch();
-            AS.SLL(result, dst, shift);
-            AS.SRL(temp, src, shift_sub);
-            AS.OR(result, result, temp);
-            rec.popScratch();
-        } else if (operand_size == 32 || operand_size == 16) {
-            biscuit::GPR temp = rec.scratch();
-            AS.SLLW(result, dst, shift);
-            AS.SRLW(temp, src, shift_sub);
-            AS.OR(result, result, temp);
-            rec.popScratch();
-        } else {
-            UNREACHABLE();
-        }
-
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-            biscuit::GPR cf = rec.flagW(X86_REF_CF);
-            AS.SRL(cf, dst, shift_sub);
-            AS.ANDI(cf, cf, 1);
-        }
-
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-            biscuit::GPR of = rec.flagW(X86_REF_OF);
-            AS.XOR(of, result, dst);
-            AS.SRLI(of, of, operand_size - 1);
-            AS.ANDI(of, of, 1);
-        }
-
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-            rec.updateZero(result, rec.zydisToSize(operand_size));
-        }
-
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-            rec.updateSign(result, rec.zydisToSize(operand_size));
-        }
-
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-            rec.updateParity(result);
-        }
-
-        AS.Bind(&end);
-        rec.setOperandGPR(&operands[0], result);
+        UNREACHABLE();
     }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.SRL(cf, dst, shift_sub);
+        AS.ANDI(cf, cf, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.XOR(of, result, dst);
+        AS.SRLI(of, of, operand_size - 1);
+        AS.ANDI(of, of, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result, rec.zydisToSize(operand_size));
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, rec.zydisToSize(operand_size));
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    AS.Bind(&end);
+    rec.setOperandGPR(&operands[0], result);
+}
+
+FAST_HANDLE(SHRD) {
+    u8 operand_size = instruction.operand_width;
+    u8 mask = operand_size == 64 ? 63 : 31;
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR shift = rec.getOperandGPR(&operands[2]); // it's ok to modify if reg, since it can only be cl and that comes as scratch
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR shift_sub = rec.scratch();
+
+    Label end;
+    AS.ANDI(shift, shift, mask);
+    AS.MV(result, dst);
+    AS.BEQZ(shift, &end);
+    AS.LI(shift_sub, operand_size);
+    AS.SUB(shift_sub, shift_sub, shift);
+
+    if (operand_size == 64) {
+        biscuit::GPR temp = rec.scratch();
+        AS.SRL(result, dst, shift);
+        AS.SLL(temp, src, shift_sub);
+        AS.OR(result, result, temp);
+        rec.popScratch();
+    } else if (operand_size == 32 || operand_size == 16) {
+        biscuit::GPR temp = rec.scratch();
+        AS.SRLW(result, dst, shift);
+        AS.SLLW(temp, src, shift_sub);
+        AS.OR(result, result, temp);
+        rec.popScratch();
+    } else {
+        UNREACHABLE();
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.ADDI(shift, shift, -1);
+        AS.SRL(cf, dst, shift);
+        AS.ANDI(cf, cf, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.XOR(of, result, dst);
+        AS.SRLI(of, of, operand_size - 1);
+        AS.ANDI(of, of, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result, rec.zydisToSize(operand_size));
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, rec.zydisToSize(operand_size));
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    AS.Bind(&end);
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(FNSTCW) {
