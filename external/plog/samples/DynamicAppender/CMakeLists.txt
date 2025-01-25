@@ -1,3 +1,0 @@
-add_executable(DynamicAppender Main.cpp)
-target_link_libraries(DynamicAppender plog)
-set_target_properties(DynamicAppender PROPERTIES FOLDER Samples)

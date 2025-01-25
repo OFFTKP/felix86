@@ -1,5 +1,0 @@
-if(WIN32)
-    add_executable(DebugOutput Main.cpp)
-    target_link_libraries(DebugOutput plog)
-    set_target_properties(DebugOutput PROPERTIES FOLDER Samples)
-endif()

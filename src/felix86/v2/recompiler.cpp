@@ -128,13 +128,6 @@ void* Recompiler::compile(u64 rip) {
 void Recompiler::compileSequence(u64 rip) {
     compiling = true;
     scanFlagUsageAhead(rip);
-
-    if (g_breakpoints.find(rip) != g_breakpoints.end()) {
-        u64 current_address = (u64)as.GetCursorPointer();
-        g_breakpoints[rip].push_back(current_address);
-        as.GetCodeBuffer().Emit32(0); // UNIMP instruction
-    }
-
     HandlerMetadata meta = {rip, rip};
 
     current_meta = &meta;
@@ -145,6 +138,13 @@ void Recompiler::compileSequence(u64 rip) {
 
     while (compiling) {
         resetScratch();
+
+        if (g_breakpoints.find(rip) != g_breakpoints.end()) {
+            u64 current_address = (u64)as.GetCursorPointer();
+            g_breakpoints[rip].push_back(current_address);
+            as.GetCodeBuffer().Emit32(0); // UNIMP instruction
+        }
+
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
         switch (mnemonic) {
 #define X(name)                                                                                                                                      \

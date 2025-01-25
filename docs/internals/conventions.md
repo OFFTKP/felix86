@@ -5,10 +5,6 @@ morphed into a C++ish project. Moving some global functions to classes is welcom
 Moving towards more idiomatic C++ is welcome, but try to keep code readability in mind. Moving stuff around is welcome if it improves
 compilation speed, but keep in mind that locality of behavior is generally preferred.
 
-# Submodules
-
-There will be no submodules in the project. Historically I've seen git repositories get taken down and the submodules no longer work, and then bisecting no longer works. Also git submodules suck in general.
-
 # Idiomatic commit messages
 
 There's no commit message guide to follow for this project. Describe what your commit does in few words. If it's a complex commit, add a longer description. Avoid *only* describing things in PR descriptions as those can get lost with time.
@@ -23,4 +19,4 @@ Wrap architecture specific code in ifdefs. Even though the target is risc-v we w
 # Sandboxing
 
 felix86 makes a faithful attempt to sandbox the emulated application, but should *not* be considered a security application and has absolutely no security guarantees.
-That being said, we try to make sure that syscalls that modify files only do so on files inside the sandbox (inside the rootfs).
+That being said, we try to make sure that syscalls that modify files only do so on files inside the sandbox (inside the rootfs). See `openat` in syscalls.cpp for an example.
