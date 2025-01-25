@@ -178,7 +178,6 @@ struct ThreadState {
 
     // Addresses that the JIT will load and call/jump to if necessary
     u64 compile_next_handler{};
-    u64 crash_handler{};
     u64 syscall_handler{};
     u64 cpuid_handler{};
     u64 rdtsc_handler{};

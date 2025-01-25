@@ -127,7 +127,6 @@ FAST_HANDLE(SUB) {
 }
 
 FAST_HANDLE(SBB) {
-    static u64 put_me_here[4] = {0};
     biscuit::GPR result = rec.scratch();
     biscuit::GPR result_2 = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);

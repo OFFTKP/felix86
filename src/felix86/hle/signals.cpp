@@ -108,9 +108,12 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         break;
     }
     default: {
-        ERROR("Unhandled signal %d", sig);
         if (handlers[sig - 1].handler) {
-            ERROR("Implme");
+            // There's a guest signal handler for this signal.
+            // If the signal happened inside the JIT code, we need to do some sort of state reconstruction at the end
+            // of the guest signal handler.
+            // Otherwise I think we're good to recompile and run it :cluegi:
+            ERROR("implme");
         } else {
             ERROR("Unhandled signal %d", sig);
         }

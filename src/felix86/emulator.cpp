@@ -197,7 +197,6 @@ void Emulator::setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::compileFunction(u64 rip) {
-    std::lock_guard<std::mutex> lock(compilation_mutex);
     return recompiler.compile(rip);
 }
 
@@ -208,9 +207,23 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
         start = std::chrono::high_resolution_clock::now();
     }
 
-    // Mutex needs to be unlocked before the thread is dispatched
+    // Block signals so we don't get a signal during the compilation period, this would lead to deadlock
+    // since the signal handler needs to also compile code.
+    // TODO: if this proves to be slow, we might need to defer signals like FEX does
+    sigset_t mask;
+    sigfillset(&mask);
+    sigprocmask(SIG_SETMASK, &mask, NULL);
+
     void* volatile function;
-    function = emulator->compileFunction(thread_state->GetRip());
+    {
+        // Mutex needs to be unlocked before the thread is dispatched
+        // Volatile so we can access it in gdb if needed
+        std::lock_guard<std::mutex> lock(emulator->compilation_mutex);
+        function = emulator->recompiler.compile(thread_state->GetRip());
+    }
+
+    sigemptyset(&mask);
+    sigprocmask(SIG_SETMASK, &mask, NULL);
 
     if (g_profile_compilation) {
         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
@@ -224,14 +237,6 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     } else if (address >= g_executable_start && address < g_executable_end) {
         address = address - g_executable_start;
     }
-
-#if 0
-    // Hack to break on a specific address
-    u64 addy = thread_state->GetRip();
-    if (addy == 0x1'0000'ed69) {
-        raise(SIGTRAP);
-    }
-#endif
 
     VERBOSE("Jumping to function %s@0x%lx (%lx), located at %p", MemoryMetadata::GetRegionName(thread_state->GetRip()).c_str(),
             MemoryMetadata::GetOffset(thread_state->GetRip()), thread_state->GetRip(), function);
@@ -247,7 +252,6 @@ ThreadState* Emulator::CreateThreadState() {
     thread_state->cpuid_handler = (u64)felix86_cpuid;
     thread_state->rdtsc_handler = (u64)felix86_rdtsc;
     thread_state->compile_next_handler = (u64)recompiler.getCompileNext();
-    thread_state->crash_handler = 0;
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;
     std::fill(thread_state->masked_signals.begin(), thread_state->masked_signals.end(), false);
