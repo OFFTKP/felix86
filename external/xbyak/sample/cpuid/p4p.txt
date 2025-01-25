@@ -1,2 +1,0 @@
-vendor intel
- mmx mmx2 cmov sse sse2 sse3
