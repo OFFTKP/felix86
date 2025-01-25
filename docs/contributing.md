@@ -28,8 +28,6 @@ Do try to follow the coding style of the file you are editing.
 
 Bug fixes, adding unit tests, implementing new instructions, syscalls etc. or implementing them in a more efficient way is what's needed the most.
 
-Tedious tasks that are beneficial to users or improve the codebase are very appreciated. [Some are listed here](./tedious-tasks.md).
-
 Making the code easier to read or cleaner is welcome.
 
 New features are welcome however it's preferred we discuss about them in the Discord server or in a Github issue.

@@ -22,8 +22,6 @@ static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 static struct argp_option options[] = {
     {"verbose", 'V', 0, 0, "Produce verbose output"},
     {"quiet", 'q', 0, 0, "Don't produce any output"},
-    {"host-envs", 'E', 0, 0, "Pass host environment variables to the guest"},
-    {"print-functions", 'P', 0, 0, "Print functions as they compile"},
     {"rootfs-path", 'p', "PATH", 0, "Path to the rootfs directory"},
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
     {"all-extensions", 'X', "EXTS", 0,
@@ -111,14 +109,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
     case 'p': {
         g_rootfs_path = arg;
-        break;
-    }
-    case 'E': {
-        char** envp = environ;
-        while (*envp) {
-            config->envp.push_back(*envp);
-            envp++;
-        }
         break;
     }
     case 't': {
@@ -212,6 +202,12 @@ int main(int argc, char* argv[]) {
             }
         } else {
             ERROR("Environment variable file %s does not exist", env_file);
+        }
+    } else {
+        char** envp = environ;
+        while (*envp) {
+            config.envp.push_back(*envp);
+            envp++;
         }
     }
 

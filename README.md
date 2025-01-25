@@ -1,5 +1,5 @@
 # felix86
-An x86-64 userspace emulator for RISC-V Linux
+An x86-64 userspace emulator for RISC-V Linux. Early in development.
 
 Compilation and usage instructions can be found [here](./docs/how-to-use.md).
 
@@ -11,8 +11,11 @@ Want to contribute but don't know what to do? [Check this out](./docs/internals/
 - Utilizes B extension if available for bit manipulation instructions like `bsr`
 - Support for a variety of optional extensions such as XThead custom extensions
 
-## Similar projects
+## Compatibility
 felix86 is very early in development, and will not support AArch64.
+
+At the moment, felix86 can run some console-based applications such as `python3` or `lua`.
+
 If you want a more mature x86-64 userspace emulator, use one of these:
 
 - [FEX](https://github.com/FEX-Emu/FEX), for x86 & x86-64 on AArch64
