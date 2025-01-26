@@ -126,8 +126,14 @@ void Signals::initialize() {
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
-    for (int i = 1; i <= 64; i++) {
-        sigaction(i, &sa, nullptr);
+    if (!g_testing) { // we don't need to install guest handlers for tests
+        for (int i = 1; i <= 64; i++) {
+            sigaction(i, &sa, nullptr);
+        }
+    } else {
+        // Only install the signal handler for SIGILL and SIGBUS
+        sigaction(SIGILL, &sa, nullptr);
+        sigaction(SIGBUS, &sa, nullptr);
     }
 }
 

@@ -55,11 +55,6 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         exit(1);
     }
 
-    // Mask our signal handling for a bit
-    sigset_t mask;
-    sigfillset(&mask);
-    sigprocmask(SIG_SETMASK, &mask, nullptr);
-
     pid_t fork_result = fork();
     if (fork_result == 0) {
         close(pipefd[0]);
@@ -81,8 +76,6 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         }
         close(pipefd[0]);
     }
-
-    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
 
     // At this point buffer should contain the compiled binary as raw bytes and
     // the json string should contain the json data
