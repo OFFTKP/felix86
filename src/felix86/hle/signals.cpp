@@ -126,19 +126,13 @@ void Signals::initialize() {
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
-    sigaction(SIGBUS, &sa, nullptr);
-    sigaction(SIGILL, &sa, nullptr);
+    for (int i = 1; i <= 64; i++) {
+        sigaction(i, &sa, nullptr);
+    }
 }
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags) {
     ASSERT(sig > 0 && sig < 64);
-
-    struct sigaction sa;
-    sa.sa_sigaction = signal_handler;
-    sa.sa_flags = SA_SIGINFO;
-    sigemptyset(&sa.sa_mask);
-    sigaction(sig, &sa, nullptr);
-
     (*state->signal_handlers)[sig - 1] = {handler, mask, flags};
 }
 
