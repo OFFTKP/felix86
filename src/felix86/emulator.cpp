@@ -254,13 +254,11 @@ ThreadState* Emulator::CreateThreadState() {
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;
 
-    ASSERT(g_thread_state == nullptr);
-    g_thread_state = thread_state;
-
     return thread_state;
 }
 
 void Emulator::StartThread(ThreadState* state) {
+    g_thread_state = state;
     recompiler.enterDispatcher(state);
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }
