@@ -6,7 +6,7 @@
 #include "felix86/common/utility.hpp"
 
 struct Threads {
-    static long Clone(ThreadState* current_state, clone_args* args);
+    static long Clone(ThreadState* current_state, clone_args* args, bool clone3);
 
-    static u8* AllocateStack(size_t size = 0);
+    static std::pair<u8*, size_t> AllocateStack(size_t size = 0);
 };

@@ -164,7 +164,7 @@ void Elf::Load(const std::filesystem::path& path) {
         }
     }
 
-    stack_pointer = (u8*)Threads::AllocateStack();
+    stack_pointer = (u8*)Threads::AllocateStack().first;
 
     u64 base_address = 0;
     if (ehdr.e_type == ET_DYN) {

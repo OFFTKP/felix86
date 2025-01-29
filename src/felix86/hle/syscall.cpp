@@ -662,7 +662,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
 
-        result = Threads::Clone(state, &args);
+        result = Threads::Clone(state, &args, true);
         break;
     }
     case felix86_x86_64_clone: {
@@ -673,7 +673,7 @@ void felix86_syscall(ThreadState* state) {
         args.parent_tid = rdx;
         args.child_tid = r10;
         args.tls = r8;
-        result = Threads::Clone(state, &args);
+        result = Threads::Clone(state, &args, false);
         break;
     }
     case felix86_x86_64_wait4: {

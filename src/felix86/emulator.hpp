@@ -75,7 +75,7 @@ struct Emulator {
         return recompiler;
     }
 
-    ThreadState* CreateThreadState();
+    ThreadState* CreateThreadState(ThreadState* copy_state = nullptr);
 
 private:
     void setupMainStack(ThreadState* state);

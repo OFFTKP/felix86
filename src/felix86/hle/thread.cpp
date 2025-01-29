@@ -61,7 +61,7 @@ static std::string flags_to_string(u64 f) {
     return flags;
 }
 
-long Threads::Clone(ThreadState* current_state, clone_args* args) {
+long Threads::Clone(ThreadState* current_state, clone_args* args, bool clone3) {
     std::string sflags = flags_to_string(args->flags);
     STRACE("clone({%s}, %llx, %llx, %llx, %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
 
@@ -73,8 +73,14 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         return -EINVAL;
     }
 
-    ThreadState* new_state = g_emulator->CreateThreadState();
-    new_state->gprs[X86_REF_RSP] = args->stack;
+    ThreadState* new_state = g_emulator->CreateThreadState(current_state);
+
+    if (clone3) {
+        new_state->gprs[X86_REF_RSP] = args->stack + args->stack_size;
+    } else {
+        new_state->gprs[X86_REF_RSP] = args->stack;
+    }
+
     new_state->rip = current_state->gprs[X86_REF_RCX]; // rip after syscall is stored to rcx when syscall is called
 
     if (args->flags & CLONE_SETTLS) {
@@ -93,7 +99,10 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         new_state->signal_handlers = std::make_shared<SignalHandlerTable>(*current_state->signal_handlers);
     }
 
-    args->stack = (u64)AllocateStack();
+    auto [stack, stack_size] = AllocateStack();
+
+    args->stack = (u64)stack - stack_size;
+    args->stack_size = stack_size;
 
     long result = syscall(SYS_clone3, args, sizeof(clone_args));
 
@@ -112,18 +121,18 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     return result;
 }
 
-u8* Threads::AllocateStack(size_t size) {
+std::pair<u8*, size_t> Threads::AllocateStack(size_t size) {
     struct rlimit stack_limit = {0};
     if (getrlimit(RLIMIT_STACK, &stack_limit) == -1) {
         ERROR("Failed to get stack size limit");
     }
 
-    u64 stack_size = size == 0 ? stack_limit.rlim_cur : size;
+    u64 stack_size = stack_limit.rlim_cur;
     if (stack_size == RLIM_INFINITY) {
         stack_size = 8 * 1024 * 1024;
     }
 
-    u64 max_stack_size = stack_limit.rlim_max;
+    u64 max_stack_size = size == 0 ? stack_limit.rlim_max : size;
     if (max_stack_size == RLIM_INFINITY) {
         max_stack_size = 128 * 1024 * 1024;
     }
@@ -145,5 +154,5 @@ u8* Threads::AllocateStack(size_t size) {
     stack_pointer += stack_size;
     LOG("Stack pointer at %p", stack_pointer);
 
-    return stack_pointer;
+    return {stack_pointer, max_stack_size};
 }

@@ -243,10 +243,35 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     return function;
 }
 
-ThreadState* Emulator::CreateThreadState() {
+ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
     thread_states.push_back(ThreadState{});
 
     ThreadState* thread_state = &thread_states.back();
+
+    if (copy_state) {
+        for (int i = 0; i < sizeof(thread_state->gprs) / sizeof(thread_state->gprs[0]); i++) {
+            thread_state->gprs[i] = copy_state->gprs[i];
+        }
+
+        for (int i = 0; i < sizeof(thread_state->xmm) / sizeof(thread_state->xmm[0]); i++) {
+            thread_state->xmm[i] = copy_state->xmm[i];
+        }
+
+        for (int i = 0; i < sizeof(thread_state->fp) / sizeof(thread_state->fp[0]); i++) {
+            thread_state->fp[i] = copy_state->fp[i];
+        }
+
+        thread_state->cf = copy_state->cf;
+        thread_state->zf = copy_state->zf;
+        thread_state->sf = copy_state->sf;
+        thread_state->of = copy_state->of;
+        thread_state->pf = copy_state->pf;
+        thread_state->af = copy_state->af;
+
+        thread_state->fsbase = copy_state->fsbase;
+        thread_state->gsbase = copy_state->gsbase;
+    }
+
     thread_state->syscall_handler = (u64)felix86_syscall;
     thread_state->cpuid_handler = (u64)felix86_cpuid;
     thread_state->rdtsc_handler = (u64)felix86_rdtsc;
