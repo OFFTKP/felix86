@@ -662,13 +662,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
 
-        long result = Threads::Clone3(state, &args);
-
-        if (result != 0) { // Parent
-            ERROR("parent");
-        }
-
-        ERROR("child");
+        result = Threads::Clone3(state, &args);
         break;
     }
     case felix86_x86_64_clone: {

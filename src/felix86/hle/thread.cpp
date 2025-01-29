@@ -59,7 +59,7 @@ static std::string flags_to_string(u64 f) {
 }
 
 long Threads::Clone3(ThreadState* current_state, clone_args* args) {
-    exit(1);
+    return Clone(current_state, args);
 }
 
 long Threads::Clone(ThreadState* current_state, clone_args* args) {
