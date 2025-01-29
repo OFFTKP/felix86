@@ -101,12 +101,14 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         new_state->signal_handlers = std::make_shared<SignalHandlerTable>(*current_state->signal_handlers);
     }
 
-    args->stack = 0;
-    args->stack_size = 0;
-
-    void* my_stack = malloc(1024 * 1024);
-
-    long result = clone((int (*)(void*))start_thread_wrapper, my_stack, args->flags, new_state);
+    bool has_stack = args->stack != 0;
+    long result;
+    if (has_stack) {
+        void* my_stack = malloc(1024 * 1024);
+        result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, args->flags, new_state);
+    } else {
+        result = clone((int (*)(void*))start_thread_wrapper, nullptr, args->flags, new_state);
+    }
 
     return result;
 }
