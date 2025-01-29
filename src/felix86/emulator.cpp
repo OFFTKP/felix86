@@ -292,6 +292,6 @@ ThreadState* Emulator::GetCurrentThreadState() {
 }
 
 void Emulator::SetCurrentThreadState(ThreadState* state) {
-    printf("Setting state for thread %lx -> %p", pthread_self(), state);
+    printf("Setting state for thread %lx %lx -> %p\n", gettid(), getpid(), state);
     pthread_setspecific(thread_state_key, state);
 }
