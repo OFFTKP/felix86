@@ -65,10 +65,6 @@ struct Emulator {
 
     static void* CompileNext(Emulator* emulator, ThreadState* state);
 
-    static void CompileFunction(Emulator* emulator, u64 rip) {
-        emulator->compileFunction(rip);
-    }
-
     std::pair<void*, size_t> GetAuxv() {
         return {auxv_base, auxv_size};
     }
@@ -85,8 +81,6 @@ struct Emulator {
 
 private:
     void setupMainStack(ThreadState* state);
-
-    void* compileFunction(u64 rip);
 
     std::mutex compilation_mutex; // to synchronize compilation and function lookup
     std::list<ThreadState> thread_states;

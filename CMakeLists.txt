@@ -20,6 +20,9 @@ add_subdirectory(external/fmt)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch")
 
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
+
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     # GDB decides to tell you the perfectly fine vector instructions don't exist if you
     # don't specify the ISA here

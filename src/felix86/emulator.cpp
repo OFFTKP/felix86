@@ -196,10 +196,6 @@ void Emulator::setupMainStack(ThreadState* state) {
     state->SetGpr(X86_REF_RSP, rsp);
 }
 
-void* Emulator::compileFunction(u64 rip) {
-    return recompiler.compile(rip);
-}
-
 void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     std::chrono::high_resolution_clock::time_point start;
     if (g_profile_compilation) {
