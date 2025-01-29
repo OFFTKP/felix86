@@ -1,5 +1,6 @@
 #include <chrono>
 #include <csignal>
+#include <mutex>
 #include <vector>
 #include <elf.h>
 #include <fmt/base.h>
@@ -287,11 +288,13 @@ void Emulator::StartThread(ThreadState* state) {
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }
 
-ThreadState* Emulator::GetCurrentThreadState() {
-    return (ThreadState*)pthread_getspecific(thread_state_key);
+ThreadState* Emulator::GetThreadState() {
+    std::unique_lock<std::mutex> tid_to_state_mutex;
+    ASSERT(tid_to_state.find(gettid()) != tid_to_state.end());
+    return tid_to_state[gettid()];
 }
 
-void Emulator::SetCurrentThreadState(ThreadState* state) {
-    printf("Setting state for thread %lx %lx -> %p\n", gettid(), getpid(), state);
-    pthread_setspecific(thread_state_key, state);
+void Emulator::RegisterThreadState(ThreadState* state) {
+    ASSERT(tid_to_state.find(gettid()) == tid_to_state.end());
+    tid_to_state[gettid()] = state;
 }

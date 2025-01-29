@@ -21,7 +21,6 @@ extern u64 g_interpreter_start, g_interpreter_end;
 extern u64 g_executable_start, g_executable_end;
 extern u64 g_interpreter_base_hint;
 extern u64 g_executable_base_hint;
-extern pthread_key_t thread_state_key;
 extern const char* g_git_hash;
 extern struct Emulator* g_emulator;
 extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
