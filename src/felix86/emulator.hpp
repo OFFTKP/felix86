@@ -24,6 +24,7 @@ struct Emulator {
         fs.LoadRootFS(config.rootfs_path);
         fs.LoadExecutable(config.executable_path);
         ThreadState* main_state = CreateThreadState();
+        SetCurrentThreadState(main_state);
         setupMainStack(main_state);
         main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
         main_state->brk_current_address = fs.GetBRK();
@@ -33,6 +34,7 @@ struct Emulator {
     Emulator(const TestConfig& config) : recompiler(*this) {
         g_emulator = this;
         ThreadState* main_state = CreateThreadState();
+        SetCurrentThreadState(main_state);
         main_state->SetRip((u64)config.entrypoint);
         testing = true;
     }
@@ -76,6 +78,10 @@ struct Emulator {
     }
 
     ThreadState* CreateThreadState(ThreadState* copy_state = nullptr);
+
+    ThreadState* GetCurrentThreadState();
+
+    void SetCurrentThreadState(ThreadState* state);
 
 private:
     void setupMainStack(ThreadState* state);

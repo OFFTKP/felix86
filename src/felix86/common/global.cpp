@@ -16,13 +16,13 @@ bool g_testing = false;
 bool g_strace = false;
 bool g_extensions_manually_specified = false;
 bool g_profile_compilation = false;
+pthread_key_t thread_state_key = 0;
 u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
 
 int g_output_fd = 1;
 std::filesystem::path g_rootfs_path{};
-thread_local ThreadState* g_thread_state;
 u64 g_executable_base_hint = 0;
 u64 g_interpreter_base_hint = 0;
 Emulator* g_emulator = nullptr;
@@ -161,6 +161,11 @@ void initialize_globals() {
 
     if (!g_quiet && !environment.empty()) {
         LOG("Environment:%s", environment.c_str());
+    }
+
+    int res = pthread_key_create(&thread_state_key, nullptr);
+    if (res != 0) {
+        ERROR("Failed to create thread state key: %s", strerror(res));
     }
 }
 

@@ -105,7 +105,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         break;
     }
     default: {
-        if ((*g_thread_state->signal_handlers)[sig - 1].handler) {
+        ThreadState* state = g_emulator->GetCurrentThreadState();
+        if ((*state->signal_handlers)[sig - 1].handler) {
             // There's a guest signal handler for this signal.
             // If the signal happened inside the JIT code, we need to do some sort of state reconstruction at the end
             // of the guest signal handler.

@@ -24,9 +24,8 @@
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
         dprintf(g_output_fd, ANSI_COLOR_RED "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                               \
-        if (g_thread_state)                                                                                                                          \
-            dprintf(g_output_fd, ANSI_COLOR_RED "PC: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, current_rip(),                                           \
-                    MemoryMetadata::GetRegionName(current_rip()).c_str(), MemoryMetadata::GetOffset(current_rip()));                                 \
+        dprintf(g_output_fd, ANSI_COLOR_RED "PC: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, current_rip(),                                               \
+                MemoryMetadata::GetRegionName(current_rip()).c_str(), MemoryMetadata::GetOffset(current_rip()));                                     \
         fsync(g_output_fd);                                                                                                                          \
         felix86_exit(1);                                                                                                                             \
     } while (0)

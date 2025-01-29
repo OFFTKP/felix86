@@ -283,7 +283,15 @@ ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
 }
 
 void Emulator::StartThread(ThreadState* state) {
-    g_thread_state = state;
     recompiler.enterDispatcher(state);
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
+}
+
+ThreadState* Emulator::GetCurrentThreadState() {
+    return (ThreadState*)pthread_getspecific(thread_state_key);
+}
+
+void Emulator::SetCurrentThreadState(ThreadState* state) {
+    ASSERT(GetCurrentThreadState() == nullptr);
+    pthread_setspecific(thread_state_key, state);
 }

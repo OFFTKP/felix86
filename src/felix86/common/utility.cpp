@@ -1,4 +1,5 @@
 #include "felix86/common/x86.hpp"
+#include "felix86/emulator.hpp"
 #include "fmt/format.h"
 #include "utility.hpp"
 
@@ -72,7 +73,8 @@ u64 sext_if_64(u64 value, u8 size_e) {
 }
 
 u64 current_rip() {
-    return g_thread_state->rip;
+    ThreadState* state = g_emulator->GetCurrentThreadState();
+    return state->GetRip();
 }
 
 // If you don't flush the cache the code will randomly SIGILL
