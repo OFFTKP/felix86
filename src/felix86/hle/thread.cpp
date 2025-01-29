@@ -144,9 +144,9 @@ std::pair<u8*, size_t> Threads::AllocateStack(size_t size) {
     if (stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack");
     }
-    LOG("Allocated stack at %p", base);
+    VERBOSE("Allocated stack at %p", base);
     stack_pointer += stack_size;
-    LOG("Stack pointer at %p", stack_pointer);
+    VERBOSE("Stack pointer at %p", stack_pointer);
 
     return {stack_pointer, max_stack_size};
 }

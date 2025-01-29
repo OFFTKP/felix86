@@ -295,6 +295,7 @@ ThreadState* Emulator::GetThreadState() {
 }
 
 void Emulator::RegisterThreadState(ThreadState* state) {
+    std::unique_lock<std::mutex> tid_to_state_mutex;
     ASSERT(tid_to_state.find(gettid()) == tid_to_state.end());
     tid_to_state[gettid()] = state;
 }
