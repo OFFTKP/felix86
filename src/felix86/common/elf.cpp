@@ -50,7 +50,6 @@ void Elf::Load(const std::filesystem::path& path) {
     std::vector<u8> shdrtable = {};
     u64 lowest_vaddr = 0xFFFFFFFFFFFFFFFF;
     u64 highest_vaddr = 0;
-    u64 max_stack_size = 0;
 
     FILE* file = fopen(path.c_str(), "rb");
     if (!file) {
