@@ -141,9 +141,9 @@ u8* Threads::AllocateStack(size_t size) {
     if (stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack");
     }
-    VERBOSE("Allocated stack at %p", base);
+    LOG("Allocated stack at %p", base);
     stack_pointer += stack_size;
-    VERBOSE("Stack pointer at %p", stack_pointer);
+    LOG("Stack pointer at %p", stack_pointer);
 
     return stack_pointer;
 }
