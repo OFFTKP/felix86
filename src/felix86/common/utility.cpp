@@ -73,7 +73,7 @@ u64 sext_if_64(u64 value, u8 size_e) {
 }
 
 u64 current_rip() {
-    ThreadState* state = g_emulator->GetCurrentThreadState();
+    ThreadState* state = g_emulator->GetThreadState();
     return state->GetRip();
 }
 

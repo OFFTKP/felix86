@@ -89,7 +89,7 @@ void felix86_syscall(ThreadState* state) {
 
     Filesystem& fs = g_emulator->GetFilesystem();
 
-    ASSERT(state == g_emulator->GetCurrentThreadState()); // TODO: remove me
+    ASSERT(state == g_emulator->GetThreadState()); // TODO: remove me
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
