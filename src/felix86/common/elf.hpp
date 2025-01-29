@@ -59,7 +59,6 @@ private:
     std::vector<std::pair<u8*, u64>> executable_segments{};
     u64 entry = 0;
     std::filesystem::path interpreter{};
-    u8* stack_base = nullptr;
     u8* stack_pointer = nullptr;
     u8* brk_base = nullptr;
 

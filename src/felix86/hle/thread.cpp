@@ -1,3 +1,6 @@
+#include <sys/mman.h>
+#include <sys/personality.h>
+#include <sys/resource.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
@@ -58,10 +61,6 @@ static std::string flags_to_string(u64 f) {
     return flags;
 }
 
-long Threads::Clone3(ThreadState* current_state, clone_args* args) {
-    return Clone(current_state, args);
-}
-
 long Threads::Clone(ThreadState* current_state, clone_args* args) {
     std::string sflags = flags_to_string(args->flags);
     STRACE("clone({%s}, %llx, %llx, %llx, %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
@@ -94,13 +93,57 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         new_state->signal_handlers = std::make_shared<SignalHandlerTable>(*current_state->signal_handlers);
     }
 
-    long result = syscall(SYS_clone, args->flags, args->stack, args->parent_tid, args->child_tid, 0);
+    args->stack = (u64)AllocateStack();
+
+    long result = syscall(SYS_clone3, args, sizeof(clone_args));
 
     if (result == 0) {
+        if (args->flags & CLONE_THREAD) {
+            pthread_setname_np(pthread_self(), "ChildThread");
+        } else {
+            pthread_setname_np(pthread_self(), "ChildProcess");
+        }
+
         // Start the child at the instruction after the syscall
         g_emulator->StartThread(new_state);
         UNREACHABLE();
     }
 
     return result;
+}
+
+u8* Threads::AllocateStack(size_t size) {
+    struct rlimit stack_limit = {0};
+    if (getrlimit(RLIMIT_STACK, &stack_limit) == -1) {
+        ERROR("Failed to get stack size limit");
+    }
+
+    u64 stack_size = size == 0 ? stack_limit.rlim_cur : size;
+    if (stack_size == RLIM_INFINITY) {
+        stack_size = 8 * 1024 * 1024;
+    }
+
+    u64 max_stack_size = stack_limit.rlim_max;
+    if (max_stack_size == RLIM_INFINITY) {
+        max_stack_size = 128 * 1024 * 1024;
+    }
+
+    u64 stack_hint = 0x7FFFFFFFF000 - max_stack_size;
+
+    u8* base =
+        (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+    if (base == MAP_FAILED) {
+        ERROR("Failed to allocate stack");
+    }
+
+    u8* stack_pointer = (u8*)mmap(base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
+                                  MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
+    if (stack_pointer == MAP_FAILED) {
+        ERROR("Failed to allocate stack");
+    }
+    VERBOSE("Allocated stack at %p", base);
+    stack_pointer += stack_size;
+    VERBOSE("Stack pointer at %p", stack_pointer);
+
+    return stack_pointer;
 }

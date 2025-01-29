@@ -10,6 +10,7 @@
 #include "felix86/common/elf.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/hle/thread.hpp"
 
 // Not a full ELF implementation, but one that suits our needs as a loader of
 // both the executable and the dynamic linker, and one that only supports x86_64
@@ -24,10 +25,6 @@ Elf::Elf(bool is_interpreter) : is_interpreter(is_interpreter) {}
 Elf::~Elf() {
     if (program) {
         munmap(program, 0);
-    }
-
-    if (stack_base) {
-        munmap(stack_base, 0);
     }
 
     if (stack_pointer) {
@@ -167,39 +164,7 @@ void Elf::Load(const std::filesystem::path& path) {
         }
     }
 
-    // Allocate the stack first using host stack limits in case anyone wants to
-    // configure it
-    struct rlimit stack_limit = {0};
-    if (getrlimit(RLIMIT_STACK, &stack_limit) == -1) {
-        ERROR("Failed to get stack size limit");
-    }
-
-    u64 stack_size = stack_limit.rlim_cur;
-    if (stack_size == RLIM_INFINITY) {
-        stack_size = 8 * 1024 * 1024;
-    }
-
-    max_stack_size = stack_limit.rlim_max;
-    if (max_stack_size == RLIM_INFINITY) {
-        max_stack_size = 128 * 1024 * 1024;
-    }
-
-    u64 stack_hint = 0x7FFFFFFFF000 - max_stack_size;
-
-    stack_base =
-        (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
-    if (stack_base == MAP_FAILED) {
-        ERROR("Failed to allocate stack for ELF file %s", path.c_str());
-    }
-
-    stack_pointer = (u8*)mmap(stack_base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
-                              MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
-    if (stack_pointer == MAP_FAILED) {
-        ERROR("Failed to allocate stack for ELF file %s", path.c_str());
-    }
-    VERBOSE("Allocated stack at %p", stack_base);
-    stack_pointer += stack_size;
-    VERBOSE("Stack pointer at %p", stack_pointer);
+    stack_pointer = (u8*)Threads::AllocateStack();
 
     u64 base_address = 0;
     if (ehdr.e_type == ET_DYN) {

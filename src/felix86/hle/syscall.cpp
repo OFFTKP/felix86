@@ -662,7 +662,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
 
-        result = Threads::Clone3(state, &args);
+        result = Threads::Clone(state, &args);
         break;
     }
     case felix86_x86_64_clone: {
