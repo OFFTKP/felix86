@@ -73,8 +73,9 @@ u64 sext_if_64(u64 value, u8 size_e) {
 }
 
 u64 current_rip() {
-    ThreadState* state = g_emulator->GetThreadState();
-    return state->GetRip();
+    // ThreadState* state = g_emulator->GetThreadState();
+    // return state->GetRip();
+    return 0; // FIXME
 }
 
 // If you don't flush the cache the code will randomly SIGILL
