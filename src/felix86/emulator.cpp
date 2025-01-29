@@ -292,6 +292,5 @@ ThreadState* Emulator::GetCurrentThreadState() {
 }
 
 void Emulator::SetCurrentThreadState(ThreadState* state) {
-    ASSERT(GetCurrentThreadState() == nullptr);
     pthread_setspecific(thread_state_key, state);
 }
