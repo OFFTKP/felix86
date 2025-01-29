@@ -6,6 +6,12 @@
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thread.hpp"
 
+void start_thread_wrapper(ThreadState* new_state) {
+    pthread_setname_np(pthread_self(), "ChildProcess");
+    g_emulator->StartThread(new_state);
+    UNREACHABLE();
+}
+
 #ifndef CLONE_CLEAR_SIGHAND
 #define CLONE_CLEAR_SIGHAND 0x100000000ULL
 #endif
@@ -61,7 +67,7 @@ static std::string flags_to_string(u64 f) {
     return flags;
 }
 
-long Threads::Clone(ThreadState* current_state, clone_args* args, bool clone3) {
+long Threads::Clone(ThreadState* current_state, clone_args* args) {
     std::string sflags = flags_to_string(args->flags);
     STRACE("clone({%s}, %llx, %llx, %llx, %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
 
@@ -75,12 +81,8 @@ long Threads::Clone(ThreadState* current_state, clone_args* args, bool clone3) {
 
     ThreadState* new_state = g_emulator->CreateThreadState(current_state);
 
-    if (clone3) {
-        new_state->gprs[X86_REF_RSP] = args->stack + args->stack_size;
-    } else {
-        new_state->gprs[X86_REF_RSP] = args->stack;
-    }
-
+    new_state->gprs[X86_REF_RSP] = args->stack;
+    new_state->gprs[X86_REF_RAX] = 0;                  // return value
     new_state->rip = current_state->gprs[X86_REF_RCX]; // rip after syscall is stored to rcx when syscall is called
 
     if (args->flags & CLONE_SETTLS) {
@@ -99,24 +101,12 @@ long Threads::Clone(ThreadState* current_state, clone_args* args, bool clone3) {
         new_state->signal_handlers = std::make_shared<SignalHandlerTable>(*current_state->signal_handlers);
     }
 
-    auto [stack, stack_size] = AllocateStack();
+    args->stack = 0;
+    args->stack_size = 0;
 
-    args->stack = (u64)stack - stack_size;
-    args->stack_size = stack_size;
+    void* my_stack = malloc(1024 * 1024);
 
-    long result = syscall(SYS_clone3, args, sizeof(clone_args));
-
-    if (result == 0) {
-        if (args->flags & CLONE_THREAD) {
-            pthread_setname_np(pthread_self(), "ChildThread");
-        } else {
-            pthread_setname_np(pthread_self(), "ChildProcess");
-        }
-
-        // Start the child at the instruction after the syscall
-        g_emulator->StartThread(new_state);
-        UNREACHABLE();
-    }
+    long result = clone((int (*)(void*))start_thread_wrapper, my_stack, args->flags, new_state);
 
     return result;
 }

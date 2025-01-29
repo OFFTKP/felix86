@@ -652,17 +652,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_clone3: {
-        clone_args args;
-        memset(&args, 0, sizeof(clone_args));
-        size_t size = std::min(rsi, sizeof(clone_args));
-        memcpy(&args, (void*)rdi, size);
-
-        if (args.flags & CLONE_CLEAR_SIGHAND) { // we don't support this
-            result = -EINVAL;
-            break;
-        }
-
-        result = Threads::Clone(state, &args, true);
+        result = -ENOSYS; // don't support these for now
         break;
     }
     case felix86_x86_64_clone: {
@@ -673,7 +663,7 @@ void felix86_syscall(ThreadState* state) {
         args.parent_tid = rdx;
         args.child_tid = r10;
         args.tls = r8;
-        result = Threads::Clone(state, &args, false);
+        result = Threads::Clone(state, &args);
         break;
     }
     case felix86_x86_64_wait4: {
