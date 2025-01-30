@@ -100,7 +100,6 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         new_state->signal_handlers = std::make_shared<SignalHandlerTable>(*current_state->signal_handlers);
     }
 
-    printf("signal: %d\n", args->flags & 0xFF);
     bool has_stack = args->stack != 0;
     long result;
     if (has_stack) {

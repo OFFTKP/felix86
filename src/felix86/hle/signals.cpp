@@ -67,6 +67,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             }
             as.AdvanceBuffer(cursor);
             flush_icache();
+            lock.unlock();
             break;
         }
         default: {
@@ -77,6 +78,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         break;
     }
     case SIGILL: {
+        auto lock = g_emulator->Lock();
         bool found = false;
         if (is_in_jit_code(pc)) {
             // Search to see if it is our breakpoint
