@@ -89,6 +89,8 @@ void felix86_syscall(ThreadState* state) {
 
     Filesystem& fs = g_emulator->GetFilesystem();
 
+    printf("errno at start %d\n", errno);
+
     switch (syscall_number) {
     case felix86_x86_64_brk: {
         if (rdi == 0) {
