@@ -86,7 +86,6 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     new_state->rip = current_state->gprs[X86_REF_RCX]; // rip after syscall is stored to rcx when syscall is called
 
     if (args->flags & CLONE_SETTLS) {
-        args->flags &= ~CLONE_SETTLS; // we don't want that passed to the host clone syscall
         new_state->fsbase = args->tls;
     } else if (args->tls) {
         ERROR("TLS specified but CLONE_SETTLS not set");
@@ -106,9 +105,9 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     if (has_stack) {
         void* my_stack = malloc(1024 * 1024);
         result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, args->flags, new_state, args->parent_tid, args->child_tid,
-                       args->tls);
+                       nullptr);
     } else {
-        result = clone((int (*)(void*))start_thread_wrapper, nullptr, args->flags, new_state, args->parent_tid, args->child_tid, args->tls);
+        result = clone((int (*)(void*))start_thread_wrapper, nullptr, args->flags, new_state, args->parent_tid, args->child_tid, nullptr);
     }
 
     return result;
