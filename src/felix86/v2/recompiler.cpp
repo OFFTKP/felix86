@@ -1529,8 +1529,10 @@ void Recompiler::expirePendingLinks(u64 rip) {
         // This way, until we are done modifying code, nothing can enter this area of code
         // Important to note: Only one thread compiles (and thus links) code at a time
         constexpr u32 jump_lock = 0x0000006F; // j 0x0 instruction
-        u32 old_instruction = __atomic_exchange_n(as.GetCursorPointer(), jump_lock, __ATOMIC_SEQ_CST);
+        u32 old_instruction = __atomic_exchange_n((u32*)as.GetCursorPointer(), jump_lock, __ATOMIC_SEQ_CST);
         flush_icache();
+
+        as.AdvanceBuffer(link);
 
         jumpAndLink(rip);
 
