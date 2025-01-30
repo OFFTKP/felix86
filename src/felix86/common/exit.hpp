@@ -7,6 +7,7 @@ enum ExitReason {
     EXIT_REASON_UD2 = 4,
     EXIT_REASON_TSX = 5,
     EXIT_REASON_CET = 6,
+    EXIT_REASON_EXIT_SYSCALL = 7,
 };
 
 void felix86_exit(int code);

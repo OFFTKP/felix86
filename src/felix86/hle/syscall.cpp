@@ -566,6 +566,7 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_exit: {
         STRACE("exit(%d)", (int)rdi);
+        state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
         g_emulator->CleanExit(state);
         break;
     }
@@ -643,8 +644,8 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_futex: {
-        result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
         STRACE("futex(%p, %d, %d, %p, %p, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9, (int)result);
+        result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
         break;
     }
     case felix86_x86_64_sched_getaffinity: {
