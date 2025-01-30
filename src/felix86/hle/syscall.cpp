@@ -748,7 +748,9 @@ void felix86_syscall(ThreadState* state) {
     }
     }
 
-    ASSERT(result != -1);
+    if (result < 0) {
+        result = -1;
+    }
 
     state->SetGpr(X86_REF_RAX, result);
 }
