@@ -326,7 +326,7 @@ void felix86_syscall(ThreadState* state) {
         struct stat host_stat;
         result = HOST_SYSCALL(newfstatat, rdi, path->c_str(), &host_stat, r10);
         STRACE("newfstatat(%d, %s, %p, %d) = %d", (int)rdi, path->c_str(), (void*)rdx, (int)r10, (int)result);
-        if (result != -1) {
+        if (result >= 0) {
             *guest_stat = host_stat;
         }
         break;
@@ -746,10 +746,6 @@ void felix86_syscall(ThreadState* state) {
         ERROR("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
         break;
     }
-    }
-
-    if (result < 0) {
-        result = -1;
     }
 
     state->SetGpr(X86_REF_RAX, result);
