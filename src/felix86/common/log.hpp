@@ -19,28 +19,24 @@
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
             dprintf(g_output_fd, ANSI_COLOR_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
-            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
         dprintf(g_output_fd, ANSI_COLOR_RED "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                               \
         dump_states();                                                                                                                               \
-        fsync(g_output_fd);                                                                                                                          \
         felix86_exit(1);                                                                                                                             \
     } while (0)
 #define WARN(format, ...)                                                                                                                            \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
             dprintf(g_output_fd, ANSI_COLOR_YELLOW format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                     \
-            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)
 #define VERBOSE(format, ...)                                                                                                                         \
     do {                                                                                                                                             \
         if (g_verbose && !g_quiet) {                                                                                                                 \
             dprintf(g_output_fd, ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                       \
-            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)
 
@@ -48,8 +44,6 @@
     do {                                                                                                                                             \
         if (g_strace && !g_quiet) {                                                                                                                  \
             dprintf(g_output_fd, ANSI_COLOR_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
-            int res = fsync(g_output_fd);                                                                                                            \
-            ASSERT(res != -1);                                                                                                                       \
         }                                                                                                                                            \
     } while (0)
 
@@ -57,14 +51,12 @@
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
             dprintf(g_output_fd, ANSI_COLOR_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                      \
-            fsync(g_output_fd);                                                                                                                      \
         }                                                                                                                                            \
     } while (0)
 
 #define PLAIN(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
         dprintf(g_output_fd, format "\n", ##__VA_ARGS__);                                                                                            \
-        fsync(g_output_fd);                                                                                                                          \
     } while (0)
 
 #define UNREACHABLE() ERROR("Unreachable code hit")
