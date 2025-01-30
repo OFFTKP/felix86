@@ -1539,7 +1539,7 @@ void Recompiler::expirePendingLinks(u64 rip) {
         as.RewindBuffer(link - 4);
 
         // Block linking is done, replace the "lock" jump with the old instruction
-        u32 jump_instruction = __atomic_exchange_n(as.GetCursorPointer(), old_instruction, __ATOMIC_SEQ_CST);
+        u32 jump_instruction = __atomic_exchange_n((u32*)as.GetCursorPointer(), old_instruction, __ATOMIC_SEQ_CST);
         flush_icache();
 
         ASSERT(jump_instruction == jump_lock);
