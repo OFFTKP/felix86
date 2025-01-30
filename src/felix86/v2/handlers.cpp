@@ -4335,3 +4335,11 @@ FAST_HANDLE(FNSTCW) {
 FAST_HANDLE(FLDCW) {
     WARN("FLDCW is not implemented, ignoring");
 }
+
+FAST_HANDLE(STMXCSR) {
+    WARN("STMXCSR is not implemented, ignoring");
+}
+
+FAST_HANDLE(LDMXCSR) {
+    WARN("LDMXCSR is not implemented, ignoring");
+}

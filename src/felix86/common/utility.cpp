@@ -159,6 +159,10 @@ void felix86_packuswb(u8* dst, u8* src) {
 }
 
 void dump_states() {
+    if (!g_emulator) {
+        return;
+    }
+
     auto& states = g_emulator->GetStates();
     int i = 0;
     for (auto& state : states) {
