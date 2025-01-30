@@ -196,7 +196,7 @@ void Emulator::setupMainStack(ThreadState* state) {
     state->SetGpr(X86_REF_RSP, rsp);
 }
 
-void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
+void* Emulator::CompileNext(ThreadState* thread_state) {
     std::chrono::high_resolution_clock::time_point start;
     if (g_profile_compilation) {
         g_dispatcher_exit_count++;
@@ -214,8 +214,8 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     {
         // Mutex needs to be unlocked before the thread is dispatched
         // Volatile so we can access it in gdb if needed
-        auto lock = emulator->Lock();
-        function = emulator->recompiler.compile(thread_state->GetRip());
+        auto lock = g_emulator->Lock();
+        function = g_emulator->recompiler.compile(thread_state->GetRip());
     }
 
     sigemptyset(&mask);

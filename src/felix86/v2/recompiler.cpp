@@ -84,12 +84,11 @@ void Recompiler::emitDispatcher() {
     Label exit_dispatcher_label;
 
     // If it's not zero it has some exit reason, exit the dispatcher
-    as.LBU(a0, offsetof(ThreadState, exit_reason), threadStatePointer());
-    as.BNEZ(a0, &exit_dispatcher_label);
-    as.LI(a0, (u64)&emulator);
-    as.MV(a1, threadStatePointer());
-    as.LI(a2, (u64)Emulator::CompileNext);
-    as.JALR(a2); // returns the function pointer to the compiled function
+    as.MV(a0, threadStatePointer());
+    as.LBU(t0, offsetof(ThreadState, exit_reason), threadStatePointer());
+    as.BNEZ(t0, &exit_dispatcher_label);
+    as.LI(t0, (u64)Emulator::CompileNext);
+    as.JALR(t0); // returns the function pointer to the compiled function
     as.JR(a0);   // jump to the compiled function
 
     as.Bind(&exit_dispatcher_label);

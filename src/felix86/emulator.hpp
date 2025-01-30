@@ -65,7 +65,7 @@ struct Emulator {
 
     void StartThread(ThreadState* state);
 
-    static void* CompileNext(Emulator* emulator, ThreadState* state);
+    static void* CompileNext(ThreadState* state);
 
     std::pair<void*, size_t> GetAuxv() {
         return {auxv_base, auxv_size};
