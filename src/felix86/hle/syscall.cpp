@@ -282,16 +282,6 @@ void felix86_syscall(ThreadState* state) {
         STRACE("recvmmsg(%d, %p, %d, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
         break;
     }
-    case felix86_x86_64_sendmsg: {
-        result = HOST_SYSCALL(sendmsg, rdi, (struct msghdr*)rsi, rdx);
-        STRACE("sendmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
-        break;
-    }
-    case felix86_x86_64_recvmsg: {
-        result = HOST_SYSCALL(recvmsg, rdi, (struct msghdr*)rsi, rdx);
-        STRACE("recvmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
-        break;
-    }
     case felix86_x86_64_setsockopt: {
         result = HOST_SYSCALL(setsockopt, rdi, rsi, rdx, r10, r8);
         STRACE("setsockopt(%d, %d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
