@@ -105,10 +105,10 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     long result;
     if (has_stack) {
         void* my_stack = malloc(1024 * 1024);
-        result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, args->flags, new_state, args->parent_tid, args->child_tid,
-                       args->tls);
+        result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, args->flags, new_state, args->parent_tid, args->tls,
+                       args->child_tid);
     } else {
-        result = clone((int (*)(void*))start_thread_wrapper, nullptr, args->flags, new_state, args->parent_tid, args->child_tid, args->tls);
+        result = clone((int (*)(void*))start_thread_wrapper, nullptr, args->flags, new_state, args->parent_tid, args->tls, args->child_tid);
     }
 
     return result;
