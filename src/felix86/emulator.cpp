@@ -241,9 +241,11 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 }
 
 ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
+    std::unique_lock<std::mutex> lock(mutex);
     thread_states.push_back(ThreadState{});
 
     ThreadState* thread_state = &thread_states.back();
+    lock.unlock();
 
     if (copy_state) {
         for (int i = 0; i < sizeof(thread_state->gprs) / sizeof(thread_state->gprs[0]); i++) {
@@ -277,6 +279,17 @@ ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
     thread_state->divu128_handler = (u64)felix86_divu128;
 
     return thread_state;
+}
+
+void Emulator::RemoveState(ThreadState* state) {
+    std::unique_lock<std::mutex> lock(mutex);
+    for (auto it = thread_states.begin(); it != thread_states.end(); it++) {
+        if (&*it == state) {
+            thread_states.erase(it);
+            return;
+        }
+    }
+    ERROR("State not found");
 }
 
 void Emulator::StartThread(ThreadState* state) {

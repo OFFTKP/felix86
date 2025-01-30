@@ -77,6 +77,8 @@ struct Emulator {
 
     ThreadState* CreateThreadState(ThreadState* copy_state = nullptr);
 
+    void RemoveState(ThreadState* state);
+
     std::unique_lock<std::mutex> Lock();
 
 private:
