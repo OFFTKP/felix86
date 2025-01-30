@@ -71,10 +71,10 @@ void Recompiler::emitDispatcher() {
     as.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
 
     // Save the current register state of callee-saved registers and return address
-    as.ADDI(sp, sp, -((int)saved_gprs.size() * 8));
-    for (size_t i = 0; i < saved_gprs.size(); i++) {
-        as.SD(saved_gprs[i], i * sizeof(u64), sp);
-    }
+    // as.ADDI(sp, sp, -((int)saved_gprs.size() * 8));
+    // for (size_t i = 0; i < saved_gprs.size(); i++) {
+    //     as.SD(saved_gprs[i], i * sizeof(u64), sp);
+    // }
 
     as.MV(threadStatePointer(), a0);
 
@@ -98,6 +98,8 @@ void Recompiler::emitDispatcher() {
     }
 
     as.ADDI(sp, sp, (int)saved_gprs.size() * 8);
+
+    as.GetCodeBuffer().Emit32(0);
 
     as.JR(ra);
 
