@@ -96,7 +96,7 @@ void felix86_syscall(ThreadState* state) {
             return *this;
         }
 
-        operator unsigned long() const {
+        operator ssize_t() const {
             return inner;
         }
 
@@ -748,10 +748,7 @@ void felix86_syscall(ThreadState* state) {
     }
     }
 
-    if (result == -1) {
-        result = -errno;
-        STRACE("errno = %d", errno);
-    }
+    ASSERT(result != -1);
 
     state->SetGpr(X86_REF_RAX, result);
 }
