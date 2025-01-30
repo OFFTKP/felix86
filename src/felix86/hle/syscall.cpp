@@ -676,7 +676,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_wait4: {
-        STRACE("wait4(%d, %p, %d, %p) = %d", (int)rdi, (void*)rsi, (int)rdx, (void*)r10, (int)result);
+        STRACE("wait4(%d, %p, %d, %p)", (int)rdi, (void*)rsi, (int)rdx, (void*)r10);
         result = HOST_SYSCALL(wait4, rdi, rsi, rdx, r10);
         break;
     }
