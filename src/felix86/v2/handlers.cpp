@@ -2991,7 +2991,6 @@ FAST_HANDLE(BT) {
 }
 
 FAST_HANDLE(BTS) {
-    ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR result = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
