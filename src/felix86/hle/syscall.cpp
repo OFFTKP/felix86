@@ -267,20 +267,8 @@ void felix86_syscall(ThreadState* state) {
         struct stat host_stat;
         result = HOST_SYSCALL(fstat, rdi, &host_stat);
         STRACE("fstat(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
-        if (result != -1) {
+        if (result >= 0) {
             *guest_stat = host_stat;
-            STRACE("st_dev : %ld", guest_stat->st_dev);
-            STRACE("st_ino : %ld", guest_stat->st_ino);
-            STRACE("st_mode : %d", guest_stat->st_mode);
-            STRACE("st_nlink : %ld", guest_stat->st_nlink);
-            STRACE("st_uid : %d", guest_stat->st_uid);
-            STRACE("st_gid : %d", guest_stat->st_gid);
-            STRACE("st_rdev : %ld", guest_stat->st_rdev);
-            STRACE("st_size : %ld", guest_stat->st_size);
-            STRACE("st_blksize : %ld", guest_stat->st_blksize);
-            STRACE("st_blocks : %ld", guest_stat->st_blocks);
-        } else {
-            STRACE("fstat failed: %d", errno);
         }
         break;
     }

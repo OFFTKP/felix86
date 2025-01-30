@@ -93,7 +93,12 @@ FAST_HANDLE(SUB) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.SLTU(cf, dst, src);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD) {
+            rec.zext(cf, src, size);
+            AS.SLTU(cf, dst, cf);
+        } else {
+            AS.SLTU(cf, dst, src);
+        }
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -180,7 +185,12 @@ FAST_HANDLE(SBB) {
         biscuit::GPR cf = rec.flagWR(X86_REF_CF);
         rec.zext(scratch, result, size);
         AS.SLTU(scratch, scratch, cf);
-        AS.SLTU(cf, dst, src);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD) {
+            rec.zext(cf, src, size);
+            AS.SLTU(cf, dst, cf);
+        } else {
+            AS.SLTU(cf, dst, src);
+        }
         AS.OR(cf, cf, scratch);
         rec.popScratch();
     }
@@ -283,7 +293,12 @@ FAST_HANDLE(CMP) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.SLTU(cf, dst, src);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD) {
+            rec.zext(cf, src, size);
+            AS.SLTU(cf, dst, cf);
+        } else {
+            AS.SLTU(cf, dst, src);
+        }
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {

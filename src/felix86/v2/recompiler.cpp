@@ -1624,11 +1624,8 @@ biscuit::GPR Recompiler::getCond(int cond) {
     }
     case 7: {
         biscuit::GPR cond = scratch();
-        biscuit::GPR temp = scratch();
-        as.XORI(cond, flag(X86_REF_CF), 1);
-        as.XORI(temp, flag(X86_REF_ZF), 1);
-        as.AND(cond, cond, temp);
-        popScratch();
+        as.OR(cond, flag(X86_REF_CF), flag(X86_REF_ZF));
+        as.XORI(cond, cond, 1);
         return cond;
     }
     case 8:
