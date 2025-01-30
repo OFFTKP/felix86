@@ -29,7 +29,7 @@ struct VectorMemoryAccess {
 };
 
 struct Recompiler {
-    Recompiler(Emulator& emulator);
+    Recompiler();
     ~Recompiler();
     Recompiler(const Recompiler&) = delete;
     Recompiler& operator=(const Recompiler&) = delete;
@@ -210,8 +210,6 @@ private:
     ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     void expirePendingLinks(u64 rip);
-
-    Emulator& emulator;
 
     u8* code_cache{};
     biscuit::Assembler as{};

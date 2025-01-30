@@ -42,7 +42,7 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     }
 }
 
-Recompiler::Recompiler(Emulator& emulator) : emulator(emulator), code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
+Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
     for (int i = 0; i < 16; i++) {
         metadata[i].reg = (x86_ref_e)(X86_REF_RAX + i);
         metadata[i + 16 + 5].reg = (x86_ref_e)(X86_REF_XMM0 + i);
@@ -119,9 +119,6 @@ void* Recompiler::compile(u64 rip) {
     compileSequence(rip);
 
     expirePendingLinks(rip);
-
-    // Make code visible to instruction fetches.
-    flush_icache();
 
     return start;
 }
@@ -209,6 +206,8 @@ void Recompiler::compileSequence(u64 rip) {
     }
 
     current_meta = nullptr;
+
+    flush_icache();
 }
 
 biscuit::GPR Recompiler::allocatedGPR(x86_ref_e reg) {
@@ -1432,6 +1431,7 @@ biscuit::GPR Recompiler::getRip() {
 }
 
 void Recompiler::jumpAndLink(u64 rip) {
+    as.NOP(); // Add a NOP which may be replaced with a self-jump to "lock" access to the code ahead
     if (!blockExists(rip)) {
         biscuit::GPR address = scratch();
         // 3 instructions of space to be overwritten with:
@@ -1524,8 +1524,23 @@ void Recompiler::expirePendingLinks(u64 rip) {
     for (u64 link : links) {
         auto current_offset = as.GetCodeBuffer().GetCursorOffset();
 
-        as.RewindBuffer(link);
+        as.RewindBuffer(link - 4);
+
+        // First, insert an instruction that just jumps in place and flush the cache
+        // This way, until we are done modifying code, nothing can enter this area of code
+        Label me;
+        as.Bind(&me);
+        as.J(&me);
+        flush_icache();
+
         jumpAndLink(rip);
+
+        as.RewindBuffer(link - 4);
+
+        // Block linking is done, replace the "lock" jump with a nop
+        as.NOP();
+        flush_icache();
+
         as.AdvanceBuffer(current_offset);
     }
 

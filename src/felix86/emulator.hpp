@@ -19,7 +19,7 @@ struct TestConfig {
 };
 
 struct Emulator {
-    Emulator(const Config& config) : config(config), recompiler(*this) {
+    Emulator(const Config& config) : config(config), recompiler() {
         g_emulator = this;
         fs.LoadRootFS(config.rootfs_path);
         fs.LoadExecutable(config.executable_path);
@@ -30,7 +30,7 @@ struct Emulator {
         main_state->SetRip((u64)fs.GetEntrypoint());
     }
 
-    Emulator(const TestConfig& config) : recompiler(*this) {
+    Emulator(const TestConfig& config) : recompiler() {
         g_emulator = this;
         ThreadState* main_state = CreateThreadState();
         main_state->SetRip((u64)config.entrypoint);
