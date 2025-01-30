@@ -214,7 +214,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     {
         // Mutex needs to be unlocked before the thread is dispatched
         // Volatile so we can access it in gdb if needed
-        std::lock_guard<std::mutex> lock(emulator->mutex);
+        auto lock = emulator->Lock();
         function = emulator->recompiler.compile(thread_state->GetRip());
     }
 
@@ -241,11 +241,10 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
 }
 
 ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
-    std::unique_lock<std::mutex> lock(mutex);
+    auto lock = Lock();
     thread_states.push_back(ThreadState{});
 
     ThreadState* thread_state = &thread_states.back();
-    lock.unlock();
 
     if (copy_state) {
         for (int i = 0; i < sizeof(thread_state->gprs) / sizeof(thread_state->gprs[0]); i++) {
@@ -282,7 +281,7 @@ ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
 }
 
 void Emulator::RemoveState(ThreadState* state) {
-    std::unique_lock<std::mutex> lock(mutex);
+    auto lock = Lock();
     for (auto it = thread_states.begin(); it != thread_states.end(); it++) {
         if (&*it == state) {
             thread_states.erase(it);
@@ -297,8 +296,8 @@ void Emulator::StartThread(ThreadState* state) {
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }
 
-std::unique_lock<std::mutex> Emulator::Lock() {
-    return std::unique_lock<std::mutex>(mutex);
+std::unique_lock<std::recursive_mutex> Emulator::Lock() {
+    return std::unique_lock<std::recursive_mutex>(mutex);
 }
 
 void Emulator::CleanExit(ThreadState* state) {

@@ -81,15 +81,13 @@ struct Emulator {
 
     void CleanExit(ThreadState* state);
 
-    std::unique_lock<std::mutex> Lock();
+    std::unique_lock<std::recursive_mutex> Lock();
 
 private:
     void setupMainStack(ThreadState* state);
 
-    std::mutex mutex; // to synchronize compilation and function lookup
+    std::recursive_mutex mutex; // to synchronize compilation and function lookup
     std::list<ThreadState> thread_states;
-    std::mutex tid_to_state_mutex;
-    std::unordered_map<u64, ThreadState*> tid_to_state;
     Config config;
     Filesystem fs;
     Recompiler recompiler;
