@@ -80,6 +80,8 @@ struct Recompiler {
 
     void enterDispatcher(ThreadState* state);
 
+    void exitDispatcher(ThreadState* state);
+
     void* getCompileNext();
 
     bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
@@ -219,6 +221,8 @@ private:
     ZydisDecodedOperand operands[10]{};
 
     void (*enter_dispatcher)(ThreadState*){};
+
+    void (*exit_dispatcher)(ThreadState*){};
 
     void* compile_next_handler{};
 

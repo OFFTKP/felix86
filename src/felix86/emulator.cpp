@@ -300,3 +300,7 @@ void Emulator::StartThread(ThreadState* state) {
 std::unique_lock<std::mutex> Emulator::Lock() {
     return std::unique_lock<std::mutex>(mutex);
 }
+
+void Emulator::CleanExit(ThreadState* state) {
+    recompiler.exitDispatcher(state);
+}

@@ -109,6 +109,8 @@ struct ThreadState {
 
     u8 exit_reason{};
 
+    std::array<u64, 16> saved_host_gprs;
+
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
             ERROR("Invalid GPR reference: %d", ref);

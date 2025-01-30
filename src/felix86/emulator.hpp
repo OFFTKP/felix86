@@ -79,6 +79,8 @@ struct Emulator {
 
     void RemoveState(ThreadState* state);
 
+    void CleanExit(ThreadState* state);
+
     std::unique_lock<std::mutex> Lock();
 
 private:

@@ -71,10 +71,11 @@ void Recompiler::emitDispatcher() {
     as.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
 
     // Save the current register state of callee-saved registers and return address
-    // as.ADDI(sp, sp, -((int)saved_gprs.size() * 8));
-    // for (size_t i = 0; i < saved_gprs.size(); i++) {
-    //     as.SD(saved_gprs[i], i * sizeof(u64), sp);
-    // }
+    static_assert(sizeof(ThreadState::saved_host_gprs) == saved_gprs.size() * 8);
+    as.ADDI(t0, a0, offsetof(ThreadState, saved_host_gprs));
+    for (size_t i = 0; i < saved_gprs.size(); i++) {
+        as.SD(saved_gprs[i], i * sizeof(u64), t0);
+    }
 
     as.MV(threadStatePointer(), a0);
 
@@ -93,13 +94,12 @@ void Recompiler::emitDispatcher() {
 
     as.Bind(&exit_dispatcher_label);
 
+    exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();
+
+    as.ADDI(t0, a0, offsetof(ThreadState, saved_host_gprs));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
-        as.LD(saved_gprs[i], i * sizeof(u64), sp);
+        as.LD(saved_gprs[i], i * sizeof(u64), t0);
     }
-
-    as.ADDI(sp, sp, (int)saved_gprs.size() * 8);
-
-    as.GetCodeBuffer().Emit32(0);
 
     as.JR(ra);
 
@@ -1241,6 +1241,10 @@ void Recompiler::backToDispatcher() {
 
 void Recompiler::enterDispatcher(ThreadState* state) {
     enter_dispatcher(state);
+}
+
+void Recompiler::exitDispatcher(ThreadState* state) {
+    exit_dispatcher(state);
 }
 
 void* Recompiler::getCompileNext() {
