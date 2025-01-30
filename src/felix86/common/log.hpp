@@ -48,7 +48,8 @@
     do {                                                                                                                                             \
         if (g_strace && !g_quiet) {                                                                                                                  \
             dprintf(g_output_fd, ANSI_COLOR_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
-            fsync(g_output_fd);                                                                                                                      \
+            int res = fsync(g_output_fd);                                                                                                            \
+            ASSERT(res != -1);                                                                                                                       \
         }                                                                                                                                            \
     } while (0)
 
