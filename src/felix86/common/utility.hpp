@@ -34,8 +34,6 @@ void felix86_divu128(struct ThreadState* state, u64 divisor);
 u64 sext(u64 value, u8 size);
 u64 sext_if_64(u64 value, u8 size_e);
 
-u64 current_rip();
-
 void flush_icache();
 
 int guest_breakpoint(const char* name, u64 address);
@@ -47,6 +45,8 @@ void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64);
 void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64);
 
 void felix86_packuswb(u8* dst, u8* src);
+
+void dump_states();
 
 namespace biscuit {}
 using namespace biscuit;

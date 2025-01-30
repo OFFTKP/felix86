@@ -47,6 +47,10 @@ struct Emulator {
         return config;
     }
 
+    auto& GetStates() {
+        return thread_states;
+    }
+
     ThreadState* GetTestState() {
         ASSERT(testing);
         ASSERT(thread_states.size() == 1);
