@@ -85,11 +85,32 @@ void felix86_syscall(ThreadState* state) {
     u64 r10 = state->GetGpr(X86_REF_R10);
     u64 r8 = state->GetGpr(X86_REF_R8);
     u64 r9 = state->GetGpr(X86_REF_R9);
-    ssize_t result;
+
+    struct Result {
+        Result& operator=(ssize_t inner) {
+            if (inner == -1) {
+                this->inner = -errno;
+            } else {
+                this->inner = inner;
+            }
+            return *this;
+        }
+
+        operator unsigned long() const {
+            return inner;
+        }
+
+        operator void*() const {
+            return (void*)inner;
+        }
+
+    private:
+        ssize_t inner;
+    };
+
+    Result result;
 
     Filesystem& fs = g_emulator->GetFilesystem();
-
-    printf("errno at start %d\n", errno);
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
@@ -127,12 +148,12 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         }
-        STRACE("arch_prctl(%016lx, %016lx) = %016lx", rdi, rsi, result);
+        STRACE("arch_prctl(%016lx, %016lx) = %016lx", rdi, rsi, (u64)result);
         break;
     }
     case felix86_x86_64_set_tid_address: {
         result = HOST_SYSCALL(set_tid_address, rdi);
-        STRACE("set_tid_address(%016lx) = %016lx", rdi, result);
+        STRACE("set_tid_address(%016lx) = %016lx", rdi, (u64)result);
         break;
     }
     case felix86_x86_64_set_robust_list: {
@@ -142,17 +163,17 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_rseq: {
         // Couldn't find any solid documentation and FEX doesn't support it either
         result = -ENOSYS;
-        STRACE("rseq(...) = %016lx", result);
+        STRACE("rseq(...) = %016lx", (u64)result);
         break;
     }
     case felix86_x86_64_time: {
         result = ::time((time_t*)rdi);
-        STRACE("time(%p) = %016lx", (void*)rdi, result);
+        STRACE("time(%p) = %016lx", (void*)rdi, (u64)result);
         break;
     }
     case felix86_x86_64_prlimit64: {
         result = HOST_SYSCALL(prlimit64, rdi, rsi, rdx, r10);
-        STRACE("prlimit64(%016lx, %016lx, %016lx, %016lx) = %016lx", rdi, rsi, rdx, r10, result);
+        STRACE("prlimit64(%016lx, %016lx, %016lx, %016lx) = %016lx", rdi, rsi, rdx, r10, (u64)result);
         break;
     }
     case felix86_x86_64_readlink: {
@@ -167,12 +188,12 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_getrandom: {
         result = HOST_SYSCALL(getrandom, rdi, rsi, rdx);
-        STRACE("getrandom(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
+        STRACE("getrandom(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (u64)result);
         break;
     }
     case felix86_x86_64_mprotect: {
         result = HOST_SYSCALL(mprotect, rdi, rsi, rdx);
-        STRACE("mprotect(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, result);
+        STRACE("mprotect(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (u64)result);
         break;
     }
     case felix86_x86_64_close: {
@@ -317,7 +338,7 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_ioctl: {
         result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
-        STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, result);
+        STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, (u64)result);
         break;
     }
     case felix86_x86_64_write: {
@@ -416,7 +437,7 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_mmap: {
         result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
-        STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, result);
+        STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
 
         if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             if (result < min_address) {
@@ -430,7 +451,7 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_munmap: {
         result = HOST_SYSCALL(munmap, rdi, rsi);
-        STRACE("munmap(%p, %016lx) = %016lx", (void*)rdi, rsi, result);
+        STRACE("munmap(%p, %016lx) = %016lx", (void*)rdi, rsi, (u64)result);
         break;
     }
     case felix86_x86_64_getuid: {
@@ -625,7 +646,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         }
-        STRACE("prctl(%d, %016lx, %016lx, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, r10, r8, result);
+        STRACE("prctl(%d, %016lx, %016lx, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, r10, r8, (u64)result);
         break;
     }
     case felix86_x86_64_futex: {
