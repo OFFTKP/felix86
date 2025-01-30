@@ -1431,7 +1431,6 @@ biscuit::GPR Recompiler::getRip() {
 }
 
 void Recompiler::jumpAndLink(u64 rip) {
-    as.NOP(); // Add a NOP which may be replaced with a self-jump to "lock" access to the code ahead
     if (!blockExists(rip)) {
         biscuit::GPR address = scratch();
         // 3 instructions of space to be overwritten with:
@@ -1528,18 +1527,20 @@ void Recompiler::expirePendingLinks(u64 rip) {
 
         // First, insert an instruction that just jumps in place and flush the cache
         // This way, until we are done modifying code, nothing can enter this area of code
-        Label me;
-        as.Bind(&me);
-        as.J(&me);
+        // Important to note: Only one thread compiles (and thus links) code at a time
+        constexpr u32 jump_lock = 0x0000006F; // j 0x0 instruction
+        u32 old_instruction = __atomic_exchange_n(as.GetCursorPointer(), jump_lock, __ATOMIC_SEQ_CST);
         flush_icache();
 
         jumpAndLink(rip);
 
         as.RewindBuffer(link - 4);
 
-        // Block linking is done, replace the "lock" jump with a nop
-        as.NOP();
+        // Block linking is done, replace the "lock" jump with the old instruction
+        u32 jump_instruction = __atomic_exchange_n(as.GetCursorPointer(), old_instruction, __ATOMIC_SEQ_CST);
         flush_icache();
+
+        ASSERT(jump_instruction == jump_lock);
 
         as.AdvanceBuffer(current_offset);
     }
