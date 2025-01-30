@@ -221,6 +221,12 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     sigemptyset(&mask);
     sigprocmask(SIG_SETMASK, &mask, NULL);
 
+    // REMOVEME
+    if (emulator->GetStates().size() == 2 && thread_state == &emulator->GetStates().back()) {
+        printf("force exit\n");
+        exit(1);
+    }
+
     if (g_profile_compilation) {
         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
         std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);

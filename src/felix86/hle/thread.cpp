@@ -8,8 +8,8 @@
 
 void start_thread_wrapper(ThreadState* new_state) {
     pthread_setname_np(pthread_self(), "ChildProcess");
-    // g_emulator->StartThread(new_state);
-    // g_emulator->RemoveState(new_state);
+    g_emulator->StartThread(new_state);
+    g_emulator->RemoveState(new_state);
     // TODO: cleanup stack
 }
 
