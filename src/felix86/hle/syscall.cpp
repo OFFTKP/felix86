@@ -567,8 +567,12 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_exit: {
-        result = HOST_SYSCALL(exit, rdi);
         STRACE("exit(%d) = %d", (int)rdi, (int)result);
+
+        // Cleanup this ThreadState
+        g_emulator->RemoveState(state);
+
+        _exit(rdi);
         break;
     }
     case felix86_x86_64_recvmsg: {
