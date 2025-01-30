@@ -585,6 +585,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("flock(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_clock_nanosleep: {
+        result = HOST_SYSCALL(clock_nanosleep, rdi, rsi, rdx, r10);
+        STRACE("clock_nanosleep(%d, %d, %p, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (void*)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_rt_sigaction: {
         struct sigaction* act = (struct sigaction*)rsi;
         if (act) {
@@ -644,8 +649,8 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_futex: {
-        STRACE("futex(%p, %d, %d, %p, %p, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9, (int)result);
         result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("futex(%p, %d, %d, %p, %p, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9, (int)result);
         break;
     }
     case felix86_x86_64_sched_getaffinity: {
