@@ -566,6 +566,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("madvise(%p, %016lx, %d) = %d", (void*)rdi, rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_exit: {
+        result = HOST_SYSCALL(exit, rdi);
+        STRACE("exit(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_recvmsg: {
         result = HOST_SYSCALL(recvmsg, rdi, (struct msghdr*)rsi, rdx);
         STRACE("recvmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
