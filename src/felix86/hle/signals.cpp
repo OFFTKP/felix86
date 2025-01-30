@@ -28,7 +28,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
-            auto lock = g_emulator.Lock();
+            auto lock = g_emulator->Lock();
             ASSERT(is_in_jit_code(pc));
             // Go back one instruction, we are going to overwrite it with vsetivli.
             // It's guaranteed to be either a vsetivli or a nop.
