@@ -234,8 +234,9 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
         address = address - g_executable_start;
     }
 
-    VERBOSE("Jumping to function %s@0x%lx (%lx), located at %p", MemoryMetadata::GetRegionName(thread_state->GetRip()).c_str(),
-            MemoryMetadata::GetOffset(thread_state->GetRip()), thread_state->GetRip(), function);
+    VERBOSE("State %p is jumping to function %s@0x%lx (%lx), located at %p", thread_state,
+            MemoryMetadata::GetRegionName(thread_state->GetRip()).c_str(), MemoryMetadata::GetOffset(thread_state->GetRip()), thread_state->GetRip(),
+            function);
 
     return function;
 }
@@ -296,8 +297,8 @@ void Emulator::StartThread(ThreadState* state) {
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }
 
-std::unique_lock<std::recursive_mutex> Emulator::Lock() {
-    return std::unique_lock<std::recursive_mutex>(mutex);
+std::unique_lock<std::mutex> Emulator::Lock() {
+    return std::unique_lock<std::mutex>(mutex);
 }
 
 void Emulator::CleanExit(ThreadState* state) {
