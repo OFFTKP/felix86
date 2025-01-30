@@ -624,6 +624,25 @@ void felix86_syscall(ThreadState* state) {
         STRACE("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
         break;
     }
+    case felix86_x86_64_sigaltstack: {
+        stack_t* new_ss = (stack_t*)rdi;
+        stack_t* old_ss = (stack_t*)rsi;
+
+        if (new_ss) {
+            state->alt_stack.ss_sp = new_ss->ss_sp;
+            state->alt_stack.ss_flags = new_ss->ss_flags;
+            state->alt_stack.ss_size = new_ss->ss_size;
+        }
+
+        if (old_ss) {
+            old_ss->ss_sp = state->alt_stack.ss_sp;
+            old_ss->ss_flags = state->alt_stack.ss_flags;
+            old_ss->ss_size = state->alt_stack.ss_size;
+        }
+
+        result = 0;
+        break;
+    }
     case felix86_x86_64_prctl: {
 #ifndef PR_GET_AUXV
 #define PR_GET_AUXV 0x41555856

@@ -7,6 +7,7 @@
 #include "felix86/hle/thread.hpp"
 
 void start_thread_wrapper(ThreadState* new_state) {
+    new_state->tid = gettid();
     pthread_setname_np(pthread_self(), "ChildProcess");
     g_emulator->StartThread(new_state);
     g_emulator->RemoveState(new_state);

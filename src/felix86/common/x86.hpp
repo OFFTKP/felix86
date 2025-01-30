@@ -90,7 +90,9 @@ struct ThreadState {
     u64 gsbase{};
     u64 fsbase{};
 
+    u64 tid{};
     u64 brk_current_address{};
+    stack_t alt_stack{};
 
     // Two processes can share the same signal handler table
     std::shared_ptr<SignalHandlerTable> signal_handlers{};
