@@ -142,11 +142,11 @@ void Signals::initialize() {
 }
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags) {
-    ASSERT(sig > 0 && sig < 64);
+    ASSERT(sig >= 1 && sig <= 64);
     (*state->signal_handlers)[sig - 1] = {handler, mask, flags};
 }
 
 RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
-    ASSERT(sig > 0 && sig < 64);
+    ASSERT(sig >= 1 && sig <= 64);
     return (*state->signal_handlers)[sig - 1];
 }
