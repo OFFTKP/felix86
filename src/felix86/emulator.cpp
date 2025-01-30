@@ -214,7 +214,7 @@ void* Emulator::CompileNext(Emulator* emulator, ThreadState* thread_state) {
     {
         // Mutex needs to be unlocked before the thread is dispatched
         // Volatile so we can access it in gdb if needed
-        std::lock_guard<std::mutex> lock(emulator->compilation_mutex);
+        std::lock_guard<std::mutex> lock(emulator->mutex);
         function = emulator->recompiler.compile(thread_state->GetRip());
     }
 
@@ -284,14 +284,6 @@ void Emulator::StartThread(ThreadState* state) {
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }
 
-ThreadState* Emulator::GetThreadState() {
-    std::unique_lock<std::mutex> tid_to_state_mutex;
-    ASSERT(tid_to_state.find(gettid()) != tid_to_state.end());
-    return tid_to_state[gettid()];
-}
-
-void Emulator::RegisterThreadState(ThreadState* state) {
-    std::unique_lock<std::mutex> tid_to_state_mutex;
-    ASSERT(tid_to_state.find(gettid()) == tid_to_state.end());
-    tid_to_state[gettid()] = state;
+std::unique_lock<std::mutex> Emulator::Lock() {
+    return std::unique_lock<std::mutex>(mutex);
 }

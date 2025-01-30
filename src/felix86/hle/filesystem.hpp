@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <mutex>
 #include <optional>
 #include <linux/limits.h>
 #include "felix86/common/elf.hpp"
@@ -101,6 +102,7 @@ struct Filesystem {
 private:
     bool validatePath(const std::filesystem::path& path);
 
+    std::mutex cwd_mutex;
     std::filesystem::path rootfs_path;
     std::string rootfs_path_string;
     std::filesystem::path executable_path;
