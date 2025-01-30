@@ -90,8 +90,6 @@ struct ThreadState {
     u64 gsbase{};
     u64 fsbase{};
 
-    u64 set_child_tid{};
-    u64 clear_child_tid{};
     u64 brk_current_address{};
 
     // Two processes can share the same signal handler table
