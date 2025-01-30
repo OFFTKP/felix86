@@ -272,6 +272,16 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_setsockopt: {
+        result = HOST_SYSCALL(setsockopt, rdi, rsi, rdx, r10, r8);
+        STRACE("setsockopt(%d, %d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
+        break;
+    }
+    case felix86_x86_64_getsockopt: {
+        result = HOST_SYSCALL(getsockopt, rdi, rsi, rdx, r10, r8);
+        STRACE("getsockopt(%d, %d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
+        break;
+    }
     case felix86_x86_64_statx: {
         result = fs.Statx(rdi, (const char*)rsi, rdx, r10, (struct statx*)r8);
         STRACE("statx(%d, %s, %d, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
