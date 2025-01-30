@@ -678,12 +678,24 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_wait4: {
-        STRACE("wait4(%d, %p, %d, %p)", (int)rdi, (void*)rsi, (int)rdx, (void*)r10);
         result = HOST_SYSCALL(wait4, rdi, rsi, rdx, r10);
+        STRACE("wait4(%d, %p, %d, %p)", (int)rdi, (void*)rsi, (int)rdx, (void*)r10);
+        break;
+    }
+    case felix86_x86_64_execve: {
+        auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            result = -EACCES;
+            break;
+        }
+
+        result = HOST_SYSCALL(execve, path->c_str(), (char**)rsi, (char**)rdx);
+        STRACE("execve(%s, %p, %p) = %d", path->c_str(), (void*)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_unlink: {
-        std::optional<std::filesystem::path> path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+        auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
 
         if (!path) {
             result = fs.Error();
