@@ -746,6 +746,7 @@ void felix86_syscall(ThreadState* state) {
 
     if (result == -1) {
         result = -errno;
+        STRACE("errno = %d", errno);
     }
 
     state->SetGpr(X86_REF_RAX, result);
