@@ -85,7 +85,7 @@ void felix86_syscall(ThreadState* state) {
     u64 r10 = state->GetGpr(X86_REF_R10);
     u64 r8 = state->GetGpr(X86_REF_R8);
     u64 r9 = state->GetGpr(X86_REF_R9);
-    ssize_t result = -1;
+    ssize_t result;
 
     Filesystem& fs = g_emulator->GetFilesystem();
 
@@ -121,7 +121,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         default: {
-            ERROR("Unimplemented arch_prctl %016lx", rdi);
+            result = -EINVAL;
             break;
         }
         }
@@ -131,13 +131,6 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_set_tid_address: {
         result = HOST_SYSCALL(set_tid_address, rdi);
         STRACE("set_tid_address(%016lx) = %016lx", rdi, result);
-        break;
-    }
-    case felix86_x86_64_get_robust_list: {
-        if (rdi != 0) {
-            ERROR("get_robust_list asking for a different thread not implemented");
-        }
-        ERROR("get_robust_list not implemented");
         break;
     }
     case felix86_x86_64_set_robust_list: {
@@ -323,21 +316,6 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_ioctl: {
         result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
         STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, result);
-
-#if 1
-        if (g_strace) {
-            // TCSETSW
-            termios* term = (termios*)rdx;
-            switch (rsi) {
-            case TCSETS:
-            case TCSETSW:
-            case TCSETSF: {
-                auto oflag = term->c_oflag;
-                // todo, output the flag properties
-            }
-            }
-        }
-#endif
         break;
     }
     case felix86_x86_64_write: {
@@ -567,6 +545,7 @@ void felix86_syscall(ThreadState* state) {
         STRACE("exit(%d)", (int)rdi);
         state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
         g_emulator->CleanExit(state);
+        result = 0;
         break;
     }
     case felix86_x86_64_recvmsg: {
@@ -717,6 +696,7 @@ void felix86_syscall(ThreadState* state) {
         u64* oldset = (u64*)rdx;
 
         u64 old_set = state->signal_mask;
+        result = 0;
         if (set) {
             if (how == SIG_BLOCK) {
                 state->signal_mask |= *set;
@@ -739,6 +719,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     default: {
+        result = -ENOSYS;
         ERROR("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
         break;
     }
