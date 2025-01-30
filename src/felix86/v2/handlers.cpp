@@ -2974,7 +2974,6 @@ FAST_HANDLE(BTC) {
 }
 
 FAST_HANDLE(BT) {
-    ASSERT(operands[0].type != ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
