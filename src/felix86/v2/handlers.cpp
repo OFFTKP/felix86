@@ -2976,8 +2976,42 @@ FAST_HANDLE(BTC) {
 FAST_HANDLE(BT) {
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
+
+    biscuit::GPR dst;
+
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        dst = rec.scratch();
+        biscuit::GPR address = rec.lea(&operands[0]);
+
+        u8 shr = 0;
+        u8 shl = 0;
+        switch (operands[0].size) {
+        case 16:
+            shr = 4;
+            shl = 1;
+            break;
+        case 32:
+            shr = 5;
+            shl = 2;
+            break;
+        case 64:
+            shr = 6;
+            shl = 3;
+            break;
+        default:
+            UNREACHABLE();
+        }
+
+        // Point to the exact word in memory
+        AS.SRLI(shift, bit, shr);
+        AS.SLLI(shift, shift, shl);
+        AS.ADD(address, address, shift);
+        rec.readMemory(dst, address, 0, rec.zydisToSize(operands[0].size));
+        rec.popScratch();
+    } else {
+        dst = rec.getOperandGPR(&operands[0]);
+    }
 
     u8 bit_size = operands[0].size;
     AS.ANDI(shift, bit, bit_size - 1);
@@ -2993,13 +3027,49 @@ FAST_HANDLE(BTS) {
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR result = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    biscuit::GPR dst;
 
-    u8 bit_size = operands[0].size;
-    AS.ANDI(shift, bit, bit_size - 1);
-    AS.SRL(cf, dst, shift);
-    AS.ANDI(cf, cf, 1);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        dst = rec.scratch();
+        biscuit::GPR address = rec.lea(&operands[0]);
+
+        u8 shr = 0;
+        u8 shl = 0;
+        switch (operands[0].size) {
+        case 16:
+            shr = 4;
+            shl = 1;
+            break;
+        case 32:
+            shr = 5;
+            shl = 2;
+            break;
+        case 64:
+            shr = 6;
+            shl = 3;
+            break;
+        default:
+            UNREACHABLE();
+        }
+
+        // Point to the exact word in memory
+        AS.SRLI(shift, bit, shr);
+        AS.SLLI(shift, shift, shl);
+        AS.ADD(address, address, shift);
+        rec.readMemory(dst, address, 0, rec.zydisToSize(operands[0].size));
+        rec.popScratch();
+    } else {
+        dst = rec.getOperandGPR(&operands[0]);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        u8 bit_size = operands[0].size;
+        AS.ANDI(shift, bit, bit_size - 1);
+        AS.SRL(cf, dst, shift);
+        AS.ANDI(cf, cf, 1);
+    }
+
     biscuit::GPR one = rec.scratch();
     AS.LI(one, 1);
     AS.SLL(one, one, shift);

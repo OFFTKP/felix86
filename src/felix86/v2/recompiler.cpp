@@ -676,28 +676,7 @@ biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR address = lea(operand);
 
-        switch (operand->size) {
-        case 8: {
-            as.LBU(address, 0, address);
-            break;
-        }
-        case 16: {
-            as.LHU(address, 0, address);
-            break;
-        }
-        case 32: {
-            as.LWU(address, 0, address);
-            break;
-        }
-        case 64: {
-            as.LD(address, 0, address);
-            break;
-        }
-        default: {
-            UNREACHABLE();
-            break;
-        }
-        }
+        readMemory(address, address, 0, zydisToSize(operand->size));
 
         return address;
     }
