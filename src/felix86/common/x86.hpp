@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <queue>
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/signals.hpp"
@@ -93,6 +94,12 @@ struct ThreadState {
     u64 tid{};
     u64 brk_current_address{};
     stack_t alt_stack{};
+    bool signals_disabled{}; // some instructions would make it annoying to allow for signals to occur, be it because they have loops like rep, or use
+                             // lr/sc instructions. So, this flag is set to true when we absolutely don't want a signal to be handled here.
+
+    std::queue<int> pending_signals; // queue for signals that are pending to be handled because they were disabled when they happened
+                                     // This doesn't quite work if a signal is "synchronous", meaning if an instruction purposefully triggered it
+                                     // but those instructions should not overlap with ones that would disable signals.
 
     // Two processes can share the same signal handler table
     std::shared_ptr<SignalHandlerTable> signal_handlers{};

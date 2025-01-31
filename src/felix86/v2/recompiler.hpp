@@ -5,18 +5,30 @@
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
 #include "biscuit/assembler.hpp"
-#include "felix86/common/riscv.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/common/x86.hpp"
+
+// 16 gprs, 5 flags, 16 xmm registers
+constexpr u64 allocated_reg_count = 16 + 5 + 16;
 
 struct HandlerMetadata {
     u64 rip;
     u64 block_start;
 };
 
+// This struct is for indicating within a block at which points a register contains a value of a guest register,
+// and when it is just undefined. For example within a block, the register that represents RAX is not valid until it's loaded
+// for the first time, and then when it's written back it becomes invalid again because it may change due to a syscall or something.
+struct RegisterAccess {
+    u64 address; // address where the load or writeback happened
+    bool valid;  // true if load, false if writeback
+};
+
 struct BlockMetadata {
-    void* address = nullptr;
+    void* address{};
     std::vector<u64> pending_links{};
+    std::vector<std::pair<u64, u64>> instruction_spans{};
+    std::array<std::vector<RegisterAccess>, allocated_reg_count> register_accesses;
 };
 
 struct VectorMemoryAccess {
@@ -199,6 +211,8 @@ private:
 
     void emitDispatcher();
 
+    void emitSigreturnThunk();
+
     void loadGPR(x86_ref_e reg, biscuit::GPR gpr);
 
     void loadVec(x86_ref_e reg, biscuit::Vec vec);
@@ -210,6 +224,8 @@ private:
     ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     void expirePendingLinks(u64 rip);
+
+    void addRegisterAccess(x86_ref_e ref, bool is_load);
 
     u8* code_cache{};
     biscuit::Assembler as{};
@@ -224,7 +240,6 @@ private:
 
     void* compile_next_handler{};
 
-    // 16 gprs, 6 flags, 16 xmm registers
     std::array<RegisterMetadata, 16 + 5 + 16> metadata{};
 
     std::unordered_map<u64, BlockMetadata> block_metadata{};
@@ -239,6 +254,7 @@ private:
 
     std::unordered_map<u64, VectorMemoryAccess> vector_memory_access{};
 
+    BlockMetadata* current_block_metadata;
     HandlerMetadata* current_meta{};
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;

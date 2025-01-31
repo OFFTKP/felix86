@@ -625,6 +625,22 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_sigaltstack: {
+        stack_t host_stack; // save old stack here while we check if guest stack is valid
+        stack_t* guest_stack = (stack_t*)rdi;
+        stack_t guest_stack_copy = *guest_stack;
+
+        // Let the kernel decide if the guest_stack is valid
+        int result_temp = sigaltstack(&guest_stack_copy, &host_stack);
+
+        // Restore old stack
+        int result_must = sigaltstack(&host_stack, nullptr);
+        ASSERT(result_must == 0);
+
+        if (result_temp != 0) {
+            result = result_temp;
+            break;
+        }
+
         stack_t* new_ss = (stack_t*)rdi;
         stack_t* old_ss = (stack_t*)rsi;
 
@@ -721,6 +737,11 @@ void felix86_syscall(ThreadState* state) {
 
         result = HOST_SYSCALL(execve, path->c_str(), (char**)rsi, (char**)rdx);
         STRACE("execve(%s, %p, %p) = %d", path->c_str(), (void*)rsi, (void*)rdx, (int)result);
+
+        if (result == 0) {
+            // A successful call to execve(2) removes any existing alternate signal stack
+            state->alt_stack = {};
+        }
         break;
     }
     case felix86_x86_64_unlink: {

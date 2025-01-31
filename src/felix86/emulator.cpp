@@ -196,19 +196,46 @@ void Emulator::setupMainStack(ThreadState* state) {
     state->SetGpr(X86_REF_RSP, rsp);
 }
 
+ThreadState* Emulator::GetThreadState() {
+    auto tid = gettid();
+    ThreadState* current_state = nullptr;
+    for (ThreadState& state : g_emulator->GetStates()) {
+        if (tid == state.tid) {
+            if (!current_state) {
+                current_state = &state;
+                // Continue scanning to make sure we don't have a duplicate
+            } else {
+                ERROR("Multiple ThreadState objects found for tid %d", tid);
+            }
+        }
+    }
+
+    if (!current_state) {
+        ERROR("No ThreadState object found for tid %d", tid);
+        return nullptr;
+    } else {
+        return current_state;
+    }
+}
+
 void* Emulator::CompileNext(ThreadState* thread_state) {
+    // Block signals so we don't get a signal during the compilation period, this would lead to deadlock
+    // since the signal handler needs to also compile code.
+    static sigset_t mask_empty, mask_full;
+    static bool init = false;
+    if (!init) {
+        sigemptyset(&mask_empty);
+        sigfillset(&mask_full);
+        init = true;
+    }
+
+    sigprocmask(SIG_SETMASK, &mask_full, NULL);
+
     std::chrono::high_resolution_clock::time_point start;
     if (g_profile_compilation) {
         g_dispatcher_exit_count++;
         start = std::chrono::high_resolution_clock::now();
     }
-
-    // Block signals so we don't get a signal during the compilation period, this would lead to deadlock
-    // since the signal handler needs to also compile code.
-    // TODO: if this proves to be slow, we might need to defer signals like FEX does
-    sigset_t mask;
-    sigfillset(&mask);
-    sigprocmask(SIG_SETMASK, &mask, NULL);
 
     void* volatile function;
     {
@@ -217,9 +244,6 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         auto lock = g_emulator->Lock();
         function = g_emulator->recompiler.compile(thread_state->GetRip());
     }
-
-    sigemptyset(&mask);
-    sigprocmask(SIG_SETMASK, &mask, NULL);
 
     if (g_profile_compilation) {
         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
@@ -237,6 +261,8 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     VERBOSE("State %p is jumping to function %s@0x%lx (%lx), located at %p", thread_state,
             MemoryMetadata::GetRegionName(thread_state->GetRip()).c_str(), MemoryMetadata::GetOffset(thread_state->GetRip()), thread_state->GetRip(),
             function);
+
+    sigprocmask(SIG_SETMASK, &mask_empty, NULL);
 
     return function;
 }
@@ -269,6 +295,8 @@ ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
 
         thread_state->fsbase = copy_state->fsbase;
         thread_state->gsbase = copy_state->gsbase;
+
+        thread_state->alt_stack = copy_state->alt_stack;
     }
 
     thread_state->syscall_handler = (u64)felix86_syscall;

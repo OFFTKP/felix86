@@ -93,6 +93,16 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         ERROR("TLS specified but CLONE_SETTLS not set");
     }
 
+    // A child process created via fork(2) inherits a
+    // copy of its parent's alternate signal stack settings.  The same
+    // is also true for a child process created using clone(2), unless
+    // the clone flags include CLONE_VM and do not include CLONE_VFORK,
+    // in which case any alternate signal stack that was established in
+    // the parent is disabled in the child process.
+    if ((args->flags & CLONE_VM) && !(args->flags & CLONE_VFORK)) {
+        new_state->alt_stack = {};
+    }
+
     if (args->flags & CLONE_SIGHAND) {
         // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
         ASSERT(args->flags & CLONE_VM);

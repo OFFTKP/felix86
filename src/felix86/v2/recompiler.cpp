@@ -55,6 +55,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
     metadata[20].reg = X86_REF_OF;
 
     emitDispatcher();
+    emitSigreturnThunk();
 
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
@@ -105,6 +106,19 @@ void Recompiler::emitDispatcher() {
     flush_icache();
 }
 
+void Recompiler::emitSigreturnThunk() {
+    // This piece of code is responsible for moving the thread state pointer to the right place (so we don't have to find it using tid)
+    // and calling sigreturn, returning and going back to the dispatcher.
+
+    // See Signals::magicSigreturnAddress() for more information
+    block_metadata[Signals::magicSigreturnAddress()].address = as.GetCursorPointer();
+
+    as.MV(a0, threadStatePointer());
+    as.LI(t0, (u64)Signals::sigreturn);
+    as.JALR(t0);
+    backToDispatcher();
+}
+
 void* Recompiler::compile(u64 rip) {
     if (blockExists(rip)) {
         return block_metadata[rip].address;
@@ -127,9 +141,10 @@ void Recompiler::compileSequence(u64 rip) {
     compiling = true;
     scanFlagUsageAhead(rip);
     HandlerMetadata meta = {rip, rip};
+    BlockMetadata& block_meta = block_metadata[rip];
 
     current_meta = &meta;
-
+    current_block_metadata = &block_meta;
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
@@ -142,6 +157,8 @@ void Recompiler::compileSequence(u64 rip) {
             g_breakpoints[rip].push_back(current_address);
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
+
+        block_meta.instruction_spans.push_back({meta.rip, (u64)as.GetCursorPointer()});
 
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
         switch (mnemonic) {
@@ -757,6 +774,8 @@ biscuit::GPR Recompiler::flag(x86_ref_e ref) {
 
     biscuit::GPR reg = allocatedGPR(ref);
     loadGPR(ref, reg);
+    addRegisterAccess(ref, true); // this is not quite right, as flags may be used as temporaries sometimes
+                                  // but it's good enough for now. Surely the signal handler behavior won't care about flags that much :cluegi:
     return reg;
 }
 
@@ -765,6 +784,7 @@ biscuit::GPR Recompiler::flagW(x86_ref_e ref) {
     RegisterMetadata& meta = getMetadata(ref);
     meta.dirty = true;
     meta.loaded = true;
+    addRegisterAccess(ref, true);
     return reg;
 }
 
@@ -774,6 +794,7 @@ biscuit::GPR Recompiler::flagWR(x86_ref_e ref) {
     meta.dirty = true;
     meta.loaded = true;
     loadGPR(ref, reg);
+    addRegisterAccess(ref, true);
     return reg;
 }
 
@@ -781,6 +802,7 @@ biscuit::GPR Recompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
     biscuit::GPR gpr = allocatedGPR(ref);
 
     loadGPR(ref, gpr);
+    addRegisterAccess(ref, true); // mark register state as valid at this address
 
     switch (size) {
     case X86_SIZE_BYTE: {
@@ -822,6 +844,7 @@ biscuit::Vec Recompiler::getRefVec(x86_ref_e ref) {
     biscuit::Vec vec = allocatedVec(ref);
 
     loadVec(ref, vec);
+    addRegisterAccess(ref, true); // mark register state as valid at this address
 
     return vec;
 }
@@ -890,7 +913,8 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
 
     RegisterMetadata& meta = getMetadata(ref);
     meta.dirty = true;
-    meta.loaded = true; // since the value is fresh it's as if we read it from memory
+    meta.loaded = true;           // since the value is fresh it's as if we read it from memory
+    addRegisterAccess(ref, true); // mark register state as valid at this address
 }
 
 void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
@@ -902,7 +926,8 @@ void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
 
     RegisterMetadata& meta = getMetadata(ref);
     meta.dirty = true;
-    meta.loaded = true; // since the value is fresh it's as if we read it from memory
+    meta.loaded = true;           // since the value is fresh it's as if we read it from memory
+    addRegisterAccess(ref, true); // mark register state as valid at this address
 }
 
 void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
@@ -990,6 +1015,58 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
     default: {
         UNREACHABLE();
     }
+    }
+}
+
+void Recompiler::addRegisterAccess(x86_ref_e ref, bool valid) {
+    std::vector<RegisterAccess>* access = nullptr;
+    switch (ref) {
+    case X86_REF_RAX ... X86_REF_R15: {
+        access = &current_block_metadata->register_accesses[ref - X86_REF_RAX];
+        break;
+    }
+    case X86_REF_CF: {
+        access = &current_block_metadata->register_accesses[16];
+        break;
+    }
+    case X86_REF_AF: {
+        access = &current_block_metadata->register_accesses[17];
+        break;
+    }
+    case X86_REF_ZF: {
+        access = &current_block_metadata->register_accesses[18];
+        break;
+    }
+    case X86_REF_SF: {
+        access = &current_block_metadata->register_accesses[19];
+        break;
+    }
+    case X86_REF_OF: {
+        access = &current_block_metadata->register_accesses[20];
+        break;
+    }
+    case X86_REF_XMM0 ... X86_REF_XMM15: {
+        access = &current_block_metadata->register_accesses[ref - X86_REF_XMM0 + 16 + 5];
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    u64 address = (u64)as.GetCursorPointer();
+    if (access->empty()) {
+        ASSERT(valid);
+        access->push_back({address, valid});
+    } else {
+        RegisterAccess& last = access->back();
+        if (!last.valid) {
+            ASSERT(valid); // should never go from invalid to invalid
+            access->push_back({address, valid});
+        } else if (last.valid && !valid) { // only push a state change if it goes from valid to invalid
+            access->push_back({address, valid});
+        }
     }
 }
 
@@ -1164,7 +1241,9 @@ void Recompiler::setExitReason(ExitReason reason) {
 void Recompiler::writebackDirtyState() {
     for (int i = 0; i < 16; i++) {
         if (metadata[i].dirty) {
-            as.SD(allocatedGPR((x86_ref_e)(X86_REF_RAX + i)), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
+            x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
+            as.SD(allocatedGPR(ref), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
+            addRegisterAccess(ref, false);
         }
     }
 
@@ -1175,28 +1254,34 @@ void Recompiler::writebackDirtyState() {
             setVectorState(SEW::E64, maxVlen() / 64);
             as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * 16);
             as.VSE64(allocatedVec(ref), address);
+            addRegisterAccess(ref, false);
         }
     }
     popScratch();
 
     if (getMetadata(X86_REF_CF).dirty) {
         as.SB(allocatedGPR(X86_REF_CF), offsetof(ThreadState, cf), threadStatePointer());
+        addRegisterAccess(X86_REF_CF, false);
     }
 
     if (getMetadata(X86_REF_AF).dirty) {
         as.SB(allocatedGPR(X86_REF_AF), offsetof(ThreadState, af), threadStatePointer());
+        addRegisterAccess(X86_REF_AF, false);
     }
 
     if (getMetadata(X86_REF_ZF).dirty) {
         as.SB(allocatedGPR(X86_REF_ZF), offsetof(ThreadState, zf), threadStatePointer());
+        addRegisterAccess(X86_REF_ZF, false);
     }
 
     if (getMetadata(X86_REF_SF).dirty) {
         as.SB(allocatedGPR(X86_REF_SF), offsetof(ThreadState, sf), threadStatePointer());
+        addRegisterAccess(X86_REF_SF, false);
     }
 
     if (getMetadata(X86_REF_OF).dirty) {
         as.SB(allocatedGPR(X86_REF_OF), offsetof(ThreadState, of), threadStatePointer());
+        addRegisterAccess(X86_REF_OF, false);
     }
 
     for (int i = 0; i < metadata.size(); i++) {
