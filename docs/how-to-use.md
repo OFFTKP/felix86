@@ -5,7 +5,7 @@
 ## Required architecture
 You need either an emulator like QEMU or a board with `rv64gvb`.
 
-Furthermore, you need a recent version of Linux like `6.11`, so that there is vector extension support in signal handlers.
+Furthermore, **you need a recent version of Linux like `6.11`**, so that there is vector extension support in signal handlers.
 
 Any extra extensions might be utilized, but `G` and `V` are mandatory.
 `B` is currently mandatory. Eventually it won't be, but currently it is.
