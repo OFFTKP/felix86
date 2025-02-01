@@ -196,11 +196,9 @@ void Emulator::setupMainStack(ThreadState* state) {
 }
 
 ThreadState* Emulator::GetThreadState() {
-    printf("my tid: %d\n", gettid());
     auto tid = gettid();
     ThreadState* current_state = nullptr;
     for (ThreadState& state : g_emulator->GetStates()) {
-        printf("this tid: %d\n", state.tid);
         if (tid == state.tid) {
             if (!current_state) {
                 current_state = &state;
@@ -330,6 +328,7 @@ void Emulator::RemoveState(ThreadState* state) {
 }
 
 void Emulator::StartThread(ThreadState* state) {
+    state->tid = gettid();
     recompiler.enterDispatcher(state);
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }

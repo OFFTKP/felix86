@@ -24,7 +24,6 @@ struct Emulator {
         fs.LoadRootFS(config.rootfs_path);
         fs.LoadExecutable(config.executable_path);
         ThreadState* main_state = CreateThreadState();
-        main_state->tid = gettid();
         VERBOSE("Created thread state with tid %ld", main_state->tid);
         setupMainStack(main_state);
         main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
@@ -35,7 +34,6 @@ struct Emulator {
     Emulator(const TestConfig& config) : recompiler() {
         g_emulator = this;
         ThreadState* main_state = CreateThreadState();
-        main_state->tid = gettid();
         VERBOSE("Created thread state with tid %ld", main_state->tid);
         main_state->SetRip((u64)config.entrypoint);
         testing = true;
