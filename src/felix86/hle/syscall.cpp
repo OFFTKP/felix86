@@ -257,6 +257,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("clock_getres(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_getresuid: {
+        result = HOST_SYSCALL(getresuid, (uid_t*)rdi, (uid_t*)rsi, (uid_t*)rdx);
+        STRACE("getresuid(%p, %p, %p) = %d", (void*)rdi, (void*)rsi, (void*)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_getresgid: {
+        result = HOST_SYSCALL(getresgid, (gid_t*)rdi, (gid_t*)rsi, (gid_t*)rdx);
+        STRACE("getresgid(%p, %p, %p) = %d", (void*)rdi, (void*)rsi, (void*)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_gettimeofday: {
         result = HOST_SYSCALL(gettimeofday, (struct timeval*)rdi, (struct timezone*)rsi);
         STRACE("gettimeofday(%p, %p) = %d", (void*)rdi, (void*)rsi, (int)result);
