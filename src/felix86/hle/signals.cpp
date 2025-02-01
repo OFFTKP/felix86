@@ -510,7 +510,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     default: {
     check_guest_signal:
-        VERBOSE("Handling signal %d", sig);
         auto lock = g_emulator->Lock();
 
         // First we need to find the current ThreadState object
@@ -520,6 +519,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         if (!handler.func) {
             ERROR("Unhandled signal %d, no signal handler found", sig);
         }
+
+        ASSERT(handler.func != SIG_IGN); // TODO: what does that even mean?
+        VERBOSE("Handling signal %d, handler: %p", sig, handler.func);
 
         // TODO: this could cause issues if it never jumps back to the dispatcher
         if (current_state->signals_disabled) {
