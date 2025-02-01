@@ -510,18 +510,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     default: {
     check_guest_signal:
-        // ThreadState* state = g_emulator->GetThreadState();
-        // if ((*state->signal_handlers)[sig - 1].handler) {
-        //     // There's a guest signal handler for this signal.
-        //     // If the signal happened inside the JIT code, we need to do some sort of state reconstruction at the end
-        //     // of the guest signal handler.
-        //     // Otherwise I think we're good to recompile and run it :cluegi:
-        //     ERROR("implme");
-        // } else {
-        //     ERROR("Unhandled signal %d", sig);
-        // }
-        ERROR("Unhandled signal %d", sig);
-
         auto lock = g_emulator->Lock();
 
         // First we need to find the current ThreadState object

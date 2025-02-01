@@ -612,9 +612,9 @@ void felix86_syscall(ThreadState* state) {
             RegisteredSignal old = Signals::getSignalHandler(state, rdi);
             bool was_sigaction = old.flags & SA_SIGINFO;
             if (was_sigaction) {
-                old_act->sa_sigaction = (decltype(old_act->sa_sigaction))old.handler;
+                old_act->sa_sigaction = (decltype(old_act->sa_sigaction))old.func;
             } else {
-                old_act->sa_handler = (decltype(old_act->sa_handler))old.handler;
+                old_act->sa_handler = (decltype(old_act->sa_handler))old.func;
             }
             old_act->sa_flags = old.flags;
             old_act->sa_mask = old.mask;
