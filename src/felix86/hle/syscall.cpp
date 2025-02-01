@@ -351,6 +351,7 @@ void felix86_syscall(ThreadState* state) {
         std::optional<std::filesystem::path> path = fs.AtPath(rdi, (const char*)rsi);
 
         if (!path) {
+            STRACE("newfstatat(%d, %s, %p, %d) = %d", (int)rdi, (const char*)rsi, (void*)rdx, (int)r10, -EACCES);
             result = -EACCES;
             break;
         }
@@ -438,6 +439,7 @@ void felix86_syscall(ThreadState* state) {
         auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
 
         if (!path) {
+            STRACE("mkdir(%s, %d) = %d", (char*)rdi, (int)rsi, -EACCES);
             result = -EACCES;
             break;
         }
@@ -579,6 +581,7 @@ void felix86_syscall(ThreadState* state) {
         std::optional<std::filesystem::path> path = fs.AtPath(AT_FDCWD, (const char*)rdi);
 
         if (!path) {
+            STRACE("statfs(%s, %p) = %d", (char*)rdi, (void*)rsi, -EACCES);
             result = -EACCES;
             break;
         }
@@ -781,6 +784,7 @@ void felix86_syscall(ThreadState* state) {
         auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
 
         if (!path) {
+            STRACE("execve(%s, %p, %p) = %d", (char*)rdi, (void*)rsi, (void*)rdx, -EACCES);
             result = -EACCES;
             break;
         }
@@ -803,10 +807,12 @@ void felix86_syscall(ThreadState* state) {
         auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
 
         if (!path) {
+            STRACE("unlink(%s) = %d", (char*)rdi, -EACCES);
             result = fs.Error();
             break;
         }
 
+        STRACE("unlink(%s)", path->c_str());
         unlink(path->c_str());
         result = 0;
         break;
