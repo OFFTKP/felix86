@@ -525,6 +525,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         // TODO: this could cause issues if it never jumps back to the dispatcher
         if (current_state->signals_disabled) {
+            ERROR("Signal %d hit while signals are disabled", sig);
+
             // Signals are disabled! This might be because we are currently executing a disabled region of code, such as a rep instruction or an
             // atomic instruction that uses lr/sc. We need to queue the signal to be handled later.
             current_state->pending_signals.push(sig);
@@ -571,9 +573,12 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             handler.func = nullptr;
         }
 
+        printf("actual rip: %016lx\n", actual_rip);
+
         if (jit_code) {
             // If in jit code, make it jump to the dispatcher immediately. If it's not in jit code, just let it naturally go to the dispatcher.
             context->uc_mcontext.__gregs[REG_PC] = (u64)g_emulator->GetRecompiler().getCompileNext();
+            printf("going back to dispatcher\n");
         }
         break;
     }
