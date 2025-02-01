@@ -242,6 +242,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("ppoll(%p, %d, %p, %p) = %d", (void*)rdi, (int)rsi, (void*)rdx, (void*)r10, (int)result);
         break;
     }
+    case felix86_x86_64_sched_getscheduler: {
+        result = HOST_SYSCALL(sched_getscheduler, rdi);
+        STRACE("sched_getscheduler(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_clock_gettime: {
         result = HOST_SYSCALL(clock_gettime, rdi, (struct timespec*)rsi);
         STRACE("clock_gettime(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
@@ -705,6 +710,21 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_sched_getaffinity: {
         result = HOST_SYSCALL(sched_getaffinity, rdi, rsi, rdx);
         STRACE("sched_getaffinity(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_sched_get_priority_min: {
+        result = HOST_SYSCALL(sched_get_priority_min, rdi);
+        STRACE("sched_get_priority_min(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_sched_get_priority_max: {
+        result = HOST_SYSCALL(sched_get_priority_max, rdi);
+        STRACE("sched_get_priority_max(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_sched_setscheduler: {
+        result = HOST_SYSCALL(sched_setscheduler, rdi, rsi, rdx);
+        STRACE("sched_setscheduler(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_mincore: {
