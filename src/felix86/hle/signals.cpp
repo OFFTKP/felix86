@@ -210,7 +210,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
     }
 
     // Finally also set the RIP
-    state->SetGpr(X86_REF_RIP, rip);
+    state->SetRip(rip);
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
@@ -269,7 +269,7 @@ void setup(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t n
     frame->uc.uc_mcontext.gregs[REG_R13] = state->GetGpr(X86_REF_R13);
     frame->uc.uc_mcontext.gregs[REG_R14] = state->GetGpr(X86_REF_R14);
     frame->uc.uc_mcontext.gregs[REG_R15] = state->GetGpr(X86_REF_R15);
-    frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetGpr(X86_REF_RIP);
+    frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetRip();
     frame->uc.uc_mcontext.gregs[REG_EFL] = state->GetFlags();
     frame->uc.uc_mcontext.fpregs->xmm[0] = state->GetXmmReg(X86_REF_XMM0);
     frame->uc.uc_mcontext.fpregs->xmm[1] = state->GetXmmReg(X86_REF_XMM1);
