@@ -241,7 +241,7 @@ void setup(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t n
         frame->uc.uc_stack.ss_flags = 0;
     }
 
-    sigset_t* old_mask = (sigset_t*)state->signal_mask;
+    sigset_t* old_mask = (sigset_t*)&state->signal_mask;
     frame->uc.uc_sigmask = *old_mask;
 
     if (in_jit_code) {
