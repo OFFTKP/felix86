@@ -121,10 +121,6 @@ void* Recompiler::emitSigreturnThunk() {
 }
 
 void* Recompiler::compile(u64 rip) {
-    if (blockExists(rip)) {
-        return block_metadata[rip].address;
-    }
-
     void* start = as.GetCursorPointer();
 
     // Map it immediately so we can optimize conditional branch to self
@@ -136,6 +132,14 @@ void* Recompiler::compile(u64 rip) {
     expirePendingLinks(rip);
 
     return start;
+}
+
+void* Recompiler::getCompiledBlock(u64 rip) {
+    if (blockExists(rip)) {
+        return block_metadata[rip].address;
+    }
+
+    return nullptr;
 }
 
 void Recompiler::compileSequence(u64 rip) {

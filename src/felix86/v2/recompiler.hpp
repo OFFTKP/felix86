@@ -198,6 +198,8 @@ struct Recompiler {
         return block_metadata;
     }
 
+    void* getCompiledBlock(u64 rip);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

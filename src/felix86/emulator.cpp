@@ -227,6 +227,15 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         raise(signal);
     }
 
+    {
+        // Check quickly before disabling signals first
+        auto lock = g_emulator->Lock();
+        void* function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
+        if (function) {
+            return function;
+        }
+    }
+
     // Block signals so we don't get a signal during the compilation period, this would lead to deadlock
     // since the signal handler needs to also compile code.
     static sigset_t mask_empty, mask_full;
