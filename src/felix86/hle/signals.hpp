@@ -32,6 +32,6 @@ struct Signals {
     // in emitSigreturnThunk). This address uses more than 56 bits, so it's normally not a valid x86-64 address, which means it will never collide
     // with a real address.
     static constexpr u64 magicSigreturnAddress() {
-        return 0x1337'F129'3293'1FA9ull;
+        return 0x1F00'0000'0000'0000;
     }
 };

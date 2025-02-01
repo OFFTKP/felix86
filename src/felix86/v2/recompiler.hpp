@@ -96,6 +96,10 @@ struct Recompiler {
 
     void* getCompileNext();
 
+    void disableSignals();
+
+    void enableSignals();
+
     bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
 
     void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
@@ -187,6 +191,8 @@ struct Recompiler {
 
     u64 getImmediate(ZydisDecodedOperand* operand);
 
+    void* emitSigreturnThunk();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -210,8 +216,6 @@ private:
     void resetScratch();
 
     void emitDispatcher();
-
-    void emitSigreturnThunk();
 
     void loadGPR(x86_ref_e reg, biscuit::GPR gpr);
 

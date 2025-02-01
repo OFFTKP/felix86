@@ -219,6 +219,15 @@ ThreadState* Emulator::GetThreadState() {
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
+    // Check if there's any pending signals. If there are, raise them.
+    // SURELY it won't be the case a synchronous signal would happen in our signal disabled jit regions, right?
+    // This should be safe to access without protection, as jitted code is the only one that can modify this
+    while (!thread_state->pending_signals.empty()) {
+        int signal = thread_state->pending_signals.front();
+        thread_state->pending_signals.pop();
+        raise(signal);
+    }
+
     // Block signals so we don't get a signal during the compilation period, this would lead to deadlock
     // since the signal handler needs to also compile code.
     static sigset_t mask_empty, mask_full;

@@ -89,7 +89,7 @@ static_assert(sizeof(siginfo_t) == 128);
 static_assert(sizeof(x64_rt_sigframe) == 1104);
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void setup_frame(u64& rsp, ThreadState* state, sigset_t mask, bool use_altstack, bool fetch_state) {
+void setup_frame(u64& rsp, ThreadState* state, sigset_t mask, bool use_altstack, bool in_jit_code) {
     u64 initial_rsp = rsp;
     rsp -= 128; // red zone
 
@@ -100,7 +100,7 @@ void setup_frame(u64& rsp, ThreadState* state, sigset_t mask, bool use_altstack,
     rsp -= sizeof(x64_rt_sigframe);
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
-    // TODO: setup frame->pretcode
+    frame->pretcode = (char*)Signals::magicSigreturnAddress();
 
     // TODO: setup uc_flags
     frame->uc.uc_link = 0;
@@ -119,13 +119,12 @@ void setup_frame(u64& rsp, ThreadState* state, sigset_t mask, bool use_altstack,
 
     frame->uc.uc_sigmask = mask;
 
-    if (fetch_state) {
+    if (in_jit_code) {
+        // Fixup our state
     }
 }
 
 void Signals::sigreturn(ThreadState* state) {
-    auto lock = g_emulator->Lock();
-
     u64 rsp = state->GetGpr(X86_REF_RSP);
 
     // When the signal handler returned, it popped the return address, which is the 8 bytes "pretcode" field in the sigframe
@@ -135,8 +134,55 @@ void Signals::sigreturn(ThreadState* state) {
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
     rsp += sizeof(x64_rt_sigframe);
 
-    // The registers need to be restored to what they were before the signal handler was called.
+    // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
     state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.gregs[REG_RAX]);
+    state->SetGpr(X86_REF_RCX, frame->uc.uc_mcontext.gregs[REG_RCX]);
+    state->SetGpr(X86_REF_RDX, frame->uc.uc_mcontext.gregs[REG_RDX]);
+    state->SetGpr(X86_REF_RBX, frame->uc.uc_mcontext.gregs[REG_RBX]);
+    state->SetGpr(X86_REF_RSP, frame->uc.uc_mcontext.gregs[REG_RSP]);
+    state->SetGpr(X86_REF_RBP, frame->uc.uc_mcontext.gregs[REG_RBP]);
+    state->SetGpr(X86_REF_RSI, frame->uc.uc_mcontext.gregs[REG_RSI]);
+    state->SetGpr(X86_REF_RDI, frame->uc.uc_mcontext.gregs[REG_RDI]);
+    state->SetGpr(X86_REF_R8, frame->uc.uc_mcontext.gregs[REG_R8]);
+    state->SetGpr(X86_REF_R9, frame->uc.uc_mcontext.gregs[REG_R9]);
+    state->SetGpr(X86_REF_R10, frame->uc.uc_mcontext.gregs[REG_R10]);
+    state->SetGpr(X86_REF_R11, frame->uc.uc_mcontext.gregs[REG_R11]);
+    state->SetGpr(X86_REF_R12, frame->uc.uc_mcontext.gregs[REG_R12]);
+    state->SetGpr(X86_REF_R13, frame->uc.uc_mcontext.gregs[REG_R13]);
+    state->SetGpr(X86_REF_R14, frame->uc.uc_mcontext.gregs[REG_R14]);
+    state->SetGpr(X86_REF_R15, frame->uc.uc_mcontext.gregs[REG_R15]);
+    state->SetGpr(X86_REF_RIP, frame->uc.uc_mcontext.gregs[REG_RIP]);
+
+    u64 flags = frame->uc.uc_mcontext.gregs[REG_EFL];
+    bool cf = (flags >> 0) & 1;
+    bool pf = (flags >> 2) & 1;
+    bool af = (flags >> 4) & 1;
+    bool zf = (flags >> 6) & 1;
+    bool sf = (flags >> 7) & 1;
+    bool of = (flags >> 11) & 1;
+    state->SetFlag(X86_REF_CF, cf);
+    state->SetFlag(X86_REF_PF, pf);
+    state->SetFlag(X86_REF_AF, af);
+    state->SetFlag(X86_REF_ZF, zf);
+    state->SetFlag(X86_REF_SF, sf);
+    state->SetFlag(X86_REF_OF, of);
+
+    state->SetXmmReg(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
+    state->SetXmmReg(X86_REF_XMM1, frame->uc.uc_mcontext.fpregs->xmm[1]);
+    state->SetXmmReg(X86_REF_XMM2, frame->uc.uc_mcontext.fpregs->xmm[2]);
+    state->SetXmmReg(X86_REF_XMM3, frame->uc.uc_mcontext.fpregs->xmm[3]);
+    state->SetXmmReg(X86_REF_XMM4, frame->uc.uc_mcontext.fpregs->xmm[4]);
+    state->SetXmmReg(X86_REF_XMM5, frame->uc.uc_mcontext.fpregs->xmm[5]);
+    state->SetXmmReg(X86_REF_XMM6, frame->uc.uc_mcontext.fpregs->xmm[6]);
+    state->SetXmmReg(X86_REF_XMM7, frame->uc.uc_mcontext.fpregs->xmm[7]);
+    state->SetXmmReg(X86_REF_XMM8, frame->uc.uc_mcontext.fpregs->xmm[8]);
+    state->SetXmmReg(X86_REF_XMM9, frame->uc.uc_mcontext.fpregs->xmm[9]);
+    state->SetXmmReg(X86_REF_XMM10, frame->uc.uc_mcontext.fpregs->xmm[10]);
+    state->SetXmmReg(X86_REF_XMM11, frame->uc.uc_mcontext.fpregs->xmm[11]);
+    state->SetXmmReg(X86_REF_XMM12, frame->uc.uc_mcontext.fpregs->xmm[12]);
+    state->SetXmmReg(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
+    state->SetXmmReg(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
+    state->SetXmmReg(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
 }
 
 // #if defined(__x86_64__)
@@ -249,6 +295,20 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         // First we need to find the current ThreadState object
         ThreadState* current_state = g_emulator->GetThreadState();
+
+        if (current_state->signals_disabled) {
+            // Signals are disabled! This might be because we are currently executing a disabled region of code, such as a rep instruction or an
+            // atomic instruction that uses lr/sc. We need to queue the signal to be handled later.
+            current_state->pending_signals.push(sig);
+
+            // Also check that there's no more than 1000 signals in the queue. Arbitrary number, but the only case where this realistically happens
+            // is when the signal keeps hitting over and over, which means it is a synchronous signal. We don't want to deadlock the thread and eat up
+            // all the memory.
+            if (current_state->pending_signals.size() > 1000) {
+                ERROR("Too many pending signals, something is wrong");
+            }
+            return;
+        }
 
         SignalHandlerTable& handlers = *current_state->signal_handlers;
 

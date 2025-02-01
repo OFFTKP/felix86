@@ -106,17 +106,18 @@ void Recompiler::emitDispatcher() {
     flush_icache();
 }
 
-void Recompiler::emitSigreturnThunk() {
+void* Recompiler::emitSigreturnThunk() {
     // This piece of code is responsible for moving the thread state pointer to the right place (so we don't have to find it using tid)
-    // and calling sigreturn, returning and going back to the dispatcher.
-
-    // See Signals::magicSigreturnAddress() for more information
-    block_metadata[Signals::magicSigreturnAddress()].address = as.GetCursorPointer();
+    // calling sigreturn, returning and going back to the dispatcher.
+    void* here = as.GetCursorPointer();
+    block_metadata[Signals::magicSigreturnAddress()].address = here;
 
     as.MV(a0, threadStatePointer());
     as.LI(t0, (u64)Signals::sigreturn);
     as.JALR(t0);
     backToDispatcher();
+
+    return here;
 }
 
 void* Recompiler::compile(u64 rip) {
@@ -1844,6 +1845,8 @@ x86_size_e Recompiler::zydisToSize(ZyanU8 size) {
 }
 
 void Recompiler::repPrologue(Label* loop_end) {
+    // Signal handling would get tricky if we had to account for this looping mess of an instruction
+    disableSignals();
     biscuit::GPR rcx = getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
     as.BEQZ(rcx, loop_end);
 }
@@ -1853,6 +1856,7 @@ void Recompiler::repEpilogue(Label* loop_body) {
     as.ADDI(rcx, rcx, -1);
     setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
     as.BNEZ(rcx, loop_body);
+    enableSignals();
 }
 
 void Recompiler::repzEpilogue(Label* loop_body, bool is_repz) {
@@ -1868,6 +1872,7 @@ void Recompiler::repzEpilogue(Label* loop_body, bool is_repz) {
         biscuit::GPR zf = flag(X86_REF_ZF);
         as.BEQZ(zf, loop_body);
     }
+    enableSignals();
 }
 
 void Recompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
@@ -1961,4 +1966,15 @@ biscuit::GPR Recompiler::getFlags() {
     as.ORI(reg, reg, 0b10); // bit 1 always set in flags
     popScratch();
     return reg;
+}
+
+void Recompiler::disableSignals() {
+    biscuit::GPR i_love_risc_architecture = scratch();
+    as.LI(i_love_risc_architecture, 1);
+    as.SB(i_love_risc_architecture, offsetof(ThreadState, signals_disabled), threadStatePointer());
+    popScratch();
+}
+
+void Recompiler::enableSignals() {
+    as.SB(x0, offsetof(ThreadState, signals_disabled), threadStatePointer());
 }
