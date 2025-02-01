@@ -358,8 +358,9 @@ void felix86_syscall(ThreadState* state) {
 
         x64Stat* guest_stat = (x64Stat*)rdx;
         struct stat host_stat;
-        result = HOST_SYSCALL(newfstatat, rdi, path->c_str(), &host_stat, r10);
-        STRACE("newfstatat(%d, %s, %p, %d) = %d", (int)rdi, path->c_str(), (void*)rdx, (int)r10, (int)result);
+        std::string spath = path->string();
+        result = HOST_SYSCALL(newfstatat, rdi, spath.c_str(), &host_stat, r10);
+        STRACE("newfstatat(%d, %s, %p, %d) = %d", (int)rdi, spath.c_str(), (void*)rdx, (int)r10, (int)result);
         if (result >= 0) {
             *guest_stat = host_stat;
         }
