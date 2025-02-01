@@ -255,23 +255,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Block all signals in this thread
-    sigset_t mask_empty;
-    sigfillset(&mask_empty);
-    sigprocmask(SIG_BLOCK, &mask_empty, nullptr);
+    pthread_setname_np(pthread_self(), "MainThread");
 
-    std::thread main_thread([argc, &config]() {
-        pthread_setname_np(pthread_self(), "MainThread");
+    Emulator emulator(config);
 
-        Emulator emulator(config);
-
-        if (argc == 1) {
-            ERROR("Unimplemented");
-        } else {
-            emulator.Run();
-        }
-    });
-    main_thread.join();
+    if (argc == 1) {
+        ERROR("Unimplemented");
+    } else {
+        emulator.Run();
+    }
 
     felix86_exit(0);
 }
