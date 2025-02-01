@@ -9,7 +9,6 @@
 #include <sys/random.h>
 #include "felix86/emulator.hpp"
 #include "felix86/hle/cpuid.hpp"
-#include "felix86/hle/rdtsc.hpp"
 #include "felix86/hle/syscall.hpp"
 
 extern char** environ;
@@ -283,15 +282,15 @@ ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
     ThreadState* thread_state = &thread_states.back();
 
     if (copy_state) {
-        for (int i = 0; i < sizeof(thread_state->gprs) / sizeof(thread_state->gprs[0]); i++) {
+        for (size_t i = 0; i < sizeof(thread_state->gprs) / sizeof(thread_state->gprs[0]); i++) {
             thread_state->gprs[i] = copy_state->gprs[i];
         }
 
-        for (int i = 0; i < sizeof(thread_state->xmm) / sizeof(thread_state->xmm[0]); i++) {
+        for (size_t i = 0; i < sizeof(thread_state->xmm) / sizeof(thread_state->xmm[0]); i++) {
             thread_state->xmm[i] = copy_state->xmm[i];
         }
 
-        for (int i = 0; i < sizeof(thread_state->fp) / sizeof(thread_state->fp[0]); i++) {
+        for (size_t i = 0; i < sizeof(thread_state->fp) / sizeof(thread_state->fp[0]); i++) {
             thread_state->fp[i] = copy_state->fp[i];
         }
 
@@ -310,7 +309,6 @@ ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
 
     thread_state->syscall_handler = (u64)felix86_syscall;
     thread_state->cpuid_handler = (u64)felix86_cpuid;
-    thread_state->rdtsc_handler = (u64)felix86_rdtsc;
     thread_state->compile_next_handler = (u64)recompiler.getCompileNext();
     thread_state->div128_handler = (u64)felix86_div128;
     thread_state->divu128_handler = (u64)felix86_divu128;

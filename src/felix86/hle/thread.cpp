@@ -8,6 +8,7 @@
 
 void start_thread_wrapper(ThreadState* new_state) {
     new_state->tid = gettid();
+    VERBOSE("Created thread state with tid %ld", new_state->tid);
     pthread_setname_np(pthread_self(), "ChildProcess");
     g_emulator->StartThread(new_state);
     g_emulator->RemoveState(new_state);

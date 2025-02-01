@@ -110,7 +110,6 @@ struct ThreadState {
     u64 compile_next_handler{};
     u64 syscall_handler{};
     u64 cpuid_handler{};
-    u64 rdtsc_handler{};
     u64 div128_handler{};
     u64 divu128_handler{};
 
