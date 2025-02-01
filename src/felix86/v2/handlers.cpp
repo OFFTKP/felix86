@@ -3549,6 +3549,34 @@ FAST_HANDLE(PEXTRW) {
     rec.setOperandGPR(&operands[0], result);
 }
 
+FAST_HANDLE(PEXTRD) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::GPR result = rec.scratch();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b11;
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VSLIDEDOWN(temp, src, imm);
+    AS.VMV_XS(dst, temp);
+
+    rec.setOperandGPR(&operands[0], result);
+}
+
+FAST_HANDLE(PEXTRQ) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::GPR result = rec.scratch();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b1;
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VSLIDEDOWN(temp, src, imm);
+    AS.VMV_XS(dst, temp);
+
+    rec.setOperandGPR(&operands[0], result);
+}
+
 FAST_HANDLE(CMPXCHG) {
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
