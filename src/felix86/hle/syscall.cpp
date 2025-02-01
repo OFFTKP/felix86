@@ -722,6 +722,11 @@ void felix86_syscall(ThreadState* state) {
         result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
         break;
     }
+    case felix86_x86_64_fallocate: {
+        result = HOST_SYSCALL(fallocate, rdi, rsi, rdx, r10);
+        STRACE("fallocate(%d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_sched_getaffinity: {
         result = HOST_SYSCALL(sched_getaffinity, rdi, rsi, rdx);
         STRACE("sched_getaffinity(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
