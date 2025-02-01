@@ -116,9 +116,28 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     u64 host_flags = args->flags;
     host_flags &= ~CLONE_SETTLS;
 
-    void* my_stack = malloc(1024 * 1024);
-    long result =
-        clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, host_flags, new_state, args->parent_tid, nullptr, args->child_tid);
+    long result;
+
+    if (args->stack == 0) {
+        // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use the
+        // syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case copy-on-write
+        // semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case, for correct
+        // operation, the CLONE_VM option should not be specified.
+        new_state->gprs[X86_REF_RSP] = current_state->gprs[X86_REF_RSP];
+        long ret = syscall(SYS_clone, host_flags, nullptr, args->parent_tid, args->child_tid, nullptr);
+
+        if (ret == 0) {
+            result = 0;
+            start_thread_wrapper(new_state);
+            UNREACHABLE();
+        } else {
+            result = ret;
+        }
+    } else {
+        void* my_stack = malloc(1024 * 1024);
+        result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, host_flags, new_state, args->parent_tid, nullptr,
+                       args->child_tid);
+    }
 
     if (result < 0) {
         ERROR("clone failed with %ld", errno);

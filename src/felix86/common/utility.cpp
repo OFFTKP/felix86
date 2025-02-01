@@ -171,3 +171,8 @@ void dump_states() {
         i++;
     }
 }
+
+void print_address(u64 address) {
+    dprintf(g_output_fd, ANSI_COLOR_RED "Address: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, address, MemoryMetadata::GetRegionName(address).c_str(),
+            MemoryMetadata::GetOffset(address));
+}

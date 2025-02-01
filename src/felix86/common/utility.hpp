@@ -40,6 +40,8 @@ int guest_breakpoint(const char* name, u64 address);
 
 int clear_breakpoints();
 
+void print_address(u64 address);
+
 void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64);
 
 void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64);
