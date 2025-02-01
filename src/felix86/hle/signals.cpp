@@ -185,6 +185,38 @@ void Signals::sigreturn(ThreadState* state) {
     state->SetXmmReg(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
 }
 
+struct riscv_v_state {
+    unsigned long vstart;
+    unsigned long vl;
+    unsigned long vtype;
+    unsigned long vcsr;
+    unsigned long vlenb;
+    void* datap;
+};
+
+std::optional<std::array<XmmReg, 32>> get_vector_state(void* ctx) {
+    ucontext_t* context = (ucontext_t*)ctx;
+    mcontext_t* mcontext = &context->uc_mcontext;
+    unsigned int* reserved = mcontext.__fpregs.__q.__glibc_reserved;
+
+    // Normally the glibc should have better support for this, but this will be fine for now
+    if (reserved[1] != 0x53465457) { // RISC-V V extension magic number that indicates the presence of vector state
+        return std::nullopt;
+    }
+
+    void* after_fpregs = reserved + 3;
+    riscv_v_state* v_state = (riscv_v_state*)after_fpregs;
+    u8* datap = (u8*)v_state->datap;
+
+    std::array<XmmReg, 16> xmm_regs;
+    for (int i = 0; i < 16; i++) {
+        xmm_regs[i] = *(XmmReg*)datap;
+        datap += v_state->vlenb;
+    }
+
+    return xmm_regs;
+}
+
 // #if defined(__x86_64__)
 // void signal_handler(int sig, siginfo_t* info, void* ctx) {
 //     UNREACHABLE();
@@ -195,6 +227,16 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
 
     Recompiler& recompiler = g_emulator->GetRecompiler();
+
+    auto vecs = get_vector_state(ctx);
+
+    if (!vecs) {
+        ERROR("Could not retrieve vector state in signal handler, Linux kernel version too low?");
+    }
+
+    for (int i = 0; i < 32; i++) {
+        printf("v%d %016lx - %016lx\n", i, (*vecs)[i].data[0], (*vecs)[i].data[1]);
+    }
 
     switch (sig) {
     case SIGBUS: {

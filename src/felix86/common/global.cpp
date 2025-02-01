@@ -116,6 +116,15 @@ void initialize_globals() {
         }
         g_rootfs_path = rootfs_path;
         environment += "\nFELIX86_ROOTFS=" + std::string(rootfs_path);
+    } else {
+        const char* rootfs_path = getenv("FELIX86_ROOTFS_PATH");
+        if (rootfs_path) {
+            if (!g_rootfs_path.empty()) {
+                WARN("Rootfs overwritten by environment variable FELIX86_ROOTFS_PATH");
+            }
+            g_rootfs_path = rootfs_path;
+            environment += "\nFELIX86_ROOTFS_PATH=" + std::string(rootfs_path);
+        }
     }
 
     const char* profile_compilation_env = getenv("FELIX86_PROFILE_COMPILATION");
