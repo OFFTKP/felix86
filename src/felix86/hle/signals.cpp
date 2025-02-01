@@ -510,6 +510,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     default: {
     check_guest_signal:
+        VERBOSE("Handling signal %d", sig);
         auto lock = g_emulator->Lock();
 
         // First we need to find the current ThreadState object
