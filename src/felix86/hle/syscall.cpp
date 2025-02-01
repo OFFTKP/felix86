@@ -744,6 +744,11 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_umask: {
+        result = HOST_SYSCALL(umask, rdi);
+        STRACE("umask(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_unlink: {
         auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
 
