@@ -523,7 +523,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
 
         ASSERT(handler.func != SIG_IGN); // TODO: what does that even mean?
-        VERBOSE("Handling signal %d, handler: %p", sig, handler.func);
+        if (g_strace) {
+            STRACE("------- Guest signal %s -------", strsignal(sig));
+        }
 
         // TODO: this could cause issues if it never jumps back to the dispatcher
         if (current_state->signals_disabled) {
