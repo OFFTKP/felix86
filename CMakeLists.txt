@@ -38,7 +38,6 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp
     src/felix86/common/global.cpp
-    src/felix86/common/hash.cpp
     src/felix86/common/log.cpp
     src/felix86/common/print.cpp
     src/felix86/common/utility.cpp
