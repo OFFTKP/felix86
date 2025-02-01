@@ -2746,6 +2746,18 @@ FAST_HANDLE(MOVMSKPS) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
+FAST_HANDLE(PMOVZXBQ) {
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.LI(mask, 0xFF);
+    AS.VAND(dst, src, mask);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
 void PCMPEQ(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec zero = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
