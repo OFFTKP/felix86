@@ -348,7 +348,7 @@ void Signals::sigreturn(ThreadState* state) {
     state->SetGpr(X86_REF_R13, frame->uc.uc_mcontext.gregs[REG_R13]);
     state->SetGpr(X86_REF_R14, frame->uc.uc_mcontext.gregs[REG_R14]);
     state->SetGpr(X86_REF_R15, frame->uc.uc_mcontext.gregs[REG_R15]);
-    state->SetGpr(X86_REF_RIP, frame->uc.uc_mcontext.gregs[REG_RIP]);
+    state->SetRip(frame->uc.uc_mcontext.gregs[REG_RIP]);
 
     u64 flags = frame->uc.uc_mcontext.gregs[REG_EFL];
     bool cf = (flags >> 0) & 1;
@@ -563,7 +563,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         current_state->SetGpr(X86_REF_RDI, sig);
 
         // Now we just need to set RIP to the handler function
-        current_state->SetGpr(X86_REF_RIP, (u64)handler.func);
+        current_state->SetRip((u64)handler.func);
 
         // Block the signals specified in the sa_mask until the signal handler returns
         u64 host_mask = Signals::hostSignalMask() & *(u64*)&mask_during_signal;
