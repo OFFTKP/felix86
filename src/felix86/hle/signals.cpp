@@ -515,6 +515,11 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         // First we need to find the current ThreadState object
         ThreadState* current_state = g_emulator->GetThreadState();
+        SignalHandlerTable& handlers = *current_state->signal_handlers;
+        RegisteredSignal& handler = handlers[sig - 1];
+        if (!handler.func) {
+            ERROR("Unhandled signal %d, no signal handler found", sig);
+        }
 
         // TODO: this could cause issues if it never jumps back to the dispatcher
         if (current_state->signals_disabled) {
@@ -531,44 +536,37 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             return;
         }
 
-        SignalHandlerTable& handlers = *current_state->signal_handlers;
-        RegisteredSignal& handler = handlers[sig - 1];
+        bool jit_code = is_in_jit_code(pc);
+        auto vecs = get_vector_state(ctx);
+        bool use_altstack = handler.flags & SA_ONSTACK;
 
-        if (handler.func) {
-            bool jit_code = is_in_jit_code(pc);
-            auto vecs = get_vector_state(ctx);
-            bool use_altstack = handler.flags & SA_ONSTACK;
-
-            sigset_t mask_during_signal;
-            mask_during_signal = handler.mask;
+        sigset_t mask_during_signal;
+        mask_during_signal = handler.mask;
 #ifndef SA_NODEFER
 #define SA_NODEFER 0x40000000
 #endif
-            if (!(handler.flags & SA_NODEFER)) {
-                sigaddset(&mask_during_signal, sig);
-            }
+        if (!(handler.flags & SA_NODEFER)) {
+            sigaddset(&mask_during_signal, sig);
+        }
 
-            BlockMetadata* metadata = get_block_metadata(pc);
-            u64 actual_rip = get_actual_rip(*metadata, pc);
+        BlockMetadata* metadata = get_block_metadata(pc);
+        u64 actual_rip = get_actual_rip(*metadata, pc);
 
-            // Prepares everything necessary to run the signal handler when we return from the host signal handler.
-            // The stack is switched if necessary and filled with the frame that the signal handler expects.
-            setup(metadata, actual_rip, current_state, mask_during_signal, (u64*)context->uc_mcontext.__gregs, vecs, use_altstack, jit_code);
+        // Prepares everything necessary to run the signal handler when we return from the host signal handler.
+        // The stack is switched if necessary and filled with the frame that the signal handler expects.
+        setup(metadata, actual_rip, current_state, mask_during_signal, (u64*)context->uc_mcontext.__gregs, vecs, use_altstack, jit_code);
 
-            current_state->SetGpr(X86_REF_RDI, sig);
+        current_state->SetGpr(X86_REF_RDI, sig);
 
-            // Now we just need to set RIP to the handler function
-            current_state->SetGpr(X86_REF_RIP, (u64)handler.func);
+        // Now we just need to set RIP to the handler function
+        current_state->SetGpr(X86_REF_RIP, (u64)handler.func);
 
-            // Block the signals specified in the sa_mask until the signal handler returns
-            u64 host_mask = Signals::hostSignalMask() & *(u64*)&mask_during_signal;
-            syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(u64));
+        // Block the signals specified in the sa_mask until the signal handler returns
+        u64 host_mask = Signals::hostSignalMask() & *(u64*)&mask_during_signal;
+        syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(u64));
 
-            if (handler.flags & SA_RESETHAND) {
-                handler.func = nullptr;
-            }
-        } else {
-            ERROR("Unhandled signal %d, no signal handler found", sig);
+        if (handler.flags & SA_RESETHAND) {
+            handler.func = nullptr;
         }
         break;
     }
