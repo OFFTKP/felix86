@@ -593,20 +593,21 @@ void Signals::initialize() {
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
-    if (!g_testing) { // we don't need to install guest handlers for tests
-        for (int i = 1; i <= 64; i++) {
-            sigaction(i, &sa, nullptr);
-        }
-    } else {
-        // Only install the signal handler for SIGILL and SIGBUS
-        sigaction(SIGILL, &sa, nullptr);
-        sigaction(SIGBUS, &sa, nullptr);
-    }
+    sigaction(SIGILL, &sa, nullptr);
+    sigaction(SIGBUS, &sa, nullptr);
 }
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags) {
     ASSERT(sig >= 1 && sig <= 64);
     (*state->signal_handlers)[sig - 1] = {handler, mask, flags};
+
+    // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
+    if (handler) {
+        struct sigaction sa;
+        sa.sa_sigaction = signal_handler;
+        sa.sa_flags = SA_SIGINFO;
+        sigemptyset(&sa.sa_mask);
+    }
 }
 
 RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
