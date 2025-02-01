@@ -570,6 +570,11 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         if (handler.flags & SA_RESETHAND) {
             handler.func = nullptr;
         }
+
+        if (jit_code) {
+            // If in jit code, make it jump to the dispatcher immediately. If it's not in jit code, just let it naturally go to the dispatcher.
+            context->uc_mcontext.__gregs[REG_PC] = g_emulator->GetRecompiler().getCompileNext();
+        }
         break;
     }
     }
