@@ -196,10 +196,12 @@ void Emulator::setupMainStack(ThreadState* state) {
 }
 
 ThreadState* Emulator::GetThreadState() {
+    printf("my tid: %d\n", gettid());
     auto tid = gettid();
     ThreadState* current_state = nullptr;
     for (ThreadState& state : g_emulator->GetStates()) {
         if (tid == state.tid) {
+            printf("this tid: %d\n", state.tid);
             if (!current_state) {
                 current_state = &state;
                 // Continue scanning to make sure we don't have a duplicate
