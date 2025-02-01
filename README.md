@@ -1,4 +1,4 @@
-[中文](https://github.com/OFFTKP/felix86/blob/master/README_CN.md)
+[中文](./README_CN.md)
 # felix86
 felix86 is a Linux userspace emulator. It allows you to run x86-64 Linux programs on RISC-V processors. Early in development.
 
