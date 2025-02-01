@@ -210,6 +210,18 @@ struct ThreadState {
     void SetRip(u64 value) {
         rip = value;
     }
+
+    u64 GetFlags() {
+        u64 flags = 0;
+        flags |= cf;
+        flags |= pf << 2;
+        flags |= af << 4;
+        flags |= zf << 6;
+        flags |= sf << 7;
+        flags |= df << 10;
+        flags |= of << 11;
+        return flags;
+    }
 };
 
 typedef union {

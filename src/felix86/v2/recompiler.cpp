@@ -223,6 +223,8 @@ void Recompiler::compileSequence(u64 rip) {
         meta.rip += instruction.length;
     }
 
+    current_block_metadata->address_end = as.GetCursorPointer();
+
     current_meta = nullptr;
 
     flush_icache();

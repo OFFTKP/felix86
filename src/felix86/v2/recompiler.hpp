@@ -21,13 +21,14 @@ struct HandlerMetadata {
 // for the first time, and then when it's written back it becomes invalid again because it may change due to a syscall or something.
 struct RegisterAccess {
     u64 address; // address where the load or writeback happened
-    bool valid;  // true if load, false if writeback
+    bool valid;  // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
 };
 
 struct BlockMetadata {
     void* address{};
+    void* address_end{};
     std::vector<u64> pending_links{};
-    std::vector<std::pair<u64, u64>> instruction_spans{};
+    std::vector<std::pair<u64, u64>> instruction_spans{}; // {guest, host}
     std::array<std::vector<RegisterAccess>, allocated_reg_count> register_accesses;
 };
 
@@ -145,9 +146,9 @@ struct Recompiler {
     x86_size_e zydisToSize(ZyanU8 size);
 
     // Get the allocated register for the given register reference
-    biscuit::GPR allocatedGPR(x86_ref_e reg);
+    static biscuit::GPR allocatedGPR(x86_ref_e reg);
 
-    biscuit::Vec allocatedVec(x86_ref_e reg);
+    static biscuit::Vec allocatedVec(x86_ref_e reg);
 
     bool setVectorState(SEW sew, int elem_count, LMUL grouping = LMUL::M1);
 
@@ -192,6 +193,10 @@ struct Recompiler {
     u64 getImmediate(ZydisDecodedOperand* operand);
 
     void* emitSigreturnThunk();
+
+    auto& getBlockMap() {
+        return block_metadata;
+    }
 
 private:
     struct RegisterMetadata {
