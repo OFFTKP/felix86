@@ -255,6 +255,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Block all signals in this thread
+    sigset_t mask_empty;
+    sigfillset(&mask_empty);
+    sigprocmask(SIG_BLOCK, &mask_empty, nullptr);
+
     std::thread main_thread([argc, &config]() {
         pthread_setname_np(pthread_self(), "MainThread");
 

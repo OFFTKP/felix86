@@ -2895,8 +2895,6 @@ FAST_HANDLE(PALIGNR) {
         return;
     }
 
-    // Use two register grouping
-
     if (16 - imm > 0) {
         AS.LI(temp, ~((1ull << (16 - imm)) - 1));
         AS.VMV_SX(v0, temp);
