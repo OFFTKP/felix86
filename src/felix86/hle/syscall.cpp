@@ -732,6 +732,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("sched_getaffinity(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_sched_setaffinity: {
+        result = HOST_SYSCALL(sched_setaffinity, rdi, rsi, rdx);
+        STRACE("sched_setaffinity(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_sched_get_priority_min: {
         result = HOST_SYSCALL(sched_get_priority_min, rdi);
         STRACE("sched_get_priority_min(%d) = %d", (int)rdi, (int)result);
