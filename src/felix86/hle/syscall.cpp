@@ -237,6 +237,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("poll(%p, %d, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_ppoll: {
+        result = HOST_SYSCALL(ppoll, rdi, rsi, rdx, r10);
+        STRACE("ppoll(%p, %d, %p, %p) = %d", (void*)rdi, (int)rsi, (void*)rdx, (void*)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_clock_gettime: {
         result = HOST_SYSCALL(clock_gettime, rdi, (struct timespec*)rsi);
         STRACE("clock_gettime(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
