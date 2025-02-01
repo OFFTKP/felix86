@@ -1929,7 +1929,7 @@ FAST_HANDLE(MOVDQU) {
 
 FAST_HANDLE(RDTSC) {
     biscuit::GPR tsc = rec.scratch();
-    AS.RDCYCLE(tsc);
+    AS.RDTIME(tsc);
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, tsc);
     AS.SRLI(tsc, tsc, 32);
     rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, tsc);
