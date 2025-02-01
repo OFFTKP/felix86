@@ -2732,6 +2732,20 @@ FAST_HANDLE(PMOVMSKB) {
     rec.setOperandGPR(&operands[0], scratch);
 }
 
+FAST_HANDLE(MOVMSKPS) {
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec mask = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VSRL(tmp, src, 31);
+    AS.VMSEQ(mask, tmp, 1);
+    AS.VMV_XS(dst, mask);
+    AS.ANDI(dst, dst, 0b1111);
+    rec.setOperandGPR(&operands[0], dst);
+}
+
 void PCMPEQ(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec zero = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);

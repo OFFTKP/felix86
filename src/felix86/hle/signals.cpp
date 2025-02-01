@@ -397,6 +397,11 @@ struct riscv_v_state {
     void* datap;
 };
 
+#if defined(__x86_64__)
+void signal_handler(int sig, siginfo_t* info, void* ctx) {
+    UNREACHABLE();
+}
+#elif defined(__riscv)
 std::optional<VectorState> get_vector_state(void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
@@ -420,11 +425,6 @@ std::optional<VectorState> get_vector_state(void* ctx) {
     return xmm_regs;
 }
 
-// #if defined(__x86_64__)
-// void signal_handler(int sig, siginfo_t* info, void* ctx) {
-//     UNREACHABLE();
-// }
-// #elif defined(__riscv)
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
@@ -583,7 +583,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     }
 }
-// #endif
+#endif
 
 void Signals::initialize() {
     struct sigaction sa;
