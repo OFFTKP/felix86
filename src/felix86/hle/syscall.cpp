@@ -252,6 +252,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("clock_gettime(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_clock_getres: {
+        result = HOST_SYSCALL(clock_getres, rdi, (struct timespec*)rsi);
+        STRACE("clock_getres(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_gettimeofday: {
         result = HOST_SYSCALL(gettimeofday, (struct timeval*)rdi, (struct timezone*)rsi);
         STRACE("gettimeofday(%p, %p) = %d", (void*)rdi, (void*)rsi, (int)result);
