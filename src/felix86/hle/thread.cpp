@@ -72,7 +72,7 @@ static std::string flags_to_string(u64 f) {
 
 long Threads::Clone(ThreadState* current_state, clone_args* args) {
     std::string sflags = flags_to_string(args->flags);
-    STRACE("clone({%s}, %llx, %llx, %llx, %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
+    STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
 
     u64 flags = args->flags & ~CSIGNAL;
     u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_SYSVSEM | CLONE_VFORK | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND |
@@ -122,10 +122,12 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         void* my_stack = malloc(1024 * 1024);
         result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, host_flags, new_state, args->parent_tid, nullptr,
                        args->child_tid);
-        STRACE("clone result = %ld", result);
     } else {
         result = clone((int (*)(void*))start_thread_wrapper, nullptr, host_flags, new_state, args->parent_tid, nullptr, args->child_tid);
-        STRACE("clone result = %ld", result);
+    }
+
+    if (result < 0) {
+        WARN("clone failed with %ld", errno);
     }
 
     return result;
