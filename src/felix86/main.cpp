@@ -257,8 +257,6 @@ int main(int argc, char* argv[]) {
 
     pthread_setname_np(pthread_self(), "MainThread");
 
-    // In case it was not closed properly before
-    unlink_semaphore();
     initialize_semaphore();
 
     std::atexit([]() { unlink_semaphore(); });

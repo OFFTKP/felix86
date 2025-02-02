@@ -263,6 +263,7 @@ bool parse_extensions(const char* arg) {
 
 // Needs to be reopened on new processes, the very first time it will be null though
 void initialize_semaphore() {
+    unlink_semaphore(); // in case it was not closed properly last time
     if (!g_semaphore) {
         g_semaphore = sem_open("/felix86_semaphore", O_CREAT | O_EXCL, 0644, 1);
     } else {
