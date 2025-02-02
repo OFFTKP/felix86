@@ -11,6 +11,7 @@ public:
         g_testing = true;
         initialize_globals();
         initialize_extensions();
+        initialize_semaphore();
         Signals::initialize();
     }
 };
