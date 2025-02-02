@@ -2682,6 +2682,31 @@ FAST_HANDLE(PACKSSWB) {
     AS.JALR(t0);
 }
 
+FAST_HANDLE(PACKSSDW) {
+    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
+    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
+
+    biscuit::GPR temp;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        temp = rec.lea(&operands[1]);
+    }
+    rec.writebackDirtyState();
+
+    AS.LI(t0, (u64)&felix86_packssdw);
+
+    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
+
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
+        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
+        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
+    } else {
+        AS.MV(a1, temp);
+    }
+
+    AS.JALR(t0);
+}
+
 enum class x86RoundingMode { Nearest = 0, Down = 1, Up = 2, Truncate = 3 };
 
 RMode rounding_mode(x86RoundingMode mode) {
