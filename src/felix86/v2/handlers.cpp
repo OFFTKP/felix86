@@ -1947,7 +1947,7 @@ FAST_HANDLE(UNPCKLPD) {
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VSLIDEUP(scratch, src2, 1);
     AS.VMV(v0, 0b10);
-    AS.VMERGE(result, scratch, src1);
+    AS.VMERGE(result, src1, scratch);
 
     rec.setOperandVec(&operands[0], result);
 }
@@ -1961,7 +1961,7 @@ FAST_HANDLE(UNPCKHPD) {
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VSLIDEDOWN(scratch, src1, 1);
     AS.VMV(v0, 0b10);
-    AS.VMERGE(result, src2, scratch);
+    AS.VMERGE(result, scratch, src2);
 
     rec.setOperandVec(&operands[0], result);
 }
