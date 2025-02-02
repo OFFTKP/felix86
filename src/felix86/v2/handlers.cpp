@@ -2657,6 +2657,31 @@ FAST_HANDLE(PACKUSWB) {
     AS.JALR(t0);
 }
 
+FAST_HANDLE(PACKUSDW) {
+    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
+    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
+
+    biscuit::GPR temp;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        temp = rec.lea(&operands[1]);
+    }
+    rec.writebackDirtyState();
+
+    AS.LI(t0, (u64)&felix86_packusdw);
+
+    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
+
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
+        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
+        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
+    } else {
+        AS.MV(a1, temp);
+    }
+
+    AS.JALR(t0);
+}
+
 FAST_HANDLE(PACKSSWB) {
     x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
     ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
