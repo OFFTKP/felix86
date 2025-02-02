@@ -970,6 +970,7 @@ void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
             break;
         }
         }
+        as.FENCETSO();
         break;
     }
     default: {
