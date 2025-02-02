@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fmt/format.h>
+#include <linux/futex.h>
 #include <poll.h>
 #include <sched.h>
 #include <sys/ioctl.h>
@@ -349,8 +350,6 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_newfstatat: {
         std::optional<std::filesystem::path> path = fs.AtPath(rdi, (const char*)rsi);
-
-        printf("%s\n", rsi);
 
         if (!path) {
             STRACE("newfstatat(%d, %s, %p, %d) = %d", (int)rdi, (const char*)rsi, (void*)rdx, (int)r10, -EACCES);
