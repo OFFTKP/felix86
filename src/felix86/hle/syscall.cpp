@@ -213,6 +213,11 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_shutdown: {
+        result = HOST_SYSCALL(shutdown, rdi, rsi);
+        STRACE("shutdown(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_setpgid: {
         result = HOST_SYSCALL(setpgid, rdi, rsi);
         STRACE("setpgid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
