@@ -260,8 +260,6 @@ int main(int argc, char* argv[]) {
     unlink_semaphore(); // in case it was not closed properly last time
     initialize_semaphore();
 
-    std::atexit([]() { unlink_semaphore(); });
-
     Emulator emulator(config);
 
     if (argc == 1) {
