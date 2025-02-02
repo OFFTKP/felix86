@@ -23,8 +23,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werr
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     # GDB decides to tell you the perfectly fine vector instructions don't exist if you
     # don't specify the ISA here
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcvb_zicsr_zifencei")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcvb_zicsr_zifencei")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcbv_zicsr_zifencei")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcbv_zicsr_zifencei")
 endif()
 
 add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
