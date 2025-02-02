@@ -490,6 +490,7 @@ FAST_HANDLE(CALL) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR scratch = rec.getRip();
+        biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
         AS.ADDI(rsp, rsp, -8);
         rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
@@ -499,7 +500,6 @@ FAST_HANDLE(CALL) {
 
         AS.SD(scratch, 0, rsp);
 
-        biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         rec.setRip(src);
         rec.writebackDirtyState();
         rec.pushCalltrace();
