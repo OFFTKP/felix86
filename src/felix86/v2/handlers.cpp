@@ -2657,6 +2657,16 @@ FAST_HANDLE(PACKUSWB) {
     AS.JALR(t0);
 }
 
+FAST_HANDLE(PACKSSWB) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VNCLIP(dst, src, 0);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
 enum class x86RoundingMode { Nearest = 0, Down = 1, Up = 2, Truncate = 3 };
 
 RMode rounding_mode(x86RoundingMode mode) {
