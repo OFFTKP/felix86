@@ -14,6 +14,7 @@ void start_thread_wrapper(ThreadState* new_state) {
     g_emulator->StartThread(new_state);
     g_emulator->RemoveState(new_state);
     LOG("Thread %ld exited", new_state->tid);
+    close_semaphore();
     // TODO: cleanup stack
 }
 

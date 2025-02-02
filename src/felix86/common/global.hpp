@@ -32,6 +32,8 @@ bool parse_extensions(const char* ext);
 void initialize_globals();
 void initialize_extensions();
 void initialize_semaphore();
+void close_semaphore();
+void unlink_semaphore();
 const char* get_version_full();
 
 struct SemaphoreLock {

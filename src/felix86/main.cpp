@@ -257,7 +257,11 @@ int main(int argc, char* argv[]) {
 
     pthread_setname_np(pthread_self(), "MainThread");
 
+    // In case it was not closed properly before
+    unlink_semaphore();
     initialize_semaphore();
+
+    std::atexit([]() { unlink_semaphore(); });
 
     Emulator emulator(config);
 
@@ -266,6 +270,9 @@ int main(int argc, char* argv[]) {
     } else {
         emulator.Run();
     }
+
+    close_semaphore();
+    unlink_semaphore();
 
     felix86_exit(0);
 }

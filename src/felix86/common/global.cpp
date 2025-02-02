@@ -264,8 +264,23 @@ bool parse_extensions(const char* arg) {
 // Needs to be reopened on new processes, the very first time it will be null though
 void initialize_semaphore() {
     if (!g_semaphore) {
-        g_semaphore = sem_open("/felix86", O_CREAT | O_EXCL, 0644, 1);
+        g_semaphore = sem_open("/felix86_semaphore", O_CREAT | O_EXCL, 0644, 1);
     } else {
-        g_semaphore = sem_open("/felix86", O_CREAT, 0644, 1);
+        g_semaphore = sem_open("/felix86_semaphore", O_CREAT, 0644, 1);
     }
+
+    if (g_semaphore == SEM_FAILED) {
+        ERROR("Failed to create semaphore: %s", strerror(errno));
+        exit(1);
+    }
+}
+
+void close_semaphore() {
+    if (g_semaphore) {
+        sem_close(g_semaphore);
+    }
+}
+
+void unlink_semaphore() {
+    sem_unlink("/felix86_semaphore");
 }
