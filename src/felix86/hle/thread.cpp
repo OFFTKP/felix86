@@ -9,6 +9,10 @@
 void start_thread_wrapper(ThreadState* new_state) {
     new_state->tid = gettid();
     LOG("Thread %ld started", new_state->tid);
+    std::mutex* mutex = (std::mutex*)g_emulator;
+    mutex->lock();
+    printf("Locked!!\n");
+    mutex->unlock();
     pthread_setname_np(pthread_self(), "ChildProcess");
     {
         auto lock = g_emulator->Lock();
