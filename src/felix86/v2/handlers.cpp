@@ -581,9 +581,9 @@ FAST_HANDLE(POP) {
     }
 
     int imm = instruction.operand_width == 16 ? 2 : 8;
+    rec.setOperandGPR(&operands[0], result);
     AS.ADDI(rsp, rsp, imm);
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
-    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(NOP) {}
