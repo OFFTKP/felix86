@@ -158,6 +158,36 @@ void felix86_packuswb(u8* dst, u8* src) {
     }
 }
 
+void felix86_packsswb(u8* dst, u8* src) {
+    i16* src16 = (i16*)src;
+    i16* dst16 = (i16*)dst;
+    for (int i = 0; i < 8; i++) {
+        i16 value = *dst16++;
+        u8 result;
+        if (value < -127) {
+            result = 128;
+        } else if (value > SCHAR_MAX) {
+            result = 255;
+        } else {
+            result = (u8)value;
+        }
+        dst[i] = result;
+    }
+
+    for (int i = 8; i < 16; i++) {
+        i16 value = *src16++;
+        u8 result;
+        if (value < -127) {
+            result = 128;
+        } else if (value > SCHAR_MAX) {
+            result = 255;
+        } else {
+            result = (u8)value;
+        }
+        dst[i] = result;
+    }
+}
+
 void dump_states() {
     if (!g_emulator) {
         return;

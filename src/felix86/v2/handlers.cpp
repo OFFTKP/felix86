@@ -2658,16 +2658,28 @@ FAST_HANDLE(PACKUSWB) {
 }
 
 FAST_HANDLE(PACKSSWB) {
-    biscuit::GPR temp = rec.scratch();
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
+    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
 
-    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
-    AS.LI(temp, 0b11111111);
-    AS.VMV_SX(v0, temp);
-    AS.VNSRL(dst, src, 0, VecMask::Yes);
+    biscuit::GPR temp;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        temp = rec.lea(&operands[1]);
+    }
+    rec.writebackDirtyState();
 
-    rec.setOperandVec(&operands[0], dst);
+    AS.LI(t0, (u64)&felix86_packsswb);
+
+    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
+
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
+        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
+        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
+    } else {
+        AS.MV(a1, temp);
+    }
+
+    AS.JALR(t0);
 }
 
 enum class x86RoundingMode { Nearest = 0, Down = 1, Up = 2, Truncate = 3 };
