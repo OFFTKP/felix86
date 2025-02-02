@@ -270,7 +270,6 @@ int main(int argc, char* argv[]) {
         emulator.Run();
     }
 
-    close_semaphore();
     unlink_semaphore();
 
     felix86_exit(0);

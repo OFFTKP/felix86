@@ -275,12 +275,6 @@ void initialize_semaphore() {
     }
 }
 
-void close_semaphore() {
-    if (g_semaphore) {
-        sem_close(g_semaphore);
-    }
-}
-
 void unlink_semaphore() {
     sem_unlink("/felix86_semaphore");
 }
