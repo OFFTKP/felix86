@@ -136,7 +136,7 @@ void felix86_packuswb(u8* dst, u8* src) {
         u8 result;
         if (value < 0) {
             result = 0;
-        } else if (value > SCHAR_MAX) {
+        } else if (value > 255) {
             result = 255;
         } else {
             result = (u8)value;
@@ -149,7 +149,7 @@ void felix86_packuswb(u8* dst, u8* src) {
         u8 result;
         if (value < 0) {
             result = 0;
-        } else if (value > SCHAR_MAX) {
+        } else if (value > 255) {
             result = 255;
         } else {
             result = (u8)value;
@@ -166,7 +166,7 @@ void felix86_packusdw(u16* dst, u8* src) {
         u16 result;
         if (value < 0) {
             result = 0;
-        } else if (value > SHRT_MAX) {
+        } else if (value > 0xFFFF) {
             result = 0xFFFF;
         } else {
             result = (u16)value;
@@ -179,7 +179,7 @@ void felix86_packusdw(u16* dst, u8* src) {
         u16 result;
         if (value < 0) {
             result = 0;
-        } else if (value > SHRT_MAX) {
+        } else if (value > 0xFFFF) {
             result = 0xFFFF;
         } else {
             result = (u16)value;
