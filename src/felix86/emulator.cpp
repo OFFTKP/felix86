@@ -3,6 +3,7 @@
 #include <mutex>
 #include <vector>
 #include <elf.h>
+#include <fcntl.h>
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <stdlib.h>
@@ -229,7 +230,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
     {
         // Check quickly before disabling signals first
-        auto lock = g_emulator->Lock();
+        auto lock = Semaphore::lock();
         void* function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
         if (function) {
             return function;
@@ -258,7 +259,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     {
         // Mutex needs to be unlocked before the thread is dispatched
         // Volatile so we can access it in gdb if needed
-        auto lock = g_emulator->Lock();
+        auto lock = Semaphore::lock();
         function = g_emulator->recompiler.compile(thread_state->GetRip());
     }
 
@@ -285,7 +286,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 }
 
 ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
-    auto lock = Lock();
+    auto lock = Semaphore::lock();
     thread_states.push_back(ThreadState{});
 
     ThreadState* thread_state = &thread_states.back();
@@ -326,7 +327,7 @@ ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
 }
 
 void Emulator::RemoveState(ThreadState* state) {
-    auto lock = Lock();
+    auto lock = Semaphore::lock();
     for (auto it = thread_states.begin(); it != thread_states.end(); it++) {
         if (&*it == state) {
             thread_states.erase(it);
@@ -340,10 +341,6 @@ void Emulator::StartThread(ThreadState* state) {
     state->tid = gettid();
     recompiler.enterDispatcher(state);
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
-}
-
-std::unique_lock<std::mutex> Emulator::Lock() {
-    return std::unique_lock<std::mutex>(mutex);
 }
 
 void Emulator::CleanExit(ThreadState* state) {

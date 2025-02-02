@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <unordered_map>
 #include <vector>
+#include <semaphore.h>
 #include "felix86/common/utility.hpp"
 
 #define SUPPORTED_VLEN 128
@@ -25,11 +26,35 @@ extern u64 g_executable_base_hint;
 extern const char* g_git_hash;
 extern struct Emulator* g_emulator;
 extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
+extern sem_t* g_semaphore;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
 void initialize_extensions();
+void initialize_semaphore();
 const char* get_version_full();
+
+struct SemaphoreLock {
+    SemaphoreLock(sem_t* semaphore) : semaphore(semaphore) {
+        sem_wait(semaphore);
+    }
+
+    ~SemaphoreLock() {
+        sem_post(semaphore);
+    }
+
+    SemaphoreLock(const SemaphoreLock&) = delete;
+    SemaphoreLock& operator=(const SemaphoreLock&) = delete;
+
+private:
+    sem_t* semaphore;
+};
+
+struct Semaphore {
+    static SemaphoreLock lock() {
+        return SemaphoreLock(g_semaphore);
+    }
+};
 
 struct Extensions {
 #define FELIX86_EXTENSIONS_TOTAL                                                                                                                     \

@@ -49,7 +49,7 @@ bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
         }
     }
 
-    std::unique_lock<std::mutex> lock(cwd_mutex);
+    auto lock = Semaphore::lock();
     cwd_path = rootfs_path;
 
     return true;
@@ -77,7 +77,7 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
     std::filesystem::path path = pathname;
     if (path.is_relative()) {
         if (dirfd == AT_FDCWD) {
-            std::unique_lock<std::mutex> lock(cwd_mutex);
+            auto lock = Semaphore::lock();
             path = cwd_path / path;
         } else {
             struct stat dirfd_stat;
@@ -209,7 +209,7 @@ bool Filesystem::validatePath(const std::filesystem::path& path) {
 }
 
 int Filesystem::Chdir(const char* path) {
-    std::unique_lock<std::mutex> lock(cwd_mutex);
+    auto lock = Semaphore::lock();
     std::filesystem::path new_cwd = path;
     new_cwd = new_cwd.lexically_normal();
     if (new_cwd.is_relative()) {
@@ -227,7 +227,7 @@ int Filesystem::Chdir(const char* path) {
 }
 
 int Filesystem::GetCwd(char* buf, u32 bufsiz) {
-    std::unique_lock<std::mutex> lock(cwd_mutex);
+    auto lock = Semaphore::lock();
     std::string cwd_string = cwd_path.string();
 
     if (cwd_string.size() < rootfs_path_string.size()) {

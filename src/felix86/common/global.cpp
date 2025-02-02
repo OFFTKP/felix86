@@ -17,6 +17,7 @@ bool g_strace = false;
 bool g_extensions_manually_specified = false;
 bool g_profile_compilation = false;
 bool g_calltrace = false;
+sem_t* g_semaphore = nullptr;
 u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
@@ -258,4 +259,13 @@ bool parse_extensions(const char* arg) {
     }
 
     return true;
+}
+
+// Needs to be reopened on new processes, the very first time it will be null though
+void initialize_semaphore() {
+    if (!g_semaphore) {
+        g_semaphore = sem_open("/felix86", O_CREAT | O_EXCL, 0644, 1);
+    } else {
+        g_semaphore = sem_open("/felix86", O_CREAT, 0644, 1);
+    }
 }

@@ -257,6 +257,8 @@ int main(int argc, char* argv[]) {
 
     pthread_setname_np(pthread_self(), "MainThread");
 
+    initialize_semaphore();
+
     Emulator emulator(config);
 
     if (argc == 1) {

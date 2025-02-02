@@ -1,6 +1,7 @@
 #pragma once
 
 #include <list>
+#include <semaphore.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/x86.hpp"
 #include "felix86/hle/filesystem.hpp"
@@ -87,12 +88,10 @@ struct Emulator {
 
     void CleanExit(ThreadState* state);
 
-    std::unique_lock<std::mutex> Lock();
-
 private:
     void setupMainStack(ThreadState* state);
 
-    std::mutex mutex; // to synchronize compilation and function lookup
+    sem_t* semaphore; // to synchronize compilation and function lookup
     std::list<ThreadState> thread_states;
     Config config;
     Filesystem fs;

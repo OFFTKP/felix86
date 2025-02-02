@@ -435,7 +435,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
-            auto lock = g_emulator->Lock();
+            auto lock = Semaphore::lock();
             ASSERT(is_in_jit_code(pc));
             // Go back one instruction, we are going to overwrite it with vsetivli.
             // It's guaranteed to be either a vsetivli or a nop.
@@ -494,7 +494,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         break;
     }
     case SIGILL: {
-        auto lock = g_emulator->Lock();
+        auto lock = Semaphore::lock();
         bool found = false;
         if (is_in_jit_code(pc)) {
             // Search to see if it is our breakpoint
@@ -522,7 +522,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     default: {
     check_guest_signal:
-        auto lock = g_emulator->Lock();
+        auto lock = Semaphore::lock();
 
         // First we need to find the current ThreadState object
         ThreadState* current_state = g_emulator->GetThreadState();
