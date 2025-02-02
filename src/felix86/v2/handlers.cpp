@@ -1266,6 +1266,7 @@ FAST_HANDLE(XCHG) {
 
     rec.setOperandGPR(&operands[1], dst);
     rec.setOperandGPR(&operands[0], temp);
+    AS.FENCETSO();
 }
 
 FAST_HANDLE(CLD) {
@@ -3637,6 +3638,7 @@ FAST_HANDLE(CMPXCHG) {
     rec.setOperandGPR(&operands[0], src);
 
     AS.Bind(&end);
+    AS.FENCETSO();
 }
 
 void SCALAR(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
