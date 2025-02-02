@@ -2752,11 +2752,12 @@ FAST_HANDLE(PMOVZXBQ) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VID(iota); // iota with 64-bit elements will place the indices at the right locations
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
     AS.LI(mask, 0b00000001'00000001'00000001'00000001);
     AS.VMV(dst, 0);
     AS.VMV(v0, mask);
-    AS.VID(iota);
     AS.VRGATHER(dst, src, iota, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], dst);
