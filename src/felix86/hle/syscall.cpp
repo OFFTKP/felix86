@@ -521,6 +521,19 @@ void felix86_syscall(ThreadState* state) {
         STRACE("getegid() = %d", (int)result);
         break;
     }
+    case felix86_x86_64_utimensat: {
+        auto path = fs.AtPath(rdi, (const char*)rsi);
+
+        if (!path) {
+            STRACE("utimensat(%d, %s, %p, %d) = %d", (int)rdi, (char*)rsi, (void*)rdx, (int)r10, -EACCES);
+            result = -EACCES;
+            break;
+        }
+
+        result = HOST_SYSCALL(utimensat, rdi, path->c_str(), (struct timespec*)rdx, r10);
+        STRACE("utimensat(%d, %s, %p, %d) = %d", (int)rdi, path->c_str(), (void*)rdx, (int)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_getgid: {
         result = HOST_SYSCALL(getgid);
         STRACE("getgid() = %d", (int)result);
