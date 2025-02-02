@@ -502,6 +502,7 @@ FAST_HANDLE(CALL) {
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         rec.setRip(src);
         rec.writebackDirtyState();
+        rec.pushCalltrace();
         rec.backToDispatcher();
         rec.stopCompiling();
         break;
@@ -523,6 +524,7 @@ FAST_HANDLE(CALL) {
 
         rec.setRip(scratch);
         rec.writebackDirtyState();
+        rec.pushCalltrace();
         rec.jumpAndLink(meta.rip + instruction.length + displacement);
         rec.stopCompiling();
         break;
@@ -549,6 +551,7 @@ FAST_HANDLE(RET) {
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
     rec.setRip(scratch);
     rec.writebackDirtyState();
+    rec.popCalltrace();
     rec.backToDispatcher();
     rec.stopCompiling();
 }

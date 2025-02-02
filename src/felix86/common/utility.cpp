@@ -168,11 +168,32 @@ void dump_states() {
     for (auto& state : states) {
         dprintf(g_output_fd, ANSI_COLOR_RED "State %d: PC: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, i, state.GetRip(),
                 MemoryMetadata::GetRegionName(state.GetRip()).c_str(), MemoryMetadata::GetOffset(state.GetRip()));
+
+        if (g_calltrace) {
+            dprintf(g_output_fd, ANSI_COLOR_RED "--- CALLTRACE ---\n" ANSI_COLOR_RESET);
+            auto it = state.calltrace.rbegin();
+            while (it != state.calltrace.rend()) {
+                print_address(*it);
+                it++;
+            }
+        }
         i++;
     }
 }
 
 void print_address(u64 address) {
-    dprintf(g_output_fd, ANSI_COLOR_RED "Address: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, address, MemoryMetadata::GetRegionName(address).c_str(),
-            MemoryMetadata::GetOffset(address));
+    dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, MemoryMetadata::GetRegionName(address).c_str(),
+            MemoryMetadata::GetOffset(address), (void*)address);
+}
+
+void push_calltrace(ThreadState* state) {
+    state->calltrace.push_back(state->rip);
+}
+
+void pop_calltrace(ThreadState* state) {
+    if (state->calltrace.empty()) {
+        return;
+    }
+
+    state->calltrace.pop_back();
 }

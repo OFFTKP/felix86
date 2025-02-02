@@ -16,6 +16,7 @@ bool g_testing = false;
 bool g_strace = false;
 bool g_extensions_manually_specified = false;
 bool g_profile_compilation = false;
+bool g_calltrace = false;
 u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
@@ -125,6 +126,12 @@ void initialize_globals() {
             g_rootfs_path = rootfs_path;
             environment += "\nFELIX86_ROOTFS_PATH=" + std::string(rootfs_path);
         }
+    }
+
+    const char* calltrace_env = getenv("FELIX86_CALLTRACE");
+    if (is_truthy(calltrace_env)) {
+        g_calltrace = true;
+        environment += "\nFELIX86_CALLTRACE";
     }
 
     const char* profile_compilation_env = getenv("FELIX86_PROFILE_COMPILATION");

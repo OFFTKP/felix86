@@ -48,6 +48,10 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64);
 
 void felix86_packuswb(u8* dst, u8* src);
 
+void push_calltrace(ThreadState* state);
+
+void pop_calltrace(ThreadState* state);
+
 void dump_states();
 
 namespace biscuit {}

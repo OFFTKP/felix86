@@ -1256,6 +1256,22 @@ void Recompiler::stopCompiling() {
     compiling = false;
 }
 
+void Recompiler::pushCalltrace() {
+    if (g_calltrace) {
+        as.LI(t0, (u64)push_calltrace);
+        as.MV(a0, threadStatePointer());
+        as.JALR(t0);
+    }
+}
+
+void Recompiler::popCalltrace() {
+    if (g_calltrace) {
+        as.LI(t0, (u64)pop_calltrace);
+        as.MV(a0, threadStatePointer());
+        as.JALR(t0);
+    }
+}
+
 void Recompiler::setExitReason(ExitReason reason) {
     biscuit::GPR reg = scratch();
     as.LI(reg, (int)reason);

@@ -200,6 +200,10 @@ struct Recompiler {
 
     void* getCompiledBlock(u64 rip);
 
+    void pushCalltrace();
+
+    void popCalltrace();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

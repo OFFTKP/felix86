@@ -101,6 +101,8 @@ struct ThreadState {
                                      // This doesn't quite work if a signal is "synchronous", meaning if an instruction purposefully triggered it
                                      // but those instructions should not overlap with ones that would disable signals.
 
+    std::vector<u64> calltrace; // used if g_calltrace is true
+
     // Two processes can share the same signal handler table
     std::shared_ptr<SignalHandlerTable> signal_handlers{};
     u64 signal_mask{};
