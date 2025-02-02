@@ -29,9 +29,6 @@ endif()
 
 add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
 
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 

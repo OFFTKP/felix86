@@ -266,7 +266,7 @@ void initialize_semaphore() {
     if (!g_semaphore) {
         g_semaphore = sem_open("/felix86_semaphore", O_CREAT | O_EXCL, 0644, 1);
     } else {
-        g_semaphore = sem_open("/felix86_semaphore", O_CREAT, 0644, 1);
+        g_semaphore = sem_open("/felix86_semaphore", 0);
     }
 
     if (g_semaphore == SEM_FAILED) {
