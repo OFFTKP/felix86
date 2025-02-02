@@ -1918,6 +1918,27 @@ FAST_HANDLE(UNPCKLPS) {
     rec.setOperandVec(&operands[0], scratch);
 }
 
+FAST_HANDLE(UNPCKHPS) {
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec src1 = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src2 = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMV(scratch, 0);
+    AS.LI(mask, 0b01010000);
+    AS.VMV(v0, mask);
+    AS.VIOTA(iota, v0);
+    AS.VRGATHER(scratch, src1, iota, VecMask::Yes);
+    AS.LI(mask, 0b10100000);
+    AS.VMV(v0, mask);
+    AS.VIOTA(iota, v0);
+    AS.VRGATHER(scratch, src2, iota, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], scratch);
+}
+
 FAST_HANDLE(MOVAPD) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setOperandVec(&operands[0], src);
