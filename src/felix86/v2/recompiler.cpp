@@ -727,6 +727,20 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
         u64 current = (u64)as.GetCursorPointer();
 
         switch (operand->size) {
+        case 8: {
+            setVectorState(SEW::E8, maxVlen() / 8);
+            as.VLE8(vec, address); // These won't need to be patched as they can't be unaligned
+            break;
+        }
+        case 16: {
+            if (!setVectorState(SEW::E16, 1)) {
+                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
+            }
+            as.VLE16(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+            registerVLE(current, SEW::E16, 1, vec, address);
+            break;
+        }
         case 32: {
             if (!setVectorState(SEW::E32, 1)) {
                 as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
@@ -752,6 +766,10 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
             as.VLE64(vec, address);
             as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
             registerVLE(current, SEW::E64, 2, vec, address);
+            break;
+        }
+        default: {
+            UNREACHABLE();
             break;
         }
         }
@@ -970,7 +988,6 @@ void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
             break;
         }
         }
-        as.FENCETSO();
         break;
     }
     default: {

@@ -468,6 +468,16 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 as.VSETIVLI(x0, vma.len, vma.sew);
                 break;
             }
+            case SEW::E16: {
+                as.VSETIVLI(x0, vma.len * 2, SEW::E8);
+                if (vma.load) {
+                    as.VLE8(vma.dest, vma.address);
+                } else {
+                    as.VSE8(vma.dest, vma.address);
+                }
+                as.VSETIVLI(x0, vma.len, vma.sew);
+                break;
+            }
             default: {
                 UNREACHABLE();
                 break;
