@@ -350,6 +350,8 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_newfstatat: {
         std::optional<std::filesystem::path> path = fs.AtPath(rdi, (const char*)rsi);
 
+        printf("%s\n", rsi);
+
         if (!path) {
             STRACE("newfstatat(%d, %s, %p, %d) = %d", (int)rdi, (const char*)rsi, (void*)rdx, (int)r10, -EACCES);
             result = -EACCES;
