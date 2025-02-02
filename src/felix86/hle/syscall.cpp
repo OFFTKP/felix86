@@ -607,6 +607,21 @@ void felix86_syscall(ThreadState* state) {
         result = 0;
         break;
     }
+    case felix86_x86_64_timerfd_create: {
+        result = HOST_SYSCALL(timerfd_create, rdi, rsi);
+        STRACE("timerfd_create(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_timerfd_settime: {
+        result = HOST_SYSCALL(timerfd_settime, rdi, rsi, rdx, r10);
+        STRACE("timerfd_settime(%d, %d, %p, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (void*)r10, (int)result);
+        break;
+    }
+    case felix86_x86_64_timerfd_gettime: {
+        result = HOST_SYSCALL(timerfd_gettime, rdi, (struct itimerspec*)rsi);
+        STRACE("timerfd_gettime(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_statfs: {
         std::optional<std::filesystem::path> path = fs.AtPath(AT_FDCWD, (const char*)rdi);
 
