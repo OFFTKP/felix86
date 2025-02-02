@@ -2748,12 +2748,16 @@ FAST_HANDLE(MOVMSKPS) {
 
 FAST_HANDLE(PMOVZXBQ) {
     biscuit::GPR mask = rec.scratch();
+    biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.LI(mask, 0xFF);
-    AS.VAND(dst, src, mask);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.LI(mask, 0b00000001'00000001'00000001'00000001);
+    AS.VMV(dst, 0);
+    AS.VMV(v0, mask);
+    AS.VID(iota);
+    AS.VRGATHER(dst, src, iota, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], dst);
 }
@@ -3543,15 +3547,14 @@ FAST_HANDLE(PEXTRW) {
 
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
     AS.VSLIDEDOWN(temp, src, imm);
-    AS.VMV_XS(dst, temp);
-    rec.zext(result, dst, X86_SIZE_WORD);
+    AS.VMV_XS(result, temp);
+    rec.zext(dst, result, X86_SIZE_WORD);
 
-    rec.setOperandGPR(&operands[0], result);
+    rec.setOperandGPR(&operands[0], dst);
 }
 
 FAST_HANDLE(PEXTRD) {
     biscuit::Vec temp = rec.scratchVec();
-    biscuit::GPR result = rec.scratch();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     u8 imm = rec.getImmediate(&operands[2]) & 0b11;
@@ -3560,12 +3563,11 @@ FAST_HANDLE(PEXTRD) {
     AS.VSLIDEDOWN(temp, src, imm);
     AS.VMV_XS(dst, temp);
 
-    rec.setOperandGPR(&operands[0], result);
+    rec.setOperandGPR(&operands[0], dst);
 }
 
 FAST_HANDLE(PEXTRQ) {
     biscuit::Vec temp = rec.scratchVec();
-    biscuit::GPR result = rec.scratch();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     u8 imm = rec.getImmediate(&operands[2]) & 0b1;
@@ -3574,7 +3576,7 @@ FAST_HANDLE(PEXTRQ) {
     AS.VSLIDEDOWN(temp, src, imm);
     AS.VMV_XS(dst, temp);
 
-    rec.setOperandGPR(&operands[0], result);
+    rec.setOperandGPR(&operands[0], dst);
 }
 
 FAST_HANDLE(CMPXCHG) {
