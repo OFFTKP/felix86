@@ -2658,11 +2658,14 @@ FAST_HANDLE(PACKUSWB) {
 }
 
 FAST_HANDLE(PACKSSWB) {
+    biscuit::GPR temp = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
-    AS.VNSRL(dst, src, 0);
+    AS.LI(temp, 0b11111111);
+    AS.VMV_SX(v0, temp);
+    AS.VNSRL(dst, src, 0, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], dst);
 }
