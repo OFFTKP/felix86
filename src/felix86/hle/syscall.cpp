@@ -218,6 +218,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("setpgid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_setpriority: {
+        result = HOST_SYSCALL(setpriority, rdi, rsi, rdx);
+        STRACE("setpriority(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_getpriority: {
+        result = HOST_SYSCALL(getpriority, rdi, rsi);
+        STRACE("getpriority(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_getrusage: {
         result = HOST_SYSCALL(getrusage, rdi, (struct rusage*)rsi);
         STRACE("getrusage(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
