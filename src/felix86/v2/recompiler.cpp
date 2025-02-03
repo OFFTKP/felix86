@@ -1179,7 +1179,7 @@ void Recompiler::loadVec(x86_ref_e reg, biscuit::Vec vec) {
     biscuit::GPR address = scratch();
     u64 offset = offsetof(ThreadState, xmm) + (reg - X86_REF_XMM0) * 16;
     as.ADDI(address, threadStatePointer(), offset);
-    setVectorState(SEW::E64, max_vlen / 64);
+    setVectorState(SEW::E64, maxVlen() / 64);
     as.VLE64(vec, address);
     popScratch();
 }
