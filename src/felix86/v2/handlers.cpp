@@ -4653,5 +4653,6 @@ FAST_HANDLE(CVTDQ2PD) {
     AS.VMV(v0, 0b11);
     AS.VFWCVT_F_X(scratch, src, VecMask::Yes);
 
+    rec.setVectorState(SEW::E64, 2);
     rec.setOperandVec(&operands[0], scratch);
 }
