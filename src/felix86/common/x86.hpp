@@ -92,7 +92,6 @@ struct ThreadState {
     u64 fsbase{};
 
     u64 tid{};
-    u64 brk_current_address{};
     stack_t alt_stack{};
     bool signals_disabled{}; // some instructions would make it annoying to allow for signals to occur, be it because they have loops like rep, or use
                              // lr/sc instructions. So, this flag is set to true when we absolutely don't want a signal to be handled here.

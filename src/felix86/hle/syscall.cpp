@@ -152,10 +152,10 @@ void felix86_syscall(ThreadState* state) {
     switch (syscall_number) {
     case felix86_x86_64_brk: {
         if (rdi == 0) {
-            result = state->brk_current_address;
+            result = __atomic_load_n(&g_current_brk, __ATOMIC_SEQ_CST);
         } else {
-            state->brk_current_address = rdi;
-            result = state->brk_current_address;
+            __atomic_store_n(&g_current_brk, rdi, __ATOMIC_SEQ_CST);
+            result = rdi;
         }
         STRACE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;

@@ -18,6 +18,7 @@ bool g_strace = false;
 bool g_extensions_manually_specified = false;
 bool g_profile_compilation = false;
 bool g_calltrace = false;
+u64 g_current_brk = 0;
 sem_t* g_semaphore = nullptr;
 u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
