@@ -277,8 +277,6 @@ FAST_HANDLE(ADC) {
     }
 
     rec.setOperandGPR(&operands[0], result_2);
-
-    rec.writebackDirtyState();
 }
 
 FAST_HANDLE(CMP) {

@@ -205,22 +205,32 @@ void Recompiler::compileSequence(u64 rip) {
 
             if ((changed & ZYDIS_CPUFLAG_CF) && !getMetadata(X86_REF_CF).dirty) {
                 ERROR("Instruction %s should've modified CF", ZydisMnemonicGetString(mnemonic));
+            } else if (!(changed & ZYDIS_CPUFLAG_CF) && getMetadata(X86_REF_CF).dirty) {
+                ERROR("Instruction %s should've not modified CF", ZydisMnemonicGetString(mnemonic));
             }
 
             if ((changed & ZYDIS_CPUFLAG_AF) && !getMetadata(X86_REF_AF).dirty) {
                 ERROR("Instruction %s should've modified AF", ZydisMnemonicGetString(mnemonic));
+            } else if (!(changed & ZYDIS_CPUFLAG_AF) && getMetadata(X86_REF_AF).dirty) {
+                ERROR("Instruction %s should've not modified AF", ZydisMnemonicGetString(mnemonic));
             }
 
             if ((changed & ZYDIS_CPUFLAG_ZF) && !getMetadata(X86_REF_ZF).dirty) {
                 ERROR("Instruction %s should've modified ZF", ZydisMnemonicGetString(mnemonic));
+            } else if (!(changed & ZYDIS_CPUFLAG_ZF) && getMetadata(X86_REF_ZF).dirty) {
+                ERROR("Instruction %s should've not modified ZF", ZydisMnemonicGetString(mnemonic));
             }
 
             if ((changed & ZYDIS_CPUFLAG_SF) && !getMetadata(X86_REF_SF).dirty) {
                 ERROR("Instruction %s should've modified SF", ZydisMnemonicGetString(mnemonic));
+            } else if (!(changed & ZYDIS_CPUFLAG_SF) && getMetadata(X86_REF_SF).dirty) {
+                ERROR("Instruction %s should've not modified SF", ZydisMnemonicGetString(mnemonic));
             }
 
             if ((changed & ZYDIS_CPUFLAG_OF) && !getMetadata(X86_REF_OF).dirty) {
                 ERROR("Instruction %s should've modified OF", ZydisMnemonicGetString(mnemonic));
+            } else if (!(changed & ZYDIS_CPUFLAG_OF) && getMetadata(X86_REF_OF).dirty) {
+                ERROR("Instruction %s should've not modified OF", ZydisMnemonicGetString(mnemonic));
             }
 
             writebackDirtyState();
