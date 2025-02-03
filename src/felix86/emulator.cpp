@@ -252,11 +252,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     void* volatile function;
     {
         FELIX86_LOCK;
-        printf("Thread %d enters\n", gettid());
-        fflush(stdout);
         function = g_emulator->recompiler.compile(thread_state->GetRip());
-        printf("Thread %d exits\n", gettid());
-        fflush(stdout);
         FELIX86_UNLOCK;
     }
 
