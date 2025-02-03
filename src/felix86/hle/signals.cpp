@@ -571,10 +571,11 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
 
         BlockMetadata* metadata = nullptr;
+        u64 actual_rip = state->GetRip();
         if (jit_code) {
             metadata = get_block_metadata(pc);
+            actual_rip = get_actual_rip(*metadata, pc);
         }
-        u64 actual_rip = get_actual_rip(*metadata, pc);
 
         // Prepares everything necessary to run the signal handler when we return from the host signal handler.
         // The stack is switched if necessary and filled with the frame that the signal handler expects.
