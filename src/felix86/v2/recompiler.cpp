@@ -122,6 +122,7 @@ void* Recompiler::emitSigreturnThunk() {
 
 void* Recompiler::compile(u64 rip) {
     void* start = as.GetCursorPointer();
+    printf("Cursor pointer: %p\n", start);
 
     // Map it immediately so we can optimize conditional branch to self
     block_metadata[rip].address = start;
