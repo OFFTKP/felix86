@@ -78,7 +78,29 @@ std::string name = {};
 u64 min_address = ULONG_MAX;
 u64 max_address = 0;
 
+class ParanoidSpinLock {
+    std::atomic_flag locked = ATOMIC_FLAG_INIT;
+
+public:
+    void lock() {
+        while (locked.test_and_set(std::memory_order_acquire)) {
+            ;
+        }
+    }
+    void unlock() {
+        locked.clear(std::memory_order_release);
+    }
+};
+
+ParanoidSpinLock g_paranoid_lock = {};
+
+bool paranoid_syscall = true;
+
 void felix86_syscall(ThreadState* state) {
+    if (paranoid_syscall) {
+        g_paranoid_lock.lock();
+    }
+
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 rdi = state->GetGpr(X86_REF_RDI);
     u64 rsi = state->GetGpr(X86_REF_RSI);
@@ -939,4 +961,8 @@ void felix86_syscall(ThreadState* state) {
     }
 
     state->SetGpr(X86_REF_RAX, result);
+
+    if (paranoid_syscall) {
+        g_paranoid_lock.unlock();
+    }
 }
