@@ -579,6 +579,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("connect(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_mremap: {
+        result = HOST_SYSCALL(mremap, rdi, rsi, rdx, r10, r8);
+        STRACE("mremap(%p, %016lx, %016lx, %d, %016lx) = %016lx", (void*)rdi, rsi, rdx, (int)r10, r8, (u64)result);
+        break;
+    }
+    case felix86_x86_64_msync: {
+        result = HOST_SYSCALL(msync, rdi, rsi, rdx);
+        STRACE("msync(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (u64)result);
+        break;
+    }
     case felix86_x86_64_sendto: {
         result = HOST_SYSCALL(sendto, rdi, rsi, rdx, r10, r8, r9);
         STRACE("sendto(%d, %p, %d, %d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (int)r9, (int)result);
