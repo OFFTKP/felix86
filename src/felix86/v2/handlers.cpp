@@ -3204,6 +3204,7 @@ FAST_HANDLE(BT) {
 
     u8 bit_size = operands[0].size;
     AS.ANDI(shift, bit, bit_size - 1);
+
     AS.SRL(cf, dst, shift);
     AS.ANDI(cf, cf, 1);
 
@@ -3251,13 +3252,13 @@ FAST_HANDLE(BTS) {
         dst = rec.getOperandGPR(&operands[0]);
     }
 
-    // if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
     u8 bit_size = operands[0].size;
     AS.ANDI(shift, bit, bit_size - 1);
-    AS.SRL(cf, dst, shift);
-    AS.ANDI(cf, cf, 1);
-    // }
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.SRL(cf, dst, shift);
+        AS.ANDI(cf, cf, 1);
+    }
 
     biscuit::GPR one = rec.scratch();
     AS.LI(one, 1);
