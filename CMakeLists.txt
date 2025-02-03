@@ -4,10 +4,13 @@ project(felix86)
 include(CheckGit.cmake)
 
 if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+    set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 CheckGitSetup()
+
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
 
 set(BISCUIT_CODE_BUFFER_MMAP ON)
 set(BUILD_TESTING OFF)
@@ -31,9 +34,6 @@ add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CP
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
-
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
 
 set(FELIX86_COMMON_SOURCES
     src/felix86/common/debug.cpp
