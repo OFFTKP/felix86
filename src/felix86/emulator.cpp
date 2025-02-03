@@ -252,7 +252,10 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     void* volatile function;
     {
         FELIX86_LOCK;
-        function = g_emulator->recompiler.compile(thread_state->GetRip());
+        function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
+        if (!function) {
+            function = g_emulator->recompiler.compile(thread_state->GetRip());
+        }
         FELIX86_UNLOCK;
     }
 
