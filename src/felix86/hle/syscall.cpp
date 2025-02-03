@@ -599,6 +599,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("alarm(%d) = %d", (int)rdi, (int)result);
         break;
     }
+    case felix86_x86_64_times: {
+        result = HOST_SYSCALL(times, (struct tms*)rdi);
+        STRACE("times(%p) = %d", (void*)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_recvfrom: {
         result = HOST_SYSCALL(recvfrom, rdi, rsi, rdx, r10, r8, r9);
         STRACE("recvfrom(%d, %p, %d, %d, %p, %p) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (void*)r9, (int)result);
