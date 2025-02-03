@@ -838,9 +838,9 @@ biscuit::GPR Recompiler::flagW(x86_ref_e ref) {
 biscuit::GPR Recompiler::flagWR(x86_ref_e ref) {
     biscuit::GPR reg = allocatedGPR(ref);
     RegisterMetadata& meta = getMetadata(ref);
+    loadGPR(ref, reg);
     meta.dirty = true;
     meta.loaded = true;
-    loadGPR(ref, reg);
     addRegisterAccess(ref, true);
     return reg;
 }
