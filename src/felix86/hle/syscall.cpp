@@ -105,6 +105,11 @@ struct ParanoidGuard {
         if (g_paranoid_syscall)
             g_paranoid_lock.unlock();
     }
+
+    void drop() {
+        if (g_paranoid_syscall)
+            g_paranoid_lock.unlock();
+    }
 };
 
 void felix86_syscall(ThreadState* state) {
@@ -439,6 +444,7 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_exit_group: {
         VERBOSE("Emulator called exit_group(%d)", (int)rdi);
         STRACE("exit_group(%d)", (int)rdi);
+        guard.drop();
         result = HOST_SYSCALL(exit_group, rdi);
         break;
     }
@@ -704,6 +710,7 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_exit: {
         STRACE("exit(%d)", (int)rdi);
         state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
+        guard.drop();
         g_emulator->CleanExit(state);
         result = 0;
         break;
