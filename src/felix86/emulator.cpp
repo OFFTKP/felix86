@@ -230,16 +230,6 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         raise(signal);
     }
 
-    {
-        // Check quickly before disabling signals first
-        FELIX86_LOCK;
-        void* function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
-        FELIX86_UNLOCK;
-        if (function) {
-            return function;
-        }
-    }
-
     // Block signals so we don't get a signal during the compilation period, this would lead to deadlock
     // since the signal handler needs to also compile code.
     static sigset_t mask_empty, mask_full;
@@ -262,7 +252,10 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     void* volatile function;
     {
         FELIX86_LOCK;
+        printf("Thread %d enters\n", gettid());
         function = g_emulator->recompiler.compile(thread_state->GetRip());
+        usleep(10000);
+        printf("Thread %d exits\n", gettid());
         FELIX86_UNLOCK;
     }
 

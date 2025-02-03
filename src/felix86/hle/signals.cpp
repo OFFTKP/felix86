@@ -557,9 +557,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             return;
         }
 
-        FELIX86_LOCK;
         bool jit_code = is_in_jit_code(pc);
-        FELIX86_UNLOCK;
         auto vecs = get_vector_state(ctx);
         bool use_altstack = handler.flags & SA_ONSTACK;
 
