@@ -1420,6 +1420,7 @@ void Recompiler::scanFlagUsageAhead(u64 rip) {
 }
 
 bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
+    return true;
     int index = 0;
     switch (ref) {
     case X86_REF_CF: {
