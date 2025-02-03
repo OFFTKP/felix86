@@ -480,6 +480,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_read: {
+        guard.drop();
         result = HOST_SYSCALL(read, rdi, rsi, rdx);
         STRACE("read(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
@@ -839,6 +840,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_futex: {
+        guard.drop();
         STRACE("futex(%p, %d, %d, %p, %p, %d) ...", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9);
         result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
         break;
@@ -894,6 +896,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_wait4: {
+        guard.drop();
         result = HOST_SYSCALL(wait4, rdi, rsi, rdx, r10);
         STRACE("wait4(%d, %p, %d, %p)", (int)rdi, (void*)rsi, (int)rdx, (void*)r10);
         break;
