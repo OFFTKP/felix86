@@ -3156,10 +3156,13 @@ FAST_HANDLE(TZCNT) {
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     (void)dst; // must be loaded since conditional code follows
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
 
     Label end;
     AS.LI(result, instruction.operand_width);
+    AS.LI(cf, 1);
     AS.BEQZ(src, &end);
+    AS.LI(cf, 0);
     AS.CTZ(result, src);
     AS.J(&end);
 
