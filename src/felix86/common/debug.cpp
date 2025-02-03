@@ -24,6 +24,7 @@ void check_deferred_breakpoints(const std::string& name) {
 }
 
 void MemoryMetadata::AddRegion(const std::string& name, u64 start, u64 end) {
+    FELIX86_LOCK;
     Region region;
     region.name = name;
     region.start = start;
@@ -31,9 +32,11 @@ void MemoryMetadata::AddRegion(const std::string& name, u64 start, u64 end) {
     regions.push_back(region);
     VERBOSE("Added region %s: %016lx-%016lx", name.c_str(), start, end);
     check_deferred_breakpoints(name);
+    FELIX86_UNLOCK;
 }
 
 void MemoryMetadata::AddInterpreterRegion(u64 start, u64 end) {
+    FELIX86_LOCK;
     ASSERT(!interpreter_added);
     interpreter_added = true;
     Region region;
@@ -44,42 +47,59 @@ void MemoryMetadata::AddInterpreterRegion(u64 start, u64 end) {
     regions.push_back(region);
     VERBOSE("Added interpreter region: %016lx-%016lx", start, end);
     check_deferred_breakpoints("Interpreter");
+    FELIX86_UNLOCK;
 }
 
 std::string MemoryMetadata::GetRegionName(u64 address) {
+    FELIX86_LOCK;
+    std::string name = "Unknown";
     for (const Region& region : regions) {
         if (address >= region.start && address < region.end) {
-            return region.name;
+            name = region.name;
+            break;
         }
     }
-    return "Unknown";
+    FELIX86_UNLOCK;
+    return name;
 }
 
 u64 MemoryMetadata::GetOffset(u64 address) {
+    FELIX86_LOCK;
+    u64 offset = 0;
     for (const Region& region : regions) {
         if (address >= region.start && address < region.end) {
-            return address - region.start;
+            offset = address - region.start;
+            break;
         }
     }
-    return 0;
+    FELIX86_UNLOCK;
+    return offset;
 }
 
 bool MemoryMetadata::IsInInterpreterRegion(u64 address) {
+    FELIX86_LOCK;
+    bool found = false;
     for (const Region& region : regions) {
         if (address >= region.start && address < region.end && region.is_interpreter) {
-            return true;
+            found = true;
+            break;
         }
     }
-    return false;
+    FELIX86_UNLOCK;
+    return found;
 }
 
 std::pair<u64, u64> MemoryMetadata::GetRegionByName(const std::string& name) {
+    FELIX86_LOCK;
+    std::pair<u64, u64> result = {0, 0};
     for (const Region& region : regions) {
         if (region.name == name) {
-            return {region.start, region.end};
+            result = {region.start, region.end};
+            break;
         }
     }
-    return {0, 0};
+    FELIX86_UNLOCK;
+    return result;
 }
 
 void MemoryMetadata::AddDeferredBreakpoint(const std::string& name, u64 offset) {
