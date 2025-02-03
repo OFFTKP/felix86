@@ -11,8 +11,8 @@ void start_thread_wrapper(ThreadState* new_state) {
     LOG("Thread %ld started", new_state->tid);
     pthread_setname_np(pthread_self(), "ChildProcess");
     g_emulator->StartThread(new_state);
-    g_emulator->RemoveState(new_state);
     LOG("Thread %ld exited", new_state->tid);
+    g_emulator->RemoveState(new_state);
     // TODO: cleanup stack
 }
 
