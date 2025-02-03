@@ -271,7 +271,7 @@ private:
 
     std::unordered_map<u64, VectorMemoryAccess> vector_memory_access{};
 
-    BlockMetadata* current_block_metadata;
+    BlockMetadata* current_block_metadata{};
     HandlerMetadata* current_meta{};
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;

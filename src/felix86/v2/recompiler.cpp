@@ -242,6 +242,7 @@ void Recompiler::compileSequence(u64 rip) {
 
     current_block_metadata->address_end = as.GetCursorPointer();
 
+    current_block_metadata = nullptr;
     current_meta = nullptr;
 
     flush_icache();
@@ -1698,6 +1699,8 @@ void Recompiler::expirePendingLinks(u64 rip) {
     }
 
     auto& links = block_metadata[rip].pending_links;
+    links.clear();
+    return;
     for (u64 link : links) {
         auto current_offset = as.GetCodeBuffer().GetCursorOffset();
 
