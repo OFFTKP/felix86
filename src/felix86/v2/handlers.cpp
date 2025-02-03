@@ -3148,6 +3148,7 @@ FAST_HANDLE(BTC) {
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        dst = rec.scratch();
         rec.readBitstring(dst, &operands[0], bit);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
@@ -3171,10 +3172,10 @@ FAST_HANDLE(BT) {
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
-
     biscuit::GPR dst;
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        dst = rec.scratch();
         rec.readBitstring(dst, &operands[0], bit);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
@@ -3198,6 +3199,7 @@ FAST_HANDLE(BTS) {
     biscuit::GPR dst;
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        dst = rec.scratch();
         rec.readBitstring(dst, &operands[0], bit);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
@@ -3231,6 +3233,7 @@ FAST_HANDLE(BTR) {
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        dst = rec.scratch();
         rec.readBitstring(dst, &operands[0], bit);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
