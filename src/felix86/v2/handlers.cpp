@@ -3692,19 +3692,19 @@ FAST_HANDLE(CMPXCHG_lock) {
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR dst = rec.scratch();
-    biscuit::GPR scratch = rec.scratch();
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
     biscuit::GPR cf = rec.flagWR(X86_REF_CF);
     biscuit::GPR of = rec.flagWR(X86_REF_OF);
-    biscuit::GPR sf = rec.flagWR(X86_REF_SF);
+    rec.flagWR(X86_REF_SF);
     biscuit::GPR af = rec.flagWR(X86_REF_AF);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.scratch();
 
     switch (size) {
     case X86_SIZE_DWORD: {
         biscuit::Label not_equal;
         biscuit::Label start;
+        biscuit::GPR scratch = rec.scratch();
         AS.Bind(&start);
         AS.LR_W(Ordering::AQRL, dst, address);
         AS.ZEXTW(dst, dst);
@@ -3712,17 +3712,20 @@ FAST_HANDLE(CMPXCHG_lock) {
         AS.SC_W(Ordering::AQRL, scratch, src, address);
         AS.BNEZ(scratch, &start);
         AS.Bind(&not_equal);
+        rec.popScratch();
         break;
     }
     case X86_SIZE_QWORD: {
         biscuit::Label not_equal;
         biscuit::Label start;
+        biscuit::GPR scratch = rec.scratch();
         AS.Bind(&start);
         AS.LR_D(Ordering::AQRL, dst, address);
         AS.BNE(dst, rax, &not_equal);
         AS.SC_D(Ordering::AQRL, scratch, src, address);
         AS.BNEZ(scratch, &start);
         AS.Bind(&not_equal);
+        rec.popScratch();
         break;
     }
     default: {
@@ -3790,7 +3793,7 @@ FAST_HANDLE(CMPXCHG) {
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
     biscuit::GPR cf = rec.flagWR(X86_REF_CF);
     biscuit::GPR of = rec.flagWR(X86_REF_OF);
-    biscuit::GPR sf = rec.flagWR(X86_REF_SF);
+    rec.flagWR(X86_REF_SF);
     biscuit::GPR af = rec.flagWR(X86_REF_AF);
 
     Label end, equal;
