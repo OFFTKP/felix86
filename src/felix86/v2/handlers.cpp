@@ -3193,7 +3193,9 @@ FAST_HANDLE(BT) {
         }
 
         // Point to the exact word in memory
-        AS.SRLI(shift, bit, shr);
+        u8 bit_size = operands[0].size;
+        AS.ANDI(shift, bit, bit_size - 1);
+        AS.SRLI(shift, shift, shr);
         AS.SLLI(shift, shift, shl);
         AS.ADD(address, address, shift);
         rec.readMemory(dst, address, 0, rec.zydisToSize(operands[0].size));
@@ -3242,7 +3244,9 @@ FAST_HANDLE(BTS) {
         }
 
         // Point to the exact word in memory
-        AS.SRLI(shift, bit, shr);
+        u8 bit_size = operands[0].size;
+        AS.ANDI(shift, bit, bit_size - 1);
+        AS.SRLI(shift, shift, shr);
         AS.SLLI(shift, shift, shl);
         AS.ADD(address, address, shift);
         rec.readMemory(dst, address, 0, rec.zydisToSize(operands[0].size));
