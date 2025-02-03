@@ -4644,3 +4644,14 @@ FAST_HANDLE(STMXCSR) {
 FAST_HANDLE(LDMXCSR) {
     WARN("LDMXCSR is not implemented, ignoring");
 }
+
+FAST_HANDLE(CVTDQ2PD) {
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 2);
+    AS.VMV(v0, 0b11);
+    AS.VFWCVT_F_X(scratch, src, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], scratch);
+}
