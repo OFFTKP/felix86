@@ -240,7 +240,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         init = true;
     }
 
-    sigprocmask(SIG_SETMASK, &mask_full, NULL);
+    // sigprocmask(SIG_SETMASK, &mask_full, NULL);
 
     std::chrono::high_resolution_clock::time_point start;
     if (g_profile_compilation) {
@@ -276,7 +276,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
             MemoryMetadata::GetRegionName(thread_state->GetRip()).c_str(), MemoryMetadata::GetOffset(thread_state->GetRip()), thread_state->GetRip(),
             function);
 
-    sigprocmask(SIG_SETMASK, &mask_empty, NULL);
+    // sigprocmask(SIG_SETMASK, &mask_empty, NULL);
 
     return function;
 }
