@@ -272,6 +272,16 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         address = address - g_executable_start;
     }
 
+    if (g_paranoid) {
+        // Check that the flags didn't get corrupted
+        ASSERT((*(u8*)&thread_state->cf & ~1) == 0);
+        ASSERT((*(u8*)&thread_state->zf & ~1) == 0);
+        ASSERT((*(u8*)&thread_state->sf & ~1) == 0);
+        ASSERT((*(u8*)&thread_state->of & ~1) == 0);
+        ASSERT((*(u8*)&thread_state->pf & ~1) == 0);
+        ASSERT((*(u8*)&thread_state->af & ~1) == 0);
+    }
+
     VERBOSE("State %p is jumping to function %s@0x%lx (%lx), located at %p", thread_state,
             MemoryMetadata::GetRegionName(thread_state->GetRip()).c_str(), MemoryMetadata::GetOffset(thread_state->GetRip()), thread_state->GetRip(),
             function);
