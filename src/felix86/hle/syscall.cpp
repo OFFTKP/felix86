@@ -465,6 +465,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("mkdir(%s, %d) = %d", (char*)rdi, (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_pwrite64: {
+        result = HOST_SYSCALL(pwrite64, rdi, rsi, rdx, r10);
+        STRACE("pwrite64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
+        break;
+    }
+    case felix86_x86_64_pread64: {
+        result = HOST_SYSCALL(pread64, rdi, rsi, rdx, r10);
+        STRACE("pread64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_openat: {
         result = fs.OpenAt(rdi, (const char*)rsi, rdx, r10);
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
@@ -480,11 +490,6 @@ void felix86_syscall(ThreadState* state) {
                 name = {};
             }
         }
-        break;
-    }
-    case felix86_x86_64_pread64: {
-        result = HOST_SYSCALL(pread64, rdi, rsi, rdx, r10);
-        STRACE("pread64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
     case felix86_x86_64_mmap: {
