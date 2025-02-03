@@ -4656,3 +4656,13 @@ FAST_HANDLE(CVTDQ2PD) {
     rec.setVectorState(SEW::E64, 2);
     rec.setOperandVec(&operands[0], scratch);
 }
+
+FAST_HANDLE(CVTDQ2PS) {
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 4);
+    AS.VFCVT_F_X(scratch, src);
+
+    rec.setOperandVec(&operands[0], scratch);
+}
