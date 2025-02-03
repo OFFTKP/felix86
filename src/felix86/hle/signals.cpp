@@ -571,7 +571,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
 
         BlockMetadata* metadata = nullptr;
-        u64 actual_rip = state->GetRip();
+        u64 actual_rip = current_state->GetRip();
         if (jit_code) {
             metadata = get_block_metadata(pc);
             actual_rip = get_actual_rip(*metadata, pc);
