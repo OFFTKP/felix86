@@ -36,34 +36,6 @@ void initialize_semaphore();
 void unlink_semaphore();
 const char* get_version_full();
 
-struct SemaphoreLock {
-    SemaphoreLock(sem_t* semaphore) : semaphore(semaphore) {
-        int lock = sem_wait(semaphore);
-        if (lock != 0) {
-            printf("Could not lock semaphore\n");
-        }
-    }
-
-    ~SemaphoreLock() {
-        int unlock = sem_post(semaphore);
-        if (unlock != 0) {
-            printf("Could not unlock semaphore\n");
-        }
-    }
-
-    SemaphoreLock(const SemaphoreLock&) = delete;
-    SemaphoreLock& operator=(const SemaphoreLock&) = delete;
-
-private:
-    sem_t* semaphore;
-};
-
-struct Semaphore {
-    static SemaphoreLock lock() {
-        return SemaphoreLock(g_semaphore);
-    }
-};
-
 struct Extensions {
 #define FELIX86_EXTENSIONS_TOTAL                                                                                                                     \
     X(G)                                                                                                                                             \

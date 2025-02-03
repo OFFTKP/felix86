@@ -197,6 +197,7 @@ void Emulator::setupMainStack(ThreadState* state) {
 }
 
 ThreadState* Emulator::GetThreadState() {
+    FELIX86_LOCK;
     auto tid = gettid();
     ThreadState* current_state = nullptr;
     for (ThreadState& state : g_emulator->GetStates()) {
@@ -209,6 +210,7 @@ ThreadState* Emulator::GetThreadState() {
             }
         }
     }
+    FELIX86_UNLOCK;
 
     if (!current_state) {
         ERROR("No ThreadState object found for tid %d", tid);
@@ -230,9 +232,9 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
     {
         // Check quickly before disabling signals first
-        ASSERT(sem_wait(g_semaphore) == 0);
+        FELIX86_LOCK;
         void* function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
-        ASSERT(sem_post(g_semaphore) == 0);
+        FELIX86_UNLOCK;
         if (function) {
             return function;
         }
@@ -256,13 +258,12 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         start = std::chrono::high_resolution_clock::now();
     }
 
+    // Volatile so we can access it in gdb if needed
     void* volatile function;
     {
-        // Mutex needs to be unlocked before the thread is dispatched
-        // Volatile so we can access it in gdb if needed
-        ASSERT(sem_wait(g_semaphore) == 0);
+        FELIX86_LOCK;
         function = g_emulator->recompiler.compile(thread_state->GetRip());
-        ASSERT(sem_post(g_semaphore) == 0);
+        FELIX86_UNLOCK;
     }
 
     if (g_profile_compilation) {
@@ -288,10 +289,11 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 }
 
 ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
-    auto lock = Semaphore::lock();
+    FELIX86_LOCK;
     thread_states.push_back(ThreadState{});
 
     ThreadState* thread_state = &thread_states.back();
+    FELIX86_UNLOCK;
 
     if (copy_state) {
         for (size_t i = 0; i < sizeof(thread_state->gprs) / sizeof(thread_state->gprs[0]); i++) {
@@ -329,10 +331,11 @@ ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
 }
 
 void Emulator::RemoveState(ThreadState* state) {
-    auto lock = Semaphore::lock();
+    FELIX86_LOCK;
     for (auto it = thread_states.begin(); it != thread_states.end(); it++) {
         if (&*it == state) {
             thread_states.erase(it);
+            FELIX86_UNLOCK;
             return;
         }
     }

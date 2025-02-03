@@ -435,8 +435,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
-            printf("bus error\n");
-            auto lock = Semaphore::lock();
+            FELIX86_LOCK;
             ASSERT(is_in_jit_code(pc));
             // Go back one instruction, we are going to overwrite it with vsetivli.
             // It's guaranteed to be either a vsetivli or a nop.
@@ -486,6 +485,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             }
             as.AdvanceBuffer(cursor);
             flush_icache();
+            FELIX86_UNLOCK;
             break;
         }
         default: {
@@ -495,7 +495,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         break;
     }
     case SIGILL: {
-        auto lock = Semaphore::lock();
+        FELIX86_LOCK;
         bool found = false;
         if (is_in_jit_code(pc)) {
             // Search to see if it is our breakpoint
@@ -518,13 +518,15 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 }
             }
         }
+        FELIX86_UNLOCK;
+        if (found) {
+            return;
+        }
 
         goto check_guest_signal;
     }
     default: {
     check_guest_signal:
-        auto lock = Semaphore::lock();
-
         // First we need to find the current ThreadState object
         ThreadState* current_state = g_emulator->GetThreadState();
         SignalHandlerTable& handlers = *current_state->signal_handlers;
@@ -555,7 +557,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             return;
         }
 
+        FELIX86_LOCK;
         bool jit_code = is_in_jit_code(pc);
+        FELIX86_UNLOCK;
         auto vecs = get_vector_state(ctx);
         bool use_altstack = handler.flags & SA_ONSTACK;
 

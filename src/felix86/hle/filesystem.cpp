@@ -49,8 +49,9 @@ bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
         }
     }
 
-    auto lock = Semaphore::lock();
+    FELIX86_LOCK;
     cwd_path = rootfs_path;
+    FELIX86_UNLOCK;
 
     return true;
 }
@@ -77,8 +78,9 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
     std::filesystem::path path = pathname;
     if (path.is_relative()) {
         if (dirfd == AT_FDCWD) {
-            auto lock = Semaphore::lock();
+            FELIX86_LOCK;
             path = cwd_path / path;
+            FELIX86_UNLOCK;
         } else {
             struct stat dirfd_stat;
             fstat(dirfd, &dirfd_stat);
@@ -209,11 +211,12 @@ bool Filesystem::validatePath(const std::filesystem::path& path) {
 }
 
 int Filesystem::Chdir(const char* path) {
-    auto lock = Semaphore::lock();
     std::filesystem::path new_cwd = path;
     new_cwd = new_cwd.lexically_normal();
     if (new_cwd.is_relative()) {
+        FELIX86_LOCK;
         new_cwd = cwd_path / new_cwd;
+        FELIX86_UNLOCK;
     } else {
         new_cwd = rootfs_path / new_cwd.relative_path();
     }
@@ -222,12 +225,14 @@ int Filesystem::Chdir(const char* path) {
         return -ENOENT;
     }
 
+    FELIX86_LOCK;
     cwd_path = new_cwd;
+    FELIX86_UNLOCK;
     return 0;
 }
 
 int Filesystem::GetCwd(char* buf, u32 bufsiz) {
-    auto lock = Semaphore::lock();
+    FELIX86_LOCK;
     std::string cwd_string = cwd_path.string();
 
     if (cwd_string.size() < rootfs_path_string.size()) {
