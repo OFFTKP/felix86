@@ -2847,6 +2847,7 @@ RMode rounding_mode(x86RoundingMode mode) {
         return RMode::RTZ;
     default:
         UNREACHABLE();
+        return RMode::RNE;
     }
 }
 

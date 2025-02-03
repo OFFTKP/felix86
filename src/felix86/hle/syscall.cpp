@@ -514,6 +514,8 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_openat: {
+        result = -1;
+        break;
         result = fs.OpenAt(rdi, (const char*)rsi, rdx, r10);
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
 

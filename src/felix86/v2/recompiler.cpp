@@ -1373,7 +1373,7 @@ void Recompiler::writebackDirtyState() {
         addRegisterAccess(X86_REF_OF, false);
     }
 
-    for (int i = 0; i < metadata.size(); i++) {
+    for (size_t i = 0; i < metadata.size(); i++) {
         metadata[i].dirty = false;
         metadata[i].loaded = false;
     }
