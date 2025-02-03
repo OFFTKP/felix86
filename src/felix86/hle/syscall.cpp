@@ -652,6 +652,11 @@ void felix86_syscall(ThreadState* state) {
         result = 0;
         break;
     }
+    case felix86_x86_64_eventfd2: {
+        result = HOST_SYSCALL(eventfd2, rdi, rsi);
+        STRACE("eventfd2(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_fchmod: {
         result = HOST_SYSCALL(fchmod, rdi, rsi);
         STRACE("fchmod(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
