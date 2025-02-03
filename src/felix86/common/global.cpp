@@ -10,6 +10,7 @@
 #include "fmt/format.h"
 #include "version.hpp"
 
+bool g_paranoid = false;
 bool g_verbose = false;
 bool g_quiet = false;
 bool g_testing = false;
@@ -133,6 +134,12 @@ void initialize_globals() {
     if (is_truthy(calltrace_env)) {
         g_calltrace = true;
         environment += "\nFELIX86_CALLTRACE";
+    }
+
+    const char* paranoid_env = getenv("FELIX86_PARANOID");
+    if (is_truthy(paranoid_env)) {
+        g_paranoid = true;
+        environment += "\nFELIX86_PARANOID";
     }
 
     const char* profile_compilation_env = getenv("FELIX86_PROFILE_COMPILATION");

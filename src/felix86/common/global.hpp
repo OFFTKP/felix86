@@ -15,6 +15,7 @@ extern bool g_strace;
 extern bool g_calltrace;
 extern bool g_extensions_manually_specified;
 extern bool g_profile_compilation;
+extern bool g_paranoid;
 extern u64 g_dispatcher_exit_count;
 extern std::chrono::nanoseconds g_compilation_total_time;
 extern int g_output_fd;
