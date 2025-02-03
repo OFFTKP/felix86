@@ -16,8 +16,6 @@ extern char** environ;
 
 static char x86_64_string[] = "x86_64";
 
-u64* addy = nullptr;
-
 u64 stack_push(u64 stack, u64 value) {
     stack -= 8;
     *(u64*)stack = value;
@@ -112,8 +110,6 @@ void Emulator::setupMainStack(ThreadState* state) {
     rsp = stack_push(rsp, 0);
     rsp = stack_push(rsp, 0);
     u64 rand_address = rsp;
-
-    addy = (u64*)rand_address;
 
     int result = getrandom((void*)rand_address, 16, 0);
     if (result == -1 || result != 16) {
@@ -256,13 +252,12 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         if (!function) {
             function = g_emulator->recompiler.compile(thread_state->GetRip());
         }
+        if (g_profile_compilation) {
+            std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+            std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            g_compilation_total_time += duration;
+        }
         FELIX86_UNLOCK;
-    }
-
-    if (g_profile_compilation) {
-        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-        std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-        g_compilation_total_time += duration;
     }
 
     u64 address = thread_state->GetRip();
