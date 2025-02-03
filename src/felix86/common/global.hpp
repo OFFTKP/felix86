@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <semaphore.h>
+#include <unistd.h>
 #include "felix86/common/utility.hpp"
 
 #define SUPPORTED_VLEN 128
@@ -41,6 +42,7 @@ struct SemaphoreLock {
         if (lock != 0) {
             printf("Could not lock semaphore\n");
         }
+        printf("Thread %d is in critical section\n", gettid());
     }
 
     ~SemaphoreLock() {
@@ -48,6 +50,7 @@ struct SemaphoreLock {
         if (unlock != 0) {
             printf("Could not unlock semaphore\n");
         }
+        printf("Thread %d exited critical section\n", gettid());
     }
 
     SemaphoreLock(const SemaphoreLock&) = delete;
