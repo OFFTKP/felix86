@@ -1261,7 +1261,39 @@ FAST_HANDLE(SAHF) {
     AS.ANDI(sf, sf, 1);
 }
 
+FAST_HANDLE(XCHG_lock) {
+    ASSERT(operands[0].size != 8 && operands[0].size != 16);
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR scratch = rec.scratch();
+    biscuit::GPR dst = rec.scratch();
+
+    AS.MV(scratch, src);
+
+    switch (size) {
+    case X86_SIZE_DWORD: {
+        AS.AMOSWAP_W(Ordering::AQRL, dst, scratch, address);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        AS.AMOSWAP_D(Ordering::AQRL, dst, scratch, address);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    rec.setOperandGPR(&operands[1], scratch);
+}
+
 FAST_HANDLE(XCHG) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        return fast_XCHG_lock(rec, meta, instruction, operands);
+    }
+
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
