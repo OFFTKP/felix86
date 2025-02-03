@@ -32,6 +32,9 @@ add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CP
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
+add_compile_options(-fsanitize=thread)
+add_link_options(-fsanitize=thread)
+
 set(FELIX86_COMMON_SOURCES
     src/felix86/common/debug.cpp
     src/felix86/common/disk_cache.cpp
