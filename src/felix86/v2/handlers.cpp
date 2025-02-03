@@ -3685,21 +3685,55 @@ FAST_HANDLE(PEXTRQ) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
-FAST_HANDLE(CMPXCHG) {
+FAST_HANDLE(CMPXCHG_lock) {
+    ASSERT(operands[0].size != 8 && operands[0].size != 16);
+
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
-    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-
-    Label end, equal;
-
     biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.scratch();
+    biscuit::GPR scratch = rec.scratch();
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+    biscuit::GPR cf = rec.flagWR(X86_REF_CF);
+    biscuit::GPR of = rec.flagWR(X86_REF_OF);
+    biscuit::GPR sf = rec.flagWR(X86_REF_SF);
+    biscuit::GPR af = rec.flagWR(X86_REF_AF);
+
+    switch (size) {
+    case X86_SIZE_DWORD: {
+        biscuit::Label not_equal;
+        biscuit::Label start;
+        AS.Bind(&start);
+        AS.LR_W(Ordering::AQRL, dst, address);
+        AS.ZEXTW(dst, dst);
+        AS.BNE(dst, rax, &not_equal);
+        AS.SC_W(Ordering::AQRL, scratch, src, address);
+        AS.BNEZ(scratch, &start);
+        AS.Bind(&not_equal);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        biscuit::Label not_equal;
+        biscuit::Label start;
+        AS.Bind(&start);
+        AS.LR_D(Ordering::AQRL, dst, address);
+        AS.BNE(dst, rax, &not_equal);
+        AS.SC_D(Ordering::AQRL, scratch, src, address);
+        AS.BNEZ(scratch, &start);
+        AS.Bind(&not_equal);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
 
     AS.SUB(result, rax, dst);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
         AS.SLTU(cf, rax, dst);
     }
 
@@ -3708,7 +3742,6 @@ FAST_HANDLE(CMPXCHG) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
         biscuit::GPR scratch = rec.scratch();
         AS.ANDI(af, rax, 0xF);
         AS.ANDI(scratch, dst, 0xF);
@@ -3722,7 +3755,72 @@ FAST_HANDLE(CMPXCHG) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR scratch = rec.scratch();
-        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        u64 sign_mask = rec.getSignMask(size);
+        AS.XOR(scratch, dst, rax);
+        AS.XOR(of, dst, result);
+        AS.AND(of, of, scratch);
+        AS.LI(scratch, sign_mask);
+        AS.AND(of, of, scratch);
+        AS.SNEZ(of, of);
+        rec.popScratch();
+    }
+
+    biscuit::Label end, equal;
+    AS.BEQ(dst, rax, &equal);
+
+    // Not equal
+    AS.LI(zf, 0);
+    rec.setRefGPR(X86_REF_RAX, size, dst);
+    AS.J(&end);
+
+    AS.Bind(&equal);
+    AS.LI(zf, 1);
+    AS.Bind(&end);
+}
+
+FAST_HANDLE(CMPXCHG) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        return fast_CMPXCHG_lock(rec, meta, instruction, operands);
+    }
+
+    x86_size_e size = rec.zydisToSize(instruction.operand_width);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+    biscuit::GPR cf = rec.flagWR(X86_REF_CF);
+    biscuit::GPR of = rec.flagWR(X86_REF_OF);
+    biscuit::GPR sf = rec.flagWR(X86_REF_SF);
+    biscuit::GPR af = rec.flagWR(X86_REF_AF);
+
+    Label end, equal;
+
+    biscuit::GPR result = rec.scratch();
+
+    AS.SUB(result, rax, dst);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        AS.SLTU(cf, rax, dst);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        biscuit::GPR scratch = rec.scratch();
+        AS.ANDI(af, rax, 0xF);
+        AS.ANDI(scratch, dst, 0xF);
+        AS.SLTU(af, af, scratch);
+        rec.popScratch();
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR scratch = rec.scratch();
         u64 sign_mask = rec.getSignMask(size);
         AS.XOR(scratch, dst, rax);
         AS.XOR(of, dst, result);
