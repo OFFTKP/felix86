@@ -2018,3 +2018,46 @@ void Recompiler::disableSignals() {
 void Recompiler::enableSignals() {
     as.SB(x0, offsetof(ThreadState, signals_disabled), threadStatePointer());
 }
+
+void Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR bit) {
+    biscuit::GPR loaded = scratch();
+    biscuit::GPR shift = scratch();
+    biscuit::GPR address = lea(&operands[0]);
+
+    u8 shr = 0;
+    u8 shl = 0;
+    switch (operands[0].size) {
+    case 16:
+        shr = 4;
+        shl = 1;
+        break;
+    case 32:
+        shr = 5;
+        shl = 2;
+        break;
+    case 64:
+        shr = 6;
+        shl = 3;
+        break;
+    default:
+        UNREACHABLE();
+    }
+
+    // Point to the exact word in memory
+    Label gtzero;
+    as.BGEZ(bit, &gtzero);
+
+    // If the shift is less than zero, this is possible but we don't handle it yet so let's panic
+    as.LI(shift, EXIT_REASON_NEGATIVE_BITSTRING);
+    as.SB(shift, offsetof(ThreadState, exit_reason), threadStatePointer());
+    as.LI(shift, (u64)exit_dispatcher);
+    as.JR(shift);
+
+    as.Bind(&gtzero);
+    as.SRLI(shift, bit, shr);
+    as.SLLI(shift, shift, shl);
+    as.ADD(address, address, shift);
+    readMemory(loaded, address, 0, zydisToSize(operands[0].size));
+    popScratch();
+    popScratch();
+}

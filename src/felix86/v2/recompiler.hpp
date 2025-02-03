@@ -204,6 +204,8 @@ struct Recompiler {
 
     void popCalltrace();
 
+    void readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR shift);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
