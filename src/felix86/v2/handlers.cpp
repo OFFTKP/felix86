@@ -3493,6 +3493,18 @@ FAST_HANDLE(PSRLDQ) {
     rec.setOperandVec(&operands[0], temp);
 }
 
+FAST_HANDLE(PSLLW) {
+    u8 shift = rec.getImmediate(&operands[1]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    if (shift > 15) {
+        AS.VMV(dst, 0);
+    } else {
+        AS.VSLL(dst, dst, shift);
+    }
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PSLLQ) {
     u8 shift = rec.getImmediate(&operands[1]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
@@ -3532,6 +3544,28 @@ FAST_HANDLE(PSRLD) {
     } else {
         AS.VSRL(dst, dst, shift);
     }
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PSRLW) {
+    u8 shift = rec.getImmediate(&operands[1]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    if (shift > 15) {
+        AS.VMV(dst, 0);
+    } else {
+        AS.VSRL(dst, dst, shift);
+    }
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PSRAW) {
+    u8 shift = rec.getImmediate(&operands[1]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    if (shift > 15)
+        shift = 15;
+    AS.VSRA(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 
