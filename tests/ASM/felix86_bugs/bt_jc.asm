@@ -8,9 +8,9 @@
 bits 64
 
 xor rcx, rcx
-bt rcx, 0
+bts rcx, 0
 jc .label1
 mov rbx, 1
 
-label1:
+.label1:
 hlt
