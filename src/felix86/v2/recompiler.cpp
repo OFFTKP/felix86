@@ -2020,9 +2020,8 @@ void Recompiler::enableSignals() {
 }
 
 void Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR bit) {
-    biscuit::GPR loaded = scratch();
     biscuit::GPR shift = scratch();
-    biscuit::GPR address = lea(&operands[0]);
+    biscuit::GPR address = lea(operand);
 
     u8 shr = 0;
     u8 shl = 0;
@@ -2057,7 +2056,7 @@ void Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, 
     as.SRLI(shift, bit, shr);
     as.SLLI(shift, shift, shl);
     as.ADD(address, address, shift);
-    readMemory(loaded, address, 0, zydisToSize(operands[0].size));
+    readMemory(dest, address, 0, zydisToSize(operands[0].size));
     popScratch();
     popScratch();
 }
