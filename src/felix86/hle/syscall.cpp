@@ -242,11 +242,11 @@ void felix86_syscall(ThreadState* state) {
             result = 0;
         }
         STRACE("close(%d) = %d", (int)rdi, (int)result);
-        if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-            detecting_memory_region = false;
-            ASSERT(result != -1);
-            MemoryMetadata::AddRegion(name, min_address, max_address);
-        }
+        // if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
+        //     detecting_memory_region = false;
+        //     ASSERT(result != -1);
+        //     MemoryMetadata::AddRegion(name, min_address, max_address);
+        // }
         break;
     }
     case felix86_x86_64_shutdown: {
@@ -517,17 +517,17 @@ void felix86_syscall(ThreadState* state) {
         result = fs.OpenAt(rdi, (const char*)rsi, rdx, r10);
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
 
-        if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-            name = std::filesystem::path((const char*)rsi).filename().string();
+        // if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
+        //     name = std::filesystem::path((const char*)rsi).filename().string();
 
-            if (name.find(".so") != std::string::npos) {
-                detecting_memory_region = true;
-                min_address = ULONG_MAX;
-                max_address = 0;
-            } else {
-                name = {};
-            }
-        }
+        //     if (name.find(".so") != std::string::npos) {
+        //         detecting_memory_region = true;
+        //         min_address = ULONG_MAX;
+        //         max_address = 0;
+        //     } else {
+        //         name = {};
+        //     }
+        // }
         break;
     }
     case felix86_x86_64_mmap: {
