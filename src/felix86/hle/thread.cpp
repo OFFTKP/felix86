@@ -8,6 +8,9 @@
 
 void start_thread_wrapper(ThreadState* new_state) {
     new_state->tid = gettid();
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigprocmask(SIG_SETMASK, &mask, nullptr);
     LOG("Thread %ld started", new_state->tid);
     pthread_setname_np(pthread_self(), "ChildProcess");
     g_emulator->StartThread(new_state);
