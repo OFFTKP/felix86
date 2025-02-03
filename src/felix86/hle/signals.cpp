@@ -570,7 +570,10 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             sigaddset(&mask_during_signal, sig);
         }
 
-        BlockMetadata* metadata = get_block_metadata(pc);
+        BlockMetadata* metadata = nullptr;
+        if (jit_code) {
+            metadata = get_block_metadata(pc);
+        }
         u64 actual_rip = get_actual_rip(*metadata, pc);
 
         // Prepares everything necessary to run the signal handler when we return from the host signal handler.
