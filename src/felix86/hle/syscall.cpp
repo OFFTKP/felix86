@@ -839,6 +839,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
 
+        WARN("execve has bad support currently");
         result = HOST_SYSCALL(execve, path->c_str(), (char**)rsi, (char**)rdx);
         STRACE("execve(%s, %p, %p) = %d", path->c_str(), (void*)rsi, (void*)rdx, (int)result);
 

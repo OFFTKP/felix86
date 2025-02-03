@@ -959,6 +959,7 @@ FAST_HANDLE(LEA) {
 
 FAST_HANDLE(DIV) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
+    // we don't need to move src to scratch because the rdx and rax in all these cases are in scratches
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
 
     switch (size) {
