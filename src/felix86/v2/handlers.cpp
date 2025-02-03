@@ -1291,7 +1291,11 @@ FAST_HANDLE(XCHG_lock) {
 
 FAST_HANDLE(XCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        return fast_XCHG_lock(rec, meta, instruction, operands);
+        if (operands[0].size == 8 || operands[0].size == 16) {
+            WARN("Atomic XCHG with 8 or 16-bit operands encountered");
+        } else {
+            return fast_XCHG_lock(rec, meta, instruction, operands);
+        }
     }
 
     biscuit::GPR temp = rec.scratch();
@@ -3815,7 +3819,11 @@ FAST_HANDLE(CMPXCHG_lock) {
 
 FAST_HANDLE(CMPXCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        return fast_CMPXCHG_lock(rec, meta, instruction, operands);
+        if (operands[0].size == 8 || operands[0].size == 16) {
+            WARN("Atomic CMPXCHG with 8 or 16 bit operands encountered");
+        } else {
+            return fast_CMPXCHG_lock(rec, meta, instruction, operands);
+        }
     }
 
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
