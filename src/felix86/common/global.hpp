@@ -42,7 +42,7 @@ struct SemaphoreLock {
         if (lock != 0) {
             printf("Could not lock semaphore\n");
         }
-        printf("Thread %d is in critical section\n", gettid());
+        printf("Thread %d is in critical section %p\n", gettid(), __builtin_return_address(0));
     }
 
     ~SemaphoreLock() {
@@ -50,7 +50,7 @@ struct SemaphoreLock {
         if (unlock != 0) {
             printf("Could not unlock semaphore\n");
         }
-        printf("Thread %d exited critical section\n", gettid());
+        printf("Thread %d exited critical section %p\n", gettid(), __builtin_return_address(0));
     }
 
     SemaphoreLock(const SemaphoreLock&) = delete;
