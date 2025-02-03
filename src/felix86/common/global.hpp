@@ -37,11 +37,17 @@ const char* get_version_full();
 
 struct SemaphoreLock {
     SemaphoreLock(sem_t* semaphore) : semaphore(semaphore) {
-        sem_wait(semaphore);
+        int lock = sem_wait(semaphore);
+        if (lock != 0) {
+            printf("Could not lock semaphore\n");
+        }
     }
 
     ~SemaphoreLock() {
-        sem_post(semaphore);
+        int unlock = sem_post(semaphore);
+        if (unlock != 0) {
+            printf("Could not unlock semaphore\n");
+        }
     }
 
     SemaphoreLock(const SemaphoreLock&) = delete;
