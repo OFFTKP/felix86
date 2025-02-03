@@ -1286,7 +1286,7 @@ FAST_HANDLE(XCHG_lock) {
     }
     }
 
-    rec.setOperandGPR(&operands[1], scratch);
+    rec.setOperandGPR(&operands[1], dst);
 }
 
 FAST_HANDLE(XCHG) {
