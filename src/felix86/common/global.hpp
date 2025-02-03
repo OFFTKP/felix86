@@ -37,23 +37,18 @@ void unlink_semaphore();
 const char* get_version_full();
 
 struct SemaphoreLock {
-    __attribute__((noinline)) SemaphoreLock(sem_t* semaphore) : semaphore(semaphore) {
+    SemaphoreLock(sem_t* semaphore) : semaphore(semaphore) {
         int lock = sem_wait(semaphore);
         if (lock != 0) {
             printf("Could not lock semaphore\n");
         }
-        printf("Thread %d is in critical section %p\n", gettid(), __builtin_return_address(0));
     }
 
-    __attribute__((noinline)) ~SemaphoreLock() {
+    ~SemaphoreLock() {
         int unlock = sem_post(semaphore);
         if (unlock != 0) {
             printf("Could not unlock semaphore\n");
         }
-        printf("Thread %d exited critical section %p\n", gettid(), __builtin_return_address(0));
-        int val;
-        sem_getvalue(semaphore, &val);
-        printf("Semaphore value: %d\n", val);
     }
 
     SemaphoreLock(const SemaphoreLock&) = delete;
