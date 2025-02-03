@@ -3170,7 +3170,6 @@ FAST_HANDLE(TZCNT) {
     rec.setOperandGPR(&operands[0], result);
     AS.SEQZ(zf, src);
 
-    rec.setFlagUndefined(X86_REF_CF);
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
     rec.setFlagUndefined(X86_REF_AF);
