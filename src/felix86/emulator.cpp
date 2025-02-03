@@ -230,8 +230,9 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
     {
         // Check quickly before disabling signals first
-        auto lock = Semaphore::lock();
+        ASSERT(sem_wait(g_semaphore) == 0);
         void* function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
+        ASSERT(sem_post(g_semaphore) == 0);
         if (function) {
             return function;
         }
@@ -259,8 +260,9 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     {
         // Mutex needs to be unlocked before the thread is dispatched
         // Volatile so we can access it in gdb if needed
-        auto lock = Semaphore::lock();
+        ASSERT(sem_wait(g_semaphore) == 0);
         function = g_emulator->recompiler.compile(thread_state->GetRip());
+        ASSERT(sem_post(g_semaphore) == 0);
     }
 
     if (g_profile_compilation) {
