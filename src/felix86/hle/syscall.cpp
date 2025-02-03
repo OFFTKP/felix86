@@ -93,13 +93,22 @@ public:
 };
 
 ParanoidSpinLock g_paranoid_lock = {};
+bool g_paranoid_syscall = false;
 
-bool paranoid_syscall = true;
+struct ParanoidGuard {
+    ParanoidGuard() {
+        if (g_paranoid_syscall)
+            g_paranoid_lock.lock();
+    }
+
+    ~ParanoidGuard() {
+        if (g_paranoid_syscall)
+            g_paranoid_lock.unlock();
+    }
+};
 
 void felix86_syscall(ThreadState* state) {
-    if (paranoid_syscall) {
-        g_paranoid_lock.lock();
-    }
+    ParanoidGuard guard;
 
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 rdi = state->GetGpr(X86_REF_RDI);
@@ -961,8 +970,4 @@ void felix86_syscall(ThreadState* state) {
     }
 
     state->SetGpr(X86_REF_RAX, result);
-
-    if (paranoid_syscall) {
-        g_paranoid_lock.unlock();
-    }
 }
