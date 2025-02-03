@@ -3292,6 +3292,29 @@ FAST_HANDLE(BTR) {
     rec.setFlagUndefined(X86_REF_AF);
 }
 
+FAST_HANDLE(BLSR) {
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+
+    AS.ADDI(result, src, -1);
+    AS.AND(result, src, result);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        AS.SEQZ(cf, src);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result, rec.zydisToSize(operands[0].size));
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, rec.zydisToSize(operands[0].size));
+    }
+
+    rec.setOperandGPR(&operands[0], result);
+}
+
 FAST_HANDLE(BSR) {
     ASSERT(Extensions::B);
     biscuit::GPR result = rec.scratch();
