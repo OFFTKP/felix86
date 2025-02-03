@@ -220,6 +220,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     // Check if there's any pending signals. If there are, raise them.
     // SURELY it won't be the case a synchronous signal would happen in our signal disabled jit regions, right?
     // This should be safe to access without protection, as jitted code is the only one that can modify this
+    FELIX86_LOCK;
     while (!thread_state->pending_signals.empty()) {
         int signal = thread_state->pending_signals.front();
         thread_state->pending_signals.pop();
@@ -245,19 +246,14 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     }
 
     // Volatile so we can access it in gdb if needed
-    void* volatile function;
-    {
-        FELIX86_LOCK;
-        function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
-        if (!function) {
-            function = g_emulator->recompiler.compile(thread_state->GetRip());
-        }
-        if (g_profile_compilation) {
-            std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-            std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-            g_compilation_total_time += duration;
-        }
-        FELIX86_UNLOCK;
+    void* function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
+    if (!function) {
+        function = g_emulator->recompiler.compile(thread_state->GetRip());
+    }
+    if (g_profile_compilation) {
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        g_compilation_total_time += duration;
     }
 
     u64 address = thread_state->GetRip();
@@ -282,6 +278,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
             function);
 
     // sigprocmask(SIG_SETMASK, &mask_empty, NULL);
+    FELIX86_UNLOCK;
 
     return function;
 }

@@ -1699,8 +1699,6 @@ void Recompiler::expirePendingLinks(u64 rip) {
     }
 
     auto& links = block_metadata[rip].pending_links;
-    links.clear();
-    return;
     for (u64 link : links) {
         auto current_offset = as.GetCodeBuffer().GetCursorOffset();
 
