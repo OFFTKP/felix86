@@ -1363,13 +1363,12 @@ void Recompiler::scanFlagUsageAhead(u64 rip) {
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[10];
         ZydisMnemonic mnemonic = decode(rip, instruction, operands);
-        bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET;
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
 
-        if (is_jump || is_ret || is_call || is_illegal || is_hlt) {
+        if (is_ret || is_call || is_illegal || is_hlt) {
             break;
         }
 
