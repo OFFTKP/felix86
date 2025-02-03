@@ -435,6 +435,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
+            printf("bus error\n");
             auto lock = Semaphore::lock();
             ASSERT(is_in_jit_code(pc));
             // Go back one instruction, we are going to overwrite it with vsetivli.
