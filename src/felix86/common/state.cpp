@@ -35,7 +35,7 @@ ThreadState::ThreadState(ThreadState* copy_state) {
 
 ThreadState* ThreadState::Create(ThreadState* copy_state) {
     ThreadState* state = new ThreadState(copy_state);
-    ASSERT(g_thread_state_key != 0);
+    ASSERT(g_thread_state_key != -1);
     ASSERT(pthread_getspecific(g_thread_state_key) == nullptr);
     pthread_setspecific(g_thread_state_key, state);
     return state;
