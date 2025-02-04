@@ -80,7 +80,7 @@ u64 sext_if_64(u64 value, u8 size_e) {
 void flush_icache(void* start, void* end) {
 #if defined(__riscv)
     // Code cache is local to each thread
-    __riscv_flush_icache(start, end, SYS_RISCV_FLUSH_ICACHE_LOCAL);
+    __riscv_flush_icache(start, end, 0);
 #endif
 }
 
