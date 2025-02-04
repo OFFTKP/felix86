@@ -1,5 +1,5 @@
-#include <biscuit/assert.hpp>
 #include <biscuit/assembler.hpp>
+#include <biscuit/assert.hpp>
 
 namespace biscuit {
 namespace {
@@ -37,8 +37,8 @@ enum class WidthEncoding : uint32_t {
     // clang-format on
 };
 
-void EmitVectorLoadImpl(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop,
-                        VecMask vm, uint32_t lumop, GPR rs, WidthEncoding width, Vec vd) noexcept {
+void EmitVectorLoadImpl(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop, VecMask vm, uint32_t lumop, GPR rs, WidthEncoding width,
+                        Vec vd) noexcept {
     BISCUIT_ASSERT(nf <= 8);
 
     // Fit to encoding space. Allows for being more explicit about the size in calling functions
@@ -61,33 +61,30 @@ void EmitVectorLoadImpl(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMod
     buffer.Emit32(value | 0b111);
 }
 
-void EmitVectorLoad(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop,
-                    VecMask vm, UnitStrideLoadAddressingMode lumop, GPR rs,
+void EmitVectorLoad(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop, VecMask vm, UnitStrideLoadAddressingMode lumop, GPR rs,
                     WidthEncoding width, Vec vd) noexcept {
     EmitVectorLoadImpl(buffer, nf, mew, mop, vm, static_cast<uint32_t>(lumop), rs, width, vd);
 }
 
-void EmitVectorLoad(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop,
-                    VecMask vm, GPR rs2, GPR rs1, WidthEncoding width, Vec vd) noexcept {
+void EmitVectorLoad(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop, VecMask vm, GPR rs2, GPR rs1, WidthEncoding width,
+                    Vec vd) noexcept {
     EmitVectorLoadImpl(buffer, nf, mew, mop, vm, rs2.Index(), rs1, width, vd);
 }
 
-void EmitVectorLoad(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop,
-                    VecMask vm, Vec vs2, GPR rs1, WidthEncoding width, Vec vd) noexcept {
+void EmitVectorLoad(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop, VecMask vm, Vec vs2, GPR rs1, WidthEncoding width,
+                    Vec vd) noexcept {
     EmitVectorLoadImpl(buffer, nf, mew, mop, vm, vs2.Index(), rs1, width, vd);
 }
 
-void EmitVectorLoadWholeReg(CodeBuffer& buffer, uint32_t nf, bool mew, GPR rs,
-                            WidthEncoding width, Vec vd) noexcept {
+void EmitVectorLoadWholeReg(CodeBuffer& buffer, uint32_t nf, bool mew, GPR rs, WidthEncoding width, Vec vd) noexcept {
     // RISC-V V extension spec (as of 1.0RC) only allows these nf values.
     BISCUIT_ASSERT(nf == 1 || nf == 2 || nf == 4 || nf == 8);
 
-    EmitVectorLoadImpl(buffer, nf, mew, AddressingMode::UnitStride,
-                       VecMask::No, 0b01000, rs, width, vd);
+    EmitVectorLoadImpl(buffer, nf, mew, AddressingMode::UnitStride, VecMask::No, 0b01000, rs, width, vd);
 }
 
-void EmitVectorStoreImpl(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop,
-                         VecMask vm, uint32_t sumop, GPR rs, WidthEncoding width, Vec vd) noexcept {
+void EmitVectorStoreImpl(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop, VecMask vm, uint32_t sumop, GPR rs, WidthEncoding width,
+                         Vec vd) noexcept {
     BISCUIT_ASSERT(nf <= 8);
 
     // Fit to encoding space. Allows for being more explicit about the size in calling functions
@@ -110,19 +107,18 @@ void EmitVectorStoreImpl(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMo
     buffer.Emit32(value | 0b100111);
 }
 
-void EmitVectorStore(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop,
-                     VecMask vm, UnitStrideStoreAddressingMode lumop, GPR rs,
+void EmitVectorStore(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop, VecMask vm, UnitStrideStoreAddressingMode lumop, GPR rs,
                      WidthEncoding width, Vec vs) noexcept {
     EmitVectorStoreImpl(buffer, nf, mew, mop, vm, static_cast<uint32_t>(lumop), rs, width, vs);
 }
 
-void EmitVectorStore(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop,
-                     VecMask vm, GPR rs2, GPR rs1, WidthEncoding width, Vec vs3) noexcept {
+void EmitVectorStore(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop, VecMask vm, GPR rs2, GPR rs1, WidthEncoding width,
+                     Vec vs3) noexcept {
     EmitVectorStoreImpl(buffer, nf, mew, mop, vm, rs2.Index(), rs1, width, vs3);
 }
 
-void EmitVectorStore(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop,
-                     VecMask vm, Vec vs2, GPR rs1, WidthEncoding width, Vec vs3) noexcept {
+void EmitVectorStore(CodeBuffer& buffer, uint32_t nf, bool mew, AddressingMode mop, VecMask vm, Vec vs2, GPR rs1, WidthEncoding width,
+                     Vec vs3) noexcept {
     EmitVectorStoreImpl(buffer, nf, mew, mop, vm, vs2.Index(), rs1, width, vs3);
 }
 
@@ -130,8 +126,7 @@ void EmitVectorStoreWholeReg(CodeBuffer& buffer, uint32_t nf, GPR rs, Vec vs) no
     // RISC-V V extension spec (as of 1.0RC) only allows these nf values.
     BISCUIT_ASSERT(nf == 1 || nf == 2 || nf == 4 || nf == 8);
 
-    EmitVectorStoreImpl(buffer, nf, false, AddressingMode::UnitStride, VecMask::No,
-                        0b01000, rs, WidthEncoding::E8, vs);
+    EmitVectorStoreImpl(buffer, nf, false, AddressingMode::UnitStride, VecMask::No, 0b01000, rs, WidthEncoding::E8, vs);
 }
 
 void EmitVectorOPIVIImpl(CodeBuffer& buffer, uint32_t funct6, VecMask vm, Vec vs2, uint32_t imm5, Vec vd) noexcept {
@@ -182,8 +177,7 @@ void EmitVectorOPIVX(CodeBuffer& buffer, uint32_t funct6, VecMask vm, Vec vs2, G
     buffer.Emit32(value | 0b1010111);
 }
 
-void EmitVectorOPMVVImpl(CodeBuffer& buffer, uint32_t funct6, VecMask vm, Vec vs2, Vec vs1, Vec vd,
-                         uint32_t op) noexcept {
+void EmitVectorOPMVVImpl(CodeBuffer& buffer, uint32_t funct6, VecMask vm, Vec vs2, Vec vs1, Vec vd, uint32_t op) noexcept {
     // clang-format off
     const auto value = (funct6 << 26) |
                        (static_cast<uint32_t>(vm) << 25) |
@@ -1538,8 +1532,8 @@ void Assembler::VLE64(Vec vd, GPR rs, VecMask mask) noexcept {
 }
 
 void Assembler::VLM(Vec vd, GPR rs) noexcept {
-    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, VecMask::No,
-                   UnitStrideLoadAddressingMode::MaskLoad, rs, WidthEncoding::E8, vd);
+    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, VecMask::No, UnitStrideLoadAddressingMode::MaskLoad, rs, WidthEncoding::E8,
+                   vd);
 }
 
 void Assembler::VLSE8(Vec vd, GPR rs1, GPR rs2, VecMask mask) noexcept {
@@ -1591,103 +1585,87 @@ void Assembler::VLUXEI64(Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
 }
 
 void Assembler::VLE8FF(Vec vd, GPR rs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, mask,
-                   UnitStrideLoadAddressingMode::LoadFaultOnlyFirst, rs, WidthEncoding::E8, vd);
+    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, mask, UnitStrideLoadAddressingMode::LoadFaultOnlyFirst, rs, WidthEncoding::E8,
+                   vd);
 }
 
 void Assembler::VLE16FF(Vec vd, GPR rs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, mask,
-                   UnitStrideLoadAddressingMode::LoadFaultOnlyFirst, rs, WidthEncoding::E16, vd);
+    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, mask, UnitStrideLoadAddressingMode::LoadFaultOnlyFirst, rs, WidthEncoding::E16,
+                   vd);
 }
 
 void Assembler::VLE32FF(Vec vd, GPR rs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, mask,
-                   UnitStrideLoadAddressingMode::LoadFaultOnlyFirst, rs, WidthEncoding::E32, vd);
+    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, mask, UnitStrideLoadAddressingMode::LoadFaultOnlyFirst, rs, WidthEncoding::E32,
+                   vd);
 }
 
 void Assembler::VLE64FF(Vec vd, GPR rs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, mask,
-                   UnitStrideLoadAddressingMode::LoadFaultOnlyFirst, rs, WidthEncoding::E64, vd);
+    EmitVectorLoad(m_buffer, 0b000, false, AddressingMode::UnitStride, mask, UnitStrideLoadAddressingMode::LoadFaultOnlyFirst, rs, WidthEncoding::E64,
+                   vd);
 }
 
 void Assembler::VLSEGE8(uint32_t num_segments, Vec vd, GPR rs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::UnitStride, mask,
-                   UnitStrideLoadAddressingMode::Load, rs, WidthEncoding::E8, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::UnitStride, mask, UnitStrideLoadAddressingMode::Load, rs, WidthEncoding::E8, vd);
 }
 
 void Assembler::VLSEGE16(uint32_t num_segments, Vec vd, GPR rs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::UnitStride, mask,
-                   UnitStrideLoadAddressingMode::Load, rs, WidthEncoding::E16, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::UnitStride, mask, UnitStrideLoadAddressingMode::Load, rs, WidthEncoding::E16, vd);
 }
 
 void Assembler::VLSEGE32(uint32_t num_segments, Vec vd, GPR rs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::UnitStride, mask,
-                   UnitStrideLoadAddressingMode::Load, rs, WidthEncoding::E32, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::UnitStride, mask, UnitStrideLoadAddressingMode::Load, rs, WidthEncoding::E32, vd);
 }
 
 void Assembler::VLSEGE64(uint32_t num_segments, Vec vd, GPR rs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::UnitStride, mask,
-                   UnitStrideLoadAddressingMode::Load, rs, WidthEncoding::E64, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::UnitStride, mask, UnitStrideLoadAddressingMode::Load, rs, WidthEncoding::E64, vd);
 }
 
 void Assembler::VLSSEGE8(uint32_t num_segments, Vec vd, GPR rs1, GPR rs2, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::Strided, mask,
-                   rs2, rs1, WidthEncoding::E8, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::Strided, mask, rs2, rs1, WidthEncoding::E8, vd);
 }
 
 void Assembler::VLSSEGE16(uint32_t num_segments, Vec vd, GPR rs1, GPR rs2, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::Strided, mask,
-                   rs2, rs1, WidthEncoding::E16, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::Strided, mask, rs2, rs1, WidthEncoding::E16, vd);
 }
 
 void Assembler::VLSSEGE32(uint32_t num_segments, Vec vd, GPR rs1, GPR rs2, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::Strided, mask,
-                   rs2, rs1, WidthEncoding::E32, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::Strided, mask, rs2, rs1, WidthEncoding::E32, vd);
 }
 
 void Assembler::VLSSEGE64(uint32_t num_segments, Vec vd, GPR rs1, GPR rs2, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::Strided, mask,
-                   rs2, rs1, WidthEncoding::E64, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::Strided, mask, rs2, rs1, WidthEncoding::E64, vd);
 }
 
 void Assembler::VLOXSEGEI8(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask,
-                   vs, rs, WidthEncoding::E8, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask, vs, rs, WidthEncoding::E8, vd);
 }
 
 void Assembler::VLOXSEGEI16(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask,
-                   vs, rs, WidthEncoding::E16, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask, vs, rs, WidthEncoding::E16, vd);
 }
 
 void Assembler::VLOXSEGEI32(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask,
-                   vs, rs, WidthEncoding::E32, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask, vs, rs, WidthEncoding::E32, vd);
 }
 
 void Assembler::VLOXSEGEI64(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask,
-                   vs, rs, WidthEncoding::E64, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask, vs, rs, WidthEncoding::E64, vd);
 }
 
 void Assembler::VLUXSEGEI8(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask,
-                   vs, rs, WidthEncoding::E8, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask, vs, rs, WidthEncoding::E8, vd);
 }
 
 void Assembler::VLUXSEGEI16(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask,
-                   vs, rs, WidthEncoding::E16, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask, vs, rs, WidthEncoding::E16, vd);
 }
 
 void Assembler::VLUXSEGEI32(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask,
-                   vs, rs, WidthEncoding::E32, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask, vs, rs, WidthEncoding::E32, vd);
 }
 
 void Assembler::VLUXSEGEI64(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask,
-                   vs, rs, WidthEncoding::E64, vd);
+    EmitVectorLoad(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask, vs, rs, WidthEncoding::E64, vd);
 }
 
 void Assembler::VLRE8(uint32_t num_registers, Vec vd, GPR rs) noexcept {
@@ -1791,8 +1769,8 @@ void Assembler::VSE64(Vec vs, GPR rs, VecMask mask) noexcept {
 }
 
 void Assembler::VSM(Vec vs, GPR rs) noexcept {
-    EmitVectorStore(m_buffer, 0b000, false, AddressingMode::UnitStride, VecMask::No,
-                    UnitStrideStoreAddressingMode::MaskStore, rs, WidthEncoding::E8, vs);
+    EmitVectorStore(m_buffer, 0b000, false, AddressingMode::UnitStride, VecMask::No, UnitStrideStoreAddressingMode::MaskStore, rs, WidthEncoding::E8,
+                    vs);
 }
 
 void Assembler::VSSE8(Vec vs, GPR rs1, GPR rs2, VecMask mask) noexcept {
@@ -1844,83 +1822,70 @@ void Assembler::VSUXEI64(Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
 }
 
 void Assembler::VSSEGE8(uint32_t num_segments, Vec vs, GPR rs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::UnitStride, mask,
-                    UnitStrideStoreAddressingMode::Store, rs, WidthEncoding::E8, vs);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::UnitStride, mask, UnitStrideStoreAddressingMode::Store, rs, WidthEncoding::E8, vs);
 }
 
 void Assembler::VSSEGE16(uint32_t num_segments, Vec vs, GPR rs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::UnitStride, mask,
-                    UnitStrideStoreAddressingMode::Store, rs, WidthEncoding::E16, vs);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::UnitStride, mask, UnitStrideStoreAddressingMode::Store, rs, WidthEncoding::E16,
+                    vs);
 }
 
 void Assembler::VSSEGE32(uint32_t num_segments, Vec vs, GPR rs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::UnitStride, mask,
-                    UnitStrideStoreAddressingMode::Store, rs, WidthEncoding::E32, vs);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::UnitStride, mask, UnitStrideStoreAddressingMode::Store, rs, WidthEncoding::E32,
+                    vs);
 }
 
 void Assembler::VSSEGE64(uint32_t num_segments, Vec vs, GPR rs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::UnitStride, mask,
-                    UnitStrideStoreAddressingMode::Store, rs, WidthEncoding::E64, vs);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::UnitStride, mask, UnitStrideStoreAddressingMode::Store, rs, WidthEncoding::E64,
+                    vs);
 }
 
 void Assembler::VSSSEGE8(uint32_t num_segments, Vec vs, GPR rs1, GPR rs2, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::Strided, mask,
-                    rs2, rs1, WidthEncoding::E8, vs);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::Strided, mask, rs2, rs1, WidthEncoding::E8, vs);
 }
 
 void Assembler::VSSSEGE16(uint32_t num_segments, Vec vs, GPR rs1, GPR rs2, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::Strided, mask,
-                    rs2, rs1, WidthEncoding::E16, vs);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::Strided, mask, rs2, rs1, WidthEncoding::E16, vs);
 }
 
 void Assembler::VSSSEGE32(uint32_t num_segments, Vec vs, GPR rs1, GPR rs2, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::Strided, mask,
-                    rs2, rs1, WidthEncoding::E32, vs);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::Strided, mask, rs2, rs1, WidthEncoding::E32, vs);
 }
 
 void Assembler::VSSSEGE64(uint32_t num_segments, Vec vs, GPR rs1, GPR rs2, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::Strided, mask,
-                    rs2, rs1, WidthEncoding::E64, vs);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::Strided, mask, rs2, rs1, WidthEncoding::E64, vs);
 }
 
 void Assembler::VSOXSEGEI8(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask,
-        vs, rs, WidthEncoding::E8, vd);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask, vs, rs, WidthEncoding::E8, vd);
 }
 
 void Assembler::VSOXSEGEI16(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask,
-        vs, rs, WidthEncoding::E16, vd);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask, vs, rs, WidthEncoding::E16, vd);
 }
 
 void Assembler::VSOXSEGEI32(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask,
-        vs, rs, WidthEncoding::E32, vd);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask, vs, rs, WidthEncoding::E32, vd);
 }
 
 void Assembler::VSOXSEGEI64(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask,
-        vs, rs, WidthEncoding::E64, vd);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedOrdered, mask, vs, rs, WidthEncoding::E64, vd);
 }
 
 void Assembler::VSUXSEGEI8(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask,
-                    vs, rs, WidthEncoding::E8, vd);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask, vs, rs, WidthEncoding::E8, vd);
 }
 
 void Assembler::VSUXSEGEI16(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask,
-                    vs, rs, WidthEncoding::E16, vd);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask, vs, rs, WidthEncoding::E16, vd);
 }
 
 void Assembler::VSUXSEGEI32(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask,
-                    vs, rs, WidthEncoding::E32, vd);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask, vs, rs, WidthEncoding::E32, vd);
 }
 
 void Assembler::VSUXSEGEI64(uint32_t num_segments, Vec vd, GPR rs, Vec vs, VecMask mask) noexcept {
-    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask,
-                    vs, rs, WidthEncoding::E64, vd);
+    EmitVectorStore(m_buffer, num_segments, false, AddressingMode::IndexedUnordered, mask, vs, rs, WidthEncoding::E64, vd);
 }
 
 void Assembler::VSR(uint32_t num_registers, Vec vs, GPR rs) noexcept {

@@ -32,15 +32,6 @@ struct BlockMetadata {
     std::array<std::vector<RegisterAccess>, allocated_reg_count> register_accesses;
 };
 
-struct VectorMemoryAccess {
-    u64 rip;
-    biscuit::Vec dest;
-    biscuit::GPR address;
-    u16 len;
-    SEW sew;
-    bool load;
-};
-
 struct Recompiler {
     Recompiler();
     ~Recompiler();
@@ -178,12 +169,6 @@ struct Recompiler {
 
     BlockMetadata& getBlockMetadata(u64 rip);
 
-    void registerVLE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, biscuit::GPR address);
-
-    void registerVSE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, biscuit::GPR address);
-
-    VectorMemoryAccess getVectorMemoryAccess(u64 rip);
-
     void vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask = VecMask::No);
 
     bool blockExists(u64 rip);
@@ -270,8 +255,6 @@ private:
     int vector_scratch_index = 0;
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
-
-    std::unordered_map<u64, VectorMemoryAccess> vector_memory_access{};
 
     BlockMetadata* current_block_metadata{};
     HandlerMetadata* current_meta{};

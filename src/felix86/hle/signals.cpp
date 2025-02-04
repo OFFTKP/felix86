@@ -404,18 +404,26 @@ struct riscv_v_state {
 //     UNREACHABLE();
 // }
 // #elif defined(__riscv)
-std::optional<VectorState> get_vector_state(void* ctx) {
+riscv_v_state* get_riscv_vector_state(void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
     unsigned int* reserved = mcontext->__fpregs.__q.__glibc_reserved;
 
     // Normally the glibc should have better support for this, but this will be fine for now
     if (reserved[1] != 0x53465457) { // RISC-V V extension magic number that indicates the presence of vector state
-        return std::nullopt;
+        return nullptr;
     }
 
     void* after_fpregs = reserved + 3;
     riscv_v_state* v_state = (riscv_v_state*)after_fpregs;
+    return v_state;
+}
+
+std::optional<VectorState> get_vector_state(void* ctx) {
+    riscv_v_state* v_state = get_riscv_vector_state(ctx);
+    if (!v_state) {
+        return std::nullopt;
+    }
     u8* datap = (u8*)v_state->datap;
 
     std::array<XmmReg, 32> xmm_regs;
@@ -439,50 +447,61 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
-            printf("SIGBUS: tid: %d, pc: %016lx, si_addr: %016lx, BUS_ADRALN\n", current_state->tid, pc, (uintptr_t)info->si_addr);
             ASSERT(is_in_jit_code(current_state, pc));
+            // TODO: assert it's a vector load/store
+            u32 instruction = *(u32*)pc; // Read the faulting instruction
+
             // Go back one instruction, we are going to overwrite it with vsetivli.
             // It's guaranteed to be either a vsetivli or a nop.
             context->uc_mcontext.__gregs[REG_PC] = pc - 4;
 
             Assembler& as = recompiler.getAssembler();
-            // TODO: instead of asserting, we should check and fallback to guest signal handler if not found
-            VectorMemoryAccess vma = recompiler.getVectorMemoryAccess(pc - 4);
+            riscv_v_state* vstate = get_riscv_vector_state(ctx);
+
+            SEW sew = (SEW)(vstate->vtype >> 3);
+            u64 len = vstate->vl;
+
+            // when are we gonna get a proper decoder...
+            biscuit::Vec vd = biscuit::Vec((instruction >> 7) & 0b11111);
+            biscuit::GPR address = biscuit::GPR((instruction >> 15) & 0b11111);
+            bool is_load = (instruction >> 5) & 1;
 
             // TODO: normally this needs to unlink the block, then modify, then relink to be safe
             void* start = as.GetCursorPointer();
 
             ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
             as.RewindBuffer(pc - as.GetCodeBuffer().GetOffsetAddress(0) - 4); // go to vsetivli
-            switch (vma.sew) {
+            u32 vsetivli = *(u32*)(pc - 4);
+            ASSERT((vsetivli & 0b1111111) == 0b1010111);
+            switch (sew) {
             case SEW::E64: {
-                as.VSETIVLI(x0, vma.len * 8, SEW::E8);
-                if (vma.load) {
-                    as.VLE8(vma.dest, vma.address);
+                as.VSETIVLI(x0, len * 8, SEW::E8);
+                if (is_load) {
+                    as.VLE8(vd, address);
                 } else {
-                    as.VSE8(vma.dest, vma.address);
+                    as.VSE8(vd, address);
                 }
-                as.VSETIVLI(x0, vma.len, vma.sew);
+                as.VSETIVLI(x0, len, sew); // go back to old len + sew
                 break;
             }
             case SEW::E32: {
-                as.VSETIVLI(x0, vma.len * 4, SEW::E8);
-                if (vma.load) {
-                    as.VLE8(vma.dest, vma.address);
+                as.VSETIVLI(x0, len * 4, SEW::E8);
+                if (is_load) {
+                    as.VLE8(vd, address);
                 } else {
-                    as.VSE8(vma.dest, vma.address);
+                    as.VSE8(vd, address);
                 }
-                as.VSETIVLI(x0, vma.len, vma.sew);
+                as.VSETIVLI(x0, len, sew); // go back to old len + sew
                 break;
             }
             case SEW::E16: {
-                as.VSETIVLI(x0, vma.len * 2, SEW::E8);
-                if (vma.load) {
-                    as.VLE8(vma.dest, vma.address);
+                as.VSETIVLI(x0, len * 2, SEW::E8);
+                if (is_load) {
+                    as.VLE8(vd, address);
                 } else {
-                    as.VSE8(vma.dest, vma.address);
+                    as.VSE8(vd, address);
                 }
-                as.VSETIVLI(x0, vma.len, vma.sew);
+                as.VSETIVLI(x0, len, sew); // go back to old len + sew
                 break;
             }
             default: {

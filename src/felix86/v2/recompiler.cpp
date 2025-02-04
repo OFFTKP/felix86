@@ -2011,31 +2011,6 @@ BlockMetadata& Recompiler::getBlockMetadata(u64 rip) {
     return block_metadata[rip];
 }
 
-void Recompiler::registerVLE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, biscuit::GPR address) {
-    VectorMemoryAccess& vma = vector_memory_access[rip];
-    vma.rip = rip;
-    vma.sew = sew;
-    vma.len = len;
-    vma.load = true;
-    vma.dest = dst;
-    vma.address = address;
-}
-
-void Recompiler::registerVSE(u64 rip, SEW sew, u16 len, biscuit::Vec dst, biscuit::GPR address) {
-    VectorMemoryAccess& vma = vector_memory_access[rip];
-    vma.rip = rip;
-    vma.sew = sew;
-    vma.len = len;
-    vma.load = false;
-    vma.dest = dst;
-    vma.address = address;
-}
-
-VectorMemoryAccess Recompiler::getVectorMemoryAccess(u64 rip) {
-    ASSERT(vector_memory_access.find(rip) != vector_memory_access.end());
-    return vector_memory_access[rip];
-}
-
 bool Recompiler::blockExists(u64 rip) {
     return block_metadata[rip].address != nullptr;
 }
