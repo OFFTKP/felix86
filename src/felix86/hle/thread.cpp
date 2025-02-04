@@ -49,7 +49,7 @@ void* pthread_handler(void* args) {
 
     sigset_t mask;
     sigemptyset(&mask);
-    sigprocmask(SIG_SETMASK, &mask, nullptr);
+    pthread_sigmask(SIG_SETMASK, &mask, nullptr);
 
     Signals::initialize();
 
