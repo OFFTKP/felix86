@@ -1624,6 +1624,7 @@ void Recompiler::jumpAndLink(u64 rip) {
     } else {
         u64 target = (u64)block_metadata[rip].address;
         u64 offset = target - (u64)as.GetCursorPointer();
+        printf("linked to %lx target: %lx offset: %lx\n", rip, target, offset);
 
         if (IsValidJTypeImm(offset)) {
             if (offset != 3 * 4) {
