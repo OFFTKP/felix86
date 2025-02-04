@@ -63,7 +63,7 @@ void* pthread_handler(void* args) {
     LOG("Thread %ld exited", state->tid);
 
     __atomic_store_n(&state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
-    syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ull, 0, 0, 0);
+    syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, 1, 0, 0, 0);
     g_emulator->RemoveState(state);
 
     return nullptr;
@@ -201,6 +201,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     };
 
     if (args->stack == 0) {
+        ERROR("FIXME");
         // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use
         // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
         // copy-on-write semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case,

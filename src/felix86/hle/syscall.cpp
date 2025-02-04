@@ -190,7 +190,7 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_set_tid_address: {
         state->clear_tid_address = (pid_t*)rdi;
-        result = 0;
+        result = gettid();
         STRACE("set_tid_address(%016lx) = %016lx", rdi, (u64)result);
         break;
     }
