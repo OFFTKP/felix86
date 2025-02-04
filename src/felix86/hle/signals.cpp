@@ -398,11 +398,11 @@ struct riscv_v_state {
     void* datap;
 };
 
-#if defined(__x86_64__)
-void signal_handler(int sig, siginfo_t* info, void* ctx) {
-    UNREACHABLE();
-}
-#elif defined(__riscv)
+// #if defined(__x86_64__)
+// void signal_handler(int sig, siginfo_t* info, void* ctx) {
+//     UNREACHABLE();
+// }
+// #elif defined(__riscv)
 std::optional<VectorState> get_vector_state(void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
@@ -437,6 +437,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
+            FELIX86_LOCK;
             ASSERT(is_in_jit_code(current_state, pc));
             // Go back one instruction, we are going to overwrite it with vsetivli.
             // It's guaranteed to be either a vsetivli or a nop.
@@ -491,6 +492,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
             as.AdvanceBuffer(cursor);
             flush_icache(start, end);
+            FELIX86_UNLOCK;
             break;
         }
         default: {
