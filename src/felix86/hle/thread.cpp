@@ -48,7 +48,7 @@ void* pthread_handler(void* args) {
     state->tid = gettid();
 
     sigset_t mask;
-    sigemptyset(&mask);
+    sigfillset(&mask);
     pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
 
     int res = prctl(PR_SET_NAME, (unsigned long)"ChildProcess", 0, 0, 0);

@@ -431,6 +431,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
 
     ThreadState* current_state = ThreadState::Get();
+    ASSERT(current_state);
     Recompiler& recompiler = *current_state->recompiler;
 
     switch (sig) {

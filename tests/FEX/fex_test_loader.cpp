@@ -177,6 +177,11 @@ FEXTestLoader::~FEXTestLoader() {
     for (auto& ptr : munmap_me) {
         munmap(ptr.first, ptr.second);
     }
+
+    ThreadState* state = (ThreadState*)pthread_getspecific(g_thread_state_key);
+    ASSERT(state);
+    delete state;
+    pthread_setspecific(g_thread_state_key, nullptr);
 }
 
 void FEXTestLoader::Run() {
