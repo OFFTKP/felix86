@@ -386,7 +386,8 @@ void Signals::sigreturn(ThreadState* state) {
 
     // Restore signal mask to what it was supposed to be outside of signal handler
     u64 host_mask = state->signal_mask & Signals::hostSignalMask();
-    syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(u64));
+    sigset_t set = *(sigset_t*)&host_mask;
+    pthread_sigmask(SIG_SETMASK, &set, nullptr);
 }
 
 struct riscv_v_state {
@@ -438,7 +439,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
-            FELIX86_LOCK;
+            printf("SIGBUS: tid: %d, pc: %016lx, si_addr: %016lx, BUS_ADRALN\n", current_state->tid, pc, (uintptr_t)info->si_addr);
             ASSERT(is_in_jit_code(current_state, pc));
             // Go back one instruction, we are going to overwrite it with vsetivli.
             // It's guaranteed to be either a vsetivli or a nop.
@@ -493,7 +494,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
             as.AdvanceBuffer(cursor);
             flush_icache(start, end);
-            FELIX86_UNLOCK;
             break;
         }
         default: {
@@ -594,7 +594,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         // Block the signals specified in the sa_mask until the signal handler returns
         u64 host_mask = Signals::hostSignalMask() & *(u64*)&mask_during_signal;
-        syscall(SYS_rt_sigprocmask, SIG_SETMASK, &host_mask, nullptr, sizeof(u64));
+        sigset_t set = *(sigset_t*)&host_mask;
+        pthread_sigmask(SIG_BLOCK, &set, nullptr);
 
         if (handler.flags & SA_RESETHAND) {
             handler.func = nullptr;
