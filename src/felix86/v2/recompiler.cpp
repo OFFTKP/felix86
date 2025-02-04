@@ -1610,6 +1610,14 @@ biscuit::GPR Recompiler::getRip() {
 }
 
 void Recompiler::jumpAndLink(u64 rip) {
+    if (g_dont_link) {
+        // Just emit jump to dispatcher
+        as.NOP();
+        as.LD(t0, offsetof(ThreadState, compile_next_handler), threadStatePointer());
+        as.JR(t0);
+        return;
+    }
+
     if (!blockExists(rip)) {
         // 3 instructions of space to be overwritten with:
         // AUIPC
@@ -1714,6 +1722,10 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {
+    if (g_dont_link) {
+        return;
+    }
+
     if (!blockExists(rip)) {
         return;
     }

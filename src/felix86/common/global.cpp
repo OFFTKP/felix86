@@ -15,6 +15,7 @@ bool g_verbose = false;
 bool g_quiet = false;
 bool g_testing = false;
 bool g_strace = false;
+bool g_dont_link = false;
 bool g_extensions_manually_specified = false;
 bool g_profile_compilation = false;
 bool g_calltrace = false;
@@ -164,6 +165,12 @@ void initialize_globals() {
     if (interpreter_base) {
         g_interpreter_base_hint = std::stoull(interpreter_base, nullptr, 16);
         environment += "\nFELIX86_INTERPRETER_BASE=" + fmt::format("{:016x}", g_interpreter_base_hint);
+    }
+
+    const char* dont_link = getenv("FELIX86_DONT_LINK");
+    if (is_truthy(dont_link)) {
+        g_dont_link = true;
+        environment += "\nFELIX86_DONT_LINK";
     }
 
     const char* log_file = getenv("FELIX86_LOG_FILE");

@@ -80,9 +80,7 @@ int clone_handler(void* args) {
     // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
     // both due to differences in TLS and because the guest needs it, and creating a host TLS is not possible sans some hacky ways.
     // So we need to create a pthread (which will create a proper TLS) as the actual child process.
-    pthread_attr_t pthread_attrs;
-    pthread_attr_init(&pthread_attrs);
-    pthread_create(&state->thread, &pthread_attrs, pthread_handler, args);
+    pthread_create(&state->thread, nullptr, pthread_handler, args);
     pthread_detach(state->thread);
 
     return 0;
