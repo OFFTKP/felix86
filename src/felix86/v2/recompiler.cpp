@@ -1633,23 +1633,21 @@ void Recompiler::jumpAndLink(u64 rip) {
 
                 // Atomically replace the NOP with a J instruction
                 // The instructions after that J can stay as they are
-                // __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
-                as.GetCodeBuffer().Emit32(mem);
+                __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
+                as.AdvanceBuffer(as.GetCodeBuffer().GetCursorOffset() + 4);
             } else {
                 // Offset is just ahead, we can inline
-                // as.AdvanceBuffer(as.GetCodeBuffer().GetCursorOffset() + 4); // Skip the first NOP
+                as.NOP(); // Skip the first NOP
 
-                // // Atomically replace the LD + JR with 2 NOPs
-                // u64 mem;
-                // Assembler tempas((u8*)&mem, 8);
-                // tempas.NOP();
-                // tempas.NOP();
+                // Atomically replace the LD + JR with 2 NOPs
+                u64 mem;
+                Assembler tempas((u8*)&mem, 8);
+                tempas.NOP();
+                tempas.NOP();
 
-                // // mem now has the 2 NOPs, store them atomically
-                // __atomic_store_n((u64*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
-                as.NOP();
-                as.NOP();
-                as.NOP();
+                // mem now has the 2 NOPs, store them atomically
+                __atomic_store_n((u64*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
+                as.AdvanceBuffer(as.GetCodeBuffer().GetCursorOffset() + 8);
             }
 
         } else {
