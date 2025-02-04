@@ -118,7 +118,6 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     }
 
     u64 host_flags = args->flags;
-    host_flags &= ~CLONE_SETTLS;
 
     long result;
 
@@ -128,7 +127,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         // semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case, for correct
         // operation, the CLONE_VM option should not be specified.
         new_state->gprs[X86_REF_RSP] = current_state->gprs[X86_REF_RSP];
-        long ret = syscall(SYS_clone, host_flags, nullptr, args->parent_tid, args->child_tid, nullptr); // args are flipped in syscall
+        long ret = syscall(SYS_clone, host_flags, nullptr, args->parent_tid, args->child_tid, args->tls); // args are flipped in syscall
 
         if (ret == 0) {
             result = 0;
@@ -139,7 +138,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         }
     } else {
         void* my_stack = malloc(1024 * 1024);
-        result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, host_flags, new_state, args->parent_tid, nullptr,
+        result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, host_flags, new_state, args->parent_tid, args->tls,
                        args->child_tid);
     }
 
