@@ -103,7 +103,7 @@ void Recompiler::emitDispatcher() {
 
     as.JR(ra);
 
-    flush_icache();
+    flush_icache((void*)enter_dispatcher, as.GetCursorPointer());
 }
 
 void* Recompiler::emitSigreturnThunk() {
@@ -245,7 +245,7 @@ void Recompiler::compileSequence(u64 rip) {
     current_block_metadata = nullptr;
     current_meta = nullptr;
 
-    flush_icache();
+    flush_icache(current_block_metadata->address, current_block_metadata->address_end);
 }
 
 biscuit::GPR Recompiler::allocatedGPR(x86_ref_e reg) {
@@ -1733,6 +1733,7 @@ void Recompiler::expirePendingLinks(u64 rip) {
     auto& links = block_metadata[rip].pending_links;
     for (u64 link : links) {
         auto current_offset = as.GetCodeBuffer().GetCursorOffset();
+        void* start = as.GetCursorPointer();
 
         as.RewindBuffer(link);
 
@@ -1740,7 +1741,9 @@ void Recompiler::expirePendingLinks(u64 rip) {
         // to the next block
         jumpAndLink(rip);
 
-        flush_icache();
+        void* end = as.GetCursorPointer();
+
+        flush_icache(start, end);
 
         as.AdvanceBuffer(current_offset);
     }

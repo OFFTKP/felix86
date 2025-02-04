@@ -34,7 +34,7 @@ void felix86_divu128(struct ThreadState* state, u64 divisor);
 u64 sext(u64 value, u8 size);
 u64 sext_if_64(u64 value, u8 size_e);
 
-void flush_icache();
+void flush_icache(void* start, void* end);
 
 int guest_breakpoint(const char* name, u64 address);
 

@@ -3,6 +3,10 @@
 #include "fmt/format.h"
 #include "utility.hpp"
 
+#ifdef __riscv
+#include <sys/cachectl.h>
+#endif
+
 namespace {
 std::string GetBlockName(u32 name) {
     u32 block_index = name >> 20;
@@ -73,13 +77,9 @@ u64 sext_if_64(u64 value, u8 size_e) {
 }
 
 // If you don't flush the cache the code will randomly SIGILL
-void flush_icache() {
+void flush_icache(void* start, void* end) {
 #if defined(__riscv)
-    asm volatile("fence.i" ::: "memory");
-#elif defined(__aarch64__)
-#pragma message("Don't forget to implement me")
-#elif defined(__x86_64__)
-    // No need to flush the cache on x86
+    __riscv_flush_icache(start, end, 0);
 #endif
 }
 
