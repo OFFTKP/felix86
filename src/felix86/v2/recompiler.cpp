@@ -1627,15 +1627,13 @@ void Recompiler::jumpAndLink(u64 rip) {
 
         if (IsValidJTypeImm(offset)) {
             if (offset != 3 * 4) {
-                // u32 mem;
-                // Assembler tempas((u8*)&mem, 4);
-                // tempas.J(offset);
+                u32 mem;
+                Assembler tempas((u8*)&mem, 4);
+                tempas.J(offset);
 
-                // // Atomically replace the NOP with a J instruction
-                // // The instructions after that J can stay as they are
-                // __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
-
-                as.J(offset);
+                // Atomically replace the NOP with a J instruction
+                // The instructions after that J can stay as they are
+                __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
             } else {
                 // Offset is just ahead, we can inline
                 // as.AdvanceBuffer(as.GetCodeBuffer().GetCursorOffset() + 4); // Skip the first NOP
