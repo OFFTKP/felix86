@@ -2332,6 +2332,22 @@ FAST_HANDLE(PMAXSD) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PMULHW) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMULH(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMULLW) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMUL(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(MAXPS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -3295,6 +3311,7 @@ FAST_HANDLE(BTR) {
 }
 
 FAST_HANDLE(BLSR) {
+    WARN("BLSR is broken, check BLSR_flags");
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
