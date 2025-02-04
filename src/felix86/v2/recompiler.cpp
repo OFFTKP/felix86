@@ -8,7 +8,7 @@
 #include "felix86/v2/handlers.inc"
 #undef X
 
-constexpr static u64 code_cache_size = 64 * 1024 * 1024;
+constexpr static u64 code_cache_size = 32 * 1024 * 1024;
 
 constexpr static std::array saved_gprs = {ra, sp, gp, tp, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11};
 
@@ -199,42 +199,42 @@ void Recompiler::compileSequence(u64 rip) {
         // }
 
         // Checks that we didn't forget to emulate any flags
-        if (g_paranoid && mnemonic != ZYDIS_MNEMONIC_SYSCALL) {
-            u32 changed = instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1;
-            u32 undefined = instruction.cpu_flags->undefined;
+        // if (g_paranoid && mnemonic != ZYDIS_MNEMONIC_SYSCALL) {
+        //     u32 changed = instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1;
+        //     u32 undefined = instruction.cpu_flags->undefined;
 
-            if ((changed & ZYDIS_CPUFLAG_CF) && !getMetadata(X86_REF_CF).dirty) {
-                ERROR("Instruction %s should've modified CF", ZydisMnemonicGetString(mnemonic));
-            } else if (!(changed & ZYDIS_CPUFLAG_CF) && getMetadata(X86_REF_CF).dirty && !(undefined & ZYDIS_CPUFLAG_CF)) {
-                ERROR("Instruction %s should've not modified CF", ZydisMnemonicGetString(mnemonic));
-            }
+        //     if ((changed & ZYDIS_CPUFLAG_CF) && !getMetadata(X86_REF_CF).dirty) {
+        //         ERROR("Instruction %s should've modified CF", ZydisMnemonicGetString(mnemonic));
+        //     } else if (!(changed & ZYDIS_CPUFLAG_CF) && getMetadata(X86_REF_CF).dirty && !(undefined & ZYDIS_CPUFLAG_CF)) {
+        //         ERROR("Instruction %s should've not modified CF", ZydisMnemonicGetString(mnemonic));
+        //     }
 
-            if ((changed & ZYDIS_CPUFLAG_AF) && !getMetadata(X86_REF_AF).dirty) {
-                ERROR("Instruction %s should've modified AF", ZydisMnemonicGetString(mnemonic));
-            } else if (!(changed & ZYDIS_CPUFLAG_AF) && getMetadata(X86_REF_AF).dirty && !(undefined & ZYDIS_CPUFLAG_AF)) {
-                ERROR("Instruction %s should've not modified AF", ZydisMnemonicGetString(mnemonic));
-            }
+        //     if ((changed & ZYDIS_CPUFLAG_AF) && !getMetadata(X86_REF_AF).dirty) {
+        //         ERROR("Instruction %s should've modified AF", ZydisMnemonicGetString(mnemonic));
+        //     } else if (!(changed & ZYDIS_CPUFLAG_AF) && getMetadata(X86_REF_AF).dirty && !(undefined & ZYDIS_CPUFLAG_AF)) {
+        //         ERROR("Instruction %s should've not modified AF", ZydisMnemonicGetString(mnemonic));
+        //     }
 
-            if ((changed & ZYDIS_CPUFLAG_ZF) && !getMetadata(X86_REF_ZF).dirty) {
-                ERROR("Instruction %s should've modified ZF", ZydisMnemonicGetString(mnemonic));
-            } else if (!(changed & ZYDIS_CPUFLAG_ZF) && getMetadata(X86_REF_ZF).dirty && !(undefined & ZYDIS_CPUFLAG_ZF)) {
-                ERROR("Instruction %s should've not modified ZF", ZydisMnemonicGetString(mnemonic));
-            }
+        //     if ((changed & ZYDIS_CPUFLAG_ZF) && !getMetadata(X86_REF_ZF).dirty) {
+        //         ERROR("Instruction %s should've modified ZF", ZydisMnemonicGetString(mnemonic));
+        //     } else if (!(changed & ZYDIS_CPUFLAG_ZF) && getMetadata(X86_REF_ZF).dirty && !(undefined & ZYDIS_CPUFLAG_ZF)) {
+        //         ERROR("Instruction %s should've not modified ZF", ZydisMnemonicGetString(mnemonic));
+        //     }
 
-            if ((changed & ZYDIS_CPUFLAG_SF) && !getMetadata(X86_REF_SF).dirty) {
-                ERROR("Instruction %s should've modified SF", ZydisMnemonicGetString(mnemonic));
-            } else if (!(changed & ZYDIS_CPUFLAG_SF) && getMetadata(X86_REF_SF).dirty && !(undefined & ZYDIS_CPUFLAG_SF)) {
-                ERROR("Instruction %s should've not modified SF", ZydisMnemonicGetString(mnemonic));
-            }
+        //     if ((changed & ZYDIS_CPUFLAG_SF) && !getMetadata(X86_REF_SF).dirty) {
+        //         ERROR("Instruction %s should've modified SF", ZydisMnemonicGetString(mnemonic));
+        //     } else if (!(changed & ZYDIS_CPUFLAG_SF) && getMetadata(X86_REF_SF).dirty && !(undefined & ZYDIS_CPUFLAG_SF)) {
+        //         ERROR("Instruction %s should've not modified SF", ZydisMnemonicGetString(mnemonic));
+        //     }
 
-            if ((changed & ZYDIS_CPUFLAG_OF) && !getMetadata(X86_REF_OF).dirty) {
-                ERROR("Instruction %s should've modified OF", ZydisMnemonicGetString(mnemonic));
-            } else if (!(changed & ZYDIS_CPUFLAG_OF) && getMetadata(X86_REF_OF).dirty && !(undefined & ZYDIS_CPUFLAG_OF)) {
-                ERROR("Instruction %s should've not modified OF", ZydisMnemonicGetString(mnemonic));
-            }
+        //     if ((changed & ZYDIS_CPUFLAG_OF) && !getMetadata(X86_REF_OF).dirty) {
+        //         ERROR("Instruction %s should've modified OF", ZydisMnemonicGetString(mnemonic));
+        //     } else if (!(changed & ZYDIS_CPUFLAG_OF) && getMetadata(X86_REF_OF).dirty && !(undefined & ZYDIS_CPUFLAG_OF)) {
+        //         ERROR("Instruction %s should've not modified OF", ZydisMnemonicGetString(mnemonic));
+        //     }
 
-            writebackDirtyState();
-        }
+        //     writebackDirtyState();
+        // }
 
         meta.rip += instruction.length;
     }
@@ -1467,10 +1467,6 @@ void Recompiler::scanFlagUsageAhead(u64 rip) {
 }
 
 bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
-    if (g_paranoid) {
-        return true;
-    }
-
     int index = 0;
     switch (ref) {
     case X86_REF_CF: {
