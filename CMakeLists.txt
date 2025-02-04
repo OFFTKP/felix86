@@ -9,9 +9,6 @@ endif()
 
 CheckGitSetup()
 
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
-
 set(BISCUIT_CODE_BUFFER_MMAP ON)
 set(BUILD_TESTING OFF)
 add_subdirectory(external/biscuit)
