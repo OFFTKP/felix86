@@ -550,6 +550,7 @@ FAST_HANDLE(RET) {
     rec.setRip(scratch);
     rec.writebackDirtyState();
     rec.popCalltrace();
+    rec.tryFastReturn(scratch);
     rec.backToDispatcher();
     rec.stopCompiling();
 }

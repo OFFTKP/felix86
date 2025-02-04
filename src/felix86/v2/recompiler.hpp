@@ -204,6 +204,8 @@ struct Recompiler {
 
     void popCalltrace();
 
+    void tryFastReturn(biscuit::GPR rip);
+
     void readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR shift);
 
 private:

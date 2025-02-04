@@ -1611,16 +1611,14 @@ biscuit::GPR Recompiler::getRip() {
 
 void Recompiler::jumpAndLink(u64 rip) {
     if (!blockExists(rip)) {
-        biscuit::GPR address = scratch();
         // 3 instructions of space to be overwritten with:
         // AUIPC
         // ADDI
         // JR
         u64 link_me = (u64)as.GetCodeBuffer().GetCursorOffset();
         as.NOP();
-        as.LD(address, offsetof(ThreadState, compile_next_handler), threadStatePointer());
-        as.JR(address);
-        popScratch();
+        as.LD(t0, offsetof(ThreadState, compile_next_handler), threadStatePointer());
+        as.JR(t0);
 
         block_metadata[rip].pending_links.push_back(link_me);
     } else {
@@ -1629,20 +1627,37 @@ void Recompiler::jumpAndLink(u64 rip) {
 
         if (IsValidJTypeImm(offset)) {
             if (offset != 3 * 4) {
-                as.J(offset);
+                u32 mem;
+                Assembler tempas((u8*)&mem, 4);
+                tempas.J(offset);
+
+                // Atomically replace the NOP with a J instruction
+                // The instructions after that J can stay as they are
+                __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
             } else {
-                as.NOP(); // offset is just ahead, inline it
+                // Offset is just ahead, we can inline
+                as.AdvanceBuffer(as.GetCodeBuffer().GetCursorOffset() + 4); // Skip the first NOP
+
+                // Atomically replace the LD + JR with 2 NOPs
+                u64 mem;
+                Assembler tempas((u8*)&mem, 8);
+                tempas.NOP();
+                tempas.NOP();
+
+                // mem now has the 2 NOPs, store them atomically
+                __atomic_store_n((u64*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
             }
-            as.NOP();
-            as.NOP();
+
         } else {
             const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-            biscuit::GPR reg = scratch();
-            as.AUIPC(reg, hi20);
-            as.ADDI(reg, reg, lo12);
-            as.JR(reg);
-            popScratch();
+            u64 mem;
+            biscuit::Assembler tempas((u8*)&mem, 8);
+            tempas.AUIPC(t0, hi20);
+            tempas.ADDI(t0, t0, lo12);
+
+            // Atomically replace the NOP + LD with AUIPC and ADDI, JR doesn't need to be replaced
+            __atomic_store_n((u64*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
         }
     }
 }
@@ -1702,26 +1717,13 @@ void Recompiler::expirePendingLinks(u64 rip) {
     for (u64 link : links) {
         auto current_offset = as.GetCodeBuffer().GetCursorOffset();
 
-        as.RewindBuffer(link - 4);
-
-        // First, insert an instruction that just jumps in place and flush the cache
-        // This way, until we are done modifying code, nothing can enter this area of code
-        // Important to note: Only one thread compiles (and thus links) code at a time
-        constexpr u32 jump_lock = 0x0000006F; // j 0x0 instruction
-        u32 old_instruction = __atomic_exchange_n((u32*)as.GetCursorPointer(), jump_lock, __ATOMIC_SEQ_CST);
-        flush_icache();
-
         as.AdvanceBuffer(link);
 
+        // This will atomically replace the instructions with appropriate ones that jump directly
+        // to the next block
         jumpAndLink(rip);
 
-        as.RewindBuffer(link - 4);
-
-        // Block linking is done, replace the "lock" jump with the old instruction
-        u32 jump_instruction = __atomic_exchange_n((u32*)as.GetCursorPointer(), old_instruction, __ATOMIC_SEQ_CST);
         flush_icache();
-
-        ASSERT(jump_instruction == jump_lock);
 
         as.AdvanceBuffer(current_offset);
     }
@@ -2112,4 +2114,8 @@ void Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, 
     readMemory(dest, address, 0, zydisToSize(operands[0].size));
     popScratch();
     popScratch();
+}
+
+void Recompiler::tryFastReturn(biscuit::GPR rip) {
+    // Implement me
 }
