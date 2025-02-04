@@ -84,9 +84,6 @@ int clone_handler(void* args) {
     pthread_attr_init(&pthread_attrs);
     pthread_create(&state->thread, &pthread_attrs, pthread_handler, args);
     pthread_detach(state->thread);
-
-    _exit(0); // Die here, the parent will wait for the pthread to finish initialization
-    __builtin_unreachable();
 }
 
 #ifndef CLONE_CLEAR_SIGHAND
@@ -218,13 +215,14 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         }
     } else {
         host_clone_args.stack = malloc(1024 * 1024);
-        result =
-            clone(clone_handler, (u8*)host_clone_args.stack + 1024 * 1024, host_flags, &host_clone_args, args->parent_tid, nullptr, args->child_tid);
+        result = clone(clone_handler, (u8*)host_clone_args.stack + 1024 * 1024, host_flags, &host_clone_args, 0, 0, 0);
     }
 
     // Wait for the pthread to finish initialization
     while (!__atomic_load_n(&host_clone_args.finished, __ATOMIC_SEQ_CST))
         ;
+
+    free(host_clone_args.stack);
 
     if (result < 0) {
         ERROR("clone failed with %ld", errno);
