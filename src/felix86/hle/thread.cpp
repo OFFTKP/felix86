@@ -74,6 +74,9 @@ static std::string flags_to_string(u64 f) {
     return flags;
 }
 
+// Surely this won't explode
+void* _dl_allocate_tls(void* mem);
+
 long Threads::Clone(ThreadState* current_state, clone_args* args) {
     std::string sflags = flags_to_string(args->flags);
     STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
@@ -121,13 +124,18 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
 
     long result;
 
+    void* tls = nullptr;
+    if (host_flags & CLONE_SETTLS) {
+        tls = _dl_allocate_tls(nullptr);
+    }
+
     if (args->stack == 0) {
-        // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use the
-        // syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case copy-on-write
-        // semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case, for correct
-        // operation, the CLONE_VM option should not be specified.
+        // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use
+        // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
+        // copy-on-write semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case,
+        // for correct operation, the CLONE_VM option should not be specified.
         new_state->gprs[X86_REF_RSP] = current_state->gprs[X86_REF_RSP];
-        long ret = syscall(SYS_clone, host_flags, nullptr, args->parent_tid, args->child_tid, args->tls); // args are flipped in syscall
+        long ret = syscall(SYS_clone, host_flags, nullptr, args->parent_tid, args->child_tid, tls); // args are flipped in syscall
 
         if (ret == 0) {
             result = 0;
@@ -138,8 +146,8 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         }
     } else {
         void* my_stack = malloc(1024 * 1024);
-        result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, host_flags, new_state, args->parent_tid, args->tls,
-                       args->child_tid);
+        result =
+            clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, host_flags, new_state, args->parent_tid, tls, args->child_tid);
     }
 
     if (result < 0) {
