@@ -51,6 +51,8 @@ void* pthread_handler(void* args) {
     sigemptyset(&mask);
     sigprocmask(SIG_SETMASK, &mask, nullptr);
 
+    Signals::initialize();
+
     int res = prctl(PR_SET_NAME, (unsigned long)"ChildProcess", 0, 0, 0);
     if (res < 0) {
         ERROR("prctl failed with %d", errno);
