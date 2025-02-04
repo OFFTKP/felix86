@@ -1624,46 +1624,43 @@ void Recompiler::jumpAndLink(u64 rip) {
     } else {
         u64 target = (u64)block_metadata[rip].address;
         u64 offset = target - (u64)as.GetCursorPointer();
-        printf("linked to %lx target: %lx offset: %lx\n", rip, target, offset);
 
         if (IsValidJTypeImm(offset)) {
             if (offset != 3 * 4) {
-                // u32 mem;
-                // Assembler tempas((u8*)&mem, 4);
-                // tempas.J(offset);
+                u32 mem;
+                Assembler tempas((u8*)&mem, 4);
+                tempas.J(offset);
 
-                // // Atomically replace the NOP with a J instruction
-                // // The instructions after that J can stay as they are
-                // __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
+                // Atomically replace the NOP with a J instruction
+                // The instructions after that J can stay as they are
+                __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
             } else {
                 // Offset is just ahead, we can inline
-                // as.AdvanceBuffer(as.GetCodeBuffer().GetCursorOffset() + 4); // Skip the first NOP
+                as.AdvanceBuffer(as.GetCodeBuffer().GetCursorOffset() + 4); // Skip the first NOP
 
-                // // Atomically replace the LD + JR with 2 NOPs
-                // u64 mem;
-                // Assembler tempas((u8*)&mem, 8);
-                // tempas.NOP();
-                // tempas.NOP();
+                // Atomically replace the LD + JR with 2 NOPs
+                u64 mem;
+                Assembler tempas((u8*)&mem, 8);
+                tempas.NOP();
+                tempas.NOP();
 
-                // // mem now has the 2 NOPs, store them atomically
-                // __atomic_store_n((u64*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
+                // mem now has the 2 NOPs, store them atomically
+                __atomic_store_n((u64*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
             }
 
         } else {
             const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-            // u64 mem;
-            // biscuit::Assembler tempas((u8*)&mem, 8);
-            // tempas.AUIPC(t0, hi20);
-            // tempas.ADDI(t0, t0, lo12);
+            u64 mem;
+            biscuit::Assembler tempas((u8*)&mem, 8);
+            tempas.AUIPC(t0, hi20);
+            tempas.ADDI(t0, t0, lo12);
 
-            // // Atomically replace the NOP + LD with AUIPC and ADDI, JR doesn't need to be replaced
-            // __atomic_store_n((u64*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
-            biscuit::GPR reg = scratch();
-            as.AUIPC(reg, hi20);
-            as.ADDI(reg, reg, lo12);
-            as.JR(reg);
-            popScratch();
+            // Atomically replace the NOP + LD with AUIPC and ADDI, JR doesn't need to be replaced atomically
+            __atomic_store_n((u64*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);
+
+            as.AdvanceBuffer(as.GetCodeBuffer().GetCursorOffset() + 8);
+            as.JR(t0);
         }
     }
 }
