@@ -108,6 +108,10 @@ void* pthread_handler(void* args) {
 }
 
 int clone_handler(void* args) {
+    sigset_t mask;
+    sigfillset(&mask);
+    sigprocmask(SIG_BLOCK, &mask, nullptr);
+
     CloneArgs* clone_args = (CloneArgs*)args;
     int res = prctl(PR_SET_NAME, (unsigned long)"CloneHandler", 0, 0, 0);
     if (res < 0) {
