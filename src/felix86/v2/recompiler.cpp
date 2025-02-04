@@ -241,11 +241,10 @@ void Recompiler::compileSequence(u64 rip) {
     }
 
     current_block_metadata->address_end = as.GetCursorPointer();
+    flush_icache(current_block_metadata->address, current_block_metadata->address_end);
 
     current_block_metadata = nullptr;
     current_meta = nullptr;
-
-    flush_icache(current_block_metadata->address, current_block_metadata->address_end);
 }
 
 biscuit::GPR Recompiler::allocatedGPR(x86_ref_e reg) {
