@@ -63,9 +63,13 @@ int clone_handler(void* args) {
     // So we need to create a pthread (which will create a proper TLS) as the actual child process.
     pthread_attr_t pthread_attrs;
     pthread_attr_init(&pthread_attrs);
-    pthread_attr_setstack(&pthread_attrs, clone_args->stack, 1024 * 1024);
     pthread_attr_setdetachstate(&pthread_attrs, PTHREAD_CREATE_DETACHED);
     pthread_create(&state->thread, &pthread_attrs, pthread_handler, args);
+
+    // Delete the temporary stack we got
+    if (clone_args->stack) {
+        free(clone_args->stack);
+    }
 
     syscall(SYS_exit, 0); // Die here, the parent will wait for the pthread to finish initialization
     __builtin_unreachable();
