@@ -1,4 +1,3 @@
-#include <unordered_set>
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"

@@ -184,6 +184,8 @@ void initialize_globals() {
     }
 
     pthread_key_create(&g_thread_state_key, [](void* state) { delete (ThreadState*)state; });
+
+    printf("ran this\n");
 }
 
 void initialize_extensions() {
