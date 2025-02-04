@@ -2348,6 +2348,28 @@ FAST_HANDLE(PMULLW) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PMADDWD) {
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec tmp2 = rec.scratchVec();
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec dst_down = rec.scratchVec();
+    biscuit::Vec src_down = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.LI(mask, 0b01010101);
+    AS.VMV(v0, mask);
+    AS.VWMUL(tmp, dst, src, VecMask::Yes);
+    AS.VSLIDEDOWN(dst_down, dst, 1);
+    AS.VSLIDEDOWN(src_down, src, 1);
+    AS.VWMUL(tmp2, dst_down, src_down, VecMask::Yes);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VADD(dst, tmp2, tmp);
+
+    rec.setOperandVec(&operands[0], tmp2);
+}
+
 FAST_HANDLE(MAXPS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
