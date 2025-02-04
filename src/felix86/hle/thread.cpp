@@ -62,7 +62,7 @@ void* pthread_handler(void* args) {
     g_emulator->StartThread(state);
     LOG("Thread %ld exited", state->tid);
 
-    __atomic_store_n(&state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
+    __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
     syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, 1, 0, 0, 0);
     g_emulator->RemoveState(state);
 
