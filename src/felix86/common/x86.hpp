@@ -91,6 +91,7 @@ struct ThreadState {
     u64 gsbase{};
     u64 fsbase{};
 
+    pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
     u64 tid{};
     stack_t alt_stack{};

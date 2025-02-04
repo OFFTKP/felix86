@@ -1,3 +1,4 @@
+#include <linux/futex.h>
 #include <sys/mman.h>
 #include <sys/personality.h>
 #include <sys/prctl.h>
@@ -10,6 +11,9 @@
 struct CloneArgs {
     ThreadState* new_state = nullptr;
     void* stack = nullptr;
+    u64 flags = 0;
+    pid_t* parent_tid = nullptr;
+    pid_t* child_tid = nullptr;
     bool finished = false; // to signal that clone_handler has finished using the pointer
 };
 
@@ -36,6 +40,18 @@ void* pthread_handler(void* args) {
         ERROR("prctl failed with %d", errno);
     }
 
+    if (clone_args.flags & CLONE_CHILD_SETTID) {
+        *clone_args.child_tid = state->tid;
+    }
+
+    if (clone_args.flags & CLONE_PARENT_SETTID) {
+        *clone_args.parent_tid = state->tid;
+    }
+
+    if (clone_args.flags & CLONE_CHILD_CLEARTID) {
+        state->clear_tid_address = clone_args.child_tid;
+    }
+
     // Once we are finished with initialization we can signal to the parent thread that we are done
     std::atomic_signal_fence(std::memory_order_seq_cst); // Don't let the compiler reorder the copy after this fence
     __atomic_thread_fence(__ATOMIC_SEQ_CST);             // Don't reorder the store at runtime (probably unnecessary since store is seq_cst)
@@ -45,6 +61,9 @@ void* pthread_handler(void* args) {
     pthread_setname_np(state->thread, "ChildProcess");
     g_emulator->StartThread(state);
     LOG("Thread %ld exited", state->tid);
+
+    __atomic_store_n(&state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
+    syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ull, 0, 0, 0);
     g_emulator->RemoveState(state);
 
     return nullptr;
@@ -174,13 +193,17 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     }
 
     u64 host_flags = args->flags;
-    host_flags &= ~CLONE_SETTLS; // FIXME
+    host_flags &= ~CLONE_SETTLS;
 
     long result;
 
     CloneArgs host_clone_args{
         .new_state = new_state,
         .stack = nullptr,
+        .flags = host_flags,
+        .parent_tid = (pid_t*)args->parent_tid,
+        .child_tid = (pid_t*)args->child_tid,
+        .finished = false,
     };
 
     if (args->stack == 0) {
