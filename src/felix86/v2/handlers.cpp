@@ -2128,8 +2128,12 @@ FAST_HANDLE(PANDN) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VXOR(dst_not, dst, -1);
-    AS.VAND(dst, dst_not, src);
+    if (Extensions::Zvbb) {
+        AS.VANDN(dst, src, dst);
+    } else {
+        AS.VXOR(dst_not, dst, -1);
+        AS.VAND(dst, dst_not, src);
+    }
     rec.setOperandVec(&operands[0], dst);
 }
 

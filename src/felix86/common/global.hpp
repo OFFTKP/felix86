@@ -50,6 +50,7 @@ struct Extensions {
     X(Zabha)                                                                                                                                         \
     X(Zicond)                                                                                                                                        \
     X(Zfa)                                                                                                                                           \
+    X(Zvbb)                                                                                                                                          \
     X(Xtheadcondmov)                                                                                                                                 \
     X(Xtheadba)
 

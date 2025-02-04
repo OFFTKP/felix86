@@ -208,6 +208,7 @@ void initialize_extensions() {
         Extensions::Zacas = cpuinfo.Has(RISCVExtension::Zacas);
         Extensions::Zicond = cpuinfo.Has(RISCVExtension::Zicond);
         Extensions::Zfa = cpuinfo.Has(RISCVExtension::Zfa);
+        Extensions::Zvbb = cpuinfo.Has(RISCVExtension::Zvbb);
     }
 
 #ifdef __riscv
