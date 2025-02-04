@@ -1,22 +1,74 @@
 #include <sys/mman.h>
 #include <sys/personality.h>
+#include <sys/prctl.h>
 #include <sys/resource.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thread.hpp"
 
-void start_thread_wrapper(ThreadState* new_state) {
-    new_state->tid = gettid();
+struct CloneArgs {
+    ThreadState* new_state = nullptr;
+    void* stack = nullptr;
+    bool finished = false; // to signal that clone_handler has finished using the pointer
+};
+
+void* pthread_handler(void* args) {
+    bool* finished;
+    CloneArgs clone_args;
+    {
+        // Since this handler needs a pointer, and we pass a pointer to a stack variable,
+        // we need to copy it and only allow the parent discard it when we're done.
+        CloneArgs* copy_me = (CloneArgs*)args;
+        clone_args = *copy_me;
+        finished = &copy_me->finished;
+    }
+
+    ThreadState* state = clone_args.new_state;
+    state->tid = gettid();
+
     sigset_t mask;
     sigemptyset(&mask);
     sigprocmask(SIG_SETMASK, &mask, nullptr);
-    LOG("Thread %ld started", new_state->tid);
-    pthread_setname_np(pthread_self(), "ChildProcess");
-    g_emulator->StartThread(new_state);
-    LOG("Thread %ld exited", new_state->tid);
-    g_emulator->RemoveState(new_state);
-    // TODO: cleanup stack
+
+    int res = prctl(PR_SET_NAME, (unsigned long)"ChildProcess", 0, 0, 0);
+    if (res < 0) {
+        ERROR("prctl failed with %d", errno);
+    }
+
+    // Once we are finished with initialization we can signal to the parent thread that we are done
+    std::atomic_signal_fence(std::memory_order_seq_cst); // Don't let the compiler reorder the copy after this fence
+    __atomic_thread_fence(__ATOMIC_SEQ_CST);             // Don't reorder the store at runtime (probably unnecessary since store is seq_cst)
+    __atomic_store_n(finished, true, __ATOMIC_SEQ_CST);
+
+    LOG("Thread %ld started", state->tid);
+    pthread_setname_np(state->thread, "ChildProcess");
+    g_emulator->StartThread(state);
+    LOG("Thread %ld exited", state->tid);
+    g_emulator->RemoveState(state);
+
+    return nullptr;
+}
+
+int clone_handler(void* args) {
+    CloneArgs* clone_args = (CloneArgs*)args;
+    ThreadState* state = clone_args->new_state;
+    int res = prctl(PR_SET_NAME, (unsigned long)"CloneHandler", 0, 0, 0);
+    if (res < 0) {
+        ERROR("prctl failed with %d", errno);
+    }
+
+    // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
+    // both due to differences in TLS and because the guest needs it, and creating a host TLS is not possible sans some hacky ways.
+    // So we need to create a pthread (which will create a proper TLS) as the actual child process.
+    pthread_attr_t pthread_attrs;
+    pthread_attr_init(&pthread_attrs);
+    pthread_attr_setstack(&pthread_attrs, clone_args->stack, 1024 * 1024);
+    pthread_attr_setdetachstate(&pthread_attrs, PTHREAD_CREATE_DETACHED);
+    pthread_create(&state->thread, &pthread_attrs, pthread_handler, args);
+
+    syscall(SYS_exit, 0); // Die here, the parent will wait for the pthread to finish initialization
+    __builtin_unreachable();
 }
 
 #ifndef CLONE_CLEAR_SIGHAND
@@ -122,6 +174,11 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
 
     long result;
 
+    CloneArgs host_clone_args{
+        .new_state = new_state,
+        .stack = nullptr,
+    };
+
     if (args->stack == 0) {
         // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use
         // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
@@ -132,20 +189,27 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
 
         if (ret == 0) {
             result = 0;
-            start_thread_wrapper(new_state);
+            clone_handler(&host_clone_args);
             UNREACHABLE();
         } else {
             result = ret;
         }
     } else {
-        void* my_stack = malloc(1024 * 1024);
-        result = clone((int (*)(void*))start_thread_wrapper, (u8*)my_stack + 1024 * 1024, host_flags, new_state, args->parent_tid, nullptr,
-                       args->child_tid);
+        host_clone_args.stack = malloc(1024 * 1024);
+        result =
+            clone(clone_handler, (u8*)host_clone_args.stack + 1024 * 1024, host_flags, &host_clone_args, args->parent_tid, nullptr, args->child_tid);
     }
+
+    // Wait for the pthread to finish initialization
+    while (!__atomic_load_n(&host_clone_args.finished, __ATOMIC_SEQ_CST))
+        ;
 
     if (result < 0) {
         ERROR("clone failed with %ld", errno);
     }
+
+    // Return the tid of the new thread that was started inside the clone_handler
+    result = new_state->tid;
 
     return result;
 }
