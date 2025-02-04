@@ -2356,7 +2356,7 @@ FAST_HANDLE(PMADDWD) {
     biscuit::Vec src_down = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    rec.setVectorState(SEW::E16, 4);
     AS.LI(mask, 0b01010101);
     AS.VMV(v0, mask);
     AS.VWMUL(tmp, dst, src, VecMask::Yes);
