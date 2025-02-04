@@ -4,7 +4,7 @@ project(felix86)
 include(CheckGit.cmake)
 
 if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
 CheckGitSetup()
