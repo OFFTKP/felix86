@@ -40,11 +40,11 @@ void* pthread_handler(void* args) {
         ERROR("prctl failed with %d", errno);
     }
 
-    if (clone_args.flags & CLONE_CHILD_SETTID) {
+    if (clone_args.flags & CLONE_CHILD_SETTID && clone_args.child_tid) {
         *clone_args.child_tid = state->tid;
     }
 
-    if (clone_args.flags & CLONE_PARENT_SETTID) {
+    if (clone_args.flags & CLONE_PARENT_SETTID && clone_args.parent_tid) {
         *clone_args.parent_tid = state->tid;
     }
 
@@ -84,11 +84,6 @@ int clone_handler(void* args) {
     pthread_attr_init(&pthread_attrs);
     pthread_create(&state->thread, &pthread_attrs, pthread_handler, args);
     pthread_detach(state->thread);
-
-    // Delete the temporary stack we got
-    if (clone_args->stack) {
-        free(clone_args->stack);
-    }
 
     _exit(0); // Die here, the parent will wait for the pthread to finish initialization
     __builtin_unreachable();
