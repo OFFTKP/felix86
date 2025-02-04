@@ -4749,3 +4749,19 @@ FAST_HANDLE(CVTDQ2PS) {
 
     rec.setOperandVec(&operands[0], scratch);
 }
+
+FAST_HANDLE(PREFETCHT0) {
+    // NOP
+}
+
+FAST_HANDLE(PREFETCHT1) {
+    // NOP
+}
+
+FAST_HANDLE(PREFETCHT2) {
+    // NOP
+}
+
+FAST_HANDLE(PREFETCHNTA) {
+    // NOP
+}
