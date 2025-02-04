@@ -248,6 +248,27 @@ void felix86_packssdw(u16* dst, u8* src) {
     }
 }
 
+void felix86_pmaddwd(i16* dst, i16* src) {
+    u32 temp[4];
+    u32 result[4];
+
+    temp[0] = dst[0] * src[0];
+    temp[1] = dst[2] * src[2];
+    temp[2] = dst[4] * src[4];
+    temp[3] = dst[6] * src[6];
+
+    result[0] = dst[1] * src[1];
+    result[1] = dst[3] * src[3];
+    result[2] = dst[5] * src[5];
+    result[3] = dst[7] * src[7];
+
+    u32* dst32 = (u32*)dst;
+    dst32[0] = temp[0] + result[0];
+    dst32[1] = temp[1] + result[1];
+    dst32[2] = temp[2] + result[2];
+    dst32[3] = temp[3] + result[3];
+}
+
 void dump_states() {
     if (!g_emulator) {
         return;

@@ -10,6 +10,31 @@
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
+void VEC_function(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 func) {
+    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
+    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
+
+    biscuit::GPR temp;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        temp = rec.lea(&operands[1]);
+    }
+    rec.writebackDirtyState();
+
+    AS.LI(t0, func);
+
+    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
+
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
+        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
+        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
+    } else {
+        AS.MV(a1, temp);
+    }
+
+    AS.JALR(t0);
+}
+
 void is_overflow_sub(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
     biscuit::GPR scratch = rec.scratch();
     AS.XOR(scratch, lhs, rhs);
@@ -2349,18 +2374,7 @@ FAST_HANDLE(PMULLW) {
 }
 
 FAST_HANDLE(PMADDWD) {
-    biscuit::Vec tmp2 = rec.scratchVec();
-    biscuit::Vec tmp = rec.scratchVec();
-    biscuit::Vec dst_down = rec.scratchVec();
-    biscuit::Vec src_down = rec.scratchVec();
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setVectorState(SEW::E16, 2);
-    AS.VMV(v0, 0b11);
-    AS.VWMUL(tmp, dst, src, VecMask::Yes);
-    AS.GetCodeBuffer().Emit(0);
-
-    rec.setOperandVec(&operands[0], tmp2);
+    VEC_function(rec, meta, instruction, operands, (u64)&felix86_pmaddwd);
 }
 
 FAST_HANDLE(MAXPS) {
@@ -2764,105 +2778,19 @@ FAST_HANDLE(NEG) {
 }
 
 FAST_HANDLE(PACKUSWB) {
-    // While this instruction seems like a perfect target for VNCLIPU, my board (?) decides to throw a SIGILL
-    // no matter what I do, so I'm just gonna do a function.
-    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
-    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
-
-    biscuit::GPR temp;
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        temp = rec.lea(&operands[1]);
-    }
-    rec.writebackDirtyState();
-
-    AS.LI(t0, (u64)&felix86_packuswb);
-
-    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
-
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
-        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
-        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
-    } else {
-        AS.MV(a1, temp);
-    }
-
-    AS.JALR(t0);
+    VEC_function(rec, meta, instruction, operands, (u64)&felix86_packuswb);
 }
 
 FAST_HANDLE(PACKUSDW) {
-    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
-    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
-
-    biscuit::GPR temp;
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        temp = rec.lea(&operands[1]);
-    }
-    rec.writebackDirtyState();
-
-    AS.LI(t0, (u64)&felix86_packusdw);
-
-    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
-
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
-        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
-        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
-    } else {
-        AS.MV(a1, temp);
-    }
-
-    AS.JALR(t0);
+    VEC_function(rec, meta, instruction, operands, (u64)&felix86_packusdw);
 }
 
 FAST_HANDLE(PACKSSWB) {
-    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
-    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
-
-    biscuit::GPR temp;
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        temp = rec.lea(&operands[1]);
-    }
-    rec.writebackDirtyState();
-
-    AS.LI(t0, (u64)&felix86_packsswb);
-
-    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
-
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
-        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
-        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
-    } else {
-        AS.MV(a1, temp);
-    }
-
-    AS.JALR(t0);
+    VEC_function(rec, meta, instruction, operands, (u64)&felix86_packsswb);
 }
 
 FAST_HANDLE(PACKSSDW) {
-    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
-    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
-
-    biscuit::GPR temp;
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        temp = rec.lea(&operands[1]);
-    }
-    rec.writebackDirtyState();
-
-    AS.LI(t0, (u64)&felix86_packssdw);
-
-    AS.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
-
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
-        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
-        AS.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
-    } else {
-        AS.MV(a1, temp);
-    }
-
-    AS.JALR(t0);
+    VEC_function(rec, meta, instruction, operands, (u64)&felix86_packssdw);
 }
 
 enum class x86RoundingMode { Nearest = 0, Down = 1, Up = 2, Truncate = 3 };
