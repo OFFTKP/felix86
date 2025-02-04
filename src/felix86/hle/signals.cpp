@@ -445,6 +445,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             // TODO: instead of asserting, we should check and fallback to guest signal handler if not found
             VectorMemoryAccess vma = recompiler.getVectorMemoryAccess(pc - 4);
 
+            // TODO: normally this needs to unlink the block, then modify, then relink to be safe
+            void* start = as.GetCursorPointer();
+
             ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
             as.RewindBuffer(pc - as.GetCodeBuffer().GetOffsetAddress(0) - 4); // go to vsetivli
             switch (vma.sew) {
@@ -483,8 +486,10 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 break;
             }
             }
+            void* end = as.GetCursorPointer();
+
             as.AdvanceBuffer(cursor);
-            flush_icache();
+            flush_icache(start, end);
             FELIX86_UNLOCK;
             break;
         }
