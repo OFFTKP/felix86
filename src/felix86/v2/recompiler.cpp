@@ -1649,6 +1649,7 @@ void Recompiler::jumpAndLink(u64 rip) {
             }
 
         } else {
+            printf("JumpAndLink: %lx\n", as.GetCursorPointer());
             const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
             u64 mem;
