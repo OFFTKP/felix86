@@ -6,6 +6,8 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/signals.hpp"
 
+struct Recompiler;
+
 typedef enum : u8 {
     X86_REF_RAX,
     X86_REF_RCX,
@@ -77,6 +79,8 @@ struct XmmReg {
 static_assert(sizeof(XmmReg) == 16);
 
 struct ThreadState {
+    explicit ThreadState(ThreadState* state);
+
     u64 gprs[16]{};
     u64 rip{};
     u64 fp[8]{}; // we support 64-bit precision instead of 80-bit for speed and simplicity
@@ -108,17 +112,13 @@ struct ThreadState {
     std::shared_ptr<SignalHandlerTable> signal_handlers{};
     u64 signal_mask{};
 
-    // Addresses that the JIT will load and call/jump to if necessary
-    // TODO: we no longer cache code, remove these and replace jumps with direct ones
-    u64 compile_next_handler{};
-    u64 syscall_handler{};
-    u64 cpuid_handler{};
-    u64 div128_handler{};
-    u64 divu128_handler{};
+    void* compile_next_handler{};
 
     u8 exit_reason{};
 
     std::array<u64, 16> saved_host_gprs;
+
+    std::unique_ptr<Recompiler> recompiler;
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {
@@ -224,49 +224,8 @@ struct ThreadState {
         flags |= of << 11;
         return flags;
     }
+
+    static ThreadState* Create(ThreadState* copy_state = nullptr);
+
+    static ThreadState* Get();
 };
-
-typedef union {
-    struct {
-        u64 x87 : 1;
-        u64 sse : 1;
-        u64 avx : 1;
-        u64 mpx : 2;
-        u64 avx512 : 3;
-        u64 pt : 1;
-        u64 pkru : 1;
-        u64 pasid : 1;
-        u64 cet_u : 1;
-        u64 cet_s : 1;
-        u64 hdc : 1;
-        u64 uintr : 1;
-        u64 lbr : 1;
-        u64 hwp : 1;
-        u64 xtilecfg : 1;
-        u64 xtiledata : 1;
-        u64 apx : 1;
-        u64 : 44;
-    };
-
-    u64 raw;
-} xcr0_reg_t;
-
-typedef union {
-    struct {
-        u8 rm : 3;
-        u8 reg : 3;
-        u8 mod : 2;
-    };
-
-    u8 raw;
-} modrm_t;
-
-typedef union {
-    struct {
-        u8 base : 3;
-        u8 index : 3;
-        u8 scale : 2;
-    };
-
-    u8 raw;
-} sib_t;

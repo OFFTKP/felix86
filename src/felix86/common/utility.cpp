@@ -1,4 +1,4 @@
-#include "felix86/common/x86.hpp"
+#include "felix86/common/state.hpp"
 #include "felix86/emulator.hpp"
 #include "fmt/format.h"
 #include "utility.hpp"
@@ -79,7 +79,8 @@ u64 sext_if_64(u64 value, u8 size_e) {
 // If you don't flush the cache the code will randomly SIGILL
 void flush_icache(void* start, void* end) {
 #if defined(__riscv)
-    __riscv_flush_icache(start, end, 0);
+    // Code cache is local to each thread
+    __riscv_flush_icache(start, end, SYS_RISCV_FLUSH_ICACHE_LOCAL);
 #endif
 }
 
@@ -274,22 +275,23 @@ void dump_states() {
         return;
     }
 
-    auto& states = g_emulator->GetStates();
-    int i = 0;
-    for (auto& state : states) {
-        dprintf(g_output_fd, ANSI_COLOR_RED "State %d: PC: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, i, state.GetRip(),
-                MemoryMetadata::GetRegionName(state.GetRip()).c_str(), MemoryMetadata::GetOffset(state.GetRip()));
+    // auto& states = g_emulator->GetStates();
+    // int i = 0;
+    // for (auto& state : states) {
+    //     dprintf(g_output_fd, ANSI_COLOR_RED "State %d: PC: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, i, state.GetRip(),
+    //             MemoryMetadata::GetRegionName(state.GetRip()).c_str(), MemoryMetadata::GetOffset(state.GetRip()));
 
-        if (g_calltrace) {
-            dprintf(g_output_fd, ANSI_COLOR_RED "--- CALLTRACE ---\n" ANSI_COLOR_RESET);
-            auto it = state.calltrace.rbegin();
-            while (it != state.calltrace.rend()) {
-                print_address(*it);
-                it++;
-            }
-        }
-        i++;
-    }
+    //     if (g_calltrace) {
+    //         dprintf(g_output_fd, ANSI_COLOR_RED "--- CALLTRACE ---\n" ANSI_COLOR_RESET);
+    //         auto it = state.calltrace.rbegin();
+    //         while (it != state.calltrace.rend()) {
+    //             print_address(*it);
+    //             it++;
+    //         }
+    //     }
+    //     i++;
+    // }
+    printf("FIX ME dump_states\n");
 }
 
 void print_address(u64 address) {

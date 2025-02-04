@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include "felix86/common/debug.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/x86.hpp"
+#include "felix86/common/state.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/stat.hpp"

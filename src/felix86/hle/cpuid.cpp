@@ -1,5 +1,5 @@
 #include "felix86/common/log.hpp"
-#include "felix86/common/x86.hpp"
+#include "felix86/common/state.hpp"
 #include "felix86/hle/cpuid.hpp"
 
 const char* manufacturer_id = "GenuineIntel";

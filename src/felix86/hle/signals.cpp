@@ -5,9 +5,10 @@
 
 using VectorState = std::array<XmmReg, 32>;
 
-bool is_in_jit_code(uintptr_t ptr) {
-    uintptr_t start = g_emulator->GetAssembler().GetCodeBuffer().GetOffsetAddress(0);
-    uintptr_t end = g_emulator->GetAssembler().GetCodeBuffer().GetCursorAddress();
+bool is_in_jit_code(ThreadState* state, uintptr_t ptr) {
+    CodeBuffer& buffer = state->recompiler->getAssembler().GetCodeBuffer();
+    uintptr_t start = buffer.GetOffsetAddress(0);
+    uintptr_t end = buffer.GetCursorAddress();
     return ptr >= start && ptr < end;
 }
 
@@ -293,8 +294,8 @@ void setup(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t n
     state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
 }
 
-BlockMetadata* get_block_metadata(u64 host_pc) {
-    auto& map = g_emulator->GetRecompiler().getBlockMap();
+BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
+    auto& map = state->recompiler->getBlockMap();
 
     for (auto& span : map) {
         if (host_pc >= (u64)span.second.address && host_pc < (u64)span.second.address_end) {
@@ -429,14 +430,14 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
 
-    Recompiler& recompiler = g_emulator->GetRecompiler();
+    ThreadState* current_state = ThreadState::Get();
+    Recompiler& recompiler = *current_state->recompiler;
 
     switch (sig) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
-            FELIX86_LOCK;
-            ASSERT(is_in_jit_code(pc));
+            ASSERT(is_in_jit_code(current_state, pc));
             // Go back one instruction, we are going to overwrite it with vsetivli.
             // It's guaranteed to be either a vsetivli or a nop.
             context->uc_mcontext.__gregs[REG_PC] = pc - 4;
@@ -490,7 +491,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
             as.AdvanceBuffer(cursor);
             flush_icache(start, end);
-            FELIX86_UNLOCK;
             break;
         }
         default: {
@@ -500,9 +500,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         break;
     }
     case SIGILL: {
-        FELIX86_LOCK;
         bool found = false;
-        if (is_in_jit_code(pc)) {
+        if (is_in_jit_code(current_state, pc)) {
             // Search to see if it is our breakpoint
             // Note the we don't use EBREAK as gdb refuses to continue when it hits that if it doesn't have a breakpoint,
             // and also refuses to call our signal handler.
@@ -523,7 +522,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 }
             }
         }
-        FELIX86_UNLOCK;
+
         if (found) {
             return;
         }
@@ -533,7 +532,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     default: {
     check_guest_signal:
         // First we need to find the current ThreadState object
-        ThreadState* current_state = g_emulator->GetThreadState();
         SignalHandlerTable& handlers = *current_state->signal_handlers;
         RegisteredSignal& handler = handlers[sig - 1];
         if (!handler.func) {
@@ -562,7 +560,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             return;
         }
 
-        bool jit_code = is_in_jit_code(pc);
+        bool jit_code = is_in_jit_code(current_state, pc);
         auto vecs = get_vector_state(ctx);
         bool use_altstack = handler.flags & SA_ONSTACK;
 
@@ -578,7 +576,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         BlockMetadata* metadata = nullptr;
         u64 actual_rip = current_state->GetRip();
         if (jit_code) {
-            metadata = get_block_metadata(pc);
+            metadata = get_block_metadata(current_state, pc);
             actual_rip = get_actual_rip(*metadata, pc);
         }
 
@@ -601,7 +599,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         if (jit_code) {
             // If in jit code, make it jump to the dispatcher immediately. If it's not in jit code, just let it naturally go to the dispatcher.
-            context->uc_mcontext.__gregs[REG_PC] = (u64)g_emulator->GetRecompiler().getCompileNext();
+            context->uc_mcontext.__gregs[REG_PC] = (u64)recompiler.getCompileNext();
         }
         break;
     }
@@ -621,6 +619,7 @@ void Signals::initialize() {
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags) {
     ASSERT(sig >= 1 && sig <= 64);
+    // TODO: atomic!!
     (*state->signal_handlers)[sig - 1] = {handler, mask, flags};
 
     // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
@@ -635,5 +634,6 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, 
 
 RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
     ASSERT(sig >= 1 && sig <= 64);
+    // TODO: atomic!!
     return (*state->signal_handlers)[sig - 1];
 }

@@ -1,6 +1,4 @@
-#include <chrono>
 #include <csignal>
-#include <mutex>
 #include <vector>
 #include <elf.h>
 #include <fcntl.h>
@@ -9,8 +7,6 @@
 #include <stdlib.h>
 #include <sys/random.h>
 #include "felix86/emulator.hpp"
-#include "felix86/hle/cpuid.hpp"
-#include "felix86/hle/syscall.hpp"
 
 extern char** environ;
 
@@ -40,10 +36,6 @@ typedef struct {
 } auxv_t;
 
 void Emulator::Run() {
-    if (thread_states.size() != 1) {
-        ERROR("Expected exactly one thread state during Emulator::Run, the main thread");
-    }
-
     VERBOSE("Executable: %016lx - %016lx", g_executable_start, g_executable_end);
     if (g_interpreter_start) {
         VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start, g_interpreter_end);
@@ -55,11 +47,9 @@ void Emulator::Run() {
 
     VERBOSE("Entering main thread :)");
 
-    ThreadState* state = &thread_states.back();
-    StartThread(state);
+    StartThread(ThreadState::Get());
 
     VERBOSE("Bye-bye main thread :(");
-    VERBOSE("Main thread exited with reason %d", (int)state->exit_reason);
 }
 
 void Emulator::setupMainStack(ThreadState* state) {
@@ -192,30 +182,6 @@ void Emulator::setupMainStack(ThreadState* state) {
     state->SetGpr(X86_REF_RSP, rsp);
 }
 
-ThreadState* Emulator::GetThreadState() {
-    FELIX86_LOCK;
-    auto tid = gettid();
-    ThreadState* current_state = nullptr;
-    for (ThreadState& state : g_emulator->GetStates()) {
-        if (tid == state.tid) {
-            if (!current_state) {
-                current_state = &state;
-                // Continue scanning to make sure we don't have a duplicate
-            } else {
-                ERROR("Multiple ThreadState objects found for tid %d", tid);
-            }
-        }
-    }
-    FELIX86_UNLOCK;
-
-    if (!current_state) {
-        ERROR("No ThreadState object found for tid %d", tid);
-        return nullptr;
-    } else {
-        return current_state;
-    }
-}
-
 void* Emulator::CompileNext(ThreadState* thread_state) {
     // Check if there's any pending signals. If there are, raise them.
     // SURELY it won't be the case a synchronous signal would happen in our signal disabled jit regions, right?
@@ -237,74 +203,20 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     // }
 
     // Volatile so we can access it in gdb if needed
-    void* function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
+    void* function = thread_state->recompiler->getCompiledBlock(thread_state->GetRip());
     if (!function) {
-        function = g_emulator->recompiler.compile(thread_state->GetRip());
+        function = thread_state->recompiler->compile(thread_state->GetRip());
     }
 
     return function;
 }
 
-ThreadState* Emulator::CreateThreadState(ThreadState* copy_state) {
-    FELIX86_LOCK;
-    thread_states.push_back(ThreadState{});
-
-    ThreadState* thread_state = &thread_states.back();
-    FELIX86_UNLOCK;
-
-    if (copy_state) {
-        for (size_t i = 0; i < sizeof(thread_state->gprs) / sizeof(thread_state->gprs[0]); i++) {
-            thread_state->gprs[i] = copy_state->gprs[i];
-        }
-
-        for (size_t i = 0; i < sizeof(thread_state->xmm) / sizeof(thread_state->xmm[0]); i++) {
-            thread_state->xmm[i] = copy_state->xmm[i];
-        }
-
-        for (size_t i = 0; i < sizeof(thread_state->fp) / sizeof(thread_state->fp[0]); i++) {
-            thread_state->fp[i] = copy_state->fp[i];
-        }
-
-        thread_state->cf = copy_state->cf;
-        thread_state->zf = copy_state->zf;
-        thread_state->sf = copy_state->sf;
-        thread_state->of = copy_state->of;
-        thread_state->pf = copy_state->pf;
-        thread_state->af = copy_state->af;
-
-        thread_state->fsbase = copy_state->fsbase;
-        thread_state->gsbase = copy_state->gsbase;
-
-        thread_state->alt_stack = copy_state->alt_stack;
-    }
-
-    thread_state->syscall_handler = (u64)felix86_syscall;
-    thread_state->cpuid_handler = (u64)felix86_cpuid;
-    thread_state->compile_next_handler = (u64)recompiler.getCompileNext();
-    thread_state->div128_handler = (u64)felix86_div128;
-    thread_state->divu128_handler = (u64)felix86_divu128;
-
-    return thread_state;
-}
-
-void Emulator::RemoveState(ThreadState* state) {
-    FELIX86_LOCK;
-    for (auto it = thread_states.begin(); it != thread_states.end(); it++) {
-        if (&*it == state) {
-            thread_states.erase(it);
-            FELIX86_UNLOCK;
-            return;
-        }
-    }
-    ERROR("State not found");
-}
-
 void Emulator::StartThread(ThreadState* state) {
     state->tid = gettid();
-    recompiler.enterDispatcher(state);
+    state->recompiler->enterDispatcher(state);
     VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }
 
 void Emulator::CleanExit(ThreadState* state) {
-    recompiler.exitDispatcher(state);
+    state->recompiler->exitDispatcher(state);
 }

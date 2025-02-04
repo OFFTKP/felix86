@@ -1,6 +1,10 @@
 #include <Zydis/Zydis.h>
 #include "felix86/v2/recompiler.hpp"
 
+void felix86_syscall(ThreadState* state);
+
+void felix86_cpuid(ThreadState* state);
+
 #define FAST_HANDLE(name)                                                                                                                            \
     void fast_##name(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
@@ -1028,7 +1032,7 @@ FAST_HANDLE(DIV) {
         rec.writebackDirtyState();
 
         biscuit::GPR address = rec.scratch();
-        AS.LD(address, offsetof(ThreadState, divu128_handler), rec.threadStatePointer());
+        AS.LI(address, (u64)&felix86_divu128);
         AS.MV(a0, rec.threadStatePointer());
         AS.MV(a1, src);
         AS.JALR(address);
@@ -1106,7 +1110,7 @@ FAST_HANDLE(IDIV) {
         rec.writebackDirtyState();
 
         biscuit::GPR address = rec.scratch();
-        AS.LD(address, offsetof(ThreadState, div128_handler), rec.threadStatePointer());
+        AS.LI(address, (u64)&felix86_div128);
         AS.MV(a0, rec.threadStatePointer());
         AS.MV(a1, src);
         AS.JALR(address);
@@ -2069,7 +2073,7 @@ FAST_HANDLE(CPUID) {
     rec.writebackDirtyState();
 
     biscuit::GPR address = rec.scratch();
-    AS.LD(address, offsetof(ThreadState, cpuid_handler), rec.threadStatePointer());
+    AS.LI(address, (u64)&felix86_cpuid);
     AS.MV(a0, rec.threadStatePointer());
     AS.JALR(address);
 }
@@ -2086,7 +2090,7 @@ FAST_HANDLE(SYSCALL) {
     rec.writebackDirtyState();
 
     biscuit::GPR address = rec.scratch();
-    AS.LD(address, offsetof(ThreadState, syscall_handler), rec.threadStatePointer());
+    AS.LI(address, (u64)&felix86_syscall);
     AS.MV(a0, rec.threadStatePointer());
     AS.JALR(address);
 }

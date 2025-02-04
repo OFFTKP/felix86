@@ -5,8 +5,8 @@
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
 #include "biscuit/assembler.hpp"
+#include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/common/x86.hpp"
 
 // 16 gprs, 5 flags, 16 xmm registers
 constexpr u64 allocated_reg_count = 16 + 5 + 16;

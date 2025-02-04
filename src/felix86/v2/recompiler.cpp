@@ -1638,6 +1638,7 @@ void Recompiler::jumpAndLink(u64 rip) {
                 Assembler tempas((u8*)&mem, 4);
                 tempas.J(offset);
 
+                // TODO: remove atomic stuff
                 // Atomically replace the NOP with a J instruction
                 // The instructions after that J can stay as they are
                 __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);

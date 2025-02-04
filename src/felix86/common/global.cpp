@@ -5,7 +5,7 @@
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/x86.hpp"
+#include "felix86/common/state.hpp"
 #include "felix86/emulator.hpp"
 #include "fmt/format.h"
 #include "version.hpp"
@@ -23,6 +23,7 @@ sem_t* g_semaphore = nullptr;
 u64 g_dispatcher_exit_count = 0;
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
+pthread_key_t g_thread_state_key = {};
 
 int g_output_fd = 1;
 std::filesystem::path g_rootfs_path{};
@@ -181,6 +182,8 @@ void initialize_globals() {
     if (!g_quiet && !environment.empty()) {
         LOG("Environment:%s", environment.c_str());
     }
+
+    pthread_key_create(&g_thread_state_key, [](void* state) { delete (ThreadState*)state; });
 }
 
 void initialize_extensions() {

@@ -30,6 +30,7 @@ extern const char* g_git_hash;
 extern struct Emulator* g_emulator;
 extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
 extern sem_t* g_semaphore;
+extern pthread_key_t g_thread_state_key;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
