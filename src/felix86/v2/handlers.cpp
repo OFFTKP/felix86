@@ -2173,6 +2173,38 @@ void PADD(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction&
     rec.setOperandVec(&operands[0], dst);
 }
 
+void PADDS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    AS.VSADD(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+void PADDSU(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    AS.VSADDU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+void PSUBS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    AS.VSSUB(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+void PSUBSU(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    AS.VSSUBU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 void PSUB(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -2195,6 +2227,38 @@ FAST_HANDLE(PADDD) {
 
 FAST_HANDLE(PADDQ) {
     PADD(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
+}
+
+FAST_HANDLE(PADDSB) {
+    PADDS(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PADDSW) {
+    PADDS(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
+}
+
+FAST_HANDLE(PSUBSB) {
+    PSUBS(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PSUBSW) {
+    PSUBS(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
+}
+
+FAST_HANDLE(PADDUSB) {
+    PADDSU(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PADDUSW) {
+    PADDSU(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
+}
+
+FAST_HANDLE(PSUBUSB) {
+    PSUBSU(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
+}
+
+FAST_HANDLE(PSUBUSW) {
+    PSUBSU(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
 }
 
 FAST_HANDLE(PSUBB) {
