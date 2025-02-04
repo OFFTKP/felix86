@@ -1717,7 +1717,7 @@ void Recompiler::expirePendingLinks(u64 rip) {
     for (u64 link : links) {
         auto current_offset = as.GetCodeBuffer().GetCursorOffset();
 
-        as.AdvanceBuffer(link);
+        as.RewindBuffer(link);
 
         // This will atomically replace the instructions with appropriate ones that jump directly
         // to the next block
