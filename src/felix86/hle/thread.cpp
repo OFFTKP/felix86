@@ -118,6 +118,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     }
 
     u64 host_flags = args->flags;
+    host_flags &= ~CLONE_SETTLS; // FIXME
 
     long result;
 
