@@ -84,6 +84,8 @@ int clone_handler(void* args) {
     pthread_attr_init(&pthread_attrs);
     pthread_create(&state->thread, &pthread_attrs, pthread_handler, args);
     pthread_detach(state->thread);
+
+    return 0;
 }
 
 #ifndef CLONE_CLEAR_SIGHAND
@@ -208,7 +210,8 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
 
         if (ret == 0) {
             result = 0;
-            clone_handler(&host_clone_args);
+            clone_handler(&host_clone_args); // TODO: probably wrong. can just start normally as its a different process, malloc should be fine we
+                                             // dont need a separate tls i think
             UNREACHABLE();
         } else {
             result = ret;
