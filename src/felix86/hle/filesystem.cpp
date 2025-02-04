@@ -141,7 +141,7 @@ ssize_t Filesystem::ReadLinkAt(int dirfd, const char* pathname, char* buf, u32 b
     if (std::string(pathname) == proc_self_exe) {
         std::string executable_path_string = executable_path.string();
         // readlink does not append a null terminator
-        size_t written_size = std::min(executable_path_string.size(), (size_t)bufsiz);
+        size_t written_size = std::min(executable_path_string.size() - 1, (size_t)bufsiz);
         memcpy(buf, executable_path_string.c_str(), written_size);
         return written_size;
     }
