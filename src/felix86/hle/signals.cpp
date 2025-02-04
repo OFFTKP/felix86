@@ -607,7 +607,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     }
 }
-#endif
+// #endif
 
 void Signals::initialize() {
     struct sigaction sa;
