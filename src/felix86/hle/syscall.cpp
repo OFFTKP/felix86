@@ -243,11 +243,13 @@ void felix86_syscall(ThreadState* state) {
             result = 0;
         }
         STRACE("close(%d) = %d", (int)rdi, (int)result);
+        FELIX86_LOCK;
         if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             detecting_memory_region = false;
             ASSERT(result != -1);
             MemoryMetadata::AddRegion(name, min_address, max_address);
         }
+        FELIX86_UNLOCK;
         break;
     }
     case felix86_x86_64_shutdown: {
@@ -518,8 +520,8 @@ void felix86_syscall(ThreadState* state) {
         result = fs.OpenAt(rdi, (const char*)rsi, rdx, r10);
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
 
+        FELIX86_LOCK;
         if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-            FELIX86_LOCK; // TODO: move out of the if
             name = std::filesystem::path((const char*)rsi).filename().string();
 
             if (name.find(".so") != std::string::npos) {
@@ -529,14 +531,15 @@ void felix86_syscall(ThreadState* state) {
             } else {
                 name = {};
             }
-            FELIX86_UNLOCK;
         }
+        FELIX86_UNLOCK;
         break;
     }
     case felix86_x86_64_mmap: {
         result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
         STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
 
+        FELIX86_LOCK;
         if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             if (result < min_address) {
                 min_address = result;
@@ -545,6 +548,7 @@ void felix86_syscall(ThreadState* state) {
                 max_address = result + rsi;
             }
         }
+        FELIX86_UNLOCK;
         break;
     }
     case felix86_x86_64_munmap: {
