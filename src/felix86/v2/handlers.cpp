@@ -2129,6 +2129,7 @@ FAST_HANDLE(PANDN) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     if (Extensions::Zvbb) {
+        WARN_ONCE("PANDN + Zvbb is untested, please run tests and report results");
         AS.VANDN(dst, src, dst);
     } else {
         AS.VXOR(dst_not, dst, -1);

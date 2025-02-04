@@ -17,7 +17,6 @@ bool g_testing = false;
 bool g_strace = false;
 bool g_dont_link = false;
 bool g_extensions_manually_specified = false;
-bool g_profile_compilation = false;
 bool g_calltrace = false;
 u64 g_current_brk = 0;
 sem_t* g_semaphore = nullptr;
@@ -142,17 +141,6 @@ void initialize_globals() {
     if (is_truthy(paranoid_env)) {
         g_paranoid = true;
         environment += "\nFELIX86_PARANOID";
-    }
-
-    const char* profile_compilation_env = getenv("FELIX86_PROFILE_COMPILATION");
-    if (is_truthy(profile_compilation_env)) {
-        g_profile_compilation = true;
-        environment += "\nFELIX86_PROFILE_COMPILATION";
-
-        std::atexit([]() {
-            printf("Total compilation time: %ldms\n", g_compilation_total_time.count() / 1000000);
-            printf("Total dispatcher exits: %ld\n", g_dispatcher_exit_count);
-        });
     }
 
     const char* executable_base = getenv("FELIX86_EXECUTABLE_BASE");

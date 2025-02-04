@@ -14,7 +14,6 @@ extern bool g_testing;
 extern bool g_strace;
 extern bool g_calltrace;
 extern bool g_extensions_manually_specified;
-extern bool g_profile_compilation;
 extern bool g_paranoid;
 extern bool g_dont_link;
 extern u64 g_current_brk;

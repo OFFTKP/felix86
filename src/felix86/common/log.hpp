@@ -59,6 +59,15 @@
         dprintf(g_output_fd, format "\n", ##__VA_ARGS__);                                                                                            \
     } while (0)
 
+#define WARN_ONCE(format, ...)                                                                                                                       \
+    do {                                                                                                                                             \
+        static bool warned = false;                                                                                                                  \
+        if (!warned) {                                                                                                                               \
+            WARN(format, ##__VA_ARGS__);                                                                                                             \
+            warned = true;                                                                                                                           \
+        }                                                                                                                                            \
+    } while (0)
+
 #define UNREACHABLE() ERROR("Unreachable code hit")
 #define UNIMPLEMENTED() ERROR("Unimplemented code hit")
 

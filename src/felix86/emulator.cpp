@@ -220,7 +220,6 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     // Check if there's any pending signals. If there are, raise them.
     // SURELY it won't be the case a synchronous signal would happen in our signal disabled jit regions, right?
     // This should be safe to access without protection, as jitted code is the only one that can modify this
-    FELIX86_LOCK;
     while (!thread_state->pending_signals.empty()) {
         int signal = thread_state->pending_signals.front();
         thread_state->pending_signals.pop();
@@ -237,48 +236,11 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     //     init = true;
     // }
 
-    // sigprocmask(SIG_SETMASK, &mask_full, NULL);
-
-    std::chrono::high_resolution_clock::time_point start;
-    if (g_profile_compilation) {
-        g_dispatcher_exit_count++;
-        start = std::chrono::high_resolution_clock::now();
-    }
-
     // Volatile so we can access it in gdb if needed
     void* function = g_emulator->recompiler.getCompiledBlock(thread_state->GetRip());
     if (!function) {
         function = g_emulator->recompiler.compile(thread_state->GetRip());
     }
-    if (g_profile_compilation) {
-        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-        std::chrono::nanoseconds duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-        g_compilation_total_time += duration;
-    }
-
-    u64 address = thread_state->GetRip();
-    if (address >= g_interpreter_start && address < g_interpreter_end) {
-        address = address - g_interpreter_start;
-    } else if (address >= g_executable_start && address < g_executable_end) {
-        address = address - g_executable_start;
-    }
-
-    if (g_paranoid) {
-        // Check that the flags didn't get corrupted
-        ASSERT((*(u8*)&thread_state->cf & ~1) == 0);
-        ASSERT((*(u8*)&thread_state->zf & ~1) == 0);
-        ASSERT((*(u8*)&thread_state->sf & ~1) == 0);
-        ASSERT((*(u8*)&thread_state->of & ~1) == 0);
-        ASSERT((*(u8*)&thread_state->pf & ~1) == 0);
-        ASSERT((*(u8*)&thread_state->af & ~1) == 0);
-    }
-
-    VERBOSE("State %p is jumping to function %s@0x%lx (%lx), located at %p", thread_state,
-            MemoryMetadata::GetRegionName(thread_state->GetRip()).c_str(), MemoryMetadata::GetOffset(thread_state->GetRip()), thread_state->GetRip(),
-            function);
-
-    // sigprocmask(SIG_SETMASK, &mask_empty, NULL);
-    FELIX86_UNLOCK;
 
     return function;
 }
