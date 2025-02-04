@@ -75,7 +75,7 @@ static std::string flags_to_string(u64 f) {
 }
 
 // Surely this won't explode
-void* _dl_allocate_tls(void* mem);
+void* _dl_allocate_tls_storage();
 
 long Threads::Clone(ThreadState* current_state, clone_args* args) {
     std::string sflags = flags_to_string(args->flags);
@@ -126,7 +126,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
 
     void* tls = nullptr;
     if (host_flags & CLONE_SETTLS) {
-        tls = _dl_allocate_tls(nullptr);
+        tls = _dl_allocate_tls_storage();
     }
 
     if (args->stack == 0) {
