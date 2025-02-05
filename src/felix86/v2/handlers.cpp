@@ -4887,12 +4887,12 @@ FAST_HANDLE(XADD) {
     }
 }
 
-void CMPS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew) {
+FAST_HANDLE(CMPSD_sse) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(sew, 1);
+    rec.setVectorState(SEW::E64, 1);
     AS.VFMV_FS(ft0, dst);
     AS.VFMV_FS(ft1, src);
 
@@ -5005,12 +5005,122 @@ void CMPS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction&
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(CMPSD_sse) {
-    CMPS(rec, meta, instruction, operands, SEW::E64);
-}
-
 FAST_HANDLE(CMPSS) {
-    CMPS(rec, meta, instruction, operands, SEW::E32);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b111;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 1);
+    AS.VFMV_FS(ft0, dst);
+    AS.VFMV_FS(ft1, src);
+
+    biscuit::GPR result = rec.scratch();
+    switch ((CmpPredicate)imm) {
+    case EQ_OQ: {
+        AS.FEQ_S(result, ft0, ft1);
+        break;
+    }
+    case LT_OS: {
+        AS.FLT_S(result, ft0, ft1);
+        break;
+    }
+    case LE_OS: {
+        AS.FLE_S(result, ft0, ft1);
+        break;
+    }
+    case UNORD_Q: {
+        // Check if it's a qNan or sNan, check bit 8 and 9
+        biscuit::GPR nan = rec.scratch();
+        biscuit::GPR mask = rec.scratch();
+        AS.FCLASS_S(result, ft0);
+        AS.FCLASS_S(nan, ft1);
+        AS.OR(result, result, nan);
+        AS.LI(mask, 0b11 << 8);
+        AS.AND(result, result, mask);
+        AS.SNEZ(result, result);
+        rec.popScratch();
+        rec.popScratch();
+        break;
+    }
+    case NEQ_UQ: {
+        biscuit::GPR nan = rec.scratch();
+        biscuit::GPR mask = rec.scratch();
+        AS.FCLASS_S(result, ft0);
+        AS.FCLASS_S(nan, ft1);
+        AS.OR(result, result, nan);
+        AS.LI(mask, 0b11 << 8);
+        AS.AND(result, result, mask);
+        AS.SNEZ(result, result);
+        rec.popScratch();
+        rec.popScratch();
+
+        // After checking if either are nan, also check if they are equal
+        AS.FEQ_S(nan, ft0, ft1);
+        AS.XORI(nan, nan, 1);
+        AS.OR(result, result, nan);
+        break;
+    }
+    case NLT_US: {
+        biscuit::GPR nan = rec.scratch();
+        biscuit::GPR mask = rec.scratch();
+        AS.FCLASS_S(result, ft0);
+        AS.FCLASS_S(nan, ft1);
+        AS.OR(result, result, nan);
+        AS.LI(mask, 0b11 << 8);
+        AS.AND(result, result, mask);
+        AS.SNEZ(result, result);
+        rec.popScratch();
+        rec.popScratch();
+
+        // After checking if either are nan, also check if they are equal
+        AS.FLT_S(nan, ft0, ft1);
+        AS.XORI(nan, nan, 1);
+        AS.OR(result, result, nan);
+        break;
+    }
+    case NLE_US: {
+        biscuit::GPR nan = rec.scratch();
+        biscuit::GPR mask = rec.scratch();
+        AS.FCLASS_S(result, ft0);
+        AS.FCLASS_S(nan, ft1);
+        AS.OR(result, result, nan);
+        AS.LI(mask, 0b11 << 8);
+        AS.AND(result, result, mask);
+        AS.SNEZ(result, result);
+        rec.popScratch();
+        rec.popScratch();
+
+        // After checking if either are nan, also check if they are equal
+        AS.FLE_S(nan, ft0, ft1);
+        AS.XORI(nan, nan, 1);
+        AS.OR(result, result, nan);
+        break;
+    }
+    case ORD_Q: {
+        // Check if neither are NaN
+        biscuit::GPR nan = rec.scratch();
+        biscuit::GPR mask = rec.scratch();
+        AS.FCLASS_S(result, ft0);
+        AS.FCLASS_S(nan, ft1);
+        AS.OR(result, result, nan);
+        AS.LI(mask, 0b11 << 8);
+        AS.AND(result, result, mask);
+        AS.SEQZ(result, result);
+        rec.popScratch();
+        rec.popScratch();
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    // Transform 0 or 1 to 0 or -1ull
+    AS.SUB(result, x0, result);
+    AS.VMV_SX(dst, result);
+
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(CMPSD) {
