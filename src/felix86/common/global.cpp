@@ -17,6 +17,7 @@ bool g_testing = false;
 bool g_strace = false;
 bool g_dont_link = false;
 bool g_extensions_manually_specified = false;
+bool g_dont_validate_exe_path = false;
 bool g_calltrace = false;
 u64 g_current_brk = 0;
 sem_t* g_semaphore = nullptr;
@@ -171,6 +172,12 @@ void initialize_globals() {
             g_output_fd = fd;
             environment += "\nFELIX86_LOG_FILE=" + std::string(log_file);
         }
+    }
+
+    const char* dont_validate_exe_path = getenv("FELIX86_DONT_VALIDATE_EXE_PATH");
+    if (is_truthy(dont_validate_exe_path)) {
+        g_dont_validate_exe_path = true;
+        environment += "\nFELIX86_DONT_VALIDATE_EXE_PATH";
     }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");

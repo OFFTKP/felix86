@@ -19,7 +19,7 @@ struct Filesystem {
             return false;
         }
 
-        if (!g_testing) { // tests don't need to validate that they are inside rootfs
+        if (!g_dont_validate_exe_path) {
             if (!validatePath(path)) {
                 ERROR("Executable path %s not inside rootfs", path.c_str());
                 return false;

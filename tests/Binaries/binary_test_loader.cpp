@@ -23,13 +23,17 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         nullptr,
     };
 
+    const char* envp[] = {
+        "FELIX86_DONT_VALIDATE_EXE_PATH=1",
+    };
+
     pid_t fork_result = fork();
     if (fork_result == 0) {
         close(pipefd[0]);
         dup2(pipefd[1], 1);
         close(pipefd[1]);
-        execvp(argv[0], (char* const*)argv);
-        perror("execvp");
+        execvpe(argv[0], (char* const*)argv, (char* const*)envp);
+        perror("execvpe");
         exit(1);
     } else {
         close(pipefd[1]);
