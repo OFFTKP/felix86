@@ -3180,6 +3180,38 @@ FAST_HANDLE(PSHUFLW) {
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(PSHUFHW) {
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR tmp = rec.scratch();
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec iotaup = rec.scratchVec();
+
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMV(dst, src); // to move the low words
+
+    u8 el0 = imm & 0b11;
+    u8 el1 = (imm >> 2) & 0b11;
+    u8 el2 = (imm >> 4) & 0b11;
+    u8 el3 = (imm >> 6) & 0b11;
+    AS.VMV(iota, el3);
+    AS.LI(tmp, el2);
+    AS.VSLIDE1UP(iota, iota, tmp);
+    AS.LI(tmp, el1);
+    AS.VSLIDE1UP(iota, iota, tmp);
+    AS.LI(tmp, el0);
+    AS.VSLIDE1UP(iota, iota, tmp);
+    AS.VSLIDEUP(iotaup, iota, 4);
+
+    AS.LI(tmp, 0b11110000); // operate on top words only
+    AS.VMV(v0, tmp);
+
+    AS.VRGATHER(dst, src, iotaup, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PALIGNR) {
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::GPR temp = rec.scratch();
