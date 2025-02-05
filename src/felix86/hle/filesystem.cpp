@@ -75,6 +75,10 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
         return std::filesystem::path(pathname);
     }
 
+    if (std::string(pathname) == proc_self_exe) { // TODO: remove this, AtPath should handle this
+        return executable_path;                   // TODO: remove the rootfs from this path
+    }
+
     std::filesystem::path path = pathname;
     if (path.is_relative()) {
         if (dirfd == AT_FDCWD) {
@@ -138,7 +142,7 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
 }
 
 ssize_t Filesystem::ReadLinkAt(int dirfd, const char* pathname, char* buf, u32 bufsiz) {
-    if (std::string(pathname) == proc_self_exe) {
+    if (std::string(pathname) == proc_self_exe) { // TODO: remove this, AtPath should handle this
         std::string executable_path_string = executable_path.string();
         // readlink does not append a null terminator
         size_t written_size = std::min(executable_path_string.size() - 1, (size_t)bufsiz);
