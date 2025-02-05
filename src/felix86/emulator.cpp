@@ -202,11 +202,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     //     init = true;
     // }
 
-    // Volatile so we can access it in gdb if needed
     void* function = thread_state->recompiler->getCompiledBlock(thread_state->GetRip());
-    if (!function) {
-        function = thread_state->recompiler->compile(thread_state->GetRip());
-    }
 
     return function;
 }

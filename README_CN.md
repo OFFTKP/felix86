@@ -1,4 +1,5 @@
-[中文](./README_CN.md)
+[English](./README.md)
+
 # felix86
 felix86 是一个 Linux 用户空间模拟器。它允许你在 RISC-V 处理器上运行 x86-64 Linux 程序。开发初期。
 

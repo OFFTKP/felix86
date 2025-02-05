@@ -11,6 +11,8 @@
 // 16 gprs, 5 flags, 16 xmm registers
 constexpr u64 allocated_reg_count = 16 + 5 + 16;
 
+constexpr int block_cache_bits = 16;
+
 struct HandlerMetadata {
     u64 rip;
     u64 block_start;
@@ -206,6 +208,10 @@ private:
         u64 position;
     };
 
+    struct BlockCacheEntry {
+        u64 host = 0, guest = 0;
+    };
+
     void compileSequence(u64 rip);
 
     // Get the register and load the value into it if needed
@@ -231,9 +237,13 @@ private:
 
     void addRegisterAccess(x86_ref_e ref, bool is_load);
 
+    void clearCodeCache();
+
     u8* code_cache{};
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
+
+    std::array<BlockCacheEntry, 1 << block_cache_bits> block_cache{};
 
     ZydisDecodedInstruction instruction{};
     ZydisDecodedOperand operands[10]{};

@@ -119,12 +119,17 @@ void* Recompiler::emitSigreturnThunk() {
     return here;
 }
 
+void Recompiler::clearCodeCache() {
+    WARN("Clearing cache on thread %u", gettid());
+    as.GetCodeBuffer().RewindCursor();
+    block_metadata.clear();
+    memset(block_cache.data(), 0, block_cache.size() * sizeof(BlockCacheEntry));
+}
+
 void* Recompiler::compile(u64 rip) {
     size_t remaining_size = code_cache_size - (as.GetCursorPointer() - as.GetCodeBuffer().GetOffsetPointer(0));
     if (remaining_size < 100'000) { // less than ~100KB left, clear cache
-        WARN("Clearing cache on thread %u", gettid());
-        as.GetCodeBuffer().RewindCursor();
-        block_metadata.clear();
+        clearCodeCache();
     }
 
     void* start = as.GetCursorPointer();
@@ -141,8 +146,16 @@ void* Recompiler::compile(u64 rip) {
 }
 
 void* Recompiler::getCompiledBlock(u64 rip) {
-    if (blockExists(rip)) {
-        return block_metadata[rip].address;
+    BlockCacheEntry& entry = block_cache[rip & ((1 << block_cache_bits) - 1)];
+    if (entry.guest == rip) {
+        return (void*)entry.host;
+    } else if (blockExists(rip)) {
+        u64 host = (u64)block_metadata[rip].address;
+        entry.guest = rip;
+        entry.host = host;
+        return (void*)host;
+    } else {
+        return compile(rip);
     }
 
     return nullptr;
