@@ -3106,6 +3106,45 @@ FAST_HANDLE(PSHUFB) {
     rec.setOperandVec(&operands[0], tmp);
 }
 
+FAST_HANDLE(PBLENDW) {
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMV(v0, imm);
+    AS.VMERGE(result, dst, src);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(BLENDPS) {
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMV(v0, imm);
+    AS.VMERGE(result, dst, src);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(BLENDPD) {
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VMV(v0, imm);
+    AS.VMERGE(result, dst, src);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(PSHUFLW) {
     u8 imm = rec.getImmediate(&operands[2]);
     u8 el0 = imm & 0b11;

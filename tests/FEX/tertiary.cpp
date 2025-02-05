@@ -10,6 +10,9 @@
         FEXTestLoader::RunTest("ASM/H0F38/" #opcode ".asm");                                                                                         \
     }
 
+H0F3A_TEST(66_0C)
+H0F3A_TEST(66_0D)
+H0F3A_TEST(66_0E)
 H0F3A_TEST(66_15)
 H0F3A_TEST(66_16)
 H0F3A_TEST(66_16_1)
