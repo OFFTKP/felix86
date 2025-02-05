@@ -274,7 +274,7 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     if (!is_interpreter) {
-        const u64 brk_size = 8 * 1024 * 1024;
+        const u64 brk_size = 64 * 1024 * 1024;
         brk_base = (u8*)mmap((void*)PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if (brk_base == MAP_FAILED) {
             ERROR("Failed to allocate memory for brk in file %s", path.c_str());
