@@ -3792,68 +3792,77 @@ FAST_HANDLE(PSRLDQ) {
 }
 
 FAST_HANDLE(PSLLW) {
-    u8 shift = rec.getImmediate(&operands[1]);
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
-    if (shift > 15) {
-        AS.VMV(dst, 0);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        AS.LI(shift, val);
     } else {
-        AS.VSLL(dst, dst, shift);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        AS.VMV_XS(shift, src);
     }
+    AS.VSLL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSLLQ) {
-    u8 shift = rec.getImmediate(&operands[1]);
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    if (shift > 63) {
-        AS.VMV(dst, 0);
+    biscuit::GPR shift = rec.scratch();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        AS.LI(shift, val);
     } else {
-        if (shift <= 31) {
-            AS.VSLL(dst, dst, shift);
-        } else {
-            biscuit::GPR sh = rec.scratch();
-            AS.LI(sh, shift);
-            AS.VSLL(dst, dst, sh);
-        }
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        AS.VMV_XS(shift, src);
     }
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    AS.VSLL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSLLD) {
-    u8 shift = rec.getImmediate(&operands[1]);
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    if (shift > 31) {
-        AS.VMV(dst, 0);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        AS.LI(shift, val);
     } else {
-        AS.VSLL(dst, dst, shift);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        AS.VMV_XS(shift, src);
     }
+    AS.VSLL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSRLD) {
-    u8 shift = rec.getImmediate(&operands[1]);
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    if (shift > 31) {
-        AS.VMV(dst, 0);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        AS.LI(shift, val);
     } else {
-        AS.VSRL(dst, dst, shift);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        AS.VMV_XS(shift, src);
     }
+    AS.VSRL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSRLW) {
-    u8 shift = rec.getImmediate(&operands[1]);
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
-    if (shift > 15) {
-        AS.VMV(dst, 0);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        AS.LI(shift, val);
     } else {
-        AS.VSRL(dst, dst, shift);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        AS.VMV_XS(shift, src);
     }
+    AS.VSRL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 
@@ -3878,20 +3887,17 @@ FAST_HANDLE(PSRAD) {
 }
 
 FAST_HANDLE(PSRLQ) {
-    u8 shift = rec.getImmediate(&operands[1]);
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    if (shift > 63) {
-        AS.VMV(dst, 0);
+    biscuit::GPR shift = rec.scratch();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        AS.LI(shift, val);
     } else {
-        if (shift <= 31) {
-            AS.VSRL(dst, dst, shift);
-        } else {
-            biscuit::GPR sh = rec.scratch();
-            AS.LI(sh, shift);
-            AS.VSRL(dst, dst, sh);
-        }
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        AS.VMV_XS(shift, src);
     }
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    AS.VSRL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 

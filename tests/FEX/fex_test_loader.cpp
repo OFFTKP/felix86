@@ -180,6 +180,7 @@ FEXTestLoader::~FEXTestLoader() {
 
     ThreadState* state = (ThreadState*)pthread_getspecific(g_thread_state_key);
     ASSERT(state);
+    g_thread_states.remove(state); // TODO: this and the other destructor, make them a function
     delete state;
     pthread_setspecific(g_thread_state_key, nullptr);
 }
