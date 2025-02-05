@@ -5131,6 +5131,11 @@ FAST_HANDLE(CMPSD) {
     }
 }
 
+FAST_HANDLE(CMC) {
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    AS.XORI(cf, cf, 1);
+}
+
 FAST_HANDLE(SHLD) {
     u8 operand_size = instruction.operand_width;
     u8 mask = operand_size == 64 ? 63 : 31;
