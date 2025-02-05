@@ -2959,6 +2959,22 @@ FAST_HANDLE(MOVMSKPS) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
+FAST_HANDLE(MOVMSKPD) {
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec mask = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 32);
+    AS.LI(shift, 63);
+    AS.VSRL(tmp, src, shift);
+    AS.VMSEQ(mask, tmp, 1);
+    AS.VMV_XS(dst, mask);
+    AS.ANDI(dst, dst, 0b11);
+    rec.setOperandGPR(&operands[0], dst);
+}
+
 FAST_HANDLE(PMOVZXBQ) {
     biscuit::GPR mask = rec.scratch();
     biscuit::Vec iota = rec.scratchVec();
