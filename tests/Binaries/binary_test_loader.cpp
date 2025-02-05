@@ -15,6 +15,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     CATCH_INFO(fmt::format("Running test: {}", path.filename().string()));
 
     std::string buffer(1024 * 1024, 0);
+    std::string srootfs = "FELIX86_ROOTFS=" + g_rootfs_path.string();
     std::string spath = path.string();
 
     const char* argv[] = {
@@ -24,7 +25,9 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     };
 
     const char* envp[] = {
+        srootfs.c_str(),
         "FELIX86_DONT_VALIDATE_EXE_PATH=1",
+        nullptr,
     };
 
     pid_t fork_result = fork();
