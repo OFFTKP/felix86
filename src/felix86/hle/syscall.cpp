@@ -944,8 +944,7 @@ void felix86_syscall(ThreadState* state) {
             }
 
             u64 host_mask = state->signal_mask & Signals::hostSignalMask();
-            sigset_t set = *(sigset_t*)&host_mask;
-            pthread_sigmask(SIG_SETMASK, &set, nullptr);
+            // pthread_sigmask(SIG_SETMASK, &set, nullptr);
         }
 
         if (oldset) {
