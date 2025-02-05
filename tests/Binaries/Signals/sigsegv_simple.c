@@ -1,9 +1,10 @@
 #include <signal.h>
 
-int pass = 1;
+volatile int* address = 0;
+int valid_memory = 0;
 
 void signal_handler(int sig, siginfo_t* info, void* ucontext) {
-    pass = 0;
+    address = &valid_memory;
 }
 
 int main() {
@@ -12,8 +13,11 @@ int main() {
     act.sa_flags = SA_SIGINFO;
     sigaction(SIGSEGV, &act, 0);
 
-    volatile int* ptr = 0;
-    *ptr = 42;
+    *address = 42;
 
-    return pass;
+    if (valid_memory == 42) {
+        return 0;
+    }
+
+    return 1;
 }
