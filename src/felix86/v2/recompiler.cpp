@@ -736,7 +736,6 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR address = lea(operand);
         biscuit::Vec vec = scratchVec();
-        u64 current = (u64)as.GetCursorPointer();
 
         switch (operand->size) {
         case 8: {
@@ -1033,7 +1032,6 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR address = lea(operand);
-        u64 current = (u64)as.GetCursorPointer();
         switch (operand->size) {
         case 128: {
             if (g_paranoid) { // don't patch vector accesses in paranoid mode

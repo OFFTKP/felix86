@@ -464,7 +464,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             // when are we gonna get a proper decoder...
             biscuit::Vec vd = biscuit::Vec((instruction >> 7) & 0b11111);
             biscuit::GPR address = biscuit::GPR((instruction >> 15) & 0b11111);
-            bool is_load = (instruction >> 5) & 1;
+            bool is_load = !((instruction >> 5) & 1);
 
             // TODO: normally this needs to unlink the block, then modify, then relink to be safe
             void* start = as.GetCursorPointer();
