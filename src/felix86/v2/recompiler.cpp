@@ -8,7 +8,7 @@
 #include "felix86/v2/handlers.inc"
 #undef X
 
-constexpr static u64 code_cache_size = 32 * 1024 * 1024;
+constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
 constexpr static std::array saved_gprs = {ra, sp, gp, tp, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11};
 
