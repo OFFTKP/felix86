@@ -5133,6 +5133,19 @@ FAST_HANDLE(CVTDQ2PS) {
     rec.setOperandVec(&operands[0], scratch);
 }
 
+FAST_HANDLE(EXTRACTPS) {
+    u8 imm = rec.getImmediate(&operands[2]) & 0b11;
+    biscuit::GPR dst = rec.scratch();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec tmp = rec.scratchVec();
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VSLIDEDOWN(tmp, src, imm);
+    AS.VMV_XS(dst, tmp);
+
+    rec.setOperandGPR(&operands[0], dst);
+}
+
 FAST_HANDLE(PREFETCHT0) {
     // NOP
 }
