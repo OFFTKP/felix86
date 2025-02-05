@@ -3841,6 +3841,7 @@ FAST_HANDLE(PINSRW) {
     AS.LI(mask, (1 << imm));
     AS.VMV(v0, mask);
     AS.VMV_SX(tmp, src);
+    AS.VSLIDEUP(tmp, tmp, imm);
     AS.VMERGE(result, dst, tmp);
 
     rec.setOperandVec(&operands[0], result);
