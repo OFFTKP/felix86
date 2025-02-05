@@ -2473,6 +2473,14 @@ FAST_HANDLE(PMULHW) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PMULHUW) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VMULHU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PMULLW) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -4529,6 +4537,16 @@ FAST_HANDLE(CVTTPS2DQ) {
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(CVTPS2DQ) {
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VFCVT_X_F(result, src);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(CVTTPD2DQ) {
     biscuit::GPR low = rec.scratch();
     biscuit::GPR high = rec.scratch();
@@ -4544,6 +4562,29 @@ FAST_HANDLE(CVTTPD2DQ) {
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.FCVT_W_D(low, ft0, RMode::RTZ);
     AS.FCVT_W_D(high, ft1, RMode::RTZ);
+
+    AS.VMV(result, 0);
+    AS.VSLIDE1UP(temp, result, high);
+    AS.VSLIDE1UP(result, temp, low);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(CVTPD2DQ) {
+    biscuit::GPR low = rec.scratch();
+    biscuit::GPR high = rec.scratch();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec temp = rec.scratchVec();
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VFMV_FS(ft0, src);
+    AS.VSLIDEDOWN(temp, src, 1);
+    AS.VFMV_FS(ft1, temp);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.FCVT_W_D(low, ft0);
+    AS.FCVT_W_D(high, ft1);
 
     AS.VMV(result, 0);
     AS.VSLIDE1UP(temp, result, high);
