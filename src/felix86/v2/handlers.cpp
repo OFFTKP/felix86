@@ -3207,7 +3207,7 @@ FAST_HANDLE(PSHUFHW) {
     AS.LI(tmp, 0b11110000); // operate on top words only
     AS.VMV(v0, tmp);
 
-    AS.VRGATHER(dst, src, iota2, VecMask::Yes);
+    rec.vrgather(dst, src, iota2, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], dst);
 }
