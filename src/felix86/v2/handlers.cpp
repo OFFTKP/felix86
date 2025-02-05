@@ -4887,12 +4887,12 @@ FAST_HANDLE(XADD) {
     }
 }
 
-FAST_HANDLE(CMPSD_sse) {
+void CMPS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E64, 1);
+    rec.setVectorState(sew, 1);
     AS.VFMV_FS(ft0, dst);
     AS.VFMV_FS(ft1, src);
 
@@ -5003,6 +5003,14 @@ FAST_HANDLE(CMPSD_sse) {
     AS.VMV_SX(dst, result);
 
     rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CMPSD_sse) {
+    CMPS(rec, meta, instruction, operands, SEW::E64);
+}
+
+FAST_HANDLE(CMPSS) {
+    CMPS(rec, meta, instruction, operands, SEW::E32);
 }
 
 FAST_HANDLE(CMPSD) {
