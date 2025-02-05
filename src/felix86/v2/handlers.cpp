@@ -3191,10 +3191,10 @@ FAST_HANDLE(PSHUFHW) {
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
     AS.VMV(dst, src); // to move the low words
 
-    u8 el0 = imm & 0b11;
-    u8 el1 = (imm >> 2) & 0b11;
-    u8 el2 = (imm >> 4) & 0b11;
-    u8 el3 = (imm >> 6) & 0b11;
+    u8 el0 = 4 + (imm & 0b11);
+    u8 el1 = 4 + (imm >> 2) & 0b11;
+    u8 el2 = 4 + (imm >> 4) & 0b11;
+    u8 el3 = 4 + (imm >> 6) & 0b11;
     AS.VMV(iota2, el3);
     AS.LI(tmp, el2);
     AS.VSLIDE1UP(iota, iota2, tmp);
