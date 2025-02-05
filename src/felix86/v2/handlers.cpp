@@ -5173,6 +5173,7 @@ FAST_HANDLE(RCL) {
     AS.OR(dst_temp, dst_temp, cf);
     AS.MV(cf, cf_temp);
     AS.ADDI(temp_count, temp_count, -1);
+    AS.J(&loop);
 
     AS.Bind(&end);
 
@@ -5227,6 +5228,7 @@ FAST_HANDLE(RCR) {
     AS.OR(dst_temp, dst_temp, cf_shifted);
     AS.MV(cf, cf_temp);
     AS.ADDI(temp_count, temp_count, -1);
+    AS.J(&loop);
 
     AS.Bind(&end);
 

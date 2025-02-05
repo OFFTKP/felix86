@@ -11,7 +11,7 @@
 // 16 gprs, 5 flags, 16 xmm registers
 constexpr u64 allocated_reg_count = 16 + 5 + 16;
 
-constexpr int block_cache_bits = 15;
+constexpr int block_cache_bits = 16;
 
 struct HandlerMetadata {
     u64 rip;
