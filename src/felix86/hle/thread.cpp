@@ -100,7 +100,7 @@ void* pthread_handler(void* args) {
     LOG("Thread %ld exited", state->tid);
 
     __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
-    syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, 1, 0, 0, 0);
+    syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
 
     return nullptr;
 }
@@ -187,9 +187,9 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         return -EINVAL;
     }
 
-    // We use the tid to check that the cloned process has finished
-    pid_t clone_tid = 0;
-    u64 host_flags = (args->flags & (~CLONE_SETTLS)) | (CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID);
+    // We use this "tid" to check that the cloned process has finished
+    pid_t clone_tid = -1;
+    u64 host_flags = (args->flags & (~CLONE_SETTLS)) | CLONE_CHILD_CLEARTID;
 
     CloneArgs host_clone_args{
         .parent_state = current_state,
@@ -230,7 +230,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     }
 
     // Wait for the clone_handler to finish
-    syscall(SYS_futex, &clone_tid, FUTEX_WAIT, 0, nullptr, nullptr, 0);
+    syscall(SYS_futex, &clone_tid, FUTEX_WAIT, -1, nullptr, nullptr, 0);
 
     // Wait for the pthread_handler to finish initialization and set this flag
     while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
