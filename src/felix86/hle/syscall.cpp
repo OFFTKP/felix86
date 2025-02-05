@@ -706,6 +706,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("statfs(%s, %p) = %d", path->c_str(), (void*)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_fstatfs: {
+        result = HOST_SYSCALL(fstatfs, rdi, (struct statfs*)rsi);
+        STRACE("fstatfs(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_getsockname: {
         result = HOST_SYSCALL(getsockname, rdi, (struct sockaddr*)rsi, (socklen_t*)rdx);
         STRACE("getsockname(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
