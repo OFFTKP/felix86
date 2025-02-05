@@ -898,7 +898,7 @@ FAST_HANDLE(MOVD) {
         biscuit::GPR dst = rec.scratch();
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-        rec.setVectorState(SEW::E32, rec.maxVlen() / 64);
+        rec.setVectorState(SEW::E32, 1);
         AS.VMV_XS(dst, src);
 
         rec.setOperandGPR(&operands[0], dst);
@@ -921,7 +921,7 @@ FAST_HANDLE(MOVD) {
             biscuit::GPR src = rec.getOperandGPR(&operands[1]);
             biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
-            rec.setVectorState(SEW::E32, rec.maxVlen() / 64);
+            rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
             AS.VMV(v0, 0b1110);
 
             // Zero upper 32-bit elements (this will be useful for when we get to AVX)
