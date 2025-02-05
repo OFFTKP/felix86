@@ -242,7 +242,7 @@ void setup(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t n
         frame->uc.uc_stack.ss_flags = 0;
     }
 
-    sigset_t* old_mask = (sigset_t*)&state->signal_mask;
+    sigset_t* old_mask = &state->signal_mask;
     frame->uc.uc_sigmask = *old_mask;
 
     if (in_jit_code) {
@@ -385,9 +385,9 @@ void Signals::sigreturn(ThreadState* state) {
     state->SetXmmReg(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
 
     // Restore signal mask to what it was supposed to be outside of signal handler
-    u64 host_mask = state->signal_mask & Signals::hostSignalMask();
-    sigset_t set = *(sigset_t*)&host_mask;
-    pthread_sigmask(SIG_SETMASK, &set, nullptr);
+    sigset_t host_mask;
+    sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
+    pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
 }
 
 struct riscv_v_state {
@@ -399,11 +399,11 @@ struct riscv_v_state {
     void* datap;
 };
 
-// #if defined(__x86_64__)
-// void signal_handler(int sig, siginfo_t* info, void* ctx) {
-//     UNREACHABLE();
-// }
-// #elif defined(__riscv)
+#if defined(__x86_64__)
+void signal_handler(int sig, siginfo_t* info, void* ctx) {
+    UNREACHABLE();
+}
+#elif defined(__riscv)
 riscv_v_state* get_riscv_vector_state(void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
@@ -628,7 +628,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     }
 }
-// #endif
+#endif
 
 void Signals::initialize() {
     struct sigaction sa;

@@ -110,7 +110,7 @@ struct ThreadState {
 
     // Two processes can share the same signal handler table
     std::shared_ptr<SignalHandlerTable> signal_handlers{};
-    u64 signal_mask{};
+    sigset_t signal_mask{};
 
     void* compile_next_handler{};
 

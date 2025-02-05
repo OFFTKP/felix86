@@ -926,16 +926,24 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_rt_sigprocmask: {
         int how = rdi;
-        u64* set = (u64*)rsi;
-        u64* oldset = (u64*)rdx;
+        sigset_t* set = (sigset_t*)rsi;
+        sigset_t* oldset = (sigset_t*)rdx;
 
-        u64 old_set = state->signal_mask;
+        sigset_t old_host_set = state->signal_mask;
         result = 0;
         if (set) {
             if (how == SIG_BLOCK) {
-                state->signal_mask |= *set;
+                sigorset(&state->signal_mask, &state->signal_mask, set);
             } else if (how == SIG_UNBLOCK) {
-                state->signal_mask &= ~(*set);
+                sigset_t not_set;
+                sigfillset(&not_set);
+                u16 bit_size = sizeof(sigset_t) * 8;
+                for (u16 i = 0; i < bit_size; i++) {
+                    if (sigismember(set, i)) {
+                        sigdelset(&state->signal_mask, i);
+                    }
+                }
+                sigandset(&state->signal_mask, &state->signal_mask, &not_set);
             } else if (how == SIG_SETMASK) {
                 state->signal_mask = *set;
             } else {
@@ -943,12 +951,13 @@ void felix86_syscall(ThreadState* state) {
                 break;
             }
 
-            u64 host_mask = state->signal_mask & Signals::hostSignalMask();
-            // pthread_sigmask(SIG_SETMASK, &set, nullptr);
+            sigset_t host_mask;
+            sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
+            pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
         }
 
         if (oldset) {
-            *oldset = old_set;
+            *oldset = old_host_set;
         }
         break;
     }

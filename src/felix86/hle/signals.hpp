@@ -16,8 +16,18 @@ struct Signals {
     static void initialize();
     static void registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags);
     [[nodiscard]] static RegisteredSignal getSignalHandler(ThreadState* state, int sig);
-    static constexpr u64 hostSignalMask() {
-        return ~((1ULL << SIGBUS) | (1ULL << SIGILL));
+
+    // To AND with a mask because these signals are necessary for the emulator to work
+    static sigset_t* hostSignalMask() {
+        static sigset_t mask;
+        static bool initialized = false;
+        if (!initialized) {
+            sigfillset(&mask);
+            sigdelset(&mask, SIGBUS);
+            sigdelset(&mask, SIGILL);
+            initialized = true;
+        }
+        return &mask;
     }
 
     // Once the custom guest signal handler is ran, it needs to sigreturn to get the correct state. But we don't really
