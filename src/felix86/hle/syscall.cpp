@@ -255,6 +255,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("shmdt(%p) = %d", (void*)rdi, (int)result);
         break;
     }
+    case felix86_x86_64_bind: {
+        result = HOST_SYSCALL(bind, rdi, (struct sockaddr*)rsi, rdx);
+        STRACE("bind(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_setpgid: {
         result = HOST_SYSCALL(setpgid, rdi, rsi);
         STRACE("setpgid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
