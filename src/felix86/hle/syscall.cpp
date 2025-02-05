@@ -945,7 +945,7 @@ void felix86_syscall(ThreadState* state) {
                 }
                 sigandset(&state->signal_mask, &state->signal_mask, &not_set);
             } else if (how == SIG_SETMASK) {
-                state->signal_mask = *set;
+                memcpy(&state->signal_mask, set, sizeof(u64)); // copying the entire struct segfaults sometimes
             } else {
                 result = -EINVAL;
                 break;
@@ -957,7 +957,7 @@ void felix86_syscall(ThreadState* state) {
         }
 
         if (oldset) {
-            *oldset = old_host_set;
+            memcpy(oldset, &old_host_set, sizeof(u64));
         }
         break;
     }
