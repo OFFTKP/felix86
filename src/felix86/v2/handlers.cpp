@@ -5136,6 +5136,99 @@ FAST_HANDLE(CMC) {
     AS.XORI(cf, cf, 1);
 }
 
+FAST_HANDLE(RCL) {
+    biscuit::GPR temp_count = rec.scratch();
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR dst_temp = rec.scratch();
+    biscuit::GPR shift = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    biscuit::GPR cf_temp = rec.scratch();
+
+    AS.ANDI(temp_count, shift, instruction.operand_width == 64 ? 63 : 31);
+    if (instruction.operand_width == 8) {
+        AS.LI(cf_temp, 9);
+        AS.REMUW(temp_count, temp_count, cf_temp);
+    } else if (instruction.operand_width == 16) {
+        AS.LI(cf_temp, 17);
+        AS.REMUW(temp_count, temp_count, cf_temp);
+    }
+
+    AS.MV(dst_temp, dst);
+
+    rec.disableSignals();
+
+    Label loop, end;
+    AS.Bind(&loop);
+    AS.BEQZ(temp_count, &end);
+
+    AS.SRLI(cf_temp, dst_temp, instruction.operand_width - 1);
+    AS.ANDI(cf_temp, cf_temp, 1);
+    AS.SLLI(dst_temp, dst_temp, 1);
+    AS.OR(dst_temp, dst_temp, cf);
+    AS.MV(cf, cf_temp);
+    AS.ADDI(temp_count, temp_count, -1);
+
+    AS.Bind(&end);
+
+    rec.enableSignals();
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.SRLI(of, dst_temp, instruction.operand_width - 1);
+        AS.ANDI(of, of, 1);
+        AS.XOR(of, of, cf);
+    }
+
+    rec.setOperandGPR(&operands[0], dst_temp);
+}
+
+FAST_HANDLE(RCR) {
+    biscuit::GPR temp_count = rec.scratch();
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR dst_temp = rec.scratch();
+    biscuit::GPR shift = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    biscuit::GPR cf_temp = rec.scratch();
+    biscuit::GPR cf_shifted = rec.scratch();
+
+    AS.ANDI(temp_count, shift, instruction.operand_width == 64 ? 63 : 31);
+    if (instruction.operand_width == 8) {
+        AS.LI(cf_temp, 9);
+        AS.REMUW(temp_count, temp_count, cf_temp);
+    } else if (instruction.operand_width == 16) {
+        AS.LI(cf_temp, 17);
+        AS.REMUW(temp_count, temp_count, cf_temp);
+    }
+
+    AS.MV(dst_temp, dst);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.SRLI(of, dst_temp, instruction.operand_width - 1);
+        AS.ANDI(of, of, 1);
+        AS.XOR(of, of, cf);
+    }
+
+    rec.disableSignals();
+
+    Label loop, end;
+    AS.Bind(&loop);
+    AS.BEQZ(temp_count, &end);
+
+    AS.ANDI(cf_temp, dst_temp, 1);
+    AS.SRLI(dst_temp, dst_temp, 1);
+    AS.SLLI(cf_shifted, cf, instruction.operand_width - 1);
+    AS.OR(dst_temp, dst_temp, cf_shifted);
+    AS.MV(cf, cf_temp);
+    AS.ADDI(temp_count, temp_count, -1);
+
+    AS.Bind(&end);
+
+    rec.enableSignals();
+
+    rec.setOperandGPR(&operands[0], dst_temp);
+}
+
 FAST_HANDLE(SHLD) {
     u8 operand_size = instruction.operand_width;
     u8 mask = operand_size == 64 ? 63 : 31;
