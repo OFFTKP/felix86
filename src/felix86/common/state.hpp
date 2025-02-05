@@ -225,6 +225,8 @@ struct ThreadState {
         return flags;
     }
 
+    static void InitializeKey();
+
     static ThreadState* Create(ThreadState* copy_state = nullptr);
 
     static ThreadState* Get();

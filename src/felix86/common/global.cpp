@@ -22,6 +22,7 @@ bool g_calltrace = false;
 u64 g_current_brk = 0;
 sem_t* g_semaphore = nullptr;
 u64 g_dispatcher_exit_count = 0;
+std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
 pthread_key_t g_thread_state_key = -1;
@@ -190,11 +191,7 @@ void initialize_globals() {
         LOG("Environment:%s", environment.c_str());
     }
 
-    int result = pthread_key_create(&g_thread_state_key, [](void* state) { delete (ThreadState*)state; });
-    if (result != 0) {
-        ERROR("Failed to create thread state key: %s", strerror(result));
-        exit(1);
-    }
+    ThreadState::InitializeKey();
 }
 
 void initialize_extensions() {

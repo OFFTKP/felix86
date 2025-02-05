@@ -33,8 +33,25 @@ ThreadState::ThreadState(ThreadState* copy_state) {
     this->compile_next_handler = recompiler->getCompileNext();
 }
 
+void ThreadState::InitializeKey() {
+    int result = pthread_key_create(&g_thread_state_key, [](void* data) {
+        ThreadState* state = (ThreadState*)data;
+        FELIX86_LOCK;
+        g_thread_states.remove(state);
+        FELIX86_UNLOCK;
+        delete state;
+    });
+    if (result != 0) {
+        ERROR("Failed to create thread state key: %s", strerror(result));
+        exit(1);
+    }
+}
+
 ThreadState* ThreadState::Create(ThreadState* copy_state) {
     ThreadState* state = new ThreadState(copy_state);
+    FELIX86_LOCK;
+    g_thread_states.push_back(state);
+    FELIX86_UNLOCK;
     ASSERT(g_thread_state_key != (pthread_key_t)-1);
     ASSERT(pthread_getspecific(g_thread_state_key) == nullptr);
     pthread_setspecific(g_thread_state_key, state);

@@ -275,23 +275,24 @@ void dump_states() {
         return;
     }
 
-    // auto& states = g_emulator->GetStates();
-    // int i = 0;
-    // for (auto& state : states) {
-    //     dprintf(g_output_fd, ANSI_COLOR_RED "State %d: PC: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, i, state.GetRip(),
-    //             MemoryMetadata::GetRegionName(state.GetRip()).c_str(), MemoryMetadata::GetOffset(state.GetRip()));
+    FELIX86_LOCK;
+    auto& states = g_thread_states;
+    int i = 0;
+    for (auto& state : states) {
+        dprintf(g_output_fd, ANSI_COLOR_RED "State %d: PC: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, i, state->GetRip(),
+                MemoryMetadata::GetRegionName(state->GetRip()).c_str(), MemoryMetadata::GetOffset(state->GetRip()));
 
-    //     if (g_calltrace) {
-    //         dprintf(g_output_fd, ANSI_COLOR_RED "--- CALLTRACE ---\n" ANSI_COLOR_RESET);
-    //         auto it = state.calltrace.rbegin();
-    //         while (it != state.calltrace.rend()) {
-    //             print_address(*it);
-    //             it++;
-    //         }
-    //     }
-    //     i++;
-    // }
-    printf("FIX ME dump_states\n");
+        if (g_calltrace) {
+            dprintf(g_output_fd, ANSI_COLOR_RED "--- CALLTRACE ---\n" ANSI_COLOR_RESET);
+            auto it = state->calltrace.rbegin();
+            while (it != state->calltrace.rend()) {
+                print_address(*it);
+                it++;
+            }
+        }
+        i++;
+    }
+    FELIX86_UNLOCK;
 }
 
 void print_address(u64 address) {

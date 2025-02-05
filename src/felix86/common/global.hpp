@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <list>
 #include <unordered_map>
 #include <vector>
 #include <semaphore.h>
@@ -32,6 +33,7 @@ extern struct Emulator* g_emulator;
 extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
 extern sem_t* g_semaphore;
 extern pthread_key_t g_thread_state_key;
+extern std::list<struct ThreadState*> g_thread_states;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
