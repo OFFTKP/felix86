@@ -3802,6 +3802,12 @@ FAST_HANDLE(PSLLW) {
         AS.VMV_XS(shift, src);
     }
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    AS.LI(max, 16);
+    AS.BLTU(shift, max, &dont_zero);
+    AS.VMV(dst, 0);
+    AS.Bind(&dont_zero);
     AS.VSLL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
@@ -3816,6 +3822,12 @@ FAST_HANDLE(PSLLQ) {
         AS.VMV_XS(shift, src);
     }
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    AS.LI(max, 64);
+    AS.BLTU(shift, max, &dont_zero);
+    AS.VMV(dst, 0);
+    AS.Bind(&dont_zero);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VSLL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
@@ -3832,6 +3844,12 @@ FAST_HANDLE(PSLLD) {
         AS.VMV_XS(shift, src);
     }
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    AS.LI(max, 32);
+    AS.BLTU(shift, max, &dont_zero);
+    AS.VMV(dst, 0);
+    AS.Bind(&dont_zero);
     AS.VSLL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
@@ -3847,6 +3865,12 @@ FAST_HANDLE(PSRLD) {
         AS.VMV_XS(shift, src);
     }
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    AS.LI(max, 32);
+    AS.BLTU(shift, max, &dont_zero);
+    AS.VMV(dst, 0);
+    AS.Bind(&dont_zero);
     AS.VSRL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
@@ -3862,6 +3886,12 @@ FAST_HANDLE(PSRLW) {
         AS.VMV_XS(shift, src);
     }
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    AS.LI(max, 16);
+    AS.BLTU(shift, max, &dont_zero);
+    AS.VMV(dst, 0);
+    AS.Bind(&dont_zero);
     AS.VSRL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
@@ -3897,6 +3927,12 @@ FAST_HANDLE(PSRLQ) {
     }
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    AS.LI(max, 64);
+    AS.BLTU(shift, max, &dont_zero);
+    AS.VMV(dst, 0);
+    AS.Bind(&dont_zero);
     AS.VSRL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
