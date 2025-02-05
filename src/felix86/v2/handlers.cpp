@@ -4260,8 +4260,9 @@ FAST_HANDLE(CVTPD2PS) {
     // Yeah good luck figuring out narrowing operations
     // EMUL = 2 * LMUL... so what, when I wanna convert 2 E64 to 2 E32 it's impossible or what?
     // Just use normal FPU conversions for now
-    AS.VFSLIDE1DOWN(temp, src, ft0);
-    AS.VFSLIDE1DOWN(temp, temp, ft1);
+    AS.VFMV_FS(ft0, src);
+    AS.VSLIDEDOWN(temp, src, 1);
+    AS.VFMV_FS(ft1, temp);
     AS.FCVT_S_D(ft2, ft0);
     AS.FCVT_S_D(ft3, ft1);
 
