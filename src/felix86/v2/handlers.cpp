@@ -4262,8 +4262,8 @@ FAST_HANDLE(CVTPD2PS) {
     // Just use normal FPU conversions for now
     AS.VFSLIDE1DOWN(temp, src, ft0);
     AS.VFSLIDE1DOWN(temp, temp, ft1);
-    AS.FCVT_D_S(ft0, ft2);
-    AS.FCVT_D_S(ft1, ft3);
+    AS.FCVT_S_D(ft2, ft0);
+    AS.FCVT_S_D(ft3, ft1);
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.VMV(result, 0);
