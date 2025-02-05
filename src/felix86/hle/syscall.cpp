@@ -235,6 +235,26 @@ void felix86_syscall(ThreadState* state) {
         STRACE("shutdown(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_shmget: {
+        result = HOST_SYSCALL(shmget, rdi, rsi, rdx);
+        STRACE("shmget(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_shmat: {
+        result = HOST_SYSCALL(shmat, rdi, (void*)rsi, rdx);
+        STRACE("shmat(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_shmctl: {
+        result = HOST_SYSCALL(shmctl, rdi, rsi, rdx);
+        STRACE("shmctl(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_shmdt: {
+        result = HOST_SYSCALL(shmdt, (void*)rdi);
+        STRACE("shmdt(%p) = %d", (void*)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_setpgid: {
         result = HOST_SYSCALL(setpgid, rdi, rsi);
         STRACE("setpgid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);

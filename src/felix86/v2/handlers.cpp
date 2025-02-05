@@ -3090,6 +3090,17 @@ FAST_HANDLE(SHUFPS) {
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(PSHUFB) {
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec mask = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VRGATHER(tmp, dst, mask);
+
+    rec.setOperandVec(&operands[0], tmp);
+}
+
 FAST_HANDLE(PSHUFLW) {
     u8 imm = rec.getImmediate(&operands[2]);
     u8 el0 = imm & 0b11;
