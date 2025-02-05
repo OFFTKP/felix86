@@ -3091,12 +3091,17 @@ FAST_HANDLE(SHUFPS) {
 }
 
 FAST_HANDLE(PSHUFB) {
+    biscuit::GPR bitmask = rec.scratch();
     biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec mask_masked = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec mask = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
-    AS.VRGATHER(tmp, dst, mask);
+    // Keep 0...3 for regular shifting and bit 7 which indicates resulting element goes to 0, maps well with vrgather this way
+    AS.LI(bitmask, 0b10001111);
+    AS.VAND(mask_masked, mask, bitmask);
+    AS.VRGATHER(tmp, dst, mask_masked);
 
     rec.setOperandVec(&operands[0], tmp);
 }
