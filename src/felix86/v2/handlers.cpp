@@ -4036,9 +4036,11 @@ FAST_HANDLE(PINSRB) {
     biscuit::Vec tmp2 = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
 
-    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    rec.setVectorState(SEW::E16, 1);
     AS.LI(mask, (1 << imm));
     AS.VMV(v0, mask);
+
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
     AS.VMV_SX(tmp, src);
     AS.VSLIDEUP(tmp2, tmp, imm);
     AS.VMERGE(result, dst, tmp2);
