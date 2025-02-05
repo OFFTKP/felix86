@@ -4019,6 +4019,25 @@ FAST_HANDLE(UCOMISS) {
     COMIS(rec, meta, instruction, operands, SEW::E32);
 }
 
+FAST_HANDLE(PINSRB) {
+    u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec tmp2 = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.LI(mask, (1 << imm));
+    AS.VMV(v0, mask);
+    AS.VMV_SX(tmp, src);
+    AS.VSLIDEUP(tmp2, tmp, imm);
+    AS.VMERGE(result, dst, tmp2);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(PINSRW) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
@@ -4029,6 +4048,44 @@ FAST_HANDLE(PINSRW) {
     biscuit::Vec result = rec.scratchVec();
 
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.LI(mask, (1 << imm));
+    AS.VMV(v0, mask);
+    AS.VMV_SX(tmp, src);
+    AS.VSLIDEUP(tmp2, tmp, imm);
+    AS.VMERGE(result, dst, tmp2);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(PINSRD) {
+    u8 imm = rec.getImmediate(&operands[2]) & 0b11;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec tmp2 = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.LI(mask, (1 << imm));
+    AS.VMV(v0, mask);
+    AS.VMV_SX(tmp, src);
+    AS.VSLIDEUP(tmp2, tmp, imm);
+    AS.VMERGE(result, dst, tmp2);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(PINSRQ) {
+    u8 imm = rec.getImmediate(&operands[2]) & 0b1;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec tmp2 = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.LI(mask, (1 << imm));
     AS.VMV(v0, mask);
     AS.VMV_SX(tmp, src);
