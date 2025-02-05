@@ -4274,6 +4274,26 @@ FAST_HANDLE(CVTPD2PS) {
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(CVTPS2PD) {
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 2);
+    AS.VFMV_FS(ft0, src);
+    AS.VSLIDEDOWN(temp, src, 1);
+    AS.VFMV_FS(ft1, temp);
+    AS.FCVT_D_S(ft2, ft0);
+    AS.FCVT_D_S(ft3, ft1);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 32);
+    AS.VMV(result, 0);
+    AS.VFSLIDE1UP(temp, result, ft3);
+    AS.VFSLIDE1UP(result, temp, ft2);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(XGETBV) {
     biscuit::GPR scratch = rec.scratch();
     AS.LI(scratch, 0b11);
