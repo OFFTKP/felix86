@@ -3108,12 +3108,14 @@ FAST_HANDLE(PSHUFB) {
 
 FAST_HANDLE(PBLENDW) {
     u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::GPR mask = rec.scratch();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
-    AS.VMV(v0, imm);
+    AS.LI(mask, imm);
+    AS.VMV(v0, mask);
     AS.VMERGE(result, dst, src);
 
     rec.setOperandVec(&operands[0], result);
