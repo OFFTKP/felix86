@@ -4251,6 +4251,17 @@ FAST_HANDLE(CVTTSD2SI) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
+FAST_HANDLE(CVTPD2PS) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    AS.VMV(temp, 0);
+    AS.VFNCVT_F_F(temp, src);
+
+    rec.setOperandVec(&operands[0], temp);
+}
+
 FAST_HANDLE(XGETBV) {
     biscuit::GPR scratch = rec.scratch();
     AS.LI(scratch, 0b11);
