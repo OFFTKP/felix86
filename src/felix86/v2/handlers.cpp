@@ -3829,6 +3829,23 @@ FAST_HANDLE(UCOMISS) {
     COMIS(rec, meta, instruction, operands, SEW::E32);
 }
 
+FAST_HANDLE(PINSRW) {
+    u8 imm = rec.getImmediate(&operands[2]) & 0b111;
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR mask = rec.scratch();
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.LI(mask, (1 << imm));
+    AS.VMV(v0, mask);
+    AS.VMV_SX(tmp, src);
+    AS.VMERGE(result, dst, tmp);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(PEXTRW) {
     biscuit::Vec temp = rec.scratchVec();
     biscuit::GPR result = rec.scratch();
