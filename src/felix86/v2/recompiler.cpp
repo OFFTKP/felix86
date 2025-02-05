@@ -120,7 +120,7 @@ void* Recompiler::emitSigreturnThunk() {
 }
 
 void* Recompiler::compile(u64 rip) {
-    size_t remaining_size = as.GetCursorPointer() - as.GetCodeBuffer().GetOffsetPointer(0);
+    size_t remaining_size = code_cache_size - (as.GetCursorPointer() - as.GetCodeBuffer().GetOffsetPointer(0));
     if (remaining_size < 100'000) { // less than ~100KB left, clear cache
         WARN("Clearing cache on thread %u", gettid());
         as.GetCodeBuffer().RewindCursor();
