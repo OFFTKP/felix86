@@ -11,11 +11,15 @@
 // 16 gprs, 5 flags, 16 xmm registers
 constexpr u64 allocated_reg_count = 16 + 5 + 16;
 
-constexpr int block_cache_bits = 16;
+constexpr int block_cache_bits = 15;
 
 struct HandlerMetadata {
     u64 rip;
     u64 block_start;
+};
+
+struct BlockCacheEntry {
+    u64 host = 0, guest = 0;
 };
 
 // This struct is for indicating within a block at which points a register contains a value of a guest register,
@@ -206,10 +210,6 @@ private:
     struct FlagAccess {
         bool modification; // true if modified, false if used
         u64 position;
-    };
-
-    struct BlockCacheEntry {
-        u64 host = 0, guest = 0;
     };
 
     void compileSequence(u64 rip);
