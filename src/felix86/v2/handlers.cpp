@@ -14,6 +14,41 @@ void felix86_cpuid(ThreadState* state);
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
+enum CmpPredicate {
+    EQ_OQ = 0x00,
+    LT_OS = 0x01,
+    LE_OS = 0x02,
+    UNORD_Q = 0x03,
+    NEQ_UQ = 0x04,
+    NLT_US = 0x05,
+    NLE_US = 0x06,
+    ORD_Q = 0x07,
+    EQ_UQ = 0x08,
+    NGE_US = 0x09,
+    NGT_US = 0x0A,
+    FALSE_OQ = 0x0B,
+    NEQ_OQ = 0x0C,
+    GE_OS = 0x0D,
+    GT_OS = 0x0E,
+    TRUE_UQ = 0x0F,
+    EQ_OS = 0x10,
+    LT_OQ = 0x11,
+    LE_OQ = 0x12,
+    UNORD_S = 0x13,
+    NEQ_US = 0x14,
+    NLT_UQ = 0x15,
+    NLE_UQ = 0x16,
+    ORD_S = 0x17,
+    EQ_US = 0x18,
+    NGE_UQ = 0x19,
+    NGT_UQ = 0x1A,
+    FALSE_OS = 0x1B,
+    NEQ_OS = 0x1C,
+    GE_OQ = 0x1D,
+    GT_OQ = 0x1E,
+    TRUE_US = 0x1F,
+};
+
 void VEC_function(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 func) {
     x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
     ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
@@ -3046,6 +3081,75 @@ FAST_HANDLE(PCMPGTQ) {
     PCMPGT(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
 }
 
+void CMPP(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec temp1 = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(sew, vlen);
+    // TODO: technically wrong to use this enum I think but the operations are the same generally
+    switch (imm) {
+    case EQ_OQ: {
+        AS.VMFEQ(v0, dst, src);
+        break;
+    }
+    case LT_OS: {
+        AS.VMFLT(v0, dst, src);
+        break;
+    }
+    case LE_OS: {
+        AS.VMFLE(v0, dst, src);
+        break;
+    }
+    case UNORD_Q: {
+        // Set if either are NaN
+        AS.VMFNE(temp1, dst, dst);
+        AS.VMFNE(temp2, src, src);
+        AS.VMOR(v0, temp1, temp2);
+        break;
+    }
+    case NEQ_UQ: {
+        AS.VMFNE(v0, dst, src);
+        break;
+    }
+    case NLT_US: {
+        AS.VMFLE(v0, src, dst);
+        break;
+    }
+    case NLE_US: {
+        AS.VMFLT(v0, src, dst);
+        break;
+    }
+    case ORD_Q: {
+        // Set if neither are NaN
+        AS.VMFEQ(temp1, dst, dst);
+        AS.VMFEQ(temp2, src, src);
+        AS.VMAND(v0, temp1, temp2);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    // Set to 1s where the mask is set
+    AS.VMV(result, 0);
+    AS.VOR(result, result, -1, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(CMPPS) {
+    CMPP(rec, meta, instruction, operands, SEW::E32, rec.maxVlen() / 32);
+}
+
+FAST_HANDLE(CMPPD) {
+    CMPP(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
+}
+
 FAST_HANDLE(PSHUFD) {
     u8 imm = rec.getImmediate(&operands[2]);
     u8 el0 = imm & 0b11;
@@ -4603,41 +4707,6 @@ FAST_HANDLE(XADD) {
         rec.setOperandGPR(&operands[0], result);
     }
 }
-
-enum CmpPredicate {
-    EQ_OQ = 0x00,
-    LT_OS = 0x01,
-    LE_OS = 0x02,
-    UNORD_Q = 0x03,
-    NEQ_UQ = 0x04,
-    NLT_US = 0x05,
-    NLE_US = 0x06,
-    ORD_Q = 0x07,
-    EQ_UQ = 0x08,
-    NGE_US = 0x09,
-    NGT_US = 0x0A,
-    FALSE_OQ = 0x0B,
-    NEQ_OQ = 0x0C,
-    GE_OS = 0x0D,
-    GT_OS = 0x0E,
-    TRUE_UQ = 0x0F,
-    EQ_OS = 0x10,
-    LT_OQ = 0x11,
-    LE_OQ = 0x12,
-    UNORD_S = 0x13,
-    NEQ_US = 0x14,
-    NLT_UQ = 0x15,
-    NLE_UQ = 0x16,
-    ORD_S = 0x17,
-    EQ_US = 0x18,
-    NGE_UQ = 0x19,
-    NGT_UQ = 0x1A,
-    FALSE_OS = 0x1B,
-    NEQ_OS = 0x1C,
-    GE_OQ = 0x1D,
-    GT_OQ = 0x1E,
-    TRUE_US = 0x1F,
-};
 
 FAST_HANDLE(CMPSD_sse) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
