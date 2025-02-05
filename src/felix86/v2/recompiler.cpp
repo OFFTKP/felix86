@@ -146,18 +146,27 @@ void* Recompiler::compile(u64 rip) {
 }
 
 void* Recompiler::getCompiledBlock(u64 rip) {
-    BlockCacheEntry& entry = block_cache[rip & ((1 << block_cache_bits) - 1)];
-    if (entry.guest == rip) {
-        return (void*)entry.host;
-    } else if (blockExists(rip)) {
-        u64 host = (u64)block_metadata[rip].address;
-        entry.guest = rip;
-        entry.host = host;
-        return (void*)host;
+    if (g_use_block_cache) {
+        BlockCacheEntry& entry = block_cache[rip & ((1 << block_cache_bits) - 1)];
+        if (entry.guest == rip) {
+            return (void*)entry.host;
+        } else if (blockExists(rip)) {
+            u64 host = (u64)block_metadata[rip].address;
+            entry.guest = rip;
+            entry.host = host;
+            return (void*)host;
+        } else {
+            return compile(rip);
+        }
     } else {
-        return compile(rip);
+        if (blockExists(rip)) {
+            return block_metadata[rip].address;
+        } else {
+            return compile(rip);
+        }
     }
 
+    UNREACHABLE();
     return nullptr;
 }
 

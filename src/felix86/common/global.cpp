@@ -19,6 +19,7 @@ bool g_dont_link = false;
 bool g_extensions_manually_specified = false;
 bool g_dont_validate_exe_path = false;
 bool g_calltrace = false;
+bool g_use_block_cache = true;
 u64 g_current_brk = 0;
 sem_t* g_semaphore = nullptr;
 u64 g_dispatcher_exit_count = 0;
@@ -162,6 +163,12 @@ void initialize_globals() {
     if (is_truthy(dont_link)) {
         g_dont_link = true;
         environment += "\nFELIX86_DONT_LINK";
+    }
+
+    const char* dont_use_block_cache = getenv("FELIX86_DONT_USE_BLOCK_CACHE");
+    if (is_truthy(dont_use_block_cache)) {
+        g_use_block_cache = false;
+        environment += "\nFELIX86_DONT_USE_BLOCK_CACHE";
     }
 
     const char* log_file = getenv("FELIX86_LOG_FILE");

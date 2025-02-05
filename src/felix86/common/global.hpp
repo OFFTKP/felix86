@@ -18,6 +18,7 @@ extern bool g_extensions_manually_specified;
 extern bool g_dont_validate_exe_path;
 extern bool g_paranoid;
 extern bool g_dont_link;
+extern bool g_use_block_cache;
 extern u64 g_current_brk;
 extern u64 g_dispatcher_exit_count;
 extern std::chrono::nanoseconds g_compilation_total_time;
