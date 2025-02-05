@@ -3835,14 +3835,15 @@ FAST_HANDLE(PINSRW) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR mask = rec.scratch();
     biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec tmp2 = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
 
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
     AS.LI(mask, (1 << imm));
     AS.VMV(v0, mask);
     AS.VMV_SX(tmp, src);
-    AS.VSLIDEUP(tmp, tmp, imm);
-    AS.VMERGE(result, dst, tmp);
+    AS.VSLIDEUP(tmp2, tmp, imm);
+    AS.VMERGE(result, dst, tmp2);
 
     rec.setOperandVec(&operands[0], result);
 }
