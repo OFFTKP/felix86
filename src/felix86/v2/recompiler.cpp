@@ -793,7 +793,6 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
                 }
                 as.VLE64(vec, address);
                 as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-                registerVLE(current, SEW::E64, 2, vec, address);
             }
             break;
         }
@@ -1046,7 +1045,6 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
                 }
                 as.VSE64(vec, address);
                 as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-                registerVSE(current, SEW::E64, 2, vec, address);
             }
             break;
         }
@@ -1060,7 +1058,6 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
                 }
                 as.VSE64(vec, address);
                 as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-                registerVSE(current, SEW::E64, 1, vec, address);
             }
             break;
         }
@@ -1074,7 +1071,6 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
                 }
                 as.VSE32(vec, address);
                 as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-                registerVSE(current, SEW::E32, 1, vec, address);
             }
             break;
         }
