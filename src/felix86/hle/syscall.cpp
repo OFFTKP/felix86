@@ -92,29 +92,7 @@ public:
     }
 };
 
-ParanoidSpinLock g_paranoid_lock = {};
-bool g_paranoid_syscall = false;
-
-struct ParanoidGuard {
-    ParanoidGuard() {
-        if (g_paranoid_syscall)
-            g_paranoid_lock.lock();
-    }
-
-    ~ParanoidGuard() {
-        if (g_paranoid_syscall)
-            g_paranoid_lock.unlock();
-    }
-
-    void drop() {
-        if (g_paranoid_syscall)
-            g_paranoid_lock.unlock();
-    }
-};
-
 void felix86_syscall(ThreadState* state) {
-    ParanoidGuard guard;
-
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 rdi = state->GetGpr(X86_REF_RDI);
     u64 rsi = state->GetGpr(X86_REF_RSI);
@@ -447,7 +425,6 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_exit_group: {
         VERBOSE("Emulator called exit_group(%d)", (int)rdi);
         STRACE("exit_group(%d)", (int)rdi);
-        guard.drop();
         result = HOST_SYSCALL(exit_group, rdi);
         break;
     }
@@ -483,7 +460,6 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_read: {
-        guard.drop();
         result = HOST_SYSCALL(read, rdi, rsi, rdx);
         STRACE("read(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
@@ -718,7 +694,6 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_exit: {
         STRACE("exit(%d)", (int)rdi);
         state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
-        guard.drop();
         g_emulator->CleanExit(state);
         result = 0;
         break;
@@ -847,7 +822,6 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_futex: {
-        guard.drop();
         STRACE("futex(%p, %d, %d, %p, %p, %d) ...", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9);
         result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
         break;
@@ -903,7 +877,6 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_wait4: {
-        guard.drop();
         result = HOST_SYSCALL(wait4, rdi, rsi, rdx, r10);
         STRACE("wait4(%d, %p, %d, %p)", (int)rdi, (void*)rsi, (int)rdx, (void*)r10);
         break;

@@ -224,6 +224,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
             result = ret;
         }
     } else {
+        ASSERT(host_flags & CLONE_VM); // handle this when the time comes, child_tid no longer in same memory space, but we also don't need to pthread
         host_clone_args.stack = malloc(1024 * 1024);
         result = clone(clone_handler, (u8*)host_clone_args.stack + 1024 * 1024, host_flags, &host_clone_args, nullptr, nullptr, &clone_tid);
     }
@@ -235,6 +236,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
         ;
 
+    // This is finally safe to free
     free(host_clone_args.stack);
 
     if (result < 0) {
