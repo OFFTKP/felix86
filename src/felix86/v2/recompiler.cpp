@@ -67,9 +67,6 @@ Recompiler::~Recompiler() {
 void Recompiler::emitDispatcher() {
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
-    // Give it an initial valid state
-    as.VSETIVLI(x0, SUPPORTED_VLEN / 8, SEW::E8);
-
     // Save the current register state of callee-saved registers and return address
     static_assert(sizeof(ThreadState::saved_host_gprs) == saved_gprs.size() * 8);
     as.ADDI(t0, a0, offsetof(ThreadState, saved_host_gprs));
@@ -83,10 +80,13 @@ void Recompiler::emitDispatcher() {
 
     Label exit_dispatcher_label;
 
-    // If it's not zero it has some exit reason, exit the dispatcher
+    // Set the rounding mode
+    as.LBU(t1, offsetof(ThreadState, rmode), threadStatePointer());
+    as.FSRM(t1);
     as.MV(a0, threadStatePointer());
-    as.LBU(t0, offsetof(ThreadState, exit_reason), threadStatePointer());
-    as.BNEZ(t0, &exit_dispatcher_label);
+    // If it's not zero it has some exit reason, exit the dispatcher
+    as.LBU(t2, offsetof(ThreadState, exit_reason), threadStatePointer());
+    as.BNEZ(t2, &exit_dispatcher_label);
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
     as.JR(a0);   // jump to the compiled function
@@ -124,6 +124,9 @@ void Recompiler::clearCodeCache() {
     as.GetCodeBuffer().RewindCursor();
     block_metadata.clear();
     memset(block_cache.data(), 0, block_cache.size() * sizeof(BlockCacheEntry));
+
+    emitDispatcher();
+    emitSigreturnThunk();
 }
 
 void* Recompiler::compile(u64 rip) {
@@ -1400,6 +1403,14 @@ void Recompiler::writebackDirtyState() {
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
+    rounding_mode_set = false;
+}
+
+void Recompiler::restoreRoundingMode() {
+    biscuit::GPR rm = scratch();
+    as.LBU(rm, offsetof(ThreadState, rmode), threadStatePointer());
+    as.FSRM(rm);
+    popScratch();
 }
 
 void Recompiler::backToDispatcher() {
@@ -2124,8 +2135,4 @@ void Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, 
     readMemory(dest, address, 0, zydisToSize(operands[0].size));
     popScratch();
     popScratch();
-}
-
-void Recompiler::tryFastReturn(biscuit::GPR rip) {
-    // Implement me
 }

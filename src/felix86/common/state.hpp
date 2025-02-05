@@ -2,6 +2,7 @@
 
 #include <array>
 #include <queue>
+#include "biscuit/isa.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/signals.hpp"
@@ -94,6 +95,8 @@ struct ThreadState {
     bool df{};
     u64 gsbase{};
     u64 fsbase{};
+    u32 mxcsr{0x1F80}; // default value
+    RMode rmode{RMode::RNE};
 
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
@@ -119,6 +122,11 @@ struct ThreadState {
     std::array<u64, 16> saved_host_gprs;
 
     std::unique_ptr<Recompiler> recompiler;
+
+    biscuit::RMode GetRMode() {
+        u8 rc = (mxcsr >> 13) & 3;
+        return rounding_mode(x86RoundingMode(rc));
+    }
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {

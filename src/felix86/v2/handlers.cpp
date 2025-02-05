@@ -72,6 +72,7 @@ void VEC_function(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInst
     }
 
     AS.JALR(t0);
+    rec.restoreRoundingMode();
 }
 
 void is_overflow_sub(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
@@ -614,7 +615,6 @@ FAST_HANDLE(RET) {
     rec.setRip(scratch);
     rec.writebackDirtyState();
     rec.popCalltrace();
-    rec.tryFastReturn(scratch);
     rec.backToDispatcher();
     rec.stopCompiling();
 }
@@ -1071,6 +1071,7 @@ FAST_HANDLE(DIV) {
         AS.MV(a0, rec.threadStatePointer());
         AS.MV(a1, src);
         AS.JALR(address);
+        rec.restoreRoundingMode();
         break;
     }
     default: {
@@ -1149,6 +1150,7 @@ FAST_HANDLE(IDIV) {
         AS.MV(a0, rec.threadStatePointer());
         AS.MV(a1, src);
         AS.JALR(address);
+        rec.restoreRoundingMode();
         break;
     }
     default: {
@@ -2111,6 +2113,7 @@ FAST_HANDLE(CPUID) {
     AS.LI(address, (u64)&felix86_cpuid);
     AS.MV(a0, rec.threadStatePointer());
     AS.JALR(address);
+    rec.restoreRoundingMode();
 }
 
 FAST_HANDLE(SYSCALL) {
@@ -2128,6 +2131,7 @@ FAST_HANDLE(SYSCALL) {
     AS.LI(address, (u64)&felix86_syscall);
     AS.MV(a0, rec.threadStatePointer());
     AS.JALR(address);
+    rec.restoreRoundingMode();
 }
 
 FAST_HANDLE(MOVZX) {
@@ -2953,24 +2957,6 @@ FAST_HANDLE(PACKSSWB) {
 
 FAST_HANDLE(PACKSSDW) {
     VEC_function(rec, meta, instruction, operands, (u64)&felix86_packssdw);
-}
-
-enum class x86RoundingMode { Nearest = 0, Down = 1, Up = 2, Truncate = 3 };
-
-RMode rounding_mode(x86RoundingMode mode) {
-    switch (mode) {
-    case x86RoundingMode::Nearest:
-        return RMode::RNE;
-    case x86RoundingMode::Down:
-        return RMode::RDN;
-    case x86RoundingMode::Up:
-        return RMode::RUP;
-    case x86RoundingMode::Truncate:
-        return RMode::RTZ;
-    default:
-        UNREACHABLE();
-        return RMode::RNE;
-    }
 }
 
 void ROUND(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
@@ -4795,6 +4781,7 @@ FAST_HANDLE(FXSAVE) {
     AS.MV(a1, address);
     AS.LI(a2, 0);
     AS.JALR(t0);
+    rec.restoreRoundingMode();
 }
 
 FAST_HANDLE(FXSAVE64) {
@@ -4807,6 +4794,7 @@ FAST_HANDLE(FXSAVE64) {
     AS.MV(a1, address);
     AS.LI(a2, 1);
     AS.JALR(t0);
+    rec.restoreRoundingMode();
 }
 
 FAST_HANDLE(FXRSTOR) {
@@ -4825,6 +4813,7 @@ FAST_HANDLE(FXRSTOR) {
     AS.J(&end);
     AS.Place(&literal);
     AS.Bind(&end);
+    rec.restoreRoundingMode();
 }
 
 FAST_HANDLE(FXRSTOR64) {
@@ -4843,6 +4832,7 @@ FAST_HANDLE(FXRSTOR64) {
     AS.J(&end);
     AS.Place(&literal);
     AS.Bind(&end);
+    rec.restoreRoundingMode();
 }
 
 FAST_HANDLE(WRFSBASE) {
@@ -5404,11 +5394,42 @@ FAST_HANDLE(FLDCW) {
 }
 
 FAST_HANDLE(STMXCSR) {
-    WARN("STMXCSR is not implemented, ignoring");
+    biscuit::GPR mxcsr = rec.scratch();
+    biscuit::GPR address = rec.scratch();
+    AS.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, mxcsr));
+    AS.LW(mxcsr, 0, address);
+    rec.setOperandGPR(&operands[0], mxcsr);
 }
 
 FAST_HANDLE(LDMXCSR) {
-    WARN("LDMXCSR is not implemented, ignoring");
+    biscuit::GPR src = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR rc = rec.scratch(); // rounding control
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR address = rec.scratch();
+
+    // Extract rounding mode from MXCSR
+    AS.SRLI(rc, src, 13);
+    AS.ANDI(rc, rc, 0b11);
+
+    // Here's how the rounding modes match up
+    // 00 - Round to nearest (even) x86 -> 00 RISC-V
+    // 01 - Round down (towards -inf) x86 -> 10 RISC-V
+    // 10 - Round up (towards +inf) x86 -> 11 RISC-V
+    // 11 - Round towards zero x86 -> 01 RISC-V
+    // So we can shift the following bit sequence to the right and mask it
+    // 01111000, shift by the rc * 2 and we get the RISC-V rounding mode
+    AS.SLLI(rc, rc, 1);
+    AS.LI(temp, 0b01111000);
+    AS.SRL(temp, temp, rc);
+    AS.ANDI(temp, temp, 0b11);
+    AS.FSRM(temp); // load the equivalent RISC-V rounding mode
+
+    // Also save the converted rounding mode for quick access
+    AS.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, rmode));
+    AS.SB(temp, 0, address);
+
+    AS.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, mxcsr));
+    AS.SW(src, 0, address);
 }
 
 FAST_HANDLE(CVTDQ2PD) {

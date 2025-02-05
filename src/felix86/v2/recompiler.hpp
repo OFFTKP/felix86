@@ -86,6 +86,8 @@ struct Recompiler {
 
     void writebackDirtyState();
 
+    void restoreRoundingMode();
+
     void backToDispatcher();
 
     void enterDispatcher(ThreadState* state);
@@ -195,8 +197,6 @@ struct Recompiler {
 
     void popCalltrace();
 
-    void tryFastReturn(biscuit::GPR rip);
-
     void readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR shift);
 
 private:
@@ -272,4 +272,5 @@ private:
     u8 current_vlen = 0;
     LMUL current_grouping = LMUL::M1;
     u16 max_vlen = 128;
+    bool rounding_mode_set = false;
 };
