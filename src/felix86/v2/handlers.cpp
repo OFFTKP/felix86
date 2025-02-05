@@ -2481,6 +2481,14 @@ FAST_HANDLE(PMULLW) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PMULLD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMUL(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PMULUDQ) {
     biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
