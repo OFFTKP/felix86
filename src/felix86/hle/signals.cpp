@@ -612,9 +612,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         current_state->SetRip((u64)handler.func);
 
         // Block the signals specified in the sa_mask until the signal handler returns
-        u64 host_mask = Signals::hostSignalMask() & *(u64*)&mask_during_signal;
-        sigset_t set = *(sigset_t*)&host_mask;
-        pthread_sigmask(SIG_BLOCK, &set, nullptr);
+        sigset_t new_mask;
+        sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());
+        pthread_sigmask(SIG_BLOCK, &new_mask, nullptr);
 
         if (handler.flags & SA_RESETHAND) {
             handler.func = nullptr;
