@@ -19,9 +19,11 @@ struct Filesystem {
             return false;
         }
 
-        if (!validatePath(path)) {
-            ERROR("Invalid executable path %s", path.c_str());
-            return false;
+        if (!g_testing) { // tests don't need to validate that they are inside rootfs
+            if (!validatePath(path)) {
+                ERROR("Executable path %s not inside rootfs", path.c_str());
+                return false;
+            }
         }
 
         executable_path = path;
