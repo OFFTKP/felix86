@@ -472,7 +472,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
             as.RewindBuffer(pc - as.GetCodeBuffer().GetOffsetAddress(0) - 4); // go to vsetivli
             u32 vsetivli = *(u32*)(pc - 4);
-            ASSERT((vsetivli & 0b1111111) == 0b1010111);
+            ASSERT(((vsetivli & 0b1111111) == 0b1010111) || vsetivli == 0b0010011); // vsetivli or nop
             switch (sew) {
             case SEW::E64: {
                 as.VSETIVLI(x0, len * 8, SEW::E8);
