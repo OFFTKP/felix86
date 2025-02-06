@@ -119,13 +119,18 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
                     return std::nullopt;
                 }
                 FELIX86_UNLOCK;
-                result_path = it->second / path;
+                result_path = it->second;
             } else {
-                result_path = std::filesystem::path(buffer) / path;
+                result_path = std::filesystem::path(buffer);
             }
 
             struct stat result_path_stat;
-            stat(result_path.c_str(), &result_path_stat);
+            res = stat(result_path.c_str(), &result_path_stat);
+            if (res == -1) {
+                WARN("Failed to stat dirfd");
+                error = -ENOENT;
+                return std::nullopt;
+            }
 
             // Sanity check that the directory was not moved or something
             if (result_path_stat.st_dev != dirfd_stat.st_dev || result_path_stat.st_ino != dirfd_stat.st_ino) {
