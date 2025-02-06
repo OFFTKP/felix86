@@ -69,9 +69,15 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
         return std::filesystem::path(pathname);
     }
 
-    // Check if it starts with /sys/dev
-    constexpr static const char* sys_dev = "/sys/dev";
-    if (strncmp(pathname, sys_dev, strlen(sys_dev)) == 0) {
+    // Check if it starts with /sys
+    constexpr static const char* sys = "/sys";
+    if (strncmp(pathname, sys, strlen(sys)) == 0) {
+        return std::filesystem::path(pathname);
+    }
+
+    // Check if it starts with /proc
+    constexpr static const char* proc = "/proc";
+    if (strncmp(pathname, proc, strlen(proc)) == 0) {
         return std::filesystem::path(pathname);
     }
 
@@ -145,7 +151,7 @@ ssize_t Filesystem::ReadLinkAt(int dirfd, const char* pathname, char* buf, u32 b
     if (std::string(pathname) == proc_self_exe) { // TODO: remove this, AtPath should handle this
         std::string executable_path_string = executable_path.string();
         // readlink does not append a null terminator
-        size_t written_size = std::min(executable_path_string.size() - 1, (size_t)bufsiz);
+        size_t written_size = std::min(executable_path_string.size(), (size_t)bufsiz);
         memcpy(buf, executable_path_string.c_str(), written_size);
         return written_size;
     }

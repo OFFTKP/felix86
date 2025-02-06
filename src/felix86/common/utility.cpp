@@ -154,6 +154,7 @@ static inline uint64_t libdivide_128_div_64_to_64(uint64_t numhi, uint64_t numlo
 }
 
 void felix86_div128(ThreadState* state, u64 divisor) {
+    // TODO: make this use the above function too, see __divti4
     ASSERT(divisor != 0);
     __int128_t dividend = ((__int128_t)state->gprs[X86_REF_RDX - X86_REF_RAX] << 64) | state->gprs[X86_REF_RAX - X86_REF_RAX];
     u64 quotient = dividend / (i64)divisor;

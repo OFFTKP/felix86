@@ -2963,28 +2963,34 @@ void ROUND(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    bool dyn_round = imm & 0b100;
+    RMode rmode = RMode::DYN;
+
+    if (!dyn_round) {
+        rmode = rounding_mode((x86RoundingMode)(imm & 0b11));
+    }
+
     if (!(imm & 0b1000)) {
         WARN("Ignore precision bit not set for roundsd/roundss");
     }
-    ASSERT(!(imm & 0b100)); // rounding mode not from mxscr
 
     rec.setVectorState(sew, vlen);
     AS.VFMV_FS(ft0, src);
 
     if (Extensions::Zfa) {
         if (sew == SEW::E64) {
-            AS.FROUND_D(ft1, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+            AS.FROUND_D(ft1, ft0, rmode);
         } else {
-            AS.FROUND_S(ft1, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+            AS.FROUND_S(ft1, ft0, rmode);
         }
     } else {
         biscuit::GPR temp = rec.scratch();
         if (sew == SEW::E64) {
-            AS.FCVT_L_D(temp, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
+            AS.FCVT_L_D(temp, ft0, rmode);
             AS.FCVT_D_L(ft1, temp);
         } else {
-            AS.FCVT_L_S(temp, ft0, rounding_mode((x86RoundingMode)(imm & 0b11)));
-            AS.FCVT_S_L(ft1, temp);
+            AS.FCVT_W_S(temp, ft0, rmode);
+            AS.FCVT_S_W(ft1, temp);
         }
     }
 
