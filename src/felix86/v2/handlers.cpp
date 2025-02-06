@@ -2594,7 +2594,7 @@ FAST_HANDLE(SQRTPD) {
 }
 
 FAST_HANDLE(DIVPS) {
-    biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.VFDIV(dst, dst, src);
@@ -2602,7 +2602,7 @@ FAST_HANDLE(DIVPS) {
 }
 
 FAST_HANDLE(DIVPD) {
-    biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VFDIV(dst, dst, src);
