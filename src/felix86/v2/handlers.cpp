@@ -2686,19 +2686,19 @@ FAST_HANDLE(MOVSD_sse) {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setOperandVec(&operands[0], src);
     } else {
+        biscuit::Vec result = rec.scratchVec();
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV(v0, 1);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
             // Only when src is memory are the upper bits zeroed
-            biscuit::Vec result = rec.scratchVec();
             AS.VMV(result, 0);
-            AS.VOR(dst, result, src, VecMask::Yes);
+            AS.VOR(result, src, 0, VecMask::Yes);
         } else {
-            AS.VMERGE(dst, dst, src);
+            AS.VMERGE(result, dst, src);
         }
-        rec.setOperandVec(&operands[0], dst);
+        rec.setOperandVec(&operands[0], result);
     }
 }
 
@@ -3352,7 +3352,6 @@ FAST_HANDLE(PSHUFLW) {
 FAST_HANDLE(PSHUFHW) {
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR tmp = rec.scratch();
     biscuit::Vec iota = rec.scratchVec();
@@ -4645,17 +4644,17 @@ FAST_HANDLE(MOVSS) {
     } else {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        biscuit::Vec result = rec.scratchVec();
         rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
         AS.VMV(v0, 1);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
             // Only when src is memory are the upper bits zeroed
-            biscuit::Vec result = rec.scratchVec();
             AS.VMV(result, 0);
-            AS.VOR(dst, result, src, VecMask::Yes);
+            AS.VOR(result, src, 0, VecMask::Yes);
         } else {
-            AS.VMERGE(dst, dst, src);
+            AS.VMERGE(result, dst, src);
         }
-        rec.setOperandVec(&operands[0], dst);
+        rec.setOperandVec(&operands[0], result);
     }
 }
 
