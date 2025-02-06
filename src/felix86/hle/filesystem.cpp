@@ -261,6 +261,6 @@ int Filesystem::GetCwd(char* buf, u32 bufsiz) {
     }
 
     size_t written_size = std::min(cwd_string.size(), (size_t)bufsiz);
-    memcpy(buf, cwd_string.c_str(), written_size);
+    strncpy(buf, cwd_string.c_str(), written_size);
     return written_size;
 }
