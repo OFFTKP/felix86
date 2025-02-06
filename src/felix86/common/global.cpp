@@ -21,6 +21,7 @@ bool g_dont_validate_exe_path = false;
 bool g_calltrace = false;
 bool g_use_block_cache = true;
 bool g_single_step = false;
+u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 sem_t* g_semaphore = nullptr;
 u64 g_dispatcher_exit_count = 0;

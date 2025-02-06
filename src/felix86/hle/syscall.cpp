@@ -135,6 +135,11 @@ void felix86_syscall(ThreadState* state) {
             __atomic_store_n(&g_current_brk, rdi, __ATOMIC_SEQ_CST);
             result = rdi;
         }
+
+        if (result > g_initial_brk + brk_size) {
+            WARN("BRK out of memory on thread %d", gettid());
+        }
+
         STRACE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;
     }
