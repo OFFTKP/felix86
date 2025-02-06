@@ -138,6 +138,7 @@ void felix86_syscall(ThreadState* state) {
 
         if (result > g_initial_brk + brk_size) {
             WARN("BRK out of memory on thread %d", gettid());
+            result = -ENOMEM;
         }
 
         STRACE("brk(%p) = %p", (void*)rdi, (void*)result);

@@ -2150,6 +2150,31 @@ FAST_HANDLE(PXOR) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(MOVNTDQ) {
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setOperandVec(&operands[0], src);
+}
+
+FAST_HANDLE(MOVNTDQA) {
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setOperandVec(&operands[0], src);
+}
+
+FAST_HANDLE(MOVNTI) {
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    rec.setOperandGPR(&operands[0], src);
+}
+
+FAST_HANDLE(MOVNTPD) {
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setOperandVec(&operands[0], src);
+}
+
+FAST_HANDLE(MOVNTPS) {
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setOperandVec(&operands[0], src);
+}
+
 FAST_HANDLE(PAND) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
