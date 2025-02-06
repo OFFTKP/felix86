@@ -106,13 +106,13 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
             char dirfd_path[PATH_MAX];
             snprintf(dirfd_path, sizeof(dirfd_path), "/proc/self/fd/%d", dirfd);
             char result_path[PATH_MAX];
+            memset(result_path, 0, sizeof(result_path));
             ssize_t res = readlink(result_path, dirfd_path, PATH_MAX);
             if (res == -1) {
                 WARN("Failed to readlink dirfd: %d", errno);
                 error = -ENOENT;
                 return std::nullopt;
             }
-            result_path[res] = '\0';
 
             struct stat result_path_stat;
             stat(result_path, &result_path_stat);
