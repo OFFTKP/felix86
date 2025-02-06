@@ -447,6 +447,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("chdir(%s) = %d", (const char*)rdi, (int)result);
         break;
     }
+    case felix86_x86_64_fchown: {
+        result = HOST_SYSCALL(fchown, rdi, rsi, rdx);
+        STRACE("fchown(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_fchdir: {
         result = HOST_SYSCALL(fchdir, rdi);
         STRACE("fchdir(%d) = %d", (int)rdi, (int)result);
