@@ -123,7 +123,7 @@ void Recompiler::clearCodeCache() {
     WARN("Clearing cache on thread %u", gettid());
     as.GetCodeBuffer().RewindCursor();
     block_metadata.clear();
-    memset(block_cache.data(), 0, block_cache.size() * sizeof(BlockCacheEntry));
+    std::fill(std::begin(block_cache), std::end(block_cache), BlockCacheEntry{});
 
     emitDispatcher();
     emitSigreturnThunk();
@@ -270,14 +270,14 @@ void Recompiler::compileSequence(u64 rip) {
 
         meta.rip += instruction.length;
 
-        if (g_single_step) {
+        if (g_single_step && compiling) {
             resetScratch();
             biscuit::GPR rip_after = scratch();
             as.LI(rip_after, meta.rip);
             setRip(rip_after);
             writebackDirtyState();
             backToDispatcher();
-            compiling = false;
+            stopCompiling();
         }
     }
 
