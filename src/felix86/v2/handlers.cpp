@@ -916,13 +916,12 @@ FAST_HANDLE(MOVQ) {
             rec.setOperandGPR(&operands[0], dst);
         } else {
             biscuit::Vec result = rec.scratchVec();
-            biscuit::Vec dst = rec.getOperandVec(&operands[0]);
             biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
             rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-            AS.VMV(result, 0);
             AS.VMV(v0, 0b01);
-            AS.VOR(result, dst, src, VecMask::Yes);
+            AS.VMV(result, 0);
+            AS.VOR(result, src, 0, VecMask::Yes);
 
             rec.setOperandVec(&operands[0], result);
         }
@@ -975,13 +974,12 @@ FAST_HANDLE(MOVD) {
             rec.setOperandGPR(&operands[0], dst);
         } else {
             biscuit::Vec result = rec.scratchVec();
-            biscuit::Vec dst = rec.getOperandVec(&operands[0]);
             biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
             rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-            AS.VMV(result, 0);
             AS.VMV(v0, 0b01);
-            AS.VOR(result, dst, src, VecMask::Yes);
+            AS.VMV(result, 0);
+            AS.VOR(result, src, 0, VecMask::Yes);
 
             rec.setOperandVec(&operands[0], result);
         }
