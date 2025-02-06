@@ -101,6 +101,8 @@ struct Filesystem {
         return error;
     }
 
+    int Close(int fd);
+
 private:
     bool validatePath(const std::filesystem::path& path);
 
@@ -110,5 +112,6 @@ private:
     std::filesystem::path cwd_path;
     std::shared_ptr<Elf> elf;
     std::shared_ptr<Elf> interpreter;
+    std::unordered_map<int, std::filesystem::path> fd_to_path;
     int error = 0;
 };

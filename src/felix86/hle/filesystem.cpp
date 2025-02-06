@@ -104,18 +104,28 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
 
             // This is not POSIX portable but should work on Linux which is what we're targeting
             char dirfd_path[PATH_MAX];
+            char buffer[PATH_MAX];
+            std::filesystem::path result_path;
             snprintf(dirfd_path, sizeof(dirfd_path), "/proc/self/fd/%d", dirfd);
-            char result_path[PATH_MAX];
-            memset(result_path, 0, sizeof(result_path));
-            ssize_t res = readlink(result_path, dirfd_path, PATH_MAX);
+            memset(buffer, 0, sizeof(buffer));
+            ssize_t res = readlink(buffer, dirfd_path, sizeof(buffer));
             if (res == -1) {
-                WARN("Failed to readlink dirfd: %d", errno);
-                error = -ENOENT;
-                return std::nullopt;
+                // Likely the fd is a directory. We need to use a different method then.
+                FELIX86_LOCK;
+                auto it = fd_to_path.find(dirfd);
+                if (it == fd_to_path.end()) {
+                    WARN("dirfd is not a directory and could not be readlink'd");
+                    error = -ENOTDIR;
+                    return std::nullopt;
+                }
+                FELIX86_UNLOCK;
+                result_path = it->second / path;
+            } else {
+                result_path = std::filesystem::path(buffer) / path;
             }
 
             struct stat result_path_stat;
-            stat(result_path, &result_path_stat);
+            stat(result_path.c_str(), &result_path_stat);
 
             // Sanity check that the directory was not moved or something
             if (result_path_stat.st_dev != dirfd_stat.st_dev || result_path_stat.st_ino != dirfd_stat.st_ino) {
@@ -200,7 +210,14 @@ int Filesystem::OpenAt(int dirfd, const char* pathname, int flags, int mode) {
     }
 
     std::filesystem::path path = path_opt.value();
-    return openat(AT_FDCWD, path.c_str(), flags, mode);
+    int fd = openat(AT_FDCWD, path.c_str(), flags, mode);
+    if ((flags & O_DIRECTORY) && fd != -1) {
+        // Directories can't be readlink'd with /proc/self/fd, so we need a map
+        FELIX86_LOCK;
+        fd_to_path[fd] = path;
+        FELIX86_UNLOCK;
+    }
+    return fd;
 }
 
 bool Filesystem::validatePath(const std::filesystem::path& path) {
@@ -263,4 +280,11 @@ int Filesystem::GetCwd(char* buf, u32 bufsiz) {
     size_t written_size = std::min(cwd_string.size() + 1 /*+1 for null terminator*/, (size_t)bufsiz);
     strncpy(buf, cwd_string.c_str(), written_size);
     return written_size;
+}
+
+int Filesystem::Close(int fd) {
+    FELIX86_LOCK;
+    fd_to_path.erase(fd);
+    FELIX86_UNLOCK;
+    return close(fd);
 }

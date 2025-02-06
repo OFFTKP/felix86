@@ -222,7 +222,7 @@ void felix86_syscall(ThreadState* state) {
         // Don't close our stdout
         // TODO: better implementation where it closes an emulated stdout instead
         if (rdi != 1 && rdi != 2) {
-            result = HOST_SYSCALL(close, rdi);
+            result = fs.Close(rdi);
         } else {
             result = 0;
         }
