@@ -108,7 +108,7 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
             char result_path[PATH_MAX];
             ssize_t res = readlink(result_path, dirfd_path, sizeof(dirfd_path));
             if (res == -1) {
-                WARN("Failed to readlink dirfd");
+                WARN("Failed to readlink dirfd: %d", errno);
                 error = -ENOENT;
                 return std::nullopt;
             }
