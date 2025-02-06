@@ -507,6 +507,19 @@ void felix86_syscall(ThreadState* state) {
         STRACE("mkdir(%s, %d) = %d", (char*)rdi, (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_lgetxattr: {
+        auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            STRACE("lgetxattr(%s, %s, %p, %d) = %d", (char*)rdi, (char*)rsi, (void*)rdx, (int)r10, -EACCES);
+            result = -EACCES;
+            break;
+        }
+
+        result = HOST_SYSCALL(lgetxattr, path->c_str(), (const char*)rsi, (void*)rdx, r10);
+        STRACE("lgetxattr(%s, %s, %p, %d) = %d", (char*)rdi, (char*)rsi, (void*)rdx, (int)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_pwrite64: {
         result = HOST_SYSCALL(pwrite64, rdi, rsi, rdx, r10);
         STRACE("pwrite64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
