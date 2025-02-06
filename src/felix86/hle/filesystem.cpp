@@ -81,14 +81,16 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
         if (strncmp(pathname, proc, strlen(proc)) == 0) {
             return std::filesystem::path(pathname);
         }
+
+        if (std::string(pathname) == proc_self_exe) { // TODO: remove this, AtPath should handle this
+            return executable_path;                   // TODO: remove the rootfs from this path
+        }
     }
 
-    if (std::string(pathname) == proc_self_exe) { // TODO: remove this, AtPath should handle this
-        return executable_path;                   // TODO: remove the rootfs from this path
-    }
-
-    std::filesystem::path path = pathname;
-    if (path.is_relative()) {
+    std::filesystem::path path;
+    if (pathname)
+        path = pathname;
+    if ((pathname && path.is_relative()) || !pathname) {
         if (dirfd == AT_FDCWD) {
             FELIX86_LOCK;
             path = cwd_path / path;
