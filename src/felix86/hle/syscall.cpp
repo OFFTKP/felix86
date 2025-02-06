@@ -452,6 +452,19 @@ void felix86_syscall(ThreadState* state) {
         STRACE("fchown(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_unlinkat: {
+        auto path = fs.AtPath(rdi, (const char*)rsi);
+
+        if (!path) {
+            result = -EACCES;
+            STRACE("unlinkat(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
+            break;
+        }
+
+        result = HOST_SYSCALL(unlinkat, rdi, path->c_str(), rdx);
+        STRACE("unlinkat(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_fchdir: {
         result = HOST_SYSCALL(fchdir, rdi);
         STRACE("fchdir(%d) = %d", (int)rdi, (int)result);
