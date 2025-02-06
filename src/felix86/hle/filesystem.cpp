@@ -99,13 +99,6 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
             struct stat dirfd_stat;
             fstat(dirfd, &dirfd_stat);
 
-            bool is_dir = S_ISDIR(dirfd_stat.st_mode);
-            if (!is_dir) {
-                WARN("dirfd is not a directory");
-                error = -ENOTDIR;
-                return std::nullopt;
-            }
-
             // This is not POSIX portable but should work on Linux which is what we're targeting
             char dirfd_path[PATH_MAX];
             char buffer[PATH_MAX];
