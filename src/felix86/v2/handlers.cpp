@@ -2692,8 +2692,7 @@ FAST_HANDLE(MOVSD_sse) {
         AS.VMV(v0, 1);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
             // Only when src is memory are the upper bits zeroed
-            AS.VMV(dst, 0);
-            AS.VOR(dst, dst, src, VecMask::Yes);
+            AS.VOR(dst, src, 0, VecMask::Yes);
         } else {
             AS.VMERGE(dst, dst, src);
         }
@@ -3350,6 +3349,7 @@ FAST_HANDLE(PSHUFLW) {
 
 FAST_HANDLE(PSHUFHW) {
     u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR tmp = rec.scratch();
@@ -3357,7 +3357,7 @@ FAST_HANDLE(PSHUFHW) {
     biscuit::Vec iota2 = rec.scratchVec();
 
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
-    AS.VMV(dst, src); // to move the low words
+    AS.VMV(result, src); // to move the low words
 
     u8 el0 = 4 + (imm & 0b11);
     u8 el1 = 4 + ((imm >> 2) & 0b11);
@@ -3375,9 +3375,9 @@ FAST_HANDLE(PSHUFHW) {
     AS.LI(tmp, 0b11110000); // operate on top words only
     AS.VMV(v0, tmp);
 
-    rec.vrgather(dst, src, iota2, VecMask::Yes);
+    rec.vrgather(result, src, iota2, VecMask::Yes);
 
-    rec.setOperandVec(&operands[0], dst);
+    rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(PALIGNR) {
@@ -4647,8 +4647,7 @@ FAST_HANDLE(MOVSS) {
         AS.VMV(v0, 1);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
             // Only when src is memory are the upper bits zeroed
-            AS.VMV(dst, 0);
-            AS.VOR(dst, dst, src, VecMask::Yes);
+            AS.VOR(dst, src, 0, VecMask::Yes);
         } else {
             AS.VMERGE(dst, dst, src);
         }
