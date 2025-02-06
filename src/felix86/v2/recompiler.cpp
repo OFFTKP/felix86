@@ -269,6 +269,16 @@ void Recompiler::compileSequence(u64 rip) {
         // }
 
         meta.rip += instruction.length;
+
+        if (g_single_step) {
+            resetScratch();
+            biscuit::GPR rip_after = scratch();
+            as.LI(rip_after, meta.rip);
+            setRip(rip_after);
+            writebackDirtyState();
+            backToDispatcher();
+            stopCompiling();
+        }
     }
 
     current_block_metadata->address_end = as.GetCursorPointer();

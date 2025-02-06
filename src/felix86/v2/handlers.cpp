@@ -3819,11 +3819,11 @@ FAST_HANDLE(PSLLQ) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::GPR max = rec.scratch();
     biscuit::Label dont_zero;
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.LI(max, 64);
     AS.BLTU(shift, max, &dont_zero);
     AS.VMV(dst, 0);
     AS.Bind(&dont_zero);
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VSLL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
