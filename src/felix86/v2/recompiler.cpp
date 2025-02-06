@@ -277,7 +277,7 @@ void Recompiler::compileSequence(u64 rip) {
             setRip(rip_after);
             writebackDirtyState();
             backToDispatcher();
-            stopCompiling();
+            compiling = false;
         }
     }
 
