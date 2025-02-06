@@ -57,28 +57,30 @@ bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
 }
 
 std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* pathname) {
-    // Check if it starts with /dev
-    constexpr static const char* dev = "/dev";
-    if (strncmp(pathname, dev, strlen(dev)) == 0) {
-        return std::filesystem::path(pathname);
-    }
+    if (pathname) {
+        // Check if it starts with /dev
+        constexpr static const char* dev = "/dev";
+        if (strncmp(pathname, dev, strlen(dev)) == 0) {
+            return std::filesystem::path(pathname);
+        }
 
-    // Check if it starts with /run/user/1000
-    constexpr static const char* run_user_1000 = "/run/user/1000";
-    if (strncmp(pathname, run_user_1000, strlen(run_user_1000)) == 0) {
-        return std::filesystem::path(pathname);
-    }
+        // Check if it starts with /run/user/1000
+        constexpr static const char* run_user_1000 = "/run/user/1000";
+        if (strncmp(pathname, run_user_1000, strlen(run_user_1000)) == 0) {
+            return std::filesystem::path(pathname);
+        }
 
-    // Check if it starts with /sys
-    constexpr static const char* sys = "/sys";
-    if (strncmp(pathname, sys, strlen(sys)) == 0) {
-        return std::filesystem::path(pathname);
-    }
+        // Check if it starts with /sys
+        constexpr static const char* sys = "/sys";
+        if (strncmp(pathname, sys, strlen(sys)) == 0) {
+            return std::filesystem::path(pathname);
+        }
 
-    // Check if it starts with /proc
-    constexpr static const char* proc = "/proc";
-    if (strncmp(pathname, proc, strlen(proc)) == 0) {
-        return std::filesystem::path(pathname);
+        // Check if it starts with /proc
+        constexpr static const char* proc = "/proc";
+        if (strncmp(pathname, proc, strlen(proc)) == 0) {
+            return std::filesystem::path(pathname);
+        }
     }
 
     if (std::string(pathname) == proc_self_exe) { // TODO: remove this, AtPath should handle this
