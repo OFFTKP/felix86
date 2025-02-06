@@ -304,6 +304,19 @@ void felix86_syscall(ThreadState* state) {
         STRACE("rename(%s, %s) = %d", oldpath->c_str(), newpath->c_str(), (int)result);
         break;
     }
+    case felix86_x86_64_chmod: {
+        auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            result = -EACCES;
+            STRACE("chmod(%s, %d) = %d", (const char*)rdi, (int)rsi, (int)result);
+            break;
+        }
+
+        result = chmod(path->c_str(), rsi);
+        STRACE("chmod(%s, %d) = %d", path->c_str(), (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_poll: {
         result = poll((struct pollfd*)rdi, rsi, rdx);
         STRACE("poll(%p, %d, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (int)result);
