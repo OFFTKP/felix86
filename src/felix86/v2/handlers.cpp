@@ -1608,7 +1608,7 @@ FAST_HANDLE(MOVSXD) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
 
     if (size == X86_SIZE_DWORD) {
-        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
         AS.ADDIW(dst, src, 0);
         rec.setOperandGPR(&operands[0], dst);
     } else {
@@ -3943,18 +3943,18 @@ FAST_HANDLE(MFENCE) {
 }
 
 FAST_HANDLE(MOVSX) {
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     x86_size_e size = rec.getOperandSize(&operands[1]);
 
     switch (size) {
     case X86_SIZE_BYTE:
     case X86_SIZE_BYTE_HIGH: {
-        rec.sextb(dst, src);
+        rec.sextb(result, src);
         break;
     }
     case X86_SIZE_WORD: {
-        rec.sexth(dst, src);
+        rec.sexth(result, src);
         break;
     }
     default: {
@@ -3963,7 +3963,7 @@ FAST_HANDLE(MOVSX) {
     }
     }
 
-    rec.setOperandGPR(&operands[0], dst);
+    rec.setOperandGPR(&operands[0], result);
 }
 
 void COMIS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew) {
