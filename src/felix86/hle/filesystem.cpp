@@ -220,8 +220,7 @@ int Filesystem::OpenAt(int dirfd, const char* pathname, int flags, int mode) {
 
     std::filesystem::path path = path_opt.value();
     int fd = openat(AT_FDCWD, path.c_str(), flags, mode);
-    if ((flags & O_DIRECTORY) && fd != -1) {
-        // Directories can't be readlink'd with /proc/self/fd, so we need a map
+    if (fd != -1) {
         FELIX86_LOCK;
         fd_to_path[fd] = path;
         FELIX86_UNLOCK;
