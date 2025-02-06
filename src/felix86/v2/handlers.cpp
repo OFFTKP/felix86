@@ -2692,7 +2692,9 @@ FAST_HANDLE(MOVSD_sse) {
         AS.VMV(v0, 1);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
             // Only when src is memory are the upper bits zeroed
-            AS.VOR(dst, src, 0, VecMask::Yes);
+            biscuit::Vec result = rec.scratchVec();
+            AS.VMV(result, 0);
+            AS.VOR(dst, result, src, VecMask::Yes);
         } else {
             AS.VMERGE(dst, dst, src);
         }
@@ -4647,7 +4649,9 @@ FAST_HANDLE(MOVSS) {
         AS.VMV(v0, 1);
         if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
             // Only when src is memory are the upper bits zeroed
-            AS.VOR(dst, src, 0, VecMask::Yes);
+            biscuit::Vec result = rec.scratchVec();
+            AS.VMV(result, 0);
+            AS.VOR(dst, result, src, VecMask::Yes);
         } else {
             AS.VMERGE(dst, dst, src);
         }
