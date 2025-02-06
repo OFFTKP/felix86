@@ -317,6 +317,20 @@ void felix86_syscall(ThreadState* state) {
         STRACE("chmod(%s, %d) = %d", path->c_str(), (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_symlink: {
+        auto oldpath = fs.AtPath(AT_FDCWD, (const char*)rdi);
+        auto newpath = fs.AtPath(AT_FDCWD, (const char*)rsi);
+
+        if (!oldpath || !newpath) {
+            result = -EACCES;
+            STRACE("symlink(%s, %s) = %d", (const char*)rdi, (const char*)rsi, (int)result);
+            break;
+        }
+
+        result = symlink(oldpath->c_str(), newpath->c_str());
+        STRACE("symlink(%s, %s) = %d", oldpath->c_str(), newpath->c_str(), (int)result);
+        break;
+    }
     case felix86_x86_64_poll: {
         result = poll((struct pollfd*)rdi, rsi, rdx);
         STRACE("poll(%p, %d, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (int)result);
