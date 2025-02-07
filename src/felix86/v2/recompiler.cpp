@@ -226,7 +226,7 @@ void Recompiler::compileSequence(u64 rip) {
         if (seen.find(instr) == seen.end()) {
             seen.insert(instr);
             fflush(stdout);
-            PLAIN("%s\n", instr.c_str());
+            PLAIN("%s", instr.c_str());
             fflush(stdout);
         }
 
