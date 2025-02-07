@@ -79,3 +79,11 @@ inline RMode rounding_mode(x86RoundingMode mode) {
         return RMode::RTZ;
     }
 }
+
+typedef struct {
+    uint16_t signExp;
+    uint64_t significand;
+} Float80;
+
+Float80 f64_to_80(double);
+double f80_to_64(Float80);

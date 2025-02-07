@@ -436,3 +436,59 @@ void pop_calltrace(ThreadState* state) {
 
     state->calltrace.pop_back();
 }
+
+Float80 f64_to_80(double x) {
+    // Interpret double as raw bits
+    union {
+        double d;
+        uint64_t u;
+    } conv;
+    conv.d = x;
+
+    uint16_t sign = (conv.u >> 63) & 0x1;
+    int16_t exponent = (conv.u >> 52) & 0x7FF;
+    uint64_t significand = conv.u & 0xFFFFFFFFFFFFF;
+
+    Float80 result;
+
+    if (exponent == 0) {
+        result.signExp = sign << 15;
+        result.significand = significand;
+    } else if (exponent == 0x7FF) {
+        result.signExp = (sign << 15) | 0x7FFF;
+        result.significand = significand ? (1ULL << 63) | significand : 0;
+    } else {
+        exponent = exponent - 1023 + 16383;
+        significand |= (1ULL << 52);
+        significand <<= 11;
+
+        result.signExp = (sign << 15) | (exponent & 0x7FFF);
+        result.significand = significand;
+    }
+
+    return result;
+}
+
+double f80_to_64(Float80 f80) {
+    union {
+        double d;
+        uint64_t u;
+    } conv;
+
+    uint16_t sign = (f80.signExp >> 15) & 0x1;
+    int16_t exponent = f80.signExp & 0x7FFF;
+    uint64_t significand = f80.significand;
+
+    if (exponent == 0) {
+        conv.u = ((uint64_t)sign << 63) | (significand >> 11);
+    } else if (exponent == 0x7FFF) {
+        conv.u = ((uint64_t)sign << 63) | ((uint64_t)0x7FF << 52) | (significand ? (significand >> 11) : 0);
+    } else {
+        exponent = exponent - 16383 + 1023;
+        significand >>= 11;
+
+        conv.u = ((uint64_t)sign << 63) | ((uint64_t)exponent << 52) | (significand & 0xFFFFFFFFFFFFF);
+    }
+
+    return conv.d;
+}
