@@ -17,6 +17,7 @@ extern bool g_calltrace;
 extern bool g_extensions_manually_specified;
 extern bool g_dont_validate_exe_path;
 extern bool g_paranoid;
+extern bool g_is_chrooted;
 extern bool g_dont_link;
 extern bool g_use_block_cache;
 extern bool g_single_step;

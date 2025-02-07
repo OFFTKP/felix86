@@ -192,19 +192,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         raise(signal);
     }
 
-    // Block signals so we don't get a signal during the compilation period, this would lead to deadlock
-    // since the signal handler needs to also compile code.
-    // static sigset_t mask_empty, mask_full;
-    // static bool init = false;
-    // if (!init) {
-    //     sigemptyset(&mask_empty);
-    //     sigfillset(&mask_full);
-    //     init = true;
-    // }
-
-    void* function = thread_state->recompiler->getCompiledBlock(thread_state->GetRip());
-
-    return function;
+    return thread_state->recompiler->getCompiledBlock(thread_state->GetRip());
 }
 
 void Emulator::StartThread(ThreadState* state) {

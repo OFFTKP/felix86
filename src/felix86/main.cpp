@@ -1,8 +1,9 @@
 #include <csetjmp>
 #include <fstream>
-#include <thread>
 #include <argp.h>
 #include <fmt/format.h>
+#include <grp.h>
+#include <sys/types.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/version.hpp"
 #include "felix86/emulator.hpp"
@@ -183,7 +184,7 @@ int main(int argc, char* argv[]) {
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
-    g_output_fd = dup(STDOUT_FILENO);
+    g_output_fd = STDOUT_FILENO;
 
     initialize_globals();
     initialize_extensions();
@@ -260,13 +261,74 @@ int main(int argc, char* argv[]) {
     unlink_semaphore(); // in case it was not closed properly last time
     initialize_semaphore();
 
+    ASSERT(argc > 1); // at this point we should have at least one argument
+
     Emulator emulator(config);
 
-    if (argc == 1) {
-        ERROR("Unimplemented");
-    } else {
-        emulator.Run();
+    if (geteuid() == 0) {
+        const char* allow_root_env = getenv("FELIX86_ALLOW_ROOT");
+        if (allow_root_env && std::string(allow_root_env) == "1") {
+            WARN("Running felix86 with root privileges");
+        } else {
+            ERROR("Running felix86 as root is not recommended. Set the FELIX86_ALLOW_ROOT environment variable to 1 to run as root.");
+            return 1;
+        }
     }
+
+#if 0
+    // TODO: decide mounting strategy for /dev etc.
+    if (geteuid() == 0) { // When running as root, we can fully chroot into rootfs and save some time
+        chroot(config.rootfs_path.c_str());
+        g_is_chrooted = true;
+
+        // Drop root privileges
+        const char* allow_root_env = getenv("FELIX86_ALLOW_ROOT");
+        bool allow_root = false;
+        if (allow_root_env && std::string(allow_root_env) == "1") {
+            WARN("Running felix86 with root privileges");
+            allow_root = true;
+        }
+
+        if (!allow_root) {
+            const char* gid_env = getenv("SUDO_GID");
+            const char* uid_env = getenv("SUDO_UID");
+
+            std::string suggestion = "If you want to run felix86 with root privileges (not recommended), "
+                                     "set the FELIX86_ALLOW_ROOT environment variable to 1. Otherwise run without root privileges.";
+
+            if (!uid_env || !gid_env) {
+                ERROR("SUDO_UID or SUDO_GID not set, can't drop root privileges. %s", suggestion.c_str());
+                return 1;
+            }
+
+            std::string user = getenv("SUDO_USER");
+            gid_t gid = std::stoul(gid_env);
+            uid_t uid = std::stoul(uid_env);
+
+            if (initgroups(user.c_str(), gid) != 0) {
+                ERROR("initgroups failed when trying to drop root privileges. %s", suggestion.c_str());
+                return 1;
+            }
+
+            if (setgid(gid) != 0) {
+                ERROR("setgid failed when trying to drop root privileges. %s", suggestion.c_str());
+                return 1;
+            }
+
+            if (setuid(uid) != 0) {
+                ERROR("setuid failed when trying to drop root privileges. %s", suggestion.c_str());
+                return 1;
+            }
+
+            ASSERT(geteuid() != 0);
+            ASSERT(getuid() != 0);
+
+            chdir("/");
+        }
+    }
+#endif
+
+    emulator.Run();
 
     unlink_semaphore();
 
