@@ -881,7 +881,7 @@ FAST_HANDLE(MOVQ) {
 
         rec.setOperandGPR(&operands[0], dst);
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        ASSERT(operands[0].size == 64);
+        ASSERT(operands[0].size == 128);
         ASSERT(operands[1].size == 64);
         biscuit::GPR src = rec.getOperandGPR(&operands[1]);
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
@@ -942,7 +942,7 @@ FAST_HANDLE(MOVD) {
 
         rec.setOperandGPR(&operands[0], dst);
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        ASSERT(operands[0].size == 32);
+        ASSERT(operands[0].size == 128);
         ASSERT(operands[1].size == 32);
         biscuit::GPR src = rec.getOperandGPR(&operands[1]);
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
