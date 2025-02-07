@@ -952,8 +952,14 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_rt_sigtimedwait: {
-        WARN("rt_sigtimedwait for %lx sigset, unimplemented, ignoring", (u64)rdi);
-        result = EAGAIN;
+        result = HOST_SYSCALL(rt_sigtimedwait, rdi, rsi, rdx, r10);
+        STRACE("rt_sigtimedwait(%p, %p, %p, %d, %d) = %d", (void*)rdi, (void*)rsi, (void*)rdx, (int)r10, (int)r8, (int)result);
+        WARN_ONCE("This program uses rt_sigtimedwait");
+        break;
+    }
+    case felix86_x86_64_sched_yield: {
+        result = HOST_SYSCALL(sched_yield);
+        STRACE("sched_yield() = %d", (int)result);
         break;
     }
     case felix86_x86_64_sigaltstack: {
