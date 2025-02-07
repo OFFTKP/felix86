@@ -3050,7 +3050,7 @@ FAST_HANDLE(NEG) {
     rec.setOperandGPR(&operands[0], result);
 }
 
-FAST_HANDLE(PACKUSWB) {
+FAST_HANDLE(PACKUSWB) { // Fuzzed
     VEC_function(rec, meta, instruction, operands, (u64)&felix86_packuswb);
 }
 
