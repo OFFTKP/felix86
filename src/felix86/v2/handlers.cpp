@@ -2691,13 +2691,13 @@ FAST_HANDLE(MOVSB) {
     AS.ADD(rdi, rdi, temp);
     AS.ADD(rsi, rsi, temp);
 
-    rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
-    rec.setRefGPR(X86_REF_RSI, X86_SIZE_QWORD, rsi);
-
     if (HAS_REP) {
         rec.repEpilogue(&loop_body);
         AS.Bind(&loop_end);
     }
+
+    rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
+    rec.setRefGPR(X86_REF_RSI, X86_SIZE_QWORD, rsi);
 }
 
 FAST_HANDLE(MOVSW) {
