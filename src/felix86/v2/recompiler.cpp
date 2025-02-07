@@ -439,16 +439,22 @@ biscuit::GPR Recompiler::scratch() {
 biscuit::Vec Recompiler::scratchVec() {
     switch (vector_scratch_index++) {
     case 0:
-        return v26;
+        return v23;
     case 1:
-        return v27;
+        return v24;
     case 2:
-        return v28;
+        return v25;
     case 3:
-        return v29;
+        return v26;
     case 4:
-        return v30;
+        return v27;
     case 5:
+        return v28;
+    case 6:
+        return v29;
+    case 7:
+        return v30;
+    case 8:
         return v31;
     default:
         ERROR("Tried to use more than 6 scratch registers");
