@@ -2597,8 +2597,9 @@ FAST_HANDLE(MAXPS) {
     AS.VMAND(equal_mask, equal_mask, zero_mask);  // Check where they are both zeroes
     AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
 
-    AS.VFMAX(dst, dst, src);
-    rec.setOperandVec(&operands[0], dst);
+    AS.VFMAX(nan_mask_2, dst, src);        // actual max result calculation
+    AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
+    rec.setOperandVec(&operands[0], zero_mask);
 }
 
 FAST_HANDLE(MAXPD) {
