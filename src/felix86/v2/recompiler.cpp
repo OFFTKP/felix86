@@ -1,4 +1,3 @@
-#include <unordered_set>
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
@@ -218,17 +217,17 @@ void Recompiler::compileSequence(u64 rip) {
         }
 
         // When we want to print all instructions used
-        static std::unordered_set<std::string> seen;
+        // static std::unordered_set<std::string> seen;
 
-        ZydisDisassembledInstruction disassembled;
-        ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled);
-        std::string instr = disassembled.text;
-        if (seen.find(instr) == seen.end()) {
-            seen.insert(instr);
-            fflush(stdout);
-            PLAIN("%s", instr.c_str());
-            fflush(stdout);
-        }
+        // ZydisDisassembledInstruction disassembled;
+        // ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled);
+        // std::string instr = disassembled.text;
+        // if (seen.find(instr) == seen.end()) {
+        //     seen.insert(instr);
+        //     fflush(stdout);
+        //     PLAIN("%s", instr.c_str());
+        //     fflush(stdout);
+        // }
 
         // Checks that we didn't forget to emulate any flags
         // if (g_paranoid && mnemonic != ZYDIS_MNEMONIC_SYSCALL) {
