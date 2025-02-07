@@ -2197,7 +2197,7 @@ FAST_HANDLE(POR) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PANDN) {
+FAST_HANDLE(PANDN) { // Fuzzed
     biscuit::Vec dst_not = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -2236,11 +2236,11 @@ FAST_HANDLE(XORPD) {
     fast_PXOR(rec, meta, instruction, operands);
 }
 
-FAST_HANDLE(ANDNPS) {
+FAST_HANDLE(ANDNPS) { // Fuzzed
     fast_PANDN(rec, meta, instruction, operands);
 }
 
-FAST_HANDLE(ANDNPD) {
+FAST_HANDLE(ANDNPD) { // Fuzzed
     fast_PANDN(rec, meta, instruction, operands);
 }
 
@@ -3938,7 +3938,7 @@ FAST_HANDLE(PSLLQ) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PSLLD) {
+FAST_HANDLE(PSLLD) { // Fuzzed
     biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
@@ -4121,7 +4121,7 @@ void COMIS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction
     AS.BNEZ(nan_1, &equal);
 
     // Check for less than
-    AS.VMSLT(temp, dst, src);
+    AS.VMFLT(temp, dst, src);
     AS.VMV_XS(nan_1, temp);
     AS.ANDI(nan_1, nan_1, 1);
 
@@ -4526,7 +4526,7 @@ FAST_HANDLE(ADDSS) {
     SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFADD);
 }
 
-FAST_HANDLE(ADDSD) {
+FAST_HANDLE(ADDSD) { // Fuzzed
     SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFADD);
 }
 
