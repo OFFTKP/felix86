@@ -4883,7 +4883,7 @@ FAST_HANDLE(XADD) {
     biscuit::GPR result = rec.scratch();
     biscuit::GPR dst;
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    bool needs_atomic = true; // operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY;
     if (!needs_atomic) {
         dst = rec.getOperandGPR(&operands[0]);
         AS.ADD(result, dst, src);
