@@ -2665,36 +2665,31 @@ FAST_HANDLE(RSQRTPS) {
 }
 
 FAST_HANDLE(MOVSB) {
+    u8 width = instruction.operand_width;
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
+    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR data = rec.scratch();
+    biscuit::GPR df = rec.scratch();
+    AS.LB(df, offsetof(ThreadState, df), rec.threadStatePointer());
+
+    Label end;
+    AS.LI(temp, -width / 8);
+    AS.BNEZ(df, &end);
+    AS.LI(temp, width / 8);
+    AS.Bind(&end);
+
     Label loop_end, loop_body;
     if (HAS_REP) {
         rec.repPrologue(&loop_end);
         AS.Bind(&loop_body);
     }
 
-    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
-    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
-    biscuit::GPR temp = rec.scratch();
-    u8 width = instruction.operand_width;
-    rec.readMemory(temp, rsi, 0, rec.zydisToSize(width));
-    rec.writeMemory(temp, rdi, 0, rec.zydisToSize(width));
+    rec.readMemory(data, rsi, 0, rec.zydisToSize(width));
+    rec.writeMemory(data, rdi, 0, rec.zydisToSize(width));
 
-    AS.LB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
-
-    // TODO: move this stuff outside the loop like in STOS
-    Label end, false_label;
-
-    AS.BEQZ(temp, &false_label);
-
-    AS.ADDI(rdi, rdi, -width / 8);
-    AS.ADDI(rsi, rsi, -width / 8);
-    AS.J(&end);
-
-    AS.Bind(&false_label);
-
-    AS.ADDI(rdi, rdi, width / 8);
-    AS.ADDI(rsi, rsi, width / 8);
-
-    AS.Bind(&end);
+    AS.ADD(rdi, rdi, temp);
+    AS.ADD(rsi, rsi, temp);
 
     rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
     rec.setRefGPR(X86_REF_RSI, X86_SIZE_QWORD, rsi);
