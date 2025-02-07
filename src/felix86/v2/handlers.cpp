@@ -2328,7 +2328,7 @@ FAST_HANDLE(PADDUSB) {
     PADDSU(rec, meta, instruction, operands, SEW::E8, rec.maxVlen() / 8);
 }
 
-FAST_HANDLE(PADDUSW) {
+FAST_HANDLE(PADDUSW) { // Fuzzed
     PADDSU(rec, meta, instruction, operands, SEW::E16, rec.maxVlen() / 16);
 }
 
@@ -3268,15 +3268,27 @@ void CMPP(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction&
         break;
     }
     case NEQ_UQ: {
+        AS.VMFNE(temp1, dst, dst);
+        AS.VMFNE(temp2, src, src);
         AS.VMFNE(v0, dst, src);
+        AS.VMOR(v0, v0, temp1);
+        AS.VMOR(v0, v0, temp2);
         break;
     }
     case NLT_US: {
+        AS.VMFNE(temp1, dst, dst);
+        AS.VMFNE(temp2, src, src);
         AS.VMFLE(v0, src, dst);
+        AS.VMOR(v0, v0, temp1);
+        AS.VMOR(v0, v0, temp2);
         break;
     }
     case NLE_US: {
+        AS.VMFNE(temp1, dst, dst);
+        AS.VMFNE(temp2, src, src);
         AS.VMFLT(v0, src, dst);
+        AS.VMOR(v0, v0, temp1);
+        AS.VMOR(v0, v0, temp2);
         break;
     }
     case ORD_Q: {
@@ -4166,7 +4178,7 @@ void COMIS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction
     AS.Bind(&end);
 }
 
-FAST_HANDLE(COMISD) {
+FAST_HANDLE(COMISD) { // Fuzzed
     COMIS(rec, meta, instruction, operands, SEW::E64);
 }
 
@@ -4665,7 +4677,7 @@ FAST_HANDLE(CVTPD2PS) {
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(CVTPS2PD) {
+FAST_HANDLE(CVTPS2PD) { // Fuzzed, inaccuracies with NaNs
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -4685,7 +4697,7 @@ FAST_HANDLE(CVTPS2PD) {
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(CVTTPS2DQ) {
+FAST_HANDLE(CVTTPS2DQ) { // Fuzzed, returns 0x7FFF'FFFF instead of 0x8000'0000
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -4705,7 +4717,7 @@ FAST_HANDLE(CVTPS2DQ) {
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(CVTTPD2DQ) {
+FAST_HANDLE(CVTTPD2DQ) { // Fuzzed, same problem as cvttps2dq
     biscuit::GPR low = rec.scratch();
     biscuit::GPR high = rec.scratch();
     biscuit::Vec result = rec.scratchVec();
@@ -5057,7 +5069,7 @@ FAST_HANDLE(XADD) {
     }
 }
 
-FAST_HANDLE(CMPSD_sse) {
+FAST_HANDLE(CMPSD_sse) { // Fuzzed
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -5175,7 +5187,7 @@ FAST_HANDLE(CMPSD_sse) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(CMPSS) {
+FAST_HANDLE(CMPSS) { // Fuzzed
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
