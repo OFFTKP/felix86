@@ -4945,7 +4945,7 @@ FAST_HANDLE(XADD) {
     }
 
     // In this case we also need to writeback the result, otherwise amoadd will do it for us
-    if (!needs_atomic) {
+    if (!needs_atomic || too_small_for_atomic) {
         rec.setOperandGPR(&operands[0], result);
     }
 }
