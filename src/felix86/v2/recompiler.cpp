@@ -218,15 +218,15 @@ void Recompiler::compileSequence(u64 rip) {
         }
 
         // When we want to print all instructions used
-        static std::unordered_set<ZydisMnemonic> seen;
+        static std::unordered_set<std::string> seen;
 
         ZydisDisassembledInstruction disassembled;
         ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled);
         std::string instr = disassembled.text;
-        if (seen.find(mnemonic) == seen.end()) {
-            seen.insert(mnemonic);
+        if (seen.find(instr) == seen.end()) {
+            seen.insert(instr);
             fflush(stdout);
-            PLAIN("%s\n", ZydisMnemonicGetString(mnemonic));
+            PLAIN("%s\n", instr.c_str());
             fflush(stdout);
         }
 
