@@ -21,6 +21,7 @@ extern bool g_is_chrooted;
 extern bool g_dont_link;
 extern bool g_use_block_cache;
 extern bool g_single_step;
+extern bool g_log_instructions;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;
 extern u64 g_dispatcher_exit_count;

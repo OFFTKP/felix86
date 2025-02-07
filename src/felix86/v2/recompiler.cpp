@@ -90,7 +90,8 @@ void Recompiler::emitDispatcher() {
     as.BNEZ(t2, &exit_dispatcher_label);
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
-    as.JR(a0);   // jump to the compiled function
+    restoreRoundingMode();
+    as.JR(a0); // jump to the compiled function
 
     as.Bind(&exit_dispatcher_label);
 
@@ -219,10 +220,13 @@ void Recompiler::compileSequence(u64 rip) {
         // When we want to print all instructions used
         static std::unordered_set<ZydisMnemonic> seen;
 
+        ZydisDisassembledInstruction disassembled;
+        ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled);
+        std::string instr = disassembled.text;
         if (seen.find(mnemonic) == seen.end()) {
             seen.insert(mnemonic);
             fflush(stdout);
-            printf("Instruction %s\n", ZydisMnemonicGetString(mnemonic));
+            PLAIN("%s\n", ZydisMnemonicGetString(mnemonic));
             fflush(stdout);
         }
 
