@@ -4884,15 +4884,8 @@ FAST_HANDLE(XADD) {
     biscuit::GPR dst;
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY;
-    if (!needs_atomic) {
-        dst = rec.getOperandGPR(&operands[0]);
-        AS.ADD(result, dst, src);
-        rec.setOperandGPR(&operands[1], dst);
-    } else {
-        // Unlikely a smaller xadd is used, and risc-v doesn't support amoadd.b amoadd.h without a specific extension
-        // and we'd have to emulate it with lr/sc so let's postpone it for now
-        ASSERT(instruction.operand_width == 32 || instruction.operand_width == 64);
-
+    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16; // amoadd.h amoadd.b aren't out yet, TODO: implement with lr/sc
+    if (needs_atomic && !too_small_for_atomic) {
         // In this case the add+writeback needs to happen atomically
         biscuit::GPR address = rec.lea(&operands[0]);
 
@@ -4909,6 +4902,10 @@ FAST_HANDLE(XADD) {
         rec.setOperandGPR(&operands[1], dst);
         rec.popScratch(); // pop LEA scratch
         rec.popScratch();
+    } else {
+        dst = rec.getOperandGPR(&operands[0]);
+        AS.ADD(result, dst, src);
+        rec.setOperandGPR(&operands[1], dst);
     }
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
