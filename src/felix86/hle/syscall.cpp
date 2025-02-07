@@ -78,19 +78,97 @@ std::string name = {};
 u64 min_address = ULONG_MAX;
 u64 max_address = 0;
 
-class ParanoidSpinLock {
-    std::atomic_flag locked = ATOMIC_FLAG_INIT;
+bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
+    if (!g_strace) {
+        return false;
+    }
 
-public:
-    void lock() {
-        while (locked.test_and_set(std::memory_order_acquire)) {
-            ;
+    switch (rsi) {
+    case TCGETS:
+    case TCSETS:
+    case TCSETSW: {
+        termios* term = (termios*)rdx;
+        std::string name;
+        std::string c_iflag, c_oflag, c_cflag, c_lflag;
+#define ADD(name, flag)                                                                                                                              \
+    if (term->c_##name & flag) {                                                                                                                     \
+        c_##name += #flag "|";                                                                                                                       \
+    }
+        ADD(iflag, IGNBRK);
+        ADD(iflag, BRKINT);
+        ADD(iflag, IGNPAR);
+        ADD(iflag, PARMRK);
+        ADD(iflag, INPCK);
+        ADD(iflag, ISTRIP);
+        ADD(iflag, INLCR);
+        ADD(iflag, IGNCR);
+        ADD(iflag, ICRNL);
+        ADD(iflag, IUCLC);
+        ADD(iflag, IXON);
+        ADD(iflag, IXANY);
+        ADD(iflag, IXOFF);
+        ADD(iflag, IMAXBEL);
+        ADD(iflag, IUTF8);
+
+        ADD(oflag, OPOST);
+        ADD(oflag, OLCUC);
+        ADD(oflag, ONLCR);
+        ADD(oflag, OCRNL);
+        ADD(oflag, ONOCR);
+        ADD(oflag, ONLRET);
+        ADD(oflag, OFILL);
+        ADD(oflag, OFDEL);
+
+        ADD(cflag, CSIZE);
+        ADD(cflag, CSTOPB);
+        ADD(cflag, CREAD);
+        ADD(cflag, PARENB);
+        ADD(cflag, PARODD);
+        ADD(cflag, HUPCL);
+        ADD(cflag, CLOCAL);
+
+        ADD(lflag, ISIG);
+        ADD(lflag, ICANON);
+        ADD(lflag, ECHO);
+        ADD(lflag, ECHOE);
+        ADD(lflag, ECHOK);
+        ADD(lflag, ECHONL);
+        ADD(lflag, NOFLSH);
+        ADD(lflag, TOSTOP);
+#undef ADD
+
+        if (!c_iflag.empty()) {
+            c_iflag.pop_back();
         }
+
+        if (!c_oflag.empty()) {
+            c_oflag.pop_back();
+        }
+
+        if (!c_cflag.empty()) {
+            c_cflag.pop_back();
+        }
+
+        if (!c_lflag.empty()) {
+            c_lflag.pop_back();
+        }
+
+#define CHECK_NAME(id)                                                                                                                               \
+    if (rsi == id)                                                                                                                                   \
+        name = #id;
+        CHECK_NAME(TCGETS);
+        CHECK_NAME(TCSETS);
+        CHECK_NAME(TCSETSW);
+#undef CHECK_NAME
+
+        STRACE("ioctl(%d, %s, {c_iflag=%s, c_oflag=%s, c_cflag=%s, c_lflag=%s}) = %d", rdi, name.c_str(), c_iflag.c_str(), c_oflag.c_str(),
+               c_cflag.c_str(), c_lflag.c_str(), (int)result);
+        return true;
     }
-    void unlock() {
-        locked.clear(std::memory_order_release);
     }
-};
+
+    return false;
+}
 
 void felix86_syscall(ThreadState* state) {
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
@@ -496,7 +574,10 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_ioctl: {
         result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
-        STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, (u64)result);
+
+        if (!try_strace_ioctl(rdi, rsi, rdx, result)) {
+            STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, (u64)result);
+        }
         break;
     }
     case felix86_x86_64_write: {
