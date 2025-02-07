@@ -951,6 +951,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("rt_sigaction(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)r10, (int)result);
         break;
     }
+    case felix86_x86_64_rt_sigtimedwait: {
+        WARN("rt_sigtimedwait for %lx sigset, unimplemented, ignoring", (u64)rdi);
+        result = EAGAIN;
+        break;
+    }
     case felix86_x86_64_sigaltstack: {
         stack_t host_stack; // save old stack here while we check if guest stack is valid
         stack_t* guest_stack = (stack_t*)rdi;
