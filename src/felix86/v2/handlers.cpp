@@ -2671,7 +2671,7 @@ FAST_HANDLE(MOVSB) {
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR data = rec.scratch();
     biscuit::GPR df = rec.scratch();
-    AS.LB(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    AS.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
 
     Label end;
     AS.LI(temp, -width / 8);
@@ -2747,7 +2747,7 @@ FAST_HANDLE(STOSB) {
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, rec.zydisToSize(width));
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR df = rec.scratch();
-    AS.LB(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    AS.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
 
     Label end;
     AS.LI(temp, -width / 8);
@@ -5431,7 +5431,7 @@ FAST_HANDLE(STMXCSR) {
     biscuit::GPR mxcsr = rec.scratch();
     biscuit::GPR address = rec.scratch();
     AS.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, mxcsr));
-    AS.LW(mxcsr, 0, address);
+    AS.LWU(mxcsr, 0, address);
     rec.setOperandGPR(&operands[0], mxcsr);
 }
 
