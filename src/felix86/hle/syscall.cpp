@@ -87,12 +87,13 @@ bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
     case TCGETS:
     case TCSETS:
     case TCSETSW: {
-        termios* term = (termios*)rdx;
+        termios term = *(termios*)rdx;
         std::string name;
         std::string c_iflag, c_oflag, c_cflag, c_lflag;
 #define ADD(name, flag)                                                                                                                              \
-    if (term->c_##name & flag) {                                                                                                                     \
+    if (term.c_##name & flag) {                                                                                                                      \
         c_##name += #flag "|";                                                                                                                       \
+        term.c_##name &= ~flag;                                                                                                                      \
     }
         ADD(iflag, IGNBRK);
         ADD(iflag, BRKINT);
@@ -110,6 +111,14 @@ bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
         ADD(iflag, IMAXBEL);
         ADD(iflag, IUTF8);
 
+        if (!c_iflag.empty()) {
+            c_iflag.pop_back();
+        }
+
+        if (term.c_iflag != 0) {
+            c_iflag += fmt::format("0x{:x}", term.c_iflag);
+        }
+
         ADD(oflag, OPOST);
         ADD(oflag, OLCUC);
         ADD(oflag, ONLCR);
@@ -119,6 +128,14 @@ bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
         ADD(oflag, OFILL);
         ADD(oflag, OFDEL);
 
+        if (!c_oflag.empty()) {
+            c_oflag.pop_back();
+        }
+
+        if (term.c_oflag != 0) {
+            c_oflag += fmt::format("0x{:x}|", term.c_oflag);
+        }
+
         ADD(cflag, CSIZE);
         ADD(cflag, CSTOPB);
         ADD(cflag, CREAD);
@@ -126,6 +143,14 @@ bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
         ADD(cflag, PARODD);
         ADD(cflag, HUPCL);
         ADD(cflag, CLOCAL);
+
+        if (!c_cflag.empty()) {
+            c_cflag.pop_back();
+        }
+
+        if (term.c_cflag != 0) {
+            c_cflag += fmt::format("0x{:x}|", term.c_cflag);
+        }
 
         ADD(lflag, ISIG);
         ADD(lflag, ICANON);
@@ -135,23 +160,15 @@ bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
         ADD(lflag, ECHONL);
         ADD(lflag, NOFLSH);
         ADD(lflag, TOSTOP);
-#undef ADD
-
-        if (!c_iflag.empty()) {
-            c_iflag.pop_back();
-        }
-
-        if (!c_oflag.empty()) {
-            c_oflag.pop_back();
-        }
-
-        if (!c_cflag.empty()) {
-            c_cflag.pop_back();
-        }
 
         if (!c_lflag.empty()) {
             c_lflag.pop_back();
         }
+
+        if (term.c_lflag != 0) {
+            c_lflag += fmt::format("0x{:x}", term.c_lflag);
+        }
+#undef ADD
 
 #define CHECK_NAME(id)                                                                                                                               \
     if (rsi == id)                                                                                                                                   \
