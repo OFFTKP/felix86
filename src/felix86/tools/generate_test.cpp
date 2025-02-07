@@ -5,8 +5,8 @@
 #include <sys/stat.h>
 
 int main() {
-    std::string inst = "maxps";
-    std::string inst1 = "maxpd";
+    std::string inst = "packuswb";
+    // std::string inst1 = "maxpd";
 
     std::string assembly;
     assembly += "bits 64\n";
@@ -40,6 +40,7 @@ int main() {
         // assembly += fmt::format("movdqa [rdi + {}], xmm{}\n", i * 16 + 32, reg3);
         // assembly += fmt::format("movdqa [rdi + {}], xmm{}\n", i * 16 + 48, reg4);
 
+        assembly += fmt::format("movdqa [rdi + {}], xmm{}\n", i * 16, reg);
         assembly += fmt::format("movdqa [rsi+16], xmm{}\n", reg2);
         assembly += fmt::format("movdqa [rsi+32], xmm{}\n", reg);
         assembly += fmt::format("push rdi\n");
@@ -87,16 +88,16 @@ void print_xmms(uint8_t* xmm) {
     uint8_t* xmm0_ptr = xmm;
     uint8_t* xmm1_ptr = xmm + 16;
     uint8_t* xmm2_ptr = xmm + 32;
-    for (int i = 0; i < 16; i++) {
-        printf("%02x ", xmm0_ptr[i]);
+    for (int i = 15; i >= 0; i--) {
+        printf("%02x", xmm0_ptr[i]);
     }
     printf(" WITH ");
-    for (int i = 0; i < 16; i++) {
-        printf("%02x ", xmm1_ptr[i]);
+    for (int i = 15; i >= 0; i--) {
+        printf("%02x", xmm1_ptr[i]);
     }
     printf(" EQUALS ");
-    for (int i = 0; i < 16; i++) {
-        printf("%02x ", xmm2_ptr[i]);
+    for (int i = 15; i >= 0; i--) {
+        printf("%02x", xmm2_ptr[i]);
     }
     printf("\n");
 }

@@ -2540,7 +2540,7 @@ FAST_HANDLE(PMAXSD) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PMULHW) {
+FAST_HANDLE(PMULHW) { // Fuzzed
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
@@ -2548,7 +2548,7 @@ FAST_HANDLE(PMULHW) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PMULHUW) {
+FAST_HANDLE(PMULHUW) { // Fuzzed
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
@@ -2556,7 +2556,7 @@ FAST_HANDLE(PMULHUW) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PMULLW) {
+FAST_HANDLE(PMULLW) { // Fuzzed
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
@@ -2564,7 +2564,7 @@ FAST_HANDLE(PMULLW) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PMULLD) {
+FAST_HANDLE(PMULLD) { // Fuzzed
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
@@ -2572,7 +2572,7 @@ FAST_HANDLE(PMULLD) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(PMULUDQ) {
+FAST_HANDLE(PMULUDQ) { // Fuzzed
     biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -2591,7 +2591,7 @@ FAST_HANDLE(PMULUDQ) {
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(PMULDQ) {
+FAST_HANDLE(PMULDQ) { // Fuzzed
     biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -2610,7 +2610,7 @@ FAST_HANDLE(PMULDQ) {
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(PMADDWD) {
+FAST_HANDLE(PMADDWD) { // Fuzzed
     VEC_function(rec, meta, instruction, operands, (u64)&felix86_pmaddwd);
 }
 
@@ -2670,7 +2670,7 @@ FAST_HANDLE(MAXPD) {
     rec.setOperandVec(&operands[0], zero_mask);
 }
 
-FAST_HANDLE(MULPS) {
+FAST_HANDLE(MULPS) { // Fuzzed, TODO: needs NaN handling
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
@@ -2686,7 +2686,7 @@ FAST_HANDLE(MULPD) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(SQRTPS) {
+FAST_HANDLE(SQRTPS) { // Fuzzed, TODO: needs NaN handling
     biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
