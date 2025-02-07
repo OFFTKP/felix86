@@ -872,6 +872,7 @@ FAST_HANDLE(SAR) {
 
 FAST_HANDLE(MOVQ) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        ASSERT(operands[0].size == 64);
         biscuit::GPR dst = rec.scratch();
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -880,6 +881,8 @@ FAST_HANDLE(MOVQ) {
 
         rec.setOperandGPR(&operands[0], dst);
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        ASSERT(operands[0].size == 64);
+        ASSERT(operands[1].size == 64);
         biscuit::GPR src = rec.getOperandGPR(&operands[1]);
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
@@ -930,6 +933,7 @@ FAST_HANDLE(MOVQ) {
 
 FAST_HANDLE(MOVD) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        ASSERT(operands[0].size == 32);
         biscuit::GPR dst = rec.scratch();
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -938,6 +942,8 @@ FAST_HANDLE(MOVD) {
 
         rec.setOperandGPR(&operands[0], dst);
     } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        ASSERT(operands[0].size == 32);
+        ASSERT(operands[1].size == 32);
         biscuit::GPR src = rec.getOperandGPR(&operands[1]);
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
@@ -1808,8 +1814,8 @@ FAST_HANDLE(MUL) {
         if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
             biscuit::GPR cf = rec.flagW(X86_REF_CF);
             biscuit::GPR of = rec.flagW(X86_REF_OF);
+            // 8 * 8 bit can only be 16 bit so we don't need to zero extend
             AS.SRLI(cf, result, 8);
-            AS.ANDI(cf, cf, 8);
             AS.SNEZ(cf, cf);
             AS.MV(of, cf);
         }
