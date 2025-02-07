@@ -257,6 +257,8 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
 void felix86_packuswb(u8* dst, u8* src) {
     i16* src16 = (i16*)src;
     i16* dst16 = (i16*)dst;
+    u8 temp[16];
+    dst = temp;
     for (int i = 0; i < 8; i++) {
         i16 value = *dst16++;
         u8 result;
@@ -282,11 +284,14 @@ void felix86_packuswb(u8* dst, u8* src) {
         }
         dst[i] = result;
     }
+    memcpy(dst, temp, 16);
 }
 
 void felix86_packusdw(u16* dst, u8* src) {
     i32* src32 = (i32*)src;
     i32* dst32 = (i32*)dst;
+    u16 temp[8];
+    dst = temp;
     for (int i = 0; i < 4; i++) {
         i32 value = *dst32++;
         u16 result;
@@ -312,11 +317,14 @@ void felix86_packusdw(u16* dst, u8* src) {
         }
         dst[i] = result;
     }
+    memcpy(dst, temp, 16);
 }
 
 void felix86_packsswb(u8* dst, u8* src) {
     i16* src16 = (i16*)src;
     i16* dst16 = (i16*)dst;
+    u8 temp[16];
+    dst = temp;
     for (int i = 0; i < 8; i++) {
         i16 value = *dst16++;
         u8 result;
@@ -342,11 +350,14 @@ void felix86_packsswb(u8* dst, u8* src) {
         }
         dst[i] = result;
     }
+    memcpy(dst, temp, 16);
 }
 
 void felix86_packssdw(u16* dst, u8* src) {
     i32* src32 = (i32*)src;
     i32* dst32 = (i32*)dst;
+    u16 temp[8];
+    dst = temp;
     for (int i = 0; i < 4; i++) {
         i32 value = *dst32++;
         u16 result;
@@ -372,6 +383,7 @@ void felix86_packssdw(u16* dst, u8* src) {
         }
         dst[i] = result;
     }
+    memcpy(dst, temp, 16);
 }
 
 void felix86_pmaddwd(i16* dst, i16* src) {
