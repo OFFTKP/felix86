@@ -1209,10 +1209,33 @@ FAST_HANDLE(TEST) {
 
 FAST_HANDLE(INC) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR dst;
     biscuit::GPR res = rec.scratch();
 
-    AS.ADDI(res, dst, 1);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
+    bool writeback = true;
+    if (needs_atomic && !too_small_for_atomic) {
+        biscuit::GPR address = rec.lea(&operands[0]);
+        biscuit::GPR one = rec.scratch();
+        AS.LI(one, 1);
+        if (operands[0].size == 32) {
+            AS.AMOADD_W(Ordering::AQRL, dst, one, address);
+        } else if (operands[0].size == 64) {
+            AS.AMOADD_D(Ordering::AQRL, dst, one, address);
+        } else {
+            UNREACHABLE();
+        }
+        AS.ADDI(res, dst, 1); // Do the operation in the register as well to calculate the flags
+        writeback = false;
+    } else {
+        if (needs_atomic) {
+            WARN("Atomic INC with 8 or 16 bit operands encountered");
+        }
+
+        dst = rec.getOperandGPR(&operands[0]);
+        AS.ADDI(res, dst, 1);
+    }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
         biscuit::GPR af = rec.flagW(X86_REF_AF);
@@ -1242,21 +1265,46 @@ FAST_HANDLE(INC) {
         rec.updateSign(res, size);
     }
 
-    rec.setOperandGPR(&operands[0], res);
+    if (writeback) {
+        rec.setOperandGPR(&operands[0], res);
+    }
 }
 
 FAST_HANDLE(DEC) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR dst;
     biscuit::GPR res = rec.scratch();
+
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
+    bool writeback = true;
+    if (needs_atomic && !too_small_for_atomic) {
+        biscuit::GPR address = rec.lea(&operands[0]);
+        biscuit::GPR one = rec.scratch();
+        AS.LI(one, -1);
+        if (operands[0].size == 32) {
+            AS.AMOADD_W(Ordering::AQRL, dst, one, address);
+        } else if (operands[0].size == 64) {
+            AS.AMOADD_D(Ordering::AQRL, dst, one, address);
+        } else {
+            UNREACHABLE();
+        }
+        AS.ADDI(res, dst, -1); // Do the operation in the register as well to calculate the flags
+        writeback = false;
+    } else {
+        if (needs_atomic) {
+            WARN("Atomic DEC with 8 or 16 bit operands encountered");
+        }
+
+        dst = rec.getOperandGPR(&operands[0]);
+        AS.ADDI(res, dst, -1);
+    }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
         biscuit::GPR af = rec.flagW(X86_REF_AF);
         AS.ANDI(af, dst, 0xF);
         AS.SEQZ(af, af);
     }
-
-    AS.ADDI(res, dst, -1);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
@@ -1280,7 +1328,9 @@ FAST_HANDLE(DEC) {
         rec.updateSign(res, size);
     }
 
-    rec.setOperandGPR(&operands[0], res);
+    if (writeback) {
+        rec.setOperandGPR(&operands[0], res);
+    }
 }
 
 FAST_HANDLE(LAHF) {
@@ -4339,7 +4389,7 @@ FAST_HANDLE(CMPXCHG_lock) {
         biscuit::GPR scratch = rec.scratch();
         AS.Bind(&start);
         AS.LR_W(Ordering::AQRL, dst, address);
-        AS.ZEXTW(dst, dst);
+        AS.ZEXTW(dst, dst); // LR sign extends
         AS.BNE(dst, rax, &not_equal);
         AS.SC_W(Ordering::AQRL, scratch, src, address);
         AS.BNEZ(scratch, &start);
@@ -5007,6 +5057,7 @@ FAST_HANDLE(XADD) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16; // amoadd.h amoadd.b aren't out yet, TODO: implement with lr/sc
+    bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
         // In this case the add+writeback needs to happen atomically
         biscuit::GPR address = rec.lea(&operands[0]);
@@ -5014,8 +5065,10 @@ FAST_HANDLE(XADD) {
         dst = rec.scratch();
         if (instruction.operand_width == 32) {
             AS.AMOADD_W(Ordering::AQRL, dst, src, address);
-        } else {
+        } else if (instruction.operand_width == 64) {
             AS.AMOADD_D(Ordering::AQRL, dst, src, address);
+        } else {
+            UNREACHABLE();
         }
 
         // Still perform the addition in registers to calculate the flags
@@ -5024,7 +5077,12 @@ FAST_HANDLE(XADD) {
         rec.setOperandGPR(&operands[1], dst);
         rec.popScratch(); // pop LEA scratch
         rec.popScratch();
+        writeback = false;
     } else {
+        if (needs_atomic) {
+            WARN("Atomic XADD with 8 or 16 bit operands encountered");
+        }
+
         dst = rec.getOperandGPR(&operands[0]);
         AS.ADD(result, dst, src);
         rec.setOperandGPR(&operands[1], dst);
@@ -5067,7 +5125,7 @@ FAST_HANDLE(XADD) {
     }
 
     // In this case we also need to writeback the result, otherwise amoadd will do it for us
-    if (!needs_atomic || too_small_for_atomic) {
+    if (writeback) {
         rec.setOperandGPR(&operands[0], result);
     }
 }
