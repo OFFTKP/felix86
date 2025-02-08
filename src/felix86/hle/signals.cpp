@@ -403,7 +403,7 @@ struct riscv_v_state {
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     UNREACHABLE();
 }
-#elif defined(__riscv)
+// #elif defined(__riscv)
 riscv_v_state* get_riscv_vector_state(void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
@@ -526,11 +526,12 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         case SEGV_ACCERR: {
             // Most likely self modifying code, check if the write is in one of our translated pages
             if (is_in_jit_code(current_state, pc)) {
+                u64 write_address = (u64)info->si_addr;
                 bool found = false;
                 for (auto page : current_state->recompiler->getProtectedPages()) {
                     auto start = page.first;
                     auto end = page.second;
-                    if (pc >= start && pc < end) {
+                    if (write_address >= start && write_address < end) {
                         found = true;
                         ERROR("Self modifying code caught");
                         break;
