@@ -156,14 +156,28 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     u64 start_page = start & ~0xFFF;
     u64 end_page = (end + 0xFFF) & ~0xFFF;
 
-    for (u64 page = start_page; page < end_page; page += 0x1000) {
-        if (read_only_pages.find(page) != read_only_pages.end()) {
-            continue;
+    for (auto& pair : read_only_pages) {
+        // Check if our region overlaps with any in the list, to merge them
+        u64 old_start = pair.first;
+        u64 old_end = pair.second;
+
+        if (old_start <= start_page && old_end >= end_page) {
+            // These pages are already marked as read-only
+            return;
         }
 
-        mprotect((void*)page, 4096, PROT_READ);
-        read_only_pages.insert(page);
+        // New pages intersect with old ones, merge them
+        if (start_page <= old_end && end_page >= old_start) {
+            pair.first = std::min(start_page, old_start);
+            pair.second = std::max(end_page, old_end);
+            mprotect((void*)pair.first, pair.second - pair.first, PROT_READ);
+            return;
+        }
     }
+
+    // No intersection, add a new entry
+    read_only_pages.push_back({start_page, end_page});
+    mprotect((void*)start_page, end_page - start_page, PROT_READ);
 }
 
 void* Recompiler::getCompiledBlock(u64 rip) {

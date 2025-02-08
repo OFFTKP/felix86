@@ -200,7 +200,7 @@ struct Recompiler {
 
     void readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR shift);
 
-    std::unordered_set<u64>& getProtectedPages() {
+    std::vector<std::pair<u64, u64>>& getProtectedPages() {
         return read_only_pages;
     }
 
@@ -273,7 +273,7 @@ private:
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 
-    std::unordered_set<u64> read_only_pages{};
+    std::vector<std::pair<u64, u64>> read_only_pages{};
 
     BlockMetadata* current_block_metadata{};
     HandlerMetadata* current_meta{};
