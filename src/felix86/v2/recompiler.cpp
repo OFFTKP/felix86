@@ -2039,17 +2039,14 @@ x86_size_e Recompiler::zydisToSize(ZyanU8 size) {
     }
 }
 
-void Recompiler::repPrologue(Label* loop_end) {
+void Recompiler::repPrologue(Label* loop_end, biscuit::GPR rcx) {
     // Signal handling would get tricky if we had to account for this looping mess of an instruction
     disableSignals();
-    biscuit::GPR rcx = getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
     as.BEQZ(rcx, loop_end);
 }
 
-void Recompiler::repEpilogue(Label* loop_body) {
-    biscuit::GPR rcx = getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+void Recompiler::repEpilogue(Label* loop_body, biscuit::GPR rcx) {
     as.ADDI(rcx, rcx, -1);
-    setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
     as.BNEZ(rcx, loop_body);
     enableSignals();
 }

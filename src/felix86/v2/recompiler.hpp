@@ -168,9 +168,9 @@ struct Recompiler {
 
     void writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
 
-    void repPrologue(Label* loop_end);
+    void repPrologue(Label* loop_end, biscuit::GPR rcx);
 
-    void repEpilogue(Label* loop_body);
+    void repEpilogue(Label* loop_body, biscuit::GPR rcx);
 
     void repzEpilogue(Label* loop_body, bool is_repz);
 

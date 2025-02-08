@@ -2748,6 +2748,7 @@ FAST_HANDLE(MOVSB) {
     u8 width = instruction.operand_width;
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
     biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR data = rec.scratch();
     biscuit::GPR df = rec.scratch();
@@ -2761,7 +2762,7 @@ FAST_HANDLE(MOVSB) {
 
     Label loop_end, loop_body;
     if (HAS_REP) {
-        rec.repPrologue(&loop_end);
+        rec.repPrologue(&loop_end, rcx);
         AS.Bind(&loop_body);
     }
 
@@ -2772,12 +2773,13 @@ FAST_HANDLE(MOVSB) {
     AS.ADD(rsi, rsi, temp);
 
     if (HAS_REP) {
-        rec.repEpilogue(&loop_body);
+        rec.repEpilogue(&loop_body, rcx);
         AS.Bind(&loop_end);
     }
 
     rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
     rec.setRefGPR(X86_REF_RSI, X86_SIZE_QWORD, rsi);
+    rec.setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
 }
 
 FAST_HANDLE(MOVSW) {
@@ -2824,6 +2826,7 @@ FAST_HANDLE(STOSB) {
     Label loop_end, loop_body;
     u8 width = instruction.operand_width;
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, rec.zydisToSize(width));
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR df = rec.scratch();
@@ -2836,7 +2839,7 @@ FAST_HANDLE(STOSB) {
     AS.Bind(&end);
 
     if (HAS_REP) {
-        rec.repPrologue(&loop_end);
+        rec.repPrologue(&loop_end, rcx);
         AS.Bind(&loop_body);
     }
 
@@ -2844,11 +2847,12 @@ FAST_HANDLE(STOSB) {
     AS.ADD(rdi, rdi, temp);
 
     if (HAS_REP) {
-        rec.repEpilogue(&loop_body);
+        rec.repEpilogue(&loop_body, rcx);
         AS.Bind(&loop_end);
     }
 
     rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
+    rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rcx);
 }
 
 FAST_HANDLE(STOSW) {
@@ -4850,9 +4854,6 @@ FAST_HANDLE(CVTSS2SD) {
 FAST_HANDLE(CVTSD2SS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-
-    ThreadState* state = ThreadState::Get();
-    printf("roundin mode: %d\n", state->GetRMode());
 
     rec.setVectorState(SEW::E64, 1);
     AS.VFMV_FS(ft8, src);
