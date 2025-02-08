@@ -200,7 +200,9 @@ struct Recompiler {
 
     void readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR shift);
 
-    std::unordered_set<u64>& getProtectedPages();
+    std::unordered_set<u64>& getProtectedPages() {
+        return read_only_pages;
+    }
 
 private:
     struct RegisterMetadata {
