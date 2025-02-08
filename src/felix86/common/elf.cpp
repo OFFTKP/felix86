@@ -50,7 +50,6 @@ void Elf::Load(const std::filesystem::path& path) {
         return;
     }
 
-    std::vector<u8> shdrtable = {};
     u64 lowest_vaddr = 0xFFFFFFFFFFFFFFFF;
     u64 highest_vaddr = 0;
 
@@ -321,6 +320,8 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
         ERROR("Failed to read ELF header from file %s", path.c_str());
     }
 
+    printf("offset: %lx\n", ehdr.e_shoff);
+    printf("num: %x\n", ehdr.e_shnum);
     std::vector<Elf64_Shdr> shdrtable(ehdr.e_shnum);
     fseek(file, ehdr.e_shoff, SEEK_SET);
     result = fread(shdrtable.data(), sizeof(Elf64_Shdr), ehdr.e_shnum, file);
@@ -335,7 +336,6 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
     if (result != strtab.sh_size) {
         ERROR("Failed to read string table from file %s", path.c_str());
     }
-    printf("Data: %s\n", strtab_data.data());
 
     for (Elf64_Half i = 0; i < ehdr.e_shnum; i++) {
         Elf64_Shdr& shdr = shdrtable[i];
