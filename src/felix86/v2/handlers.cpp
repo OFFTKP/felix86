@@ -2794,7 +2794,16 @@ FAST_HANDLE(RSQRTPS) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+void print_args(ThreadState* state) {
+    printf("movsb, rdi: %lx, rsi: %lx, rcx: %lx\n", state->gprs[X86_REF_RDI], state->gprs[X86_REF_RSI], state->gprs[X86_REF_RCX]);
+}
+
 FAST_HANDLE(MOVSB) {
+    rec.writebackDirtyState();
+    AS.LI(t0, (u64)print_args);
+    AS.MV(a0, rec.threadStatePointer());
+    AS.JALR(t0);
+
     u8 width = instruction.operand_width;
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
     biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
