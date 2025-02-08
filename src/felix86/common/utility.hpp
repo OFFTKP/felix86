@@ -78,6 +78,10 @@ inline RMode rounding_mode(x86RoundingMode mode) {
     case x86RoundingMode::Truncate:
         return RMode::RTZ;
     }
+
+    printf("how did we get here\n");
+    exit(1);
+    return RMode::RNE;
 }
 
 typedef struct {
