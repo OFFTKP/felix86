@@ -528,8 +528,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             if (is_in_jit_code(current_state, pc)) {
                 bool found = false;
                 for (auto page : current_state->recompiler->getProtectedPages()) {
-                    auto start = page;
-                    auto end = page + 4096;
+                    auto start = page.first;
+                    auto end = page.second;
                     if (pc >= start && pc < end) {
                         found = true;
                         ERROR("Self modifying code caught");
