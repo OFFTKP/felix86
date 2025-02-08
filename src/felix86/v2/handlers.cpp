@@ -2799,10 +2799,12 @@ void print_args(ThreadState* state) {
 }
 
 FAST_HANDLE(MOVSB) {
+#if 0
     rec.writebackDirtyState();
     AS.LI(t0, (u64)print_args);
     AS.MV(a0, rec.threadStatePointer());
     AS.JALR(t0);
+#endif
 
     u8 width = instruction.operand_width;
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
@@ -2882,10 +2884,12 @@ FAST_HANDLE(MOVSQ) {
 }
 
 FAST_HANDLE(STOSB) {
+#if 0
     rec.writebackDirtyState();
     AS.LI(t0, (u64)print_args);
     AS.MV(a0, rec.threadStatePointer());
     AS.JALR(t0);
+#endif
 
     Label loop_end, loop_body;
     u8 width = instruction.operand_width;
