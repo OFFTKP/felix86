@@ -2882,6 +2882,11 @@ FAST_HANDLE(MOVSQ) {
 }
 
 FAST_HANDLE(STOSB) {
+    rec.writebackDirtyState();
+    AS.LI(t0, (u64)print_args);
+    AS.MV(a0, rec.threadStatePointer());
+    AS.JALR(t0);
+
     Label loop_end, loop_body;
     u8 width = instruction.operand_width;
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
