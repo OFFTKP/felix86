@@ -403,7 +403,7 @@ struct riscv_v_state {
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     UNREACHABLE();
 }
-// #elif defined(__riscv)
+#elif defined(__riscv)
 riscv_v_state* get_riscv_vector_state(void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
