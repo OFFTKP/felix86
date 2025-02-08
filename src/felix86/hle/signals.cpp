@@ -521,6 +521,36 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
         break;
     }
+    case SIGSEGV: {
+        switch (info->si_code) {
+        case SEGV_ACCERR: {
+            // Most likely self modifying code, check if the write is in one of our translated pages
+            if (is_in_jit_code(current_state, pc)) {
+                bool found = false;
+                for (auto page : current_state->recompiler->getProtectedPages()) {
+                    auto start = page;
+                    auto end = page + 4096;
+                    if (pc >= start && pc < end) {
+                        found = true;
+                        ERROR("Self modifying code caught");
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    ERROR("Unhandled SIGSEGV SEGV_ACCERR, not in protected page");
+                }
+            } else {
+                ERROR("Unhandled SIGSEGV SEGV_ACCERR, not in JIT code");
+            }
+            break;
+        }
+        default: {
+            goto check_guest_signal;
+        }
+        }
+        break;
+    }
     case SIGILL: {
         bool found = false;
         if (is_in_jit_code(current_state, pc)) {
@@ -532,7 +562,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 for (u64 location : bp.second) {
                     if (location == pc) {
                         // Skip the breakpoint and continue
-                        printf("Guest breakpoint %016lx hit at %016lx\n", bp.first, pc);
+                        printf("Guest breakpoint %016lx hit at %016lx, continuing...\n", bp.first, pc);
                         context->uc_mcontext.__gregs[REG_PC] = pc + 4;
                         found = true;
                         break;
