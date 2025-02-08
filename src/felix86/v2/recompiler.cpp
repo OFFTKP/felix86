@@ -254,7 +254,7 @@ u64 Recompiler::compileSequence(u64 rip) {
         // When we want to print all instructions used
         static std::unordered_map<std::string, bool> seen;
 
-        bool start = false;
+        static bool start = false;
 
         if (rip == 0x103863) {
             start = true;
