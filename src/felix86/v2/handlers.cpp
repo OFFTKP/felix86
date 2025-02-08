@@ -5632,3 +5632,49 @@ FAST_HANDLE(PREFETCHT2) {
 FAST_HANDLE(PREFETCHNTA) {
     // NOP
 }
+
+FAST_HANDLE(PUSHFQ) {
+    biscuit::GPR src = rec.getFlags();
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    AS.ADDI(rsp, rsp, -8);
+    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+    AS.SD(src, 0, rsp);
+}
+
+FAST_HANDLE(POPFQ) {
+    biscuit::GPR flags = rec.scratch();
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    AS.LD(flags, 0, rsp);
+    AS.ADDI(rsp, rsp, 8);
+    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    biscuit::GPR af = rec.flagW(X86_REF_AF);
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+    biscuit::GPR sf = rec.flagW(X86_REF_SF);
+    biscuit::GPR of = rec.flagW(X86_REF_OF);
+    biscuit::GPR temp = rec.scratch();
+
+    AS.ANDI(cf, flags, 1);
+
+    biscuit::GPR pf = rec.scratch();
+    AS.SRLI(pf, flags, 2);
+    AS.ANDI(pf, pf, 1);
+    AS.SB(pf, offsetof(ThreadState, pf), rec.threadStatePointer());
+
+    AS.SRLI(af, flags, 4);
+    AS.ANDI(af, af, 1);
+
+    AS.SRLI(zf, flags, 6);
+    AS.ANDI(zf, zf, 1);
+
+    AS.SRLI(sf, flags, 7);
+    AS.ANDI(sf, sf, 1);
+
+    AS.SRLI(temp, flags, 10);
+    AS.ANDI(temp, temp, 1);
+    AS.SB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
+
+    AS.SRLI(of, flags, 11);
+    AS.ANDI(of, of, 1);
+}
