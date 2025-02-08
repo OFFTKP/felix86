@@ -146,7 +146,20 @@ void* Recompiler::compile(u64 rip) {
 
     expirePendingLinks(rip);
 
+    // Mark the page as read-only to catch self-modifying code
+    markPageAsReadOnly(rip);
+
     return start;
+}
+
+void Recompiler::markPageAsReadOnly(u64 address) {
+    u64 page = address & ~0xFFF;
+    if (read_only_pages.find(page) != read_only_pages.end()) {
+        return;
+    }
+
+    mprotect((void*)page, 4096, PROT_READ);
+    read_only_pages.insert(page);
 }
 
 void* Recompiler::getCompiledBlock(u64 rip) {
@@ -1679,7 +1692,7 @@ void Recompiler::jumpAndLink(u64 rip) {
                 Assembler tempas((u8*)&mem, 4);
                 tempas.J(offset);
 
-                // TODO: remove atomic stuff
+                // TODO: remove atomic stuff, no longer needed
                 // Atomically replace the NOP with a J instruction
                 // The instructions after that J can stay as they are
                 __atomic_store_n((u32*)as.GetCursorPointer(), mem, __ATOMIC_SEQ_CST);

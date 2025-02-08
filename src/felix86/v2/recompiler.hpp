@@ -2,6 +2,7 @@
 
 #include <array>
 #include <unordered_map>
+#include <unordered_set>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
 #include "biscuit/assembler.hpp"
@@ -239,6 +240,8 @@ private:
 
     void clearCodeCache();
 
+    void markPageAsReadOnly(u64 address);
+
     u8* code_cache{};
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
@@ -265,6 +268,8 @@ private:
     int vector_scratch_index = 0;
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
+
+    std::unordered_set<u64> read_only_pages{};
 
     BlockMetadata* current_block_metadata{};
     HandlerMetadata* current_meta{};

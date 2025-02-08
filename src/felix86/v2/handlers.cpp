@@ -2008,7 +2008,7 @@ FAST_HANDLE(PUNPCKHQDQ) {
     PUNPCKH(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
 }
 
-FAST_HANDLE(UNPCKLPS) {
+FAST_HANDLE(UNPCKLPS) { // Fuzzed
     biscuit::Vec scratch = rec.scratchVec();
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec src1 = rec.getOperandVec(&operands[0]);
@@ -2026,7 +2026,7 @@ FAST_HANDLE(UNPCKLPS) {
     rec.setOperandVec(&operands[0], scratch);
 }
 
-FAST_HANDLE(UNPCKHPS) {
+FAST_HANDLE(UNPCKHPS) { // Fuzzed
     biscuit::Vec scratch = rec.scratchVec();
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec src1 = rec.getOperandVec(&operands[0]);
@@ -2046,7 +2046,7 @@ FAST_HANDLE(UNPCKHPS) {
     rec.setOperandVec(&operands[0], scratch);
 }
 
-FAST_HANDLE(UNPCKLPD) {
+FAST_HANDLE(UNPCKLPD) { // Fuzzed
     biscuit::Vec scratch = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src1 = rec.getOperandVec(&operands[0]);
@@ -2060,7 +2060,7 @@ FAST_HANDLE(UNPCKLPD) {
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(UNPCKHPD) {
+FAST_HANDLE(UNPCKHPD) { // Fuzzed
     biscuit::Vec scratch = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src1 = rec.getOperandVec(&operands[0]);
