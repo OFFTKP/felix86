@@ -4820,12 +4820,11 @@ FAST_HANDLE(CVTSD2SI) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
+    rec.setVectorState(SEW::E64, 1);
     if (gpr_size == X86_SIZE_DWORD) {
-        rec.setVectorState(SEW::E64, 1);
         AS.VFMV_FS(ft8, src);
         AS.FCVT_W_D(dst, ft8);
     } else if (gpr_size == X86_SIZE_QWORD) {
-        rec.setVectorState(SEW::E64, 1);
         AS.VFMV_FS(ft8, src);
         AS.FCVT_L_D(dst, ft8);
     } else {
@@ -4851,6 +4850,9 @@ FAST_HANDLE(CVTSS2SD) {
 FAST_HANDLE(CVTSD2SS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    ThreadState* state = ThreadState::Get();
+    printf("roundin mode: %d\n", state->GetRMode());
 
     rec.setVectorState(SEW::E64, 1);
     AS.VFMV_FS(ft8, src);

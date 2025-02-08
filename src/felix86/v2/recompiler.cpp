@@ -2133,7 +2133,8 @@ biscuit::GPR Recompiler::getFlags() {
     as.SLLI(temp, pf, 2);
     as.OR(reg, reg, temp);
     as.OR(reg, reg, cf);
-    as.ORI(reg, reg, 0b10); // bit 1 always set in flags
+    as.ORI(reg, reg, 0b10);  // bit 1 always set in flags
+    as.ORI(reg, reg, 0x200); // IE bit
     popScratch();
     return reg;
 }
