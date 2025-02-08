@@ -1,4 +1,5 @@
 #include <vector>
+#include <cxxabi.h>
 #include <elf.h>
 #include <linux/prctl.h>
 #include <stdio.h>
@@ -284,10 +285,12 @@ void Elf::Load(const std::filesystem::path& path) {
         g_executable_start = base_address + lowest_vaddr;
         g_executable_end = base_address + highest_vaddr;
         MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
+        LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
         g_interpreter_start = base_address + lowest_vaddr;
         g_interpreter_end = base_address + highest_vaddr;
         MemoryMetadata::AddInterpreterRegion(g_interpreter_start, g_interpreter_end);
+        LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 
     phdr = (u8*)(base_address + lowest_vaddr + ehdr.e_phoff);
@@ -297,4 +300,74 @@ void Elf::Load(const std::filesystem::path& path) {
     fclose(file);
 
     ok = true;
+}
+
+void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path, void* base) {
+    FILE* file = fopen(path.c_str(), "rb");
+    if (!file) {
+        ERROR("Failed to open file %s", path.c_str());
+    }
+
+    fseek(file, 0, SEEK_END);
+    u64 size = ftell(file);
+    if (size < sizeof(Elf64_Ehdr)) {
+        ERROR("File %s is too small to be an ELF file", path.c_str());
+    }
+    fseek(file, 0, SEEK_SET);
+
+    Elf64_Ehdr ehdr;
+    ssize_t result = fread(&ehdr, sizeof(Elf64_Ehdr), 1, file);
+    if (result != 1) {
+        ERROR("Failed to read ELF header from file %s", path.c_str());
+    }
+
+    std::vector<Elf64_Shdr> shdrtable(ehdr.e_shnum);
+    fseek(file, ehdr.e_shoff, SEEK_SET);
+    result = fread(shdrtable.data(), sizeof(Elf64_Shdr), ehdr.e_shnum, file);
+    if (result != ehdr.e_shnum) {
+        ERROR("Failed to read symbol header table from file %s", path.c_str());
+    }
+
+    Elf64_Shdr strtab = shdrtable[ehdr.e_shstrndx];
+    std::vector<char> strtab_data(strtab.sh_size);
+    fseek(file, strtab.sh_offset, SEEK_SET);
+    result = fread(strtab_data.data(), 1, strtab.sh_size, file);
+    if (result != strtab.sh_size) {
+        ERROR("Failed to read string table from file %s", path.c_str());
+    }
+
+    for (Elf64_Half i = 0; i < ehdr.e_shnum; i++) {
+        Elf64_Shdr& shdr = shdrtable[i];
+        if (shdr.sh_type == SHT_SYMTAB) {
+            std::vector<Elf64_Sym> symtab(shdr.sh_size / shdr.sh_entsize);
+            fseek(file, shdr.sh_offset, SEEK_SET);
+            result = fread(symtab.data(), shdr.sh_entsize, symtab.size(), file);
+            if (result != symtab.size()) {
+                ERROR("Failed to read symbol table from file %s", path.c_str());
+            }
+
+            std::string mangle_buffer;
+            mangle_buffer.resize(4096);
+
+            FELIX86_LOCK;
+            for (Elf64_Sym& sym : symtab) {
+                if (ELF64_ST_BIND(sym.st_info) == STB_GLOBAL) {
+                    int status;
+                    const char* demangled = abi::__cxa_demangle(&strtab_data[sym.st_name], NULL, NULL, &status);
+                    std::string sym_name;
+                    if (demangled) {
+                        sym_name = demangled;
+                        free((void*)demangled);
+                    } else {
+                        sym_name = &strtab_data[sym.st_name];
+                    }
+                    void* sym_addr = (void*)((u8*)base + sym.st_value);
+                    VERBOSE("Symbol %s at %p", sym_name.c_str(), sym_addr);
+                    g_symbols[(u64)sym_addr] = sym_name;
+                }
+            }
+            FELIX86_UNLOCK;
+            break;
+        }
+    }
 }

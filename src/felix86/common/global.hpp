@@ -40,6 +40,7 @@ extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
 extern sem_t* g_semaphore;
 extern pthread_key_t g_thread_state_key;
 extern std::list<struct ThreadState*> g_thread_states;
+extern std::unordered_map<u64, std::string> g_symbols;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();

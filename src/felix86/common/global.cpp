@@ -22,7 +22,7 @@ bool g_calltrace = false;
 bool g_use_block_cache = true;
 bool g_single_step = false;
 bool g_is_chrooted = false;
-bool g_dont_protect_pages = false; // true until we implement smc stuff
+bool g_dont_protect_pages = true; // true until we implement smc stuff
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 sem_t* g_semaphore = nullptr;
@@ -30,6 +30,7 @@ u64 g_dispatcher_exit_count = 0;
 std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
+std::unordered_map<u64, std::string> g_symbols{};
 pthread_key_t g_thread_state_key = -1;
 
 int g_output_fd = 1;
