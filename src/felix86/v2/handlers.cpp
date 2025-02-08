@@ -2920,7 +2920,7 @@ FAST_HANDLE(STOSB) {
     }
 
     rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
-    rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rcx);
+    rec.setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
 }
 
 FAST_HANDLE(STOSW) {
