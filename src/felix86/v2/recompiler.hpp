@@ -213,7 +213,7 @@ private:
         u64 position;
     };
 
-    void compileSequence(u64 rip);
+    u64 compileSequence(u64 rip);
 
     // Get the register and load the value into it if needed
     biscuit::GPR gpr(ZydisRegister reg);
@@ -240,7 +240,7 @@ private:
 
     void clearCodeCache();
 
-    void markPageAsReadOnly(u64 address);
+    void markPagesAsReadOnly(u64 start, u64 end);
 
     u8* code_cache{};
     biscuit::Assembler as{};

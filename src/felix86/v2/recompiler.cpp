@@ -142,24 +142,28 @@ void* Recompiler::compile(u64 rip) {
     block_metadata[rip].address = start;
 
     // A sequence of code. This is so that we can also call it recursively later.
-    compileSequence(rip);
+    u64 end_rip = compileSequence(rip);
 
     expirePendingLinks(rip);
 
     // Mark the page as read-only to catch self-modifying code
-    markPageAsReadOnly(rip);
+    markPagesAsReadOnly(rip, end_rip);
 
     return start;
 }
 
-void Recompiler::markPageAsReadOnly(u64 address) {
-    u64 page = address & ~0xFFF;
-    if (read_only_pages.find(page) != read_only_pages.end()) {
-        return;
-    }
+void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
+    u64 start_page = start & ~0xFFF;
+    u64 end_page = (end + 0xFFF) & ~0xFFF;
 
-    mprotect((void*)page, 4096, PROT_READ);
-    read_only_pages.insert(page);
+    for (u64 page = start_page; page < end_page; page += 0x1000) {
+        if (read_only_pages.find(page) != read_only_pages.end()) {
+            continue;
+        }
+
+        mprotect((void*)page, 4096, PROT_READ);
+        read_only_pages.insert(page);
+    }
 }
 
 void* Recompiler::getCompiledBlock(u64 rip) {
@@ -187,7 +191,7 @@ void* Recompiler::getCompiledBlock(u64 rip) {
     return nullptr;
 }
 
-void Recompiler::compileSequence(u64 rip) {
+u64 Recompiler::compileSequence(u64 rip) {
     compiling = true;
     scanFlagUsageAhead(rip);
     HandlerMetadata meta = {rip, rip};
@@ -298,6 +302,8 @@ void Recompiler::compileSequence(u64 rip) {
 
     current_block_metadata = nullptr;
     current_meta = nullptr;
+
+    return meta.rip;
 }
 
 biscuit::GPR Recompiler::allocatedGPR(x86_ref_e reg) {
