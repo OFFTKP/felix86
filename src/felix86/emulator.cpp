@@ -192,6 +192,11 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         raise(signal);
     }
 
+    if (thread_state->rip == 0xb1710) {
+        printf("memcpy(%p, %p, %lu)\n", (void*)thread_state->GetGpr(X86_REF_RDI), (void*)thread_state->GetGpr(X86_REF_RSI),
+               thread_state->GetGpr(X86_REF_RDX));
+    }
+
     return thread_state->recompiler->getCompiledBlock(thread_state->GetRip());
 }
 

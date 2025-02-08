@@ -3192,30 +3192,24 @@ FAST_HANDLE(PMOVMSKB) {
 }
 
 FAST_HANDLE(MOVMSKPS) {
-    biscuit::Vec tmp = rec.scratchVec();
     biscuit::Vec mask = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    AS.VSRL(tmp, src, 31);
-    AS.VMSEQ(mask, tmp, 1);
+    AS.VMSLT(mask, src, x0);
     AS.VMV_XS(dst, mask);
     AS.ANDI(dst, dst, 0b1111);
     rec.setOperandGPR(&operands[0], dst);
 }
 
 FAST_HANDLE(MOVMSKPD) {
-    biscuit::GPR shift = rec.scratch();
-    biscuit::Vec tmp = rec.scratchVec();
     biscuit::Vec mask = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 32);
-    AS.LI(shift, 63);
-    AS.VSRL(tmp, src, shift);
-    AS.VMSEQ(mask, tmp, 1);
+    AS.VMSLT(mask, src, x0);
     AS.VMV_XS(dst, mask);
     AS.ANDI(dst, dst, 0b11);
     rec.setOperandGPR(&operands[0], dst);
@@ -3224,18 +3218,18 @@ FAST_HANDLE(MOVMSKPD) {
 FAST_HANDLE(PMOVZXBQ) {
     biscuit::GPR mask = rec.scratch();
     biscuit::Vec iota = rec.scratchVec();
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VID(iota); // iota with 64-bit elements will place the indices at the right locations
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
     AS.LI(mask, 0b00000001'00000001'00000001'00000001);
-    AS.VMV(dst, 0);
+    AS.VMV(result, 0);
     AS.VMV(v0, mask);
-    AS.VRGATHER(dst, src, iota, VecMask::Yes);
+    AS.VRGATHER(result, src, iota, VecMask::Yes);
 
-    rec.setOperandVec(&operands[0], dst);
+    rec.setOperandVec(&operands[0], result);
 }
 
 void PCMPEQ(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
