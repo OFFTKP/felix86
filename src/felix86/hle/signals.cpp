@@ -565,6 +565,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             STRACE("------- Guest signal %s -------", strsignal(sig));
         }
 
+        WARN("Executing signal handler for %s", strsignal(sig));
+
         // TODO: this could cause issues if it never jumps back to the dispatcher
         if (current_state->signals_disabled) {
             ERROR("Signal %d hit while signals are disabled", sig);

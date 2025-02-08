@@ -5588,7 +5588,7 @@ FAST_HANDLE(CVTDQ2PD) {
 
     rec.setVectorState(SEW::E32, 2);
     AS.VMV(v0, 0b11);
-    AS.VFWCVT_F_X(scratch, src, VecMask::Yes);
+    AS.VFWCVT_F_X(scratch, src, VecMask::Yes); // Illegal instruction signal
 
     rec.setVectorState(SEW::E64, 2);
     rec.setOperandVec(&operands[0], scratch);
