@@ -66,7 +66,6 @@ struct Emulator {
 private:
     void setupMainStack(ThreadState* state);
 
-    sem_t* semaphore; // to synchronize some stuff
     Config config;
     Filesystem fs;
     bool testing = false;

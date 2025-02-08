@@ -153,6 +153,10 @@ void* Recompiler::compile(u64 rip) {
 }
 
 void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
+    if (g_dont_protect_pages) {
+        return;
+    }
+
     u64 start_page = start & ~0xFFF;
     u64 end_page = (end + 0xFFF) & ~0xFFF;
 

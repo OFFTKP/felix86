@@ -22,6 +22,7 @@ extern bool g_dont_link;
 extern bool g_use_block_cache;
 extern bool g_single_step;
 extern bool g_log_instructions;
+extern bool g_dont_protect_pages;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;
 extern u64 g_dispatcher_exit_count;
