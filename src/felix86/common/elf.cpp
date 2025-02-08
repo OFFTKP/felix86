@@ -325,7 +325,7 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
     fseek(file, ehdr.e_shoff, SEEK_SET);
     result = fread(shdrtable.data(), sizeof(Elf64_Shdr), ehdr.e_shnum, file);
     if (result != ehdr.e_shnum) {
-        ERROR("Failed to read symbol header table from file %s", path.c_str());
+        ERROR("Failed to read section header table from file %s", path.c_str());
     }
 
     Elf64_Shdr strtab = shdrtable[ehdr.e_shstrndx];
@@ -335,6 +335,7 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
     if (result != strtab.sh_size) {
         ERROR("Failed to read string table from file %s", path.c_str());
     }
+    printf("Data: %s\n", strtab_data.data());
 
     for (Elf64_Half i = 0; i < ehdr.e_shnum; i++) {
         Elf64_Shdr& shdr = shdrtable[i];
@@ -370,4 +371,6 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
             break;
         }
     }
+
+    fclose(file);
 }
