@@ -3096,10 +3096,10 @@ void ROUND(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction
         biscuit::GPR temp = rec.scratch();
         if (sew == SEW::E64) {
             AS.FCVT_L_D(temp, ft8, rmode);
-            AS.FCVT_D_L(ft9, temp);
+            AS.FCVT_D_L(ft9, temp, rmode);
         } else if (sew == SEW::E32) {
             AS.FCVT_W_S(temp, ft8, rmode);
-            AS.FCVT_S_W(ft9, temp);
+            AS.FCVT_S_W(ft9, temp, rmode);
         } else {
             UNREACHABLE();
         }
@@ -3311,11 +3311,11 @@ void CMPP(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction&
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(CMPPS) {
+FAST_HANDLE(CMPPS) { // Fuzzed
     CMPP(rec, meta, instruction, operands, SEW::E32, rec.maxVlen() / 32);
 }
 
-FAST_HANDLE(CMPPD) {
+FAST_HANDLE(CMPPD) { // Fuzzed
     CMPP(rec, meta, instruction, operands, SEW::E64, rec.maxVlen() / 64);
 }
 
@@ -3395,7 +3395,7 @@ FAST_HANDLE(PSHUFB) {
     rec.setOperandVec(&operands[0], tmp);
 }
 
-FAST_HANDLE(PBLENDW) {
+FAST_HANDLE(PBLENDW) { // Fuzzed
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::GPR mask = rec.scratch();
     biscuit::Vec result = rec.scratchVec();
