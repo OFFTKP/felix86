@@ -339,7 +339,7 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
 
     for (Elf64_Half i = 0; i < ehdr.e_shnum; i++) {
         Elf64_Shdr& shdr = shdrtable[i];
-        if (shdr.sh_type == SHT_SYMTAB) {
+        if (shdr.sh_type == SHT_SYMTAB || shdr.sh_type == SHT_DYNSYM) {
             std::vector<Elf64_Sym> symtab(shdr.sh_size / shdr.sh_entsize);
             fseek(file, shdr.sh_offset, SEEK_SET);
             result = fread(symtab.data(), shdr.sh_entsize, symtab.size(), file);
@@ -352,23 +352,20 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
 
             FELIX86_LOCK;
             for (Elf64_Sym& sym : symtab) {
-                if (ELF64_ST_BIND(sym.st_info) == STB_GLOBAL) {
-                    int status;
-                    const char* demangled = abi::__cxa_demangle(&strtab_data[sym.st_name], NULL, NULL, &status);
-                    std::string sym_name;
-                    if (demangled) {
-                        sym_name = demangled;
-                        free((void*)demangled);
-                    } else {
-                        sym_name = &strtab_data[sym.st_name];
-                    }
-                    void* sym_addr = (void*)((u8*)base + sym.st_value);
-                    VERBOSE("Symbol %s at %p", sym_name.c_str(), sym_addr);
-                    g_symbols[(u64)sym_addr] = sym_name;
+                int status;
+                const char* demangled = abi::__cxa_demangle(&strtab_data[sym.st_name], NULL, NULL, &status);
+                std::string sym_name;
+                if (demangled) {
+                    sym_name = demangled;
+                    free((void*)demangled);
+                } else {
+                    sym_name = &strtab_data[sym.st_name];
                 }
+                void* sym_addr = (void*)((u8*)base + sym.st_value);
+                VERBOSE("Symbol %s at %p", sym_name.c_str(), sym_addr);
+                g_symbols[(u64)sym_addr] = sym_name;
             }
             FELIX86_UNLOCK;
-            break;
         }
     }
 
