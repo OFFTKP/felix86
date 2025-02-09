@@ -3142,7 +3142,7 @@ FAST_HANDLE(PACKSSWB) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     // Use half the register group so we don't run into overlapping problems
-    rec.setVectorState(SEW::E8, rec.maxVlen() / 8, LMUL::MF2);
+    rec.setVectorState(SEW::E8, 8, LMUL::MF2);
     AS.VNCLIP(result1, dst, 0);
     AS.VNCLIP(result2, src, 0);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
@@ -3161,7 +3161,7 @@ FAST_HANDLE(PACKSSDW) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     // Use half the register group so we don't run into overlapping problems
-    rec.setVectorState(SEW::E16, rec.maxVlen() / 16, LMUL::MF2);
+    rec.setVectorState(SEW::E16, 4, LMUL::MF2);
     AS.VNCLIP(result1, dst, 0);
     AS.VNCLIP(result2, src, 0);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
@@ -4771,7 +4771,7 @@ FAST_HANDLE(CVTPD2PS) {
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.VMV(result, 0);
 
-    rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     AS.VFNCVT_F_F(result, src);
 
     rec.setOperandVec(&operands[0], result);
