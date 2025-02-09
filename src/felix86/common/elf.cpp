@@ -337,8 +337,6 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
         ERROR("Failed to read string table from file %s", path.c_str());
     }
 
-    write(1, strtab_data.data(), strtab.sh_size);
-
     for (Elf64_Half i = 0; i < ehdr.e_shnum; i++) {
         Elf64_Shdr& shdr = shdrtable[i];
         if (shdr.sh_type == SHT_SYMTAB || shdr.sh_type == SHT_DYNSYM) {
@@ -354,6 +352,10 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
 
             FELIX86_LOCK;
             for (Elf64_Sym& sym : symtab) {
+                if (ELF64_ST_TYPE(sym.st_info) != STT_FUNC) {
+                    continue;
+                }
+
                 int status;
                 const char* demangled = abi::__cxa_demangle(&strtab_data[sym.st_name], NULL, NULL, &status);
                 std::string sym_name;
