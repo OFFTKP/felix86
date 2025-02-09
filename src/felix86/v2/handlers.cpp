@@ -3143,7 +3143,6 @@ FAST_HANDLE(PACKSSWB) {
 
     // Use half the register group so we don't run into overlapping problems
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8, LMUL::MF2);
-    AS.VMV(v8, dst);
     AS.VNCLIP(result1, dst, 0);
     AS.VNCLIP(result2, src, 0);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
@@ -3163,7 +3162,6 @@ FAST_HANDLE(PACKSSDW) {
 
     // Use half the register group so we don't run into overlapping problems
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16, LMUL::MF2);
-    AS.VMV(v8, dst);
     AS.VNCLIP(result1, dst, 0);
     AS.VNCLIP(result2, src, 0);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
