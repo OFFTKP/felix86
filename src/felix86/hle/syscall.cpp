@@ -712,7 +712,7 @@ void felix86_syscall(ThreadState* state) {
             name = std::filesystem::path((const char*)rsi).filename().string();
             region_path = fs.AtPath(rdi, (const char*)rsi).value_or(std::filesystem::path());
 
-            if (region_path.extension().string() == ".so") {
+            if (name.find(".so") != std::string::npos) {
                 detecting_memory_region = true;
                 min_address = ULONG_MAX;
                 max_address = 0;
