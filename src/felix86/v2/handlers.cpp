@@ -3139,7 +3139,8 @@ FAST_HANDLE(PACKSSWB) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
-    AS.VNCLIP(result, dst, 0);
+    AS.VMV(v8, dst);
+    AS.VNCLIP(result, v8, 0);
     rec.setOperandVec(&operands[0], result);
 }
 
