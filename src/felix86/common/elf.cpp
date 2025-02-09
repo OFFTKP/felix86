@@ -310,7 +310,9 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
     fseek(file, 0, SEEK_END);
     u64 size = ftell(file);
     if (size < sizeof(Elf64_Ehdr)) {
-        ERROR("File %s is too small to be an ELF file", path.c_str());
+        WARN("File %s is too small to be an ELF file", path.c_str());
+        fclose(file);
+        return;
     }
     fseek(file, 0, SEEK_SET);
 
@@ -318,6 +320,12 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
     size_t result = fread(&ehdr, sizeof(Elf64_Ehdr), 1, file);
     if (result != 1) {
         ERROR("Failed to read ELF header from file %s", path.c_str());
+    }
+
+    if (ehdr.e_ident[0] != 0x7F || ehdr.e_ident[1] != 'E' || ehdr.e_ident[2] != 'L' || ehdr.e_ident[3] != 'F') {
+        WARN("File %s is not an ELF file", path.c_str());
+        fclose(file);
+        return;
     }
 
     std::vector<Elf64_Shdr> shdrtable(ehdr.e_shnum);

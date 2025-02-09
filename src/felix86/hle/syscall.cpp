@@ -328,7 +328,8 @@ void felix86_syscall(ThreadState* state) {
         u64 min_address_copy = min_address;
         std::filesystem::path path_copy = region_path;
         bool added_region = false;
-        if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
+        std::string extension = path_copy.extension().string();
+        if (extension == ".so" && detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             detecting_memory_region = false;
             added_region = true;
             ASSERT(result != -1);
