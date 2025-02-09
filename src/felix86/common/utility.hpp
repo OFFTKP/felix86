@@ -92,7 +92,7 @@ typedef struct {
 Float80 f64_to_80(double);
 double f80_to_64(Float80);
 
-bool felix86_bts(u64 address, u64 offset);
-bool felix86_btr(u64 address, u64 offset);
-bool felix86_btc(u64 address, u64 offset);
-bool felix86_bt(u64 address, u64 offset);
+bool felix86_bts(u64 address, i64 offset);
+bool felix86_btr(u64 address, i64 offset);
+bool felix86_btc(u64 address, i64 offset);
+bool felix86_bt(u64 address, i64 offset);
