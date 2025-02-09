@@ -5784,3 +5784,15 @@ FAST_HANDLE(POPFQ) {
     AS.SRLI(of, flags, 11);
     AS.ANDI(of, of, 1);
 }
+
+FAST_HANDLE(MOVDDUP) {
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VMV(iota, 0);
+    AS.VRGATHER(result, src, iota);
+
+    rec.setOperandVec(&operands[0], result);
+}
