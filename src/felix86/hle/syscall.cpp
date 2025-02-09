@@ -711,7 +711,7 @@ void felix86_syscall(ThreadState* state) {
         FELIX86_LOCK;
         if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             name = std::filesystem::path((const char*)rsi).filename().string();
-            region_path = std::filesystem::path((const char*)rsi);
+            region_path = fs.AtPath(rdi, (const char*)rsi).value_or(std::filesystem::path());
 
             if (name.find(".so") != std::string::npos) {
                 detecting_memory_region = true;
