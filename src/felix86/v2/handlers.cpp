@@ -5703,7 +5703,7 @@ FAST_HANDLE(CVTDQ2PD) {
     biscuit::Vec scratch = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
     AS.VFWCVT_F_X(scratch, src); // Illegal instruction signal
 
     rec.setOperandVec(&operands[0], scratch);
