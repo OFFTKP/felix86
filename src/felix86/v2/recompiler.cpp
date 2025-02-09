@@ -1288,7 +1288,7 @@ void Recompiler::loadVec(x86_ref_e reg, biscuit::Vec vec) {
 }
 
 bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
-    if (current_sew == sew && current_vlen == vlen && current_grouping != grouping) {
+    if (current_sew == sew && current_vlen == vlen && current_grouping == grouping) {
         return false;
     }
 

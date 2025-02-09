@@ -3148,6 +3148,7 @@ FAST_HANDLE(PACKSSWB) {
     AS.VNCLIP(result2, src, 0);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VID(v0);
+    AS.VSLIDEUP(result2, result2, 1);
     AS.VMERGE(result, result1, result2);
     rec.setOperandVec(&operands[0], result);
 }
