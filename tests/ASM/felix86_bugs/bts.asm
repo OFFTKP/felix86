@@ -39,7 +39,7 @@ mov r14, rcx
 cfmerge
 
 clc
-bts qword ptr [rdi], 192 + 14
+bts qword[rdi], 192 + 14
 mov r13, [rdi]
 cfmerge
 
