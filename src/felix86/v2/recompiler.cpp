@@ -2095,6 +2095,10 @@ void Recompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
         as.ADDIW(dst, src, 0);
         break;
     }
+    case X86_SIZE_QWORD: {
+        as.MV(dst, src);
+        break;
+    }
     default: {
         UNREACHABLE();
         break;
