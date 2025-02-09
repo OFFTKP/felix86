@@ -325,10 +325,10 @@ void felix86_packsswb(u8* dst, u8* src) {
     for (int i = 0; i < 8; i++) {
         i16 value = *dst16++;
         u8 result;
-        if (value < -127) {
-            result = 128;
+        if (value < -128) {
+            result = 0x80;
         } else if (value > SCHAR_MAX) {
-            result = 255;
+            result = 127;
         } else {
             result = (u8)value;
         }
@@ -338,10 +338,10 @@ void felix86_packsswb(u8* dst, u8* src) {
     for (int i = 8; i < 16; i++) {
         i16 value = *src16++;
         u8 result;
-        if (value < -127) {
-            result = 128;
-        } else if (value > SCHAR_MAX) {
-            result = 255;
+        if (value < -128) {
+            result = 0x80;
+        } else if (value > 127) {
+            result = 127;
         } else {
             result = (u8)value;
         }
@@ -357,7 +357,7 @@ void felix86_packssdw(u16* dst, u8* src) {
     for (int i = 0; i < 4; i++) {
         i32 value = *dst32++;
         u16 result;
-        if (value < -32767) {
+        if (value < -32768) {
             result = 0x8000;
         } else if (value > SHRT_MAX) {
             result = SHRT_MAX;
@@ -370,7 +370,7 @@ void felix86_packssdw(u16* dst, u8* src) {
     for (int i = 4; i < 8; i++) {
         i32 value = *src32++;
         u16 result;
-        if (value < -32767) {
+        if (value < -32768) {
             result = 0x8000;
         } else if (value > SHRT_MAX) {
             result = SHRT_MAX;
