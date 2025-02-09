@@ -3660,11 +3660,12 @@ FAST_HANDLE(BTC) {
     biscuit::GPR result = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst;
+    biscuit::GPR bitstring_address;
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         dst = rec.scratch();
-        rec.readBitstring(dst, &operands[0], bit);
+        bitstring_address = rec.readBitstring(dst, &operands[0], bit);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
@@ -3678,7 +3679,7 @@ FAST_HANDLE(BTC) {
     AS.XOR(result, dst, mask);
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        rec.writeBitstring(result, &operands[0], bit);
+        rec.writeMemory(result, bitstring_address, 0, rec.zydisToSize(operands[0].size));
     } else {
         rec.setOperandGPR(&operands[0], result);
     }
@@ -3717,10 +3718,11 @@ FAST_HANDLE(BTS) {
     biscuit::GPR result = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst;
+    biscuit::GPR bitstring_address;
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         dst = rec.scratch();
-        rec.readBitstring(dst, &operands[0], bit);
+        bitstring_address = rec.readBitstring(dst, &operands[0], bit);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
@@ -3739,7 +3741,7 @@ FAST_HANDLE(BTS) {
     AS.OR(result, dst, one);
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        rec.writeBitstring(result, &operands[0], bit);
+        rec.writeMemory(result, bitstring_address, 0, rec.zydisToSize(operands[0].size));
     } else {
         rec.setOperandGPR(&operands[0], result);
     }
@@ -3754,11 +3756,12 @@ FAST_HANDLE(BTR) {
     biscuit::GPR result = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst;
+    biscuit::GPR bitstring_address;
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         dst = rec.scratch();
-        rec.readBitstring(dst, &operands[0], bit);
+        bitstring_address = rec.readBitstring(dst, &operands[0], bit);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
@@ -3774,7 +3777,7 @@ FAST_HANDLE(BTR) {
     AS.AND(result, dst, one);
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        rec.writeBitstring(result, &operands[0], bit);
+        rec.writeMemory(result, bitstring_address, 0, rec.zydisToSize(operands[0].size));
     } else {
         rec.setOperandGPR(&operands[0], result);
     }
