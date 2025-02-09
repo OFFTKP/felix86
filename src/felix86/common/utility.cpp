@@ -408,7 +408,6 @@ void dump_states() {
         return;
     }
 
-    FELIX86_LOCK;
     auto& states = g_thread_states;
     int i = 0;
     for (auto& state : states) {
@@ -425,7 +424,6 @@ void dump_states() {
         }
         i++;
     }
-    FELIX86_UNLOCK;
 }
 
 void print_address(u64 address) {
