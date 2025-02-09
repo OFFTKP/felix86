@@ -3657,9 +3657,6 @@ FAST_HANDLE(TZCNT) {
 }
 
 FAST_HANDLE(BTC) {
-    biscuit::GPR shift = rec.scratch();
-    biscuit::GPR mask = rec.scratch();
-    biscuit::GPR result = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst;
     biscuit::GPR bitstring_address;
@@ -3671,6 +3668,10 @@ FAST_HANDLE(BTC) {
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
+
+    biscuit::GPR shift = rec.scratch();
+    biscuit::GPR mask = rec.scratch();
+    biscuit::GPR result = rec.scratch();
 
     u8 bit_size = operands[0].size;
     AS.ANDI(shift, bit, bit_size - 1);
@@ -3716,7 +3717,6 @@ FAST_HANDLE(BT) {
 }
 
 FAST_HANDLE(BTS) {
-    biscuit::GPR shift = rec.scratch();
     biscuit::GPR result = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst;
@@ -3728,6 +3728,8 @@ FAST_HANDLE(BTS) {
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
+
+    biscuit::GPR shift = rec.scratch();
 
     u8 bit_size = operands[0].size;
     AS.ANDI(shift, bit, bit_size - 1);
@@ -3754,7 +3756,6 @@ FAST_HANDLE(BTS) {
 }
 
 FAST_HANDLE(BTR) {
-    biscuit::GPR shift = rec.scratch();
     biscuit::GPR result = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst;
@@ -3767,6 +3768,8 @@ FAST_HANDLE(BTR) {
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
+
+    biscuit::GPR shift = rec.scratch();
 
     u8 bit_size = operands[0].size;
     AS.ANDI(shift, bit, bit_size - 1);
