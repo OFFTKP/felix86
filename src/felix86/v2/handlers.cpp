@@ -3677,7 +3677,12 @@ FAST_HANDLE(BTC) {
     AS.SLL(mask, mask, shift);
     AS.XOR(result, dst, mask);
 
-    rec.setOperandGPR(&operands[0], result);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        rec.writeBitstring(result, &operands[0], bit);
+    } else {
+        rec.setOperandGPR(&operands[0], result);
+    }
+
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
     rec.setFlagUndefined(X86_REF_AF);
@@ -3733,7 +3738,11 @@ FAST_HANDLE(BTS) {
     AS.SLL(one, one, shift);
     AS.OR(result, dst, one);
 
-    rec.setOperandGPR(&operands[0], result);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        rec.writeBitstring(result, &operands[0], bit);
+    } else {
+        rec.setOperandGPR(&operands[0], result);
+    }
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
@@ -3764,7 +3773,11 @@ FAST_HANDLE(BTR) {
     AS.NOT(one, one);
     AS.AND(result, dst, one);
 
-    rec.setOperandGPR(&operands[0], result);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        rec.writeBitstring(result, &operands[0], bit);
+    } else {
+        rec.setOperandGPR(&operands[0], result);
+    }
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
