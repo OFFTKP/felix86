@@ -447,7 +447,7 @@ void push_calltrace(ThreadState* state) {
     state->calltrace.push_back(state->rip);
 
     if (g_print_all_calls) {
-        printf("Thread %ld calling: ", state->tid);
+        dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
         print_address(state->rip);
     }
 }

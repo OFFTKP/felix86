@@ -326,6 +326,11 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
         return;
     }
 
+    if (ehdr.e_shnum) {
+        fclose(file); // no sections, return
+        return;
+    }
+
     std::vector<Elf64_Shdr> shdrtable(ehdr.e_shnum);
     fseek(file, ehdr.e_shoff, SEEK_SET);
     result = fread(shdrtable.data(), sizeof(Elf64_Shdr), ehdr.e_shnum, file);
