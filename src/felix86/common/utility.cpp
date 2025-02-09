@@ -429,8 +429,20 @@ void dump_states() {
 }
 
 void print_address(u64 address) {
-    dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, MemoryMetadata::GetRegionName(address).c_str(),
-            MemoryMetadata::GetOffset(address), (void*)address);
+    std::string symbol;
+    auto it = g_symbols.find(address);
+    if (it != g_symbols.end()) {
+        symbol = it->second;
+    }
+
+    if (!symbol.empty()) {
+        dprintf(g_output_fd, ANSI_COLOR_RED "%s@%s 0x%lx (%p)\n" ANSI_COLOR_RESET, MemoryMetadata::GetRegionName(address).c_str(), symbol.c_str(),
+                MemoryMetadata::GetOffset(address), (void*)address);
+    } else {
+
+        dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, MemoryMetadata::GetRegionName(address).c_str(),
+                MemoryMetadata::GetOffset(address), (void*)address);
+    }
 }
 
 void push_calltrace(ThreadState* state) {
