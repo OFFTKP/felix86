@@ -3134,7 +3134,13 @@ FAST_HANDLE(PACKUSDW) {
 }
 
 FAST_HANDLE(PACKSSWB) {
-    VEC_function(rec, meta, instruction, operands, (u64)&felix86_packsswb);
+    // VEC_function(rec, meta, instruction, operands, (u64)&felix86_packsswb);
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VNCLIP(result, dst, 0);
+    rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(PACKSSDW) {
