@@ -515,3 +515,41 @@ double f80_to_64(Float80 f80) {
 
     return conv.d;
 }
+
+bool felix86_bt(u64 address, i64 offset) {
+    int bias = (offset < 0) ? 7 : 0;
+    u64 byte_offset = (offset + bias) >> 3;
+    u64 bit_offset = (offset + bias) & 7;
+    u8* ptr = (u8*)address + byte_offset;
+    return (*ptr >> bit_offset) & 1;
+}
+
+bool felix86_bts(u64 address, i64 offset) {
+    int bias = (offset < 0) ? 7 : 0;
+    u64 byte_offset = (offset + bias) >> 3;
+    u64 bit_offset = (offset + bias) & 7;
+    u8* ptr = (u8*)address + byte_offset;
+    bool bit = (*ptr >> bit_offset) & 1;
+    *ptr |= 1 << bit_offset;
+    return bit;
+}
+
+bool felix86_btr(u64 address, i64 offset) {
+    int bias = (offset < 0) ? 7 : 0;
+    u64 byte_offset = (offset + bias) >> 3;
+    u64 bit_offset = (offset + bias) & 7;
+    u8* ptr = (u8*)address + byte_offset;
+    bool bit = (*ptr >> bit_offset) & 1;
+    *ptr &= ~(1 << bit_offset);
+    return bit;
+}
+
+bool felix86_btc(u64 address, i64 offset) {
+    int bias = (offset < 0) ? 7 : 0;
+    u64 byte_offset = (offset + bias) >> 3;
+    u64 bit_offset = (offset + bias) & 7;
+    u8* ptr = (u8*)address + byte_offset;
+    bool bit = (*ptr >> bit_offset) & 1;
+    *ptr ^= 1 << bit_offset;
+    return bit;
+}

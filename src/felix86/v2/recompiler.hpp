@@ -198,8 +198,6 @@ struct Recompiler {
 
     void popCalltrace();
 
-    biscuit::GPR readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR shift, bool is_immediate_offset);
-
     std::vector<std::pair<u64, u64>>& getProtectedPages() {
         return read_only_pages;
     }

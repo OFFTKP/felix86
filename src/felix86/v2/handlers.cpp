@@ -3657,17 +3657,27 @@ FAST_HANDLE(TZCNT) {
 }
 
 FAST_HANDLE(BTC) {
-    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst;
-    biscuit::GPR bitstring_address;
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        // Special case where the memory may index past the effective address, only when offset is a register
+        biscuit::GPR base = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+        rec.writebackDirtyState();
+        AS.MV(a0, base);
+        rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
+        AS.LI(t0, (u64)felix86_btc);
+        AS.JALR(t0);
 
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        dst = rec.scratch();
-        bitstring_address = rec.readBitstring(dst, &operands[0], bit, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
-    } else {
-        dst = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.MV(cf, a0); // Write result to cf
+        rec.setFlagUndefined(X86_REF_OF);
+        rec.setFlagUndefined(X86_REF_SF);
+        rec.setFlagUndefined(X86_REF_AF);
+        return;
     }
+
+    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
 
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR mask = rec.scratch();
@@ -3681,11 +3691,7 @@ FAST_HANDLE(BTC) {
     AS.SLL(mask, mask, shift);
     AS.XOR(result, dst, mask);
 
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        rec.writeMemory(result, bitstring_address, 0, rec.zydisToSize(operands[0].size));
-    } else {
-        rec.setOperandGPR(&operands[0], result);
-    }
+    rec.setOperandGPR(&operands[0], result);
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
@@ -3693,17 +3699,28 @@ FAST_HANDLE(BTC) {
 }
 
 FAST_HANDLE(BT) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        // Special case where the memory may index past the effective address, only when offset is a register
+        biscuit::GPR base = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+        rec.writebackDirtyState();
+        AS.MV(a0, base);
+        rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
+        AS.LI(t0, (u64)felix86_bt);
+        AS.JALR(t0);
+
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.MV(cf, a0); // Write result to cf
+        rec.setFlagUndefined(X86_REF_OF);
+        rec.setFlagUndefined(X86_REF_SF);
+        rec.setFlagUndefined(X86_REF_AF);
+        return;
+    }
+
     biscuit::GPR shift = rec.scratch();
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
-    biscuit::GPR dst;
-
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        dst = rec.scratch();
-        rec.readBitstring(dst, &operands[0], bit, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
-    } else {
-        dst = rec.getOperandGPR(&operands[0]);
-    }
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     u8 bit_size = operands[0].size;
     AS.ANDI(shift, bit, bit_size - 1);
@@ -3717,18 +3734,27 @@ FAST_HANDLE(BT) {
 }
 
 FAST_HANDLE(BTS) {
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst;
-    biscuit::GPR bitstring_address;
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        // Special case where the memory may index past the effective address, only when offset is a register
+        biscuit::GPR base = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+        rec.writebackDirtyState();
+        AS.MV(a0, base);
+        rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
+        AS.LI(t0, (u64)felix86_bts);
+        AS.JALR(t0);
 
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        dst = rec.scratch();
-        bitstring_address = rec.readBitstring(dst, &operands[0], bit, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
-    } else {
-        dst = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.MV(cf, a0); // Write result to cf
+        rec.setFlagUndefined(X86_REF_OF);
+        rec.setFlagUndefined(X86_REF_SF);
+        rec.setFlagUndefined(X86_REF_AF);
+        return;
     }
 
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR shift = rec.scratch();
 
     u8 bit_size = operands[0].size;
@@ -3744,11 +3770,7 @@ FAST_HANDLE(BTS) {
     AS.SLL(one, one, shift);
     AS.OR(result, dst, one);
 
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        rec.writeMemory(result, bitstring_address, 0, rec.zydisToSize(operands[0].size));
-    } else {
-        rec.setOperandGPR(&operands[0], result);
-    }
+    rec.setOperandGPR(&operands[0], result);
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
@@ -3756,19 +3778,28 @@ FAST_HANDLE(BTS) {
 }
 
 FAST_HANDLE(BTR) {
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst;
-    biscuit::GPR bitstring_address;
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        // Special case where the memory may index past the effective address, only when offset is a register
+        biscuit::GPR base = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+        rec.writebackDirtyState();
+        AS.MV(a0, base);
+        rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
+        AS.LI(t0, (u64)felix86_btr);
+        AS.JALR(t0);
 
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        dst = rec.scratch();
-        bitstring_address = rec.readBitstring(dst, &operands[0], bit, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
-    } else {
-        dst = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        AS.MV(cf, a0); // Write result to cf
+        rec.setFlagUndefined(X86_REF_OF);
+        rec.setFlagUndefined(X86_REF_SF);
+        rec.setFlagUndefined(X86_REF_AF);
+        return;
     }
 
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
     biscuit::GPR shift = rec.scratch();
 
     u8 bit_size = operands[0].size;
@@ -3781,11 +3812,7 @@ FAST_HANDLE(BTR) {
     AS.NOT(one, one);
     AS.AND(result, dst, one);
 
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        rec.writeMemory(result, bitstring_address, 0, rec.zydisToSize(operands[0].size));
-    } else {
-        rec.setOperandGPR(&operands[0], result);
-    }
+    rec.setOperandGPR(&operands[0], result);
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
