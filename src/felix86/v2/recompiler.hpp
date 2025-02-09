@@ -2,7 +2,6 @@
 
 #include <array>
 #include <unordered_map>
-#include <unordered_set>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
 #include "biscuit/assembler.hpp"

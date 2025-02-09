@@ -4766,23 +4766,13 @@ FAST_HANDLE(CVTTSD2SI) {
 
 FAST_HANDLE(CVTPD2PS) {
     biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-
-    rec.setVectorState(SEW::E64, 2);
-    // Yeah good luck figuring out narrowing operations
-    // EMUL = 2 * LMUL... so what, when I wanna convert 2 E64 to 2 E32 it's impossible or what?
-    // Just use normal FPU conversions for now
-    AS.VFMV_FS(ft8, src);
-    AS.VSLIDEDOWN(temp, src, 1);
-    AS.VFMV_FS(ft9, temp);
-    AS.FCVT_S_D(ft10, ft8);
-    AS.FCVT_S_D(ft11, ft9);
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.VMV(result, 0);
-    AS.VFSLIDE1UP(temp, result, ft11);
-    AS.VFSLIDE1UP(result, temp, ft10);
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
+    AS.VFNCVT_F_F(result, src);
 
     rec.setOperandVec(&operands[0], result);
 }
