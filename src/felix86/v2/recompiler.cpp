@@ -2202,6 +2202,10 @@ biscuit::GPR Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* o
             as.ADDIW(bit_masked, bit, 0);
             break;
         }
+        case 64: {
+            bit_masked = bit;
+            break;
+        }
         }
     }
 
