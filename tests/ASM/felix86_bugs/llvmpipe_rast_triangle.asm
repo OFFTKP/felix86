@@ -4,9 +4,10 @@
     "RAX": "0x1337",
     "R12": "0x7774",
     "XMM0": ["0x7f8080807f808080", "0x7f8080807f808080"],
-    "XMM1": ["0xe4fa74c0e4fa74c0", "0x1168900da923c4e4"],
-    "XMM2": ["0xf1a2d900f1a2d900", "0x1e10f44db5cc2924"],
-    "XMM3": ["0x7fff800080008000", "0x7fff800080008000"]
+    "XMM1": ["0xdea642a0dea642a0", "0xb145deda2cf92c4"],
+    "XMM2": ["0xeb4ea6e0eb4ea6e0", "0x17bcc22daf77f704"],
+    "XMM3": ["0x7fff800080008000", "0x7fff800080008000"],
+    "XMM4": ["0xf1a2d900f1a2d900", "0xf1a2d900f1a2d900"]
   }
 }
 %endif
@@ -22,6 +23,7 @@ xorps xmm5, xmm5
 xorps xmm6, xmm6
 xor r12d, r12d
 
+mov r8,  0xb5cc2924f1a2d900
 mov r9,  0x104e8954c4295024
 mov r10, 0x9adb4e4d2c6e1b4d
 
