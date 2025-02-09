@@ -326,7 +326,7 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
         return;
     }
 
-    if (ehdr.e_shnum) {
+    if (ehdr.e_shnum == 0) {
         fclose(file); // no sections, return
         return;
     }
