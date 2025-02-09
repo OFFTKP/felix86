@@ -1823,14 +1823,15 @@ FAST_HANDLE(IMUL) {
         }
         case X86_SIZE_QWORD: {
             biscuit::GPR result = rec.scratch();
+            biscuit::GPR result_low = rec.scratch();
             AS.MULH(result, src1, src2);
-            AS.MUL(dst, src1, src2);
-            rec.setOperandGPR(&operands[0], dst);
+            AS.MUL(result_low, src1, src2);
+            rec.setOperandGPR(&operands[0], result_low);
 
             if (rec.shouldEmitFlag(meta.rip, X86_REF_CF) || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
                 biscuit::GPR cf = rec.flagW(X86_REF_CF);
                 biscuit::GPR of = rec.flagW(X86_REF_OF);
-                AS.SRAI(cf, dst, 63);
+                AS.SRAI(cf, result_low, 63);
                 AS.XOR(of, cf, result);
                 AS.SNEZ(of, of);
                 AS.MV(cf, of);
@@ -3614,12 +3615,12 @@ FAST_HANDLE(BSF) {
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
 
     Label end;
+    AS.SEQZ(zf, src);
     AS.BEQZ(src, &end);
     AS.CTZ(result, src);
     rec.setOperandGPR(&operands[0], result);
 
     AS.Bind(&end);
-    AS.SEQZ(zf, src);
 
     rec.setFlagUndefined(X86_REF_CF);
     rec.setFlagUndefined(X86_REF_OF);
@@ -3646,7 +3647,7 @@ FAST_HANDLE(TZCNT) {
 
     AS.Bind(&end);
     rec.setOperandGPR(&operands[0], result);
-    AS.SEQZ(zf, src);
+    AS.SEQZ(zf, result);
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
@@ -3803,6 +3804,7 @@ FAST_HANDLE(BSR) {
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
 
     Label end;
+    AS.SEQZ(zf, src);
     AS.BEQZ(src, &end);
     if (instruction.operand_width == 64) {
         AS.CLZ(result, src);
@@ -3820,7 +3822,6 @@ FAST_HANDLE(BSR) {
     rec.setOperandGPR(&operands[0], result);
 
     AS.Bind(&end);
-    AS.SEQZ(zf, src);
 
     rec.setFlagUndefined(X86_REF_CF);
     rec.setFlagUndefined(X86_REF_OF);
