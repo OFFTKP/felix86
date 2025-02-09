@@ -1074,8 +1074,8 @@ FAST_HANDLE(DIV) {
 
         biscuit::GPR address = rec.scratch();
         AS.LI(address, (u64)&felix86_divu128);
-        AS.MV(a0, rec.threadStatePointer());
         AS.MV(a1, src);
+        AS.MV(a0, rec.threadStatePointer());
         AS.JALR(address);
         rec.restoreRoundingMode();
         break;
@@ -1153,8 +1153,8 @@ FAST_HANDLE(IDIV) {
 
         biscuit::GPR address = rec.scratch();
         AS.LI(address, (u64)&felix86_div128);
-        AS.MV(a0, rec.threadStatePointer());
         AS.MV(a1, src);
+        AS.MV(a0, rec.threadStatePointer());
         AS.JALR(address);
         rec.restoreRoundingMode();
         break;
@@ -3691,8 +3691,8 @@ void BITSTRING_func(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedIn
     biscuit::GPR base = rec.lea(&operands[0]);
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     rec.writebackDirtyState();
-    AS.MV(a0, base);
     rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
+    AS.MV(a0, base);
     AS.LI(t0, func);
     AS.JALR(t0);
 
