@@ -3137,6 +3137,7 @@ FAST_HANDLE(PACKSSWB) {
     // VEC_function(rec, meta, instruction, operands, (u64)&felix86_packsswb);
     biscuit::Vec result1 = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
+    biscuit::Vec result2_up = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -3148,8 +3149,8 @@ FAST_HANDLE(PACKSSWB) {
     AS.VNCLIP(result2, src, 0);
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VID(v0);
-    AS.VSLIDEUP(result2, result2, 1);
-    AS.VMERGE(result, result1, result2);
+    AS.VSLIDEUP(result2_up, result2, 1);
+    AS.VMERGE(result, result1, result2_up);
     rec.setOperandVec(&operands[0], result);
 }
 
