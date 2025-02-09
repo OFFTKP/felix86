@@ -337,6 +337,8 @@ void Elf::LoadSymbols(const std::string& name, const std::filesystem::path& path
         ERROR("Failed to read string table from file %s", path.c_str());
     }
 
+    write(1, strtab_data.data(), strtab.sh_size);
+
     for (Elf64_Half i = 0; i < ehdr.e_shnum; i++) {
         Elf64_Shdr& shdr = shdrtable[i];
         if (shdr.sh_type == SHT_SYMTAB || shdr.sh_type == SHT_DYNSYM) {
