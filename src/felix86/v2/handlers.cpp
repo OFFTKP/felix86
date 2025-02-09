@@ -4770,9 +4770,10 @@ FAST_HANDLE(CVTPD2PS) {
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.VMV(result, 0);
+    AS.VMV(v0, 0b11);
 
     rec.setVectorState(SEW::E32, 2, LMUL::MF2);
-    AS.VFNCVT_F_F(result, src);
+    AS.VFNCVT_F_F(result, src, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }
