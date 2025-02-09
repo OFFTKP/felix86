@@ -411,8 +411,8 @@ void dump_states() {
     auto& states = g_thread_states;
     int i = 0;
     for (auto& state : states) {
-        dprintf(g_output_fd, ANSI_COLOR_RED "State %d: PC: %016lx - %s@0x%lx\n" ANSI_COLOR_RESET, i, state->GetRip(),
-                MemoryMetadata::GetRegionName(state->GetRip()).c_str(), MemoryMetadata::GetOffset(state->GetRip()));
+        dprintf(g_output_fd, ANSI_COLOR_RED "State %d" ANSI_COLOR_RESET, i);
+        print_address(state->rip);
 
         if (g_calltrace) {
             dprintf(g_output_fd, ANSI_COLOR_RED "--- CALLTRACE ---\n" ANSI_COLOR_RESET);
@@ -445,6 +445,11 @@ void print_address(u64 address) {
 
 void push_calltrace(ThreadState* state) {
     state->calltrace.push_back(state->rip);
+
+    if (g_print_all_calls) {
+        printf("Thread %ld calling: ", state->tid);
+        print_address(state->rip);
+    }
 }
 
 void pop_calltrace(ThreadState* state) {
