@@ -4768,12 +4768,12 @@ FAST_HANDLE(CVTPD2PS) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    AS.VMV(result, 0);
-    AS.VMV(v0, 0b11);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
+    AS.VFNCVT_F_F(result, src);
 
-    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
-    AS.VFNCVT_F_F(result, src, VecMask::Yes);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VMV(v0, 0b10);
+    AS.VAND(result, result, 0);
 
     rec.setOperandVec(&operands[0], result);
 }
