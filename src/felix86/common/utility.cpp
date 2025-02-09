@@ -521,7 +521,8 @@ bool felix86_bt(u64 address, i64 offset) {
     u64 byte_offset = (offset + bias) >> 3;
     u64 bit_offset = (offset + bias) & 7;
     u8* ptr = (u8*)address + byte_offset;
-    return (*ptr >> bit_offset) & 1;
+    u8 value = __atomic_load_n(ptr, __ATOMIC_SEQ_CST);
+    return (value >> bit_offset) & 1;
 }
 
 bool felix86_bts(u64 address, i64 offset) {
@@ -529,9 +530,8 @@ bool felix86_bts(u64 address, i64 offset) {
     u64 byte_offset = (offset + bias) >> 3;
     u64 bit_offset = (offset + bias) & 7;
     u8* ptr = (u8*)address + byte_offset;
-    bool bit = (*ptr >> bit_offset) & 1;
-    *ptr |= 1 << bit_offset;
-    return bit;
+    u8 old = __atomic_or_fetch(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
+    return (old >> bit_offset) & 1;
 }
 
 bool felix86_btr(u64 address, i64 offset) {
@@ -539,9 +539,8 @@ bool felix86_btr(u64 address, i64 offset) {
     u64 byte_offset = (offset + bias) >> 3;
     u64 bit_offset = (offset + bias) & 7;
     u8* ptr = (u8*)address + byte_offset;
-    bool bit = (*ptr >> bit_offset) & 1;
-    *ptr &= ~(1 << bit_offset);
-    return bit;
+    u8 old = __atomic_and_fetch(ptr, ~(1 << bit_offset), __ATOMIC_SEQ_CST);
+    return (old >> bit_offset) & 1;
 }
 
 bool felix86_btc(u64 address, i64 offset) {
@@ -549,7 +548,6 @@ bool felix86_btc(u64 address, i64 offset) {
     u64 byte_offset = (offset + bias) >> 3;
     u64 bit_offset = (offset + bias) & 7;
     u8* ptr = (u8*)address + byte_offset;
-    bool bit = (*ptr >> bit_offset) & 1;
-    *ptr ^= 1 << bit_offset;
-    return bit;
+    u8 old = __atomic_xor_fetch(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
+    return (old >> bit_offset) & 1;
 }

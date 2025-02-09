@@ -3656,22 +3656,26 @@ FAST_HANDLE(TZCNT) {
     rec.setFlagUndefined(X86_REF_AF);
 }
 
+void BITSTRING_func(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 func) {
+    // Special case where the memory may index past the effective address, only when offset is a register
+    biscuit::GPR base = rec.lea(&operands[0]);
+    biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
+    rec.writebackDirtyState();
+    AS.MV(a0, base);
+    rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
+    AS.LI(t0, func);
+    AS.JALR(t0);
+
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    AS.MV(cf, a0); // Write result to cf
+    rec.setFlagUndefined(X86_REF_OF);
+    rec.setFlagUndefined(X86_REF_SF);
+    rec.setFlagUndefined(X86_REF_AF);
+}
+
 FAST_HANDLE(BTC) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        // Special case where the memory may index past the effective address, only when offset is a register
-        biscuit::GPR base = rec.getOperandGPR(&operands[0]);
-        biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-        rec.writebackDirtyState();
-        AS.MV(a0, base);
-        rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
-        AS.LI(t0, (u64)felix86_btc);
-        AS.JALR(t0);
-
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.MV(cf, a0); // Write result to cf
-        rec.setFlagUndefined(X86_REF_OF);
-        rec.setFlagUndefined(X86_REF_SF);
-        rec.setFlagUndefined(X86_REF_AF);
+        BITSTRING_func(rec, meta, instruction, operands, (u64)&felix86_btc);
         return;
     }
 
@@ -3700,20 +3704,7 @@ FAST_HANDLE(BTC) {
 
 FAST_HANDLE(BT) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        // Special case where the memory may index past the effective address, only when offset is a register
-        biscuit::GPR base = rec.getOperandGPR(&operands[0]);
-        biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-        rec.writebackDirtyState();
-        AS.MV(a0, base);
-        rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
-        AS.LI(t0, (u64)felix86_bt);
-        AS.JALR(t0);
-
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.MV(cf, a0); // Write result to cf
-        rec.setFlagUndefined(X86_REF_OF);
-        rec.setFlagUndefined(X86_REF_SF);
-        rec.setFlagUndefined(X86_REF_AF);
+        BITSTRING_func(rec, meta, instruction, operands, (u64)&felix86_bt);
         return;
     }
 
@@ -3735,20 +3726,7 @@ FAST_HANDLE(BT) {
 
 FAST_HANDLE(BTS) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        // Special case where the memory may index past the effective address, only when offset is a register
-        biscuit::GPR base = rec.getOperandGPR(&operands[0]);
-        biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-        rec.writebackDirtyState();
-        AS.MV(a0, base);
-        rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
-        AS.LI(t0, (u64)felix86_bts);
-        AS.JALR(t0);
-
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.MV(cf, a0); // Write result to cf
-        rec.setFlagUndefined(X86_REF_OF);
-        rec.setFlagUndefined(X86_REF_SF);
-        rec.setFlagUndefined(X86_REF_AF);
+        BITSTRING_func(rec, meta, instruction, operands, (u64)&felix86_bts);
         return;
     }
 
@@ -3779,20 +3757,7 @@ FAST_HANDLE(BTS) {
 
 FAST_HANDLE(BTR) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        // Special case where the memory may index past the effective address, only when offset is a register
-        biscuit::GPR base = rec.getOperandGPR(&operands[0]);
-        biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
-        rec.writebackDirtyState();
-        AS.MV(a0, base);
-        rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
-        AS.LI(t0, (u64)felix86_btr);
-        AS.JALR(t0);
-
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        AS.MV(cf, a0); // Write result to cf
-        rec.setFlagUndefined(X86_REF_OF);
-        rec.setFlagUndefined(X86_REF_SF);
-        rec.setFlagUndefined(X86_REF_AF);
+        BITSTRING_func(rec, meta, instruction, operands, (u64)&felix86_btr);
         return;
     }
 
