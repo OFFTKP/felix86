@@ -328,8 +328,7 @@ void felix86_syscall(ThreadState* state) {
         u64 min_address_copy = min_address;
         std::filesystem::path path_copy = region_path;
         bool added_region = false;
-        std::string extension = path_copy.extension().string();
-        if (extension == ".so" && detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
+        if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             detecting_memory_region = false;
             added_region = true;
             ASSERT(result != -1);
@@ -713,12 +712,13 @@ void felix86_syscall(ThreadState* state) {
             name = std::filesystem::path((const char*)rsi).filename().string();
             region_path = fs.AtPath(rdi, (const char*)rsi).value_or(std::filesystem::path());
 
-            if (name.find(".so") != std::string::npos) {
+            if (region_path.extension().string() == ".so") {
                 detecting_memory_region = true;
                 min_address = ULONG_MAX;
                 max_address = 0;
             } else {
                 name = {};
+                region_path.clear();
             }
         }
         FELIX86_UNLOCK;
