@@ -332,7 +332,6 @@ void felix86_packsswb(u8* dst, u8* src) {
         } else {
             result = (u8)value;
         }
-        printf("value: %04x -> %02x\n", value, result);
         temp[i] = result;
     }
 
@@ -346,7 +345,6 @@ void felix86_packsswb(u8* dst, u8* src) {
         } else {
             result = (u8)value;
         }
-        printf("value: %04x -> %02x\n", value, result);
         temp[i] = result;
     }
     memcpy(dst, temp, 16);

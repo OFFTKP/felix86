@@ -17,6 +17,7 @@ mov [rdi], rax
 mov [rdi + 8], rax
 
 movaps xmm3, [rdi]
+movaps xmm0, [rdi]
 
 packsswb xmm0, xmm3
 

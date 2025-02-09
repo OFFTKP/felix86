@@ -33,17 +33,17 @@ void MemoryMetadata::AddRegion(const std::string& name, u64 start, u64 end) {
     VERBOSE("Added region %s: %016lx-%016lx", name.c_str(), start, end);
     check_deferred_breakpoints(name);
 
-    if (name == "libvulkan_lvp.so") {
-        // Place a nop at the function
-        mprotect((void*)start, end - start, 3);
-        u8* address = (u8*)start + 0x30effb;
-        u8 inst = 0x90;
-        *address++ = inst;
-        *address++ = inst;
-        *address++ = inst;
-        *address++ = inst;
-        *address++ = inst;
-    }
+    // if (name == "libvulkan_lvp.so") {
+    //     // Patch it: Place a nop at the function
+    //     mprotect((void*)start, end - start, 3);
+    //     u8* address = (u8*)start + 0x30effb;
+    //     u8 inst = 0x90;
+    //     *address++ = inst;
+    //     *address++ = inst;
+    //     *address++ = inst;
+    //     *address++ = inst;
+    //     *address++ = inst;
+    // }
 }
 
 void MemoryMetadata::AddInterpreterRegion(u64 start, u64 end) {

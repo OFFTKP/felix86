@@ -20,6 +20,7 @@ xorps xmm3, xmm3
 xorps xmm4, xmm4
 xorps xmm5, xmm5
 xorps xmm6, xmm6
+xor r12d, r12d
 
 mov r9,  0x104e8954c4295024
 mov r10, 0x9adb4e4d2c6e1b4d
