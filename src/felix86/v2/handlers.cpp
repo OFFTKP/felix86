@@ -3135,12 +3135,20 @@ FAST_HANDLE(PACKUSDW) {
 
 FAST_HANDLE(PACKSSWB) {
     // VEC_function(rec, meta, instruction, operands, (u64)&felix86_packsswb);
+    biscuit::Vec result1 = rec.scratchVec();
+    biscuit::Vec result2 = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+
+    // Use half the register group so we don't run into overlapping problems
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8, LMUL::MF2);
     AS.VMV(v8, dst);
-    AS.VNCLIP(result, v8, 0);
+    AS.VNCLIP(result1, dst, 0);
+    AS.VNCLIP(result2, src, 0);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VID(v0);
+    AS.VMERGE(result, result1, result2);
     rec.setOperandVec(&operands[0], result);
 }
 
