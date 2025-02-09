@@ -3134,7 +3134,6 @@ FAST_HANDLE(PACKUSDW) {
 }
 
 FAST_HANDLE(PACKSSWB) {
-    // VEC_function(rec, meta, instruction, operands, (u64)&felix86_packsswb);
     biscuit::Vec result1 = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
     biscuit::Vec result2_up = rec.scratchVec();
@@ -3155,7 +3154,23 @@ FAST_HANDLE(PACKSSWB) {
 }
 
 FAST_HANDLE(PACKSSDW) {
-    VEC_function(rec, meta, instruction, operands, (u64)&felix86_packssdw);
+    biscuit::Vec result1 = rec.scratchVec();
+    biscuit::Vec result2 = rec.scratchVec();
+    biscuit::Vec result2_up = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    // Use half the register group so we don't run into overlapping problems
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16, LMUL::MF2);
+    AS.VMV(v8, dst);
+    AS.VNCLIP(result1, dst, 0);
+    AS.VNCLIP(result2, src, 0);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VMV(v0, 0b10);
+    AS.VSLIDEUP(result2_up, result2, 1);
+    AS.VMERGE(result, result1, result2_up);
+    rec.setOperandVec(&operands[0], result);
 }
 
 void ROUND(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
