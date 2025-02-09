@@ -1218,6 +1218,7 @@ FAST_HANDLE(INC) {
     if (needs_atomic && !too_small_for_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         biscuit::GPR one = rec.scratch();
+        dst = rec.scratch();
         AS.LI(one, 1);
         if (operands[0].size == 32) {
             AS.AMOADD_W(Ordering::AQRL, dst, one, address);
@@ -1281,6 +1282,7 @@ FAST_HANDLE(DEC) {
     if (needs_atomic && !too_small_for_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         biscuit::GPR one = rec.scratch();
+        dst = rec.scratch();
         AS.LI(one, -1);
         if (operands[0].size == 32) {
             AS.AMOADD_W(Ordering::AQRL, dst, one, address);
