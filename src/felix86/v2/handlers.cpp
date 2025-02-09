@@ -4773,7 +4773,7 @@ FAST_HANDLE(CVTPD2PS) {
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VMV(v0, 0b10);
-    AS.VAND(result, result, 0);
+    AS.VAND(result, result, 0, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }
