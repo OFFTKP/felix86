@@ -2797,10 +2797,6 @@ FAST_HANDLE(RSQRTPS) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-void print_args(ThreadState* state) {
-    printf("movsb, rdi: %lx, rsi: %lx, rcx: %lx\n", state->gprs[X86_REF_RDI], state->gprs[X86_REF_RSI], state->gprs[X86_REF_RCX]);
-}
-
 FAST_HANDLE(MOVSB) {
 #if 0
     rec.writebackDirtyState();
@@ -3125,7 +3121,11 @@ FAST_HANDLE(NEG) {
     rec.setOperandGPR(&operands[0], result);
 }
 
-FAST_HANDLE(PACKUSWB) { // Fuzzed
+FAST_HANDLE(PACKUSWB) { // TODO: vectorize
+    // There is no single instruction that can saturate a signed value into an unsigned destination. A sequence of two vector instructions that
+    // rst removes negative numbers by performing a max against 0 using vmax then clips the resulting unsigned value into the destination
+    // using vnclipu can be used if setting vxsat value for negative numbers is not required. A vsetvli is required inbetween these two
+    // instructions to change SEW.
     VEC_function(rec, meta, instruction, operands, (u64)&felix86_packuswb);
 }
 
@@ -5703,11 +5703,9 @@ FAST_HANDLE(CVTDQ2PD) {
     biscuit::Vec scratch = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 2);
-    AS.VMV(v0, 0b11);
-    AS.VFWCVT_F_X(scratch, src, VecMask::Yes); // Illegal instruction signal
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    AS.VFWCVT_F_X(scratch, src); // Illegal instruction signal
 
-    rec.setVectorState(SEW::E64, 2);
     rec.setOperandVec(&operands[0], scratch);
 }
 
