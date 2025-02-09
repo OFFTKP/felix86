@@ -3667,7 +3667,7 @@ FAST_HANDLE(BTC) {
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         dst = rec.scratch();
-        bitstring_address = rec.readBitstring(dst, &operands[0], bit);
+        bitstring_address = rec.readBitstring(dst, &operands[0], bit, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
@@ -3699,7 +3699,7 @@ FAST_HANDLE(BT) {
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         dst = rec.scratch();
-        rec.readBitstring(dst, &operands[0], bit);
+        rec.readBitstring(dst, &operands[0], bit, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
@@ -3724,7 +3724,7 @@ FAST_HANDLE(BTS) {
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         dst = rec.scratch();
-        bitstring_address = rec.readBitstring(dst, &operands[0], bit);
+        bitstring_address = rec.readBitstring(dst, &operands[0], bit, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }
@@ -3763,7 +3763,7 @@ FAST_HANDLE(BTR) {
 
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         dst = rec.scratch();
-        bitstring_address = rec.readBitstring(dst, &operands[0], bit);
+        bitstring_address = rec.readBitstring(dst, &operands[0], bit, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
     } else {
         dst = rec.getOperandGPR(&operands[0]);
     }

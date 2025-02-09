@@ -2161,9 +2161,11 @@ void Recompiler::enableSignals() {
     as.SB(x0, offsetof(ThreadState, signals_disabled), threadStatePointer());
 }
 
-biscuit::GPR Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR bit) {
+biscuit::GPR Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* operand, biscuit::GPR bit, bool is_immediate_offset) {
     biscuit::GPR address = lea(operand);
     biscuit::GPR shift = scratch();
+    biscuit::GPR bit_masked = scratch();
+    u8 operand_size = operands[0].size;
 
     u8 shr = 0;
     u8 shl = 0;
@@ -2184,9 +2186,28 @@ biscuit::GPR Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* o
         UNREACHABLE();
     }
 
+    // If BitBase is a memory address, the BitOffset has different ranges depending on the operand size (see Table 3-2).
+    // If the offset is an immediate, it gets & by operand_size - 1. Otherwise it has a bigger range.
+    if (is_immediate_offset) {
+        as.ANDI(bit_masked, bit, operands[0].size - 1);
+    } else {
+        // Sign extend the offset
+        switch (operand_size) {
+        case 16: {
+            as.SLLIW(bit_masked, bit, 16);
+            as.SRAIW(bit_masked, bit_masked, 16);
+            break;
+        }
+        case 32: {
+            as.ADDIW(bit_masked, bit, 0);
+            break;
+        }
+        }
+    }
+
     // Point to the exact word in memory
     Label gtzero;
-    as.BGEZ(bit, &gtzero);
+    as.BGEZ(bit_masked, &gtzero);
 
     // If the shift is less than zero, this is possible but we don't handle it yet so let's panic
     as.LI(shift, EXIT_REASON_NEGATIVE_BITSTRING);
@@ -2195,10 +2216,11 @@ biscuit::GPR Recompiler::readBitstring(biscuit::GPR dest, ZydisDecodedOperand* o
     as.JR(shift);
 
     as.Bind(&gtzero);
-    as.SRLI(shift, bit, shr);
+    as.SRLI(shift, bit_masked, shr);
     as.SLLI(shift, shift, shl);
     as.ADD(address, address, shift);
-    readMemory(dest, address, 0, zydisToSize(operands[0].size));
+    readMemory(dest, address, 0, zydisToSize(operand_size));
+    popScratch();
     popScratch();
     return address;
 }
