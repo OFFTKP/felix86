@@ -5807,3 +5807,19 @@ FAST_HANDLE(MOVDDUP) {
 FAST_HANDLE(PSADBW) {
     VEC_function(rec, meta, instruction, operands, (u64)&felix86_psadbw);
 }
+
+FAST_HANDLE(PAVGB) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VAADDU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PAVGW) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
+    AS.VAADDU(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
+}
