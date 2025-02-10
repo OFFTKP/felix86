@@ -33,10 +33,6 @@ Elf::~Elf() {
     if (stack_pointer) {
         munmap(stack_pointer, 0);
     }
-
-    if (brk_base) {
-        munmap(brk_base, 0);
-    }
 }
 
 void Elf::Load(const std::filesystem::path& path) {
@@ -274,12 +270,14 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     if (!is_interpreter) {
-        brk_base = (u8*)mmap((void*)PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        if (brk_base == MAP_FAILED) {
+        g_current_brk = (u64)mmap((void*)PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if ((void*)g_current_brk == MAP_FAILED) {
             ERROR("Failed to allocate memory for brk in file %s", path.c_str());
         }
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, brk_base, brk_size, "brk");
-        VERBOSE("BRK base at %p", brk_base);
+        g_initial_brk = g_current_brk;
+        g_current_brk_size = brk_size;
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "brk");
+        VERBOSE("BRK base at %p", (void*)g_current_brk);
 
         g_executable_start = base_address + lowest_vaddr;
         g_executable_end = base_address + highest_vaddr;

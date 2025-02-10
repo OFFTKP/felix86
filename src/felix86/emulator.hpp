@@ -28,8 +28,6 @@ struct Emulator {
         VERBOSE("Created thread state with tid %ld", main_state->tid);
         setupMainStack(main_state);
         main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
-        g_current_brk = fs.GetBRK();
-        g_initial_brk = g_current_brk;
         main_state->SetRip((u64)fs.GetEntrypoint());
     }
 

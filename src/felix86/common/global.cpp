@@ -26,6 +26,7 @@ bool g_dont_protect_pages = true; // true until we implement smc stuff
 bool g_print_all_calls = false;
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
+u64 g_current_brk_size = 0;
 sem_t* g_semaphore = nullptr;
 u64 g_dispatcher_exit_count = 0;
 std::list<ThreadState*> g_thread_states{};

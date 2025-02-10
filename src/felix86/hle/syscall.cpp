@@ -6,6 +6,7 @@
 #include <poll.h>
 #include <sched.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -225,17 +226,27 @@ void felix86_syscall(ThreadState* state) {
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
+        // Theoritically this should be externally synchronized by guest glibc...
+        // Still, we'll lock to avoid any potential issues
+        FELIX86_LOCK;
+
         if (rdi == 0) {
-            result = __atomic_load_n(&g_current_brk, __ATOMIC_SEQ_CST);
+            result = g_current_brk;
         } else {
-            __atomic_store_n(&g_current_brk, rdi, __ATOMIC_SEQ_CST);
+            g_current_brk = rdi;
             result = rdi;
         }
 
         if (result > g_initial_brk + brk_size) {
-            WARN("BRK out of memory on thread %d", gettid());
-            result = -ENOMEM;
+            u64 new_size = g_current_brk_size * 2;
+            void* new_map = mremap((void*)g_initial_brk, brk_size, new_size, 0);
+            if ((u64)new_map != g_initial_brk) {
+                ERROR("Failed to remap brk with new size: %lx", new_size);
+            }
+            g_current_brk_size = new_size;
         }
+
+        FELIX86_UNLOCK;
 
         STRACE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;

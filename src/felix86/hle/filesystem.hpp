@@ -93,10 +93,6 @@ struct Filesystem {
         return interpreter;
     }
 
-    u64 GetBRK() {
-        return elf->GetBRK();
-    }
-
     int Error() {
         return error;
     }

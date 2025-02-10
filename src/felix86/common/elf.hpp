@@ -48,10 +48,6 @@ struct Elf {
         return phent;
     }
 
-    u64 GetBRK() const {
-        return (u64)brk_base;
-    }
-
     auto& GetExecutableSegments() {
         return executable_segments;
     }
@@ -64,7 +60,6 @@ private:
     u64 entry = 0;
     std::filesystem::path interpreter{};
     u8* stack_pointer = nullptr;
-    u8* brk_base = nullptr;
 
     u8* phdr = nullptr;
     u64 phnum = 0;

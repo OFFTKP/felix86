@@ -26,6 +26,7 @@ extern bool g_dont_protect_pages;
 extern bool g_print_all_calls;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;
+extern u64 g_current_brk_size;
 extern u64 g_dispatcher_exit_count;
 extern std::chrono::nanoseconds g_compilation_total_time;
 extern int g_output_fd;
