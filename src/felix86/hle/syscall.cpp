@@ -237,8 +237,8 @@ void felix86_syscall(ThreadState* state) {
             result = rdi;
         }
 
-        if (result > g_initial_brk + brk_size) {
-            u64 new_size = g_current_brk_size * 2;
+        if (result > g_initial_brk + g_current_brk_size) {
+            u64 new_size = (result - g_initial_brk) * 2;
             void* new_map = mremap((void*)g_initial_brk, brk_size, new_size, 0);
             if ((u64)new_map != g_initial_brk) {
                 ERROR("Failed to remap brk with new size: %lx", new_size);
