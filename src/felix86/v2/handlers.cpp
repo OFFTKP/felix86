@@ -645,8 +645,15 @@ FAST_HANDLE(POP) {
 
     int imm = instruction.operand_width == 16 ? 2 : 8;
     rec.setOperandGPR(&operands[0], result);
-    AS.ADDI(rsp, rsp, imm);
-    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+
+    x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+    if (ref == X86_REF_RSP) {
+        // pop rsp special case
+        rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, result);
+    } else {
+        AS.ADDI(rsp, rsp, imm);
+        rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+    }
 }
 
 FAST_HANDLE(NOP) {}
