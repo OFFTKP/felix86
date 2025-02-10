@@ -446,6 +446,12 @@ void print_address(u64 address) {
 void push_calltrace(ThreadState* state) {
     state->calltrace.push_back(state->rip);
 
+    if (state->rip < 0x1000) {
+        WARN("Calling potentially invalid RIP: %lx", state->rip);
+        WARN("Stack return address: %lx", *(u64*)state->gprs[X86_REF_RSP - X86_REF_RAX]);
+        raise(SIGTRAP);
+    }
+
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
         print_address(state->rip);
