@@ -403,6 +403,20 @@ void felix86_pmaddwd(i16* dst, i16* src) {
     dst32[3] = temp[3] + result[3];
 }
 
+void felix86_psadbw(u8* dst, u8* src) {
+    u64 result1 = 0;
+    u64 result2 = 0;
+
+    for (int i = 0; i < 8; i++) {
+        result1 += abs(dst[i] - src[i]);
+        result2 += abs(dst[i + 8] - src[i + 8]);
+    }
+
+    u64* dst64 = (u64*)dst;
+    dst64[0] = (u16)result1;
+    dst64[1] = (u16)result2;
+}
+
 void dump_states() {
     if (!g_emulator) {
         return;

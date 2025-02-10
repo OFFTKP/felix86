@@ -96,3 +96,4 @@ bool felix86_bts(u64 address, i64 offset);
 bool felix86_btr(u64 address, i64 offset);
 bool felix86_btc(u64 address, i64 offset);
 bool felix86_bt(u64 address, i64 offset);
+void felix86_psadbw(u8* dst, u8* src);

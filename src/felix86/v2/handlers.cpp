@@ -5803,3 +5803,7 @@ FAST_HANDLE(MOVDDUP) {
 
     rec.setOperandVec(&operands[0], result);
 }
+
+FAST_HANDLE(PSADBW) {
+    VEC_function(rec, meta, instruction, operands, (u64)&felix86_psadbw);
+}
