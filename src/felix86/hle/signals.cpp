@@ -447,7 +447,10 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGBUS: {
         switch (info->si_code) {
         case BUS_ADRALN: {
-            ASSERT(is_in_jit_code(current_state, pc));
+            if (!is_in_jit_code(current_state, pc)) {
+                goto check_guest_signal;
+            }
+
             // TODO: assert it's a vector load/store
             u32 instruction = *(u32*)pc; // Read the faulting instruction
 

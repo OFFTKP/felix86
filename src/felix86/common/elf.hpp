@@ -5,7 +5,7 @@
 #include <vector>
 #include "felix86/common/utility.hpp"
 
-constexpr u64 brk_size = 64 * 1024 * 1024;
+constexpr u64 brk_size = 256 * 1024 * 1024;
 
 struct Elf {
     Elf(bool is_interpreter);

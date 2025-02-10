@@ -3,9 +3,10 @@
 :warning: felix86 is early in development. It does not run games at the moment :warning:
 
 ## Required architecture
-You need either an emulator like QEMU or a board with `rv64gvb`.
+You need a RISC-V board with `rv64gvb` extensions.
 
 Furthermore, **you need a recent version of Linux like `6.11`**, so that there is vector extension support in signal handlers.
+If you don't have a recent version of Linux, things may go wrong.
 
 Any extra extensions might be utilized, but `G` and `V` are mandatory.
 `B` is currently mandatory. Eventually it won't be, but currently it is.
@@ -61,7 +62,11 @@ The binary **must** be inside the rootfs directory, so place it anywhere in ther
 Example:
 `./felix86 -p /home/myuser/myrootfs /home/myuser/myrootfs/MyApplication arg1 arg2 arg3`
 
-By default, no environment variables are passed to the executable.
+You may also set the `FELIX86_ROOTFS` environment variable to point to the path so you don't have to type it every time.
+
+By default, the host environment variables are passed to the executable.
+
+If an executable makes frequent use of the console, you may want to disable felix86's logging via the `-q` flag, or redirect it to a file via the `FELIX86_LOG_FILE` environment variable.
 
 Use `--help` to view all the options.
 
@@ -74,9 +79,9 @@ Run `felix86_test` to run every test, or `felix86_test "the test name"` to run a
 Also try `felix86_test --help`, it uses Catch2.
 
 ## Specifying available extensions
-felix86 will use linux's riscv_hwprobe syscall to try to find the available RISC-V extensions.
+felix86 will use Linux's riscv_hwprobe syscall to try to find the available RISC-V extensions.
 
-There are cases where you might want to override which extensions are available entirely. For example, if your board has `g,c,v,zicond` you might want felix86 to only use the `g,c,v` extensions. Or you might want to specify that you have XTheadCondMov, which is undetectable via that syscall. This can be achieved with either the command line option `--all-extensions` or the environment variable `FELIX86_ALL_EXTENSIONS`.
+There are cases where you might want to override which extensions are available entirely. For example, if your board has `g,c,v,zicond` you might want felix86 to only use the `g,c,v` extensions. Or you might want to specify that you have `XTheadCondMov`, which is undetectable via that syscall. This can be achieved with either the command line option `--all-extensions` or the environment variable `FELIX86_ALL_EXTENSIONS`.
 
 If you want to only add new extensions instead of overriding them, use the environment variable `FELIX86_EXTENSIONS`
 
