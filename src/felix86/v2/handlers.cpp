@@ -2913,8 +2913,8 @@ FAST_HANDLE(CMPSB) {
         AS.Bind(&loop_body);
     }
 
-    rec.readMemory(src2, rsi, 0, size);
-    rec.readMemory(src1, rdi, 0, size);
+    rec.readMemory(src1, rsi, 0, size);
+    rec.readMemory(src2, rdi, 0, size);
 
     AS.SUB(result, src1, src2);
 
