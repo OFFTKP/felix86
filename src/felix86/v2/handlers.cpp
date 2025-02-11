@@ -4791,7 +4791,7 @@ FAST_HANDLE(CVTPD2PS) {
     AS.VFNCVT_F_F(result, src);
 
     AS.VMV(v0, 0b1100);
-    AS.VAND(result, result, 0);
+    AS.VAND(result, result, 0, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }
