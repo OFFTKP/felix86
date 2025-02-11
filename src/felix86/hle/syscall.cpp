@@ -243,6 +243,7 @@ void felix86_syscall(ThreadState* state) {
             if ((u64)new_map != g_initial_brk) {
                 ERROR("Failed to remap brk with new size: %lx", new_size);
             }
+            WARN("Resized BRK to %lx", new_size);
             g_current_brk_size = new_size;
         }
 
