@@ -4796,20 +4796,10 @@ FAST_HANDLE(CVTPD2PS) {
 
 FAST_HANDLE(CVTPS2PD) { // Fuzzed, inaccuracies with NaNs
     biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 2);
-    AS.VFMV_FS(ft8, src);
-    AS.VSLIDEDOWN(temp, src, 1);
-    AS.VFMV_FS(ft9, temp);
-    AS.FCVT_D_S(ft10, ft8);
-    AS.FCVT_D_S(ft11, ft9);
-
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VMV(result, 0);
-    AS.VFSLIDE1UP(temp, result, ft11);
-    AS.VFSLIDE1UP(result, temp, ft10);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    AS.VFWCVT_F_F(result, src);
 
     rec.setOperandVec(&operands[0], result);
 }
