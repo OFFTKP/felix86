@@ -4797,7 +4797,7 @@ FAST_HANDLE(CVTPS2PD) { // Fuzzed, inaccuracies with NaNs
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
     AS.VFWCVT_F_F(result, src);
 
     rec.setOperandVec(&operands[0], result);
@@ -4831,7 +4831,7 @@ FAST_HANDLE(CVTTPD2DQ) { // Fuzzed, same problem as cvttps2dq
     AS.VMV(result, 0);
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
-    AS.VFNCVT_F_F(result, src);
+    AS.VFNCVT_ROD_F_F(result, src);
 
     rec.setOperandVec(&operands[0], result);
 }
@@ -5690,7 +5690,7 @@ FAST_HANDLE(CVTDQ2PD) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
-    AS.VFWCVT_F_X(scratch, src); // Illegal instruction signal
+    AS.VFWCVT_F_X(scratch, src);
 
     rec.setOperandVec(&operands[0], scratch);
 }
