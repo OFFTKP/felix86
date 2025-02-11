@@ -3443,7 +3443,7 @@ FAST_HANDLE(PSHUFD) {
     } else {
         rec.setVectorState(SEW::E64, 1);
         biscuit::GPR temp = rec.scratch();
-        u32 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
+        u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
         AS.LI(temp, mask);
         AS.VMV_SX(iota, temp);
     }
