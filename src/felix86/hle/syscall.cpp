@@ -217,7 +217,7 @@ void felix86_syscall(ThreadState* state) {
         }
 
     private:
-        ssize_t inner;
+        ssize_t inner = -1;
     };
 
     Result result;
