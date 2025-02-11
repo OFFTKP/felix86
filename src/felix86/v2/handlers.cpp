@@ -2937,7 +2937,7 @@ FAST_HANDLE(CMPSW) {
     fast_CMPSB(rec, meta, instruction, operands);
 }
 
-FAST_HANDLE(CMPSD) {
+FAST_HANDLE(CMPSD_string) {
     fast_CMPSB(rec, meta, instruction, operands);
 }
 
@@ -5458,7 +5458,7 @@ FAST_HANDLE(CMPSD) {
     if (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2) {
         fast_CMPSD_sse(rec, meta, instruction, operands);
     } else {
-        ERROR("Unimplemented: cmpsd (the string one)");
+        fast_CMPSD_string(rec, meta, instruction, operands);
     }
 }
 
