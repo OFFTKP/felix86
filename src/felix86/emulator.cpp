@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/random.h>
 #include "felix86/emulator.hpp"
+#include "felix86/v2/recompiler.hpp"
 
 extern char** environ;
 
@@ -69,7 +70,7 @@ void Emulator::setupMainStack(ThreadState* state) {
     u64 rsp = (u64)elf->GetStackPointer();
 
     // To hold the addresses of the arguments for later pushing
-    std::vector<u64> argv_addresses(argc);
+    u64* argv_addresses = (u64*)alloca(argc * sizeof(u64));
 
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
@@ -83,7 +84,7 @@ void Emulator::setupMainStack(ThreadState* state) {
     }
 
     size_t envc = config.envp.size();
-    std::vector<u64> envp_addresses(envc);
+    u64* envp_addresses = (u64*)alloca(envc * sizeof(u64));
 
     for (size_t i = 0; i < envc; i++) {
         const char* env = config.envp[i].c_str();

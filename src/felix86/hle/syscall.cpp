@@ -633,9 +633,9 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_exit_group: {
-        VERBOSE("Emulator called exit_group(%d)", (int)rdi);
         STRACE("exit_group(%d)", (int)rdi);
-        result = HOST_SYSCALL(exit_group, rdi);
+        state->exit_reason = EXIT_REASON_EXIT_GROUP_SYSCALL;
+        g_emulator->CleanExit(state);
         break;
     }
     case felix86_x86_64_access: {

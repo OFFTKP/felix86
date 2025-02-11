@@ -1,3 +1,4 @@
+#include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 
 void enable_verbose() {

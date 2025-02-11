@@ -1,7 +1,8 @@
 #include <array>
-#include "felix86/emulator.hpp"
+#include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/signals.hpp"
+#include "felix86/v2/recompiler.hpp"
 
 using VectorState = std::array<XmmReg, 32>;
 

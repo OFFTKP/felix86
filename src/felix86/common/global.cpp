@@ -8,7 +8,6 @@
 #include "felix86/common/state.hpp"
 #include "felix86/emulator.hpp"
 #include "fmt/format.h"
-#include "version.hpp"
 
 bool g_paranoid = false;
 bool g_verbose = false;
@@ -59,7 +58,7 @@ void Extensions::Clear() {
 }
 
 const char* get_version_full() {
-    static std::string version = "felix86 " FELIX86_VERSION "." + std::string(g_git_hash);
+    static std::string version = "felix86 0.1.0." + std::string(g_git_hash);
     return version.c_str();
 }
 

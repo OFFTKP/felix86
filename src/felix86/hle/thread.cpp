@@ -97,7 +97,7 @@ void* pthread_handler(void* args) {
     LOG("Thread %ld started", state->tid);
     pthread_setname_np(state->thread, "ChildProcess");
     g_emulator->StartThread(state);
-    LOG("Thread %ld exited", state->tid);
+    LOG("Thread %ld exited with reason: %s", state->tid, print_exit_reason(state->exit_reason));
 
     __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
     syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);

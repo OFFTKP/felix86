@@ -1,3 +1,4 @@
+#include <unordered_map>
 #include <vector>
 #include <sys/mman.h>
 #include "felix86/common/debug.hpp"

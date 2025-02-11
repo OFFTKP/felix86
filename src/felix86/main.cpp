@@ -5,7 +5,6 @@
 #include <grp.h>
 #include <sys/types.h>
 #include "felix86/common/log.hpp"
-#include "felix86/common/version.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/filesystem.hpp"
 
@@ -328,7 +327,11 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
+    ThreadState* main_state = ThreadState::Get();
+
     emulator.Run();
+
+    LOG("Main thread exited with reason: %s", print_exit_reason(main_state->exit_reason));
 
     unlink_semaphore();
 

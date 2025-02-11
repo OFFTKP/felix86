@@ -1,6 +1,7 @@
 #include <cstring>
+#include "felix86/common/debug.hpp"
 #include "felix86/common/state.hpp"
-#include "utility.hpp"
+#include "felix86/common/utility.hpp"
 
 #ifdef __riscv
 #include <sys/cachectl.h>
@@ -182,8 +183,7 @@ u64 sext_if_64(u64 value, u8 size_e) {
 // If you don't flush the cache the code will randomly SIGILL
 void flush_icache(void* start, void* end) {
 #if defined(__riscv)
-    // TODO: Code cache is local to each thread
-    __riscv_flush_icache(start, end, 0);
+    asm volatile("fence.i");
 #endif
 }
 
@@ -547,4 +547,17 @@ bool felix86_btc(u64 address, i64 offset) {
     u8* ptr = (u8*)address + byte_offset - needs_correction;
     u8 old = __atomic_fetch_xor(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
     return (old >> bit_offset) & 1;
+}
+
+const char* print_exit_reason(int reason) {
+    switch (reason) {
+    case EXIT_REASON_HLT:
+        return "Hlt instruction";
+    case EXIT_REASON_EXIT_SYSCALL:
+        return "Exit syscall";
+    case EXIT_REASON_EXIT_GROUP_SYSCALL:
+        return "Exit group syscall";
+    }
+
+    return "Unknown";
 }

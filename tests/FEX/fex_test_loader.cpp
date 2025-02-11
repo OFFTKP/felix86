@@ -5,6 +5,7 @@
 #include "catch2/catch_message.hpp"
 #include "catch2/catch_test_macros.hpp"
 #include "felix86/common/print.hpp"
+#include "felix86/v2/recompiler.hpp"
 #include "fex_test_loader.hpp"
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"

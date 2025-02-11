@@ -1,12 +1,10 @@
 #pragma once
 
-#include <list>
 #include <semaphore.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/signals.hpp"
-#include "felix86/v2/recompiler.hpp"
 
 struct Config {
     std::filesystem::path rootfs_path;
