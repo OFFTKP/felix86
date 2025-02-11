@@ -3436,7 +3436,6 @@ FAST_HANDLE(PSHUFD) {
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    // Optimize this common case
     rec.setVectorState(SEW::E64, 1);
     biscuit::GPR temp = rec.scratch();
     u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
@@ -4383,6 +4382,20 @@ FAST_HANDLE(PINSRQ) {
     AS.VMERGE(result, dst, tmp2);
 
     rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(PEXTRB) {
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::GPR result = rec.scratch();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
+
+    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
+    AS.VSLIDEDOWN(temp, src, imm);
+    AS.VMV_XS(result, temp);
+    rec.zext(result, result, X86_SIZE_BYTE);
+
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(PEXTRW) {
