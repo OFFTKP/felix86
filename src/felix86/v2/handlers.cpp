@@ -3266,7 +3266,7 @@ FAST_HANDLE(MOVMSKPD) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 32);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VMSLT(mask, src, x0);
     AS.VMV_XS(dst, mask);
     AS.ANDI(dst, dst, 0b11);
@@ -3275,17 +3275,12 @@ FAST_HANDLE(MOVMSKPD) {
 
 FAST_HANDLE(PMOVZXBQ) {
     biscuit::GPR mask = rec.scratch();
-    biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VID(iota); // iota with 64-bit elements will place the indices at the right locations
-    rec.setVectorState(SEW::E8, rec.maxVlen() / 8);
-    AS.LI(mask, 0b00000001'00000001'00000001'00000001);
-    AS.VMV(result, 0);
-    AS.VMV(v0, mask);
-    AS.VRGATHER(result, src, iota, VecMask::Yes);
+    AS.LI(mask, 0xFF);
+    AS.VAND(result, src, mask);
 
     rec.setOperandVec(&operands[0], result);
 }
@@ -3910,7 +3905,7 @@ FAST_HANDLE(MOVLPS) {
 
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV(v0, 0b10);
-        AS.VMERGE(dst, src, dst);
+        AS.VMERGE(dst, src, dst); // TODO: Does just VMV work? with vlen = 1
 
         rec.setOperandVec(&operands[0], dst);
     } else if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
@@ -4803,7 +4798,7 @@ FAST_HANDLE(CVTPS2PD) { // Fuzzed, inaccuracies with NaNs
     AS.FCVT_D_S(ft10, ft8);
     AS.FCVT_D_S(ft11, ft9);
 
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 32);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VMV(result, 0);
     AS.VFSLIDE1UP(temp, result, ft11);
     AS.VFSLIDE1UP(result, temp, ft10);
@@ -5022,7 +5017,7 @@ FAST_HANDLE(RSQRTSS) {
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(MOVLHPS) {
+FAST_HANDLE(MOVLHPS) { // TODO: vmerge
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);

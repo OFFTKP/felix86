@@ -1,32 +1,10 @@
+#include <cstring>
 #include "felix86/common/state.hpp"
-#include "felix86/emulator.hpp"
-#include "fmt/format.h"
 #include "utility.hpp"
 
 #ifdef __riscv
 #include <sys/cachectl.h>
 #endif
-
-namespace {
-std::string GetBlockName(u32 name) {
-    u32 block_index = name >> 20;
-    if (block_index == 0) {
-        return "Entry";
-    } else if (block_index == 1) {
-        return "Exit";
-    } else {
-        return fmt::format("{}", block_index - 2);
-    }
-}
-
-std::string ToVarName(u32 name) {
-    return std::to_string(name & ((1 << 20) - 1));
-}
-} // namespace
-
-std::string GetNameString(u32 name) {
-    return fmt::format("%{}@{}", ToVarName(name), GetBlockName(name));
-}
 
 /* Libdivide LICENSE
 
@@ -327,7 +305,7 @@ void felix86_packsswb(u8* dst, u8* src) {
         u8 result;
         if (value < -128) {
             result = 0x80;
-        } else if (value > SCHAR_MAX) {
+        } else if (value > 127) {
             result = 127;
         } else {
             result = (u8)value;
@@ -359,8 +337,8 @@ void felix86_packssdw(u16* dst, u8* src) {
         u16 result;
         if (value < -32768) {
             result = 0x8000;
-        } else if (value > SHRT_MAX) {
-            result = SHRT_MAX;
+        } else if (value > 0x7FFF) {
+            result = 0x7FFF;
         } else {
             result = (u16)value;
         }
@@ -372,8 +350,8 @@ void felix86_packssdw(u16* dst, u8* src) {
         u16 result;
         if (value < -32768) {
             result = 0x8000;
-        } else if (value > SHRT_MAX) {
-            result = SHRT_MAX;
+        } else if (value > 0x7FFF) {
+            result = 0x7FFF;
         } else {
             result = (u16)value;
         }
