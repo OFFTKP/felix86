@@ -3427,10 +3427,10 @@ FAST_HANDLE(CMPPD) { // Fuzzed
 
 FAST_HANDLE(PSHUFD) {
     u8 imm = rec.getImmediate(&operands[2]);
-    u8 el0 = imm & 0b11;
-    u8 el1 = (imm >> 2) & 0b11;
-    u8 el2 = (imm >> 4) & 0b11;
-    u8 el3 = (imm >> 6) & 0b11;
+    u64 el0 = imm & 0b11;
+    u64 el1 = (imm >> 2) & 0b11;
+    u64 el2 = (imm >> 4) & 0b11;
+    u64 el3 = (imm >> 6) & 0b11;
 
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec iota = rec.scratchVec();
@@ -3441,20 +3441,15 @@ FAST_HANDLE(PSHUFD) {
         rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
         AS.VMV(iota, el0); // splat
     } else {
-        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-        u64 el3el2 = (u64)el3 << 32 | el2;
-        u64 el1el0 = (u64)el1 << 32 | el0;
+        rec.setVectorState(SEW::E64, 1);
         biscuit::GPR temp = rec.scratch();
-        biscuit::GPR temp2 = rec.scratch();
-        biscuit::Vec iota2 = rec.scratchVec();
-        AS.LI(temp, el3el2);
-        AS.VMV_SX(iota2, temp);
-        AS.LI(temp2, el1el0);
-        AS.VSLIDE1UP(iota, iota2, temp2);
+        u32 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
+        AS.LI(temp, mask);
+        AS.VMV_SX(iota, temp);
     }
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    AS.VRGATHER(result, src, iota);
+    AS.VRGATHEREI16(result, src, iota);
 
     rec.setOperandVec(&operands[0], result);
 }
