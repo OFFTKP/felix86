@@ -4784,9 +4784,6 @@ FAST_HANDLE(CVTPD2PS) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VMV(result, 0);
-
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
     AS.VFNCVT_F_F(result, src);
 
@@ -4830,34 +4827,24 @@ FAST_HANDLE(CVTTPD2DQ) { // Fuzzed, same problem as cvttps2dq
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VMV(result, 0);
-
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
-    AS.VFNCVT_ROD_F_F(result, src);
+    AS.VFNCVT_RTZ_X_F(result, src);
+
+    AS.VMV(v0, 0b1100);
+    AS.VAND(result, result, 0, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(CVTPD2DQ) {
-    biscuit::GPR low = rec.scratch();
-    biscuit::GPR high = rec.scratch();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec temp = rec.scratchVec();
 
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VFMV_FS(ft8, src);
-    AS.VSLIDEDOWN(temp, src, 1);
-    AS.VFMV_FS(ft9, temp);
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32, LMUL::MF2);
+    AS.VFNCVT_X_F(result, src);
 
-    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    AS.FCVT_W_D(low, ft8);
-    AS.FCVT_W_D(high, ft9);
-
-    AS.VMV(result, 0);
-    AS.VSLIDE1UP(temp, result, high);
-    AS.VSLIDE1UP(result, temp, low);
+    AS.VMV(v0, 0b1100);
+    AS.VAND(result, result, 0, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }
