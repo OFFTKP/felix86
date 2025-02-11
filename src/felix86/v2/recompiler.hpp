@@ -56,9 +56,21 @@ struct Recompiler {
 
     biscuit::Vec scratchVec();
 
+    biscuit::FPR scratchFPR();
+
     void popScratch();
 
     void popScratchVec();
+
+    void popScratchFPR();
+
+    biscuit::GPR getTOP();
+
+    void setTOP(biscuit::GPR top);
+
+    biscuit::FPR getST(biscuit::GPR top, int index);
+
+    void setST(biscuit::GPR top, int index, biscuit::FPR value);
 
     biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
 
@@ -267,6 +279,8 @@ private:
     int scratch_index = 0;
 
     int vector_scratch_index = 0;
+
+    int fpu_scratch_index = 0;
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 

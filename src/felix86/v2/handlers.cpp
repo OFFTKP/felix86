@@ -4178,15 +4178,15 @@ FAST_HANDLE(PSRLQ) {
 }
 
 FAST_HANDLE(SFENCE) {
-    AS.FENCE(); // just make a full fence for now, TODO: we can optimize this some day
+    AS.FENCETSO(); // just make a full fence for now, TODO: we can optimize this some day
 }
 
 FAST_HANDLE(LFENCE) {
-    AS.FENCE(); // just make a full fence for now, TODO: we can optimize this some day
+    AS.FENCETSO(); // just make a full fence for now, TODO: we can optimize this some day
 }
 
 FAST_HANDLE(MFENCE) {
-    AS.FENCE(); // just make a full fence for now, TODO: we can optimize this some day
+    AS.FENCETSO(); // just make a full fence for now, TODO: we can optimize this some day
 }
 
 FAST_HANDLE(MOVSX) {
@@ -4681,7 +4681,7 @@ FAST_HANDLE(MULSD) {
     SCALAR(rec, meta, instruction, operands, SEW::E64, 1, &Assembler::VFMUL);
 }
 
-FAST_HANDLE(MINSS) {
+FAST_HANDLE(MINSS) { // TODO: NaN handling
     SCALAR(rec, meta, instruction, operands, SEW::E32, 1, &Assembler::VFMIN);
 }
 
@@ -5080,7 +5080,7 @@ FAST_HANDLE(FXRSTOR) {
     rec.restoreRoundingMode();
 }
 
-FAST_HANDLE(FXRSTOR64) {
+FAST_HANDLE(FXRSTOR64) { // TODO: store rounding mode, same for fxsave
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
 

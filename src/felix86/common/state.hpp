@@ -97,6 +97,9 @@ struct ThreadState {
     u64 fsbase{};
     u32 mxcsr{0x1F80}; // default value
     RMode rmode{RMode::RNE};
+    u16 fpu_cw{};
+    u16 fpu_sw{};
+    u16 fpu_tw{};
 
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to

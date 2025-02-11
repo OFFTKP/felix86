@@ -482,7 +482,7 @@ biscuit::GPR Recompiler::scratch() {
     case 5:
         return x31;
     default:
-        ERROR("Tried to use more than 6 scratch registers");
+        ERROR("Tried to use more than 6 scratch GPRs");
         return x0;
     }
 }
@@ -510,8 +510,32 @@ biscuit::Vec Recompiler::scratchVec() {
     case 9:
         return v31;
     default:
-        ERROR("Tried to use more than 6 scratch registers");
+        ERROR("Tried to use more than 10 scratch vecs");
         return v0;
+    }
+}
+
+biscuit::FPR Recompiler::scratchFPR() {
+    switch (fpu_scratch_index++) {
+    case 0:
+        return ft0;
+    case 1:
+        return ft1;
+    case 2:
+        return ft2;
+    case 3:
+        return ft3;
+    case 4:
+        return ft4;
+    case 5:
+        return ft5;
+    case 6:
+        return ft6;
+    case 7:
+        return ft7;
+    default:
+        ERROR("Tried to use more than 8 scratch FPRs");
+        return ft0;
     }
 }
 
@@ -525,9 +549,15 @@ void Recompiler::popScratch() {
     ASSERT(scratch_index >= 0);
 }
 
+void Recompiler::popScratchFPR() {
+    fpu_scratch_index--;
+    ASSERT(fpu_scratch_index >= 0);
+}
+
 void Recompiler::resetScratch() {
     scratch_index = 0;
     vector_scratch_index = 0;
+    fpu_scratch_index = 0;
 }
 
 x86_ref_e Recompiler::zydisToRef(ZydisRegister reg) {
@@ -2163,4 +2193,56 @@ void Recompiler::disableSignals() {
 
 void Recompiler::enableSignals() {
     as.SB(x0, offsetof(ThreadState, signals_disabled), threadStatePointer());
+}
+
+biscuit::GPR Recompiler::getTOP() {
+    biscuit::GPR top = scratch();
+    as.LD(top, offsetof(ThreadState, fpu_sw), threadStatePointer());
+    as.SRLI(top, top, 11);
+    as.ANDI(top, top, 0b111);
+    return top;
+}
+
+biscuit::FPR Recompiler::getST(biscuit::GPR top, int index) {
+    biscuit::FPR st = scratchFPR();
+    biscuit::GPR address = scratch();
+    if (index != 0) {
+        as.ADDI(address, top, index);
+        as.ANDI(address, address, 0b111);
+        as.SLLI(address, address, 3);
+    } else {
+        as.SLLI(address, top, 3);
+    }
+    as.ADD(address, address, threadStatePointer());
+    as.FLD(st, offsetof(ThreadState, fp), address);
+    popScratch();
+    return st;
+}
+
+void Recompiler::setST(biscuit::GPR top, int index, biscuit::FPR st) {
+    biscuit::GPR address = scratch();
+    if (index != 0) {
+        as.ADDI(address, top, index);
+        as.ANDI(address, address, 0b111);
+        as.SLLI(address, address, 3);
+    } else {
+        as.SLLI(address, top, 3);
+    }
+    as.ADD(address, address, threadStatePointer());
+    as.FSD(st, offsetof(ThreadState, fp), address);
+    popScratch();
+}
+
+// TOP is always a scratch register so we can modify it
+void Recompiler::setTOP(biscuit::GPR new_top) {
+    biscuit::GPR old_sw = scratch();
+    biscuit::GPR mask = scratch();
+    as.LI(mask, 0b111 << 11);
+    as.LD(old_sw, offsetof(ThreadState, fpu_sw), threadStatePointer());
+    as.AND(old_sw, old_sw, mask);
+    as.SLLI(mask, new_top, 11);
+    as.OR(old_sw, old_sw, mask);
+    as.SD(old_sw, offsetof(ThreadState, fpu_sw), threadStatePointer());
+    popScratch();
+    popScratch();
 }

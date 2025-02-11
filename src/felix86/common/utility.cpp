@@ -481,7 +481,6 @@ void pop_calltrace(ThreadState* state) {
 }
 
 Float80 f64_to_80(double x) {
-    // Interpret double as raw bits
     union {
         double d;
         uint64_t u;
