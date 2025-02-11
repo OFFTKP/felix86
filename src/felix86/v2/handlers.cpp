@@ -2924,7 +2924,7 @@ FAST_HANDLE(CMPSB) {
     AS.ADD(rsi, rsi, temp);
 
     if (HAS_REP) {
-        rec.repzEpilogue(&loop_body, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
+        rec.repzEpilogue(&loop_body, &loop_end, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
         AS.Bind(&loop_end);
     }
 
