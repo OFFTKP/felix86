@@ -183,7 +183,7 @@ struct Recompiler {
 
     void repEpilogue(Label* loop_body, biscuit::GPR rcx);
 
-    void repzEpilogue(Label* loop_body, bool is_repz);
+    void repzEpilogue(Label* loop_body, biscuit::GPR rcx, bool is_repz);
 
     bool isGPR(ZydisRegister reg);
 

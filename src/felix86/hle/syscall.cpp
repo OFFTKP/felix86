@@ -636,6 +636,7 @@ void felix86_syscall(ThreadState* state) {
         STRACE("exit_group(%d)", (int)rdi);
         state->exit_reason = EXIT_REASON_EXIT_GROUP_SYSCALL;
         g_emulator->CleanExit(state);
+        result = 0; // for the warning
         break;
     }
     case felix86_x86_64_access: {
@@ -917,7 +918,7 @@ void felix86_syscall(ThreadState* state) {
         STRACE("exit(%d)", (int)rdi);
         state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
         g_emulator->CleanExit(state);
-        result = 0;
+        result = 0; // for the warning
         break;
     }
     case felix86_x86_64_eventfd2: {

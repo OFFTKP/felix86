@@ -2095,10 +2095,8 @@ void Recompiler::repEpilogue(Label* loop_body, biscuit::GPR rcx) {
     enableSignals();
 }
 
-void Recompiler::repzEpilogue(Label* loop_body, bool is_repz) {
-    biscuit::GPR rcx = getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+void Recompiler::repzEpilogue(Label* loop_body, biscuit::GPR rcx, bool is_repz) {
     as.ADDI(rcx, rcx, -1);
-    setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
     as.BNEZ(rcx, loop_body);
 
     if (is_repz) {

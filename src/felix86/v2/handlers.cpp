@@ -14,6 +14,54 @@ void felix86_cpuid(ThreadState* state);
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
+void SetCmpFlags(const HandlerMetadata& meta, Recompiler& rec, biscuit::GPR dst, biscuit::GPR src, biscuit::GPR result, x86_size_e size,
+                 bool zext_src) {
+    u64 sign_mask = rec.getSignMask(size);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        if (zext_src) {
+            rec.zext(cf, src, size);
+            AS.SLTU(cf, dst, cf);
+        } else {
+            AS.SLTU(cf, dst, src);
+        }
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        biscuit::GPR af = rec.flagW(X86_REF_AF);
+        biscuit::GPR scratch = rec.scratch();
+        AS.ANDI(af, src, 0xF);
+        AS.ANDI(scratch, dst, 0xF);
+        AS.SLTU(af, scratch, af);
+        rec.popScratch();
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR scratch = rec.scratch();
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        AS.XOR(scratch, dst, src);
+        AS.XOR(of, dst, result);
+        AS.AND(of, of, scratch);
+        AS.LI(scratch, sign_mask);
+        AS.AND(of, of, scratch);
+        AS.SNEZ(of, of);
+        rec.popScratch();
+    }
+}
+
 enum CmpPredicate {
     EQ_OQ = 0x00,
     LT_OS = 0x01,
@@ -352,50 +400,8 @@ FAST_HANDLE(CMP) {
     AS.SUB(result, dst, src);
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    u64 sign_mask = rec.getSignMask(size);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD) {
-            rec.zext(cf, src, size);
-            AS.SLTU(cf, dst, cf);
-        } else {
-            AS.SLTU(cf, dst, src);
-        }
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
-        biscuit::GPR scratch = rec.scratch();
-        AS.ANDI(af, src, 0xF);
-        AS.ANDI(scratch, dst, 0xF);
-        AS.SLTU(af, scratch, af);
-        rec.popScratch();
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        biscuit::GPR scratch = rec.scratch();
-        biscuit::GPR of = rec.flagW(X86_REF_OF);
-        AS.XOR(scratch, dst, src);
-        AS.XOR(of, dst, result);
-        AS.AND(of, of, scratch);
-        AS.LI(scratch, sign_mask);
-        AS.AND(of, of, scratch);
-        AS.SNEZ(of, of);
-        rec.popScratch();
-    }
+    SetCmpFlags(meta, rec, dst, src, result, size, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD);
 }
 
 FAST_HANDLE(OR) {
@@ -2805,13 +2811,6 @@ FAST_HANDLE(RSQRTPS) {
 }
 
 FAST_HANDLE(MOVSB) {
-#if 0
-    rec.writebackDirtyState();
-    AS.LI(t0, (u64)print_args);
-    AS.MV(a0, rec.threadStatePointer());
-    AS.JALR(t0);
-#endif
-
     u8 width = instruction.operand_width;
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
     biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
@@ -2887,6 +2886,63 @@ FAST_HANDLE(MOVSD) {
 
 FAST_HANDLE(MOVSQ) {
     fast_MOVSB(rec, meta, instruction, operands);
+}
+
+FAST_HANDLE(CMPSB) {
+    u8 width = instruction.operand_width;
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
+    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR src1 = rec.scratch();
+    biscuit::GPR src2 = rec.scratch();
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR df = rec.scratch();
+    AS.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
+    x86_size_e size = rec.zydisToSize(width);
+
+    Label end;
+    AS.LI(temp, -width / 8);
+    AS.BNEZ(df, &end);
+    AS.LI(temp, width / 8);
+    AS.Bind(&end);
+
+    Label loop_end, loop_body;
+    if (HAS_REP) {
+        rec.repPrologue(&loop_end, rcx);
+        AS.Bind(&loop_body);
+    }
+
+    rec.readMemory(src1, rsi, 0, size);
+    rec.readMemory(src2, rdi, 0, size);
+
+    AS.SUB(result, src1, src2);
+
+    SetCmpFlags(meta, rec, src1, src2, result, size, false);
+
+    AS.ADD(rdi, rdi, temp);
+    AS.ADD(rsi, rsi, temp);
+
+    if (HAS_REP) {
+        rec.repzEpilogue(&loop_body, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
+        AS.Bind(&loop_end);
+    }
+
+    rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
+    rec.setRefGPR(X86_REF_RSI, X86_SIZE_QWORD, rsi);
+    rec.setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
+}
+
+FAST_HANDLE(CMPSW) {
+    fast_CMPSB(rec, meta, instruction, operands);
+}
+
+FAST_HANDLE(CMPSD) {
+    fast_CMPSB(rec, meta, instruction, operands);
+}
+
+FAST_HANDLE(CMPSQ) {
+    fast_CMPSB(rec, meta, instruction, operands);
 }
 
 FAST_HANDLE(STOSB) {
