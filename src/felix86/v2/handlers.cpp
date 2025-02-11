@@ -2945,6 +2945,59 @@ FAST_HANDLE(CMPSQ) {
     fast_CMPSB(rec, meta, instruction, operands);
 }
 
+FAST_HANDLE(SCASB) {
+    u8 width = instruction.operand_width;
+    x86_size_e size = rec.zydisToSize(width);
+    biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR src2 = rec.scratch();
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR df = rec.scratch();
+    AS.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
+
+    Label end;
+    AS.LI(temp, -width / 8);
+    AS.BNEZ(df, &end);
+    AS.LI(temp, width / 8);
+    AS.Bind(&end);
+
+    Label loop_end, loop_body;
+    if (HAS_REP) {
+        rec.repPrologue(&loop_end, rcx);
+        AS.Bind(&loop_body);
+    }
+
+    rec.readMemory(src2, rdi, 0, size);
+
+    AS.SUB(result, rax, src2);
+
+    SetCmpFlags(meta, rec, rax, src2, result, size, false);
+
+    AS.ADD(rdi, rdi, temp);
+
+    if (HAS_REP) {
+        rec.repzEpilogue(&loop_body, &loop_end, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
+        AS.Bind(&loop_end);
+    }
+
+    rec.setRefGPR(X86_REF_RDI, X86_SIZE_QWORD, rdi);
+    rec.setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
+}
+
+FAST_HANDLE(SCASW) {
+    fast_SCASB(rec, meta, instruction, operands);
+}
+
+FAST_HANDLE(SCASD) {
+    fast_SCASB(rec, meta, instruction, operands);
+}
+
+FAST_HANDLE(SCASQ) {
+    fast_SCASB(rec, meta, instruction, operands);
+}
+
 FAST_HANDLE(STOSB) {
 #if 0
     rec.writebackDirtyState();
