@@ -3437,16 +3437,11 @@ FAST_HANDLE(PSHUFD) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     // Optimize this common case
-    if (el0 == el1 && el0 == el2 && el0 == el3) {
-        rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-        AS.VMV(iota, el0); // splat
-    } else {
-        rec.setVectorState(SEW::E64, 1);
-        biscuit::GPR temp = rec.scratch();
-        u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
-        AS.LI(temp, mask);
-        AS.VMV_SX(iota, temp);
-    }
+    rec.setVectorState(SEW::E64, 1);
+    biscuit::GPR temp = rec.scratch();
+    u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
+    AS.LI(temp, mask);
+    AS.VMV_SX(iota, temp);
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.VRGATHEREI16(result, src, iota);
