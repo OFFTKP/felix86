@@ -899,6 +899,24 @@ void felix86_syscall(ThreadState* state) {
         STRACE("statfs(%s, %p) = %d", path->c_str(), (void*)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_stat: {
+        std::optional<std::filesystem::path> path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            STRACE("stat(%s, %p) = %d", (char*)rdi, (void*)rsi, -EACCES);
+            result = -EACCES;
+            break;
+        }
+
+        x64Stat* guest_stat = (x64Stat*)rsi;
+        struct stat host_stat;
+        result = stat(path->c_str(), &host_stat);
+        STRACE("stat(%s, %p) = %d", path->c_str(), (void*)rsi, (int)result);
+        if (result >= 0) {
+            *guest_stat = host_stat;
+        }
+        break;
+    }
     case felix86_x86_64_fstatfs: {
         result = HOST_SYSCALL(fstatfs, rdi, (struct statfs*)rsi);
         STRACE("fstatfs(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
