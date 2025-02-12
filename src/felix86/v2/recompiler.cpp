@@ -1507,7 +1507,7 @@ void Recompiler::writebackDirtyState() {
 void Recompiler::restoreRoundingMode() {
     biscuit::GPR rm = scratch();
     as.LBU(rm, offsetof(ThreadState, rmode), threadStatePointer());
-    as.FSRM(rm);
+    as.FSRM(rm, rm);
     popScratch();
 }
 
