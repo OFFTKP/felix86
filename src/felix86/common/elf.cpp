@@ -170,7 +170,7 @@ void Elf::Load(const std::filesystem::path& path) {
         int flags = MAP_PRIVATE | MAP_ANONYMOUS;
         if (base_hint) {
             ASSERT(g_interpreter_base_hint != g_executable_base_hint);
-            flags |= MAP_FIXED_NOREPLACE;
+            flags |= MAP_FIXED;
         }
         program = (u8*)mmap((void*)base_hint, highest_vaddr, PROT_NONE, flags, -1, 0);
         base_address = (u64)program;
@@ -194,7 +194,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
             u64 segment_base = base_address + PAGE_START(phdr.p_vaddr);
             u64 segment_size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
-            u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS, -1, 0);
+            u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
 
             if (addr == MAP_FAILED) {
                 ERROR("Failed to allocate memory for segment in file %s", path.c_str());
@@ -248,8 +248,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 }
 
                 if (bss_page_start != bss_page_end) {
-                    u8* bss = (u8*)mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS,
-                                        -1, 0);
+                    u8* bss = (u8*)mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     if (bss == MAP_FAILED) {
                         ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
                     }
