@@ -5463,9 +5463,7 @@ FAST_HANDLE(CMPSS) { // Fuzzed
         rec.popScratch();
         rec.popScratch();
 
-        // After checking if either are nan, also check if they are equal
-        AS.FLT_S(nan, ft8, ft9);
-        AS.XORI(nan, nan, 1);
+        AS.FLE_S(nan, ft9, ft8);
         AS.OR(result, result, nan);
         break;
     }
@@ -5482,8 +5480,7 @@ FAST_HANDLE(CMPSS) { // Fuzzed
         rec.popScratch();
 
         // After checking if either are nan, also check if they are equal
-        AS.FLE_S(nan, ft8, ft9);
-        AS.XORI(nan, nan, 1);
+        AS.FLT_S(nan, ft9, ft8);
         AS.OR(result, result, nan);
         break;
     }
@@ -5517,8 +5514,10 @@ FAST_HANDLE(CMPSS) { // Fuzzed
 FAST_HANDLE(CMPSD) {
     if (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2) {
         fast_CMPSD_sse(rec, meta, instruction, operands);
-    } else {
+    } else if (instruction.meta.isa_set == ZYDIS_ISA_SET_I386) {
         fast_CMPSD_string(rec, meta, instruction, operands);
+    } else {
+        UNREACHABLE();
     }
 }
 

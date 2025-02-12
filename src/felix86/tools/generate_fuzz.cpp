@@ -60,8 +60,61 @@ std::vector<InstructionMeta> insts = {
     {"pxor", Vec_Vec},
     {"pand", Vec_Vec},
     {"pandn", Vec_Vec},
-    {"addps", Vec_Vec},
-    {"addpd", Vec_Vec},
+    {"pavgb", Vec_Vec},
+    {"pavgw", Vec_Vec},
+    {"pmullw", Vec_Vec},
+    {"pmulld", Vec_Vec},
+    {"pmulhw", Vec_Vec},
+    {"pmulhuw", Vec_Vec},
+    {"pminsb", Vec_Vec},
+    {"pminsw", Vec_Vec},
+    {"pminsd", Vec_Vec},
+    {"pminub", Vec_Vec},
+    {"pminuw", Vec_Vec},
+    {"pminud", Vec_Vec},
+    {"pmaxsb", Vec_Vec},
+    {"pmaxsw", Vec_Vec},
+    {"pmaxsd", Vec_Vec},
+    {"pmaxub", Vec_Vec},
+    {"pmaxuw", Vec_Vec},
+    {"pmaxud", Vec_Vec},
+    {"packuswb", Vec_Vec},
+    {"packusdw", Vec_Vec},
+    {"packsswb", Vec_Vec},
+    {"packssdw", Vec_Vec},
+    {"pmuldq", Vec_Vec},
+    {"pmuludq", Vec_Vec},
+    {"paddsb", Vec_Vec},
+    {"paddsw", Vec_Vec},
+    {"psubsb", Vec_Vec},
+    {"psubsw", Vec_Vec},
+    {"paddusb", Vec_Vec},
+    {"paddusw", Vec_Vec},
+    {"psubusb", Vec_Vec},
+    {"psubusw", Vec_Vec},
+    {"movddup", Vec_Vec},
+    {"pcmpeqb", Vec_Vec},
+    {"pcmpeqw", Vec_Vec},
+    {"pcmpeqd", Vec_Vec},
+    {"pcmpeqq", Vec_Vec},
+    {"pcmpgtb", Vec_Vec},
+    {"pcmpgtw", Vec_Vec},
+    {"pcmpgtd", Vec_Vec},
+    {"pcmpgtq", Vec_Vec},
+    {"cvtdq2pd", Vec_Vec},
+    {"cvtdq2ps", Vec_Vec},
+    {"movss", Vec_Vec},
+    {"movsd", Vec_Vec},
+    {"unpcklps", Vec_Vec},
+    {"unpckhps", Vec_Vec},
+    {"unpcklpd", Vec_Vec},
+    {"unpckhpd", Vec_Vec},
+
+    // {"pmovmskb", Vec_Vec},
+    // {"movmskps", Vec_Vec},
+    // {"movmskpd", Vec_Vec},
+    // {"addps", Vec_Vec},
+    // {"addpd", Vec_Vec},
 };
 // clang-format on
 
@@ -98,15 +151,15 @@ int main() {
     as += "global test\n";
     as += "test:\n";
     for (int i = 0; i < 16; i++) {
-        as += "mov rax, " + std::to_string(rand()) + "\n";
-        as += "pinsrq xmm" + std::to_string(i) + ", rax, 0\n";
-        as += "mov rax, " + std::to_string(rand()) + "\n";
+        as += "mov rax, " + std::to_string((long)rand() << 32 | rand()) + "\n";
+        as += "movq xmm" + std::to_string(i) + ", rax\n";
+        as += "mov rax, " + std::to_string((long)rand() << 32 | rand()) + "\n";
         as += "pinsrq xmm" + std::to_string(i) + ", rax, 1\n";
     }
     for (int i = 0; i < 8; i++) {
         as += "mov r" + std::to_string(8 + i) + ", " + std::to_string(rand()) + "\n";
     }
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 30000; i++) {
         as += randominst();
     }
     for (int i = 0; i < 16; i++) {

@@ -233,6 +233,27 @@ u64 Recompiler::compileSequence(u64 rip) {
         block_meta.instruction_spans.push_back({meta.rip, (u64)as.GetCursorPointer()});
 
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
+
+        if (g_no_sse2 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSE2)) {
+            ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+        }
+
+        if (g_no_sse3 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSE3)) {
+            ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+        }
+
+        if (g_no_ssse3 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSSE3)) {
+            ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+        }
+
+        if (g_no_sse4_1 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSE4)) {
+            ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+        }
+
+        if (g_no_sse4_2 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSE4)) {
+            ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+        }
+
         switch (mnemonic) {
 #define X(name)                                                                                                                                      \
     case ZYDIS_MNEMONIC_##name:                                                                                                                      \

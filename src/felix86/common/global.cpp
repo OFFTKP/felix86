@@ -188,6 +188,36 @@ void initialize_globals() {
         }
     }
 
+    const char* no_sse2_env = getenv("FELIX86_NO_SSE2");
+    if (is_truthy(no_sse2_env)) {
+        g_no_sse2 = true;
+        environment += "\nFELIX86_NO_SSE2";
+    }
+
+    const char* no_sse3_env = getenv("FELIX86_NO_SSE3");
+    if (is_truthy(no_sse3_env)) {
+        g_no_sse3 = true;
+        environment += "\nFELIX86_NO_SSE3";
+    }
+
+    const char* no_ssse3_env = getenv("FELIX86_NO_SSSE3");
+    if (is_truthy(no_ssse3_env)) {
+        g_no_ssse3 = true;
+        environment += "\nFELIX86_NO_SSSE3";
+    }
+
+    const char* no_sse4_1_env = getenv("FELIX86_NO_SSE4_1");
+    if (is_truthy(no_sse4_1_env)) {
+        g_no_sse4_1 = true;
+        environment += "\nFELIX86_NO_SSE4_1";
+    }
+
+    const char* no_sse4_2_env = getenv("FELIX86_NO_SSE4_2");
+    if (is_truthy(no_sse4_2_env)) {
+        g_no_sse4_2 = true;
+        environment += "\nFELIX86_NO_SSE4_2";
+    }
+
     const char* dont_validate_exe_path = getenv("FELIX86_DONT_VALIDATE_EXE_PATH");
     if (is_truthy(dont_validate_exe_path)) {
         g_dont_validate_exe_path = true;
