@@ -4138,6 +4138,7 @@ FAST_HANDLE(PSLLW) {
         AS.LI(shift, val);
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV_XS(shift, src);
     }
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
@@ -4158,6 +4159,7 @@ FAST_HANDLE(PSLLQ) {
         AS.LI(shift, val);
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV_XS(shift, src);
     }
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
@@ -4180,6 +4182,7 @@ FAST_HANDLE(PSLLD) { // Fuzzed
         AS.LI(shift, val);
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV_XS(shift, src);
     }
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
@@ -4201,6 +4204,7 @@ FAST_HANDLE(PSRLD) {
         AS.LI(shift, val);
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV_XS(shift, src);
     }
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
@@ -4222,6 +4226,7 @@ FAST_HANDLE(PSRLW) {
         AS.LI(shift, val);
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV_XS(shift, src);
     }
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
