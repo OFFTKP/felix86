@@ -348,8 +348,8 @@ void felix86_packusdw(u16* dst, u8* src) {
 void felix86_pmaddwd(i16* dst, i16* src) {
     ASSERT(((u64)dst & 1) == 0);
     ASSERT(((u64)src & 1) == 0);
-    u32 temp[4];
-    u32 result[4];
+    i32 temp[4];
+    i32 result[4];
 
     temp[0] = dst[0] * src[0];
     temp[1] = dst[2] * src[2];
