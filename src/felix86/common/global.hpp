@@ -29,6 +29,7 @@ extern bool g_no_sse3;
 extern bool g_no_ssse3;
 extern bool g_no_sse4_1;
 extern bool g_no_sse4_2;
+extern bool g_print_all_insts;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;
 extern u64 g_current_brk_size;
