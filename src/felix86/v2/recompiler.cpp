@@ -82,7 +82,7 @@ void Recompiler::emitDispatcher() {
 
     // Set the rounding mode
     as.LBU(t1, offsetof(ThreadState, rmode), threadStatePointer());
-    as.FSRM(t1);
+    as.FSRM(x0, t1);
     as.MV(a0, threadStatePointer());
     // If it's not zero it has some exit reason, exit the dispatcher
     as.LBU(t2, offsetof(ThreadState, exit_reason), threadStatePointer());
@@ -1507,7 +1507,7 @@ void Recompiler::writebackDirtyState() {
 void Recompiler::restoreRoundingMode() {
     biscuit::GPR rm = scratch();
     as.LBU(rm, offsetof(ThreadState, rmode), threadStatePointer());
-    as.FSRM(rm, rm);
+    as.FSRM(x0, rm);
     popScratch();
 }
 

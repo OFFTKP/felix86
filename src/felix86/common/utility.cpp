@@ -7,6 +7,28 @@
 #include <sys/cachectl.h>
 #endif
 
+struct fxsave_st {
+    u8 st[10];
+    u8 reserved[6];
+};
+
+struct fxsave_data {
+    u16 fcw;
+    u16 fsw;
+    u8 ftw;
+    u8 reserved;
+    u16 fop;
+    u64 fip;
+    u64 fdp;
+    u32 mxcsr;
+    u32 mxcsr_mask;
+    fxsave_st st[8];
+    XmmReg xmms[16];
+    u64 reserved_final[6];
+    u64 available[6];
+};
+static_assert(sizeof(fxsave_data) == 512);
+
 /* Libdivide LICENSE
 
 
@@ -216,20 +238,43 @@ int clear_breakpoints() {
     return count;
 }
 
-void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
-    if (fxsave64) {
-        memcpy((u8*)address + 160, state->xmm, 16 * 16);
-    } else {
-        memcpy((u8*)address + 160, state->xmm, 8 * 16);
+void felix86_fxsave(struct ThreadState* state, u64 address) {
+    fxsave_data* data = (fxsave_data*)address;
+    memset(data, 0, sizeof(fxsave_data));
+
+    for (int i = 0; i < 16; i++) {
+        data->xmms[i] = state->xmm[i];
     }
+
+    for (int i = 0; i < 8; i++) {
+        Float80 f = f64_to_80(state->fp[i]);
+        memcpy(&data->st[i].st[0], &f, 10);
+    }
+
+    data->fcw = state->fpu_cw;
+    data->ftw = state->fpu_tw;
+    data->fsw = state->fpu_sw;
+    data->mxcsr = state->mxcsr;
 }
 
 void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
-    if (fxrstor64) {
-        memcpy(state->xmm, (u8*)address + 160, 16 * 16);
-    } else {
-        memcpy(state->xmm, (u8*)address + 160, 8 * 16);
+    fxsave_data* data = (fxsave_data*)address;
+
+    for (int i = 0; i < 16; i++) {
+        state->xmm[i] = data->xmms[i];
     }
+
+    for (int i = 0; i < 8; i++) {
+        Float80 f;
+        memcpy(&f, &data->st[i].st[0], 10);
+        state->fp[i] = f80_to_64(f);
+    }
+
+    state->fpu_cw = data->fcw;
+    state->fpu_tw = data->ftw;
+    state->fpu_sw = data->fsw;
+    state->mxcsr = data->mxcsr;
+    state->rmode = rounding_mode((x86RoundingMode)((state->mxcsr >> 13) & 3));
 }
 
 void felix86_packuswb(u8* dst, u8* src) {

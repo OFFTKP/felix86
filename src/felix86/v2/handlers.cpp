@@ -5781,7 +5781,7 @@ FAST_HANDLE(LDMXCSR) {
     AS.LI(temp, 0b01111000);
     AS.SRL(temp, temp, rc);
     AS.ANDI(temp, temp, 0b11);
-    AS.FSRM(temp); // load the equivalent RISC-V rounding mode
+    AS.FSRM(x0, temp); // load the equivalent RISC-V rounding mode
 
     // Also save the converted rounding mode for quick access
     AS.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, rmode));
