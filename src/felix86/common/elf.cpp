@@ -194,6 +194,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
             u64 segment_base = base_address + PAGE_START(phdr.p_vaddr);
             u64 segment_size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
+            // TODO: make MAP_FIXED -> MAP_FIXED_NOREPLACE, print errors
             u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
 
             if (addr == MAP_FAILED) {
