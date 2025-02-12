@@ -238,7 +238,7 @@ int clear_breakpoints() {
     return count;
 }
 
-void felix86_fxsave(struct ThreadState* state, u64 address) {
+void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
     fxsave_data* data = (fxsave_data*)address;
     memset(data, 0, sizeof(fxsave_data));
 
