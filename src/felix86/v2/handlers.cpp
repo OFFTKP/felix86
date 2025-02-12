@@ -3621,7 +3621,7 @@ FAST_HANDLE(PBLENDW) { // Fuzzed
 }
 
 FAST_HANDLE(BLENDPS) {
-    u8 imm = rec.getImmediate(&operands[2]);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -3634,7 +3634,7 @@ FAST_HANDLE(BLENDPS) {
 }
 
 FAST_HANDLE(BLENDPD) {
-    u8 imm = rec.getImmediate(&operands[2]);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b11;
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -4003,6 +4003,7 @@ FAST_HANDLE(BSWAP) {
 
 FAST_HANDLE(MOVLPS) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
