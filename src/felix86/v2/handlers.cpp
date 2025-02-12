@@ -629,14 +629,15 @@ FAST_HANDLE(PUSH) {
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
     int imm = instruction.operand_width == 16 ? -2 : -8;
-    AS.ADDI(rsp, rsp, imm);
-    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
 
     if (instruction.operand_width == 16) {
-        AS.SH(src, 0, rsp);
+        AS.SH(src, imm, rsp);
     } else {
-        AS.SD(src, 0, rsp);
+        AS.SD(src, imm, rsp);
     }
+
+    AS.ADDI(rsp, rsp, imm);
+    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
 }
 
 FAST_HANDLE(POP) {

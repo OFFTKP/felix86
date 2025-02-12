@@ -234,23 +234,23 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
 
-        if (g_no_sse2 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSE2)) {
+        if (g_no_sse2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2)) {
             ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
         }
 
-        if (g_no_sse3 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSE3)) {
+        if (g_no_sse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE3)) {
             ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
         }
 
-        if (g_no_ssse3 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSSE3)) {
+        if (g_no_ssse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSSE3)) {
             ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
         }
 
-        if (g_no_sse4_1 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSE4)) {
+        if (g_no_sse4_1 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
             ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
         }
 
-        if (g_no_sse4_2 && (instruction.meta.isa_set & ZYDIS_ISA_SET_SSE4)) {
+        if (g_no_sse4_2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
             ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
         }
 
@@ -273,24 +273,19 @@ u64 Recompiler::compileSequence(u64 rip) {
         }
 
         // When we want to print all instructions used
-        if (g_print_all_insts) {
-            static std::unordered_map<std::string, u64> seen;
-            static bool init = false;
-            if (!init) {
-                std::atexit([]() {
-                    for (auto& pair : seen) {
-                        printf("%s: %lu\n", pair.first.c_str(), pair.second);
-                        fflush(stdout);
-                    }
-                });
-                init = true;
-            }
+        // if (g_print_all_insts) {
+        //     static std::unordered_map<std::string, bool> seen;
 
-            ZydisDisassembledInstruction disassembled;
-            ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled);
-            std::string instr = disassembled.text;
-            seen[instr]++;
-        }
+        //     ZydisDisassembledInstruction disassembled;
+        //     ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled);
+        //     std::string instr = disassembled.text;
+        //     if (seen.find(instr) == seen.end()) {
+        //         seen[instr] = true;
+        //         fflush(stdout);
+        //         PLAIN("%s", instr.c_str());
+        //         fflush(stdout);
+        //     }
+        // }
 
         // Checks that we didn't forget to emulate any flags
         // if (g_paranoid && mnemonic != ZYDIS_MNEMONIC_SYSCALL) {

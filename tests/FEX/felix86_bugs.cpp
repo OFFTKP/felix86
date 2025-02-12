@@ -11,6 +11,7 @@
         FEXTestLoader::RunTest("ASM/FEX_bugs/" #name ".asm");                                                                                        \
     }
 
+FEX_BUG_TEST(Push)
 FEX_BUG_TEST(xor_flags)
 FEX_BUG_TEST(SHRD_OF)
 FEX_BUG_TEST(Test_JP)
