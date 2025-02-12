@@ -278,6 +278,8 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
 }
 
 void felix86_packuswb(u8* dst, u8* src) {
+    ASSERT(((u64)dst & 1) == 0);
+    ASSERT(((u64)src & 1) == 0);
     i16* src16 = (i16*)src;
     i16* dst16 = (i16*)dst;
     u8 temp[16];
@@ -310,6 +312,8 @@ void felix86_packuswb(u8* dst, u8* src) {
 }
 
 void felix86_packusdw(u16* dst, u8* src) {
+    ASSERT(((u64)dst & 3) == 0);
+    ASSERT(((u64)src & 3) == 0);
     i32* src32 = (i32*)src;
     i32* dst32 = (i32*)dst;
     u16 temp[8];
@@ -333,70 +337,6 @@ void felix86_packusdw(u16* dst, u8* src) {
             result = 0;
         } else if (value > 0xFFFF) {
             result = 0xFFFF;
-        } else {
-            result = (u16)value;
-        }
-        temp[i] = result;
-    }
-    memcpy(dst, temp, 16);
-}
-
-void felix86_packsswb(u8* dst, u8* src) {
-    i16* src16 = (i16*)src;
-    i16* dst16 = (i16*)dst;
-    u8 temp[16];
-    for (int i = 0; i < 8; i++) {
-        i16 value = *dst16++;
-        u8 result;
-        if (value < -128) {
-            result = 0x80;
-        } else if (value > 127) {
-            result = 127;
-        } else {
-            result = (u8)value;
-        }
-        temp[i] = result;
-    }
-
-    for (int i = 8; i < 16; i++) {
-        i16 value = *src16++;
-        u8 result;
-        if (value < -128) {
-            result = 0x80;
-        } else if (value > 127) {
-            result = 127;
-        } else {
-            result = (u8)value;
-        }
-        temp[i] = result;
-    }
-    memcpy(dst, temp, 16);
-}
-
-void felix86_packssdw(u16* dst, u8* src) {
-    i32* src32 = (i32*)src;
-    i32* dst32 = (i32*)dst;
-    u16 temp[8];
-    for (int i = 0; i < 4; i++) {
-        i32 value = *dst32++;
-        u16 result;
-        if (value < -32768) {
-            result = 0x8000;
-        } else if (value > 0x7FFF) {
-            result = 0x7FFF;
-        } else {
-            result = (u16)value;
-        }
-        temp[i] = result;
-    }
-
-    for (int i = 4; i < 8; i++) {
-        i32 value = *src32++;
-        u16 result;
-        if (value < -32768) {
-            result = 0x8000;
-        } else if (value > 0x7FFF) {
-            result = 0x7FFF;
         } else {
             result = (u16)value;
         }
@@ -406,6 +346,8 @@ void felix86_packssdw(u16* dst, u8* src) {
 }
 
 void felix86_pmaddwd(i16* dst, i16* src) {
+    ASSERT(((u64)dst & 1) == 0);
+    ASSERT(((u64)src & 1) == 0);
     u32 temp[4];
     u32 result[4];
 
