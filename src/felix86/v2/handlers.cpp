@@ -4139,6 +4139,7 @@ FAST_HANDLE(PSLLW) {
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         AS.VMV_XS(shift, src);
+        AS.ANDI(shift, shift, 0xFF);
     }
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
     biscuit::GPR max = rec.scratch();
@@ -4159,6 +4160,7 @@ FAST_HANDLE(PSLLQ) {
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         AS.VMV_XS(shift, src);
+        AS.ANDI(shift, shift, 0xFF);
     }
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::GPR max = rec.scratch();
@@ -4181,6 +4183,7 @@ FAST_HANDLE(PSLLD) { // Fuzzed
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         AS.VMV_XS(shift, src);
+        AS.ANDI(shift, shift, 0xFF);
     }
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     biscuit::GPR max = rec.scratch();
@@ -4202,6 +4205,7 @@ FAST_HANDLE(PSRLD) {
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         AS.VMV_XS(shift, src);
+        AS.ANDI(shift, shift, 0xFF);
     }
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     biscuit::GPR max = rec.scratch();
@@ -4223,11 +4227,34 @@ FAST_HANDLE(PSRLW) {
     } else {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         AS.VMV_XS(shift, src);
+        AS.ANDI(shift, shift, 0xFF);
     }
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
     biscuit::GPR max = rec.scratch();
     biscuit::Label dont_zero;
     AS.LI(max, 16);
+    AS.BLTU(shift, max, &dont_zero);
+    AS.VMV(dst, 0);
+    AS.Bind(&dont_zero);
+    AS.VSRL(dst, dst, shift);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PSRLQ) {
+    biscuit::GPR shift = rec.scratch();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        AS.LI(shift, val);
+    } else {
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        AS.VMV_XS(shift, src);
+        AS.ANDI(shift, shift, 0xFF);
+    }
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    AS.LI(max, 64);
     AS.BLTU(shift, max, &dont_zero);
     AS.VMV(dst, 0);
     AS.Bind(&dont_zero);
@@ -4252,27 +4279,6 @@ FAST_HANDLE(PSRAD) {
     if (shift > 31)
         shift = 31;
     AS.VSRA(dst, dst, shift);
-    rec.setOperandVec(&operands[0], dst);
-}
-
-FAST_HANDLE(PSRLQ) {
-    biscuit::GPR shift = rec.scratch();
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        u8 val = rec.getImmediate(&operands[1]);
-        AS.LI(shift, val);
-    } else {
-        biscuit::Vec src = rec.getOperandVec(&operands[1]);
-        AS.VMV_XS(shift, src);
-    }
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    biscuit::GPR max = rec.scratch();
-    biscuit::Label dont_zero;
-    AS.LI(max, 64);
-    AS.BLTU(shift, max, &dont_zero);
-    AS.VMV(dst, 0);
-    AS.Bind(&dont_zero);
-    AS.VSRL(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 
