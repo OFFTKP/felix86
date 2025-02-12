@@ -2466,21 +2466,23 @@ FAST_HANDLE(MINPS) {
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
 
     // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
-    AS.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
-    AS.VMFNE(nan_mask_2, src, src);
-    AS.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
-    AS.FMV_W_X(ft8, x0);                          // 0.0
-    AS.FSGNJN_S(ft9, ft8, ft8);                   // -0.0
-    AS.VMFEQ(equal_mask, dst, src);               // Check where they are equal
-    AS.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
-    AS.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
-    AS.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
-    AS.VMAND(equal_mask, equal_mask, zero_mask);  // Check where they are both zeroes
-    AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
+    // AS.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
+    // AS.VMFNE(nan_mask_2, src, src);
+    // AS.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
+    // AS.FMV_W_X(ft8, x0);                          // 0.0
+    // AS.FSGNJN_S(ft9, ft8, ft8);                   // -0.0
+    // AS.VMFEQ(equal_mask, dst, src);               // Check where they are equal
+    // AS.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
+    // AS.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
+    // AS.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
+    // AS.VMAND(equal_mask, equal_mask, zero_mask);  // Check where they are both zeroes
+    // AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
 
-    AS.VFMIN(nan_mask_2, dst, src);        // actual max result calculation
-    AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
-    rec.setOperandVec(&operands[0], zero_mask);
+    // AS.VFMIN(nan_mask_2, dst, src);        // actual max result calculation
+    // AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
+    // rec.setOperandVec(&operands[0], zero_mask);
+    AS.VFMIN(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(MINPD) {
@@ -2493,22 +2495,24 @@ FAST_HANDLE(MINPD) {
     biscuit::Vec neg_zero_mask = rec.scratchVec();
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
 
-    // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
-    AS.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
-    AS.VMFNE(nan_mask_2, src, src);
-    AS.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
-    AS.FMV_D_X(ft8, x0);                          // 0.0
-    AS.FSGNJN_D(ft9, ft8, ft8);                   // -0.0
-    AS.VMFEQ(equal_mask, dst, src);               // Check where they are equal
-    AS.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
-    AS.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
-    AS.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
-    AS.VMAND(equal_mask, equal_mask, zero_mask);  // They are both zeroes
-    AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
+    // // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
+    // AS.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
+    // AS.VMFNE(nan_mask_2, src, src);
+    // AS.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
+    // AS.FMV_D_X(ft8, x0);                          // 0.0
+    // AS.FSGNJN_D(ft9, ft8, ft8);                   // -0.0
+    // AS.VMFEQ(equal_mask, dst, src);               // Check where they are equal
+    // AS.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
+    // AS.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
+    // AS.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
+    // AS.VMAND(equal_mask, equal_mask, zero_mask);  // They are both zeroes
+    // AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
 
-    AS.VFMIN(nan_mask_2, dst, src);        // actual max result calculation
-    AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
-    rec.setOperandVec(&operands[0], zero_mask);
+    // AS.VFMIN(nan_mask_2, dst, src);        // actual max result calculation
+    // AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
+    // rec.setOperandVec(&operands[0], zero_mask);
+    AS.VFMIN(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PMINUB) {
@@ -2684,57 +2688,61 @@ FAST_HANDLE(PMADDWD) { // Fuzzed
 FAST_HANDLE(MAXPS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec nan_mask_1 = rec.scratchVec();
-    biscuit::Vec nan_mask_2 = rec.scratchVec();
-    biscuit::Vec equal_mask = rec.scratchVec();
-    biscuit::Vec zero_mask = rec.scratchVec();
-    biscuit::Vec neg_zero_mask = rec.scratchVec();
+    // biscuit::Vec nan_mask_1 = rec.scratchVec();
+    // biscuit::Vec nan_mask_2 = rec.scratchVec();
+    // biscuit::Vec equal_mask = rec.scratchVec();
+    // biscuit::Vec zero_mask = rec.scratchVec();
+    // biscuit::Vec neg_zero_mask = rec.scratchVec();
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
 
-    // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
-    AS.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
-    AS.VMFNE(nan_mask_2, src, src);
-    AS.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
-    AS.FMV_W_X(ft8, x0);                          // 0.0
-    AS.FSGNJN_S(ft9, ft8, ft8);                   // -0.0
-    AS.VMFEQ(equal_mask, dst, src);               // Check where they are equal
-    AS.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
-    AS.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
-    AS.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
-    AS.VMAND(equal_mask, equal_mask, zero_mask);  // Check where they are both zeroes
-    AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
+    // // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
+    // AS.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
+    // AS.VMFNE(nan_mask_2, src, src);
+    // AS.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
+    // AS.FMV_W_X(ft8, x0);                          // 0.0
+    // AS.FSGNJN_S(ft9, ft8, ft8);                   // -0.0
+    // AS.VMFEQ(equal_mask, dst, src);               // Check where they are equal
+    // AS.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
+    // AS.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
+    // AS.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
+    // AS.VMAND(equal_mask, equal_mask, zero_mask);  // Check where they are both zeroes
+    // AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
 
-    AS.VFMAX(nan_mask_2, dst, src);        // actual max result calculation
-    AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
-    rec.setOperandVec(&operands[0], zero_mask);
+    // AS.VFMAX(nan_mask_2, dst, src);        // actual max result calculation
+    // AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
+    // rec.setOperandVec(&operands[0], zero_mask);
+    AS.VFMAX(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(MAXPD) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec nan_mask_1 = rec.scratchVec();
-    biscuit::Vec nan_mask_2 = rec.scratchVec();
-    biscuit::Vec equal_mask = rec.scratchVec();
-    biscuit::Vec zero_mask = rec.scratchVec();
-    biscuit::Vec neg_zero_mask = rec.scratchVec();
+    // biscuit::Vec nan_mask_1 = rec.scratchVec();
+    // biscuit::Vec nan_mask_2 = rec.scratchVec();
+    // biscuit::Vec equal_mask = rec.scratchVec();
+    // biscuit::Vec zero_mask = rec.scratchVec();
+    // biscuit::Vec neg_zero_mask = rec.scratchVec();
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
 
-    // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
-    AS.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
-    AS.VMFNE(nan_mask_2, src, src);
-    AS.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
-    AS.FMV_D_X(ft8, x0);                          // 0.0
-    AS.FSGNJN_D(ft9, ft8, ft8);                   // -0.0
-    AS.VMFEQ(equal_mask, dst, src);               // Check where they are equal
-    AS.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
-    AS.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
-    AS.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
-    AS.VMAND(equal_mask, equal_mask, zero_mask);  // They are both zeroes
-    AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
+    // // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
+    // AS.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
+    // AS.VMFNE(nan_mask_2, src, src);
+    // AS.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
+    // AS.FMV_D_X(ft8, x0);                          // 0.0
+    // AS.FSGNJN_D(ft9, ft8, ft8);                   // -0.0
+    // AS.VMFEQ(equal_mask, dst, src);               // Check where they are equal
+    // AS.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
+    // AS.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
+    // AS.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
+    // AS.VMAND(equal_mask, equal_mask, zero_mask);  // They are both zeroes
+    // AS.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
 
-    AS.VFMAX(nan_mask_2, dst, src);        // actual max result calculation
-    AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
-    rec.setOperandVec(&operands[0], zero_mask);
+    // AS.VFMAX(nan_mask_2, dst, src);        // actual max result calculation
+    // AS.VMERGE(zero_mask, nan_mask_2, src); // Where v0 is 1's, use src, otherwise use result of vfmax
+    // rec.setOperandVec(&operands[0], zero_mask);
+    AS.VFMAX(dst, dst, src);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(MULPS) { // Fuzzed, TODO: needs NaN handling
@@ -4010,7 +4018,7 @@ FAST_HANDLE(MOVLPS) {
 
         rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
         AS.VMV(v0, 0b10);
-        AS.VMERGE(dst, src, dst); // TODO: Does just VMV work? with vlen = 1
+        AS.VMERGE(dst, src, dst);
 
         rec.setOperandVec(&operands[0], dst);
     } else if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
@@ -4519,41 +4527,40 @@ FAST_HANDLE(PEXTRW) {
     biscuit::Vec temp = rec.scratchVec();
     biscuit::GPR result = rec.scratch();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
 
     rec.setVectorState(SEW::E16, rec.maxVlen() / 16);
     AS.VSLIDEDOWN(temp, src, imm);
     AS.VMV_XS(result, temp);
-    rec.zext(dst, result, X86_SIZE_WORD);
+    rec.zext(result, result, X86_SIZE_WORD);
 
-    rec.setOperandGPR(&operands[0], dst);
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(PEXTRD) {
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR result = rec.scratch();
     u8 imm = rec.getImmediate(&operands[2]) & 0b11;
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
     AS.VSLIDEDOWN(temp, src, imm);
-    AS.VMV_XS(dst, temp);
+    AS.VMV_XS(result, temp);
 
-    rec.setOperandGPR(&operands[0], dst);
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(PEXTRQ) {
     biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR result = rec.scratch();
     u8 imm = rec.getImmediate(&operands[2]) & 0b1;
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VSLIDEDOWN(temp, src, imm);
-    AS.VMV_XS(dst, temp);
+    AS.VMV_XS(result, temp);
 
-    rec.setOperandGPR(&operands[0], dst);
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(CMPXCHG_lock) {
@@ -5755,6 +5762,7 @@ FAST_HANDLE(FLDCW) {
 FAST_HANDLE(STMXCSR) {
     biscuit::GPR mxcsr = rec.scratch();
     biscuit::GPR address = rec.scratch();
+    // TODO: are overflow/inexact/underflow etc flags set in fcsr? if then we need to copy them over
     AS.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, mxcsr));
     AS.LWU(mxcsr, 0, address);
     rec.setOperandGPR(&operands[0], mxcsr);
