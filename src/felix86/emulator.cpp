@@ -252,5 +252,5 @@ void Emulator::CleanExit(ThreadState* state) {
 }
 
 void Emulator::UnlinkBlock(ThreadState* state, u64 rip) {
-    state->recompiler->unlinkBlock(rip);
+    state->recompiler->unlinkBlock(state, rip);
 }
