@@ -1210,6 +1210,15 @@ void felix86_syscall(ThreadState* state) {
 
         env.push_back("__FELIX86_EXECVE=1"); // tell the new emulator instance that we're in execve
 
+        std::string log;
+        log += "execve(/proc/self/exe ";
+        for (const char* arg : args) {
+            log += arg;
+            log += " ";
+        }
+        log += ")";
+        LOG("%s", log.c_str());
+
         // execve, there's no going back
         result = execve("/proc/self/exe", (char* const*)args.data(), (char* const*)env.data());
 
