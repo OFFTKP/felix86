@@ -5884,6 +5884,11 @@ FAST_HANDLE(POPFQ) {
 
     AS.SRLI(of, flags, 11);
     AS.ANDI(of, of, 1);
+
+    // CPUID bit may have been modified, which we need to emulate because this is how some programs detect CPUID support
+    AS.SRLI(temp, flags, 21);
+    AS.ANDI(temp, temp, 1);
+    AS.SB(temp, offsetof(ThreadState, cpuid_bit), rec.threadStatePointer());
 }
 
 FAST_HANDLE(MOVDDUP) {
