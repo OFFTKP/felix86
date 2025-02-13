@@ -542,6 +542,21 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_fsync: {
+        result = HOST_SYSCALL(fsync, rdi);
+        STRACE("fsync(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_sync: {
+        result = HOST_SYSCALL(sync);
+        STRACE("sync() = %d", (int)result);
+        break;
+    }
+    case felix86_x86_64_syncfs: {
+        result = HOST_SYSCALL(syncfs, rdi);
+        STRACE("syncfs(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_sendmmsg: {
         result = HOST_SYSCALL(sendmmsg, rdi, (struct mmsghdr*)rsi, rdx, r10);
         STRACE("sendmmsg(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
