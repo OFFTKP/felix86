@@ -236,14 +236,12 @@ bool Filesystem::validatePath(const std::filesystem::path& path) {
 
 int Filesystem::Chdir(const char* path) {
     std::filesystem::path new_cwd = path;
-    new_cwd = new_cwd.lexically_normal();
     if (new_cwd.is_relative()) {
         FELIX86_LOCK;
         new_cwd = cwd_path / new_cwd;
         FELIX86_UNLOCK;
-    } else {
-        new_cwd = rootfs_path / new_cwd.relative_path();
     }
+    new_cwd = new_cwd.lexically_normal();
 
     if (!validatePath(new_cwd)) {
         return -ENOENT;
@@ -251,7 +249,6 @@ int Filesystem::Chdir(const char* path) {
 
     FELIX86_LOCK;
     cwd_path = new_cwd;
-    chdir(cwd_path.c_str());
     FELIX86_UNLOCK;
 
     return 0;
