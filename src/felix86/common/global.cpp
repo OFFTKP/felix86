@@ -337,13 +337,19 @@ bool parse_extensions(const char* arg) {
 void initialize_semaphore() {
     if (!g_semaphore) {
         g_semaphore = sem_open("/felix86_semaphore", O_CREAT | O_EXCL, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, 1);
+        if (g_semaphore == SEM_FAILED) {
+            const char* is_execve = getenv("__FELIX86_EXECVE");
+            if (!is_execve) {
+                ERROR("Failed to create semaphore: %s", strerror(errno));
+            }
+            g_semaphore = sem_open("/felix86_semaphore", 0);
+        }
     } else {
         g_semaphore = sem_open("/felix86_semaphore", 0);
     }
 
     if (g_semaphore == SEM_FAILED) {
         ERROR("Failed to create semaphore: %s", strerror(errno));
-        exit(1);
     }
 }
 
