@@ -251,7 +251,9 @@ int Filesystem::Chdir(const char* path) {
 
     FELIX86_LOCK;
     cwd_path = new_cwd;
+    chdir(cwd_path.c_str());
     FELIX86_UNLOCK;
+
     return 0;
 }
 
