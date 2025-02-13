@@ -1518,10 +1518,9 @@ void Recompiler::restoreRoundingMode() {
 }
 
 void Recompiler::backToDispatcher() {
-    biscuit::GPR address = scratch();
-    as.LD(address, offsetof(ThreadState, compile_next_handler), threadStatePointer());
-    as.JR(address);
-    popScratch();
+    as.NOP();
+    as.LD(t0, offsetof(ThreadState, compile_next_handler), threadStatePointer());
+    as.JR(t0);
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
@@ -1745,9 +1744,7 @@ biscuit::GPR Recompiler::getRip() {
 void Recompiler::jumpAndLink(u64 rip) {
     if (g_dont_link) {
         // Just emit jump to dispatcher
-        as.NOP();
-        as.LD(t0, offsetof(ThreadState, compile_next_handler), threadStatePointer());
-        as.JR(t0);
+        backToDispatcher();
         return;
     }
 
@@ -1757,9 +1754,7 @@ void Recompiler::jumpAndLink(u64 rip) {
         // ADDI
         // JR
         u64 link_me = (u64)as.GetCodeBuffer().GetCursorOffset();
-        as.NOP();
-        as.LD(t0, offsetof(ThreadState, compile_next_handler), threadStatePointer());
-        as.JR(t0);
+        backToDispatcher();
 
         block_metadata[rip].pending_links.push_back(link_me);
     } else {
@@ -2256,4 +2251,16 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
     as.SD(old_sw, offsetof(ThreadState, fpu_sw), threadStatePointer());
     popScratch();
     popScratch();
+}
+
+void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
+    auto metadata = state->recompiler->getBlockMetadata(rip);
+    u8* rewind_address = (u8*)metadata.address_end - 4 * 3; // 3 instructions for the ending jump/link
+    ptrdiff_t rewind_offset = rewind_address - as.GetCodeBuffer().GetOffsetPointer(0);
+    ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
+
+    // Replace whatever was there with a jump back to dispatcher
+    as.RewindBuffer(rewind_offset);
+    backToDispatcher();
+    as.AdvanceBuffer(current_offset);
 }

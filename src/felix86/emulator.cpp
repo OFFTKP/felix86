@@ -185,10 +185,23 @@ void Emulator::setupMainStack(ThreadState* state) {
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
     // Check if there's any pending asynchronous signals. If there are, raise them.
-    if (thread_state->pending_signals.size != 0) {
-        int sig = thread_state->pending_signals.signals[thread_state->pending_signals.size - 1];
-        thread_state->pending_signals.size--;
-        ASSERT(thread_state->pending_signals.size != (decltype(thread_state->pending_signals.size))-1);
+    if (thread_state->pending_signals != 0) {
+        sigset_t full, old;
+        sigfillset(&full);
+        sigprocmask(SIG_BLOCK, &full, &old); // block signals to make changing pending_signals safe
+
+        int sig = 0;
+        for (int i = 0; i < 64; i++) {
+            if (thread_state->pending_signals & (1 << i)) {
+                sig = i + 1;
+                thread_state->pending_signals &= ~(1 << i);
+                break;
+            }
+        }
+
+        sigprocmask(SIG_SETMASK, &old, nullptr);
+
+        ASSERT(sig != 0); // found the signal
 
         SignalHandlerTable& handlers = *thread_state->signal_handlers;
         RegisteredSignal& handler = handlers[sig - 1];
@@ -236,4 +249,8 @@ void Emulator::StartThread(ThreadState* state) {
 
 void Emulator::CleanExit(ThreadState* state) {
     state->recompiler->exitDispatcher(state);
+}
+
+void Emulator::UnlinkBlock(ThreadState* state, u64 rip) {
+    state->recompiler->unlinkBlock(rip);
 }

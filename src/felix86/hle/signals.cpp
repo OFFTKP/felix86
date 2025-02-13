@@ -1,5 +1,6 @@
 #include <array>
 #include "felix86/common/state.hpp"
+#include "felix86/emulator.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -599,9 +600,13 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         bool jit_code = is_in_jit_code(current_state, pc);
         if (!jit_code || current_state->signals_disabled) {
             WARN("Deferring signal %d", sig);
-            current_state->pending_signals.size++;
-            ASSERT(current_state->pending_signals.size < sizeof(current_state->pending_signals.signals));
-            current_state->pending_signals.signals[current_state->pending_signals.size - 1] = sig;
+            current_state->pending_signals |= 1 << (sig - 1);
+
+            // Unlink the current block, making it jump back to the dispatcher at the end
+            // This will ensure that the pending signal is eventually handled if we are stuck in a loop
+            // For example, if a block is in a loop that also had a host function call and this signal was triggered
+            // during the function call
+            g_emulator->UnlinkBlock(current_state, current_state->GetRip());
             return;
         }
 

@@ -213,6 +213,8 @@ struct Recompiler {
         return read_only_pages;
     }
 
+    void unlinkBlock(ThreadState* state, u64 rip);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

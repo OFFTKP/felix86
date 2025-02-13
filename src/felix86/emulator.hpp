@@ -59,6 +59,8 @@ struct Emulator {
 
     void CleanExit(ThreadState* state);
 
+    void UnlinkBlock(ThreadState* state, u64 rip);
+
 private:
     void setupMainStack(ThreadState* state);
 
