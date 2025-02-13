@@ -1185,14 +1185,36 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
 
-        WARN("execve has bad support currently");
-        result = HOST_SYSCALL(execve, path->c_str(), (char**)rsi, (char**)rdx);
-        STRACE("execve(%s, %p, %p) = %d", path->c_str(), (void*)rsi, (void*)rdx, (int)result);
-
-        if (result == 0) {
-            // A successful call to execve(2) removes any existing alternate signal stack
-            state->alt_stack = {};
+        if (!rsi || !rdx) {
+            // Technically legal for programs to call execve with NULL args or env, but we don't support it
+            WARN("execve called with NULL args or env");
+            result = -EFAULT;
+            break;
         }
+
+        std::string spath = path->string();
+        std::vector<const char*> args = g_host_argv;
+        const char** guest_argv = (const char**)rsi;
+        args.push_back(spath.c_str());
+        while (*guest_argv) {
+            args.push_back(*guest_argv);
+            guest_argv++;
+        }
+
+        std::vector<const char*> env;
+        const char** guest_env = (const char**)rdx;
+        while (*guest_env) {
+            env.push_back(*guest_env);
+            guest_env++;
+        }
+
+        env.push_back("__FELIX86_EXECVE=1"); // tell the new emulator instance that we're in execve
+
+        // execve, there's no going back
+        result = execve("/proc/self/exe", (char* const*)args.data(), (char* const*)env.data());
+
+        // if we're here, execve failed
+        WARN("execve(%s, %p, %p) failed: %s", (const char*)rdi, (void*)rsi, (void*)rdx, strerror(errno));
         break;
     }
     case felix86_x86_64_umask: {

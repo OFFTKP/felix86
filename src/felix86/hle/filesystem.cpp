@@ -72,14 +72,14 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
             return std::filesystem::path(pathname);
         }
 
+        if (std::string(pathname) == proc_self_exe) {
+            return executable_path;
+        }
+
         // Check if it starts with /proc
         constexpr static const char* proc = "/proc";
         if (strncmp(pathname, proc, strlen(proc)) == 0) {
             return std::filesystem::path(pathname);
-        }
-
-        if (std::string(pathname) == proc_self_exe) { // TODO: remove this, AtPath should handle this
-            return executable_path;                   // TODO: remove the rootfs from this path
         }
     }
 

@@ -171,7 +171,17 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    LOG("%s", version_full.c_str());
+    // This instance of felix86 may be running as an execve'd version of an older instance
+    // In this case we shouldn't print the version string and unlink the semaphore
+    const char* execve_process = getenv("__FELIX86_EXECVE");
+
+    for (int i = 0; i < guest_arg_start_index - 1; i++) {
+        g_host_argv.push_back(argv[i]);
+    }
+
+    if (!execve_process) {
+        LOG("%s", version_full.c_str());
+    }
 
     std::string args = "Arguments: ";
     for (const auto& arg : config.argv) {
@@ -255,9 +265,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    pthread_setname_np(pthread_self(), "MainThread");
+    if (execve_process) {
+        pthread_setname_np(pthread_self(), "ExecveProcess");
+    } else {
+        pthread_setname_np(pthread_self(), "MainProcess");
+    }
 
-    unlink_semaphore(); // in case it was not closed properly last time
+    if (!execve_process) {
+        unlink_semaphore(); // in case it was not closed properly last time
+    }
+
     initialize_semaphore();
 
     ASSERT(argc > 1); // at this point we should have at least one argument
