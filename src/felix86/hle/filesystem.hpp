@@ -51,7 +51,7 @@ struct Filesystem {
         }
 
         FELIX86_LOCK;
-        cwd_path = executable_path;
+        cwd_path = executable_path.parent_path();
         FELIX86_UNLOCK;
 
         return true;
