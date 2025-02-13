@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <mutex>
 #include <optional>
 #include <linux/limits.h>
 #include "felix86/common/elf.hpp"
@@ -52,7 +51,7 @@ struct Filesystem {
         }
 
         FELIX86_LOCK;
-        cwd_path = rootfs_path;
+        cwd_path = executable_path;
         FELIX86_UNLOCK;
 
         return true;
