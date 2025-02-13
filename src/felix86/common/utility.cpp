@@ -1,4 +1,6 @@
 #include <cstring>
+#include "Zydis/Decoder.h"
+#include "Zydis/Disassembler.h"
 #include "felix86/common/debug.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
@@ -241,6 +243,37 @@ __attribute__((visibility("default"))) int guest_breakpoint_name(const char* sym
 
     printf("Symbol %s not found\n", symbol);
     return -1;
+}
+
+__attribute__((visibility("default"))) void disassemble_x64(u64 address) {
+    ZydisDecoder decoder;
+    ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+
+    u64 cur = address;
+    while (true) {
+        ZydisDecodedInstruction instruction;
+        ZydisDecodedOperand operands[10];
+        ZydisDecoderDecodeFull(&decoder, (void*)cur, 15, &instruction, operands);
+
+        ZydisMnemonic mnemonic = instruction.mnemonic;
+        bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
+        bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET;
+        bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
+        bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
+        bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
+        bool stop = is_jump || is_ret || is_call || is_illegal || is_hlt;
+
+        ZydisDisassembledInstruction instr;
+        ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, cur, (void*)cur, 15, &instr);
+
+        printf("%016lx: %s\n", cur, instr.text);
+
+        if (stop) {
+            break;
+        } else {
+            cur += instruction.length;
+        }
+    }
 }
 
 int clear_breakpoints() {
