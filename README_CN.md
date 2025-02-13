@@ -16,8 +16,6 @@ felix86 是一个 Linux 用户空间模拟器。它允许你在 RISC-V 处理器
 ## 兼容性
 felix86 尚处于开发初期，不支持 AArch64。
 
-目前，felix86 可以运行一些基于控制台的应用程序，如 `python3` 或 `lua`。
-
 如果你想要一个更成熟的 x86-64 用户空间模拟器，请使用其中之一：
 
 - [FEX](https://github.com/FEX-Emu/FEX), 适用于 AArch64 上的 x86 & x86-64

@@ -1,6 +1,6 @@
 # How to use
 
-:warning: felix86 is early in development. It does not run games at the moment :warning:
+:warning: felix86 is early in development. It can run some simple games. :warning:
 
 ## Required architecture
 You need a RISC-V board with `rv64gvb` extensions.

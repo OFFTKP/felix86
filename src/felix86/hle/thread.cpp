@@ -206,45 +206,52 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     long result;
 
     if (args->stack == 0) {
-        ERROR("FIXME");
         // If the child_stack argument is NULL, we need to handle it specially. The `clone` function can't take a null child_stack, we have to use
         // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
         // copy-on-write semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case,
         // for correct operation, the CLONE_VM option should not be specified.
+        ASSERT(!(host_flags & CLONE_VM));
+
+        int parent_tid = host_clone_args.parent_state->tid;
 
         host_clone_args.new_rsp = current_state->gprs[X86_REF_RSP];
         long ret = syscall(SYS_clone, host_flags, nullptr, args->parent_tid, args->child_tid, nullptr); // args are flipped in syscall
 
         if (ret == 0) {
+            // Start the child at the instruction after the syscall
             result = 0;
-            clone_handler(&host_clone_args); // TODO: probably wrong. can just start normally as its a different process, malloc should be fine we
-                                             // dont need a separate tls i think
-            UNREACHABLE();
+            // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
+            // in this new process. Just give it a new name to make debugging easier
+            std::string name = "ForkedFrom" + std::to_string(parent_tid); // forked from parent tid
+            prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
         } else {
-            result = ret;
+            if (ret < 0) {
+                ERROR("clone (probably fork) failed with %d", errno);
+            }
+            result = ret; // This process just continues normally
         }
     } else {
         ASSERT(host_flags & CLONE_VM); // handle this when the time comes, child_tid no longer in same memory space, but we also don't need to pthread
         host_clone_args.stack = malloc(1024 * 1024);
         result = clone(clone_handler, (u8*)host_clone_args.stack + 1024 * 1024, host_flags, &host_clone_args, nullptr, nullptr, &clone_tid);
+
+        // Wait for the clone_handler to finish
+        syscall(SYS_futex, &clone_tid, FUTEX_WAIT, -1, nullptr, nullptr, 0);
+
+        // Wait for the pthread_handler to finish initialization and set this flag
+        while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
+            ;
+
+        // This is finally safe to free
+        free(host_clone_args.stack);
+
+        if (result < 0) {
+            ERROR("clone failed with %d", errno);
+        }
+
+        // Return the tid of the new thread that was started inside the clone_handler
+        result = host_clone_args.new_tid;
     }
-
-    // Wait for the clone_handler to finish
-    syscall(SYS_futex, &clone_tid, FUTEX_WAIT, -1, nullptr, nullptr, 0);
-
-    // Wait for the pthread_handler to finish initialization and set this flag
-    while (!__atomic_load_n(&host_clone_args.new_tid, __ATOMIC_SEQ_CST))
-        ;
-
-    // This is finally safe to free
-    free(host_clone_args.stack);
-
-    if (result < 0) {
-        ERROR("clone failed with %d", errno);
-    }
-
-    // Return the tid of the new thread that was started inside the clone_handler
-    result = host_clone_args.new_tid;
 
     return result;
 }

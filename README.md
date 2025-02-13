@@ -17,8 +17,6 @@ Want to contribute but don't know where to start? [Check this out](./docs/contri
 ## Compatibility
 felix86 is in the very early stages of development and does not support AArch64.
 
-Currently, felix86 can run some console-based applications, such as `python3` and `lua`.
-
 If you need a more mature x86-64 userspace emulator, consider using one of these:
 
 - [FEX](https://github.com/FEX-Emu/FEX) for x86 & x86-64 on AArch64

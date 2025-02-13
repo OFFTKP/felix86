@@ -623,6 +623,11 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         auto vecs = get_vector_state(ctx);
         bool use_altstack = handler.flags & SA_ONSTACK;
 
+        if (!jit_code) {
+            // TODO: deferred signals
+            WARN("Asynchronous signal is being handled in non-jit code (currently undefined behavior), brace for impact!");
+        }
+
         sigset_t mask_during_signal;
         mask_during_signal = handler.mask;
 #ifndef SA_NODEFER
