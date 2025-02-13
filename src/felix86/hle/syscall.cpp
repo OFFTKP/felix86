@@ -775,6 +775,11 @@ void felix86_syscall(ThreadState* state) {
         FELIX86_UNLOCK;
         break;
     }
+    case felix86_x86_64_tgkill: {
+        result = HOST_SYSCALL(tgkill, rdi, rsi, rdx);
+        STRACE("tgkill(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_mmap: {
         result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
         STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);

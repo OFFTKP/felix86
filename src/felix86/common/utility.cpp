@@ -227,12 +227,12 @@ int guest_breakpoint(const char* region, u64 address) {
     return g_breakpoints.size();
 }
 
-int guest_breakpoint_abs(u64 address) {
+__attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
     g_breakpoints[address] = {};
     return g_breakpoints.size();
 }
 
-int guest_breakpoint_name(const char* symbol) {
+__attribute__((visibility("default"))) int guest_breakpoint_name(const char* symbol) {
     for (auto& [address, bp] : g_symbols) {
         if (bp == symbol) {
             return guest_breakpoint_abs(address);
