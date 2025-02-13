@@ -348,7 +348,11 @@ int main(int argc, char* argv[]) {
 
     emulator.Run();
 
-    LOG("Main thread exited with reason: %s", print_exit_reason(main_state->exit_reason));
+    if (!execve_process) {
+        LOG("Main process exited with reason: %s", print_exit_reason(main_state->exit_reason));
+    } else {
+        LOG("Execve process exited with reason: %s", print_exit_reason(main_state->exit_reason));
+    }
 
     unlink_semaphore();
 
