@@ -4,8 +4,6 @@
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-using VectorState = std::array<XmmReg, 32>;
-
 bool is_in_jit_code(ThreadState* state, uintptr_t ptr) {
     CodeBuffer& buffer = state->recompiler->getAssembler().GetCodeBuffer();
     uintptr_t start = buffer.GetOffsetAddress(0);
@@ -92,7 +90,7 @@ struct x64_rt_sigframe {
 static_assert(sizeof(siginfo_t) == 128);
 static_assert(sizeof(x64_rt_sigframe) == 1120);
 
-void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip, u64* host_gprs, std::optional<VectorState>& host_vecs) {
+void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip, const u64* gprs, const XmmReg* xmms) {
     // We were in the middle of a basic block when the signal hit
     // We need to fixup our state and get the correct values that may not have been written back to the state struct
     // First, for the GPRS
@@ -108,12 +106,12 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
         // effectively doing a writeback to state.
         if (needs_copy) {
             int allocated_host_gpr = Recompiler::allocatedGPR((x86_ref_e)(X86_REF_RAX + i)).Index();
-            state->SetGpr((x86_ref_e)(X86_REF_RAX + i), host_gprs[allocated_host_gpr]);
+            state->SetGpr((x86_ref_e)(X86_REF_RAX + i), gprs[allocated_host_gpr]);
         }
     }
 
     // Do the same for XMMs
-    if (host_vecs) {
+    if (xmms) {
         for (int i = 0; i < 16; i++) {
             bool needs_copy = false;
             // TODO: again get rid of magic number 16 + 5
@@ -124,7 +122,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
             }
 
             if (needs_copy) {
-                state->SetXmmReg((x86_ref_e)(X86_REF_XMM0 + i), host_vecs->at(i));
+                state->SetXmmReg((x86_ref_e)(X86_REF_XMM0 + i), xmms[i]);
             }
         }
     } else {
@@ -147,7 +145,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
 
         if (needs_copy) {
             int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_CF).Index();
-            state->SetFlag(X86_REF_CF, host_gprs[allocated_host_gpr] & 1);
+            state->SetFlag(X86_REF_CF, gprs[allocated_host_gpr] & 1);
         }
     }
 
@@ -162,7 +160,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
 
         if (needs_copy) {
             int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_AF).Index();
-            state->SetFlag(X86_REF_AF, host_gprs[allocated_host_gpr] & 1);
+            state->SetFlag(X86_REF_AF, gprs[allocated_host_gpr] & 1);
         }
     }
 
@@ -177,7 +175,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
 
         if (needs_copy) {
             int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_ZF).Index();
-            state->SetFlag(X86_REF_ZF, host_gprs[allocated_host_gpr] & 1);
+            state->SetFlag(X86_REF_ZF, gprs[allocated_host_gpr] & 1);
         }
     }
 
@@ -192,7 +190,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
 
         if (needs_copy) {
             int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_SF).Index();
-            state->SetFlag(X86_REF_SF, host_gprs[allocated_host_gpr] & 1);
+            state->SetFlag(X86_REF_SF, gprs[allocated_host_gpr] & 1);
         }
     }
 
@@ -207,7 +205,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
 
         if (needs_copy) {
             int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_OF).Index();
-            state->SetFlag(X86_REF_OF, host_gprs[allocated_host_gpr] & 1);
+            state->SetFlag(X86_REF_OF, gprs[allocated_host_gpr] & 1);
         }
     }
 
@@ -216,8 +214,8 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void setup(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t new_mask, u64* host_gprs, std::optional<VectorState>& host_vecs,
-           bool use_altstack, bool in_jit_code) {
+void Signals::setupFrame(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const XmmReg* host_vecs,
+                         bool use_altstack, bool in_jit_code) {
     u64 rsp = use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP);
     rsp -= 128; // red zone
 
@@ -248,6 +246,7 @@ void setup(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t n
 
     if (in_jit_code) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
+        ASSERT(current_block);
         reconstruct_state(state, current_block, rip, host_gprs, host_vecs);
     } else {
         // State reconstruction isn't necessary, the state should be in some stable form
@@ -412,7 +411,7 @@ riscv_v_state* get_riscv_vector_state(void* ctx) {
 
     // Normally the glibc should have better support for this, but this will be fine for now
     if (reserved[1] != 0x53465457) { // RISC-V V extension magic number that indicates the presence of vector state
-        return nullptr;
+        return nullptr;              // old kernel version, unsupported, we can't get the vector state and the vector regs are gonna be unstable
     }
 
     void* after_fpregs = reserved + 3;
@@ -420,7 +419,8 @@ riscv_v_state* get_riscv_vector_state(void* ctx) {
     return v_state;
 }
 
-std::optional<VectorState> get_vector_state(void* ctx) {
+// Gets the vector state from the frame, only for recentish Linux kernels
+std::optional<std::array<XmmReg, 32>> get_vector_state(void* ctx) {
     riscv_v_state* v_state = get_riscv_vector_state(ctx);
     if (!v_state) {
         return std::nullopt;
@@ -588,7 +588,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     default: {
     check_guest_signal:
-        // First we need to find the current ThreadState object
         SignalHandlerTable& handlers = *current_state->signal_handlers;
         RegisteredSignal& handler = handlers[sig - 1];
         if (!handler.func) {
@@ -596,57 +595,51 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
 
         ASSERT(handler.func != SIG_IGN); // TODO: what does that even mean?
+
+        bool jit_code = is_in_jit_code(current_state, pc);
+        if (!jit_code || current_state->signals_disabled) {
+            WARN("Deferring signal %d", sig);
+            current_state->pending_signals.size++;
+            ASSERT(current_state->pending_signals.size < sizeof(current_state->pending_signals.signals));
+            current_state->pending_signals.signals[current_state->pending_signals.size - 1] = sig;
+            return;
+        }
+
+        // It should be safe past this point to use stuff like printf, since this code is guaranteed to be jit code
         if (g_strace) {
             STRACE("------- Guest signal %s -------", strsignal(sig));
         }
 
-        WARN("Executing signal handler for %s", strsignal(sig));
+        WARN("Executing signal handler for \"%s\"", strsignal(sig));
 
-        // TODO: this could cause issues if it never jumps back to the dispatcher
-        if (current_state->signals_disabled) {
-            ERROR("Signal %d hit while signals are disabled", sig);
+        XmmReg* xmms;
 
-            // Signals are disabled! This might be because we are currently executing a disabled region of code, such as a rep instruction or an
-            // atomic instruction that uses lr/sc. We need to queue the signal to be handled later.
-            current_state->pending_signals.push(sig);
-
-            // Also check that there's no more than 1000 signals in the queue. Arbitrary number, but the only case where this realistically happens
-            // is when the signal keeps hitting over and over, which means it is a synchronous signal. We don't want to deadlock the thread and eat up
-            // all the memory.
-            if (current_state->pending_signals.size() > 1000) {
-                ERROR("Too many pending signals, something is wrong");
-            }
-            return;
+        u64* gprs = (u64*)context->uc_mcontext.__gregs;
+        auto host_vecs = get_vector_state(ctx);
+        if (host_vecs) {
+            // Xmms start at the first allocated register, xmm0-xmm15 are allocated to sequential host registers so we are fine
+            xmms = &(*host_vecs)[Recompiler::allocatedVec(X86_REF_XMM0).Index()];
+        } else {
+            // In the chance that this is an old kernel and we couldn't get the vector state in the signal handler, let's at least
+            // get the most recent state we are aware of
+            xmms = current_state->xmm;
         }
 
-        bool jit_code = is_in_jit_code(current_state, pc);
-        auto vecs = get_vector_state(ctx);
         bool use_altstack = handler.flags & SA_ONSTACK;
-
-        if (!jit_code) {
-            // TODO: deferred signals
-            WARN("Asynchronous signal is being handled in non-jit code (currently undefined behavior), brace for impact!");
-        }
 
         sigset_t mask_during_signal;
         mask_during_signal = handler.mask;
-#ifndef SA_NODEFER
-#define SA_NODEFER 0x40000000
-#endif
+
         if (!(handler.flags & SA_NODEFER)) {
             sigaddset(&mask_during_signal, sig);
         }
 
-        BlockMetadata* metadata = nullptr;
-        u64 actual_rip = current_state->GetRip();
-        if (jit_code) {
-            metadata = get_block_metadata(current_state, pc);
-            actual_rip = get_actual_rip(*metadata, pc);
-        }
+        BlockMetadata* metadata = get_block_metadata(current_state, pc);
+        u64 actual_rip = get_actual_rip(*metadata, pc);
 
         // Prepares everything necessary to run the signal handler when we return from the host signal handler.
         // The stack is switched if necessary and filled with the frame that the signal handler expects.
-        setup(metadata, actual_rip, current_state, mask_during_signal, (u64*)context->uc_mcontext.__gregs, vecs, use_altstack, jit_code);
+        Signals::setupFrame(metadata, actual_rip, current_state, mask_during_signal, gprs, xmms, use_altstack, jit_code);
 
         current_state->SetGpr(X86_REF_RDI, sig);
 
@@ -662,10 +655,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             handler.func = nullptr;
         }
 
-        if (jit_code) {
-            // If in jit code, make it jump to the dispatcher immediately. If it's not in jit code, just let it naturally go to the dispatcher.
-            context->uc_mcontext.__gregs[REG_PC] = (u64)recompiler.getCompileNext();
-        }
+        // Make it jump to the dispatcher immediately after returning
+        context->uc_mcontext.__gregs[REG_PC] = (u64)recompiler.getCompileNext();
         break;
     }
     }

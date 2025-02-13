@@ -4,6 +4,10 @@
 #include <csignal>
 #include "felix86/common/utility.hpp"
 
+#ifndef SA_NODEFER
+#define SA_NODEFER 0x40000000
+#endif
+
 struct RegisteredSignal {
     void* func = (void*)SIG_DFL; // handler function of signal
     sigset_t mask = {};          // blocked during execution of this handler
@@ -11,6 +15,10 @@ struct RegisteredSignal {
 };
 
 using SignalHandlerTable = std::array<RegisteredSignal, 64>;
+
+struct BlockMetadata;
+
+struct XmmReg;
 
 struct Signals {
     static void initialize();
@@ -44,4 +52,7 @@ struct Signals {
     static constexpr u64 magicSigreturnAddress() {
         return 0x1F00'0000'0000'0000;
     }
+
+    static void setupFrame(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
+                           const XmmReg* host_vecs, bool use_altstack, bool in_jit_code);
 };

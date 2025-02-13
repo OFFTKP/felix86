@@ -184,13 +184,45 @@ void Emulator::setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
-    // Check if there's any pending signals. If there are, raise them.
-    // SURELY it won't be the case a synchronous signal would happen in our signal disabled jit regions, right?
-    // This should be safe to access without protection, as jitted code is the only one that can modify this
-    while (!thread_state->pending_signals.empty()) {
-        int signal = thread_state->pending_signals.front();
-        thread_state->pending_signals.pop();
-        raise(signal);
+    // Check if there's any pending asynchronous signals. If there are, raise them.
+    if (thread_state->pending_signals.size != 0) {
+        int sig = thread_state->pending_signals.signals[thread_state->pending_signals.size - 1];
+        thread_state->pending_signals.size--;
+        ASSERT(thread_state->pending_signals.size != (decltype(thread_state->pending_signals.size))-1);
+
+        SignalHandlerTable& handlers = *thread_state->signal_handlers;
+        RegisteredSignal& handler = handlers[sig - 1];
+
+        u64 rip = thread_state->GetRip();
+
+        sigset_t mask_during_signal;
+        mask_during_signal = handler.mask;
+
+        if (!(handler.flags & SA_NODEFER)) {
+            sigaddset(&mask_during_signal, sig);
+        }
+
+        u64* gprs = thread_state->gprs;
+        XmmReg* xmms = thread_state->xmm;
+
+        bool use_altstack = handler.flags & SA_ONSTACK;
+
+        Signals::setupFrame(nullptr, rip, thread_state, mask_during_signal, gprs, xmms, use_altstack, false);
+
+        thread_state->SetGpr(X86_REF_RDI, sig);
+
+        // Now we just need to set RIP to the handler function
+        thread_state->SetRip((u64)handler.func);
+
+        // Block the signals specified in the sa_mask until the signal handler returns
+        sigset_t new_mask;
+        sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());
+        pthread_sigmask(SIG_BLOCK, &new_mask, nullptr);
+
+        if (handler.flags & SA_RESETHAND) {
+            handler.func = nullptr;
+        }
+        WARN("Handling deferred signal %d", sig);
     }
 
     return thread_state->recompiler->getCompiledBlock(thread_state->GetRip());

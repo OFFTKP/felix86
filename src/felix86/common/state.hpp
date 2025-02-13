@@ -108,11 +108,12 @@ struct ThreadState {
     bool signals_disabled{}; // some instructions would make it annoying to allow for signals to occur, be it because they have loops like rep, or use
                              // lr/sc instructions. So, this flag is set to true when we absolutely don't want a signal to be handled here.
     bool cpuid_bit = true;   // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
-                             // check presence of cpuid... on x86-64 processors... lol
+                             // check presence of cpuid... on x86-64 processors... lol...
 
-    std::queue<int> pending_signals{}; // queue for signals that are pending to be handled because they were disabled when they happened
-                                       // This doesn't quite work if a signal is "synchronous", meaning if an instruction purposefully triggered it
-                                       // but those instructions should not overlap with ones that would disable signals.
+    struct PendingSignals { // queue for signals that are pending to be handled because they were disabled when they happened
+        u8 size{};          // or because they executed when we were in non-jit code
+        u8 signals[15]{};
+    } pending_signals{};
 
     std::vector<u64> calltrace{}; // used if g_calltrace is true
 
