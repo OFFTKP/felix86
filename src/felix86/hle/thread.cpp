@@ -215,7 +215,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         int parent_tid = host_clone_args.parent_state->tid;
 
         host_clone_args.new_rsp = current_state->gprs[X86_REF_RSP];
-        long ret = syscall(SYS_clone, host_flags, nullptr, args->parent_tid, args->child_tid, nullptr); // args are flipped in syscall
+        long ret = syscall(SYS_clone, args->flags, nullptr, args->parent_tid, args->child_tid, nullptr); // args are flipped in syscall
 
         if (ret == 0) {
             // Start the child at the instruction after the syscall

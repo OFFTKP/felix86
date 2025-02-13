@@ -1195,10 +1195,14 @@ void felix86_syscall(ThreadState* state) {
         std::string spath = path->string();
         std::vector<const char*> args = g_host_argv;
         const char** guest_argv = (const char**)rsi;
+        // Skip first argument, which is the path
+        guest_argv++;
         args.push_back(spath.c_str());
-        while (*guest_argv) {
-            args.push_back(*guest_argv);
-            guest_argv++;
+        if (guest_argv) {
+            while (*guest_argv) {
+                args.push_back(*guest_argv);
+                guest_argv++;
+            }
         }
 
         std::vector<const char*> env;
@@ -1211,11 +1215,12 @@ void felix86_syscall(ThreadState* state) {
         env.push_back("__FELIX86_EXECVE=1"); // tell the new emulator instance that we're in execve
 
         std::string log;
-        log += "execve(/proc/self/exe ";
+        log += "execve(";
         for (const char* arg : args) {
             log += arg;
             log += " ";
         }
+        log.pop_back();
         log += ")";
         LOG("%s", log.c_str());
 
