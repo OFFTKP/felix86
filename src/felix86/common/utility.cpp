@@ -438,7 +438,7 @@ void dump_states() {
     auto& states = g_thread_states;
     int i = 0;
     for (auto& state : states) {
-        dprintf(g_output_fd, ANSI_COLOR_RED "State %d" ANSI_COLOR_RESET, i);
+        dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld): " ANSI_COLOR_RESET, i, state->tid);
         print_address(state->rip);
 
         if (g_calltrace) {

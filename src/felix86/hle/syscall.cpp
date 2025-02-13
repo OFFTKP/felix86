@@ -1204,6 +1204,7 @@ void felix86_syscall(ThreadState* state) {
                 guest_argv++;
             }
         }
+        args.push_back(nullptr);
 
         std::vector<const char*> env;
         const char** guest_env = (const char**)rdx;
@@ -1211,8 +1212,8 @@ void felix86_syscall(ThreadState* state) {
             env.push_back(*guest_env);
             guest_env++;
         }
-
         env.push_back("__FELIX86_EXECVE=1"); // tell the new emulator instance that we're in execve
+        env.push_back(nullptr);
 
         std::string log;
         log += "execve(";
