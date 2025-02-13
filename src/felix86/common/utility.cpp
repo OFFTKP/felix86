@@ -232,6 +232,17 @@ int guest_breakpoint_abs(u64 address) {
     return g_breakpoints.size();
 }
 
+int guest_breakpoint_name(const char* symbol) {
+    for (auto& [address, bp] : g_symbols) {
+        if (bp == symbol) {
+            return guest_breakpoint_abs(address);
+        }
+    }
+
+    printf("Symbol %s not found\n", symbol);
+    return -1;
+}
+
 int clear_breakpoints() {
     int count = g_breakpoints.size();
     g_breakpoints.clear();
@@ -424,12 +435,6 @@ void print_address(u64 address) {
 
 void push_calltrace(ThreadState* state) {
     state->calltrace.push_back(state->rip);
-
-    if (state->rip < 0x1000) {
-        WARN("Calling potentially invalid RIP: %lx", state->rip);
-        WARN("Stack return address: %lx", *(u64*)state->gprs[X86_REF_RSP - X86_REF_RAX]);
-        raise(SIGTRAP);
-    }
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);

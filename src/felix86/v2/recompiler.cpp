@@ -80,9 +80,6 @@ void Recompiler::emitDispatcher() {
 
     Label exit_dispatcher_label;
 
-    // Set the rounding mode
-    as.LBU(t1, offsetof(ThreadState, rmode), threadStatePointer());
-    as.FSRM(x0, t1);
     as.MV(a0, threadStatePointer());
     // If it's not zero it has some exit reason, exit the dispatcher
     as.LBU(t2, offsetof(ThreadState, exit_reason), threadStatePointer());
