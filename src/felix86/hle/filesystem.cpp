@@ -49,10 +49,6 @@ bool Filesystem::LoadRootFS(const std::filesystem::path& path) {
         }
     }
 
-    FELIX86_LOCK;
-    cwd_path = rootfs_path;
-    FELIX86_UNLOCK;
-
     return true;
 }
 
