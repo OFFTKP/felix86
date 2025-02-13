@@ -2188,6 +2188,8 @@ biscuit::GPR Recompiler::getFlags() {
     as.OR(reg, reg, cf);
     as.ORI(reg, reg, 0b10);  // bit 1 always set in flags
     as.ORI(reg, reg, 0x200); // IE bit
+    as.LI(temp, 1 << 21);    // CPUID bit
+    as.OR(reg, reg, temp);
     popScratch();
     return reg;
 }

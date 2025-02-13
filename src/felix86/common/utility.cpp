@@ -253,7 +253,11 @@ __attribute__((visibility("default"))) void disassemble_x64(u64 address) {
     while (true) {
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[10];
-        ZydisDecoderDecodeFull(&decoder, (void*)cur, 15, &instruction, operands);
+        ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)cur, 15, &instruction, operands);
+        if (!ZYAN_SUCCESS(status)) {
+            printf("Failed to decode instruction at %016lx\n", cur);
+            break;
+        }
 
         ZydisMnemonic mnemonic = instruction.mnemonic;
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
