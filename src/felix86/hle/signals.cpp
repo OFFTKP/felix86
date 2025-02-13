@@ -471,7 +471,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             biscuit::GPR address = biscuit::GPR((instruction >> 15) & 0b11111);
             bool is_load = !((instruction >> 5) & 1);
 
-            // TODO: normally this needs to unlink the block, then modify, then relink to be safe
             void* start = as.GetCursorPointer();
 
             ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();

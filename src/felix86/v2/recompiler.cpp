@@ -2255,6 +2255,12 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
 
 void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
     auto metadata = state->recompiler->getBlockMetadata(rip);
+
+    if (metadata.address_end == nullptr) {
+        // Not yet compiled, we are fine
+        return;
+    }
+
     u8* rewind_address = (u8*)metadata.address_end - 4 * 3; // 3 instructions for the ending jump/link
     ptrdiff_t rewind_offset = rewind_address - as.GetCodeBuffer().GetOffsetPointer(0);
     ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
