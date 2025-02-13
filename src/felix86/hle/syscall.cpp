@@ -524,6 +524,24 @@ void felix86_syscall(ThreadState* state) {
         }
         break;
     }
+    case felix86_x86_64_lstat: {
+        auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            result = -EACCES;
+            STRACE("lstat(%s, %p) = %d", (const char*)rdi, (void*)rsi, (int)result);
+            break;
+        }
+
+        x64Stat* guest_stat = (x64Stat*)rsi;
+        struct stat host_stat;
+        result = lstat(path->c_str(), &host_stat);
+        STRACE("lstat(%s, %p) = %d", path->c_str(), (void*)rsi, (int)result);
+        if (result >= 0) {
+            *guest_stat = host_stat;
+        }
+        break;
+    }
     case felix86_x86_64_sendmmsg: {
         result = HOST_SYSCALL(sendmmsg, rdi, (struct mmsghdr*)rsi, rdx, r10);
         STRACE("sendmmsg(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
