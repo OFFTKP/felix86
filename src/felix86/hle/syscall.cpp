@@ -777,6 +777,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("getuid() = %d", (int)result);
         break;
     }
+    case felix86_x86_64_fdatasync: {
+        result = HOST_SYSCALL(fdatasync, rdi);
+        STRACE("fdatasync(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_geteuid: {
         result = HOST_SYSCALL(geteuid);
         STRACE("geteuid() = %d", (int)result);
