@@ -555,7 +555,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                     }
 
                     for (auto block : to_invalidate) {
-                        thread_state->recompiler->invalidateBlock(&block.second);
+                        thread_state->recompiler->invalidateBlock(block);
                     }
                 }
 
