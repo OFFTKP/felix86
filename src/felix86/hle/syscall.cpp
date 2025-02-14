@@ -747,8 +747,13 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_tgkill: {
-        result = HOST_SYSCALL(tgkill, rdi, rsi, rdx);
         STRACE("tgkill(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
+        result = HOST_SYSCALL(tgkill, rdi, rsi, rdx);
+        break;
+    }
+    case felix86_x86_64_kill: {
+        STRACE("kill(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        result = HOST_SYSCALL(kill, rdi, rsi);
         break;
     }
     case felix86_x86_64_mmap: {
