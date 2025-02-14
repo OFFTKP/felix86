@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <list>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 #include <semaphore.h>

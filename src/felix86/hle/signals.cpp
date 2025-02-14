@@ -1,4 +1,5 @@
 #include <array>
+#include <sys/mman.h>
 #include "felix86/common/state.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/filesystem.hpp"
@@ -404,7 +405,7 @@ struct riscv_v_state {
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     UNREACHABLE();
 }
-#elif defined(__riscv)
+// #elif defined(__riscv)
 riscv_v_state* get_riscv_vector_state(void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
@@ -531,38 +532,34 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             // Most likely self modifying code, check if the write is in one of our translated pages
             if (is_in_jit_code(current_state, pc)) {
                 u64 write_address = (u64)info->si_addr;
-                bool found = false;
-                for (auto page : current_state->recompiler->getProtectedPages()) {
-                    auto start = page.first;
-                    auto end = page.second;
-                    if (write_address >= start && write_address < end) {
-                        found = true;
-                        // At this point, we found self-modifying code. This means that we need to go through
-                        // all the thread states, and all their blocks, check if this address is part of **any** block,
-                        // and unlink those blocks.
 
-                        // Need to lock g_thread_states access
-                        FELIX86_LOCK; // fine to lock, SIGSEGV happened in jit code, no need to worry about deadlocks
-                                      // shouldn't be locked during compilation, so no double lock deadlock potential either
-                        for (auto& thread_state : g_thread_states) {
-                            for (auto& block : thread_state->recompiler->getBlockMap()) {
-                                if (write_address >= block.second.guest_address && write_address < block.second.guest_address_end) {
-                                    // Write address falls between the guest range of this block!! Must be unlinked from everywhere.
-                                    // Lock access to the block map
-                                    auto lock = thread_state->recompiler->lock();
-                                    thread_state->recompiler->invalidateBlock(&block.second);
-                                }
-                            }
+                u64 write_page_start = write_address & ~0xFFF;
+                u64 write_page_end = write_page_start + 0x1000;
+
+                // At this point, we found self-modifying code. This means that we need to go through
+                // all the thread states, and all their blocks, check if this address is part of **any** block,
+                // and unlink those blocks.
+                WARN("Handling self-modifying code at %016lx", write_address);
+
+                // Need to lock g_thread_states access
+                FELIX86_LOCK; // fine to lock, SIGSEGV happened in jit code, no need to worry about deadlocks
+                              // shouldn't be locked during compilation, so no double lock deadlock potential either
+                for (auto& thread_state : g_thread_states) {
+                    for (auto& block : thread_state->recompiler->getBlockMap()) {
+                        // Check if block intersects with this page
+                        if (write_page_start <= block.second.guest_address_end && block.second.guest_address <= write_page_end) {
+                            // This protected page falls between the guest address range of this block!!
+                            auto lock = thread_state->recompiler->lock();
+                            thread_state->recompiler->invalidateBlock(&block.second);
                         }
-
-                        FELIX86_UNLOCK;
-                        break;
                     }
                 }
 
-                if (!found) {
-                    ERROR("Unhandled SIGSEGV SEGV_ACCERR, not in protected page");
-                }
+                FELIX86_UNLOCK;
+
+                // Now that everything was unlinked we can unprotect the page so the write can be performed
+                mprotect((void*)write_page_start, 0x1000, PROT_READ | PROT_WRITE);
+                break;
             } else {
                 ERROR("Unhandled SIGSEGV SEGV_ACCERR, not in JIT code");
             }

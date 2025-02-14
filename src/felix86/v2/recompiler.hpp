@@ -345,10 +345,6 @@ struct Recompiler {
 
     void popCalltrace();
 
-    std::vector<std::pair<u64, u64>>& getProtectedPages() {
-        return read_only_pages;
-    }
-
     void unlinkBlock(ThreadState* state, u64 rip);
 
     bool tryInlineSyscall();
@@ -434,8 +430,6 @@ private:
     int rax_value = -1;
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
-
-    std::vector<std::pair<u64, u64>> read_only_pages{};
 
     BlockMetadata* current_block_metadata{};
     HandlerMetadata* current_meta{};

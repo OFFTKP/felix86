@@ -2,6 +2,7 @@
 #include <cstring>
 #include <string>
 #include <fcntl.h>
+#include <sys/mman.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
