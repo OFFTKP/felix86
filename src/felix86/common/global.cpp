@@ -22,7 +22,7 @@ bool g_calltrace = false;
 bool g_use_block_cache = true;
 bool g_single_step = false;
 bool g_is_chrooted = false;
-bool g_dont_protect_pages = true; // true until we implement smc stuff
+bool g_dont_protect_pages = false;
 bool g_print_all_calls = false;
 bool g_no_sse2 = false;
 bool g_no_sse3 = false;
@@ -178,6 +178,12 @@ void initialize_globals() {
     if (is_truthy(dont_link)) {
         g_dont_link = true;
         environment += "\nFELIX86_DONT_LINK";
+    }
+
+    const char* dont_protect_pages = getenv("FELIX86_DONT_PROTECT_PAGES");
+    if (is_truthy(dont_protect_pages)) {
+        g_dont_protect_pages = true;
+        environment += "\nFELIX86_DONT_PROTECT_PAGES";
     }
 
     const char* dont_use_block_cache = getenv("FELIX86_DONT_USE_BLOCK_CACHE");
