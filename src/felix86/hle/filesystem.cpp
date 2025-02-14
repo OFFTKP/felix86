@@ -158,6 +158,14 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
 ssize_t Filesystem::ReadLinkAt(int dirfd, const char* pathname, char* buf, u32 bufsiz) {
     if (std::string(pathname) == proc_self_exe) { // TODO: remove this, AtPath should handle this
         std::string executable_path_string = executable_path.string();
+        if (strncmp(executable_path_string.c_str(), rootfs_path_string.c_str(), rootfs_path_string.size()) == 0) {
+            executable_path_string = executable_path_string.substr(rootfs_path_string.size());
+        }
+
+        if (executable_path_string[0] != '/') {
+            executable_path_string = "/" + executable_path_string;
+        }
+
         // readlink does not append a null terminator
         size_t written_size = std::min(executable_path_string.size(), (size_t)bufsiz);
         memcpy(buf, executable_path_string.c_str(), written_size);

@@ -5199,7 +5199,7 @@ FAST_HANDLE(FXRSTOR) {
     rec.restoreRoundingMode();
 }
 
-FAST_HANDLE(FXRSTOR64) { // TODO: store rounding mode, same for fxsave
+FAST_HANDLE(FXRSTOR64) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <csignal>
 #include "felix86/common/utility.hpp"
 
@@ -14,7 +15,7 @@ struct RegisteredSignal {
     int flags = 0;
 };
 
-using SignalHandlerTable = std::array<RegisteredSignal, 64>;
+using SignalHandlerTable = std::array<std::atomic<RegisteredSignal>, 64>;
 
 struct BlockMetadata;
 

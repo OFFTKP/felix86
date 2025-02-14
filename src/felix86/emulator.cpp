@@ -204,7 +204,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         ASSERT(sig != 0); // found the signal
 
         SignalHandlerTable& handlers = *thread_state->signal_handlers;
-        RegisteredSignal& handler = handlers[sig - 1];
+        RegisteredSignal handler = handlers[sig - 1];
 
         u64 rip = thread_state->GetRip();
 
@@ -238,6 +238,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
         if (handler.flags & SA_RESETHAND) {
             handler.func = nullptr;
+            handlers[sig - 1] = handler;
         }
         WARN("Handling deferred signal %d", sig);
     }
