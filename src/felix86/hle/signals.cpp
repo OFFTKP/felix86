@@ -543,11 +543,11 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 FELIX86_LOCK; // fine to lock, SIGSEGV happened in jit code, no need to worry about deadlocks
                               // shouldn't be locked during compilation, so no double lock deadlock potential either
                 for (auto& thread_state : g_thread_states) {
+                    auto lock = thread_state->recompiler->lock();
                     for (auto& block : thread_state->recompiler->getBlockMap()) {
                         // Check if block intersects with this page
                         if (write_page_start <= block.second.guest_address_end && block.second.guest_address <= write_page_end) {
                             // This protected page falls between the guest address range of this block!!
-                            auto lock = thread_state->recompiler->lock();
                             thread_state->recompiler->invalidateBlock(&block.second);
                         }
                     }
