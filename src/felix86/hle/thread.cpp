@@ -42,7 +42,10 @@ void* pthread_handler(void* args) {
         state->signal_handlers = clone_args.parent_state->signal_handlers;
     } else {
         // otherwise it gets a copy
-        state->signal_handlers = std::make_shared<SignalHandlerTable>(*clone_args.parent_state->signal_handlers);
+        state->signal_handlers = std::make_shared<SignalHandlerTable>();
+        for (int i = 0; i < state->signal_handlers->size(); i++) {
+            (*state->signal_handlers)[i] = clone_args.parent_state->signal_handlers->at(i).load();
+        }
     }
 
     state->tid = gettid();
