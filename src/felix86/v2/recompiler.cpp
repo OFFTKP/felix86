@@ -1752,8 +1752,7 @@ void Recompiler::expirePendingLinks(u64 rip) {
         as.AdvanceBuffer(current_offset);
     }
 
-    ASSERT(block_meta.links.empty());
-    block_meta.links = std::move(pending_links);
+    block_meta.links.insert(block_meta.links.end(), pending_links.begin(), pending_links.end());
     block_meta.pending_links.clear();
 }
 
