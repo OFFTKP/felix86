@@ -545,14 +545,17 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 for (auto& thread_state : g_thread_states) {
                     auto lock = thread_state->recompiler->lock();
                     auto& block_map = thread_state->recompiler->getBlockMap();
-                    int i = 0;
+                    std::vector<BlockMetadata*> to_invalidate;
                     for (auto& block : block_map) {
-                        printf("iter: %d\n", i++);
                         // Check if block intersects with this page
                         if (write_page_start <= block.second.guest_address_end && block.second.guest_address <= write_page_end) {
                             // This protected page falls between the guest address range of this block!!
-                            thread_state->recompiler->invalidateBlock(&block.second);
+                            to_invalidate.push_back(&block.second);
                         }
+                    }
+
+                    for (auto block : to_invalidate) {
+                        thread_state->recompiler->invalidateBlock(&block.second);
                     }
                 }
 
