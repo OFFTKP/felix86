@@ -440,7 +440,7 @@ std::optional<std::array<XmmReg, 32>> get_vector_state(void* ctx) {
 
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
-    uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
+    u8* pc = context->uc_mcontext.__gregs[REG_PC];
 
     ThreadState* current_state = ThreadState::Get();
     ASSERT(current_state);
