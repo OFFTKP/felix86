@@ -472,10 +472,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             biscuit::GPR address = biscuit::GPR((instruction >> 15) & 0b11111);
             bool is_load = !((instruction >> 5) & 1);
 
-            void* start = as.GetCursorPointer();
+            u8* cursor = as.GetCursorPointer();
+            as.SetCursorPointer(pc - 4); // go to vsetivli
 
-            ptrdiff_t cursor = as.GetCodeBuffer().GetCursorOffset();
-            as.RewindBuffer(pc - as.GetCodeBuffer().GetOffsetAddress(0) - 4); // go to vsetivli
             u32 vsetivli = *(u32*)(pc - 4);
             ASSERT(((vsetivli & 0b1111111) == 0b1010111) || vsetivli == 0b0010011); // vsetivli or nop
             switch (sew) {
@@ -514,9 +513,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 break;
             }
             }
-            void* end = as.GetCursorPointer();
 
-            as.AdvanceBuffer(cursor);
+            as.SetCursorPointer(cursor);
             flush_icache();
             break;
         }

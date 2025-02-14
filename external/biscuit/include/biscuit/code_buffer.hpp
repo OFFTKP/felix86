@@ -83,6 +83,12 @@ public:
         return GetOffsetPointer(GetCursorOffset());
     }
 
+    /// Sets the cursor pointer
+    void SetCursorPointer(uint8_t* ptr) noexcept {
+        BISCUIT_ASSERT(ptr >= m_buffer && ptr < m_buffer + m_capacity);
+        m_cursor = ptr;
+    }
+
     /// Retrieves the address of an arbitrary offset within the buffer.
     [[nodiscard]] uintptr_t GetOffsetAddress(ptrdiff_t offset) const noexcept {
         return reinterpret_cast<uintptr_t>(GetOffsetPointer(offset));
@@ -184,18 +190,6 @@ public:
 
         std::memcpy(m_cursor, &value, sizeof(T));
         m_cursor += sizeof(T);
-    }
-
-    /**
-     * Emits a given span of data into the code buffer.
-     *
-     * @param data The data to emit into the code buffer.
-     */
-    void Emit(void* data, size_t size) noexcept {
-        BISCUIT_ASSERT(HasSpaceFor(size));
-
-        std::memcpy(m_cursor, data, size);
-        m_cursor += size;
     }
 
     /// Emits a 16-bit value into the code buffer.

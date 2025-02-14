@@ -36,8 +36,8 @@ struct BlockMetadata {
     void* address_end{};
     u64 guest_address{};
     u64 guest_address_end{};
-    std::vector<u64> pending_links{};
-    std::vector<u64> links{};                             // where this block was linked to, used for unlinking it
+    std::vector<u8*> pending_links{};
+    std::vector<u8*> links{};                             // where this block was linked to, used for unlinking it
     std::vector<std::pair<u64, u64>> instruction_spans{}; // {guest, host}
     std::array<std::vector<RegisterAccess>, allocated_reg_count> register_accesses;
 };
