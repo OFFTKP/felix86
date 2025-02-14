@@ -404,7 +404,7 @@ struct riscv_v_state {
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     UNREACHABLE();
 }
-#elif defined(__riscv)
+// #elif defined(__riscv)
 riscv_v_state* get_riscv_vector_state(void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
@@ -516,7 +516,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             void* end = as.GetCursorPointer();
 
             as.AdvanceBuffer(cursor);
-            flush_icache(start, end);
+            flush_icache();
             break;
         }
         default: {
@@ -537,7 +537,25 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                     auto end = page.second;
                     if (write_address >= start && write_address < end) {
                         found = true;
-                        ERROR("Self modifying code caught");
+                        // At this point, we found self-modifying code. This means that we need to go through
+                        // all the thread states, and all their blocks, check if this address is part of **any** block,
+                        // and unlink those blocks.
+
+                        // Need to lock g_thread_states access
+                        FELIX86_LOCK; // fine to lock, SIGSEGV happened in jit code, no need to worry about deadlocks
+                                      // shouldn't be locked during compilation, so no double lock deadlock potential either
+                        for (auto& thread_state : g_thread_states) {
+                            for (auto& block : thread_state->recompiler->getBlockMap()) {
+                                if (write_address >= block.second.guest_address && write_address < block.second.guest_address_end) {
+                                    // Write address falls between the guest range of this block!! Must be unlinked from everywhere.
+                                    // Lock access to the block map
+                                    auto lock = thread_state->recompiler->lock();
+                                    thread_state->recompiler->invalidateBlock(&block.second);
+                                }
+                            }
+                        }
+
+                        FELIX86_UNLOCK;
                         break;
                     }
                 }

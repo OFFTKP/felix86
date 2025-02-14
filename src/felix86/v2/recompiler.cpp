@@ -101,7 +101,7 @@ void Recompiler::emitDispatcher() {
 
     as.JR(ra);
 
-    flush_icache((void*)enter_dispatcher, as.GetCursorPointer());
+    flush_icache();
 }
 
 void* Recompiler::emitSigreturnThunk() {
@@ -119,6 +119,7 @@ void* Recompiler::emitSigreturnThunk() {
 }
 
 void Recompiler::clearCodeCache() {
+    std::lock_guard lock(block_map_mutex);
     WARN("Clearing cache on thread %u", gettid());
     as.GetCodeBuffer().RewindCursor();
     block_metadata.clear();
@@ -134,6 +135,7 @@ void* Recompiler::compile(u64 rip) {
         clearCodeCache();
     }
 
+    std::lock_guard lock(block_map_mutex);
     void* start = as.GetCursorPointer();
 
     // Map it immediately so we can optimize conditional branch to self
@@ -142,6 +144,7 @@ void* Recompiler::compile(u64 rip) {
     // A sequence of code. This is so that we can also call it recursively later.
     u64 end_rip = compileSequence(rip);
 
+    // If other blocks were waiting for this block to be linked, link them now
     expirePendingLinks(rip);
 
     // Mark the page as read-only to catch self-modifying code
@@ -218,6 +221,8 @@ u64 Recompiler::compileSequence(u64 rip) {
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
+
+    current_block_metadata->guest_address = meta.rip;
 
     while (compiling) {
         resetScratch();
@@ -336,8 +341,9 @@ u64 Recompiler::compileSequence(u64 rip) {
         }
     }
 
+    current_block_metadata->guest_address_end = meta.rip;
     current_block_metadata->address_end = as.GetCursorPointer();
-    flush_icache(current_block_metadata->address, current_block_metadata->address_end);
+    flush_icache();
 
     current_block_metadata = nullptr;
     current_meta = nullptr;
@@ -1630,8 +1636,12 @@ void Recompiler::jumpAndLink(u64 rip) {
 
         block_metadata[rip].pending_links.push_back(link_me);
     } else {
-        u64 target = (u64)block_metadata[rip].address;
+        auto& target_meta = block_metadata[rip];
+        u64 target = (u64)target_meta.address;
         u64 offset = target - (u64)as.GetCursorPointer();
+
+        u64 link_me = (u64)as.GetCodeBuffer().GetCursorOffset();
+        target_meta.links.push_back(link_me); // for when we need to unlink
 
         if (IsValidJTypeImm(offset)) {
             if (offset != 3 * 4) {
@@ -1731,25 +1741,20 @@ void Recompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
-    auto& links = block_metadata[rip].pending_links;
-    for (u64 link : links) {
+    auto& block_meta = block_metadata[rip];
+    auto& pending_links = block_meta.pending_links;
+    for (u64 link : pending_links) {
         auto current_offset = as.GetCodeBuffer().GetCursorOffset();
-        void* start = as.GetCursorPointer();
-
         as.RewindBuffer(link);
-
-        // This will atomically replace the instructions with appropriate ones that jump directly
-        // to the next block
         jumpAndLink(rip);
-
-        void* end = as.GetCursorPointer();
-
-        flush_icache(start, end);
+        flush_icache();
 
         as.AdvanceBuffer(current_offset);
     }
 
-    links.clear();
+    ASSERT(block_meta.links.empty());
+    block_meta.links = std::move(pending_links);
+    block_meta.pending_links.clear();
 }
 
 u64 Recompiler::sextImmediate(u64 imm, ZyanU8 size) {
@@ -2134,7 +2139,25 @@ void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
     }
 
     u8* rewind_address = (u8*)metadata.address_end - 4 * 3; // 3 instructions for the ending jump/link
-    ptrdiff_t rewind_offset = rewind_address - as.GetCodeBuffer().GetOffsetPointer(0);
+    unlinkAt(rewind_address);
+    flush_icache();
+}
+
+void Recompiler::invalidateBlock(BlockMetadata* block) {
+    // This code assumes you've locked the map mutex
+    // Unlink everywhere this block was linked
+    for (u64 link : block->links) {
+        unlinkAt((u8*)link);
+    }
+
+    // Remove the block from the map
+    bool was_present = block_metadata.erase(block->guest_address);
+    ASSERT(was_present);
+    flush_icache();
+}
+
+void Recompiler::unlinkAt(u8* address_of_jump) {
+    ptrdiff_t rewind_offset = address_of_jump - as.GetCodeBuffer().GetOffsetPointer(0);
     ptrdiff_t current_offset = as.GetCodeBuffer().GetCursorOffset();
 
     // Replace whatever was there with a jump back to dispatcher

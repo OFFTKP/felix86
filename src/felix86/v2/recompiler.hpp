@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <mutex>
 #include <unordered_map>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
@@ -33,7 +34,10 @@ struct RegisterAccess {
 struct BlockMetadata {
     void* address{};
     void* address_end{};
+    u64 guest_address{};
+    u64 guest_address_end{};
     std::vector<u64> pending_links{};
+    std::vector<u64> links{};                             // where this block was linked to, used for unlinking it
     std::vector<std::pair<u64, u64>> instruction_spans{}; // {guest, host}
     std::array<std::vector<RegisterAccess>, allocated_reg_count> register_accesses;
 };
@@ -144,6 +148,8 @@ struct Recompiler {
 
     void jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false);
 
+    void invalidateBlock(BlockMetadata* block);
+
     constexpr static biscuit::GPR threadStatePointer() {
         return x27; // saved register so that when we exit VM we don't have to save it
     }
@@ -155,6 +161,10 @@ struct Recompiler {
     x86_size_e zydisToSize(ZydisRegister reg);
 
     x86_size_e zydisToSize(ZyanU8 size);
+
+    std::lock_guard<std::mutex> lock() {
+        return std::lock_guard{block_map_mutex};
+    }
 
     // Get the allocated register for the given register reference
     static constexpr biscuit::GPR allocatedGPR(x86_ref_e reg) {
@@ -389,6 +399,8 @@ private:
 
     void inlineSyscall(int sysno, int argcount);
 
+    void unlinkAt(u8* address_of_jump);
+
     u8* code_cache{};
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
@@ -405,6 +417,9 @@ private:
     void* compile_next_handler{};
 
     std::array<RegisterMetadata, 16 + 5 + 16> metadata{};
+
+    // This may be locked by a different thread on a signal handler to unlink a block
+    std::mutex block_map_mutex{};
 
     std::unordered_map<u64, BlockMetadata> block_metadata{};
 

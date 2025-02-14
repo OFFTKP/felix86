@@ -205,7 +205,7 @@ u64 sext_if_64(u64 value, u8 size_e) {
 }
 
 // If you don't flush the cache the code will randomly SIGILL
-void flush_icache(void* start, void* end) {
+void flush_icache() {
 #if defined(__riscv)
     asm volatile("fence.i");
 #endif

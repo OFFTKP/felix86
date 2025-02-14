@@ -314,6 +314,7 @@ void felix86_syscall(ThreadState* state) {
             detecting_memory_region = false;
             added_region = true;
             ASSERT(result != -1);
+            // TODO: this whole thing is hacky. Can we use file descriptors to get memory mappings?
             MemoryMetadata::AddRegion(name_copy, min_address, max_address);
         }
         FELIX86_UNLOCK;
