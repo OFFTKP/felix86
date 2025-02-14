@@ -1233,6 +1233,20 @@ void felix86_syscall(ThreadState* state) {
         STRACE("umask(%d) = %d", (int)rdi, (int)result);
         break;
     }
+    case felix86_x86_64_linkat: {
+        auto oldpath = fs.AtPath(rdi, (const char*)rsi);
+        auto newpath = fs.AtPath(rdx, (const char*)r10);
+
+        if (!oldpath || !newpath) {
+            STRACE("linkat(%d, %s, %d, %s, %d) = %d", (int)rdi, (char*)rsi, (int)rdx, (char*)r10, (int)r8, -EACCES);
+            result = -EACCES;
+            break;
+        }
+
+        result = linkat(rdi, oldpath->c_str(), rdx, newpath->c_str(), r8);
+        STRACE("linkat(%d, %s, %d, %s, %d) = %d", (int)rdi, oldpath->c_str(), (int)rdx, newpath->c_str(), (int)r8, (int)result);
+        break;
+    }
     case felix86_x86_64_unlink: {
         auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
 
