@@ -729,11 +729,12 @@ void felix86_syscall(ThreadState* state) {
         result = fs.OpenAt(rdi, (const char*)rsi, rdx, r10);
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
 
-        FELIX86_LOCK;
+        std::filesystem::path path = fs.AtPath(rdi, (const char*)rsi).value_or(std::filesystem::path());
+
+        FELIX86_LOCK; // TODO: get rid of this stuff, see close syscall comment
         if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             name = std::filesystem::path((const char*)rsi).filename().string();
-            region_path = fs.AtPath(rdi, (const char*)rsi).value_or(std::filesystem::path());
-
+            region_path = path;
             if (name.find(".so") != std::string::npos) {
                 detecting_memory_region = true;
                 min_address = ULONG_MAX;
