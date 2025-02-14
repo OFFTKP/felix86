@@ -544,7 +544,10 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                               // shouldn't be locked during compilation, so no double lock deadlock potential either
                 for (auto& thread_state : g_thread_states) {
                     auto lock = thread_state->recompiler->lock();
-                    for (auto& block : thread_state->recompiler->getBlockMap()) {
+                    auto& block_map = thread_state->recompiler->getBlockMap();
+                    int i = 0;
+                    for (auto& block : block_map) {
+                        printf("iter: %d\n", i++);
                         // Check if block intersects with this page
                         if (write_page_start <= block.second.guest_address_end && block.second.guest_address <= write_page_end) {
                             // This protected page falls between the guest address range of this block!!
