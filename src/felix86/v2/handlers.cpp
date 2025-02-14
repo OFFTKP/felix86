@@ -5824,6 +5824,45 @@ FAST_HANDLE(EXTRACTPS) {
     rec.setOperandGPR(&operands[0], dst);
 }
 
+FAST_HANDLE(INSERTPS) {
+    u8 immediate = rec.getImmediate(&operands[2]);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec tmp = rec.scratchVec();
+    biscuit::Vec tmp2 = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec result_masked = rec.scratchVec();
+
+    u8 count_s = 0;
+    u8 count_d = (immediate >> 4) & 0b11;
+    u8 zmask = immediate & 0b1111;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        count_s = (immediate >> 6) & 0b11;
+    }
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    if (count_s != 0) {
+        AS.VSLIDEDOWN(tmp, src, count_s);
+    } else {
+        AS.VMV(tmp, src);
+    }
+
+    if (count_d != 0) {
+        AS.VSLIDEUP(tmp2, tmp, count_d);
+    } else {
+        AS.VMV(tmp2, tmp);
+    }
+
+    u8 mask = 1 << count_d;
+    AS.VMV(v0, mask);
+    AS.VMERGE(result, dst, tmp2);
+
+    AS.VMV(v0, zmask);
+    AS.VXOR(result_masked, result, result, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], result_masked);
+}
+
 FAST_HANDLE(PREFETCHT0) {
     // NOP
 }
