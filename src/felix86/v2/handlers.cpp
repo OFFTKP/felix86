@@ -2197,13 +2197,11 @@ FAST_HANDLE(SYSCALL) {
         }
     }
 
-    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    biscuit::GPR rcx = rec.allocatedGPR(X86_REF_RCX);
     AS.LI(rcx, meta.rip + instruction.length);
     rec.setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
-    biscuit::GPR flags = rec.getFlags();
-    rec.setRefGPR(X86_REF_R11, X86_SIZE_QWORD, flags);
 
-    // Normally IA32_FMASK masks the RFLAGS but surely we don't have to do anything here :cluegi:
+    // Normally the syscall instruction also writes the flags to R11 but we don't need them in our syscall handler
 
     rec.writebackDirtyState();
 

@@ -650,6 +650,10 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         // Now we just need to set RIP to the handler function
         current_state->SetRip((u64)handler.func);
 
+        if (sig == SIGCHLD) {
+            WARN("SIGCHLD, are we copying siginfo correctly?");
+        }
+
         // Block the signals specified in the sa_mask until the signal handler returns
         sigset_t new_mask;
         sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());

@@ -158,13 +158,13 @@ struct Recompiler {
 
     // Get the allocated register for the given register reference
     static constexpr biscuit::GPR allocatedGPR(x86_ref_e reg) {
-        // RDI, RSI, RDX, R10, R8, R9 are allocated to a0, a1, a2, a3, a4, a5 to match the abi and save some swapping instructions
+        // RDI, RSI, RDX, R10, R8, R9 are allocated to a0, a1, a2, a3, a4, a5 to match the syscall abi and save some swapping instructions
         switch (reg) {
         case X86_REF_RAX: {
             return biscuit::x5;
         }
         case X86_REF_RCX: {
-            return biscuit::x6;
+            return biscuit::x26;
         }
         case X86_REF_RDX: {
             return biscuit::x12; // a2
@@ -176,7 +176,7 @@ struct Recompiler {
             return biscuit::x9;
         }
         case X86_REF_RBP: {
-            return biscuit::x7;
+            return biscuit::x18;
         }
         case X86_REF_RSI: {
             return biscuit::x11; // a1
@@ -200,7 +200,7 @@ struct Recompiler {
             return biscuit::x17;
         }
         case X86_REF_R13: {
-            return biscuit::x18;
+            return biscuit::x22;
         }
         case X86_REF_R14: {
             return biscuit::x19;
@@ -212,7 +212,7 @@ struct Recompiler {
             return biscuit::x21;
         }
         case X86_REF_AF: {
-            return biscuit::x22;
+            return biscuit::x7;
         }
         case X86_REF_ZF: {
             return biscuit::x23;

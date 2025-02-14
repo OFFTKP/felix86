@@ -350,7 +350,7 @@ biscuit::GPR Recompiler::scratch() {
     case 0:
         return x1;
     case 1:
-        return x26;
+        return x6;
     case 2:
         return x28;
     case 3:
@@ -2157,6 +2157,9 @@ bool Recompiler::tryInlineSyscall() {
         CASE(felix86_x86_64_ioctl, 3);
         CASE(felix86_x86_64_pread64, 4);
         CASE(felix86_x86_64_pwrite64, 4);
+        CASE(felix86_x86_64_ppoll, 5);
+        CASE(felix86_x86_64_readv, 3);
+        CASE(felix86_x86_64_writev, 3);
 
 #undef CASE
     default: {
