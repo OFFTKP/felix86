@@ -29,6 +29,7 @@ bool g_no_ssse3 = false;
 bool g_no_sse4_1 = false;
 bool g_no_sse4_2 = false;
 bool g_print_all_insts = false;
+bool g_dont_inline_syscalls = false;
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;

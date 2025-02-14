@@ -157,9 +157,135 @@ struct Recompiler {
     x86_size_e zydisToSize(ZyanU8 size);
 
     // Get the allocated register for the given register reference
-    static biscuit::GPR allocatedGPR(x86_ref_e reg);
+    static constexpr biscuit::GPR allocatedGPR(x86_ref_e reg) {
+        // RDI, RSI, RDX, R10, R8, R9 are allocated to a0, a1, a2, a3, a4, a5 to match the abi and save some swapping instructions
+        switch (reg) {
+        case X86_REF_RAX: {
+            return biscuit::x5;
+        }
+        case X86_REF_RCX: {
+            return biscuit::x6;
+        }
+        case X86_REF_RDX: {
+            return biscuit::x12; // a2
+        }
+        case X86_REF_RBX: {
+            return biscuit::x8;
+        }
+        case X86_REF_RSP: {
+            return biscuit::x9;
+        }
+        case X86_REF_RBP: {
+            return biscuit::x7;
+        }
+        case X86_REF_RSI: {
+            return biscuit::x11; // a1
+        }
+        case X86_REF_RDI: {
+            return biscuit::x10; // a0
+        }
+        case X86_REF_R8: {
+            return biscuit::x14; // a5
+        }
+        case X86_REF_R9: {
+            return biscuit::x15; // a4
+        }
+        case X86_REF_R10: {
+            return biscuit::x13; // a3
+        }
+        case X86_REF_R11: {
+            return biscuit::x16;
+        }
+        case X86_REF_R12: {
+            return biscuit::x17;
+        }
+        case X86_REF_R13: {
+            return biscuit::x18;
+        }
+        case X86_REF_R14: {
+            return biscuit::x19;
+        }
+        case X86_REF_R15: {
+            return biscuit::x20;
+        }
+        case X86_REF_CF: {
+            return biscuit::x21;
+        }
+        case X86_REF_AF: {
+            return biscuit::x22;
+        }
+        case X86_REF_ZF: {
+            return biscuit::x23;
+        }
+        case X86_REF_SF: {
+            return biscuit::x24;
+        }
+        case X86_REF_OF: {
+            return biscuit::x25;
+        }
+        default: {
+            UNREACHABLE();
+            return x0;
+        }
+        }
+    }
 
-    static biscuit::Vec allocatedVec(x86_ref_e reg);
+    static constexpr biscuit::Vec allocatedVec(x86_ref_e reg) {
+        switch (reg) {
+        case X86_REF_XMM0: {
+            return biscuit::v1;
+        }
+        case X86_REF_XMM1: {
+            return biscuit::v2;
+        }
+        case X86_REF_XMM2: {
+            return biscuit::v3;
+        }
+        case X86_REF_XMM3: {
+            return biscuit::v4;
+        }
+        case X86_REF_XMM4: {
+            return biscuit::v5;
+        }
+        case X86_REF_XMM5: {
+            return biscuit::v6;
+        }
+        case X86_REF_XMM6: {
+            return biscuit::v7;
+        }
+        case X86_REF_XMM7: {
+            return biscuit::v8;
+        }
+        case X86_REF_XMM8: {
+            return biscuit::v9;
+        }
+        case X86_REF_XMM9: {
+            return biscuit::v10;
+        }
+        case X86_REF_XMM10: {
+            return biscuit::v11;
+        }
+        case X86_REF_XMM11: {
+            return biscuit::v12;
+        }
+        case X86_REF_XMM12: {
+            return biscuit::v13;
+        }
+        case X86_REF_XMM13: {
+            return biscuit::v14;
+        }
+        case X86_REF_XMM14: {
+            return biscuit::v15;
+        }
+        case X86_REF_XMM15: {
+            return biscuit::v16;
+        }
+        default: {
+            UNREACHABLE();
+            return v0;
+        }
+        }
+    }
 
     bool setVectorState(SEW sew, int elem_count, LMUL grouping = LMUL::M1);
 
@@ -215,6 +341,10 @@ struct Recompiler {
 
     void unlinkBlock(ThreadState* state, u64 rip);
 
+    bool tryInlineSyscall();
+
+    void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -257,6 +387,8 @@ private:
 
     void markPagesAsReadOnly(u64 start, u64 end);
 
+    void inlineSyscall(int sysno, int argcount);
+
     u8* code_cache{};
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
@@ -283,6 +415,8 @@ private:
     int vector_scratch_index = 0;
 
     int fpu_scratch_index = 0;
+
+    int rax_value = -1;
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 

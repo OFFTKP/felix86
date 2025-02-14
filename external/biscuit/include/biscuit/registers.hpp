@@ -26,8 +26,7 @@ public:
     friend constexpr auto operator<=>(Register, Register) = default;
 
 protected:
-    constexpr explicit Register(uint32_t index) noexcept
-        : m_index{index} {}
+    constexpr explicit Register(uint32_t index) noexcept : m_index{index} {}
 
 private:
     uint32_t m_index{};
@@ -280,8 +279,7 @@ public:
     // Deliberately non-explicit to allow for convenient instantiation at usage sites.
     // e.g. Rather than CM.POP(PushPopList{ra, {s0, s2}}, 16), we can just have the
     //      usage be transparent like CM.POP({ra, {s0, s2}}, 16). Nice and compact!
-    constexpr PushPopList(GPR ra_reg, const Range& range = {}) noexcept
-        : m_bitmask{BuildBitmask(range)} {
+    constexpr PushPopList(GPR ra_reg, const Range& range = {}) noexcept : m_bitmask{BuildBitmask(range)} {
         BISCUIT_ASSERT(ra_reg == ra);
     }
 

@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
 #include "felix86/emulator.hpp"
+#include "felix86/hle/syscall.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 #define X(name) void fast_##name(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
@@ -342,135 +343,6 @@ u64 Recompiler::compileSequence(u64 rip) {
     current_meta = nullptr;
 
     return meta.rip;
-}
-
-biscuit::GPR Recompiler::allocatedGPR(x86_ref_e reg) {
-    switch (reg) {
-    case X86_REF_RAX: {
-        return biscuit::x5;
-    }
-    case X86_REF_RCX: {
-        return biscuit::x6;
-    }
-    case X86_REF_RDX: {
-        return biscuit::x7;
-    }
-    case X86_REF_RBX: {
-        return biscuit::x8;
-    }
-    case X86_REF_RSP: {
-        return biscuit::x9;
-    }
-    case X86_REF_RBP: {
-        return biscuit::x10;
-    }
-    case X86_REF_RSI: {
-        return biscuit::x11;
-    }
-    case X86_REF_RDI: {
-        return biscuit::x12;
-    }
-    case X86_REF_R8: {
-        return biscuit::x13;
-    }
-    case X86_REF_R9: {
-        return biscuit::x14;
-    }
-    case X86_REF_R10: {
-        return biscuit::x15;
-    }
-    case X86_REF_R11: {
-        return biscuit::x16;
-    }
-    case X86_REF_R12: {
-        return biscuit::x17;
-    }
-    case X86_REF_R13: {
-        return biscuit::x18;
-    }
-    case X86_REF_R14: {
-        return biscuit::x19;
-    }
-    case X86_REF_R15: {
-        return biscuit::x20;
-    }
-    case X86_REF_CF: {
-        return biscuit::x21;
-    }
-    case X86_REF_AF: {
-        return biscuit::x22;
-    }
-    case X86_REF_ZF: {
-        return biscuit::x23;
-    }
-    case X86_REF_SF: {
-        return biscuit::x24;
-    }
-    case X86_REF_OF: {
-        return biscuit::x25;
-    }
-    default: {
-        UNREACHABLE();
-        return x0;
-    }
-    }
-}
-
-biscuit::Vec Recompiler::allocatedVec(x86_ref_e reg) {
-    switch (reg) {
-    case X86_REF_XMM0: {
-        return biscuit::v1;
-    }
-    case X86_REF_XMM1: {
-        return biscuit::v2;
-    }
-    case X86_REF_XMM2: {
-        return biscuit::v3;
-    }
-    case X86_REF_XMM3: {
-        return biscuit::v4;
-    }
-    case X86_REF_XMM4: {
-        return biscuit::v5;
-    }
-    case X86_REF_XMM5: {
-        return biscuit::v6;
-    }
-    case X86_REF_XMM6: {
-        return biscuit::v7;
-    }
-    case X86_REF_XMM7: {
-        return biscuit::v8;
-    }
-    case X86_REF_XMM8: {
-        return biscuit::v9;
-    }
-    case X86_REF_XMM9: {
-        return biscuit::v10;
-    }
-    case X86_REF_XMM10: {
-        return biscuit::v11;
-    }
-    case X86_REF_XMM11: {
-        return biscuit::v12;
-    }
-    case X86_REF_XMM12: {
-        return biscuit::v13;
-    }
-    case X86_REF_XMM13: {
-        return biscuit::v14;
-    }
-    case X86_REF_XMM14: {
-        return biscuit::v15;
-    }
-    case X86_REF_XMM15: {
-        return biscuit::v16;
-    }
-    default: {
-        UNREACHABLE();
-        return v0;
-    }
-    }
 }
 
 biscuit::GPR Recompiler::scratch() {
@@ -2269,4 +2141,101 @@ void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
     as.RewindBuffer(rewind_offset);
     backToDispatcher();
     as.AdvanceBuffer(current_offset);
+}
+
+bool Recompiler::tryInlineSyscall() {
+    switch (rax_value) {
+#define CASE(sysno, argcount)                                                                                                                        \
+    case sysno:                                                                                                                                      \
+        inlineSyscall(match_host(sysno), argcount);                                                                                                  \
+        return true
+
+        CASE(felix86_x86_64_read, 3);
+        CASE(felix86_x86_64_write, 3);
+        CASE(felix86_x86_64_mprotect, 3);
+        CASE(felix86_x86_64_munmap, 2);
+        CASE(felix86_x86_64_ioctl, 3);
+        CASE(felix86_x86_64_pread64, 4);
+        CASE(felix86_x86_64_pwrite64, 4);
+
+#undef CASE
+    default: {
+        return false;
+    }
+    }
+}
+
+void Recompiler::inlineSyscall(int sysno, int argcount) {
+    // Check if they were loaded before writing them to state, so we don't load them again
+    bool a0_was_loaded = getMetadata(X86_REF_RDI).loaded;
+    bool a1_was_loaded = getMetadata(X86_REF_RSI).loaded;
+    bool a2_was_loaded = getMetadata(X86_REF_RDX).loaded;
+    bool a3_was_loaded = getMetadata(X86_REF_R10).loaded;
+    bool a4_was_loaded = getMetadata(X86_REF_R8).loaded;
+    bool a5_was_loaded = getMetadata(X86_REF_R9).loaded;
+    static_assert(allocatedGPR(X86_REF_RDI) == a0);
+    static_assert(allocatedGPR(X86_REF_RSI) == a1);
+    static_assert(allocatedGPR(X86_REF_RDX) == a2);
+    static_assert(allocatedGPR(X86_REF_R10) == a3);
+    static_assert(allocatedGPR(X86_REF_R8) == a4);
+    static_assert(allocatedGPR(X86_REF_R9) == a5);
+
+    writebackDirtyState(); // I don't think we can count on the kernel not clobbering our regs
+
+    as.LI(a7, sysno);
+
+    if (!a0_was_loaded && argcount > 0) {
+        as.LD(a0, offsetof(ThreadState, gprs) + (X86_REF_RDI - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+    }
+
+    if (!a1_was_loaded && argcount > 1) {
+        as.LD(a1, offsetof(ThreadState, gprs) + (X86_REF_RSI - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+    }
+
+    if (!a2_was_loaded && argcount > 2) {
+        as.LD(a2, offsetof(ThreadState, gprs) + (X86_REF_RDX - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+    }
+
+    if (!a3_was_loaded && argcount > 3) {
+        as.LD(a3, offsetof(ThreadState, gprs) + (X86_REF_R10 - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+    }
+
+    if (!a4_was_loaded && argcount > 4) {
+        as.LD(a4, offsetof(ThreadState, gprs) + (X86_REF_R8 - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+    }
+
+    if (!a5_was_loaded && argcount > 5) {
+        as.LD(a5, offsetof(ThreadState, gprs) + (X86_REF_R9 - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+    }
+
+    as.ECALL();
+
+    setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, a0);
+}
+
+void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
+    u8 opcount = instruction.operand_count;
+
+    if (instruction.mnemonic == ZYDIS_MNEMONIC_MOV) {
+        bool is_rax = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                      (operands[0].reg.value == ZYDIS_REGISTER_RAX || operands[0].reg.value == ZYDIS_REGISTER_EAX);
+        bool is_imm = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
+        if (is_rax && is_imm) {
+            // We don't care to zero extend this in the EAX case as any negative number wouldn't be a valid syscall anyway
+            // Compilers won't emit a write to ax/al/ah because that would keep the upper bits
+            rax_value = operands[1].imm.value.s;
+            return;
+        }
+    }
+
+    // If any of the operands modifies RAX/EAX/AX/AL/AH we discard its old value by setting it to -1, which will not
+    // inline to any syscall
+    for (int i = 0; i < opcount; i++) {
+        bool is_rax = operands[i].type == ZYDIS_OPERAND_TYPE_REGISTER && zydisToRef(operands[i].reg.value) == X86_REF_RAX;
+        bool modified = operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE;
+        if (is_rax && modified) {
+            rax_value = -1;
+            return;
+        }
+    }
 }

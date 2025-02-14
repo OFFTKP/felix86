@@ -2190,6 +2190,13 @@ FAST_HANDLE(CPUID) {
 }
 
 FAST_HANDLE(SYSCALL) {
+    if (!g_strace && !g_dont_inline_syscalls) {
+        bool inlined = rec.tryInlineSyscall();
+        if (inlined) {
+            return;
+        }
+    }
+
     biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
     AS.LI(rcx, meta.rip + instruction.length);
     rec.setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
@@ -3655,6 +3662,19 @@ FAST_HANDLE(BLENDPD) {
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
     AS.VMV(v0, imm);
+    AS.VMERGE(result, dst, src);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(BLENDVPD) {
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec mask = rec.getRefVec(X86_REF_XMM0);
+
+    rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
+    AS.VMV(v0, mask);
     AS.VMERGE(result, dst, src);
 
     rec.setOperandVec(&operands[0], result);

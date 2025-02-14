@@ -32,36 +32,6 @@
 
 #define HOST_SYSCALL(name, ...) (syscall(match_host(felix86_x86_64_##name), ##__VA_ARGS__))
 
-enum {
-
-#define X(name, id) felix86_x86_64_##name = id,
-#include "felix86/hle/syscalls_x86_64.inc"
-#undef X
-};
-
-enum {
-
-#define X(name, id) felix86_riscv64_##name = id,
-#include "felix86/hle/syscalls_riscv64.inc"
-#undef X
-};
-
-consteval int match_host(int syscall) {
-#define X(name)                                                                                                                                      \
-    case felix86_x86_64_##name:                                                                                                                      \
-        return felix86_riscv64_##name;
-    switch (syscall) {
-#include "felix86/hle/syscalls_common.inc"
-#undef X
-    default:
-        ERROR("Host syscall not found: %d", syscall);
-        return -1;
-    }
-#undef X
-}
-
-static_assert(match_host(felix86_x86_64_setxattr) == felix86_riscv64_setxattr);
-
 const char* print_syscall_name(u64 syscall_number) {
     switch (syscall_number) {
 #define X(name, id)                                                                                                                                  \
