@@ -1121,6 +1121,21 @@ void felix86_syscall(ThreadState* state) {
         result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
         break;
     }
+    case felix86_x86_64_inotify_init1: {
+        result = HOST_SYSCALL(inotify_init1, rdi);
+        STRACE("inotify_init1(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_inotify_add_watch: {
+        result = HOST_SYSCALL(inotify_add_watch, rdi, (const char*)rsi, rdx);
+        STRACE("inotify_add_watch(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_inotify_rm_watch: {
+        result = HOST_SYSCALL(inotify_rm_watch, rdi, rsi);
+        STRACE("inotify_rm_watch(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_fallocate: {
         result = HOST_SYSCALL(fallocate, rdi, rsi, rdx, r10);
         STRACE("fallocate(%d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)result);
