@@ -3634,6 +3634,19 @@ FAST_HANDLE(BLENDPS) {
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(BLENDVPS) {
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec mask = rec.getRefVec(X86_REF_XMM0); // I see where VMERGE took inspiration from
+
+    rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
+    AS.VMV(v0, mask);
+    AS.VMERGE(result, dst, src);
+
+    rec.setOperandVec(&operands[0], result);
+}
+
 FAST_HANDLE(BLENDPD) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b11;
     biscuit::Vec result = rec.scratchVec();
