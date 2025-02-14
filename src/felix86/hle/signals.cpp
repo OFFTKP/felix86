@@ -440,7 +440,7 @@ std::optional<std::array<XmmReg, 32>> get_vector_state(void* ctx) {
 
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
-    u8* pc = context->uc_mcontext.__gregs[REG_PC];
+    uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
 
     ThreadState* current_state = ThreadState::Get();
     ASSERT(current_state);
@@ -473,7 +473,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             bool is_load = !((instruction >> 5) & 1);
 
             u8* cursor = as.GetCursorPointer();
-            as.SetCursorPointer(pc - 4); // go to vsetivli
+            as.SetCursorPointer((u8*)(pc - 4)); // go to vsetivli
 
             u32 vsetivli = *(u32*)(pc - 4);
             ASSERT(((vsetivli & 0b1111111) == 0b1010111) || vsetivli == 0b0010011); // vsetivli or nop
