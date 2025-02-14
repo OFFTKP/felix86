@@ -608,7 +608,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     default: {
     check_guest_signal:
         SignalHandlerTable& handlers = *current_state->signal_handlers;
-        RegisteredSignal handler = handlers[sig - 1];
+        RegisteredSignal& handler = handlers[sig - 1];
         if (!handler.func) {
             ERROR("Unhandled signal %d, no signal handler found", sig);
         }
@@ -680,7 +680,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         if (handler.flags & SA_RESETHAND) {
             handler.func = nullptr;
-            handlers[sig - 1] = handler;
         }
 
         // Make it jump to the dispatcher immediately after returning
@@ -704,6 +703,8 @@ void Signals::initialize() {
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags) {
     ASSERT(sig >= 1 && sig <= 64);
+
+    // Hopefully externally synchronized, no need for locks :cluegi: (TODO: add mutex to signal_handlers)
     (*state->signal_handlers)[sig - 1] = {handler, mask, flags};
 
     // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
