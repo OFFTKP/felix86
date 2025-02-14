@@ -679,6 +679,7 @@ void Signals::initialize() {
 
     sigaction(SIGILL, &sa, nullptr);
     sigaction(SIGBUS, &sa, nullptr);
+    sigaction(SIGSEGV, &sa, nullptr);
 }
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags) {
