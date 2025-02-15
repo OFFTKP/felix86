@@ -341,7 +341,6 @@ FAST_HANDLE(ADC) {
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR cf = rec.flag(X86_REF_CF);
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    u64 sign_mask = rec.getSignMask(size);
 
     AS.ADD(result, dst, src);
     AS.ADD(result_2, result, cf);
