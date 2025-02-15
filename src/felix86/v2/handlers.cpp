@@ -123,17 +123,6 @@ void VEC_function(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInst
     rec.restoreRoundingMode();
 }
 
-void is_overflow_sub(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
-    biscuit::GPR scratch = rec.scratch();
-    AS.XOR(scratch, lhs, rhs);
-    AS.XOR(of, lhs, result);
-    AS.AND(of, of, scratch);
-    AS.LI(scratch, sign_mask);
-    AS.AND(of, of, scratch);
-    AS.SNEZ(of, of);
-    rec.popScratch();
-}
-
 void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
     biscuit::GPR scratch = rec.scratch();
     AS.XOR(scratch, result, lhs);
@@ -152,6 +141,21 @@ void is_overflow_adc(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit
     AS.NOT(scratch, result);
     AS.AND(of, scratch, of);
     AS.AND(scratch, lhs, rhs);
+    AS.OR(of, of, scratch);
+    AS.SRLI(scratch, of, size - 2);
+    AS.SRLI(of, of, size - 1);
+    AS.XOR(of, of, scratch);
+    AS.ANDI(of, of, 1);
+    rec.popScratch();
+}
+
+// (res & (~d | s)) | (~d & s), xor top 2 bits
+void is_overflow_sub(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, int size) {
+    biscuit::GPR scratch = rec.scratch();
+    AS.NOT(scratch, lhs);
+    AS.OR(of, scratch, rhs);
+    AS.AND(of, of, result);
+    AS.AND(scratch, scratch, rhs);
     AS.OR(of, of, scratch);
     AS.SRLI(scratch, of, size - 2);
     AS.SRLI(of, of, size - 1);
@@ -218,7 +222,6 @@ FAST_HANDLE(SUB) {
     AS.SUB(result, dst, src);
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    u64 sign_mask = rec.getSignMask(size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
@@ -253,7 +256,7 @@ FAST_HANDLE(SUB) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        is_overflow_sub(rec, of, dst, src, result, sign_mask);
+        is_overflow_sub(rec, of, dst, src, result, rec.getBitSize(size));
     }
 
     rec.setOperandGPR(&operands[0], result);
@@ -1322,9 +1325,8 @@ FAST_HANDLE(DEC) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         biscuit::GPR one = rec.scratch();
-        u64 sign_mask = rec.getSignMask(size);
         AS.LI(one, 1);
-        is_overflow_sub(rec, of, dst, one, res, sign_mask);
+        is_overflow_sub(rec, of, dst, one, res, rec.getBitSize(size));
         rec.popScratch();
     }
 
@@ -3219,7 +3221,7 @@ FAST_HANDLE(NEG) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        is_overflow_sub(rec, of, x0, dst, result, size);
+        is_overflow_sub(rec, of, x0, dst, result, rec.getBitSize(size));
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -4654,7 +4656,7 @@ FAST_HANDLE(CMPXCHG_lock) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        is_overflow_sub(rec, of, rax, dst, result, size);
+        is_overflow_sub(rec, of, rax, dst, result, rec.getBitSize(size));
     }
 
     biscuit::Label end, equal;
@@ -4716,7 +4718,7 @@ FAST_HANDLE(CMPXCHG) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        is_overflow_sub(rec, of, rax, dst, result, size);
+        is_overflow_sub(rec, of, rax, dst, result, rec.getBitSize(size));
     }
 
     AS.BEQ(dst, rax, &equal);
