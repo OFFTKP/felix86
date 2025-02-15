@@ -4716,7 +4716,7 @@ FAST_HANDLE(CMPXCHG) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        is_overflow_sub(rec, of, dst, rax, result, size);
+        is_overflow_sub(rec, of, rax, dst, result, size);
     }
 
     AS.BEQ(dst, rax, &equal);
