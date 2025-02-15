@@ -702,9 +702,9 @@ FAST_HANDLE(SHL) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
         rec.flag(X86_REF_SF);
 
-    AS.BEQZ(count, &zero_source);
-
     AS.SLL(result, dst, count);
+
+    AS.BEQZ(count, &zero_source);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
         rec.updateParity(result);
@@ -733,9 +733,9 @@ FAST_HANDLE(SHL) {
         AS.XOR(of, of, rec.flag(X86_REF_CF));
     }
 
-    rec.setOperandGPR(&operands[0], result);
-
     AS.Bind(&zero_source);
+
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(SHR) {
@@ -765,9 +765,9 @@ FAST_HANDLE(SHR) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
         rec.flag(X86_REF_SF);
 
-    AS.BEQZ(count, &zero_source);
-
     AS.SRL(result, dst, count);
+
+    AS.BEQZ(count, &zero_source);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
         rec.updateParity(result);
@@ -794,9 +794,9 @@ FAST_HANDLE(SHR) {
         AS.ANDI(of, of, 1);
     }
 
-    rec.setOperandGPR(&operands[0], result);
-
     AS.Bind(&zero_source);
+
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(SAR) {
@@ -826,8 +826,6 @@ FAST_HANDLE(SAR) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
         rec.flag(X86_REF_SF);
 
-    AS.BEQZ(count, &zero_source);
-
     switch (size) {
     case X86_SIZE_BYTE: {
         AS.SLLI(result, dst, 56);
@@ -855,6 +853,8 @@ FAST_HANDLE(SAR) {
     }
     }
 
+    AS.BEQZ(count, &zero_source);
+
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
         rec.updateParity(result);
     }
@@ -879,9 +879,9 @@ FAST_HANDLE(SAR) {
         AS.MV(of, x0);
     }
 
-    rec.setOperandGPR(&operands[0], result);
-
     AS.Bind(&zero_source);
+
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(MOVQ) {
@@ -1467,7 +1467,7 @@ FAST_HANDLE(STC) {
 
 FAST_HANDLE(CBW) {
     biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
-    rec.sextb(al, al);
+    rec.sextb(al, al); // al is a scratch already
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_WORD, al);
 }
 
