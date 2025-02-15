@@ -353,7 +353,7 @@ FAST_HANDLE(ADC) {
         biscuit::GPR scratch = rec.scratch();
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         is_overflow_add(rec, scratch, dst, src, result, sign_mask);
-        is_overflow_add(rec, of, dst, src, result_2, sign_mask);
+        is_overflow_add(rec, of, result, cf, result_2, sign_mask);
         AS.OR(of, scratch, of);
         rec.popScratch();
     }
