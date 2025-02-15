@@ -145,6 +145,21 @@ void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit
     rec.popScratch();
 }
 
+// ((s & d) | ((~res) & (s | d))), xor top 2 bits
+void is_overflow_adc(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, int size) {
+    biscuit::GPR scratch = rec.scratch();
+    AS.OR(of, lhs, rhs);
+    AS.NOT(scratch, result);
+    AS.AND(of, scratch, of);
+    AS.AND(scratch, lhs, rhs);
+    AS.OR(of, of, scratch);
+    AS.SRLI(scratch, of, size - 2);
+    AS.SRLI(of, of, size - 1);
+    AS.XOR(of, of, scratch);
+    AS.ANDI(of, of, 1);
+    rec.popScratch();
+}
+
 FAST_HANDLE(MOV) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     rec.setOperandGPR(&operands[0], src);
@@ -349,8 +364,7 @@ FAST_HANDLE(ADC) {
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        is_overflow_add(rec, of, dst, src, result_2, sign_mask);
-        rec.popScratch();
+        is_overflow_adc(rec, of, dst, src, result_2, rec.getBitSize(size));
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
