@@ -1823,8 +1823,8 @@ biscuit::GPR Recompiler::getCond(int cond) {
     case 10:
         return flag(X86_REF_PF);
     case 11: {
-        biscuit::GPR pf = scratch();
-        as.XORI(pf, flag(X86_REF_PF), 1);
+        biscuit::GPR pf = flag(X86_REF_PF);
+        as.XORI(pf, pf, 1);
         return pf;
     }
     case 12: {
