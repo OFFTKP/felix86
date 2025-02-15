@@ -4654,15 +4654,7 @@ FAST_HANDLE(CMPXCHG_lock) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        biscuit::GPR scratch = rec.scratch();
-        u64 sign_mask = rec.getSignMask(size);
-        AS.XOR(scratch, dst, rax);
-        AS.XOR(of, dst, result);
-        AS.AND(of, of, scratch);
-        AS.LI(scratch, sign_mask);
-        AS.AND(of, of, scratch);
-        AS.SNEZ(of, of);
-        rec.popScratch();
+        is_overflow_sub(rec, of, rax, dst, result, size);
     }
 
     biscuit::Label end, equal;
@@ -4724,15 +4716,7 @@ FAST_HANDLE(CMPXCHG) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        biscuit::GPR scratch = rec.scratch();
-        u64 sign_mask = rec.getSignMask(size);
-        AS.XOR(scratch, dst, rax);
-        AS.XOR(of, dst, result);
-        AS.AND(of, of, scratch);
-        AS.LI(scratch, sign_mask);
-        AS.AND(of, of, scratch);
-        AS.SNEZ(of, of);
-        rec.popScratch();
+        is_overflow_sub(rec, of, rax, dst, result, size);
     }
 
     AS.BEQ(dst, rax, &equal);
