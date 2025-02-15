@@ -342,7 +342,7 @@ FAST_HANDLE(ADC) {
         AS.ANDI(scratch, dst, 0xF);
         AS.SLTU(af, af, scratch);
         AS.ANDI(scratch, result_2, 0xF);
-        AS.SEQZ(scratch, scratch);
+        AS.SLTU(scratch, scratch, cf);
         AS.OR(af, af, scratch);
         rec.popScratch();
     }
