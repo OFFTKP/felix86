@@ -1917,6 +1917,8 @@ x86_size_e Recompiler::zydisToSize(ZyanU8 size) {
         return X86_SIZE_DWORD;
     case 64:
         return X86_SIZE_QWORD;
+    case 80:
+        return X86_SIZE_ST;
     case 128:
         return X86_SIZE_XMM;
     default:
@@ -2040,9 +2042,7 @@ void Recompiler::enableSignals() {
 
 biscuit::GPR Recompiler::getTOP() {
     biscuit::GPR top = scratch();
-    as.LD(top, offsetof(ThreadState, fpu_sw), threadStatePointer());
-    as.SRLI(top, top, 11);
-    as.ANDI(top, top, 0b111);
+    as.LB(top, offsetof(ThreadState, fpu_top), threadStatePointer());
     return top;
 }
 
@@ -2062,6 +2062,49 @@ biscuit::FPR Recompiler::getST(biscuit::GPR top, int index) {
     return st;
 }
 
+biscuit::FPR Recompiler::getST(biscuit::GPR top, ZydisDecodedOperand* operand) {
+    if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(operand->reg.value >= ZYDIS_REGISTER_ST0 && operand->reg.value <= ZYDIS_REGISTER_ST7);
+        return getST(top, operand->reg.value - ZYDIS_REGISTER_ST0);
+    } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        switch (operand->size) {
+        case 32: {
+            biscuit::FPR st = scratchFPR();
+            as.FLW(st, 0, lea(operand));
+            as.FCVT_D_S(st, st);
+            popScratch();
+            return st;
+        }
+        case 64: {
+            biscuit::FPR st = scratchFPR();
+            as.FLD(st, 0, lea(operand));
+            popScratch();
+            return st;
+        }
+        case 80: {
+            UNREACHABLE();
+            return ft0;
+        }
+        default: {
+            UNREACHABLE();
+            return f0;
+        }
+        }
+    } else {
+        UNREACHABLE();
+        return f0;
+    }
+}
+
+void Recompiler::pushST(biscuit::GPR top, biscuit::FPR st) {
+    biscuit::GPR address = scratch();
+    as.ADDI(address, top, -1);
+    as.ANDI(address, address, 0b111);
+    setTOP(address);
+    as.AND(address, address, threadStatePointer());
+    as.FSD(st, offsetof(ThreadState, fp), address);
+}
+
 void Recompiler::setST(biscuit::GPR top, int index, biscuit::FPR st) {
     biscuit::GPR address = scratch();
     if (index != 0) {
@@ -2076,18 +2119,8 @@ void Recompiler::setST(biscuit::GPR top, int index, biscuit::FPR st) {
     popScratch();
 }
 
-// TOP is always a scratch register so we can modify it
 void Recompiler::setTOP(biscuit::GPR new_top) {
-    biscuit::GPR old_sw = scratch();
-    biscuit::GPR mask = scratch();
-    as.LI(mask, 0b111 << 11);
-    as.LD(old_sw, offsetof(ThreadState, fpu_sw), threadStatePointer());
-    as.AND(old_sw, old_sw, mask);
-    as.SLLI(mask, new_top, 11);
-    as.OR(old_sw, old_sw, mask);
-    as.SD(old_sw, offsetof(ThreadState, fpu_sw), threadStatePointer());
-    popScratch();
-    popScratch();
+    as.SB(new_top, offsetof(ThreadState, fpu_top), threadStatePointer());
 }
 
 void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {

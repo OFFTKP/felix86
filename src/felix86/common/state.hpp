@@ -72,6 +72,7 @@ typedef enum : u8 {
     X86_SIZE_MM,
     X86_SIZE_XMM,
     X86_SIZE_BYTE_HIGH,
+    X86_SIZE_ST,
 } x86_size_e;
 
 struct XmmReg {
@@ -98,8 +99,8 @@ struct ThreadState {
     u32 mxcsr{0x1F80}; // default value
     RMode rmode{RMode::RNE};
     u16 fpu_cw{};
-    u16 fpu_sw{};
     u16 fpu_tw{};
+    u8 fpu_top{};
 
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to

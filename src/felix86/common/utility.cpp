@@ -301,7 +301,7 @@ void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
 
     data->fcw = state->fpu_cw;
     data->ftw = state->fpu_tw;
-    data->fsw = state->fpu_sw;
+    data->fsw = state->fpu_top << 11;
     data->mxcsr = state->mxcsr;
 }
 
@@ -320,7 +320,7 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
 
     state->fpu_cw = data->fcw;
     state->fpu_tw = data->ftw;
-    state->fpu_sw = data->fsw;
+    state->fpu_top = (data->fsw >> 11) & 7;
     state->mxcsr = data->mxcsr;
     state->rmode = rounding_mode((x86RoundingMode)((state->mxcsr >> 13) & 3));
 }

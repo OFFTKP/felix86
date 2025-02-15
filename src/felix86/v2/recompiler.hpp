@@ -70,9 +70,13 @@ struct Recompiler {
 
     biscuit::GPR getTOP();
 
+    void pushST(biscuit::GPR top, biscuit::FPR st);
+
     void setTOP(biscuit::GPR top);
 
     biscuit::FPR getST(biscuit::GPR top, int index);
+
+    biscuit::FPR getST(biscuit::GPR top, ZydisDecodedOperand* operand);
 
     void setST(biscuit::GPR top, int index, biscuit::FPR value);
 
@@ -334,6 +338,8 @@ struct Recompiler {
     u64 getImmediate(ZydisDecodedOperand* operand);
 
     void* emitSigreturnThunk();
+
+    void* emitF80ToF64Function();
 
     auto& getBlockMap() {
         return block_metadata;

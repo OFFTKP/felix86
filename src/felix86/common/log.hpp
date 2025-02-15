@@ -70,8 +70,9 @@
 
 #define ASSERT(condition)                                                                                                                            \
     do {                                                                                                                                             \
-        if (!(condition))                                                                                                                            \
-            UNREACHABLE();                                                                                                                           \
+        if (!(condition)) {                                                                                                                          \
+            ERROR("Assertion failed: %s", #condition);                                                                                               \
+        }                                                                                                                                            \
     } while (false)
 
 #define ASSERT_MSG(condition, format, ...)                                                                                                           \

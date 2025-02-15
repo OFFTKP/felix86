@@ -73,7 +73,17 @@ std::optional<std::filesystem::path> Filesystem::AtPath(int dirfd, const char* p
         }
 
         if (std::string(pathname) == proc_self_exe) {
-            return executable_path;
+            std::string executable_path_string = executable_path.string();
+            if (strncmp(executable_path_string.c_str(), rootfs_path_string.c_str(), rootfs_path_string.size()) == 0) {
+                executable_path_string = executable_path_string.substr(rootfs_path_string.size());
+            }
+
+            ASSERT(executable_path_string.size() > 0);
+            if (executable_path_string[0] != '/') {
+                executable_path_string = "/" + executable_path_string;
+            }
+
+            return std::filesystem::path(executable_path_string);
         }
 
         // Check if it starts with /proc
