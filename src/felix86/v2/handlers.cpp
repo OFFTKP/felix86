@@ -131,7 +131,7 @@ void is_overflow_sub(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit
     AS.LI(scratch, sign_mask);
     AS.AND(of, of, scratch);
     AS.SNEZ(of, of);
-    rec.popScratch();
+    // rec.popScratch();
 }
 
 void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
@@ -142,7 +142,7 @@ void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit
     AS.LI(scratch, sign_mask);
     AS.AND(of, of, scratch);
     AS.SNEZ(of, of);
-    rec.popScratch();
+    // rec.popScratch();
 }
 
 FAST_HANDLE(MOV) {
