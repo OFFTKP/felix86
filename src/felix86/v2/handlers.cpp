@@ -124,6 +124,7 @@ void VEC_function(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInst
 }
 
 void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
+    // TODO: replace with is_overflow_adc, I think it works in this case too
     biscuit::GPR scratch = rec.scratch();
     AS.XOR(scratch, result, lhs);
     AS.XOR(of, result, rhs);
@@ -3196,7 +3197,7 @@ FAST_HANDLE(NEG) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-    if (size == X86_SIZE_BYTE) {
+    if (size == X86_SIZE_BYTE || size == X86_SIZE_BYTE_HIGH) {
         rec.sextb(result, dst);
         AS.NEG(result, result);
     } else if (size == X86_SIZE_WORD) {
