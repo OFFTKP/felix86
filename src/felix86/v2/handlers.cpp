@@ -351,19 +351,9 @@ FAST_HANDLE(ADC) {
         biscuit::GPR scratch = rec.scratch();
         biscuit::GPR scratch2 = rec.scratch();
         biscuit::GPR of = rec.flagW(X86_REF_OF);
-        AS.XOR(scratch, result, dst);
-        AS.XOR(of, result, src);
-        AS.AND(of, of, scratch);
-        AS.LI(scratch, sign_mask);
-        AS.AND(of, of, scratch);
-        AS.SNEZ(of, of);
-        AS.XOR(scratch2, result_2, cf);
-        AS.XOR(scratch, result_2, result);
-        AS.AND(scratch, scratch, scratch2);
-        AS.LI(scratch2, sign_mask);
-        AS.AND(scratch, scratch, scratch2);
-        AS.SNEZ(scratch, scratch);
-        AS.OR(of, of, scratch);
+        is_overflow_add(rec, scratch, dst, src, result, sign_mask);
+        is_overflow_add(rec, scratch2, dst, src, result_2, sign_mask);
+        AS.OR(of, scratch, scratch2);
         rec.popScratch();
         rec.popScratch();
     }
