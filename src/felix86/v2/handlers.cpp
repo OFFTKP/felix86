@@ -141,6 +141,7 @@ void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit
     AS.LI(scratch, sign_mask);
     AS.AND(of, of, scratch);
     AS.SNEZ(of, of);
+    rec.popScratch();
 }
 
 FAST_HANDLE(MOV) {
