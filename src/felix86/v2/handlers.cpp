@@ -131,7 +131,7 @@ void is_overflow_sub(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit
     AS.LI(scratch, sign_mask);
     AS.AND(of, of, scratch);
     AS.SNEZ(of, of);
-    // rec.popScratch();
+    rec.popScratch();
 }
 
 void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, u64 sign_mask) {
@@ -142,7 +142,7 @@ void is_overflow_add(Recompiler& rec, biscuit::GPR of, biscuit::GPR lhs, biscuit
     AS.LI(scratch, sign_mask);
     AS.AND(of, of, scratch);
     AS.SNEZ(of, of);
-    // rec.popScratch();
+    rec.popScratch();
 }
 
 FAST_HANDLE(MOV) {
@@ -190,7 +190,6 @@ FAST_HANDLE(ADD) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         is_overflow_add(rec, of, dst, src, result, sign_mask);
-        rec.popScratch();
     }
 
     rec.setOperandGPR(&operands[0], result);
@@ -240,7 +239,6 @@ FAST_HANDLE(SUB) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         is_overflow_sub(rec, of, dst, src, result, sign_mask);
-        rec.popScratch();
     }
 
     rec.setOperandGPR(&operands[0], result);
@@ -1255,7 +1253,6 @@ FAST_HANDLE(INC) {
         AS.LI(one, 1);
         is_overflow_add(rec, of, dst, one, res, sign_mask);
         rec.popScratch();
-        rec.popScratch();
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -1318,7 +1315,6 @@ FAST_HANDLE(DEC) {
         u64 sign_mask = rec.getSignMask(size);
         AS.LI(one, 1);
         is_overflow_sub(rec, of, dst, one, res, sign_mask);
-        rec.popScratch();
         rec.popScratch();
     }
 
@@ -5290,7 +5286,6 @@ FAST_HANDLE(XADD) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         is_overflow_add(rec, of, dst, src, result, sign_mask);
-        rec.popScratch();
     }
 
     // In this case we also need to writeback the result, otherwise amoadd will do it for us
