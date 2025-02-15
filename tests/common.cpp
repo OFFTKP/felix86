@@ -14,6 +14,7 @@ public:
         unlink_semaphore();
         initialize_semaphore();
         Signals::initialize();
+        g_dont_protect_pages = true;
     }
 };
 
