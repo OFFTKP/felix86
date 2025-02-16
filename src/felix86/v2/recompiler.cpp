@@ -314,7 +314,7 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         meta.rip += instruction.length;
 
-        if (first_n == 0) {
+        if (first_n > 0) {
             writebackDirtyState();
         }
 
@@ -330,7 +330,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     }
 
     first_n--;
-    if (first_n == 0) {
+    if (first_n < 2 && first_n >= 0) {
         printf("address: %016lx\n", current_block_metadata->guest_address);
     }
 
