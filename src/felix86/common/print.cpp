@@ -69,7 +69,7 @@ std::string print_guest_register(x86_ref_e guest) {
     return "";
 }
 
-__attribute__((visibility("default"))) extern "C" void print_gprs(ThreadState* state) {
+extern "C" __attribute__((visibility("default"))) void print_gprs(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
         std::string guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
         PLAIN("%s", guest.c_str());
@@ -85,7 +85,7 @@ __attribute__((visibility("default"))) extern "C" void print_gprs(ThreadState* s
     PLAIN("of = %d", state->of);
 }
 
-__attribute__((visibility("default"))) extern "C" void print_state(ThreadState* state) {
+extern "C" __attribute__((visibility("default"))) void print_state(ThreadState* state) {
     print_gprs(state);
 
     for (int i = 0; i < 16; i++) {
