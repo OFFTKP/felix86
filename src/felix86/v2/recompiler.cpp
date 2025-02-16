@@ -330,6 +330,9 @@ u64 Recompiler::compileSequence(u64 rip) {
     }
 
     first_n--;
+    if (first_n == 0) {
+        printf("address: %016lx\n", meta.rip);
+    }
 
     current_block_metadata->guest_address_end = meta.rip;
     current_block_metadata->address_end = as.GetCursorPointer();
