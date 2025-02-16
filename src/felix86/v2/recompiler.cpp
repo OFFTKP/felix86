@@ -61,15 +61,6 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
-
-    first_n = std::stoi(getenv("FIRSTN"));
-
-    // read all lines to exclude_list
-    std::ifstream file("exclude_list.txt");
-    std::string line;
-    while (std::getline(file, line)) {
-        exclude_list.push_back(std::stoull(line, nullptr, 16));
-    }
 }
 
 Recompiler::~Recompiler() {
