@@ -4435,6 +4435,7 @@ void COMIS(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction
     AS.SB(cf, offsetof(ThreadState, pf), rec.threadStatePointer());
 
     AS.Bind(&end);
+    rec.writebackDirtyState();
 }
 
 FAST_HANDLE(COMISD) { // Fuzzed
