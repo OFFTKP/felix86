@@ -323,14 +323,6 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         meta.rip += instruction.length;
 
-        if (std::find(exclude_list.begin(), exclude_list.end(), current_block_metadata->guest_address) == exclude_list.end()) {
-            writebackDirtyState();
-        }
-
-        if (first_n > 0) {
-            writebackDirtyState();
-        }
-
         if (g_single_step && compiling) {
             resetScratch();
             biscuit::GPR rip_after = scratch();
@@ -340,11 +332,6 @@ u64 Recompiler::compileSequence(u64 rip) {
             backToDispatcher();
             stopCompiling();
         }
-    }
-
-    first_n--;
-    if (first_n < 30 && first_n >= 0) {
-        printf("%016lx\n", current_block_metadata->guest_address);
     }
 
     current_block_metadata->guest_address_end = meta.rip;
