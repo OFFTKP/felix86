@@ -312,6 +312,8 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         meta.rip += instruction.length;
 
+        writebackDirtyState();
+
         if (g_single_step && compiling) {
             resetScratch();
             biscuit::GPR rip_after = scratch();
@@ -1754,8 +1756,6 @@ void Recompiler::addi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
 }
 
 void Recompiler::setFlagUndefined(x86_ref_e ref) {
-    return;
-
     // Once a flag has been set to undefined state it doesn't need to be written back
     // it's as if it was written with a random value, which we don't care to emulate
     RegisterMetadata& meta = getMetadata(ref);
