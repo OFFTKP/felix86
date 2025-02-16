@@ -330,7 +330,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     }
 
     first_n--;
-    if (first_n < 30) {
+    if (first_n < 30 && first_n >= 0) {
         printf("address: %016lx\n", current_block_metadata->guest_address);
     }
 
