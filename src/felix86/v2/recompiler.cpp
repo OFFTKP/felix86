@@ -974,7 +974,7 @@ void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
     biscuit::Vec dest = allocatedVec(ref);
 
     if (dest != vec) {
-        as.VMV(dest, vec);
+        as.VMV1R(dest, vec);
     }
 
     RegisterMetadata& meta = getMetadata(ref);
