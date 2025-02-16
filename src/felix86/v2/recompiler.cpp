@@ -902,6 +902,7 @@ biscuit::Vec Recompiler::getRefVec(x86_ref_e ref) {
 void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     switch (size) {
     case X86_SIZE_BYTE: {
+        ASSERT(reg != allocatedGPR(ref));
         biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr8 = scratch();
         as.ANDI(gpr8, reg, 0xff);
@@ -911,6 +912,7 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
         break;
     }
     case X86_SIZE_BYTE_HIGH: {
+        ASSERT(reg != allocatedGPR(ref));
         biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr8 = scratch();
         biscuit::GPR mask = scratch();
@@ -925,6 +927,7 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
         break;
     }
     case X86_SIZE_WORD: {
+        ASSERT(reg != allocatedGPR(ref));
         biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr16 = scratch();
         if (Extensions::B) {
@@ -1317,8 +1320,8 @@ void Recompiler::setExitReason(ExitReason reason) {
 
 void Recompiler::writebackDirtyState() {
     for (int i = 0; i < 16; i++) {
-        if (metadata[i].dirty) {
-            x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
+        x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
+        if (getMetadata(ref).dirty) {
             as.SD(allocatedGPR(ref), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
             addRegisterAccess(ref, false);
         }
