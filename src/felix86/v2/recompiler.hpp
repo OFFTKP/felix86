@@ -435,6 +435,8 @@ private:
 
     int rax_value = -1;
 
+    int first_n = 0;
+
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 
     BlockMetadata* current_block_metadata{};

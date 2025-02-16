@@ -59,6 +59,8 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
+
+    first_n = std::stoi(getenv("FIRSTN"));
 }
 
 Recompiler::~Recompiler() {
@@ -312,7 +314,9 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         meta.rip += instruction.length;
 
-        writebackDirtyState();
+        if (first_n > 0) {
+            writebackDirtyState();
+        }
 
         if (g_single_step && compiling) {
             resetScratch();
@@ -324,6 +328,8 @@ u64 Recompiler::compileSequence(u64 rip) {
             stopCompiling();
         }
     }
+
+    first_n--;
 
     current_block_metadata->guest_address_end = meta.rip;
     current_block_metadata->address_end = as.GetCursorPointer();
