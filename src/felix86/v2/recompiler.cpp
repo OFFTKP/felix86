@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <fstream>
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
@@ -61,6 +63,13 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
 
     first_n = std::stoi(getenv("FIRSTN"));
+
+    // read all lines to exclude_list
+    std::ifstream file("exclude_list.txt");
+    std::string line;
+    while (std::getline(file, line)) {
+        exclude_list.push_back(std::stoull(line, nullptr, 16));
+    }
 }
 
 Recompiler::~Recompiler() {
@@ -314,6 +323,10 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         meta.rip += instruction.length;
 
+        if (std::find(exclude_list.begin(), exclude_list.end(), current_block_metadata->guest_address) == exclude_list.end()) {
+            writebackDirtyState();
+        }
+
         if (first_n > 0) {
             writebackDirtyState();
         }
@@ -331,7 +344,7 @@ u64 Recompiler::compileSequence(u64 rip) {
 
     first_n--;
     if (first_n < 30 && first_n >= 0) {
-        printf("address: %016lx\n", current_block_metadata->guest_address);
+        printf("%016lx\n", current_block_metadata->guest_address);
     }
 
     current_block_metadata->guest_address_end = meta.rip;

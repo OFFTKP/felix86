@@ -435,6 +435,7 @@ private:
 
     int rax_value = -1;
 
+    std::vector<u64> exclude_list{};
     int first_n = 0;
 
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
