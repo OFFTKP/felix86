@@ -3960,12 +3960,12 @@ FAST_HANDLE(BLSR) {
     WARN("BLSR is broken, check BLSR_flags");
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
 
     AS.ADDI(result, src, -1);
     AS.AND(result, src, result);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
         AS.SEQZ(cf, src);
     }
 
