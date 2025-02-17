@@ -264,6 +264,33 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    const char* allow_root_env = getenv("FELIX86_ALLOW_ROOT");
+    bool allow_root = false;
+    if (allow_root_env && std::string(allow_root_env) == "1") {
+        WARN("Running felix86 with root privileges");
+        allow_root = true;
+    }
+
+    auto it = config.envp.begin();
+    while (it != config.envp.end()) {
+        std::string env = *it;
+
+        // Dont pass these to the executable itself
+        if (env.find("FELIX86_") != std::string::npos) {
+            it = config.envp.erase(it);
+        } else {
+            if (!allow_root) {
+                if (env.find("SUDO_") != std::string::npos) {
+                    it = config.envp.erase(it);
+                } else {
+                    it++;
+                }
+            } else {
+                it++;
+            }
+        }
+    }
+
     config.rootfs_path = g_rootfs_path;
 
     // Sanitize the executable path
@@ -382,14 +409,6 @@ int main(int argc, char* argv[]) {
             ASSERT(g_rootfs_path == config.rootfs_path); // don't change me in the future
             g_is_chrooted = true;
 
-            // Drop root privileges
-            const char* allow_root_env = getenv("FELIX86_ALLOW_ROOT");
-            bool allow_root = false;
-            if (allow_root_env && std::string(allow_root_env) == "1") {
-                WARN("Running felix86 with root privileges");
-                allow_root = true;
-            }
-
             if (!allow_root) {
                 const char* gid_env = getenv("SUDO_GID");
                 const char* uid_env = getenv("SUDO_UID");
@@ -423,12 +442,12 @@ int main(int argc, char* argv[]) {
 
                 ASSERT(geteuid() != 0);
                 ASSERT(getuid() != 0);
+            }
 
-                int result = chdir("/");
-                if (result < 0) {
-                    ERROR("Failed to change directory to / after dropping root privileges. Error: %d", errno);
-                    return 1;
-                }
+            result = chdir("/");
+            if (result < 0) {
+                ERROR("Failed to change directory to / after dropping root privileges. Error: %d", errno);
+                return 1;
             }
         } else {
             ERROR("Should not get here, felix86 has no root privileges");
