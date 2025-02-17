@@ -150,14 +150,7 @@ static struct argp argp = {options, parse_opt, args_doc, doc};
 int watchdog_loop(int pid);
 
 void mountme(const char* path, const char* dest, const char* fs_type, unsigned flags = 0) {
-    int mkdir_res = mkdir(dest, 0755);
-    if (mkdir_res < 0) {
-        if (errno != EEXIST) {
-            remove(lock_path);
-            ERROR("Failed to create directory %s. Error: %d", dest, errno);
-        }
-    }
-
+    std::filesystem::create_directories(dest);
     int result = mount(path, dest, fs_type, flags, NULL);
     if (result < 0) {
         // Remove the lock file before exiting
@@ -390,7 +383,7 @@ int main(int argc, char* argv[]) {
         mountme("sysfs", (config.rootfs_path / "sys").c_str(), "sysfs");
         mountme("udev", (config.rootfs_path / "dev").c_str(), "devtmpfs");
         mountme("devpts", (config.rootfs_path / "dev/pts").c_str(), "devpts");
-        mountme("/run", (config.rootfs_path / "run").c_str(), nullptr, MS_BIND);
+        mountme("/run/user/1000", (config.rootfs_path / "run" / "user" / "1000").c_str(), nullptr, MS_BIND);
 
         int pid = fork();
         if (pid != 0) {
