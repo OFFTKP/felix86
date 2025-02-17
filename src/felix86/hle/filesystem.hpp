@@ -46,7 +46,10 @@ struct Filesystem {
                 WARN("Failed to chdir to %s", cwd);
             }
         } else {
-            chdir(executable_path.parent_path().c_str());
+            int res = chdir(executable_path.parent_path().c_str());
+            if (res == -1) {
+                WARN("Failed to chdir to %s", executable_path.parent_path().c_str());
+            }
         }
 
         return true;

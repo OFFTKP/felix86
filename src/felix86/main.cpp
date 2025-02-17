@@ -204,6 +204,20 @@ int main(int argc, char* argv[]) {
     // In this case we shouldn't print the version string and unlink the semaphore
     const char* execve_process = getenv("__FELIX86_EXECVE");
 
+    if (!execve_process && geteuid() != 0) {
+        // Try to restart app with sudo
+        std::vector<const char*> sudo_args = {"sudo"};
+        sudo_args.push_back("-E");
+        for (int i = 0; i < argc; i++) {
+            sudo_args.push_back(argv[i]);
+        }
+        sudo_args.push_back(nullptr);
+        execvpe("sudo", (char* const*)sudo_args.data(), environ);
+        ERROR("felix86 needs administrator privileges to chroot and mount. Failed to restart felix86 with sudo. Please run felix86 with "
+              "administrator privileges. Error code: %d",
+              errno);
+    }
+
     for (int i = 0; i < guest_arg_start_index - 1; i++) {
         g_host_argv.push_back(argv[i]);
     }
@@ -308,20 +322,6 @@ int main(int argc, char* argv[]) {
         pthread_setname_np(pthread_self(), "ExecveProcess");
     } else {
         pthread_setname_np(pthread_self(), "MainProcess");
-    }
-
-    if (geteuid() != 0) {
-        // Try to restart app with sudo
-        std::vector<const char*> sudo_args = {"sudo"};
-        sudo_args.push_back("-E");
-        for (int i = 0; i < argc; i++) {
-            sudo_args.push_back(argv[i]);
-        }
-        sudo_args.push_back(nullptr);
-        execvpe("sudo", (char* const*)sudo_args.data(), environ);
-        ERROR("felix86 needs administrator privileges to chroot and mount. Failed to restart felix86 with sudo. Please run felix86 with "
-              "administrator privileges. Error code: %d",
-              errno);
     }
 
     if (!execve_process) {
