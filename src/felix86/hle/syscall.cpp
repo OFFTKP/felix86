@@ -578,6 +578,19 @@ void felix86_syscall(ThreadState* state) {
         STRACE("fchown(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_chown: {
+        auto path = fs.AtPath(AT_FDCWD, (const char*)rdi);
+
+        if (!path) {
+            result = -EACCES;
+            STRACE("chown(%s, %d, %d) = %d", (const char*)rdi, (int)rsi, (int)rdx, (int)result);
+            break;
+        }
+
+        result = chown(path->c_str(), rsi, rdx);
+        STRACE("chown(%s, %d, %d) = %d", path->c_str(), (int)rsi, (int)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_unlinkat: {
         auto path = fs.AtPath(rdi, (const char*)rsi);
 
