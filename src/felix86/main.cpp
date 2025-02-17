@@ -153,15 +153,16 @@ void mountme(const char* path, const char* dest, const char* fs_type) {
     int mkdir_res = mkdir(dest, 0755);
     if (mkdir_res < 0) {
         if (errno != EEXIST) {
+            remove(lock_path);
             ERROR("Failed to create directory %s. Error: %d", dest, errno);
-            felix86_exit(1);
         }
     }
 
     int result = mount(path, dest, fs_type, 0, NULL);
     if (result < 0) {
+        // Remove the lock file before exiting
+        remove(lock_path);
         ERROR("Failed to mount %s to %s. Error: %d", path, dest, errno);
-        felix86_exit(1);
     }
     VERBOSE("Mounting %s to %s", path, dest);
 
@@ -516,7 +517,7 @@ int watchdog_loop(int pid) {
     // Unmount everything
     for (auto it = mounts.rbegin(); it != mounts.rend(); it++) {
         std::string mount = *it;
-        int result = umount(mount.c_str());
+        int result = umount2(mount.c_str(), MNT_DETACH);
         VERBOSE("Unmounting %s", mount.c_str());
         if (result < 0) {
             WARN("Failed to unmount %s, please unmount it yourself. Error: %d", mount.c_str(), errno);
