@@ -317,7 +317,7 @@ int main(int argc, char* argv[]) {
             sudo_args.push_back(argv[i]);
         }
         sudo_args.push_back(nullptr);
-        int result = execvp("sudo", (char* const*)sudo_args.data());
+        int result = execvpe("sudo", (char* const*)sudo_args.data(), environ);
         if (result == -1) {
             ERROR("felix86 needs administrator privileges to chroot and mount. Failed to restart felix86 with sudo. Please run felix86 with "
                   "administrator privileges. Error code: %d",
@@ -422,7 +422,11 @@ int main(int argc, char* argv[]) {
                 ASSERT(geteuid() != 0);
                 ASSERT(getuid() != 0);
 
-                chdir("/");
+                int result = chdir("/");
+                if (result < 0) {
+                    ERROR("Failed to change directory to / after dropping root privileges. Error: %d", errno);
+                    return 1;
+                }
             }
         } else {
             ERROR("Should not get here, felix86 has no root privileges");
