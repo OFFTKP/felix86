@@ -3645,7 +3645,7 @@ FAST_HANDLE(BLENDVPS) {
     biscuit::Vec mask = rec.getRefVec(X86_REF_XMM0); // I see where VMERGE took inspiration from
 
     rec.setVectorState(SEW::E32, rec.maxVlen() / 32);
-    AS.VMV(v0, mask);
+    AS.VMSLT(v0, mask, x0);
     AS.VMERGE(result, dst, src);
 
     rec.setOperandVec(&operands[0], result);
@@ -3671,7 +3671,7 @@ FAST_HANDLE(BLENDVPD) {
     biscuit::Vec mask = rec.getRefVec(X86_REF_XMM0);
 
     rec.setVectorState(SEW::E64, rec.maxVlen() / 64);
-    AS.VMV(v0, mask);
+    AS.VMSLT(v0, mask, x0);
     AS.VMERGE(result, dst, src);
 
     rec.setOperandVec(&operands[0], result);
@@ -5838,6 +5838,7 @@ FAST_HANDLE(EXTRACTPS) {
 }
 
 FAST_HANDLE(INSERTPS) {
+    ERROR("INSERTPS is not implemented");
     u8 immediate = rec.getImmediate(&operands[2]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);

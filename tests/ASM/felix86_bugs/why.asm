@@ -20,6 +20,8 @@ movq xmm0, rax
 movq xmm14, rax
 movq xmm3, rax
 
+; This block of code would cause bugs due to our bad vmv understanding
+; took like a week to find out why we had a bunch of random problems
 movaps xmm12, [rsp+0x80]
 ; movss xmm14, dword [0x0000003FC2385C68]
 movaps xmm13, [rsp+0x90]

@@ -509,7 +509,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 break;
             }
             default: {
-                UNREACHABLE();
+                ERROR("Unhandled SEW %d during SIGBUS handler", sew);
                 break;
             }
             }
@@ -542,6 +542,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 // Need to lock g_thread_states access
                 FELIX86_LOCK; // fine to lock, SIGSEGV happened in jit code, no need to worry about deadlocks
                               // shouldn't be locked during compilation, so no double lock deadlock potential either
+
+                // TODO: This is extremely slow, please optimize me
                 for (auto& thread_state : g_thread_states) {
                     auto lock = thread_state->recompiler->lock();
                     auto& block_map = thread_state->recompiler->getBlockMap();
