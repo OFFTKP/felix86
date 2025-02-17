@@ -313,17 +313,15 @@ int main(int argc, char* argv[]) {
     if (geteuid() != 0) {
         // Try to restart app with sudo
         std::vector<const char*> sudo_args = {"sudo"};
+        sudo_args.push_back("-E");
         for (int i = 0; i < argc; i++) {
             sudo_args.push_back(argv[i]);
         }
         sudo_args.push_back(nullptr);
-        int result = execvpe("sudo", (char* const*)sudo_args.data(), environ);
-        if (result == -1) {
-            ERROR("felix86 needs administrator privileges to chroot and mount. Failed to restart felix86 with sudo. Please run felix86 with "
-                  "administrator privileges. Error code: %d",
-                  errno);
-            return 1;
-        }
+        execvpe("sudo", (char* const*)sudo_args.data(), environ);
+        ERROR("felix86 needs administrator privileges to chroot and mount. Failed to restart felix86 with sudo. Please run felix86 with "
+              "administrator privileges. Error code: %d",
+              errno);
     }
 
     if (!execve_process) {
@@ -376,7 +374,11 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
 
-            chroot(config.rootfs_path.c_str());
+            int result = chroot(config.rootfs_path.c_str());
+            if (result < 0) {
+                ERROR("Failed to chroot to %s. Error: %d", config.rootfs_path.c_str(), errno);
+                return 1;
+            }
             ASSERT(g_rootfs_path == config.rootfs_path); // don't change me in the future
             g_is_chrooted = true;
 
