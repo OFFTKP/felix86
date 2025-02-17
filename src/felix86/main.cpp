@@ -4,13 +4,13 @@
 #include <fcntl.h>
 #include <fmt/format.h>
 #include <grp.h>
+// #include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "felix86/common/log.hpp"
 #include "felix86/emulator.hpp"
-#include "felix86/hle/filesystem.hpp"
 
 #if !defined(__riscv)
 #pragma message("felix86 should only be compiled for RISC-V")
@@ -167,6 +167,22 @@ void mountme(const char* path, const char* dest, const char* fs_type) {
 
     mounts.push_back(dest);
 }
+
+// int drop_capabilities() {
+//     cap_t caps = cap_init();
+//     if (caps == nullptr) {
+//         fprintf(stderr, "Error: cap_init() failed.\n");
+//         return -1;
+//     }
+
+//     if (cap_set_proc(caps) == -1) {
+//         fprintf(stderr, "Error: cap_set_proc() failed.\n");
+//         return -1;
+//     }
+
+//     cap_free(caps);
+//     return 0;
+// }
 
 int main(int argc, char* argv[]) {
 #if 0 // for testing zydis behavior on specific instructions
@@ -381,77 +397,78 @@ int main(int argc, char* argv[]) {
             return watchdog_loop(pid);
         }
 
-        if (geteuid() == 0) { // When running as root, we can fully chroot into rootfs and save some time
-            // Check that proc is mounted successfully
-            char buffer1[PATH_MAX];
-            char buffer2[PATH_MAX];
-            int n1 = readlink("/proc/self/exe", buffer1, PATH_MAX);
-            if (n1 == -1) {
-                ERROR("Failed to read /proc/self/exe, is /proc mounted?");
+        // Check that proc is mounted successfully
+        char buffer1[PATH_MAX];
+        char buffer2[PATH_MAX];
+        int n1 = readlink("/proc/self/exe", buffer1, PATH_MAX);
+        if (n1 == -1) {
+            ERROR("Failed to read /proc/self/exe, is /proc mounted?");
+            return 1;
+        }
+
+        int n2 = readlink((config.rootfs_path / "proc/self/exe").c_str(), buffer2, PATH_MAX);
+        if (n2 == -1) {
+            ERROR("Failed to read /proc/self/exe from chroot, is /proc mounted?");
+            return 1;
+        }
+
+        if (n1 != n2 || memcmp(buffer1, buffer2, n1) != 0) {
+            ERROR("Error while comparing /proc/self/exe results from inside and outside the chroot");
+            return 1;
+        }
+
+        int result = chroot(config.rootfs_path.c_str());
+        if (result < 0) {
+            ERROR("Failed to chroot to %s. Error: %d", config.rootfs_path.c_str(), errno);
+            return 1;
+        }
+
+        ASSERT(getuid() == 0);
+        ASSERT(g_rootfs_path == config.rootfs_path); // don't change me in the future
+        g_is_chrooted = true;
+
+        if (!allow_root) {
+            const char* gid_env = getenv("SUDO_GID");
+            const char* uid_env = getenv("SUDO_UID");
+
+            std::string suggestion = "If you want to run felix86 with root privileges (not recommended), "
+                                     "set the FELIX86_ALLOW_ROOT environment variable to 1. Otherwise run without root privileges.";
+
+            if (!uid_env || !gid_env) {
+                ERROR("SUDO_UID or SUDO_GID not set, can't drop root privileges. %s", suggestion.c_str());
                 return 1;
             }
 
-            int n2 = readlink((config.rootfs_path / "proc/self/exe").c_str(), buffer2, PATH_MAX);
-            if (n2 == -1) {
-                ERROR("Failed to read /proc/self/exe from chroot, is /proc mounted?");
+            std::string user = getenv("SUDO_USER");
+            gid_t gid = std::stoul(gid_env);
+            uid_t uid = std::stoul(uid_env);
+
+            if (initgroups(user.c_str(), gid) != 0) {
+                ERROR("initgroups failed when trying to drop root privileges. %s", suggestion.c_str());
                 return 1;
             }
 
-            if (n1 != n2 || memcmp(buffer1, buffer2, n1) != 0) {
-                ERROR("Error while comparing /proc/self/exe results from inside and outside the chroot");
+            if (setgid(gid) != 0) {
+                ERROR("setgid failed when trying to drop root privileges. %s", suggestion.c_str());
                 return 1;
             }
 
-            int result = chroot(config.rootfs_path.c_str());
-            if (result < 0) {
-                ERROR("Failed to chroot to %s. Error: %d", config.rootfs_path.c_str(), errno);
+            if (setuid(uid) != 0) {
+                ERROR("setuid failed when trying to drop root privileges. %s", suggestion.c_str());
                 return 1;
             }
-            ASSERT(g_rootfs_path == config.rootfs_path); // don't change me in the future
-            g_is_chrooted = true;
 
-            if (!allow_root) {
-                const char* gid_env = getenv("SUDO_GID");
-                const char* uid_env = getenv("SUDO_UID");
+            ASSERT(geteuid() != 0);
+            ASSERT(getuid() != 0);
 
-                std::string suggestion = "If you want to run felix86 with root privileges (not recommended), "
-                                         "set the FELIX86_ALLOW_ROOT environment variable to 1. Otherwise run without root privileges.";
+            // TODO: use this instead?
+            // drop_capabilities();
+        }
 
-                if (!uid_env || !gid_env) {
-                    ERROR("SUDO_UID or SUDO_GID not set, can't drop root privileges. %s", suggestion.c_str());
-                    return 1;
-                }
-
-                std::string user = getenv("SUDO_USER");
-                gid_t gid = std::stoul(gid_env);
-                uid_t uid = std::stoul(uid_env);
-
-                if (initgroups(user.c_str(), gid) != 0) {
-                    ERROR("initgroups failed when trying to drop root privileges. %s", suggestion.c_str());
-                    return 1;
-                }
-
-                if (setgid(gid) != 0) {
-                    ERROR("setgid failed when trying to drop root privileges. %s", suggestion.c_str());
-                    return 1;
-                }
-
-                if (setuid(uid) != 0) {
-                    ERROR("setuid failed when trying to drop root privileges. %s", suggestion.c_str());
-                    return 1;
-                }
-
-                ASSERT(geteuid() != 0);
-                ASSERT(getuid() != 0);
-            }
-
-            result = chdir("/");
-            if (result < 0) {
-                ERROR("Failed to change directory to / after dropping root privileges. Error: %d", errno);
-                return 1;
-            }
-        } else {
-            ERROR("Should not get here, felix86 has no root privileges");
+        result = chdir("/");
+        if (result < 0) {
+            ERROR("Failed to change directory to / after dropping root privileges. Error: %d", errno);
+            return 1;
         }
     }
 
@@ -504,10 +521,7 @@ int watchdog_loop(int pid) {
         if (result < 0) {
             WARN("Failed to unmount %s, please unmount it yourself. Error: %d", mount.c_str(), errno);
         } else {
-            result = rmdir(mount.c_str());
-            if (result < 0) {
-                WARN("Failed to remove directory %s, please remove it yourself. Error: %d", mount.c_str(), errno);
-            }
+            rmdir(mount.c_str());
         }
     }
 
