@@ -391,6 +391,9 @@ int main(int argc, char* argv[]) {
         mountme("udev", (config.rootfs_path / "dev").c_str(), "devtmpfs");
         mountme("devpts", (config.rootfs_path / "dev/pts").c_str(), "devpts");
 
+        // Also bind mount /run
+        mount("run", (config.rootfs_path / "run").c_str(), NULL, MS_BIND, NULL);
+
         int pid = fork();
         if (pid != 0) {
             // Parent process, will watch until the child process (emulator) is finished to clean up.
