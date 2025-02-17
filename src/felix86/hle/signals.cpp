@@ -509,7 +509,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 break;
             }
             default: {
-                ERROR("Unhandled SEW %d during SIGBUS handler", sew);
+                ERROR("Unhandled SEW %d during SIGBUS handler", (int)sew);
                 break;
             }
             }
