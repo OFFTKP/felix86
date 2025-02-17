@@ -383,7 +383,7 @@ int main(int argc, char* argv[]) {
         mountme("sysfs", (config.rootfs_path / "sys").c_str(), "sysfs");
         mountme("udev", (config.rootfs_path / "dev").c_str(), "devtmpfs");
         mountme("devpts", (config.rootfs_path / "dev/pts").c_str(), "devpts");
-        mountme("/run/user/1000", (config.rootfs_path / "run" / "user" / "1000").c_str(), nullptr, MS_BIND);
+        mountme("/run", (config.rootfs_path / "run").c_str(), nullptr, MS_BIND | MS_REC);
 
         int pid = fork();
         if (pid != 0) {
