@@ -17,7 +17,6 @@ bool g_testing = false;
 bool g_strace = false;
 bool g_dont_link = false;
 bool g_extensions_manually_specified = false;
-bool g_dont_validate_exe_path = false;
 bool g_calltrace = false;
 bool g_use_block_cache = true;
 bool g_single_step = false;
@@ -231,12 +230,6 @@ void initialize_globals() {
     if (is_truthy(no_sse4_2_env)) {
         g_no_sse4_2 = true;
         environment += "\nFELIX86_NO_SSE4_2";
-    }
-
-    const char* dont_validate_exe_path = getenv("FELIX86_DONT_VALIDATE_EXE_PATH");
-    if (is_truthy(dont_validate_exe_path)) {
-        g_dont_validate_exe_path = true;
-        environment += "\nFELIX86_DONT_VALIDATE_EXE_PATH";
     }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");

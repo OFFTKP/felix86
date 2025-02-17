@@ -20,7 +20,6 @@ struct TestConfig {
 struct Emulator {
     Emulator(const Config& config) : config(config) {
         g_emulator = this;
-        fs.LoadRootFS(config.rootfs_path);
         fs.LoadExecutable(config.executable_path);
         auto main_state = ThreadState::Create();
         VERBOSE("Created thread state with tid %ld", main_state->tid);

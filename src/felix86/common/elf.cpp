@@ -133,9 +133,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 ERROR("Failed to read interpreter from file %s", path.c_str());
             }
 
-            // C++ decided it's a good idea to let a absolute path rhs override the lhs
-            // so we convert to relative path
-            interpreter = g_rootfs_path / std::filesystem::path(interpreter_str).relative_path();
+            interpreter = std::filesystem::path(interpreter_str);
             break;
         }
         case PT_GNU_STACK: {

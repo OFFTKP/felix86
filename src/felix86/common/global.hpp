@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <list>
-#include <mutex>
 #include <unordered_map>
 #include <vector>
 #include <semaphore.h>
@@ -16,7 +15,6 @@ extern bool g_testing;
 extern bool g_strace;
 extern bool g_calltrace;
 extern bool g_extensions_manually_specified;
-extern bool g_dont_validate_exe_path;
 extern bool g_paranoid;
 extern bool g_is_chrooted;
 extern bool g_dont_link;
