@@ -291,8 +291,8 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_readlinkat: {
         if (std::string((char*)rsi) == "/proc/self/exe") {
             std::string path = fs.GetExecutablePath().string();
-            size_t size = std::min(path.size(), (size_t)rdx);
-            memcpy((void*)rsi, path.c_str(), size);
+            size_t size = std::min(path.size(), (size_t)r10);
+            memcpy((void*)rdx, path.c_str(), size);
             result = size;
         } else {
             result = HOST_SYSCALL(readlinkat, rdi, rsi, rdx, r10);
