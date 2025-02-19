@@ -408,6 +408,21 @@ void felix86_syscall(ThreadState* state) {
         STRACE("epoll_create1(%d) = %d", (int)rdi, (int)result);
         break;
     }
+    case felix86_x86_64_epoll_ctl: {
+        result = HOST_SYSCALL(epoll_ctl, rdi, rsi, rdx, r10);
+        STRACE("epoll_ctl(%d, %d, %d, %p) = %d", (int)rdi, (int)rsi, (int)rdx, (void*)r10, (int)result);
+        break;
+    }
+    case felix86_x86_64_epoll_pwait: {
+        result = HOST_SYSCALL(epoll_pwait, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("epoll_pwait(%d, %p, %d, %d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (int)r9, (int)result);
+        break;
+    }
+    case felix86_x86_64_epoll_pwait2: {
+        result = HOST_SYSCALL(epoll_pwait2, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("epoll_pwait2(%d, %p, %d, %d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (int)r9, (int)result);
+        break;
+    }
     case felix86_x86_64_chmod: {
         std::string path = (char*)rdi;
         if (path == "/proc/self/exe") {
