@@ -216,6 +216,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             mprotect(addr, PAGE_ALIGN(phdr.p_memsz), prot);
+            VERBOSE("Protecting segment %p-%p with %d", addr, (u8*)addr + PAGE_ALIGN(phdr.p_memsz), prot);
 
             if (phdr.p_memsz > phdr.p_filesz) {
                 // This is probably a segment that contains a .data and a .bss right after, so after
