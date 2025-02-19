@@ -172,6 +172,8 @@ void Elf::Load(const std::filesystem::path& path) {
         base_ptr = (u8*)mmap(nullptr, highest_vaddr - lowest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     }
 
+    VERBOSE("Allocated memory at %p-%p", base_ptr, base_ptr + highest_vaddr - lowest_vaddr);
+
     for (Elf64_Half i = 0; i < ehdr.e_phnum; i += 1) {
         Elf64_Phdr& phdr = phdrtable[i];
         switch (phdr.p_type) {

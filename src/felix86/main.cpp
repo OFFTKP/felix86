@@ -215,7 +215,7 @@ int main(int argc, char* argv[]) {
 
     if (!execve_process && geteuid() != 0) {
         // Try to restart app with sudo
-        LOG("I need administrator permissions to chroot and mount if necessary");
+        LOG("I need administrator permissions to chroot and mount if necessary. Requesting administrator privileges...");
         std::vector<const char*> sudo_args = {"sudo"};
         sudo_args.push_back("-E");
         for (int i = 0; i < argc; i++) {
@@ -254,6 +254,7 @@ int main(int argc, char* argv[]) {
 
     Signals::initialize();
 
+    bool purposefully_empty = false;
     const char* env_file = getenv("FELIX86_ENV_FILE");
     if (env_file) {
         std::string env_path = env_file;
@@ -263,12 +264,16 @@ int main(int argc, char* argv[]) {
             while (std::getline(env_stream, line)) {
                 config.envp.push_back(line);
             }
+
+            if (config.envp.empty()) {
+                purposefully_empty = true;
+            }
         } else {
             WARN("Environment variable file %s does not exist. Using host environment variables.", env_file);
         }
     }
 
-    if (config.envp.empty()) {
+    if (config.envp.empty() && !purposefully_empty) {
         char** envp = environ;
         while (*envp) {
             config.envp.push_back(*envp);
