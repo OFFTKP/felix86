@@ -207,7 +207,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
             }
 
-            mprotect(addr, phdr.p_memsz, prot);
+            mprotect(addr, PAGE_ALIGN(phdr.p_memsz), prot);
 
             if (phdr.p_memsz > phdr.p_filesz) {
                 // This is probably a segment that contains a .data and a .bss right after, so after
