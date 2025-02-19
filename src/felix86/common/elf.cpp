@@ -191,6 +191,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
             u8* segment_base = base_ptr + PAGE_START(phdr.p_vaddr);
             u64 segment_size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
+            u64 offset = phdr.p_offset - PAGE_OFFSET(phdr.p_vaddr);
 
             u8 prot = 0;
             if (phdr.p_flags & PF_R) {
@@ -205,8 +206,8 @@ void Elf::Load(const std::filesystem::path& path) {
                 prot |= PROT_EXEC;
             }
 
-            void* addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, PAGE_START(phdr.p_offset));
-            VERBOSE("Running mmap(%p, %lx, 0, MAP_PRIVATE | MAP_FIXED, %d, %lx)", (void*)segment_base, segment_size, fd, PAGE_START(phdr.p_offset));
+            void* addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, offset);
+            VERBOSE("Running mmap(%p, %lx, 0, MAP_PRIVATE | MAP_FIXED, %d, %lx)", (void*)segment_base, segment_size, fd, offset);
 
             if (addr == MAP_FAILED) {
                 ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
