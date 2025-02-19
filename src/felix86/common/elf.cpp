@@ -160,7 +160,14 @@ void Elf::Load(const std::filesystem::path& path) {
     // TODO: this allocates it twice interpreter and executable, fix me.
     stack_pointer = (u8*)Threads::AllocateStack().first;
 
+    u8* base_ptr;
     u64 base_hint = is_interpreter ? g_interpreter_base_hint : g_executable_base_hint;
+
+    if (base_hint) {
+        base_ptr = (u8*)mmap((void*)base_hint, highest_vaddr - lowest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+    } else {
+        base_ptr = (u8*)mmap(nullptr, highest_vaddr - lowest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    }
 
     for (Elf64_Half i = 0; i < ehdr.e_phnum; i += 1) {
         Elf64_Phdr& phdr = phdrtable[i];
@@ -171,7 +178,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 break;
             }
 
-            u64 segment_base = base_hint + PAGE_START(phdr.p_vaddr);
+            u8* segment_base = base_ptr + PAGE_START(phdr.p_vaddr);
             u64 segment_size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
 
             u8 prot = 0;
@@ -189,21 +196,14 @@ void Elf::Load(const std::filesystem::path& path) {
 
             void* addr = MAP_FAILED;
 
-            u32 fixed = 0;
-            if (is_interpreter && g_interpreter_base_hint) {
-                fixed = MAP_FIXED_NOREPLACE;
-            } else if (!is_interpreter && g_executable_base_hint) {
-                fixed = MAP_FIXED_NOREPLACE;
-            }
-
             if (phdr.p_memsz > phdr.p_filesz) {
                 u64 bss_start = (u64)base_hint + phdr.p_vaddr + phdr.p_filesz;
                 u64 bss_page_start = PAGE_ALIGN(bss_start);
                 u64 bss_page_end = PAGE_ALIGN((u64)base_hint + phdr.p_vaddr + phdr.p_memsz);
 
                 if (bss_page_start != bss_page_end) {
-                    addr = mmap((void*)bss_page_start, bss_page_end - bss_page_start, PROT_READ | PROT_WRITE, MAP_PRIVATE | fixed | MAP_ANONYMOUS, -1,
-                                0);
+                    addr = mmap(base_ptr + bss_page_start, bss_page_end - bss_page_start, PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, addr, bss_page_end - bss_page_start, "bss");
                     memset(addr, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
@@ -213,7 +213,7 @@ void Elf::Load(const std::filesystem::path& path) {
                     }
                 }
             } else {
-                addr = mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | fixed, fd, phdr.p_offset);
+                addr = mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, fd, phdr.p_offset);
 
                 if (addr == MAP_FAILED) {
                     ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
