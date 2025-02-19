@@ -16,8 +16,35 @@ struct Filesystem {
 
         executable_path = path;
 
+        auto elf2 = std::make_unique<Elf>(/* is_interpreter */ false);
+        elf2->LoadOld(executable_path);
+
+        u64 start_old = g_executable_start;
+        u64 end_old = g_executable_end;
+
         elf = std::make_unique<Elf>(/* is_interpreter */ false);
         elf->Load(executable_path);
+
+        u64 start = g_executable_start;
+        u64 end = g_executable_end;
+
+        u64 size = end - start;
+        u64 size_old = end_old - start_old;
+
+        if (size != size_old) {
+            ERROR("Size mismatch between old and new ELF loader: %lu vs %lu", size, size_old);
+            return false;
+        }
+
+        for (u64 i = 0; i < size; i++) {
+            u8* ptr = (u8*)start + i;
+            u8* ptr_old = (u8*)start_old + i;
+            if (*ptr != *ptr_old) {
+                ERROR("Data mismatch between old and new ELF loader at offset %lu: %02x vs %02x", i, *ptr, *ptr_old);
+                return false;
+            }
+        }
+
         if (!elf->Okay()) {
             ERROR("Failed to load ELF file %s", executable_path.c_str());
             return false;
