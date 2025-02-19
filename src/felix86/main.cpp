@@ -38,13 +38,6 @@ static struct argp_option options[] = {
 
     {0}};
 
-// For before the watchdog is started
-#define ERROR_REMOVE_LOCK(format, ...)                                                                                                               \
-    do {                                                                                                                                             \
-        remove(lock_path);                                                                                                                           \
-        ERROR(format, ##__VA_ARGS__);                                                                                                                \
-    } while (0)
-
 void print_extensions() {
     std::string extensions;
     if (Extensions::G) {
@@ -153,8 +146,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 }
 
 static struct argp argp = {options, parse_opt, args_doc, doc};
-
-int watchdog_loop(int pid);
 
 void mountme(const char* path, const std::filesystem::path& dest, const char* fs_type, unsigned flags = 0) {
     std::filesystem::create_directories(dest);
@@ -369,39 +360,34 @@ int main(int argc, char* argv[]) {
     if (execve_process) {
         pthread_setname_np(pthread_self(), "ExecveProcess");
     } else {
-        pthread_setname_np(pthread_self(), "MainProcess");
-    }
-
-    if (!execve_process) {
         unlink_semaphore(); // in case it was not closed properly last time
+        pthread_setname_np(pthread_self(), "MainProcess");
     }
 
     initialize_semaphore();
 
-    // Child process - emulator
     if (!execve_process) {
         int lock_file = open(lock_path, O_CREAT | O_EXCL, 0666);
         if (lock_file == -1) {
             ERROR("Failed to acquire felix86.lock, is another instance of felix86 running? Otherwise remove the lock file manually: %s", lock_path);
             return 1;
         }
-        close(lock_file);
+        unlink(lock_path); // It will get deleted when the process exits
 
         // Mount the necessary filesystems
         if (config.rootfs_path.empty()) {
-            ERROR_REMOVE_LOCK("Rootfs path not specified, should not happen here");
+            ERROR("Rootfs path not specified, should not happen here");
         }
 
         std::filesystem::path has_mounted_var_path = "/run/felix86.mounted";
 
         if (!std::filesystem::exists("/run") || !std::filesystem::is_directory("/run")) {
-            ERROR_REMOVE_LOCK("/run does not exist?");
+            ERROR("/run does not exist?");
         }
 
         int has_mounted_var = open(has_mounted_var_path.c_str(), 0, 0666);
         if (has_mounted_var != -1) {
             // This file was already created, which means a previous instance of felix86 mounted the directories
-            // We don't unmount for reasons described in watchdog_loop
             LOG("We are already mounted!");
             close(has_mounted_var);
         } else {
@@ -419,12 +405,6 @@ int main(int argc, char* argv[]) {
             } else {
                 close(fd);
             }
-        }
-
-        int pid = fork();
-        if (pid != 0) {
-            // Parent process, will watch until the child process (emulator) is finished to clean up.
-            return watchdog_loop(pid);
         }
 
         // Check that proc is mounted successfully
@@ -517,51 +497,4 @@ int main(int argc, char* argv[]) {
     unlink_semaphore();
 
     felix86_exit(0);
-}
-
-int watchdog_loop(int pid) {
-    int status;
-    int ret = 0;
-    while (true) {
-        waitpid(pid, &status, 0);
-        if (WIFEXITED(status)) {
-            ret = WEXITSTATUS(status);
-            break;
-        } else if (WIFSIGNALED(status)) {
-            ret = WTERMSIG(status);
-            break;
-        }
-    }
-
-    remove(lock_path);
-
-    // Make sure there's no child processes, although there shouldn't ever be
-    int st = waitpid(-1, NULL, WNOHANG);
-    if (st == 0) {
-        // A child process that isn't a zombie is still running
-        // Panic
-        ERROR("A child process is still running, this should never happen");
-    }
-
-    // Unmount everything
-    // for (auto it = mounts.rbegin(); it != mounts.rend(); it++) {
-    //     std::string mount = *it;
-    //     int result = umount2(mount.c_str(), MNT_DETACH);
-    //     VERBOSE("Unmounting %s", mount.c_str());
-    //     if (result < 0) {
-    //         WARN("Failed to unmount %s, please unmount it yourself. Error: %d", mount.c_str(), errno);
-    //     } else {
-    //         rmdir(mount.c_str());
-    //     }
-    // }
-
-    // Or... Just don't unmount. Because unmount just doesn't work, idk. It says devices are busy when they clearly
-    // aren't. And this can happen when using the terminal or C as we do here. And using MNT_DETACH to unmount
-    // anyway can create crazy scenarios where mounting again makes /run/user/1000 disappear. So just don't
-    // unmount. Mount once at the beginning the first time the emulator is ran this session, and never unmount
-    // until the user quits. Mounting is just extremely broken I guess.
-
-    LOG("Watchdog exiting, felix86 has finished");
-
-    return ret;
 }
