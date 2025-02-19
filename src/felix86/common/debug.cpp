@@ -48,7 +48,6 @@ void MemoryMetadata::AddRegion(const std::string& name, u64 start, u64 end) {
 }
 
 void MemoryMetadata::AddInterpreterRegion(u64 start, u64 end) {
-    ASSERT(!interpreter_added);
     interpreter_added = true;
     Region region;
     region.name = "Interpreter";
