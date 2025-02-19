@@ -403,6 +403,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("rename(%s, %s) = %d", oldpath.c_str(), (char*)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_epoll_create1: {
+        result = HOST_SYSCALL(epoll_create1, rdi);
+        STRACE("epoll_create1(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_chmod: {
         std::string path = (char*)rdi;
         if (path == "/proc/self/exe") {
