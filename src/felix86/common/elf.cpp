@@ -201,7 +201,8 @@ void Elf::Load(const std::filesystem::path& path) {
                 }
 
                 if (bss_page_start != bss_page_end) {
-                    addr = mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS, -1, 0);
+                    addr = mmap((void*)bss_page_start, bss_page_end - bss_page_start, PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS, -1, 0);
                     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, addr, bss_page_end - bss_page_start, "bss");
                     memset(addr, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
