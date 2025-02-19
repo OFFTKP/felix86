@@ -151,11 +151,24 @@ int watchdog_loop(int pid);
 
 void mountme(const char* path, const char* dest, const char* fs_type, unsigned flags = 0) {
     std::filesystem::create_directories(dest);
+
+    struct stat stA, stB;
+
+    if (stat(path, &stA) == -1 || stat(dest, &stB) == -1) {
+        ERROR("Failed to stat %s or %s", path, dest);
+    }
+
+    if (stA.st_dev == stB.st_dev) {
+        printf("Not mounted\n");
+    } else {
+        printf("Mounted\n");
+    }
+
     int result = mount(path, dest, fs_type, flags, NULL);
     if (result < 0) {
         // Remove the lock file before exiting
         remove(lock_path);
-        ERROR("Failed to mount %s to %s. Error: %d", path, dest, errno);
+        WARN("Failed to mount %s to %s. Error: %d", path, dest, errno);
     }
     VERBOSE("Mounting %s to %s", path, dest);
 
@@ -508,16 +521,22 @@ int watchdog_loop(int pid) {
     }
 
     // Unmount everything
-    for (auto it = mounts.rbegin(); it != mounts.rend(); it++) {
-        std::string mount = *it;
-        int result = umount2(mount.c_str(), MNT_DETACH);
-        VERBOSE("Unmounting %s", mount.c_str());
-        if (result < 0) {
-            WARN("Failed to unmount %s, please unmount it yourself. Error: %d", mount.c_str(), errno);
-        } else {
-            rmdir(mount.c_str());
-        }
-    }
+    // for (auto it = mounts.rbegin(); it != mounts.rend(); it++) {
+    //     std::string mount = *it;
+    //     int result = umount2(mount.c_str(), MNT_DETACH);
+    //     VERBOSE("Unmounting %s", mount.c_str());
+    //     if (result < 0) {
+    //         WARN("Failed to unmount %s, please unmount it yourself. Error: %d", mount.c_str(), errno);
+    //     } else {
+    //         rmdir(mount.c_str());
+    //     }
+    // }
+
+    // Or... Just don't unmount. Because unmount just doesn't work, idk. It says devices are busy when they clearly
+    // aren't. And this can happen when using the terminal or C as we do here. And using MNT_DETACH to unmount
+    // anyway can create crazy scenarios where mounting again makes /run/user/1000 disappear. So just don't
+    // unmount. Mount once at the beginning the first time the emulator is ran this session, and never unmount
+    // until the user quits. Mounting is just extremely broken I guess.
 
     LOG("Watchdog exiting, felix86 has finished");
 
