@@ -178,7 +178,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 break;
             }
 
-            VERBOSE("Segment %d: %p-%p", i, (void*)phdr.p_vaddr, (void*)(phdr.p_vaddr + phdr.p_memsz));
+            VERBOSE("Segment %d: %lx-%lx", i, phdr.p_vaddr, phdr.p_vaddr + phdr.p_memsz);
 
             u8* segment_base = base_ptr + PAGE_START(phdr.p_vaddr);
             u64 segment_size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
@@ -196,27 +196,28 @@ void Elf::Load(const std::filesystem::path& path) {
                 prot |= PROT_EXEC;
             }
 
+            void* addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, phdr.p_offset);
+
+            if (addr == MAP_FAILED) {
+                ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
+            } else if (addr != (void*)segment_base) {
+                ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
+            }
+
+            mprotect(addr, phdr.p_memsz, prot);
+
             if (phdr.p_memsz > phdr.p_filesz) {
+                // This is probably a segment that contains a .data and a .bss right after, so after
+                // the file size starts the bss, the part that should be zeroed
                 u64 bss_start = (u64)base_ptr + phdr.p_vaddr + phdr.p_filesz;
                 u64 bss_page_start = PAGE_ALIGN(bss_start);
                 u64 bss_page_end = PAGE_ALIGN((u64)base_ptr + phdr.p_vaddr + phdr.p_memsz);
 
                 if (bss_page_start != bss_page_end) {
-                    mprotect((void*)bss_page_start, bss_page_end - bss_page_start, prot);
                     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, bss_page_start, bss_page_end - bss_page_start, "bss");
                     memset((void*)bss_page_start, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
                 }
-            } else {
-                void* addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, phdr.p_offset);
-
-                if (addr == MAP_FAILED) {
-                    ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
-                } else if (addr != (void*)segment_base) {
-                    ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
-                }
-
-                mprotect(addr, phdr.p_memsz, prot);
             }
             break;
         }
