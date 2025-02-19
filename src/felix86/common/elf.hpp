@@ -48,15 +48,9 @@ struct Elf {
         return phent;
     }
 
-    auto& GetExecutableSegments() {
-        return executable_segments;
-    }
-
 private:
     bool ok = false;
     bool is_interpreter = false;
-    u8* program = nullptr;
-    std::vector<std::pair<u8*, u64>> executable_segments{};
     u64 entry = 0;
     std::filesystem::path interpreter{};
     u8* stack_pointer = nullptr;

@@ -26,10 +26,6 @@
 Elf::Elf(bool is_interpreter) : is_interpreter(is_interpreter) {}
 
 Elf::~Elf() {
-    if (program) {
-        munmap(program, 0);
-    }
-
     if (stack_pointer) {
         munmap(stack_pointer, 0);
     }
@@ -50,6 +46,8 @@ void Elf::Load(const std::filesystem::path& path) {
     u64 highest_vaddr = 0;
 
     FILE* file = fopen(path.c_str(), "rb");
+    int fd = fileno(file);
+
     if (!file) {
         ERROR("Failed to open file %s", path.c_str());
     }
@@ -162,24 +160,7 @@ void Elf::Load(const std::filesystem::path& path) {
     // TODO: this allocates it twice interpreter and executable, fix me.
     stack_pointer = (u8*)Threads::AllocateStack().first;
 
-    u64 base_address = 0;
-    if (ehdr.e_type == ET_DYN) {
-        u64 base_hint = is_interpreter ? g_interpreter_base_hint : g_executable_base_hint;
-        int flags = MAP_PRIVATE | MAP_ANONYMOUS;
-        if (base_hint) {
-            ASSERT(g_interpreter_base_hint != g_executable_base_hint);
-            flags |= MAP_FIXED;
-        }
-        program = (u8*)mmap((void*)base_hint, highest_vaddr, PROT_NONE, flags, -1, 0);
-        base_address = (u64)program;
-        if (program == MAP_FAILED) {
-            ERROR("Failed to allocate memory for ELF file %s, errno: %d", path.c_str(), -errno);
-        }
-    } else {
-        program = NULL;
-        base_address = 0;
-    }
-    VERBOSE("Allocated program at %p", program);
+    u64 base_hint = is_interpreter ? g_interpreter_base_hint : g_executable_base_hint;
 
     for (Elf64_Half i = 0; i < ehdr.e_phnum; i += 1) {
         Elf64_Phdr& phdr = phdrtable[i];
@@ -190,24 +171,8 @@ void Elf::Load(const std::filesystem::path& path) {
                 break;
             }
 
-            u64 segment_base = base_address + PAGE_START(phdr.p_vaddr);
+            u64 segment_base = base_hint + PAGE_START(phdr.p_vaddr);
             u64 segment_size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
-            // TODO: make MAP_FIXED -> MAP_FIXED_NOREPLACE, print errors
-            u8* addr = (u8*)mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-
-            if (addr == MAP_FAILED) {
-                ERROR("Failed to allocate memory for segment in file %s", path.c_str());
-            } else {
-                VERBOSE("Mapping segment with vaddr %p to %p - %p (%p - %p) (file offset: %08lx)", (void*)phdr.p_vaddr, addr, addr + segment_size,
-                        addr - base_address, addr + segment_size - base_address, phdr.p_offset);
-                if (addr != (void*)segment_base) {
-                    ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
-                }
-            }
-
-            static int seg_name = 0;
-            std::string name = "segment" + std::to_string(seg_name++);
-            prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, addr, segment_size, name.c_str());
 
             u8 prot = 0;
             if (phdr.p_flags & PF_R) {
@@ -220,25 +185,14 @@ void Elf::Load(const std::filesystem::path& path) {
 
             if (phdr.p_flags & PF_X) {
                 prot |= PROT_EXEC;
-                executable_segments.push_back({addr, segment_size});
             }
 
-            if (phdr.p_filesz > 0) {
-                u64 offset = phdr.p_offset - PAGE_OFFSET(phdr.p_vaddr);
-                u64 size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
-                fseek(file, offset, SEEK_SET);
-                result = fread(addr, 1, size, file);
-                if (result != size) {
-                    ERROR("Failed to read segment from file %s", path.c_str());
-                }
-            }
-
-            mprotect(addr, segment_size, prot);
+            void* addr = MAP_FAILED;
 
             if (phdr.p_memsz > phdr.p_filesz) {
-                u64 bss_start = (u64)base_address + phdr.p_vaddr + phdr.p_filesz;
+                u64 bss_start = (u64)base_hint + phdr.p_vaddr + phdr.p_filesz;
                 u64 bss_page_start = PAGE_ALIGN(bss_start);
-                u64 bss_page_end = PAGE_ALIGN((u64)base_address + phdr.p_vaddr + phdr.p_memsz);
+                u64 bss_page_end = PAGE_ALIGN((u64)base_hint + phdr.p_vaddr + phdr.p_memsz);
 
                 // Only clear padding bytes if the section is writable (why does FEX-Emu
                 // do this?)
@@ -247,16 +201,19 @@ void Elf::Load(const std::filesystem::path& path) {
                 }
 
                 if (bss_page_start != bss_page_end) {
-                    u8* bss = (u8*)mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-                    if (bss == MAP_FAILED) {
-                        ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
-                    }
-                    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, bss, bss_page_end - bss_page_start, "bss");
-
+                    addr = mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS, -1, 0);
+                    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, addr, bss_page_end - bss_page_start, "bss");
+                    memset(addr, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
-
-                    memset(bss, 0, bss_page_end - bss_page_start);
                 }
+            } else {
+                addr = mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED_NOREPLACE, fd, phdr.p_offset);
+            }
+
+            if (addr == MAP_FAILED) {
+                ERROR("Failed to allocate memory for segment in file %s", path.c_str());
+            } else if (addr != (void*)segment_base) {
+                ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
             }
 
             mprotect(addr, phdr.p_memsz, prot);
@@ -278,18 +235,18 @@ void Elf::Load(const std::filesystem::path& path) {
         prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "brk");
         VERBOSE("BRK base at %p", (void*)g_current_brk);
 
-        g_executable_start = base_address + lowest_vaddr;
-        g_executable_end = base_address + highest_vaddr;
+        g_executable_start = base_hint + lowest_vaddr;
+        g_executable_end = base_hint + highest_vaddr;
         MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
         LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
-        g_interpreter_start = base_address + lowest_vaddr;
-        g_interpreter_end = base_address + highest_vaddr;
+        g_interpreter_start = base_hint + lowest_vaddr;
+        g_interpreter_end = base_hint + highest_vaddr;
         MemoryMetadata::AddInterpreterRegion(g_interpreter_start, g_interpreter_end);
         LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 
-    phdr = (u8*)(base_address + lowest_vaddr + ehdr.e_phoff);
+    phdr = (u8*)(base_hint + lowest_vaddr + ehdr.e_phoff);
     phnum = ehdr.e_phnum;
     phent = ehdr.e_phentsize;
 

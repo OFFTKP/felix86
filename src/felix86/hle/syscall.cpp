@@ -196,10 +196,6 @@ void felix86_syscall(ThreadState* state) {
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
-        // Theoritically this should be externally synchronized by guest glibc...
-        // Still, we'll lock to avoid any potential issues
-        FELIX86_LOCK;
-
         if (rdi == 0) {
             result = g_current_brk;
         } else {
@@ -216,9 +212,6 @@ void felix86_syscall(ThreadState* state) {
             WARN("Resized BRK to %lx", new_size);
             g_current_brk_size = new_size;
         }
-
-        FELIX86_UNLOCK;
-
         STRACE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;
     }
