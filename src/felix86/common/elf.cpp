@@ -410,16 +410,16 @@ void Elf::LoadOld(const std::filesystem::path& path) {
             ASSERT(g_interpreter_base_hint != g_executable_base_hint);
             flags |= MAP_FIXED;
         }
-        program = (u8*)mmap((void*)base_hint, highest_vaddr, PROT_NONE, flags, -1, 0);
-        base_address = (u64)program;
-        if (program == MAP_FAILED) {
+        program_base = (u8*)mmap((void*)base_hint, highest_vaddr, PROT_NONE, flags, -1, 0);
+        base_address = (u64)program_base;
+        if (program_base == MAP_FAILED) {
             ERROR("Failed to allocate memory for ELF file %s, errno: %d", path.c_str(), -errno);
         }
     } else {
-        program = NULL;
+        program_base = NULL;
         base_address = 0;
     }
-    VERBOSE("Allocated program at %p", program);
+    VERBOSE("Allocated program_base at %p", program_base);
 
     for (Elf64_Half i = 0; i < ehdr.e_phnum; i += 1) {
         Elf64_Phdr& phdr = phdrtable[i];
@@ -460,7 +460,6 @@ void Elf::LoadOld(const std::filesystem::path& path) {
 
             if (phdr.p_flags & PF_X) {
                 prot |= PROT_EXEC;
-                executable_segments.push_back({addr, segment_size});
             }
 
             if (phdr.p_filesz > 0) {
