@@ -189,7 +189,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
             void* addr = MAP_FAILED;
 
-            u32 fixed = MAP_FIXED;
+            u32 fixed = 0;
             if (is_interpreter && g_interpreter_base_hint) {
                 fixed = MAP_FIXED_NOREPLACE;
             } else if (!is_interpreter && g_executable_base_hint) {
