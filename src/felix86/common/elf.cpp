@@ -194,12 +194,6 @@ void Elf::Load(const std::filesystem::path& path) {
                 u64 bss_page_start = PAGE_ALIGN(bss_start);
                 u64 bss_page_end = PAGE_ALIGN((u64)base_hint + phdr.p_vaddr + phdr.p_memsz);
 
-                // Only clear padding bytes if the section is writable (why does FEX-Emu
-                // do this?)
-                if (phdr.p_flags & PF_W) {
-                    memset((void*)bss_start, 0, bss_page_start - bss_start);
-                }
-
                 if (bss_page_start != bss_page_end) {
                     addr = mmap((void*)bss_page_start, bss_page_end - bss_page_start, PROT_READ | PROT_WRITE,
                                 MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS, -1, 0);
