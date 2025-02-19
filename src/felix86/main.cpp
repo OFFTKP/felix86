@@ -38,6 +38,13 @@ static struct argp_option options[] = {
 
     {0}};
 
+// For before the watchdog is started
+#define ERROR_REMOVE_LOCK(format, ...)                                                                                                               \
+    do {                                                                                                                                             \
+        remove(lock_path);                                                                                                                           \
+        ERROR(format, ##__VA_ARGS__);                                                                                                                \
+    } while (0)
+
 void print_extensions() {
     std::string extensions;
     if (Extensions::G) {
@@ -149,28 +156,16 @@ static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int watchdog_loop(int pid);
 
-void mountme(const char* path, const char* dest, const char* fs_type, unsigned flags = 0) {
+void mountme(const char* path, const std::filesystem::path& dest, const char* fs_type, unsigned flags = 0) {
     std::filesystem::create_directories(dest);
 
-    struct stat stA, stB;
-
-    if (stat(path, &stA) == -1 || stat(dest, &stB) == -1) {
-        ERROR("Failed to stat %s or %s", path, dest);
-    }
-
-    if (stA.st_dev == stB.st_dev) {
-        printf("Not mounted\n");
-    } else {
-        printf("Mounted\n");
-    }
-
-    int result = mount(path, dest, fs_type, flags, NULL);
+    int result = mount(path, dest.c_str(), fs_type, flags, NULL);
     if (result < 0) {
         // Remove the lock file before exiting
         remove(lock_path);
-        WARN("Failed to mount %s to %s. Error: %d", path, dest, errno);
+        WARN("Failed to mount %s to %s. Error: %d", path, dest.c_str(), errno);
     }
-    VERBOSE("Mounting %s to %s", path, dest);
+    VERBOSE("Mounting %s to %s", path, dest.c_str());
 
     mounts.push_back(dest);
 }
@@ -229,6 +224,7 @@ int main(int argc, char* argv[]) {
 
     if (!execve_process && geteuid() != 0) {
         // Try to restart app with sudo
+        LOG("I need administrator permissions to chroot and mount if necessary");
         std::vector<const char*> sudo_args = {"sudo"};
         sudo_args.push_back("-E");
         for (int i = 0; i < argc; i++) {
@@ -277,9 +273,11 @@ int main(int argc, char* argv[]) {
                 config.envp.push_back(line);
             }
         } else {
-            ERROR("Environment variable file %s does not exist", env_file);
+            WARN("Environment variable file %s does not exist. Using host environment variables.", env_file);
         }
-    } else {
+    }
+
+    if (config.envp.empty()) {
         char** envp = environ;
         while (*envp) {
             config.envp.push_back(*envp);
@@ -390,13 +388,38 @@ int main(int argc, char* argv[]) {
         close(lock_file);
 
         // Mount the necessary filesystems
-        ASSERT(!config.rootfs_path.empty());
-        ASSERT(mounts.empty());
-        mountme("proc", (config.rootfs_path / "proc").c_str(), "proc");
-        mountme("sysfs", (config.rootfs_path / "sys").c_str(), "sysfs");
-        mountme("udev", (config.rootfs_path / "dev").c_str(), "devtmpfs");
-        mountme("devpts", (config.rootfs_path / "dev/pts").c_str(), "devpts");
-        mountme("/run", (config.rootfs_path / "run").c_str(), "none", MS_BIND | MS_REC);
+        if (config.rootfs_path.empty()) {
+            ERROR_REMOVE_LOCK("Rootfs path not specified, should not happen here");
+        }
+
+        std::filesystem::path has_mounted_var_path = "/run/felix86.mounted";
+
+        if (!std::filesystem::exists("/run") || !std::filesystem::is_directory("/run")) {
+            ERROR_REMOVE_LOCK("/run does not exist?");
+        }
+
+        int has_mounted_var = open(has_mounted_var_path.c_str(), 0, 0666);
+        if (has_mounted_var != -1) {
+            // This file was already created, which means a previous instance of felix86 mounted the directories
+            // We don't unmount for reasons described in watchdog_loop
+            LOG("We are already mounted!");
+            close(has_mounted_var);
+        } else {
+            // Mount the necessary filesystems
+            LOG("Mounting filesystems...");
+            mountme("proc", config.rootfs_path / "proc", "proc");
+            mountme("sysfs", config.rootfs_path / "sys", "sysfs");
+            mountme("udev", config.rootfs_path / "dev", "devtmpfs");
+            mountme("devpts", config.rootfs_path / "dev/pts", "devpts");
+            mountme("/run", config.rootfs_path / "run", "none", MS_BIND | MS_REC);
+
+            int fd = open(has_mounted_var_path.c_str(), O_CREAT | O_EXCL, 0666);
+            if (fd == -1) {
+                ERROR("Failed to create the mount variable file");
+            } else {
+                close(fd);
+            }
+        }
 
         int pid = fork();
         if (pid != 0) {
