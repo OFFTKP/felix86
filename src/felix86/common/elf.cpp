@@ -481,7 +481,7 @@ void Elf::LoadOld(const std::filesystem::path& path) {
                 // Only clear padding bytes if the section is writable (why does FEX-Emu
                 // do this?)
                 if (phdr.p_flags & PF_W) {
-                    memset((void*)bss_start, 0x12, bss_page_start - bss_start);
+                    memset((void*)bss_start, 0, bss_page_start - bss_start);
                 }
 
                 if (bss_page_start != bss_page_end) {
@@ -493,7 +493,7 @@ void Elf::LoadOld(const std::filesystem::path& path) {
 
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
 
-                    memset(bss, 0x12, bss_page_end - bss_page_start);
+                    memset(bss, 0, bss_page_end - bss_page_start);
                 }
             }
 
