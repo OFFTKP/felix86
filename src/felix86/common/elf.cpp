@@ -206,7 +206,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 prot |= PROT_EXEC;
             }
 
-            void* addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, offset);
+            void* addr = mmap((void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
             VERBOSE("Running mmap(%p, %lx, 0, MAP_PRIVATE | MAP_FIXED, %d, %lx)", (void*)segment_base, segment_size, fd, offset);
 
             if (addr == MAP_FAILED) {
@@ -214,9 +214,6 @@ void Elf::Load(const std::filesystem::path& path) {
             } else if (addr != (void*)segment_base) {
                 ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
             }
-
-            mprotect(addr, PAGE_ALIGN(phdr.p_memsz), prot);
-            VERBOSE("Protecting segment %p-%p with %d", addr, (u8*)addr + PAGE_ALIGN(phdr.p_memsz), prot);
 
             if (phdr.p_memsz > phdr.p_filesz) {
                 // This is probably a segment that contains a .data and a .bss right after, so after
