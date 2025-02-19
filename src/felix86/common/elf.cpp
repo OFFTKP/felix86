@@ -520,12 +520,10 @@ void Elf::LoadOld(const std::filesystem::path& path) {
         g_executable_start = base_address + lowest_vaddr;
         g_executable_end = base_address + highest_vaddr;
         MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
-        LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
         g_interpreter_start = base_address + lowest_vaddr;
         g_interpreter_end = base_address + highest_vaddr;
         MemoryMetadata::AddInterpreterRegion(g_interpreter_start, g_interpreter_end);
-        LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 
     phdr = (u8*)(base_address + lowest_vaddr + ehdr.e_phoff);

@@ -16,7 +16,7 @@ struct Elf {
 
     void LoadOld(const std::filesystem::path& path);
 
-    static void LoadSymbols(const std::string& name, const std::filesystem::path& path, void* base);
+    // static void LoadSymbols(const std::string& name, const std::filesystem::path& path, void* base);
 
     bool Okay() const {
         return ok;
