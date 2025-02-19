@@ -32,6 +32,8 @@ Elf::~Elf() {
 }
 
 void Elf::Load(const std::filesystem::path& path) {
+    return LoadOld(path);
+
     if (!std::filesystem::exists(path)) {
         WARN("File %s does not exist", path.c_str());
         return;
