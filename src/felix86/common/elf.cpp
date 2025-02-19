@@ -162,6 +162,9 @@ void Elf::Load(const std::filesystem::path& path) {
 
     u8* base_ptr;
     u64 base_hint = is_interpreter ? g_interpreter_base_hint : g_executable_base_hint;
+    if ((base_hint & 0xFFF) != 0) {
+        ERROR("Base hint is not page aligned for: %s", is_interpreter ? "Interpreter" : "Executable");
+    }
 
     if (base_hint) {
         base_ptr = (u8*)mmap((void*)base_hint, highest_vaddr - lowest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
@@ -196,7 +199,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 prot |= PROT_EXEC;
             }
 
-            void* addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, phdr.p_offset);
+            void* addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, PAGE_START(phdr.p_offset));
 
             if (addr == MAP_FAILED) {
                 ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
