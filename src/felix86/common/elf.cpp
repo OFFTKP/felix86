@@ -178,6 +178,8 @@ void Elf::Load(const std::filesystem::path& path) {
                 break;
             }
 
+            VERBOSE("Segment %d: %p-%p", i, (void*)phdr.p_vaddr, (void*)(phdr.p_vaddr + phdr.p_memsz));
+
             u8* segment_base = base_ptr + PAGE_START(phdr.p_vaddr);
             u64 segment_size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
 
@@ -202,15 +204,10 @@ void Elf::Load(const std::filesystem::path& path) {
                 u64 bss_page_end = PAGE_ALIGN((u64)base_ptr + phdr.p_vaddr + phdr.p_memsz);
 
                 if (bss_page_start != bss_page_end) {
-                    addr = mmap((u8*)bss_page_start, bss_page_end - bss_page_start, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
-                                -1, 0);
+                    mprotect((void*)bss_page_start, bss_page_end - bss_page_start, prot);
                     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, addr, bss_page_end - bss_page_start, "bss");
                     memset(addr, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
-
-                    if (addr == MAP_FAILED) {
-                        ERROR("Failed to allocate memory for BSS segment in file %s. Error: %s", path.c_str(), strerror(errno));
-                    }
                 }
             } else {
                 addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, phdr.p_offset);
