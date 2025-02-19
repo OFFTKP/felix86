@@ -217,6 +217,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 u64 bss_page_end = PAGE_ALIGN((u64)base_ptr + phdr.p_vaddr + phdr.p_memsz);
 
                 if (bss_page_start != bss_page_end) {
+                    mprotect((void*)bss_page_start, bss_page_end - bss_page_start, PROT_READ | PROT_WRITE);
                     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, bss_page_start, bss_page_end - bss_page_start, "bss");
                     memset((void*)bss_page_start, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
