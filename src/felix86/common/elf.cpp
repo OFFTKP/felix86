@@ -231,7 +231,12 @@ void Elf::Load(const std::filesystem::path& path) {
                 }
 
                 if (bss_page_start != bss_page_end) {
-                    mprotect((void*)bss_page_start, bss_page_end - bss_page_start, PROT_READ | PROT_WRITE);
+                    void* bss_excess =
+                        mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+                    if (bss_excess == MAP_FAILED) {
+                        ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
+                    }
+
                     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, bss_page_start, bss_page_end - bss_page_start, "bss");
                     memset((void*)bss_page_start, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
