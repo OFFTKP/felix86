@@ -278,8 +278,9 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_readlink: {
         if (std::string((char*)rdi) == "/proc/self/exe") {
-            std::filesystem::path path = fs.GetExecutablePath();
-            result = HOST_SYSCALL(readlinkat, AT_FDCWD, path.c_str(), rsi, rdx);
+            std::string path = fs.GetExecutablePath().string();
+            size_t size = std::min(path.size(), (size_t)rdx);
+            memcpy((void*)rsi, path.c_str(), size);
         } else {
             result = HOST_SYSCALL(readlinkat, AT_FDCWD, rdi, rsi, rdx);
         }
@@ -288,8 +289,9 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_readlinkat: {
         if (std::string((char*)rsi) == "/proc/self/exe") {
-            std::filesystem::path path = fs.GetExecutablePath();
-            result = HOST_SYSCALL(readlinkat, rdi, path.c_str(), rdx, r10);
+            std::string path = fs.GetExecutablePath().string();
+            size_t size = std::min(path.size(), (size_t)rdx);
+            memcpy((void*)rsi, path.c_str(), size);
         } else {
             result = HOST_SYSCALL(readlinkat, rdi, rsi, rdx, r10);
         }
