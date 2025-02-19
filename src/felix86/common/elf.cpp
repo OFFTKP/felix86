@@ -220,7 +220,7 @@ void Elf::Load(const std::filesystem::path& path) {
                 // This is probably a segment that contains a .data and a .bss right after, so after
                 // the file size starts the bss, the part that should be zeroed
                 u64 bss_start = (u64)base_ptr + phdr.p_vaddr + phdr.p_filesz;
-                u64 bss_page_start = PAGE_START(bss_start);
+                u64 bss_page_start = PAGE_ALIGN(bss_start);
                 u64 bss_page_end = PAGE_ALIGN((u64)base_ptr + phdr.p_vaddr + phdr.p_memsz);
 
                 if (bss_page_start != bss_page_end) {
