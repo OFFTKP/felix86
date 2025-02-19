@@ -314,21 +314,18 @@ void felix86_syscall(ThreadState* state) {
         STRACE("close(%d) = %d", (int)rdi, (int)result);
         FELIX86_LOCK;
         std::string name_copy = name;
-        u64 min_address_copy = min_address;
         std::filesystem::path path_copy = region_path;
-        bool added_region = false;
         if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
             detecting_memory_region = false;
-            added_region = true;
             ASSERT(result != -1);
             // TODO: this whole thing is hacky. Can we use file descriptors to get memory mappings?
             MemoryMetadata::AddRegion(name_copy, min_address, max_address);
         }
         FELIX86_UNLOCK;
 
-        if (added_region && !(path_copy.empty() || name_copy.empty())) {
-            Elf::LoadSymbols(name_copy, path_copy, (void*)min_address_copy);
-        }
+        // if (added_region && !(path_copy.empty() || name_copy.empty())) {
+        //     Elf::LoadSymbols(name_copy, path_copy, (void*)min_address_copy);
+        // }
         break;
     }
     case felix86_x86_64_shutdown: {
