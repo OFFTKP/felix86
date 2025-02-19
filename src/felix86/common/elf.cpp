@@ -241,14 +241,15 @@ void Elf::Load(const std::filesystem::path& path) {
         prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "brk");
         VERBOSE("BRK base at %p", (void*)g_current_brk);
 
-        g_executable_start = base_hint + lowest_vaddr;
-        g_executable_end = base_hint + highest_vaddr;
+        g_executable_start = (u64)(base_hint + lowest_vaddr);
+        g_executable_end = (u64)(base_hint + highest_vaddr);
         program_base = (u8*)g_executable_start;
         MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
         // LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
-        g_interpreter_start = base_hint + lowest_vaddr;
-        g_interpreter_end = base_hint + highest_vaddr;
+        g_interpreter_start = (u64)(base_ptr + lowest_vaddr);
+        g_interpreter_end = (u64)(base_ptr + highest_vaddr);
+        program_base = (u8*)g_interpreter_start;
         MemoryMetadata::AddInterpreterRegion(g_interpreter_start, g_interpreter_end);
         // LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
