@@ -166,10 +166,14 @@ void Elf::Load(const std::filesystem::path& path) {
         ERROR("Base hint is not page aligned for: %s", is_interpreter ? "Interpreter" : "Executable");
     }
 
-    if (base_hint) {
-        base_ptr = (u8*)mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+    if (ehdr.e_type == ET_DYN) {
+        if (base_hint) {
+            base_ptr = (u8*)mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+        } else {
+            base_ptr = (u8*)mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        }
     } else {
-        base_ptr = (u8*)mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        base_ptr = 0;
     }
 
     if (base_ptr == MAP_FAILED) {
