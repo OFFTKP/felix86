@@ -253,7 +253,7 @@ void Elf::Load(const std::filesystem::path& path) {
         VERBOSE("BRK base at %p", (void*)g_current_brk);
 
         g_executable_start = (u64)(base_ptr + lowest_vaddr);
-        g_executable_end = (u64)(base_ptr + highest_vaddr);
+        g_executable_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
         program_base = (u8*)base_ptr;
         MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
         // LoadSymbols("Executable", path, (void*)g_executable_start);
@@ -517,7 +517,7 @@ void Elf::LoadOld(const std::filesystem::path& path) {
         VERBOSE("BRK base at %p", (void*)g_current_brk);
 
         g_executable_start = base_address + lowest_vaddr;
-        g_executable_end = base_address + highest_vaddr;
+        g_executable_end = PAGE_ALIGN(base_address + highest_vaddr);
         MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
     } else {
         g_interpreter_start = base_address + lowest_vaddr;
