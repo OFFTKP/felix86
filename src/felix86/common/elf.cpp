@@ -200,6 +200,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             void* addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, PAGE_START(phdr.p_offset));
+            VERBOSE("Running mmap(%p, %lx, 0, MAP_PRIVATE | MAP_FIXED, %d, %lx)", (void*)segment_base, segment_size, fd, PAGE_START(phdr.p_offset));
 
             if (addr == MAP_FAILED) {
                 ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
