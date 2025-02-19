@@ -281,6 +281,7 @@ void felix86_syscall(ThreadState* state) {
             std::string path = fs.GetExecutablePath().string();
             size_t size = std::min(path.size(), (size_t)rdx);
             memcpy((void*)rsi, path.c_str(), size);
+            result = size;
         } else {
             result = HOST_SYSCALL(readlinkat, AT_FDCWD, rdi, rsi, rdx);
         }
@@ -292,6 +293,7 @@ void felix86_syscall(ThreadState* state) {
             std::string path = fs.GetExecutablePath().string();
             size_t size = std::min(path.size(), (size_t)rdx);
             memcpy((void*)rsi, path.c_str(), size);
+            result = size;
         } else {
             result = HOST_SYSCALL(readlinkat, rdi, rsi, rdx, r10);
         }
