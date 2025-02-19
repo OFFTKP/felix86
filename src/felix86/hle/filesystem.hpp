@@ -15,8 +15,13 @@ struct Filesystem {
 
         executable_path = path;
 
+        const char* use_old = getenv("USEOLD");
+
         elf = std::make_unique<Elf>(/* is_interpreter */ false);
-        elf->Load(executable_path);
+        if (use_old)
+            elf->LoadOld(executable_path);
+        else
+            elf->Load(executable_path);
 
         if (!elf->Okay()) {
             ERROR("Failed to load ELF file %s", executable_path.c_str());
@@ -31,7 +36,11 @@ struct Filesystem {
             }
 
             interpreter = std::make_unique<Elf>(/* is_interpreter */ true);
-            interpreter->Load(interpreter_path);
+
+            if (use_old)
+                interpreter->LoadOld(interpreter_path);
+            else
+                interpreter->Load(interpreter_path);
 
             if (!interpreter->Okay()) {
                 ERROR("Failed to load interpreter ELF file %s", interpreter_path.c_str());
