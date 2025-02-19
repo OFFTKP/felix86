@@ -167,12 +167,12 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     if (base_hint) {
-        base_ptr = (u8*)mmap((void*)base_hint, highest_vaddr - lowest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+        base_ptr = (u8*)mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
     } else {
-        base_ptr = (u8*)mmap(nullptr, highest_vaddr - lowest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        base_ptr = (u8*)mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     }
 
-    VERBOSE("Allocated memory at %p-%p", base_ptr, base_ptr + highest_vaddr - lowest_vaddr);
+    VERBOSE("Allocated memory at %p-%p", base_ptr, base_ptr + highest_vaddr);
 
     for (Elf64_Half i = 0; i < ehdr.e_phnum; i += 1) {
         Elf64_Phdr& phdr = phdrtable[i];
@@ -257,7 +257,7 @@ void Elf::Load(const std::filesystem::path& path) {
         // LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 
-    phdr = (u8*)(base_hint + lowest_vaddr + ehdr.e_phoff);
+    phdr = base_ptr + ehdr.e_phoff;
     phnum = ehdr.e_phnum;
     phent = ehdr.e_phentsize;
 
