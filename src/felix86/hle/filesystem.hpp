@@ -57,11 +57,37 @@ struct Filesystem {
                 return false;
             }
 
+            auto interp_old = std::make_unique<Elf>(/* is_interpreter */ true);
+            interp_old->LoadOld(interpreter_path);
+
+            u64 interp_start_old = g_interpreter_start;
+            u64 interp_end_old = g_interpreter_end;
+
             interpreter = std::make_unique<Elf>(/* is_interpreter */ true);
             interpreter->Load(interpreter_path);
+
+            u64 interp_start = g_interpreter_start;
+            u64 interp_end = g_interpreter_end;
+
             if (!interpreter->Okay()) {
                 ERROR("Failed to load interpreter ELF file %s", interpreter_path.c_str());
                 return false;
+            }
+
+            u64 interp_size = interp_end - interp_start;
+            u64 interp_size_old = interp_end_old - interp_start_old;
+            if (interp_size != interp_size_old) {
+                ERROR("Size mismatch between old and new interpreter ELF loader: %lu vs %lu", interp_size, interp_size_old);
+                return false;
+            }
+
+            for (u64 i = 0; i < interp_size; i++) {
+                u8* ptr = (u8*)interp_start + i;
+                u8* ptr_old = (u8*)interp_start_old + i;
+                if (*ptr != *ptr_old) {
+                    ERROR("Data mismatch between old and new interpreter ELF loader at offset %lu: %02x vs %02x", i, *ptr, *ptr_old);
+                    return false;
+                }
             }
         }
 
