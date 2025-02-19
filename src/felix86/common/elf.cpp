@@ -197,9 +197,9 @@ void Elf::Load(const std::filesystem::path& path) {
             void* addr = MAP_FAILED;
 
             if (phdr.p_memsz > phdr.p_filesz) {
-                u64 bss_start = (u64)base_hint + phdr.p_vaddr + phdr.p_filesz;
+                u64 bss_start = (u64)base_ptr + phdr.p_vaddr + phdr.p_filesz;
                 u64 bss_page_start = PAGE_ALIGN(bss_start);
-                u64 bss_page_end = PAGE_ALIGN((u64)base_hint + phdr.p_vaddr + phdr.p_memsz);
+                u64 bss_page_end = PAGE_ALIGN((u64)base_ptr + phdr.p_vaddr + phdr.p_memsz);
 
                 if (bss_page_start != bss_page_end) {
                     addr = mmap(base_ptr + bss_page_start, bss_page_end - bss_page_start, PROT_READ | PROT_WRITE,
