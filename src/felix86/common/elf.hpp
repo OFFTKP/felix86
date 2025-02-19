@@ -25,7 +25,7 @@ struct Elf {
     }
 
     void* GetEntrypoint() const {
-        return (void*)(program + entry);
+        return program_base + entry;
     }
 
     void* GetStackPointer() const {
@@ -33,7 +33,7 @@ struct Elf {
     }
 
     void* GetProgramBase() const {
-        return program;
+        return program_base;
     }
 
     void* GetPhdr() const {
@@ -56,6 +56,7 @@ private:
     u8* stack_pointer = nullptr;
 
     u8* phdr = nullptr;
+    u8* program_base = nullptr;
     u64 phnum = 0;
     u64 phent = 0;
 };
