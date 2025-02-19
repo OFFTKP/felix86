@@ -612,7 +612,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         SignalHandlerTable& handlers = *current_state->signal_handlers;
         RegisteredSignal& handler = handlers[sig - 1];
         if (!handler.func) {
-            ERROR("Unhandled signal %d, no signal handler found", sig);
+            ERROR("Unhandled signal %s, no signal handler found", strsignal(sig));
         }
 
         ASSERT(handler.func != SIG_IGN); // TODO: what does that even mean?

@@ -16,8 +16,6 @@
 #pragma message("felix86 should only be compiled for RISC-V")
 #endif
 
-constexpr const char* lock_path = "/var/lock/felix86.lock";
-
 std::string version_full = get_version_full();
 const char* argp_program_version = version_full.c_str();
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";
@@ -152,8 +150,6 @@ void mountme(const char* path, const std::filesystem::path& dest, const char* fs
 
     int result = mount(path, dest.c_str(), fs_type, flags, NULL);
     if (result < 0) {
-        // Remove the lock file before exiting
-        remove(lock_path);
         WARN("Failed to mount %s to %s. Error: %d", path, dest.c_str(), errno);
     }
     VERBOSE("Mounting %s to %s", path, dest.c_str());
@@ -372,13 +368,6 @@ int main(int argc, char* argv[]) {
     initialize_semaphore();
 
     if (!execve_process) {
-        int lock_file = open(lock_path, O_CREAT | O_EXCL, 0666);
-        if (lock_file == -1) {
-            ERROR("Failed to acquire felix86.lock, is another instance of felix86 running? Otherwise remove the lock file manually: %s", lock_path);
-            return 1;
-        }
-        unlink(lock_path); // It will get deleted when the process exits
-
         // Mount the necessary filesystems
         if (config.rootfs_path.empty()) {
             ERROR("Rootfs path not specified, should not happen here");
