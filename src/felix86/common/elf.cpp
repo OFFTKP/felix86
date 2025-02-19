@@ -213,16 +213,16 @@ void Elf::Load(const std::filesystem::path& path) {
                     }
                 }
             } else {
-                addr = mmap((void*)segment_base, segment_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, fd, phdr.p_offset);
+                addr = mmap((void*)segment_base, segment_size, 0, MAP_PRIVATE | MAP_FIXED, fd, phdr.p_offset);
 
                 if (addr == MAP_FAILED) {
                     ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
                 } else if (addr != (void*)segment_base) {
                     ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
                 }
-            }
 
-            mprotect(addr, phdr.p_memsz, prot);
+                mprotect(addr, phdr.p_memsz, prot);
+            }
             break;
         }
         default: {
