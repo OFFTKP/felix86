@@ -172,6 +172,10 @@ void Elf::Load(const std::filesystem::path& path) {
         base_ptr = (u8*)mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     }
 
+    if (base_ptr == MAP_FAILED) {
+        ERROR("Failed to allocate memory for ELF file %s", path.c_str());
+    }
+
     VERBOSE("Allocated memory at %p-%p", base_ptr, base_ptr + highest_vaddr);
 
     for (Elf64_Half i = 0; i < ehdr.e_phnum; i += 1) {
@@ -257,7 +261,7 @@ void Elf::Load(const std::filesystem::path& path) {
         // LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 
-    phdr = base_ptr + ehdr.e_phoff;
+    phdr = base_ptr + lowest_vaddr + ehdr.e_phoff;
     phnum = ehdr.e_phnum;
     phent = ehdr.e_phentsize;
 
