@@ -444,8 +444,11 @@ void dump_states() {
 }
 
 void print_address(u64 address) {
-    Dl_info info{};
+    Dl_info info;
+    info.dli_fname = 0;
+    info.dli_fbase = 0;
     int result = dladdr((void*)address, &info);
+    printf("dlerr: %s\n", dlerror());
 
     if (result != 0) {
         std::string lib = info.dli_fname;
