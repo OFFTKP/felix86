@@ -444,20 +444,16 @@ void dump_states() {
 }
 
 void print_address(u64 address) {
-    Dl_info info;
-    dladdr((void*)address, &info);
+    Dl_info info{};
+    int result = dladdr((void*)address, &info);
 
-    std::string lib = "Unknown";
-    u64 offset = 0;
-    if (info.dli_fname) {
-        lib = info.dli_fname;
-        offset = address - (u64)info.dli_fbase;
-    }
-
-    if (info.dli_sname) {
+    if (result != 0) {
+        std::string lib = info.dli_fname;
+        u64 offset = address - (u64)info.dli_fbase;
         dprintf(g_output_fd, ANSI_COLOR_RED "%s@%s 0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), info.dli_sname, offset, (void*)address);
     } else {
-        dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), offset, (void*)address);
+        dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, info.dli_fname ? info.dli_fname : "Unknown",
+                info.dli_fbase ? address - (u64)info.dli_fbase : 0, (void*)address);
     }
 }
 
