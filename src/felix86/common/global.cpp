@@ -38,7 +38,6 @@ u64 g_dispatcher_exit_count = 0;
 std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
-std::unordered_map<u64, std::string> g_symbols{};
 std::vector<const char*> g_host_argv{};
 pthread_key_t g_thread_state_key = -1;
 

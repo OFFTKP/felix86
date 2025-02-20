@@ -1,4 +1,5 @@
 #include <cstring>
+#include <dlfcn.h>
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
 #include "felix86/common/debug.hpp"
@@ -234,17 +235,6 @@ __attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
     return g_breakpoints.size();
 }
 
-__attribute__((visibility("default"))) int guest_breakpoint_name(const char* symbol) {
-    for (auto& [address, bp] : g_symbols) {
-        if (bp == symbol) {
-            return guest_breakpoint_abs(address);
-        }
-    }
-
-    printf("Symbol %s not found\n", symbol);
-    return -1;
-}
-
 __attribute__((visibility("default"))) void disassemble_x64(u64 address) {
     ZydisDecoder decoder;
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
@@ -454,19 +444,20 @@ void dump_states() {
 }
 
 void print_address(u64 address) {
-    std::string symbol;
-    auto it = g_symbols.find(address);
-    if (it != g_symbols.end()) {
-        symbol = it->second;
+    Dl_info info;
+    dladdr((void*)address, &info);
+
+    std::string lib = "Unknown";
+    u64 offset = 0;
+    if (info.dli_fname) {
+        lib = info.dli_fname;
+        offset = address - (u64)info.dli_fbase;
     }
 
-    if (!symbol.empty()) {
-        dprintf(g_output_fd, ANSI_COLOR_RED "%s@%s 0x%lx (%p)\n" ANSI_COLOR_RESET, MemoryMetadata::GetRegionName(address).c_str(), symbol.c_str(),
-                MemoryMetadata::GetOffset(address), (void*)address);
+    if (!info.dli_sname) {
+        dprintf(g_output_fd, ANSI_COLOR_RED "%s@%s 0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), info.dli_sname, offset, (void*)address);
     } else {
-
-        dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, MemoryMetadata::GetRegionName(address).c_str(),
-                MemoryMetadata::GetOffset(address), (void*)address);
+        dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), offset, (void*)address);
     }
 }
 
