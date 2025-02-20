@@ -303,8 +303,8 @@ struct Recompiler {
 
     bool setVectorState(SEW sew, int elem_count, LMUL grouping = LMUL::M1);
 
-    u16 maxVlen() {
-        return max_vlen;
+    static constexpr u16 maxVlen() {
+        return 128;
     }
 
     void sextb(biscuit::GPR dest, biscuit::GPR src);
@@ -442,6 +442,5 @@ private:
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
     LMUL current_grouping = LMUL::M1;
-    u16 max_vlen = 128;
     bool rounding_mode_set = false;
 };

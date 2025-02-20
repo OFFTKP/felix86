@@ -1643,7 +1643,8 @@ void Recompiler::jumpAndLink(u64 rip) {
             }
         } else {
             // Too far for a regular jump, use AUIPC+ADDI+JR
-            const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+            ASSERT(offset >= -0x80000000 && offset < 0x80000000);
+            const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
             as.AUIPC(t0, hi20);
             as.ADDI(t0, t0, lo12);
