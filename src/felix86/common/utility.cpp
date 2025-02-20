@@ -454,7 +454,7 @@ void print_address(u64 address) {
         offset = address - (u64)info.dli_fbase;
     }
 
-    if (!info.dli_sname) {
+    if (info.dli_sname) {
         dprintf(g_output_fd, ANSI_COLOR_RED "%s@%s 0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), info.dli_sname, offset, (void*)address);
     } else {
         dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), offset, (void*)address);
