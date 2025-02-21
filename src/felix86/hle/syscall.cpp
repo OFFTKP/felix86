@@ -798,6 +798,9 @@ void felix86_syscall(ThreadState* state) {
             }
         }
         FELIX86_UNLOCK;
+        if (r8 != -1) { // Uses file descriptor for mmap, may need to update symbols
+            g_cached_symbols = false;
+        }
         break;
     }
     case felix86_x86_64_munmap: {

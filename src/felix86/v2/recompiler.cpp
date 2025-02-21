@@ -1613,11 +1613,8 @@ void Recompiler::jumpAndLink(u64 rip) {
         return;
     }
 
+    u8* start = as.GetCursorPointer();
     if (!blockExists(rip)) {
-        // 3 instructions of space to be overwritten with a single jump or:
-        // AUIPC
-        // ADDI
-        // JR
         u8* link_me = as.GetCursorPointer();
         backToDispatcher();
 
@@ -1643,7 +1640,7 @@ void Recompiler::jumpAndLink(u64 rip) {
             }
         } else {
             // Too far for a regular jump, use AUIPC+ADDI+JR
-            ASSERT(offset >= -0x80000000 && offset < 0x80000000);
+            ASSERT(offset >= -0x80000000ll && offset < 0x80000000ll);
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
             as.AUIPC(t0, hi20);
@@ -1651,6 +1648,9 @@ void Recompiler::jumpAndLink(u64 rip) {
             as.JR(t0);
         }
     }
+
+    // These jumps are always 3 instructions to keep consistent when backpatching is needed
+    ASSERT(as.GetCursorPointer() - start == 3);
 }
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false) {
@@ -2148,6 +2148,10 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     for (u8* link : block->links) {
         unlinkAt(link);
     }
+
+    // Unlink ourselves, jump back to dispatcher at end
+    u8* rewind_address = (u8*)block->address_end - 4 * 3; // 3 instructions for the ending jump/link
+    unlinkAt(rewind_address);
 
     // Remove the block from the map
     bool was_present = block_metadata.erase(block->guest_address);

@@ -1,5 +1,5 @@
 #include <cstring>
-#include <dlfcn.h>
+#include <fstream>
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
 #include "felix86/common/debug.hpp"
@@ -443,8 +443,42 @@ void dump_states() {
     }
 }
 
+void update_symbols() {
+    if (g_cached_symbols) {
+        return;
+    }
+
+    g_mapped_regions.clear(); // locks
+
+    std::ifstream ifs("/proc/self/maps");
+    std::string line;
+    char buffer[PATH_MAX];
+    while (std::getline(ifs, line)) {
+        u64 start, end;
+        int result = sscanf(line.c_str(), "%lx-%lx %*s %*s %*s %*s %s", &start, &end, buffer);
+        if (result == 3) {
+            g_mapped_regions[end - 1] = {.base = start, .end = end, .file = buffer};
+        }
+    }
+
+    g_cached_symbols = true;
+}
+
+std::string get_region(u64 address) {
+    update_symbols();
+
+    auto it = g_mapped_regions.lower_bound(address); // locks
+    if (address >= it->second.base) {
+        return it->second.file;
+    } else {
+        return "Unknown";
+    }
+}
+
 void print_address(u64 address) {
-    Dl_info info;
+    update_symbols();
+
+    Dl_info info; // locks
     info.dli_fname = 0;
     info.dli_fbase = 0;
     int result = dladdr((void*)address, &info);
