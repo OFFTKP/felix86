@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include "felix86/common/utility.hpp"
 
-struct Region {
+struct MappedRegion {
     u64 base;
     u64 end;
     std::string file; // without rootfs prefix
@@ -58,7 +58,7 @@ extern pthread_key_t g_thread_state_key;
 extern std::list<struct ThreadState*> g_thread_states;
 extern std::vector<const char*> g_host_argv;
 extern std::unordered_map<u64, std::string> g_symbols;
-extern std::map<u64, Region> g_mapped_regions;
+extern std::map<u64, MappedRegion> g_mapped_regions;
 extern std::atomic_bool g_cached_symbols;
 
 bool parse_extensions(const char* ext);

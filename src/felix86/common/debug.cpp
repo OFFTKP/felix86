@@ -26,13 +26,13 @@ void check_deferred_breakpoints(const std::string& name) {
 }
 
 void MemoryMetadata::AddRegion(const std::string& name, u64 start, u64 end) {
-    Region region;
-    region.name = name;
-    region.start = start;
-    region.end = end;
-    regions.push_back(region);
-    VERBOSE("Added region %s: %016lx-%016lx", name.c_str(), start, end);
-    check_deferred_breakpoints(name);
+    // Region region;
+    // region.name = name;
+    // region.start = start;
+    // region.end = end;
+    // regions.push_back(region);
+    // VERBOSE("Added region %s: %016lx-%016lx", name.c_str(), start, end);
+    // check_deferred_breakpoints(name);
 
     // if (name == "libvulkan_lvp.so") {
     //     // Patch it: Place a nop at the function

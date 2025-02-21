@@ -478,20 +478,20 @@ std::string get_region(u64 address) {
 void print_address(u64 address) {
     update_symbols();
 
-    Dl_info info; // locks
-    info.dli_fname = 0;
-    info.dli_fbase = 0;
-    int result = dladdr((void*)address, &info);
-    printf("dlerr: %s\n", dlerror());
+    // Dl_info info; // locks
+    // info.dli_fname = 0;
+    // info.dli_fbase = 0;
+    // int result = dladdr((void*)address, &info);
+    // printf("dlerr: %s\n", dlerror());
 
-    if (result != 0) {
-        std::string lib = info.dli_fname;
-        u64 offset = address - (u64)info.dli_fbase;
-        dprintf(g_output_fd, ANSI_COLOR_RED "%s@%s 0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), info.dli_sname, offset, (void*)address);
-    } else {
-        dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, info.dli_fname ? info.dli_fname : "Unknown",
-                info.dli_fbase ? address - (u64)info.dli_fbase : 0, (void*)address);
-    }
+    // if (result != 0) {
+    //     std::string lib = info.dli_fname;
+    //     u64 offset = address - (u64)info.dli_fbase;
+    //     dprintf(g_output_fd, ANSI_COLOR_RED "%s@%s 0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), info.dli_sname, offset, (void*)address);
+    // } else {
+    //     dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, info.dli_fname ? info.dli_fname : "Unknown",
+    //             info.dli_fbase ? address - (u64)info.dli_fbase : 0, (void*)address);
+    // }
 }
 
 void push_calltrace(ThreadState* state) {
