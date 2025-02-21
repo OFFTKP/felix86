@@ -185,7 +185,7 @@ void* Thunks::generateTrampoline(const std::string& signature, u64 target) {
     // Call the host function
     if (IsValidJTypeImm(offset)) {
         tas.JAL(offset);
-    } else if (offset >= -0x8000'0000ll && offset < 0x8000'0000ll) {
+    } else if (IsValid2GBImm(offset)) {
         const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
         const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
         tas.AUIPC(t0, hi20);

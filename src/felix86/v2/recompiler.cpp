@@ -1640,7 +1640,7 @@ void Recompiler::jumpAndLink(u64 rip) {
             }
         } else {
             // Too far for a regular jump, use AUIPC+ADDI+JR
-            ASSERT(offset >= -0x80000000ll && offset < 0x80000000ll);
+            ASSERT(IsValid2GBImm(offset));
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
             as.AUIPC(t0, hi20);

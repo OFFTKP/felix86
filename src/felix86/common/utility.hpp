@@ -1,5 +1,6 @@
 #pragma once
 
+#include <climits>
 #include <cstddef>
 #include <stdbool.h>
 #include <stdint.h>
@@ -25,6 +26,10 @@ using i8 = int8_t;
 
 [[nodiscard]] constexpr bool IsValidJTypeImm(ptrdiff_t value) {
     return value >= -0x80000 && value <= 0x7FFFF;
+}
+
+[[nodiscard]] constexpr bool IsValid2GBImm(i64 value) {
+    return (i64)value >= (i64)INT_MIN && (i64)value <= (i64)INT_MAX;
 }
 
 void felix86_div128(struct ThreadState* state, u64 divisor);
