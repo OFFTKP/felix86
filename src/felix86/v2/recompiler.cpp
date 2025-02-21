@@ -1650,7 +1650,7 @@ void Recompiler::jumpAndLink(u64 rip) {
     }
 
     // These jumps are always 3 instructions to keep consistent when backpatching is needed
-    ASSERT(as.GetCursorPointer() - start == 3);
+    ASSERT(as.GetCursorPointer() - start == 3 * 4);
 }
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false) {
