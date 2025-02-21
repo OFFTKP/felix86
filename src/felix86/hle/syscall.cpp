@@ -749,6 +749,12 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_openat: {
+        std::string path = (char*)rsi;
+        if (path == "/run/systemd/userdb/") { // TODO: There's some bug in Qt apps with this path
+            result = -ENOENT;
+            break;
+        }
+
         if (std::string((char*)rsi) == "/proc/self/exe") {
             std::filesystem::path path = fs.GetExecutablePath();
             result = HOST_SYSCALL(openat, rdi, path.c_str(), rdx, r10);
