@@ -13,11 +13,14 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         exit(1);
     }
 
+    const std::filesystem::path tmp_path = "/tmp/felix86_binary_tests";
+    const std::filesystem::path exec_path = tmp_path / path.filename();
+
     CATCH_INFO(fmt::format("Running test: {}", path.filename().string()));
 
     std::string buffer(1024 * 1024, 0);
     std::string srootfs = "FELIX86_ROOTFS=" + g_rootfs_path.string();
-    std::string spath = path.string();
+    std::string spath = exec_path;
 
     const char* argv[] = {
         felix_path.c_str(),
@@ -27,9 +30,13 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
 
     const char* envp[] = {
         srootfs.c_str(),
-        "__FELIX86_BINARY_TEST=1", // don't chroot, don't require root, look for interpreter in rootfs
         nullptr,
     };
+
+    std::filesystem::create_directories(g_rootfs_path / tmp_path.relative_path());
+
+    // Copy our test binary to the temp path
+    std::filesystem::copy(path, g_rootfs_path / exec_path, std::filesystem::copy_options::overwrite_existing);
 
     pid_t fork_result = fork();
     if (fork_result == 0) {
