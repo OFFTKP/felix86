@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include "common.h"
 
 int clone_handler(void* memory) {
     long* ptr = (long*)memory;
@@ -39,7 +40,7 @@ int main() {
 
     long val = *ptr;
     if (val == 10000000 || val == 10000001) {
-        return 0x42;
+        return FELIX86_BTEST_SUCCESS;
     } else {
         return 1;
     }

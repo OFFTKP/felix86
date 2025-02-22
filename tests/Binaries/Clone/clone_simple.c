@@ -7,8 +7,9 @@
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include "common.h"
 
-// Just return immediately
+// Just return immediatelyg
 int clone_handler(void* memory) {
     return 0;
 }
@@ -22,5 +23,5 @@ int main() {
         return 1;
     }
 
-    return 0x42;
+    return FELIX86_BTEST_SUCCESS;
 }
