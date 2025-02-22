@@ -1,8 +1,8 @@
 #pragma once
 
 #include <filesystem>
-#include <memory>
-#include <vector>
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
 constexpr u64 brk_size = 512 * 1024 * 1024;
@@ -21,7 +21,14 @@ struct Elf {
     }
 
     std::filesystem::path GetInterpreterPath() const {
-        return interpreter;
+        std::filesystem::path result;
+        if (g_testing) {
+            ASSERT(!g_rootfs_path.empty());
+            result = g_rootfs_path / interpreter; // not chrooted, need to look in rootfs
+        } else {
+            result = interpreter;
+        }
+        return result;
     }
 
     void* GetEntrypoint() const {

@@ -27,7 +27,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
 
     const char* envp[] = {
         srootfs.c_str(),
-        "__FELIX86_EXECVE=1", // don't chroot, don't print the initial message
+        "__FELIX86_BINARY_TEST=1", // don't chroot, don't require root, look for interpreter in rootfs
         nullptr,
     };
 
@@ -74,10 +74,10 @@ void common_loader(const std::filesystem::path& path) {
     }
 }
 
-CATCH_TEST_CASE("Signals", "[Binaries]") {
+CATCH_TEST_CASE("Signals", "[Signals]") {
     // common_loader("Signals"); // TODO: Fix the sigsegv_simple.c test to not get stuck
 }
 
-CATCH_TEST_CASE("Clone", "[Binaries]") {
+CATCH_TEST_CASE("Clone", "[Clone]") {
     common_loader("Clone");
 }

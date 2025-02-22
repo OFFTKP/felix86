@@ -209,7 +209,13 @@ int main(int argc, char* argv[]) {
     // In this case we shouldn't print the version string and mount and stuff
     const char* execve_process = getenv("__FELIX86_EXECVE");
 
-    if (!execve_process && geteuid() != 0) {
+    // We don't enable chrooting for binary testing so tests don't require root privileges
+    // and we don't have to copy them in the rootfs
+    const char* binary_testing = getenv("__FELIX86_BINARY_TEST");
+    bool dont_chroot = execve_process || binary_testing;
+    g_testing |= !!binary_testing;
+
+    if (!dont_chroot && geteuid() != 0) {
         // Try to restart app with sudo
         LOG("I need administrator permissions to chroot and mount if necessary. Requesting administrator privileges...");
         std::vector<const char*> sudo_args = {"sudo"};
@@ -364,7 +370,7 @@ int main(int argc, char* argv[]) {
         pthread_setname_np(pthread_self(), "MainProcess");
     }
 
-    if (!execve_process) {
+    if (!dont_chroot) {
         // Mount the necessary filesystems
         if (config.rootfs_path.empty()) {
             ERROR("Rootfs path not specified, should not happen here");
