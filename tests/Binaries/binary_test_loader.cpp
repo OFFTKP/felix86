@@ -85,6 +85,10 @@ CATCH_TEST_CASE("Signals", "[Signals]") {
     // common_loader("Signals"); // TODO: Fix the sigsegv_simple.c test to not get stuck
 }
 
+CATCH_TEST_CASE("Simple", "[Simple]") {
+    common_loader("Simple");
+}
+
 CATCH_TEST_CASE("Clone", "[Clone]") {
     common_loader("Clone");
 }

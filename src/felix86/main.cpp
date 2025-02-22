@@ -334,6 +334,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Make it so we can work with both rootfs/path and /path
     if (config.executable_path.string().find(g_rootfs_path.string()) == std::string::npos) {
         config.executable_path = g_rootfs_path / config.executable_path.relative_path();
     }
