@@ -339,7 +339,7 @@ int main(int argc, char* argv[]) {
         return 1;
     } else {
         if (!std::filesystem::exists(config.executable_path)) {
-            ERROR("Executable path does not exist");
+            ERROR("Executable path does not exist: %s", config.executable_path.c_str());
             return 1;
         }
 
