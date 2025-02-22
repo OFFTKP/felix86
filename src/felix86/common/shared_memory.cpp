@@ -17,8 +17,8 @@ SharedMemory::SharedMemory(size_t size) : size(size) {
     // Our shared memory is going to look like this:
     // 8 bytes for cursor
     // Rest of the data is usable
-    u8* cursor = memory + sizeof(u64);
-    memcpy(memory, cursor, sizeof(u8*));
+    u64 cursor = (u64)memory + sizeof(u64);
+    memcpy(memory, &cursor, sizeof(u8*));
 }
 
 SharedMemory::~SharedMemory() {

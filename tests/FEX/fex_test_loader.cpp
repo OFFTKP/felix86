@@ -181,7 +181,10 @@ FEXTestLoader::~FEXTestLoader() {
 
     ThreadState* state = (ThreadState*)pthread_getspecific(g_thread_state_key);
     ASSERT(state);
-    g_process_globals.states.remove(state); // TODO: this and the destructor used in pthread set specific, make them a function
+    auto it = std::find(g_process_globals.states.begin(), g_process_globals.states.end(), state);
+    if (it != g_process_globals.states.end()) {
+        g_process_globals.states.erase(it); // TODO: this and the destructor used in pthread set specific, make them a function
+    }
     delete state;
     pthread_setspecific(g_thread_state_key, nullptr);
 }
