@@ -55,9 +55,9 @@ u64 g_executable_end = 0;
 
 void ProcessGlobals::initialize() {
     // Open a new shared memory region
-    memory = SharedMemory(shared_memory_size);
-    states_lock = ProcessLock(memory);
-    mapped_regions_lock = ProcessLock(memory);
+    memory = std::make_unique<SharedMemory>(shared_memory_size);
+    states_lock = ProcessLock(*memory);
+    mapped_regions_lock = ProcessLock(*memory);
 
     // Reset the states stored here
     states = {};

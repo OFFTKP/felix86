@@ -18,16 +18,13 @@ SharedMemory::SharedMemory(size_t size) : size(size) {
     // 8 bytes for cursor
     // Rest of the data is usable
     u64 cursor = (u64)memory + sizeof(u64);
-    memcpy(memory, &cursor, sizeof(u8*));
+    memcpy(memory, &cursor, sizeof(u64));
 }
 
 SharedMemory::~SharedMemory() {
-    u64 counter = __atomic_sub_fetch(memory, 1, __ATOMIC_RELAXED);
-    if (counter == 0) {
-        int result = munmap(memory, size);
-        if (result != 0) {
-            WARN("Failed to unmap shared memory. Error: %s", strerror(errno));
-        }
+    int result = munmap(memory, size);
+    if (result != 0) {
+        WARN("Failed to unmap shared memory. Error: %s", strerror(errno));
     }
 }
 

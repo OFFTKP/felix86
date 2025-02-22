@@ -21,7 +21,7 @@ struct MappedRegion {
 struct ProcessGlobals {
     void initialize(); // If a clone happens without CLONE_VM, these need to be reinitialized.
 
-    SharedMemory memory{};
+    std::unique_ptr<SharedMemory> memory{};
     ProcessLock states_lock{};
     // States in this memory space. We don't care about states in different memory spaces, as they will have their
     // own copy of the process memory, which means we don't worry about self-modifying code there.

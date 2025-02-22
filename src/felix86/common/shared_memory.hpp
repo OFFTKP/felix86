@@ -4,8 +4,7 @@
 #include "felix86/common/utility.hpp"
 
 struct SharedMemory {
-    SharedMemory() = default; // initializes a null shared memory
-    SharedMemory(size_t size);
+    explicit SharedMemory(size_t size);
     ~SharedMemory();
     SharedMemory(const SharedMemory&) = delete;
     SharedMemory& operator=(const SharedMemory&) = delete;
