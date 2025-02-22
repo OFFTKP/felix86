@@ -27,7 +27,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
 
     const char* envp[] = {
         srootfs.c_str(),
-        "FELIX86_DONT_VALIDATE_EXE_PATH=1",
+        "__FELIX86_EXECVE=1", // don't chroot, don't print the initial message
         nullptr,
     };
 
