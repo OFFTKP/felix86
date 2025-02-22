@@ -14,7 +14,7 @@ int clone_handler(void* memory) {
     long* ptr = (long*)memory;
     while (1) {
         long val = __atomic_add_fetch(ptr, 1, __ATOMIC_RELAXED);
-        if (val == 10000000) {
+        if (val >= 10000000) {
             break;
         }
     }
@@ -28,6 +28,7 @@ int main() {
 
     int res = clone(clone_handler, stack, CLONE_VM, memory, 0, 0, 0);
     if (res == -1) {
+        printf("clone failed\n");
         return 1;
     }
 
