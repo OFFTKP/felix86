@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <catch2/catch_test_macros.hpp>
 #include <sys/wait.h>
+#include "common.h"
 #include "felix86/common/log.hpp"
 #include "fmt/format.h"
 
@@ -46,7 +47,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         close(pipefd[0]);
 
         CATCH_INFO(fmt::format("Output: {}", buffer.substr(0, bytes_read)));
-        CATCH_REQUIRE(WEXITSTATUS(status) == 0);
+        CATCH_REQUIRE(WEXITSTATUS(status) == FELIX86_BTEST_SUCCESS);
     }
 
     SUCCESS("Test passed: %s", path.string().c_str());
@@ -75,4 +76,8 @@ void common_loader(const std::filesystem::path& path) {
 
 CATCH_TEST_CASE("Signals", "[Binaries]") {
     // common_loader("Signals"); // TODO: Fix the sigsegv_simple.c test to not get stuck
+}
+
+CATCH_TEST_CASE("Clone", "[Binaries]") {
+    common_loader("Clone");
 }

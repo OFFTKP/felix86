@@ -16,7 +16,7 @@ int main() {
     *address = 42;
 
     if (valid_memory == 42) {
-        return 0;
+        return 0x42;
     }
 
     return 1;
