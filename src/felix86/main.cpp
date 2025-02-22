@@ -334,6 +334,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (config.executable_path.string().find(g_rootfs_path.string()) == std::string::npos) {
+        config.executable_path = g_rootfs_path / config.executable_path.relative_path();
+    }
+
     if (config.executable_path.empty()) {
         ERROR("Executable path not specified");
         return 1;
