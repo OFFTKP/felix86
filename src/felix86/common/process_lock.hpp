@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <semaphore.h>
 #include "felix86/common/shared_memory.hpp"
 
@@ -22,12 +23,14 @@ private:
 };
 
 struct ProcessLock {
+    ProcessLock() = default;
     explicit ProcessLock(SharedMemory& mem);
 
-    ProcessLockGuard lock() {
+    [[nodiscard]] ProcessLockGuard lock() {
+        assert(inner != SEM_FAILED);
         return ProcessLockGuard(inner);
     }
 
 private:
-    sem_t* inner;
+    sem_t* inner = SEM_FAILED;
 };

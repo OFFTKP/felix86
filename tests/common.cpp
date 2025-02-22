@@ -10,9 +10,8 @@ public:
     void testRunStarting(Catch::TestRunInfo const&) override {
         g_testing = true;
         initialize_globals();
+        g_process_globals.initialize();
         initialize_extensions();
-        unlink_semaphore();
-        initialize_semaphore();
         Signals::initialize();
         g_dont_protect_pages = true;
     }

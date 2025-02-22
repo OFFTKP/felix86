@@ -7,8 +7,8 @@ struct SharedMemory {
     SharedMemory() = default; // initializes a null shared memory
     SharedMemory(size_t size);
     ~SharedMemory();
-    SharedMemory(const SharedMemory&);
-    SharedMemory& operator=(const SharedMemory&);
+    SharedMemory(const SharedMemory&) = delete;
+    SharedMemory& operator=(const SharedMemory&) = delete;
     SharedMemory(SharedMemory&&) = default;
     SharedMemory& operator=(SharedMemory&&) = default;
 
@@ -16,7 +16,7 @@ struct SharedMemory {
 
     template <typename T>
     T* allocate() {
-        return allocate(sizeof(T));
+        return (T*)allocate(sizeof(T));
     }
 
 private:

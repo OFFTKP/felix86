@@ -539,12 +539,13 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 // and unlink those blocks.
                 WARN("Handling self-modifying code at %016lx", write_address);
 
-                // Need to lock g_thread_states access
-                FELIX86_LOCK; // fine to lock, SIGSEGV happened in jit code, no need to worry about deadlocks
-                              // shouldn't be locked during compilation, so no double lock deadlock potential either
+                // Need to lock thread states access
+                // fine to lock, SIGSEGV happened in jit code, no need to worry about deadlocks
+                // shouldn't be locked during compilation, so no double lock deadlock potential either
+                auto lock = g_process_globals.states_lock.lock();
 
                 // TODO: This is extremely slow, please optimize me
-                for (auto& thread_state : g_thread_states) {
+                for (auto& thread_state : g_process_globals.states) {
                     auto lock = thread_state->recompiler->lock();
                     auto& block_map = thread_state->recompiler->getBlockMap();
                     std::vector<BlockMetadata*> to_invalidate;
@@ -560,8 +561,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                         thread_state->recompiler->invalidateBlock(block);
                     }
                 }
-
-                FELIX86_UNLOCK;
 
                 // Now that everything was unlinked we can unprotect the page so the write can be performed
                 mprotect((void*)write_page_start, 0x1000, PROT_READ | PROT_WRITE);

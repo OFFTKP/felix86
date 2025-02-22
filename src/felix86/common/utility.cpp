@@ -421,11 +421,8 @@ void felix86_psadbw(u8* dst, u8* src) {
 }
 
 void dump_states() {
-    if (!g_emulator) {
-        return;
-    }
-
-    auto& states = g_thread_states;
+    auto lock = g_process_globals.states_lock.lock();
+    auto& states = g_process_globals.states;
     int i = 0;
     for (auto& state : states) {
         dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld): " ANSI_COLOR_RESET, i, state->tid);
@@ -444,11 +441,12 @@ void dump_states() {
 }
 
 void update_symbols() {
-    if (g_cached_symbols) {
+    if (g_process_globals.cached_symbols) {
         return;
     }
 
-    g_mapped_regions.clear(); // locks
+    auto lock = g_process_globals.mapped_regions_lock.lock();
+    g_process_globals.mapped_regions.clear();
 
     std::ifstream ifs("/proc/self/maps");
     std::string line;
@@ -457,17 +455,18 @@ void update_symbols() {
         u64 start, end;
         int result = sscanf(line.c_str(), "%lx-%lx %*s %*s %*s %*s %s", &start, &end, buffer);
         if (result == 3) {
-            g_mapped_regions[end - 1] = {.base = start, .end = end, .file = buffer};
+            g_process_globals.mapped_regions[end - 1] = {.base = start, .end = end, .file = buffer};
         }
     }
 
-    g_cached_symbols = true;
+    g_process_globals.cached_symbols = true;
 }
 
 std::string get_region(u64 address) {
     update_symbols();
 
-    auto it = g_mapped_regions.lower_bound(address); // locks
+    auto lock = g_process_globals.mapped_regions_lock.lock();
+    auto it = g_process_globals.mapped_regions.lower_bound(address);
     if (address >= it->second.base) {
         return it->second.file;
     } else {

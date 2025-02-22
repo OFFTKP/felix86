@@ -112,6 +112,11 @@ int clone_handler(void* args) {
         ERROR("prctl failed with %d", errno);
     }
 
+    if (!(clone_args->flags & CLONE_VM)) {
+        // New memory space, reinitialize the process globals
+        g_process_globals.initialize();
+    }
+
     // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
     // both due to differences in TLS and because the guest needs it, and creating a host TLS is not possible sans some hacky ways.
     // So we need to create a pthread (which will create a proper TLS) as the actual child process.
@@ -220,6 +225,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         if (ret == 0) {
             // Start the child at the instruction after the syscall
             result = 0;
+            g_process_globals.initialize(); // New memory space, reinitialize the process globals
             // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
             // in this new process. Just give it a new name to make debugging easier
             std::string name = "ForkedFrom" + std::to_string(parent_tid); // forked from parent tid

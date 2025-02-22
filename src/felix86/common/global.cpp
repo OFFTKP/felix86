@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstring>
+#include <list>
 #include <string>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -30,18 +31,16 @@ bool g_no_sse4_1 = false;
 bool g_no_sse4_2 = false;
 bool g_print_all_insts = false;
 bool g_dont_inline_syscalls = false;
-std::map<u64, MappedRegion> g_mapped_regions{};
-std::atomic_bool g_cached_symbols = false;
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
-sem_t* g_semaphore = nullptr;
 u64 g_dispatcher_exit_count = 0;
 std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
 std::vector<const char*> g_host_argv{};
 pthread_key_t g_thread_state_key = -1;
+ProcessGlobals g_process_globals{};
 
 int g_output_fd = 1;
 std::filesystem::path g_rootfs_path{};
@@ -53,6 +52,18 @@ u64 g_interpreter_start = 0;
 u64 g_interpreter_end = 0;
 u64 g_executable_start = 0;
 u64 g_executable_end = 0;
+
+void ProcessGlobals::initialize() {
+    // Open a new shared memory region
+    memory = SharedMemory(shared_memory_size);
+    states_lock = ProcessLock(memory);
+    mapped_regions_lock = ProcessLock(memory);
+
+    // Reset the states stored here
+    states = {};
+
+    // Don't reset the mapped regions, we can reuse the ones from parent process
+}
 
 #define X(ext) bool Extensions::ext = false;
 FELIX86_EXTENSIONS_TOTAL
@@ -333,34 +344,4 @@ bool parse_extensions(const char* arg) {
     }
 
     return true;
-}
-
-// Needs to be reopened on new processes, the very first time it will be null though
-void initialize_semaphore() {
-    if (!g_semaphore) {
-        g_semaphore = sem_open("/felix86_semaphore", O_CREAT | O_EXCL, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, 1);
-        if (g_semaphore == SEM_FAILED) {
-            if (errno == EEXIST) {
-                g_semaphore = sem_open("/felix86_semaphore", 0);
-                return;
-            }
-
-            const char* is_execve = getenv("__FELIX86_EXECVE");
-            if (!is_execve) {
-                ERROR("Failed to create semaphore: %s", strerror(errno));
-            }
-        } else {
-            unlink_semaphore(); // destroy it when the last process closes it
-        }
-    } else {
-        g_semaphore = sem_open("/felix86_semaphore", 0);
-    }
-
-    if (g_semaphore == SEM_FAILED) {
-        ERROR("Failed to create semaphore: %s", strerror(errno));
-    }
-}
-
-void unlink_semaphore() {
-    sem_unlink("/felix86_semaphore");
 }

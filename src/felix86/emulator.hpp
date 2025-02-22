@@ -1,6 +1,5 @@
 #pragma once
 
-#include <semaphore.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"

@@ -312,17 +312,6 @@ void felix86_syscall(ThreadState* state) {
             result = 0;
         }
         STRACE("close(%d) = %d", (int)rdi, (int)result);
-        FELIX86_LOCK;
-        std::string name_copy = name;
-        std::filesystem::path path_copy = region_path;
-        if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-            detecting_memory_region = false;
-            ASSERT(result != -1);
-            // TODO: this whole thing is hacky. Can we use file descriptors to get memory mappings?
-            MemoryMetadata::AddRegion(name_copy, min_address, max_address);
-        }
-        FELIX86_UNLOCK;
-
         // if (added_region && !(path_copy.empty() || name_copy.empty())) {
         //     Elf::LoadSymbols(name_copy, path_copy, (void*)min_address_copy);
         // }
@@ -761,21 +750,6 @@ void felix86_syscall(ThreadState* state) {
         } else {
             result = HOST_SYSCALL(openat, rdi, rsi, rdx, r10);
             std::filesystem::path path = (char*)rsi;
-
-            FELIX86_LOCK; // TODO: get rid of this stuff, see close syscall comment
-            if (MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-                name = std::filesystem::path((const char*)rsi).filename().string();
-                region_path = path;
-                if (name.find(".so") != std::string::npos) {
-                    detecting_memory_region = true;
-                    min_address = ULONG_MAX;
-                    max_address = 0;
-                } else {
-                    name = {};
-                    region_path.clear();
-                }
-            }
-            FELIX86_UNLOCK;
         }
         STRACE("openat(%d, %s, %d, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)r10, (int)result);
         break;
@@ -794,18 +768,8 @@ void felix86_syscall(ThreadState* state) {
         result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
         STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
 
-        FELIX86_LOCK;
-        if (detecting_memory_region && MemoryMetadata::IsInInterpreterRegion(state->rip)) {
-            if (result < min_address) {
-                min_address = result;
-            }
-            if (result + rsi > max_address) {
-                max_address = result + rsi;
-            }
-        }
-        FELIX86_UNLOCK;
         if ((int)r8 != -1) { // Uses file descriptor for mmap, may need to update symbols
-            g_cached_symbols = false;
+            g_process_globals.cached_symbols = false;
         }
         break;
     }

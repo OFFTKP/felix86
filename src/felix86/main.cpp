@@ -206,7 +206,7 @@ int main(int argc, char* argv[]) {
     }
 
     // This instance of felix86 may be running as an execve'd version of an older instance
-    // In this case we shouldn't print the version string and unlink the semaphore
+    // In this case we shouldn't print the version string and mount and stuff
     const char* execve_process = getenv("__FELIX86_EXECVE");
 
     if (!execve_process && geteuid() != 0) {
@@ -247,7 +247,7 @@ int main(int argc, char* argv[]) {
     initialize_globals();
     initialize_extensions();
     print_extensions();
-
+    g_process_globals.initialize();
     Signals::initialize();
 
     bool purposefully_empty = false;
@@ -361,11 +361,8 @@ int main(int argc, char* argv[]) {
     if (execve_process) {
         pthread_setname_np(pthread_self(), "ExecveProcess");
     } else {
-        unlink_semaphore(); // in case it was not closed properly last time
         pthread_setname_np(pthread_self(), "MainProcess");
     }
-
-    initialize_semaphore();
 
     if (!execve_process) {
         // Mount the necessary filesystems
@@ -487,8 +484,6 @@ int main(int argc, char* argv[]) {
     } else {
         LOG("Execve process exited with reason: %s", print_exit_reason(main_state->exit_reason));
     }
-
-    unlink_semaphore();
 
     felix86_exit(0);
 }

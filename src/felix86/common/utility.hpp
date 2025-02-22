@@ -63,9 +63,6 @@ void dump_states();
 namespace biscuit {}
 using namespace biscuit;
 
-#define FELIX86_LOCK ASSERT(sem_wait(g_semaphore) == 0)
-#define FELIX86_UNLOCK ASSERT(sem_post(g_semaphore) == 0)
-
 enum class x86RoundingMode { Nearest = 0, Down = 1, Up = 2, Truncate = 3 };
 
 inline RMode rounding_mode(x86RoundingMode mode) {

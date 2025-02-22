@@ -9,28 +9,16 @@
 SharedMemory::SharedMemory(size_t size) : size(size) {
     ASSERT(size >= 0x1000);
     memory = (u8*)mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (memory == MAP_FAILED) {
+        ERROR("Failed to allocate shared memory. Error: %s", strerror(errno));
+        return;
+    }
 
     // Our shared memory is going to look like this:
-    // 8 bytes for atomic reference counter
     // 8 bytes for cursor
     // Rest of the data is usable
-    u8* cursor = memory + sizeof(u64) * 2;
-    u64 counter = 1;
-    memcpy(memory, &counter, sizeof(u64));
-    memcpy(memory + sizeof(u64), cursor, sizeof(u8*));
-}
-
-SharedMemory::SharedMemory(const SharedMemory& other) {
-    *this = other;
-}
-
-SharedMemory& SharedMemory::operator=(const SharedMemory& other) {
-    ASSERT(other.memory != nullptr);
-    __atomic_fetch_add(other.memory, 1, __ATOMIC_RELAXED);
-    memory = other.memory;
-    size = other.size;
-
-    return *this;
+    u8* cursor = memory + sizeof(u64);
+    memcpy(memory, cursor, sizeof(u8*));
 }
 
 SharedMemory::~SharedMemory() {
@@ -45,7 +33,7 @@ SharedMemory::~SharedMemory() {
 
 void* SharedMemory::allocate(size_t bytes) {
     // Fetch current cursor, and increment it by the bytes we allocate, return that
-    void* data = (void*)__atomic_fetch_add((u64*)(memory + 8), bytes, __ATOMIC_RELAXED);
+    void* data = (void*)__atomic_fetch_add((u64*)(memory), bytes, __ATOMIC_RELAXED);
     ASSERT_MSG(data < memory + size, "Shared memory ran out of space");
     return data;
 }
