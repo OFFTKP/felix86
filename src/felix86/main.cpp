@@ -307,17 +307,17 @@ int main(int argc, char* argv[]) {
 
     config.rootfs_path = g_rootfs_path;
 
-    // Sanitize the executable path
-    std::string path = config.argv[0];
-    if (path.size() < g_rootfs_path.string().size()) {
-        ERROR("Executable path is not part of the rootfs");
+    // Make it so we can work with both rootfs/path and /path
+    if (config.executable_path.string().find(g_rootfs_path.string()) == std::string::npos) {
+        config.executable_path = g_rootfs_path / config.executable_path.relative_path();
     }
-    path = path.substr(g_rootfs_path.string().size());
-    ASSERT(!path.empty());
-    if (path[0] != '/') {
-        path = "/" + path;
+
+    std::string arg0 = config.executable_path.string().substr(g_rootfs_path.string().size());
+    ASSERT(!arg0.empty());
+    if (arg0[0] != '/') {
+        arg0 = "/" + arg0;
     }
-    config.argv[0] = path;
+    config.argv[0] = arg0;
 
     if (config.rootfs_path.empty()) {
         ERROR("Rootfs path not specified");
@@ -332,11 +332,6 @@ int main(int argc, char* argv[]) {
             ERROR("Rootfs path is not a directory");
             return 1;
         }
-    }
-
-    // Make it so we can work with both rootfs/path and /path
-    if (config.executable_path.string().find(g_rootfs_path.string()) == std::string::npos) {
-        config.executable_path = g_rootfs_path / config.executable_path.relative_path();
     }
 
     if (config.executable_path.empty()) {
@@ -486,9 +481,9 @@ int main(int argc, char* argv[]) {
     emulator.Run();
 
     if (!execve_process) {
-        LOG("Main process exited with reason: %s", print_exit_reason(main_state->exit_reason));
+        LOG("Main process exited with reason: %s. Exit code: %d", print_exit_reason(main_state->exit_reason), main_state->exit_code);
     } else {
-        LOG("Execve process exited with reason: %s", print_exit_reason(main_state->exit_reason));
+        LOG("Execve process exited with reason: %s. Exit code: %d", print_exit_reason(main_state->exit_reason), main_state->exit_code);
     }
 
     return main_state->exit_code;

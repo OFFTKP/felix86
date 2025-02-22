@@ -28,10 +28,14 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         nullptr,
     };
 
-    const char* envp[] = {
-        srootfs.c_str(),
-        nullptr,
-    };
+    std::vector<const char*> envp;
+    char** env = environ;
+    while (*env) {
+        envp.push_back(*env);
+        env++;
+    }
+    envp.push_back(srootfs.c_str());
+    envp.push_back(nullptr);
 
     std::filesystem::create_directories(g_rootfs_path / tmp_path.relative_path());
 
@@ -43,7 +47,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         close(pipefd[0]);
         dup2(pipefd[1], 1);
         close(pipefd[1]);
-        execvpe(argv[0], (char* const*)argv, (char* const*)envp);
+        execvpe(argv[0], (char* const*)argv, (char* const*)envp.data());
         perror("execvpe");
         exit(1);
     } else {
