@@ -53,9 +53,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     } else {
         close(pipefd[1]);
         int status;
-        printf("here\n");
         waitpid(fork_result, &status, 0);
-        printf("there\n");
         size_t bytes_read = read(pipefd[0], buffer.data(), buffer.size());
         close(pipefd[0]);
 

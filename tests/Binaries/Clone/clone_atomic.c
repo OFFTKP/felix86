@@ -3,6 +3,7 @@
 #endif
 #include <linux/sched.h>
 #include <sched.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
@@ -42,6 +43,7 @@ int main() {
     if (val == 10000000 || val == 10000001) {
         return FELIX86_BTEST_SUCCESS;
     } else {
+        printf("Bad value: %ld\n", val);
         return 1;
     }
 }
