@@ -12,7 +12,7 @@ int clone_handler(void* memory) {
     long* ptr = (long*)memory;
     while (1) {
         long val = __atomic_add_fetch(ptr, 1, __ATOMIC_RELAXED);
-        if (val == 10000000) {
+        if (val >= 10000000) {
             break;
         }
     }
@@ -32,7 +32,7 @@ int main() {
     long* ptr = (long*)memory;
     while (1) {
         long val = __atomic_add_fetch(ptr, 1, __ATOMIC_RELAXED);
-        if (val == 10000000) {
+        if (val >= 10000000) {
             break;
         }
     }
