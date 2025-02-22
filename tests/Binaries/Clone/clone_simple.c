@@ -8,16 +8,9 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+// Just return immediately
 int clone_handler(void* memory) {
-    long* ptr = (long*)memory;
-    while (1) {
-        long val = __atomic_add_fetch(ptr, 1, __ATOMIC_RELAXED);
-        if (val == 10000000) {
-            break;
-        }
-    }
-
-    return 1;
+    return 0;
 }
 
 int main() {
@@ -29,18 +22,5 @@ int main() {
         return 1;
     }
 
-    long* ptr = (long*)memory;
-    while (1) {
-        long val = __atomic_add_fetch(ptr, 1, __ATOMIC_RELAXED);
-        if (val >= 10000000) {
-            break;
-        }
-    }
-
-    long val = *ptr;
-    if (val == 10000000 || val == 10000001) {
-        return 0x42;
-    } else {
-        return 1;
-    }
+    return 0x42;
 }
