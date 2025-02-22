@@ -123,6 +123,8 @@ struct ThreadState {
 
     u8 exit_reason{};
 
+    u8 exit_code{}; // process exit code
+
     std::array<u64, 16> saved_host_gprs;
 
     std::unique_ptr<Recompiler> recompiler;

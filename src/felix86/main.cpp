@@ -491,5 +491,5 @@ int main(int argc, char* argv[]) {
         LOG("Execve process exited with reason: %s", print_exit_reason(main_state->exit_reason));
     }
 
-    felix86_exit(0);
+    return main_state->exit_code;
 }
