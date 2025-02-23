@@ -618,7 +618,12 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         bool jit_code = is_in_jit_code(current_state, pc);
         if (!jit_code || current_state->signals_disabled) {
-            WARN("Deferring signal %d", sig);
+            WARN("Deferring signal %s", strsignal(sig));
+            if (current_state->pending_signals & (1 << (sig - 1))) {
+                u64 write_address = (u64)info->si_addr;
+                ERROR("Signal %s is already deferred, probably needed to be handled. Write address: %016lx", strsignal(sig), write_address);
+            }
+
             current_state->pending_signals |= 1 << (sig - 1);
 
             // Unlink the current block, making it jump back to the dispatcher at the end
