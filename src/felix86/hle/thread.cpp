@@ -187,11 +187,11 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     std::string sflags = flags_to_string(args->flags);
     STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
 
-    u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_SYSVSEM | CLONE_VFORK | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND |
-                        CLONE_FILES | CLONE_FS | CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID;
+    u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_SYSVSEM | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND | CLONE_FILES | CLONE_FS |
+                        CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID;
     if ((args->flags & ~CSIGNAL) & ~allowed_flags) {
         ERROR("Unsupported flags %016llx", (args->flags & ~CSIGNAL) & ~allowed_flags);
-        return -EINVAL;
+        return -ENOSYS;
     }
 
     // We use this "tid" to check that the cloned process has finished
@@ -207,6 +207,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         .new_fsbase = args->tls,
         .new_rsp = args->stack,
         .new_rip = current_state->gprs[X86_REF_RCX],
+        .new_thread = 0,
         .new_tid = 0,
     };
 
@@ -218,6 +219,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         // copy-on-write semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case,
         // for correct operation, the CLONE_VM option should not be specified.
         ASSERT(!(host_flags & CLONE_VM));
+        ASSERT(!(host_flags & CLONE_VFORK)); // does this happen?
 
         int parent_tid = host_clone_args.parent_state->tid;
 

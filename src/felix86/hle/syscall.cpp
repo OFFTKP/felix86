@@ -960,6 +960,11 @@ void felix86_syscall(ThreadState* state) {
         result = 0; // for the warning
         break;
     }
+    case felix86_x86_64_vfork: {
+        result = -ENOSYS; // make it use clone instead
+        STRACE("vfork() = %d", (int)result);
+        break;
+    }
     case felix86_x86_64_eventfd2: {
         result = HOST_SYSCALL(eventfd2, rdi, rsi);
         STRACE("eventfd2(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
