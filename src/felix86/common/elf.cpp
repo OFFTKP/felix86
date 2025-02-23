@@ -89,8 +89,8 @@ void Elf::Load(const std::filesystem::path& path) {
         ERROR("File %s is not an executable or shared object", path.c_str());
     }
 
-    if (ehdr.e_machine != EM_X86_64) {
-        ERROR("File %s is not an x86_64 ELF file", path.c_str());
+    if (ehdr.e_machine != EM_X86_64 && ehdr.e_machine != EM_386) {
+        ERROR("File %s is not an x86 or x86_64 ELF file", path.c_str());
     }
 
     if (ehdr.e_entry == 0 && ehdr.e_type == ET_EXEC) {
