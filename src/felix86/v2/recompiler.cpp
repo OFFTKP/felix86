@@ -44,7 +44,7 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     }
 }
 
-Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
+Recompiler::Recompiler(bool mode32) : code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
     for (int i = 0; i < 16; i++) {
         metadata[i].reg = (x86_ref_e)(X86_REF_RAX + i);
         metadata[i + 16 + 5].reg = (x86_ref_e)(X86_REF_XMM0 + i);
@@ -59,7 +59,10 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
     emitDispatcher();
     emitSigreturnThunk();
 
-    ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+    ZydisMachineMode mode = mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+    ZydisStackWidth stack_width = mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
+
+    ZydisDecoderInit(&decoder, mode, stack_width);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
 }
 
@@ -1631,21 +1634,21 @@ void Recompiler::jumpAndLink(u64 rip) {
             if (offset != 3 * 4) {
                 as.J(offset);
                 as.NOP();
-                as.NOP();
+                as.NOP(); // TODO: remove me, see below
             } else {
-                // Replace the AUIPC+ADDI+JR with 3 NOPs
+                // Replace the AUIPC+JR with 3 NOPs
                 as.NOP();
                 as.NOP();
-                as.NOP();
+                as.NOP(); // TODO: remove me, see below
             }
         } else {
-            // Too far for a regular jump, use AUIPC+ADDI+JR
+            // Too far for a regular jump, use AUIPC+JR
             ASSERT(IsValid2GBImm(offset));
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
             as.AUIPC(t0, hi20);
-            as.ADDI(t0, t0, lo12);
-            as.JR(t0);
+            as.JR(t0, lo12);
+            as.NOP(); // TODO: these third nops are unnecessary, remove them and change the 3*4 assert stuff
         }
     }
 

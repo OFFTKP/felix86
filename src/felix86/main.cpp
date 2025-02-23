@@ -13,7 +13,7 @@
 #include "felix86/emulator.hpp"
 
 #if !defined(__riscv)
-#pragma message("felix86 should only be compiled for RISC-V")
+#pragma message("You are compiling for x86-64, felix86 should only be compiled for RISC-V, are you sure you want to do this?")
 #endif
 
 std::string version_full = get_version_full();

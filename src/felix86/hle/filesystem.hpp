@@ -56,6 +56,10 @@ struct Filesystem {
         return true;
     }
 
+    bool IsExecutable32Bit() {
+        return elf->Is32Bit();
+    }
+
     void* GetEntrypoint() {
         if (interpreter) {
             return interpreter->GetEntrypoint();

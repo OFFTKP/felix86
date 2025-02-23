@@ -43,7 +43,7 @@ struct BlockMetadata {
 };
 
 struct Recompiler {
-    Recompiler();
+    explicit Recompiler(bool mode32);
     ~Recompiler();
     Recompiler(const Recompiler&) = delete;
     Recompiler& operator=(const Recompiler&) = delete;

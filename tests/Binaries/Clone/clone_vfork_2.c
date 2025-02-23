@@ -15,7 +15,7 @@ int main() {
     int pid = vfork();
     if (pid == 0) {
         // vfork process
-        exit(FELIX86_BTEST_SUCCESS);
+        _exit(FELIX86_BTEST_SUCCESS);
         perror("exit"); // Should never reach here
     }
 

@@ -2,8 +2,19 @@
 #include "felix86/common/state.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-ThreadState::ThreadState(ThreadState* copy_state) {
-    recompiler = std::make_unique<Recompiler>();
+ThreadState::ThreadState(ThreadState* copy_state, bool force_mode32) {
+    ASSERT_MSG(!force_mode32 || !copy_state, "force_mode32 shouldn't have a copy state");
+
+    bool mode32;
+    if (copy_state) {
+        // If this has a copy_state (is not the first process or execve) copy its mode32
+        mode32 = copy_state->mode32;
+    } else {
+        // Otherwise do whatever the bool tells us
+        mode32 = force_mode32;
+    }
+
+    recompiler = std::make_unique<Recompiler>(mode32);
 
     if (copy_state) {
         for (size_t i = 0; i < sizeof(this->gprs) / sizeof(this->gprs[0]); i++) {
@@ -29,6 +40,7 @@ ThreadState::ThreadState(ThreadState* copy_state) {
         this->gsbase = copy_state->gsbase;
 
         this->alt_stack = copy_state->alt_stack;
+        this->mode32 = copy_state->mode32;
     }
 
     this->compile_next_handler = recompiler->getCompileNext();
@@ -52,8 +64,8 @@ void ThreadState::InitializeKey() {
     }
 }
 
-ThreadState* ThreadState::Create(ThreadState* copy_state) {
-    ThreadState* state = new ThreadState(copy_state);
+ThreadState* ThreadState::Create(ThreadState* copy_state, bool force_mode32) {
+    ThreadState* state = new ThreadState(copy_state, force_mode32);
     auto lock = g_process_globals.states_lock.lock();
     g_process_globals.states.push_back(state);
     ASSERT(g_thread_state_key != (pthread_key_t)-1);

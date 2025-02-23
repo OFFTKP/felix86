@@ -559,6 +559,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
                     for (auto block : to_invalidate) {
                         thread_state->recompiler->invalidateBlock(block);
+                        flush_icache_global(block->address, block->address_end);
                     }
                 }
 

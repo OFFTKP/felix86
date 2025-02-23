@@ -1,5 +1,5 @@
-#include <biscuit/assert.hpp>
 #include <biscuit/assembler.hpp>
+#include <biscuit/assert.hpp>
 
 #include <array>
 #include <bit>
@@ -10,11 +10,9 @@
 
 namespace biscuit {
 
-Assembler::Assembler(size_t capacity)
-    : m_buffer(capacity) {}
+Assembler::Assembler(size_t capacity) : m_buffer(capacity) {}
 
-Assembler::Assembler(uint8_t* buffer, size_t capacity, ArchFeature features)
-    : m_buffer(buffer, capacity), m_features{features} {}
+Assembler::Assembler(uint8_t* buffer, size_t capacity, ArchFeature features) : m_buffer(buffer, capacity), m_features{features} {}
 
 Assembler::~Assembler() = default;
 
@@ -207,8 +205,7 @@ void Assembler::CALL(int32_t offset) noexcept {
     const auto needs_increment = (uimm & 0x800) != 0;
 
     // Sign-extend the lower portion if the MSB of it is set.
-    const auto new_lower = needs_increment ? static_cast<int32_t>(lower << 20) >> 20
-                                           : static_cast<int32_t>(lower);
+    const auto new_lower = needs_increment ? static_cast<int32_t>(lower << 20) >> 20 : static_cast<int32_t>(lower);
     const auto new_upper = needs_increment ? upper + 1 : upper;
 
     AUIPC(x1, static_cast<int32_t>(new_upper));
@@ -283,6 +280,10 @@ void Assembler::JALR(GPR rd, int32_t imm, GPR rs1) noexcept {
 
 void Assembler::JR(GPR rs) noexcept {
     JALR(x0, 0, rs);
+}
+
+void Assembler::JR(GPR rs, int32_t imm) noexcept {
+    JALR(x0, imm, rs);
 }
 
 void Assembler::LB(GPR rd, int32_t imm, GPR rs) noexcept {
@@ -1440,13 +1441,9 @@ ptrdiff_t Assembler::LinkAndGetOffset(Label* label) {
 
 void Assembler::ResolveLabelOffsets(Label* label) {
     // Conditional branch instructions make use of the B-type immediate encoding for offsets.
-    const auto is_b_type = [](uint32_t instruction) {
-        return (instruction & 0x7F) == 0b1100011;
-    };
+    const auto is_b_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b1100011; };
     // JAL makes use of the J-type immediate encoding for offsets.
-    const auto is_j_type = [](uint32_t instruction) {
-        return (instruction & 0x7F) == 0b1101111;
-    };
+    const auto is_j_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b1101111; };
     // C.BEQZ and C.BNEZ make use of this encoding type.
     const auto is_cb_type = [](uint32_t instruction) {
         const auto op = instruction & 0b11;
@@ -1510,13 +1507,9 @@ void Assembler::ResolveLabelOffsets(Label* label) {
 }
 
 void Assembler::ResolveLiteralOffsetsRaw(ptrdiff_t location, const std::set<ptrdiff_t>& offsets) {
-    const auto is_auipc_type = [](uint32_t instruction) {
-        return (instruction & 0x7F) == 0b0010111;
-    };
+    const auto is_auipc_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b0010111; };
 
-    const auto is_gpr_load_type = [](uint32_t instruction) {
-        return (instruction & 0x7F) == 0b0000011;
-    };
+    const auto is_gpr_load_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b0000011; };
 
     for (const auto offset : offsets) {
         const auto address = m_buffer.GetOffsetAddress(offset);

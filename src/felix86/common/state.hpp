@@ -81,7 +81,8 @@ struct XmmReg {
 static_assert(sizeof(XmmReg) == 16);
 
 struct ThreadState {
-    explicit ThreadState(ThreadState* state);
+    // force_mode32 is used when creating the first 32-bit state, as the default is 64-bit or copying whatever copy_state is
+    explicit ThreadState(ThreadState* copy_state, bool force_mode32);
 
     u64 gprs[16]{};
     u64 rip{};
@@ -124,6 +125,8 @@ struct ThreadState {
     u8 exit_reason{};
 
     u8 exit_code{}; // process exit code
+
+    bool mode32 = false; // 32-bit execution mode, changes the behavior of some instructions and the decoder
 
     std::array<u64, 16> saved_host_gprs;
 
@@ -241,7 +244,7 @@ struct ThreadState {
 
     static void InitializeKey();
 
-    static ThreadState* Create(ThreadState* copy_state = nullptr);
+    static ThreadState* Create(ThreadState* copy_state = nullptr, bool force_mode32 = false);
 
     static ThreadState* Get();
 };

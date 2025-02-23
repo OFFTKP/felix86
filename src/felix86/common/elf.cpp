@@ -61,16 +61,20 @@ void Elf::Load(const std::filesystem::path& path) {
 
     Elf64_Ehdr ehdr;
     ssize_t result = fread(&ehdr, sizeof(Elf64_Ehdr), 1, file);
+
     if (result != 1) {
         ERROR("Failed to read ELF header from file %s", path.c_str());
     }
+
+    // Check if it's a 32-bit executable
+    bit32 = ehdr.e_ident[4] == ELFCLASS32;
 
     if (ehdr.e_ident[0] != 0x7F || ehdr.e_ident[1] != 'E' || ehdr.e_ident[2] != 'L' || ehdr.e_ident[3] != 'F') {
         ERROR("File %s is not an ELF file", path.c_str());
     }
 
-    if (ehdr.e_ident[4] != ELFCLASS64) {
-        ERROR("File %s is not a 64-bit ELF file", path.c_str());
+    if (ehdr.e_ident[4] != ELFCLASS64 && ehdr.e_ident[4] != ELFCLASS32) {
+        ERROR("File %s is not a 64-bit or 32-bit ELF file", path.c_str());
     }
 
     if (ehdr.e_ident[5] != ELFDATA2LSB) {

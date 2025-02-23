@@ -189,8 +189,7 @@ void* Thunks::generateTrampoline(const std::string& signature, u64 target) {
         const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
         const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
         tas.AUIPC(t0, hi20);
-        tas.ADDI(t0, t0, lo12);
-        tas.JALR(t0);
+        tas.JALR(x1, lo12, t0);
     } else {
         tas.LI(t0, target);
         tas.JALR(t0);

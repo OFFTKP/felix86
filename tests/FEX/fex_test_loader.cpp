@@ -138,6 +138,12 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 #undef fill
     }
 
+    bool is_mode32 = false;
+    if (j.find("Mode") != j.end()) {
+        ASSERT(j["Mode"] == "32BIT");
+        is_mode32 = true;
+    }
+
     // 16 pages at 0xe000'0000
     memory_mappings.push_back({0xE000'0000, 16 * 4096});
 
@@ -169,6 +175,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
     TestConfig config = {};
     config.entrypoint = (void*)0x10'0000;
+    config.mode32 = is_mode32;
 
     emulator = std::make_unique<Emulator>(config);
     state = ThreadState::Get();

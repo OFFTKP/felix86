@@ -212,6 +212,13 @@ void flush_icache() {
 #endif
 }
 
+// Flush icache to other cores as well
+void flush_icache_global(void* start, void* end) {
+#if defined(__riscv)
+    __riscv_flush_icache(start, end, 0);
+#endif
+}
+
 int guest_breakpoint(const char* region, u64 address) {
     auto [start, end] = MemoryMetadata::GetRegionByName(region);
 

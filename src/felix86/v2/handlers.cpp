@@ -62,6 +62,26 @@ void SetCmpFlags(const HandlerMetadata& meta, Recompiler& rec, biscuit::GPR dst,
     }
 }
 
+int size_to_bytes(int size) {
+    switch (size) {
+    case 8: {
+        return 1;
+    }
+    case 16: {
+        return 2;
+    }
+    case 32: {
+        return 4;
+    }
+    case 64: {
+        return 8;
+    }
+    }
+
+    UNREACHABLE();
+    return 0;
+}
+
 enum CmpPredicate {
     EQ_OQ = 0x00,
     LT_OS = 0x01,
@@ -630,12 +650,21 @@ FAST_HANDLE(RET) {
 FAST_HANDLE(PUSH) {
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
-    int imm = instruction.operand_width == 16 ? -2 : -8;
+    int imm = -size_to_bytes(instruction.operand_width);
 
-    if (instruction.operand_width == 16) {
+    switch (instruction.operand_width) {
+    case 16: {
         AS.SH(src, imm, rsp);
-    } else {
+        break;
+    }
+    case 32: {
+        AS.SW(src, imm, rsp);
+        break;
+    }
+    case 64: {
         AS.SD(src, imm, rsp);
+        break;
+    }
     }
 
     AS.ADDI(rsp, rsp, imm);
@@ -646,13 +675,22 @@ FAST_HANDLE(POP) {
     biscuit::GPR result = rec.scratch();
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
 
-    if (instruction.operand_width == 16) {
+    switch (instruction.operand_width) {
+    case 16: {
         AS.LHU(result, 0, rsp);
-    } else {
+        break;
+    }
+    case 32: {
+        AS.LWU(result, 0, rsp);
+        break;
+    }
+    case 64: {
         AS.LD(result, 0, rsp);
+        break;
+    }
     }
 
-    int imm = instruction.operand_width == 16 ? 2 : 8;
+    int imm = size_to_bytes(instruction.operand_width);
     rec.setOperandGPR(&operands[0], result);
 
     x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);

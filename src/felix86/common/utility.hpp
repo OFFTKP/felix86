@@ -40,6 +40,8 @@ u64 sext_if_64(u64 value, u8 size_e);
 
 void flush_icache();
 
+void flush_icache_global(void* start, void* end);
+
 int guest_breakpoint(const char* name, u64 address);
 
 int clear_breakpoints();

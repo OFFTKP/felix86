@@ -229,6 +229,7 @@ public:
     void JALR(GPR rs) noexcept;
     void JALR(GPR rd, int32_t imm, GPR rs1) noexcept;
     void JR(GPR rs) noexcept;
+    void JR(GPR rs, int32_t imm) noexcept;
 
     void LB(GPR rd, int32_t imm, GPR rs) noexcept;
     void LBU(GPR rd, int32_t imm, GPR rs) noexcept;

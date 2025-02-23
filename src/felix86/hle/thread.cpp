@@ -34,7 +34,7 @@ void* pthread_handler(void* args) {
         finished = &copy_me->new_tid;
     }
 
-    ThreadState* state = ThreadState::Create(clone_args.parent_state);
+    ThreadState* state = ThreadState::Create(clone_args.parent_state, false);
 
     if (clone_args.flags & CLONE_SIGHAND) {
         // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
