@@ -229,6 +229,10 @@ void Elf::Load(const std::filesystem::path& path) {
         new (&phdrtable[i]) Elf_Phdr(bit32, file);
     }
 
+    for (int i = 0; i < ehdr.phnum(); i++) {
+        printf("%d: %d\n", i, phdrtable[i].type());
+    }
+
     for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
         Elf_Phdr& phdr = phdrtable[i];
         switch (phdr.type()) {
