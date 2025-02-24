@@ -28,8 +28,10 @@ struct Elf_Ehdr {
     Elf_Ehdr(bool mode32, FILE* file) : mode32(mode32) {
         size_t read;
         if (mode32) {
+            inner = Elf32_Ehdr{};
             read = fread(&inner32(), sizeof(Elf32_Ehdr), 1, file);
         } else {
+            inner = Elf64_Ehdr{};
             read = fread(&inner64(), sizeof(Elf64_Ehdr), 1, file);
         }
 
@@ -84,8 +86,10 @@ struct Elf_Phdr {
     Elf_Phdr(bool mode32, FILE* file) : mode32(mode32) {
         size_t read;
         if (mode32) {
+            inner = Elf32_Phdr{};
             read = fread(&inner32(), sizeof(Elf32_Phdr), 1, file);
         } else {
+            inner = Elf64_Phdr{};
             read = fread(&inner64(), sizeof(Elf64_Phdr), 1, file);
         }
 
