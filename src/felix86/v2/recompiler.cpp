@@ -361,6 +361,10 @@ biscuit::GPR Recompiler::scratch() {
     }
 }
 
+bool Recompiler::isScratch(biscuit::GPR reg) {
+    return reg == x1 || reg == x6 || reg == x28 || reg == x29 || reg == x30 || reg == x31;
+}
+
 biscuit::Vec Recompiler::scratchVec() {
     switch (vector_scratch_index++) {
     case 0:
@@ -1856,7 +1860,14 @@ biscuit::GPR Recompiler::getCond(int cond) {
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
     if (g_address_space_base) {
-        addi(address, address, g_address_space_base);
+        if (isScratch(address)) {
+            addi(address, address, g_address_space_base);
+        } else {
+            biscuit::GPR temp = scratch();
+            addi(temp, address, g_address_space_base);
+            address = temp;
+            popScratch();
+        }
     }
 
     switch (size) {
@@ -1885,7 +1896,14 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
     if (g_address_space_base) {
-        addi(address, address, g_address_space_base);
+        if (isScratch(address)) {
+            addi(address, address, g_address_space_base);
+        } else {
+            biscuit::GPR temp = scratch();
+            addi(temp, address, g_address_space_base);
+            address = temp;
+            popScratch();
+        }
     }
 
     switch (size) {

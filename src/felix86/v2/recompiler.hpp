@@ -62,6 +62,8 @@ struct Recompiler {
 
     biscuit::FPR scratchFPR();
 
+    bool isScratch(biscuit::GPR reg);
+
     void popScratch();
 
     void popScratchVec();
