@@ -580,17 +580,26 @@ FAST_HANDLE(CALL) {
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
+        // We might need to handle these specially when we get there
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            ASSERT(operands[0].reg.value != ZYDIS_REGISTER_RSP);
+        } else {
+            ASSERT(operands[0].mem.base != ZYDIS_REGISTER_RSP);
+            ASSERT(operands[0].mem.index != ZYDIS_REGISTER_RSP);
+        }
+
+        x86_size_e size = rec.getOperandSize(&operands[0]);
         biscuit::GPR scratch = rec.getRip();
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         rec.setRip(src);
-        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
-        AS.ADDI(rsp, rsp, -8);
-        rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
+        AS.ADDI(rsp, rsp, -rec.stackPointerSize());
+        rec.setRefGPR(X86_REF_RSP, size, rsp);
 
         u64 return_offset = meta.rip - meta.block_start + instruction.length;
         rec.addi(scratch, scratch, return_offset);
 
-        AS.SD(scratch, 0, rsp);
+        rec.writeMemory(scratch, rsp, 0, size);
 
         rec.writebackDirtyState();
         rec.pushCalltrace();
@@ -602,14 +611,15 @@ FAST_HANDLE(CALL) {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
         u64 return_offset = meta.rip - meta.block_start + instruction.length;
 
+        x86_size_e size = rec.getOperandSize(&operands[0]);
         biscuit::GPR scratch = rec.getRip();
-        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
-        AS.ADDI(rsp, rsp, -8);
-        rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
+        AS.ADDI(rsp, rsp, -rec.stackPointerSize());
+        rec.setRefGPR(X86_REF_RSP, size, rsp);
 
         rec.addi(scratch, scratch, return_offset);
 
-        AS.SD(scratch, 0, rsp);
+        rec.writeMemory(scratch, rsp, 0, size);
 
         rec.addi(scratch, scratch, displacement);
 
@@ -628,18 +638,19 @@ FAST_HANDLE(CALL) {
 }
 
 FAST_HANDLE(RET) {
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
     biscuit::GPR scratch = rec.scratch();
     AS.LD(scratch, 0, rsp);
 
-    u64 imm = 8;
+    u64 imm = rec.stackPointerSize();
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
         imm += rec.getImmediate(&operands[0]);
     }
 
     rec.addi(rsp, rsp, imm);
 
-    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+    rec.setRefGPR(X86_REF_RSP, size, rsp);
     rec.setRip(scratch);
     rec.writebackDirtyState();
     rec.popCalltrace();
@@ -648,47 +659,22 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(PUSH) {
+    x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
     int imm = -size_to_bytes(instruction.operand_width);
-
-    switch (instruction.operand_width) {
-    case 16: {
-        AS.SH(src, imm, rsp);
-        break;
-    }
-    case 32: {
-        AS.SW(src, imm, rsp);
-        break;
-    }
-    case 64: {
-        AS.SD(src, imm, rsp);
-        break;
-    }
-    }
+    rec.writeMemory(src, rsp, imm, rec.zydisToSize(instruction.operand_width));
 
     AS.ADDI(rsp, rsp, imm);
-    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+    rec.setRefGPR(X86_REF_RSP, size, rsp);
 }
 
 FAST_HANDLE(POP) {
+    x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
 
-    switch (instruction.operand_width) {
-    case 16: {
-        AS.LHU(result, 0, rsp);
-        break;
-    }
-    case 32: {
-        AS.LWU(result, 0, rsp);
-        break;
-    }
-    case 64: {
-        AS.LD(result, 0, rsp);
-        break;
-    }
-    }
+    rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
 
     int imm = size_to_bytes(instruction.operand_width);
     rec.setOperandGPR(&operands[0], result);
@@ -696,10 +682,10 @@ FAST_HANDLE(POP) {
     x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
     if (ref == X86_REF_RSP) {
         // pop rsp special case
-        rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, result);
+        rec.setRefGPR(X86_REF_RSP, size, result);
     } else {
         AS.ADDI(rsp, rsp, imm);
-        rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+        rec.setRefGPR(X86_REF_RSP, size, rsp);
     }
 }
 
@@ -5936,7 +5922,7 @@ FAST_HANDLE(PUSHFQ) {
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
     AS.ADDI(rsp, rsp, -8);
     rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
-    AS.SD(src, 0, rsp);
+    rec.writeMemory(src, rsp, 0, X86_SIZE_QWORD);
 }
 
 FAST_HANDLE(POPFQ) {

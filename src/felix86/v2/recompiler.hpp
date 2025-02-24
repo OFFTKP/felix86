@@ -360,6 +360,10 @@ struct Recompiler {
 
     void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
+    u8 stackPointerSize() {
+        return g_mode32 ? 4 : 8;
+    }
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

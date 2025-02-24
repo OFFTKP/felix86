@@ -949,7 +949,7 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     }
     case X86_SIZE_DWORD: {
         biscuit::GPR dest = allocatedGPR(ref); // don't need to load as the entire register is overwritten
-        if (Extensions::B) {
+        if (Extensions::B) {                   // TODO: in 32-bit mode we prob don't need to zero extend and we can do the same as 64-bit movs
             as.ZEXTW(dest, reg);
         } else {
             as.SLLI(dest, reg, 32);
