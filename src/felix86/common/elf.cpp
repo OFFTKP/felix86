@@ -292,7 +292,7 @@ void Elf::Load(const std::filesystem::path& path) {
             base_hint = 0x2000000 + g_address_space_base;
         }
 
-        // In 32-bit mode we are using MAP_FIXED
+        // In 32-bit mode the 4GiB address space was already allocated at these addresses so we use MAP_FIXED instead of NOREPLACE
         auto fixed_flag = mode32 ? MAP_FIXED : MAP_FIXED_NOREPLACE;
         if (base_hint) {
             base_ptr = (u8*)mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | fixed_flag, -1, 0);
@@ -300,7 +300,8 @@ void Elf::Load(const std::filesystem::path& path) {
             base_ptr = (u8*)mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         }
     } else {
-        base_ptr = 0;
+        // Start at the address space base. 0 in 64-bit, some address in 32-bit mode.
+        base_ptr = (u8*)g_address_space_base;
     }
 
     if (base_ptr == MAP_FAILED) {
