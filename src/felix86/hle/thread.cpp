@@ -284,6 +284,10 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     max_stack_size &= ~0xFFF; // Make sure we are aligned
 
+    // If mode32 is on, we already reserved a mapping with FIXED_NORESERVE, so we don't wanna
+    //  pass NORESERVE in stack allocation as it would just fail.
+    int fixed_flag = mode32 ? MAP_FIXED : MAP_FIXED_NOREPLACE;
+
     u64 stack_hint;
     if (mode32) {
         stack_hint = g_address_space_base + 0x7FFF'F000 - max_stack_size;
@@ -299,8 +303,8 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
-        base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE,
-                         MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+        base =
+            (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | fixed_flag | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
         if (base != MAP_FAILED) {
             break;
         }
