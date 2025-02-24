@@ -575,63 +575,80 @@ FAST_HANDLE(HLT) {
     rec.backToDispatcher();
     rec.stopCompiling();
 }
-
 FAST_HANDLE(CALL) {
-    switch (operands[0].type) {
-    case ZYDIS_OPERAND_TYPE_REGISTER:
-    case ZYDIS_OPERAND_TYPE_MEMORY: {
-        // We might need to handle these specially when we get there
-        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            ASSERT(operands[0].reg.value != ZYDIS_REGISTER_RSP);
-        } else {
-            ASSERT(operands[0].mem.base != ZYDIS_REGISTER_RSP);
-            ASSERT(operands[0].mem.index != ZYDIS_REGISTER_RSP);
-        }
 
-        x86_size_e size = rec.getOperandSize(&operands[0]);
+    switch (operands[0].type) {
+
+    case ZYDIS_OPERAND_TYPE_REGISTER:
+
+    case ZYDIS_OPERAND_TYPE_MEMORY: {
+
         biscuit::GPR scratch = rec.getRip();
+
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
+
         rec.setRip(src);
-        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
-        AS.ADDI(rsp, rsp, -rec.stackPointerSize());
-        rec.setRefGPR(X86_REF_RSP, size, rsp);
+
+        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+
+        AS.ADDI(rsp, rsp, -8);
+
+        rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
 
         u64 return_offset = meta.rip - meta.block_start + instruction.length;
+
         rec.addi(scratch, scratch, return_offset);
 
-        rec.writeMemory(scratch, rsp, 0, size);
+        AS.SD(scratch, 0, rsp);
 
         rec.writebackDirtyState();
+
         rec.pushCalltrace();
+
         rec.backToDispatcher();
+
         rec.stopCompiling();
+
         break;
     }
+
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
+
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
+
         u64 return_offset = meta.rip - meta.block_start + instruction.length;
 
-        x86_size_e size = rec.getOperandSize(&operands[0]);
         biscuit::GPR scratch = rec.getRip();
-        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
-        AS.ADDI(rsp, rsp, -rec.stackPointerSize());
-        rec.setRefGPR(X86_REF_RSP, size, rsp);
+
+        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+
+        AS.ADDI(rsp, rsp, -8);
+
+        rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
 
         rec.addi(scratch, scratch, return_offset);
 
-        rec.writeMemory(scratch, rsp, 0, size);
+        AS.SD(scratch, 0, rsp);
 
         rec.addi(scratch, scratch, displacement);
 
         rec.setRip(scratch);
+
         rec.writebackDirtyState();
+
         rec.pushCalltrace();
+
         rec.jumpAndLink(meta.rip + instruction.length + displacement);
+
         rec.stopCompiling();
+
         break;
     }
+
     default: {
+
         UNREACHABLE();
+
         break;
     }
     }
