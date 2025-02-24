@@ -5,6 +5,7 @@
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 #include <sys/random.h>
 #include "felix86/emulator.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -35,6 +36,20 @@ typedef struct {
         void (*a_fnc)();
     } a_un;
 } auxv_t;
+
+Emulator::Emulator(const Config& config) : config(config) {
+    g_emulator = this;
+    fs.LoadExecutable(config.executable_path);
+    auto main_state = ThreadState::Create(nullptr);
+    VERBOSE("Created thread state with tid %ld", main_state->tid);
+    setupMainStack(main_state);
+    main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
+    main_state->SetRip((u64)fs.GetEntrypoint());
+
+    if (g_mode32) {
+        initialize32BitAddressSpace();
+    }
+}
 
 void Emulator::Run() {
     VERBOSE("Executable: %016lx - %016lx", g_executable_start, g_executable_end);
@@ -258,4 +273,31 @@ void Emulator::CleanExit(ThreadState* state) {
 
 void Emulator::UnlinkBlock(ThreadState* state, u64 rip) {
     state->recompiler->unlinkBlock(state, rip);
+}
+
+void Emulator::initialize32BitAddressSpace() {
+    constexpr u64 GB = 1024 * 1024 * 1024;
+    constexpr u64 size = 2 * GB + 4 * GB + 2 * GB;
+
+    // Find a 32-bit address space that is not used by the host
+    // We also allocate a guard on either side of 2GB to catch
+    // any out-of-bounds accesses
+    u8* cur = (u8*)0x1'0000'0000;
+    int attempts = 0; // don't try forever
+    while (true) {
+        void* addr = mmap(cur, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
+        if (addr != MAP_FAILED) {
+            ASSERT(addr == cur);
+            break;
+        }
+
+        if (++attempts >= 100) {
+            ERROR("Failed to find a 32-bit address space after %d", attempts);
+            return;
+        }
+
+        cur += size;
+    }
+
+    g_address_space_base = (u64)(cur + 2 * GB);
 }

@@ -46,14 +46,9 @@ struct Elf {
         return phent;
     }
 
-    bool Is32Bit() const {
-        return bit32;
-    }
-
 private:
     bool ok = false;
     bool is_interpreter = false;
-    bool bit32 = false;
     u64 entry = 0;
     std::filesystem::path interpreter{};
     u8* stack_pointer = nullptr;

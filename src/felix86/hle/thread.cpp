@@ -266,7 +266,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
     return result;
 }
 
-std::pair<u8*, size_t> Threads::AllocateStack(size_t size) {
+std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     struct rlimit stack_limit = {0};
     if (getrlimit(RLIMIT_STACK, &stack_limit) == -1) {
         ERROR("Failed to get stack size limit");
@@ -277,17 +277,36 @@ std::pair<u8*, size_t> Threads::AllocateStack(size_t size) {
         stack_size = 8 * 1024 * 1024;
     }
 
-    u64 max_stack_size = size == 0 ? stack_limit.rlim_max : size;
+    u64 max_stack_size = stack_limit.rlim_max;
     if (max_stack_size == RLIM_INFINITY) {
         max_stack_size = 128 * 1024 * 1024;
     }
 
-    u64 stack_hint = 0x7FFFFFFFF000 - max_stack_size;
+    max_stack_size &= ~0xFFF; // Make sure we are aligned
 
-    u8* base =
-        (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
-    if (base == MAP_FAILED) {
-        ERROR("Failed to allocate stack");
+    u64 stack_hint;
+    if (mode32) {
+        stack_hint = 0x7FFF'F000 - max_stack_size;
+    } else {
+        stack_hint = 0x7FFF'FFFF'F000 - max_stack_size;
+    }
+
+    u8* base;
+    int attempts = 0;
+    int max_attempts = 14;
+
+    while (true) {
+        base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE,
+                         MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+        if (base != MAP_FAILED) {
+            break;
+        }
+
+        stack_hint -= max_stack_size;
+
+        if (attempts++ >= max_attempts) {
+            ERROR("Failed to allocate stack, ran out of attempts");
+        }
     }
 
     u8* stack_pointer = (u8*)mmap(base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
@@ -295,6 +314,11 @@ std::pair<u8*, size_t> Threads::AllocateStack(size_t size) {
     if (stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack");
     }
+
+    if (mode32) {
+        ASSERT((u64)stack_pointer < 0x8000'0000);
+    }
+
     VERBOSE("Allocated stack at %p", base);
     stack_pointer += stack_size;
     VERBOSE("Stack pointer at %p", stack_pointer);

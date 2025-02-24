@@ -32,3 +32,5 @@ static_assert(match_host(felix86_x86_64_setxattr) == felix86_riscv64_setxattr);
 struct ThreadState;
 
 void felix86_syscall(ThreadState* state);
+
+void felix86_syscall_32(ThreadState* state);

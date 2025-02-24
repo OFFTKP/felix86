@@ -18,23 +18,19 @@ struct TestConfig {
 };
 
 struct Emulator {
-    Emulator(const Config& config) : config(config) {
-        g_emulator = this;
-        fs.LoadExecutable(config.executable_path);
-        bool mode32 = fs.IsExecutable32Bit();
-        auto main_state = ThreadState::Create(nullptr, mode32);
-        VERBOSE("Created thread state with tid %ld", main_state->tid);
-        setupMainStack(main_state);
-        main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
-        main_state->SetRip((u64)fs.GetEntrypoint());
-    }
+    Emulator(const Config& config);
 
     Emulator(const TestConfig& config) {
         g_emulator = this;
-        auto main_state = ThreadState::Create(nullptr, config.mode32);
+        g_mode32 = config.mode32;
+        auto main_state = ThreadState::Create(nullptr);
         VERBOSE("Created thread state with tid %ld", main_state->tid);
         main_state->SetRip((u64)config.entrypoint);
         testing = true;
+
+        if (g_mode32) {
+            initialize32BitAddressSpace();
+        }
     }
 
     ~Emulator() = default;
@@ -63,6 +59,8 @@ struct Emulator {
 
 private:
     void setupMainStack(ThreadState* state);
+
+    void initialize32BitAddressSpace();
 
     Config config;
     Filesystem fs;

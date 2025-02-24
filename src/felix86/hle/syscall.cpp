@@ -197,14 +197,14 @@ void felix86_syscall(ThreadState* state) {
     switch (syscall_number) {
     case felix86_x86_64_brk: {
         if (rdi == 0) {
-            result = g_current_brk;
+            result = g_current_brk - g_address_space_base;
         } else {
-            g_current_brk = rdi;
+            g_current_brk = rdi + g_address_space_base;
             result = rdi;
         }
 
-        if (result > g_initial_brk + g_current_brk_size) {
-            u64 new_size = (result - g_initial_brk) * 2;
+        if (g_current_brk > g_initial_brk + g_current_brk_size) {
+            u64 new_size = (g_current_brk - g_initial_brk) * 2;
             void* new_map = mremap((void*)g_initial_brk, brk_size, new_size, 0);
             if ((u64)new_map != g_initial_brk) {
                 ERROR("Failed to remap brk with new size: %lx", new_size);
@@ -212,6 +212,11 @@ void felix86_syscall(ThreadState* state) {
             WARN("Resized BRK to %lx", new_size);
             g_current_brk_size = new_size;
         }
+
+        if (g_address_space_base) {
+            ASSERT(g_current_brk >= g_address_space_base && g_current_brk <= g_address_space_base + UINT32_MAX);
+        }
+
         STRACE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;
     }

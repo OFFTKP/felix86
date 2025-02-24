@@ -43,7 +43,7 @@ struct BlockMetadata {
 };
 
 struct Recompiler {
-    explicit Recompiler(bool mode32);
+    explicit Recompiler();
     ~Recompiler();
     Recompiler(const Recompiler&) = delete;
     Recompiler& operator=(const Recompiler&) = delete;
@@ -327,7 +327,11 @@ struct Recompiler {
 
     bool isGPR(ZydisRegister reg);
 
-    BlockMetadata& getBlockMetadata(u64 rip);
+    BlockMetadata& getBlockMetadata(u64 rip) {
+        rip += g_address_space_base;
+        ASSERT(block_metadata.find(rip) != block_metadata.end());
+        return block_metadata[rip];
+    }
 
     void vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask = VecMask::No);
 

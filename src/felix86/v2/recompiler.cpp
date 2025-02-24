@@ -44,7 +44,7 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     }
 }
 
-Recompiler::Recompiler(bool mode32) : code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
+Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
     for (int i = 0; i < 16; i++) {
         metadata[i].reg = (x86_ref_e)(X86_REF_RAX + i);
         metadata[i + 16 + 5].reg = (x86_ref_e)(X86_REF_XMM0 + i);
@@ -59,8 +59,8 @@ Recompiler::Recompiler(bool mode32) : code_cache(allocateCodeCache()), as(code_c
     emitDispatcher();
     emitSigreturnThunk();
 
-    ZydisMachineMode mode = mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
-    ZydisStackWidth stack_width = mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
+    ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+    ZydisStackWidth stack_width = g_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
 
     ZydisDecoderInit(&decoder, mode, stack_width);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
@@ -113,7 +113,7 @@ void* Recompiler::emitSigreturnThunk() {
     // This piece of code is responsible for moving the thread state pointer to the right place (so we don't have to find it using tid)
     // calling sigreturn, returning and going back to the dispatcher.
     void* here = as.GetCursorPointer();
-    block_metadata[Signals::magicSigreturnAddress()].address = here;
+    getBlockMetadata(Signals::magicSigreturnAddress()).address = here;
 
     as.MV(a0, threadStatePointer());
     as.LI(t0, (u64)Signals::sigreturn);
@@ -144,7 +144,7 @@ void* Recompiler::compile(u64 rip) {
     void* start = as.GetCursorPointer();
 
     // Map it immediately so we can optimize conditional branch to self
-    block_metadata[rip].address = start;
+    getBlockMetadata(rip).address = start;
 
     // A sequence of code. This is so that we can also call it recursively later.
     u64 end_rip = compileSequence(rip);
@@ -178,7 +178,7 @@ void* Recompiler::getCompiledBlock(u64 rip) {
         if (entry.guest == rip) {
             return (void*)entry.host;
         } else if (blockExists(rip)) {
-            u64 host = (u64)block_metadata[rip].address;
+            u64 host = (u64)getBlockMetadata(rip).address;
             entry.guest = rip;
             entry.host = host;
             return (void*)host;
@@ -187,7 +187,7 @@ void* Recompiler::getCompiledBlock(u64 rip) {
         }
     } else {
         if (blockExists(rip)) {
-            return block_metadata[rip].address;
+            return getBlockMetadata(rip).address;
         } else {
             return compile(rip);
         }
@@ -201,7 +201,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     compiling = true;
     scanFlagUsageAhead(rip);
     HandlerMetadata meta = {rip, rip};
-    BlockMetadata& block_meta = block_metadata[rip];
+    BlockMetadata& block_meta = getBlockMetadata(rip);
 
     current_meta = &meta;
     current_block_metadata = &block_meta;
@@ -711,9 +711,7 @@ biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR address = lea(operand);
-
         readMemory(address, address, 0, zydisToSize(operand->size));
-
         return address;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -737,6 +735,10 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR address = lea(operand);
         biscuit::Vec vec = scratchVec();
+
+        if (g_address_space_base) {
+            addi(address, address, g_address_space_base);
+        }
 
         switch (operand->size) {
         case 8: {
@@ -996,29 +998,7 @@ void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR address = lea(operand);
-
-        switch (operand->size) {
-        case 8: {
-            as.SB(reg, 0, address);
-            break;
-        }
-        case 16: {
-            as.SH(reg, 0, address);
-            break;
-        }
-        case 32: {
-            as.SW(reg, 0, address);
-            break;
-        }
-        case 64: {
-            as.SD(reg, 0, address);
-            break;
-        }
-        default: {
-            UNREACHABLE();
-            break;
-        }
-        }
+        writeMemory(reg, address, 0, zydisToSize(operand->size));
         break;
     }
     default: {
@@ -1036,6 +1016,11 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR address = lea(operand);
+
+        if (g_address_space_base) {
+            addi(address, address, g_address_space_base);
+        }
+
         switch (operand->size) {
         case 128: {
             if (g_paranoid) { // don't patch vector accesses in paranoid mode
@@ -1621,9 +1606,9 @@ void Recompiler::jumpAndLink(u64 rip) {
         u8* link_me = as.GetCursorPointer();
         backToDispatcher();
 
-        block_metadata[rip].pending_links.push_back(link_me);
+        getBlockMetadata(rip).pending_links.push_back(link_me);
     } else {
-        auto& target_meta = block_metadata[rip];
+        auto& target_meta = getBlockMetadata(rip);
         u64 target = (u64)target_meta.address;
         u64 offset = target - (u64)as.GetCursorPointer();
 
@@ -1660,7 +1645,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr
     bool ok = false;
     if (blockExists(rip_true)) {
         // The -4 is due to the setRip emitting an SD instruction
-        auto offset_true = (u64)block_metadata[rip_true].address - (u64)as.GetCursorPointer() - 4;
+        auto offset_true = (u64)getBlockMetadata(rip_true).address - (u64)as.GetCursorPointer() - 4;
         if (IsValidBTypeImm(offset_true)) {
             setRip(gpr_true);
             as.BNEZ(condition, offset_true);
@@ -1668,7 +1653,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr
             jumpAndLink(rip_false);
             ok = true;
         } else if (blockExists(rip_false)) {
-            auto offset_false = (u64)block_metadata[rip_false].address - (u64)as.GetCursorPointer() - 4;
+            auto offset_false = (u64)getBlockMetadata(rip_false).address - (u64)as.GetCursorPointer() - 4;
             if (IsValidBTypeImm(offset_false)) {
                 setRip(gpr_false);
                 as.BEQZ(condition, offset_false);
@@ -1678,7 +1663,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr
             }
         }
     } else if (blockExists(rip_false)) {
-        auto offset_false = (u64)block_metadata[rip_false].address - (u64)as.GetCursorPointer() - 4;
+        auto offset_false = (u64)getBlockMetadata(rip_false).address - (u64)as.GetCursorPointer() - 4;
         if (IsValidBTypeImm(offset_false)) {
             setRip(gpr_false);
             as.BEQZ(condition, offset_false);
@@ -1711,7 +1696,7 @@ void Recompiler::expirePendingLinks(u64 rip) {
         return;
     }
 
-    auto& block_meta = block_metadata[rip];
+    auto& block_meta = getBlockMetadata(rip);
     auto& pending_links = block_meta.pending_links;
     for (u8* link : pending_links) {
         u8* cursor = as.GetCursorPointer();
@@ -1867,6 +1852,10 @@ biscuit::GPR Recompiler::getCond(int cond) {
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
+    if (g_address_space_base) {
+        addi(address, address, g_address_space_base);
+    }
+
     switch (size) {
     case X86_SIZE_BYTE: {
         as.LBU(dest, offset, address);
@@ -1892,6 +1881,10 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
 }
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
+    if (g_address_space_base) {
+        addi(address, address, g_address_space_base);
+    }
+
     switch (size) {
     case X86_SIZE_BYTE: {
         as.SB(src, offset, address);
@@ -1987,13 +1980,8 @@ void Recompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
     }
 }
 
-BlockMetadata& Recompiler::getBlockMetadata(u64 rip) {
-    ASSERT(block_metadata.find(rip) != block_metadata.end());
-    return block_metadata[rip];
-}
-
 bool Recompiler::blockExists(u64 rip) {
-    return block_metadata[rip].address != nullptr;
+    return getBlockMetadata(rip).address != nullptr;
 }
 
 void Recompiler::vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask) {

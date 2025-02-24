@@ -181,11 +181,17 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     // Check if it's a 32-bit executable
-    bit32 = e_ident[4] == ELFCLASS32;
+    bool mode32 = e_ident[4] == ELFCLASS32;
+    if (!mode32) {
+        // Make sure it was already false and we didn't somehow
+        // load a 64-bit ELF after a 32-bit one
+        ASSERT(g_mode32 == false);
+    }
+    g_mode32 = mode32;
 
     // Go back to start to read the full header
     fseek(file, 0, SEEK_SET);
-    Elf_Ehdr ehdr(bit32, file);
+    Elf_Ehdr ehdr(mode32, file);
 
     if (e_ident[0] != 0x7F || e_ident[1] != 'E' || e_ident[2] != 'L' || e_ident[3] != 'F') {
         ERROR("File %s is not an ELF file", path.c_str());
@@ -230,7 +236,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
     entry = ehdr.entry();
 
-    u64 expected_phentsize = bit32 ? sizeof(Elf32_Phdr) : sizeof(Elf64_Phdr);
+    u64 expected_phentsize = mode32 ? sizeof(Elf32_Phdr) : sizeof(Elf64_Phdr);
     if (ehdr.phentsize() != expected_phentsize) {
         ERROR("File %s has an invalid program header size: %d", path.c_str(), (int)ehdr.phentsize());
     }
@@ -240,7 +246,7 @@ void Elf::Load(const std::filesystem::path& path) {
     fseek(file, ehdr.phoff(), SEEK_SET);
     for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
         // Placement new to run the constructor
-        new (&phdrtable[i]) Elf_Phdr(bit32, file);
+        new (&phdrtable[i]) Elf_Phdr(mode32, file);
     }
 
     for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
@@ -283,8 +289,9 @@ void Elf::Load(const std::filesystem::path& path) {
 
     VERBOSE("Highest vaddr: %lx", highest_vaddr);
 
-    // TODO: this allocates it twice interpreter and executable, fix me.
-    stack_pointer = (u8*)Threads::AllocateStack().first;
+    if (!is_interpreter) {
+        stack_pointer = (u8*)Threads::AllocateStack(mode32).first;
+    }
 
     u8* base_ptr;
     u64 base_hint = is_interpreter ? g_interpreter_base_hint : g_executable_base_hint;
@@ -294,16 +301,18 @@ void Elf::Load(const std::filesystem::path& path) {
 
     if (ehdr.type() == ET_DYN) {
         // TODO: fix this hack
-        if (bit32 && !is_interpreter) {
+        if (mode32 && !is_interpreter) {
             WARN("Setting base hint to 0x100000");
             base_hint = 0x100000;
-        } else if (bit32 && is_interpreter) {
+        } else if (mode32 && is_interpreter) {
             WARN("Setting base hint to 0x2000000");
             base_hint = 0x2000000;
         }
 
+        // In 32-bit mode we are using MAP_FIXED
+        auto fixed_flag = mode32 ? MAP_FIXED : MAP_FIXED_NOREPLACE;
         if (base_hint) {
-            base_ptr = (u8*)mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+            base_ptr = (u8*)mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | fixed_flag, -1, 0);
         } else {
             base_ptr = (u8*)mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         }

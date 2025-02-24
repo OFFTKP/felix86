@@ -82,7 +82,7 @@ static_assert(sizeof(XmmReg) == 16);
 
 struct ThreadState {
     // force_mode32 is used when creating the first 32-bit state, as the default is 64-bit or copying whatever copy_state is
-    explicit ThreadState(ThreadState* copy_state, bool force_mode32);
+    explicit ThreadState(ThreadState* copy_state);
 
     u64 gprs[16]{};
     u64 rip{};
@@ -244,7 +244,7 @@ struct ThreadState {
 
     static void InitializeKey();
 
-    static ThreadState* Create(ThreadState* copy_state = nullptr, bool force_mode32 = false);
+    static ThreadState* Create(ThreadState* copy_state = nullptr);
 
     static ThreadState* Get();
 };
