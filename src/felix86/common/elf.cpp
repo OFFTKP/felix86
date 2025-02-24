@@ -28,9 +28,9 @@ struct Elf_Ehdr {
     Elf_Ehdr(bool mode32, FILE* file) : mode32(mode32) {
         size_t read;
         if (mode32) {
-            read = fread(&inner32(), sizeof(Elf32_Phdr), 1, file);
+            read = fread(&inner32(), sizeof(Elf32_Ehdr), 1, file);
         } else {
-            read = fread(&inner64(), sizeof(Elf64_Phdr), 1, file);
+            read = fread(&inner64(), sizeof(Elf64_Ehdr), 1, file);
         }
 
         if (read != 1) {
@@ -237,10 +237,6 @@ void Elf::Load(const std::filesystem::path& path) {
     for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
         // Placement new to run the constructor
         new (&phdrtable[i]) Elf_Phdr(bit32, file);
-    }
-
-    for (int i = 0; i < ehdr.phnum(); i++) {
-        printf("%d: %d\n", i, phdrtable[i].type());
     }
 
     for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
