@@ -23,6 +23,94 @@
 #define PAGE_OFFSET(x) ((x) & 4095)
 #define PAGE_ALIGN(x) (((x) + 4095) & ~(uintptr_t)(4095))
 
+struct Elf_Ehdr {
+    Elf_Ehdr(bool mode32, FILE* file) : mode32(mode32) {
+        if (mode32) {
+            fread(&inner.e32, sizeof(Elf32_Phdr), 1, file);
+        } else {
+            fread(&inner.e64, sizeof(Elf64_Phdr), 1, file);
+        }
+    }
+
+    u64 version() {
+        return mode32 ? inner.e32.e_version : inner.e64.e_version;
+    }
+
+    u64 machine() {
+        return mode32 ? inner.e32.e_machine : inner.e64.e_machine;
+    }
+
+    u64 entry() {
+        return mode32 ? inner.e32.e_entry : inner.e64.e_entry;
+    }
+
+    u64 type() {
+        return mode32 ? inner.e32.e_type : inner.e64.e_type;
+    }
+
+    u64 phoff() {
+        return mode32 ? inner.e32.e_phoff : inner.e64.e_phoff;
+    }
+
+    u64 phnum() {
+        return mode32 ? inner.e32.e_phnum : inner.e64.e_phnum;
+    }
+
+    u64 phentsize() {
+        return mode32 ? inner.e32.e_phentsize : inner.e64.e_phentsize;
+    }
+
+private:
+    bool mode32;
+
+    union {
+        Elf64_Ehdr e64;
+        Elf32_Ehdr e32;
+    } inner;
+};
+
+struct Elf_Phdr {
+    Elf_Phdr(bool mode32, FILE* file) : mode32(mode32) {
+        if (mode32) {
+            fread(&inner.e32, sizeof(Elf32_Phdr), 1, file);
+        } else {
+            fread(&inner.e64, sizeof(Elf64_Phdr), 1, file);
+        }
+    }
+
+    u64 type() {
+        return mode32 ? inner.e32.p_type : inner.e64.p_type;
+    }
+
+    u64 flags() {
+        return mode32 ? inner.e32.p_flags : inner.e64.p_flags;
+    }
+
+    u64 offset() {
+        return mode32 ? inner.e32.p_offset : inner.e64.p_offset;
+    }
+
+    u64 vaddr() {
+        return mode32 ? inner.e32.p_vaddr : inner.e64.p_vaddr;
+    }
+
+    u64 filesz() {
+        return mode32 ? inner.e32.p_filesz : inner.e64.p_filesz;
+    }
+
+    u64 memsz() {
+        return mode32 ? inner.e32.p_memsz : inner.e64.p_memsz;
+    }
+
+private:
+    bool mode32;
+
+    union {
+        Elf64_Phdr e64;
+        Elf32_Phdr e32;
+    } inner;
+};
+
 Elf::Elf(bool is_interpreter) : is_interpreter(is_interpreter) {}
 
 Elf::~Elf() {
@@ -59,49 +147,50 @@ void Elf::Load(const std::filesystem::path& path) {
     }
     fseek(file, 0, SEEK_SET);
 
-    Elf64_Ehdr ehdr;
-    ssize_t result = fread(&ehdr, sizeof(Elf64_Ehdr), 1, file);
+    // Peek the header to find out if we're 32-bit or 64-bit
+    u8 e_ident[EI_NIDENT];
+    ssize_t result = fread(&e_ident, EI_NIDENT, sizeof(u8), file);
 
     if (result != 1) {
         ERROR("Failed to read ELF header from file %s", path.c_str());
     }
 
     // Check if it's a 32-bit executable
-    bit32 = ehdr.e_ident[4] == ELFCLASS32;
+    bit32 = e_ident[4] == ELFCLASS32;
 
-    if (ehdr.e_ident[0] != 0x7F || ehdr.e_ident[1] != 'E' || ehdr.e_ident[2] != 'L' || ehdr.e_ident[3] != 'F') {
+    // Go back to start to read the full header
+    fseek(file, 0, SEEK_SET);
+    Elf_Ehdr ehdr(bit32, file);
+
+    if (e_ident[0] != 0x7F || e_ident[1] != 'E' || e_ident[2] != 'L' || e_ident[3] != 'F') {
         ERROR("File %s is not an ELF file", path.c_str());
     }
 
-    if (ehdr.e_ident[4] != ELFCLASS64 && ehdr.e_ident[4] != ELFCLASS32) {
+    if (e_ident[4] != ELFCLASS64 && e_ident[4] != ELFCLASS32) {
         ERROR("File %s is not a 64-bit or 32-bit ELF file", path.c_str());
     }
 
-    if (ehdr.e_ident[5] != ELFDATA2LSB) {
+    if (e_ident[5] != ELFDATA2LSB) {
         ERROR("File %s is not a little-endian ELF file", path.c_str());
     }
 
-    if (ehdr.e_ident[6] != 1 || ehdr.e_version != 1) {
+    if (e_ident[6] != 1 || ehdr.version() != 1) {
         ERROR("File %s has an invalid version", path.c_str());
     }
 
-    if (ehdr.e_type != ET_EXEC && ehdr.e_type != ET_DYN) {
-        ERROR("File %s is not an executable or shared object", path.c_str());
-    }
-
-    if (ehdr.e_machine != EM_X86_64 && ehdr.e_machine != EM_386) {
+    if (ehdr.machine() != EM_X86_64 && ehdr.machine() != EM_386) {
         ERROR("File %s is not an x86 or x86_64 ELF file", path.c_str());
     }
 
-    if (ehdr.e_entry == 0 && ehdr.e_type == ET_EXEC) {
+    if (ehdr.entry() == 0 && ehdr.type() == ET_EXEC) {
         ERROR("File %s is an executable but has no entry point", path.c_str());
     }
 
-    if (ehdr.e_phoff == 0) {
+    if (ehdr.phoff() == 0) {
         ERROR("File %s has no program header table, thus has no loadable segments", path.c_str());
     }
 
-    if (ehdr.e_phnum == 0xFFFF) {
+    if (ehdr.phnum() == 0xFFFF) {
         ERROR("If the number of program headers is greater than or equal to PN_XNUM "
               "(0xffff) "
               "this member has the value PN_XNUM (0xffff). The actual number of "
@@ -110,28 +199,34 @@ void Elf::Load(const std::filesystem::path& path) {
               "header at index 0");
     }
 
-    entry = ehdr.e_entry;
-
-    if (ehdr.e_phentsize != sizeof(Elf64_Phdr)) {
-        ERROR("File %s has an invalid program header size", path.c_str());
+    if (ehdr.type() != ET_EXEC && ehdr.type() != ET_DYN) {
+        ERROR("File %s is not an executable or shared object", path.c_str());
     }
 
-    std::vector<Elf64_Phdr> phdrtable(ehdr.e_phnum);
-    fseek(file, ehdr.e_phoff, SEEK_SET);
-    result = fread(phdrtable.data(), sizeof(Elf64_Phdr), ehdr.e_phnum, file);
-    if (result != ehdr.e_phnum) {
-        ERROR("Failed to read program header table from file %s", path.c_str());
+    entry = ehdr.entry();
+
+    u64 expected_phentsize = bit32 ? sizeof(Elf32_Phdr) : sizeof(Elf64_Phdr);
+    if (ehdr.phentsize() != expected_phentsize) {
+        ERROR("File %s has an invalid program header size: %d", path.c_str(), (int)ehdr.phentsize());
     }
 
-    for (Elf64_Half i = 0; i < ehdr.e_phnum; i++) {
-        Elf64_Phdr& phdr = phdrtable[i];
-        switch (phdr.p_type) {
+    // Avoiding heap allocations for when I must do that in the future
+    Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
+    fseek(file, ehdr.phoff(), SEEK_SET);
+    for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
+        // Placement new to run the constructor
+        new (&phdrtable[i]) Elf_Phdr(bit32, file);
+    }
+
+    for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
+        Elf_Phdr& phdr = phdrtable[i];
+        switch (phdr.type()) {
         case PT_INTERP: {
             std::string interpreter_str;
-            interpreter_str.resize(phdr.p_filesz);
-            fseek(file, phdr.p_offset, SEEK_SET);
-            result = fread(interpreter_str.data(), 1, phdr.p_filesz, file);
-            if (result != phdr.p_filesz) {
+            interpreter_str.resize(phdr.filesz());
+            fseek(file, phdr.offset(), SEEK_SET);
+            result = fread(interpreter_str.data(), 1, phdr.filesz(), file);
+            if (result != phdr.filesz()) {
                 ERROR("Failed to read interpreter from file %s", path.c_str());
             }
 
@@ -139,22 +234,22 @@ void Elf::Load(const std::filesystem::path& path) {
             break;
         }
         case PT_GNU_STACK: {
-            if (phdr.p_flags & PF_X) {
+            if (phdr.flags() & PF_X) {
                 WARN("Executable stack");
             }
             break;
         }
         case PT_LOAD: {
-            if (phdr.p_filesz == 0) {
+            if (phdr.filesz() == 0) {
                 break;
             }
 
-            if (phdr.p_vaddr + phdr.p_memsz > highest_vaddr) {
-                highest_vaddr = phdr.p_vaddr + phdr.p_memsz;
+            if (phdr.vaddr() + phdr.memsz() > highest_vaddr) {
+                highest_vaddr = phdr.vaddr() + phdr.memsz();
             }
 
-            if (phdr.p_vaddr < lowest_vaddr) {
-                lowest_vaddr = phdr.p_vaddr;
+            if (phdr.vaddr() < lowest_vaddr) {
+                lowest_vaddr = phdr.vaddr();
             }
             break;
         }
@@ -170,7 +265,16 @@ void Elf::Load(const std::filesystem::path& path) {
         ERROR("Base hint is not page aligned for: %s", is_interpreter ? "Interpreter" : "Executable");
     }
 
-    if (ehdr.e_type == ET_DYN) {
+    if (ehdr.type() == ET_DYN) {
+        // TODO: fix this hack
+        if (bit32 && !is_interpreter) {
+            WARN("Setting base hint to 0x100000");
+            base_hint = 0x100000;
+        } else if (bit32 && is_interpreter) {
+            WARN("Setting base hint to 0x2000000");
+            base_hint = 0x2000000;
+        }
+
         if (base_hint) {
             base_ptr = (u8*)mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
         } else {
@@ -186,31 +290,31 @@ void Elf::Load(const std::filesystem::path& path) {
 
     VERBOSE("Allocated memory at %p-%p", base_ptr, base_ptr + highest_vaddr);
 
-    for (Elf64_Half i = 0; i < ehdr.e_phnum; i += 1) {
-        Elf64_Phdr& phdr = phdrtable[i];
-        switch (phdr.p_type) {
+    for (Elf64_Half i = 0; i < ehdr.phnum(); i += 1) {
+        Elf_Phdr& phdr = phdrtable[i];
+        switch (phdr.type()) {
         case PT_LOAD: {
-            if (phdr.p_filesz == 0) {
+            if (phdr.filesz() == 0) {
                 ERROR("Loadable segment has no data in file %s", path.c_str());
                 break;
             }
 
-            VERBOSE("Segment %d: %lx-%lx", i, phdr.p_vaddr, phdr.p_vaddr + phdr.p_memsz);
+            VERBOSE("Segment %d: %lx-%lx", i, phdr.vaddr(), phdr.vaddr() + phdr.memsz());
 
-            u8* segment_base = base_ptr + PAGE_START(phdr.p_vaddr);
-            u64 segment_size = phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr);
-            u64 offset = phdr.p_offset - PAGE_OFFSET(phdr.p_vaddr);
+            u8* segment_base = base_ptr + PAGE_START(phdr.vaddr());
+            u64 segment_size = phdr.filesz() + PAGE_OFFSET(phdr.vaddr());
+            u64 offset = phdr.offset() - PAGE_OFFSET(phdr.vaddr());
 
             u8 prot = 0;
-            if (phdr.p_flags & PF_R) {
+            if (phdr.flags() & PF_R) {
                 prot |= PROT_READ;
             }
 
-            if (phdr.p_flags & PF_W) {
+            if (phdr.flags() & PF_W) {
                 prot |= PROT_WRITE;
             }
 
-            if (phdr.p_flags & PF_X) {
+            if (phdr.flags() & PF_X) {
                 prot |= PROT_EXEC;
             }
 
@@ -223,14 +327,14 @@ void Elf::Load(const std::filesystem::path& path) {
                 ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
             }
 
-            if (phdr.p_memsz > phdr.p_filesz) {
+            if (phdr.memsz() > phdr.filesz()) {
                 // This is probably a segment that contains a .data and a .bss right after, so after
                 // the file size starts the bss, the part that should be zeroed
-                u64 bss_start = (u64)base_ptr + phdr.p_vaddr + phdr.p_filesz;
+                u64 bss_start = (u64)base_ptr + phdr.vaddr() + phdr.filesz();
                 u64 bss_page_start = PAGE_ALIGN(bss_start);
-                u64 bss_page_end = PAGE_ALIGN((u64)base_ptr + phdr.p_vaddr + phdr.p_memsz);
+                u64 bss_page_end = PAGE_ALIGN((u64)base_ptr + phdr.vaddr() + phdr.memsz());
 
-                if (phdr.p_flags & PF_W) {
+                if (phdr.flags() & PF_W) {
                     memset((void*)bss_start, 0, bss_page_start - bss_start);
                 }
 
@@ -277,9 +381,9 @@ void Elf::Load(const std::filesystem::path& path) {
         // LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 
-    phdr = base_ptr + lowest_vaddr + ehdr.e_phoff;
-    phnum = ehdr.e_phnum;
-    phent = ehdr.e_phentsize;
+    phdr = base_ptr + lowest_vaddr + ehdr.phoff();
+    phnum = ehdr.phnum();
+    phent = ehdr.phentsize();
 
     fclose(file);
 
