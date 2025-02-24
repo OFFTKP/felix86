@@ -288,7 +288,9 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     if (mode32) {
         stack_hint = g_address_space_base + 0x7FFF'F000 - max_stack_size;
     } else {
-        stack_hint = 0x5FFA'FFFF'F000 - max_stack_size;
+        // Randomish hint. Needs to be below 0x3f'ffff'ffff however as that is the lowest possible
+        // user-space virtual memory (the one in Kernel SV39).
+        stack_hint = 0x2A'FFFF'F000 - max_stack_size;
     }
 
     u8* base;
@@ -297,8 +299,8 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
-        base =
-            (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_STACK | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+        base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE,
+                         MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_STACK | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
         if (base != MAP_FAILED) {
             break;
         }
