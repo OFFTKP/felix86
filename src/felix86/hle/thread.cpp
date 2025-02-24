@@ -293,7 +293,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     u8* base;
     int attempts = 0;
-    int max_attempts = mode32 ? 14 : 200;
+    int max_attempts = mode32 ? 14 : 200000;
 
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);

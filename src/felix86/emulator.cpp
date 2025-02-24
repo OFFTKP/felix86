@@ -310,4 +310,5 @@ void Emulator::initialize32BitAddressSpace() {
     }
 
     g_address_space_base = (u64)(cur + 2 * GB);
+    VERBOSE("32-bit address space at %p", (void*)g_address_space_base);
 }
