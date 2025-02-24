@@ -135,6 +135,8 @@ void Recompiler::clearCodeCache() {
 }
 
 void* Recompiler::compile(u64 rip) {
+    rip += g_address_space_base;
+
     size_t remaining_size = code_cache_size - as.GetCodeBuffer().GetCursorOffset();
     if (remaining_size < 100'000) { // less than ~100KB left, clear cache
         clearCodeCache();
@@ -173,13 +175,14 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
 }
 
 void* Recompiler::getCompiledBlock(u64 rip) {
+    u64 offset_rip = rip + g_address_space_base;
     if (g_use_block_cache) {
-        BlockCacheEntry& entry = block_cache[rip & ((1 << block_cache_bits) - 1)];
-        if (entry.guest == rip) {
+        BlockCacheEntry& entry = block_cache[offset_rip & ((1 << block_cache_bits) - 1)];
+        if (entry.guest == offset_rip) {
             return (void*)entry.host;
         } else if (blockExists(rip)) {
             u64 host = (u64)getBlockMetadata(rip).address;
-            entry.guest = rip;
+            entry.guest = offset_rip;
             entry.host = host;
             return (void*)host;
         } else {

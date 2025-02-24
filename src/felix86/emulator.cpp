@@ -59,7 +59,7 @@ Emulator::Emulator(const Config& config) : config(config) {
     this->stack = stack;
     this->stack_size = size;
     main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
-    main_state->SetRip((u64)fs.GetEntrypoint());
+    main_state->SetRip((u64)fs.GetEntrypoint() - g_address_space_base);
 }
 
 void Emulator::Run() {
@@ -139,7 +139,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         {AT_PAGESZ, {4096}},
         {AT_EXECFN, {(u64)program_name}},
         {AT_CLKTCK, {100}},
-        {AT_ENTRY, {(u64)elf->GetEntrypoint()}},
+        {AT_ENTRY, {(u64)elf->GetEntrypoint() - g_address_space_base}}, // remove the base address in 32-bit
         {AT_PLATFORM, {(u64)platform_name}},
         {AT_BASE, {(u64)elf->GetProgramBase()}},
         {AT_FLAGS, {0}},
