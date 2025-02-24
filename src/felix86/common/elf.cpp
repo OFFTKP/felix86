@@ -1,5 +1,4 @@
 #include <variant>
-#include <vector>
 #include <cxxabi.h>
 #include <elf.h>
 #include <linux/prctl.h>
@@ -14,7 +13,6 @@
 #include "felix86/common/elf.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/hle/thread.hpp"
 
 // Not a full ELF implementation, but one that suits our needs as a loader of
 // both the executable and the dynamic linker, and one that only supports x86/x86_64
@@ -176,12 +174,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
     // Check if it's a 32-bit executable
     bool mode32 = e_ident[4] == ELFCLASS32;
-    if (!mode32) {
-        // Make sure it was already false and we didn't somehow
-        // load a 64-bit ELF after a 32-bit one
-        ASSERT(g_mode32 == false);
-    }
-    g_mode32 = mode32;
+    ASSERT(g_mode32 == mode32); // same mode as the one we're configured to execute for
 
     // Go back to start to read the full header
     fseek(file, 0, SEEK_SET);
@@ -293,10 +286,10 @@ void Elf::Load(const std::filesystem::path& path) {
         // TODO: fix this hack
         if (mode32 && !is_interpreter) {
             WARN("Setting base hint to 0x100000");
-            base_hint = 0x100000;
+            base_hint = 0x100000 + g_address_space_base;
         } else if (mode32 && is_interpreter) {
             WARN("Setting base hint to 0x2000000");
-            base_hint = 0x2000000;
+            base_hint = 0x2000000 + g_address_space_base;
         }
 
         // In 32-bit mode we are using MAP_FIXED
@@ -414,4 +407,32 @@ void Elf::Load(const std::filesystem::path& path) {
     fclose(file);
 
     ok = true;
+}
+
+PeekResult Elf::Peek(const std::filesystem::path& path) {
+    FILE* file = fopen(path.c_str(), "rb");
+    if (!file) {
+        ERROR("Failed to open file %s", path.c_str());
+    }
+
+    u8 e_ident[EI_NIDENT];
+    ssize_t result = fread(&e_ident, EI_NIDENT, sizeof(u8), file);
+    if (result != 1) {
+        ERROR("Failed to read ELF header from file %s", path.c_str());
+    }
+
+    fclose(file);
+
+    if (e_ident[0] != 0x7F || e_ident[1] != 'E' || e_ident[2] != 'L' || e_ident[3] != 'F') {
+        return PeekResult::NotElf;
+    }
+
+    if (e_ident[4] == ELFCLASS32) {
+        return PeekResult::Elf32;
+    } else if (e_ident[4] == ELFCLASS64) {
+        return PeekResult::Elf64;
+    }
+
+    ERROR("File %s is an ELF but not a 64-bit or 32-bit ELF file", path.c_str());
+    return PeekResult::NotElf;
 }

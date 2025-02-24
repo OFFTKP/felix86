@@ -40,6 +40,18 @@ typedef struct {
 
 Emulator::Emulator(const Config& config) : config(config) {
     g_emulator = this;
+
+    PeekResult peek = Elf::Peek(config.executable_path);
+    if (peek == PeekResult::NotElf) {
+        ERROR("File %s is not an ELF file", config.executable_path.c_str());
+        return;
+    }
+
+    if (peek == PeekResult::Elf32) {
+        g_mode32 = true;
+        initialize32BitAddressSpace();
+    }
+
     fs.LoadExecutable(config.executable_path);
     auto main_state = ThreadState::Create(nullptr);
     VERBOSE("Created thread state with tid %ld", main_state->tid);
@@ -48,10 +60,6 @@ Emulator::Emulator(const Config& config) : config(config) {
     this->stack_size = size;
     main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
     main_state->SetRip((u64)fs.GetEntrypoint());
-
-    if (g_mode32) {
-        initialize32BitAddressSpace();
-    }
 }
 
 void Emulator::Run() {

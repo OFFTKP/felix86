@@ -5,6 +5,12 @@
 
 constexpr u64 brk_size = 512 * 1024 * 1024;
 
+enum class PeekResult {
+    NotElf,
+    Elf32,
+    Elf64,
+};
+
 struct Elf {
     Elf(bool is_interpreter);
 
@@ -39,6 +45,8 @@ struct Elf {
     u64 GetPhent() const {
         return phent;
     }
+
+    static PeekResult Peek(const std::filesystem::path& path);
 
 private:
     bool ok = false;
