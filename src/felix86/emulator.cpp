@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <sys/random.h>
 #include "felix86/emulator.hpp"
+#include "felix86/hle/thread.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 extern char** environ;
@@ -82,7 +83,7 @@ void Emulator::setupMainStack(ThreadState* state) {
     std::shared_ptr<Elf> elf = fs.GetExecutable();
 
     // Initial process stack according to System V AMD64 ABI
-    u64 rsp = (u64)elf->GetStackPointer();
+    u64 rsp = (u64)Threads::AllocateStack(g_mode32).first;
 
     // To hold the addresses of the arguments for later pushing
     u64* argv_addresses = (u64*)alloca(argc * sizeof(u64));
@@ -196,7 +197,11 @@ void Emulator::setupMainStack(ThreadState* state) {
         return;
     }
 
-    state->SetGpr(X86_REF_RSP, rsp);
+    u64 rsp_final = rsp;
+    if (g_mode32) {
+        rsp_final -= g_address_space_base;
+    }
+    state->SetGpr(X86_REF_RSP, rsp_final);
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {

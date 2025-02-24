@@ -138,12 +138,6 @@ private:
 
 Elf::Elf(bool is_interpreter) : is_interpreter(is_interpreter) {}
 
-Elf::~Elf() {
-    if (stack_pointer) {
-        munmap(stack_pointer, 0);
-    }
-}
-
 void Elf::Load(const std::filesystem::path& path) {
     if (!std::filesystem::exists(path)) {
         WARN("File %s does not exist", path.c_str());
@@ -288,10 +282,6 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     VERBOSE("Highest vaddr: %lx", highest_vaddr);
-
-    if (!is_interpreter) {
-        stack_pointer = (u8*)Threads::AllocateStack(mode32).first;
-    }
 
     u8* base_ptr;
     u64 base_hint = is_interpreter ? g_interpreter_base_hint : g_executable_base_hint;

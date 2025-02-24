@@ -286,7 +286,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     u64 stack_hint;
     if (mode32) {
-        stack_hint = 0x7FFF'F000 - max_stack_size;
+        stack_hint = g_address_space_base + 0x7FFF'F000 - max_stack_size;
     } else {
         stack_hint = 0x7FFF'FFFF'F000 - max_stack_size;
     }
@@ -296,6 +296,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     int max_attempts = 14;
 
     while (true) {
+        VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
         base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE,
                          MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
         if (base != MAP_FAILED) {

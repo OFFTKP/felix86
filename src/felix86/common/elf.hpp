@@ -26,10 +26,6 @@ struct Elf {
         return program_base + entry;
     }
 
-    void* GetStackPointer() const {
-        return stack_pointer;
-    }
-
     void* GetProgramBase() const {
         return program_base;
     }
@@ -51,7 +47,6 @@ private:
     bool is_interpreter = false;
     u64 entry = 0;
     std::filesystem::path interpreter{};
-    u8* stack_pointer = nullptr;
 
     u8* phdr = nullptr;
     u8* program_base = nullptr;
