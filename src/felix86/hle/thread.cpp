@@ -279,7 +279,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     u64 max_stack_size = stack_limit.rlim_max;
     if (max_stack_size == RLIM_INFINITY) {
-        max_stack_size = 128 * 1024 * 1024;
+        max_stack_size = 16 * 1024 * 1024;
     }
 
     max_stack_size &= ~0xFFF; // Make sure we are aligned
@@ -298,7 +298,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
         base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE,
-                         MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+                         MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
         if (base != MAP_FAILED) {
             break;
         }
@@ -311,7 +311,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     }
 
     u8* stack_pointer = (u8*)mmap(base + max_stack_size - stack_size, stack_size, PROT_READ | PROT_WRITE,
-                                  MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK | MAP_GROWSDOWN, -1, 0);
+                                  MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN, -1, 0);
     if (stack_pointer == MAP_FAILED) {
         ERROR("Failed to allocate stack");
     }
