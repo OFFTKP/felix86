@@ -323,7 +323,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     }
 
     if (mode32) {
-        ASSERT((u64)stack_pointer < 0x8000'0000);
+        ASSERT((u64)stack_pointer < g_address_space_base + 0x8000'0000 && (u64)stack_pointer > g_address_space_base);
     }
 
     VERBOSE("Allocated stack at %p", base);
