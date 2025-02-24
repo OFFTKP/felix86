@@ -26,10 +26,15 @@
 
 struct Elf_Ehdr {
     Elf_Ehdr(bool mode32, FILE* file) : mode32(mode32) {
+        size_t read;
         if (mode32) {
-            fread(&inner32(), sizeof(Elf32_Phdr), 1, file);
+            read = fread(&inner32(), sizeof(Elf32_Phdr), 1, file);
         } else {
-            fread(&inner64(), sizeof(Elf64_Phdr), 1, file);
+            read = fread(&inner64(), sizeof(Elf64_Phdr), 1, file);
+        }
+
+        if (read != 1) {
+            ERROR("Failed to read ELF header from file");
         }
     }
 
@@ -77,10 +82,15 @@ private:
 
 struct Elf_Phdr {
     Elf_Phdr(bool mode32, FILE* file) : mode32(mode32) {
+        size_t read;
         if (mode32) {
-            fread(&inner32(), sizeof(Elf32_Phdr), 1, file);
+            read = fread(&inner32(), sizeof(Elf32_Phdr), 1, file);
         } else {
-            fread(&inner64(), sizeof(Elf64_Phdr), 1, file);
+            read = fread(&inner64(), sizeof(Elf64_Phdr), 1, file);
+        }
+
+        if (read != 1) {
+            ERROR("Failed to read ELF program header from file");
         }
     }
 
