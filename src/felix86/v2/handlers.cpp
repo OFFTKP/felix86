@@ -676,40 +676,14 @@ FAST_HANDLE(RET) {
 }
 
 FAST_HANDLE(PUSH) {
-
+    x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
-
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
-
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
     int imm = -size_to_bytes(instruction.operand_width);
-
-    switch (instruction.operand_width) {
-
-    case 16: {
-
-        AS.SH(src, imm, rsp);
-
-        break;
-    }
-
-    case 32: {
-
-        AS.SW(src, imm, rsp);
-
-        break;
-    }
-
-    case 64: {
-
-        AS.SD(src, imm, rsp);
-
-        break;
-    }
-    }
+    rec.writeMemory(src, rsp, imm, rec.zydisToSize(instruction.operand_width));
 
     AS.ADDI(rsp, rsp, imm);
-
-    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+    rec.setRefGPR(X86_REF_RSP, size, rsp);
 }
 
 FAST_HANDLE(POP) {
