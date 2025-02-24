@@ -329,7 +329,6 @@ struct Recompiler {
 
     BlockMetadata& getBlockMetadata(u64 rip) {
         rip += g_address_space_base;
-        ASSERT(block_metadata.find(rip) != block_metadata.end());
         return block_metadata[rip];
     }
 
