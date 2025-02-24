@@ -293,12 +293,12 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     u8* base;
     int attempts = 0;
-    int max_attempts = mode32 ? 14 : 200000;
+    int max_attempts = 14;
 
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
-        base = (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE,
-                         MAP_PRIVATE | MAP_FIXED_NOREPLACE | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
+        base =
+            (u8*)mmap((void*)stack_hint, max_stack_size, PROT_NONE, MAP_PRIVATE | MAP_STACK | MAP_ANONYMOUS | MAP_GROWSDOWN | MAP_NORESERVE, -1, 0);
         if (base != MAP_FAILED) {
             break;
         }
