@@ -288,12 +288,12 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     if (mode32) {
         stack_hint = g_address_space_base + 0x7FFF'F000 - max_stack_size;
     } else {
-        stack_hint = 0x7FFF'FFFF'F000 - max_stack_size;
+        stack_hint = 0x5FFA'FFFF'F000 - max_stack_size;
     }
 
     u8* base;
     int attempts = 0;
-    int max_attempts = 14;
+    int max_attempts = mode32 ? 14 : 200;
 
     while (true) {
         VERBOSE("Attempting to allocate stack on %p", (void*)stack_hint);
