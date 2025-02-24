@@ -1,3 +1,4 @@
+#include <variant>
 #include <vector>
 #include <cxxabi.h>
 #include <elf.h>
@@ -16,7 +17,7 @@
 #include "felix86/hle/thread.hpp"
 
 // Not a full ELF implementation, but one that suits our needs as a loader of
-// both the executable and the dynamic linker, and one that only supports x86_64
+// both the executable and the dynamic linker, and one that only supports x86/x86_64
 // little-endian
 
 #define PAGE_START(x) ((x) & ~(uintptr_t)(4095))
@@ -26,89 +27,99 @@
 struct Elf_Ehdr {
     Elf_Ehdr(bool mode32, FILE* file) : mode32(mode32) {
         if (mode32) {
-            fread(&inner.e32, sizeof(Elf32_Phdr), 1, file);
+            fread(&inner32(), sizeof(Elf32_Phdr), 1, file);
         } else {
-            fread(&inner.e64, sizeof(Elf64_Phdr), 1, file);
+            fread(&inner64(), sizeof(Elf64_Phdr), 1, file);
         }
     }
 
     u64 version() {
-        return mode32 ? inner.e32.e_version : inner.e64.e_version;
+        return mode32 ? inner32().e_version : inner64().e_version;
     }
 
     u64 machine() {
-        return mode32 ? inner.e32.e_machine : inner.e64.e_machine;
+        return mode32 ? inner32().e_machine : inner64().e_machine;
     }
 
     u64 entry() {
-        return mode32 ? inner.e32.e_entry : inner.e64.e_entry;
+        return mode32 ? inner32().e_entry : inner64().e_entry;
     }
 
     u64 type() {
-        return mode32 ? inner.e32.e_type : inner.e64.e_type;
+        return mode32 ? inner32().e_type : inner64().e_type;
     }
 
     u64 phoff() {
-        return mode32 ? inner.e32.e_phoff : inner.e64.e_phoff;
+        return mode32 ? inner32().e_phoff : inner64().e_phoff;
     }
 
     u64 phnum() {
-        return mode32 ? inner.e32.e_phnum : inner.e64.e_phnum;
+        return mode32 ? inner32().e_phnum : inner64().e_phnum;
     }
 
     u64 phentsize() {
-        return mode32 ? inner.e32.e_phentsize : inner.e64.e_phentsize;
+        return mode32 ? inner32().e_phentsize : inner64().e_phentsize;
     }
 
 private:
     bool mode32;
 
-    union {
-        Elf64_Ehdr e64;
-        Elf32_Ehdr e32;
-    } inner;
+    Elf32_Ehdr& inner32() {
+        return std::get<Elf32_Ehdr>(inner);
+    }
+
+    Elf64_Ehdr& inner64() {
+        return std::get<Elf64_Ehdr>(inner);
+    }
+
+    std::variant<Elf64_Ehdr, Elf32_Ehdr> inner;
 };
 
 struct Elf_Phdr {
     Elf_Phdr(bool mode32, FILE* file) : mode32(mode32) {
         if (mode32) {
-            fread(&inner.e32, sizeof(Elf32_Phdr), 1, file);
+            fread(&inner32(), sizeof(Elf32_Phdr), 1, file);
         } else {
-            fread(&inner.e64, sizeof(Elf64_Phdr), 1, file);
+            fread(&inner64(), sizeof(Elf64_Phdr), 1, file);
         }
     }
 
     u64 type() {
-        return mode32 ? inner.e32.p_type : inner.e64.p_type;
+        return mode32 ? inner32().p_type : inner64().p_type;
     }
 
     u64 flags() {
-        return mode32 ? inner.e32.p_flags : inner.e64.p_flags;
+        return mode32 ? inner32().p_flags : inner64().p_flags;
     }
 
     u64 offset() {
-        return mode32 ? inner.e32.p_offset : inner.e64.p_offset;
+        return mode32 ? inner32().p_offset : inner64().p_offset;
     }
 
     u64 vaddr() {
-        return mode32 ? inner.e32.p_vaddr : inner.e64.p_vaddr;
+        return mode32 ? inner32().p_vaddr : inner64().p_vaddr;
     }
 
     u64 filesz() {
-        return mode32 ? inner.e32.p_filesz : inner.e64.p_filesz;
+        return mode32 ? inner32().p_filesz : inner64().p_filesz;
     }
 
     u64 memsz() {
-        return mode32 ? inner.e32.p_memsz : inner.e64.p_memsz;
+        return mode32 ? inner32().p_memsz : inner64().p_memsz;
     }
 
 private:
     bool mode32;
 
-    union {
-        Elf64_Phdr e64;
-        Elf32_Phdr e32;
-    } inner;
+    Elf32_Phdr& inner32() {
+        return std::get<Elf32_Phdr>(inner);
+    }
+
+    Elf64_Phdr& inner64() {
+        return std::get<Elf64_Phdr>(inner);
+    }
+
+    std::variant<Elf64_Phdr, Elf32_Phdr> inner;
 };
 
 Elf::Elf(bool is_interpreter) : is_interpreter(is_interpreter) {}
