@@ -8,8 +8,6 @@ constexpr u64 brk_size = 512 * 1024 * 1024;
 struct Elf {
     Elf(bool is_interpreter);
 
-    ~Elf();
-
     void Load(const std::filesystem::path& path);
 
     // static void LoadSymbols(const std::string& name, const std::filesystem::path& path, void* base);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sys/mman.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
@@ -33,7 +34,11 @@ struct Emulator {
         }
     }
 
-    ~Emulator() = default;
+    ~Emulator() {
+        if (stack) {
+            munmap(stack, stack_size);
+        }
+    }
 
     Filesystem& GetFilesystem() {
         return fs;
@@ -58,7 +63,7 @@ struct Emulator {
     void UnlinkBlock(ThreadState* state, u64 rip);
 
 private:
-    void setupMainStack(ThreadState* state);
+    [[nodiscard]] std::pair<void*, size_t> setupMainStack(ThreadState* state);
 
     void initialize32BitAddressSpace();
 
@@ -67,4 +72,6 @@ private:
     bool testing = false;
     void* auxv_base = nullptr;
     size_t auxv_size = 0;
+    void* stack = nullptr;
+    size_t stack_size = 0;
 };

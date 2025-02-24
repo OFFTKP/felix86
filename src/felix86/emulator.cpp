@@ -43,7 +43,9 @@ Emulator::Emulator(const Config& config) : config(config) {
     fs.LoadExecutable(config.executable_path);
     auto main_state = ThreadState::Create(nullptr);
     VERBOSE("Created thread state with tid %ld", main_state->tid);
-    setupMainStack(main_state);
+    auto [stack, size] = setupMainStack(main_state);
+    this->stack = stack;
+    this->stack_size = size;
     main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
     main_state->SetRip((u64)fs.GetEntrypoint());
 
@@ -69,7 +71,7 @@ void Emulator::Run() {
     VERBOSE("Bye-bye main thread :(");
 }
 
-void Emulator::setupMainStack(ThreadState* state) {
+std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     ssize_t argc = config.argv.size();
     if (argc > 1) {
         VERBOSE("Passing %zu arguments to guest executable", argc - 1);
@@ -83,7 +85,8 @@ void Emulator::setupMainStack(ThreadState* state) {
     std::shared_ptr<Elf> elf = fs.GetExecutable();
 
     // Initial process stack according to System V AMD64 ABI
-    u64 rsp = (u64)Threads::AllocateStack(g_mode32).first;
+    auto pair = Threads::AllocateStack(g_mode32);
+    u64 rsp = (u64)pair.first;
 
     // To hold the addresses of the arguments for later pushing
     u64* argv_addresses = (u64*)alloca(argc * sizeof(u64));
@@ -121,7 +124,7 @@ void Emulator::setupMainStack(ThreadState* state) {
     int result = getrandom((void*)rand_address, 16, 0);
     if (result == -1 || result != 16) {
         ERROR("Failed to get random data");
-        return;
+        return pair;
     }
 
     auxv_t auxv_entries[18] = {
@@ -193,15 +196,17 @@ void Emulator::setupMainStack(ThreadState* state) {
     rsp = stack_push(rsp, argc);
 
     if (rsp & 0xF) {
-        ERROR("Stack not aligned to 16 bytes\n");
-        return;
+        ERROR("Stack not aligned to 16 bytes");
+        return pair;
     }
 
-    u64 rsp_final = rsp;
+    u64 rsp_guest = rsp;
     if (g_mode32) {
-        rsp_final -= g_address_space_base;
+        rsp_guest -= g_address_space_base;
     }
-    state->SetGpr(X86_REF_RSP, rsp_final);
+    state->SetGpr(X86_REF_RSP, rsp_guest);
+
+    return pair;
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
