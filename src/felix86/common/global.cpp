@@ -50,10 +50,10 @@ u64 g_executable_base_hint = 0;
 u64 g_interpreter_base_hint = 0;
 Emulator* g_emulator = nullptr;
 
-u64 g_interpreter_start = 0;
-u64 g_interpreter_end = 0;
-u64 g_executable_start = 0;
-u64 g_executable_end = 0;
+HostAddress g_interpreter_start{};
+HostAddress g_interpreter_end{};
+HostAddress g_executable_start{};
+HostAddress g_executable_end{};
 
 void ProcessGlobals::initialize() {
     // Open a new shared memory region

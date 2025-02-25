@@ -213,9 +213,9 @@ void flush_icache() {
 }
 
 // Flush icache to other cores as well
-void flush_icache_global(void* start, void* end) {
+void flush_icache_global(const HostAddress& start, const HostAddress& end) {
 #if defined(__riscv)
-    __riscv_flush_icache(start, end, 0);
+    __riscv_flush_icache((void*)start.raw(), (void*)end.raw(), 0);
 #endif
 }
 
@@ -433,13 +433,13 @@ void dump_states() {
     int i = 0;
     for (auto& state : states) {
         dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld): " ANSI_COLOR_RESET, i, state->tid);
-        print_address(state->rip);
+        print_address(state->rip.toHost().raw());
 
         if (g_calltrace) {
             dprintf(g_output_fd, ANSI_COLOR_RED "--- CALLTRACE ---\n" ANSI_COLOR_RESET);
             auto it = state->calltrace.rbegin();
             while (it != state->calltrace.rend()) {
-                print_address(*it);
+                print_address((*it).raw());
                 it++;
             }
         }
@@ -501,11 +501,11 @@ void print_address(u64 address) {
 }
 
 void push_calltrace(ThreadState* state) {
-    state->calltrace.push_back(state->rip);
+    state->calltrace.push_back(state->rip.toHost());
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
-        print_address(state->rip);
+        print_address(state->rip.toHost().raw());
     }
 }
 

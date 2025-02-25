@@ -388,16 +388,16 @@ void Elf::Load(const std::filesystem::path& path) {
         prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "brk");
         VERBOSE("BRK base at %p", (void*)g_current_brk);
 
-        g_executable_start = (u64)(base_ptr + lowest_vaddr);
-        g_executable_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
+        g_executable_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
+        g_executable_end = HostAddress{PAGE_ALIGN((u64)(base_ptr + highest_vaddr))};
         program_base = (u8*)base_ptr;
-        MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
+        MemoryMetadata::AddRegion("Executable", g_executable_start.raw(), g_executable_end.raw());
         // LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
-        g_interpreter_start = (u64)(base_ptr + lowest_vaddr);
-        g_interpreter_end = (u64)(base_ptr + highest_vaddr);
+        g_interpreter_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
+        g_interpreter_end = HostAddress{(u64)(base_ptr + highest_vaddr)};
         program_base = (u8*)base_ptr;
-        MemoryMetadata::AddInterpreterRegion(g_interpreter_start, g_interpreter_end);
+        MemoryMetadata::AddInterpreterRegion(g_interpreter_start.raw(), g_interpreter_end.raw());
         // LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 

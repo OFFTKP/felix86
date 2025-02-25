@@ -220,28 +220,28 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
 
-        block_meta.instruction_spans.push_back({meta.rip.raw(), (u64)as.GetCursorPointer()});
+        block_meta.instruction_spans.push_back({meta.rip.toGuest(), HostAddress{(u64)as.GetCursorPointer()}});
 
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
 
         if (g_no_sse2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2)) {
-            ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+            ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
         }
 
         if (g_no_sse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE3)) {
-            ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+            ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
         }
 
         if (g_no_ssse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSSE3)) {
-            ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+            ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
         }
 
         if (g_no_sse4_1 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
-            ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+            ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
         }
 
         if (g_no_sse4_2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
-            ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip);
+            ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
         }
 
         switch (mnemonic) {
@@ -1073,7 +1073,7 @@ void Recompiler::addRegisterAccess(x86_ref_e ref, bool valid) {
     }
     }
 
-    u64 address = (u64)as.GetCursorPointer();
+    HostAddress address{(u64)as.GetCursorPointer()};
     if (access->empty()) {
         ASSERT(valid);
         access->push_back({address, valid});

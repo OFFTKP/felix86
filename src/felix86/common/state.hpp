@@ -114,7 +114,7 @@ struct ThreadState {
 
     u64 pending_signals{}; // signals that were raised during an unsafe time, queued for later
 
-    std::vector<u64> calltrace{}; // used if g_calltrace is true
+    std::vector<HostAddress> calltrace{}; // used if g_calltrace is true
 
     // Two processes can share the same signal handler table
     std::shared_ptr<SignalHandlerTable> signal_handlers{};

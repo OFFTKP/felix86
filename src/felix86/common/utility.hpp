@@ -16,6 +16,8 @@ using i32 = int32_t;
 using i16 = int16_t;
 using i8 = int8_t;
 
+struct HostAddress;
+
 [[nodiscard]] constexpr bool IsValidSigned12BitImm(i64 value) {
     return value >= -2048 && value <= 2047;
 }
@@ -40,13 +42,13 @@ u64 sext_if_64(u64 value, u8 size_e);
 
 void flush_icache();
 
-void flush_icache_global(void* start, void* end);
+void flush_icache_global(const HostAddress& start, const HostAddress& end);
 
 int guest_breakpoint(const char* name, u64 address);
 
 int clear_breakpoints();
 
-void print_address(u64 address);
+void print_address(u64 address); // u64 instead of HostAddress for convenient calling from gdb
 
 void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64);
 

@@ -79,7 +79,7 @@ void felix86_cpuid(ThreadState* thread_state) {
     }
 
     // We can't unset mmx bits for interpreter cpuid calls as those are needed to even get the program started
-    if (thread_state->rip >= g_interpreter_end || thread_state->rip < g_interpreter_start) {
+    if (thread_state->rip.toHost() >= g_interpreter_end || thread_state->rip.toHost() < g_interpreter_start) {
         u64 mmxbits = 0b11 << 22;
         if (leaf == 1) {
             // Unset the MMX bits for now, SDL chooses MMX paths when it's present

@@ -56,14 +56,14 @@ struct Filesystem {
         return true;
     }
 
-    void* GetEntrypoint() {
+    GuestAddress GetEntrypoint() {
         if (interpreter) {
             return interpreter->GetEntrypoint();
         } else if (elf) {
             return elf->GetEntrypoint();
         } else {
             ERROR("No ELF file loaded");
-            return nullptr;
+            return {};
         }
     }
 

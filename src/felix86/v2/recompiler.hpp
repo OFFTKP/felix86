@@ -27,8 +27,8 @@ struct BlockCacheEntry {
 // and when it is just undefined. For example within a block, the register that represents RAX is not valid until it's loaded
 // for the first time, and then when it's written back it becomes invalid again because it may change due to a syscall or something.
 struct RegisterAccess {
-    u64 address; // address where the load or writeback happened
-    bool valid;  // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
+    HostAddress address; // address where the load or writeback happened
+    bool valid;          // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
 };
 
 struct BlockMetadata {
@@ -37,8 +37,8 @@ struct BlockMetadata {
     HostAddress guest_address{};
     HostAddress guest_address_end{};
     std::vector<u8*> pending_links{};
-    std::vector<u8*> links{};                             // where this block was linked to, used for unlinking it
-    std::vector<std::pair<u64, u64>> instruction_spans{}; // {guest, host} TODO: works in 32-bit mode?
+    std::vector<u8*> links{}; // where this block was linked to, used for unlinking it
+    std::vector<std::pair<GuestAddress, HostAddress>> instruction_spans{};
     std::array<std::vector<RegisterAccess>, allocated_reg_count> register_accesses;
 };
 

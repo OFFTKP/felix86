@@ -4,7 +4,6 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
-#include "felix86/hle/signals.hpp"
 
 struct Config {
     std::filesystem::path rootfs_path;
@@ -14,7 +13,7 @@ struct Config {
 };
 
 struct TestConfig {
-    void* entrypoint;
+    HostAddress entrypoint;
     bool mode32;
 };
 
@@ -26,7 +25,7 @@ struct Emulator {
         g_mode32 = config.mode32;
         auto main_state = ThreadState::Create(nullptr);
         VERBOSE("Created thread state with tid %ld", main_state->tid);
-        main_state->SetRip((u64)config.entrypoint);
+        main_state->SetRip(config.entrypoint.toGuest());
         testing = true;
 
         if (g_mode32) {
@@ -60,7 +59,7 @@ struct Emulator {
 
     void CleanExit(ThreadState* state);
 
-    void UnlinkBlock(ThreadState* state, u64 rip);
+    void UnlinkBlock(ThreadState* state, HostAddress rip);
 
 private:
     [[nodiscard]] std::pair<void*, size_t> setupMainStack(ThreadState* state);

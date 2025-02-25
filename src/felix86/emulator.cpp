@@ -59,17 +59,17 @@ Emulator::Emulator(const Config& config) : config(config) {
     this->stack = stack;
     this->stack_size = size;
     main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
-    main_state->SetRip((u64)fs.GetEntrypoint() - g_address_space_base);
+    main_state->SetRip(fs.GetEntrypoint());
 }
 
 void Emulator::Run() {
-    VERBOSE("Executable: %016lx - %016lx", g_executable_start, g_executable_end);
-    if (g_interpreter_start) {
-        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start, g_interpreter_end);
+    VERBOSE("Executable: %016lx - %016lx", g_executable_start.raw(), g_executable_end.raw());
+    if (!g_interpreter_start.isNull()) {
+        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start.raw(), g_interpreter_end.raw());
     }
 
     if (!g_testing) {
-        VERBOSE("Entrypoint: %016lx", (u64)fs.GetEntrypoint());
+        VERBOSE("Entrypoint: %016lx", fs.GetEntrypoint().toHost().raw());
     }
 
     VERBOSE("Entering main thread :)");
@@ -139,7 +139,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         {AT_PAGESZ, {4096}},
         {AT_EXECFN, {(u64)program_name}},
         {AT_CLKTCK, {100}},
-        {AT_ENTRY, {(u64)elf->GetEntrypoint() - g_address_space_base}}, // remove the base address in 32-bit
+        {AT_ENTRY, {elf->GetEntrypoint().raw()}},
         {AT_PLATFORM, {(u64)platform_name}},
         {AT_BASE, {(u64)elf->GetProgramBase()}},
         {AT_FLAGS, {0}},
@@ -240,7 +240,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         SignalHandlerTable& handlers = *thread_state->signal_handlers;
         RegisteredSignal& handler = handlers[sig - 1];
 
-        u64 rip = thread_state->GetRip();
+        GuestAddress rip = thread_state->GetRip();
 
         sigset_t mask_during_signal;
         mask_during_signal = handler.mask;
@@ -259,7 +259,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         thread_state->SetGpr(X86_REF_RDI, sig);
 
         // Now we just need to set RIP to the handler function
-        thread_state->SetRip((u64)handler.func);
+        thread_state->SetRip(handler.func);
 
         if (sig == SIGCHLD) {
             WARN("SIGCHLD, are we copying siginfo correctly?");
@@ -271,12 +271,13 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         pthread_sigmask(SIG_BLOCK, &new_mask, nullptr);
 
         if (handler.flags & SA_RESETHAND) {
-            handler.func = nullptr;
+            handler.func = GuestAddress{};
         }
         WARN("Handling deferred signal %d", sig);
     }
 
-    return thread_state->recompiler->getCompiledBlock(thread_state->GetRip());
+    HostAddress next_block = thread_state->recompiler->getCompiledBlock(thread_state->GetRip().toHost());
+    return (void*)next_block.raw();
 }
 
 void Emulator::StartThread(ThreadState* state) {
@@ -289,7 +290,7 @@ void Emulator::CleanExit(ThreadState* state) {
     state->recompiler->exitDispatcher(state);
 }
 
-void Emulator::UnlinkBlock(ThreadState* state, u64 rip) {
+void Emulator::UnlinkBlock(ThreadState* state, HostAddress rip) {
     state->recompiler->unlinkBlock(state, rip);
 }
 

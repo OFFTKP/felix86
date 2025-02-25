@@ -92,7 +92,7 @@ struct x64_rt_sigframe {
 static_assert(sizeof(siginfo_t) == 128);
 static_assert(sizeof(x64_rt_sigframe) == 1120);
 
-void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip, const u64* gprs, const XmmReg* xmms) {
+void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAddress rip, const u64* gprs, const XmmReg* xmms) {
     // We were in the middle of a basic block when the signal hit
     // We need to fixup our state and get the correct values that may not have been written back to the state struct
     // First, for the GPRS
@@ -212,19 +212,19 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip
     }
 
     // Finally also set the RIP
-    state->SetRip(rip);
+    state->SetRip(rip.toGuest());
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void Signals::setupFrame(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const XmmReg* host_vecs,
-                         bool use_altstack, bool in_jit_code) {
+void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
+                         const XmmReg* host_vecs, bool use_altstack, bool in_jit_code) {
     u64 rsp = use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP);
     rsp -= 128; // red zone
 
     rsp -= sizeof(x64_rt_sigframe);
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
-    frame->pretcode = (char*)Signals::magicSigreturnAddress();
+    frame->pretcode = (char*)Signals::magicSigreturnAddress().raw();
 
     frame->uc.uc_mcontext.fpregs = &frame->uc.fpregs_mem;
 
@@ -249,7 +249,7 @@ void Signals::setupFrame(BlockMetadata* current_block, u64 rip, ThreadState* sta
     if (in_jit_code) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
         ASSERT(current_block);
-        reconstruct_state(state, current_block, rip, host_gprs, host_vecs);
+        reconstruct_state(state, current_block, rip.toHost(), host_gprs, host_vecs);
     } else {
         // State reconstruction isn't necessary, the state should be in some stable form
         // It's rare that a signal doesn't happen in jit code as we block signals during compilation, but it's possible
@@ -272,7 +272,7 @@ void Signals::setupFrame(BlockMetadata* current_block, u64 rip, ThreadState* sta
     frame->uc.uc_mcontext.gregs[REG_R13] = state->GetGpr(X86_REF_R13);
     frame->uc.uc_mcontext.gregs[REG_R14] = state->GetGpr(X86_REF_R14);
     frame->uc.uc_mcontext.gregs[REG_R15] = state->GetGpr(X86_REF_R15);
-    frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetRip();
+    frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetRip().raw();
     frame->uc.uc_mcontext.gregs[REG_EFL] = state->GetFlags();
     frame->uc.uc_mcontext.fpregs->xmm[0] = state->GetXmmReg(X86_REF_XMM0);
     frame->uc.uc_mcontext.fpregs->xmm[1] = state->GetXmmReg(X86_REF_XMM1);
@@ -296,11 +296,11 @@ void Signals::setupFrame(BlockMetadata* current_block, u64 rip, ThreadState* sta
     state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
 }
 
-BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
+BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
     auto& map = state->recompiler->getBlockMap();
 
     for (auto& span : map) {
-        if (host_pc >= (u64)span.second.address && host_pc < (u64)span.second.address_end) {
+        if (host_pc >= span.second.address && host_pc < span.second.address_end) {
             return &span.second;
         }
     }
@@ -309,18 +309,18 @@ BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     return nullptr;
 }
 
-u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
-    u64 ret_value = 0;
+GuestAddress get_actual_rip(BlockMetadata& metadata, HostAddress host_pc) {
+    GuestAddress ret_value{};
     for (auto& span : metadata.instruction_spans) {
         if (host_pc >= span.second) {
             ret_value = span.first;
         } else { // if it's smaller it means that instruction isn't reached yet, return previous value
-            ASSERT(ret_value != 0);
+            ASSERT(!ret_value.isNull());
             return ret_value;
         }
     }
 
-    ASSERT(ret_value != 0);
+    ASSERT(!ret_value.isNull());
     return ret_value;
 }
 
@@ -353,7 +353,7 @@ void Signals::sigreturn(ThreadState* state) {
     state->SetGpr(X86_REF_R13, frame->uc.uc_mcontext.gregs[REG_R13]);
     state->SetGpr(X86_REF_R14, frame->uc.uc_mcontext.gregs[REG_R14]);
     state->SetGpr(X86_REF_R15, frame->uc.uc_mcontext.gregs[REG_R15]);
-    state->SetRip(frame->uc.uc_mcontext.gregs[REG_RIP]);
+    state->SetRip(GuestAddress{frame->uc.uc_mcontext.gregs[REG_RIP]});
 
     u64 flags = frame->uc.uc_mcontext.gregs[REG_EFL];
     bool cf = (flags >> 0) & 1;
@@ -531,8 +531,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             if (is_in_jit_code(current_state, pc)) {
                 u64 write_address = (u64)info->si_addr;
 
-                u64 write_page_start = write_address & ~0xFFF;
-                u64 write_page_end = write_page_start + 0x1000;
+                HostAddress write_page_start{write_address & ~0xFFF};
+                HostAddress write_page_end{write_page_start.add(0x1000)};
 
                 // At this point, we found self-modifying code. This means that we need to go through
                 // all the thread states, and all their blocks, check if this address is part of **any** block,
@@ -564,7 +564,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 }
 
                 // Now that everything was unlinked we can unprotect the page so the write can be performed
-                mprotect((void*)write_page_start, 0x1000, PROT_READ | PROT_WRITE);
+                mprotect((void*)write_page_start.raw(), 0x1000, PROT_READ | PROT_WRITE);
                 break;
             } else {
                 ERROR("Unhandled SIGSEGV SEGV_ACCERR, not in JIT code");
@@ -615,7 +615,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             ERROR("Unhandled signal %s, no signal handler found", strsignal(sig));
         }
 
-        ASSERT(handler.func != SIG_IGN); // TODO: what does that even mean?
+        ASSERT(handler.func.raw() != (u64)SIG_IGN); // TODO: what does that even mean?
 
         bool jit_code = is_in_jit_code(current_state, pc);
         if (!jit_code || current_state->signals_disabled) {
@@ -631,7 +631,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             // This will ensure that the pending signal is eventually handled if we are stuck in a loop
             // For example, if a block is in a loop that also had a host function call and this signal was triggered
             // during the function call
-            g_emulator->UnlinkBlock(current_state, current_state->GetRip());
+            g_emulator->UnlinkBlock(current_state, current_state->GetRip().toHost());
             return;
         }
 
@@ -664,8 +664,8 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             sigaddset(&mask_during_signal, sig);
         }
 
-        BlockMetadata* metadata = get_block_metadata(current_state, pc);
-        u64 actual_rip = get_actual_rip(*metadata, pc);
+        BlockMetadata* metadata = get_block_metadata(current_state, HostAddress{pc});
+        GuestAddress actual_rip = get_actual_rip(*metadata, HostAddress{pc});
 
         // Prepares everything necessary to run the signal handler when we return from the host signal handler.
         // The stack is switched if necessary and filled with the frame that the signal handler expects.
@@ -674,7 +674,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         current_state->SetGpr(X86_REF_RDI, sig);
 
         // Now we just need to set RIP to the handler function
-        current_state->SetRip((u64)handler.func);
+        current_state->SetRip(handler.func);
 
         if (sig == SIGCHLD) {
             WARN("SIGCHLD, are we copying siginfo correctly?");
@@ -686,7 +686,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         pthread_sigmask(SIG_BLOCK, &new_mask, nullptr);
 
         if (handler.flags & SA_RESETHAND) {
-            handler.func = nullptr;
+            handler.func = GuestAddress{};
         }
 
         // Make it jump to the dispatcher immediately after returning
@@ -708,14 +708,14 @@ void Signals::initialize() {
     sigaction(SIGSEGV, &sa, nullptr);
 }
 
-void Signals::registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags) {
+void Signals::registerSignalHandler(ThreadState* state, int sig, GuestAddress handler, sigset_t mask, int flags) {
     ASSERT(sig >= 1 && sig <= 64);
 
     // Hopefully externally synchronized, no need for locks :cluegi: (TODO: add mutex to signal_handlers)
     (*state->signal_handlers)[sig - 1] = {handler, mask, flags};
 
     // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
-    if (handler) {
+    if (!handler.isNull()) {
         struct sigaction sa;
         sa.sa_sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO;

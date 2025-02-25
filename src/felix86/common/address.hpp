@@ -1,8 +1,9 @@
 #pragma once
 
-#include "felix86/common/global.hpp"
-#include "felix86/common/log.hpp"
+#include <cassert>
 #include "felix86/common/utility.hpp"
+
+extern u64 g_address_space_base;
 
 // Constructs for explicit conversion between guest and host addresses
 struct GuestAddress;
@@ -61,7 +62,7 @@ private:
 struct GuestAddress {
     GuestAddress() : address(0) {}
     explicit constexpr GuestAddress(u64 address) : address(address) {
-        ASSERT_MSG(address < (u64)UINT32_MAX, "Guest address out of bounds: %016lx", address);
+        assert(address < (u64)UINT32_MAX);
     }
 
     [[nodiscard]] HostAddress toHost() const {

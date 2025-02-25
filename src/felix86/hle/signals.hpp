@@ -10,8 +10,8 @@
 #endif
 
 struct RegisteredSignal {
-    void* func = (void*)SIG_DFL; // handler function of signal
-    sigset_t mask = {};          // blocked during execution of this handler
+    GuestAddress func = {}; // handler function of signal
+    sigset_t mask = {};     // blocked during execution of this handler
     int flags = 0;
 };
 
@@ -23,7 +23,7 @@ struct XmmReg;
 
 struct Signals {
     static void initialize();
-    static void registerSignalHandler(ThreadState* state, int sig, void* handler, sigset_t mask, int flags);
+    static void registerSignalHandler(ThreadState* state, int sig, GuestAddress handler, sigset_t mask, int flags);
     [[nodiscard]] static RegisteredSignal getSignalHandler(ThreadState* state, int sig);
 
     // To AND with a mask because these signals are necessary for the emulator to work
@@ -55,6 +55,6 @@ struct Signals {
         return HostAddress(0x1F00'0000'0000'0000);
     }
 
-    static void setupFrame(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
+    static void setupFrame(BlockMetadata* current_block, GuestAddress rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
                            const XmmReg* host_vecs, bool use_altstack, bool in_jit_code);
 };

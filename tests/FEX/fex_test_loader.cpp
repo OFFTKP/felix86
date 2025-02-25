@@ -174,7 +174,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     memcpy((void*)0x10'0000, buffer.data(), bytes_read);
 
     TestConfig config = {};
-    config.entrypoint = (void*)0x10'0000;
+    config.entrypoint = HostAddress{0x10'0000};
     config.mode32 = is_mode32;
 
     emulator = std::make_unique<Emulator>(config);

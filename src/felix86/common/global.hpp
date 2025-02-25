@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <unistd.h>
+#include "felix86/common/address.hpp"
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/shared_memory.hpp"
 #include "felix86/common/utility.hpp"
@@ -69,8 +70,8 @@ extern std::chrono::nanoseconds g_compilation_total_time;
 extern int g_output_fd;
 extern u32 g_spilled_count;
 extern std::filesystem::path g_rootfs_path;
-extern u64 g_interpreter_start, g_interpreter_end;
-extern u64 g_executable_start, g_executable_end;
+extern HostAddress g_interpreter_start, g_interpreter_end;
+extern HostAddress g_executable_start, g_executable_end;
 extern u64 g_interpreter_base_hint;
 extern u64 g_executable_base_hint;
 extern const char* g_git_hash;

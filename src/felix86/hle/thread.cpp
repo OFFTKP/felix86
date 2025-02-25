@@ -17,7 +17,7 @@ struct CloneArgs {
 
     u64 new_fsbase = 0;
     u64 new_rsp = 0;
-    u64 new_rip = 0;
+    GuestAddress new_rip = {};
     pthread_t new_thread{};
 
     alignas(4) u32 new_tid = 0; // to signal that clone_handler has finished using the pointer and get the tid
@@ -206,7 +206,7 @@ long Threads::Clone(ThreadState* current_state, clone_args* args) {
         .child_tid = (pid_t*)args->child_tid,
         .new_fsbase = args->tls,
         .new_rsp = args->stack,
-        .new_rip = current_state->gprs[X86_REF_RCX],
+        .new_rip = GuestAddress{current_state->gprs[X86_REF_RCX]},
         .new_thread = 0,
         .new_tid = 0,
     };

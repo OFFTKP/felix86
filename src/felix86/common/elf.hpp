@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include "felix86/common/address.hpp"
 #include "felix86/common/utility.hpp"
 
 constexpr u64 brk_size = 512 * 1024 * 1024;
@@ -26,8 +27,8 @@ struct Elf {
         return interpreter;
     }
 
-    void* GetEntrypoint() const {
-        return program_base + entry;
+    GuestAddress GetEntrypoint() const {
+        return GuestAddress{(u64)(program_base + entry)};
     }
 
     void* GetProgramBase() const {
