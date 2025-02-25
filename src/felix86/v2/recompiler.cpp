@@ -1346,8 +1346,8 @@ void Recompiler::enterDispatcher(ThreadState* state) {
     enter_dispatcher(state);
 }
 
-void Recompiler::exitDispatcher(ThreadState* state) {
-    exit_dispatcher(state);
+void* Recompiler::getExitDispatcher() {
+    return (void*)exit_dispatcher;
 }
 
 void* Recompiler::getCompileNext() {

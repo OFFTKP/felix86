@@ -1,19 +1,21 @@
 #pragma once
 
 #include <filesystem>
+#include <vector>
 #include "felix86/common/address.hpp"
 #include "felix86/common/utility.hpp"
 
 constexpr u64 brk_size = 512 * 1024 * 1024;
 
-enum class PeekResult {
-    NotElf,
-    Elf32,
-    Elf64,
-};
-
 struct Elf {
+    enum class PeekResult {
+        NotElf,
+        Elf32,
+        Elf64,
+    };
+
     Elf(bool is_interpreter);
+    ~Elf();
 
     void Load(const std::filesystem::path& path);
 
@@ -55,8 +57,10 @@ private:
     u64 entry = 0;
     std::filesystem::path interpreter{};
 
-    u8* phdr = nullptr;
     u8* program_base = nullptr;
+    u8* phdr = nullptr;
     u64 phnum = 0;
     u64 phent = 0;
+
+    std::vector<std::pair<void*, size_t>> unmap_me;
 };

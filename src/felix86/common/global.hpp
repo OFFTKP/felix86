@@ -7,9 +7,12 @@
 #include <vector>
 #include <unistd.h>
 #include "felix86/common/address.hpp"
+#include "felix86/common/config.hpp"
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/shared_memory.hpp"
 #include "felix86/common/utility.hpp"
+
+struct Filesystem;
 
 struct MappedRegion {
     u64 base;
@@ -66,7 +69,6 @@ extern u64 g_current_brk;
 extern u64 g_current_brk_size;
 extern u64 g_dispatcher_exit_count;
 extern u64 g_address_space_base;
-extern std::chrono::nanoseconds g_compilation_total_time;
 extern int g_output_fd;
 extern u32 g_spilled_count;
 extern std::filesystem::path g_rootfs_path;
@@ -75,10 +77,13 @@ extern HostAddress g_executable_start, g_executable_end;
 extern u64 g_interpreter_base_hint;
 extern u64 g_executable_base_hint;
 extern const char* g_git_hash;
-extern struct Emulator* g_emulator;
 extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
 extern pthread_key_t g_thread_state_key;
-extern std::vector<const char*> g_host_argv;
+extern HostAddress g_guest_auxv;
+extern size_t g_guest_auxv_size;
+extern bool g_execve_process;
+extern Config g_config;
+extern std::unique_ptr<Filesystem> g_fs;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();

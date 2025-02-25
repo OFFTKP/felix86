@@ -9,5 +9,7 @@
 struct Threads {
     static long Clone(ThreadState* current_state, clone_args* args);
 
+    static void StartThread(ThreadState* state);
+
     static std::pair<u8*, size_t> AllocateStack(bool mode32);
 };

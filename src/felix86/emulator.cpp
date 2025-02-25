@@ -38,59 +38,18 @@ typedef struct {
     } a_un;
 } auxv_t;
 
-Emulator::Emulator(const Config& config) : config(config) {
-    g_emulator = this;
-
-    PeekResult peek = Elf::Peek(config.executable_path);
-    if (peek == PeekResult::NotElf) {
-        ERROR("File %s is not an ELF file", config.executable_path.c_str());
-        return;
-    }
-
-    if (peek == PeekResult::Elf32) {
-        g_mode32 = true;
-        initialize32BitAddressSpace();
-    }
-
-    fs.LoadExecutable(config.executable_path);
-    auto main_state = ThreadState::Create(nullptr);
-    VERBOSE("Created thread state with tid %ld", main_state->tid);
-    auto [stack, size] = setupMainStack(main_state);
-    this->stack = stack;
-    this->stack_size = size;
-    main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
-    main_state->SetRip(fs.GetEntrypoint());
-}
-
-void Emulator::Run() {
-    VERBOSE("Executable: %016lx - %016lx", g_executable_start.raw(), g_executable_end.raw());
-    if (!g_interpreter_start.isNull()) {
-        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start.raw(), g_interpreter_end.raw());
-    }
-
-    if (!g_testing) {
-        VERBOSE("Entrypoint: %016lx", fs.GetEntrypoint().toHost().raw());
-    }
-
-    VERBOSE("Entering main thread :)");
-
-    StartThread(ThreadState::Get());
-
-    VERBOSE("Bye-bye main thread :(");
-}
-
 std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
-    ssize_t argc = config.argv.size();
+    ssize_t argc = g_config.argv.size();
     if (argc > 1) {
         VERBOSE("Passing %zu arguments to guest executable", argc - 1);
         for (ssize_t i = 1; i < argc; i++) {
-            VERBOSE("Guest argument %zu: %s", i, config.argv[i].c_str());
+            VERBOSE("Guest argument %zu: %s", i, g_config.argv[i].c_str());
         }
     }
 
-    const char* path = config.argv[0].c_str();
+    const char* path = g_config.argv[0].c_str();
 
-    std::shared_ptr<Elf> elf = fs.GetExecutable();
+    std::shared_ptr<Elf> elf = g_fs->GetExecutable();
 
     // Initial process stack according to System V AMD64 ABI
     auto pair = Threads::AllocateStack(g_mode32);
@@ -106,15 +65,15 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     const char* platform_name = (const char*)rsp;
 
     for (ssize_t i = 0; i < argc; i++) {
-        rsp = stack_push_string(rsp, config.argv[i].c_str());
+        rsp = stack_push_string(rsp, g_config.argv[i].c_str());
         argv_addresses[i] = rsp;
     }
 
-    size_t envc = config.envp.size();
+    size_t envc = g_config.envp.size();
     u64* envp_addresses = (u64*)alloca(envc * sizeof(u64));
 
     for (size_t i = 0; i < envc; i++) {
-        const char* env = config.envp[i].c_str();
+        const char* env = g_config.envp[i].c_str();
         rsp = stack_push_string(rsp, env);
         envp_addresses[i] = rsp;
     }
@@ -184,8 +143,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         rsp = stack_push(rsp, auxv_entries[i].a_type);
     }
 
-    auxv_base = (void*)rsp;
-    auxv_size = auxv_count * 16;
+    g_guest_auxv = HostAddress{rsp};
+    g_guest_auxv_size = auxv_count * 16;
 
     // End of environment variables
     rsp = stack_push(rsp, 0);
@@ -277,16 +236,6 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     return (void*)next_block.raw();
 }
 
-void Emulator::StartThread(ThreadState* state) {
-    state->tid = gettid();
-    state->recompiler->enterDispatcher(state);
-    VERBOSE("Thread exited with reason %d\n", state->exit_reason);
-}
-
-void Emulator::CleanExit(ThreadState* state) {
-    state->recompiler->exitDispatcher(state);
-}
-
 void Emulator::UnlinkBlock(ThreadState* state, HostAddress rip) {
     state->recompiler->unlinkBlock(state, rip);
 }
@@ -317,4 +266,93 @@ void Emulator::initialize32BitAddressSpace() {
 
     g_address_space_base = (u64)(cur + 2 * GB);
     VERBOSE("32-bit address space at %p", (void*)g_address_space_base);
+}
+
+void Emulator::uninitialize32BitAddressSpace() {
+    ASSERT(g_address_space_base != 0);
+    constexpr u64 GB = 1024 * 1024 * 1024;
+    constexpr u64 size = 2 * GB + 4 * GB + 2 * GB;
+
+    u8* addr = (u8*)g_address_space_base - 2 * GB;
+    munmap(addr, size);
+}
+
+std::pair<ExitReason, int> Emulator::Start(const Config& config) {
+    g_config = config;
+    ExitReason exit_reason;
+    int exit_code;
+    g_config = config;
+
+    do {
+        g_process_globals.initialize();
+        g_fs = std::make_unique<Filesystem>();
+
+        Elf::PeekResult peek = Elf::Peek(g_config.executable_path);
+        if (peek == Elf::PeekResult::NotElf) {
+            ERROR("File %s is not an ELF file", g_config.executable_path.c_str());
+        }
+
+        if (peek == Elf::PeekResult::Elf32) {
+            g_mode32 = true;
+            initialize32BitAddressSpace();
+        } else {
+            g_mode32 = false;
+        }
+
+        g_fs->LoadExecutable(g_config.executable_path);
+        ThreadState* main_state = ThreadState::Create(nullptr);
+        main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
+        main_state->SetRip(g_fs->GetEntrypoint());
+
+        auto [stack, size] = setupMainStack(main_state);
+
+        // The Emulator::Run will only return when exit_dispatcher is jumped to
+        VERBOSE("Executable: %016lx - %016lx", g_executable_start.raw(), g_executable_end.raw());
+        if (!g_interpreter_start.isNull()) {
+            VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start.raw(), g_interpreter_end.raw());
+        }
+
+        if (!g_testing) {
+            VERBOSE("Entrypoint: %016lx", g_fs->GetEntrypoint().toHost().raw());
+        }
+
+        VERBOSE("Entering main thread :)");
+
+        Threads::StartThread(main_state);
+
+        VERBOSE("Bye-bye main thread :(");
+
+        exit_reason = main_state->exit_reason;
+        exit_code = main_state->exit_code;
+
+        uninitialize32BitAddressSpace();
+        munmap(stack, size);
+        munmap((void*)g_initial_brk, g_current_brk_size);
+        g_fs.reset();
+        g_breakpoints.clear();
+        ThreadState::Destroy(main_state);
+        pthread_setspecific(g_thread_state_key, nullptr);
+
+        if (exit_reason == EXIT_REASON_EXECVE) {
+            // Just start the emulator again
+            // The execve handler has changed g_config to the new executable
+            ERROR("TODO: Implement execve");
+            continue;
+        }
+    } while (false);
+
+    return {exit_reason, exit_code};
+}
+
+void Emulator::StartTest(const TestConfig& config) {
+    g_mode32 = config.mode32;
+
+    ThreadState* main_state = ThreadState::Create(nullptr);
+    main_state->SetRip(config.entrypoint.toGuest());
+
+    if (g_mode32) {
+        initialize32BitAddressSpace();
+    }
+
+    Threads::StartThread(main_state);
 }

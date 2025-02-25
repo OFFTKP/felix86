@@ -26,7 +26,7 @@ struct FEXTestLoader {
     static void RunTest(const std::filesystem::path& path);
 
 private:
-    std::unique_ptr<Emulator> emulator{};
+    TestConfig config{};
     ThreadState* state = nullptr;
     std::vector<u8> buffer{};
     std::string json{};

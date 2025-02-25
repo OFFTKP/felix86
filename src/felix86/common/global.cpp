@@ -39,16 +39,18 @@ u64 g_dispatcher_exit_count = 0;
 u64 g_address_space_base = 0;
 std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{}; // TODO: HostAddress
-std::chrono::nanoseconds g_compilation_total_time = std::chrono::nanoseconds(0);
-std::vector<const char*> g_host_argv{};
 pthread_key_t g_thread_state_key = -1;
 ProcessGlobals g_process_globals{};
+HostAddress g_guest_auxv{};
+size_t g_guest_auxv_size = 0;
+bool g_execve_process = false;
+std::unique_ptr<Filesystem> g_fs{};
+Config g_config{};
 
 int g_output_fd = 1;
 std::filesystem::path g_rootfs_path{};
 u64 g_executable_base_hint = 0;
 u64 g_interpreter_base_hint = 0;
-Emulator* g_emulator = nullptr;
 
 HostAddress g_interpreter_start{};
 HostAddress g_interpreter_end{};

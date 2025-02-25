@@ -81,7 +81,6 @@ struct XmmReg {
 static_assert(sizeof(XmmReg) == 16);
 
 struct ThreadState {
-    // force_mode32 is used when creating the first 32-bit state, as the default is 64-bit or copying whatever copy_state is
     explicit ThreadState(ThreadState* copy_state);
 
     u64 gprs[16]{};
@@ -122,7 +121,7 @@ struct ThreadState {
 
     void* compile_next_handler{};
 
-    u8 exit_reason{};
+    ExitReason exit_reason{};
 
     u8 exit_code{}; // process exit code
 
@@ -247,4 +246,6 @@ struct ThreadState {
     static ThreadState* Create(ThreadState* copy_state = nullptr);
 
     static ThreadState* Get();
+
+    static void Destroy(ThreadState* state);
 };

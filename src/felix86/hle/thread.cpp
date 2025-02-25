@@ -7,6 +7,7 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thread.hpp"
+#include "felix86/v2/recompiler.hpp"
 
 struct CloneArgs {
     ThreadState* parent_state = nullptr;
@@ -96,13 +97,15 @@ void* pthread_handler(void* args) {
 
     LOG("Thread %ld started", state->tid);
     pthread_setname_np(state->thread, "ChildProcess");
-    g_emulator->StartThread(state);
+    Threads::StartThread(state);
     LOG("Thread %ld exited with reason: %s", state->tid, print_exit_reason(state->exit_reason));
 
     if (state->clear_tid_address) {
         __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
         syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
     }
+
+    ThreadState::Destroy(state);
 
     return nullptr;
 }
@@ -331,4 +334,10 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     VERBOSE("Stack pointer at %p", stack_pointer);
 
     return {stack_pointer, max_stack_size};
+}
+
+void Threads::StartThread(ThreadState* state) {
+    state->tid = gettid();
+    state->recompiler->enterDispatcher(state);
+    VERBOSE("Thread exited with reason %d\n", state->exit_reason);
 }

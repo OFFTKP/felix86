@@ -5,7 +5,6 @@
 #include "catch2/catch_message.hpp"
 #include "catch2/catch_test_macros.hpp"
 #include "felix86/common/print.hpp"
-#include "felix86/v2/recompiler.hpp"
 #include "fex_test_loader.hpp"
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
@@ -173,11 +172,8 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
     memcpy((void*)0x10'0000, buffer.data(), bytes_read);
 
-    TestConfig config = {};
     config.entrypoint = HostAddress{0x10'0000};
     config.mode32 = is_mode32;
-
-    emulator = std::make_unique<Emulator>(config);
     state = ThreadState::Get();
 }
 
@@ -186,13 +182,9 @@ FEXTestLoader::~FEXTestLoader() {
         munmap(ptr.first, ptr.second);
     }
 
-    ThreadState* state = (ThreadState*)pthread_getspecific(g_thread_state_key);
+    ThreadState* state = ThreadState::Get();
     ASSERT(state);
-    auto it = std::find(g_process_globals.states.begin(), g_process_globals.states.end(), state);
-    if (it != g_process_globals.states.end()) {
-        g_process_globals.states.erase(it); // TODO: this and the destructor used in pthread set specific, make them a function
-    }
-    delete state;
+    ThreadState::Destroy(state);
     pthread_setspecific(g_thread_state_key, nullptr);
 }
 
@@ -202,7 +194,7 @@ void FEXTestLoader::Run() {
         munmap_me.push_back({stuff, size});
     }
     state->SetGpr(X86_REF_RSP, 0xC000'0000 + 4096);
-    emulator->Run();
+    Emulator::StartTest(config);
     Validate();
 }
 

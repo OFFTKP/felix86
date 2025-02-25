@@ -13,7 +13,6 @@
 #include <termios.h>
 #undef VMIN
 #include <unistd.h>
-#include "felix86/common/debug.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/emulator.hpp"
@@ -21,6 +20,7 @@
 #include "felix86/hle/stat.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
+#include "felix86/v2/recompiler.hpp"
 
 // We add felix86_${ARCH}_ in front of the linux related identifiers to avoid
 // naming conflicts
@@ -43,6 +43,19 @@ const char* print_syscall_name(u64 syscall_number) {
         return "Unknown";
     }
 }
+
+#ifdef __riscv
+// Make it return straight to the exit dispatcher so the stack unwinds correctly
+// Cursed? Maybe. But it works. The problem is if we just call the exit dispatcher directly,
+// the stack isn't unwound correctly which *could* lead to stack overflow
+#define CLEAN_EXIT                                                                                                                                   \
+    asm volatile("mv ra, %0" ::"r"(state->recompiler->getExitDispatcher()));                                                                         \
+    return
+#else
+#define CLEAN_EXIT                                                                                                                                   \
+    UNREACHABLE();                                                                                                                                   \
+    return
+#endif
 
 bool detecting_memory_region = false;
 std::string name = {};
@@ -192,7 +205,7 @@ void felix86_syscall(ThreadState* state) {
 
     Result result;
 
-    Filesystem& fs = g_emulator->GetFilesystem();
+    Filesystem& fs = *g_fs;
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
@@ -668,9 +681,7 @@ void felix86_syscall(ThreadState* state) {
         STRACE("exit_group(%d)", (int)rdi);
         state->exit_reason = EXIT_REASON_EXIT_GROUP_SYSCALL;
         state->exit_code = rdi;
-        g_emulator->CleanExit(state);
-        result = 0; // for the warning
-        break;
+        CLEAN_EXIT;
     }
     case felix86_x86_64_access: {
         if (std::string((char*)rdi) == "/proc/self/exe") {
@@ -961,9 +972,7 @@ void felix86_syscall(ThreadState* state) {
         STRACE("exit(%d)", (int)rdi);
         state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
         state->exit_code = rdi;
-        g_emulator->CleanExit(state);
-        result = 0; // for the warning
-        break;
+        CLEAN_EXIT;
     }
     case felix86_x86_64_vfork: {
         result = -ENOSYS; // make it use clone instead
@@ -1083,9 +1092,8 @@ void felix86_syscall(ThreadState* state) {
             } else {
                 void* addr = (void*)rsi;
                 size_t size = rdx;
-                auto [auxv_addr, auxv_size] = g_emulator->GetAuxv();
-                size_t actual_size = std::min(size, auxv_size);
-                memcpy(addr, auxv_addr, actual_size);
+                size_t actual_size = std::min(size, g_guest_auxv_size);
+                memcpy(addr, (void*)g_guest_auxv.raw(), actual_size);
                 result = actual_size;
             }
             break;
@@ -1185,54 +1193,45 @@ void felix86_syscall(ThreadState* state) {
             path = fs.GetExecutablePath();
         }
 
-        if (!rsi || !rdx) {
-            // Technically legal for programs to call execve with NULL args or env, but we don't support it
-            WARN("execve called with NULL args or env");
-            result = -EFAULT;
+        if (!std::filesystem::exists(path)) {
+            result = -ENOENT;
             break;
         }
 
-        std::vector<const char*> args = g_host_argv;
-        const char** guest_argv = (const char**)rsi;
-        // Skip first argument, which is the path
-        guest_argv++;
-        args.push_back(path.c_str());
-        if (guest_argv) {
+        if (!std::filesystem::is_regular_file(path)) {
+            result = -ENOENT;
+            break;
+        }
+
+        g_config.executable_path = path;
+        g_config.argv.clear();
+        g_config.envp.clear();
+
+        if (rsi) {
+            const char** guest_argv = (const char**)rsi;
             while (*guest_argv) {
-                args.push_back(*guest_argv);
+                g_config.argv.push_back(*guest_argv);
                 guest_argv++;
             }
         }
-        args.push_back(nullptr);
 
-        std::vector<const char*> env;
-        const char** guest_env = (const char**)rdx;
-        while (*guest_env) {
-            env.push_back(*guest_env);
-            guest_env++;
+        if (rdx) {
+            const char** guest_env = (const char**)rdx;
+            while (*guest_env) {
+                g_config.envp.push_back(*guest_env);
+                guest_env++;
+            }
         }
-        env.push_back("__FELIX86_EXECVE=1"); // tell the new emulator instance that we're in execve
-        env.push_back(nullptr);
 
-        std::string log;
-        log += "execve(";
-        for (const char* arg : args) {
-            if (!arg)
-                break;
+        g_execve_process = true;
+        pthread_setname_np(pthread_self(), "ExecveProcess");
+        state->exit_reason = EXIT_REASON_EXECVE;
 
-            log += arg;
-            log += " ";
-        }
-        log.pop_back();
-        log += ")";
-        LOG("%s", log.c_str());
+        LOG("Calling execve: %s", path.c_str());
 
-        // execve, there's no going back
-        result = execve("/proc/self/exe", (char* const*)args.data(), (char* const*)env.data());
+        // TODO: what if it has child threads? They need to be killed...
 
-        // if we're here, execve failed
-        WARN("execve(%s, %p, %p) failed: %s", (const char*)rdi, (void*)rsi, (void*)rdx, strerror(errno));
-        break;
+        CLEAN_EXIT; // The main function will see that the exit code is execve and act accordingly
     }
     case felix86_x86_64_umask: {
         result = HOST_SYSCALL(umask, rdi);

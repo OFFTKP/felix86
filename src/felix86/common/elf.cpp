@@ -136,6 +136,12 @@ private:
 
 Elf::Elf(bool is_interpreter) : is_interpreter(is_interpreter) {}
 
+Elf::~Elf() {
+    for (auto [addr, size] : unmap_me) {
+        munmap(addr, size);
+    }
+}
+
 void Elf::Load(const std::filesystem::path& path) {
     if (!std::filesystem::exists(path)) {
         WARN("File %s does not exist", path.c_str());
@@ -299,6 +305,8 @@ void Elf::Load(const std::filesystem::path& path) {
         } else {
             base_ptr = (u8*)mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         }
+
+        unmap_me.push_back({base_ptr, highest_vaddr});
     } else {
         // Start at the address space base. 0 in 64-bit, some address in 32-bit mode.
         base_ptr = (u8*)g_address_space_base;
@@ -347,6 +355,8 @@ void Elf::Load(const std::filesystem::path& path) {
                 ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
             }
 
+            unmap_me.push_back({(void*)segment_base, segment_size});
+
             if (phdr.memsz() > phdr.filesz()) {
                 // This is probably a segment that contains a .data and a .bss right after, so after
                 // the file size starts the bss, the part that should be zeroed
@@ -359,8 +369,8 @@ void Elf::Load(const std::filesystem::path& path) {
                 }
 
                 if (bss_page_start != bss_page_end) {
-                    void* bss_excess =
-                        mmap((void*)bss_page_start, bss_page_end - bss_page_start, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+                    size_t excess_size = bss_page_end - bss_page_start;
+                    void* bss_excess = mmap((void*)bss_page_start, excess_size, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     if (bss_excess == MAP_FAILED) {
                         ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
                     }
@@ -379,7 +389,8 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     if (!is_interpreter) {
-        g_current_brk = (u64)mmap(program_base + PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        // Don't add to unmap_me, unmapped elsewhere
+        g_current_brk = (u64)mmap(base_ptr + PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if ((void*)g_current_brk == MAP_FAILED) {
             ERROR("Failed to allocate memory for brk in file %s", path.c_str());
         }
@@ -390,7 +401,6 @@ void Elf::Load(const std::filesystem::path& path) {
 
         g_executable_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
         g_executable_end = HostAddress{PAGE_ALIGN((u64)(base_ptr + highest_vaddr))};
-        program_base = (u8*)base_ptr;
         MemoryMetadata::AddRegion("Executable", g_executable_start.raw(), g_executable_end.raw());
         // LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
@@ -410,7 +420,7 @@ void Elf::Load(const std::filesystem::path& path) {
     ok = true;
 }
 
-PeekResult Elf::Peek(const std::filesystem::path& path) {
+Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     FILE* file = fopen(path.c_str(), "rb");
     if (!file) {
         ERROR("Failed to open file %s", path.c_str());
