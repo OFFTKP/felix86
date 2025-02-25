@@ -116,7 +116,7 @@ struct Recompiler {
 
     void enterDispatcher(ThreadState* state);
 
-    void* getExitDispatcher();
+    [[noreturn]] void exitDispatcher(ThreadState* state);
 
     void* getCompileNext();
 

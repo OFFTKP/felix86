@@ -264,6 +264,10 @@ void Emulator::initialize32BitAddressSpace() {
     VERBOSE("32-bit address space at %p", (void*)g_address_space_base);
 }
 
+void Emulator::ExitDispatcher(ThreadState* state) {
+    state->recompiler->exitDispatcher(state);
+}
+
 void Emulator::uninitialize32BitAddressSpace() {
     ASSERT(g_address_space_base != 0);
     constexpr u64 GB = 1024 * 1024 * 1024;

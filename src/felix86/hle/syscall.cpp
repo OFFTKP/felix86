@@ -44,19 +44,6 @@ const char* print_syscall_name(u64 syscall_number) {
     }
 }
 
-#ifdef __riscv
-// Make it return straight to the exit dispatcher so the stack unwinds correctly
-// Cursed? Maybe. But it works. The problem is if we just call the exit dispatcher directly,
-// the stack isn't unwound correctly which *could* lead to stack overflow
-#define CLEAN_EXIT                                                                                                                                   \
-    asm volatile("mv ra, %0" ::"r"(state->recompiler->getExitDispatcher()));                                                                         \
-    return
-#else
-#define CLEAN_EXIT                                                                                                                                   \
-    UNREACHABLE();                                                                                                                                   \
-    return
-#endif
-
 bool detecting_memory_region = false;
 std::string name = {};
 std::filesystem::path region_path = {};
@@ -681,7 +668,9 @@ void felix86_syscall(ThreadState* state) {
         STRACE("exit_group(%d)", (int)rdi);
         state->exit_reason = EXIT_REASON_EXIT_GROUP_SYSCALL;
         state->exit_code = rdi;
-        CLEAN_EXIT;
+        Emulator::ExitDispatcher(state);
+        UNREACHABLE();
+        break;
     }
     case felix86_x86_64_access: {
         if (std::string((char*)rdi) == "/proc/self/exe") {
@@ -972,7 +961,9 @@ void felix86_syscall(ThreadState* state) {
         STRACE("exit(%d)", (int)rdi);
         state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
         state->exit_code = rdi;
-        CLEAN_EXIT;
+        Emulator::ExitDispatcher(state);
+        UNREACHABLE();
+        break;
     }
     case felix86_x86_64_vfork: {
         result = -ENOSYS; // make it use clone instead
@@ -1231,7 +1222,10 @@ void felix86_syscall(ThreadState* state) {
 
         // TODO: what if it has child threads? They need to be killed...
 
-        CLEAN_EXIT; // The main function will see that the exit code is execve and act accordingly
+        // The main function will see that the exit code is execve and act accordingly
+        Emulator::ExitDispatcher(state);
+        UNREACHABLE();
+        break;
     }
     case felix86_x86_64_umask: {
         result = HOST_SYSCALL(umask, rdi);

@@ -16,13 +16,15 @@ struct Emulator {
         return fs;
     }
 
-    void StartThread(ThreadState* state);
-
     static void* CompileNext(ThreadState* state);
 
     [[nodiscard]] static std::pair<ExitReason, int> Start(const Config& config);
 
     static void StartTest(const TestConfig& config, GuestAddress stack);
+
+    // The exit dispatcher function also restores the stack pointer to what it was before
+    // entering the dispatcher, so it can be called from anywhere
+    [[noreturn]] static void ExitDispatcher(ThreadState* state);
 
 private:
     [[nodiscard]] static std::pair<void*, size_t> setupMainStack(ThreadState* state);
