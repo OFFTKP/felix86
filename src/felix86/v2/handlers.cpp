@@ -589,16 +589,15 @@ FAST_HANDLE(CALL) {
         }
 
         x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
-        biscuit::GPR scratch = rec.getRip();
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         rec.setRip(src);
         biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
         AS.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setRefGPR(X86_REF_RSP, size, rsp);
 
-        u64 return_offset = meta.rip - meta.block_start + instruction.length;
-        rec.addi(scratch, scratch, return_offset);
-
+        biscuit::GPR scratch = rec.scratch();
+        GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
+        AS.LI(scratch, return_address.raw());
         rec.writeMemory(scratch, rsp, 0, size);
 
         rec.writebackDirtyState();
@@ -609,16 +608,15 @@ FAST_HANDLE(CALL) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-        u64 return_offset = meta.rip - meta.block_start + instruction.length;
+        GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
 
         x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
-        biscuit::GPR scratch = rec.getRip();
         biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
         AS.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setRefGPR(X86_REF_RSP, size, rsp);
 
-        rec.addi(scratch, scratch, return_offset);
-
+        biscuit::GPR scratch = rec.scratch();
+        AS.LI(scratch, return_address.raw());
         rec.writeMemory(scratch, rsp, 0, size);
 
         rec.addi(scratch, scratch, displacement);
@@ -626,7 +624,7 @@ FAST_HANDLE(CALL) {
         rec.setRip(scratch);
         rec.writebackDirtyState();
         rec.pushCalltrace();
-        rec.jumpAndLink(meta.rip + instruction.length + displacement);
+        rec.jumpAndLink(meta.rip.add(instruction.length + displacement));
         rec.stopCompiling();
         break;
     }
@@ -1045,12 +1043,12 @@ FAST_HANDLE(JMP) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-        u64 offset = meta.rip - meta.block_start + instruction.length;
-        biscuit::GPR scratch = rec.getRip();
-        rec.addi(scratch, scratch, offset + displacement);
+        GuestAddress address = meta.rip.add(instruction.length + displacement).toGuest();
+        biscuit::GPR scratch = rec.scratch();
+        AS.LI(scratch, address.raw());
         rec.setRip(scratch);
         rec.writebackDirtyState();
-        rec.jumpAndLink(meta.rip + instruction.length + displacement);
+        rec.jumpAndLink(meta.rip.add(instruction.length + displacement));
         rec.stopCompiling();
         break;
     }
@@ -1530,17 +1528,14 @@ FAST_HANDLE(CQO) {
 
 void JCC(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-    u64 address_false = meta.rip - meta.block_start + instruction.length;
-    u64 address_true = address_false + immediate;
+    HostAddress address_false = meta.rip.add(instruction.length);
+    HostAddress address_true = address_false.add(immediate);
 
-    biscuit::GPR rip_true = rec.getRip();
+    biscuit::GPR rip_true = rec.scratch();
     biscuit::GPR rip_false = rec.scratch();
 
-    rec.addi(rip_false, rip_true, address_false);
-    rec.addi(rip_true, rip_false, immediate);
-
-    address_false += meta.block_start;
-    address_true += meta.block_start;
+    AS.LI(rip_false, address_false.toGuest().raw());
+    AS.LI(rip_true, address_true.toGuest().raw());
 
     rec.writebackDirtyState();
     rec.jumpAndLinkConditional(cond, rip_true, rip_false, address_true, address_false);
@@ -2221,7 +2216,7 @@ FAST_HANDLE(SYSCALL) {
     }
 
     biscuit::GPR rcx = rec.allocatedGPR(X86_REF_RCX);
-    AS.LI(rcx, meta.rip + instruction.length);
+    AS.LI(rcx, meta.rip.add(instruction.length).toGuest().raw());
     rec.setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
 
     // Normally the syscall instruction also writes the flags to R11 but we don't need them in our syscall handler

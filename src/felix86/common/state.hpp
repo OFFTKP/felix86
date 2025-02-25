@@ -1,8 +1,8 @@
 #pragma once
 
 #include <array>
-#include <queue>
 #include "biscuit/isa.hpp"
+#include "felix86/common/address.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/signals.hpp"
@@ -85,7 +85,7 @@ struct ThreadState {
     explicit ThreadState(ThreadState* copy_state);
 
     u64 gprs[16]{};
-    u64 rip{};
+    GuestAddress rip{0};
     u64 fp[8]{}; // we support 64-bit precision instead of 80-bit for speed and simplicity
     XmmReg xmm[16]{};
     bool cf{};
@@ -222,11 +222,11 @@ struct ThreadState {
         xmm[ref - X86_REF_XMM0] = value;
     }
 
-    u64 GetRip() const {
+    GuestAddress GetRip() const {
         return rip;
     }
 
-    void SetRip(u64 value) {
+    void SetRip(GuestAddress value) {
         rip = value;
     }
 

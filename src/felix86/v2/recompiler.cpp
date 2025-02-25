@@ -109,10 +109,10 @@ void Recompiler::emitDispatcher() {
     flush_icache();
 }
 
-void* Recompiler::emitSigreturnThunk() {
+HostAddress Recompiler::emitSigreturnThunk() {
     // This piece of code is responsible for moving the thread state pointer to the right place (so we don't have to find it using tid)
     // calling sigreturn, returning and going back to the dispatcher.
-    void* here = as.GetCursorPointer();
+    HostAddress here{(u64)as.GetCursorPointer()};
     getBlockMetadata(Signals::magicSigreturnAddress()).address = here;
 
     as.MV(a0, threadStatePointer());
@@ -134,22 +134,20 @@ void Recompiler::clearCodeCache() {
     emitSigreturnThunk();
 }
 
-void* Recompiler::compile(u64 rip) {
-    rip += g_address_space_base;
-
+HostAddress Recompiler::compile(HostAddress rip) {
     size_t remaining_size = code_cache_size - as.GetCodeBuffer().GetCursorOffset();
     if (remaining_size < 100'000) { // less than ~100KB left, clear cache
         clearCodeCache();
     }
 
     std::lock_guard lock(block_map_mutex);
-    void* start = as.GetCursorPointer();
+    HostAddress start{(u64)as.GetCursorPointer()};
 
     // Map it immediately so we can optimize conditional branch to self
     getBlockMetadata(rip).address = start;
 
     // A sequence of code. This is so that we can also call it recursively later.
-    u64 end_rip = compileSequence(rip);
+    HostAddress end_rip = compileSequence(rip);
 
     // If other blocks were waiting for this block to be linked, link them now
     expirePendingLinks(rip);
@@ -160,13 +158,13 @@ void* Recompiler::compile(u64 rip) {
     return start;
 }
 
-void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
+void Recompiler::markPagesAsReadOnly(HostAddress start, HostAddress end) {
     if (g_dont_protect_pages) {
         return;
     }
 
-    u64 start_page = start & ~0xFFF;
-    u64 end_page = (end & ~0xFFF) + 0x1000;
+    u64 start_page = start.raw() & ~0xFFF;
+    u64 end_page = (end.raw() & ~0xFFF) + 0x1000;
     u64 size = end_page - start_page;
     int result = mprotect((void*)start_page, size, PROT_READ);
     if (result != 0) {
@@ -174,17 +172,16 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     }
 }
 
-void* Recompiler::getCompiledBlock(u64 rip) {
-    u64 offset_rip = rip + g_address_space_base;
+HostAddress Recompiler::getCompiledBlock(HostAddress rip) {
     if (g_use_block_cache) {
-        BlockCacheEntry& entry = block_cache[offset_rip & ((1 << block_cache_bits) - 1)];
-        if (entry.guest == offset_rip) {
-            return (void*)entry.host;
+        BlockCacheEntry& entry = block_cache[rip.raw() & ((1 << block_cache_bits) - 1)];
+        if (entry.guest == rip) {
+            return entry.host;
         } else if (blockExists(rip)) {
-            u64 host = (u64)getBlockMetadata(rip).address;
-            entry.guest = offset_rip;
+            HostAddress host = getBlockMetadata(rip).address;
+            entry.guest = rip;
             entry.host = host;
-            return (void*)host;
+            return host;
         } else {
             return compile(rip);
         }
@@ -197,10 +194,10 @@ void* Recompiler::getCompiledBlock(u64 rip) {
     }
 
     UNREACHABLE();
-    return nullptr;
+    return {};
 }
 
-u64 Recompiler::compileSequence(u64 rip) {
+HostAddress Recompiler::compileSequence(HostAddress rip) {
     compiling = true;
     scanFlagUsageAhead(rip);
     HandlerMetadata meta = {rip, rip};
@@ -217,13 +214,13 @@ u64 Recompiler::compileSequence(u64 rip) {
     while (compiling) {
         resetScratch();
 
-        if (g_breakpoints.find(meta.rip) != g_breakpoints.end()) {
+        if (g_breakpoints.find(meta.rip.raw()) != g_breakpoints.end()) {
             u64 current_address = (u64)as.GetCursorPointer();
-            g_breakpoints[meta.rip].push_back(current_address);
+            g_breakpoints[meta.rip.raw()].push_back(current_address);
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
 
-        block_meta.instruction_spans.push_back({meta.rip, (u64)as.GetCursorPointer()});
+        block_meta.instruction_spans.push_back({meta.rip.raw(), (u64)as.GetCursorPointer()});
 
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
 
@@ -256,7 +253,7 @@ u64 Recompiler::compileSequence(u64 rip) {
 #undef X
         default: {
             ZydisDisassembledInstruction disassembled;
-            if (ZYAN_SUCCESS(ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled))) {
+            if (ZYAN_SUCCESS(ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip.raw(), (u8*)meta.rip.raw(), 15, &disassembled))) {
                 ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
             } else {
                 ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);
@@ -280,50 +277,12 @@ u64 Recompiler::compileSequence(u64 rip) {
         //     }
         // }
 
-        // Checks that we didn't forget to emulate any flags
-        // if (g_paranoid && mnemonic != ZYDIS_MNEMONIC_SYSCALL) {
-        //     u32 changed = instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1;
-        //     u32 undefined = instruction.cpu_flags->undefined;
-
-        //     if ((changed & ZYDIS_CPUFLAG_CF) && !getMetadata(X86_REF_CF).dirty) {
-        //         ERROR("Instruction %s should've modified CF", ZydisMnemonicGetString(mnemonic));
-        //     } else if (!(changed & ZYDIS_CPUFLAG_CF) && getMetadata(X86_REF_CF).dirty && !(undefined & ZYDIS_CPUFLAG_CF)) {
-        //         ERROR("Instruction %s should've not modified CF", ZydisMnemonicGetString(mnemonic));
-        //     }
-
-        //     if ((changed & ZYDIS_CPUFLAG_AF) && !getMetadata(X86_REF_AF).dirty) {
-        //         ERROR("Instruction %s should've modified AF", ZydisMnemonicGetString(mnemonic));
-        //     } else if (!(changed & ZYDIS_CPUFLAG_AF) && getMetadata(X86_REF_AF).dirty && !(undefined & ZYDIS_CPUFLAG_AF)) {
-        //         ERROR("Instruction %s should've not modified AF", ZydisMnemonicGetString(mnemonic));
-        //     }
-
-        //     if ((changed & ZYDIS_CPUFLAG_ZF) && !getMetadata(X86_REF_ZF).dirty) {
-        //         ERROR("Instruction %s should've modified ZF", ZydisMnemonicGetString(mnemonic));
-        //     } else if (!(changed & ZYDIS_CPUFLAG_ZF) && getMetadata(X86_REF_ZF).dirty && !(undefined & ZYDIS_CPUFLAG_ZF)) {
-        //         ERROR("Instruction %s should've not modified ZF", ZydisMnemonicGetString(mnemonic));
-        //     }
-
-        //     if ((changed & ZYDIS_CPUFLAG_SF) && !getMetadata(X86_REF_SF).dirty) {
-        //         ERROR("Instruction %s should've modified SF", ZydisMnemonicGetString(mnemonic));
-        //     } else if (!(changed & ZYDIS_CPUFLAG_SF) && getMetadata(X86_REF_SF).dirty && !(undefined & ZYDIS_CPUFLAG_SF)) {
-        //         ERROR("Instruction %s should've not modified SF", ZydisMnemonicGetString(mnemonic));
-        //     }
-
-        //     if ((changed & ZYDIS_CPUFLAG_OF) && !getMetadata(X86_REF_OF).dirty) {
-        //         ERROR("Instruction %s should've modified OF", ZydisMnemonicGetString(mnemonic));
-        //     } else if (!(changed & ZYDIS_CPUFLAG_OF) && getMetadata(X86_REF_OF).dirty && !(undefined & ZYDIS_CPUFLAG_OF)) {
-        //         ERROR("Instruction %s should've not modified OF", ZydisMnemonicGetString(mnemonic));
-        //     }
-
-        //     writebackDirtyState();
-        // }
-
         meta.rip += instruction.length;
 
         if (g_single_step && compiling) {
             resetScratch();
             biscuit::GPR rip_after = scratch();
-            as.LI(rip_after, meta.rip);
+            as.LI(rip_after, meta.rip.toGuest().raw());
             setRip(rip_after);
             writebackDirtyState();
             backToDispatcher();
@@ -332,7 +291,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     }
 
     current_block_metadata->guest_address_end = meta.rip;
-    current_block_metadata->address_end = as.GetCursorPointer();
+    current_block_metadata->address_end = HostAddress{(u64)as.GetCursorPointer()};
     flush_icache();
 
     current_block_metadata = nullptr;
@@ -628,10 +587,10 @@ biscuit::Vec Recompiler::vec(ZydisRegister reg) {
     return getRefVec(ref);
 }
 
-ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
-    ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)rip, 15, &instruction, operands);
+ZydisMnemonic Recompiler::decode(HostAddress rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
+    ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)rip.raw(), 15, &instruction, operands);
     if (!ZYAN_SUCCESS(status)) {
-        ERROR("Failed to decode instruction at 0x%016lx", rip);
+        ERROR("Failed to decode instruction at 0x%016lx", rip.raw());
     }
     return instruction.mnemonic;
 }
@@ -1202,8 +1161,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
     biscuit::GPR base, index;
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
-        as.LD(address, offsetof(ThreadState, rip), threadStatePointer());
-        addi(address, address, operand->mem.disp.value + instruction.length + current_meta->rip - current_meta->block_start);
+        as.LI(address, current_meta->rip.toGuest().raw() + instruction.length + operand->mem.disp.value);
         return address;
     }
 
@@ -1395,7 +1353,7 @@ void* Recompiler::getCompileNext() {
     return compile_next_handler;
 }
 
-void Recompiler::scanFlagUsageAhead(u64 rip) {
+void Recompiler::scanFlagUsageAhead(HostAddress rip) {
     for (int i = 0; i < 6; i++) {
         flag_access_cpazso[i].clear();
     }
@@ -1460,7 +1418,7 @@ void Recompiler::scanFlagUsageAhead(u64 rip) {
     }
 }
 
-bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
+bool Recompiler::shouldEmitFlag(HostAddress rip, x86_ref_e ref) {
     if (g_paranoid) {
         return true;
     }
@@ -1601,7 +1559,7 @@ biscuit::GPR Recompiler::getRip() {
     return rip;
 }
 
-void Recompiler::jumpAndLink(u64 rip) {
+void Recompiler::jumpAndLink(HostAddress rip) {
     if (g_dont_link) {
         // Just emit jump to dispatcher
         backToDispatcher();
@@ -1616,7 +1574,7 @@ void Recompiler::jumpAndLink(u64 rip) {
         getBlockMetadata(rip).pending_links.push_back(link_me);
     } else {
         auto& target_meta = getBlockMetadata(rip);
-        u64 target = (u64)target_meta.address;
+        u64 target = target_meta.address.raw();
         u64 offset = target - (u64)as.GetCursorPointer();
 
         u8* link_me = as.GetCursorPointer();
@@ -1648,53 +1606,21 @@ void Recompiler::jumpAndLink(u64 rip) {
     ASSERT(as.GetCursorPointer() - start == 3 * 4);
 }
 
-void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, u64 rip_true, u64 rip_false) {
-    bool ok = false;
-    if (blockExists(rip_true)) {
-        // The -4 is due to the setRip emitting an SD instruction
-        auto offset_true = (u64)getBlockMetadata(rip_true).address - (u64)as.GetCursorPointer() - 4;
-        if (IsValidBTypeImm(offset_true)) {
-            setRip(gpr_true);
-            as.BNEZ(condition, offset_true);
-            setRip(gpr_false);
-            jumpAndLink(rip_false);
-            ok = true;
-        } else if (blockExists(rip_false)) {
-            auto offset_false = (u64)getBlockMetadata(rip_false).address - (u64)as.GetCursorPointer() - 4;
-            if (IsValidBTypeImm(offset_false)) {
-                setRip(gpr_false);
-                as.BEQZ(condition, offset_false);
-                setRip(gpr_true);
-                jumpAndLink(rip_true);
-                ok = true;
-            }
-        }
-    } else if (blockExists(rip_false)) {
-        auto offset_false = (u64)getBlockMetadata(rip_false).address - (u64)as.GetCursorPointer() - 4;
-        if (IsValidBTypeImm(offset_false)) {
-            setRip(gpr_false);
-            as.BEQZ(condition, offset_false);
-            setRip(gpr_true);
-            jumpAndLink(rip_true);
-            ok = true;
-        }
-    }
+void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, HostAddress rip_true,
+                                        HostAddress rip_false) {
+    Label false_label;
+    as.BEQZ(condition, &false_label);
 
-    if (!ok) {
-        Label false_label;
-        as.BEQZ(condition, &false_label);
+    setRip(gpr_true);
+    jumpAndLink(rip_true);
 
-        setRip(gpr_true);
-        jumpAndLink(rip_true);
+    as.Bind(&false_label);
 
-        as.Bind(&false_label);
-
-        setRip(gpr_false);
-        jumpAndLink(rip_false);
-    }
+    setRip(gpr_false);
+    jumpAndLink(rip_false);
 }
 
-void Recompiler::expirePendingLinks(u64 rip) {
+void Recompiler::expirePendingLinks(HostAddress rip) {
     if (g_dont_link) {
         return;
     }
@@ -2001,8 +1927,8 @@ void Recompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
     }
 }
 
-bool Recompiler::blockExists(u64 rip) {
-    return getBlockMetadata(rip).address != nullptr;
+bool Recompiler::blockExists(HostAddress rip) {
+    return !getBlockMetadata(rip).address.isNull();
 }
 
 void Recompiler::vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask) {
@@ -2141,15 +2067,15 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
     as.SB(new_top, offsetof(ThreadState, fpu_top), threadStatePointer());
 }
 
-void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
+void Recompiler::unlinkBlock(ThreadState* state, HostAddress rip) {
     auto metadata = state->recompiler->getBlockMetadata(rip);
 
-    if (metadata.address_end == nullptr) {
+    if (metadata.address_end.isNull()) {
         // Not yet compiled, we are fine
         return;
     }
 
-    u8* rewind_address = (u8*)metadata.address_end - 4 * 3; // 3 instructions for the ending jump/link
+    u8* rewind_address = (u8*)metadata.address_end.raw() - 4 * 3; // 3 instructions for the ending jump/link
     unlinkAt(rewind_address);
     flush_icache();
 }
@@ -2162,11 +2088,11 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     }
 
     // Unlink ourselves, jump back to dispatcher at end
-    u8* rewind_address = (u8*)block->address_end - 4 * 3; // 3 instructions for the ending jump/link
+    u8* rewind_address = (u8*)block->address_end.raw() - 4 * 3; // 3 instructions for the ending jump/link
     unlinkAt(rewind_address);
 
     // Remove the block from the map
-    bool was_present = block_metadata.erase(block->guest_address);
+    bool was_present = block_metadata.erase(block->guest_address.raw());
     ASSERT(was_present);
     flush_icache();
 }

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <csignal>
+#include "felix86/common/address.hpp"
 #include "felix86/common/utility.hpp"
 
 #ifndef SA_NODEFER
@@ -50,8 +51,8 @@ struct Signals {
     // We are going to make a custom mapping with this magic address pointing to our sigreturn function (well, a thunk that jumps there, initialized
     // in emitSigreturnThunk). This address uses more than 56 bits, so it's normally not a valid x86-64 address, which means it will never collide
     // with a real address.
-    static constexpr u64 magicSigreturnAddress() {
-        return 0x1F00'0000'0000'0000;
+    static constexpr HostAddress magicSigreturnAddress() {
+        return HostAddress(0x1F00'0000'0000'0000);
     }
 
     static void setupFrame(BlockMetadata* current_block, u64 rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
