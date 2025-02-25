@@ -611,7 +611,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     check_guest_signal:
         SignalHandlerTable& handlers = *current_state->signal_handlers;
         RegisteredSignal& handler = handlers[sig - 1];
-        if (!handler.func) {
+        if (handler.func.isNull()) {
             ERROR("Unhandled signal %s, no signal handler found", strsignal(sig));
         }
 
