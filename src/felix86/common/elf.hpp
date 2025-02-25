@@ -28,7 +28,7 @@ struct Elf {
     }
 
     GuestAddress GetEntrypoint() const {
-        return GuestAddress{(u64)(program_base + entry)};
+        return HostAddress{(u64)(program_base + entry)}.toGuest();
     }
 
     void* GetProgramBase() const {
