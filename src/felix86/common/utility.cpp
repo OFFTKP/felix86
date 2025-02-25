@@ -243,10 +243,13 @@ __attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
 }
 
 __attribute__((visibility("default"))) void disassemble_x64(u64 address) {
+    // in 32-bit mode we like to be able to provide a guest address to gdb when calling this function
+    HostAddress host_address = GuestAddress{address}.toHost();
+
     ZydisDecoder decoder;
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
 
-    u64 cur = address;
+    u64 cur = host_address.raw();
     while (true) {
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[10];

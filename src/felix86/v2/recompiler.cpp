@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <fstream>
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"

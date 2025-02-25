@@ -631,7 +631,7 @@ FAST_HANDLE(RET) {
     x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
     biscuit::GPR scratch = rec.scratch();
-    AS.LD(scratch, 0, rsp);
+    rec.readMemory(scratch, rsp, 0, size);
 
     u64 imm = rec.stackPointerSize();
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
