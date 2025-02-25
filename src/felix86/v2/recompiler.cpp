@@ -1786,14 +1786,10 @@ biscuit::GPR Recompiler::getCond(int cond) {
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
     if (g_address_space_base) {
-        if (isScratch(address)) {
-            addi(address, address, g_address_space_base);
-        } else {
-            biscuit::GPR temp = scratch();
-            addi(temp, address, g_address_space_base);
-            address = temp;
-            popScratch();
-        }
+        biscuit::GPR temp = scratch();
+        addi(temp, address, g_address_space_base);
+        address = temp;
+        popScratch();
     }
 
     switch (size) {
@@ -1822,14 +1818,10 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
     if (g_address_space_base) {
-        if (isScratch(address)) {
-            addi(address, address, g_address_space_base);
-        } else {
-            biscuit::GPR temp = scratch();
-            addi(temp, address, g_address_space_base);
-            address = temp;
-            popScratch();
-        }
+        biscuit::GPR temp = scratch();
+        addi(temp, address, g_address_space_base);
+        address = temp;
+        popScratch();
     }
 
     switch (size) {
