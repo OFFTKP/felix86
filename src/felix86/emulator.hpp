@@ -20,8 +20,6 @@ struct Emulator {
 
     static void* CompileNext(ThreadState* state);
 
-    void UnlinkBlock(ThreadState* state, HostAddress rip);
-
     [[nodiscard]] static std::pair<ExitReason, int> Start(const Config& config);
 
     static void StartTest(const TestConfig& config);

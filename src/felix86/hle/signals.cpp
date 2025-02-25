@@ -638,7 +638,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             // This will ensure that the pending signal is eventually handled if we are stuck in a loop
             // For example, if a block is in a loop that also had a host function call and this signal was triggered
             // during the function call
-            g_emulator->UnlinkBlock(current_state, current_state->GetRip().toHost());
+            current_state->recompiler->unlinkBlock(state, current_state->GetRip().toHost());
             return;
         }
 

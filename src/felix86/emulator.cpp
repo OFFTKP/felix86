@@ -236,10 +236,6 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     return (void*)next_block.raw();
 }
 
-void Emulator::UnlinkBlock(ThreadState* state, HostAddress rip) {
-    state->recompiler->unlinkBlock(state, rip);
-}
-
 void Emulator::initialize32BitAddressSpace() {
     constexpr u64 GB = 1024 * 1024 * 1024;
     constexpr u64 size = 2 * GB + 4 * GB + 2 * GB;
