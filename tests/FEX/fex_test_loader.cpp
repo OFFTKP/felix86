@@ -174,7 +174,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
     config.entrypoint = HostAddress{0x10'0000};
     config.mode32 = is_mode32;
-    state = ThreadState::Get();
+    state = ThreadState::Create();
 }
 
 FEXTestLoader::~FEXTestLoader() {
@@ -193,8 +193,8 @@ void FEXTestLoader::Run() {
         auto stuff = mmap((void*)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
         munmap_me.push_back({stuff, size});
     }
-    state->SetGpr(X86_REF_RSP, 0xC000'0000 + 4096);
-    Emulator::StartTest(config);
+    GuestAddress stack{0xC000'0000 + 4096};
+    Emulator::StartTest(config, stack);
     Validate();
 }
 

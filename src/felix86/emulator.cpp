@@ -340,10 +340,11 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     return {exit_reason, exit_code};
 }
 
-void Emulator::StartTest(const TestConfig& config) {
+void Emulator::StartTest(const TestConfig& config, GuestAddress stack) {
     g_mode32 = config.mode32;
 
     ThreadState* main_state = ThreadState::Create(nullptr);
+    main_state->SetGpr(X86_REF_RSP, stack.raw());
     main_state->SetRip(config.entrypoint.toGuest());
 
     if (g_mode32) {

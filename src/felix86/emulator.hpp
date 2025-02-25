@@ -22,7 +22,7 @@ struct Emulator {
 
     [[nodiscard]] static std::pair<ExitReason, int> Start(const Config& config);
 
-    static void StartTest(const TestConfig& config);
+    static void StartTest(const TestConfig& config, GuestAddress stack);
 
 private:
     [[nodiscard]] static std::pair<void*, size_t> setupMainStack(ThreadState* state);
