@@ -174,7 +174,6 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
     config.entrypoint = HostAddress{0x10'0000};
     config.mode32 = is_mode32;
-    state = ThreadState::Create();
 }
 
 FEXTestLoader::~FEXTestLoader() {
@@ -199,6 +198,7 @@ void FEXTestLoader::Run() {
 }
 
 void FEXTestLoader::Validate() {
+    ThreadState* state = ThreadState::Get();
     for (size_t i = 0; i < expected_gpr.size(); i++) {
         auto& pexpected = expected_gpr[i];
         if (pexpected.has_value()) {

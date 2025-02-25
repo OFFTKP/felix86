@@ -27,7 +27,6 @@ struct FEXTestLoader {
 
 private:
     TestConfig config{};
-    ThreadState* state = nullptr;
     std::vector<u8> buffer{};
     std::string json{};
     std::array<std::optional<u64>, 16> expected_gpr{};
