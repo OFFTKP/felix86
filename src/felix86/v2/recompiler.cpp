@@ -1236,6 +1236,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
         popScratch();
     }
 
+    // Address override prefix
     if (instruction.address_width == 32 && !g_mode32) {
         zext(address, address, X86_SIZE_DWORD);
     }

@@ -528,6 +528,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         switch (info->si_code) {
         case SEGV_ACCERR: {
             // Most likely self modifying code, check if the write is in one of our translated pages
+            // TODO: ensure it was a write not a read
             if (is_in_jit_code(current_state, pc)) {
                 u64 write_address = (u64)info->si_addr;
 
@@ -543,6 +544,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 // fine to lock, SIGSEGV happened in jit code, no need to worry about deadlocks
                 // shouldn't be locked during compilation, so no double lock deadlock potential either
                 auto lock = g_process_globals.states_lock.lock();
+                bool found = false;
 
                 // TODO: This is extremely slow, please optimize me
                 for (auto& thread_state : g_process_globals.states) {
@@ -554,6 +556,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                         if (write_page_start <= block.second.guest_address_end && block.second.guest_address <= write_page_end) {
                             // This protected page falls between the guest address range of this block!!
                             to_invalidate.push_back(&block.second);
+                            found = true;
                         }
                     }
 
@@ -561,6 +564,10 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                         thread_state->recompiler->invalidateBlock(block);
                         flush_icache_global(block->address, block->address_end);
                     }
+                }
+
+                if (!found) { // TODO: at some point programs will purposefully trigger sigsegv but we don't care for now
+                    ERROR("SIGSEGV SEGV_ACCERR, but no block found");
                 }
 
                 // Now that everything was unlinked we can unprotect the page so the write can be performed

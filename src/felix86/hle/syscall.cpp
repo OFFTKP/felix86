@@ -1217,6 +1217,9 @@ void felix86_syscall(ThreadState* state) {
         std::string log;
         log += "execve(";
         for (const char* arg : args) {
+            if (!arg)
+                break;
+
             log += arg;
             log += " ";
         }
