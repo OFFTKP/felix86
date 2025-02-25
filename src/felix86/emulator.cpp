@@ -208,11 +208,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         return pair;
     }
 
-    u64 rsp_guest = rsp;
-    if (g_mode32) {
-        rsp_guest -= g_address_space_base;
-    }
-    state->SetGpr(X86_REF_RSP, rsp_guest);
+    GuestAddress rsp_guest = HostAddress{rsp}.toGuest();
+    state->SetGpr(X86_REF_RSP, rsp_guest.raw());
 
     return pair;
 }

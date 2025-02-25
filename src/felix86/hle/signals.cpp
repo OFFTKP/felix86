@@ -218,11 +218,11 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
 void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
                          const XmmReg* host_vecs, bool use_altstack, bool in_jit_code) {
-    u64 rsp = use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP);
-    rsp -= 128; // red zone
+    HostAddress rsp = GuestAddress{use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP)}.toHost();
+    rsp.add(-128); // red zone
 
-    rsp -= sizeof(x64_rt_sigframe);
-    x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
+    rsp.add(-sizeof(x64_rt_sigframe));
+    x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp.raw();
 
     frame->pretcode = (char*)Signals::magicSigreturnAddress().raw();
 
@@ -291,9 +291,9 @@ void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, ThreadS
     frame->uc.uc_mcontext.fpregs->xmm[14] = state->GetXmmReg(X86_REF_XMM14);
     frame->uc.uc_mcontext.fpregs->xmm[15] = state->GetXmmReg(X86_REF_XMM15);
 
-    state->SetGpr(X86_REF_RSP, rsp);               // set the new stack pointer
-    state->SetGpr(X86_REF_RSI, (u64)&frame->info); // set the siginfo pointer
-    state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
+    state->SetGpr(X86_REF_RSP, rsp.toGuest().raw()); // set the new stack pointer
+    state->SetGpr(X86_REF_RSI, (u64)&frame->info);   // set the siginfo pointer
+    state->SetGpr(X86_REF_RDX, (u64)&frame->uc);     // set the ucontext pointer
 }
 
 BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
@@ -333,7 +333,7 @@ void Signals::sigreturn(ThreadState* state) {
     // execution anyway
     rsp -= 8;
 
-    x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
+    x64_rt_sigframe* frame = (x64_rt_sigframe*)GuestAddress{rsp}.toHost().raw();
     rsp += sizeof(x64_rt_sigframe);
 
     // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
