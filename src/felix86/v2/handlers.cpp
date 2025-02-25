@@ -434,7 +434,6 @@ FAST_HANDLE(OR) {
     AS.OR(result, dst, src);
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    rec.zext(result, result, size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
@@ -503,7 +502,6 @@ FAST_HANDLE(XOR) {
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     AS.XOR(result, dst, src);
-    rec.zext(result, result, size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
