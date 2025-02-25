@@ -32,6 +32,7 @@ bool g_no_sse4_2 = false;
 bool g_print_all_insts = false;
 bool g_dont_inline_syscalls = false;
 bool g_mode32 = false;
+bool g_rsb = true;
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
@@ -175,6 +176,12 @@ void initialize_globals() {
     if (is_truthy(paranoid_env)) {
         g_paranoid = true;
         environment += "\nFELIX86_PARANOID";
+    }
+
+    const char* dont_rsb_env = getenv("FELIX86_DONT_RSB");
+    if (is_truthy(dont_rsb_env)) {
+        g_rsb = false;
+        environment += "\nFELIX86_DONT_RSB";
     }
 
     const char* executable_base = getenv("FELIX86_EXECUTABLE_BASE");
