@@ -580,14 +580,6 @@ FAST_HANDLE(CALL) {
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        // We might need to handle these specially when we get there
-        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            ASSERT(operands[0].reg.value != ZYDIS_REGISTER_RSP);
-        } else {
-            ASSERT(operands[0].mem.base != ZYDIS_REGISTER_RSP);
-            ASSERT(operands[0].mem.index != ZYDIS_REGISTER_RSP);
-        }
-
         x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         rec.setRip(src);
