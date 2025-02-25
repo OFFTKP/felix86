@@ -102,6 +102,8 @@ struct Recompiler {
 
     biscuit::GPR lea(ZydisDecodedOperand* operand);
 
+    biscuit::GPR leaAddBase(ZydisDecodedOperand* operand);
+
     void stopCompiling();
 
     void setExitReason(ExitReason reason);
@@ -320,6 +322,10 @@ struct Recompiler {
     void readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
 
     void writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
+
+    void readMemoryNoBase(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
+
+    void writeMemoryNoBase(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
 
     void repPrologue(Label* loop_end, biscuit::GPR rcx);
 
