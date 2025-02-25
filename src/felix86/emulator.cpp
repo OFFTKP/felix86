@@ -321,7 +321,10 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
         exit_reason = main_state->exit_reason;
         exit_code = main_state->exit_code;
 
-        uninitialize32BitAddressSpace();
+        if (g_mode32) {
+            uninitialize32BitAddressSpace();
+        }
+
         munmap(stack, size);
         munmap((void*)g_initial_brk, g_current_brk_size);
         g_fs.reset();
