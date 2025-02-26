@@ -230,6 +230,48 @@ private:
     std::variant<Elf64_Shdr, Elf32_Shdr> inner;
 };
 
+struct Elf_Sym {
+    Elf_Sym(bool mode32, FILE* file) : mode32(mode32) {
+        size_t read;
+        if (mode32) {
+            inner = Elf32_Sym{};
+            read = fread(&inner32(), sizeof(Elf32_Sym), 1, file);
+        } else {
+            inner = Elf64_Sym{};
+            read = fread(&inner64(), sizeof(Elf64_Sym), 1, file);
+        }
+
+        if (read != 1) {
+            ERROR("Failed to read ELF program header from file");
+        }
+    }
+
+    u64 name() {
+        return mode32 ? inner32().st_name : inner64().st_name;
+    }
+
+    u64 size() {
+        return mode32 ? inner32().st_size : inner64().st_size;
+    }
+
+    u64 address() {
+        return mode32 ? inner32().st_value : inner64().st_value;
+    }
+
+private:
+    bool mode32;
+
+    Elf32_Sym& inner32() {
+        return std::get<Elf32_Sym>(inner);
+    }
+
+    Elf64_Sym& inner64() {
+        return std::get<Elf64_Sym>(inner);
+    }
+
+    std::variant<Elf64_Sym, Elf32_Sym> inner;
+};
+
 Elf::Elf(bool is_interpreter) : is_interpreter(is_interpreter) {}
 
 Elf::~Elf() {
@@ -545,7 +587,7 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     return PeekResult::NotElf;
 }
 
-void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::filesystem::path& path, u8* start_of_data) {
+void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start_of_data) {
     // g_mode32 has already been set at this point
     // Load static symbols first
     do {
@@ -559,39 +601,70 @@ void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::f
 
         Elf_Ehdr ehdr(g_mode32, file);
 
+        if (ehdr.shnum() == 0) {
+            WARN("Empty section table for file: %s", path.c_str());
+            return;
+        }
+
         Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
         fseek(file, ehdr.phoff(), SEEK_SET);
         for (u64 i = 0; i < ehdr.phnum(); i++) {
             new (&phdrtable[i]) Elf_Phdr(g_mode32, file);
         }
 
-        printf("shoff: %x\n", ehdr.shoff());
         Elf_Shdr* shdrtable = (Elf_Shdr*)alloca(ehdr.shnum() * sizeof(Elf_Shdr));
         fseek(file, ehdr.shoff(), SEEK_SET);
         for (u64 i = 0; i < ehdr.shnum(); i++) {
             new (&shdrtable[i]) Elf_Shdr(g_mode32, file);
         }
 
-        for (int i = 0; i < ehdr.shnum(); i++) {
-            printf("%d has type: %d\n", i, shdrtable[i].type());
-        }
-
         u64 shstrindex = ehdr.shstrindex();
         Elf_Shdr* shstrtable = &shdrtable[shstrindex];
         ASSERT(shstrtable->type() == SHT_STRTAB);
 
-        char* string_table = (char*)alloca(shstrtable->size());
+        char* sh_string_table = (char*)alloca(shstrtable->size());
         fseek(file, shstrtable->offset(), SEEK_SET);
-        size_t read = fread(string_table, shstrtable->size(), 1, file);
+        size_t read = fread(sh_string_table, shstrtable->size(), 1, file);
         if (read != 1) {
             ERROR("Failed to read string table?");
         }
 
-        Elf_Shdr *symtab, *strtab;
+        Elf_Shdr *symtab = nullptr, *strtab = nullptr;
         for (u64 i = 0; i < ehdr.shnum(); i++) {
             Elf_Shdr* current = &shdrtable[i];
-            const char* name = string_table + current->name_offset();
-            printf("Name:%s\n", name);
+            const char* name = sh_string_table + current->name_offset();
+            if (strcmp(name, ".symtab") == 0) {
+                symtab = current;
+            } else if (strcmp(name, ".strtab") == 0) {
+                strtab = current;
+            }
+
+            if (symtab && strtab) {
+                break;
+            }
+        }
+
+        if (symtab && strtab) {
+            char* string_table = (char*)alloca(strtab->size());
+            fseek(file, strtab->offset(), SEEK_SET);
+            read = fread(string_table, strtab->size(), 1, file);
+            if (read != 1) {
+                ERROR("Failed to read the .strtab string table");
+            }
+
+            size_t symbol_count = symtab->size() / (g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym));
+            Elf_Sym* symbols = (Elf_Sym*)alloca(symtab->size());
+            printf("%d symbols\n", symbol_count);
+            fseek(file, symtab->offset(), SEEK_SET);
+            for (u64 i = 0; i < symbol_count; i++) {
+                new (&symbols[i]) Elf_Sym(g_mode32, file);
+            }
+
+            for (u64 i = 0; i < symbol_count; i++) {
+                u64 index = symbols[i].address();
+                const char* symbol = string_table + index;
+                printf("symbol : %s\n", symbol);
+            }
         }
 
         fclose(file);

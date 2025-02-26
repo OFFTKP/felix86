@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <filesystem>
 #include <map>
 #include <unordered_map>
@@ -20,6 +19,12 @@ struct MappedRegion {
     std::string file; // without rootfs prefix
 };
 
+struct Symbol {
+    u64 start;
+    u64 size;
+    std::string name;
+};
+
 // Globals that are shared across processes, including threads, that have CLONE_VM set.
 // This means they share the same memory space, which means access needs to be synchronized.
 struct ProcessGlobals {
@@ -33,7 +38,7 @@ struct ProcessGlobals {
 
     ProcessLock symbols_lock{};
     std::map<u64, MappedRegion> mapped_regions{};
-    std::unordered_map<u64, std::string> symbols{};
+    std::map<u64, Symbol> symbols{};
 
 private:
     constexpr static size_t shared_memory_size = 0x1000;
