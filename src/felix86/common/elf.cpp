@@ -258,6 +258,11 @@ struct Elf_Sym {
         return mode32 ? inner32().st_value : inner64().st_value;
     }
 
+    u64 type() {
+        // Macro is the same for 32-bit and 64-bit
+        return ELF64_ST_TYPE(mode32 ? inner32().st_info : inner64().st_info);
+    }
+
 private:
     bool mode32;
 
@@ -653,16 +658,32 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
             }
 
             size_t symbol_count = symtab->size() / (g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym));
-            Elf_Sym* symbols = (Elf_Sym*)alloca(symtab->size() * sizeof(Elf_Sym));
+            Elf_Sym* elf_symbols = (Elf_Sym*)alloca(symtab->size() * sizeof(Elf_Sym));
             fseek(file, symtab->offset(), SEEK_SET);
             for (u64 i = 0; i < symbol_count; i++) {
-                new (&symbols[i]) Elf_Sym(g_mode32, file);
+                new (&elf_symbols[i]) Elf_Sym(g_mode32, file);
             }
 
             for (u64 i = 0; i < symbol_count; i++) {
-                u64 index = symbols[i].offset();
+                u64 index = elf_symbols[i].offset();
                 const char* symbol = string_table + index;
-                printf("symbol : %s\n", symbol);
+                if (elf_symbols[i].address() == 0 || elf_symbols[i].type() != STT_FUNC) {
+                    // We don't care about this symbol
+                    continue;
+                }
+
+                u64 address = (u64)start_of_data + elf_symbols[i].address();
+                u64 size = elf_symbols[i].size();
+                u64 end = address + size;
+                Symbol new_symbol = {};
+                new_symbol.size = size;
+                new_symbol.start = address;
+                new_symbol.name = symbol;
+
+                // For finding with lower_bound
+                symbols[end - 1] = new_symbol;
+
+                printf("Address: %x - %x -> %s\n", address, end, symbol);
             }
         }
 
