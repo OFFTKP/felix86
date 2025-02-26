@@ -232,6 +232,8 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         WARN("Handling deferred signal %d", sig);
     }
 
+    g_dispatcher_exit_count++;
+
     HostAddress next_block = thread_state->recompiler->getCompiledBlock(thread_state->GetRip().toHost());
     return (void*)next_block.raw();
 }

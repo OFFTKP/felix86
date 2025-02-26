@@ -665,9 +665,9 @@ FAST_HANDLE(CALL_rsb) {
 FAST_HANDLE(RET_rsb) {
     x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
-    // ASSERT(ra == biscuit::ra); // using ra *may* be better for the RSB? but unsure tbh
-    biscuit::GPR scratch = rec.scratch();
     biscuit::GPR ra = rec.scratch();
+    ASSERT(ra == biscuit::ra); // using ra *may* be better for the RSB? but unsure tbh
+    biscuit::GPR scratch = rec.scratch();
     rec.readMemory(scratch, rsp, 0, size);
 
     u64 imm = rec.stackPointerSize();
@@ -690,7 +690,7 @@ FAST_HANDLE(RET_rsb) {
     AS.LD(prediction, -8, sp);
     AS.BNE(scratch, prediction, &misprediction);
     // Our prediction was correct, just return to ra
-    AS.JR(ra); // test
+    AS.RET();
 
     // Prediction was incorrect, return to dispatcher
     AS.Bind(&misprediction);
