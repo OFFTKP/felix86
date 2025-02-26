@@ -524,8 +524,8 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
 
 void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::filesystem::path& path, u8* start_of_data) {
     // g_mode32 has already been set at this point
+    // Load static symbols first
     do {
-        // Load static symbols first
         std::string spath = path.string();
 
         // For some reason even though we are chrooted the mappings have the full rootfs path
@@ -548,10 +548,15 @@ void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::f
             new (&phdrtable[i]) Elf_Phdr(g_mode32, file);
         }
 
+        printf("shoff: %x\n", ehdr.shoff());
         Elf_Shdr* shdrtable = (Elf_Shdr*)alloca(ehdr.shnum() * sizeof(Elf_Shdr));
         fseek(file, ehdr.shoff(), SEEK_SET);
         for (u64 i = 0; i < ehdr.shnum(); i++) {
             new (&shdrtable[i]) Elf_Shdr(g_mode32, file);
+        }
+
+        for (int i = 0; i < ehdr.shnum(); i++) {
+            printf("%d has type: %d\n", i, shdrtable[i].type());
         }
 
         u64 shstrindex = ehdr.shstrindex();
