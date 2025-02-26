@@ -605,13 +605,14 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
 void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start_of_data) {
     // g_mode32 has already been set at this point
     // Load static symbols first
+    size_t dynsym_size = 0;
     do {
         std::string spath = path.string();
 
         FILE* file = fopen(spath.c_str(), "rb");
         if (!file) {
             WARN("Could not open file for symbols: %s (full path: %s)", spath.c_str(), path.c_str());
-            break; // Jump out and only get dynamic symbols
+            return;
         }
 
         Elf_Ehdr ehdr(g_mode32, file);
@@ -645,6 +646,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         }
 
         Elf_Shdr *symtab = nullptr, *strtab = nullptr;
+        Elf_Shdr* dynsym = nullptr;
         for (u64 i = 0; i < ehdr.shnum(); i++) {
             Elf_Shdr* current = &shdrtable[i];
             const char* name = sh_string_table + current->name_offset();
@@ -652,11 +654,21 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 symtab = current;
             } else if (strcmp(name, ".strtab") == 0) {
                 strtab = current;
+            } else if (strcmp(name, ".dynsym") == 0) {
+                dynsym = current;
             }
 
-            if (symtab && strtab) {
+            if (symtab && strtab && dynsym) {
                 break;
             }
+        }
+
+        if (dynsym) {
+            // Get the size, because getting it without having access to the sections
+            // becomes 5 times harder for whatever reason (see DT_GNU_HASH business)
+            // http://deroko.phearless.org/dt_gnu_hash.txt
+            // So we get the size here while we can and use it later
+            dynsym_size = dynsym->size();
         }
 
         if (symtab && strtab) {
@@ -716,8 +728,14 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         }
     }
 
+    if (dynamic && !dynsym_size) {
+        WARN(".dynamic section found, but couldn't deduce .dynsym size...");
+        return;
+    }
+
     if (dynamic) {
-        u8 *symtab = nullptr, *strtab = nullptr;
+        u8* symtab = nullptr;
+        const char* strtab = nullptr;
         u8* dynamic_ptr = start_of_data + dynamic->vaddr();
         size_t count = dynamic->memsz() / (g_mode32 ? sizeof(Elf32_Dyn) : sizeof(Elf64_Dyn));
         for (size_t i = 0; i < count; i++) {
@@ -726,14 +744,14 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 if (dyn->d_tag == DT_SYMTAB) {
                     symtab = (u8*)(u64)dyn->d_un.d_ptr;
                 } else if (dyn->d_tag == DT_STRTAB) {
-                    strtab = (u8*)(u64)dyn->d_un.d_ptr;
+                    strtab = (const char*)(u64)dyn->d_un.d_ptr;
                 }
             } else {
                 Elf64_Dyn* dyn = (Elf64_Dyn*)(dynamic_ptr + (i * sizeof(Elf64_Dyn)));
                 if (dyn->d_tag == DT_SYMTAB) {
                     symtab = (u8*)dyn->d_un.d_ptr;
                 } else if (dyn->d_tag == DT_STRTAB) {
-                    strtab = (u8*)dyn->d_un.d_ptr;
+                    strtab = (const char*)dyn->d_un.d_ptr;
                 }
             }
 
@@ -743,15 +761,20 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
 
         if (symtab && strtab) {
             u8* current_symtab = symtab;
-            int i = 0;
-            while (true) {
-                Elf_Sym symbol(g_mode32, current_symtab);
-                printf("symbol %d\n", i++);
-                if (symbol.type() == STT_NOTYPE) {
-                    break;
-                }
+            size_t sym_size = g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
+            size_t dynsym_count = dynsym_size / sym_size;
+            size_t mod = dynsym_size / sym_size;
+            if (mod != 0) {
+                WARN("Couldn't deduce dynamic symbol count, doesn't divide neatly");
+                return;
+            }
 
-                current_symtab += g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
+            for (size_t i = 0; i < dynsym_count; i++) {
+                u8* data = symtab + (sym_size + i);
+                Elf_Sym elf_symbol(g_mode32, data);
+                size_t index = elf_symbol.offset();
+                const char* symbol = strtab + index;
+                printf("Dynamic symbol: %s\n", symbol);
             }
         }
     }
