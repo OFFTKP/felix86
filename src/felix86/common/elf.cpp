@@ -268,6 +268,10 @@ struct Elf_Sym {
         return mode32 ? inner32().st_value : inner64().st_value;
     }
 
+    u64 bind() {
+        return ELF64_ST_BIND(mode32 ? inner32().st_info : inner64().st_info);
+    }
+
     u64 type() {
         // Macro is the same for 32-bit and 64-bit
         return ELF64_ST_TYPE(mode32 ? inner32().st_info : inner64().st_info);
@@ -789,14 +793,12 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 new_symbol.name = symbol;
                 new_symbol.start = elf_symbol.address();
                 new_symbol.size = elf_symbol.size();
+                new_symbol.strong = elf_symbol.bind() != STB_WEAK;
 
                 auto old_symbol = symbols.find(end - 1);
-                if (old_symbol != symbols.end()) {
-                    u64 old_address = old_symbol->second.start;
-                    u64 old_end = old_address + old_symbol->second.size;
-                    const char* old_symbol_str = old_symbol->second.name.c_str();
-                    WARN("Symbol overlap!\nOld symbol: %lx-%lx %s\nNew symbol: %lx-%lx %s", old_address, old_end, old_symbol_str,
-                         elf_symbol.address(), end, symbol);
+                if (old_symbol != symbols.end() && old_symbol->second.strong) {
+                    // Not weak symbol, don't replace
+                    continue;
                 }
 
                 symbols[end - 1] = new_symbol;

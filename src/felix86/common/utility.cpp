@@ -508,13 +508,13 @@ void print_address(u64 address) {
     auto lock = g_process_globals.symbols_lock.lock();
 
     bool found = false;
-    MappedRegion region;
+    MappedRegion region{};
 
     auto region_it = g_process_globals.mapped_regions.lower_bound(address);
     if (region_it != g_process_globals.mapped_regions.end()) {
         u64 start = region_it->second.base;
         u64 end = region_it->second.end;
-        if (address >= start && address < end) {
+        if (address >= start && address <= end) {
             region = region_it->second;
             found = true;
         }
@@ -523,17 +523,40 @@ void print_address(u64 address) {
     if (!found) {
         region.base = address;
         region.end = address;
-        region.file = "Unknown";
+        region.file = "??";
     }
 
-    // if (result != 0) {
-    //     std::string lib = info.dli_fname;
-    //     u64 offset = address - (u64)info.dli_fbase;
-    //     dprintf(g_output_fd, ANSI_COLOR_RED "%s@%s 0x%lx (%p)\n" ANSI_COLOR_RESET, lib.c_str(), info.dli_sname, offset, (void*)address);
-    // } else {
-    //     dprintf(g_output_fd, ANSI_COLOR_RED "%s@0x%lx (%p)\n" ANSI_COLOR_RESET, info.dli_fname ? info.dli_fname : "Unknown",
-    //             info.dli_fbase ? address - (u64)info.dli_fbase : 0, (void*)address);
-    // }
+    Symbol* symbol = nullptr;
+    auto symbol_it = g_process_globals.symbols.lower_bound(address);
+
+    if (symbol_it != g_process_globals.symbols.end()) {
+        u64 start = symbol_it->second.start;
+        u64 end = symbol_it->second.start + symbol_it->second.size;
+        if (address >= start && address <= end) {
+            symbol = &symbol_it->second;
+        }
+    }
+
+    const char* symbol_str = symbol ? symbol->name.c_str() : nullptr;
+
+    // clang-format can't comprehend what I am about to do
+    // clang-format off
+    if (symbol_str) {
+        u64 offset = address - symbol->start;
+        dprintf(g_output_fd,
+            ANSI_COLOR_CYAN "%s+0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET "\n",
+            symbol_str,
+            offset,
+            region.file.c_str()
+        );
+    } else {
+        dprintf(g_output_fd,
+            ANSI_COLOR_CYAN "0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET "\n",
+            address,
+            region.file.c_str()
+        );
+    }
+    // clang-format on
 }
 
 void push_calltrace(ThreadState* state) {

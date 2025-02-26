@@ -14,15 +14,16 @@
 struct Filesystem;
 
 struct MappedRegion {
-    u64 base;
-    u64 end;
-    std::string file; // without rootfs prefix
+    u64 base{};
+    u64 end{};
+    std::string file{}; // without rootfs prefix
 };
 
 struct Symbol {
-    u64 start;
-    u64 size;
-    std::string name;
+    u64 start{};
+    u64 size{};
+    bool strong = false;
+    std::string name{};
 };
 
 // Globals that are shared across processes, including threads, that have CLONE_VM set.
