@@ -686,9 +686,9 @@ FAST_HANDLE(RET_rsb) {
 
     biscuit::GPR prediction = rec.scratch();
     AS.ADDI(sp, sp, 16);
-    AS.LD(ra, -16, sp);
     AS.LD(prediction, -8, sp);
     AS.BNE(scratch, prediction, &misprediction);
+    AS.LD(ra, -16, sp);
     // Our prediction was correct, just return to ra
     AS.RET();
 
