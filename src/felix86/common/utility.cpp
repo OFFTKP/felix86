@@ -459,18 +459,32 @@ void update_symbols() {
     std::string line;
     std::string rootfs = g_rootfs_path.string();
     char buffer[PATH_MAX];
+    std::map<std::string, std::pair<u64, u64>> regions{};
     while (std::getline(ifs, line)) {
         u64 start, end;
         int result = sscanf(line.c_str(), "%lx-%lx %*s %*s %*s %*s %s", &start, &end, buffer);
         if (result == 3) {
-            g_process_globals.mapped_regions[end - 1] = {.base = start, .end = end, .file = buffer};
+            if (regions.find(buffer) == regions.end()) {
+                regions[buffer] = {UINT64_MAX, 0};
+            }
+
+            std::pair<u64, u64>& region = regions[buffer];
+            u64 new_start = std::min(region.first, start);
+            u64 new_end = std::max(region.second, end);
+            region.first = new_start;
+            region.second = new_end;
         } else {
             WARN("Failed to parse line in /proc/self/maps: %s", line.c_str());
         }
     }
 
-    for (auto& region : g_process_globals.mapped_regions) {
-        Elf::AddSymbols(g_process_globals.symbols, region.second.file, (u8*)region.second.base);
+    for (auto& region : regions) {
+        std::string name = region.first;
+        u64 start = region.second.first;
+        u64 end = region.second.second;
+
+        g_process_globals.mapped_regions[end - 1] = {.base = start, .end = end, .file = name};
+        Elf::AddSymbols(g_process_globals.symbols, name, (u8*)start);
     }
 }
 
