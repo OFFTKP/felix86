@@ -1,3 +1,4 @@
+#include <atomic>
 #include <linux/futex.h>
 #include <sys/mman.h>
 #include <sys/personality.h>
@@ -5,7 +6,6 @@
 #include <sys/resource.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/emulator.hpp"
 #include "felix86/hle/thread.hpp"
 #include "felix86/v2/recompiler.hpp"
 
