@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "biscuit/assembler.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/emulator.hpp"
 

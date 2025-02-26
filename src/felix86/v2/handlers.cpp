@@ -597,8 +597,9 @@ FAST_HANDLE(CALL_rsb) {
         // it goes back to the dispatcher. There's cases where calls don't correspond 1:1 to rets such as exceptions.
 
         // TODO: replace all 3*4 stuff with a constexpr
-        // AUIPC + LD + SD + SD + ADDI + backToDispatcher + 8-byte literal = 4 + 4 + 4 + 4 + 4 + (3 * 4) + 8 = 40 bytes
-        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 40;
+        // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (3 * 4) = 32 bytes
+        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 32;
+        Label after_literal;
         Literal literal(return_address.raw());
         biscuit::GPR host_return_address = rec.scratch();
 
@@ -609,12 +610,13 @@ FAST_HANDLE(CALL_rsb) {
         // This goes back to the dispatcher, but continues compiling instructions. Hopefully
         // the prediction is correct and it returns to right after the literal.
         rec.backToDispatcher();
-        AS.Place(&literal);
-
-        // Function call will return here after the literal and continue with the next instruction if
-        // prediction is correct
+        // we need to place a literal so that LI has a constant size. But we also need to return exactly at this spot
+        // and then jump over the literal because of how the return stack buffer works.
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == host_return_address_value);
+        AS.J(&after_literal);
+        AS.Place(&literal);
+        AS.Bind(&after_literal);
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -635,10 +637,10 @@ FAST_HANDLE(CALL_rsb) {
         rec.setRip(scratch);
         rec.writebackDirtyState();
         rec.pushCalltrace();
-        rec.stopCompiling();
 
-        // AUIPC + LD + SD + SD + ADDI + backToDispatcher + 8-byte literal = 4 + 4 + 4 + 4 + 4 + (3 * 4) + 8 = 40 bytes
-        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 40;
+        // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (3 * 4) = 32 bytes
+        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 32;
+        Label after_literal;
         Literal literal(return_address.raw());
         biscuit::GPR host_return_address = rec.scratch();
 
@@ -647,12 +649,11 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement)); // TODO: these probably need to be JALR
-        AS.Place(&literal);
-
-        // Function call will return here after the literal and continue with the next instruction if
-        // prediction is correct
+        AS.J(&after_literal);
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == host_return_address_value);
+        AS.Place(&literal);
+        AS.Bind(&after_literal);
         break;
     }
     default: {
@@ -666,7 +667,7 @@ FAST_HANDLE(RET_rsb) {
     x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
     biscuit::GPR ra = rec.scratch();
-    ASSERT(ra == biscuit::ra);
+    ASSERT(ra == biscuit::ra); // using ra *may* be better for the RSB? but unsure tbh
     biscuit::GPR scratch = rec.scratch();
     rec.readMemory(scratch, rsp, 0, size);
 
@@ -688,7 +689,6 @@ FAST_HANDLE(RET_rsb) {
     AS.ADDI(sp, sp, 16);
     AS.LD(ra, -16, sp);
     AS.LD(prediction, -8, sp);
-    AS.J(&misprediction); // test
     AS.BNE(scratch, prediction, &misprediction);
     // Our prediction was correct, just return to ra
     AS.RET();

@@ -92,7 +92,15 @@ void Recompiler::emitDispatcher() {
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
-    as.JR(a0); // jump to the compiled function
+    if (g_rsb) {
+        as.MV(ra, a0);
+        // "return" to the compiled function. This encoding hints to the
+        // return stack buffer to pop, which should have been pushed by a jalr
+        // when doing backToDispatcher or jumpAndLink
+        as.JR(ra);
+    } else {
+        as.JR(a0);
+    }
 
     as.Bind(&exit_dispatcher_label);
 
@@ -1251,6 +1259,7 @@ void Recompiler::stopCompiling() {
 
 void Recompiler::pushCalltrace() {
     if (g_calltrace) {
+        ASSERT(!g_rsb); // needs fixes, clobbers scratch reg
         as.LI(t0, (u64)push_calltrace);
         as.MV(a0, threadStatePointer());
         as.JALR(t0);
@@ -1259,6 +1268,7 @@ void Recompiler::pushCalltrace() {
 
 void Recompiler::popCalltrace() {
     if (g_calltrace) {
+        ASSERT(!g_rsb);
         as.LI(t0, (u64)pop_calltrace);
         as.MV(a0, threadStatePointer());
         as.JALR(t0);
@@ -1339,7 +1349,13 @@ void Recompiler::restoreRoundingMode() {
 void Recompiler::backToDispatcher() {
     as.NOP();
     as.LD(t0, offsetof(ThreadState, compile_next_handler), threadStatePointer());
-    as.JR(t0);
+    if (g_rsb) {
+        // This encoding pushes to the return stack buffer. The JALR in our dispatcher
+        // then uses `ra` to jump back which pops the stack buffer
+        as.JALR(ra, 0, t0);
+    } else {
+        as.JR(t0);
+    }
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
@@ -1584,7 +1600,11 @@ void Recompiler::jumpAndLink(HostAddress rip) {
 
         if (IsValidJTypeImm(offset)) {
             if (offset != 3 * 4) {
-                as.J(offset);
+                if (g_rsb) {
+                    as.JAL(ra, offset);
+                } else {
+                    as.J(offset);
+                }
                 as.NOP();
                 as.NOP(); // TODO: remove me, see below
             } else {
@@ -1598,9 +1618,14 @@ void Recompiler::jumpAndLink(HostAddress rip) {
             ASSERT(IsValid2GBImm(offset));
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+
             as.AUIPC(t0, hi20);
-            as.JR(t0, lo12);
-            as.NOP(); // TODO: these third nops are unnecessary, remove them and change the 3*4 assert stuff
+            if (g_rsb) {
+                as.JALR(ra, lo12, t0); // hint to the rsb to push
+            } else {
+                as.JR(t0);
+            }
+            as.NOP();
         }
     }
 
