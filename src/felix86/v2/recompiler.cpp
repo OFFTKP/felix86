@@ -1610,13 +1610,13 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
 
         if (IsValidJTypeImm(offset)) {
             if (offset != 3 * 4) {
+                as.NOP();
+                as.NOP(); // TODO: remove me, see below
                 if (use_rsb) {
                     as.JAL(ra, offset);
                 } else {
                     as.J(offset);
                 }
-                as.NOP();
-                as.NOP(); // TODO: remove me, see below
             } else {
                 // Replace the AUIPC+JR with 3 NOPs
                 as.NOP();
@@ -1629,13 +1629,13 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
 
+            as.NOP();
             as.AUIPC(t0, hi20);
             if (use_rsb) {
                 as.JALR(ra, lo12, t0); // hint to the rsb to push
             } else {
-                as.JR(t0);
+                as.JR(t0, lo12);
             }
-            as.NOP();
         }
     }
 
