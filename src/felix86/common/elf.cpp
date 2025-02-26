@@ -769,7 +769,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
             }
 
             for (size_t i = 0; i < dynsym_count; i++) {
-                u8* data = symtab + (sym_size + i);
+                u8* data = symtab + (sym_size * i);
                 Elf_Sym elf_symbol(g_mode32, data);
                 size_t index = elf_symbol.offset();
                 const char* symbol = strtab + index;
