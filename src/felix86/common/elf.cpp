@@ -610,6 +610,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
     // g_mode32 has already been set at this point
     // Load static symbols first
     size_t dynsym_size = 0;
+    char output[4096];
     do {
         std::string spath = path.string();
 
@@ -711,10 +712,13 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 u64 address = (u64)start_of_data + elf_symbols[i]->address();
                 u64 size = elf_symbols[i]->size();
                 u64 end = address + size;
+                int status;
+                size_t length = 4096;
+                abi::__cxa_demangle(symbol, output, &length, &status);
                 Symbol new_symbol = {};
                 new_symbol.size = size;
                 new_symbol.start = address;
-                new_symbol.name = symbol;
+                new_symbol.name = status == 0 ? output : symbol;
 
                 // For finding with lower_bound
                 symbols[end - 1] = new_symbol;
@@ -798,8 +802,11 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 }
 
                 u64 end = elf_symbol.address() + elf_symbol.size();
+                int status;
+                size_t length = 4096;
+                abi::__cxa_demangle(symbol, output, &length, &status);
                 Symbol new_symbol;
-                new_symbol.name = symbol;
+                new_symbol.name = status == 0 ? output : symbol;
                 new_symbol.start = elf_symbol.address();
                 new_symbol.size = elf_symbol.size();
                 new_symbol.strong = elf_symbol.bind() != STB_WEAK;

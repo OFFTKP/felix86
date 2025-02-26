@@ -548,8 +548,6 @@ void print_address(u64 address) {
         u64 end = symbol_it->second.start + symbol_it->second.size;
         if (address >= start && address <= end) {
             symbol = &symbol_it->second;
-        } else {
-            printf("address %lx not in bound %lx-%lx\n", address, start, end);
         }
     }
 
