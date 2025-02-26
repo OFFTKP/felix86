@@ -1271,6 +1271,7 @@ void Recompiler::pushCalltrace() {
     if (g_calltrace) {
         as.LI(t0, (u64)push_calltrace);
         as.MV(a0, threadStatePointer());
+        as.LI(a1, current_meta->rip.raw());
         as.JALR(t0);
     }
 }

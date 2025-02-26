@@ -573,8 +573,8 @@ void print_address(u64 address) {
     // clang-format on
 }
 
-void push_calltrace(ThreadState* state) {
-    state->calltrace.push_back(state->rip.toHost());
+void push_calltrace(ThreadState* state, u64 address) {
+    state->calltrace.push_back(HostAddress{address});
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
