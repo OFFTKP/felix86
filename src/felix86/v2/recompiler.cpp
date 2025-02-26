@@ -1624,6 +1624,7 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
         } else {
             // Too far for a regular jump, use AUIPC+JR
             ASSERT(IsValid2GBImm(offset));
+            u64 offset = target - (u64)as.GetCursorPointer();
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
 

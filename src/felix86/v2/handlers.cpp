@@ -596,7 +596,6 @@ FAST_HANDLE(CALL_rsb) {
         // As long as each call corresponds to a ret this prediction will work out. If it doesn't,
         // it goes back to the dispatcher. There's cases where calls don't correspond 1:1 to rets such as exceptions.
 
-        // TODO: replace all 3*4 stuff with a constexpr
         // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (2 * 4) = 28 bytes
         u64 host_return_address_value = (u64)AS.GetCursorPointer() + 28;
         Label after_literal;
