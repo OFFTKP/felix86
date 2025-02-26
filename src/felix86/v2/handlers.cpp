@@ -609,7 +609,7 @@ FAST_HANDLE(CALL_rsb) {
         AS.ADDI(sp, sp, -16);
         // This goes back to the dispatcher, but continues compiling instructions. Hopefully
         // the prediction is correct and it returns to right after the literal.
-        rec.backToDispatcher();
+        rec.backToDispatcher(true); // true = push to rsb
         // We need to place a literal so that LI has a constant size. But we also need to return exactly at this spot
         // and then jump over the literal because of how the return stack buffer works.
         u64 here = (u64)AS.GetCursorPointer();
@@ -648,7 +648,7 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(host_return_address, -16, sp);
         AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
-        rec.jumpAndLink(meta.rip.add(instruction.length + displacement));
+        rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true); // true = push to rsb
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == host_return_address_value);
         AS.J(&after_literal);

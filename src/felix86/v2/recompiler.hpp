@@ -112,7 +112,7 @@ struct Recompiler {
 
     void restoreRoundingMode();
 
-    void backToDispatcher();
+    void backToDispatcher(bool use_rsb = false);
 
     void enterDispatcher(ThreadState* state);
 
@@ -152,7 +152,7 @@ struct Recompiler {
 
     biscuit::GPR getRip();
 
-    void jumpAndLink(HostAddress rip);
+    void jumpAndLink(HostAddress rip, bool use_rsb = false);
 
     void jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, HostAddress rip_true, HostAddress rip_false);
 
