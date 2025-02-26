@@ -85,6 +85,7 @@ extern size_t g_guest_auxv_size;
 extern bool g_execve_process;
 extern Config g_config;
 extern std::unique_ptr<Filesystem> g_fs;
+extern std::atomic_long g_bad_ret_count;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();

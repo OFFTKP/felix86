@@ -38,6 +38,7 @@ u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
 u64 g_dispatcher_exit_count = 0;
 u64 g_address_space_base = 0;
+std::atomic_long g_bad_ret_count{};
 std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{}; // TODO: HostAddress
 pthread_key_t g_thread_state_key = -1;

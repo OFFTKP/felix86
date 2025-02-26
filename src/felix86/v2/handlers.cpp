@@ -650,6 +650,11 @@ FAST_HANDLE(CALL_rsb) {
     }
 }
 
+void increment_bad_ret() {
+    // TODO: per thread state probably
+    g_bad_ret_count += 1;
+}
+
 FAST_HANDLE(RET_rsb) {
     x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
@@ -682,6 +687,9 @@ FAST_HANDLE(RET_rsb) {
 
     // Prediction was incorrect, return to dispatcher
     AS.Bind(&misprediction);
+    AS.LI(t0, (u64)increment_bad_ret);
+    AS.JALR(t0);
+
     rec.backToDispatcher();
     rec.stopCompiling();
 }
