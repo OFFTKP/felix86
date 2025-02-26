@@ -45,6 +45,27 @@ qemu-system-riscv64 \
 -drive file=ubuntu-24.04.1-preinstalled-server-riscv64.img,format=raw,if=virtio
 ```
 
+## Debugging
+Because felix86 needs to mount and chroot, it will ask for administrator privileges, which it will drop
+right after mounting. This means you need to run `gdb` as root.
+
+Example:
+```
+sudo -E gdb --args ./felix86 <my felix86 arguments>
+```
+
+Make sure sudo has the `-E` flag so environment variables are passed to felix86!
+
+## Profiling
+felix86 can emit JIT symbols for perf. You need to enable the `FELIX86_PERF` environment variable to enable this!
+
+Example:
+```
+sudo -E perf record -e cpu-clock -g ./felix86 <my felix86 arguments>
+```
+
+The generated perf.data may need administrator permissions to view, either `chmod` it or run `perf report` with sudo.
+
 ## RootFS
 
 felix86 requires an x86-64 "rootfs" which is the filesystem at the root directory on Linux.

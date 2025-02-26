@@ -185,7 +185,8 @@ HostAddress Recompiler::compile(HostAddress rip) {
         BlockMetadata& metadata = getBlockMetadata(rip);
         std::string symbol = get_perf_symbol(rip.raw());
         static char buffer[4096];
-        int string_size = snprintf(buffer, 4096, "%lx %lx %s\n", metadata.address.raw(), metadata.address_end.raw(), symbol.c_str());
+        size_t size = metadata.address_end.raw() - metadata.address.raw();
+        int string_size = snprintf(buffer, 4096, "%lx %lx %s\n", metadata.address.raw(), size, symbol.c_str());
         ASSERT(string_size > 0 && string_size < 4095);
 
         int locked = flock(perf_fd, LOCK_EX);
