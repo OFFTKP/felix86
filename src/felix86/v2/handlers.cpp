@@ -600,7 +600,7 @@ FAST_HANDLE(CALL_rsb) {
         // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (3 * 4) = 32 bytes
         u64 host_return_address_value = (u64)AS.GetCursorPointer() + 32;
         Label after_literal;
-        Literal literal(return_address.raw()); // read below as to why not just LI()
+        Literal literal(host_return_address_value); // read below as to why not just LI()
         biscuit::GPR host_return_address = rec.scratch();
 
         AS.LD(host_return_address, &literal);
@@ -641,7 +641,7 @@ FAST_HANDLE(CALL_rsb) {
         // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (3 * 4) = 32 bytes
         u64 host_return_address_value = (u64)AS.GetCursorPointer() + 32;
         Label after_literal;
-        Literal literal(return_address.raw());
+        Literal literal(host_return_address_value);
         biscuit::GPR host_return_address = rec.scratch();
 
         AS.LD(host_return_address, &literal);
