@@ -646,7 +646,7 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(host_return_address, -16, sp);
         AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
-        rec.jumpAndLink(meta.rip.add(instruction.length + displacement));
+        rec.jumpAndLink(meta.rip.add(instruction.length + displacement)); // TODO: these probably need to be JALR
         AS.Place(&literal);
 
         // Function call will return here after the literal and continue with the next instruction if
@@ -688,6 +688,7 @@ FAST_HANDLE(RET_rsb) {
     AS.ADDI(sp, sp, 16);
     AS.LD(ra, -16, sp);
     AS.LD(prediction, -8, sp);
+    AS.J(&misprediction); // test
     AS.BNE(scratch, prediction, &misprediction);
     // Our prediction was correct, just return to ra
     AS.RET();
