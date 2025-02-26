@@ -454,6 +454,7 @@ void dump_states() {
 void update_symbols() {
     auto lock = g_process_globals.symbols_lock.lock();
     g_process_globals.mapped_regions.clear();
+    g_process_globals.symbols.clear();
 
     std::ifstream ifs("/proc/self/maps");
     std::string line;
@@ -534,6 +535,8 @@ void print_address(u64 address) {
         u64 end = symbol_it->second.start + symbol_it->second.size;
         if (address >= start && address <= end) {
             symbol = &symbol_it->second;
+        } else {
+            printf("address %lx not in bound %lx-%lx\n", address, start, end);
         }
     }
 
