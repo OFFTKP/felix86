@@ -171,6 +171,21 @@ private:
 };
 
 struct Elf_Shdr {
+    Elf_Shdr(bool mode32, FILE* file) : mode32(mode32) {
+        size_t read;
+        if (mode32) {
+            inner = Elf32_Shdr{};
+            read = fread(&inner32(), sizeof(Elf32_Shdr), 1, file);
+        } else {
+            inner = Elf64_Shdr{};
+            read = fread(&inner64(), sizeof(Elf64_Shdr), 1, file);
+        }
+
+        if (read != 1) {
+            ERROR("Failed to read ELF program header from file");
+        }
+    }
+
     Elf_Shdr(bool mode32, void* data) : mode32(mode32) {
         if (mode32) {
             inner = Elf32_Shdr{};
