@@ -627,13 +627,15 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         }
 
         Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
-        fseek(file, ehdr.phoff(), SEEK_SET);
+        u64 ehdr_phoff = ehdr.phoff();
+        fseek(file, ehdr_phoff, SEEK_SET);
         for (u64 i = 0; i < ehdr.phnum(); i++) {
             new (&phdrtable[i]) Elf_Phdr(g_mode32, file);
         }
 
         Elf_Shdr* shdrtable = (Elf_Shdr*)alloca(ehdr.shnum() * sizeof(Elf_Shdr));
-        fseek(file, ehdr.shoff(), SEEK_SET);
+        u64 ehdr_shoff = ehdr.shoff();
+        fseek(file, ehdr_shoff, SEEK_SET);
         for (u64 i = 0; i < ehdr.shnum(); i++) {
             new (&shdrtable[i]) Elf_Shdr(g_mode32, file);
         }
@@ -643,7 +645,8 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         ASSERT(shstrtable->type() == SHT_STRTAB);
 
         char* sh_string_table = (char*)alloca(shstrtable->size());
-        fseek(file, shstrtable->offset(), SEEK_SET);
+        u64 shstroff = shstrtable->offset();
+        fseek(file, shstroff, SEEK_SET);
         size_t read = fread(sh_string_table, shstrtable->size(), 1, file);
         if (read != 1) {
             ERROR("Failed to read string table?");
@@ -677,7 +680,8 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
 
         if (symtab && strtab) {
             char* string_table = (char*)alloca(strtab->size());
-            fseek(file, strtab->offset(), SEEK_SET);
+            u64 strtab_off = strtab->offset();
+            fseek(file, strtab_off, SEEK_SET);
             read = fread(string_table, strtab->size(), 1, file);
             if (read != 1) {
                 ERROR("Failed to read the .strtab string table");
@@ -685,7 +689,8 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
 
             size_t symbol_count = symtab->size() / (g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym));
             Elf_Sym* elf_symbols = (Elf_Sym*)alloca(symtab->size() * sizeof(Elf_Sym));
-            fseek(file, symtab->offset(), SEEK_SET);
+            u64 symtab_off = symtab->offset();
+            fseek(file, symtab_off, SEEK_SET);
             for (u64 i = 0; i < symbol_count; i++) {
                 new (&elf_symbols[i]) Elf_Sym(g_mode32, file);
             }
