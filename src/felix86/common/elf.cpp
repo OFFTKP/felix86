@@ -246,7 +246,7 @@ struct Elf_Sym {
         }
     }
 
-    u64 name() {
+    u64 offset() {
         return mode32 ? inner32().st_name : inner64().st_name;
     }
 
@@ -661,7 +661,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
             }
 
             for (u64 i = 0; i < symbol_count; i++) {
-                u64 index = symbols[i].address();
+                u64 index = symbols[i].offset();
                 const char* symbol = string_table + index;
                 printf("symbol : %s\n", symbol);
             }
