@@ -619,6 +619,11 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
             return;
         }
 
+        fseek(file, 0, SEEK_END);
+        volatile size_t file_size = ftell(file); // debugger access
+        (void)file_size;
+        fseek(file, 0, SEEK_SET);
+
         Elf_Ehdr ehdr(g_mode32, file);
 
         if (ehdr.shnum() == 0) {
