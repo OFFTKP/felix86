@@ -246,6 +246,16 @@ struct Elf_Sym {
         }
     }
 
+    Elf_Sym(bool mode32, void* data) : mode32(mode32) {
+        if (mode32) {
+            inner = Elf32_Sym{};
+            memcpy(&inner32(), data, sizeof(Elf32_Sym));
+        } else {
+            inner = Elf64_Sym{};
+            memcpy(&inner64(), data, sizeof(Elf64_Sym));
+        }
+    }
+
     u64 offset() {
         return mode32 ? inner32().st_name : inner64().st_name;
     }
@@ -682,14 +692,13 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
 
                 // For finding with lower_bound
                 symbols[end - 1] = new_symbol;
-
-                printf("Address: %x - %x -> %s\n", address, end, symbol);
             }
         }
 
         fclose(file);
     } while (0);
 
+    // Find the dynamic segment, load dynamic symbols that have now been loaded by the interpreter hopefully
     Elf_Ehdr ehdr(g_mode32, start_of_data);
 
     Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
@@ -697,5 +706,53 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
     for (u64 i = 0; i < ehdr.phnum(); i++) {
         void* current_phdr = start_of_phdr + (i * ehdr.phentsize());
         new (&phdrtable[i]) Elf_Phdr(g_mode32, current_phdr);
+    }
+
+    Elf_Phdr* dynamic = nullptr;
+    for (u64 i = 0; i < ehdr.phnum(); i++) {
+        if (ehdr.type() == PT_DYNAMIC) {
+            dynamic = &phdrtable[i];
+            break;
+        }
+    }
+
+    if (dynamic) {
+        u8 *symtab = nullptr, *strtab = nullptr;
+        u8* dynamic_ptr = start_of_data + dynamic->vaddr();
+        size_t count = dynamic->memsz() / (g_mode32 ? sizeof(Elf32_Dyn) : sizeof(Elf64_Dyn));
+        for (size_t i = 0; i < count; i++) {
+            if (g_mode32) {
+                Elf32_Dyn* dyn = (Elf32_Dyn*)(dynamic_ptr + (i * sizeof(Elf32_Dyn)));
+                if (dyn->d_tag == DT_SYMTAB) {
+                    symtab = (u8*)(u64)dyn->d_un.d_ptr;
+                } else if (dyn->d_tag == DT_STRTAB) {
+                    strtab = (u8*)(u64)dyn->d_un.d_ptr;
+                }
+            } else {
+                Elf64_Dyn* dyn = (Elf64_Dyn*)(dynamic_ptr + (i * sizeof(Elf64_Dyn)));
+                if (dyn->d_tag == DT_SYMTAB) {
+                    symtab = (u8*)dyn->d_un.d_ptr;
+                } else if (dyn->d_tag == DT_STRTAB) {
+                    strtab = (u8*)dyn->d_un.d_ptr;
+                }
+            }
+
+            if (symtab && strtab)
+                break;
+        }
+
+        if (symtab && strtab) {
+            u8* current_symtab = symtab;
+            int i = 0;
+            while (true) {
+                Elf_Sym symbol(g_mode32, current_symtab);
+                printf("symbol %d\n", i++);
+                if (symbol.type() == STT_NOTYPE) {
+                    break;
+                }
+
+                current_symtab += g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
+            }
+        }
     }
 }
