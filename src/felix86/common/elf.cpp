@@ -534,7 +534,7 @@ void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::f
             ASSERT(spath[0] == '/');
         }
 
-        FILE* file = fopen(spath.c_str(), "r");
+        FILE* file = fopen(spath.c_str(), "rb");
         if (!file) {
             WARN("Could not open file for symbols: %s (full path: %s)", spath.c_str(), path.c_str());
             break; // Jump out and only get dynamic symbols
