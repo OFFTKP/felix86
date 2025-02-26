@@ -550,6 +550,7 @@ std::string get_perf_symbol(u64 address) {
         }
     }
 
+    const char* x86 = g_mode32 ? "x86" : "x86_64";
     std::string ret;
     if (symbol) {
         std::string symbol_name = symbol->name;
@@ -558,11 +559,11 @@ std::string get_perf_symbol(u64 address) {
             symbol_name += "...";
         }
 
-        ret = fmt::format("jit_{}@0x{:x}@{}", symbol->name, address - symbol->start, file);
+        ret = fmt::format("{} {}@0x{:x} {}@0x{:x}", x86, file, file_offset, symbol->name, address - symbol->start);
     } else if (file_found) {
-        ret = fmt::format("jit_{}@0x{:x}", file, file_offset);
+        ret = fmt::format("{} {}@0x{:x}", x86, file, file_offset);
     } else {
-        ret = fmt::format("jit_UNKNOWN_0x{:x}", address);
+        ret = fmt::format("{} 0x{:x}", x86, address);
     }
 
     return ret;

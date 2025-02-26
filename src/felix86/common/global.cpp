@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include <list>
 #include <string>
 #include <fcntl.h>
@@ -61,10 +62,25 @@ HostAddress g_interpreter_end{};
 HostAddress g_executable_start{};
 HostAddress g_executable_end{};
 
-// TODO: find better detection method
 bool is_running_under_perf() {
+    // Always enable symbol emission when this is enabled, in case our detection fails
     const char* perf_env = getenv("FELIX86_PERF");
     if (perf_env) {
+        return true;
+    }
+
+    int ppid = getppid();
+
+    std::string line;
+    std::ifstream ifs("/proc/" + std::to_string(ppid) + "/comm");
+    if (!ifs) {
+        WARN("Failed to check if perf is a parent process");
+        return false;
+    }
+
+    std::getline(ifs, line);
+
+    if (line == "perf") {
         return true;
     }
 
