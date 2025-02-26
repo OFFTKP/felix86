@@ -373,6 +373,7 @@ int main(int argc, char* argv[]) {
         mountme("udev", config.rootfs_path / "dev", "devtmpfs");
         mountme("devpts", config.rootfs_path / "dev/pts", "devpts");
         mountme("/run", config.rootfs_path / "run", "none", MS_BIND | MS_REC);
+        mountme("/tmp", config.rootfs_path / "tmp", "none", MS_BIND); // mounting it for perf
 
         int fd = open(has_mounted_var_path.c_str(), O_CREAT | O_EXCL, 0666);
         if (fd == -1) {
