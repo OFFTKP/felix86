@@ -522,8 +522,52 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     return PeekResult::NotElf;
 }
 
-void Elf::AddSymbols(u8* start_of_data) {
+void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::filesystem::path& path, u8* start_of_data) {
     // g_mode32 has already been set at this point
+    do {
+        // Load static symbols first
+        std::string spath = path.string();
+
+        // For some reason even though we are chrooted the mappings have the full rootfs path
+        if (spath.find(g_rootfs_path.string()) == 0) {
+            spath = spath.substr(g_rootfs_path.string().size());
+            ASSERT(spath[0] == '/');
+        }
+
+        FILE* file = fopen(spath.c_str(), "r");
+        if (!file) {
+            WARN("Could not open file for symbols: %s (full path: %s)", spath.c_str(), path.c_str());
+            break; // Jump out and only get dynamic symbols
+        }
+
+        Elf_Ehdr ehdr(g_mode32, file);
+
+        Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
+        fseek(file, ehdr.phoff(), SEEK_SET);
+        for (u64 i = 0; i < ehdr.phnum(); i++) {
+            new (&phdrtable[i]) Elf_Phdr(g_mode32, file);
+        }
+
+        Elf_Shdr* shdrtable = (Elf_Shdr*)alloca(ehdr.shnum() * sizeof(Elf_Shdr));
+        fseek(file, ehdr.shoff(), SEEK_SET);
+        for (u64 i = 0; i < ehdr.shnum(); i++) {
+            new (&shdrtable[i]) Elf_Shdr(g_mode32, file);
+        }
+
+        u64 shstrindex = ehdr.shstrindex();
+        Elf_Shdr* shstrtable = &shdrtable[shstrindex];
+        const char* string_table = (const char*)shstrtable->address();
+
+        Elf_Shdr *symtab, *strtab;
+        for (u64 i = 0; i < ehdr.shnum(); i++) {
+            Elf_Shdr* current = &shdrtable[i];
+            const char* name = &string_table[current->name_offset()];
+            printf("Name:%s\n", name);
+        }
+
+        fclose(file);
+    } while (0);
+
     Elf_Ehdr ehdr(g_mode32, start_of_data);
 
     Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
@@ -531,23 +575,5 @@ void Elf::AddSymbols(u8* start_of_data) {
     for (u64 i = 0; i < ehdr.phnum(); i++) {
         void* current_phdr = start_of_phdr + (i * ehdr.phentsize());
         new (&phdrtable[i]) Elf_Phdr(g_mode32, current_phdr);
-    }
-
-    Elf_Shdr* shdrtable = (Elf_Shdr*)alloca(ehdr.shnum() * sizeof(Elf_Shdr));
-    u8* start_of_shdr = start_of_data + ehdr.shoff();
-    for (u64 i = 0; i < ehdr.shnum(); i++) {
-        void* current_shdr = start_of_shdr + (i * ehdr.shentsize());
-        new (&shdrtable[i]) Elf_Shdr(g_mode32, current_shdr);
-    }
-
-    u64 shstrindex = ehdr.shstrindex();
-    Elf_Shdr* shstrtable = &shdrtable[shstrindex];
-    const char* string_table = (const char*)shstrtable->address();
-
-    Elf_Shdr *symtab, *strtab, *dynsym, *dynstr;
-    for (u64 i = 0; i < ehdr.shnum(); i++) {
-        Elf_Shdr* current = &shdrtable[i];
-        const char* name = &string_table[current->name_offset()];
-        printf("Name:%s\n", name);
     }
 }

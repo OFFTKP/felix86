@@ -467,7 +467,7 @@ void update_symbols() {
     }
 
     for (auto& region : g_process_globals.mapped_regions) {
-        Elf::AddSymbols((u8*)region.second.base);
+        Elf::AddSymbols(g_process_globals.symbols, (u8*)region.second.base);
     }
 }
 

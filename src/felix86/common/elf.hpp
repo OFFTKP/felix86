@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <unordered_map>
 #include <vector>
 #include "felix86/common/address.hpp"
 #include "felix86/common/utility.hpp"
@@ -51,7 +52,8 @@ struct Elf {
 
     static PeekResult Peek(const std::filesystem::path& path);
 
-    static void AddSymbols(u8* start_of_data);
+    // Path is needed for static symbols, runtime address is needed for dynamic symbols
+    static void AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::filesystem::path& path, u8* start_of_data);
 
 private:
     bool ok = false;
