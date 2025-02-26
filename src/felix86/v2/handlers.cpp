@@ -648,7 +648,7 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(host_return_address, -16, sp);
         AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
-        rec.jumpAndLink(meta.rip.add(instruction.length + displacement)); // TODO: these probably need to be JALR
+        rec.jumpAndLink(meta.rip.add(instruction.length + displacement));
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == host_return_address_value);
         AS.J(&after_literal);
