@@ -517,6 +517,20 @@ std::string get_region(u64 address) {
     }
 }
 
+bool has_region(u64 address) {
+    auto lock = g_process_globals.symbols_lock.lock();
+    auto region_it = g_process_globals.mapped_regions.lower_bound(address);
+    if (region_it == g_process_globals.mapped_regions.end()) {
+        return false;
+    }
+
+    if (address >= region_it->second.base && address <= region_it->second.end) {
+        return true;
+    }
+
+    return false;
+}
+
 std::string get_perf_symbol(u64 address) {
     auto lock = g_process_globals.symbols_lock.lock();
     auto symbol_it = g_process_globals.symbols.lower_bound(address);
@@ -570,8 +584,6 @@ std::string get_perf_symbol(u64 address) {
 }
 
 void print_address(u64 address) {
-    update_symbols();
-
     auto lock = g_process_globals.symbols_lock.lock();
 
     bool found = false;

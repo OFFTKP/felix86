@@ -181,7 +181,11 @@ HostAddress Recompiler::compile(HostAddress rip) {
             perf_fd = fileno(file);
         }
 
-        update_symbols(); // will update symbols only if necessary
+        // Executed region not found, update the symbols
+        if (!has_region(rip.raw())) {
+            update_symbols();
+        }
+
         BlockMetadata& metadata = getBlockMetadata(rip);
         std::string symbol = get_perf_symbol(rip.raw());
         static char buffer[4096];
