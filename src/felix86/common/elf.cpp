@@ -208,6 +208,14 @@ struct Elf_Shdr {
         return mode32 ? inner32().sh_addr : inner64().sh_addr;
     }
 
+    u64 offset() {
+        return mode32 ? inner32().sh_offset : inner64().sh_offset;
+    }
+
+    u64 size() {
+        return mode32 ? inner32().sh_size : inner64().sh_size;
+    }
+
 private:
     bool mode32;
 
@@ -547,6 +555,9 @@ void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::f
         if (spath.find(g_rootfs_path.string()) == 0) {
             spath = spath.substr(g_rootfs_path.string().size());
             ASSERT(spath[0] == '/');
+        } else {
+            WARN("Mapped region doesn't start with rootfs path??");
+            return;
         }
 
         FILE* file = fopen(spath.c_str(), "rb");
@@ -576,7 +587,14 @@ void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::f
 
         u64 shstrindex = ehdr.shstrindex();
         Elf_Shdr* shstrtable = &shdrtable[shstrindex];
-        const char* string_table = (const char*)shstrtable->address();
+        ASSERT(shstrtable->type() == SHT_STRTAB);
+
+        char* string_table = (char*)alloca(shstrtable->size());
+        fseek(file, shstrtable->offset(), SEEK_SET);
+        size_t read = fread(string_table, shstrtable->size(), 1, file);
+        if (read != 1) {
+            ERROR("Failed to read string table?");
+        }
 
         Elf_Shdr *symtab, *strtab;
         for (u64 i = 0; i < ehdr.shnum(); i++) {

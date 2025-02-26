@@ -457,12 +457,22 @@ void update_symbols() {
 
     std::ifstream ifs("/proc/self/maps");
     std::string line;
+    std::string rootfs = g_rootfs_path.string();
     char buffer[PATH_MAX];
     while (std::getline(ifs, line)) {
         u64 start, end;
         int result = sscanf(line.c_str(), "%lx-%lx %*s %*s %*s %*s %s", &start, &end, buffer);
         if (result == 3) {
-            g_process_globals.mapped_regions[end - 1] = {.base = start, .end = end, .file = buffer};
+            std::string path = buffer;
+            if (path.find(rootfs) != 0) {
+                // This mapping is irrelevant to our emulated executable
+                // as it is not inside the rootfs
+                continue;
+            }
+
+            g_process_globals.mapped_regions[end - 1] = {.base = start, .end = end, .file = path};
+        } else {
+            WARN("Failed to parse line in /proc/self/maps: %s", line.c_str());
         }
     }
 
