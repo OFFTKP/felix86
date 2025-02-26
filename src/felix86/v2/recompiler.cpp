@@ -1269,7 +1269,6 @@ void Recompiler::stopCompiling() {
 
 void Recompiler::pushCalltrace() {
     if (g_calltrace) {
-        ASSERT(!g_rsb); // needs fixes, clobbers scratch reg
         as.LI(t0, (u64)push_calltrace);
         as.MV(a0, threadStatePointer());
         as.JALR(t0);
@@ -1278,7 +1277,6 @@ void Recompiler::pushCalltrace() {
 
 void Recompiler::popCalltrace() {
     if (g_calltrace) {
-        ASSERT(!g_rsb);
         as.LI(t0, (u64)pop_calltrace);
         as.MV(a0, threadStatePointer());
         as.JALR(t0);

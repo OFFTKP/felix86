@@ -589,7 +589,6 @@ FAST_HANDLE(CALL_rsb) {
         rec.writeMemory(guest_return_address, rsp, 0, size);
 
         rec.writebackDirtyState();
-        rec.pushCalltrace();
 
         // Instead of stopping and returning to dispatcher, continue compiling the current block
         // And perform an actual call, pushing our predicted return address to the stack
@@ -605,6 +604,7 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(host_return_address, -16, sp);
         AS.SD(guest_return_address, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
+        rec.pushCalltrace();
         rec.backToDispatcher(true); // true = push to rsb
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == start + 28);
@@ -628,7 +628,6 @@ FAST_HANDLE(CALL_rsb) {
 
         rec.setRip(new_rip);
         rec.writebackDirtyState();
-        rec.pushCalltrace();
 
         u64 start = (u64)AS.GetCursorPointer();
         biscuit::GPR host_return_address = rec.scratch();
@@ -639,6 +638,7 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(host_return_address, -16, sp);
         AS.SD(guest_return_address, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
+        rec.pushCalltrace();
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true); // true = push to rsb
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == start + 28);
@@ -671,7 +671,6 @@ FAST_HANDLE(RET_rsb) {
 
     biscuit::Label misprediction;
     rec.writebackDirtyState();
-    rec.popCalltrace();
 
     biscuit::GPR prediction = rec.scratch();
     AS.ADDI(sp, sp, 16);
@@ -679,11 +678,13 @@ FAST_HANDLE(RET_rsb) {
     AS.BNE(scratch, prediction, &misprediction);
     AS.LD(ra, -16, sp);
     // Our prediction was correct, just return to ra
+    rec.popCalltrace();
     AS.RET();
 
     // Prediction was incorrect, return to dispatcher
     AS.Bind(&misprediction);
 
+    rec.popCalltrace();
     rec.backToDispatcher();
     rec.stopCompiling();
 }
