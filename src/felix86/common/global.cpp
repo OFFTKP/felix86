@@ -61,17 +61,14 @@ HostAddress g_interpreter_end{};
 HostAddress g_executable_start{};
 HostAddress g_executable_end{};
 
+// TODO: find better detection method
 bool is_running_under_perf() {
-    struct perf_event_attr pe = {0};
-    pe.type = PERF_TYPE_SOFTWARE;
-    pe.config = PERF_COUNT_SW_CPU_CLOCK;
-
-    int fd = syscall(SYS_perf_event_open, &pe, 0, -1, -1, 0);
-    if (fd == -1) {
-        return false;
+    const char* perf_env = getenv("FELIX86_PERF");
+    if (perf_env) {
+        return true;
     }
-    close(fd);
-    return true;
+
+    return false;
 }
 
 void ProcessGlobals::initialize() {

@@ -778,7 +778,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 break;
         }
 
-        if (symtab && strtab) {
+        if (symtab > start_of_data && (u8*)strtab > start_of_data) {
             size_t sym_size = g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
             size_t dynsym_count = dynsym_size / sym_size;
             size_t mod = dynsym_size % sym_size;
