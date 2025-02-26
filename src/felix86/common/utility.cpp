@@ -490,7 +490,7 @@ void update_symbols() {
             region.first = new_start;
             region.second = new_end;
         } else {
-            WARN("Failed to parse line in /proc/self/maps: %s", line.c_str());
+            // Failed to parse, is not a map line with a path, skip
         }
     }
 
