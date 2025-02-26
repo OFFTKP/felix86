@@ -790,9 +790,15 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 new_symbol.start = elf_symbol.address();
                 new_symbol.size = elf_symbol.size();
 
-                if (symbols.find(end - 1) != symbols.end()) {
-                    WARN("Symbol overlapping at: %x-%x\n", elf_symbol.address(), end);
+                auto old_symbol = symbols.find(end - 1);
+                if (old_symbol != symbols.end()) {
+                    u64 old_address = old_symbol->second.start;
+                    u64 old_end = old_address + old_symbol->second.size;
+                    const char* old_symbol_str = old_symbol->second.name.c_str();
+                    WARN("Symbol overlap!\nOld symbol: %lx-%lx %s\nNew symbol: %lx-%lx %s", old_address, old_end, old_symbol_str,
+                         elf_symbol.address(), end, symbol);
                 }
+
                 symbols[end - 1] = new_symbol;
             }
         }

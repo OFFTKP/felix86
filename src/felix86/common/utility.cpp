@@ -507,14 +507,23 @@ std::string get_region(u64 address) {
 void print_address(u64 address) {
     auto lock = g_process_globals.symbols_lock.lock();
 
+    bool found = false;
+    MappedRegion region;
+
     auto region_it = g_process_globals.mapped_regions.lower_bound(address);
     if (region_it != g_process_globals.mapped_regions.end()) {
         u64 start = region_it->second.base;
         u64 end = region_it->second.end;
-        const char* t = region_it->second.file.c_str();
-        printf("region found: %x %x %s\n", start, end, t);
-    } else {
-        printf("region not found\n");
+        if (address >= start && address < end) {
+            region = region_it->second;
+            found = true;
+        }
+    }
+
+    if (!found) {
+        region.base = address;
+        region.end = address;
+        region.file = "Unknown";
     }
 
     // if (result != 0) {
