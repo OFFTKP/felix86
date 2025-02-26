@@ -710,7 +710,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
 
     Elf_Phdr* dynamic = nullptr;
     for (u64 i = 0; i < ehdr.phnum(); i++) {
-        if (ehdr.type() == PT_DYNAMIC) {
+        if (phdrtable[i].type() == PT_DYNAMIC) {
             dynamic = &phdrtable[i];
             break;
         }
