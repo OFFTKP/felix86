@@ -587,7 +587,7 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     u8 e_ident[EI_NIDENT];
     ssize_t result = fread(&e_ident, EI_NIDENT, sizeof(u8), file);
     if (result != 1) {
-        ERROR("Failed to read ELF header from file %s", path.c_str());
+        return Elf::PeekResult::NotElf;
     }
 
     fclose(file);
@@ -602,7 +602,6 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
         return PeekResult::Elf64;
     }
 
-    ERROR("File %s is an ELF but not a 64-bit or 32-bit ELF file", path.c_str());
     return PeekResult::NotElf;
 }
 
