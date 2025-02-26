@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cstring>
-#include <filesystem>
 #include <list>
 #include <string>
 #include <fcntl.h>
@@ -10,6 +9,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
+#include "felix86/hle/filesystem.hpp"
 #include "fmt/format.h"
 
 bool g_paranoid = false;
