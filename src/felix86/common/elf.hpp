@@ -54,7 +54,7 @@ struct Elf {
     static PeekResult Peek(const std::filesystem::path& path);
 
     // Path is needed for static symbols, runtime address is needed for dynamic symbols
-    static void AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start_of_data);
+    static void AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start, u8* end);
 
 private:
     bool ok = false;

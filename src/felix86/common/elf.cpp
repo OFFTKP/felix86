@@ -605,7 +605,7 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     return PeekResult::NotElf;
 }
 
-void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start_of_data) {
+void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start_of_data, u8* end_of_data) {
     // g_mode32 has already been set at this point
     // Load static symbols first
     size_t dynsym_size = 0;
@@ -755,6 +755,12 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         u8* symtab = nullptr;
         const char* strtab = nullptr;
         u8* dynamic_ptr = start_of_data + dynamic->vaddr();
+
+        if (dynamic_ptr > end_of_data) {
+            // Probably the mapped file hasn't fully loaded yet, skip
+            return;
+        }
+
         size_t count = dynamic->memsz() / (g_mode32 ? sizeof(Elf32_Dyn) : sizeof(Elf64_Dyn));
         for (size_t i = 0; i < count; i++) {
             if (g_mode32) {
@@ -786,18 +792,26 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 return;
             }
 
+            if (symtab + (sym_size * dynsym_count) > end_of_data || (u8*)strtab > end_of_data) {
+                return;
+            }
+
             for (size_t i = 0; i < dynsym_count; i++) {
                 u8* data = symtab + (sym_size * i);
                 Elf_Sym elf_symbol(g_mode32, data);
                 size_t index = elf_symbol.offset();
                 const char* symbol = strtab + index;
+                if ((u8*)symbol > end_of_data) {
+                    // Just in case...
+                    continue;
+                }
 
                 if (elf_symbol.type() != STT_FUNC) {
                     // We don't care about this symbol
                     continue;
                 }
 
-                if (elf_symbol.address() == 0) {
+                if (elf_symbol.address() == 0) { // not yet resolved? skip
                     continue;
                 }
 
