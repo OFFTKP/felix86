@@ -505,11 +505,17 @@ std::string get_region(u64 address) {
 }
 
 void print_address(u64 address) {
-    // Dl_info info; // locks
-    // info.dli_fname = 0;
-    // info.dli_fbase = 0;
-    // int result = dladdr((void*)address, &info);
-    // printf("dlerr: %s\n", dlerror());
+    auto lock = g_process_globals.symbols_lock.lock();
+
+    auto region_it = g_process_globals.mapped_regions.lower_bound(address);
+    if (region_it != g_process_globals.mapped_regions.end()) {
+        u64 start = region_it->second.base;
+        u64 end = region_it->second.end;
+        const char* t = region_it->second.file.c_str();
+        printf("region found: %x %x %s\n", start, end, t);
+    } else {
+        printf("region not found\n");
+    }
 
     // if (result != 0) {
     //     std::string lib = info.dli_fname;

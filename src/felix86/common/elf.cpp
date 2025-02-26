@@ -784,7 +784,16 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                     continue;
                 }
 
-                printf("Dynamic symbol: %s\n", symbol);
+                u64 end = elf_symbol.address() + elf_symbol.size();
+                Symbol new_symbol;
+                new_symbol.name = symbol;
+                new_symbol.start = elf_symbol.address();
+                new_symbol.size = elf_symbol.size();
+
+                if (symbols.find(end - 1) != symbols.end()) {
+                    WARN("Symbol overlapping at: %x-%x\n", elf_symbol.address(), end);
+                }
+                symbols[end - 1] = new_symbol;
             }
         }
     }
