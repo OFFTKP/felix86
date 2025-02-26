@@ -653,8 +653,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
             }
 
             size_t symbol_count = symtab->size() / (g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym));
-            Elf_Sym* symbols = (Elf_Sym*)alloca(symtab->size());
-            printf("%d symbols\n", symbol_count);
+            Elf_Sym* symbols = (Elf_Sym*)alloca(symtab->size() * sizeof(Elf_Sym));
             fseek(file, symtab->offset(), SEEK_SET);
             for (u64 i = 0; i < symbol_count; i++) {
                 new (&symbols[i]) Elf_Sym(g_mode32, file);
