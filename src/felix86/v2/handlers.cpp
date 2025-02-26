@@ -583,10 +583,10 @@ FAST_HANDLE(CALL_rsb) {
         AS.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setRefGPR(X86_REF_RSP, size, rsp);
 
-        biscuit::GPR scratch = rec.scratch();
+        biscuit::GPR guest_return_address = rec.scratch();
         GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
-        AS.LI(scratch, return_address.raw());
-        rec.writeMemory(scratch, rsp, 0, size);
+        AS.LI(guest_return_address, return_address.raw());
+        rec.writeMemory(guest_return_address, rsp, 0, size);
 
         rec.writebackDirtyState();
         rec.pushCalltrace();
@@ -603,7 +603,7 @@ FAST_HANDLE(CALL_rsb) {
         AS.AUIPC(host_return_address, 0);
         AS.ADDI(host_return_address, host_return_address, 28);
         AS.SD(host_return_address, -16, sp);
-        AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
+        AS.SD(guest_return_address, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
         rec.backToDispatcher(true); // true = push to rsb
         u64 here = (u64)AS.GetCursorPointer();
@@ -619,13 +619,14 @@ FAST_HANDLE(CALL_rsb) {
         AS.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setRefGPR(X86_REF_RSP, size, rsp);
 
-        biscuit::GPR scratch = rec.scratch();
-        AS.LI(scratch, return_address.raw());
-        rec.writeMemory(scratch, rsp, 0, size);
+        biscuit::GPR guest_return_address = rec.scratch();
+        biscuit::GPR new_rip = rec.scratch();
+        AS.LI(guest_return_address, return_address.raw());
+        rec.writeMemory(guest_return_address, rsp, 0, size);
 
-        rec.addi(scratch, scratch, displacement);
+        rec.addi(new_rip, guest_return_address, displacement);
 
-        rec.setRip(scratch);
+        rec.setRip(new_rip);
         rec.writebackDirtyState();
         rec.pushCalltrace();
 
@@ -636,7 +637,7 @@ FAST_HANDLE(CALL_rsb) {
         AS.AUIPC(host_return_address, 0);
         AS.ADDI(host_return_address, host_return_address, 28);
         AS.SD(host_return_address, -16, sp);
-        AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
+        AS.SD(guest_return_address, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true); // true = push to rsb
         u64 here = (u64)AS.GetCursorPointer();
