@@ -551,15 +551,6 @@ void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::f
     do {
         std::string spath = path.string();
 
-        // For some reason even though we are chrooted the mappings have the full rootfs path
-        if (spath.find(g_rootfs_path.string()) == 0) {
-            spath = spath.substr(g_rootfs_path.string().size());
-            ASSERT(spath[0] == '/');
-        } else {
-            WARN("Mapped region doesn't start with rootfs path??");
-            return;
-        }
-
         FILE* file = fopen(spath.c_str(), "rb");
         if (!file) {
             WARN("Could not open file for symbols: %s (full path: %s)", spath.c_str(), path.c_str());
