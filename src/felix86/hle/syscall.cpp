@@ -773,10 +773,6 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_mmap: {
         result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
         STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
-
-        if ((int)r8 != -1) { // Uses file descriptor for mmap, may need to update symbols
-            g_process_globals.cached_symbols = false;
-        }
         break;
     }
     case felix86_x86_64_munmap: {

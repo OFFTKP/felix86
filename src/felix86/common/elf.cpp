@@ -80,6 +80,14 @@ struct Elf_Ehdr {
         return mode32 ? inner32().e_shoff : inner64().e_shoff;
     }
 
+    u64 shnum() {
+        return mode32 ? inner32().e_shnum : inner64().e_shnum;
+    }
+
+    u64 shentsize() {
+        return mode32 ? inner32().e_shentsize : inner64().e_shentsize;
+    }
+
     u64 shstrindex() {
         return mode32 ? inner32().e_shstrndx : inner64().e_shstrndx;
     }
@@ -520,18 +528,26 @@ void Elf::AddSymbols(u8* start_of_data) {
 
     Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
     u8* start_of_phdr = start_of_data + ehdr.phoff();
-    for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
+    for (u64 i = 0; i < ehdr.phnum(); i++) {
         void* current_phdr = start_of_phdr + (i * ehdr.phentsize());
         new (&phdrtable[i]) Elf_Phdr(g_mode32, current_phdr);
     }
 
-    u64 shstrindex = ehdr.shstrindex();
+    Elf_Shdr* shdrtable = (Elf_Shdr*)alloca(ehdr.shnum() * sizeof(Elf_Shdr));
     u8* start_of_shdr = start_of_data + ehdr.shoff();
-    u64 shdr_size = g_mode32 ? sizeof(Elf32_Shdr) : sizeof(Elf64_Shdr);
-    u8* start_of_shstr = start_of_shdr + (shdr_size * shstrindex);
+    for (u64 i = 0; i < ehdr.shnum(); i++) {
+        void* current_shdr = start_of_shdr + (i * ehdr.shentsize());
+        new (&shdrtable[i]) Elf_Shdr(g_mode32, current_shdr);
+    }
 
-    Elf_Shdr shstr(g_mode32, start_of_shstr);
-    const char* string_table = (const char*)shstr.address();
+    u64 shstrindex = ehdr.shstrindex();
+    Elf_Shdr* shstrtable = &shdrtable[shstrindex];
+    const char* string_table = (const char*)shstrtable->address();
 
-    printf("string table at: %p, %s\n", string_table, string_table);
+    Elf_Shdr *symtab, *strtab, *dynsym, *dynstr;
+    for (u64 i = 0; i < ehdr.shnum(); i++) {
+        Elf_Shdr* current = &shdrtable[i];
+        const char* name = &string_table[current->name_offset()];
+        printf("Name:%s\n", name);
+    }
 }

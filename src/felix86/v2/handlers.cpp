@@ -683,8 +683,6 @@ FAST_HANDLE(RET_rsb) {
 
     // Prediction was incorrect, return to dispatcher
     AS.Bind(&misprediction);
-    AS.LI(t0, (u64)increment_bad_ret);
-    AS.JALR(t0);
 
     rec.backToDispatcher();
     rec.stopCompiling();
