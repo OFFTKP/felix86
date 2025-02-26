@@ -581,7 +581,7 @@ void Elf::AddSymbols(std::unordered_map<u64, std::string>& symbols, const std::f
         Elf_Shdr *symtab, *strtab;
         for (u64 i = 0; i < ehdr.shnum(); i++) {
             Elf_Shdr* current = &shdrtable[i];
-            const char* name = &string_table[current->name_offset()];
+            const char* name = string_table + current->name_offset();
             printf("Name:%s\n", name);
         }
 
