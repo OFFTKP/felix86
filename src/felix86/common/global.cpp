@@ -38,7 +38,6 @@ u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
 u64 g_dispatcher_exit_count = 0;
 u64 g_address_space_base = 0;
-std::atomic_long g_bad_ret_count{};
 std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{}; // TODO: HostAddress
 pthread_key_t g_thread_state_key = -1;
@@ -63,7 +62,7 @@ void ProcessGlobals::initialize() {
     // Open a new shared memory region
     memory = std::make_unique<SharedMemory>(shared_memory_size);
     states_lock = ProcessLock(*memory);
-    mapped_regions_lock = ProcessLock(*memory);
+    symbols_lock = ProcessLock(*memory);
 
     // Reset the states stored here
     states = {};

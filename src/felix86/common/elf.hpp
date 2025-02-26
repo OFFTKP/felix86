@@ -51,6 +51,8 @@ struct Elf {
 
     static PeekResult Peek(const std::filesystem::path& path);
 
+    static void AddSymbols(u8* start_of_data);
+
 private:
     bool ok = false;
     bool is_interpreter = false;

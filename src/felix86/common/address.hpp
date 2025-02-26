@@ -79,6 +79,10 @@ struct GuestAddress {
         return address == 0;
     }
 
+    bool operator==(const GuestAddress& other) const {
+        return address == other.address;
+    }
+
 private:
     u64 address;
 };

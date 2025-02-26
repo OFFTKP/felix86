@@ -3,6 +3,7 @@
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
 #include "felix86/common/debug.hpp"
+#include "felix86/common/elf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
 
@@ -451,11 +452,7 @@ void dump_states() {
 }
 
 void update_symbols() {
-    if (g_process_globals.cached_symbols) {
-        return;
-    }
-
-    auto lock = g_process_globals.mapped_regions_lock.lock();
+    auto lock = g_process_globals.symbols_lock.lock();
     g_process_globals.mapped_regions.clear();
 
     std::ifstream ifs("/proc/self/maps");
@@ -469,13 +466,13 @@ void update_symbols() {
         }
     }
 
-    g_process_globals.cached_symbols = true;
+    for (auto& region : g_process_globals.mapped_regions) {
+        Elf::AddSymbols((u8*)region.second.base);
+    }
 }
 
 std::string get_region(u64 address) {
-    update_symbols();
-
-    auto lock = g_process_globals.mapped_regions_lock.lock();
+    auto lock = g_process_globals.symbols_lock.lock();
     auto it = g_process_globals.mapped_regions.lower_bound(address);
     if (address >= it->second.base) {
         return it->second.file;
@@ -485,8 +482,6 @@ std::string get_region(u64 address) {
 }
 
 void print_address(u64 address) {
-    update_symbols();
-
     // Dl_info info; // locks
     // info.dli_fname = 0;
     // info.dli_fbase = 0;

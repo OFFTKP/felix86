@@ -651,16 +651,11 @@ FAST_HANDLE(CALL_rsb) {
     }
 }
 
-void increment_bad_ret() {
-    // TODO: per thread state probably
-    g_bad_ret_count += 1;
-}
-
 FAST_HANDLE(RET_rsb) {
     x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
     biscuit::GPR ra = rec.scratch();
-    ASSERT(ra == biscuit::ra); // using ra *may* be better for the RSB? but unsure tbh
+    ASSERT(ra == biscuit::ra);
     biscuit::GPR scratch = rec.scratch();
     rec.readMemory(scratch, rsp, 0, size);
 

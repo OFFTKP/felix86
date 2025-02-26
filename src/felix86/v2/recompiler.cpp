@@ -157,6 +157,11 @@ HostAddress Recompiler::compile(HostAddress rip) {
         clearCodeCache();
     }
 
+    if (!symbols_added && rip.toGuest() == g_fs->GetExecutable()->GetEntrypoint()) {
+        update_symbols();
+        symbols_added = true;
+    }
+
     std::lock_guard lock(block_map_mutex);
     HostAddress start{(u64)as.GetCursorPointer()};
 

@@ -50,6 +50,8 @@ int clear_breakpoints();
 
 void print_address(u64 address); // u64 instead of HostAddress for convenient calling from gdb
 
+void update_symbols();
+
 void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64);
 
 void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64);

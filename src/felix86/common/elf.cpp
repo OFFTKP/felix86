@@ -38,6 +38,16 @@ struct Elf_Ehdr {
         }
     }
 
+    Elf_Ehdr(bool mode32, void* data) : mode32(mode32) {
+        if (mode32) {
+            inner = Elf32_Ehdr{};
+            memcpy(&inner32(), data, sizeof(Elf32_Ehdr));
+        } else {
+            inner = Elf64_Ehdr{};
+            memcpy(&inner64(), data, sizeof(Elf64_Ehdr));
+        }
+    }
+
     u64 version() {
         return mode32 ? inner32().e_version : inner64().e_version;
     }
@@ -64,6 +74,14 @@ struct Elf_Ehdr {
 
     u64 phentsize() {
         return mode32 ? inner32().e_phentsize : inner64().e_phentsize;
+    }
+
+    u64 shoff() {
+        return mode32 ? inner32().e_shoff : inner64().e_shoff;
+    }
+
+    u64 shstrindex() {
+        return mode32 ? inner32().e_shstrndx : inner64().e_shstrndx;
     }
 
 private:
@@ -93,6 +111,16 @@ struct Elf_Phdr {
 
         if (read != 1) {
             ERROR("Failed to read ELF program header from file");
+        }
+    }
+
+    Elf_Phdr(bool mode32, void* data) : mode32(mode32) {
+        if (mode32) {
+            inner = Elf32_Phdr{};
+            memcpy(&inner32(), data, sizeof(Elf32_Phdr));
+        } else {
+            inner = Elf64_Phdr{};
+            memcpy(&inner64(), data, sizeof(Elf64_Phdr));
         }
     }
 
@@ -132,6 +160,43 @@ private:
     }
 
     std::variant<Elf64_Phdr, Elf32_Phdr> inner;
+};
+
+struct Elf_Shdr {
+    Elf_Shdr(bool mode32, void* data) : mode32(mode32) {
+        if (mode32) {
+            inner = Elf32_Shdr{};
+            memcpy(&inner32(), data, sizeof(Elf32_Shdr));
+        } else {
+            inner = Elf64_Shdr{};
+            memcpy(&inner64(), data, sizeof(Elf64_Shdr));
+        }
+    }
+
+    u64 name_offset() {
+        return mode32 ? inner32().sh_name : inner64().sh_name;
+    }
+
+    u64 type() {
+        return mode32 ? inner32().sh_type : inner64().sh_type;
+    }
+
+    u64 address() {
+        return mode32 ? inner32().sh_addr : inner64().sh_addr;
+    }
+
+private:
+    bool mode32;
+
+    Elf32_Shdr& inner32() {
+        return std::get<Elf32_Shdr>(inner);
+    }
+
+    Elf64_Shdr& inner64() {
+        return std::get<Elf64_Shdr>(inner);
+    }
+
+    std::variant<Elf64_Shdr, Elf32_Shdr> inner;
 };
 
 Elf::Elf(bool is_interpreter) : is_interpreter(is_interpreter) {}
@@ -447,4 +512,26 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
 
     ERROR("File %s is an ELF but not a 64-bit or 32-bit ELF file", path.c_str());
     return PeekResult::NotElf;
+}
+
+void Elf::AddSymbols(u8* start_of_data) {
+    // g_mode32 has already been set at this point
+    Elf_Ehdr ehdr(g_mode32, start_of_data);
+
+    Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
+    u8* start_of_phdr = start_of_data + ehdr.phoff();
+    for (Elf64_Half i = 0; i < ehdr.phnum(); i++) {
+        void* current_phdr = start_of_phdr + (i * ehdr.phentsize());
+        new (&phdrtable[i]) Elf_Phdr(g_mode32, current_phdr);
+    }
+
+    u64 shstrindex = ehdr.shstrindex();
+    u8* start_of_shdr = start_of_data + ehdr.shoff();
+    u64 shdr_size = g_mode32 ? sizeof(Elf32_Shdr) : sizeof(Elf64_Shdr);
+    u8* start_of_shstr = start_of_shdr + (shdr_size * shstrindex);
+
+    Elf_Shdr shstr(g_mode32, start_of_shstr);
+    const char* string_table = (const char*)shstr.address();
+
+    printf("string table at: %p, %s\n", string_table, string_table);
 }
