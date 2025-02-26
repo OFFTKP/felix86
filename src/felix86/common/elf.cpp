@@ -760,10 +760,9 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         }
 
         if (symtab && strtab) {
-            u8* current_symtab = symtab;
             size_t sym_size = g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
             size_t dynsym_count = dynsym_size / sym_size;
-            size_t mod = dynsym_size / sym_size;
+            size_t mod = dynsym_size % sym_size;
             if (mod != 0) {
                 WARN("Couldn't deduce dynamic symbol count, doesn't divide neatly");
                 return;
@@ -774,6 +773,17 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 Elf_Sym elf_symbol(g_mode32, data);
                 size_t index = elf_symbol.offset();
                 const char* symbol = strtab + index;
+
+                if (elf_symbol.type() != STT_FUNC) {
+                    // We don't care about this symbol
+                    continue;
+                }
+
+                if (elf_symbol.address() == 0) {
+                    WARN("Dynamic symbol %s has address of 0", symbol);
+                    continue;
+                }
+
                 printf("Dynamic symbol: %s\n", symbol);
             }
         }
