@@ -3,12 +3,12 @@
 #include <list>
 #include <string>
 #include <fcntl.h>
+#include <linux/perf_event.h>
 #include <sys/mman.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
-#include "felix86/emulator.hpp"
 #include "fmt/format.h"
 
 bool g_paranoid = false;
@@ -33,6 +33,7 @@ bool g_print_all_insts = false;
 bool g_dont_inline_syscalls = false;
 bool g_mode32 = false;
 bool g_rsb = true;
+bool g_perf = false;
 std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
@@ -58,6 +59,19 @@ HostAddress g_interpreter_start{};
 HostAddress g_interpreter_end{};
 HostAddress g_executable_start{};
 HostAddress g_executable_end{};
+
+bool is_running_under_perf() {
+    struct perf_event_attr pe = {0};
+    pe.type = PERF_TYPE_SOFTWARE;
+    pe.config = PERF_COUNT_SW_CPU_CLOCK;
+
+    int fd = syscall(SYS_perf_event_open, &pe, 0, -1, -1, 0);
+    if (fd == -1) {
+        return false;
+    }
+    close(fd);
+    return true;
+}
 
 void ProcessGlobals::initialize() {
     // Open a new shared memory region
@@ -260,6 +274,15 @@ void initialize_globals() {
     if (env_file) {
         // Handled in main
         environment += "\nFELIX86_ENV_FILE=" + std::string(env_file);
+    }
+
+    g_perf = is_running_under_perf();
+    if (g_perf) {
+        if (!std::filesystem::exists("/tmp")) {
+            std::filesystem::create_directory("/tmp");
+        }
+
+        LOG("Running under " ANSI_BOLD "perf" ANSI_COLOR_RESET "!");
     }
 
     const char* single_step = getenv("FELIX86_SINGLE_STEP");

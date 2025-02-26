@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <sys/file.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
@@ -171,6 +172,27 @@ HostAddress Recompiler::compile(HostAddress rip) {
 
     // Mark the page as read-only to catch self-modifying code
     markPagesAsReadOnly(rip, end_rip);
+
+    if (g_perf) {
+        if (perf_fd == -1) {
+            std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
+            FILE* file = fopen(path.c_str(), "w");
+            ASSERT(file);
+            perf_fd = fileno(file);
+        }
+
+        update_symbols(); // will update symbols only if necessary
+        BlockMetadata& metadata = getBlockMetadata(rip);
+        std::string symbol = get_perf_symbol(rip.raw());
+        static char buffer[4096];
+        int string_size = snprintf(buffer, 4096, "%lx %lx %s\n", metadata.address.raw(), metadata.address_end.raw(), symbol.c_str());
+        ASSERT(string_size > 0 && string_size < 4095);
+
+        int locked = flock(perf_fd, LOCK_EX);
+        ASSERT(locked == 0);
+        write(perf_fd, buffer, string_size);
+        flock(perf_fd, LOCK_UN);
+    }
 
     return start;
 }

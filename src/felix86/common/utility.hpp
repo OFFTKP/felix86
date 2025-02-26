@@ -2,6 +2,7 @@
 
 #include <climits>
 #include <cstddef>
+#include <string>
 #include <stdbool.h>
 #include <stdint.h>
 #include "biscuit/isa.hpp"
@@ -39,6 +40,8 @@ void felix86_divu128(struct ThreadState* state, u64 divisor);
 
 u64 sext(u64 value, u8 size);
 u64 sext_if_64(u64 value, u8 size_e);
+
+std::string get_perf_symbol(u64 address);
 
 void flush_icache();
 

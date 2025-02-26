@@ -1,11 +1,13 @@
 #include <cstring>
 #include <fstream>
+#include <sys/ioctl.h>
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
 #include "felix86/common/debug.hpp"
 #include "felix86/common/elf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
+#include "fmt/format.h"
 
 #ifdef __riscv
 #include <sys/cachectl.h>
@@ -436,11 +438,10 @@ void dump_states() {
     auto& states = g_process_globals.states;
     int i = 0;
     for (auto& state : states) {
-        dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld): " ANSI_COLOR_RESET, i, state->tid);
+        dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld):" ANSI_COLOR_RESET "\n", i, state->tid);
         print_address(state->rip.toHost().raw());
 
         if (g_calltrace) {
-            dprintf(g_output_fd, ANSI_COLOR_RED "--- CALLTRACE ---\n" ANSI_COLOR_RESET);
             auto it = state->calltrace.rbegin();
             while (it != state->calltrace.rend()) {
                 print_address((*it).raw());
@@ -516,6 +517,29 @@ std::string get_region(u64 address) {
     }
 }
 
+std::string get_perf_symbol(u64 address) {
+    auto lock = g_process_globals.symbols_lock.lock();
+    auto symbol_it = g_process_globals.symbols.lower_bound(address);
+
+    Symbol* symbol = nullptr;
+    if (symbol_it != g_process_globals.symbols.end()) {
+        u64 start = symbol_it->second.start;
+        u64 end = symbol_it->second.start + symbol_it->second.size;
+        if (address >= start && address <= end) {
+            symbol = &symbol_it->second;
+        }
+    }
+
+    std::string ret;
+    if (symbol) {
+        ret = fmt::format("jit_{}@0x{:x}", symbol->name, address - symbol->start);
+    } else {
+        ret = fmt::format("jit_LAB_{:x}", address);
+    }
+
+    return ret;
+}
+
 void print_address(u64 address) {
     update_symbols();
 
@@ -551,23 +575,51 @@ void print_address(u64 address) {
         }
     }
 
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    std::string filename = region.file;
+    if (found) {
+        filename = std::filesystem::path(region.file).filename();
+    }
+
     const char* symbol_str = symbol ? symbol->name.c_str() : nullptr;
+    std::string symbol_trunc;
+    if (symbol_str) {
+        // 16 for each hex number at most
+        // 4 for " in "
+        // 8 more for the parentheses stuff and other characters
+        i64 max_size = 16 + 4 + filename.size() + 8 + 16;
+        max_size = w.ws_col - max_size;
+        max_size -= 8; // give it some extra breathing room too
+
+        if (max_size < 10) {
+            // If we have fewer than 10 characters, the user is just messing around with a tiny terminal or idk
+            // Let's just not truncate it.
+            symbol_trunc = symbol_str;
+        } else {
+            symbol_trunc = symbol_str;
+            symbol_trunc = symbol_trunc.substr(0, max_size);
+            symbol_trunc += "...";
+        }
+    }
 
     // clang-format can't comprehend what I am about to do
     // clang-format off
     if (symbol_str) {
         u64 offset = address - symbol->start;
         dprintf(g_output_fd,
-            ANSI_COLOR_CYAN "%s+0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET "\n",
-            symbol_str,
+            ANSI_COLOR_CYAN "%s+0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET " (0x%lx)\n",
+            symbol_trunc.c_str(),
             offset,
-            region.file.c_str()
+            filename.c_str(),
+            address
         );
     } else {
         dprintf(g_output_fd,
             ANSI_COLOR_CYAN "0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET "\n",
             address,
-            region.file.c_str()
+            filename.c_str()
         );
     }
     // clang-format on

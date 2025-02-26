@@ -587,7 +587,7 @@ FAST_HANDLE(CALL_rsb) {
         GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
         AS.LI(guest_return_address, return_address.raw());
         rec.writeMemory(guest_return_address, rsp, 0, size);
-
+        rec.pushCalltrace();
         rec.writebackDirtyState();
 
         // Instead of stopping and returning to dispatcher, continue compiling the current block
@@ -604,7 +604,6 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(host_return_address, -16, sp);
         AS.SD(guest_return_address, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
-        rec.pushCalltrace();
         rec.backToDispatcher(true); // true = push to rsb
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == start + 28);
@@ -628,6 +627,7 @@ FAST_HANDLE(CALL_rsb) {
 
         rec.setRip(new_rip);
         rec.writebackDirtyState();
+        rec.pushCalltrace();
 
         u64 start = (u64)AS.GetCursorPointer();
         biscuit::GPR host_return_address = rec.scratch();
@@ -638,7 +638,6 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(host_return_address, -16, sp);
         AS.SD(guest_return_address, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
-        rec.pushCalltrace();
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true); // true = push to rsb
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == start + 28);
