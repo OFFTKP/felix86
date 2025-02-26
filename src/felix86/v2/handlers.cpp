@@ -596,26 +596,18 @@ FAST_HANDLE(CALL_rsb) {
         // As long as each call corresponds to a ret this prediction will work out. If it doesn't,
         // it goes back to the dispatcher. There's cases where calls don't correspond 1:1 to rets such as exceptions.
 
-        // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (2 * 4) = 28 bytes
-        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 28;
-        Label after_literal;
-        Literal literal(host_return_address_value); // read below as to why not just LI()
+        u64 start = (u64)AS.GetCursorPointer();
         biscuit::GPR host_return_address = rec.scratch();
 
-        AS.LD(host_return_address, &literal);
+        // AUIPC + ADDI + SD + SD + ADDI + 2 instructions for jump = 28
+        AS.AUIPC(host_return_address, 0);
+        AS.ADDI(host_return_address, host_return_address, 28);
         AS.SD(host_return_address, -16, sp);
         AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
-        // This goes back to the dispatcher, but continues compiling instructions. Hopefully
-        // the prediction is correct and it returns to right after the literal.
         rec.backToDispatcher(true); // true = push to rsb
-        // We need to place a literal so that LI has a constant size. But we also need to return exactly at this spot
-        // and then jump over the literal because of how the return stack buffer works.
         u64 here = (u64)AS.GetCursorPointer();
-        ASSERT(here == host_return_address_value);
-        AS.J(&after_literal);
-        AS.Place(&literal);
-        AS.Bind(&after_literal);
+        ASSERT(here == start + 28);
         break;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -637,22 +629,18 @@ FAST_HANDLE(CALL_rsb) {
         rec.writebackDirtyState();
         rec.pushCalltrace();
 
-        // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (2 * 4) = 28 bytes
-        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 28;
-        Label after_literal;
-        Literal literal(host_return_address_value);
+        u64 start = (u64)AS.GetCursorPointer();
         biscuit::GPR host_return_address = rec.scratch();
 
-        AS.LD(host_return_address, &literal);
+        // AUIPC + ADDI + SD + SD + ADDI + 2 instructions for jump = 28
+        AS.AUIPC(host_return_address, 0);
+        AS.ADDI(host_return_address, host_return_address, 28);
         AS.SD(host_return_address, -16, sp);
         AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true); // true = push to rsb
         u64 here = (u64)AS.GetCursorPointer();
-        ASSERT(here == host_return_address_value);
-        AS.J(&after_literal);
-        AS.Place(&literal);
-        AS.Bind(&after_literal);
+        ASSERT(here == start + 28);
         break;
     }
     default: {
