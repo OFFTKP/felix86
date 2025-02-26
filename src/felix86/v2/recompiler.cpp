@@ -1357,7 +1357,6 @@ void Recompiler::restoreRoundingMode() {
 }
 
 void Recompiler::backToDispatcher(bool use_rsb) {
-    as.NOP();
     as.LD(t0, offsetof(ThreadState, compile_next_handler), threadStatePointer());
     if (use_rsb) {
         // This encoding pushes to the return stack buffer. The JALR in our dispatcher
@@ -1603,25 +1602,24 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
     } else {
         auto& target_meta = getBlockMetadata(rip);
         u64 target = target_meta.address.raw();
-        u64 offset = target - (u64)as.GetCursorPointer();
 
         u8* link_me = as.GetCursorPointer();
         target_meta.links.push_back(link_me); // for when we need to unlink
 
+        u64 offset = target - (u64)(as.GetCursorPointer() + 4);
         if (IsValidJTypeImm(offset)) {
-            if (offset != 3 * 4) {
+            if (offset != 4) {
                 as.NOP();
-                as.NOP(); // TODO: remove me, see below
                 if (use_rsb) {
                     as.JAL(ra, offset);
                 } else {
                     as.J(offset);
                 }
             } else {
-                // Replace the AUIPC+JR with 3 NOPs
+                // Can just be inlined as target is just ahead
+                // Replace the AUIPC+JR with 2 NOPs
                 as.NOP();
                 as.NOP();
-                as.NOP(); // TODO: remove me, see below
             }
         } else {
             // Too far for a regular jump, use AUIPC+JR
@@ -1629,7 +1627,6 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
 
-            as.NOP();
             as.AUIPC(t0, hi20);
             if (use_rsb) {
                 as.JALR(ra, lo12, t0); // hint to the rsb to push
@@ -1639,8 +1636,8 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
         }
     }
 
-    // These jumps are always 3 instructions to keep consistent when backpatching is needed
-    ASSERT(as.GetCursorPointer() - start == 3 * 4);
+    // These jumps are always 2 instructions to keep consistent when backpatching is needed
+    ASSERT(as.GetCursorPointer() - start == 2 * 4);
 }
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, HostAddress rip_true,
@@ -1670,10 +1667,11 @@ void Recompiler::expirePendingLinks(HostAddress rip) {
     auto& pending_links = block_meta.pending_links;
     for (u8* link : pending_links) {
         bool use_rsb = false;
-        // TODO: 3*4 -> change the offset here
-        u32 jump_inst = *(u32*)(link + (3 * 4) - 4);
+        u32 jump_inst = *(u32*)(link + 4);
         // If it's `jalr t0`, we need to emit an rsb hinting jump
-        if (jump_inst == 0x000280e7) {
+        // `jalr t0` is emitted from backToDispatcher when needing RSB (ie from calls to reg)
+        constexpr u32 jalr_t0 = 0x000280e7;
+        if (jump_inst == jalr_t0) {
             use_rsb = true;
         }
 

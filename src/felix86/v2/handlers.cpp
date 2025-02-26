@@ -597,8 +597,8 @@ FAST_HANDLE(CALL_rsb) {
         // it goes back to the dispatcher. There's cases where calls don't correspond 1:1 to rets such as exceptions.
 
         // TODO: replace all 3*4 stuff with a constexpr
-        // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (3 * 4) = 32 bytes
-        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 32;
+        // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (2 * 4) = 28 bytes
+        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 28;
         Label after_literal;
         Literal literal(host_return_address_value); // read below as to why not just LI()
         biscuit::GPR host_return_address = rec.scratch();
@@ -638,8 +638,8 @@ FAST_HANDLE(CALL_rsb) {
         rec.writebackDirtyState();
         rec.pushCalltrace();
 
-        // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (3 * 4) = 32 bytes
-        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 32;
+        // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (2 * 4) = 28 bytes
+        u64 host_return_address_value = (u64)AS.GetCursorPointer() + 28;
         Label after_literal;
         Literal literal(host_return_address_value);
         biscuit::GPR host_return_address = rec.scratch();
