@@ -631,28 +631,28 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
             return;
         }
 
-        Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
+        std::vector<std::unique_ptr<Elf_Phdr>> phdrtable;
         u64 ehdr_phoff = ehdr.phoff();
         fseek(file, ehdr_phoff, SEEK_SET);
         for (u64 i = 0; i < ehdr.phnum(); i++) {
-            new (&phdrtable[i]) Elf_Phdr(g_mode32, file);
+            phdrtable.push_back(std::make_unique<Elf_Phdr>(g_mode32, file));
         }
 
-        Elf_Shdr* shdrtable = (Elf_Shdr*)alloca(ehdr.shnum() * sizeof(Elf_Shdr));
+        std::vector<std::unique_ptr<Elf_Shdr>> shdrtable;
         u64 ehdr_shoff = ehdr.shoff();
         fseek(file, ehdr_shoff, SEEK_SET);
         for (u64 i = 0; i < ehdr.shnum(); i++) {
-            new (&shdrtable[i]) Elf_Shdr(g_mode32, file);
+            shdrtable.push_back(std::make_unique<Elf_Shdr>(g_mode32, file));
         }
 
         u64 shstrindex = ehdr.shstrindex();
-        Elf_Shdr* shstrtable = &shdrtable[shstrindex];
+        Elf_Shdr* shstrtable = shdrtable[shstrindex].get();
         ASSERT(shstrtable->type() == SHT_STRTAB);
 
-        char* sh_string_table = (char*)alloca(shstrtable->size());
+        std::vector<char> sh_string_table(shstrtable->size());
         u64 shstroff = shstrtable->offset();
         fseek(file, shstroff, SEEK_SET);
-        size_t read = fread(sh_string_table, shstrtable->size(), 1, file);
+        size_t read = fread(sh_string_table.data(), shstrtable->size(), 1, file);
         if (read != 1) {
             ERROR("Failed to read string table?");
         }
@@ -660,8 +660,8 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         Elf_Shdr *symtab = nullptr, *strtab = nullptr;
         Elf_Shdr* dynsym = nullptr;
         for (u64 i = 0; i < ehdr.shnum(); i++) {
-            Elf_Shdr* current = &shdrtable[i];
-            const char* name = sh_string_table + current->name_offset();
+            Elf_Shdr* current = shdrtable[i].get();
+            const char* name = sh_string_table.data() + current->name_offset();
             if (strcmp(name, ".symtab") == 0) {
                 symtab = current;
             } else if (strcmp(name, ".strtab") == 0) {
@@ -684,32 +684,32 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
         }
 
         if (symtab && strtab) {
-            char* string_table = (char*)alloca(strtab->size());
+            std::vector<char> string_table(strtab->size());
             u64 strtab_off = strtab->offset();
             fseek(file, strtab_off, SEEK_SET);
-            read = fread(string_table, strtab->size(), 1, file);
+            read = fread(string_table.data(), strtab->size(), 1, file);
             if (read != 1) {
                 ERROR("Failed to read the .strtab string table");
             }
 
             size_t symbol_count = symtab->size() / (g_mode32 ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym));
-            Elf_Sym* elf_symbols = (Elf_Sym*)alloca(symtab->size() * sizeof(Elf_Sym));
+            std::vector<std::unique_ptr<Elf_Sym>> elf_symbols;
             u64 symtab_off = symtab->offset();
             fseek(file, symtab_off, SEEK_SET);
             for (u64 i = 0; i < symbol_count; i++) {
-                new (&elf_symbols[i]) Elf_Sym(g_mode32, file);
+                elf_symbols.push_back(std::make_unique<Elf_Sym>(g_mode32, file));
             }
 
             for (u64 i = 0; i < symbol_count; i++) {
-                u64 index = elf_symbols[i].offset();
-                const char* symbol = string_table + index;
-                if (elf_symbols[i].address() == 0 || elf_symbols[i].type() != STT_FUNC) {
+                u64 index = elf_symbols[i]->offset();
+                const char* symbol = string_table.data() + index;
+                if (elf_symbols[i]->address() == 0 || elf_symbols[i]->type() != STT_FUNC) {
                     // We don't care about this symbol
                     continue;
                 }
 
-                u64 address = (u64)start_of_data + elf_symbols[i].address();
-                u64 size = elf_symbols[i].size();
+                u64 address = (u64)start_of_data + elf_symbols[i]->address();
+                u64 size = elf_symbols[i]->size();
                 u64 end = address + size;
                 Symbol new_symbol = {};
                 new_symbol.size = size;
@@ -727,17 +727,17 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
     // Find the dynamic segment, load dynamic symbols that have now been loaded by the interpreter hopefully
     Elf_Ehdr ehdr(g_mode32, start_of_data);
 
-    Elf_Phdr* phdrtable = (Elf_Phdr*)alloca(ehdr.phnum() * sizeof(Elf_Phdr));
+    std::vector<std::unique_ptr<Elf_Phdr>> phdrtable;
     u8* start_of_phdr = start_of_data + ehdr.phoff();
     for (u64 i = 0; i < ehdr.phnum(); i++) {
         void* current_phdr = start_of_phdr + (i * ehdr.phentsize());
-        new (&phdrtable[i]) Elf_Phdr(g_mode32, current_phdr);
+        phdrtable.push_back(std::make_unique<Elf_Phdr>(g_mode32, current_phdr));
     }
 
     Elf_Phdr* dynamic = nullptr;
     for (u64 i = 0; i < ehdr.phnum(); i++) {
-        if (phdrtable[i].type() == PT_DYNAMIC) {
-            dynamic = &phdrtable[i];
+        if (phdrtable[i]->type() == PT_DYNAMIC) {
+            dynamic = phdrtable[i].get();
             break;
         }
     }
