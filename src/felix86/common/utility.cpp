@@ -464,6 +464,12 @@ void update_symbols() {
         u64 start, end;
         int result = sscanf(line.c_str(), "%lx-%lx %*s %*s %*s %*s %s", &start, &end, buffer);
         if (result == 3) {
+            if (!std::filesystem::is_regular_file(buffer)) {
+                // Not a regular file, either a library outside the chroot or something like
+                // /dev/zero, so we don't add it
+                continue;
+            }
+
             if (regions.find(buffer) == regions.end()) {
                 regions[buffer] = {UINT64_MAX, 0};
             }
