@@ -600,7 +600,7 @@ FAST_HANDLE(CALL_rsb) {
         // AUIPC + LD + SD + SD + ADDI + backToDispatcher = 4 + 4 + 4 + 4 + 4 + (3 * 4) = 32 bytes
         u64 host_return_address_value = (u64)AS.GetCursorPointer() + 32;
         Label after_literal;
-        Literal literal(return_address.raw());
+        Literal literal(return_address.raw()); // read below as to why not just LI()
         biscuit::GPR host_return_address = rec.scratch();
 
         AS.LD(host_return_address, &literal);
@@ -610,7 +610,7 @@ FAST_HANDLE(CALL_rsb) {
         // This goes back to the dispatcher, but continues compiling instructions. Hopefully
         // the prediction is correct and it returns to right after the literal.
         rec.backToDispatcher();
-        // we need to place a literal so that LI has a constant size. But we also need to return exactly at this spot
+        // We need to place a literal so that LI has a constant size. But we also need to return exactly at this spot
         // and then jump over the literal because of how the return stack buffer works.
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == host_return_address_value);
@@ -649,9 +649,9 @@ FAST_HANDLE(CALL_rsb) {
         AS.SD(scratch, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         AS.ADDI(sp, sp, -16);
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement)); // TODO: these probably need to be JALR
-        AS.J(&after_literal);
         u64 here = (u64)AS.GetCursorPointer();
         ASSERT(here == host_return_address_value);
+        AS.J(&after_literal);
         AS.Place(&literal);
         AS.Bind(&after_literal);
         break;
