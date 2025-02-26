@@ -467,6 +467,7 @@ void update_symbols() {
             if (path.find(rootfs) != 0) {
                 // This mapping is irrelevant to our emulated executable
                 // as it is not inside the rootfs
+                WARN("Path not inside rootfs: %s", buffer);
                 continue;
             }
 
