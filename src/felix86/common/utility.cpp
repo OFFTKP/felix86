@@ -530,11 +530,39 @@ std::string get_perf_symbol(u64 address) {
         }
     }
 
+    bool file_found = false;
+    std::string file = "??";
+    u64 file_offset = address;
+    auto region_it = g_process_globals.mapped_regions.lower_bound(address);
+    if (region_it != g_process_globals.mapped_regions.end()) {
+        u64 start = region_it->second.base;
+        u64 end = region_it->second.end;
+        if (address >= start && address <= end) {
+            file_found = true;
+            file = std::filesystem::path(region_it->second.file).filename();
+
+            if (file.size() > 20) {
+                file = file.substr(0, 19);
+                file += "...";
+            }
+
+            file_offset = address - region_it->second.base;
+        }
+    }
+
     std::string ret;
     if (symbol) {
-        ret = fmt::format("jit_{}@0x{:x}", symbol->name, address - symbol->start);
+        std::string symbol_name = symbol->name;
+        if (symbol_name.size() > 30) {
+            symbol_name = symbol_name.substr(0, 29);
+            symbol_name += "...";
+        }
+
+        ret = fmt::format("jit_{}@0x{:x}@{}", symbol->name, address - symbol->start, file);
+    } else if (file_found) {
+        ret = fmt::format("jit_{}@0x{:x}", file, file_offset);
     } else {
-        ret = fmt::format("jit_LAB_{:x}", address);
+        ret = fmt::format("jit_UNKNOWN_0x{:x}", address);
     }
 
     return ret;
