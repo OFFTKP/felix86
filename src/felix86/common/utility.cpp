@@ -475,7 +475,12 @@ void update_symbols() {
                 continue;
             }
 
-            if (regions.find(buffer) == regions.end()) {
+            auto it = regions.find(buffer);
+            if (it == regions.end() && Elf::Peek(buffer) == Elf::PeekResult::NotElf) {
+                continue;
+            }
+
+            if (it == regions.end()) {
                 regions[buffer] = {UINT64_MAX, 0};
             }
 
