@@ -452,6 +452,10 @@ void dump_states() {
 }
 
 void update_symbols() {
+    if (g_symbols_cached) {
+        return;
+    }
+
     auto lock = g_process_globals.symbols_lock.lock();
     g_process_globals.mapped_regions.clear();
     g_process_globals.symbols.clear();
@@ -493,6 +497,8 @@ void update_symbols() {
         g_process_globals.mapped_regions[end - 1] = {.base = start, .end = end, .file = name};
         Elf::AddSymbols(g_process_globals.symbols, name, (u8*)start);
     }
+
+    g_symbols_cached = true;
 }
 
 std::string get_region(u64 address) {
@@ -506,6 +512,8 @@ std::string get_region(u64 address) {
 }
 
 void print_address(u64 address) {
+    update_symbols();
+
     auto lock = g_process_globals.symbols_lock.lock();
 
     bool found = false;

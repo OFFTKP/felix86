@@ -33,6 +33,7 @@ bool g_print_all_insts = false;
 bool g_dont_inline_syscalls = false;
 bool g_mode32 = false;
 bool g_rsb = true;
+std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;

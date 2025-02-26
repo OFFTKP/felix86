@@ -456,5 +456,4 @@ private:
     u8 current_vlen = 0;
     LMUL current_grouping = LMUL::M1;
     bool rounding_mode_set = false;
-    bool symbols_added = false;
 };
