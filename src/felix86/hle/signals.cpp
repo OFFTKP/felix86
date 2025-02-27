@@ -219,9 +219,9 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
 void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
                          const XmmReg* host_vecs, bool use_altstack, bool in_jit_code) {
     HostAddress rsp = GuestAddress{use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP)}.toHost();
-    rsp.add(-128); // red zone
+    rsp = rsp.add(-128); // red zone
 
-    rsp.add(-sizeof(x64_rt_sigframe));
+    rsp = rsp.add(-sizeof(x64_rt_sigframe));
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp.raw();
 
     frame->pretcode = (char*)Signals::magicSigreturnAddress().raw();

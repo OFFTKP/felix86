@@ -86,7 +86,7 @@ void common_loader(const std::filesystem::path& path) {
 }
 
 CATCH_TEST_CASE("Signals", "[Signals]") {
-    // common_loader("Signals"); // TODO: Fix the sigsegv_simple.c test to not get stuck
+    common_loader("Signals");
 }
 
 CATCH_TEST_CASE("Simple", "[Simple]") {

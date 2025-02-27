@@ -51,7 +51,7 @@ struct HostAddress {
         return address == 0;
     }
 
-    HostAddress add(u64 offset) const {
+    [[nodiscard]] HostAddress add(u64 offset) const {
         return HostAddress(address + offset);
     }
 
