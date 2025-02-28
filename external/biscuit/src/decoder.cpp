@@ -518,7 +518,7 @@ DecoderStatus Decoder::DecodeRegular(uint32_t data, DecodedInstruction& instruct
             return DecodeIType<Mnemonic::ADDI, Extension::I, ArchFeature::RV32>(instruction, operands, info);
         }
         case 0b001: {
-            switch (Funct7(data)) {
+            switch (Funct7(data) >> 1) {
             case 0b0000000: {
                 return DecodeShiftType<Mnemonic::SLLI, Extension::I, ArchFeature::RV32>(instruction, operands, info);
             }
@@ -537,11 +537,11 @@ DecoderStatus Decoder::DecodeRegular(uint32_t data, DecodedInstruction& instruct
             return DecodeIType<Mnemonic::XORI, Extension::I, ArchFeature::RV32>(instruction, operands, info);
         }
         case 0b101: {
-            switch (Funct7(data)) {
-            case 0b0000000: {
+            switch (Funct7(data) >> 1) {
+            case 0b000000: {
                 return DecodeShiftType<Mnemonic::SRLI, Extension::I, ArchFeature::RV32>(instruction, operands, info);
             }
-            case 0b0100000: {
+            case 0b010000: {
                 return DecodeShiftType<Mnemonic::SRAI, Extension::I, ArchFeature::RV32>(instruction, operands, info);
             }
             default: {
