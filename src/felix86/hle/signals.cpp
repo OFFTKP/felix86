@@ -131,12 +131,12 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
 
         if (status == DecoderStatus::UnknownInstruction) {
             u32 buffer = *(u32*)current;
-            WARN("Couldn't decode: %08x\n", buffer);
+            WARN("Couldn't decode: %08x", buffer);
             current += 4;
             continue;
         } else if (status == DecoderStatus::UnknownInstructionCompressed) {
             u16 buffer = *(u16*)current;
-            WARN("Couldn't decode: %04x\n", buffer);
+            WARN("Couldn't decode: %04x", buffer);
             current += 2;
             continue;
         } else {
@@ -595,12 +595,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         bool jit_code = is_in_jit_code(current_state, pc);
         if (!jit_code || current_state->signals_disabled) {
             WARN("Deferring signal %s", strsignal(sig));
-            if (current_state->pending_signals & (1 << (sig - 1))) {
-                u64 write_address = (u64)info->si_addr;
-                ERROR("Signal %s is already deferred, probably needed to be handled. Write address: %016lx", strsignal(sig), write_address);
-            }
-
-            current_state->pending_signals |= 1 << (sig - 1);
+            current_state->pending_signals.push_back({sig, *info});
 
             // Unlink the current block, making it jump back to the dispatcher at the end
             // This will ensure that the pending signal is eventually handled if we are stuck in a loop
