@@ -93,9 +93,9 @@ struct x64_rt_sigframe {
 static_assert(sizeof(siginfo_t) == 128);
 static_assert(sizeof(x64_rt_sigframe) == 1120);
 
-void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAddress rip, const u64* gprs, const XmmReg* xmms) {
+void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAddress rip, uint64_t pc, const u64* gprs, const XmmReg* xmms) {
     const u64 start = current_block->address.raw();
-    const u64 end = rip.raw();
+    const u64 end = pc;
     u64 current = start;
     bool valid = true;
 
@@ -126,7 +126,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
         gpr_to_x86[Recompiler::allocatedGPR(X86_REF_AF).Index()] = X86_REF_AF;
     }
 
-    while (current != end) {
+    while (current < end) {
         DecoderStatus status = decoder.Decode((void*)current, 4, instruction, operands);
 
         if (status == DecoderStatus::UnknownInstruction) {
@@ -183,7 +183,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
+void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
                          const XmmReg* host_vecs, bool use_altstack, bool in_jit_code) {
     HostAddress rsp = GuestAddress{use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP)}.toHost();
     rsp = rsp.add(-128); // red zone
@@ -216,7 +216,7 @@ void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, ThreadS
     if (in_jit_code) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
         ASSERT(current_block);
-        reconstruct_state(state, current_block, rip.toHost(), host_gprs, host_vecs);
+        reconstruct_state(state, current_block, rip.toHost(), pc, host_gprs, host_vecs);
     } else {
         // State reconstruction isn't necessary, the state should be in some stable form
         // It's rare that a signal doesn't happen in jit code as we block signals during compilation, but it's possible
@@ -643,7 +643,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         // Prepares everything necessary to run the signal handler when we return from the host signal handler.
         // The stack is switched if necessary and filled with the frame that the signal handler expects.
-        Signals::setupFrame(metadata, actual_rip, current_state, mask_during_signal, gprs, xmms, use_altstack, jit_code);
+        Signals::setupFrame(metadata, actual_rip, pc, current_state, mask_during_signal, gprs, xmms, use_altstack, jit_code);
 
         current_state->SetGpr(X86_REF_RDI, sig);
 
