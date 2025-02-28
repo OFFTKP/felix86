@@ -210,7 +210,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
         bool use_altstack = handler.flags & SA_ONSTACK;
 
-        Signals::setupFrame(nullptr, rip, thread_state, mask_during_signal, gprs, xmms, use_altstack, false);
+        Signals::setupFrame(nullptr, rip, 0, thread_state, mask_during_signal, gprs, xmms, use_altstack, false);
 
         thread_state->SetGpr(X86_REF_RDI, sig);
 
