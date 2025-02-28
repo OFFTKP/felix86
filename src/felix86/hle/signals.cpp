@@ -105,6 +105,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
     DecodedInstruction instruction;
     DecodedOperand operands[4];
 
+    // TODO: static method in recompiler for this conversion that doesn't do runtime computation
     static std::array<x86_ref_e, 32> gpr_to_x86 = {};
     static std::array<x86_ref_e, 32> vec_to_x86 = {};
     static std::atomic_flag initialized = ATOMIC_FLAG_INIT;
@@ -140,6 +141,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
             current += 2;
             continue;
         } else {
+            printf("%d <- ins\n", instruction.mnemonic);
             current += instruction.length;
         }
 
