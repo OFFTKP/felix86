@@ -13,7 +13,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         exit(1);
     }
 
-    const std::filesystem::path tmp_path = "/tmp/felix86_binary_tests";
+    const std::filesystem::path tmp_path = "/felix86_binary_tests";
     const std::filesystem::path exec_path = tmp_path / path.filename();
 
     CATCH_INFO(fmt::format("Running test: {}", path.filename().string()));
