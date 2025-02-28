@@ -570,6 +570,16 @@ DecoderStatus Decoder::DecodeRegular(uint32_t data, DecodedInstruction& instruct
             case 0b0000000: {
                 return DecodeShiftType<Mnemonic::SLLIW, Extension::I, ArchFeature::RV64, GPR32, GPR32>(instruction, operands, info);
             }
+            case 0b0110000: {
+                switch (Rs2(data)) {
+                case 0b00010: {
+                    return DecodeR2Type<Mnemonic::CPOPW, Extension::Zbb, ArchFeature::RV64, GPR64, GPR32>(instruction, operands, info);
+                }
+                default: {
+                    return DecoderStatus::UnknownInstruction;
+                }
+                }
+            }
             default: {
                 return DecoderStatus::UnknownInstruction;
             }
@@ -770,6 +780,9 @@ DecoderStatus Decoder::DecodeRegular(uint32_t data, DecodedInstruction& instruct
             }
             case 0b0000001: {
                 return DecodeRType<Mnemonic::MULW, Extension::M, ArchFeature::RV64, GPR32, GPR32, GPR32>(instruction, operands, info);
+            }
+            case 0b0000100: {
+                return DecodeRType<Mnemonic::ADDUW, Extension::Zba, ArchFeature::RV64, GPR0, GPR32, GPR32>(instruction, operands, info);
             }
             case 0b0100000: {
                 return DecodeRType<Mnemonic::SUBW, Extension::I, ArchFeature::RV64, GPR32, GPR32, GPR32>(instruction, operands, info);
