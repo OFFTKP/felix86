@@ -141,7 +141,6 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
             current += 2;
             continue;
         } else {
-            printf("%d <- ins\n", instruction.mnemonic);
             current += instruction.length;
         }
 
