@@ -1225,7 +1225,7 @@ void Assembler::VFREDMIN(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
     EmitVectorOPFVV(m_buffer, 0b000101, mask, vs2, vs1, vd);
 }
 
-void Assembler::VFREDSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
+void Assembler::VFREDUSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
     EmitVectorOPFVV(m_buffer, 0b000001, mask, vs2, vs1, vd);
 }
 

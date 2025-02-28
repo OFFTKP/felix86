@@ -250,7 +250,7 @@
 
 namespace biscuit {
 
-bool CPUInfo::Has(RISCVExtension extension) const {
+bool CPUInfo::Has(Extension extension) const {
 #if defined(__linux__) && defined(__riscv)
     static const auto [ima, features0] = []() {
 #ifdef SYS_riscv_hwprobe

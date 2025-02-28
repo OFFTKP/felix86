@@ -8,66 +8,14 @@
 
 #include <biscuit/assembler.hpp>
 #include <biscuit/registers.hpp>
+#include <biscuit/isa.hpp>
 #include <cstddef>
 #include <cstdint>
 
 namespace biscuit {
 
-enum class RISCVExtension : uint64_t {
-    I,
-    M,
-    A,
-    F,
-    D,
-    C,
-    V,
-    Zba,
-    Zbb,
-    Zbs,
-    Zicboz,
-    Zbc,
-    Zbkb,
-    Zbkc,
-    Zbkx,
-    Zknd,
-    Zkne,
-    Zknh,
-    Zksed,
-    Zksh,
-    Zkt,
-    Zvbb,
-    Zvbc,
-    Zvkb,
-    Zvkg,
-    Zvkned,
-    Zvknha,
-    Zvknhb,
-    Zvksed,
-    Zvksh,
-    Zvkt,
-    Zfh,
-    Zfhmin,
-    Zihintntl,
-    Zvfh,
-    Zvfhmin,
-    Zfa,
-    Ztso,
-    Zacas,
-    Zicond,
-    Zihintpause,
-    Zve32x,
-    Zve32f,
-    Zve64x,
-    Zve64f,
-    Zve64d,
-    Zimop,
-    Zca,
-    Zcb,
-    Zcd,
-    Zcf,
-    Zcmop,
-    Zawrs
-};
+// For backwards compatibility
+using RISCVExtension = Extension;
 
 template <CSR csr>
 struct CSRReader : public biscuit::Assembler {
@@ -104,7 +52,7 @@ public:
      *
      * @param extension The extension to check.
      */
-    bool Has(RISCVExtension extension) const;
+    bool Has(Extension extension) const;
 
     /// Returns the vector register length in bytes.
     uint32_t GetVlenb() const;

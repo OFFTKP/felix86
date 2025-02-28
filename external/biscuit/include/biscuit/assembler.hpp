@@ -13,22 +13,6 @@
 namespace biscuit {
 
 /**
- * Defines the set of features that a particular assembler instance
- * would like to assemble for.
- *
- * This allows for assertions and extra logic checking to be done.
- *
- * It can also affect various behaviors as well. e.g. LI, shifts, etc
- * will take these into account to adjust for emission on different
- * environments transparently.
- */
-enum class ArchFeature : uint32_t {
-    RV32,  //< 32-bit RISC-V
-    RV64,  //< 64-bit RISC-V
-    RV128, //< 128-bit RISC-V
-};
-
-/**
  * Code generator for RISC-V code.
  *
  * User code may inherit from this in order to make use of
@@ -1233,7 +1217,7 @@ public:
     void VFREDMAX(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VFREDMIN(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
 
-    void VFREDSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
+    void VFREDUSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VFREDOSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
 
     void VFMACC(Vec vd, Vec vs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
