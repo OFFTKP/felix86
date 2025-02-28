@@ -126,6 +126,7 @@ void VEC_function(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInst
         temp = rec.lea(&operands[1]);
     }
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
 
     AS.LI(t0, func);
 
@@ -568,6 +569,7 @@ FAST_HANDLE(AND) {
 FAST_HANDLE(HLT) {
     rec.setExitReason(ExitReason::EXIT_REASON_HLT);
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
     rec.backToDispatcher();
     rec.stopCompiling();
 }
@@ -589,6 +591,7 @@ FAST_HANDLE(CALL_rsb) {
         rec.writeMemory(guest_return_address, rsp, 0, size);
         rec.pushCalltrace();
         rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
 
         // Instead of stopping and returning to dispatcher, continue compiling the current block
         // And perform an actual call, pushing our predicted return address to the stack
@@ -627,6 +630,7 @@ FAST_HANDLE(CALL_rsb) {
 
         rec.setRip(new_rip);
         rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
         rec.pushCalltrace();
 
         u64 start = (u64)AS.GetCursorPointer();
@@ -670,6 +674,7 @@ FAST_HANDLE(RET_rsb) {
 
     biscuit::Label misprediction;
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
 
     biscuit::GPR prediction = rec.scratch();
     AS.ADDI(sp, sp, 16);
@@ -709,6 +714,7 @@ FAST_HANDLE(CALL) {
         rec.writeMemory(scratch, rsp, 0, size);
 
         rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
         rec.pushCalltrace();
         rec.backToDispatcher();
         rec.stopCompiling();
@@ -731,6 +737,7 @@ FAST_HANDLE(CALL) {
 
         rec.setRip(scratch);
         rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
         rec.pushCalltrace();
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement));
         rec.stopCompiling();
@@ -763,6 +770,7 @@ FAST_HANDLE(RET) {
     rec.setRefGPR(X86_REF_RSP, size, rsp);
     rec.setRip(scratch);
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
     rec.popCalltrace();
     rec.backToDispatcher();
     rec.stopCompiling();
@@ -1151,6 +1159,7 @@ FAST_HANDLE(JMP) {
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         rec.setRip(src);
         rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
         rec.backToDispatcher();
         rec.stopCompiling();
         break;
@@ -1162,6 +1171,7 @@ FAST_HANDLE(JMP) {
         AS.LI(scratch, address.raw());
         rec.setRip(scratch);
         rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement));
         rec.stopCompiling();
         break;
@@ -1223,6 +1233,7 @@ FAST_HANDLE(DIV) {
     }
     case X86_SIZE_QWORD: {
         rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
 
         biscuit::GPR address = rec.scratch();
         AS.LI(address, (u64)&felix86_divu128);
@@ -1302,6 +1313,7 @@ FAST_HANDLE(IDIV) {
     }
     case X86_SIZE_QWORD: {
         rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
 
         biscuit::GPR address = rec.scratch();
         AS.LI(address, (u64)&felix86_div128);
@@ -1652,6 +1664,7 @@ void JCC(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& 
     AS.LI(rip_true, address_true.toGuest().raw());
 
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
     rec.jumpAndLinkConditional(cond, rip_true, rip_false, address_true, address_false);
     rec.stopCompiling();
 }
@@ -2313,6 +2326,7 @@ FAST_HANDLE(RDTSC) {
 
 FAST_HANDLE(CPUID) {
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
 
     biscuit::GPR address = rec.scratch();
     AS.LI(address, (u64)&felix86_cpuid);
@@ -2336,6 +2350,7 @@ FAST_HANDLE(SYSCALL) {
     // Normally the syscall instruction also writes the flags to R11 but we don't need them in our syscall handler
 
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
 
     biscuit::GPR address = rec.scratch();
     AS.LI(address, (u64)&felix86_syscall);
@@ -3137,13 +3152,6 @@ FAST_HANDLE(SCASQ) {
 }
 
 FAST_HANDLE(STOSB) {
-#if 0
-    rec.writebackDirtyState();
-    AS.LI(t0, (u64)print_args);
-    AS.MV(a0, rec.threadStatePointer());
-    AS.JALR(t0);
-#endif
-
     Label loop_end, loop_body;
     u8 width = instruction.operand_width;
     biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, X86_SIZE_QWORD);
@@ -3965,6 +3973,7 @@ void BITSTRING_func(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedIn
     biscuit::GPR base = rec.lea(&operands[0]);
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
     rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
     AS.MV(a0, base);
     AS.LI(t0, func);
@@ -5272,6 +5281,7 @@ FAST_HANDLE(MOVLHPS) { // TODO: vmerge
 FAST_HANDLE(FXSAVE) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
 
     AS.LI(t0, (u64)&felix86_fxsave);
 
@@ -5285,6 +5295,7 @@ FAST_HANDLE(FXSAVE) {
 FAST_HANDLE(FXSAVE64) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
 
     AS.LI(t0, (u64)&felix86_fxsave);
 
@@ -5298,6 +5309,7 @@ FAST_HANDLE(FXSAVE64) {
 FAST_HANDLE(FXRSTOR) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
 
     Literal literal((u64)&felix86_fxrstor);
     AS.LD(t0, &literal);
@@ -5317,6 +5329,7 @@ FAST_HANDLE(FXRSTOR) {
 FAST_HANDLE(FXRSTOR64) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
 
     Literal literal((u64)&felix86_fxrstor);
     AS.LD(t0, &literal);

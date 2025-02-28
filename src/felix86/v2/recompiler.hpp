@@ -39,7 +39,6 @@ struct BlockMetadata {
     std::vector<u8*> pending_links{};
     std::vector<u8*> links{}; // where this block was linked to, used for unlinking it
     std::vector<std::pair<GuestAddress, HostAddress>> instruction_spans{};
-    std::array<std::vector<RegisterAccess>, allocated_reg_count> register_accesses;
 };
 
 struct Recompiler {
@@ -131,6 +130,8 @@ struct Recompiler {
     u64 sextImmediate(u64 imm, ZyanU8 size);
 
     void addi(biscuit::GPR dest, biscuit::GPR src, u64 imm);
+
+    void invalidStateUntilJump();
 
     biscuit::GPR flag(x86_ref_e ref);
 
@@ -405,8 +406,6 @@ private:
 
     void expirePendingLinks(HostAddress rip);
 
-    void addRegisterAccess(x86_ref_e ref, bool is_load);
-
     void clearCodeCache();
 
     void markPagesAsReadOnly(HostAddress start, HostAddress end);
@@ -429,6 +428,8 @@ private:
     void (*exit_dispatcher)(ThreadState*){};
 
     void* compile_next_handler{};
+
+    void* start_of_code_cache{};
 
     std::array<RegisterMetadata, 16 + 5 + 16> metadata{};
 

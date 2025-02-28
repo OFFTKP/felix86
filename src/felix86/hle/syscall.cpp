@@ -20,7 +20,6 @@
 #include "felix86/hle/stat.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
-#include "felix86/v2/recompiler.hpp"
 
 // We add felix86_${ARCH}_ in front of the linux related identifiers to avoid
 // naming conflicts

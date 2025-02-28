@@ -1,5 +1,6 @@
 #include <array>
 #include <sys/mman.h>
+#include "biscuit/decoder.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/filesystem.hpp"
@@ -93,121 +94,87 @@ static_assert(sizeof(siginfo_t) == 128);
 static_assert(sizeof(x64_rt_sigframe) == 1120);
 
 void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAddress rip, const u64* gprs, const XmmReg* xmms) {
-    // We were in the middle of a basic block when the signal hit
-    // We need to fixup our state and get the correct values that may not have been written back to the state struct
-    // First, for the GPRS
-    for (int i = 0; i < 16; i++) {
-        bool needs_copy = false;
-        for (auto& access : current_block->register_accesses[i]) {
-            if (access.address >= rip)
-                break;
-            needs_copy = access.valid;
-        }
+    const u64 start = current_block->address.raw();
+    const u64 end = rip.raw();
+    u64 current = start;
+    bool valid = true;
 
-        // At the time of signal, the register was loaded from memory and potentially modified, so we need to copy it to the state struct
-        // effectively doing a writeback to state.
-        if (needs_copy) {
-            int allocated_host_gpr = Recompiler::allocatedGPR((x86_ref_e)(X86_REF_RAX + i)).Index();
-            state->SetGpr((x86_ref_e)(X86_REF_RAX + i), gprs[allocated_host_gpr]);
-        }
-    }
+    // Go through the instructions in this block, find the ones that modify our allocated registers, extract the values
+    // from the registers and put them into `state`
+    biscuit::Decoder decoder;
+    DecodedInstruction instruction;
+    DecodedOperand operands[4];
 
-    // Do the same for XMMs
-    if (xmms) {
+    static std::array<x86_ref_e, 32> gpr_to_x86 = {};
+    static std::array<x86_ref_e, 32> vec_to_x86 = {};
+    static std::atomic_flag initialized = ATOMIC_FLAG_INIT;
+    if (!initialized.test_and_set()) {
+        memset(gpr_to_x86.data(), X86_REF_COUNT, 32);
+        memset(vec_to_x86.data(), X86_REF_COUNT, 32);
+
         for (int i = 0; i < 16; i++) {
-            bool needs_copy = false;
-            // TODO: again get rid of magic number 16 + 5
-            for (auto& access : current_block->register_accesses[16 + 5 + i]) {
-                if (access.address >= rip)
-                    break;
-                needs_copy = access.valid;
+            biscuit::GPR allocated_gpr = Recompiler::allocatedGPR((x86_ref_e)(X86_REF_RAX + i));
+            biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
+            gpr_to_x86[allocated_gpr.Index()] = (x86_ref_e)(X86_REF_RAX + i);
+            vec_to_x86[allocated_vec.Index()] = (x86_ref_e)(X86_REF_XMM0 + i);
+        }
+
+        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_ZF).Index()] = X86_REF_ZF;
+        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_CF).Index()] = X86_REF_CF;
+        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_OF).Index()] = X86_REF_OF;
+        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_SF).Index()] = X86_REF_SF;
+        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_AF).Index()] = X86_REF_AF;
+    }
+
+    while (current != end) {
+        DecoderStatus status = decoder.Decode((void*)current, 4, instruction, operands);
+
+        if (status == DecoderStatus::UnknownInstruction) {
+            u32 buffer = *(u32*)current;
+            WARN("Couldn't decode: %08x\n", buffer);
+            current += 4;
+            continue;
+        } else if (status == DecoderStatus::UnknownInstructionCompressed) {
+            u16 buffer = *(u16*)current;
+            WARN("Couldn't decode: %04x\n", buffer);
+            current += 2;
+            continue;
+        } else {
+            current += instruction.length;
+        }
+
+        // See Recompiler::invalidStateUntilJump, we use this NOP to mark regions of the block
+        // that don't have valid register state and shouldn't be copied
+        if (instruction.mnemonic == Mnemonic::SRLI && operands[0].GPR() == x0 && operands[1].GPR() == x0 && operands[2].Immediate() == 42) {
+            valid = false;
+        }
+
+        if (valid) {
+            if (instruction.operand_count >= 1) {
+                bool write = operands[0].IsWrite();
+                if (write && operands[0].IsGPR()) {
+                    int gpr_index = operands[0].GPR().Index();
+                    x86_ref_e ref = gpr_to_x86[gpr_index];
+                    if (ref >= X86_REF_RAX && ref <= X86_REF_R15) {
+                        u64 value = gprs[gpr_index];
+                        state->SetGpr(ref, value);
+                    } else if (ref >= X86_REF_CF && ref <= X86_REF_OF) {
+                        u64 value = gprs[gpr_index];
+                        state->SetFlag(ref, value);
+                    }
+                } else if (write && operands[0].IsVec()) {
+                    int vec_index = operands[0].Vec().Index();
+                    x86_ref_e ref = vec_to_x86[vec_index];
+                    if (ref != X86_REF_COUNT) {
+                        XmmReg xmm = xmms[vec_index];
+                        state->SetXmmReg(ref, xmm);
+                    }
+                }
             }
-
-            if (needs_copy) {
-                state->SetXmmReg((x86_ref_e)(X86_REF_XMM0 + i), xmms[i]);
+        } else {
+            if (instruction.mnemonic == Mnemonic::JAL || instruction.mnemonic == Mnemonic::JALR) {
+                valid = true;
             }
-        }
-    } else {
-        static bool warned = false;
-        if (!warned) {
-            WARN("Could not retrieve host vector registers, probably old Linux kernel version, may cause issues with signal handling");
-            warned = true;
-        }
-    }
-
-    // Check for CF
-    {
-        bool needs_copy = false;
-        // TODO: get rid of magic number 16, 17, etc
-        for (auto& access : current_block->register_accesses[16]) {
-            if (access.address >= rip)
-                break;
-            needs_copy = access.valid;
-        }
-
-        if (needs_copy) {
-            int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_CF).Index();
-            state->SetFlag(X86_REF_CF, gprs[allocated_host_gpr] & 1);
-        }
-    }
-
-    // Check for AF
-    {
-        bool needs_copy = false;
-        for (auto& access : current_block->register_accesses[17]) {
-            if (access.address >= rip)
-                break;
-            needs_copy = access.valid;
-        }
-
-        if (needs_copy) {
-            int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_AF).Index();
-            state->SetFlag(X86_REF_AF, gprs[allocated_host_gpr] & 1);
-        }
-    }
-
-    // Check for ZF
-    {
-        bool needs_copy = false;
-        for (auto& access : current_block->register_accesses[18]) {
-            if (access.address >= rip)
-                break;
-            needs_copy = access.valid;
-        }
-
-        if (needs_copy) {
-            int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_ZF).Index();
-            state->SetFlag(X86_REF_ZF, gprs[allocated_host_gpr] & 1);
-        }
-    }
-
-    // Check for SF
-    {
-        bool needs_copy = false;
-        for (auto& access : current_block->register_accesses[19]) {
-            if (access.address >= rip)
-                break;
-            needs_copy = access.valid;
-        }
-
-        if (needs_copy) {
-            int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_SF).Index();
-            state->SetFlag(X86_REF_SF, gprs[allocated_host_gpr] & 1);
-        }
-    }
-
-    // Check for OF
-    {
-        bool needs_copy = false;
-        for (auto& access : current_block->register_accesses[20]) {
-            if (access.address >= rip)
-                break;
-            needs_copy = access.valid;
-        }
-
-        if (needs_copy) {
-            int allocated_host_gpr = Recompiler::allocatedGPR(X86_REF_OF).Index();
-            state->SetFlag(X86_REF_OF, gprs[allocated_host_gpr] & 1);
         }
     }
 
