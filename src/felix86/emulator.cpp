@@ -175,23 +175,21 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
     // Check if there's any pending asynchronous signals. If there are, raise them.
-    if (thread_state->pending_signals != 0) {
+    if (!thread_state->pending_signals.empty()) {
         sigset_t full, old;
         sigfillset(&full);
         sigprocmask(SIG_BLOCK, &full, &old); // block signals to make changing pending_signals safe
 
-        int sig = 0;
-        for (int i = 0; i < 64; i++) {
-            if (thread_state->pending_signals & (1 << i)) {
-                sig = i + 1;
-                thread_state->pending_signals &= ~(1 << i);
-                break;
-            }
-        }
+        PendingSignal& signal = thread_state->pending_signals.back();
+
+        int sig = signal.sig;
+        siginfo_t info = signal.info;
+
+        thread_state->pending_signals.pop_back();
 
         sigprocmask(SIG_SETMASK, &old, nullptr);
 
-        ASSERT(sig != 0); // found the signal
+        ASSERT(sig != 0);
 
         SignalHandlerTable& handlers = *thread_state->signal_handlers;
         RegisteredSignal& handler = handlers[sig - 1];
@@ -210,7 +208,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
         bool use_altstack = handler.flags & SA_ONSTACK;
 
-        Signals::setupFrame(nullptr, rip, 0, thread_state, mask_during_signal, gprs, xmms, use_altstack, false);
+        Signals::setupFrame(nullptr, rip, 0, thread_state, mask_during_signal, gprs, xmms, use_altstack, false, &info);
 
         thread_state->SetGpr(X86_REF_RDI, sig);
 

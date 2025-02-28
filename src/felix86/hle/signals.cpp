@@ -184,7 +184,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
 void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
-                         const XmmReg* host_vecs, bool use_altstack, bool in_jit_code) {
+                         const XmmReg* host_vecs, bool use_altstack, bool in_jit_code, siginfo_t* host_siginfo) {
     HostAddress rsp = GuestAddress{use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP)}.toHost();
     rsp = rsp.add(-128); // red zone
 
@@ -197,6 +197,7 @@ void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, uint64_
 
     frame->uc.uc_flags = 0;
     frame->uc.uc_link = 0;
+    frame->info = *host_siginfo;
 
     // After some testing, this is set to the altstack if it exists and is valid (which we don't check here, but on sigaltstack)
     // Otherwise it is zero, it's not set to the actual stack
@@ -643,7 +644,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 
         // Prepares everything necessary to run the signal handler when we return from the host signal handler.
         // The stack is switched if necessary and filled with the frame that the signal handler expects.
-        Signals::setupFrame(metadata, actual_rip, pc, current_state, mask_during_signal, gprs, xmms, use_altstack, jit_code);
+        Signals::setupFrame(metadata, actual_rip, pc, current_state, mask_during_signal, gprs, xmms, use_altstack, jit_code, info);
 
         current_state->SetGpr(X86_REF_RDI, sig);
 

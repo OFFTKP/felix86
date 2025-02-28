@@ -80,6 +80,11 @@ struct XmmReg {
 };
 static_assert(sizeof(XmmReg) == 16);
 
+struct PendingSignal {
+    int sig;
+    siginfo_t info;
+};
+
 struct ThreadState {
     explicit ThreadState(ThreadState* copy_state);
 
@@ -111,7 +116,7 @@ struct ThreadState {
     bool cpuid_bit{};        // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
                              // check presence of cpuid... on x86-64 processors... lol...
 
-    u64 pending_signals{}; // signals that were raised during an unsafe time, queued for later
+    std::vector<PendingSignal> pending_signals{}; // signals that were raised during an unsafe time, queued for later
 
     std::vector<HostAddress> calltrace{}; // used if g_calltrace is true
 
