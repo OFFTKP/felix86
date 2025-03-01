@@ -201,15 +201,7 @@ FAST_HANDLE(SBB) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
-        biscuit::GPR scratch = rec.scratch();
-        as.ANDI(af, src, 0xF);
-        as.ANDI(scratch, dst, 0xF);
-        as.SLTU(af, scratch, af);
-        as.ANDI(scratch, result, 0xF);
-        as.SLTU(scratch, scratch, cf);
-        as.OR(af, af, scratch);
-        rec.popScratch();
+        rec.updateAuxiliarySbb(dst, src, result, cf);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
@@ -275,15 +267,7 @@ FAST_HANDLE(ADC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
-        biscuit::GPR scratch = rec.scratch();
-        as.ANDI(af, result, 0xF);
-        as.ANDI(scratch, dst, 0xF);
-        as.SLTU(af, af, scratch);
-        as.ANDI(scratch, result_2, 0xF);
-        as.SLTU(scratch, scratch, cf);
-        as.OR(af, af, scratch);
-        rec.popScratch();
+        rec.updateAuxiliaryAdc(dst, result, cf, result_2);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
@@ -291,16 +275,7 @@ FAST_HANDLE(ADC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        biscuit::GPR scratch = rec.scratch();
-        biscuit::GPR scratch2 = rec.scratch();
-        biscuit::GPR cf = rec.flagWR(X86_REF_CF);
-        rec.zext(scratch, result, size);
-        rec.zext(scratch2, result_2, size);
-        as.SLTU(scratch, scratch, dst);
-        as.SLTU(scratch2, scratch2, cf);
-        as.OR(cf, scratch, scratch2);
-        rec.popScratch();
-        rec.popScratch();
+        rec.updateCarryAdc(dst, result, result_2, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
@@ -377,8 +352,7 @@ FAST_HANDLE(XOR) {
         }
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-            biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-            as.LI(zf, 1);
+            rec.setFlag(X86_REF_ZF);
         }
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
@@ -727,6 +701,7 @@ FAST_HANDLE(SHL) {
 
     Label zero_source;
 
+    // Gotta load these values as we don't know if the instruction is gonna modify them until runtime
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF))
         rec.flag(X86_REF_CF);
 
@@ -790,6 +765,7 @@ FAST_HANDLE(SHR) {
 
     Label zero_source;
 
+    // Gotta load these values as we don't know if the instruction is gonna modify them until runtime
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF))
         rec.flag(X86_REF_CF);
 
@@ -851,6 +827,7 @@ FAST_HANDLE(SAR) {
 
     Label zero_source;
 
+    // Gotta load these values as we don't know if the instruction is gonna modify them until runtime
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF))
         rec.flag(X86_REF_CF);
 
@@ -1238,8 +1215,7 @@ FAST_HANDLE(TEST) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        as.MV(cf, x0);
+        rec.zeroFlag(X86_REF_CF);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -1255,8 +1231,7 @@ FAST_HANDLE(TEST) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        biscuit::GPR of = rec.flagW(X86_REF_OF);
-        as.MV(of, x0);
+        rec.zeroFlag(X86_REF_OF);
     }
 
     rec.setFlagUndefined(X86_REF_AF);
@@ -1294,9 +1269,7 @@ FAST_HANDLE(INC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
-        as.ANDI(af, res, 0xF);
-        as.SEQZ(af, af);
+        rec.updateAuxiliaryAdd(dst, res);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
@@ -1355,9 +1328,10 @@ FAST_HANDLE(DEC) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
-        as.ANDI(af, dst, 0xF);
-        as.SEQZ(af, af);
+        biscuit::GPR one = rec.scratch();
+        as.LI(one, 1);
+        rec.updateAuxiliarySub(dst, one);
+        rec.popScratch();
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
@@ -4698,10 +4672,6 @@ FAST_HANDLE(CMPXCHG_lock) {
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
-    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-    biscuit::GPR cf = rec.flagWR(X86_REF_CF);
-    rec.flagWR(X86_REF_SF);
-    biscuit::GPR af = rec.flagWR(X86_REF_AF);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR dst = rec.scratch();
 
@@ -4741,41 +4711,16 @@ FAST_HANDLE(CMPXCHG_lock) {
 
     as.SUB(result, rax, dst);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        as.SLTU(cf, rax, dst);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR scratch = rec.scratch();
-        as.ANDI(af, rax, 0xF);
-        as.ANDI(scratch, dst, 0xF);
-        as.SLTU(af, af, scratch);
-        rec.popScratch();
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        rec.updateOverflowSub(rax, dst, result, size);
-    }
+    SetCmpFlags(meta, rec, as, dst, src, result, size);
 
     biscuit::Label end, equal;
     as.BEQ(dst, rax, &equal);
 
     // Not equal
-    as.LI(zf, 0);
     rec.setRefGPR(X86_REF_RAX, size, dst);
-    as.J(&end);
 
+    // The SC instruction already wrote to memory
     as.Bind(&equal);
-    as.LI(zf, 1);
-    as.Bind(&end);
 }
 
 FAST_HANDLE(CMPXCHG) {
@@ -4791,9 +4736,6 @@ FAST_HANDLE(CMPXCHG) {
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
-    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
-    biscuit::GPR af = rec.flagWR(X86_REF_AF);
 
     Label end, equal;
 
@@ -4801,39 +4743,15 @@ FAST_HANDLE(CMPXCHG) {
 
     as.SUB(result, rax, dst);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        as.SLTU(cf, rax, dst);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR scratch = rec.scratch();
-        as.ANDI(af, rax, 0xF);
-        as.ANDI(scratch, dst, 0xF);
-        as.SLTU(af, af, scratch);
-        rec.popScratch();
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        rec.updateOverflowSub(rax, dst, result, size);
-    }
+    SetCmpFlags(meta, rec, as, dst, src, result, size);
 
     as.BEQ(dst, rax, &equal);
 
     // Not equal
-    as.LI(zf, 0);
     rec.setRefGPR(X86_REF_RAX, size, dst);
     as.J(&end);
 
     as.Bind(&equal);
-    as.LI(zf, 1);
     rec.setOperandGPR(&operands[0], src);
 
     as.Bind(&end);

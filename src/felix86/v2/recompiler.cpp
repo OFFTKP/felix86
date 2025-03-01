@@ -1518,9 +1518,28 @@ void Recompiler::updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs) {
     popScratch();
 }
 
-void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
-    biscuit::GPR cf = flagW(X86_REF_CF);
-    as.SLTU(cf, lhs, rhs);
+void Recompiler::updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR cf, biscuit::GPR result_2) {
+    biscuit::GPR af = flagW(X86_REF_AF);
+    biscuit::GPR temp = scratch();
+    as.ANDI(af, result, 0xF);
+    as.ANDI(temp, lhs, 0xF);
+    as.SLTU(af, af, temp);
+    as.ANDI(temp, result_2, 0xF);
+    as.SLTU(temp, temp, cf);
+    as.OR(af, af, temp);
+    popScratch();
+}
+
+void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, biscuit::GPR cf) {
+    biscuit::GPR af = flagW(X86_REF_AF);
+    biscuit::GPR temp = scratch();
+    as.ANDI(af, rhs, 0xF);
+    as.ANDI(temp, lhs, 0xF);
+    as.SLTU(af, temp, af);
+    as.ANDI(temp, result, 0xF);
+    as.SLTU(temp, temp, cf);
+    as.OR(af, af, temp);
+    popScratch();
 }
 
 void Recompiler::updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size) {
@@ -1529,9 +1548,32 @@ void Recompiler::updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_
     as.SLTU(cf, cf, lhs);
 }
 
+void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
+    biscuit::GPR cf = flagW(X86_REF_CF);
+    as.SLTU(cf, lhs, rhs);
+}
+
+void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size) {
+    biscuit::GPR temp = scratch();
+    biscuit::GPR temp2 = scratch();
+    biscuit::GPR cf = flagWR(X86_REF_CF);
+    zext(temp, result, size);
+    zext(temp2, result_2, size);
+    as.SLTU(temp, temp, lhs);
+    as.SLTU(temp2, temp2, cf);
+    as.OR(cf, temp, temp2);
+    popScratch();
+    popScratch();
+}
+
 void Recompiler::zeroFlag(x86_ref_e flag) {
     biscuit::GPR f = flagW(flag);
     as.LI(f, 0);
+}
+
+void Recompiler::setFlag(x86_ref_e flag) {
+    biscuit::GPR f = flagW(flag);
+    as.LI(f, 1);
 }
 
 void Recompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) {

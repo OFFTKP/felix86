@@ -382,7 +382,15 @@ struct Recompiler {
 
     void updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs);
 
+    void updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR cf, biscuit::GPR result_2);
+
+    void updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, biscuit::GPR cf);
+
+    void updateCarryAdc(biscuit::GPR dst, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size);
+
     void zeroFlag(x86_ref_e flag);
+
+    void setFlag(x86_ref_e flag);
 
 private:
     struct RegisterMetadata {
