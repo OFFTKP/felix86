@@ -6183,8 +6183,8 @@ FAST_HANDLE(PSADBW) {
     AS.VSLIDEDOWN(sub_upper, sub, 8);
 
     rec.setVectorState(SEW::E8, 8, LMUL::MF2);
-    AS.VWREDSUMU(result, result, sub);
-    AS.VWREDSUMU(result2, result2, sub_upper);
+    AS.VWREDSUMU(result, sub, result);
+    AS.VWREDSUMU(result2, sub_upper, result2);
 
     rec.setVectorState(SEW::E64, 2);
     AS.VSLIDE1UP(result2_up, result2, x0);
