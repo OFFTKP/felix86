@@ -338,7 +338,7 @@ FAST_HANDLE(ADC) {
 
 FAST_HANDLE(CMP) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1], true /* zext immediate */);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     as.SUB(result, dst, src);
