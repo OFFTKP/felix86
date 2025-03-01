@@ -3383,15 +3383,34 @@ FAST_HANDLE(NEG) {
 }
 
 FAST_HANDLE(PACKUSWB) { // TODO: vectorize
-    // There is no single instruction that can saturate a signed value into an unsigned destination. A sequence of two vector instructions that
-    // rst removes negative numbers by performing a max against 0 using vmax then clips the resulting unsigned value into the destination
-    // using vnclipu can be used if setting vxsat value for negative numbers is not required. A vsetvli is required inbetween these two
-    // instructions to change SEW.
     VEC_function(rec, meta, instruction, operands, (u64)&felix86_packuswb);
 }
 
+// There is no single instruction that can saturate a signed value into an unsigned destination. A sequence of two vector instructions that
+// rst removes negative numbers by performing a max against 0 using vmax then clips the resulting unsigned value into the destination
+// using vnclipu can be used if setting vxsat value for negative numbers is not required. A vsetvli is required inbetween these two
+// instructions to change SEW.
 FAST_HANDLE(PACKUSDW) {
-    VEC_function(rec, meta, instruction, operands, (u64)&felix86_packusdw);
+    biscuit::Vec result1 = rec.scratchVec();
+    biscuit::Vec result2 = rec.scratchVec();
+    biscuit::Vec result3 = rec.scratchVec();
+    biscuit::Vec result4 = rec.scratchVec();
+    biscuit::Vec result_up = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 4);
+    AS.VMAX(result1, dst, x0);
+    AS.VMAX(result2, src, x0);
+    rec.setVectorState(SEW::E16, 4, LMUL::MF2);
+    AS.VNCLIPU(result3, result1, 0);
+    AS.VNCLIPU(result4, result2, 0);
+    rec.setVectorState(SEW::E64, 2);
+    AS.VMV(v0, 0b10);
+    AS.VSLIDEUP(result_up, result4, 1);
+    AS.VMERGE(result, result3, result_up);
+    rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(PACKSSWB) {
