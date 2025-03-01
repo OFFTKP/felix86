@@ -6187,7 +6187,7 @@ FAST_HANDLE(PSADBW) {
     AS.VWREDSUMU(result2, result2, sub_upper);
 
     rec.setVectorState(SEW::E64, 2);
-    AS.VSLIDEUP(result2_up, result2, 1);
+    AS.VSLIDE1UP(result2_up, result2, x0);
     AS.VOR(dst, result2_up, result);
 
     rec.setOperandVec(&operands[0], dst);
