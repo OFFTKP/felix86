@@ -1195,36 +1195,35 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
 
-        g_config.executable_path = path;
-        g_config.argv.clear();
-        g_config.envp.clear();
+        std::vector<const char*> argv;
+        std::vector<const char*> envp;
 
+        argv.push_back("/proc/self/exe");
         if (rsi) {
             const char** guest_argv = (const char**)rsi;
             while (*guest_argv) {
-                g_config.argv.push_back(*guest_argv);
+                argv.push_back(*guest_argv);
                 guest_argv++;
             }
         }
+        argv.push_back(nullptr);
 
         if (rdx) {
             const char** guest_env = (const char**)rdx;
             while (*guest_env) {
-                g_config.envp.push_back(*guest_env);
+                envp.push_back(*guest_env);
                 guest_env++;
             }
         }
+        envp.push_back(nullptr);
 
         g_execve_process = true;
         pthread_setname_np(pthread_self(), "ExecveProcess");
-        ERROR("actual execve");
 
-        LOG("Calling execve: %s", path.c_str());
+        LOG("Running execve, wish me luck: %s", path.c_str());
 
-        // TODO: what if it has child threads? They need to be killed...
+        syscall(SYS_execve, "/proc/self/exe", argv.data(), envp.data());
 
-        // The main function will see that the exit code is execve and act accordingly
-        Emulator::ExitDispatcher(state);
         UNREACHABLE();
         break;
     }

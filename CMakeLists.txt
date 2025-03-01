@@ -31,8 +31,6 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
 endif()
 
 add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
-set(CMAKE_BUILD_RPATH "/felix86/lib/")
-set(CMAKE_INSTALL_RPATH "/felix86/lib/")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
