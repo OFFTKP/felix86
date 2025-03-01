@@ -84,15 +84,15 @@ void Recompiler::emitDispatcher() {
 
     as.MV(threadStatePointer(), a0);
 
-    // if (g_rsb) {
-    //     // Try to lower the chances that our return stack buffer optimizations end up
-    //     // ruining the data in the host stack, if somehow there's multiple returns before any calls
-    //     as.ADDI(sp, sp, -1024);
-    //     // Also make sure it's aligned
-    //     as.ANDI(sp, sp, -16);
-    //     // In exit_dispatcher the original stack pointer is restored so it's fine that we don't
-    //     // add 1024 to the stack pointer at any point
-    // }
+    if (g_rsb) {
+        // Try to lower the chances that our return stack buffer optimizations end up
+        // ruining the data in the host stack, if somehow there's multiple returns before any calls
+        as.ADDI(sp, sp, -1024);
+        // Also make sure it's aligned
+        as.ANDI(sp, sp, -16);
+        // In exit_dispatcher the original stack pointer is restored so it's fine that we don't
+        // add 1024 to the stack pointer at any point
+    }
 
     compile_next_handler = as.GetCursorPointer();
 
@@ -105,7 +105,7 @@ void Recompiler::emitDispatcher() {
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
-    if (g_rsb && false) {
+    if (g_rsb) {
         as.MV(ra, a0);
         // "return" to the compiled function. This encoding hints to the
         // return stack buffer to pop, which should have been pushed by a jalr
