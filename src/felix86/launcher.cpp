@@ -48,8 +48,8 @@ void mountme(const char* path, const std::filesystem::path& dest, const char* fs
     mounts.push_back(dest);
 }
 
-void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& rootfs) {
-    if (std::filesystem::exists(rootfs / "felix86" / "lib" / lib)) {
+void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& dest) {
+    if (std::filesystem::exists(dest / lib)) {
         // Already there
         return;
     }
@@ -60,7 +60,7 @@ void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& roo
     }
 
     std::error_code ec;
-    std::filesystem::copy(full_path, rootfs / "felix86" / "lib" / lib, ec);
+    std::filesystem::copy(full_path, dest / lib, ec);
     if (ec) {
         ERROR("Error while copying: %s", ec.message().c_str());
     }
@@ -95,16 +95,17 @@ int main(int argc, const char** argv) {
     }
 
     const std::filesystem::path rootfs = rootfs_env;
+    const std::filesystem::path libpath = rootfs / "felix86" / "lib";
     const std::filesystem::path felix_jit_path = current_path.parent_path() / "felix86_jit";
 
     // Copy every time to make rebuilding less painful
     std::filesystem::create_directories(rootfs / "felix86" / "lib");
     std::filesystem::copy(felix_jit_path, rootfs / "felix86", std::filesystem::copy_options::overwrite_existing);
-    copy_lib("libstdc++.so.6", rootfs);
-    copy_lib("libm.so.6", rootfs);
-    copy_lib("libgcc_s.so.1", rootfs);
-    copy_lib("libc.so.6", rootfs);
-    copy_lib("ld-linux-riscv64-lp64d.so.1", rootfs);
+    copy_lib("libstdc++.so.6", libpath);
+    copy_lib("libm.so.6", libpath);
+    copy_lib("libgcc_s.so.1", libpath);
+    copy_lib("libc.so.6", libpath);
+    copy_lib("ld-linux-riscv64-lp64d.so.1", libpath);
 
     std::filesystem::path has_mounted_var_path = "/run/felix86.mounted";
 
