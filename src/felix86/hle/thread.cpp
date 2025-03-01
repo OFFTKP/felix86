@@ -339,5 +339,5 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 void Threads::StartThread(ThreadState* state) {
     state->tid = gettid();
     state->recompiler->enterDispatcher(state);
-    VERBOSE("Thread exited with reason %d\n", state->exit_reason);
+    VERBOSE("Thread exited with reason %d", state->exit_reason);
 }

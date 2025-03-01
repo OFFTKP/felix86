@@ -353,8 +353,11 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
             // Just start the emulator again
             // The execve handler has changed g_config to the new executable
             continue;
+        } else {
+            // No more looping
+            break;
         }
-    } while (false);
+    } while (true);
 
     return {exit_reason, exit_code};
 }
