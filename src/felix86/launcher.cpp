@@ -30,6 +30,7 @@ std::filesystem::path find_lib(const std::filesystem::path& lib) {
     CHECK("/lib64")
     CHECK("/usr/lib")
     CHECK("/lib")
+    CHECK("/lib/riscv64-linux-gnu")
 
     return "";
 }
