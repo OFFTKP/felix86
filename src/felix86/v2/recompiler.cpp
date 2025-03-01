@@ -717,7 +717,7 @@ x86_size_e Recompiler::getOperandSize(ZydisDecodedOperand* operand) {
     }
 }
 
-biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand, bool zext_immediate) {
+biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         biscuit::GPR reg = gpr(operand->reg.value);
@@ -730,24 +730,6 @@ biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand, bool zext_i
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 value = operand->imm.value.s;
-
-        if (zext_immediate) {
-            switch (operand->size) {
-            case 8: {
-                value = (u64)(u8)value;
-                break;
-            }
-            case 16: {
-                value = (u64)(u16)value;
-                break;
-            }
-            case 32: {
-                value = (u64)(u32)value;
-                break;
-            }
-            }
-        }
-
         biscuit::GPR imm = scratch();
         as.LI(imm, value);
         return imm;

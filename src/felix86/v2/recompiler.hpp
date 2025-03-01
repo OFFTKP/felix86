@@ -81,7 +81,7 @@ struct Recompiler {
 
     void setST(biscuit::GPR top, int index, biscuit::FPR value);
 
-    biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand, bool zext_immediate = false);
+    biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
 
     x86_size_e getOperandSize(ZydisDecodedOperand* operand);
 

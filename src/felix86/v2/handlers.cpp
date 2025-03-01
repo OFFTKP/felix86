@@ -179,29 +179,7 @@ FAST_HANDLE(SUB) {
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        rec.updateCarrySub(dst, src);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        rec.updateAuxiliarySub(dst, src);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        rec.updateOverflowSub(dst, src, result, size);
-    }
+    SetCmpFlags(meta, rec, as, dst, src, result, size, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD);
 
     rec.setOperandGPR(&operands[0], result);
 }
@@ -338,7 +316,7 @@ FAST_HANDLE(ADC) {
 
 FAST_HANDLE(CMP) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPR(&operands[1], true /* zext immediate */);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
     as.SUB(result, dst, src);
