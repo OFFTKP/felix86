@@ -376,7 +376,7 @@ struct Recompiler {
 
     void updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size);
 
-    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size);
+    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs);
 
     void updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result);
 

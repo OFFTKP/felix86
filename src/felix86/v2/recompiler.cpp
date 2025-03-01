@@ -1466,7 +1466,8 @@ bool Recompiler::shouldEmitFlag(HostAddress rip, x86_ref_e ref) {
 }
 
 // (res & (~d | s)) | (~d & s), xor top 2 bits
-void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size) {
+void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
+    int size = getBitSize(size_e);
     biscuit::GPR of = flagW(X86_REF_OF);
     biscuit::GPR temp = scratch();
     as.NOT(temp, lhs);
@@ -1516,7 +1517,7 @@ void Recompiler::updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs) {
     popScratch();
 }
 
-void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size) {
+void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
     biscuit::GPR cf = flagW(X86_REF_CF);
     as.SLTU(cf, lhs, rhs);
 }

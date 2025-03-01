@@ -15,7 +15,7 @@ void felix86_cpuid(ThreadState* state);
 void SetCmpFlags(const HandlerMetadata& meta, Recompiler& rec, Assembler& as, biscuit::GPR dst, biscuit::GPR src, biscuit::GPR result,
                  x86_size_e size) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        rec.updateCarrySub(dst, src, size);
+        rec.updateCarrySub(dst, src);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -173,7 +173,7 @@ FAST_HANDLE(SUB) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        rec.updateCarrySub(dst, src, size);
+        rec.updateCarrySub(dst, src);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
