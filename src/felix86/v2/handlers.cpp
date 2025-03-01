@@ -559,9 +559,9 @@ FAST_HANDLE(RET_rsb) {
 }
 
 FAST_HANDLE(CALL) {
-    if (g_rsb) {
-        return fast_CALL_rsb(rec, meta, as, instruction, operands);
-    }
+    // if (g_rsb) {
+    //     return fast_CALL_rsb(rec, meta, as, instruction, operands);
+    // }
 
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
