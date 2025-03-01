@@ -56,6 +56,7 @@ int g_output_fd = 1;
 std::filesystem::path g_rootfs_path{};
 u64 g_executable_base_hint = 0;
 u64 g_interpreter_base_hint = 0;
+u64 g_brk_base_hint = 0;
 
 HostAddress g_interpreter_start{};
 HostAddress g_interpreter_end{};
