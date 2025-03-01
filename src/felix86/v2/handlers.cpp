@@ -469,10 +469,10 @@ FAST_HANDLE(CALL_rsb) {
         // AUIPC + ADDI + SD + SD + ADDI + 2 instructions for jump = 28
         as.AUIPC(host_return_address, 0);
         as.ADDI(host_return_address, host_return_address, 28);
-        as.SD(host_return_address, -16, sp);
-        as.SD(guest_return_address, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         as.ADDI(sp, sp, -16);
-        rec.backToDispatcher(true); // true = push to rsb
+        as.SD(host_return_address, 0, sp);
+        as.SD(guest_return_address, 8, sp); // this is the prediction, the guest address we hope the RET jumps to
+        rec.backToDispatcher(true);         // true = push to rsb
         u64 here = (u64)as.GetCursorPointer();
         ASSERT(here == start + 28);
         break;
@@ -504,10 +504,10 @@ FAST_HANDLE(CALL_rsb) {
         // AUIPC + ADDI + SD + SD + ADDI + 2 instructions for jump = 28
         as.AUIPC(host_return_address, 0);
         as.ADDI(host_return_address, host_return_address, 28);
-        as.SD(host_return_address, -16, sp);
-        as.SD(guest_return_address, -8, sp); // this is the prediction, the guest address we hope the RET jumps to
         as.ADDI(sp, sp, -16);
-        rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true); // true = push to rsb
+        as.SD(host_return_address, 0, sp);
+        as.SD(guest_return_address, 8, sp); // this is the prediction, the guest address we hope the RET jumps to
+        rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
         u64 here = (u64)as.GetCursorPointer();
         ASSERT(here == start + 28);
         break;
@@ -542,18 +542,19 @@ FAST_HANDLE(RET_rsb) {
     rec.invalidStateUntilJump();
 
     biscuit::GPR prediction = rec.scratch();
-    as.ADDI(sp, sp, 16);
-    as.LD(prediction, -8, sp);
+    as.LD(prediction, 8, sp);
     as.BNE(scratch, prediction, &misprediction);
     // Our prediction was correct, just return to ra
     rec.popCalltrace();
-    as.LD(ra, -16, sp);
+    as.LD(ra, 0, sp);
+    as.ADDI(sp, sp, 16);
     as.RET();
 
     // Prediction was incorrect, return to dispatcher
     as.Bind(&misprediction);
 
     rec.popCalltrace();
+    as.ADDI(sp, sp, 16);
     rec.backToDispatcher();
     rec.stopCompiling();
 }
@@ -616,9 +617,9 @@ FAST_HANDLE(CALL) {
 }
 
 FAST_HANDLE(RET) {
-    // if (g_rsb) {
-    //     return fast_RET_rsb(rec, meta, as, instruction, operands);
-    // }
+    if (g_rsb) {
+        return fast_RET_rsb(rec, meta, as, instruction, operands);
+    }
 
     x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
