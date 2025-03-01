@@ -6164,7 +6164,33 @@ FAST_HANDLE(MOVDDUP) {
 }
 
 FAST_HANDLE(PSADBW) {
-    VEC_function(rec, meta, instruction, operands, (u64)&felix86_psadbw);
+    biscuit::Vec min = rec.scratchVec();
+    biscuit::Vec max = rec.scratchVec();
+    biscuit::Vec sub = rec.scratchVec();
+    biscuit::Vec sub_upper = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec result2 = rec.scratchVec();
+    biscuit::Vec result2_up = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E8, 16);
+    AS.VMV(result, 0);
+    AS.VMV(result2, 0);
+    AS.VMIN(min, dst, src);
+    AS.VMAX(max, dst, src);
+    AS.VSUB(sub, max, min);
+    AS.VSLIDEDOWN(sub_upper, sub, 8);
+
+    rec.setVectorState(SEW::E8, 8, LMUL::MF2);
+    AS.VWREDSUMU(result, result, sub);
+    AS.VWREDSUMU(result2, result2, sub_upper);
+
+    rec.setVectorState(SEW::E64, 2);
+    AS.VSLIDEUP(result2_up, result2, 1);
+    AS.VOR(dst, result2_up, result);
+
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PAVGB) {
