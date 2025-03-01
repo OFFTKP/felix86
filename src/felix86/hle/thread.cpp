@@ -40,9 +40,9 @@ void* pthread_handler(void* args) {
 
     ThreadState* state = ThreadState::Create(clone_args.parent_state);
 
-    if (clone_args.flags & CLONE_SIGHAND) {
+    if (clone_args.guest_flags & CLONE_SIGHAND) {
         // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
-        ASSERT(clone_args.flags & CLONE_VM);
+        ASSERT(clone_args.guest_flags & CLONE_VM);
         state->signal_handlers = clone_args.parent_state->signal_handlers;
     } else {
         // otherwise it gets a copy
@@ -60,15 +60,15 @@ void* pthread_handler(void* args) {
         ERROR("prctl failed with %d", errno);
     }
 
-    if (clone_args.flags & CLONE_CHILD_SETTID && clone_args.child_tid) {
+    if (clone_args.guest_flags & CLONE_CHILD_SETTID && clone_args.child_tid) {
         *clone_args.child_tid = state->tid;
     }
 
-    if (clone_args.flags & CLONE_PARENT_SETTID && clone_args.parent_tid) {
+    if (clone_args.guest_flags & CLONE_PARENT_SETTID && clone_args.parent_tid) {
         *clone_args.parent_tid = state->tid;
     }
 
-    if (clone_args.flags & CLONE_CHILD_CLEARTID) {
+    if (clone_args.guest_flags & CLONE_CHILD_CLEARTID) {
         state->clear_tid_address = clone_args.child_tid;
     }
 
@@ -77,7 +77,7 @@ void* pthread_handler(void* args) {
     state->gprs[X86_REF_RSP] = clone_args.new_rsp;
     state->thread = clone_args.new_thread;
 
-    if (clone_args.flags & CLONE_SETTLS) {
+    if (clone_args.guest_flags & CLONE_SETTLS) {
         state->fsbase = clone_args.new_fsbase;
     } else if (clone_args.new_fsbase) {
         ERROR("TLS specified but CLONE_SETTLS not set");
@@ -89,7 +89,7 @@ void* pthread_handler(void* args) {
     // the clone flags include CLONE_VM and do not include CLONE_VFORK,
     // in which case any alternate signal stack that was established in
     // the parent is disabled in the child process.
-    if ((clone_args.flags & CLONE_VM) && !(clone_args.flags & CLONE_VFORK)) {
+    if ((clone_args.guest_flags & CLONE_VM) && !(clone_args.guest_flags & CLONE_VFORK)) {
         state->alt_stack = {};
     }
 
