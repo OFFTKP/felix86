@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <grp.h>
+#include <linux/limits.h>
 #include <sys/mount.h>
 #include <unistd.h>
 
@@ -86,10 +87,11 @@ int main(int argc, const char** argv) {
 
     std::filesystem::path current_path;
     {
-        std::ifstream ifs("/proc/self/exe");
-        std::string line;
-        std::getline(ifs, line);
-        current_path = line;
+        char buffer[PATH_MAX];
+        int size = readlink("/proc/self/exe", buffer, PATH_MAX);
+        ASSERT(size != -1, "readlink failed");
+        buffer[size] = 0;
+        current_path = buffer;
     }
 
     const std::filesystem::path rootfs = rootfs_env;
