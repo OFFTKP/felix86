@@ -548,7 +548,12 @@ void Elf::Load(const std::filesystem::path& path) {
     if (!is_interpreter) {
         // Don't add to unmap_me, unmapped elsewhere
         program_base = base_ptr;
-        g_current_brk = (u64)mmap(base_ptr + PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (!g_brk_base_hint) {
+            g_current_brk = (u64)mmap(base_ptr + PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        } else {
+            g_current_brk =
+                (u64)mmap((void*)g_brk_base_hint, brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+        }
         if ((void*)g_current_brk == MAP_FAILED) {
             ERROR("Failed to allocate memory for brk in file %s", path.c_str());
         }

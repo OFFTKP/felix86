@@ -225,6 +225,12 @@ void initialize_globals() {
         environment += "\nFELIX86_INTERPRETER_BASE=" + fmt::format("{:016x}", g_interpreter_base_hint);
     }
 
+    const char* brk_base = getenv("FELIX86_BRK_BASE");
+    if (brk_base) {
+        g_brk_base_hint = std::stoull(brk_base, nullptr, 16);
+        environment += "\nFELIX86_BRK_BASE=" + fmt::format("{:016x}", g_brk_base_hint);
+    }
+
     const char* dont_link = getenv("FELIX86_DONT_LINK");
     if (is_truthy(dont_link)) {
         g_dont_link = true;

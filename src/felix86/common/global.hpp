@@ -85,6 +85,7 @@ extern HostAddress g_interpreter_start, g_interpreter_end;
 extern HostAddress g_executable_start, g_executable_end;
 extern u64 g_interpreter_base_hint;
 extern u64 g_executable_base_hint;
+extern u64 g_brk_base_hint;
 extern const char* g_git_hash;
 extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
 extern pthread_key_t g_thread_state_key;

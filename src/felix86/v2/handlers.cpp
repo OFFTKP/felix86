@@ -560,9 +560,9 @@ FAST_HANDLE(RET_rsb) {
 }
 
 FAST_HANDLE(CALL) {
-    // if (g_rsb) {
-    //     return fast_CALL_rsb(rec, meta, as, instruction, operands);
-    // }
+    if (g_rsb) {
+        return fast_CALL_rsb(rec, meta, as, instruction, operands);
+    }
 
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
@@ -617,9 +617,9 @@ FAST_HANDLE(CALL) {
 }
 
 FAST_HANDLE(RET) {
-    // if (g_rsb) {
-    //     return fast_RET_rsb(rec, meta, as, instruction, operands);
-    // }
+    if (g_rsb) {
+        return fast_RET_rsb(rec, meta, as, instruction, operands);
+    }
 
     x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
