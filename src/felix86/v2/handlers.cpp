@@ -2830,24 +2830,30 @@ FAST_HANDLE(PMULDQ) { // Fuzzed
 }
 
 FAST_HANDLE(PMADDWD) {
-    biscuit::Vec result1 = rec.scratchVec();
-    biscuit::Vec result2 = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec dst_down = rec.scratchVec();
-    biscuit::Vec src_down = rec.scratchVec();
+    biscuit::Vec dst_compress = rec.scratchVec();
+    biscuit::Vec src_compress = rec.scratchVec();
+    biscuit::Vec dst_compress2 = rec.scratchVec();
+    biscuit::Vec src_compress2 = rec.scratchVec();
+    biscuit::Vec vec_mask = rec.scratchVec();
     biscuit::GPR mask = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E16, 4, LMUL::MF2);
+    rec.setVectorState(SEW::E16, 8);
     AS.LI(mask, 0b01010101);
     AS.VMV(v0, mask);
-    AS.VSLIDEDOWN(dst_down, dst, 1);
-    AS.VSLIDEDOWN(src_down, src, 1);
-    AS.VWMUL(result1, dst_down, src_down, VecMask::Yes);
-    AS.VWMUL(result2, dst, src, VecMask::Yes);
-    rec.setVectorState(SEW::E32, 4);
-    AS.VADD(result, result1, result2);
+    AS.SLLI(mask, mask, 1);
+    AS.VMV(vec_mask, mask);
+    AS.VCOMPRESS(dst_compress, dst, v0);
+    AS.VCOMPRESS(src_compress, src, v0);
+    AS.VCOMPRESS(dst_compress2, dst, vec_mask);
+    AS.VCOMPRESS(src_compress2, src, vec_mask);
+
+    rec.setVectorState(SEW::E16, 4, LMUL::MF2);
+    AS.VWMUL(result, dst_compress, src_compress);
+    AS.VWMACC(result, dst_compress2, src_compress2);
+
     rec.setOperandVec(&operands[0], result);
 }
 
