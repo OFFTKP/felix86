@@ -542,19 +542,18 @@ FAST_HANDLE(RET_rsb) {
     rec.invalidStateUntilJump();
 
     biscuit::GPR prediction = rec.scratch();
-    as.LD(prediction, 8, sp);
+    as.ADDI(sp, sp, 16);
+    as.LD(prediction, -8, sp);
     as.BNE(scratch, prediction, &misprediction);
     // Our prediction was correct, just return to ra
     rec.popCalltrace();
-    as.LD(ra, 0, sp);
-    as.ADDI(sp, sp, 16);
+    as.LD(ra, -16, sp);
     as.RET();
 
     // Prediction was incorrect, return to dispatcher
     as.Bind(&misprediction);
 
     rec.popCalltrace();
-    as.ADDI(sp, sp, 16);
     rec.backToDispatcher();
     rec.stopCompiling();
 }
