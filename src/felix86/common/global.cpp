@@ -23,7 +23,6 @@ bool g_extensions_manually_specified = false;
 bool g_calltrace = false;
 bool g_use_block_cache = true;
 bool g_single_step = false;
-bool g_is_chrooted = false;
 bool g_dont_protect_pages = false;
 bool g_print_all_calls = false;
 bool g_no_sse2 = false;

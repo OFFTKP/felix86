@@ -31,6 +31,8 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
 endif()
 
 add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
+set(CMAKE_BUILD_RPATH "/felix86/lib/")
+set(CMAKE_INSTALL_RPATH "/felix86/lib/")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -82,9 +84,13 @@ target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version)
 
+add_executable(felix86_jit)
+target_sources(felix86_jit PRIVATE src/felix86/main.cpp)
+target_link_libraries(felix86_jit PRIVATE felix86_core)
+
 add_executable(felix86)
-target_sources(felix86 PRIVATE src/felix86/main.cpp)
-target_link_libraries(felix86 PRIVATE felix86_core)
+target_sources(felix86 PRIVATE src/felix86/launcher.cpp)
+add_dependencies(felix86 felix86_jit)
 
 if (BUILD_TESTS)
     set(FELIX86_TEST_SOURCES

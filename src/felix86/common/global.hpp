@@ -55,7 +55,6 @@ extern bool g_strace;
 extern bool g_calltrace;
 extern bool g_extensions_manually_specified;
 extern bool g_paranoid;
-extern bool g_is_chrooted;
 extern bool g_dont_link;
 extern bool g_dont_inline_syscalls;
 extern bool g_use_block_cache;

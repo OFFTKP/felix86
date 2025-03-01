@@ -284,80 +284,69 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     int exit_code;
     g_config = config;
 
-    do {
-        g_process_globals.initialize();
-        g_fs = std::make_unique<Filesystem>();
+    g_process_globals.initialize();
+    g_fs = std::make_unique<Filesystem>();
 
-        Elf::PeekResult peek = Elf::Peek(g_config.executable_path);
-        if (peek == Elf::PeekResult::NotElf) {
-            Script::PeekResult peek = Script::Peek(g_config.executable_path);
-            if (peek == Script::PeekResult::Script) {
-                Script script(g_config.executable_path);
-                const std::filesystem::path& interpreter = script.GetInterpreter();
+    Elf::PeekResult peek = Elf::Peek(g_config.executable_path);
+    if (peek == Elf::PeekResult::NotElf) {
+        Script::PeekResult peek = Script::Peek(g_config.executable_path);
+        if (peek == Script::PeekResult::Script) {
+            Script script(g_config.executable_path);
+            const std::filesystem::path& interpreter = script.GetInterpreter();
 
-                // Scripts start with a line that goes #! (usually) and that means
-                // use the interpreter after #!. This can be bash, zsh, python, whatever.
-                // So, set executable path to be the interpreter itself and push it to the front of argv.
-                g_config.argv.push_front(interpreter.string());
-                g_config.executable_path = interpreter;
-            } else {
-                ERROR("Unknown file format: %s", g_config.executable_path.c_str());
-            }
-        }
-
-        if (peek == Elf::PeekResult::Elf32) {
-            g_mode32 = true;
-            initialize32BitAddressSpace();
+            // Scripts start with a line that goes #! (usually) and that means
+            // use the interpreter after #!. This can be bash, zsh, python, whatever.
+            // So, set executable path to be the interpreter itself and push it to the front of argv.
+            g_config.argv.push_front(interpreter.string());
+            g_config.executable_path = interpreter;
         } else {
-            g_mode32 = false;
+            ERROR("Unknown file format: %s", g_config.executable_path.c_str());
         }
+    }
 
-        g_fs->LoadExecutable(g_config.executable_path);
-        ThreadState* main_state = ThreadState::Create(nullptr);
-        main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
-        main_state->SetRip(g_fs->GetEntrypoint());
+    if (peek == Elf::PeekResult::Elf32) {
+        g_mode32 = true;
+        initialize32BitAddressSpace();
+    } else {
+        g_mode32 = false;
+    }
 
-        auto [stack, size] = setupMainStack(main_state);
+    g_fs->LoadExecutable(g_config.executable_path);
+    ThreadState* main_state = ThreadState::Create(nullptr);
+    main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
+    main_state->SetRip(g_fs->GetEntrypoint());
 
-        // The Emulator::Run will only return when exit_dispatcher is jumped to
-        VERBOSE("Executable: %016lx - %016lx", g_executable_start.raw(), g_executable_end.raw());
-        if (!g_interpreter_start.isNull()) {
-            VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start.raw(), g_interpreter_end.raw());
-        }
+    auto [stack, size] = setupMainStack(main_state);
 
-        if (!g_testing) {
-            VERBOSE("Entrypoint: %016lx", g_fs->GetEntrypoint().toHost().raw());
-        }
+    // The Emulator::Run will only return when exit_dispatcher is jumped to
+    VERBOSE("Executable: %016lx - %016lx", g_executable_start.raw(), g_executable_end.raw());
+    if (!g_interpreter_start.isNull()) {
+        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start.raw(), g_interpreter_end.raw());
+    }
 
-        VERBOSE("Entering main thread :)");
+    if (!g_testing) {
+        VERBOSE("Entrypoint: %016lx", g_fs->GetEntrypoint().toHost().raw());
+    }
 
-        Threads::StartThread(main_state);
+    VERBOSE("Entering main thread :)");
 
-        VERBOSE("Bye-bye main thread :(");
+    Threads::StartThread(main_state);
 
-        exit_reason = main_state->exit_reason;
-        exit_code = main_state->exit_code;
+    VERBOSE("Bye-bye main thread :(");
 
-        if (g_mode32) {
-            uninitialize32BitAddressSpace();
-        }
+    exit_reason = main_state->exit_reason;
+    exit_code = main_state->exit_code;
 
-        munmap(stack, size);
-        munmap((void*)g_initial_brk, g_current_brk_size);
-        g_fs.reset();
-        g_breakpoints.clear();
-        ThreadState::Destroy(main_state);
-        pthread_setspecific(g_thread_state_key, nullptr);
+    if (g_mode32) {
+        uninitialize32BitAddressSpace();
+    }
 
-        if (exit_reason == EXIT_REASON_EXECVE) {
-            // Just start the emulator again
-            // The execve handler has changed g_config to the new executable
-            continue;
-        } else {
-            // No more looping
-            break;
-        }
-    } while (true);
+    munmap(stack, size);
+    munmap((void*)g_initial_brk, g_current_brk_size);
+    g_fs.reset();
+    g_breakpoints.clear();
+    ThreadState::Destroy(main_state);
+    pthread_setspecific(g_thread_state_key, nullptr);
 
     return {exit_reason, exit_code};
 }

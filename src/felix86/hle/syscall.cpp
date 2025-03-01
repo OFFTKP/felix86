@@ -1217,7 +1217,7 @@ void felix86_syscall(ThreadState* state) {
 
         g_execve_process = true;
         pthread_setname_np(pthread_self(), "ExecveProcess");
-        state->exit_reason = EXIT_REASON_EXECVE;
+        ERROR("actual execve");
 
         LOG("Calling execve: %s", path.c_str());
 

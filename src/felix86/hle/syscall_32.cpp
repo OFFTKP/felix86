@@ -104,6 +104,7 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_sched_get_priority_max:
     case felix86_x86_64_clone3: /* just returns -ENOSYS */
     case felix86_x86_64_umask: {
+        // TODO: wrong, has different abi
         return felix86_syscall(state);
     }
     }

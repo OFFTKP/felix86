@@ -463,7 +463,6 @@ void update_symbols() {
 
     std::ifstream ifs("/proc/self/maps");
     std::string line;
-    std::string rootfs = g_rootfs_path.string();
     char buffer[PATH_MAX];
     std::map<std::string, std::pair<u64, u64>> regions{};
     while (std::getline(ifs, line)) {
