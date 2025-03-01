@@ -10,9 +10,12 @@ struct Script {
 
     Script(const std::filesystem::path& script);
 
-    PeekResult static Peek(const std::filesystem::path& path);
+    static PeekResult Peek(const std::filesystem::path& path);
+
+    const std::filesystem::path& GetInterpreter() const {
+        return interpreter;
+    }
 
 private:
     std::filesystem::path interpreter;
-    std::filesystem::path script;
 };

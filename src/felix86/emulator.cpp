@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/random.h>
+#include "felix86/common/script.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thread.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -289,7 +290,19 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
 
         Elf::PeekResult peek = Elf::Peek(g_config.executable_path);
         if (peek == Elf::PeekResult::NotElf) {
-            ERROR("File %s is not an ELF file", g_config.executable_path.c_str());
+            Script::PeekResult peek = Script::Peek(g_config.executable_path);
+            if (peek == Script::PeekResult::Script) {
+                Script script(g_config.executable_path);
+                const std::filesystem::path& interpreter = script.GetInterpreter();
+
+                // Scripts start with a line that goes #! (usually) and that means
+                // use the interpreter after #!. This can be bash, zsh, python, whatever.
+                // So, set executable path to be the interpreter itself and push it to the front of argv.
+                g_config.argv.push_front(interpreter.string());
+                g_config.executable_path = interpreter;
+            } else {
+                ERROR("Unknown file format: %s", g_config.executable_path.c_str());
+            }
         }
 
         if (peek == Elf::PeekResult::Elf32) {

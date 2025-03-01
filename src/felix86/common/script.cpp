@@ -37,8 +37,6 @@ Script::PeekResult Script::Peek(const std::filesystem::path& path) {
 }
 
 Script::Script(const std::filesystem::path& script) {
-    this->script = script;
-
     FILE* file = fopen(script.c_str(), "r");
 
     if (!file) {
