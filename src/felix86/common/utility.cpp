@@ -611,12 +611,13 @@ void print_address(u64 address) {
 
     Symbol* symbol = nullptr;
     auto symbol_it = g_process_globals.symbols.lower_bound(address);
-
     if (symbol_it != g_process_globals.symbols.end()) {
         u64 start = symbol_it->second.start;
         u64 end = symbol_it->second.start + symbol_it->second.size;
         if (address >= start && address <= end) {
             symbol = &symbol_it->second;
+        } else {
+            VERBOSE("Lower bound doesn't match address: %lx - %lx %s, address is %lx", start, end, symbol_it->second.name.c_str(), address);
         }
     }
 
