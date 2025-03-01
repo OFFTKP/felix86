@@ -352,7 +352,6 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
         if (exit_reason == EXIT_REASON_EXECVE) {
             // Just start the emulator again
             // The execve handler has changed g_config to the new executable
-            ERROR("TODO: Implement execve");
             continue;
         }
     } while (false);
