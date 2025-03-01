@@ -613,6 +613,7 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
 void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start_of_data, u8* end_of_data) {
     // g_mode32 has already been set at this point
     // Load static symbols first
+    VERBOSE("Adding symbols from %s", path.c_str());
     size_t dynsym_size = 0;
     do {
         std::string spath = path.string();
@@ -728,6 +729,8 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 // For finding with lower_bound
                 symbols[end - 1] = new_symbol;
             }
+        } else {
+            VERBOSE("symtab and strtab not found for file %s", path.c_str());
         }
 
         fclose(file);
@@ -841,5 +844,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 symbols[end - 1] = new_symbol;
             }
         }
+    } else {
+        VERBOSE("dynamic section not found for file %s", path.c_str());
     }
 }

@@ -242,6 +242,7 @@ long ForkMe(CloneArgs& host_clone_args) {
         // in this new process. Just give it a new name to make debugging easier
         std::string name = "ForkedFrom" + std::to_string(parent_tid); // forked from parent tid
         prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
+        LOG("fork process %ld started", syscall(SYS_getpid));
     } else {
         if (ret < 0) {
             ERROR("clone (probably fork) failed with %d", errno);
@@ -263,6 +264,7 @@ long VForkMe(CloneArgs& args) {
     if (result == 0) {
         // Close the read end of the pipe.
         // Keep the write end open so the parent can poll it.
+        LOG("vfork process %ld started", syscall(SYS_getpid));
         close(pipes[0]);
     } else {
         // Close the write end of the pipe.
