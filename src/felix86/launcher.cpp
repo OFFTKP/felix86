@@ -218,7 +218,8 @@ int main(int argc, const char** argv) {
     }
     jit_args.push_back(nullptr);
 
-    constexpr static const char* launched = "__FELIX86_LAUNCHED";
+    constexpr static const char* launched = "__FELIX86_LAUNCHED=1";
+    constexpr static const char* ld_lib_path = "LD_LIBRARY_PATH=/felix86/lib";
     char** environ_copy = environ;
     std::vector<const char*> jit_envs;
     while (*environ_copy) {
@@ -226,6 +227,7 @@ int main(int argc, const char** argv) {
         environ_copy++;
     }
     jit_envs.push_back(launched);
+    jit_envs.push_back(ld_lib_path);
     jit_envs.push_back(nullptr);
 
     execvpe(jit_path_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
