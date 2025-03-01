@@ -619,6 +619,11 @@ void print_address(u64 address) {
         } else {
             VERBOSE("Lower bound doesn't match address: %lx - %lx %s, address is %lx", start, end, symbol_it->second.name.c_str(), address);
         }
+    } else {
+        VERBOSE("Lower bound not found for address: %lx", address);
+        for (auto sym : g_process_globals.symbols) {
+            printf("symbol %s -> %lx %lx\n", sym.second.name.c_str(), sym.second.start, sym.second.size);
+        }
     }
 
     struct winsize w;
