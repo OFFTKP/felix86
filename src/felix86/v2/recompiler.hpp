@@ -370,6 +370,20 @@ struct Recompiler {
         return g_mode32 ? 4 : 8;
     }
 
+    void updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);
+
+    void updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);
+
+    void updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size);
+
+    void updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size);
+
+    void updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result);
+
+    void updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs);
+
+    void zeroFlag(x86_ref_e flag);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

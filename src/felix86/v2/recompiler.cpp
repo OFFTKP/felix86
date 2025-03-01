@@ -1465,6 +1465,73 @@ bool Recompiler::shouldEmitFlag(HostAddress rip, x86_ref_e ref) {
     return true;
 }
 
+// (res & (~d | s)) | (~d & s), xor top 2 bits
+void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size) {
+    biscuit::GPR of = flagW(X86_REF_OF);
+    biscuit::GPR temp = scratch();
+    as.NOT(temp, lhs);
+    as.OR(of, temp, rhs);
+    as.AND(of, of, result);
+    as.AND(temp, temp, rhs);
+    as.OR(of, of, temp);
+    as.SRLI(temp, of, size - 2);
+    as.SRLI(of, of, size - 1);
+    as.XOR(of, of, temp);
+    as.ANDI(of, of, 1);
+    popScratch();
+}
+
+// ((s & d) | ((~res) & (s | d))), xor top 2 bits
+void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
+    int size = getBitSize(size_e);
+    biscuit::GPR of = flagW(X86_REF_OF);
+    biscuit::GPR temp = scratch();
+    as.OR(of, lhs, rhs);
+    as.NOT(temp, result);
+    as.AND(of, temp, of);
+    as.AND(temp, lhs, rhs);
+    as.OR(of, of, temp);
+    as.SRLI(temp, of, size - 2);
+    as.SRLI(of, of, size - 1);
+    as.XOR(of, of, temp);
+    as.ANDI(of, of, 1);
+    popScratch();
+}
+
+void Recompiler::updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result) {
+    biscuit::GPR af = flagW(X86_REF_AF);
+    biscuit::GPR temp = scratch();
+    as.ANDI(af, result, 0xF);
+    as.ANDI(temp, lhs, 0xF);
+    as.SLTU(af, af, temp);
+    popScratch();
+}
+
+void Recompiler::updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs) {
+    biscuit::GPR af = flagW(X86_REF_AF);
+    biscuit::GPR temp = scratch();
+    as.ANDI(af, rhs, 0xF);
+    as.ANDI(temp, lhs, 0xF);
+    as.SLTU(af, temp, af);
+    popScratch();
+}
+
+void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs, x86_size_e size) {
+    biscuit::GPR cf = flagW(X86_REF_CF);
+    as.SLTU(cf, lhs, rhs);
+}
+
+void Recompiler::updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size) {
+    biscuit::GPR cf = flagW(X86_REF_CF);
+    zext(cf, result, size);
+    as.SLTU(cf, cf, lhs);
+}
+
+void Recompiler::zeroFlag(x86_ref_e flag) {
+    biscuit::GPR f = flagW(flag);
+    as.LI(f, 0);
+}
+
 void Recompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) {
     switch (size) {
     case X86_SIZE_BYTE:
