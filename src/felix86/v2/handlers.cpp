@@ -2829,21 +2829,23 @@ FAST_HANDLE(PMULDQ) { // Fuzzed
     rec.setOperandVec(&operands[0], result);
 }
 
-FAST_HANDLE(PMADDWD) { // Fuzzed
+FAST_HANDLE(PMADDWD) {
     biscuit::Vec result1 = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst_down = rec.scratchVec();
+    biscuit::Vec src_down = rec.scratchVec();
     biscuit::GPR mask = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E16, 4, LMUL::MF2);
-    AS.LI(mask, 0b10101010);
+    AS.LI(mask, 0b01010101);
     AS.VMV(v0, mask);
-    AS.VWMUL(result1, dst, src, VecMask::Yes);
-    AS.VSRL(v0, v0, 1);
+    AS.VSLIDEDOWN(dst_down, dst, 1);
+    AS.VSLIDEDOWN(src_down, src, 1);
+    AS.VWMUL(result1, dst_down, src_down, VecMask::Yes);
     AS.VWMUL(result2, dst, src, VecMask::Yes);
-
     rec.setVectorState(SEW::E32, 4);
     AS.VADD(result, result1, result2);
     rec.setOperandVec(&operands[0], result);
