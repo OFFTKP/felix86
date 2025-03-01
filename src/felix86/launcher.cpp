@@ -10,7 +10,7 @@
 
 #define ERROR(format, ...)                                                                                                                           \
     {                                                                                                                                                \
-        printf(format, ##__VA_ARGS__);                                                                                                               \
+        printf(format "\n", ##__VA_ARGS__);                                                                                                          \
         exit(1);                                                                                                                                     \
     }
 
@@ -43,13 +43,13 @@ void mountme(const char* path, const std::filesystem::path& dest, const char* fs
     if (result < 0) {
         ERROR("Failed to mount %s to %s. Error: %d", path, dest.c_str(), errno);
     }
-    printf("Mounting %s to %s", path, dest.c_str());
+    printf("Mounting %s to %s\n", path, dest.c_str());
 
     mounts.push_back(dest);
 }
 
 void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& rootfs) {
-    if (std::filesystem::exists(rootfs / lib)) {
+    if (std::filesystem::exists(rootfs / "felix86" / "lib" / lib)) {
         // Already there
         return;
     }
@@ -98,12 +98,13 @@ int main(int argc, const char** argv) {
     const std::filesystem::path felix_jit_path = current_path.parent_path() / "felix86_jit";
 
     // Copy every time to make rebuilding less painful
-    std::filesystem::copy(felix_jit_path, rootfs);
-
+    std::filesystem::create_directories(rootfs / "felix86" / "lib");
+    std::filesystem::copy(felix_jit_path, rootfs / "felix86", std::filesystem::copy_options::overwrite_existing);
     copy_lib("libstdc++.so.6", rootfs);
     copy_lib("libm.so.6", rootfs);
     copy_lib("libgcc_s.so.1", rootfs);
     copy_lib("libc.so.6", rootfs);
+    copy_lib("ld-linux-riscv64-lp64d.so.1", rootfs);
 
     std::filesystem::path has_mounted_var_path = "/run/felix86.mounted";
 
