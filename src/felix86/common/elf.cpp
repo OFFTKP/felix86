@@ -843,6 +843,8 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
 
                 symbols[end - 1] = new_symbol;
             }
+        } else {
+            VERBOSE("symtab > start_of_data && (u8*)strtab > start_of_data failed: %p > %p && %p > %p", symtab, start_of_data, strtab, start_of_data);
         }
     } else {
         VERBOSE("dynamic section not found for file %s", path.c_str());

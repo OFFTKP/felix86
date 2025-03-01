@@ -480,6 +480,11 @@ void update_symbols() {
                 continue;
             }
 
+            if (std::string(buffer).find("/felix86") == 0) {
+                // It's our emulator or its libraries, skip
+                continue;
+            }
+
             if (it == regions.end()) {
                 regions[buffer] = {UINT64_MAX, 0};
             }
