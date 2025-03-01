@@ -75,4 +75,9 @@ Script::Script(const std::filesystem::path& script) {
     char interpreter[PATH_MAX];
     memset(interpreter, 0, PATH_MAX);
     strncpy(interpreter, (char*)data, PATH_MAX);
+
+    this->interpreter = interpreter;
+
+    ASSERT(std::filesystem::exists(interpreter));
+    ASSERT(std::filesystem::is_regular_file(interpreter));
 }
