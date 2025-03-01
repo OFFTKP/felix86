@@ -13,9 +13,16 @@ void felix86_cpuid(ThreadState* state);
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
 void SetCmpFlags(const HandlerMetadata& meta, Recompiler& rec, Assembler& as, biscuit::GPR dst, biscuit::GPR src, biscuit::GPR result,
-                 x86_size_e size) {
+                 x86_size_e size, bool zext_src = false) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        rec.updateCarrySub(dst, src);
+        biscuit::GPR test = rec.scratch();
+        if (zext_src) {
+            rec.zext(test, src, size);
+        } else {
+            test = src;
+        }
+        rec.updateCarrySub(dst, test);
+        rec.popScratch();
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -338,7 +345,7 @@ FAST_HANDLE(CMP) {
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
-    SetCmpFlags(meta, rec, as, dst, src, result, size); //, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD);
+    SetCmpFlags(meta, rec, as, dst, src, result, size, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD);
 }
 
 FAST_HANDLE(OR) {
@@ -5373,12 +5380,9 @@ FAST_HANDLE(XADD) {
     }
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    u64 sign_mask = rec.getSignMask(size);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        rec.zext(cf, result, size);
-        as.SLTU(cf, cf, dst);
+        rec.updateCarryAdd(dst, result, size);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -5386,12 +5390,7 @@ FAST_HANDLE(XADD) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
-        biscuit::GPR scratch = rec.scratch();
-        as.ANDI(af, result, 0xF);
-        as.ANDI(scratch, dst, 0xF);
-        as.SLTU(af, af, scratch);
-        rec.popScratch();
+        rec.updateAuxiliaryAdd(dst, src);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
