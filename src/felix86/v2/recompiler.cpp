@@ -7,7 +7,9 @@
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-#define X(name) void fast_##name(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+#define X(name)                                                                                                                                      \
+    void fast_##name(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction,                              \
+                     ZydisDecodedOperand* operands);
 #include "felix86/v2/handlers.inc"
 #undef X
 
@@ -293,7 +295,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
         switch (mnemonic) {
 #define X(name)                                                                                                                                      \
     case ZYDIS_MNEMONIC_##name:                                                                                                                      \
-        fast_##name(*this, meta, instruction, operands);                                                                                             \
+        fast_##name(*this, meta, as, instruction, operands);                                                                                         \
         break;
 #include "felix86/v2/handlers.inc"
 #undef X
