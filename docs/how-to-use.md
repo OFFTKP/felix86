@@ -3,13 +3,12 @@
 :warning: felix86 is early in development. It can run some simple games. :warning:
 
 ## Required architecture
-You need a RISC-V board with `rv64gvb` extensions.
+You need a RISC-V board with `rv64gv` extensions.
 
 Furthermore, **you need a recent version of Linux like `6.11`**, so that there is vector extension support in signal handlers.
 If you don't have a recent version of Linux, things may go wrong.
 
 Any extra extensions might be utilized, but `G` and `V` are mandatory.
-`B` is currently mandatory. Eventually it won't be, but currently it is.
 
 felix86 is going to tell you which extensions it detects on your system.
 If you have an extension but it's unable to detect it, you can use the environment variable:

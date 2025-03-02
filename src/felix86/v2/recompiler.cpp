@@ -1647,7 +1647,29 @@ void Recompiler::updateParity(biscuit::GPR result) {
         as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
         popScratch();
     } else {
-        ERROR("This needs B extension");
+        static bool bitcount[] = {
+            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0,
+            1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1,
+            1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0,
+            1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0,
+            1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0,
+            1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+        };
+        static_assert(sizeof(bitcount) == 256, "Invalid bitcount table size");
+
+        Label end;
+        Literal address(&bitcount);
+        biscuit::GPR offset = scratch();
+        biscuit::GPR pf = scratch();
+        as.ANDI(offset, result, 0xFF);
+        as.LD(pf, &address);
+        as.ADD(pf, pf, offset);
+        as.LB(pf, 0, pf);
+        as.J(&end);
+        as.Place(&address);
+        as.Bind(&end);
+        popScratch();
+        popScratch();
     }
 }
 
