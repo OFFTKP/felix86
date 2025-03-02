@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 #include <grp.h>
 // #include <sys/capability.h>
+#include <spawn.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -24,16 +25,17 @@ static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
+    {"version", 'v', 0, 0, "Print version and cpu info"},
     {"verbose", 'V', 0, 0, "Produce verbose output"},
     {"quiet", 'q', 0, 0, "Don't produce any output"},
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
     {"all-extensions", 'X', "EXTS", 0,
      "Manually specify every available RISC-V extension. When using this, any extension not specified will be considered unavailable. "
-     "Usage example: -e g,c,v,b,zacas"},
+     "Usage example: -X g,c,v,b,zacas"},
 
     {0}};
 
-void print_extensions() {
+std::string get_extensions() {
     std::string extensions;
     if (Extensions::G) {
         extensions += "g";
@@ -80,9 +82,64 @@ void print_extensions() {
         extensions += "zfa";
     }
 
+    return extensions;
+}
+
+void print_version_stuff() {
+    printf("%s", version_full.c_str());
+    initialize_extensions();
+    std::string extensions = get_extensions();
     if (!extensions.empty()) {
-        LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
+        printf("Extensions used by felix86: %s\n", extensions.c_str());
+    } else {
+        printf("Could not parse RISC-V extensions\n");
     }
+
+    std::vector<const char*> args = {"neofetch", "cpu", nullptr};
+
+    int ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+
+    args[1] = "gpu";
+    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+
+    args[1] = "model";
+    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+
+    args[1] = "distro";
+    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+
+    args[1] = "de";
+    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+
+    args[1] = "wm";
+    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+
+    args[1] = "kernel";
+    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+
+    args[1] = "memory";
+    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+
+    return;
+
+error:
+    printf("Please install " ANSI_BOLD "neofetch" ANSI_COLOR_RESET " for more information\n");
 }
 
 int guest_arg_start_index = -1;
@@ -102,6 +159,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
 
     switch (key) {
+    case 'v': {
+        print_version_stuff();
+        exit(0);
+    }
     case 'V': {
         enable_verbose();
         break;
@@ -206,7 +267,10 @@ int main(int argc, char* argv[]) {
 
     initialize_globals();
     initialize_extensions();
-    print_extensions();
+    std::string extensions = get_extensions();
+    if (!extensions.empty()) {
+        LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
+    }
     Signals::initialize();
 
     bool purposefully_empty = false;
