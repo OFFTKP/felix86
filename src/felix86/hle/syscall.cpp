@@ -461,6 +461,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("sched_getparam(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_sched_setparam: {
+        result = HOST_SYSCALL(sched_setparam, rdi, rsi);
+        STRACE("sched_setparam(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_clock_gettime: {
         result = HOST_SYSCALL(clock_gettime, rdi, (struct timespec*)rsi);
         STRACE("clock_gettime(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
