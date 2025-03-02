@@ -95,4 +95,7 @@ extern "C" __attribute__((visibility("default"))) void print_state(ThreadState* 
             PLAIN("xmm%d = %lx%lx", i, state->xmm[i].data[1], state->xmm[i].data[0]);
         }
     }
+
+    update_symbols();
+    dump_states();
 }
