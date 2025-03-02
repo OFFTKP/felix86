@@ -248,14 +248,17 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (g_rootfs_path.empty()) {
-        ERROR("Rootfs path not specified");
-        return 1;
-    }
+    const std::filesystem::path exec = argv[1];
+    const std::filesystem::path exec_abs = std::filesystem::absolute(exec);
 
-    // Remove rootfs from executable path, if the user prepended it
-    if (config.executable_path.string().find(g_rootfs_path.string()) == 0) {
-        config.executable_path = config.executable_path.string().substr(g_rootfs_path.string().size());
+    if (!g_rootfs_path.empty()) {
+        // Remove rootfs from executable path, if the user prepended it
+        if (config.executable_path.string().find(g_rootfs_path.string()) == 0) {
+            std::string new_path = config.executable_path.string().substr(g_rootfs_path.string().size());
+            ASSERT(new_path.size() > 0);
+            ASSERT(new_path[0] == '/');
+            config.executable_path = new_path;
+        }
     }
 
     std::string arg0 = config.executable_path;

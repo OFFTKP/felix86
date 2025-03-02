@@ -85,6 +85,11 @@ int main(int argc, const char** argv) {
               errno);
     }
 
+    if (argc < 2) {
+        printf("Usage: ./felix86 <executable> <args to executable>\n");
+        exit(1);
+    }
+
     std::filesystem::path current_path;
     {
         char buffer[PATH_MAX];
@@ -197,22 +202,8 @@ int main(int argc, const char** argv) {
 
     std::vector<const char*> jit_args;
 
-    // Pass all the args, except the path to the loader and `sudo -E` if it was added
-    int index = 0;
-    for (; index < argc; index++) {
-        std::string arg = argv[index];
-        if (arg == "sudo" && index == 0) {
-            ASSERT(std::string(argv[index + 1]) == "-E", "Unexpected argument after sudo");
-            index += 2;
-        } else {
-            // Skip loader path
-            index++;
-            break;
-        }
-    }
-
     jit_args.push_back(jit_path_chroot);
-    for (int i = index; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
         jit_args.push_back(argv[i]);
     }
     jit_args.push_back(nullptr);
