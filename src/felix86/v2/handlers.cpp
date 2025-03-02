@@ -481,18 +481,13 @@ FAST_HANDLE(CALL_rsb) {
     as.AUIPC(host_return_address, 0);
     as.ADDI(host_return_address, host_return_address, 20);
     as.SD(host_return_address, 0, sp);
-    // if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-    //     rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
-    // } else {
-    //     rec.backToDispatcher(true); // true = push to rsb
-    // }
-    rec.backToDispatcher();
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
+    } else {
+        rec.backToDispatcher(true); // true = push to rsb
+    }
     u64 here = (u64)as.GetCursorPointer();
     ASSERT(here == start + 20);
-    as.GetCodeBuffer().Emit32(0);
-    as.GetCodeBuffer().Emit32(0);
-    as.GetCodeBuffer().Emit32(0);
-    as.GetCodeBuffer().Emit32(0);
 }
 
 FAST_HANDLE(RET_rsb) {
@@ -519,17 +514,17 @@ FAST_HANDLE(RET_rsb) {
 
     biscuit::GPR prediction = rec.scratch();
     as.LD(prediction, 8, sp);
-    // as.BNE(scratch, prediction, &misprediction);
-    // // Our prediction was correct, just return to ra
-    // rec.popCalltrace();
-    // as.LD(ra, 0, sp);
-    // as.ADDI(sp, sp, 16);
-    // as.RET();
+    as.BNE(scratch, prediction, &misprediction);
+    // Our prediction was correct, just return to ra
+    rec.popCalltrace();
+    as.LD(ra, 0, sp);
+    as.ADDI(sp, sp, 16);
+    as.RET();
 
-    // // Prediction was incorrect, return to dispatcher
-    // as.Bind(&misprediction);
+    // Prediction was incorrect, return to dispatcher
+    as.Bind(&misprediction);
 
-    // rec.popCalltrace();
+    rec.popCalltrace();
     as.ADDI(sp, sp, 16);
     rec.backToDispatcher();
     rec.stopCompiling();
