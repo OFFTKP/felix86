@@ -280,6 +280,8 @@ long VForkMe(CloneArgs& args) {
         while (ppoll(&pollfd, 1, nullptr, &SignalMask) == -1 && errno == EINTR)
             ;
 
+        printf("It seems that the vfork child has finished\n");
+
         // Close the read end now.
         close(pipes[0]);
     }
