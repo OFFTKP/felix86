@@ -229,7 +229,6 @@ long ForkMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.flags & CLONE_VFORK));
     int parent_tid = host_clone_args.parent_state->tid;
 
-    host_clone_args.new_rsp = host_clone_args.parent_state->gprs[X86_REF_RSP];
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
                        nullptr); // args are flipped in syscall
 
@@ -264,8 +263,8 @@ long VForkMe(CloneArgs& args) {
     if (result == 0) {
         // Close the read end of the pipe.
         // Keep the write end open so the parent can poll it.
-        LOG("vfork process %ld started", syscall(SYS_getpid));
         close(pipes[0]);
+        LOG("vfork process %ld started", syscall(SYS_getpid));
     } else {
         // Close the write end of the pipe.
         close(pipes[1]);
@@ -279,8 +278,6 @@ long VForkMe(CloneArgs& args) {
         sigfillset(&SignalMask);
         while (ppoll(&pollfd, 1, nullptr, &SignalMask) == -1 && errno == EINTR)
             ;
-
-        printf("It seems that the vfork child has finished\n");
 
         // Close the read end now.
         close(pipes[0]);
