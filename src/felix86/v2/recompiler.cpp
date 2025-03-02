@@ -1672,6 +1672,7 @@ void Recompiler::updateParity(biscuit::GPR result) {
         as.LD(t0, 0, sp);
         as.ADDI(sp, sp, 8);
         as.LBU(pf, 0, pf);
+        as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
         as.J(&end);
         as.Place(&address);
         as.Bind(&end);

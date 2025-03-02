@@ -3889,6 +3889,7 @@ FAST_HANDLE(TZCNT) {
     Label end;
     as.LI(result, instruction.operand_width);
     as.SEQZ(cf, src);
+    as.BEQZ(src, &end);
     CTZ(rec, as, result, src);
     as.J(&end);
 
