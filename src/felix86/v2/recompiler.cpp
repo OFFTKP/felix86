@@ -1657,26 +1657,25 @@ void Recompiler::updateParity(biscuit::GPR result) {
         };
         static_assert(sizeof(bitcount) == 256, "Invalid bitcount table size");
 
+        bool* addy = bitcount;
+        Literal address((u64)addy);
+        Label end;
         biscuit::GPR pf = scratch();
 
         // We need another scratch but on many instructions there isn't one available at this point :(
         ASSERT(pf != t0);
+        as.LD(pf, &address);
         as.ADDI(sp, sp, -8);
         as.SD(t0, 0, sp);
-
-        Label end;
-        Literal address(&bitcount);
         as.ANDI(t0, result, 0xFF);
-        as.LD(pf, &address);
         as.ADD(pf, pf, t0);
-        as.LB(pf, 0, pf);
+        as.LD(t0, 0, sp);
+        as.ADDI(sp, sp, 8);
+        as.LBU(pf, 0, pf);
         as.J(&end);
         as.Place(&address);
         as.Bind(&end);
         popScratch();
-
-        as.LD(t0, 0, sp);
-        as.ADDI(sp, sp, 8);
     }
 }
 
