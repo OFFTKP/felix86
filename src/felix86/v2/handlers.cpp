@@ -481,11 +481,13 @@ FAST_HANDLE(CALL_rsb) {
     as.AUIPC(host_return_address, 0);
     as.ADDI(host_return_address, host_return_address, 20);
     as.SD(host_return_address, 0, sp);
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
-    } else {
-        rec.backToDispatcher(true); // true = push to rsb
-    }
+    // if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+    //     rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
+    // } else {
+    //     rec.backToDispatcher(true); // true = push to rsb
+    // }
+    rec.backToDispatcher();
+    rec.stopCompiling();
     u64 here = (u64)as.GetCursorPointer();
     ASSERT(here == start + 20);
 }
