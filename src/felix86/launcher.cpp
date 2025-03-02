@@ -73,6 +73,19 @@ void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& des
     }
 }
 
+void copy_recursive(std::filesystem::path& dir, const std::filesystem::path& dest) {
+    if (!std::filesystem::exists(dir)) {
+        WARN("I couldn't find %s to copy to the rootfs, may cause problems with some games", dir.c_str());
+        return;
+    }
+
+    std::error_code ec;
+    std::filesystem::copy(dir, dest, std::filesystem::copy_options::overwrite_existing | std::filesystem::copy_options::recursive, ec);
+    if (ec) {
+        ERROR("Error while copying: %s", ec.message().c_str());
+    }
+}
+
 std::string version_full = get_version_full();
 
 int print_version_stuff() {
@@ -204,6 +217,9 @@ int main(int argc, const char** argv) {
     copy_lib("libgcc_s.so.1", libpath);
     copy_lib("libc.so.6", libpath);
     copy_lib("ld-linux-riscv64-lp64d.so.1", libpath);
+
+    std::filesystem::path dbus("/var/lib/dbus");
+    copy_recursive(dbus, rootfs / "var" / "lib" / "dbus");
 
     std::filesystem::path has_mounted_var_path = "/run/felix86.mounted";
 
