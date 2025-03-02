@@ -1224,7 +1224,7 @@ void felix86_syscall(ThreadState* state) {
         std::string args = "";
         for (auto arg : argv) {
             args += " ";
-            args += arg;
+            args += arg ? arg : "";
         }
 
         LOG("Running execve, wish me luck:%s", args.c_str());
