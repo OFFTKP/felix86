@@ -440,83 +440,54 @@ FAST_HANDLE(HLT) {
 }
 
 FAST_HANDLE(CALL_rsb) {
-    switch (operands[0].type) {
-    case ZYDIS_OPERAND_TYPE_REGISTER:
-    case ZYDIS_OPERAND_TYPE_MEMORY: {
-        x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+    x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+
+    u64 displacement = 0;
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        biscuit::GPR temp = rec.scratch();
+        displacement = operands[0].imm.value.s;
+        as.LI(temp, meta.rip.add(instruction.length + displacement).toGuest().raw());
+        rec.setRip(temp);
+        rec.popScratch();
+    } else {
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         rec.setRip(src);
-        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
-        as.ADDI(rsp, rsp, -rec.stackPointerSize());
-        rec.setRefGPR(X86_REF_RSP, size, rsp);
-
-        biscuit::GPR guest_return_address = rec.scratch();
-        GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
-        as.LI(guest_return_address, return_address.raw());
-        as.ADDI(sp, sp, -16);
-        as.SD(guest_return_address, 8, sp); // this is the prediction, the guest address we hope the RET jumps to
-        rec.writeMemory(guest_return_address, rsp, 0, size);
-        rec.writebackDirtyState();
-        rec.invalidStateUntilJump();
-        rec.pushCalltrace();
-
-        // Instead of stopping and returning to dispatcher, continue compiling the current block
-        // And perform an actual call, pushing our predicted return address to the stack
-        // As long as each call corresponds to a ret this prediction will work out. If it doesn't,
-        // it goes back to the dispatcher. There's cases where calls don't correspond 1:1 to rets such as exceptions.
-
-        u64 start = (u64)as.GetCursorPointer();
-        biscuit::GPR host_return_address = rec.scratch();
-
-        // AUIPC + ADDI + SD + 2 instructions for jump = 20
-        as.AUIPC(host_return_address, 0);
-        as.ADDI(host_return_address, host_return_address, 20);
-        as.SD(host_return_address, 0, sp);
-        rec.backToDispatcher(true); // true = push to rsb
-        u64 here = (u64)as.GetCursorPointer();
-        ASSERT(here == start + 20);
-        break;
     }
-    case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
-        u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-        GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
 
-        x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
-        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
-        as.ADDI(rsp, rsp, -rec.stackPointerSize());
-        rec.setRefGPR(X86_REF_RSP, size, rsp);
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
+    as.ADDI(rsp, rsp, -rec.stackPointerSize());
+    rec.setRefGPR(X86_REF_RSP, size, rsp);
 
-        biscuit::GPR guest_return_address = rec.scratch();
-        biscuit::GPR new_rip = rec.scratch();
-        as.LI(guest_return_address, return_address.raw());
-        rec.writeMemory(guest_return_address, rsp, 0, size);
-        as.ADDI(sp, sp, -16);
-        as.SD(guest_return_address, 8, sp); // this is the prediction, the guest address we hope the RET jumps to
+    biscuit::GPR guest_return_address = rec.scratch();
+    GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
+    as.LI(guest_return_address, return_address.raw());
+    as.ADDI(sp, sp, -16);
+    as.SD(guest_return_address, 8, sp); // this is the prediction, the guest address we hope the RET jumps to
 
-        rec.addi(new_rip, guest_return_address, displacement);
+    rec.writeMemory(guest_return_address, rsp, 0, size);
+    rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
+    rec.pushCalltrace();
 
-        rec.setRip(new_rip);
-        rec.writebackDirtyState();
-        rec.invalidStateUntilJump();
-        rec.pushCalltrace();
+    // Instead of stopping and returning to dispatcher, continue compiling the current block
+    // And perform an actual call, pushing our predicted return address to the stack
+    // As long as each call corresponds to a ret this prediction will work out. If it doesn't,
+    // it goes back to the dispatcher. There's cases where calls don't correspond 1:1 to rets such as exceptions.
 
-        u64 start = (u64)as.GetCursorPointer();
-        biscuit::GPR host_return_address = rec.scratch();
+    u64 start = (u64)as.GetCursorPointer();
+    biscuit::GPR host_return_address = rec.scratch();
 
-        // AUIPC + ADDI + SD + 2 instructions for jump = 20
-        as.AUIPC(host_return_address, 0);
-        as.ADDI(host_return_address, host_return_address, 20);
-        as.SD(host_return_address, 0, sp);
+    // AUIPC + ADDI + SD + 2 instructions for jump = 20
+    as.AUIPC(host_return_address, 0);
+    as.ADDI(host_return_address, host_return_address, 20);
+    as.SD(host_return_address, 0, sp);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
-        u64 here = (u64)as.GetCursorPointer();
-        ASSERT(here == start + 20);
-        break;
+    } else {
+        rec.backToDispatcher(true); // true = push to rsb
     }
-    default: {
-        UNREACHABLE();
-        break;
-    }
-    }
+    u64 here = (u64)as.GetCursorPointer();
+    ASSERT(here == start + 20);
 }
 
 FAST_HANDLE(RET_rsb) {
@@ -543,7 +514,7 @@ FAST_HANDLE(RET_rsb) {
 
     biscuit::GPR prediction = rec.scratch();
     as.LD(prediction, 8, sp);
-    as.BEQ(x0, x0, &misprediction);
+    as.BNE(scratch, prediction, &misprediction);
     // Our prediction was correct, just return to ra
     rec.popCalltrace();
     as.LD(ra, 0, sp);
