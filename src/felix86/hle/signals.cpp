@@ -596,6 +596,11 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         bool jit_code = is_in_jit_code(current_state, pc);
         if (!jit_code || current_state->signals_disabled) {
             WARN("Deferring signal %s", strsignal(sig));
+            if (current_state->pending_signals.size() > 5) {
+                ERROR("More than 5 pending signals, something is probably wrong, exiting to avoid spam");
+                exit(0);
+            }
+
             current_state->pending_signals.push_back({sig, *info});
 
             // Unlink the current block, making it jump back to the dispatcher at the end
