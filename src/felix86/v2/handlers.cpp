@@ -543,7 +543,7 @@ FAST_HANDLE(RET_rsb) {
 
     biscuit::GPR prediction = rec.scratch();
     as.LD(prediction, 8, sp);
-    as.BNE(scratch, prediction, &misprediction);
+    as.BNE(x0, x0, &misprediction);
     // Our prediction was correct, just return to ra
     rec.popCalltrace();
     as.LD(ra, 0, sp);
