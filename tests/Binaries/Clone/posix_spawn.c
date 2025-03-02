@@ -53,6 +53,7 @@ int main(int argc, char* argv[]) {
 
             close(out[1]);
             dump_child_stdout(buffer, out[0]);
+            printf("Child had this to say: %s\n", buffer);
         }
     } else {
         fprintf(stderr, "posix_spawn: %s\n", strerror(status));

@@ -1215,6 +1215,7 @@ void felix86_syscall(ThreadState* state) {
                 guest_env++;
             }
         }
+        envp.push_back("__FELIX86_LAUNCHED=1");
         envp.push_back(nullptr);
 
         g_execve_process = true;
