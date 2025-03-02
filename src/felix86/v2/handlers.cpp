@@ -488,6 +488,13 @@ FAST_HANDLE(CALL_rsb) {
     }
     u64 here = (u64)as.GetCursorPointer();
     ASSERT(here == start + 20);
+
+    // We could continue compiling instructions in this block. It's a bit tricky with software that use jits though.
+    // For example you compile a piece of code until a call, and then garbage may follow so you start compiling garbage instructions.
+    // Or it's zeroed out and you compile a bunch of zeroes... not good. So for now we link to the next block after returning
+    // and just stop compiling
+    rec.jumpAndLink(meta.rip.add(instruction.length));
+    rec.stopCompiling();
 }
 
 FAST_HANDLE(RET_rsb) {
