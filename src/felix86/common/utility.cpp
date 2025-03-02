@@ -654,20 +654,27 @@ void print_address(u64 address) {
 
     // clang-format can't comprehend what I am about to do
     // clang-format off
+    std::string filename_offset;
+    if (filename == "??") {
+        filename_offset = filename;
+    } else {
+        filename_offset = fmt::format("{}+0x{:x}", filename, address - region.base);
+    }
+
     if (symbol_str) {
         u64 offset = address - symbol->start;
         dprintf(g_output_fd,
             ANSI_COLOR_CYAN "%s+0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET " (0x%lx)\n",
             symbol_trunc.c_str(),
             offset,
-            filename.c_str(),
+            filename_offset.c_str(),
             address
         );
     } else {
         dprintf(g_output_fd,
             ANSI_COLOR_CYAN "0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET "\n",
             address,
-            filename.c_str()
+            filename_offset.c_str()
         );
     }
     // clang-format on
