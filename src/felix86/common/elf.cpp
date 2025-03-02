@@ -686,6 +686,8 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
             // http://deroko.phearless.org/dt_gnu_hash.txt
             // So we get the size here while we can and use it later
             dynsym_size = dynsym->size();
+        } else {
+            VERBOSE("Could not get dynsym size");
         }
 
         if (symtab && strtab) {
@@ -811,6 +813,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 const char* symbol = strtab + index;
                 if ((u8*)symbol > end_of_data) {
                     // Just in case...
+                    WARN("symbol > end_of_data in %s", path.c_str());
                     continue;
                 }
 
@@ -842,6 +845,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 }
 
                 symbols[end - 1] = new_symbol;
+                VERBOSE("Added new dynamic symbol `%s` at %lx", new_symbol.name.c_str(), new_symbol.start);
             }
         } else {
             VERBOSE("symtab > start_of_data && (u8*)strtab > start_of_data failed: %p > %p && %p > %p", symtab, start_of_data, strtab, start_of_data);
