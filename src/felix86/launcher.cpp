@@ -10,7 +10,6 @@
 #include <unistd.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/info.hpp"
-#include "felix86/common/log.hpp"
 #undef ERROR
 #undef ASSERT
 
@@ -75,7 +74,7 @@ void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& des
 
 void copy_recursive(std::filesystem::path& dir, const std::filesystem::path& dest) {
     if (!std::filesystem::exists(dir)) {
-        WARN("I couldn't find %s to copy to the rootfs, may cause problems with some games", dir.c_str());
+        printf("I couldn't find %s to copy to the rootfs, may cause problems with some games", dir.c_str());
         return;
     }
 
@@ -91,6 +90,7 @@ std::string version_full = get_version_full();
 int print_version_stuff() {
     printf("%s\n", version_full.c_str());
 
+    using namespace biscuit;
     biscuit::CPUInfo info;
     bool I = info.Has(Extension::I) && info.Has(Extension::M) && info.Has(Extension::A) && info.Has(Extension::F) && info.Has(Extension::D);
     bool V = info.Has(Extension::V);
@@ -163,7 +163,7 @@ int print_version_stuff() {
     return 0;
 
 error:
-    printf("Please install " ANSI_BOLD "neofetch" ANSI_COLOR_RESET " for more information\n");
+    printf("Please install neofetch for more information\n");
     return ok;
 }
 
