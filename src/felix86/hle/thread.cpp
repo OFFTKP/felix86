@@ -267,6 +267,7 @@ long VForkMe(CloneArgs& args) {
         close(pipes[0]);
         LOG("vfork process %ld started", syscall(SYS_getpid));
         print_state(ThreadState::Get());
+        g_print_all_calls = true;
     } else {
         // Close the write end of the pipe.
         close(pipes[1]);
