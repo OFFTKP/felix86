@@ -98,7 +98,7 @@ extern std::unique_ptr<Filesystem> g_fs;
 bool parse_extensions(const char* ext);
 void initialize_globals();
 void initialize_extensions();
-const char* get_version_full();
+std::string get_extensions();
 
 struct Extensions {
 #define FELIX86_EXTENSIONS_TOTAL                                                                                                                     \

@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/emulator.hpp"
 
@@ -25,7 +26,6 @@ static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
-    {"version", 'v', 0, 0, "Print version and cpu info"},
     {"verbose", 'V', 0, 0, "Produce verbose output"},
     {"quiet", 'q', 0, 0, "Don't produce any output"},
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
@@ -34,124 +34,6 @@ static struct argp_option options[] = {
      "Usage example: -X g,c,v,b,zacas"},
 
     {0}};
-
-std::string get_extensions() {
-    std::string extensions;
-    if (Extensions::G) {
-        extensions += "g";
-    }
-    if (Extensions::V) {
-        if (!extensions.empty())
-            extensions += ",";
-        extensions += "v";
-        extensions += std::to_string(Extensions::VLEN);
-    }
-    if (Extensions::C) {
-        if (!extensions.empty())
-            extensions += ",";
-        extensions += "c";
-    }
-    if (Extensions::B) {
-        if (!extensions.empty())
-            extensions += ",";
-        extensions += "b";
-    }
-    if (Extensions::Zacas) {
-        if (!extensions.empty())
-            extensions += ",";
-        extensions += "zacas";
-    }
-    if (Extensions::Zam) {
-        if (!extensions.empty())
-            extensions += ",";
-        extensions += "zam";
-    }
-    if (Extensions::Zabha) {
-        if (!extensions.empty())
-            extensions += ",";
-        extensions += "zabha";
-    }
-    if (Extensions::Zicond) {
-        if (!extensions.empty())
-            extensions += ",";
-        extensions += "zicond";
-    }
-    if (Extensions::Zfa) {
-        if (!extensions.empty())
-            extensions += ",";
-        extensions += "zfa";
-    }
-
-    return extensions;
-}
-
-int print_version_stuff() {
-    printf("%s\n", version_full.c_str());
-    initialize_extensions();
-    std::string extensions = get_extensions();
-    if (!extensions.empty()) {
-        printf("Extensions used by felix86: %s\n", extensions.c_str());
-    } else {
-        printf("Could not parse RISC-V extensions\n");
-    }
-
-    std::vector<const char*> args = {"neofetch", "cpu", nullptr};
-
-    pid_t pid;
-    int status;
-    int ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "gpu";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "model";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "distro";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "de";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "wm";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "kernel";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    args[1] = "memory";
-    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
-    if (ok != 0)
-        goto error;
-    waitpid(pid, &status, 0);
-
-    return 0;
-
-error:
-    printf("Please install " ANSI_BOLD "neofetch" ANSI_COLOR_RESET " for more information\n");
-    return ok;
-}
 
 int guest_arg_start_index = -1;
 
@@ -170,10 +52,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
 
     switch (key) {
-    case 'v': {
-        int ret = print_version_stuff();
-        exit(ret);
-    }
     case 'V': {
         enable_verbose();
         break;

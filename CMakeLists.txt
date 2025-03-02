@@ -39,6 +39,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/debug.cpp
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp
+    src/felix86/common/info.cpp
     src/felix86/common/global.cpp
     src/felix86/common/log.cpp
     src/felix86/common/print.cpp
@@ -88,7 +89,9 @@ target_link_libraries(felix86_jit PRIVATE felix86_core)
 target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-linux-riscv64-lp64d.so.1")
 
 add_executable(felix86)
-target_sources(felix86 PRIVATE src/felix86/launcher.cpp)
+target_sources(felix86 PRIVATE src/felix86/launcher.cpp src/felix86/common/info.cpp)
+target_include_directories(felix86 PUBLIC ${FELIX86_INCLUDES})
+target_link_libraries(felix86 biscuit git_version)
 
 if (BUILD_TESTS)
     set(FELIX86_TEST_SOURCES

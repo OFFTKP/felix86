@@ -4,8 +4,15 @@
 #include <vector>
 #include <grp.h>
 #include <linux/limits.h>
+#include <spawn.h>
 #include <sys/mount.h>
+#include <sys/wait.h>
 #include <unistd.h>
+#include "biscuit/cpuinfo.hpp"
+#include "felix86/common/info.hpp"
+#include "felix86/common/log.hpp"
+#undef ERROR
+#undef ASSERT
 
 #define ERROR(format, ...)                                                                                                                           \
     {                                                                                                                                                \
@@ -66,7 +73,98 @@ void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& des
     }
 }
 
+std::string version_full = get_version_full();
+
+int print_version_stuff() {
+    printf("%s\n", version_full.c_str());
+
+    biscuit::CPUInfo info;
+    bool I = info.Has(Extension::I) && info.Has(Extension::M) && info.Has(Extension::A) && info.Has(Extension::F) && info.Has(Extension::D);
+    bool V = info.Has(Extension::V);
+    int len = 0;
+    if (V) {
+        len = info.GetVlenb();
+    }
+
+    if (!I) {
+        printf("Is this really RISC-V?\n");
+    } else {
+        if (I && V && len >= 128) {
+            printf("You have all the necessary extensions to use felix86!\n");
+        } else if (!V) {
+            printf("Your RISC-V system is missing the V extension!\n");
+        }
+    }
+
+    std::vector<const char*> args = {"neofetch", "cpu", nullptr};
+
+    pid_t pid;
+    int status;
+    int ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "gpu";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "model";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "distro";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "de";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "wm";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "kernel";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "memory";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    return 0;
+
+error:
+    printf("Please install " ANSI_BOLD "neofetch" ANSI_COLOR_RESET " for more information\n");
+    return ok;
+}
+
 int main(int argc, const char** argv) {
+    if (argc < 2) {
+        printf("Usage: ./felix86 <executable> <args to executable>\n");
+        exit(1);
+    }
+
+    if (std::string(argv[1]) == "-v") {
+        int ret = print_version_stuff();
+        exit(ret);
+    }
+
     const char* rootfs_env = getenv("FELIX86_ROOTFS");
     ASSERT(rootfs_env, "Please specify a rootfs path with the environment variable FELIX86_ROOTFS");
 
@@ -83,11 +181,6 @@ int main(int argc, const char** argv) {
         ERROR("felix86 needs administrator privileges to chroot and mount. Failed to restart felix86 with sudo. Please run felix86 with "
               "administrator privileges. Error code: %d",
               errno);
-    }
-
-    if (argc < 2) {
-        printf("Usage: ./felix86 <executable> <args to executable>\n");
-        exit(1);
     }
 
     std::filesystem::path current_path;

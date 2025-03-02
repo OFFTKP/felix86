@@ -112,11 +112,6 @@ void Extensions::Clear() {
     VLEN = 0;
 }
 
-const char* get_version_full() {
-    static std::string version = "felix86 0.1.0." + std::string(g_git_hash);
-    return version.c_str();
-}
-
 bool is_truthy(const char* str) {
     if (!str) {
         return false;
@@ -125,6 +120,56 @@ bool is_truthy(const char* str) {
     std::string lower = str;
     std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
     return lower == "true" || lower == "1" || lower == "yes" || lower == "on" || lower == "y" || lower == "enable";
+}
+
+std::string get_extensions() {
+    std::string extensions;
+    if (Extensions::G) {
+        extensions += "g";
+    }
+    if (Extensions::V) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "v";
+        extensions += std::to_string(Extensions::VLEN);
+    }
+    if (Extensions::C) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "c";
+    }
+    if (Extensions::B) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "b";
+    }
+    if (Extensions::Zacas) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zacas";
+    }
+    if (Extensions::Zam) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zam";
+    }
+    if (Extensions::Zabha) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zabha";
+    }
+    if (Extensions::Zicond) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zicond";
+    }
+    if (Extensions::Zfa) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zfa";
+    }
+
+    return extensions;
 }
 
 void initialize_globals() {
