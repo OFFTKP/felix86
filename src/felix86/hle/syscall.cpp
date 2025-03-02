@@ -1221,7 +1221,13 @@ void felix86_syscall(ThreadState* state) {
         g_execve_process = true;
         pthread_setname_np(pthread_self(), "ExecveProcess");
 
-        LOG("Running execve, wish me luck: %s", path.c_str());
+        std::string args = "";
+        for (auto arg : argv) {
+            args += " ";
+            args += arg;
+        }
+
+        LOG("Running execve, wish me luck:%s", args.c_str());
 
         syscall(SYS_execve, "/proc/self/exe", argv.data(), envp.data());
 
