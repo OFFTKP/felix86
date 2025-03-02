@@ -86,7 +86,7 @@ std::string get_extensions() {
 }
 
 void print_version_stuff() {
-    printf("%s", version_full.c_str());
+    printf("%s\n", version_full.c_str());
     initialize_extensions();
     std::string extensions = get_extensions();
     if (!extensions.empty()) {
@@ -97,42 +97,42 @@ void print_version_stuff() {
 
     std::vector<const char*> args = {"neofetch", "cpu", nullptr};
 
-    int ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    int ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
 
     args[1] = "gpu";
-    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
 
     args[1] = "model";
-    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
 
     args[1] = "distro";
-    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
 
     args[1] = "de";
-    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
 
     args[1] = "wm";
-    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
 
     args[1] = "kernel";
-    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
 
     args[1] = "memory";
-    ok = posix_spawn(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
 
