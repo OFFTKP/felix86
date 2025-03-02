@@ -18,6 +18,7 @@ bool g_verbose = false;
 bool g_quiet = false;
 bool g_testing = false;
 bool g_strace = false;
+bool g_dump_regs = false;
 bool g_dont_link = false;
 bool g_extensions_manually_specified = false;
 bool g_calltrace = false;
@@ -175,6 +176,12 @@ void initialize_globals() {
         if (!g_testing)
             g_quiet = true;
         environment += "\nFELIX86_QUIET";
+    }
+
+    const char* dump_regs_env = getenv("FELIX86_DUMP_REGS");
+    if (dump_regs_env) {
+        g_dump_regs = true;
+        environment += "\nFELIX86_DUMP_REGS";
     }
 
     const char* rootfs_path = getenv("FELIX86_ROOTFS");
