@@ -7,6 +7,7 @@
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include "felix86/common/log.hpp"
+#include "felix86/common/print.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/thread.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -265,6 +266,7 @@ long VForkMe(CloneArgs& args) {
         // Keep the write end open so the parent can poll it.
         close(pipes[0]);
         LOG("vfork process %ld started", syscall(SYS_getpid));
+        print_state(ThreadState::Get());
     } else {
         // Close the write end of the pipe.
         close(pipes[1]);
