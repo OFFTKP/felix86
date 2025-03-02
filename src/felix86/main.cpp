@@ -146,7 +146,7 @@ int print_version_stuff() {
         goto error;
     waitpid(pid, &status, 0);
 
-    return;
+    return 0;
 
 error:
     printf("Please install " ANSI_BOLD "neofetch" ANSI_COLOR_RESET " for more information\n");
