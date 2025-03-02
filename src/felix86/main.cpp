@@ -85,7 +85,7 @@ std::string get_extensions() {
     return extensions;
 }
 
-void print_version_stuff() {
+int print_version_stuff() {
     printf("%s\n", version_full.c_str());
     initialize_extensions();
     std::string extensions = get_extensions();
@@ -97,49 +97,60 @@ void print_version_stuff() {
 
     std::vector<const char*> args = {"neofetch", "cpu", nullptr};
 
-    int ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    pid_t pid;
+    int status;
+    int ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
+    waitpid(pid, &status, 0);
 
     args[1] = "gpu";
-    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
+    waitpid(pid, &status, 0);
 
     args[1] = "model";
-    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
+    waitpid(pid, &status, 0);
 
     args[1] = "distro";
-    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
+    waitpid(pid, &status, 0);
 
     args[1] = "de";
-    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
+    waitpid(pid, &status, 0);
 
     args[1] = "wm";
-    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
+    waitpid(pid, &status, 0);
 
     args[1] = "kernel";
-    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
+    waitpid(pid, &status, 0);
 
     args[1] = "memory";
-    ok = posix_spawnp(nullptr, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
     if (ok != 0)
         goto error;
+    waitpid(pid, &status, 0);
 
     return;
 
 error:
     printf("Please install " ANSI_BOLD "neofetch" ANSI_COLOR_RESET " for more information\n");
+    return ok;
 }
 
 int guest_arg_start_index = -1;
@@ -160,8 +171,8 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
     switch (key) {
     case 'v': {
-        print_version_stuff();
-        exit(0);
+        int ret = print_version_stuff();
+        exit(ret);
     }
     case 'V': {
         enable_verbose();
