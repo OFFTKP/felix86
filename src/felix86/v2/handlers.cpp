@@ -3840,6 +3840,7 @@ void CTZ(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src) 
     if (Extensions::B) {
         as.CTZ(result, src);
     } else {
+        // This would infinitely loop if src is 0, but we know it's not
         biscuit::GPR scratch = rec.scratch();
         Label loop, escape;
         as.LI(result, 0);
@@ -4081,6 +4082,7 @@ void BSR(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, 
         as.ANDI(scratch, scratch, 1);
         as.BNEZ(scratch, &escape);
         as.ADDI(result, result, -1);
+        as.J(&loop);
         as.Bind(&escape);
     }
 }
