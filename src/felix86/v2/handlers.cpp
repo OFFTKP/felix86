@@ -487,12 +487,12 @@ FAST_HANDLE(CALL_rsb) {
     //     rec.backToDispatcher(true); // true = push to rsb
     // }
     rec.backToDispatcher();
-    as.GetCodeBuffer().Emit32(0);
-    as.GetCodeBuffer().Emit32(0);
-    as.GetCodeBuffer().Emit32(0);
-    as.GetCodeBuffer().Emit32(0);
     u64 here = (u64)as.GetCursorPointer();
     ASSERT(here == start + 20);
+    as.GetCodeBuffer().Emit32(0);
+    as.GetCodeBuffer().Emit32(0);
+    as.GetCodeBuffer().Emit32(0);
+    as.GetCodeBuffer().Emit32(0);
 }
 
 FAST_HANDLE(RET_rsb) {
