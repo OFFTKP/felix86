@@ -72,10 +72,10 @@ std::string print_guest_register(x86_ref_e guest) {
 extern "C" __attribute__((visibility("default"))) void print_gprs(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
         std::string guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
-        PLAIN("%s", guest.c_str());
-        PLAIN(" = %lx", state->gprs[i]);
+        PLAIN("%s = %lx", guest.c_str(), state->gprs[i]);
     }
 
+    PLAIN("rip = %lx", state->rip.toHost().raw());
     PLAIN("cf = %d", state->cf);
     PLAIN("pf = %d", state->pf);
     PLAIN("af = %d", state->af);
