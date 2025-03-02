@@ -248,8 +248,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const std::filesystem::path exec = argv[1];
-    const std::filesystem::path exec_abs = std::filesystem::absolute(exec);
+    config.executable_path = std::filesystem::absolute(config.executable_path);
 
     if (!g_rootfs_path.empty()) {
         // Remove rootfs from executable path, if the user prepended it
