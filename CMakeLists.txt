@@ -89,7 +89,6 @@ target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-li
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/launcher.cpp)
-add_dependencies(felix86 felix86_jit)
 
 if (BUILD_TESTS)
     set(FELIX86_TEST_SOURCES
