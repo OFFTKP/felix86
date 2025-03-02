@@ -266,9 +266,23 @@ long VForkMe(CloneArgs& args) {
         // Keep the write end open so the parent can poll it.
         close(pipes[0]);
         LOG("vfork process %ld started", syscall(SYS_getpid));
-        print_state(ThreadState::Get());
-        g_calltrace = true;
-        g_print_all_calls = true;
+        ThreadState* state = ThreadState::Get();
+        if (args.new_rsp) {
+            state->gprs[X86_REF_RSP] = args.new_rsp;
+        }
+
+        if (args.new_fsbase) {
+            WARN("vfork giving us new TLS?");
+            state->fsbase = args.new_fsbase;
+        }
+
+        if (args.child_tid) {
+            WARN("vfork giving us child tid?");
+        }
+
+        if (args.parent_tid) {
+            WARN("vfork giving us parent tid?");
+        }
     } else {
         // Close the write end of the pipe.
         close(pipes[1]);
