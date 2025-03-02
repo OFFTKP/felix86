@@ -21,7 +21,7 @@
     } while (0)
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
-        dprintf(g_output_fd, ANSI_COLOR_RED "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                               \
+        dprintf(g_output_fd, ANSI_COLOR_RED "%s:%d (Thread: %d)" format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, getpid(), ##__VA_ARGS__);         \
         felix86_exit(1);                                                                                                                             \
     } while (0)
 #define WARN(format, ...)                                                                                                                            \

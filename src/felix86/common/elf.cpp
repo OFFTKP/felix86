@@ -826,12 +826,13 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                     continue;
                 }
 
-                u64 end = elf_symbol.address() + elf_symbol.size();
+                u64 address = (u64)start_of_data + elf_symbol.address();
+                u64 end = address + elf_symbol.size();
                 int status;
                 const char* output = abi::__cxa_demangle(symbol, nullptr, nullptr, &status);
                 Symbol new_symbol;
                 new_symbol.name = status == 0 ? output : symbol;
-                new_symbol.start = elf_symbol.address();
+                new_symbol.start = address;
                 new_symbol.size = elf_symbol.size();
                 new_symbol.strong = elf_symbol.bind() != STB_WEAK;
 
