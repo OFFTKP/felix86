@@ -4,9 +4,11 @@
 
 felix86 is a Linux userspace emulator that allows you to run x86-64 Linux programs on RISC-V processors. It is in the early stages of development.
 
-Compilation and usage instructions can be found [here](./docs/how-to-use.md).
-
-Want to contribute but don't know where to start? [Check this out](./docs/contributing.md).
+> [!NOTE]
+> felix86 has not fully released yet. There are no compiled binaries available for download.
+>
+> If you'd like to aid with development, please check the [compilation and usage guide](./docs/how-to-use.md)
+> as well as the [developer tips](./docs/contributing.md).
 
 ## Features
 - Just-in-Time (JIT) recompiler
@@ -16,6 +18,8 @@ Want to contribute but don't know where to start? [Check this out](./docs/contri
 
 ## Compatibility
 felix86 is in the very early stages of development and does not support AArch64.
+
+A compatibility list can be found here: https://github.com/felix86-emu/compatibility-list/issues
 
 If you need a more mature x86-64 userspace emulator, consider using one of these:
 

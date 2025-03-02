@@ -18,9 +18,25 @@ Mention what x86-64 executable you tried to emulate and what you did.
 You may also need to enable strace. Use the `-t` flag to do so.
 
 ## Debugging
+felix86 needs root access to chroot. This means that debuggers like gdb also need root access.
+Make sure to pass the environment variables when running them:
+```
+sudo -E gdb --args ./felix86 <args>
+```
+
 There's some functionality to make debugging easier. The `s11` register holds the thread state. You can view it in gdb with the command `p *((ThreadState*)$s11)`. You can add breakpoints to guest addresses, so that when a specific guest address runs an illegal instruction is executed so the debugger breaks. You can use `p guest_breakpoint("Region", 0x....)`. The first argument is the region, "Executable", "Interpreter" or the library name. The second argument is the offset inside this file. You can also break on an absolute guest address using `p guest_breakpoint_abs(0x...)`.
 
 SIGBUS signals are commonly triggered so that our signal handler patches unaligned vector memory accesses. Make sure to run `handle SIGBUS nostop noprint` to silence them.
+
+Some functions are helpful when called from gdb.
+`call print_address(u64)` can pretty print an address. Feel free to use `call update_symbols()` which may help find some symbols.
+
+`FELIX86_CALLTRACE=1` environment variable will make every thread have a calltrace. They can be viewed with `call dump_states()` in gdb. `call update_symbols()` can again help here.
+
+`call disassemble_x64(u64)` can disassemble x64 code at an address, if you're in a hurry and don't wanna use ghidra.
+
+## Profiling
+felix86 will try to heuristically detect `perf` and emit symbols at `/tmp/perf-%pid.map`. If it fails to detect perf (it will tell you "Running under perf"), use `FELIX86_PERF=1` environment variable to force it to emit those symbols.
 
 ## Coding
 There are no strict coding guidelines. [Some recommendations exist](./conventions.md).

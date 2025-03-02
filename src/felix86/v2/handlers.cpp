@@ -3836,8 +3836,26 @@ FAST_HANDLE(PALIGNR) {
     rec.setOperandVec(&operands[0], result);
 }
 
+void CTZ(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src) {
+    if (Extensions::B) {
+        as.CTZ(result, src);
+    } else {
+        biscuit::GPR scratch = rec.scratch();
+        Label loop, escape;
+        as.LI(result, 0);
+
+        as.Bind(&loop);
+        as.SRL(scratch, src, result);
+        as.ANDI(scratch, scratch, 1);
+        as.BNEZ(scratch, &escape);
+        as.ADDI(result, result, 1);
+        as.J(&loop);
+
+        as.Bind(&escape);
+    }
+}
+
 FAST_HANDLE(BSF) {
-    ASSERT(Extensions::B);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -3847,7 +3865,9 @@ FAST_HANDLE(BSF) {
     Label end;
     as.SEQZ(zf, src);
     as.BEQZ(src, &end);
-    as.CTZ(result, src);
+
+    CTZ(rec, as, result, src);
+
     rec.setOperandGPR(&operands[0], result);
 
     as.Bind(&end);
@@ -3859,7 +3879,6 @@ FAST_HANDLE(BSF) {
 }
 
 FAST_HANDLE(TZCNT) {
-    ASSERT(Extensions::B);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -3869,10 +3888,8 @@ FAST_HANDLE(TZCNT) {
 
     Label end;
     as.LI(result, instruction.operand_width);
-    as.LI(cf, 1);
-    as.BEQZ(src, &end);
-    as.LI(cf, 0);
-    as.CTZ(result, src);
+    as.SEQZ(cf, src);
+    CTZ(rec, as, result, src);
     as.J(&end);
 
     as.Bind(&end);
@@ -4038,8 +4055,36 @@ FAST_HANDLE(BLSR) {
     rec.setOperandGPR(&operands[0], result);
 }
 
+void BSR(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, int size) {
+    if (Extensions::B) {
+        if (size == 64) {
+            as.CLZ(result, src);
+            as.XORI(result, result, 63);
+        } else if (size == 32) {
+            as.CLZW(result, src);
+            as.XORI(result, result, 31);
+        } else if (size == 16) {
+            as.SLLI(result, src, 16);
+            as.CLZW(result, result);
+            as.XORI(result, result, 15);
+        } else {
+            UNREACHABLE();
+        }
+    } else {
+        // This would infinitely loop if src is 0, but we know it's not
+        biscuit::GPR scratch = rec.scratch();
+        Label loop, escape;
+        as.LI(result, size - 1);
+        as.Bind(&loop);
+        as.SRL(scratch, src, result);
+        as.ANDI(scratch, scratch, 1);
+        as.BNEZ(scratch, &escape);
+        as.ADDI(result, result, -1);
+        as.Bind(&escape);
+    }
+}
+
 FAST_HANDLE(BSR) {
-    ASSERT(Extensions::B);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -4049,19 +4094,7 @@ FAST_HANDLE(BSR) {
     Label end;
     as.SEQZ(zf, src);
     as.BEQZ(src, &end);
-    if (instruction.operand_width == 64) {
-        as.CLZ(result, src);
-        as.XORI(result, result, 63);
-    } else if (instruction.operand_width == 32) {
-        as.CLZW(result, src);
-        as.XORI(result, result, 31);
-    } else if (instruction.operand_width == 16) {
-        as.SLLI(result, src, 16);
-        as.CLZW(result, result);
-        as.XORI(result, result, 15);
-    } else {
-        UNREACHABLE();
-    }
+    BSR(rec, as, result, src, instruction.operand_width);
     rec.setOperandGPR(&operands[0], result);
 
     as.Bind(&end);
@@ -4072,17 +4105,50 @@ FAST_HANDLE(BSR) {
     rec.setFlagUndefined(X86_REF_AF);
 }
 
+void REV8(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src) {
+    if (Extensions::B) {
+        as.REV8(result, src);
+    } else {
+        biscuit::GPR scratch = rec.scratch();
+        // TODO: make this bswap implementation better
+        as.SRLI(scratch, src, 8);
+        as.ANDI(result, scratch, 0xFF);
+        as.SLLI(result, result, 8);
+        as.SRLI(scratch, src, 16);
+        as.ANDI(scratch, scratch, 0xFF);
+        as.OR(result, result, scratch);
+        as.SLLI(result, result, 8);
+        as.SRLI(scratch, src, 24);
+        as.ANDI(scratch, scratch, 0xFF);
+        as.OR(result, result, scratch);
+        as.SLLI(result, result, 8);
+        as.SRLI(scratch, src, 32);
+        as.ANDI(scratch, scratch, 0xFF);
+        as.OR(result, result, scratch);
+        as.SLLI(result, result, 8);
+        as.SRLI(scratch, src, 40);
+        as.ANDI(scratch, scratch, 0xFF);
+        as.OR(result, result, scratch);
+        as.SLLI(result, result, 8);
+        as.SRLI(scratch, src, 48);
+        as.ANDI(scratch, scratch, 0xFF);
+        as.OR(result, result, scratch);
+        as.SLLI(result, result, 8);
+        as.SRLI(scratch, src, 56);
+        as.OR(result, result, scratch);
+    }
+}
+
 FAST_HANDLE(BSWAP) {
-    ASSERT(Extensions::B);
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR result = rec.scratch();
 
     if (size == X86_SIZE_DWORD) {
-        as.REV8(result, dst);
+        REV8(rec, as, result, dst);
         as.SRLI(result, result, 32);
     } else if (size == X86_SIZE_QWORD) {
-        as.REV8(result, dst);
+        REV8(rec, as, result, dst);
     } else {
         UNREACHABLE();
     }
