@@ -18,6 +18,10 @@ int main() {
     };
 
     int pid = vfork();
+    if (pid == -1) {
+        return 1;
+    }
+
     if (pid == 0) {
         // vfork process
         // We must immediatelly execvpe without hurting the parent process
@@ -26,7 +30,7 @@ int main() {
     }
 
     // Parent process
-    int status;
+    int status = -1;
     waitpid(pid, &status, 0);
 
     int exit_status = WEXITSTATUS(status);
