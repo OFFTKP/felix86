@@ -518,13 +518,13 @@ FAST_HANDLE(RET_rsb) {
     // // Our prediction was correct, just return to ra
     // rec.popCalltrace();
     // as.LD(ra, 0, sp);
-    as.ADDI(sp, sp, 16);
-    as.RET();
+    // as.ADDI(sp, sp, 16);
+    // as.RET();
 
-    // Prediction was incorrect, return to dispatcher
-    as.Bind(&misprediction);
+    // // Prediction was incorrect, return to dispatcher
+    // as.Bind(&misprediction);
 
-    rec.popCalltrace();
+    // rec.popCalltrace();
     as.ADDI(sp, sp, 16);
     rec.backToDispatcher();
     rec.stopCompiling();
