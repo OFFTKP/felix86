@@ -132,8 +132,6 @@ struct ThreadState {
 
     bool mode32 = false; // 32-bit execution mode, changes the behavior of some instructions and the decoder
 
-    std::array<u64, 16> saved_host_gprs;
-
     std::unique_ptr<Recompiler> recompiler;
 
     biscuit::RMode GetRMode() {

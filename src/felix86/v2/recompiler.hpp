@@ -400,6 +400,10 @@ struct Recompiler {
 
     void setFlag(x86_ref_e flag);
 
+    void trace(u64 address);
+
+    void printTrace();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -448,8 +452,6 @@ private:
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
 
-    std::array<BlockCacheEntry, 1 << block_cache_bits> block_cache{};
-
     ZydisDecodedInstruction instruction{};
     ZydisDecodedOperand operands[10]{};
 
@@ -490,4 +492,10 @@ private:
     LMUL current_grouping = LMUL::M1;
     bool rounding_mode_set = false;
     int perf_fd = -1;
+
+    std::array<u64, 16> saved_host_gprs;
+    std::vector<u64> block_trace;
+    size_t block_trace_index = 0;
+
+    std::array<BlockCacheEntry, 1 << block_cache_bits> block_cache{};
 };

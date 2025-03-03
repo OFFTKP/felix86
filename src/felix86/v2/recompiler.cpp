@@ -66,6 +66,10 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
     ZydisDecoderInit(&decoder, mode, stack_width);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
+
+    if (g_block_trace > 0) {
+        block_trace.resize(g_block_trace);
+    }
 }
 
 Recompiler::~Recompiler() {
@@ -76,8 +80,9 @@ void Recompiler::emitDispatcher() {
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
     // Save the current register state of callee-saved registers and return address
-    static_assert(sizeof(ThreadState::saved_host_gprs) == saved_gprs.size() * 8);
-    as.ADDI(t0, a0, offsetof(ThreadState, saved_host_gprs));
+    static_assert(sizeof(saved_host_gprs) == saved_gprs.size() * 8);
+    as.LI(t0, (u64)this);
+    as.ADDI(t0, t0, offsetof(Recompiler, saved_host_gprs));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
         as.SD(saved_gprs[i], i * sizeof(u64), t0);
     }
@@ -119,7 +124,8 @@ void Recompiler::emitDispatcher() {
 
     exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();
 
-    as.ADDI(t0, a0, offsetof(ThreadState, saved_host_gprs));
+    as.LI(t0, (u64)this);
+    as.ADDI(t0, t0, offsetof(Recompiler, saved_host_gprs));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
         as.LD(saved_gprs[i], i * sizeof(u64), t0);
     }
@@ -2408,5 +2414,20 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
                 return;
             }
         }
+    }
+}
+
+void Recompiler::trace(u64 address) {
+    block_trace[block_trace_index] = address;
+    block_trace_index++;
+    block_trace_index %= block_trace.size();
+}
+
+void Recompiler::printTrace() {
+    for (int i = 0; i < block_trace.size(); i++) {
+        int j = (block_trace_index + i) % block_trace.size();
+        u64 address = block_trace[j];
+        printf("#%d ", i);
+        print_address(address);
     }
 }

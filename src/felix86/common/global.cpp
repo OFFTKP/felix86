@@ -33,6 +33,7 @@ bool g_no_sse4_1 = false;
 bool g_no_sse4_2 = false;
 bool g_print_all_insts = false;
 bool g_dont_inline_syscalls = false;
+int g_block_trace = 0;
 bool g_mode32 = false;
 bool g_rsb = true;
 bool g_perf = false;
@@ -263,6 +264,14 @@ void initialize_globals() {
     if (is_truthy(dont_rsb_env)) {
         g_rsb = false;
         environment += "\nFELIX86_DONT_RSB";
+    }
+
+    const char* block_trace = getenv("FELIX86_BLOCK_TRACE");
+    if (block_trace) {
+        g_block_trace = std::stoi(block_trace);
+        g_dont_link = true; // needed to trace blocks
+        environment += "\nFELIX86_BLOCK_TRACE=";
+        environment += block_trace;
     }
 
     const char* executable_base = getenv("FELIX86_EXECUTABLE_BASE");

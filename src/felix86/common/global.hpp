@@ -63,6 +63,7 @@ extern bool g_single_step;
 extern bool g_log_instructions;
 extern bool g_dont_protect_pages;
 extern bool g_print_all_calls;
+extern int g_block_trace;
 extern bool g_no_sse2;
 extern bool g_no_sse3;
 extern bool g_no_ssse3;
