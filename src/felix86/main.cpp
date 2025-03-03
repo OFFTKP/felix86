@@ -211,11 +211,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string arg0 = config.executable_path;
-    ASSERT(!arg0.empty());
-    ASSERT(arg0[0] == '/');
-    config.argv[0] = arg0;
-
     if (config.executable_path.empty()) {
         ERROR("Executable path not specified");
         return 1;
