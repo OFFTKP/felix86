@@ -557,6 +557,12 @@ x86_ref_e Recompiler::zydisToRef(ZydisRegister reg) {
         ref = (x86_ref_e)(X86_REF_XMM0 + (reg - ZYDIS_REGISTER_XMM0));
         break;
     }
+    case ZYDIS_REGISTER_RIP: {
+        return X86_REF_RIP;
+    }
+    case ZYDIS_REGISTER_ST0 ... ZYDIS_REGISTER_ST7: {
+        return (x86_ref_e)(X86_REF_ST0 + (reg - ZYDIS_REGISTER_ST0));
+    }
     default: {
         ERROR("Unhandled register %s", ZydisRegisterGetString(reg));
         ref = X86_REF_RAX;
