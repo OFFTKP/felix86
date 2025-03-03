@@ -13,8 +13,8 @@ void felix86_cpuid(ThreadState* state);
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
 void SetCmpFlags(const HandlerMetadata& meta, Recompiler& rec, Assembler& as, biscuit::GPR dst, biscuit::GPR src, biscuit::GPR result,
-                 x86_size_e size, bool zext_src = false) {
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+                 x86_size_e size, bool zext_src = false, bool always_emit = false) {
+    if (always_emit || rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
         biscuit::GPR test = rec.scratch();
         if (zext_src) {
             rec.zext(test, src, size);
@@ -25,23 +25,23 @@ void SetCmpFlags(const HandlerMetadata& meta, Recompiler& rec, Assembler& as, bi
         rec.popScratch();
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+    if (always_emit || rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
         rec.updateParity(result);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+    if (always_emit || rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
         rec.updateAuxiliarySub(dst, src);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+    if (always_emit || rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
         rec.updateZero(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+    if (always_emit || rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
         rec.updateSign(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+    if (always_emit || rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         rec.updateOverflowSub(dst, src, result, size);
     }
 }
@@ -2946,7 +2946,7 @@ FAST_HANDLE(CMPSB) {
 
     as.SUB(result, src1, src2);
 
-    SetCmpFlags(meta, rec, as, src1, src2, result, size);
+    SetCmpFlags(meta, rec, as, src1, src2, result, size, false, HAS_REP /* always emit flags for rep */);
 
     as.ADD(rdi, rdi, temp);
     as.ADD(rsi, rsi, temp);
@@ -3001,7 +3001,7 @@ FAST_HANDLE(SCASB) {
 
     as.SUB(result, rax, src2);
 
-    SetCmpFlags(meta, rec, as, rax, src2, result, size);
+    SetCmpFlags(meta, rec, as, rax, src2, result, size, false, HAS_REP /* always emit flags for rep */);
 
     as.ADD(rdi, rdi, temp);
 

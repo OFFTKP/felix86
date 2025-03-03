@@ -68,7 +68,7 @@ void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& des
     std::error_code ec;
     std::filesystem::copy(full_path, dest / lib, ec);
     if (ec) {
-        ERROR("Error while copying: %s", ec.message().c_str());
+        ERROR("Error while copying %s: %s", ec.message().c_str(), full_path.c_str());
     }
 }
 
@@ -81,7 +81,7 @@ void copy_recursive(std::filesystem::path& dir, const std::filesystem::path& des
     std::error_code ec;
     std::filesystem::copy(dir, dest, std::filesystem::copy_options::overwrite_existing | std::filesystem::copy_options::recursive, ec);
     if (ec) {
-        ERROR("Error while copying: %s", ec.message().c_str());
+        ERROR("Error while copying %s: %s", dir.c_str(), ec.message().c_str());
     }
 }
 
