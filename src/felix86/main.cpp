@@ -201,8 +201,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    config.executable_path = std::filesystem::absolute(config.executable_path);
-
     if (!g_rootfs_path.empty()) {
         // Remove rootfs from executable path, if the user prepended it
         if (config.executable_path.string().find(g_rootfs_path.string()) == 0) {
