@@ -13,7 +13,7 @@ FAST_HANDLE(FLD) {
 FAST_HANDLE(FILD) {
     biscuit::GPR top = rec.getTOP();
     biscuit::FPR ftemp = rec.scratchFPR();
-    biscuit::GPR value = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR value = rec.getOperandGPR(&operands[0]);
     as.FCVT_D_L(ftemp, value);
     rec.pushST(top, ftemp);
 }
