@@ -2146,7 +2146,7 @@ void Recompiler::enableSignals() {
     as.SB(x0, offsetof(ThreadState, signals_disabled), threadStatePointer());
 }
 
-biscuit::GPR Recompiler::getTOP() {
+biscuit::GPR Recompiler::getTOP() { // TODO: allocate a reg for this maybe
     biscuit::GPR top = scratch();
     as.LB(top, offsetof(ThreadState, fpu_top), threadStatePointer());
     return top;
@@ -2178,13 +2178,13 @@ biscuit::FPR Recompiler::getST(biscuit::GPR top, ZydisDecodedOperand* operand) {
             biscuit::FPR st = scratchFPR();
             as.FLW(st, 0, leaAddBase(operand));
             as.FCVT_D_S(st, st);
-            popScratch();
+            popScratch(); // the gpr address scratch
             return st;
         }
         case 64: {
             biscuit::FPR st = scratchFPR();
             as.FLD(st, 0, leaAddBase(operand));
-            popScratch();
+            popScratch(); // the gpr address scratch
             return st;
         }
         case 80: {
@@ -2211,6 +2211,13 @@ void Recompiler::pushST(biscuit::GPR top, biscuit::FPR st) {
     as.FSD(st, offsetof(ThreadState, fp), address);
 }
 
+void Recompiler::popST(biscuit::GPR top) {
+    biscuit::GPR address = scratch();
+    as.ADDI(address, top, 1);
+    as.ANDI(address, address, 0b111);
+    setTOP(address);
+}
+
 void Recompiler::setST(biscuit::GPR top, int index, biscuit::FPR st) {
     biscuit::GPR address = scratch();
     if (index != 0) {
@@ -2223,6 +2230,30 @@ void Recompiler::setST(biscuit::GPR top, int index, biscuit::FPR st) {
     as.ADD(address, address, threadStatePointer());
     as.FSD(st, offsetof(ThreadState, fp), address);
     popScratch();
+}
+
+void Recompiler::setST(biscuit::GPR top, ZydisDecodedOperand* operand, biscuit::FPR value) {
+    if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(operand->reg.value >= ZYDIS_REGISTER_ST0 && operand->reg.value <= ZYDIS_REGISTER_ST7);
+        return setST(top, operand->reg.value - ZYDIS_REGISTER_ST0, value);
+    } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        switch (operand->size) {
+        case 32: {
+            biscuit::FPR temp = scratchFPR();
+            as.FCVT_S_D(temp, value);
+            as.FSW(temp, 0, leaAddBase(operand));
+            popScratch(); // the gpr address scratch
+            break;
+        }
+        case 64: {
+            as.FSD(value, 0, leaAddBase(operand));
+            popScratch(); // the gpr address scratch
+            break;
+        }
+        }
+    } else {
+        UNREACHABLE();
+    }
 }
 
 void Recompiler::setTOP(biscuit::GPR new_top) {

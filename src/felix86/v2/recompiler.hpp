@@ -73,6 +73,8 @@ struct Recompiler {
 
     void pushST(biscuit::GPR top, biscuit::FPR st);
 
+    void popST(biscuit::GPR top);
+
     void setTOP(biscuit::GPR top);
 
     biscuit::FPR getST(biscuit::GPR top, int index);
@@ -80,6 +82,8 @@ struct Recompiler {
     biscuit::FPR getST(biscuit::GPR top, ZydisDecodedOperand* operand);
 
     void setST(biscuit::GPR top, int index, biscuit::FPR value);
+
+    void setST(biscuit::GPR top, ZydisDecodedOperand* operand, biscuit::FPR value);
 
     biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
 
