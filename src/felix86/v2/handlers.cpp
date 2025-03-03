@@ -46,6 +46,96 @@ void SetCmpFlags(const HandlerMetadata& meta, Recompiler& rec, Assembler& as, bi
     }
 }
 
+// TODO: test, finish, and integrate. Would only work for no flag usage
+bool NoFlagsFastOp(Recompiler& rec, Assembler& as, biscuit::GPR result, void (Assembler::*func)(GPR, GPR, GPR),
+                   void (Assembler::*funcW)(GPR, GPR, GPR), ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, bool rotate) {
+    if (!Extensions::B && (instruction.operand_width == 8 || instruction.operand_width == 16)) {
+        // Optimizing 8/16 bit operands needs B extension
+        return false;
+    }
+
+    switch (instruction.operand_width) {
+    case 8: {
+        return false;
+    }
+    case 16: {
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            operands[0].size = 64; // Load the entire destination register
+        }
+
+        // This will load the full register
+        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+
+        if (rotate) {
+            if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                operands[1].size = 64; // Load the entire source register
+            }
+
+            biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+            biscuit::GPR src_left = rec.scratch();
+            as.SLLI(src_left, src, 64 - 16);
+            as.RORI(result, dst, 16);
+            (as.*func)(result, result, src_left);
+            as.RORI(result, result, 48);
+            rec.popScratch();
+        } else {
+            biscuit::GPR src_zexted;
+            if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER || operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+                src_zexted = rec.getOperandGPR(&operands[1]);
+            } else if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                src_zexted = rec.scratch();
+                // Don't load with getOperandGPR as that loads a sign extended value
+                as.LI(src_zexted, (u16)operands[1].imm.value.u);
+                rec.popScratch();
+            }
+            // for OR/XOR/AND we don't need to rotate
+            (as.*func)(result, dst, src_zexted);
+        }
+
+        operands[0].size = 16;
+        operands[1].size = 16;
+        break;
+    }
+    case 32: {
+        // The optimization here is that we don't zext the operands
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            operands[0].size = 64; // Just load the whole register
+        }
+
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            operands[1].size = 64; // Ditto
+        }
+
+        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+        (as.*funcW)(result, dst, src);
+        rec.zext(result, result, X86_SIZE_DWORD);
+
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            operands[0].size = 32; // Restore the size in case we need to use it later
+        }
+
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            operands[1].size = 32; // Ditto
+        }
+        break;
+    }
+    case 64: {
+        // Easiest, just grab the registers and do the operation directly on the destination reg
+        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+        (as.*func)(result, dst, src);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    return true;
+}
+
 int size_to_bytes(int size) {
     switch (size) {
     case 8: {
