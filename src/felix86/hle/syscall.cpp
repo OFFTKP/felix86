@@ -450,6 +450,21 @@ void felix86_syscall(ThreadState* state) {
         STRACE("socketpair(%d, %d, %d, %p) = %d", (int)rdi, (int)rsi, (int)rdx, (void*)r10, (int)result);
         break;
     }
+    case felix86_x86_64_setgid: {
+        result = HOST_SYSCALL(setgid, rdi);
+        STRACE("setgid(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_setuid: {
+        result = HOST_SYSCALL(setuid, rdi);
+        STRACE("setuid(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_umount2: {
+        result = HOST_SYSCALL(umount2, rdi, rsi);
+        STRACE("umount2(%s, %lx) = %d", (const char*)rdi, rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_symlink: {
         std::string oldpath = (char*)rdi;
         if (is_proc_self_exe(oldpath)) {
