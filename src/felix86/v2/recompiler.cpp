@@ -2313,6 +2313,7 @@ bool Recompiler::tryInlineSyscall() {
         CASE(felix86_x86_64_writev, 3);
         CASE(felix86_x86_64_clock_gettime, 2);
         CASE(felix86_x86_64_gettimeofday, 2);
+        CASE(felix86_x86_64_futex, 6);
 
 #undef CASE
     default: {
@@ -2387,11 +2388,25 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
     // If any of the operands modifies RAX/EAX/AX/AL/AH we discard its old value by setting it to -1, which will not
     // inline to any syscall
     for (int i = 0; i < opcount; i++) {
-        bool is_rax = operands[i].type == ZYDIS_OPERAND_TYPE_REGISTER && zydisToRef(operands[i].reg.value) == X86_REF_RAX;
-        bool modified = operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE;
-        if (is_rax && modified) {
-            rax_value = -1;
-            return;
+        if (operands[i].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            bool is_rax = false;
+            switch (operands[i].reg.value) {
+            case ZYDIS_REGISTER_AL:
+            case ZYDIS_REGISTER_AH:
+            case ZYDIS_REGISTER_AX:
+            case ZYDIS_REGISTER_EAX:
+            case ZYDIS_REGISTER_RAX:
+                is_rax = true;
+                break;
+            default: {
+                break;
+            }
+            }
+            bool modified = operands[i].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE;
+            if (is_rax && modified) {
+                rax_value = -1;
+                return;
+            }
         }
     }
 }
