@@ -1237,9 +1237,41 @@ void felix86_syscall(ThreadState* state) {
         std::vector<const char*> argv;
         std::vector<const char*> envp;
 
-        argv.push_back("/proc/self/exe");
+        argv.push_back("/proc/self/exe"); // emulator itself
         if (rsi) {
             const char** guest_argv = (const char**)rsi;
+            guest_argv++;
+
+            if (path.find('/') == std::string::npos) {
+                // If there's no '/' characters, this is probably just a filename by itself
+                // That means we need to look for the absolute path in PATH
+                bool found = false;
+                std::string PATH = getenv("PATH");
+                size_t current_start = 0;
+                size_t size = PATH.size();
+                for (size_t i = 0; i < size; i++) {
+                    if (PATH[i] == ':' || i == size - 1) {
+                        // Set it to 0 so that the string creation ends there
+                        if (PATH[i] == ':')
+                            PATH[i] = '\0';
+                        std::filesystem::path dir = PATH.data() + current_start;
+                        current_start = i + 1;
+                        std::filesystem::path executable = dir / path;
+                        if (std::filesystem::exists(executable) && std::filesystem::is_regular_file(executable)) {
+                            path = executable;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!found) {
+                    ERROR("Failed to find %s during execve", path.c_str());
+                }
+            }
+
+            argv.push_back(path.c_str());
+
             while (*guest_argv) {
                 argv.push_back(*guest_argv);
                 guest_argv++;
