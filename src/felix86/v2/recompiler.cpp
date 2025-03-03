@@ -310,20 +310,9 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
         }
         }
 
-        // When we want to print all instructions used
-        // if (g_print_all_insts) {
-        //     static std::unordered_map<std::string, bool> seen;
-
-        //     ZydisDisassembledInstruction disassembled;
-        //     ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip, (u8*)meta.rip, 15, &disassembled);
-        //     std::string instr = disassembled.text;
-        //     if (seen.find(instr) == seen.end()) {
-        //         seen[instr] = true;
-        //         fflush(stdout);
-        //         PLAIN("%s", instr.c_str());
-        //         fflush(stdout);
-        //     }
-        // }
+        if (!g_dont_inline_syscalls) {
+            checkModifiesRax(instruction, operands);
+        }
 
         meta.rip += instruction.length;
 
