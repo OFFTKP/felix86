@@ -1303,6 +1303,7 @@ void felix86_syscall(ThreadState* state) {
         }
         envp.push_back("__FELIX86_LAUNCHED=1");
         envp.push_back("__FELIX86_EXECVE=1");
+        envp.push_back("LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/felix86/lib");
         envp.push_back(nullptr);
 
         std::string args = "";
