@@ -480,8 +480,6 @@ void Elf::Load(const std::filesystem::path& path) {
         switch (phdr.type()) {
         case PT_LOAD: {
             if (phdr.filesz() == 0) {
-                ERROR("Loadable segment has no data in file %s", path.c_str());
-                break;
             }
 
             VERBOSE("Segment %d: %lx-%lx", i, phdr.vaddr(), phdr.vaddr() + phdr.memsz());
@@ -503,13 +501,19 @@ void Elf::Load(const std::filesystem::path& path) {
                 prot |= PROT_EXEC;
             }
 
-            void* addr = mmap((void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
-            VERBOSE("Running mmap(%p, %lx, 0, MAP_PRIVATE | MAP_FIXED, %d, %lx)", (void*)segment_base, segment_size, fd, offset);
+            if (segment_size) {
+                void* addr = mmap((void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
+                VERBOSE("Running mmap(%p, %lx, 0, MAP_PRIVATE | MAP_FIXED, %d, %lx)", (void*)segment_base, segment_size, fd, offset);
 
-            if (addr == MAP_FAILED) {
-                ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
-            } else if (addr != (void*)segment_base) {
-                ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
+                if (addr == MAP_FAILED) {
+                    ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
+                } else if (addr != (void*)segment_base) {
+                    ERROR("Failed to allocate memory at requested address for segment in file %s", path.c_str());
+                }
+            } else if (phdr.memsz() == 0) {
+                // Both filesz and memsz are 0?
+                // filesz can be 0 as long as memsz is not 0, such as for bss
+                ERROR("Loadable segment has zero size in file %s", path.c_str());
             }
 
             unmap_me.push_back({(void*)segment_base, segment_size});
