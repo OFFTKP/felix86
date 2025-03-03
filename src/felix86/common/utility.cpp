@@ -686,13 +686,17 @@ void push_calltrace(ThreadState* state, u64 address) {
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
         print_address(state->rip.toHost().raw());
-        dprintf(g_output_fd, "rbp: %lx rsp: %lx\n", state->gprs[X86_REF_RBP], state->gprs[X86_REF_RSP]);
     }
 }
 
 void pop_calltrace(ThreadState* state) {
     if (state->calltrace.empty()) {
         return;
+    }
+
+    if (g_print_all_calls) {
+        dprintf(g_output_fd, "Thread %ld returning: ", state->tid);
+        print_address(state->rip.toHost().raw());
     }
 
     state->calltrace.pop_back();
