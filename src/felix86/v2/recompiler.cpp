@@ -2316,6 +2316,8 @@ bool Recompiler::tryInlineSyscall() {
         CASE(felix86_x86_64_ppoll, 5);
         CASE(felix86_x86_64_readv, 3);
         CASE(felix86_x86_64_writev, 3);
+        CASE(felix86_x86_64_clock_gettime, 2);
+        CASE(felix86_x86_64_gettimeofday, 2);
 
 #undef CASE
     default: {
