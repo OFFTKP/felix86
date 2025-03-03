@@ -10,8 +10,18 @@ FAST_HANDLE(FLD) {
     rec.pushST(top, st);
 }
 
-// FAST_HANDLE(FST) {
-//     biscuit::GPR top = rec.getTOP();
-//     biscuit::FPR st = rec.getST(top, &operands[0]);
-//     rec.writeST(top, &operands[1], st);
-// }
+FAST_HANDLE(FILD) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR ftemp = rec.scratchFPR();
+    biscuit::GPR value = rec.getOperandGPR(&operands[1]);
+    as.FCVT_D_L(ftemp, value);
+    rec.pushST(top, ftemp);
+}
+
+FAST_HANDLE(FSTP) {
+    WARN("FSTP, treating as NOP");
+}
+
+FAST_HANDLE(FSUBP) {
+    WARN("FSUBP, treating as NOP");
+}
