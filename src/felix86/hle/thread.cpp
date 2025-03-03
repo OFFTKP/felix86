@@ -256,6 +256,7 @@ long ForkMe(CloneArgs& host_clone_args) {
 long VForkMe(CloneArgs& args) {
     // Thank you FEX
     // https://github.com/FEX-Emu/FEX/pull/2690
+    int parent_pid = getpid();
     int pipes[2];
     ASSERT(pipe2(pipes, O_CLOEXEC) != -1);
 
@@ -265,6 +266,8 @@ long VForkMe(CloneArgs& args) {
         // Close the read end of the pipe.
         // Keep the write end open so the parent can poll it.
         close(pipes[0]);
+        std::string name = "VForkedFrom" + std::to_string(parent_pid);
+        prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
         LOG("vfork process %ld started", syscall(SYS_getpid));
         ThreadState* state = ThreadState::Get();
         if (args.new_rsp) {
@@ -292,9 +295,9 @@ long VForkMe(CloneArgs& args) {
         pollfd.events = POLLIN | POLLOUT | POLLRDHUP | POLLERR | POLLHUP | POLLNVAL;
 
         // Mask all signals until the child process returns.
-        sigset_t SignalMask{};
-        sigfillset(&SignalMask);
-        while (ppoll(&pollfd, 1, nullptr, &SignalMask) == -1 && errno == EINTR)
+        sigset_t mask{};
+        sigfillset(&mask);
+        while (ppoll(&pollfd, 1, nullptr, &mask) == -1 && errno == EINTR)
             ;
 
         // Close the read end now.

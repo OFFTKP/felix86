@@ -226,7 +226,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    pthread_setname_np(pthread_self(), "MainProcess");
+    g_execve_process = !!getenv("__FELIX86_EXECVE");
+
+    if (g_execve_process) {
+        pthread_setname_np(pthread_self(), "ExecveProcess");
+    } else {
+        pthread_setname_np(pthread_self(), "MainProcess");
+    }
 
     auto [exit_reason, exit_code] = Emulator::Start(config);
 

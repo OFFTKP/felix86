@@ -1231,10 +1231,8 @@ void felix86_syscall(ThreadState* state) {
             }
         }
         envp.push_back("__FELIX86_LAUNCHED=1");
+        envp.push_back("__FELIX86_EXECVE=1");
         envp.push_back(nullptr);
-
-        g_execve_process = true;
-        pthread_setname_np(pthread_self(), "ExecveProcess");
 
         std::string args = "";
         for (auto arg : argv) {
