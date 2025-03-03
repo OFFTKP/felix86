@@ -747,6 +747,16 @@ void felix86_syscall(ThreadState* state) {
         STRACE("pread64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
+    case felix86_x86_64_open: {
+        u64 rdi_old = rdi;
+        u64 rsi_old = rsi;
+        u64 rdx_old = rdx;
+        rdi = AT_FDCWD;
+        rsi = rdi_old;
+        rdx = rsi_old;
+        r10 = rdx_old;
+        [[fallthrough]]; // openat MUST be right after
+    }
     case felix86_x86_64_openat: {
         std::string path = (char*)rsi;
         if (path == "/run/systemd/userdb/") { // TODO: There's some bug in Qt apps with this path
