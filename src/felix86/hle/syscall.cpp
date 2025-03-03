@@ -445,6 +445,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("mount(%p, %p, %p, %lx, %p) = %d", (void*)rdi, (void*)rsi, (void*)rdx, r10, (void*)r8, (int)result);
         break;
     }
+    case felix86_x86_64_socketpair: {
+        result = HOST_SYSCALL(socketpair, rdi, rsi, rdx, r10);
+        STRACE("socketpair(%d, %d, %d, %p) = %d", (int)rdi, (int)rsi, (int)rdx, (void*)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_symlink: {
         std::string oldpath = (char*)rdi;
         if (is_proc_self_exe(oldpath)) {
