@@ -440,6 +440,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("chmod(%s, %d) = %d", path.c_str(), (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_mount: {
+        result = HOST_SYSCALL(mount, rdi, rsi, rdx, r10, r8);
+        STRACE("mount(%p, %p, %p, %lx, %p) = %d", (void*)rdi, (void*)rsi, (void*)rdx, r10, (void*)r8, (int)result);
+        break;
+    }
     case felix86_x86_64_symlink: {
         std::string oldpath = (char*)rdi;
         if (is_proc_self_exe(oldpath)) {
