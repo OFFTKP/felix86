@@ -2207,7 +2207,7 @@ void Recompiler::pushST(biscuit::GPR top, biscuit::FPR st) {
     as.ADDI(address, top, -1);
     as.ANDI(address, address, 0b111);
     setTOP(address);
-    as.AND(address, address, threadStatePointer());
+    as.ADD(address, address, threadStatePointer());
     as.FSD(st, offsetof(ThreadState, fp), address);
 }
 
