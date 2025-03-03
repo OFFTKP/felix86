@@ -370,6 +370,10 @@ struct Recompiler {
         return g_mode32 ? 4 : 8;
     }
 
+    x86_size_e addressWidth() {
+        return g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
+    }
+
     void updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);
 
     void updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size);
