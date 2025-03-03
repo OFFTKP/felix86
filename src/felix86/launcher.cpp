@@ -221,6 +221,8 @@ int main(int argc, const char** argv) {
 
     copy_recursive("/var/lib/dbus", rootfs / "var" / "lib" / "dbus");
     copy_recursive("/etc/mtab", rootfs / "etc" / "mtab");
+    copy_recursive("/etc/passwd", rootfs / "etc" / "passwd");
+    copy_recursive("/etc/passwd-", rootfs / "etc" / "passwd");
 
     std::filesystem::path has_mounted_var_path = "/run/felix86.mounted";
 
