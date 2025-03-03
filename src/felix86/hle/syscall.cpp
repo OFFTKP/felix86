@@ -455,6 +455,31 @@ void felix86_syscall(ThreadState* state) {
         STRACE("setgid(%d) = %d", (int)rdi, (int)result);
         break;
     }
+    case felix86_x86_64_setsid: {
+        result = HOST_SYSCALL(setsid, rdi);
+        STRACE("setsid(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
+    case felix86_x86_64_setreuid: {
+        result = HOST_SYSCALL(setreuid, rdi, rsi);
+        STRACE("setreuid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_setregid: {
+        result = HOST_SYSCALL(setregid, rdi, rsi);
+        STRACE("setregid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_setgroups: {
+        result = HOST_SYSCALL(setgroups, rdi, rsi);
+        STRACE("setgroups(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
+        break;
+    }
+    case felix86_x86_64_getgroups: {
+        result = HOST_SYSCALL(getgroups, rdi, rsi);
+        STRACE("getgroups(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_setuid: {
         result = HOST_SYSCALL(setuid, rdi);
         STRACE("setuid(%d) = %d", (int)rdi, (int)result);
