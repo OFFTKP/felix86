@@ -72,7 +72,8 @@ void copy_lib(const std::filesystem::path& lib, const std::filesystem::path& des
     }
 }
 
-void copy_recursive(std::filesystem::path& dir, const std::filesystem::path& dest) {
+void copy_recursive(const char* dir_cstr, const std::filesystem::path& dest) {
+    std::filesystem::path dir = dir_cstr;
     if (!std::filesystem::exists(dir)) {
         printf("I couldn't find %s to copy to the rootfs, may cause problems with some games", dir.c_str());
         return;
@@ -218,8 +219,8 @@ int main(int argc, const char** argv) {
     copy_lib("libc.so.6", libpath);
     copy_lib("ld-linux-riscv64-lp64d.so.1", libpath);
 
-    std::filesystem::path dbus("/var/lib/dbus");
-    copy_recursive(dbus, rootfs / "var" / "lib" / "dbus");
+    copy_recursive("/var/lib/dbus", rootfs / "var" / "lib" / "dbus");
+    copy_recursive("/etc/mtab", rootfs / "etc" / "mtab");
 
     std::filesystem::path has_mounted_var_path = "/run/felix86.mounted";
 
