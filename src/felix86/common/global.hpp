@@ -73,6 +73,7 @@ extern bool g_print_all_insts;
 extern bool g_mode32;
 extern bool g_rsb;
 extern bool g_perf;
+extern bool g_min_max_accurate;
 extern std::atomic_bool g_symbols_cached;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;

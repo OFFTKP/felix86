@@ -2562,6 +2562,15 @@ FAST_HANDLE(SUBPD) {
 }
 
 FAST_HANDLE(MINPS) {
+    if (!g_min_max_accurate && !g_paranoid) {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E32, 4);
+        as.VFMIN(dst, dst, src);
+        rec.setOperandVec(&operands[0], dst);
+        return;
+    }
+
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec nan_mask_1 = rec.scratchVec();
@@ -2590,6 +2599,15 @@ FAST_HANDLE(MINPS) {
 }
 
 FAST_HANDLE(MINPD) {
+    if (!g_min_max_accurate && !g_paranoid) {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 2);
+        as.VFMIN(dst, dst, src);
+        rec.setOperandVec(&operands[0], dst);
+        return;
+    }
+
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec nan_mask_1 = rec.scratchVec();
@@ -2812,6 +2830,15 @@ FAST_HANDLE(PMADDWD) {
 }
 
 FAST_HANDLE(MAXPS) {
+    if (!g_min_max_accurate && !g_paranoid) {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E32, 4);
+        as.VFMAX(dst, dst, src);
+        rec.setOperandVec(&operands[0], dst);
+        return;
+    }
+
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec nan_mask_1 = rec.scratchVec();
@@ -2840,6 +2867,15 @@ FAST_HANDLE(MAXPS) {
 }
 
 FAST_HANDLE(MAXPD) {
+    if (!g_min_max_accurate && !g_paranoid) {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 2);
+        as.VFMAX(dst, dst, src);
+        rec.setOperandVec(&operands[0], dst);
+        return;
+    }
+
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec nan_mask_1 = rec.scratchVec();
@@ -5270,15 +5306,8 @@ FAST_HANDLE(RCPSS) {
         as.LI(ones, 0x3F800000);
         as.VMV(temp, ones);
     }
-    as.VFDIV(temp, temp, src);
-
-    rec.setVectorState(SEW::E32, 4);
-
-    biscuit::Vec result = rec.scratchVec();
-    as.VMV(v0, 1);
-    as.VMERGE(result, dst, temp);
-
-    rec.setOperandVec(&operands[0], result);
+    as.VFDIV(dst, temp, src);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(RSQRTSS) {
@@ -5291,15 +5320,8 @@ FAST_HANDLE(RSQRTSS) {
     as.LI(ones, 0x3F800000);
     as.VMV(temp, ones);
     as.VFSQRT(temp2, src);
-    as.VFDIV(temp, temp, temp2);
-
-    rec.setVectorState(SEW::E32, 4);
-
-    biscuit::Vec result = rec.scratchVec();
-    as.VMV(v0, 1);
-    as.VMERGE(result, dst, temp);
-
-    rec.setOperandVec(&operands[0], result);
+    as.VFDIV(dst, temp, temp2);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(MOVLHPS) { // TODO: vmerge

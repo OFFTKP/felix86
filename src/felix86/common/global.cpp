@@ -33,6 +33,7 @@ bool g_no_sse4_1 = false;
 bool g_no_sse4_2 = false;
 bool g_print_all_insts = false;
 bool g_dont_inline_syscalls = false;
+bool g_min_max_accurate = false;
 int g_block_trace = 0;
 bool g_mode32 = false;
 bool g_rsb = true;
@@ -264,6 +265,12 @@ void initialize_globals() {
     if (is_truthy(dont_rsb_env)) {
         g_rsb = false;
         environment += "\nFELIX86_DONT_RSB";
+    }
+
+    const char* min_max_accurate_env = getenv("FELIX86_MIN_MAX_ACCURATE");
+    if (is_truthy(min_max_accurate_env)) {
+        g_min_max_accurate = true;
+        environment += "\nFELIX86_MIN_MAX_ACCURATE";
     }
 
     const char* block_trace = getenv("FELIX86_BLOCK_TRACE");
