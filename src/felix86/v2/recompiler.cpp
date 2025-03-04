@@ -223,7 +223,7 @@ HostAddress Recompiler::compile(HostAddress rip) {
 
         int locked = flock(perf_fd, LOCK_EX);
         ASSERT(locked == 0);
-        int written = write(perf_fd, buffer, string_size);
+        int written = syscall(SYS_write, perf_fd, buffer, string_size);
         ASSERT(written == string_size);
         flock(perf_fd, LOCK_UN);
     }

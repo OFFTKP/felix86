@@ -39,7 +39,7 @@ bool g_mode32 = false;
 bool g_rsb = true;
 bool g_perf = false;
 bool g_always_tso = false;
-bool g_dont_link_indirect = false;
+bool g_dont_link_indirect = true; // doesn't seem to impact performance from limited testing, so off by default
 std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
@@ -309,10 +309,10 @@ void initialize_globals() {
         environment += "\nFELIX86_DONT_LINK";
     }
 
-    const char* dont_link_indirect = getenv("FELIX86_DONT_LINK_INDIRECT");
-    if (is_truthy(dont_link_indirect)) {
-        g_dont_link_indirect = true;
-        environment += "\nFELIX86_DONT_LINK_INDIRECT";
+    const char* link_indirect = getenv("FELIX86_LINK_INDIRECT");
+    if (is_truthy(link_indirect)) {
+        g_dont_link_indirect = false;
+        environment += "\nFELIX86_LINK_INDIRECT";
     }
 
     const char* dont_protect_pages = getenv("FELIX86_DONT_PROTECT_PAGES");

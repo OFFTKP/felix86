@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/random.h>
-#include "biscuit/decoder.hpp"
 #include "felix86/common/script.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thread.hpp"
