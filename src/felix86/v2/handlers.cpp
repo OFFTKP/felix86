@@ -2161,11 +2161,11 @@ FAST_HANDLE(PUNPCKHQDQ) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, 2);
-    as.VMV(temp, src);
-    rec.setVectorState(SEW::E64, 1);
+    as.VMV(v0, 0b10);
     as.VSLIDE1DOWN(temp, dst, x0);
+    as.VMERGE(dst, temp, src);
 
-    rec.setOperandVec(&operands[0], temp);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(UNPCKLPS) { // Fuzzed
