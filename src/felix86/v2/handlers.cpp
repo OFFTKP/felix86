@@ -4943,48 +4943,20 @@ FAST_HANDLE(CMPXCHG) {
 
 void SCALAR(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew,
             u8 vlen, void (Assembler::*func)(Vec, Vec, Vec, VecMask)) {
-    biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(sew, vlen);
-    (as.*func)(temp, dst, src, VecMask::No);
-
-    if (sew == SEW::E32) {
-        rec.setVectorState(SEW::E32, 4);
-    } else if (sew == SEW::E64) {
-        rec.setVectorState(SEW::E64, 2);
-    } else {
-        UNREACHABLE();
-    }
-
-    biscuit::Vec result = rec.scratchVec();
-    as.VMV(v0, 1);
-    as.VMERGE(result, dst, temp);
-
-    rec.setOperandVec(&operands[0], result);
+    (as.*func)(dst, dst, src, VecMask::No);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 void SCALAR(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew,
             u8 vlen, void (Assembler::*func)(Vec, Vec, VecMask)) {
-    biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(sew, vlen);
-    (as.*func)(temp, src, VecMask::No);
-
-    if (sew == SEW::E32) {
-        rec.setVectorState(SEW::E32, 4);
-    } else if (sew == SEW::E64) {
-        rec.setVectorState(SEW::E64, 2);
-    } else {
-        UNREACHABLE();
-    }
-
-    biscuit::Vec result = rec.scratchVec();
-    as.VMV(v0, 1);
-    as.VMERGE(result, dst, temp);
-
-    rec.setOperandVec(&operands[0], result);
+    (as.*func)(dst, src, VecMask::No);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(DIVSS) {
