@@ -980,10 +980,7 @@ FAST_HANDLE(MOVQ) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
         rec.setVectorState(SEW::E64, 2);
-        as.VMV(v0, 0b10);
-
-        // Zero upper 64-bit elements (this will be useful for when we get to AVX)
-        as.VXOR(dst, dst, dst, VecMask::Yes);
+        as.VMV(dst, 0);
         as.VMV_SX(dst, src);
 
         rec.setOperandVec(&operands[0], dst);
@@ -995,10 +992,7 @@ FAST_HANDLE(MOVQ) {
             biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
             rec.setVectorState(SEW::E64, 2);
-            as.VMV(v0, 0b10);
-
-            // Zero upper 64-bit elements (this will be useful for when we get to AVX)
-            as.VXOR(dst, dst, dst, VecMask::Yes);
+            as.VMV(dst, 0);
             as.VMV_SX(dst, src);
 
             rec.setOperandVec(&operands[0], dst);
@@ -1011,15 +1005,15 @@ FAST_HANDLE(MOVQ) {
 
             rec.setOperandGPR(&operands[0], dst);
         } else {
-            biscuit::Vec result = rec.scratchVec();
+            biscuit::Vec dst = rec.getOperandVec(&operands[0]);
             biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
             rec.setVectorState(SEW::E64, 2);
-            as.VMV(v0, 0b01);
-            as.VMV(result, 0);
-            as.VOR(result, src, 0, VecMask::Yes);
+            as.VMV(dst, 0);
+            rec.setVectorState(SEW::E64, 1);
+            as.VMV(dst, src);
 
-            rec.setOperandVec(&operands[0], result);
+            rec.setOperandVec(&operands[0], dst);
         }
     }
 }
@@ -1041,10 +1035,7 @@ FAST_HANDLE(MOVD) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
         rec.setVectorState(SEW::E32, 4);
-        as.VMV(v0, 0b1110);
-
-        // Zero upper 32-bit elements (this will be useful for when we get to AVX)
-        as.VXOR(dst, dst, dst, VecMask::Yes);
+        as.VMV(dst, 0);
         as.VMV_SX(dst, src);
 
         rec.setOperandVec(&operands[0], dst);
@@ -1056,10 +1047,7 @@ FAST_HANDLE(MOVD) {
             biscuit::Vec dst = rec.getOperandVec(&operands[0]);
 
             rec.setVectorState(SEW::E32, 4);
-            as.VMV(v0, 0b1110);
-
-            // Zero upper 32-bit elements (this will be useful for when we get to AVX)
-            as.VXOR(dst, dst, dst, VecMask::Yes);
+            as.VMV(dst, 0);
             as.VMV_SX(dst, src);
 
             rec.setOperandVec(&operands[0], dst);
@@ -1072,15 +1060,15 @@ FAST_HANDLE(MOVD) {
 
             rec.setOperandGPR(&operands[0], dst);
         } else {
-            biscuit::Vec result = rec.scratchVec();
+            biscuit::Vec dst = rec.getOperandVec(&operands[0]);
             biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
             rec.setVectorState(SEW::E32, 4);
-            as.VMV(v0, 0b01);
-            as.VMV(result, 0);
-            as.VOR(result, src, 0, VecMask::Yes);
+            as.VMV(dst, 0);
+            rec.setVectorState(SEW::E32, 1);
+            as.VMV(dst, src);
 
-            rec.setOperandVec(&operands[0], result);
+            rec.setOperandVec(&operands[0], dst);
         }
     }
 }
@@ -5157,26 +5145,26 @@ FAST_HANDLE(CVTTPS2DQ) { // Fuzzed, returns 0x7FFF'FFFF instead of 0x8000'0000
 }
 
 FAST_HANDLE(CVTPS2DQ) {
-    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E32, 4);
-    as.VFCVT_X_F(result, src);
+    as.VFCVT_X_F(dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(CVTTPD2DQ) { // Fuzzed, same problem as cvttps2dq
-    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E32, 4, LMUL::MF2);
-    as.VFNCVT_RTZ_X_F(result, src);
+    as.VFNCVT_RTZ_X_F(dst, src);
 
     as.VMV(v0, 0b1100);
-    as.VAND(result, result, 0, VecMask::Yes);
+    as.VAND(dst, dst, 0, VecMask::Yes);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(CVTPD2DQ) {
@@ -5324,17 +5312,17 @@ FAST_HANDLE(RSQRTSS) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-FAST_HANDLE(MOVLHPS) { // TODO: vmerge
-    biscuit::Vec temp = rec.scratchVec();
-    biscuit::Vec iota = rec.scratchVec();
+FAST_HANDLE(MOVLHPS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E64, 2);
-    as.VMV(v0, 0b10);
-    as.VMV(temp, dst);
-    as.VMV(iota, 0);
-    as.VRGATHER(temp, src, iota, VecMask::Yes); // make only high element pick low from src
-    rec.setOperandVec(&operands[0], temp);
+    if (dst == src) { // VSLIDEUP dst/src overlap limitations
+        src = rec.scratchVec();
+        as.VMV(src, dst);
+    }
+
+    as.VSLIDEUP(dst, src, 1);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(FXSAVE) {
