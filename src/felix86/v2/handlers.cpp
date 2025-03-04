@@ -2990,19 +2990,11 @@ FAST_HANDLE(MOVSD_sse) {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setOperandVec(&operands[0], src);
     } else {
-        biscuit::Vec result = rec.scratchVec();
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
-        rec.setVectorState(SEW::E64, 2);
-        as.VMV(v0, 1);
-        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-            // Only when src is memory are the upper bits zeroed
-            as.VMV(result, 0);
-            as.VOR(result, src, 0, VecMask::Yes);
-        } else {
-            as.VMERGE(result, dst, src);
-        }
-        rec.setOperandVec(&operands[0], result);
+        rec.setVectorState(SEW::E64, 1);
+        as.VMV(dst, src);
+        rec.setOperandVec(&operands[0], dst);
     }
 }
 
@@ -5203,19 +5195,9 @@ FAST_HANDLE(MOVSS) {
     } else if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
-        biscuit::Vec result = rec.scratchVec();
-        rec.setVectorState(SEW::E32, 4);
-        as.VMV(v0, 1);
-        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-            // Only when src is memory are the upper bits zeroed
-            as.VMV(result, 0);
-            as.VOR(result, src, 0, VecMask::Yes);
-        } else if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            as.VMERGE(result, dst, src);
-        } else {
-            UNREACHABLE();
-        }
-        rec.setOperandVec(&operands[0], result);
+        rec.setVectorState(SEW::E32, 1);
+        as.VMV(dst, src);
+        rec.setOperandVec(&operands[0], dst);
     } else {
         UNREACHABLE();
     }

@@ -887,7 +887,8 @@ biscuit::GPR Recompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
         return gpr16;
     }
     case X86_SIZE_DWORD: {
-        if (!zexted_gprs[ref - X86_REF_RAX]) {
+        if (!zexted_gprs[ref - X86_REF_RAX] || g_paranoid) {
+            // Need to zext and store in scratch
             biscuit::GPR gpr32 = scratch();
             zext(gpr32, gpr, X86_SIZE_DWORD);
             return gpr32;
