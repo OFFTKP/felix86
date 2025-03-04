@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
+#include "biscuit/decoder.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -1333,13 +1334,15 @@ void Recompiler::restoreRoundingMode() {
 }
 
 void Recompiler::backToDispatcher(bool use_rsb) {
-    as.LD(t0, offsetof(ThreadState, compile_next_handler), threadStatePointer());
+    const u64 offset = (u64)compile_next_handler - (u64)as.GetCursorPointer();
+    ASSERT(IsValid2GBImm(offset));
+    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    as.AUIPC(t0, hi20);
     if (use_rsb) {
-        // This encoding pushes to the return stack buffer. The JALR in our dispatcher
-        // then uses `ra` to jump back which pops the stack buffer
-        as.JALR(ra, 0, t0); // DON'T change without also changing the heuristic JALR in jumpAndLink
+        as.JALR(ra, lo12, t0);
     } else {
-        as.JR(t0);
+        as.JR(t0, lo12);
     }
 }
 
@@ -1786,10 +1789,18 @@ void Recompiler::expirePendingLinks(HostAddress rip) {
     for (u8* link : pending_links) {
         bool use_rsb = false;
         u32 jump_inst = *(u32*)(link + 4);
-        // If it's `jalr t0`, we need to emit an rsb hinting jump
+        // If it uses `ra`, we need to emit an rsb hinting jump
         // `jalr t0` is emitted from backToDispatcher when needing RSB (ie from calls to reg)
-        constexpr u32 jalr_t0 = 0x000280e7;
-        if (jump_inst == jalr_t0) {
+        static biscuit::Decoder decoder;
+        DecodedInstruction instruction;
+        DecodedOperand operands[4];
+        DecoderStatus status = decoder.Decode(&jump_inst, 4, instruction, operands);
+        if (status != DecoderStatus::Ok) {
+            WARN("Couldn't decode instruction during expirePendingLinks");
+        }
+
+        if (instruction.mnemonic == Mnemonic::JALR && operands[0].GPR() == ra) {
+            ASSERT(g_rsb);
             use_rsb = true;
         }
 

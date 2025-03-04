@@ -124,8 +124,6 @@ struct ThreadState {
     std::shared_ptr<SignalHandlerTable> signal_handlers{};
     sigset_t signal_mask{};
 
-    void* compile_next_handler{};
-
     ExitReason exit_reason{};
 
     u8 exit_code{}; // process exit code

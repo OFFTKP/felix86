@@ -30,8 +30,6 @@ ThreadState::ThreadState(ThreadState* copy_state) {
 
         this->alt_stack = copy_state->alt_stack;
     }
-
-    this->compile_next_handler = recompiler->getCompileNext();
 }
 
 void ThreadState::InitializeKey() {
