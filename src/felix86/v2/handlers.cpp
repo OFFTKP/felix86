@@ -2156,18 +2156,16 @@ FAST_HANDLE(PUNPCKHDQ) {
 }
 
 FAST_HANDLE(PUNPCKHQDQ) {
-    biscuit::Vec temp1 = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec temp = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, 2);
-    as.VSLIDE1UP(temp1, src, x0);
-    as.VSLIDE1DOWN(temp2, dst, x0);
+    as.VMV(temp, src);
     rec.setVectorState(SEW::E64, 1);
-    as.VMV(temp1, temp2);
+    as.VSLIDE1DOWN(temp, dst, x0);
 
-    rec.setOperandVec(&operands[0], temp1);
+    rec.setOperandVec(&operands[0], temp);
 }
 
 FAST_HANDLE(UNPCKLPS) { // Fuzzed
