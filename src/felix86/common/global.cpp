@@ -64,10 +64,20 @@ HostAddress g_interpreter_end{};
 HostAddress g_executable_start{};
 HostAddress g_executable_end{};
 
+bool is_truthy(const char* str) {
+    if (!str) {
+        return false;
+    }
+
+    std::string lower = str;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    return lower == "true" || lower == "1" || lower == "yes" || lower == "on" || lower == "y" || lower == "enable";
+}
+
 bool is_running_under_perf() {
     // Always enable symbol emission when this is enabled, in case our detection fails
     const char* perf_env = getenv("FELIX86_PERF");
-    if (perf_env) {
+    if (is_truthy(perf_env)) {
         return true;
     }
 
@@ -111,16 +121,6 @@ void Extensions::Clear() {
     FELIX86_EXTENSIONS_TOTAL
 #undef X
     VLEN = 0;
-}
-
-bool is_truthy(const char* str) {
-    if (!str) {
-        return false;
-    }
-
-    std::string lower = str;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-    return lower == "true" || lower == "1" || lower == "yes" || lower == "on" || lower == "y" || lower == "enable";
 }
 
 std::string get_extensions() {

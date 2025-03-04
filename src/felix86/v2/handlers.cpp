@@ -2992,6 +2992,10 @@ FAST_HANDLE(MOVSD_sse) {
     } else {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            rec.setVectorState(SEW::E64, 2);
+            as.VMV(dst, 0);
+        }
         rec.setVectorState(SEW::E64, 1);
         as.VMV(dst, src);
         rec.setOperandVec(&operands[0], dst);
@@ -4298,9 +4302,8 @@ FAST_HANDLE(MOVLPS) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-        rec.setVectorState(SEW::E64, 2);
-        as.VMV(v0, 0b10);
-        as.VMERGE(dst, src, dst);
+        rec.setVectorState(SEW::E64, 1);
+        as.VMV(dst, src);
 
         rec.setOperandVec(&operands[0], dst);
     } else if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
@@ -5195,6 +5198,10 @@ FAST_HANDLE(MOVSS) {
     } else if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            rec.setVectorState(SEW::E64, 2);
+            as.VMV(dst, 0);
+        }
         rec.setVectorState(SEW::E32, 1);
         as.VMV(dst, src);
         rec.setOperandVec(&operands[0], dst);

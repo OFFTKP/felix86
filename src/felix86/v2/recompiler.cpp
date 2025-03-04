@@ -2445,7 +2445,7 @@ void Recompiler::trace(u64 address) {
 }
 
 void Recompiler::printTrace() {
-    for (int i = 0; i < block_trace.size(); i++) {
+    for (size_t i = 0; i < block_trace.size(); i++) {
         int j = (block_trace_index + i) % block_trace.size();
         u64 address = block_trace[j];
         printf("#%d ", i);
