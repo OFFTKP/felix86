@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include "biscuit/isa.hpp"
 #include "felix86/common/address.hpp"
 #include "felix86/common/log.hpp"

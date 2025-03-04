@@ -266,6 +266,8 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
 
     current_block_metadata->guest_address = meta.rip;
 
+    std::fill(zexted_gprs.begin(), zexted_gprs.end(), false);
+
     while (compiling) {
         resetScratch();
 
@@ -885,9 +887,14 @@ biscuit::GPR Recompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
         return gpr16;
     }
     case X86_SIZE_DWORD: {
-        biscuit::GPR gpr32 = scratch();
-        zext(gpr32, gpr, X86_SIZE_DWORD);
-        return gpr32;
+        if (!zexted_gprs[ref - X86_REF_RAX]) {
+            biscuit::GPR gpr32 = scratch();
+            zext(gpr32, gpr, X86_SIZE_DWORD);
+            return gpr32;
+        } else {
+            // Already zexted when this was last stored in this block
+            return gpr;
+        }
     }
     case X86_SIZE_QWORD: {
         return gpr;
@@ -962,12 +969,14 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
             as.SLLI(dest, reg, 32);
             as.SRLI(dest, dest, 32);
         }
+        zexted_gprs[ref - X86_REF_RAX] = true;
         break;
     }
     case X86_SIZE_QWORD: {
         biscuit::GPR dest = allocatedGPR(ref); // don't need to load as the entire register is overwritten
         if (dest != reg)
             as.MV(dest, reg);
+        zexted_gprs[ref - X86_REF_RAX] = false;
         break;
     }
     default: {
