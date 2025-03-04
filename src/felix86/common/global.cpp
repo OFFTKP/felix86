@@ -38,6 +38,8 @@ int g_block_trace = 0;
 bool g_mode32 = false;
 bool g_rsb = true;
 bool g_perf = false;
+bool g_always_tso = false;
+bool g_dont_link_indirect = false;
 std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
@@ -277,6 +279,7 @@ void initialize_globals() {
     if (block_trace) {
         g_block_trace = std::stoi(block_trace);
         g_dont_link = true; // needed to trace blocks
+        g_dont_link_indirect = true;
         environment += "\nFELIX86_BLOCK_TRACE=";
         environment += block_trace;
     }
@@ -302,7 +305,14 @@ void initialize_globals() {
     const char* dont_link = getenv("FELIX86_DONT_LINK");
     if (is_truthy(dont_link)) {
         g_dont_link = true;
+        g_dont_link_indirect = true;
         environment += "\nFELIX86_DONT_LINK";
+    }
+
+    const char* dont_link_indirect = getenv("FELIX86_DONT_LINK_INDIRECT");
+    if (is_truthy(dont_link_indirect)) {
+        g_dont_link_indirect = true;
+        environment += "\nFELIX86_DONT_LINK_INDIRECT";
     }
 
     const char* dont_protect_pages = getenv("FELIX86_DONT_PROTECT_PAGES");

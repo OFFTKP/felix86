@@ -57,6 +57,7 @@ extern bool g_calltrace;
 extern bool g_extensions_manually_specified;
 extern bool g_paranoid;
 extern bool g_dont_link;
+extern bool g_dont_link_indirect;
 extern bool g_dont_inline_syscalls;
 extern bool g_use_block_cache;
 extern bool g_single_step;
@@ -74,6 +75,7 @@ extern bool g_mode32;
 extern bool g_rsb;
 extern bool g_perf;
 extern bool g_min_max_accurate;
+extern bool g_always_tso;
 extern std::atomic_bool g_symbols_cached;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;
@@ -115,7 +117,8 @@ struct Extensions {
     X(Zfa)                                                                                                                                           \
     X(Zvbb)                                                                                                                                          \
     X(Xtheadcondmov)                                                                                                                                 \
-    X(Xtheadba)
+    X(Xtheadba)                                                                                                                                      \
+    X(TSO) /* no hardware has this so we don't care for now */
 
 #define X(ext) static bool ext;
     FELIX86_EXTENSIONS_TOTAL

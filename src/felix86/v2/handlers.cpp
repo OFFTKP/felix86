@@ -970,7 +970,6 @@ FAST_HANDLE(MOVQ) {
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
         rec.setVectorState(SEW::E64, 2);
-        // TODO: !!! <- don't we need to zero dst?
         as.VMV_XS(dst, src);
 
         rec.setOperandGPR(&operands[0], dst);
@@ -1094,7 +1093,11 @@ FAST_HANDLE(JMP) {
         rec.setRip(src);
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
-        rec.backToDispatcher();
+        if (!g_dont_link_indirect) {
+            rec.linkIndirect();
+        } else {
+            rec.backToDispatcher();
+        }
         rec.stopCompiling();
         break;
     }

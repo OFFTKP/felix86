@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/random.h>
+#include "biscuit/decoder.hpp"
 #include "felix86/common/script.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thread.hpp"
@@ -386,4 +387,71 @@ void Emulator::StartTest(const TestConfig& config, GuestAddress stack) {
     }
 
     Threads::StartThread(main_state);
+}
+
+void Emulator::LinkIndirect(u64 guest_address, u64 host_address, u8* link_address, ThreadState* state) {
+    Assembler& as = state->recompiler->getAssembler();
+
+    u8* before = as.GetCursorPointer();
+    as.SetCursorPointer(link_address);
+
+    Label unlink_indirect;
+    Literal guest(guest_address);
+    Literal host(host_address);
+    Literal unlink_address((u64)Emulator::UnlinkIndirect);
+    as.LD(t1, offsetof(ThreadState, rip), Recompiler::threadStatePointer());
+    as.LD(t0, &guest);
+    as.BNE(t0, t1, &unlink_indirect);
+    as.LD(t2, &host);
+    as.JR(t2);
+    as.Bind(&unlink_indirect);
+    as.LD(t2, &unlink_address);
+    as.JALR(t2);
+
+    // The instruction following is a jump that goes back exactly 10 instructions, the same amount that we have here
+    // Note: LD with Literal is 2 instructions -> AUIPC + LD. So we have 10 instructions here too.
+    u8* here = as.GetCursorPointer();
+    ASSERT(here - link_address == 10);
+
+    // We don't wanna overwrite this jump. Not only do we need it after we return from this function,
+    // but we are also gonna need it in case the comparison fails, as UnlinkIndirect will once again rewrite this
+    // chunk of code
+    as.SetCursorPointer(here + 4);
+
+    // Now overwrite these 3 literals from Recompiler::linkIndirect with our own
+    as.Place(&guest);
+    as.Place(&host);
+    as.Place(&unlink_address);
+
+    // Spooky self-modifying code over
+    flush_icache();
+
+    as.SetCursorPointer(before);
+}
+
+void Emulator::UnlinkIndirect() {
+    // This function is called when an indirect jump prediction fails once. One time is enough for it to not be worth
+    // the check anymore... for example OOP structs with vtables can change function pointers quite a bit so we would rather
+    // always jump to the dispatcher for those... So replace our link with a backToDispatcher
+
+    // This function takes no arguments, yet we have enough info to deduce where we are from the registers
+    // This is probably the most unhinged code I've written?
+    ThreadState* state;
+    u64 return_address;
+    static_assert(Recompiler::threadStatePointer() == s11); // in case we wanna change in the future
+    asm volatile("mv %0, s11" : "=r"(state));
+    asm volatile("mv %0, ra" : "=r"(return_address));
+
+    asm volatile("" ::: "memory"); // prevent compiler reorderings
+
+    Assembler& as = state->recompiler->getAssembler();
+    u8* link_address = (u8*)return_address - 10; // See reasoning in Emulator::LinkIndirect and Recompiler::linkIndirect
+    u8* before = as.GetCursorPointer();
+
+    as.SetCursorPointer(link_address);
+
+    // Replace the first two instructions with a back to dispatcher jump and forget whatever follows
+    state->recompiler->backToDispatcher();
+
+    as.SetCursorPointer(before);
 }

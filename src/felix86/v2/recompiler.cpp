@@ -2001,6 +2001,10 @@ void Recompiler::readMemoryNoBase(biscuit::GPR dest, biscuit::GPR address, i64 o
         break;
     }
     }
+
+    if (g_always_tso && !Extensions::TSO) {
+        as.FENCE(FenceOrder::R, FenceOrder::RW);
+    }
 }
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
@@ -2016,6 +2020,10 @@ void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset,
 }
 
 void Recompiler::writeMemoryNoBase(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
+    if (g_always_tso && !Extensions::TSO) {
+        as.FENCE(FenceOrder::RW, FenceOrder::W);
+    }
+
     switch (size) {
     case X86_SIZE_BYTE: {
         as.SB(src, offset, address);
@@ -2451,4 +2459,39 @@ void Recompiler::printTrace() {
         printf("#%d ", i);
         print_address(address);
     }
+}
+
+void Recompiler::linkIndirect() {
+    // Self modifying piece of code that rewrites itself as a check + link, where
+    // if the check fails it unlinks itself and always jumps to dispatcher
+    // We assume that we can use every register as they have been written back at this point.
+    Label back_here;
+    as.Bind(&back_here);
+
+    u8* start = as.GetCursorPointer();
+    Literal link_address((u64)start);
+    Literal compile_next((u64)Emulator::CompileNext);
+    Literal link_indirect((u64)Emulator::LinkIndirect);
+
+    // Get host address for block we wanna link to, get the guest address that should match when we jump there.
+    // AUIPC + LD + JALR + LD + AUIPC + LD + MV + AUIPC + LD + JALR = 10 instructions we can replace at most
+    as.LD(t0, &compile_next);
+    as.MV(a0, threadStatePointer());
+    as.JALR(t0);
+    // At this point, a0 has the host address, load a1 with the expected guest address
+    as.LD(a1, offsetof(ThreadState, rip), threadStatePointer());
+    // Put link address in a2
+    as.LD(a2, &link_address);
+    as.MV(a3, threadStatePointer());
+    as.LD(t0, &link_indirect);
+    as.JALR(t0); // (guest address, host address, link address, thread state)
+
+    // Emulator::LinkIndirect depends on the above sequence being 10 instructions
+    u8* here = as.GetCursorPointer();
+    ASSERT(here - start == 10);
+
+    as.J(&back_here);
+    as.Place(&compile_next);
+    as.Place(&link_indirect);
+    as.Place(&link_address);
 }

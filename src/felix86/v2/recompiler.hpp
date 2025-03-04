@@ -404,6 +404,8 @@ struct Recompiler {
 
     void printTrace();
 
+    void linkIndirect();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
