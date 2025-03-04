@@ -2120,11 +2120,39 @@ void PUNPCKH(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisD
 }
 
 FAST_HANDLE(PUNPCKLBW) {
-    PUNPCKL(rec, meta, as, instruction, operands, SEW::E8, 16);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec temp1 = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+
+    as.LI(shift, 8);
+    rec.setVectorState(SEW::E8, 16, LMUL::MF2);
+    as.VWADDU(temp1, dst, x0);
+    as.VWADDU(temp2, src, x0);
+    rec.setVectorState(SEW::E64, 2);
+    as.VSLL(temp2, temp2, shift);
+    as.VOR(dst, temp1, temp2);
+
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PUNPCKLWD) {
-    PUNPCKL(rec, meta, as, instruction, operands, SEW::E16, 8);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec temp1 = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+
+    as.LI(shift, 16);
+    rec.setVectorState(SEW::E16, 8, LMUL::MF2);
+    as.VWADDU(temp1, dst, x0);
+    as.VWADDU(temp2, src, x0);
+    rec.setVectorState(SEW::E64, 2);
+    as.VSLL(temp2, temp2, shift);
+    as.VOR(dst, temp1, temp2);
+
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PUNPCKLDQ) {
@@ -2146,7 +2174,19 @@ FAST_HANDLE(PUNPCKLDQ) {
 }
 
 FAST_HANDLE(PUNPCKLQDQ) {
-    PUNPCKL(rec, meta, as, instruction, operands, SEW::E64, 2);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+        operands[0].reg.value == operands[1].reg.value) {
+        WARN("Useless punpcklqdq?");
+        return;
+    }
+
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    as.VSLIDEUP(dst, src, 1);
+
+    rec.setOperandVec(operands, dst);
 }
 
 FAST_HANDLE(PUNPCKHBW) {
