@@ -2138,6 +2138,7 @@ FAST_HANDLE(PUNPCKLDQ) {
     rec.setVectorState(SEW::E32, 4, LMUL::MF2);
     as.VWADDU(temp1, dst, x0);
     as.VWADDU(temp2, src, x0);
+    rec.setVectorState(SEW::E64, 2);
     as.VSLL(temp2, temp2, shift);
     as.VOR(dst, temp1, temp2);
 
