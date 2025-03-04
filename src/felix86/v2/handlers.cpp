@@ -574,7 +574,11 @@ FAST_HANDLE(CALL_rsb) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
     } else {
-        rec.backToDispatcher(true); // true = push to rsb
+        if (g_dont_link_indirect) {
+            rec.backToDispatcher(true); // true = push to rsb
+        } else {
+            rec.linkIndirect();
+        }
     }
     u64 here = (u64)as.GetCursorPointer();
     ASSERT(here == start + 20);

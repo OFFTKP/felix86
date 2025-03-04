@@ -403,7 +403,11 @@ void Emulator::LinkIndirect(u64 host_address, u64 guest_address, u8* link_addres
     as.LD(t0, &guest);
     as.BNE(t0, t1, &unlink_indirect);
     as.LD(t2, &host);
-    as.JR(t2);
+    if (g_rsb) {
+        as.JALR(t2); // push to rsb
+    } else {
+        as.JR(t2);
+    }
     as.Bind(&unlink_indirect);
     as.NOP(); // important it's here, due to -11 * 4 in unlink indirect
     as.NOP();
