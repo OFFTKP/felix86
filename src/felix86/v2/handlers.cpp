@@ -589,9 +589,9 @@ FAST_HANDLE(CALL_rsb) {
 
 FAST_HANDLE(RET_rsb) {
     x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
     biscuit::GPR ra = rec.scratch();
     ASSERT(ra == biscuit::ra);
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
     biscuit::GPR scratch = rec.scratch();
     rec.readMemory(scratch, rsp, 0, size);
 
@@ -3747,32 +3747,28 @@ FAST_HANDLE(PSHUFD) {
 
 FAST_HANDLE(SHUFPS) {
     u8 imm = rec.getImmediate(&operands[2]);
-    u8 el0 = imm & 0b11;
-    u8 el1 = (imm >> 2) & 0b11;
-    u8 el2 = (imm >> 4) & 0b11;
-    u8 el3 = (imm >> 6) & 0b11;
+    u64 el0 = imm & 0b11;
+    u64 el1 = (imm >> 2) & 0b11;
+    u64 el2 = (imm >> 4) & 0b11;
+    u64 el3 = (imm >> 6) & 0b11;
 
     biscuit::Vec iota = rec.scratchVec();
-    biscuit::Vec iota2 = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec result = rec.scratchVec();
 
-    rec.setVectorState(SEW::E32, 4);
-    as.VMV(iota2, el3);
-    as.LI(temp, el2);
-    as.VSLIDE1UP(iota, iota2, temp);
-    as.LI(temp, el1);
-    as.VSLIDE1UP(iota2, iota, temp);
-    as.LI(temp, el0);
-    as.VSLIDE1UP(iota, iota2, temp);
+    rec.setVectorState(SEW::E64, 1);
+    u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
+    as.LI(temp, mask);
+    as.VMV_SX(iota, temp);
 
     as.VMV(v0, 0b11);
     as.VMV(result, 0);
-    as.VRGATHER(result, dst, iota, VecMask::Yes);
+    rec.setVectorState(SEW::E32, 4);
+    as.VRGATHEREI16(result, dst, iota, VecMask::Yes);
     as.VMV(v0, 0b1100);
-    as.VRGATHER(result, src, iota, VecMask::Yes);
+    as.VRGATHEREI16(result, src, iota, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }
