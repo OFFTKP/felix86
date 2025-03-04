@@ -110,16 +110,15 @@ void Recompiler::emitDispatcher() {
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
-    as.JR(a0);
-    // if (g_rsb) {
-    //     as.MV(ra, a0);
-    //     // "return" to the compiled function. This encoding hints to the
-    //     // return stack buffer to pop, which should have been pushed by a jalr
-    //     // when doing backToDispatcher or jumpAndLink
-    //     as.JR(ra);
-    // } else {
-    //     as.JR(a0);
-    // }
+    if (g_rsb) {
+        as.MV(ra, a0);
+        // "return" to the compiled function. This encoding hints to the
+        // return stack buffer to pop, which should have been pushed by a jalr
+        // when doing backToDispatcher or jumpAndLink
+        as.JR(ra);
+    } else {
+        as.JR(a0);
+    }
 
     as.Bind(&exit_dispatcher_label);
 
