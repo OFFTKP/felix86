@@ -18,7 +18,7 @@ struct Emulator {
 
     static void* CompileNext(ThreadState* state);
 
-    static void LinkIndirect(u64 guest_address, u64 host_address, u8* link_address, ThreadState* state);
+    static void LinkIndirect(u64 host_address, u64 guest_address, u8* link_address, ThreadState* state);
 
     static void UnlinkIndirect();
 

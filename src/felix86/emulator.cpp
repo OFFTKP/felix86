@@ -389,7 +389,7 @@ void Emulator::StartTest(const TestConfig& config, GuestAddress stack) {
     Threads::StartThread(main_state);
 }
 
-void Emulator::LinkIndirect(u64 guest_address, u64 host_address, u8* link_address, ThreadState* state) {
+void Emulator::LinkIndirect(u64 host_address, u64 guest_address, u8* link_address, ThreadState* state) {
     Assembler& as = state->recompiler->getAssembler();
 
     u8* before = as.GetCursorPointer();
@@ -405,9 +405,9 @@ void Emulator::LinkIndirect(u64 guest_address, u64 host_address, u8* link_addres
     as.LD(t2, &host);
     as.JR(t2);
     as.Bind(&unlink_indirect);
+    as.NOP(); // important it's here, due to -11 * 4 in unlink indirect
     as.LD(t2, &unlink_address);
     as.JALR(t2);
-    as.NOP();
 
     // The instruction following is a jump that goes back exactly 10 instructions, the same amount that we have here
     // Note: LD with Literal is 2 instructions -> AUIPC + LD. So we have 11 instructions here too.
@@ -424,10 +424,10 @@ void Emulator::LinkIndirect(u64 guest_address, u64 host_address, u8* link_addres
     as.Place(&host);
     as.Place(&unlink_address);
 
+    as.SetCursorPointer(before);
+
     // Spooky self-modifying code over
     flush_icache();
-
-    as.SetCursorPointer(before);
 }
 
 void Emulator::UnlinkIndirect() {
@@ -455,4 +455,6 @@ void Emulator::UnlinkIndirect() {
     state->recompiler->backToDispatcher();
 
     as.SetCursorPointer(before);
+
+    flush_icache();
 }
