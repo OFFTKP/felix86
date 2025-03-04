@@ -2128,7 +2128,20 @@ FAST_HANDLE(PUNPCKLWD) {
 }
 
 FAST_HANDLE(PUNPCKLDQ) {
-    PUNPCKL(rec, meta, as, instruction, operands, SEW::E32, 4);
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec temp1 = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+
+    as.LI(shift, 32);
+    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    as.VWADDU(temp1, dst, x0);
+    as.VWADDU(temp2, src, x0);
+    as.VSLL(temp2, temp2, shift);
+    as.VOR(dst, temp1, temp2);
+
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PUNPCKLQDQ) {
