@@ -2027,68 +2027,26 @@ FAST_HANDLE(MUL) {
     rec.setFlagUndefined(X86_REF_SF);
 }
 
-void PUNPCKL(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
-             SEW sew, u8 vlen) {
-    // Essentially two "vdecompress" (viota + vrgather) instructions
-    // If an element index is out of range ( vs1[i] >= VLMAX ) then zero is returned for the element value.
-    // This means we don't care to reduce the splat to only the first two elements
-    // Doing iota with these masks essentially creates something like
-    // [3 3 2 2 1 1 0 0] and [4 3 3 2 2 1 1 0]
-    // And the gather itself is also masked
-    // So for the reg it picks:
-    // [h g f e d c b a]
-    // [4 3 3 2 2 1 1 0]
-    // [0 1 0 1 0 1 0 1]
-    // [x d x c x b x a]
-    // And for the rm it picks:
-    // [p o n m l k j i]
-    // [3 3 2 2 1 1 0 0]
-    // [1 0 1 0 1 0 1 0]
-    // [l x k x j x i x]
-    // Which is the correct interleaving of the two vectors
-    // [h g f e d c b a]
-    // [p o n m l k j i]
-    // -----------------
-    // [l d k c j b i a]
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::GPR mask = rec.scratch();
-    biscuit::Vec iota = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-    as.LI(mask, 0b10101010);
-
-    rec.setVectorState(sew, vlen);
-    as.VMV(v0, mask);
-    as.VIOTA(iota, v0);
-    as.VMV(result, 0);
-    rec.vrgather(result, src, iota, VecMask::Yes);
-
-    as.VSRL(v0, v0, 1);
-    as.VIOTA(iota, v0);
-    rec.vrgather(result, dst, iota, VecMask::Yes);
-
-    rec.setOperandVec(&operands[0], result);
-}
-
 void PUNPCKH(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
              SEW sew, u8 vlen) {
     // Like PUNPCKL but we add a number to iota to pick the high elements
     int num = 0;
+    int size = 0;
+    biscuit::GPR shift = rec.scratch();
     switch (sew) {
     case SEW::E8: {
         num = 8;
+        size = 8;
         break;
     }
     case SEW::E16: {
         num = 4;
+        size = 16;
         break;
     }
     case SEW::E32: {
+        as.LI(shift, 32);
         num = 2;
-        break;
-    }
-    case SEW::E64: {
-        num = 1;
         break;
     }
     default: {
@@ -2099,57 +2057,50 @@ void PUNPCKH(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisD
 
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::GPR mask = rec.scratch();
-    biscuit::Vec iota = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-    as.LI(mask, 0b10101010);
+    biscuit::Vec temp1 = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
 
-    rec.setVectorState(sew, vlen);
-    as.VMV(v0, mask);
-    as.VIOTA(iota, v0);
-    as.VMV(result, 0);
-    as.VADD(iota, iota, num);
-    rec.vrgather(result, src, iota, VecMask::Yes);
+    rec.setVectorState(SEW::E8, 16, LMUL::MF2);
+    as.VWADDU(temp1, dst, x0);
+    as.VWADDU(temp2, src, x0);
+    rec.setVectorState(SEW::E64, 2);
+    if (sew == SEW::E32) {
+        as.VSLL(temp2, temp2, shift);
+    } else {
+        as.VSLL(temp2, temp2, size);
+    }
+    as.VOR(dst, temp1, temp2);
 
-    as.VSRL(v0, v0, 1);
-    as.VIOTA(iota, v0);
-    as.VADD(iota, iota, num);
-    rec.vrgather(result, dst, iota, VecMask::Yes);
-
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PUNPCKLBW) {
-    biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec temp1 = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
 
-    as.LI(shift, 8);
     rec.setVectorState(SEW::E8, 16, LMUL::MF2);
     as.VWADDU(temp1, dst, x0);
     as.VWADDU(temp2, src, x0);
     rec.setVectorState(SEW::E64, 2);
-    as.VSLL(temp2, temp2, shift);
+    as.VSLL(temp2, temp2, 8);
     as.VOR(dst, temp1, temp2);
 
     rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PUNPCKLWD) {
-    biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec temp1 = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
 
-    as.LI(shift, 16);
     rec.setVectorState(SEW::E16, 8, LMUL::MF2);
     as.VWADDU(temp1, dst, x0);
     as.VWADDU(temp2, src, x0);
     rec.setVectorState(SEW::E64, 2);
-    as.VSLL(temp2, temp2, shift);
+    as.VSLL(temp2, temp2, 16);
     as.VOR(dst, temp1, temp2);
 
     rec.setOperandVec(&operands[0], dst);
@@ -2201,7 +2152,18 @@ FAST_HANDLE(PUNPCKHDQ) {
 }
 
 FAST_HANDLE(PUNPCKHQDQ) {
-    PUNPCKH(rec, meta, as, instruction, operands, SEW::E64, 2);
+    biscuit::Vec temp1 = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    as.VSLIDE1UP(temp1, src, x0);
+    as.VSLIDE1DOWN(temp2, dst, x0);
+    rec.setVectorState(SEW::E64, 1);
+    as.VMV(temp1, temp2);
+
+    rec.setOperandVec(&operands[0], temp1);
 }
 
 FAST_HANDLE(UNPCKLPS) { // Fuzzed
@@ -3544,6 +3506,7 @@ void ROUND(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDec
     as.VFMV_FS(ft8, src);
 
     if (Extensions::Zfa) {
+        WARN_ONCE("Zfa extension code, untested");
         if (sew == SEW::E64) {
             as.FROUND_D(ft9, ft8, rmode);
         } else if (sew == SEW::E32) {
@@ -5334,9 +5297,16 @@ FAST_HANDLE(RCPSS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, 1);
-    biscuit::GPR ones = rec.scratch();
-    as.LI(ones, 0x3F800000);
-    as.VMV(temp, ones);
+    if (Extensions::Zfa) {
+        WARN_ONCE("Zfa extension code, untested");
+        biscuit::FPR one = rec.scratchFPR();
+        as.FLI_S(one, 1.0);
+        as.VFMV_SF(temp, one);
+    } else {
+        biscuit::GPR ones = rec.scratch();
+        as.LI(ones, 0x3F800000);
+        as.VMV(temp, ones);
+    }
     as.VFDIV(temp, temp, src);
 
     rec.setVectorState(SEW::E32, 4);
