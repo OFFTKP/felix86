@@ -2174,16 +2174,15 @@ FAST_HANDLE(PUNPCKLDQ) {
 }
 
 FAST_HANDLE(PUNPCKLQDQ) {
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER &&
-        operands[0].reg.value == operands[1].reg.value) {
-        WARN("Useless punpcklqdq?");
-        return;
-    }
-
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, 2);
+    if (dst == src) { // VSLIDEUP dst/src overlap limitations
+        src = rec.scratchVec();
+        as.VMV(src, dst);
+    }
+
     as.VSLIDEUP(dst, src, 1);
 
     rec.setOperandVec(operands, dst);
