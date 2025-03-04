@@ -2456,7 +2456,7 @@ void Recompiler::printTrace() {
     for (size_t i = 0; i < block_trace.size(); i++) {
         int j = (block_trace_index + i) % block_trace.size();
         u64 address = block_trace[j];
-        printf("#%d ", i);
+        printf("#%zu ", i);
         print_address(address);
     }
 }
@@ -2474,7 +2474,7 @@ void Recompiler::linkIndirect() {
     Literal link_indirect((u64)Emulator::LinkIndirect);
 
     // Get host address for block we wanna link to, get the guest address that should match when we jump there.
-    // AUIPC + LD + JALR + LD + AUIPC + LD + MV + AUIPC + LD + JALR = 10 instructions we can replace at most
+    // AUIPC + LD + MV + JALR + LD + AUIPC + LD + MV + AUIPC + LD + JALR = 11 instructions we can replace at most
     as.LD(t0, &compile_next);
     as.MV(a0, threadStatePointer());
     as.JALR(t0);
@@ -2486,9 +2486,9 @@ void Recompiler::linkIndirect() {
     as.LD(t0, &link_indirect);
     as.JALR(t0); // (guest address, host address, link address, thread state)
 
-    // Emulator::LinkIndirect depends on the above sequence being 10 instructions
+    // Emulator::LinkIndirect depends on the above sequence being 11 instructions
     u8* here = as.GetCursorPointer();
-    ASSERT(here - start == 10);
+    ASSERT(here - start == 11 * 4);
 
     as.J(&back_here);
     as.Place(&compile_next);

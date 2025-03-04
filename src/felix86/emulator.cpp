@@ -407,11 +407,12 @@ void Emulator::LinkIndirect(u64 guest_address, u64 host_address, u8* link_addres
     as.Bind(&unlink_indirect);
     as.LD(t2, &unlink_address);
     as.JALR(t2);
+    as.NOP();
 
     // The instruction following is a jump that goes back exactly 10 instructions, the same amount that we have here
-    // Note: LD with Literal is 2 instructions -> AUIPC + LD. So we have 10 instructions here too.
+    // Note: LD with Literal is 2 instructions -> AUIPC + LD. So we have 11 instructions here too.
     u8* here = as.GetCursorPointer();
-    ASSERT(here - link_address == 10);
+    ASSERT(here - link_address == 11 * 4);
 
     // We don't wanna overwrite this jump. Not only do we need it after we return from this function,
     // but we are also gonna need it in case the comparison fails, as UnlinkIndirect will once again rewrite this
@@ -445,7 +446,7 @@ void Emulator::UnlinkIndirect() {
     asm volatile("" ::: "memory"); // prevent compiler reorderings
 
     Assembler& as = state->recompiler->getAssembler();
-    u8* link_address = (u8*)return_address - 10; // See reasoning in Emulator::LinkIndirect and Recompiler::linkIndirect
+    u8* link_address = (u8*)return_address - 11 * 4; // See reasoning in Emulator::LinkIndirect and Recompiler::linkIndirect
     u8* before = as.GetCursorPointer();
 
     as.SetCursorPointer(link_address);
