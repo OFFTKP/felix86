@@ -568,8 +568,10 @@ FAST_HANDLE(CALL_rsb) {
     biscuit::GPR host_return_address = rec.scratch();
 
     // AUIPC + ADDI + SD + 2 instructions for jump = 20
+    // If there's indirect linking, the jump will take 11 * 4 = 44 bytes
+    int offset = (g_dont_link_indirect || operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) ? 20 : 20 + (11 * 4);
     as.AUIPC(host_return_address, 0);
-    as.ADDI(host_return_address, host_return_address, 20);
+    as.ADDI(host_return_address, host_return_address, offset);
     as.SD(host_return_address, 0, sp);
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
@@ -581,7 +583,7 @@ FAST_HANDLE(CALL_rsb) {
         }
     }
     u64 here = (u64)as.GetCursorPointer();
-    ASSERT(here == start + 20);
+    ASSERT(here == start + offset);
 
     // We could continue compiling instructions in this block. It's a bit tricky with software that use jits though.
     // For example you compile a piece of code until a call, and then garbage may follow so you start compiling garbage instructions.
