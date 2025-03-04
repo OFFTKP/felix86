@@ -572,9 +572,9 @@ FAST_HANDLE(CALL_rsb) {
     as.ADDI(host_return_address, host_return_address, 20);
     as.SD(host_return_address, 0, sp);
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
+        rec.jumpAndLink(meta.rip.add(instruction.length + displacement), false /* push to rsb */);
     } else {
-        rec.backToDispatcher(true); // true = push to rsb
+        rec.backToDispatcher(false); // true = push to rsb
     }
     u64 here = (u64)as.GetCursorPointer();
     ASSERT(here == start + 20);
@@ -614,9 +614,10 @@ FAST_HANDLE(RET_rsb) {
     as.BNE(scratch, prediction, &misprediction);
     // Our prediction was correct, just return to ra
     rec.popCalltrace();
-    as.LD(ra, 0, sp);
+    biscuit::GPR test = rec.scratch();
+    as.LD(test, 0, sp);
     as.ADDI(sp, sp, 16);
-    as.RET();
+    as.JR(test);
 
     // Prediction was incorrect, return to dispatcher
     as.Bind(&misprediction);
