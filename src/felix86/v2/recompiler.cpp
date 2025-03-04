@@ -59,8 +59,11 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
     metadata[19].reg = X86_REF_SF;
     metadata[20].reg = X86_REF_OF;
 
+    // Deduplicate code with clearcodecache -> emitNecessaryStuff
     emitDispatcher();
     emitSigreturnThunk();
+    emitUnlinkIndirectThunk();
+    start_of_code_cache = as.GetCursorPointer();
 
     ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     ZydisStackWidth stack_width = g_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
@@ -150,6 +153,20 @@ HostAddress Recompiler::emitSigreturnThunk() {
     return here;
 }
 
+HostAddress Recompiler::emitUnlinkIndirectThunk() {
+    HostAddress here{(u64)as.GetCursorPointer()};
+
+    unlink_indirect_thunk = (u8*)here.raw();
+
+    as.MV(a0, threadStatePointer());
+    as.MV(a1, ra);
+    as.ADDI(a1, a1, -11 * 4); // see justification in Recompiler::linkIndirect
+    as.LI(t0, (u64)Emulator::UnlinkIndirect);
+    as.JR(t0); // Tail jump, UnlinkIndirect is gonna return to ra
+
+    return here;
+}
+
 void Recompiler::clearCodeCache() {
     std::lock_guard lock(block_map_mutex);
     WARN("Clearing cache on thread %u", gettid());
@@ -159,6 +176,7 @@ void Recompiler::clearCodeCache() {
 
     emitDispatcher();
     emitSigreturnThunk();
+    emitUnlinkIndirectThunk();
     start_of_code_cache = as.GetCursorPointer();
 }
 

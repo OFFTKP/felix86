@@ -354,6 +354,8 @@ struct Recompiler {
 
     HostAddress emitSigreturnThunk();
 
+    HostAddress emitUnlinkIndirectThunk();
+
     auto& getBlockMap() {
         return block_metadata;
     }
@@ -405,6 +407,10 @@ struct Recompiler {
     void printTrace();
 
     void linkIndirect();
+
+    u8* getUnlinkIndirectThunk() {
+        return unlink_indirect_thunk;
+    }
 
 private:
     struct RegisterMetadata {
@@ -464,6 +470,8 @@ private:
     void* compile_next_handler{};
 
     void* start_of_code_cache{};
+
+    u8* unlink_indirect_thunk{};
 
     std::array<RegisterMetadata, 16 + 5 + 16> metadata{};
 

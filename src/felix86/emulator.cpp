@@ -406,8 +406,15 @@ void Emulator::LinkIndirect(u64 host_address, u64 guest_address, u8* link_addres
     as.JR(t2);
     as.Bind(&unlink_indirect);
     as.NOP(); // important it's here, due to -11 * 4 in unlink indirect
-    as.LD(t2, &unlink_address);
-    as.JALR(t2);
+    as.NOP();
+
+    const u64 offset = (u64)state->recompiler->getUnlinkIndirectThunk() - (u64)as.GetCursorPointer();
+    ASSERT(IsValid2GBImm(offset));
+    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+
+    as.AUIPC(t2, hi20);
+    as.JALR(ra, lo12, t2);
 
     // The instruction following is a jump that goes back exactly 10 instructions, the same amount that we have here
     // Note: LD with Literal is 2 instructions -> AUIPC + LD. So we have 11 instructions here too.
@@ -430,23 +437,13 @@ void Emulator::LinkIndirect(u64 host_address, u64 guest_address, u8* link_addres
     flush_icache();
 }
 
-void Emulator::UnlinkIndirect() {
+void Emulator::UnlinkIndirect(ThreadState* state, u8* link_address) {
     // This function is called when an indirect jump prediction fails once. One time is enough for it to not be worth
     // the check anymore... for example OOP structs with vtables can change function pointers quite a bit so we would rather
     // always jump to the dispatcher for those... So replace our link with a backToDispatcher
 
     // This function takes no arguments, yet we have enough info to deduce where we are from the registers
-    // This is probably the most unhinged code I've written?
-    ThreadState* state;
-    u64 return_address;
-    static_assert(Recompiler::threadStatePointer() == s11); // in case we wanna change in the future
-    asm volatile("mv %0, s11" : "=r"(state));
-    asm volatile("mv %0, ra" : "=r"(return_address));
-
-    asm volatile("" ::: "memory"); // prevent compiler reorderings
-
     Assembler& as = state->recompiler->getAssembler();
-    u8* link_address = (u8*)return_address - 11 * 4; // See reasoning in Emulator::LinkIndirect and Recompiler::linkIndirect
     u8* before = as.GetCursorPointer();
 
     as.SetCursorPointer(link_address);
