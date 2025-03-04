@@ -568,8 +568,8 @@ FAST_HANDLE(CALL_rsb) {
     biscuit::GPR host_return_address = rec.scratch();
 
     // AUIPC + ADDI + SD + 2 instructions for jump = 20
-    // If there's indirect linking, the jump will take 12 * 4 + 3 * 8 for the literals
-    int offset = (g_dont_link_indirect || operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) ? 20 : 20 + (12 * 4 + 3 * 8);
+    // If there's indirect linking, the jump will take 12 (AUIPC + ADDI + SD) + 12 * 4 + 3 * 8 for the linkIndirect
+    int offset = (g_dont_link_indirect || operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) ? 20 : 12 + (12 * 4 + 3 * 8);
     as.AUIPC(host_return_address, 0);
     as.ADDI(host_return_address, host_return_address, offset);
     as.SD(host_return_address, 0, sp);
