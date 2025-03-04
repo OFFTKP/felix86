@@ -208,6 +208,7 @@ int main(int argc, char* argv[]) {
             ASSERT(new_path.size() > 0);
             ASSERT(new_path[0] == '/');
             config.executable_path = new_path;
+            config.argv[0] = config.executable_path;
         }
     }
 
