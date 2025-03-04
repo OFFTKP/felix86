@@ -2059,10 +2059,14 @@ void PUNPCKH(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisD
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec temp1 = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::Vec dst_down = rec.scratchVec();
+    biscuit::Vec src_down = rec.scratchVec();
 
-    rec.setVectorState(SEW::E8, 16, LMUL::MF2);
-    as.VWADDU(temp1, dst, x0);
-    as.VWADDU(temp2, src, x0);
+    rec.setVectorState(sew, vlen, LMUL::MF2);
+    as.VSLIDEDOWN(dst_down, dst, num);
+    as.VSLIDEDOWN(src_down, src, num);
+    as.VWADDU(temp1, dst_down, x0);
+    as.VWADDU(temp2, src_down, x0);
     rec.setVectorState(SEW::E64, 2);
     if (sew == SEW::E32) {
         as.VSLL(temp2, temp2, shift);
