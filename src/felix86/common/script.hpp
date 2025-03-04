@@ -16,6 +16,11 @@ struct Script {
         return interpreter;
     }
 
+    const std::string& GetArgs() const {
+        return args;
+    }
+
 private:
     std::filesystem::path interpreter;
+    std::string args;
 };

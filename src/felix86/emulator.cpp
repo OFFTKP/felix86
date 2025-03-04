@@ -298,11 +298,29 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
         if (peek == Script::PeekResult::Script) {
             Script script(g_config.executable_path);
             const std::filesystem::path& interpreter = script.GetInterpreter();
+            const std::string& args = script.GetArgs();
 
             // Scripts start with a line that goes #! (usually) and that means
             // use the interpreter after #!. This can be bash, zsh, python, whatever.
             // So, set executable path to be the interpreter itself and push it to the front of argv.
+            // In that #! line args can follow and if they exist we need to push them to the front in opposite order
+            auto args_array = split_string(args, ' ');
+            for (auto it = args_array.rbegin(); it < args_array.rend(); it++) {
+                if (it->empty())
+                    continue;
+
+                g_config.argv.push_front(*it);
+            }
+
             g_config.argv.push_front(interpreter.string());
+
+            std::string final;
+            for (auto& arg : g_config.argv) {
+                final += arg + " ";
+            }
+
+            LOG("I built the script arguments: %s", final.c_str());
+
             g_config.executable_path = interpreter;
         } else {
             ERROR("Unknown file format: %s", g_config.executable_path.c_str());

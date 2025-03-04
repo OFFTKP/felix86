@@ -3,6 +3,7 @@
 #include <climits>
 #include <cstddef>
 #include <string>
+#include <vector>
 #include <stdbool.h>
 #include <stdint.h>
 #include "biscuit/isa.hpp"
@@ -105,3 +106,20 @@ bool felix86_bt(u64 address, i64 offset);
 void felix86_psadbw(u8* dst, u8* src);
 
 const char* print_exit_reason(int reason);
+
+inline std::vector<std::string> split_string(const std::string& txt, char ch) {
+    std::vector<std::string> strs;
+    size_t pos = txt.find(ch);
+    size_t initialPos = 0;
+
+    while (pos != std::string::npos) {
+        strs.push_back(txt.substr(initialPos, pos - initialPos));
+        initialPos = pos + 1;
+
+        pos = txt.find(ch, initialPos);
+    }
+
+    strs.push_back(txt.substr(initialPos, std::min(pos, txt.size()) - initialPos + 1));
+
+    return strs;
+}

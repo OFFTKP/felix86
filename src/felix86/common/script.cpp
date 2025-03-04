@@ -49,7 +49,7 @@ Script::Script(const std::filesystem::path& script) {
     size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    u8 data[PATH_MAX];
+    char data[PATH_MAX];
     fseek(file, 2, SEEK_SET); // skip #!
     size = std::min((size_t)PATH_MAX, size - 2);
     size_t size_read = fread(data, 1, size, file);
@@ -72,12 +72,28 @@ Script::Script(const std::filesystem::path& script) {
         ERROR("Could not parse interpreter for script file");
     }
 
-    char interpreter[PATH_MAX];
-    memset(interpreter, 0, PATH_MAX);
-    strncpy(interpreter, (char*)data, PATH_MAX);
+    int arg_start = -1;
+    for (int i = 0; i < PATH_MAX; i++) {
+        if (data[i] == 0) {
+            break;
+        } else if (data[i] == ' ') {
+            data[i] = 0;
+            arg_start = i + 1;
+            if (data[arg_start] == 0) {
+                arg_start = -1;
+            }
+            break;
+        }
+    }
+
+    std::string interpreter = data;
+    if (arg_start != -1) {
+        args = &data[arg_start];
+    }
 
     this->interpreter = interpreter;
 
+    LOG("Running a script file: %s, interpreter: %s, args: %s", script.c_str(), interpreter.c_str(), args.c_str());
     ASSERT(std::filesystem::exists(interpreter));
     ASSERT(std::filesystem::is_regular_file(interpreter));
 }
