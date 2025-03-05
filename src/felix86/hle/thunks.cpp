@@ -1,8 +1,10 @@
 #include <cmath>
-#include "felix86/common/log.hpp"
+#include <dlfcn.h>
 #include "felix86/common/state.hpp"
 #include "felix86/hle/thunks.hpp"
 #include "felix86/v2/recompiler.hpp"
+
+void* libGLX = nullptr;
 
 biscuit::GPR gprarg(int i) {
     switch (i) {
@@ -72,27 +74,83 @@ int x86offset(int i) {
     }
 }
 
+// Function pointers, obtained with dlopen+dlsym
+// u64's as we don't really care about the type here,
+// these are just pointers for the assembler
+namespace thunkptr {
+#define X(libname, name, ...) u64 name = 0;
+#include "glx_thunks.inc"
+#undef X
+} // namespace thunkptr
+
+void* glXGetProcAddressAndPrint(const char* name) {
+    printf("glXGetProcAddress: %s\n", name);
+    static void* actual = dlsym(libGLX, "glXGetProcAddress");
+    return ((void* (*)(const char*))actual)(name);
+}
+
+// Load the host function pointers in the thunkptr namespace with pointers using dlopen + dlsym
+void Thunks::initialize() {
+    thunkptr::glXGetProcAddress = glXGetProcAddressAndPrint;
+    thunkptr::glXGetProcAddressARB = glXGetProcAddressAndPrint;
+
+    if (g_thunk_gl) {
+        constexpr const char* path = "/felix86/lib/libGLX.so";
+        libGLX = dlopen(path, RTLD_LAZY);
+        if (!libGLX) {
+            WARN("I couldn't find libGLX at %s, disabling GL thunking...", path);
+            g_thunk_gl = false;
+            goto nogl;
+        } // having an else here would be uglier than a goto
+
+#define X(libname, name, ...)                                                                                                                        \
+    if (thunkptr::name == 0) {                                                                                                                       \
+        thunkptr::name = (u64)dlsym(libGLX, #name);                                                                                                  \
+        if (thunkptr::name == 0) {                                                                                                                   \
+            ERROR("Failed to find symbol %s in %s, error: %s", #name, "libGLX.so", dlerror());                                                       \
+        }                                                                                                                                            \
+    }
+#include "glx_thunks.inc"
+#undef X
+    }
+
+nogl:
+    return; // not having a return here is a C++23 extension. lol.
+}
+
 struct Thunk {
     const char* lib_name;
     const char* function_name;
     const char* signature;
-    u64 host_function;
+    u64 host_function = 0;
+    u64 constructor_function = 0;
+    u64 destructor_function = 0;
 };
 
-#define X(lib_name, function_name, signature, host_function) {lib_name, function_name, signature, (u64)host_function},
-#define GLIBC(function_name, signature) X("libc.so.6", #function_name, signature, ::function_name)
+#define X(lib_name, function_name, signature, constructor_function, destructor_function)                                                             \
+    {lib_name, #function_name, #signature, (u64)thunkptr::function_name, (u64)constructor_function, (u64)destructor_function},
 
-static Thunk thunks[] = {
-#include "glibc_thunks.inc"
+static Thunk thunk_metadata[] = {
+#include "glx_thunks.inc"
 };
 
-#undef GLIBC
+void call(Assembler& as, u64 target) {
+    i64 offset = target - (u64)as.GetCursorPointer();
+    if (IsValidJTypeImm(offset)) {
+        as.JAL(offset);
+    } else if (IsValid2GBImm(offset)) {
+        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        as.AUIPC(t0, hi20);
+        as.JALR(x1, lo12, t0);
+    } else {
+        as.LI(t0, target);
+        as.JALR(t0);
+    }
+}
+
+#undef GLX
 #undef X
-
-static constexpr u64 trampoline_code_size = 1024 * 1024; // 1MB of trampoline code cache
-static u8 trampoline_code_cache[trampoline_code_size];   // on BSS so that it may be closer to the host functions, may change in the future
-
-biscuit::Assembler Thunks::tas(trampoline_code_cache, trampoline_code_size); // The assembler for the thunks
 
 /*
     We use a custom signature format to describe the function.
@@ -122,17 +180,45 @@ biscuit::Assembler Thunks::tas(trampoline_code_cache, trampoline_code_size); // 
     Uses a0-a7, fa0-fa7. This is enough for our purposes.
     Return value goes in a0 or fa0.
 */
-void* Thunks::generateTrampoline(const std::string& signature, u64 target) {
-    ASSERT(signature.size() > 0);
+void* Thunks::generateTrampoline(Assembler& as, const char* name) {
+    if (!name) {
+        return nullptr;
+    }
 
-    void* trampoline = tas.GetCursorPointer();
+    const Thunk* thunk = nullptr;
+    std::string sname = name;
+    for (auto& meta : thunk_metadata) {
+        if (meta.function_name == sname) {
+            thunk = &meta;
+            break;
+        }
+    }
+
+    if (!thunk) {
+        return nullptr;
+    }
+
+    const std::string& signature = thunk->signature;
+    const u64 target = thunk->host_function;
+    const u64 constructor = thunk->constructor_function;
+    const u64 destructor = thunk->destructor_function;
+
+    ASSERT(signature.size() > 0);
+    ASSERT(target != 0);
+
+    void* trampoline = as.GetCursorPointer();
     char return_type = signature[0];
 
     ASSERT(signature[1] == '_'); // maybe in the future separating arguments and return type will be useful (it won't)
 
     // Push return address
-    tas.ADDI(sp, sp, -8);
-    tas.SD(ra, 0, sp);
+    as.ADDI(sp, sp, -8);
+    as.SD(ra, 0, sp);
+
+    if (constructor) {
+        as.MV(a0, Recompiler::threadStatePointer());
+        call(as, constructor);
+    }
 
     // Check if we have arguments
     std::vector<char> arguments;
@@ -145,32 +231,32 @@ void* Thunks::generateTrampoline(const std::string& signature, u64 target) {
     for (size_t i = 0; i < arguments.size(); i++) {
         switch (arguments[i]) {
         case 'q':
-            tas.LD(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
+            as.LD(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
             current_int_arg++;
             ASSERT(current_int_arg <= 6);
             break;
         case 'd':
-            tas.LWU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
+            as.LWU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
             current_int_arg++;
             ASSERT(current_int_arg <= 6);
             break;
         case 'w':
-            tas.LHU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
+            as.LHU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
             current_int_arg++;
             ASSERT(current_int_arg <= 6);
             break;
         case 'b':
-            tas.LBU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
+            as.LBU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
             current_int_arg++;
             ASSERT(current_int_arg <= 6);
             break;
         case 'F':
-            tas.FLW(fprarg(current_float_arg), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * current_float_arg), Recompiler::threadStatePointer());
+            as.FLW(fprarg(current_float_arg), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * current_float_arg), Recompiler::threadStatePointer());
             current_float_arg++;
             ASSERT(current_float_arg <= 8);
             break;
         case 'D':
-            tas.FLD(fprarg(current_float_arg), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * current_float_arg), Recompiler::threadStatePointer());
+            as.FLD(fprarg(current_float_arg), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * current_float_arg), Recompiler::threadStatePointer());
             current_float_arg++;
             ASSERT(current_float_arg <= 8);
             break;
@@ -180,49 +266,36 @@ void* Thunks::generateTrampoline(const std::string& signature, u64 target) {
         }
     }
 
-    i64 offset = target - (u64)tas.GetCursorPointer();
-
-    // Call the host function
-    if (IsValidJTypeImm(offset)) {
-        tas.JAL(offset);
-    } else if (IsValid2GBImm(offset)) {
-        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        tas.AUIPC(t0, hi20);
-        tas.JALR(x1, lo12, t0);
-    } else {
-        tas.LI(t0, target);
-        tas.JALR(t0);
-    }
+    call(as, target);
 
     // Save return value to the correct x86-64 register
     switch (return_type) {
     case 'b':
         // Preserves top bits in x86-64
-        tas.SB(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+        as.SB(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
         break;
     case 'w':
         // Preserves top bits in x86-64
-        tas.SH(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+        as.SH(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
         break;
     case 'd':
-        tas.SW(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
-        tas.SW(x0, offsetof(ThreadState, gprs) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
+        as.SW(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+        as.SW(x0, offsetof(ThreadState, gprs) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
         break;
     case 'q':
-        tas.SD(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+        as.SD(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
         break;
     case 'F':
-        tas.FSW(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
-        tas.SW(x0, offsetof(ThreadState, xmm) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
+        as.FSW(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
+        as.SW(x0, offsetof(ThreadState, xmm) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
         for (int i = 1; i < Recompiler::maxVlen() / 64; i++) {
-            tas.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
+            as.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
         }
         break;
     case 'D':
-        tas.FSD(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
+        as.FSD(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
         for (int i = 1; i < Recompiler::maxVlen() / 64; i++) {
-            tas.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
+            as.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
         }
         break;
     case 'v':
@@ -232,11 +305,16 @@ void* Thunks::generateTrampoline(const std::string& signature, u64 target) {
         ERROR("Unknown return type: %c", return_type);
     }
 
-    // Pop return address
-    tas.LD(ra, 0, sp);
-    tas.ADDI(sp, sp, 8);
+    if (destructor) {
+        as.MV(a0, Recompiler::threadStatePointer());
+        call(as, destructor);
+    }
 
-    tas.RET();
+    // Pop return address
+    as.LD(ra, 0, sp);
+    as.ADDI(sp, sp, 8);
+
+    as.RET();
 
     return trampoline;
 }

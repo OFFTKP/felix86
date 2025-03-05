@@ -1,4 +1,5 @@
 #include <Zydis/Zydis.h>
+#include "felix86/hle/thunks.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 void felix86_syscall(ThreadState* state);
@@ -787,6 +788,7 @@ FAST_HANDLE(SHL) {
 
     as.SLL(result, dst, count);
 
+    // TODO: separate function for immediate encoding to remove this branch
     as.BEQZ(count, &zero_source);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -2825,8 +2827,7 @@ FAST_HANDLE(PMADDWD) {
     rec.setVectorState(SEW::E16, 8);
     as.LI(mask, 0b01010101);
     as.VMV(v0, mask);
-    as.SLLI(mask, mask, 1);
-    as.VMV(vec_mask, mask);
+    as.VMNAND(vec_mask, v0, v0);
     as.VCOMPRESS(dst_compress, dst, v0);
     as.VCOMPRESS(src_compress, src, v0);
     as.VCOMPRESS(dst_compress2, dst, vec_mask);
@@ -6201,4 +6202,17 @@ FAST_HANDLE(PAVGW) {
     rec.setVectorState(SEW::E16, 8);
     as.VAADDU(dst, dst, src);
     rec.setOperandVec(&operands[0], dst);
+}
+
+// This is a pseudo-instruction that we generate in our thunked guest libraries to basically
+// notify the recompiler that whatever follows here is thunked code and it should call the equivalent
+// host function.
+// After this instruction (which must be 3 bytes as it always is INVLPG[RAX], see generator.cpp) follows
+// a null terminated string with the name of the host function we want to call. We pass this name to
+// Thunks::generateTrampoline to generate us a trampoline to go boing.
+FAST_HANDLE(INVLPG) {
+    ASSERT_MSG(instruction.length == 3, "Hit INVLPG instruction but it's not 3 bytes?");
+    const char* address = (const char*)(meta.rip.raw() + instruction.length);
+    void* trampoline = Thunks::generateTrampoline(as, address);
+    ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", address, (u64)address);
 }

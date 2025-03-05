@@ -38,6 +38,7 @@ int g_block_trace = 0;
 bool g_mode32 = false;
 bool g_rsb = true;
 bool g_perf = false;
+bool g_thunk_gl = false;
 bool g_always_tso = false;
 bool g_dont_link_indirect = true; // doesn't seem to impact performance from limited testing, so off by default
 std::atomic_bool g_symbols_cached = {false};
@@ -249,6 +250,12 @@ void initialize_globals() {
             g_rootfs_path = rootfs_path;
             environment += "\nFELIX86_ROOTFS_PATH=" + std::string(rootfs_path);
         }
+    }
+
+    const char* thunkgl_env = getenv("FELIX86_THUNK_GL");
+    if (is_truthy(thunkgl_env)) {
+        g_thunk_gl = true;
+        environment += "\nFELIX86_THUNK_GL";
     }
 
     const char* calltrace_env = getenv("FELIX86_CALLTRACE");

@@ -209,6 +209,7 @@ int main(int argc, const char** argv) {
     const std::filesystem::path rootfs = rootfs_env;
     const std::filesystem::path libpath = rootfs / "felix86" / "lib";
     const std::filesystem::path felix_jit_path = current_path.parent_path() / "felix86_jit";
+    ASSERT(std::filesystem::exists(felix_jit_path), "I couldn't find the `felix86_jit` executable, is it in the same directory as `felix86`?");
 
     // Copy every time to make rebuilding less painful
     std::filesystem::create_directories(rootfs / "felix86" / "lib");
