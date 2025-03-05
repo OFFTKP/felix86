@@ -5,7 +5,7 @@
 ## Required architecture
 You need a RISC-V board with `rv64gv` extensions.
 
-Furthermore, **you need a recent version of Linux like `6.11`**, so that there is vector extension support in signal handlers.
+Furthermore, **you need a recent version of Linux like `6.6`**, so that there is vector extension support in signal handlers.
 If you don't have a recent version of Linux, things may go wrong.
 
 Any extra extensions might be utilized, but `G` and `V` are mandatory.
