@@ -28,6 +28,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <linux/limits.h>
 #include <spawn.h>
 #include <sys/wait.h>
 
@@ -118,11 +119,20 @@ int main() {
         gcc_exe = gcc;
     }
 
+    char path[PATH_MAX];
+    size_t bytes = readlink("/proc/self/exe", path, PATH_MAX);
+    path[bytes] = 0;
+
+    std::filesystem::path exec = path;
+    chdir(exec.parent_path().c_str());
+
     // As we thunk more libraries, add them here
     // libGLX.so.1 generation
 #define X(libname, func, ...) source += gen_name(#func);
     {
         std::string source = gen_init();
+        source += "section .text\n";
+
 #include "glx_thunks.inc"
 
         // We need to export a data symbol with at least 312 bytes of space called
