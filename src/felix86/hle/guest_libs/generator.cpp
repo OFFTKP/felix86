@@ -124,6 +124,19 @@ int main() {
     {
         std::string source = gen_init();
 #include "glx_thunks.inc"
+
+        // We need to export a data symbol with at least 312 bytes of space called
+        // __GLXGL_CORE_FUNCTIONS for function pointers. Let's just give it 1024 as we have
+        // plenty of bytes to spare
+        source += R"(
+            section .data
+                global __GLXGL_CORE_FUNCTIONS
+                align 16
+            __GLXGL_CORE_FUNCTIONS:
+                times 1024 db 0
+        )";
+
+
         gen_finalize(source, "libGLX.so");
     }
 #undef X
