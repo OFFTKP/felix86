@@ -91,8 +91,8 @@ void* glXGetProcAddressAndPrint(const char* name) {
 
 // Load the host function pointers in the thunkptr namespace with pointers using dlopen + dlsym
 void Thunks::initialize() {
-    thunkptr::glXGetProcAddress = glXGetProcAddressAndPrint;
-    thunkptr::glXGetProcAddressARB = glXGetProcAddressAndPrint;
+    thunkptr::glXGetProcAddress = (u64)glXGetProcAddressAndPrint;
+    thunkptr::glXGetProcAddressARB = (u64)glXGetProcAddressAndPrint;
 
     if (g_thunk_gl) {
         constexpr const char* path = "/felix86/lib/libGLX.so";
