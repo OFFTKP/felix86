@@ -27,7 +27,7 @@ cmake -B build
 cmake --build build -j$(nproc)
 ```
 
-Make sure to [grab a RootFS](#rootfs) and then felix86 is ready to run!
+Make sure to [grab a RootFS](#rootfs), set the `FELIX86_ROOTFS` environment variable, and then felix86 is ready to run!
 
 ## QEMU
 
@@ -55,12 +55,19 @@ sudo -E gdb --args ./felix86 <my felix86 arguments>
 
 Make sure sudo has the `-E` flag so environment variables are passed to felix86!
 
+If you want to force a program to run as admin, set `FELIX86_ALLOW_ROOT=1`
+
 ## Profiling
-felix86 can emit JIT symbols for perf. You need to enable the `FELIX86_PERF` environment variable to enable this!
+felix86 can emit JIT symbols for perf. felix86 will try to detect perf if it starts with it attached, but if you want to attach it later you need to set the `FELIX86_PERF` environment variable to `1`!
 
 Example:
 ```
-sudo -E perf record -e cpu-clock -g ./felix86 <my felix86 arguments>
+sudo -E perf record -e cpu-clock ./felix86 <my felix86 arguments>
+```
+Or
+```
+# make sure FELIX86_PERF was set when running felix86
+perf record -e cpu-clock -p <felix86 pid> 
 ```
 
 The generated perf.data may need administrator permissions to view, either `chmod` it or run `perf report` with sudo.

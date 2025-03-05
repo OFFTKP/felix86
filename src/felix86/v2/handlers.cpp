@@ -3628,20 +3628,13 @@ FAST_HANDLE(MOVMSKPD) {
 }
 
 FAST_HANDLE(PMOVZXBQ) {
-    biscuit::GPR mask = rec.scratch();
-    biscuit::Vec iota = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, 2);
-    as.VID(iota); // iota with 64-bit elements will place the indices at the right locations
-    rec.setVectorState(SEW::E8, 16);
-    as.LI(mask, 0b00000001'00000001'00000001'00000001);
-    as.VMV(result, 0);
-    as.VMV(v0, mask);
-    as.VRGATHER(result, src, iota, VecMask::Yes);
+    as.VZEXTVF8(dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 void PCMPEQ(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew,
@@ -3847,6 +3840,8 @@ FAST_HANDLE(PSHUFB) {
     as.VRGATHER(tmp, dst, mask_masked);
 
     rec.setOperandVec(&operands[0], tmp);
+
+    ASSERT_MSG(Extensions::VLEN < 2048, "Woah... How did you get a 2048-bit VLEN device? Our PSHUFB implementation would break");
 }
 
 FAST_HANDLE(PBLENDW) { // Fuzzed
