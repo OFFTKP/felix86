@@ -49,7 +49,7 @@ struct Recompiler {
     Recompiler(Recompiler&&) = delete;
     Recompiler& operator=(Recompiler&&) = delete;
 
-    HostAddress compile(HostAddress rip);
+    HostAddress compile(ThreadState* state, HostAddress rip);
 
     inline Assembler& getAssembler() {
         return as;
@@ -360,7 +360,7 @@ struct Recompiler {
         return block_metadata;
     }
 
-    HostAddress getCompiledBlock(HostAddress rip);
+    HostAddress getCompiledBlock(ThreadState* state, HostAddress rip);
 
     void pushCalltrace();
 
@@ -448,7 +448,7 @@ private:
 
     void expirePendingLinks(HostAddress rip);
 
-    void clearCodeCache();
+    void clearCodeCache(ThreadState* state);
 
     void markPagesAsReadOnly(HostAddress start, HostAddress end);
 

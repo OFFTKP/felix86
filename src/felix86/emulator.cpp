@@ -233,7 +233,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
     g_dispatcher_exit_count++;
 
-    HostAddress next_block = thread_state->recompiler->getCompiledBlock(thread_state->GetRip().toHost());
+    HostAddress next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip().toHost());
 
     if (g_block_trace) {
         thread_state->recompiler->trace(thread_state->GetRip().toHost().raw());

@@ -111,6 +111,9 @@ void Recompiler::emitDispatcher() {
     // If it's not zero it has some exit reason, exit the dispatcher
     as.LBU(t2, offsetof(ThreadState, exit_reason), threadStatePointer());
     as.BNEZ(t2, &exit_dispatcher_label);
+    if (g_rsb) {
+        as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
+    }
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
@@ -167,7 +170,7 @@ HostAddress Recompiler::emitUnlinkIndirectThunk() {
     return here;
 }
 
-void Recompiler::clearCodeCache() {
+void Recompiler::clearCodeCache(ThreadState* state) {
     std::lock_guard lock(block_map_mutex);
     WARN("Clearing cache on thread %u", gettid());
     as.RewindBuffer();
@@ -178,12 +181,26 @@ void Recompiler::clearCodeCache() {
     emitSigreturnThunk();
     emitUnlinkIndirectThunk();
     start_of_code_cache = as.GetCursorPointer();
+
+    if (g_rsb) {
+        // Need to zero out the stack that rsb has used thus far.
+        // Because if the cache is cleared and we hit more RETs than calls,
+        // we are gonna be returning to potentially invalid places
+        constexpr int index = 1;
+        static_assert(saved_gprs[index] == sp);
+        u64 stack_start = saved_host_gprs[index];
+        u64 stack_end = state->current_sp;
+
+        for (u64 i = stack_start; i < stack_end; i++) {
+            *(u8*)i = 0;
+        }
+    }
 }
 
-HostAddress Recompiler::compile(HostAddress rip) {
+HostAddress Recompiler::compile(ThreadState* state, HostAddress rip) {
     size_t remaining_size = code_cache_size - as.GetCodeBuffer().GetCursorOffset();
     if (remaining_size < 100'000) { // less than ~100KB left, clear cache
-        clearCodeCache();
+        clearCodeCache(state);
     }
 
     std::lock_guard lock(block_map_mutex);
@@ -245,7 +262,7 @@ void Recompiler::markPagesAsReadOnly(HostAddress start, HostAddress end) {
     }
 }
 
-HostAddress Recompiler::getCompiledBlock(HostAddress rip) {
+HostAddress Recompiler::getCompiledBlock(ThreadState* state, HostAddress rip) {
     if (g_use_block_cache) {
         BlockCacheEntry& entry = block_cache[rip.raw() & ((1 << block_cache_bits) - 1)];
         if (entry.guest == rip) {
@@ -256,13 +273,13 @@ HostAddress Recompiler::getCompiledBlock(HostAddress rip) {
             entry.host = host;
             return host;
         } else {
-            return compile(rip);
+            return compile(state, rip);
         }
     } else {
         if (blockExists(rip)) {
             return getBlockMetadata(rip).address;
         } else {
-            return compile(rip);
+            return compile(state, rip);
         }
     }
 
@@ -2480,6 +2497,10 @@ void Recompiler::printTrace() {
 }
 
 void Recompiler::linkIndirect() {
+    if (g_rsb) {
+        as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
+    }
+
     // Self modifying piece of code that rewrites itself as a check + link, where
     // if the check fails it unlinks itself and always jumps to dispatcher
     // We assume that we can use every register as they have been written back at this point.
