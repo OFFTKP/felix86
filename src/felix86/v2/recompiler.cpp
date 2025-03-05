@@ -191,7 +191,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
         u64 stack_start = saved_host_gprs[index];
         u64 stack_end = state->current_sp;
 
-        for (u64 i = stack_start; i < stack_end; i++) {
+        for (u64 i = stack_end; i < stack_start; i++) {
             *(u8*)i = 0;
         }
     }
