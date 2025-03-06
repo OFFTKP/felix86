@@ -203,6 +203,8 @@ int main(int argc, char* argv[]) {
         // Dont pass these to the executable itself
         if (env.find("FELIX86_") != std::string::npos) {
             it = config.envp.erase(it);
+        } else if (env.find("LD_LIBRARY_PATH") != std::string::npos) {
+            it = config.envp.erase(it);
         } else {
             it++;
         }
