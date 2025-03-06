@@ -71,3 +71,11 @@ FAST_HANDLE(FSUBP) {
 FAST_HANDLE(FPREM) {
     WARN("Unhandled instruction FPREM, no operation");
 }
+
+FAST_HANDLE(FNSTENV) {
+    WARN("Unhandled instruction FNSTENV, no operation");
+}
+
+FAST_HANDLE(FNSTSW) {
+    WARN("Unhandled instruction FNSTSW, no operation");
+}
