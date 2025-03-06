@@ -138,15 +138,53 @@ int main() {
 
 #include "glx_thunks.inc"
 
-        // We need to export a data symbol with at least 312 bytes of space called
-        // __GLXGL_CORE_FUNCTIONS for function pointers. Let's just give it 1024 as we have
-        // plenty of bytes to spare
+        // We need to export this silly thingy __GLXGL_CORE_FUNCTIONS with function pointers
+        // Why it's needed? don't ask me. But apps use it.
         source += R"(
-            section .data
-                global __GLXGL_CORE_FUNCTIONS
-                align 16
+            section .data.rel.ro
+            global __GLXGL_CORE_FUNCTIONS
+            align 16
+
             __GLXGL_CORE_FUNCTIONS:
-                times 1024 db 0
+                dq glXChooseFBConfig
+                dq glXChooseVisual
+                dq glXCopyContext
+                dq glXCreateContext
+                dq glXCreateGLXPixmap
+                dq glXCreateNewContext
+                dq glXCreatePbuffer
+                dq glXCreatePixmap
+                dq glXCreateWindow
+                dq glXDestroyContext
+                dq glXDestroyGLXPixmap
+                dq glXDestroyPbuffer
+                dq glXDestroyPixmap
+                dq glXDestroyWindow
+                dq glXGetClientString
+                dq glXGetConfig
+                dq glXGetCurrentContext
+                dq glXGetCurrentDrawable
+                dq glXGetCurrentReadDrawable
+                dq glXGetFBConfigAttrib
+                dq glXGetFBConfigs
+                dq glXGetProcAddress
+                dq glXGetProcAddressARB
+                dq glXGetSelectedEvent
+                dq glXGetVisualFromFBConfig
+                dq glXIsDirect
+                dq glXMakeContextCurrent
+                dq glXMakeCurrent
+                dq glXQueryContext
+                dq glXQueryDrawable
+                dq glXQueryExtension
+                dq glXQueryExtensionsString
+                dq glXQueryServerString
+                dq glXQueryVersion
+                dq glXSelectEvent
+                dq glXSwapBuffers
+                dq glXUseXFont
+                dq glXWaitGL
+                dq glXWaitX
         )";
 
 
