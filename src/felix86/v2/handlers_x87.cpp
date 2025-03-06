@@ -67,3 +67,7 @@ FAST_HANDLE(FSUB) {
 FAST_HANDLE(FSUBP) {
     OP(&Assembler::FSUB_D, rec, as, instruction, operands, true);
 }
+
+FAST_HANDLE(FPREM) {
+    WARN("Unhandled instruction FPREM, no operation");
+}

@@ -355,5 +355,6 @@ X(FDIV)
 X(FDIVP)
 X(FSUB)
 X(FSUBP)
+X(FPREM)
 
 X(INVLPG) /* thunking dummy instruction */
