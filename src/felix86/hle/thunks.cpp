@@ -267,8 +267,9 @@ void Thunks::initialize() {
     const std::filesystem::path glx_path = find_lib(glx_name);
 
     const char* ld_lib_path = getenv("LD_LIBRARY_PATH");
-    if (!ld_lib_path || std::string(ld_lib_path).find("/felix86/lib") == std::string::npos) {
-        ERROR("When initializing thunks, LD_LIBRARY_PATH does not contain /felix86/lib, so dlopen would not find the libraries");
+    const char* ld_lib_expected = "/felix86/lib:/felix86/lib/riscv64-linux-gnu";
+    if (!ld_lib_path || std::string(ld_lib_path) != ld_lib_expected) {
+        ERROR("When initializing thunks, LD_LIBRARY_PATH had an unexpected value (not %s), so dlopen would not find the libraries", ld_lib_expected);
     }
 
     if (glx_path.empty()) {
