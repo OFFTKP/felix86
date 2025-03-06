@@ -5,6 +5,7 @@
 #include "felix86/v2/recompiler.hpp"
 
 #include <X11/Xlibint.h>
+#include <X11/Xutil.h>
 
 static void* libGLX = nullptr;
 static void* libX11 = nullptr;
@@ -14,6 +15,7 @@ static std::unordered_map<void*, void*> host_to_guest;
 static std::unordered_map<void*, void*> guest_to_host;
 
 Display* felix86_XOpenDisplay(const char* name) {
+    ASSERT(name);
     static Display* (*xopendisplay_ptr)(const char*) = (decltype(xopendisplay_ptr))dlsym(libX11, "XOpenDisplay");
     return xopendisplay_ptr(name);
 }
@@ -28,18 +30,19 @@ int felix86_XFlush(Display* display) {
     return xflush_ptr(display);
 }
 
-void* guestToHostDisplay(void* display) {
-    if (display == 0) {
+void* guestToHostDisplay(void* guest) {
+    if (guest == 0) {
+        WARN("guestToHostDisplay(nil) called?");
         return nullptr;
     }
 
     std::lock_guard<std::mutex> lock(display_map_mutex);
 
-    if (guest_to_host.find(display) != guest_to_host.end()) {
-        return guest_to_host[display];
+    if (guest_to_host.find(guest) != guest_to_host.end()) {
+        return guest_to_host[guest];
     }
 
-    _XDisplay* guest_display = (_XDisplay*)display;
+    _XDisplay* guest_display = (_XDisplay*)guest;
     const char* display_name = guest_display->display_name;
     Display* host_display = felix86_XOpenDisplay(display_name);
     if (host_display) {
@@ -50,6 +53,45 @@ void* guestToHostDisplay(void* display) {
     } else {
         WARN("Failed to XOpenDisplay: %s", display_name);
         return nullptr;
+    }
+}
+
+void* hostToGuestDisplay(void* host) {
+    if (host == 0) {
+        WARN("hostToGuestDisplay(nil) called?\n");
+        return nullptr;
+    }
+
+    std::lock_guard<std::mutex> lock(display_map_mutex);
+
+    if (host_to_guest.find(host) != host_to_guest.end()) {
+        return host_to_guest[host];
+    } else {
+        WARN("hostToGuestDisplay couldn't find guest display matching %p?", host);
+        return nullptr;
+    }
+}
+
+// NOTE: due to RISC-V ABI, returning void* void* like this is perfect, as they will be returned
+// directly into a0 and a1, which is exactly where we wanted these pointers
+std::pair<void*, void*> getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
+    if (!host_display) {
+        WARN("getHostVisualInfo with nil display?");
+        return {host_display, nullptr};
+    }
+
+    XVisualInfo v;
+    v.screen = guest->screen;
+    v.visualid = guest->visualid;
+
+    int c;
+    XVisualInfo* info = XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
+
+    if (c >= 1 && info != nullptr) {
+        return {host_display, info};
+    } else {
+        WARN("getHostVisualInfo returned null?");
+        return {host_display, nullptr};
     }
 }
 
@@ -138,8 +180,14 @@ enum IHateThisEnumProperties {
     // due to struct internal differences. The alternative would be thunking X11 which is hell.
     Arg0GuestToHostDisplay = 1 << 0,
 
+    // This gets a host XVisualInfo* from the data in the guest XVisualInfo*
+    Arg1GetHostVisualInfo = 1 << 1,
+
     // Run XFlush on return from thunked function
-    FlushOnReturn = 1 << 1,
+    FlushOnReturn = 1 << 2,
+
+    // Change the return value from a host display to a guest display
+    ReturnsDisplay = 1 << 3,
 };
 
 struct Thunk {
@@ -278,7 +326,8 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
         case 'q':
             as.LD(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
 
-            if (current_int_arg == 0 && (properties & Arg0GuestToHostDisplay)) {
+            if (properties & Arg0GuestToHostDisplay) {
+                ASSERT(current_int_arg == 0);
                 ASSERT(i == 0);
                 // With a0 loaded, call guestToHostDisplay, which returns a pointer in a0.
                 // No other registers are loaded at this point (since i == 0, and every function that has Display*
@@ -288,6 +337,16 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
                 // Put the host display in s0, a saved register, because we'll need it later on XFlush
                 // Whenever FlushOnReturn is present, Arg0GuestToHostDisplay is also guaranteed to be present
                 as.MV(s0, a0);
+            }
+
+            if (properties & Arg1GetHostVisualInfo) {
+                ASSERT(current_int_arg == 1);
+                ASSERT(i == 1);
+                // Luckily, XVisualInfo is always the second argument
+                // a0 has XDisplay* and a1 has XVisualInfo (guest) at this point
+                // Calling this function will return our XDisplay* and a XVisualInfo* (host) in a1
+                call(as, (u64)getHostVisualInfo);
+                // a0 and a1 are returned fine
             }
 
             current_int_arg++;
@@ -325,6 +384,11 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
     }
 
     call(as, target);
+
+    if (properties & ReturnsDisplay) {
+        // Transform the return value in a0 to a guest Display*
+        call(as, (u64)hostToGuestDisplay);
+    }
 
     // Save return value to the correct x86-64 register
     switch (return_type) {
