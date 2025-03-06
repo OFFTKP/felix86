@@ -245,21 +245,50 @@ void* felix86_guest_glXGetProcAddress(const char* name) {
 #undef X
 }
 
+std::filesystem::path find_lib(const std::filesystem::path& lib) {
+#define CHECK(dir)                                                                                                                                   \
+    if (std::filesystem::exists(dir / lib)) {                                                                                                        \
+        return dir / lib;                                                                                                                            \
+    }
+
+    CHECK("/felix86/lib")
+    CHECK("/felix86/lib/riscv64-linux-gnu")
+    // Is there any more we need to check?
+
+    return "";
+}
+
 // Load the host function pointers in the thunkptr namespace with pointers using dlopen + dlsym
 void Thunks::initialize() {
     thunkptr::glXGetProcAddress = (u64)felix86_guest_glXGetProcAddress;
     thunkptr::glXGetProcAddressARB = (u64)felix86_guest_glXGetProcAddress;
 
-    constexpr const char* glx_path = "/felix86/lib/libGLX.so";
-    libGLX = dlopen(glx_path, RTLD_LAZY);
-    if (!libGLX) {
-        ERROR("I couldn't open libGLX at %s, error: %s", glx_path, dlerror());
+    constexpr const char* glx_name = "libGLX.so";
+    const std::filesystem::path glx_path = find_lib(glx_name);
+
+    const char* ld_lib_path = getenv("LD_LIBRARY_PATH");
+    if (!ld_lib_path || std::string(ld_lib_path).find("/felix86/lib") == std::string::npos) {
+        ERROR("When initializing thunks, LD_LIBRARY_PATH does not contain /felix86/lib, so dlopen would not find the libraries");
     }
 
-    constexpr const char* x11_path = "/felix86/lib/libX11.so";
-    libX11 = dlopen(x11_path, RTLD_LAZY);
+    if (glx_path.empty()) {
+        ERROR("I couldn't find %s in /felix86/lib, is it mounted correctly?", glx_name);
+    }
+
+    libGLX = dlopen(glx_path.c_str(), RTLD_LAZY);
+    if (!libGLX) {
+        ERROR("I couldn't open libGLX at %s, error: %s", glx_path.c_str(), dlerror());
+    }
+
+    constexpr const char* x11_name = "libX11.so";
+    const std::filesystem::path x11_path = find_lib(x11_name);
+    if (x11_path.empty()) {
+        ERROR("I couldn't find %s in /felix86/lib, is it mounted correctly?", x11_name);
+    }
+
+    libX11 = dlopen(x11_path.c_str(), RTLD_LAZY);
     if (!libX11) {
-        ERROR("I couldn't open libX11 at %s, error: %s", x11_path, dlerror());
+        ERROR("I couldn't open libX11 at %s, error: %s", x11_path.c_str(), dlerror());
     }
 
 #define X(libname, name, ...)                                                                                                                        \
