@@ -190,6 +190,15 @@ int main() {
 
         gen_finalize(source, "libGLX.so");
     }
+
+    {
+        std::string source = gen_init();
+        source += "section .text\n";
+
+        #include "egl_thunks.inc"
+
+        gen_finalize(source, "libEGL.so");
+    }
 #undef X
 
     return 0;
