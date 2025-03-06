@@ -196,7 +196,7 @@ void* Thunks::generateTrampoline(Assembler& as, const char* name) {
     const u64 destructor = thunk->destructor_function;
 
     ASSERT(signature.size() > 0);
-    ASSERT(target != 0);
+    ASSERT_MSG(target != 0, "Symbol has nullptr address: %s", name);
 
     void* trampoline = as.GetCursorPointer();
     char return_type = signature[0];
