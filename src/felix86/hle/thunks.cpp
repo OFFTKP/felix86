@@ -83,6 +83,24 @@ namespace thunkptr {
 #undef X
 } // namespace thunkptr
 
+struct Thunk {
+    const char* lib_name;
+    const char* function_name;
+    const char* signature;
+    u64* host_function = 0;
+    u64 constructor_function = 0;
+    u64 destructor_function = 0;
+};
+
+#define X(lib_name, function_name, signature, constructor_function, destructor_function)                                                             \
+    {lib_name, #function_name, #signature, &thunkptr::function_name, (u64)constructor_function, (u64)destructor_function},
+
+static Thunk thunk_metadata[] = {
+#include "glx_thunks.inc"
+};
+
+#undef X
+
 void* glXGetProcAddressAndPrint(const char* name) {
     printf("glXGetProcAddress: %s\n", name);
     static void* actual = dlsym(libGLX, "glXGetProcAddress");
@@ -111,22 +129,6 @@ void Thunks::initialize() {
 #undef X
 }
 
-struct Thunk {
-    const char* lib_name;
-    const char* function_name;
-    const char* signature;
-    u64 host_function = 0;
-    u64 constructor_function = 0;
-    u64 destructor_function = 0;
-};
-
-#define X(lib_name, function_name, signature, constructor_function, destructor_function)                                                             \
-    {lib_name, #function_name, #signature, (u64)thunkptr::function_name, (u64)constructor_function, (u64)destructor_function},
-
-static Thunk thunk_metadata[] = {
-#include "glx_thunks.inc"
-};
-
 void call(Assembler& as, u64 target) {
     i64 offset = target - (u64)as.GetCursorPointer();
     if (IsValidJTypeImm(offset)) {
@@ -141,9 +143,6 @@ void call(Assembler& as, u64 target) {
         as.JALR(t0);
     }
 }
-
-#undef GLX
-#undef X
 
 /*
     We use a custom signature format to describe the function.
@@ -191,7 +190,7 @@ void* Thunks::generateTrampoline(Assembler& as, const char* name) {
     }
 
     const std::string& signature = thunk->signature;
-    const u64 target = thunk->host_function;
+    const u64 target = *thunk->host_function;
     const u64 constructor = thunk->constructor_function;
     const u64 destructor = thunk->destructor_function;
 
