@@ -56,7 +56,7 @@ void* guestToHostDisplay(void* guest) {
     if (host_display) {
         guest_to_host[guest_display] = host_display;
         host_to_guest[host_display] = guest_display;
-        WARN("XOpenDisplay creating new mapping %p (guest) -> %p (host)", guest_display, host_display);
+        LOG("XOpenDisplay creating new mapping %p (guest) -> %p (host)", guest_display, host_display);
         return host_display;
     } else {
         WARN("Failed to XOpenDisplay: %s", display_name);
@@ -96,6 +96,7 @@ std::pair<void*, void*> getHostVisualInfo(Display* host_display, XVisualInfo* gu
     XVisualInfo* info = felix86_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
 
     if (c >= 1 && info != nullptr) {
+        LOG("getHostVisualInfo(%p, %p) has created an XVisualInfo: %p", host_display, guest, info);
         return {host_display, info};
     } else {
         WARN("getHostVisualInfo returned null?");
