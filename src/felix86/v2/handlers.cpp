@@ -6211,6 +6211,10 @@ FAST_HANDLE(PAVGW) {
 // a null terminated string with the name of the host function we want to call. We pass this name to
 // Thunks::generateTrampoline to generate us a trampoline to go boing.
 FAST_HANDLE(INVLPG) {
+    if (!g_thunking) {
+        ERROR("INVLPG while not thunking, did you forget to set FELIX86_THUNKING=1");
+    }
+
     ASSERT_MSG(instruction.length == 3, "Hit INVLPG instruction but it's not 3 bytes?");
     const char* address = (const char*)(meta.rip.raw() + instruction.length);
     void* trampoline = Thunks::generateTrampoline(as, address);

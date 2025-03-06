@@ -13,6 +13,7 @@
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/emulator.hpp"
+#include "felix86/hle/thunks.hpp"
 
 #if !defined(__riscv)
 #pragma message("You are compiling for x86-64, felix86 should only be compiled for RISC-V, are you sure you want to do this?")
@@ -161,6 +162,12 @@ int main(int argc, char* argv[]) {
         LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
     }
     Signals::initialize();
+
+    static bool initialized = false;
+    if (g_thunking && !initialized) {
+        initialized = true;
+        Thunks::initialize();
+    }
 
     bool purposefully_empty = false;
     const char* env_file = getenv("FELIX86_ENV_FILE");

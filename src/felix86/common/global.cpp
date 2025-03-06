@@ -252,10 +252,10 @@ void initialize_globals() {
         }
     }
 
-    const char* thunkgl_env = getenv("FELIX86_THUNK_GL");
+    const char* thunkgl_env = getenv("FELIX86_THUNKING");
     if (is_truthy(thunkgl_env)) {
-        g_thunk_gl = true;
-        environment += "\nFELIX86_THUNK_GL";
+        g_thunking = true;
+        environment += "\nFELIX86_THUNKING";
     }
 
     const char* calltrace_env = getenv("FELIX86_CALLTRACE");

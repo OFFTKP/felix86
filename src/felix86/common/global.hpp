@@ -76,7 +76,7 @@ extern bool g_rsb;
 extern bool g_perf;
 extern bool g_min_max_accurate;
 extern bool g_always_tso;
-extern bool g_thunk_gl;
+extern bool g_thunking;
 extern std::atomic_bool g_symbols_cached;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;

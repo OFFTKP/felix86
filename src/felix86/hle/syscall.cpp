@@ -1328,7 +1328,7 @@ void felix86_syscall(ThreadState* state) {
         }
         envp.push_back("__FELIX86_LAUNCHED=1");
         envp.push_back("__FELIX86_EXECVE=1");
-        envp.push_back("LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/felix86/lib");
+        envp.push_back("LD_LIBRARY_PATH=/felix86/lib");
         char** host_environ = environ;
         while (*host_environ) {
             std::string env = *host_environ;

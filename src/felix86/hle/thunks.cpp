@@ -94,14 +94,11 @@ void Thunks::initialize() {
     thunkptr::glXGetProcAddress = (u64)glXGetProcAddressAndPrint;
     thunkptr::glXGetProcAddressARB = (u64)glXGetProcAddressAndPrint;
 
-    if (g_thunk_gl) {
-        constexpr const char* path = "/felix86/lib/libGLX.so";
-        libGLX = dlopen(path, RTLD_LAZY);
-        if (!libGLX) {
-            WARN("I couldn't find libGLX at %s, disabling GL thunking...", path);
-            g_thunk_gl = false;
-            goto nogl;
-        } // having an else here would be uglier than a goto
+    constexpr const char* path = "/felix86/lib/libGLX.so";
+    libGLX = dlopen(path, RTLD_LAZY);
+    if (!libGLX) {
+        ERROR("I couldn't find libGLX at %s...", path);
+    } // having an else here would be uglier than a goto
 
 #define X(libname, name, ...)                                                                                                                        \
     if (thunkptr::name == 0) {                                                                                                                       \
@@ -112,10 +109,6 @@ void Thunks::initialize() {
     }
 #include "glx_thunks.inc"
 #undef X
-    }
-
-nogl:
-    return; // not having a return here is a C++23 extension. lol.
 }
 
 struct Thunk {

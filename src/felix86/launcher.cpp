@@ -322,7 +322,7 @@ int main(int argc, const char** argv) {
     jit_args.push_back(nullptr);
 
     constexpr static const char* launched = "__FELIX86_LAUNCHED=1";
-    constexpr static const char* ld_lib_path = "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/felix86/lib";
+    constexpr static const char* ld_lib_path = "LD_LIBRARY_PATH=/felix86/lib";
     char** environ_copy = environ;
     std::vector<const char*> jit_envs;
     while (*environ_copy) {
