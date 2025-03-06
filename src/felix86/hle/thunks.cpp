@@ -30,6 +30,14 @@ int felix86_XFlush(Display* display) {
     return xflush_ptr(display);
 }
 
+using XVisualInfoPtr = XVisualInfo* (*)(Display*, long, XVisualInfo*, int*);
+
+XVisualInfo* felix86_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return) {
+    static XVisualInfoPtr xvisualinfo_ptr = (XVisualInfoPtr)dlsym(libX11, "XGetVisualInfo");
+    ASSERT(xvisualinfo_ptr);
+    return xvisualinfo_ptr(display, vinfo_mask, vinfo_template, nitems_return);
+}
+
 void* guestToHostDisplay(void* guest) {
     if (guest == 0) {
         WARN("guestToHostDisplay(nil) called?");
@@ -85,7 +93,7 @@ std::pair<void*, void*> getHostVisualInfo(Display* host_display, XVisualInfo* gu
     v.visualid = guest->visualid;
 
     int c;
-    XVisualInfo* info = XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
+    XVisualInfo* info = felix86_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
 
     if (c >= 1 && info != nullptr) {
         return {host_display, info};
