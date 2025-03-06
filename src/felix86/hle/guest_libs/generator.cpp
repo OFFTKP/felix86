@@ -16,7 +16,8 @@
 // align 16
 // glxCreateContext:
 // invlpg [rax]
-// ret
+// ret                      <----- we need a ret -- these functions won't always be called, sometimes they will be jumped to
+//                                 (think function pointers), so we need to return to the original with a guest ret
 // db "glXCreateContext", 0
 
 // When the recompiler jumps to this function (because the guest dynamic linker found the symbol glXCreateContext and linked it there)

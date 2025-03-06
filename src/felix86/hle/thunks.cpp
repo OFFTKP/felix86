@@ -171,12 +171,13 @@ int x86offset(int i) {
     }
 }
 
-// Function pointers, obtained with dlopen+dlsym
+// Actual host function pointers
 // u64's as we don't really care about the type here,
-// these are just pointers for the assembler
+// these are just pointers for the assembler to create trampolines
 namespace thunkptr {
 #define X(libname, name, ...) u64 name = 0;
-#include "glx_thunks.inc"
+#include "gl_thunks.inc"  // <- these are loaded on felix86_guest_glXGetProcAddress, as they are requested
+#include "glx_thunks.inc" // <- these are loaded on Thunks::Initialize
 #undef X
 } // namespace thunkptr
 
@@ -214,17 +215,40 @@ static Thunk thunk_metadata[] = {
 
 #undef X
 
-void* glXGetProcAddressAndPrint(const char* name) {
+constexpr unsigned long hashstr(const std::string_view& str, int h = 0) {
+    return !str[h] ? 55 : (hashstr(str, h + 1) * 33) + (unsigned char)(str[h]);
+}
+
+void* felix86_host_glXGetProcAddress(const char* name) {
+    static void* (*getprocaddress)(const char*) = (void* (*)(const char*))dlsym(libGLX, "glXGetProcAddress");
+    return getprocaddress(name);
+}
+
+void* felix86_guest_glXGetProcAddress(const char* name) {
     printf("glXGetProcAddress: %s\n", name);
     static void* actual = dlsym(libGLX, "glXGetProcAddress");
     ASSERT_MSG(actual, "Couldn't find glXGetProcAddress?");
-    return ((void* (*)(const char*))actual)(name);
+
+    // Get the host pointer, return a pointer from libgl_guest_ptrs.hpp for the recompiler to generate a trampoline
+    // when it is actually called.
+    switch (hashstr(name)) {
+#define X(libname, function, ...)                                                                                                                    \
+    case hashstr(function):                                                                                                                          \
+        thunkptr::function = felix86_host_glXGetProcAddress(name);                                                                                   \
+        return felix86_guest_##function;
+
+    default: {
+        ERROR("felix86_glXGetProcAddress could not find %s in thunked functions", name);
+        return nullptr;
+    }
+    }
+#undef X
 }
 
 // Load the host function pointers in the thunkptr namespace with pointers using dlopen + dlsym
 void Thunks::initialize() {
-    thunkptr::glXGetProcAddress = (u64)glXGetProcAddressAndPrint;
-    thunkptr::glXGetProcAddressARB = (u64)glXGetProcAddressAndPrint;
+    thunkptr::glXGetProcAddress = (u64)felix86_guest_glXGetProcAddress;
+    thunkptr::glXGetProcAddressARB = (u64)felix86_guest_glXGetProcAddress;
 
     constexpr const char* glx_path = "/felix86/lib/libGLX.so";
     libGLX = dlopen(glx_path, RTLD_LAZY);
