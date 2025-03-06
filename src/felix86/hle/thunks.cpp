@@ -334,8 +334,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
         case 'q':
             as.LD(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
 
-            if (properties & Arg0GuestToHostDisplay) {
-                ASSERT(current_int_arg == 0);
+            if (current_int_arg == 0 && properties & Arg0GuestToHostDisplay) {
                 ASSERT(i == 0);
                 // With a0 loaded, call guestToHostDisplay, which returns a pointer in a0.
                 // No other registers are loaded at this point (since i == 0, and every function that has Display*
@@ -347,8 +346,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
                 as.MV(s0, a0);
             }
 
-            if (properties & Arg1GetHostVisualInfo) {
-                ASSERT(current_int_arg == 1);
+            if (current_int_arg == 1 && properties & Arg1GetHostVisualInfo) {
                 ASSERT(i == 1);
                 // Luckily, XVisualInfo is always the second argument
                 // a0 has XDisplay* and a1 has XVisualInfo (guest) at this point
