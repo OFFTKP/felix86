@@ -19,6 +19,11 @@ Display* felix86_XOpenDisplay(const char* name) {
 }
 
 int felix86_XFlush(Display* display) {
+    if (display == nullptr) {
+        WARN("XFlush(nil) called?");
+        return 0;
+    }
+
     static int (*xflush_ptr)(Display*) = (decltype(xflush_ptr))dlsym(libX11, "XFlush");
     return xflush_ptr(display);
 }
@@ -174,7 +179,7 @@ void Thunks::initialize() {
     constexpr const char* x11_path = "/felix86/lib/libX11.so";
     libX11 = dlopen(x11_path, RTLD_LAZY);
     if (!libX11) {
-        ERROR("I couldn't open libX11 at %s, error: %s", glx_path, dlerror());
+        ERROR("I couldn't open libX11 at %s, error: %s", x11_path, dlerror());
     }
 
 #define X(libname, name, ...)                                                                                                                        \
