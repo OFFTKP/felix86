@@ -4,7 +4,44 @@
 #include "felix86/hle/thunks.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-void* libGLX = nullptr;
+#include <X11/Xlibint.h>
+
+static void* libGLX = nullptr;
+static void* libX11 = nullptr;
+
+static std::mutex display_map_mutex;
+static std::unordered_map<void*, void*> host_to_guest;
+static std::unordered_map<void*, void*> guest_to_host;
+
+void* guestToHostDisplay(void* display) {
+    if (display == 0) {
+        return nullptr;
+    }
+
+    std::lock_guard<std::mutex> lock(display_map_mutex);
+
+    if (guest_to_host.find(display) != guest_to_host.end()) {
+        return guest_to_host[display];
+    }
+
+    _XDisplay* guest_display = (_XDisplay*)display;
+    const char* display_name = guest_display->display_name;
+    Display* host_display = XOpenDisplay(display_name);
+    if (host_display) {
+        guest_to_host[guest_display] = host_display;
+        host_to_guest[host_display] = guest_display;
+        WARN("XOpenDisplay creating new mapping %p (guest) -> %p (host)", guest_display, host_display);
+        return host_display;
+    } else {
+        WARN("Failed to XOpenDisplay: %s", display_name);
+        return nullptr;
+    }
+}
+
+int felix86_XFlush(void* display) {
+    static int (*xflush_ptr)(void*) = (decltype(xflush_ptr))dlsym(libX11, "XFlush");
+    return xflush_ptr(display);
+}
 
 biscuit::GPR gprarg(int i) {
     switch (i) {
@@ -83,17 +120,27 @@ namespace thunkptr {
 #undef X
 } // namespace thunkptr
 
+// TODO: obviously this sort of argument fiddling is a bad and rushed implementation. Make it better!
+enum IHateThisEnumProperties {
+    NoneThankfully = 0,
+
+    // This function takes a Display* as argument 0, this needs to be replaced with a host Display*
+    // due to struct internal differences. The alternative would be thunking X11 which is hell.
+    Arg0GuestToHostDisplay = 1 << 0,
+
+    // Run XFlush on return from thunked function
+    FlushOnReturn = 1 << 1,
+};
+
 struct Thunk {
     const char* lib_name;
     const char* function_name;
     const char* signature;
     u64* host_function = 0;
-    u64 constructor_function = 0;
-    u64 destructor_function = 0;
+    u64 properties = NoneThankfully;
 };
 
-#define X(lib_name, function_name, signature, constructor_function, destructor_function)                                                             \
-    {lib_name, #function_name, #signature, &thunkptr::function_name, (u64)constructor_function, (u64)destructor_function},
+#define X(lib_name, function_name, signature, properties) {lib_name, #function_name, #signature, &thunkptr::function_name, properties},
 
 static Thunk thunk_metadata[] = {
 #include "glx_thunks.inc"
@@ -104,6 +151,7 @@ static Thunk thunk_metadata[] = {
 void* glXGetProcAddressAndPrint(const char* name) {
     printf("glXGetProcAddress: %s\n", name);
     static void* actual = dlsym(libGLX, "glXGetProcAddress");
+    ASSERT_MSG(actual, "Couldn't find glXGetProcAddress?");
     return ((void* (*)(const char*))actual)(name);
 }
 
@@ -112,11 +160,17 @@ void Thunks::initialize() {
     thunkptr::glXGetProcAddress = (u64)glXGetProcAddressAndPrint;
     thunkptr::glXGetProcAddressARB = (u64)glXGetProcAddressAndPrint;
 
-    constexpr const char* path = "/felix86/lib/libGLX.so";
-    libGLX = dlopen(path, RTLD_LAZY);
+    constexpr const char* glx_path = "/felix86/lib/libGLX.so";
+    libGLX = dlopen(glx_path, RTLD_LAZY);
     if (!libGLX) {
-        ERROR("I couldn't open libGLX at %s, error: %s", path, dlerror());
-    } // having an else here would be uglier than a goto
+        ERROR("I couldn't open libGLX at %s, error: %s", glx_path, dlerror());
+    }
+
+    constexpr const char* x11_path = "/felix86/lib/libX11.so";
+    libX11 = dlopen(x11_path, RTLD_LAZY);
+    if (!libX11) {
+        ERROR("I couldn't open libX11 at %s, error: %s", glx_path, dlerror());
+    }
 
 #define X(libname, name, ...)                                                                                                                        \
     if (thunkptr::name == 0) {                                                                                                                       \
@@ -191,8 +245,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
 
     const std::string& signature = thunk->signature;
     const u64 target = *thunk->host_function;
-    const u64 constructor = thunk->constructor_function;
-    const u64 destructor = thunk->destructor_function;
+    const u64 properties = thunk->properties;
 
     ASSERT(signature.size() > 0);
     ASSERT_MSG(target != 0, "Symbol has nullptr address: %s", name);
@@ -201,11 +254,6 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
     char return_type = signature[0];
 
     ASSERT(signature[1] == '_'); // maybe in the future separating arguments and return type will be useful (it won't)
-
-    if (constructor) {
-        as.MV(a0, Recompiler::threadStatePointer());
-        call(as, constructor);
-    }
 
     // Check if we have arguments
     std::vector<char> arguments;
@@ -219,6 +267,19 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
         switch (arguments[i]) {
         case 'q':
             as.LD(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
+
+            if (current_int_arg == 0 && (properties & Arg0GuestToHostDisplay)) {
+                ASSERT(i == 0);
+                // With a0 loaded, call guestToHostDisplay, which returns a pointer in a0.
+                // No other registers are loaded at this point (since i == 0, and every function that has Display*
+                // it's always the first argument thankfully) so we don't need to save/restore any regs
+                call(as, (u64)guestToHostDisplay);
+
+                // Put the host display in s0, a saved register, because we'll need it later on XFlush
+                // Whenever FlushOnReturn is present, Arg0GuestToHostDisplay is also guaranteed to be present
+                as.MV(s0, a0);
+            }
+
             current_int_arg++;
             ASSERT(current_int_arg <= 6);
             break;
@@ -292,9 +353,11 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
         ERROR("Unknown return type: %c", return_type);
     }
 
-    if (destructor) {
-        as.MV(a0, Recompiler::threadStatePointer());
-        call(as, destructor);
+    if (properties & FlushOnReturn) {
+        // We need to call XFlush
+        ASSERT(properties & Arg0GuestToHostDisplay); // host display exists in s0
+        as.MV(a0, s0);
+        call(as, (u64)felix86_XFlush);
     }
 
     return trampoline;
