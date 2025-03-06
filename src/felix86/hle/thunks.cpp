@@ -13,6 +13,16 @@ static std::mutex display_map_mutex;
 static std::unordered_map<void*, void*> host_to_guest;
 static std::unordered_map<void*, void*> guest_to_host;
 
+Display* felix86_XOpenDisplay(const char* name) {
+    static Display* (*xopendisplay_ptr)(const char*) = (decltype(xopendisplay_ptr))dlsym(libX11, "XOpenDisplay");
+    return xopendisplay_ptr(name);
+}
+
+int felix86_XFlush(Display* display) {
+    static int (*xflush_ptr)(Display*) = (decltype(xflush_ptr))dlsym(libX11, "XFlush");
+    return xflush_ptr(display);
+}
+
 void* guestToHostDisplay(void* display) {
     if (display == 0) {
         return nullptr;
@@ -26,7 +36,7 @@ void* guestToHostDisplay(void* display) {
 
     _XDisplay* guest_display = (_XDisplay*)display;
     const char* display_name = guest_display->display_name;
-    Display* host_display = XOpenDisplay(display_name);
+    Display* host_display = felix86_XOpenDisplay(display_name);
     if (host_display) {
         guest_to_host[guest_display] = host_display;
         host_to_guest[host_display] = guest_display;
@@ -36,11 +46,6 @@ void* guestToHostDisplay(void* display) {
         WARN("Failed to XOpenDisplay: %s", display_name);
         return nullptr;
     }
-}
-
-int felix86_XFlush(void* display) {
-    static int (*xflush_ptr)(void*) = (decltype(xflush_ptr))dlsym(libX11, "XFlush");
-    return xflush_ptr(display);
 }
 
 biscuit::GPR gprarg(int i) {
