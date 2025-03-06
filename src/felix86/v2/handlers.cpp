@@ -6217,7 +6217,7 @@ FAST_HANDLE(INVLPG) {
 
     ASSERT_MSG(instruction.length == 3, "Hit INVLPG instruction but it's not 3 bytes?");
     const char* address = (const char*)(meta.rip.raw() + instruction.length);
-    void* trampoline = Thunks::generateTrampoline(as, address);
+    void* trampoline = Thunks::generateTrampoline(rec, as, address);
     ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", address, (u64)address);
     rec.stopCompiling();
 }

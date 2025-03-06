@@ -137,7 +137,7 @@ void call(Assembler& as, u64 target) {
         const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
         const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
         as.AUIPC(t0, hi20);
-        as.JALR(x1, lo12, t0);
+        as.JALR(ra, lo12, t0);
     } else {
         as.LI(t0, target);
         as.JALR(t0);
@@ -171,7 +171,7 @@ void call(Assembler& as, u64 target) {
     Uses a0-a7, fa0-fa7. This is enough for our purposes.
     Return value goes in a0 or fa0.
 */
-void* Thunks::generateTrampoline(Assembler& as, const char* name) {
+void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* name) {
     if (!name) {
         return nullptr;
     }
@@ -305,7 +305,7 @@ void* Thunks::generateTrampoline(Assembler& as, const char* name) {
     as.LD(ra, 0, sp);
     as.ADDI(sp, sp, 8);
 
-    as.RET();
+    rec.backToDispatcher();
 
     return trampoline;
 }
