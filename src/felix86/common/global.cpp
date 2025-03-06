@@ -252,8 +252,8 @@ void initialize_globals() {
         }
     }
 
-    const char* thunkgl_env = getenv("FELIX86_THUNKING");
-    if (is_truthy(thunkgl_env)) {
+    const char* thunk_env = getenv("FELIX86_THUNKING");
+    if (is_truthy(thunk_env)) {
         g_thunking = true;
         environment += "\nFELIX86_THUNKING";
     }

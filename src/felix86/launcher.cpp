@@ -6,6 +6,7 @@
 #include <linux/limits.h>
 #include <spawn.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include "biscuit/cpuinfo.hpp"
@@ -212,7 +213,8 @@ int main(int argc, const char** argv) {
     ASSERT(std::filesystem::exists(felix_jit_path), "I couldn't find the `felix86_jit` executable, is it in the same directory as `felix86`?");
 
     // Copy every time to make rebuilding less painful
-    std::filesystem::create_directories(rootfs / "felix86" / "lib");
+    std::filesystem::create_directories(libpath);
+    chmod(libpath.c_str(), 0777);
     std::filesystem::copy(felix_jit_path, rootfs / "felix86", std::filesystem::copy_options::overwrite_existing);
     copy_lib("libstdc++.so.6", libpath);
     copy_lib("libm.so.6", libpath);

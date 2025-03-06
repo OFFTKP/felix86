@@ -97,7 +97,7 @@ void Thunks::initialize() {
     constexpr const char* path = "/felix86/lib/libGLX.so";
     libGLX = dlopen(path, RTLD_LAZY);
     if (!libGLX) {
-        ERROR("I couldn't find libGLX at %s...", path);
+        ERROR("I couldn't open libGLX at %s, error: %s", path, dlerror());
     } // having an else here would be uglier than a goto
 
 #define X(libname, name, ...)                                                                                                                        \
@@ -158,8 +158,7 @@ void call(Assembler& as, u64 target) {
     v_iif -> void my_func(int a, short b, float c)
 
     We only thunk simple functions so this should be fine.
-*/
-/*
+
     x86-64 ABI:
     If the class is INTEGER, the next available register of the sequence %rdi, %rsi, %rdx,
     %rcx, %r8 and %r9 is used. Return value goes in %rax.
