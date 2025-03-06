@@ -6219,4 +6219,5 @@ FAST_HANDLE(INVLPG) {
     const char* address = (const char*)(meta.rip.raw() + instruction.length);
     void* trampoline = Thunks::generateTrampoline(as, address);
     ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", address, (u64)address);
+    rec.stopCompiling();
 }
