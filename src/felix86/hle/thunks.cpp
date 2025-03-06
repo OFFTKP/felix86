@@ -490,7 +490,7 @@ void Thunks::initialize() {
         ERROR("I couldn't open libX11 at %s, error: %s", x11_path.c_str(), dlerror());
     }
 
-    constexpr const char* egl_name = "libEGL.so";
+    constexpr const char* egl_name = "libEGL.so.1";
     const std::filesystem::path egl_path = find_lib(egl_name);
     if (egl_path.empty()) {
         ERROR("I couldn't find %s in /felix86/lib, is it mounted correctly?", egl_name);
