@@ -1,7 +1,7 @@
 // Read thunks.hpp -> signature format
 // X(lib name, func name, signature, properties)
 X("libGLX.so", glXChooseVisual, q_qdq, Arg0GuestToHostDisplay | FlushOnReturn)
-X("libGLX.so", glXCreateContext, q_qqqd, Arg0GuestToHostDisplay | Arg1GetHostVisualInfo | FlushOnReturn)
+X("libGLX.so", glXCreateContext, q_qqqd, Arg0GuestToHostDisplay | FlushOnReturn)
 X("libGLX.so", glXDestroyContext, v_qq, Arg0GuestToHostDisplay | FlushOnReturn)
 X("libGLX.so", glXMakeCurrent, d_qqq, Arg0GuestToHostDisplay | FlushOnReturn)
 X("libGLX.so", glXCopyContext, v_qqqq, Arg0GuestToHostDisplay | FlushOnReturn)
