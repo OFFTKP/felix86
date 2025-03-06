@@ -6207,17 +6207,17 @@ FAST_HANDLE(PAVGW) {
 // This is a pseudo-instruction that we generate in our thunked guest libraries to basically
 // notify the recompiler that whatever follows here is thunked code and it should call the equivalent
 // host function.
-// After this instruction (which must be 3 bytes as it always is INVLPG[RAX], see generator.cpp) follows
+// After this instruction (which must be 3 bytes as it always is INVLPG[RAX], see generator.cpp) and a RET follows
 // a null terminated string with the name of the host function we want to call. We pass this name to
 // Thunks::generateTrampoline to generate us a trampoline to go boing.
+// After this INVLPG there will always be a RET, to simulate what a normal function would do
 FAST_HANDLE(INVLPG) {
     if (!g_thunking) {
         ERROR("INVLPG while not thunking, did you forget to set FELIX86_THUNKING=1");
     }
 
     ASSERT_MSG(instruction.length == 3, "Hit INVLPG instruction but it's not 3 bytes?");
-    const char* address = (const char*)(meta.rip.raw() + instruction.length);
+    const char* address = (const char*)(meta.rip.raw() + instruction.length + 1); // also skip a RET -> 1 byte
     void* trampoline = Thunks::generateTrampoline(rec, as, address);
     ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", address, (u64)address);
-    rec.stopCompiling();
 }

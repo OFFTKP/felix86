@@ -16,6 +16,7 @@
 // align 16
 // glxCreateContext:
 // invlpg [rax]
+// ret
 // db "glXCreateContext", 0
 
 // When the recompiler jumps to this function (because the guest dynamic linker found the symbol glXCreateContext and linked it there)
@@ -44,6 +45,7 @@ std::string gen_name(const std::string& name) {
     ret += "align 16\n";
     ret += name + ":\n";
     ret += "invlpg [rax]\n"; // <- magic instruction that tells the recompiler "Hey a thunk is here, act accordingly"
+    ret += "ret\n";
     ret += "db \"" + name + "\", 0\n\n";
     return ret;
 }

@@ -202,10 +202,6 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
 
     ASSERT(signature[1] == '_'); // maybe in the future separating arguments and return type will be useful (it won't)
 
-    // Push return address
-    as.ADDI(sp, sp, -8);
-    as.SD(ra, 0, sp);
-
     if (constructor) {
         as.MV(a0, Recompiler::threadStatePointer());
         call(as, constructor);
@@ -300,12 +296,6 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
         as.MV(a0, Recompiler::threadStatePointer());
         call(as, destructor);
     }
-
-    // Pop return address
-    as.LD(ra, 0, sp);
-    as.ADDI(sp, sp, 8);
-
-    rec.backToDispatcher();
 
     return trampoline;
 }
