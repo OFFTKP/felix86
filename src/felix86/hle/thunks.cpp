@@ -418,6 +418,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
     if (properties & ReturnsDisplay) {
         // Transform the return value in a0 to a guest Display*
         call(as, (u64)hostToGuestDisplay);
+        // Returns in a0, store it to RAX as usual after this
     }
 
     // Save return value to the correct x86-64 register
