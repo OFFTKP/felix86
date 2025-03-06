@@ -508,10 +508,18 @@ void Thunks::initialize() {
             ERROR("Failed to find symbol %s in %s, error: %s", #name, "libGLX.so", dlerror());                                                       \
         }                                                                                                                                            \
     }
-#include "egl_thunks.inc"
 #include "glx_thunks.inc"
-// gl_thunks are loaded from the getprocaddress functions
 #undef X
+#define X(libname, name, ...)                                                                                                                        \
+    if (thunkptr::name == 0) {                                                                                                                       \
+        thunkptr::name = (u64)dlsym(libEGL, #name);                                                                                                  \
+        if (thunkptr::name == 0) {                                                                                                                   \
+            ERROR("Failed to find symbol %s in %s, error: %s", #name, "libEGL.so", dlerror());                                                       \
+        }                                                                                                                                            \
+    }
+#include "egl_thunks.inc"
+#undef X
+    // gl_thunks are loaded from the getprocaddress functions
 }
 
 void call(Assembler& as, u64 target) {
