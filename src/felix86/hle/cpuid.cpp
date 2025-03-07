@@ -56,7 +56,7 @@ constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
     (Cpuid){0x80000008, NO_SUBLEAF, 0x00003026, 0x00000000, 0x00000000, 0x00000000},
 };
 
-std::span<const Cpuid> selected_mappings = nehalem_mappings;
+std::span<const Cpuid> selected_mappings = p4_mappings;
 
 void felix86_cpuid(ThreadState* thread_state) {
     u32 eax = 0;
