@@ -3851,6 +3851,75 @@ FAST_HANDLE(PMOVMSKB) {
     rec.setOperandGPR(&operands[0], scratch);
 }
 
+FAST_HANDLE(PTEST) {
+    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    biscuit::Vec zmask = rec.scratchVec();
+    biscuit::Vec cmask = rec.scratchVec();
+    biscuit::Vec resultz = rec.scratchVec();
+    biscuit::Vec resultc = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    // PTEST with the same register is common to check if all the elements
+    // of a single register are zero. In which case, CF is always 1 because (a & ~a) = 0,
+    // and we don't need to perform a VAND
+    bool same = dst == src;
+
+    rec.setVectorState(SEW::E64, 2);
+    if (!same) {
+        as.VAND(resultz, dst, src);
+        if (Extensions::Zvbb) {
+            as.VANDN(resultc, src, dst);
+        } else {
+            biscuit::Vec dst_not = rec.scratchVec();
+            as.VXOR(dst_not, dst, -1);
+            as.VAND(resultc, src, dst_not);
+        }
+    } else {
+        resultz = dst;
+    }
+
+    // Set mask if not equal zero. Then we can check if that GPR is zero, to set the zero flag
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        as.VMSNE(zmask, resultz, 0);
+        as.VMV_XS(zf, zmask);
+        // No need to do a full zext, just shift left
+        as.SLLI(zf, zf, 48);
+        as.SEQZ(zf, zf);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        if (!same) {
+            as.VMSNE(cmask, resultc, 0);
+            as.VMV_XS(cf, cmask);
+            as.SLLI(cf, cf, 48);
+            as.SEQZ(cf, cf);
+        } else {
+            as.LI(cf, 1);
+        }
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        biscuit::GPR af = rec.flagW(X86_REF_AF);
+        as.MV(af, x0);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        as.MV(of, x0);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        biscuit::GPR sf = rec.flagW(X86_REF_SF);
+        as.MV(sf, x0);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
+    }
+}
+
 FAST_HANDLE(MOVMSKPS) {
     biscuit::Vec mask = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -6287,14 +6356,12 @@ FAST_HANDLE(EXTRACTPS) {
 }
 
 FAST_HANDLE(INSERTPS) {
-    ERROR("INSERTPS is not implemented");
     u8 immediate = rec.getImmediate(&operands[2]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec tmp = rec.scratchVec();
-    biscuit::Vec tmp2 = rec.scratchVec();
+    biscuit::Vec src_shifted = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec result_masked = rec.scratchVec();
+    biscuit::Vec dst_masked = rec.scratchVec();
 
     u8 count_s = 0;
     u8 count_d = (immediate >> 4) & 0b11;
@@ -6303,27 +6370,28 @@ FAST_HANDLE(INSERTPS) {
         count_s = (immediate >> 6) & 0b11;
     }
 
+    u8 mask = ~(1 << count_d);
+
+    // Need to shift src down by count_s, then shift it up by count_d to insert it there
+    int count = count_s - count_d;
+
     rec.setVectorState(SEW::E32, 4);
-    if (count_s != 0) {
-        as.VSLIDEDOWN(tmp, src, count_s);
+    if (count < 0) {
+        as.VSLIDEUP(src_shifted, src, -count);
+    } else if (count > 0) {
+        as.VSLIDEDOWN(src_shifted, src, count);
     } else {
-        as.VMV(tmp, src);
+        src_shifted = src;
     }
 
-    if (count_d != 0) {
-        as.VSLIDEUP(tmp2, tmp, count_d);
-    } else {
-        as.VMV(tmp2, tmp);
-    }
-
-    u8 mask = 1 << count_d;
     as.VMV(v0, mask);
-    as.VMERGE(result, dst, tmp2);
-
+    as.VXOR(dst_masked, dst, dst, VecMask::Yes);
+    as.VMNAND(v0, v0, v0);
+    as.VOR(result, dst_masked, src_shifted, VecMask::Yes);
     as.VMV(v0, zmask);
-    as.VXOR(result_masked, result, result, VecMask::Yes);
+    as.VXOR(dst, result, result, VecMask::Yes);
 
-    rec.setOperandVec(&operands[0], result_masked);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PREFETCHT0) {
