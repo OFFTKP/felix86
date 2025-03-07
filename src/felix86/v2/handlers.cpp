@@ -3862,6 +3862,36 @@ FAST_HANDLE(PMOVMSKB) {
     rec.setOperandGPR(&operands[0], scratch);
 }
 
+FAST_HANDLE(MOVSHDUP) {
+    biscuit::GPR mask_reg = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 4);
+    u8 mask = 0b01010101;
+    as.LI(mask_reg, mask);
+    as.VMV_SX(v0, mask_reg);
+    as.VMV(dst, src);
+    as.VSLIDEDOWN(dst, dst, 1, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(MOVSLDUP) {
+    biscuit::GPR mask_reg = rec.scratch();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 4);
+    u8 mask = 0b10101010;
+    as.LI(mask_reg, mask);
+    as.VMV_SX(v0, mask_reg);
+    as.VMV(dst, src);
+    as.VSLIDEUP(dst, dst, 1, VecMask::Yes);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PTEST) {
     biscuit::Vec zmask = rec.scratchVec();
     biscuit::Vec cmask = rec.scratchVec();
