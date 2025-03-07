@@ -41,6 +41,7 @@ bool g_perf = false;
 bool g_thunking = false;
 bool g_always_tso = false;
 bool g_dont_link_indirect = true; // doesn't seem to impact performance from limited testing, so off by default
+int g_vlen = 0;
 std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
@@ -400,6 +401,8 @@ void initialize_globals() {
     if (!g_quiet && !environment.empty()) {
         LOG("Environment:%s", environment.c_str());
     }
+
+    g_vlen = biscuit::CPUInfo().GetVlenb() * 8;
 
     ThreadState::InitializeKey();
 }

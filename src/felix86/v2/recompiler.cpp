@@ -1179,7 +1179,8 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     current_vlen = vlen;
     current_grouping = grouping;
 
-    as.VSETIVLI(x0, vlen, sew, grouping, VTA::Yes, VMA::No);
+    // TODO: One day when we have chips that perform better with VTA::Yes, enable it
+    as.VSETIVLI(x0, vlen, sew, grouping, VTA::No, VMA::No);
     return true;
 }
 
@@ -1322,6 +1323,7 @@ void Recompiler::writebackDirtyState() {
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
         if (getMetadata(ref).dirty) {
+            // TODO: can we group multiple registers if adjacent ones need to be written
             setVectorState(SEW::E64, maxVlen() / 64);
             as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * 16);
             as.VSE64(allocatedVec(ref), address);
