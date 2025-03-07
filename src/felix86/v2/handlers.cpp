@@ -4391,7 +4391,6 @@ FAST_HANDLE(BLENDVPD) {
 FAST_HANDLE(DPPS) {
     biscuit::GPR splat = rec.scratch();
     biscuit::Vec mul = rec.scratchVec();
-    biscuit::Vec mul_down = rec.scratchVec();
     biscuit::Vec sum = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -4405,17 +4404,15 @@ FAST_HANDLE(DPPS) {
     as.VMV(mul, 0);
     as.VMV(sum, 0);
     as.VFMUL(mul, dst, src, VecMask::Yes);
-    as.VSLIDEDOWN(mul_down, mul, 2);
-    rec.setVectorState(SEW::E32, 2);
     as.VFREDUSUM(sum, mul, sum);
-    as.VFREDUSUM(sum, mul_down, sum);
-    rec.setVectorState(SEW::E32, 4);
     as.VMV_XS(splat, sum);
     as.VMV(dst, splat);
 
     if (zmask != 0) {
         as.VMV(v0, zmask);
         as.VXOR(dst, dst, dst, VecMask::Yes);
+    } else {
+        // Using all elements
     }
 
     rec.setOperandVec(&operands[0], dst);
