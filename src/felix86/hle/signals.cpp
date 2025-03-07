@@ -427,7 +427,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             Assembler& as = recompiler.getAssembler();
             riscv_v_state* vstate = get_riscv_vector_state(ctx);
 
-            SEW sew = (SEW)(vstate->vtype >> 3);
+            SEW sew = (SEW)((vstate->vtype >> 3) & 0b111);
             u64 len = vstate->vl;
 
             // when are we gonna get a proper decoder...
