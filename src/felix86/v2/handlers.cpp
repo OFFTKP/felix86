@@ -4288,7 +4288,7 @@ FAST_HANDLE(DPPS) {
     u8 immediate = rec.getImmediate(&operands[2]);
 
     u8 mmask = immediate >> 4;
-    u8 zmask = ~(immediate & 0b1111);
+    u8 zmask = ~immediate & 0b1111;
 
     rec.setVectorState(SEW::E32, 4);
     as.VMV(v0, mmask);
