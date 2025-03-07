@@ -225,7 +225,75 @@ FAST_HANDLE(MOV) {
     rec.setOperandGPR(&operands[0], src);
 }
 
+// This version should save a few unnecessary zexts
+FAST_HANDLE(ADD_32) {
+    x86_size_e size = rec.zydisToSize(instruction.operand_width);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = x0;
+    bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        if (IsValidSigned12BitImm(operands[1].imm.value.s) && !needs_of) {
+            as.ADDI(result, dst, operands[1].imm.value.s);
+        } else {
+            src = rec.scratch();
+            as.LI(src, operands[1].imm.value.s);
+            as.ADD(result, dst, src);
+        }
+    } else {
+        biscuit::GPR src = rec.getRefGPR(rec.zydisToRef(operands[1].reg.value), X86_SIZE_QWORD);
+        as.ADD(result, dst, src);
+    }
+
+    biscuit::GPR zexted_result;
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        zexted_result = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+        // dst is a temporary register as it was zexted when loaded
+        ASSERT(zexted_result != dst);
+    } else {
+        zexted_result = rec.scratch();
+    }
+
+    rec.zext(zexted_result, result, X86_SIZE_DWORD);
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        as.SLTU(cf, zexted_result, dst);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        rec.updateAuxiliaryAdd(dst, result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+        as.SEQZ(zf, zexted_result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (needs_of) {
+        // src is guaranteed to be loaded here, the ADDI path only is taken when OF won't be emitted
+        rec.updateOverflowAdd(dst, src, result, size);
+    }
+
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        rec.setOperandGPR(&operands[0], zexted_result);
+    }
+}
+
 FAST_HANDLE(ADD) {
+    if (instruction.operand_width == 32) {
+        // return fast_ADD_32(rec, meta, as, instruction, operands);
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -767,35 +835,35 @@ FAST_HANDLE(SHL_imm) {
 
     if (shift != 0) {
         as.SLLI(result, dst, shift);
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+            rec.updateParity(result);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+            rec.updateZero(result, size);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+            rec.updateSign(result, size);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            u8 shift_right = rec.getBitSize(size) - shift;
+            as.SRLI(cf, dst, shift_right);
+            as.ANDI(cf, cf, 1);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF) && shift == 1) {
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+            u8 shift_right = rec.getBitSize(size) - 1;
+            as.SRLI(of, dst, shift_right);
+            as.ANDI(of, of, 1);
+            as.XOR(of, of, rec.flag(X86_REF_CF));
+        }
     } else if (instruction.operand_width != 32) {
         return; // nothing else to do
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        u8 shift_right = rec.getBitSize(size) - shift;
-        as.SRLI(cf, dst, shift_right);
-        as.ANDI(cf, cf, 1);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF) && shift == 1) {
-        biscuit::GPR of = rec.flagW(X86_REF_OF);
-        u8 shift_right = rec.getBitSize(size) - 1;
-        as.SRLI(of, dst, shift_right);
-        as.ANDI(of, of, 1);
-        as.XOR(of, of, rec.flag(X86_REF_CF));
     }
 
     // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
@@ -811,33 +879,33 @@ FAST_HANDLE(SHR_imm) {
 
     if (shift != 0) {
         as.SRLI(result, dst, shift);
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+            rec.updateParity(result);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+            rec.updateZero(result, size);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+            rec.updateSign(result, size);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            u8 shift_right = shift - 1;
+            as.SRLI(cf, dst, shift_right);
+            as.ANDI(cf, cf, 1);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF) && shift == 1) {
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+            as.SRLI(of, dst, rec.getBitSize(size) - 1);
+            as.ANDI(of, of, 1);
+        }
     } else if (instruction.operand_width != 32) {
         return; // nothing else to do
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        u8 shift_right = shift - 1;
-        as.SRLI(cf, dst, shift_right);
-        as.ANDI(cf, cf, 1);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF) && shift == 1) {
-        biscuit::GPR of = rec.flagW(X86_REF_OF);
-        as.SRLI(of, dst, rec.getBitSize(size) - 1);
-        as.ANDI(of, of, 1);
     }
 
     // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
@@ -884,31 +952,31 @@ FAST_HANDLE(SAR_imm) {
             break;
         }
         }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+            rec.updateParity(result);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+            rec.updateZero(result, size);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+            rec.updateSign(result, size);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flagW(X86_REF_CF);
+            as.SRLI(cf, dst, shift - 1);
+            as.ANDI(cf, cf, 1);
+        }
+
+        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+            biscuit::GPR of = rec.flagW(X86_REF_OF);
+            as.MV(of, x0);
+        }
     } else if (instruction.operand_width != 32) {
         return; // nothing else to do
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-        rec.updateParity(result);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
-        rec.updateZero(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-        rec.updateSign(result, size);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
-        biscuit::GPR cf = rec.flagW(X86_REF_CF);
-        as.SRLI(cf, dst, shift - 1);
-        as.ANDI(cf, cf, 1);
-    }
-
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
-        biscuit::GPR of = rec.flagW(X86_REF_OF);
-        as.MV(of, x0);
     }
 
     // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
