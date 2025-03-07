@@ -2511,6 +2511,7 @@ FAST_HANDLE(VECTOR_MOV) {
         ASSERT(operands[0].size > 64);
         biscuit::GPR address = rec.leaAddBase(&operands[1]);
         rec.readMemoryVectorNoBase(dst, address, size);
+        rec.setOperandVec(&operands[0], dst);
     }
 }
 
