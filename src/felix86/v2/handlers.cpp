@@ -866,12 +866,14 @@ FAST_HANDLE(SHL_imm) {
             as.ANDI(of, of, 1);
             as.XOR(of, of, rec.flag(X86_REF_CF));
         }
-    } else if (instruction.operand_width != 32) {
-        return; // nothing else to do
-    }
 
-    // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
-    rec.setOperandGPR(&operands[0], result);
+        rec.setOperandGPR(&operands[0], result);
+    } else if (operands[0].size == 32 && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        // Set it without zero extending again
+        rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
+    } else {
+        return; // don't do nothing
+    }
 }
 
 FAST_HANDLE(SHR_imm) {
@@ -908,12 +910,14 @@ FAST_HANDLE(SHR_imm) {
             as.SRLI(of, dst, rec.getBitSize(size) - 1);
             as.ANDI(of, of, 1);
         }
-    } else if (instruction.operand_width != 32) {
-        return; // nothing else to do
-    }
 
-    // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
-    rec.setOperandGPR(&operands[0], result);
+        rec.setOperandGPR(&operands[0], result);
+    } else if (operands[0].size == 32 && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        // Set it without zero extending again
+        rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
+    } else {
+        return; // don't do nothing
+    }
 }
 
 FAST_HANDLE(SAR_imm) {
@@ -979,12 +983,14 @@ FAST_HANDLE(SAR_imm) {
             biscuit::GPR of = rec.flagW(X86_REF_OF);
             as.MV(of, x0);
         }
-    } else if (instruction.operand_width != 32) {
-        return; // nothing else to do
-    }
 
-    // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
-    rec.setOperandGPR(&operands[0], result);
+        rec.setOperandGPR(&operands[0], result);
+    } else if (operands[0].size == 32 && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        // Set it without zero extending again
+        rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
+    } else {
+        return; // don't do nothing
+    }
 }
 
 FAST_HANDLE(SHL) {
