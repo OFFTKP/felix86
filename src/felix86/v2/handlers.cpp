@@ -4204,71 +4204,111 @@ FAST_HANDLE(PSHUFB) {
     ASSERT_MSG(Extensions::VLEN < 2048, "Woah... How did you get a 2048-bit VLEN device? Our PSHUFB implementation would break");
 }
 
+FAST_HANDLE(PBLENDVB) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec mask = rec.getRefVec(X86_REF_XMM0);
+
+    rec.setVectorState(SEW::E8, 16);
+    as.VMSLT(v0, mask, x0);
+    as.VMERGE(dst, dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PBLENDW) { // Fuzzed
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::GPR mask = rec.scratch();
-    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E16, 8);
     as.LI(mask, imm);
     as.VMV(v0, mask);
-    as.VMERGE(result, dst, src);
+    as.VMERGE(dst, dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(BLENDPS) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
-    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E32, 4);
     as.VMV(v0, imm);
-    as.VMERGE(result, dst, src);
+    as.VMERGE(dst, dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(BLENDVPS) {
-    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec mask = rec.getRefVec(X86_REF_XMM0); // I see where VMERGE took inspiration from
+    biscuit::Vec mask = rec.getRefVec(X86_REF_XMM0); // I see where VMERGE took inspiration from /j
 
     rec.setVectorState(SEW::E32, 4);
     as.VMSLT(v0, mask, x0);
-    as.VMERGE(result, dst, src);
+    as.VMERGE(dst, dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(BLENDPD) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b11;
-    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, 2);
     as.VMV(v0, imm);
-    as.VMERGE(result, dst, src);
+    as.VMERGE(dst, dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(BLENDVPD) {
-    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec mask = rec.getRefVec(X86_REF_XMM0);
 
     rec.setVectorState(SEW::E64, 2);
     as.VMSLT(v0, mask, x0);
-    as.VMERGE(result, dst, src);
+    as.VMERGE(dst, dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(DPPS) {
+    biscuit::GPR splat = rec.scratch();
+    biscuit::Vec mul = rec.scratchVec();
+    biscuit::Vec mul_down = rec.scratchVec();
+    biscuit::Vec sum = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    u8 immediate = rec.getImmediate(&operands[2]);
+
+    u8 mmask = immediate >> 4;
+    u8 zmask = ~(immediate & 0b1111);
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VMV(v0, mmask);
+    as.VMV(mul, 0);
+    as.VMV(sum, 0);
+    as.VFMUL(mul, dst, src, VecMask::Yes);
+    as.VSLIDEDOWN(mul_down, mul, 2);
+    rec.setVectorState(SEW::E32, 2);
+    as.VREDSUM(sum, mul, sum);
+    as.VREDSUM(sum, mul_down, sum);
+    rec.setVectorState(SEW::E32, 4);
+    as.VMV_XS(splat, sum);
+    as.VMV(dst, splat);
+
+    if (zmask != 0) {
+        as.VMV(v0, zmask);
+        as.VXOR(dst, dst, dst, VecMask::Yes);
+    }
+
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSHUFLW) {
@@ -4288,6 +4328,7 @@ FAST_HANDLE(PSHUFLW) {
     as.VMV(iota, 0);
     as.VID(iota2);
     // Slide down 4 words, so then the register looks like 8 7 6 5, then we can slide up the other 4 elements
+    // TODO: VRGATHEREI16
     as.VSLIDEDOWN(iota2, iota2, 4);
     as.LI(temp, el3);
     as.VSLIDE1UP(iota, iota2, temp);
@@ -4315,6 +4356,7 @@ FAST_HANDLE(PSHUFHW) {
     rec.setVectorState(SEW::E16, 8);
     as.VMV(result, src); // to move the low words
 
+    // TODO: VRGATHEREI16
     u8 el0 = 4 + (imm & 0b11);
     u8 el1 = 4 + ((imm >> 2) & 0b11);
     u8 el2 = 4 + ((imm >> 4) & 0b11);
