@@ -3863,8 +3863,6 @@ FAST_HANDLE(PMOVMSKB) {
 }
 
 FAST_HANDLE(PTEST) {
-    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
     biscuit::Vec zmask = rec.scratchVec();
     biscuit::Vec cmask = rec.scratchVec();
     biscuit::Vec resultz = rec.scratchVec();
@@ -3893,18 +3891,20 @@ FAST_HANDLE(PTEST) {
 
     // Set mask if not equal zero. Then we can check if that GPR is zero, to set the zero flag
     if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        biscuit::GPR zf = rec.flagW(X86_REF_ZF);
         as.VMSNE(zmask, resultz, 0);
         as.VMV_XS(zf, zmask);
         // No need to do a full zext, just shift left
-        as.SLLI(zf, zf, 48);
+        as.SLLI(zf, zf, 62); // only care about lower 2 bits for the 2 64-bit elements
         as.SEQZ(zf, zf);
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
         if (!same) {
             as.VMSNE(cmask, resultc, 0);
             as.VMV_XS(cf, cmask);
-            as.SLLI(cf, cf, 48);
+            as.SLLI(cf, cf, 62);
             as.SEQZ(cf, cf);
         } else {
             as.LI(cf, 1);
