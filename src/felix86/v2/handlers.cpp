@@ -3997,6 +3997,116 @@ FAST_HANDLE(PMOVZXBQ) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PMOVZXBD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VZEXTVF4(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVZXBW) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E16, 8);
+    as.VZEXTVF2(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVZXWD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VZEXTVF2(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVZXWQ) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    as.VZEXTVF4(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVZXDQ) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    as.VZEXTVF2(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVSXBQ) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    as.VSEXTVF8(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVSXBD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VSEXTVF4(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVSXBW) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E16, 8);
+    as.VSEXTVF2(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVSXWD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VSEXTVF2(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVSXWQ) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    as.VSEXTVF4(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PMOVSXDQ) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    as.VSEXTVF2(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
 void PCMPEQ(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew,
             u8 vlen) {
     biscuit::Vec zero = rec.scratchVec();
