@@ -1179,7 +1179,7 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     current_vlen = vlen;
     current_grouping = grouping;
 
-    as.VSETIVLI(x0, vlen, sew, grouping);
+    as.VSETIVLI(x0, vlen, sew, grouping, VTA::Yes, VMA::No);
     return true;
 }
 
