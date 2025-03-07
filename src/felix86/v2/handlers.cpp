@@ -6370,7 +6370,7 @@ FAST_HANDLE(INSERTPS) {
         count_s = (immediate >> 6) & 0b11;
     }
 
-    u8 mask = ~(1 << count_d);
+    u8 mask = ~(1 << count_d) & 0b1111;
 
     // Need to shift src down by count_s, then shift it up by count_d to insert it there
     int count = count_s - count_d;
