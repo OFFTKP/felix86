@@ -758,7 +758,168 @@ FAST_HANDLE(RSTORSSP) {}
 
 FAST_HANDLE(SAVEPREVSSP) {}
 
+FAST_HANDLE(SHL_imm) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    u8 shift = rec.getImmediate(&operands[1]);
+    shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
+
+    if (shift != 0) {
+        as.SLLI(result, dst, shift);
+    } else if (instruction.operand_width != 32) {
+        return; // nothing else to do
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        u8 shift_right = rec.getBitSize(size) - shift;
+        as.SRLI(cf, dst, shift_right);
+        as.ANDI(cf, cf, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF) && shift == 1) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        u8 shift_right = rec.getBitSize(size) - 1;
+        as.SRLI(of, dst, shift_right);
+        as.ANDI(of, of, 1);
+        as.XOR(of, of, rec.flag(X86_REF_CF));
+    }
+
+    // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
+    rec.setOperandGPR(&operands[0], result);
+}
+
+FAST_HANDLE(SHR_imm) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    u8 shift = rec.getImmediate(&operands[1]);
+    shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
+
+    if (shift != 0) {
+        as.SRLI(result, dst, shift);
+    } else if (instruction.operand_width != 32) {
+        return; // nothing else to do
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        u8 shift_right = shift - 1;
+        as.SRLI(cf, dst, shift_right);
+        as.ANDI(cf, cf, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF) && shift == 1) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        as.SRLI(of, dst, rec.getBitSize(size) - 1);
+        as.ANDI(of, of, 1);
+    }
+
+    // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
+    rec.setOperandGPR(&operands[0], result);
+}
+
+FAST_HANDLE(SAR_imm) {
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    u8 shift = rec.getImmediate(&operands[1]);
+    shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
+
+    if (shift != 0) {
+        switch (size) {
+        case X86_SIZE_BYTE: {
+            as.SLLI(result, dst, 56);
+            if (shift + 56 < 64) {
+                as.SRAI(result, result, 56 + shift);
+            } else {
+                as.SRAI(result, result, 63);
+            }
+            break;
+        }
+        case X86_SIZE_WORD: {
+            as.SLLI(result, dst, 48);
+            if (shift + 48 < 64) {
+                as.SRAI(result, result, 48 + shift);
+            } else {
+                as.SRAI(result, result, 63);
+            }
+            break;
+        }
+        case X86_SIZE_DWORD: {
+            as.SRAIW(result, dst, shift);
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            as.SRAI(result, dst, shift);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+    } else if (instruction.operand_width != 32) {
+        return; // nothing else to do
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        rec.updateParity(result);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        rec.updateZero(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        rec.updateSign(result, size);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flagW(X86_REF_CF);
+        as.SRLI(cf, dst, shift - 1);
+        as.ANDI(cf, cf, 1);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        biscuit::GPR of = rec.flagW(X86_REF_OF);
+        as.MV(of, x0);
+    }
+
+    // Even if shift is 0, the side effect of say sll eax, 0 is the top bits will be zeroed
+    rec.setOperandGPR(&operands[0], result);
+}
+
 FAST_HANDLE(SHL) {
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        return fast_SHL_imm(rec, meta, as, instruction, operands);
+    }
+
     biscuit::GPR result = rec.scratch();
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -824,6 +985,10 @@ FAST_HANDLE(SHL) {
 }
 
 FAST_HANDLE(SHR) {
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        return fast_SHR_imm(rec, meta, as, instruction, operands);
+    }
+
     biscuit::GPR result = rec.scratch();
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -886,6 +1051,10 @@ FAST_HANDLE(SHR) {
 }
 
 FAST_HANDLE(SAR) {
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        return fast_SAR_imm(rec, meta, as, instruction, operands);
+    }
+
     biscuit::GPR result = rec.scratch();
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
