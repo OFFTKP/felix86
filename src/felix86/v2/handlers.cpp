@@ -2493,34 +2493,49 @@ FAST_HANDLE(UNPCKHPD) { // Fuzzed
     rec.setOperandVec(&operands[0], result);
 }
 
+FAST_HANDLE(VECTOR_MOV) {
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value == operands[1].reg.value) {
+            WARN("vmov from and to same reg?");
+        }
+
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setOperandVec(&operands[0], src);
+    } else {
+        // Operand 1 is memory, so operand 0 must be register
+        ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER);
+        // Load directly to register to avoid a vmv1r
+        biscuit::Vec dst = rec.allocatedVec(rec.zydisToRef(operands[0].reg.value));
+        int size = operands[0].size;
+        ASSERT(operands[0].size == operands[1].size);
+        ASSERT(operands[0].size > 64);
+        biscuit::GPR address = rec.leaAddBase(&operands[1]);
+        rec.readMemoryVectorNoBase(dst, address, size);
+    }
+}
+
 FAST_HANDLE(MOVAPD) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVAPS) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVUPD) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVUPS) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVDQA) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVDQU) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(RDTSC) {
@@ -2583,28 +2598,23 @@ FAST_HANDLE(PXOR) {
 }
 
 FAST_HANDLE(MOVNTDQ) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVNTDQA) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVNTI) {
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    rec.setOperandGPR(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVNTPD) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(MOVNTPS) {
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    rec.setOperandVec(&operands[0], src);
+    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
 }
 
 FAST_HANDLE(PAND) {
@@ -6360,8 +6370,6 @@ FAST_HANDLE(INSERTPS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec src_shifted = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec dst_masked = rec.scratchVec();
 
     u8 count_s = 0;
     u8 count_d = (immediate >> 4) & 0b11;
@@ -6370,7 +6378,7 @@ FAST_HANDLE(INSERTPS) {
         count_s = (immediate >> 6) & 0b11;
     }
 
-    u8 mask = ~(1 << count_d) & 0b1111;
+    u8 mask = (1 << count_d) & 0b1111;
 
     // Need to shift src down by count_s, then shift it up by count_d to insert it there
     int count = count_s - count_d;
@@ -6385,11 +6393,12 @@ FAST_HANDLE(INSERTPS) {
     }
 
     as.VMV(v0, mask);
-    as.VXOR(dst_masked, dst, dst, VecMask::Yes);
-    as.VMNAND(v0, v0, v0);
-    as.VOR(result, dst_masked, src_shifted, VecMask::Yes);
-    as.VMV(v0, zmask);
-    as.VXOR(dst, result, result, VecMask::Yes);
+    as.VMERGE(dst, dst, src_shifted);
+
+    if (zmask) {
+        as.VMV(v0, zmask);
+        as.VXOR(dst, dst, dst, VecMask::Yes);
+    }
 
     rec.setOperandVec(&operands[0], dst);
 }

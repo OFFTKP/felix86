@@ -787,74 +787,12 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
         return reg;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        biscuit::GPR address = leaAddBase(operand);
         biscuit::Vec vec = scratchVec();
+        biscuit::GPR address = leaAddBase(operand);
 
-        switch (operand->size) {
-        case 8: {
-            setVectorState(SEW::E8, 1);
-            as.VLE8(vec, address); // These won't need to be patched as they can't be unaligned
-            break;
-        }
-        case 16: {
-            if (g_paranoid) {
-                setVectorState(SEW::E8, 2);
-                as.VLE8(vec, address);
-            } else {
-                if (!setVectorState(SEW::E16, 1)) {
-                    as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
-                }
-                as.VLE16(vec, address);
-                as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-            }
-            break;
-        }
-        case 32: {
-            if (g_paranoid) {
-                setVectorState(SEW::E8, 4);
-                as.VLE8(vec, address);
-            } else {
-                if (!setVectorState(SEW::E32, 1)) {
-                    as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
-                }
-                as.VLE32(vec, address);
-                as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-            }
-            break;
-        }
-        case 64: {
-            if (g_paranoid) {
-                setVectorState(SEW::E8, 8);
-                as.VLE8(vec, address);
-            } else {
-                if (!setVectorState(SEW::E64, 1)) {
-                    as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
-                }
-                as.VLE64(vec, address);
-                as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-            }
-            break;
-        }
-        case 128: {
-            if (g_paranoid) {
-                setVectorState(SEW::E8, 16);
-                as.VLE8(vec, address);
-            } else {
-                if (!setVectorState(SEW::E64, 2)) {
-                    as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
-                }
-                as.VLE64(vec, address);
-                as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-            }
-            break;
-        }
-        default: {
-            UNREACHABLE();
-            break;
-        }
-        }
+        readMemoryVectorNoBase(vec, address, operand->size);
 
-        popScratch();
+        popScratch(); // pop lea scratch
 
         return vec;
     }
@@ -2013,6 +1951,72 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
     }
 
     readMemoryNoBase(dest, address, offset, size);
+}
+
+void Recompiler::readMemoryVectorNoBase(biscuit::Vec vec, biscuit::GPR address, int size) {
+    switch (size) {
+    case 8: {
+        setVectorState(SEW::E8, 1);
+        as.VLE8(vec, address); // These won't need to be patched as they can't be unaligned
+        break;
+    }
+    case 16: {
+        if (g_paranoid) {
+            setVectorState(SEW::E8, 2);
+            as.VLE8(vec, address);
+        } else {
+            if (!setVectorState(SEW::E16, 1)) {
+                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
+            }
+            as.VLE16(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+        }
+        break;
+    }
+    case 32: {
+        if (g_paranoid) {
+            setVectorState(SEW::E8, 4);
+            as.VLE8(vec, address);
+        } else {
+            if (!setVectorState(SEW::E32, 1)) {
+                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
+            }
+            as.VLE32(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+        }
+        break;
+    }
+    case 64: {
+        if (g_paranoid) {
+            setVectorState(SEW::E8, 8);
+            as.VLE8(vec, address);
+        } else {
+            if (!setVectorState(SEW::E64, 1)) {
+                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
+            }
+            as.VLE64(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+        }
+        break;
+    }
+    case 128: {
+        if (g_paranoid) {
+            setVectorState(SEW::E8, 16);
+            as.VLE8(vec, address);
+        } else {
+            if (!setVectorState(SEW::E64, 2)) {
+                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
+            }
+            as.VLE64(vec, address);
+            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
+        }
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
 }
 
 void Recompiler::readMemoryNoBase(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {

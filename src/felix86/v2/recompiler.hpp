@@ -326,6 +326,8 @@ struct Recompiler {
 
     void readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
 
+    void readMemoryVectorNoBase(biscuit::Vec dest, biscuit::GPR address, int size);
+
     void writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
 
     void readMemoryNoBase(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
