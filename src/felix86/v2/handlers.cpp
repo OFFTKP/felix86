@@ -241,8 +241,11 @@ FAST_HANDLE(ADD_32) {
             as.LI(src, operands[1].imm.value.s);
             as.ADD(result, dst, src);
         }
-    } else {
+    } else if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         biscuit::GPR src = rec.getRefGPR(rec.zydisToRef(operands[1].reg.value), X86_SIZE_QWORD);
+        as.ADD(result, dst, src);
+    } else {
+        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
         as.ADD(result, dst, src);
     }
 
@@ -851,6 +854,7 @@ FAST_HANDLE(SHL_imm) {
         if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
             biscuit::GPR cf = rec.flagW(X86_REF_CF);
             u8 shift_right = rec.getBitSize(size) - shift;
+            shift_right &= 0x3F;
             as.SRLI(cf, dst, shift_right);
             as.ANDI(cf, cf, 1);
         }
