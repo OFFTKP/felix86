@@ -4407,8 +4407,8 @@ FAST_HANDLE(DPPS) {
     as.VFMUL(mul, dst, src, VecMask::Yes);
     as.VSLIDEDOWN(mul_down, mul, 2);
     rec.setVectorState(SEW::E32, 2);
-    as.VREDSUM(sum, mul, sum);
-    as.VREDSUM(sum, mul_down, sum);
+    as.VFREDUSUM(sum, mul, sum);
+    as.VFREDUSUM(sum, mul_down, sum);
     rec.setVectorState(SEW::E32, 4);
     as.VMV_XS(splat, sum);
     as.VMV(dst, splat);
