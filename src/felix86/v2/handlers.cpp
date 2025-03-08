@@ -5523,9 +5523,12 @@ FAST_HANDLE(CMPXCHG_lock) {
 
     SetCmpFlags(meta, rec, as, rax, dst, result, size);
 
-    // In case comparison failed (mem != rax), set RAX. We could branch over this sequence
-    // when the comparison doesn't fail, but idk what is more worth tbh
+    Label dont_set;
+    as.BEQZ(result, &dont_set);
+
     rec.setRefGPR(X86_REF_RAX, size, dst);
+
+    as.Bind(&dont_set);
 }
 
 FAST_HANDLE(CMPXCHG) {
