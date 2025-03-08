@@ -5420,7 +5420,7 @@ FAST_HANDLE(PEXTRQ) {
 }
 
 FAST_HANDLE(CMPXCHG_lock) {
-    ASSERT(operands[0].size != 8);
+    ASSERT(operands[0].size != 8 && operands[0].size != 16);
 
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
     biscuit::GPR address = rec.leaAddBase(&operands[0]);
@@ -5436,6 +5436,9 @@ FAST_HANDLE(CMPXCHG_lock) {
             as.FENCE();
             as.AMOCAS_H(biscuit::Ordering::AQRL, dst, src, address);
         } else {
+            // TODO: runs out of scratch space, also untested
+            ASSERT(false);
+
             // This sequence of instructions was taken from clang RISC-V compiler when using
             // __atomic_compare_exchange with 16-bit operands.
             biscuit::Label not_equal;
@@ -5526,8 +5529,8 @@ FAST_HANDLE(CMPXCHG_lock) {
 
 FAST_HANDLE(CMPXCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        if (operands[0].size == 8) {
-            WARN("Atomic CMPXCHG with 8 bit operands encountered");
+        if (operands[0].size == 8 || operands[0].size == 16) {
+            WARN("Atomic CMPXCHG with 8 or 16 bit operands encountered");
         } else {
             return fast_CMPXCHG_lock(rec, meta, as, instruction, operands);
         }
