@@ -169,11 +169,12 @@ struct Recompiler {
 
     void setFlagUndefined(x86_ref_e ref);
 
-    x86_ref_e zydisToRef(ZydisRegister reg);
+    // TODO: move these elsewhere
+    static x86_ref_e zydisToRef(ZydisRegister reg);
 
-    x86_size_e zydisToSize(ZydisRegister reg);
+    static x86_size_e zydisToSize(ZydisRegister reg);
 
-    x86_size_e zydisToSize(ZyanU8 size);
+    static x86_size_e zydisToSize(ZyanU8 size);
 
     std::lock_guard<std::mutex> lock() {
         return std::lock_guard{block_map_mutex};
