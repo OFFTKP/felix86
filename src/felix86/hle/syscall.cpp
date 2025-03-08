@@ -864,6 +864,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("munmap(%p, %016lx) = %016lx", (void*)rdi, rsi, (u64)result);
         break;
     }
+    case felix86_x86_64_setitimer: {
+        result = HOST_SYSCALL(setitimer, rdi, rsi, rdx);
+        STRACE("setitimer(%d, %p, %p) = %d", (int)rdi, (void*)rdi, (void*)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_getuid: {
         result = HOST_SYSCALL(getuid);
         STRACE("getuid() = %d", (int)result);
