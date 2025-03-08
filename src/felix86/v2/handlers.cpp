@@ -5436,7 +5436,6 @@ FAST_HANDLE(CMPXCHG_lock) {
     biscuit::GPR address = rec.leaAddBase(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
-    biscuit::GPR result = rec.scratch();
     biscuit::GPR dst = rec.scratch();
 
     switch (size) {
@@ -5453,6 +5452,9 @@ FAST_HANDLE(CMPXCHG_lock) {
             biscuit::Label start;
             biscuit::GPR address_aligned = rec.scratch();
             biscuit::GPR mask = rec.scratch();
+            // Save AX we need it for flag calculation later
+            as.SH(rax, -2, sp);
+
             // Align the address so that we can use LR_W/SC_W
             as.ANDI(address_aligned, address, -4);
             // Create a shift amount by shifting the original address left by 3
@@ -5479,12 +5481,13 @@ FAST_HANDLE(CMPXCHG_lock) {
             as.SC_W(Ordering::AQRL, tmp, tmp, address_aligned);
             as.BNEZ(tmp, &start);
             as.Bind(&not_equal);
+            rec.popScratch();
+            rec.popScratch();
 
-            // Shift it back down so we set AX later in case they weren't equal
+            // Load back the unshifted value of AX
+            as.LHU(rax, -2, sp);
+            // Shift it back down for the flag calculation
             as.SRL(dst, dst, address);
-
-            rec.popScratch();
-            rec.popScratch();
         }
         break;
     }
@@ -5521,9 +5524,10 @@ FAST_HANDLE(CMPXCHG_lock) {
     }
     }
 
+    biscuit::GPR result = rec.scratch();
     as.SUB(result, rax, dst);
 
-    SetCmpFlags(meta, rec, as, dst, src, result, size);
+    SetCmpFlags(meta, rec, as, rax, dst, result, size);
 
     // In case comparison failed (mem != rax), set RAX. We could branch over this sequence
     // when the comparison doesn't fail, but idk what is more worth tbh
@@ -5550,7 +5554,7 @@ FAST_HANDLE(CMPXCHG) {
 
     as.SUB(result, rax, dst);
 
-    SetCmpFlags(meta, rec, as, dst, src, result, size);
+    SetCmpFlags(meta, rec, as, rax, dst, result, size);
 
     as.BEQ(dst, rax, &equal);
 
