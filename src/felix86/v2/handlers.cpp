@@ -552,10 +552,14 @@ FAST_HANDLE(XOR) {
         if (needs_any_flag) {
             as.XOR(result, dst, src);
         }
+
+        writeback = false;
     } else {
         if (needs_atomic) {
             WARN("Atomic XOR with 8 or 16 bit operands encountered");
         }
+
+        dst = rec.getOperandGPR(&operands[0]);
         as.XOR(result, dst, src);
     }
 
