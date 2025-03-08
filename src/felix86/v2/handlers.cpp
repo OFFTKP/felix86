@@ -5482,6 +5482,9 @@ FAST_HANDLE(CMPXCHG_lock) {
 
             // Shift it back down so we set AX later in case they weren't equal
             as.SRL(dst, dst, address);
+
+            rec.popScratch();
+            rec.popScratch();
         }
         break;
     }
