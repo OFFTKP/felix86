@@ -24,6 +24,7 @@ bool g_extensions_manually_specified = false;
 bool g_calltrace = false;
 bool g_use_block_cache = true;
 bool g_single_step = false;
+bool g_safe_flags = true;
 bool g_dont_protect_pages = false;
 bool g_print_all_calls = false;
 bool g_no_sse2 = false;
@@ -227,6 +228,12 @@ void initialize_globals() {
         if (!g_testing)
             g_quiet = true;
         environment += "\nFELIX86_QUIET";
+    }
+
+    const char* unsafe_flags = getenv("FELIX86_UNSAFE_FLAGS");
+    if (is_truthy(unsafe_flags)) {
+        g_safe_flags = false;
+        environment += "\nFELIX86_UNSAFE_FLAGS";
     }
 
     const char* dump_regs_env = getenv("FELIX86_DUMP_REGS");

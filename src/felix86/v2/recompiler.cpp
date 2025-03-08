@@ -1362,6 +1362,20 @@ void Recompiler::scanFlagUsageAhead(HostAddress rip) {
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
 
+        if (!g_safe_flags && !g_paranoid) {
+            if (is_call || is_ret) {
+                // Pretend that the call changes the flags so that we don't calculate the flags
+                // This is most often the case so it's a good optimization.
+                flag_access_cpazso[0].push_back({true, rip});
+                flag_access_cpazso[1].push_back({true, rip});
+                flag_access_cpazso[2].push_back({true, rip});
+                flag_access_cpazso[3].push_back({true, rip});
+                flag_access_cpazso[4].push_back({true, rip});
+                flag_access_cpazso[5].push_back({true, rip});
+                break;
+            }
+        }
+
         if (instruction.attributes & ZYDIS_ATTRIB_CPUFLAG_ACCESS) {
             u32 changed =
                 instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;
