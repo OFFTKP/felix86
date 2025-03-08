@@ -493,8 +493,6 @@ FAST_HANDLE(OR) {
     }
 
     rec.setOperandGPR(&operands[0], result);
-
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(XOR) {
@@ -524,8 +522,6 @@ FAST_HANDLE(XOR) {
         if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
             rec.zeroFlag(X86_REF_OF);
         }
-
-        rec.setFlagUndefined(X86_REF_AF);
         return;
     }
 
@@ -586,8 +582,6 @@ FAST_HANDLE(XOR) {
     if (writeback) {
         rec.setOperandGPR(&operands[0], result);
     }
-
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(AND) {
@@ -619,8 +613,6 @@ FAST_HANDLE(AND) {
     }
 
     rec.setOperandGPR(&operands[0], result);
-
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(HLT) {
@@ -1472,7 +1464,6 @@ FAST_HANDLE(DIV) {
     }
 
     rec.setFlagUndefined(X86_REF_CF);
-    rec.setFlagUndefined(X86_REF_AF);
     rec.setFlagUndefined(X86_REF_ZF);
     rec.setFlagUndefined(X86_REF_SF);
     rec.setFlagUndefined(X86_REF_OF);
@@ -1552,7 +1543,6 @@ FAST_HANDLE(IDIV) {
     }
 
     rec.setFlagUndefined(X86_REF_CF);
-    rec.setFlagUndefined(X86_REF_AF);
     rec.setFlagUndefined(X86_REF_ZF);
     rec.setFlagUndefined(X86_REF_SF);
     rec.setFlagUndefined(X86_REF_OF);
@@ -1587,8 +1577,6 @@ FAST_HANDLE(TEST) {
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
         rec.zeroFlag(X86_REF_OF);
     }
-
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(INC) {
@@ -2148,7 +2136,6 @@ FAST_HANDLE(IMUL) {
         }
         }
 
-        rec.setFlagUndefined(X86_REF_AF);
         rec.setFlagUndefined(X86_REF_ZF);
         rec.setFlagUndefined(X86_REF_SF);
     } else if (opcount == 2 || opcount == 3) {
@@ -2224,7 +2211,6 @@ FAST_HANDLE(IMUL) {
         }
         }
 
-        rec.setFlagUndefined(X86_REF_AF);
         rec.setFlagUndefined(X86_REF_ZF);
         rec.setFlagUndefined(X86_REF_SF);
     } else {
@@ -2312,7 +2298,6 @@ FAST_HANDLE(MUL) {
     }
     }
 
-    rec.setFlagUndefined(X86_REF_AF);
     rec.setFlagUndefined(X86_REF_ZF);
     rec.setFlagUndefined(X86_REF_SF);
 }
@@ -4595,7 +4580,6 @@ FAST_HANDLE(BSF) {
     rec.setFlagUndefined(X86_REF_CF);
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(TZCNT) {
@@ -4619,7 +4603,6 @@ FAST_HANDLE(TZCNT) {
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 void BITSTRING_func(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
@@ -4638,7 +4621,6 @@ void BITSTRING_func(Recompiler& rec, const HandlerMetadata& meta, Assembler& as,
     as.MV(cf, a0); // Write result to cf
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(BTC) {
@@ -4667,7 +4649,6 @@ FAST_HANDLE(BTC) {
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(BT) {
@@ -4689,7 +4670,6 @@ FAST_HANDLE(BT) {
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(BTS) {
@@ -4720,7 +4700,6 @@ FAST_HANDLE(BTS) {
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(BTR) {
@@ -4749,7 +4728,6 @@ FAST_HANDLE(BTR) {
 
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 FAST_HANDLE(BLSR) {
@@ -4824,7 +4802,6 @@ FAST_HANDLE(BSR) {
     rec.setFlagUndefined(X86_REF_CF);
     rec.setFlagUndefined(X86_REF_OF);
     rec.setFlagUndefined(X86_REF_SF);
-    rec.setFlagUndefined(X86_REF_AF);
 }
 
 void REV8(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src) {
