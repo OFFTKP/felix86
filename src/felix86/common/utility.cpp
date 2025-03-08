@@ -588,6 +588,7 @@ std::string get_perf_symbol(u64 address) {
 }
 
 void print_address(u64 address) {
+    update_symbols();
     auto lock = g_process_globals.symbols_lock.lock();
 
     bool found = false;
