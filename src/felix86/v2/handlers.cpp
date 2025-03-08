@@ -530,32 +530,62 @@ FAST_HANDLE(XOR) {
     }
 
     biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst;
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
-    as.XOR(result, dst, src);
+    bool needs_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool needs_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
+    bool writeback = true;
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
+    if (needs_atomic && !too_small_for_atomic) {
+        dst = rec.scratch();
+        biscuit::GPR address = rec.leaAddBase(&operands[0]);
+        if (size == X86_SIZE_DWORD) {
+            as.AMOXOR_W(Ordering::AQRL, dst, src, address);
+        } else if (size == X86_SIZE_QWORD) {
+            as.AMOXOR_D(Ordering::AQRL, dst, src, address);
+        } else {
+            UNREACHABLE();
+        }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        if (needs_any_flag) {
+            as.XOR(result, dst, src);
+        }
+    } else {
+        if (needs_atomic) {
+            WARN("Atomic XOR with 8 or 16 bit operands encountered");
+        }
+        as.XOR(result, dst, src);
+    }
+
+    if (needs_cf) {
         rec.zeroFlag(X86_REF_CF);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+    if (needs_pf) {
         rec.updateParity(result);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+    if (needs_zf) {
         rec.updateZero(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+    if (needs_sf) {
         rec.updateSign(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+    if (needs_of) {
         rec.zeroFlag(X86_REF_OF);
     }
 
-    rec.setOperandGPR(&operands[0], result);
+    if (writeback) {
+        rec.setOperandGPR(&operands[0], result);
+    }
 
     rec.setFlagUndefined(X86_REF_AF);
 }
@@ -1570,7 +1600,7 @@ FAST_HANDLE(INC) {
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
     bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
-        biscuit::GPR address = rec.lea(&operands[0]);
+        biscuit::GPR address = rec.leaAddBase(&operands[0]);
         biscuit::GPR one = rec.scratch();
         dst = rec.scratch();
         as.LI(one, 1);
@@ -1629,7 +1659,7 @@ FAST_HANDLE(DEC) {
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
     bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
-        biscuit::GPR address = rec.lea(&operands[0]);
+        biscuit::GPR address = rec.leaAddBase(&operands[0]);
         biscuit::GPR one = rec.scratch();
         dst = rec.scratch();
         as.LI(one, -1);
@@ -1734,7 +1764,7 @@ FAST_HANDLE(SAHF) {
 FAST_HANDLE(XCHG_lock) {
     ASSERT(operands[0].size != 8 && operands[0].size != 16);
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR address = rec.leaAddBase(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR scratch = rec.scratch();
     biscuit::GPR dst = rec.scratch();
@@ -5400,16 +5430,61 @@ FAST_HANDLE(PEXTRQ) {
 }
 
 FAST_HANDLE(CMPXCHG_lock) {
-    ASSERT(operands[0].size != 8 && operands[0].size != 16);
+    ASSERT(operands[0].size != 8);
 
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
-    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR address = rec.leaAddBase(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR dst = rec.scratch();
 
     switch (size) {
+    case X86_SIZE_WORD: {
+        if (Extensions::Zacas && Extensions::Zabha) {
+            WARN_ONCE("You have Zacas and Zabha, CMPXCHG is untested with this combo");
+            dst = rax; // write to the AX scratch to save a move instruction
+            as.FENCE();
+            as.AMOCAS_H(biscuit::Ordering::AQRL, dst, src, address);
+        } else {
+            // This sequence of instructions was taken from clang RISC-V compiler when using
+            // __atomic_compare_exchange with 16-bit operands.
+            biscuit::Label not_equal;
+            biscuit::Label start;
+            biscuit::GPR address_aligned = rec.scratch();
+            biscuit::GPR mask = rec.scratch();
+            // Align the address so that we can use LR_W/SC_W
+            as.ANDI(address_aligned, address, -4);
+            // Create a shift amount by shifting the original address left by 3
+            // This multiplies it by 8, and the resulting shift count is (based on the low 2 bits of orig address)
+            // either 0, 8, 16, 24 (0b00000, 0b01000, 0b10000, 0b11000). We need to shift our operands and a mask
+            // to that position, because that position is where the word is inside the dword (the word may also be
+            // misaligned inside the dword, however if it is between two dwords then this isn't possible, so this would
+            // fail. We assume that this isn't the case)
+            as.SLLI(address, address, 3);
+            as.LI(mask, 0xFFFF);
+            // SLLW ignores the top bits of "address" and it only takes into account the bottom 5 bits
+            as.SLLW(rax, rax, address);
+            as.SLLW(mask, mask, address);
+            as.SLLW(src, src, address);
+
+            biscuit::GPR tmp = rec.scratch();
+            as.Bind(&start);
+            as.LR_W(Ordering::AQRL, dst, address_aligned);
+            as.AND(tmp, dst, mask);
+            as.BNE(tmp, rax, &not_equal);
+            as.XOR(tmp, dst, src);
+            as.AND(tmp, tmp, mask);
+            as.XOR(tmp, tmp, dst);
+            as.SC_W(Ordering::AQRL, tmp, tmp, address_aligned);
+            as.BNEZ(tmp, &start);
+            as.Bind(&not_equal);
+
+            // Shift it back down so we set AX later in case they weren't equal
+            as.SRL(dst, dst, address);
+        }
+        break;
+    }
     case X86_SIZE_DWORD: {
         biscuit::Label not_equal;
         biscuit::Label start;
@@ -5447,20 +5522,15 @@ FAST_HANDLE(CMPXCHG_lock) {
 
     SetCmpFlags(meta, rec, as, dst, src, result, size);
 
-    biscuit::Label end, equal;
-    as.BEQ(dst, rax, &equal);
-
-    // Not equal
+    // In case comparison failed (mem != rax), set RAX. We could branch over this sequence
+    // when the comparison doesn't fail, but idk what is more worth tbh
     rec.setRefGPR(X86_REF_RAX, size, dst);
-
-    // The SC instruction already wrote to memory
-    as.Bind(&equal);
 }
 
 FAST_HANDLE(CMPXCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        if (operands[0].size == 8 || operands[0].size == 16) {
-            WARN("Atomic CMPXCHG with 8 or 16 bit operands encountered");
+        if (operands[0].size == 8) {
+            WARN("Atomic CMPXCHG with 8 bit operands encountered");
         } else {
             return fast_CMPXCHG_lock(rec, meta, as, instruction, operands);
         }
@@ -5941,7 +6011,7 @@ FAST_HANDLE(XADD) {
     bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
         // In this case the add+writeback needs to happen atomically
-        biscuit::GPR address = rec.lea(&operands[0]);
+        biscuit::GPR address = rec.leaAddBase(&operands[0]);
 
         dst = rec.scratch();
         if (instruction.operand_width == 32) {
