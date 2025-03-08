@@ -280,7 +280,8 @@ GuestAddress get_actual_rip(BlockMetadata& metadata, HostAddress host_pc) {
         if (host_pc >= span.second) {
             ret_value = span.first;
         } else { // if it's smaller it means that instruction isn't reached yet, return previous value
-            ASSERT_MSG(!ret_value.isNull(), "First PC: %lx, Our PC: %lx", metadata.instruction_spans[0].second.raw(), host_pc.raw());
+            ASSERT_MSG(!ret_value.isNull(), "First PC: %lx, Our PC: %lx, Block: %lx-%lx", metadata.instruction_spans[0].second.raw(), host_pc.raw(),
+                       metadata.address.raw(), metadata.address_end.raw());
             return ret_value;
         }
     }

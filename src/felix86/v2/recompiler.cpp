@@ -305,13 +305,13 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
     while (compiling) {
         resetScratch();
 
+        block_meta.instruction_spans.push_back({meta.rip.toGuest(), HostAddress{(u64)as.GetCursorPointer()}});
+
         if (g_breakpoints.find(meta.rip.raw()) != g_breakpoints.end()) {
             u64 current_address = (u64)as.GetCursorPointer();
             g_breakpoints[meta.rip.raw()].push_back(current_address);
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
-
-        block_meta.instruction_spans.push_back({meta.rip.toGuest(), HostAddress{(u64)as.GetCursorPointer()}});
 
         ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
 
