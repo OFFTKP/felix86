@@ -635,20 +635,9 @@ void print_address(u64 address) {
     const char* symbol_str = symbol ? symbol->name.c_str() : nullptr;
     std::string symbol_trunc;
     if (symbol_str) {
-        // 16 for each hex number at most
-        // 4 for " in "
-        // 8 more for the parentheses stuff and other characters
-        i64 max_size = 16 + 4 + filename.size() + 8 + 16;
-        max_size = w.ws_col - max_size;
-        max_size -= 8; // give it some extra breathing room too
-
-        if (max_size < 10) {
-            // If we have fewer than 10 characters, the user is just messing around with a tiny terminal or idk
-            // Let's just not truncate it.
-            symbol_trunc = symbol_str;
-        } else {
-            symbol_trunc = symbol_str;
-            symbol_trunc = symbol_trunc.substr(0, max_size);
+        symbol_trunc = symbol_str;
+        if (symbol_trunc.size() > 40) {
+            symbol_trunc = symbol_trunc.substr(0, 39);
             symbol_trunc += "...";
         }
     }
