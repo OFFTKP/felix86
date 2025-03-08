@@ -1739,7 +1739,7 @@ FAST_HANDLE(LAHF) {
 
 FAST_HANDLE(SAHF) {
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
-    biscuit::GPR af = rec.flagW(X86_REF_AF);
+    biscuit::GPR af = rec.scratch();
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
     biscuit::GPR sf = rec.flagW(X86_REF_SF);
     biscuit::GPR ah = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH);
@@ -1753,6 +1753,7 @@ FAST_HANDLE(SAHF) {
 
     as.SRLI(af, ah, 4);
     as.ANDI(af, af, 1);
+    as.SB(af, offsetof(ThreadState, af), rec.threadStatePointer());
 
     as.SRLI(zf, ah, 6);
     as.ANDI(zf, zf, 1);
@@ -3719,9 +3720,11 @@ FAST_HANDLE(NEG) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
+        biscuit::GPR af = rec.scratch();
         as.ANDI(af, dst, 0xF);
         as.SNEZ(af, af);
+        as.SB(af, offsetof(ThreadState, af), rec.threadStatePointer());
+        rec.popScratch();
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
@@ -3974,8 +3977,7 @@ FAST_HANDLE(PTEST) {
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
-        biscuit::GPR af = rec.flagW(X86_REF_AF);
-        as.MV(af, x0);
+        as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
     }
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
@@ -5203,13 +5205,20 @@ void COMIS(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDec
 
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-    biscuit::GPR af = rec.flagW(X86_REF_AF);
     biscuit::GPR sf = rec.flagW(X86_REF_SF);
     biscuit::GPR of = rec.flagW(X86_REF_OF);
 
-    as.LI(of, 0);
-    as.LI(af, 0);
-    as.LI(sf, 0);
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+        as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+        as.LI(of, 0);
+    }
+
+    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        as.LI(sf, 0);
+    }
 
     Label end, nan, equal, less_than;
 
@@ -5487,7 +5496,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             // Load back the unshifted value of AX
             as.LHU(rax, -2, sp);
             // Shift it back down for the flag calculation
-            as.SRL(dst, dst, address);
+            as.SRLW(dst, dst, address);
         }
         break;
     }
@@ -6694,7 +6703,6 @@ FAST_HANDLE(POPFQ) {
     rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), rsp);
 
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
-    biscuit::GPR af = rec.flagW(X86_REF_AF);
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
     biscuit::GPR sf = rec.flagW(X86_REF_SF);
     biscuit::GPR of = rec.flagW(X86_REF_OF);
@@ -6707,8 +6715,10 @@ FAST_HANDLE(POPFQ) {
     as.ANDI(pf, pf, 1);
     as.SB(pf, offsetof(ThreadState, pf), rec.threadStatePointer());
 
+    biscuit::GPR af = rec.scratch();
     as.SRLI(af, flags, 4);
     as.ANDI(af, af, 1);
+    as.SB(af, offsetof(ThreadState, af), rec.threadStatePointer());
 
     as.SRLI(zf, flags, 6);
     as.ANDI(zf, zf, 1);

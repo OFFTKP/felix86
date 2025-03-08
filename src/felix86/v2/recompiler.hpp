@@ -234,9 +234,6 @@ struct Recompiler {
         case X86_REF_CF: {
             return biscuit::x21;
         }
-        case X86_REF_AF: {
-            return biscuit::x7;
-        }
         case X86_REF_ZF: {
             return biscuit::x23;
         }
@@ -452,6 +449,8 @@ private:
 
     void clearCodeCache(ThreadState* state);
 
+    void emitNecessaryStuff();
+
     void markPagesAsReadOnly(HostAddress start, HostAddress end);
 
     void inlineSyscall(int sysno, int argcount);
@@ -475,7 +474,8 @@ private:
 
     u8* unlink_indirect_thunk{};
 
-    std::array<RegisterMetadata, 16 + 5 + 16> metadata{};
+    // 16 GPRS followed by 4 flags (CF,OF,ZF,SF) then 16 XMMs
+    std::array<RegisterMetadata, 16 + 4 + 16> metadata{};
 
     // This may be locked by a different thread on a signal handler to unlink a block
     std::mutex block_map_mutex{};

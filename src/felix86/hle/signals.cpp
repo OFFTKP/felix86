@@ -124,7 +124,6 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
         gpr_to_x86[Recompiler::allocatedGPR(X86_REF_CF).Index()] = X86_REF_CF;
         gpr_to_x86[Recompiler::allocatedGPR(X86_REF_OF).Index()] = X86_REF_OF;
         gpr_to_x86[Recompiler::allocatedGPR(X86_REF_SF).Index()] = X86_REF_SF;
-        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_AF).Index()] = X86_REF_AF;
     }
 
     while (current < end) {

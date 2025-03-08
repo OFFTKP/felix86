@@ -50,20 +50,15 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
 Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
     for (int i = 0; i < 16; i++) {
         metadata[i].reg = (x86_ref_e)(X86_REF_RAX + i);
-        metadata[i + 16 + 5].reg = (x86_ref_e)(X86_REF_XMM0 + i);
+        metadata[i + 16 + 4].reg = (x86_ref_e)(X86_REF_XMM0 + i);
     }
 
     metadata[16].reg = X86_REF_CF;
-    metadata[17].reg = X86_REF_AF;
-    metadata[18].reg = X86_REF_ZF;
-    metadata[19].reg = X86_REF_SF;
-    metadata[20].reg = X86_REF_OF;
+    metadata[17].reg = X86_REF_ZF;
+    metadata[18].reg = X86_REF_SF;
+    metadata[19].reg = X86_REF_OF;
 
-    // Deduplicate code with clearcodecache -> emitNecessaryStuff
-    emitDispatcher();
-    emitSigreturnThunk();
-    emitUnlinkIndirectThunk();
-    start_of_code_cache = as.GetCursorPointer();
+    emitNecessaryStuff();
 
     ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
     ZydisStackWidth stack_width = g_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
@@ -78,6 +73,13 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
 Recompiler::~Recompiler() {
     deallocateCodeCache(code_cache);
+}
+
+void Recompiler::emitNecessaryStuff() {
+    emitDispatcher();
+    emitSigreturnThunk();
+    emitUnlinkIndirectThunk();
+    start_of_code_cache = as.GetCursorPointer();
 }
 
 void Recompiler::emitDispatcher() {
@@ -177,10 +179,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     block_metadata.clear();
     std::fill(std::begin(block_cache), std::end(block_cache), BlockCacheEntry{});
 
-    emitDispatcher();
-    emitSigreturnThunk();
-    emitUnlinkIndirectThunk();
-    start_of_code_cache = as.GetCursorPointer();
+    emitNecessaryStuff();
 
     if (g_rsb) {
         // Need to zero out the stack that rsb has used thus far.
@@ -382,6 +381,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
 }
 
 biscuit::GPR Recompiler::scratch() {
+    // TODO: constexpr list of regs
     switch (scratch_index++) {
     case 0:
         return x1;
@@ -395,6 +395,8 @@ biscuit::GPR Recompiler::scratch() {
         return x30;
     case 5:
         return x31;
+    case 6:
+        return x7;
     default:
         ERROR("Tried to use more than 6 scratch GPRs");
         return x0;
@@ -402,7 +404,8 @@ biscuit::GPR Recompiler::scratch() {
 }
 
 bool Recompiler::isScratch(biscuit::GPR reg) {
-    return reg == x1 || reg == x6 || reg == x28 || reg == x29 || reg == x30 || reg == x31;
+    // TODO: constexpr list of regs, std::find
+    return reg == x1 || reg == x6 || reg == x28 || reg == x29 || reg == x30 || reg == x31 || reg == x7;
 }
 
 biscuit::Vec Recompiler::scratchVec() {
@@ -690,20 +693,17 @@ Recompiler::RegisterMetadata& Recompiler::getMetadata(x86_ref_e reg) {
     case X86_REF_CF: {
         return metadata[16];
     }
-    case X86_REF_AF: {
+    case X86_REF_ZF: {
         return metadata[17];
     }
-    case X86_REF_ZF: {
+    case X86_REF_SF: {
         return metadata[18];
     }
-    case X86_REF_SF: {
+    case X86_REF_OF: {
         return metadata[19];
     }
-    case X86_REF_OF: {
-        return metadata[20];
-    }
     case X86_REF_XMM0 ... X86_REF_XMM15: {
-        return metadata[reg - X86_REF_XMM0 + 16 + 5];
+        return metadata[reg - X86_REF_XMM0 + 16 + 4];
     }
     default: {
         UNREACHABLE();
@@ -812,6 +812,10 @@ biscuit::GPR Recompiler::flag(x86_ref_e ref) {
     if (ref == X86_REF_PF) {
         biscuit::GPR reg = scratch();
         as.LBU(reg, offsetof(ThreadState, pf), threadStatePointer());
+        return reg;
+    } else if (ref == X86_REF_AF) {
+        biscuit::GPR reg = scratch();
+        as.LBU(reg, offsetof(ThreadState, af), threadStatePointer());
         return reg;
     }
 
@@ -1273,10 +1277,6 @@ void Recompiler::writebackDirtyState() {
         as.SB(allocatedGPR(X86_REF_CF), offsetof(ThreadState, cf), threadStatePointer());
     }
 
-    if (getMetadata(X86_REF_AF).dirty) {
-        as.SB(allocatedGPR(X86_REF_AF), offsetof(ThreadState, af), threadStatePointer());
-    }
-
     if (getMetadata(X86_REF_ZF).dirty) {
         as.SB(allocatedGPR(X86_REF_ZF), offsetof(ThreadState, zf), threadStatePointer());
     }
@@ -1490,25 +1490,28 @@ void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
 }
 
 void Recompiler::updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result) {
-    biscuit::GPR af = flagW(X86_REF_AF);
+    biscuit::GPR af = scratch();
     biscuit::GPR temp = scratch();
     as.ANDI(af, result, 0xF);
     as.ANDI(temp, lhs, 0xF);
     as.SLTU(af, af, temp);
     popScratch();
+    popScratch();
 }
 
 void Recompiler::updateAuxiliarySub(biscuit::GPR lhs, biscuit::GPR rhs) {
-    biscuit::GPR af = flagW(X86_REF_AF);
+    biscuit::GPR af = scratch();
     biscuit::GPR temp = scratch();
     as.ANDI(af, rhs, 0xF);
     as.ANDI(temp, lhs, 0xF);
     as.SLTU(af, temp, af);
+    as.SB(af, offsetof(ThreadState, af), threadStatePointer());
+    popScratch();
     popScratch();
 }
 
 void Recompiler::updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR cf, biscuit::GPR result_2) {
-    biscuit::GPR af = flagW(X86_REF_AF);
+    biscuit::GPR af = scratch();
     biscuit::GPR temp = scratch();
     as.ANDI(af, result, 0xF);
     as.ANDI(temp, lhs, 0xF);
@@ -1516,11 +1519,13 @@ void Recompiler::updateAuxiliaryAdc(biscuit::GPR lhs, biscuit::GPR result, biscu
     as.ANDI(temp, result_2, 0xF);
     as.SLTU(temp, temp, cf);
     as.OR(af, af, temp);
+    as.SB(af, offsetof(ThreadState, af), threadStatePointer());
+    popScratch();
     popScratch();
 }
 
 void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, biscuit::GPR cf) {
-    biscuit::GPR af = flagW(X86_REF_AF);
+    biscuit::GPR af = scratch();
     biscuit::GPR temp = scratch();
     as.ANDI(af, rhs, 0xF);
     as.ANDI(temp, lhs, 0xF);
@@ -1528,6 +1533,8 @@ void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit:
     as.ANDI(temp, result, 0xF);
     as.SLTU(temp, temp, cf);
     as.OR(af, af, temp);
+    as.SB(af, offsetof(ThreadState, af), threadStatePointer());
+    popScratch();
     popScratch();
 }
 
