@@ -157,6 +157,9 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
                     x86_ref_e ref = gpr_to_x86[gpr_index];
                     if (ref >= X86_REF_RAX && ref <= X86_REF_R15) {
                         u64 value = gprs[gpr_index];
+                        u64 old_value = state->GetGpr(ref);
+                        VERBOSE("Reconstructing state: x86 gpr %d gets value %lx (old: %lx) at RISC-V PC: %lx", ref - X86_REF_RAX, value, old_value,
+                                current);
                         state->SetGpr(ref, value);
                     } else if (ref >= X86_REF_CF && ref <= X86_REF_OF) {
                         u64 value = gprs[gpr_index];
