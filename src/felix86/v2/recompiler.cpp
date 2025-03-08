@@ -1495,6 +1495,7 @@ void Recompiler::updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result) {
     as.ANDI(af, result, 0xF);
     as.ANDI(temp, lhs, 0xF);
     as.SLTU(af, af, temp);
+    as.SB(af, offsetof(ThreadState, af), threadStatePointer());
     popScratch();
     popScratch();
 }
