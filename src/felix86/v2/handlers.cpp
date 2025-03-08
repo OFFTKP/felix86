@@ -2627,7 +2627,8 @@ FAST_HANDLE(MOVNTDQA) {
 }
 
 FAST_HANDLE(MOVNTI) {
-    fast_VECTOR_MOV(rec, meta, as, instruction, operands);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    rec.setOperandGPR(&operands[0], src);
 }
 
 FAST_HANDLE(MOVNTPD) {
