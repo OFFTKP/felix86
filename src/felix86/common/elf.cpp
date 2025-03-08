@@ -827,6 +827,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 }
 
                 if (elf_symbol.address() == 0) { // not yet resolved? skip
+                    VERBOSE("Found symbol %s but address is 0?", symbol);
                     continue;
                 }
 
