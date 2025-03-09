@@ -876,7 +876,7 @@ void felix86_syscall(ThreadState* state) {
                 while (true) {
                     result = HOST_SYSCALL(mmap, bottom, rsi, rdx, new_flags, r8, r9);
 
-                    if (result != MAP_FAILED) {
+                    if ((i64)result > 0) {
                         ok = true;
                         LOG("Returning mapped region with MAP_32BIT: %lx", (u64)result);
                         break;
