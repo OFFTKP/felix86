@@ -721,6 +721,10 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 }
 
                 u64 address = elf_symbols[i]->address();
+                if (ehdr.type() != ET_EXEC) {
+                    // Position independent code (I think this is correct)
+                    address += (u64)start_of_data;
+                }
                 u64 size = elf_symbols[i]->size();
                 u64 end = address + size;
                 int status;
