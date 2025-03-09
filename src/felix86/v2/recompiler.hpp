@@ -416,6 +416,8 @@ struct Recompiler {
         return unlink_indirect_thunk;
     }
 
+    void clearCodeCache(ThreadState* state);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -451,8 +453,6 @@ private:
     ZydisMnemonic decode(HostAddress rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     void expirePendingLinks(HostAddress rip);
-
-    void clearCodeCache(ThreadState* state);
 
     void emitNecessaryStuff();
 

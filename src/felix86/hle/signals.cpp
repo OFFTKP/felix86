@@ -494,6 +494,11 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     case SIGSEGV: {
         switch (info->si_code) {
         case SEGV_ACCERR: {
+            // Test
+            context->uc_mcontext.__gregs[REG_PC] = (u64)recompiler.getCompileNext();
+            recompiler.clearCodeCache(current_state);
+            return;
+
             // Most likely self modifying code, check if the write is in one of our translated pages
             // TODO: ensure it was a write not a read
             if (is_in_jit_code(current_state, pc)) {
