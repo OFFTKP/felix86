@@ -859,18 +859,19 @@ void felix86_syscall(ThreadState* state) {
 #define MAP_32BIT 0x40
 #endif
         u64 flags = r10;
-        if (flags & MAP_32BIT) {
+        if ((flags & MAP_32BIT) && !(flags & MAP_FIXED)) {
             // This flag is x86 only but we need to emulate it
             // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
             // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
             if (rdi == 0) {
+                // TODO: better less hacky support
                 // We only wanna act in the case there's no hint, otherwise we don't care?
                 r10 &= ~MAP_32BIT;
                 u64 new_flags = r10 | MAP_FIXED_NOREPLACE;
                 u64 aligned_size = (rsi + 0x1000) & 0xFFF;
                 // MAP_32BIT allocates in the first 2 GiB of memory
-                u64 bottom = 0x8000'0000 - aligned_size;
-                int attempts = (0x8000'0000 / aligned_size) - 1;
+                u64 bottom = 0x4000'0000 - aligned_size;
+                int attempts = (0x4000'0000 / aligned_size) - 1;
                 bool ok = false;
                 while (true) {
                     result = HOST_SYSCALL(mmap, bottom, rsi, rdx, new_flags, r8, r9);
