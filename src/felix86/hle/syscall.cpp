@@ -896,11 +896,12 @@ void felix86_syscall(ThreadState* state) {
                 }
             } else {
                 WARN("MAP32_BIT with hint: %lx?", rdi);
+                flags |= MAP_FIXED_NOREPLACE; // <= at least fix it so it obeys the hint
             }
         }
 
-        result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
-        STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
+        result = HOST_SYSCALL(mmap, rdi, rsi, rdx, flags, r8, r9);
+        STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)flags, (int)r8, (int)r9, (u64)result);
         break;
     }
     case felix86_x86_64_munmap: {
