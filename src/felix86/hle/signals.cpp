@@ -534,7 +534,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
                 }
 
                 if (!found) { // TODO: at some point programs will purposefully trigger sigsegv but we don't care for now
-                    ERROR("SIGSEGV SEGV_ACCERR, but no block found");
+                    WARN("SIGSEGV SEGV_ACCERR, but no block found");
                 }
 
                 // Now that everything was unlinked we can unprotect the page so the write can be performed
