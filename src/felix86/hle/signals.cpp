@@ -702,3 +702,8 @@ RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
     ASSERT(sig >= 1 && sig <= 64);
     return (*state->signal_handlers)[sig - 1];
 }
+
+void Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
+    // TODO: stuff - you know what
+    ::sigsuspend(mask);
+}
