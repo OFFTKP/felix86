@@ -868,14 +868,14 @@ void felix86_syscall(ThreadState* state) {
                 // We only wanna act in the case there's no hint, otherwise we don't care?
                 r10 &= ~MAP_32BIT;
                 u64 new_flags = r10 | MAP_FIXED_NOREPLACE;
-                u64 aligned_size = (rsi + 0x1000) & 0xFFF;
+                u64 aligned_size = (rsi + 0x1000) & ~0xFFF;
                 // MAP_32BIT allocates in the first 2 GiB of memory
                 u64 bottom = 0x4000'0000 - aligned_size;
                 int attempts = (0x4000'0000 / aligned_size) - 1;
                 bool ok = false;
                 while (true) {
                     LOG("Attemping at: %lx with size %lx", bottom, rsi);
-                    result = HOST_SYSCALL(mmap, bottom, rsi, rdx, new_flags, r8, r9);
+                    result = HOST_SYSCALL(mmap, bottom, aligned_size, rdx, new_flags, r8, r9);
 
                     if ((i64)result > 0) {
                         ok = true;
