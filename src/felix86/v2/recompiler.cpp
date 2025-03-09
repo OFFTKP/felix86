@@ -213,7 +213,7 @@ HostAddress Recompiler::compile(ThreadState* state, HostAddress rip) {
     // A sequence of code. This is so that we can also call it recursively later.
     HostAddress end_rip = compileSequence(rip);
 
-    host_pc_map[block_meta.address.raw()] = &block_meta;
+    host_pc_map[block_meta.address_end.raw() - 1] = &block_meta;
 
     // If other blocks were waiting for this block to be linked, link them now
     expirePendingLinks(rip);
