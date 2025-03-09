@@ -849,14 +849,55 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_mmap: {
-        result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
-        STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
-
         if ((int)r8 != -1) {
             // uses file descriptor, mmaps file to memory, may need to update mappings
             // this can occur when using something like dlopen or when the interpreter initially loads the symbols
             g_symbols_cached = false;
         }
+
+#ifndef MAP_32BIT
+#define MAP_32BIT 0x40
+#endif
+        u64 flags = r10;
+        if (flags & MAP_32BIT) {
+            // This flag is x86 only but we need to emulate it
+            // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
+            // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
+            if (rdi == 0) {
+                // We only wanna act in the case there's no hint, otherwise we don't care?
+                r10 &= ~MAP_32BIT;
+                u64 new_flags = r10 | MAP_FIXED_NOREPLACE;
+                u64 aligned_size = (rsi + 0x1000) & 0xFFF;
+                // MAP_32BIT allocates in the first 2 GiB of memory
+                u64 bottom = 0x8000'0000 - aligned_size;
+                int attempts = (0x8000'0000 / aligned_size) - 1;
+                bool ok = false;
+                while (true) {
+                    result = HOST_SYSCALL(mmap, bottom, rsi, rdx, new_flags, r8, r9);
+
+                    if (result != MAP_FAILED) {
+                        ok = true;
+                        break;
+                    }
+
+                    bottom -= aligned_size;
+
+                    if (attempts-- == 0) {
+                        WARN("Ran out of attempts while allocating with MAP32_BIT, we might crash");
+                        break;
+                    }
+                }
+
+                if (ok) {
+                    break;
+                }
+            } else {
+                WARN("MAP32_BIT with hint: %lx?", rdi);
+            }
+        }
+
+        result = HOST_SYSCALL(mmap, rdi, rsi, rdx, r10, r8, r9);
+        STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
         break;
     }
     case felix86_x86_64_munmap: {
