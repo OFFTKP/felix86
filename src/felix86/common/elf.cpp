@@ -832,7 +832,6 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 }
 
                 u64 address = (u64)start_of_data + elf_symbol.address();
-                u64 end = address + elf_symbol.size();
                 int status;
                 const char* output = abi::__cxa_demangle(symbol, nullptr, nullptr, &status);
                 Symbol new_symbol;
@@ -844,14 +843,14 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 if (output)
                     free((void*)output);
 
-                auto old_symbol = symbols.find(end - 1);
+                auto old_symbol = symbols.find(address);
                 if (old_symbol != symbols.end() && old_symbol->second.strong) {
                     // Not weak symbol, don't replace
                     continue;
                 }
 
-                symbols[end - 1] = new_symbol;
-                VERBOSE("Added new dynamic symbol `%s` at %lx", new_symbol.name.c_str(), new_symbol.start);
+                symbols[address] = new_symbol;
+                VERBOSE("Added new dynamic symbol `%s` at %lx-%lx", new_symbol.name.c_str(), new_symbol.start, new_symbol.start + new_symbol.size);
             }
         } else {
             VERBOSE("symtab > start_of_data && (u8*)strtab > start_of_data failed: %p > %p && %p > %p", symtab, start_of_data, strtab, start_of_data);

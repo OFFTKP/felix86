@@ -504,7 +504,7 @@ void update_symbols() {
         u64 start = region.second.first;
         u64 end = region.second.second;
 
-        g_process_globals.mapped_regions[end - 1] = {.base = start, .end = end, .file = name};
+        g_process_globals.mapped_regions[start] = {.base = start, .end = end, .file = name};
         Elf::AddSymbols(g_process_globals.symbols, name, (u8*)start, (u8*)end);
     }
 
