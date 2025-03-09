@@ -472,11 +472,13 @@ void update_symbols() {
             if (!std::filesystem::is_regular_file(buffer)) {
                 // Not a regular file, either a library outside the chroot or something like
                 // /dev/zero, so we don't add it
+                VERBOSE("Buffer: %s is not regular file", buffer);
                 continue;
             }
 
             auto it = regions.find(buffer);
             if (it == regions.end() && Elf::Peek(buffer) == Elf::PeekResult::NotElf) {
+                VERBOSE("Buffer: %s is not an ELF", buffer);
                 continue;
             }
 
@@ -486,6 +488,7 @@ void update_symbols() {
             }
 
             if (it == regions.end()) {
+                VERBOSE("Adding new mapping: %s", buffer);
                 regions[buffer] = {UINT64_MAX, 0};
             }
 
@@ -494,8 +497,10 @@ void update_symbols() {
             u64 new_end = std::max(region.second, end);
             region.first = new_start;
             region.second = new_end;
+            VERBOSE("Mapping %s extended: %lx-%lx", buffer, new_start, new_end);
         } else {
             // Failed to parse, is not a map line with a path, skip
+            VERBOSE("While reading mappings, failed to parse line: %s", line.c_str());
         }
     }
 

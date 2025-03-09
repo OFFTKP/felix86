@@ -851,7 +851,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 }
 
                 symbols[end - 1] = new_symbol;
-                VERBOSE("Added new dynamic symbol `%s` at %lx", new_symbol.name.c_str(), new_symbol.start);
+                VERBOSE("Added new dynamic symbol `%s` at %lx-%lx", new_symbol.name.c_str(), new_symbol.start, new_symbol.start + new_symbol.size);
             }
         } else {
             VERBOSE("symtab > start_of_data && (u8*)strtab > start_of_data failed: %p > %p && %p > %p", symtab, start_of_data, strtab, start_of_data);

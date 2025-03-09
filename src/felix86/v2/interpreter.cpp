@@ -5,6 +5,8 @@
 #define INTR_HANDLE(name)                                                                                                                            \
     void interpret_##name(Recompiler& rec, ThreadState* state, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
+#define RUN(name) interpret_##name(rec, state, instruction, operands)
+
 u64 GetEffectiveAddress(ThreadState* state, ZydisDecodedOperand& operand) {
     u64 base_full = 0;
     u64 index_full = 0;
@@ -201,6 +203,30 @@ void SetCarrySub(ThreadState* state, u64 lhs, u64 rhs) {
     state->cf = lhs < rhs;
 }
 
+u8* GetVector(ThreadState* state, ZydisDecodedOperand& operand) {
+    switch (operand.type) {
+    case ZYDIS_OPERAND_TYPE_REGISTER: {
+        x86_ref_e ref = Recompiler::zydisToRef(operand.reg.value);
+        return (u8*)&state->xmm[ref - X86_REF_XMM0].data[0];
+    }
+    case ZYDIS_OPERAND_TYPE_MEMORY: {
+        u64 effective_address = GetEffectiveAddress(state, operand);
+        return (u8*)effective_address;
+    }
+    default: {
+        UNREACHABLE();
+        return nullptr;
+    }
+    }
+}
+
+template <class Type>
+void ElementOperation(ThreadState* state, ZydisDecodedOperand* operands, void (*func)(Type* lhs, Type* rhs)) {
+    u8* dst = GetVector(state, operands[0]);
+    u8* src = GetVector(state, operands[1]);
+    func((Type*)dst, (Type*)src);
+}
+
 INTR_HANDLE(ADD) {
     u64 op1 = GetOperand(state, operands[0]);
     u64 op2 = GetOperand(state, operands[1]);
@@ -302,4 +328,260 @@ INTR_HANDLE(TEST) {
 
 INTR_HANDLE(HLT) {
     state->exit_reason = EXIT_REASON_HLT;
+}
+
+INTR_HANDLE(PAND) {
+    ElementOperation<u64>(state, operands, [](u64* lhs, u64* rhs) {
+        lhs[0] &= rhs[0];
+        lhs[1] &= rhs[1];
+    });
+}
+
+INTR_HANDLE(ANDPS) {
+    RUN(PAND);
+}
+
+INTR_HANDLE(ANDPD) {
+    RUN(PAND);
+}
+
+INTR_HANDLE(PANDN) {
+    ElementOperation<u64>(state, operands, [](u64* lhs, u64* rhs) {
+        lhs[0] = ~lhs[0] & rhs[0];
+        lhs[1] = ~lhs[1] & rhs[1];
+    });
+}
+
+INTR_HANDLE(ANDNPS) {
+    RUN(PANDN);
+}
+
+INTR_HANDLE(ANDNPD) {
+    RUN(PANDN);
+}
+
+INTR_HANDLE(POR) {
+    ElementOperation<u64>(state, operands, [](u64* lhs, u64* rhs) {
+        lhs[0] |= rhs[0];
+        lhs[1] |= rhs[1];
+    });
+}
+
+INTR_HANDLE(ORPS) {
+    RUN(POR);
+}
+
+INTR_HANDLE(ORPD) {
+    RUN(POR);
+}
+
+INTR_HANDLE(PXOR) {
+    ElementOperation<u64>(state, operands, [](u64* lhs, u64* rhs) {
+        lhs[0] ^= rhs[0];
+        lhs[1] ^= rhs[1];
+    });
+}
+
+INTR_HANDLE(XORPS) {
+    RUN(PXOR);
+}
+
+INTR_HANDLE(XORPD) {
+    RUN(PXOR);
+}
+
+INTR_HANDLE(PADDB) {
+    ElementOperation<u8>(state, operands, [](u8* lhs, u8* rhs) {
+        lhs[0] += rhs[0];
+        lhs[1] += rhs[1];
+        lhs[2] += rhs[2];
+        lhs[3] += rhs[3];
+        lhs[4] += rhs[4];
+        lhs[5] += rhs[5];
+        lhs[6] += rhs[6];
+        lhs[7] += rhs[7];
+        lhs[8] += rhs[8];
+        lhs[9] += rhs[9];
+        lhs[10] += rhs[10];
+        lhs[11] += rhs[11];
+        lhs[12] += rhs[12];
+        lhs[13] += rhs[13];
+        lhs[14] += rhs[14];
+        lhs[15] += rhs[15];
+    });
+}
+
+INTR_HANDLE(PADDW) {
+    ElementOperation<u16>(state, operands, [](u16* lhs, u16* rhs) {
+        lhs[0] += rhs[0];
+        lhs[1] += rhs[1];
+        lhs[2] += rhs[2];
+        lhs[3] += rhs[3];
+        lhs[4] += rhs[4];
+        lhs[5] += rhs[5];
+        lhs[6] += rhs[6];
+        lhs[7] += rhs[7];
+    });
+}
+
+INTR_HANDLE(PADDD) {
+    ElementOperation<u32>(state, operands, [](u32* lhs, u32* rhs) {
+        lhs[0] += rhs[0];
+        lhs[1] += rhs[1];
+        lhs[2] += rhs[2];
+        lhs[3] += rhs[3];
+    });
+}
+
+INTR_HANDLE(PADDQ) {
+    ElementOperation<u64>(state, operands, [](u64* lhs, u64* rhs) {
+        lhs[0] += rhs[0];
+        lhs[1] += rhs[1];
+    });
+}
+
+INTR_HANDLE(PSUBB) {
+    ElementOperation<u8>(state, operands, [](u8* lhs, u8* rhs) {
+        lhs[0] -= rhs[0];
+        lhs[1] -= rhs[1];
+        lhs[2] -= rhs[2];
+        lhs[3] -= rhs[3];
+        lhs[4] -= rhs[4];
+        lhs[5] -= rhs[5];
+        lhs[6] -= rhs[6];
+        lhs[7] -= rhs[7];
+        lhs[8] -= rhs[8];
+        lhs[9] -= rhs[9];
+        lhs[10] -= rhs[10];
+        lhs[11] -= rhs[11];
+        lhs[12] -= rhs[12];
+        lhs[13] -= rhs[13];
+        lhs[14] -= rhs[14];
+        lhs[15] -= rhs[15];
+    });
+}
+
+INTR_HANDLE(PSUBW) {
+    ElementOperation<u16>(state, operands, [](u16* lhs, u16* rhs) {
+        lhs[0] -= rhs[0];
+        lhs[1] -= rhs[1];
+        lhs[2] -= rhs[2];
+        lhs[3] -= rhs[3];
+        lhs[4] -= rhs[4];
+        lhs[5] -= rhs[5];
+        lhs[6] -= rhs[6];
+        lhs[7] -= rhs[7];
+    });
+}
+
+INTR_HANDLE(PSUBD) {
+    ElementOperation<u32>(state, operands, [](u32* lhs, u32* rhs) {
+        lhs[0] -= rhs[0];
+        lhs[1] -= rhs[1];
+        lhs[2] -= rhs[2];
+        lhs[3] -= rhs[3];
+    });
+}
+
+INTR_HANDLE(PSUBQ) {
+    ElementOperation<u64>(state, operands, [](u64* lhs, u64* rhs) {
+        lhs[0] -= rhs[0];
+        lhs[1] -= rhs[1];
+    });
+}
+
+INTR_HANDLE(ADDPS) {
+    ElementOperation<float>(state, operands, [](float* lhs, float* rhs) {
+        lhs[0] += rhs[0];
+        lhs[1] += rhs[1];
+        lhs[2] += rhs[2];
+        lhs[3] += rhs[3];
+    });
+}
+
+INTR_HANDLE(ADDPD) {
+    ElementOperation<double>(state, operands, [](double* lhs, double* rhs) {
+        lhs[0] += rhs[0];
+        lhs[1] += rhs[1];
+    });
+}
+
+INTR_HANDLE(SUBPS) {
+    ElementOperation<float>(state, operands, [](float* lhs, float* rhs) {
+        lhs[0] -= rhs[0];
+        lhs[1] -= rhs[1];
+        lhs[2] -= rhs[2];
+        lhs[3] -= rhs[3];
+    });
+}
+
+INTR_HANDLE(SUBPD) {
+    ElementOperation<double>(state, operands, [](double* lhs, double* rhs) {
+        lhs[0] -= rhs[0];
+        lhs[1] -= rhs[1];
+    });
+}
+
+INTR_HANDLE(MULPS) {
+    ElementOperation<float>(state, operands, [](float* lhs, float* rhs) {
+        lhs[0] *= rhs[0];
+        lhs[1] *= rhs[1];
+        lhs[2] *= rhs[2];
+        lhs[3] *= rhs[3];
+    });
+}
+
+INTR_HANDLE(MULPD) {
+    ElementOperation<double>(state, operands, [](double* lhs, double* rhs) {
+        lhs[0] *= rhs[0];
+        lhs[1] *= rhs[1];
+    });
+}
+
+INTR_HANDLE(DIVPS) {
+    ElementOperation<float>(state, operands, [](float* lhs, float* rhs) {
+        lhs[0] /= rhs[0];
+        lhs[1] /= rhs[1];
+        lhs[2] /= rhs[2];
+        lhs[3] /= rhs[3];
+    });
+}
+
+INTR_HANDLE(DIVPD) {
+    ElementOperation<double>(state, operands, [](double* lhs, double* rhs) {
+        lhs[0] /= rhs[0];
+        lhs[1] /= rhs[1];
+    });
+}
+
+INTR_HANDLE(MINPS) {
+    ElementOperation<float>(state, operands, [](float* lhs, float* rhs) {
+        lhs[0] = lhs[0] < rhs[0] ? lhs[0] : rhs[0];
+        lhs[1] = lhs[1] < rhs[1] ? lhs[1] : rhs[1];
+        lhs[2] = lhs[2] < rhs[2] ? lhs[2] : rhs[2];
+        lhs[3] = lhs[3] < rhs[3] ? lhs[3] : rhs[3];
+    });
+}
+
+INTR_HANDLE(MINPD) {
+    ElementOperation<double>(state, operands, [](double* lhs, double* rhs) {
+        lhs[0] = lhs[0] < rhs[0] ? lhs[0] : rhs[0];
+        lhs[1] = lhs[1] < rhs[1] ? lhs[1] : rhs[1];
+    });
+}
+
+INTR_HANDLE(MAXPS) {
+    ElementOperation<float>(state, operands, [](float* lhs, float* rhs) {
+        lhs[0] = lhs[0] > rhs[0] ? lhs[0] : rhs[0];
+        lhs[1] = lhs[1] > rhs[1] ? lhs[1] : rhs[1];
+        lhs[2] = lhs[2] > rhs[2] ? lhs[2] : rhs[2];
+        lhs[3] = lhs[3] > rhs[3] ? lhs[3] : rhs[3];
+    });
+}
+
+INTR_HANDLE(MAXPD) {
+    ElementOperation<double>(state, operands, [](double* lhs, double* rhs) {
+        lhs[0] = lhs[0] > rhs[0] ? lhs[0] : rhs[0];
+        lhs[1] = lhs[1] > rhs[1] ? lhs[1] : rhs[1];
+    });
 }

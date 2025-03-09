@@ -2564,7 +2564,7 @@ FAST_HANDLE(RDTSC) {
     as.RDTIME(tsc);
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, tsc);
     as.SRLI(tsc, tsc, 32);
-    rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, tsc);
+    rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, tsc);
 }
 
 FAST_HANDLE(CPUID) {
