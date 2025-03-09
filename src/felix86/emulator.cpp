@@ -244,7 +244,8 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         u64 rdi = thread_state->gprs[X86_REF_RDI];
         u64 rsi = thread_state->gprs[X86_REF_RSI];
         u64 rdx = thread_state->gprs[X86_REF_RDX];
-        printf("Jumping to the thing: amd_patch(%lx, %lx)", rdi, rsi, rdx);
+        printf("Jumping to the thing: amd_patch(%lx, %lx)\n", rdi, rsi, rdx);
+        fflush(stdout);
     }
 #endif
 
