@@ -800,3 +800,17 @@ const char* print_exit_reason(int reason) {
 
     return "Unknown";
 }
+
+void felix86_fsin(ThreadState* state) {
+    double boop;
+    memcpy(&boop, &state->fp[state->fpu_top], sizeof(double));
+    double result = ::sin(boop);
+    memcpy(&state->fp[state->fpu_top], &result, sizeof(double));
+}
+
+void felix86_fcos(ThreadState* state) {
+    double boop;
+    memcpy(&boop, &state->fp[state->fpu_top], sizeof(double));
+    double result = ::cos(boop);
+    memcpy(&state->fp[state->fpu_top], &result, sizeof(double));
+}

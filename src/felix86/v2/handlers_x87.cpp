@@ -75,6 +75,22 @@ FAST_HANDLE(FSQRT) {
     rec.setST(top, 0, st0);
 }
 
+FAST_HANDLE(FSIN) {
+    rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
+
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fsin);
+}
+
+FAST_HANDLE(FCOS) {
+    rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
+
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fcos);
+}
+
 FAST_HANDLE(FPREM) {
     WARN("Unhandled instruction FPREM, no operation");
 }

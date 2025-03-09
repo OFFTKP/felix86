@@ -522,21 +522,6 @@ void Thunks::initialize() {
     // gl_thunks are loaded from the getprocaddress functions
 }
 
-void call(Assembler& as, u64 target) {
-    i64 offset = target - (u64)as.GetCursorPointer();
-    if (IsValidJTypeImm(offset)) {
-        as.JAL(offset);
-    } else if (IsValid2GBImm(offset)) {
-        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-        as.AUIPC(t0, hi20);
-        as.JALR(ra, lo12, t0);
-    } else {
-        as.LI(t0, target);
-        as.JALR(t0);
-    }
-}
-
 /*
     We use a custom signature format to describe the function.
     return type, _, arguments.
@@ -639,7 +624,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
         }
     }
 
-    call(as, target);
+    Recompiler::call(as, target);
 
     // Save return value to the correct x86-64 register
     switch (return_type) {

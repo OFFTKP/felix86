@@ -418,6 +418,25 @@ struct Recompiler {
 
     void clearCodeCache(ThreadState* state);
 
+    void call(u64 target) {
+        call(as, target);
+    }
+
+    static void call(Assembler& as, u64 target) {
+        i64 offset = target - (u64)as.GetCursorPointer();
+        if (IsValidJTypeImm(offset)) {
+            as.JAL(offset);
+        } else if (IsValid2GBImm(offset)) {
+            const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+            const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+            as.AUIPC(t0, hi20);
+            as.JALR(ra, lo12, t0);
+        } else {
+            as.LI(t0, target);
+            as.JALR(t0);
+        }
+    }
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
