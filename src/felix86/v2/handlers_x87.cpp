@@ -68,6 +68,13 @@ FAST_HANDLE(FSUBP) {
     OP(&Assembler::FSUB_D, rec, as, instruction, operands, true);
 }
 
+FAST_HANDLE(FSQRT) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    as.FSQRT_D(st0, st0);
+    rec.setST(top, 0, st0);
+}
+
 FAST_HANDLE(FPREM) {
     WARN("Unhandled instruction FPREM, no operation");
 }
