@@ -734,6 +734,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
 
                 // For finding with lower_bound
                 symbols[end - 1] = new_symbol;
+                VERBOSE("Added new static symbol `%s` at %lx-%lx", new_symbol.name.c_str(), new_symbol.start, new_symbol.start + new_symbol.size);
             }
         } else {
             VERBOSE("symtab and strtab not found for file %s", path.c_str());
