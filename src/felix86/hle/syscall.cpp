@@ -874,6 +874,7 @@ void felix86_syscall(ThreadState* state) {
                 int attempts = (0x4000'0000 / aligned_size) - 1;
                 bool ok = false;
                 while (true) {
+                    LOG("Attemping at: %lx with size %lx", bottom, rsi);
                     result = HOST_SYSCALL(mmap, bottom, rsi, rdx, new_flags, r8, r9);
 
                     if ((i64)result > 0) {
