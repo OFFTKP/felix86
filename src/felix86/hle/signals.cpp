@@ -497,6 +497,9 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             // Test
             context->uc_mcontext.__gregs[REG_PC] = (u64)recompiler.getCompileNext();
             recompiler.clearCodeCache(current_state);
+            u64 write_address = (u64)info->si_addr;
+            HostAddress write_page_start{write_address & ~0xFFF};
+            mprotect((void*)write_page_start.raw(), 0x1000, PROT_READ | PROT_WRITE);
             return;
 
             // Most likely self modifying code, check if the write is in one of our translated pages
