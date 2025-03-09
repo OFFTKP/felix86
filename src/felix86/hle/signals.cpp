@@ -268,10 +268,11 @@ void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, uint64_
 }
 
 BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
-    auto& map = state->recompiler->getBlockMap();
-    auto it = map.find(host_pc.raw());
+    auto& map = state->recompiler->getHostPcMap();
+    auto it = map.lower_bound(host_pc.raw());
     ASSERT(it != map.end());
-    return &it->second;
+    ASSERT(host_pc >= it->second->address && host_pc <= it->second->address_end);
+    return it->second;
 }
 
 GuestAddress get_actual_rip(BlockMetadata& metadata, HostAddress host_pc) {
@@ -637,7 +638,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
             sigaddset(&mask_during_signal, sig);
         }
 
-        BlockMetadata* metadata = get_block_metadata(current_state, current_state->rip.toHost());
+        BlockMetadata* metadata = get_block_metadata(current_state, HostAddress{pc});
         GuestAddress actual_rip = get_actual_rip(*metadata, HostAddress{pc});
 
         // Prepares everything necessary to run the signal handler when we return from the host signal handler.

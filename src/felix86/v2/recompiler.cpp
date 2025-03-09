@@ -177,6 +177,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     WARN("Clearing cache on thread %u", gettid());
     as.RewindBuffer();
     block_metadata.clear();
+    host_pc_map.clear();
     std::fill(std::begin(block_cache), std::end(block_cache), BlockCacheEntry{});
 
     emitNecessaryStuff();
@@ -206,10 +207,13 @@ HostAddress Recompiler::compile(ThreadState* state, HostAddress rip) {
     HostAddress start{(u64)as.GetCursorPointer()};
 
     // Map it immediately so we can optimize conditional branch to self
-    getBlockMetadata(rip).address = start;
+    BlockMetadata& block_meta = getBlockMetadata(rip);
+    block_meta.address = start;
 
     // A sequence of code. This is so that we can also call it recursively later.
     HostAddress end_rip = compileSequence(rip);
+
+    host_pc_map[block_meta.address_end.raw() - 1] = &block_meta;
 
     // If other blocks were waiting for this block to be linked, link them now
     expirePendingLinks(rip);

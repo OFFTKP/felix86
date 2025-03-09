@@ -360,6 +360,10 @@ struct Recompiler {
         return block_metadata;
     }
 
+    auto& getHostPcMap() {
+        return host_pc_map;
+    }
+
     HostAddress getCompiledBlock(ThreadState* state, HostAddress rip);
 
     void pushCalltrace();
@@ -481,8 +485,11 @@ private:
     // This may be locked by a different thread on a signal handler to unlink a block
     std::mutex block_map_mutex{};
 
-    // TODO: can we use HostAddress here?
     std::unordered_map<u64, BlockMetadata> block_metadata{};
+
+    // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
+    // on signal handlers
+    std::map<u64, BlockMetadata*> host_pc_map{};
 
     bool compiling{};
 
