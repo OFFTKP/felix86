@@ -716,10 +716,11 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 const char* symbol = string_table.data() + index;
                 if (elf_symbols[i]->address() == 0 || elf_symbols[i]->type() != STT_FUNC) {
                     // We don't care about this symbol
+                    VERBOSE("Skipping symbol %s (address: %lx)", symbol, elf_symbols[i]->address());
                     continue;
                 }
 
-                u64 address = (u64)start_of_data + elf_symbols[i]->address();
+                u64 address = elf_symbols[i]->address();
                 u64 size = elf_symbols[i]->size();
                 u64 end = address + size;
                 int status;
