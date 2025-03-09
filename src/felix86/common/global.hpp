@@ -78,6 +78,7 @@ extern bool g_perf;
 extern bool g_min_max_accurate;
 extern bool g_always_tso;
 extern bool g_thunking;
+extern bool g_dont_cache;
 extern int g_vlen;
 extern std::atomic_bool g_symbols_cached;
 extern u64 g_initial_brk;

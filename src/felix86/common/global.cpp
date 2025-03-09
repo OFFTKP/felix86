@@ -41,6 +41,7 @@ bool g_rsb = true;
 bool g_perf = false;
 bool g_thunking = false;
 bool g_always_tso = false;
+bool g_dont_cache = false;
 bool g_dont_link_indirect = true; // doesn't seem to impact performance from limited testing, so off by default
 int g_vlen = 0;
 std::atomic_bool g_symbols_cached = {false};
@@ -340,6 +341,13 @@ void initialize_globals() {
     if (is_truthy(dont_use_block_cache)) {
         g_use_block_cache = false;
         environment += "\nFELIX86_DONT_USE_BLOCK_CACHE";
+    }
+
+    const char* dont_cache = getenv("FELIX86_DONT_CACHE");
+    if (is_truthy(dont_cache)) {
+        g_dont_cache = true;
+        g_dont_protect_pages = true;
+        environment += "\nFELIX86_DONT_CACHE";
     }
 
     const char* log_file = getenv("FELIX86_LOG_FILE");

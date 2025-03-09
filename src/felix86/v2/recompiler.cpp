@@ -266,6 +266,10 @@ void Recompiler::markPagesAsReadOnly(HostAddress start, HostAddress end) {
 }
 
 HostAddress Recompiler::getCompiledBlock(ThreadState* state, HostAddress rip) {
+    if (g_dont_cache) {
+        return compile(state, rip);
+    }
+
     if (g_use_block_cache) {
         BlockCacheEntry& entry = block_cache[rip.raw() & ((1 << block_cache_bits) - 1)];
         if (entry.guest == rip) {
