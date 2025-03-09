@@ -878,6 +878,7 @@ void felix86_syscall(ThreadState* state) {
 
                     if (result != MAP_FAILED) {
                         ok = true;
+                        LOG("Returning mapped region with MAP_32BIT: %lx", (u64)result);
                         break;
                     }
 
