@@ -95,7 +95,7 @@ void Recompiler::emitDispatcher() {
     // the saved registers. We don't save these in the stack, as we do RSB and our stack pointer may not
     // be back to what it was when we exit the dispatcher. We save it in this separate stack-like structure instead.
     as.LD(t0, offsetof(ThreadState, frame_pointer), a0);
-    as.LD(t1, offsetof(ThreadState, frames), a0);
+    as.ADDI(t1, a0, offsetof(ThreadState, frames));
     as.ADDI(t2, t0, saved_gprs.size() * sizeof(u64));
     // Make sure we wouldn't overflow our stack
     as.BGT(t2, t1, &stack_overflow);
