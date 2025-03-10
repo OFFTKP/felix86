@@ -6808,12 +6808,12 @@ FAST_HANDLE(CMPXCHG16B) {
         as.AMOCAS_Q(Ordering::AQRL, rax_t, rbx_t, address);
 
         // Real value is now loaded into rdx_t:rax_t. Compare with rdx:rax to set the zero flag
-        // We can overwrite the _t scratches now
+        // We can overwrite the rbx_t/rcx_t scratches now
         biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-        as.XOR(rax_t, rax_t, rax);
-        as.XOR(rdx_t, rdx_t, rdx);
-        as.OR(rax_t, rax_t, rdx_t);
-        as.SEQZ(zf, rax_t);
+        as.XOR(rbx_t, rax_t, rax);
+        as.XOR(rcx_t, rdx_t, rdx);
+        as.OR(rbx_t, rbx_t, rcx_t);
+        as.SEQZ(zf, rbx_t);
 
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rax_t);
         rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, rdx_t);
