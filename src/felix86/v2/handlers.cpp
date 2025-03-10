@@ -6785,6 +6785,41 @@ FAST_HANDLE(PAVGW) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(CMPXCHG16B) {
+    biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    if (Extensions::Zacas) {
+        WARN_ONCE("cmpxchg16b with zacas, untested, please report results");
+        // We are the luckiest emulator alive!
+        // AMOCAS.Q needs a register group (meaning, 2 registers side by side like t0, t1) to work
+        (void)rec.scratch(); // waste a scratch so we pick 28-29 and 30-31
+        biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
+        biscuit::GPR rdx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
+        biscuit::GPR rbx = rec.getRefGPR(X86_REF_RBX, X86_SIZE_QWORD);
+        biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+        biscuit::GPR rax_t = rec.scratch();
+        biscuit::GPR rdx_t = rec.scratch();
+        biscuit::GPR rbx_t = rec.scratch();
+        biscuit::GPR rcx_t = rec.scratch();
+        ASSERT(rax_t == x28 && rdx_t == x29 && rbx_t == x30 && rcx_t == x31); // in case we change the order
+        as.MV(rax_t, rax);
+        as.MV(rdx_t, rdx);
+        as.MV(rbx_t, rbx);
+        as.MV(rcx_t, rcx);
+        as.AMOCAS_Q(Ordering::AQRL, rax_t, rbx_t, address);
+
+        // Real value is now loaded into rdx_t:rax_t. Compare with rdx:rax to set the zero flag
+        // We can overwrite the _t scratches now
+        biscuit::GPR zf = rec.flagW(X86_REF_ZF);
+        as.XOR(rax_t, rax_t, rax);
+        as.XOR(rdx_t, rdx_t, rdx);
+        as.OR(rax_t, rax_t, rdx_t);
+        as.SEQZ(zf, rax_t);
+    } else {
+        // TODO: make it work non-atomically so we at least have something
+        ASSERT_MSG(false, "CMPXCHG16B unimplemented w/o zacas");
+    }
+}
+
 // This is a pseudo-instruction that we generate in our thunked guest libraries to basically
 // notify the recompiler that whatever follows here is thunked code and it should call the equivalent
 // host function.

@@ -318,7 +318,7 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
     for (int i = 0; i < 8; i++) {
         Float80 f;
         memcpy(&f, &data->st[i].st[0], 10);
-        state->fp[i] = f80_to_64(f);
+        state->fp[i] = f80_to_64(&f);
     }
 
     state->fpu_cw = data->fcw;
@@ -728,15 +728,15 @@ Float80 f64_to_80(double x) {
     return result;
 }
 
-double f80_to_64(Float80 f80) {
+double f80_to_64(Float80* f80) {
     union {
         double d;
         uint64_t u;
     } conv;
 
-    uint16_t sign = (f80.signExp >> 15) & 0x1;
-    int16_t exponent = f80.signExp & 0x7FFF;
-    uint64_t significand = f80.significand;
+    uint16_t sign = (f80->signExp >> 15) & 0x1;
+    int16_t exponent = f80->signExp & 0x7FFF;
+    uint64_t significand = f80->significand;
 
     if (exponent == 0) {
         conv.u = ((uint64_t)sign << 63) | (significand >> 11);

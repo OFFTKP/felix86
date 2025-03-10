@@ -1,7 +1,17 @@
+#include "felix86/hle/thunks.hpp"
+
+// Thunks need libX11
+#ifndef BUILD_THUNKING
+void Thunks::initialize() {}
+
+void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* name) {
+    return nullptr;
+}
+
+#else
 #include <cmath>
 #include <dlfcn.h>
 #include "felix86/common/state.hpp"
-#include "felix86/hle/thunks.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 #include <X11/Xlibint.h>
@@ -665,3 +675,4 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
 
     return trampoline;
 }
+#endif

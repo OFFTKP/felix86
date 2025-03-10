@@ -20,6 +20,15 @@ add_subdirectory(external/Catch2)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 
+option(BUILD_THUNKING "Build with thunking support" ON)
+
+if (BUILD_THUNKING)
+    message("Building with thunking support")
+    add_compile_definitions(BUILD_THUNKING)
+else()
+    message("Building without thunking support")
+endif()
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall -fPIE")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch -fPIE")
 
@@ -114,6 +123,7 @@ if (BUILD_TESTS)
         tests/FEX/tertiary.cpp
         tests/FEX/two_byte.cpp
         tests/FEX/felix86_bugs.cpp
+        tests/FEX/x87.cpp
     )
 
     add_executable(felix86_test)

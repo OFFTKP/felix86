@@ -91,13 +91,13 @@ inline RMode rounding_mode(x86RoundingMode mode) {
     __builtin_unreachable();
 }
 
-typedef struct {
-    uint16_t signExp;
+typedef struct __attribute__((packed)) {
     uint64_t significand;
+    uint16_t signExp;
 } Float80;
 
 Float80 f64_to_80(double);
-double f80_to_64(Float80);
+double f80_to_64(Float80*);
 
 bool felix86_bts(u64 address, i64 offset);
 bool felix86_btr(u64 address, i64 offset);

@@ -6,8 +6,17 @@
 
 FAST_HANDLE(FLD) {
     biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st = rec.getST(top, &operands[0]);
-    rec.pushST(top, st);
+    if (operands[0].size == 80) {
+        rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
+        biscuit::GPR address = rec.leaAddBase(&operands[0]);
+        as.MV(a0, address);
+        rec.call((u64)f80_to_64);
+        rec.pushST(top, fa0); // push return value
+    } else {
+        biscuit::FPR st = rec.getST(top, &operands[0]);
+        rec.pushST(top, st);
+    }
 }
 
 FAST_HANDLE(FILD) {
@@ -51,6 +60,16 @@ FAST_HANDLE(FST) {
     biscuit::GPR top = rec.getTOP();
     biscuit::FPR st0 = rec.getST(top, 0);
     rec.setST(top, &operands[0], st0);
+}
+
+FAST_HANDLE(FXCH) {
+    u8 index = operands[0].reg.value - ZYDIS_REGISTER_ST0;
+    ASSERT(index >= 1 && index <= 7);
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR sti = rec.getST(top, index);
+    rec.setST(top, 0, sti);
+    rec.setST(top, index, st0);
 }
 
 FAST_HANDLE(FSTP) {

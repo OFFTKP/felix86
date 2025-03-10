@@ -2288,6 +2288,7 @@ void Recompiler::pushST(biscuit::GPR top, biscuit::FPR st) {
     as.ADDI(address, top, -1);
     as.ANDI(address, address, 0b111);
     setTOP(address);
+    as.SLLI(address, address, 3); // multiply by 8 to get offset
     as.ADD(address, address, threadStatePointer());
     as.FSD(st, offsetof(ThreadState, fp), address);
 }
