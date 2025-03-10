@@ -2341,7 +2341,7 @@ void PUNPCKH(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisD
     biscuit::Vec dst_down = rec.scratchVec();
     biscuit::Vec src_down = rec.scratchVec();
 
-    rec.setVectorState(sew, vlen, LMUL::MF2);
+    rec.setVectorState(sew, vlen / 2, LMUL::MF2);
     as.VSLIDEDOWN(dst_down, dst, num);
     as.VSLIDEDOWN(src_down, src, num);
     as.VWADDU(temp1, dst_down, x0);
@@ -2363,7 +2363,7 @@ FAST_HANDLE(PUNPCKLBW) {
     biscuit::Vec temp1 = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
 
-    rec.setVectorState(SEW::E8, 16, LMUL::MF2);
+    rec.setVectorState(SEW::E8, 8, LMUL::MF2);
     as.VWADDU(temp1, dst, x0);
     as.VWADDU(temp2, src, x0);
     rec.setVectorState(SEW::E64, 2);
@@ -2379,7 +2379,7 @@ FAST_HANDLE(PUNPCKLWD) {
     biscuit::Vec temp1 = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
 
-    rec.setVectorState(SEW::E16, 8, LMUL::MF2);
+    rec.setVectorState(SEW::E16, 4, LMUL::MF2);
     as.VWADDU(temp1, dst, x0);
     as.VWADDU(temp2, src, x0);
     rec.setVectorState(SEW::E64, 2);
@@ -2397,7 +2397,7 @@ FAST_HANDLE(PUNPCKLDQ) {
     biscuit::Vec temp2 = rec.scratchVec();
 
     as.LI(shift, 32);
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     as.VWADDU(temp1, dst, x0);
     as.VWADDU(temp2, src, x0);
     rec.setVectorState(SEW::E64, 2);
@@ -5715,7 +5715,7 @@ FAST_HANDLE(CVTPD2PS) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     as.VFNCVT_F_F(result, src);
 
     as.VMV(v0, 0b1100);
@@ -5728,7 +5728,7 @@ FAST_HANDLE(CVTPS2PD) { // Fuzzed, inaccuracies with NaNs
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     as.VFWCVT_F_F(result, src);
 
     rec.setOperandVec(&operands[0], result);
@@ -5758,27 +5758,26 @@ FAST_HANDLE(CVTTPD2DQ) { // Fuzzed, same problem as cvttps2dq
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
-    as.VFNCVT_RTZ_X_F(dst, src);
+    rec.setVectorState(SEW::E8, 16);
+    as.VXOR(dst, dst, dst);
 
-    // TODO: avoid masking?
-    as.VMV(v0, 0b1100);
-    as.VAND(dst, dst, 0, VecMask::Yes);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    as.VFNCVT_RTZ_X_F(dst, src);
 
     rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(CVTPD2DQ) {
-    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
-    as.VFNCVT_X_F(result, src);
+    rec.setVectorState(SEW::E8, 16);
+    as.VXOR(dst, dst, dst);
 
-    as.VMV(v0, 0b1100);
-    as.VAND(result, result, 0, VecMask::Yes);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    as.VFNCVT_X_F(dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(XGETBV) {
@@ -6589,13 +6588,13 @@ FAST_HANDLE(LDMXCSR) {
 }
 
 FAST_HANDLE(CVTDQ2PD) {
-    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
-    as.VFWCVT_F_X(scratch, src);
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    as.VFWCVT_F_X(dst, src);
 
-    rec.setOperandVec(&operands[0], scratch);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(CVTDQ2PS) {
@@ -6788,7 +6787,6 @@ FAST_HANDLE(PAVGW) {
 FAST_HANDLE(CMPXCHG16B) {
     biscuit::GPR address = rec.leaAddBase(&operands[0]);
     if (Extensions::Zacas) {
-        WARN_ONCE("cmpxchg16b with zacas, untested, please report results");
         // We are the luckiest emulator alive!
         // AMOCAS.Q needs a register group (meaning, 2 registers side by side like t0, t1) to work
         (void)rec.scratch(); // waste a scratch so we pick 28-29 and 30-31
