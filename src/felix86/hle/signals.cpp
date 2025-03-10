@@ -760,6 +760,7 @@ bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
 bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     ThreadState* state = ThreadState::Get();
     u64 pc = get_pc(ctx);
+    bool in_jit_code = is_in_jit_code(state, pc);
     RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
     if (!handler) {
         return false;
@@ -784,9 +785,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         return true;
     }
 
-    VERBOSE("------- Guest signal %s (%d) -------", sigdescr_np(sig), sig);
-
-    bool in_jit_code = is_in_jit_code(state, pc);
+    VERBOSE("------- Guest signal %s (%d) %s -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code");
 
     XmmReg* xmms;
 
