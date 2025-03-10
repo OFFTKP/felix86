@@ -6814,6 +6814,9 @@ FAST_HANDLE(CMPXCHG16B) {
         as.XOR(rdx_t, rdx_t, rdx);
         as.OR(rax_t, rax_t, rdx_t);
         as.SEQZ(zf, rax_t);
+
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rax_t);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, rdx_t);
     } else {
         // TODO: make it work non-atomically so we at least have something
         ASSERT_MSG(false, "CMPXCHG16B unimplemented w/o zacas");
