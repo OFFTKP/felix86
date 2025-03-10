@@ -298,6 +298,7 @@ GuestAddress get_actual_rip(BlockMetadata& metadata, HostAddress host_pc) {
 }
 
 void Signals::sigreturn(ThreadState* state) {
+    VERBOSE("------- sigreturn -------");
     ASSERT_MSG(state->exit_reason == EXIT_REASON_UNKNOWN, "State had exit reason when entering sigreturn?");
     state->exit_reason = EXIT_REASON_SIGRETURN;
 
@@ -783,7 +784,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         return true;
     }
 
-    LOG("------- Guest signal %s (%d) -------", sigdescr_np(sig), sig);
+    VERBOSE("------- Guest signal %s (%d) -------", sigdescr_np(sig), sig);
 
     bool in_jit_code = is_in_jit_code(state, pc);
 

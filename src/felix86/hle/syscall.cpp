@@ -1137,10 +1137,9 @@ void felix86_syscall(ThreadState* state) {
             void* handler = sigaction ? (void*)act->sa_sigaction : (void*)act->sa_handler;
             Signals::registerSignalHandler(state, rdi, GuestAddress{(u64)handler}, act->sa_mask, act->sa_flags);
             if (g_verbose) {
+                printf("Installed signal handler %s at:\n", strsignal(rdi));
+                print_address((u64)handler);
             }
-
-            printf("Installed signal handler %s at:\n", strsignal(rdi));
-            print_address((u64)handler);
         }
 
         struct sigaction* old_act = (struct sigaction*)rdx;
