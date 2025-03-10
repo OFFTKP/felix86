@@ -151,7 +151,7 @@ void Recompiler::emitDispatcher() {
     as.SB(t3, offsetof(ThreadState, signals_disabled), a0);
 
     // Load the frame we had before entering the dispatcher from our custom stack
-    as.LD(t0, offsetof(ThreadState, frames), a0);
+    as.LD(t0, offsetof(ThreadState, frame_pointer), a0);
     as.ADDI(t0, t0, -(int)saved_gprs.size() * (int)sizeof(u64));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
         as.LD(saved_gprs[i], i * sizeof(u64), t0);
