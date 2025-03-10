@@ -437,6 +437,10 @@ struct Recompiler {
         }
     }
 
+    u8* getStartOfCodeCache() {
+        return (u8*)start_of_code_cache;
+    }
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

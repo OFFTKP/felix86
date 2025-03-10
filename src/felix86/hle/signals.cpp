@@ -13,10 +13,10 @@ struct RegisteredHostSignal {
     bool (*func)(ThreadState* current_state, siginfo_t* info, ucontext_t* ctx, u64 pc); // the function to call
 };
 
-bool is_in_jit_code(ThreadState* state, u64 ptr) {
+bool is_in_jit_code(ThreadState* state, u8* ptr) {
     CodeBuffer& buffer = state->recompiler->getAssembler().GetCodeBuffer();
-    uintptr_t start = buffer.GetOffsetAddress(0);
-    uintptr_t end = buffer.GetCursorAddress();
+    u8* start = state->recompiler->getStartOfCodeCache();
+    u8* end = (u8*)buffer.GetCursorAddress();
     return ptr >= start && ptr < end;
 }
 
@@ -199,7 +199,7 @@ BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
         // Print all the blocks so we can see what is going on
         if (g_verbose) {
             for (auto& range : map) {
-                printf("Block: %lx-%lx", range.second->address.raw(), range.second->address_end.raw());
+                printf("Block: %lx-%lx\n", range.second->address.raw(), range.second->address_end.raw());
             }
         }
         ERROR("PC: %lx not inside range %lx-%lx?", host_pc.raw(), it->second->address.raw(), it->second->address_end.raw());
@@ -729,7 +729,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 #endif
 
 bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    if (is_in_jit_code(current_state, pc)) {
+    if (is_in_jit_code(current_state, (u8*)pc)) {
         // Search to see if it is our breakpoint
         // Note the we don't use EBREAK as gdb refuses to continue when it hits that if it doesn't have a breakpoint,
         // and also refuses to call our signal handler.
@@ -774,7 +774,7 @@ bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
 bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     ThreadState* state = ThreadState::Get();
     u64 pc = get_pc(ctx);
-    bool in_jit_code = is_in_jit_code(state, pc);
+    bool in_jit_code = is_in_jit_code(state, (u8*)pc);
     RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
     if (!handler) {
         return false;
