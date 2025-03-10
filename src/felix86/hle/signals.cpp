@@ -750,9 +750,19 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     return false;
 }
 
-constexpr std::array<RegisteredHostSignal, 1> host_signals = {
+bool handle_ctrl_c(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    if (getenv("FELIX86_ALLOW_SIGINT")) {
+        WARN("CTRL+C pressed, terminating...");
+        exit(0);
+    }
+
+    return false;
+}
+
+constexpr std::array<RegisteredHostSignal, 2> host_signals = {{
     {SIGILL, 0, handle_breakpoint},
-};
+    {SIGINT, 0, handle_ctrl_c},
+}};
 
 bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
     ThreadState* state = ThreadState::Get();
