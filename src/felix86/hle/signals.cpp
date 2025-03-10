@@ -191,9 +191,34 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
     state->SetRip(rip.toGuest());
 }
 
+BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
+    auto& map = state->recompiler->getHostPcMap();
+    auto it = map.lower_bound(host_pc.raw());
+    ASSERT(it != map.end());
+    ASSERT_MSG(host_pc >= it->second->address && host_pc <= it->second->address_end, "PC: %lx not inside range %lx-%lx?", host_pc.raw(),
+               it->second->address.raw(), it->second->address_end.raw());
+    return it->second;
+}
+
+GuestAddress get_actual_rip(BlockMetadata& metadata, HostAddress host_pc) {
+    GuestAddress ret_value{};
+    for (auto& span : metadata.instruction_spans) {
+        if (host_pc >= span.second) {
+            ret_value = span.first;
+        } else { // if it's smaller it means that instruction isn't reached yet, return previous value
+            ASSERT_MSG(!ret_value.isNull(), "First PC: %lx, Our PC: %lx, Block: %lx-%lx", metadata.instruction_spans[0].second.raw(), host_pc.raw(),
+                       metadata.address.raw(), metadata.address_end.raw());
+            return ret_value;
+        }
+    }
+
+    ASSERT(!ret_value.isNull());
+    return ret_value;
+}
+
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
-                         const XmmReg* host_vecs, bool use_altstack, bool in_jit_code, siginfo_t* host_siginfo) {
+void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const XmmReg* host_vecs, bool use_altstack,
+                         bool in_jit_code, siginfo_t* host_siginfo) {
     HostAddress rsp = GuestAddress{use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP)}.toHost();
     if (rsp.isNull()) {
         ERROR("RSP is null, use_altstack: %d", use_altstack);
@@ -229,8 +254,10 @@ void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, uint64_
 
     if (in_jit_code) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
+        BlockMetadata* current_block = get_block_metadata(state, HostAddress{pc});
+        GuestAddress actual_rip = get_actual_rip(*current_block, HostAddress{pc});
         ASSERT(current_block);
-        reconstruct_state(state, current_block, rip.toHost(), pc, host_gprs, host_vecs);
+        reconstruct_state(state, current_block, actual_rip.toHost(), pc, host_gprs, host_vecs);
     } else {
         // State reconstruction isn't necessary, the state should be in some stable form
         // It's rare that a signal doesn't happen in jit code as we block signals during compilation, but it's possible
@@ -275,31 +302,6 @@ void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, uint64_
     state->SetGpr(X86_REF_RSP, rsp.toGuest().raw()); // set the new stack pointer
     state->SetGpr(X86_REF_RSI, (u64)&frame->info);   // set the siginfo pointer
     state->SetGpr(X86_REF_RDX, (u64)&frame->uc);     // set the ucontext pointer
-}
-
-BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
-    auto& map = state->recompiler->getHostPcMap();
-    auto it = map.lower_bound(host_pc.raw());
-    ASSERT(it != map.end());
-    ASSERT_MSG(host_pc >= it->second->address && host_pc <= it->second->address_end, "PC: %lx not inside range %lx-%lx?", host_pc.raw(),
-               it->second->address.raw(), it->second->address_end.raw());
-    return it->second;
-}
-
-GuestAddress get_actual_rip(BlockMetadata& metadata, HostAddress host_pc) {
-    GuestAddress ret_value{};
-    for (auto& span : metadata.instruction_spans) {
-        if (host_pc >= span.second) {
-            ret_value = span.first;
-        } else { // if it's smaller it means that instruction isn't reached yet, return previous value
-            ASSERT_MSG(!ret_value.isNull(), "First PC: %lx, Our PC: %lx, Block: %lx-%lx", metadata.instruction_spans[0].second.raw(), host_pc.raw(),
-                       metadata.address.raw(), metadata.address_end.raw());
-            return ret_value;
-        }
-    }
-
-    ASSERT(!ret_value.isNull());
-    return ret_value;
 }
 
 void Signals::sigreturn(ThreadState* state) {
@@ -817,12 +819,9 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         sigaddset(&mask_during_signal, sig);
     }
 
-    BlockMetadata* metadata = get_block_metadata(state, HostAddress{pc});
-    GuestAddress actual_rip = get_actual_rip(*metadata, HostAddress{pc});
-
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    Signals::setupFrame(metadata, actual_rip, pc, state, mask_during_signal, gprs, xmms, use_altstack, in_jit_code, info);
+    Signals::setupFrame(pc, state, mask_during_signal, gprs, xmms, use_altstack, in_jit_code, info);
 
     // RSI and RDX are set by setupFrame
     state->SetGpr(X86_REF_RDI, sig);
