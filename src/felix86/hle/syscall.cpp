@@ -1171,6 +1171,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_sigaltstack: {
+        VERBOSE("----- sigaltstack was called -----");
         stack_t host_stack; // save old stack here while we check if guest stack is valid
         stack_t* guest_stack = (stack_t*)rdi;
         stack_t guest_stack_copy = *guest_stack;
@@ -1183,6 +1184,7 @@ void felix86_syscall(ThreadState* state) {
         ASSERT(result_must == 0);
 
         if (result_temp != 0) {
+            WARN("Failed to set sigaltstack");
             result = result_temp;
             break;
         }
@@ -1190,16 +1192,16 @@ void felix86_syscall(ThreadState* state) {
         stack_t* new_ss = (stack_t*)rdi;
         stack_t* old_ss = (stack_t*)rsi;
 
-        if (new_ss) {
-            state->alt_stack.ss_sp = new_ss->ss_sp;
-            state->alt_stack.ss_flags = new_ss->ss_flags;
-            state->alt_stack.ss_size = new_ss->ss_size;
-        }
-
         if (old_ss) {
             old_ss->ss_sp = state->alt_stack.ss_sp;
             old_ss->ss_flags = state->alt_stack.ss_flags;
             old_ss->ss_size = state->alt_stack.ss_size;
+        }
+
+        if (new_ss) {
+            state->alt_stack.ss_sp = new_ss->ss_sp;
+            state->alt_stack.ss_flags = new_ss->ss_flags;
+            state->alt_stack.ss_size = new_ss->ss_size;
         }
 
         result = 0;

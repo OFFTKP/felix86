@@ -195,6 +195,10 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
 void Signals::setupFrame(BlockMetadata* current_block, GuestAddress rip, uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
                          const XmmReg* host_vecs, bool use_altstack, bool in_jit_code, siginfo_t* host_siginfo) {
     HostAddress rsp = GuestAddress{use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP)}.toHost();
+    if (rsp.isNull()) {
+        ERROR("RSP is null, use_altstack: %d", use_altstack);
+    }
+
     rsp = rsp.add(-128); // red zone
 
     rsp = rsp.add(-sizeof(x64_rt_sigframe));
@@ -277,7 +281,7 @@ BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
     auto& map = state->recompiler->getHostPcMap();
     auto it = map.lower_bound(host_pc.raw());
     ASSERT(it != map.end());
-    ASSERT_MSG(host_pc >= it->second->address && host_pc <= it->second->address_end, "PC: %lx not inside range %lx-%lx?", host_pc,
+    ASSERT_MSG(host_pc >= it->second->address && host_pc <= it->second->address_end, "PC: %lx not inside range %lx-%lx?", host_pc.raw(),
                it->second->address.raw(), it->second->address_end.raw());
     return it->second;
 }
@@ -802,6 +806,9 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     }
 
     bool use_altstack = handler->flags & SA_ONSTACK;
+    if (use_altstack && state->alt_stack.ss_sp == 0) {
+        WARN("Null alt-stack on signal handler %s, probably crashing soon", sigdescr_np(sig));
+    }
 
     sigset_t mask_during_signal;
     mask_during_signal = handler->mask;
