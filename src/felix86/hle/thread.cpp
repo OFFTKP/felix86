@@ -44,10 +44,10 @@ void* pthread_handler(void* args) {
     if (clone_args.guest_flags & CLONE_SIGHAND) {
         // If CLONE_SIGHAND is set, the child and the parent share the same signal handler table
         ASSERT(clone_args.guest_flags & CLONE_VM);
-        state->signal_handlers = clone_args.parent_state->signal_handlers;
+        state->signal_table = clone_args.parent_state->signal_table;
     } else {
         // otherwise it gets a copy
-        state->signal_handlers = std::make_shared<SignalHandlerTable>(*clone_args.parent_state->signal_handlers);
+        state->signal_table = SignalHandlerTable::Create(*g_process_globals.memory, clone_args.parent_state->signal_table);
     }
 
     state->tid = gettid();

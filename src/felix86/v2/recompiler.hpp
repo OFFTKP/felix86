@@ -532,7 +532,6 @@ private:
     bool rounding_mode_set = false;
     int perf_fd = -1;
 
-    std::array<u64, 16> saved_host_gprs;
     std::vector<u64> block_trace;
     size_t block_trace_index = 0;
 

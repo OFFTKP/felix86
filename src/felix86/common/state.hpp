@@ -84,6 +84,7 @@ struct PendingSignal {
     siginfo_t info;
 };
 
+// TODO: Please make me standard layout type? offsetof warnings...
 struct ThreadState {
     explicit ThreadState(ThreadState* copy_state);
 
@@ -120,7 +121,8 @@ struct ThreadState {
     std::vector<HostAddress> calltrace{}; // used if g_calltrace is true
 
     // Two processes can share the same signal handler table
-    std::shared_ptr<SignalHandlerTable> signal_handlers{};
+    SignalHandlerTable* signal_table{};
+
     sigset_t signal_mask{};
 
     ExitReason exit_reason{};
@@ -130,6 +132,16 @@ struct ThreadState {
     bool mode32 = false; // 32-bit execution mode, changes the behavior of some instructions and the decoder
 
     u64 current_sp = 0;
+
+    // We need a place to save execution frames so we can return from the JIT back to C code.
+    // It can't be the stack, we use that for return stack buffer optimization.
+    // This happens in two places:
+    // - On JIT entry
+    // - On signal handling
+    // Note that signals can happen inside signals so we need enough space that this realistically never
+    // overflows and we can return cleanly.
+    u64 frame_pointer = 0;
+    u8 frames[4096]{};
 
     std::unique_ptr<Recompiler> recompiler;
 

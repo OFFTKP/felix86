@@ -1,8 +1,9 @@
 #pragma once
 
-#include <array>
 #include <csignal>
 #include "felix86/common/address.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/common/shared_memory.hpp"
 #include "felix86/common/utility.hpp"
 
 #ifndef SA_NODEFER
@@ -15,7 +16,47 @@ struct RegisteredSignal {
     int flags = 0;
 };
 
-using SignalHandlerTable = std::array<RegisteredSignal, 64>;
+struct SignalHandlerTable {
+    SignalHandlerTable(const SignalHandlerTable& other) = delete;
+    SignalHandlerTable& operator=(const SignalHandlerTable& other) = delete;
+    SignalHandlerTable(SignalHandlerTable&& other) = delete;
+    SignalHandlerTable& operator=(SignalHandlerTable&& other) = delete;
+
+    // Allocate the signal handler table in shared memory and return a pointer
+    static SignalHandlerTable* Create(SharedMemory& memory, SignalHandlerTable* copy) {
+        SignalHandlerTable* table = (SignalHandlerTable*)memory.allocate(sizeof(SignalHandlerTable));
+        new (table) SignalHandlerTable();
+        if (copy) {
+            table->copy(copy);
+        }
+        return table;
+    }
+
+    RegisteredSignal* getRegisteredSignal(int sig) {
+        sig -= 1;
+        ASSERT(sig >= 0 && sig <= 63);
+        return &table[sig];
+    }
+
+    void registerSignal(int sig, GuestAddress func, sigset_t mask, int flags) {
+        sig -= 1;
+        ASSERT(sig >= 0 && sig <= 63);
+        table[sig].flags = flags;
+        table[sig].mask = mask;
+        table[sig].func = func;
+    }
+
+private:
+    SignalHandlerTable() = default;
+
+    void copy(SignalHandlerTable* copy) {
+        for (int i = 0; i < 64; i++) {
+            table[i] = copy->table[i];
+        }
+    }
+
+    RegisteredSignal table[64];
+};
 
 struct BlockMetadata;
 

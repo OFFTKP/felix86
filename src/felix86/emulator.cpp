@@ -176,7 +176,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
     // Check if there's any pending asynchronous signals. If there are, raise them.
-    if (!thread_state->pending_signals.empty()) {
+    while (!thread_state->pending_signals.empty()) {
+        ASSERT(!thread_state->signals_disabled);
         sigset_t full, old;
         sigfillset(&full);
         sigprocmask(SIG_BLOCK, &full, &old); // block signals to make changing pending_signals safe
@@ -185,50 +186,16 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
         int sig = signal.sig;
         siginfo_t info = signal.info;
+        (void)info; // <- this goes unused... that's probably bad?
 
         thread_state->pending_signals.pop_back();
 
         sigprocmask(SIG_SETMASK, &old, nullptr);
 
-        ASSERT(sig != 0);
-
-        SignalHandlerTable& handlers = *thread_state->signal_handlers;
-        RegisteredSignal& handler = handlers[sig - 1];
-
-        GuestAddress rip = thread_state->GetRip();
-
-        sigset_t mask_during_signal;
-        mask_during_signal = handler.mask;
-
-        if (!(handler.flags & SA_NODEFER)) {
-            sigaddset(&mask_during_signal, sig);
-        }
-
-        u64* gprs = thread_state->gprs;
-        XmmReg* xmms = thread_state->xmm;
-
-        bool use_altstack = handler.flags & SA_ONSTACK;
-
-        Signals::setupFrame(nullptr, rip, 0, thread_state, mask_during_signal, gprs, xmms, use_altstack, false, &info);
-
-        thread_state->SetGpr(X86_REF_RDI, sig);
-
-        // Now we just need to set RIP to the handler function
-        thread_state->SetRip(handler.func);
-
-        if (sig == SIGCHLD) {
-            WARN("SIGCHLD, are we copying siginfo correctly?");
-        }
-
-        // Block the signals specified in the sa_mask until the signal handler returns
-        sigset_t new_mask;
-        sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());
-        pthread_sigmask(SIG_BLOCK, &new_mask, nullptr);
-
-        if (handler.flags & SA_RESETHAND) {
-            handler.func = GuestAddress{};
-        }
         WARN("Handling deferred signal %d", sig);
+
+        // Raise the signal...
+        ::tgkill(getpid(), gettid(), sig);
     }
 
     g_dispatcher_exit_count++;
@@ -346,7 +313,7 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
 
     g_fs->LoadExecutable(g_config.executable_path);
     ThreadState* main_state = ThreadState::Create(nullptr);
-    main_state->signal_handlers = std::make_shared<SignalHandlerTable>();
+    main_state->signal_table = SignalHandlerTable::Create(*g_process_globals.memory, nullptr);
     main_state->SetRip(g_fs->GetEntrypoint());
 
     auto [stack, size] = setupMainStack(main_state);

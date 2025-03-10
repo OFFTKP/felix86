@@ -7,7 +7,13 @@
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-bool is_in_jit_code(ThreadState* state, uintptr_t ptr) {
+struct RegisteredHostSignal {
+    int sig;                                                                            // ie SIGILL etc
+    int code;                                                                           // stuff like BUS_ADRALN, 0 if all
+    bool (*func)(ThreadState* current_state, siginfo_t* info, ucontext_t* ctx, u64 pc); // the function to call
+};
+
+bool is_in_jit_code(ThreadState* state, u64 ptr) {
     CodeBuffer& buffer = state->recompiler->getAssembler().GetCodeBuffer();
     uintptr_t start = buffer.GetOffsetAddress(0);
     uintptr_t end = buffer.GetCursorAddress();
@@ -292,6 +298,9 @@ GuestAddress get_actual_rip(BlockMetadata& metadata, HostAddress host_pc) {
 }
 
 void Signals::sigreturn(ThreadState* state) {
+    ASSERT_MSG(state->exit_reason == EXIT_REASON_UNKNOWN, "State had exit reason when entering sigreturn?");
+    state->exit_reason = EXIT_REASON_SIGRETURN;
+
     u64 rsp = state->GetGpr(X86_REF_RSP);
 
     // When the signal handler returned, it popped the return address, which is the 8 bytes "pretcode" field in the sigframe
@@ -368,24 +377,49 @@ struct riscv_v_state {
     void* datap;
 };
 
-#if defined(__x86_64__)
-void signal_handler(int sig, siginfo_t* info, void* ctx) {
+u64 get_pc(void* ctx) {
+#ifdef __riscv
+    return (u64)((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC];
+#else
     UNREACHABLE();
+    return 0;
+#endif
 }
-#elif defined(__riscv)
+
+void set_pc(void* ctx, u64 new_pc) {
+#ifdef __riscv
+    ((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC] = new_pc;
+#else
+    UNREACHABLE();
+#endif
+}
+
+u64* get_regs(void* ctx) {
+#ifdef __riscv
+    return (u64*)((ucontext_t*)ctx)->uc_mcontext.__gregs;
+#else
+    UNREACHABLE();
+    return nullptr;
+#endif
+}
+
 riscv_v_state* get_riscv_vector_state(void* ctx) {
+#ifdef __riscv
     ucontext_t* context = (ucontext_t*)ctx;
     mcontext_t* mcontext = &context->uc_mcontext;
     unsigned int* reserved = mcontext->__fpregs.__q.__glibc_reserved;
 
     // Normally the glibc should have better support for this, but this will be fine for now
     if (reserved[1] != 0x53465457) { // RISC-V V extension magic number that indicates the presence of vector state
-        return nullptr;              // old kernel version, unsupported, we can't get the vector state and the vector regs are gonna be unstable
+        return nullptr;              // old kernel version, unsupported, we can't get the vector state and the vector regs may= be unstable
     }
 
     void* after_fpregs = reserved + 3;
     riscv_v_state* v_state = (riscv_v_state*)after_fpregs;
     return v_state;
+#else
+    return nullptr;
+#endif
 }
 
 // Gets the vector state from the frame, only for recentish Linux kernels
@@ -394,8 +428,8 @@ std::optional<std::array<XmmReg, 32>> get_vector_state(void* ctx) {
     if (!v_state) {
         return std::nullopt;
     }
-    u8* datap = (u8*)v_state->datap;
 
+    u8* datap = (u8*)v_state->datap;
     std::array<XmmReg, 32> xmm_regs;
     for (int i = 0; i < 32; i++) {
         xmm_regs[i] = *(XmmReg*)datap;
@@ -405,6 +439,13 @@ std::optional<std::array<XmmReg, 32>> get_vector_state(void* ctx) {
     return xmm_regs;
 }
 
+// Old signal handler code
+#if 0
+#if defined(__x86_64__)
+void signal_handler(int sig, siginfo_t* info, void* ctx) {
+    UNREACHABLE();
+}
+#elif defined(__riscv)
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     ucontext_t* context = (ucontext_t*)ctx;
     uintptr_t pc = context->uc_mcontext.__gregs[REG_PC];
@@ -583,7 +624,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
     default: {
     check_guest_signal:
-        SignalHandlerTable& handlers = *current_state->signal_handlers;
+        SignalHandlerTable& handlers = *current_state->signal_table;
         RegisteredSignal& handler = handlers[sig - 1];
         if (handler.func.isNull()) {
             ERROR("Unhandled signal %s, no signal handler found", strsignal(sig));
@@ -670,6 +711,169 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     }
 }
 #endif
+#endif
+
+bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    if (is_in_jit_code(current_state, pc)) {
+        // Search to see if it is our breakpoint
+        // Note the we don't use EBREAK as gdb refuses to continue when it hits that if it doesn't have a breakpoint,
+        // and also refuses to call our signal handler.
+        // So we use illegal instructions to emulate breakpoints.
+        // GDB *can* be configured to do what we want, but that would also require configuring, which I don't like,
+        // I prefer it when it just works out of the box
+        for (auto& bp : g_breakpoints) {
+            for (u64 location : bp.second) {
+                if (location == pc) {
+                    printf("Guest breakpoint %016lx hit at %016lx, continuing...\n", bp.first, pc);
+                    set_pc(context, pc + 4); // skip the unimp instruction
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+constexpr std::array<RegisteredHostSignal, 1> host_signals = {
+    {SIGILL, 0, handle_breakpoint},
+};
+
+bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
+    ThreadState* state = ThreadState::Get();
+    u64 pc = get_pc(ctx);
+    int code = info->si_code;
+    for (auto& handler : host_signals) {
+        if (handler.sig == sig && (handler.code == code || handler.code == 0)) {
+            // The host signal handler matches what we want, attempt it
+            if (handler.func(state, info, (ucontext_t*)ctx, pc)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+// Will just start executing a guest signal inside the host signal handler immediately.
+bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
+    ThreadState* state = ThreadState::Get();
+    u64 pc = get_pc(ctx);
+    RegisteredSignal* handler = state->signal_table->getRegisteredSignal(sig);
+    if (!handler) {
+        return false;
+    }
+
+    if (handler->func.raw() == (u64)SIG_IGN || handler->func.raw() == (u64)SIG_DFL) {
+        WARN("Signal %d hit but signal handler is %s, returning...", sig, handler->func.raw() ? "SIG_IGN" : "SIG_DFL");
+        return true;
+    }
+
+    if (state->signals_disabled) {
+        // Nothing we can do, the signals are disabled. Push it to the queue.
+        state->pending_signals.push_back({sig, *info});
+
+        if (state->pending_signals.size() > 5) {
+            ERROR("More than 5 pending signals, something is probably wrong, exiting to avoid spam");
+        }
+
+        // Unlink the current block, making it certain that we will eventually return to the dispatcher to handle this signal
+        // even if we are stuck in a loop, for example in a block that branches back to itself forever.
+        state->recompiler->unlinkBlock(state, state->GetRip().toHost());
+        return true;
+    }
+
+    LOG("------- Guest signal %s (%d) -------", sigdescr_np(sig), sig);
+
+    bool in_jit_code = is_in_jit_code(state, pc);
+
+    XmmReg* xmms;
+
+    u64* gprs = get_regs(ctx);
+    auto host_vecs = get_vector_state(ctx);
+    if (host_vecs) {
+        // Xmms start at the first allocated register, xmm0-xmm15 are allocated to sequential host registers so we are fine
+        xmms = &(*host_vecs)[Recompiler::allocatedVec(X86_REF_XMM0).Index()];
+    } else {
+        // In the chance that this is an old kernel and we couldn't get the vector state in the signal handler, let's at least
+        // get the most recent state we are aware of, from before entering the block
+        xmms = state->xmm;
+    }
+
+    bool use_altstack = handler->flags & SA_ONSTACK;
+
+    sigset_t mask_during_signal;
+    mask_during_signal = handler->mask;
+
+    if (!(handler->flags & SA_NODEFER)) {
+        sigaddset(&mask_during_signal, sig);
+    }
+
+    BlockMetadata* metadata = get_block_metadata(state, HostAddress{pc});
+    GuestAddress actual_rip = get_actual_rip(*metadata, HostAddress{pc});
+
+    // Prepares everything necessary to run the signal handler when we return from the host signal handler.
+    // The stack is switched if necessary and filled with the frame that the signal handler expects.
+    Signals::setupFrame(metadata, actual_rip, pc, state, mask_during_signal, gprs, xmms, use_altstack, in_jit_code, info);
+
+    // RSI and RDX are set by setupFrame
+    state->SetGpr(X86_REF_RDI, sig);
+
+    // Now we just need to set RIP to the handler function
+    state->SetRip(handler->func);
+
+    if (sig == SIGCHLD) {
+        WARN("SIGCHLD, are we copying siginfo correctly?");
+    }
+
+    // Block the signals specified in the sa_mask until the signal handler returns
+    sigset_t new_mask;
+    sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());
+    pthread_sigmask(SIG_BLOCK, &new_mask, nullptr);
+
+    if (handler->flags & SA_RESETHAND) {
+        handler->func = GuestAddress{(u64)SIG_DFL};
+    }
+
+    // Eventually, this should return right after this call and have the correct state.
+    // When entering the dispatcher, the host state is saved in ThreadState::frames. Including sp & ra.
+    // sigreturn will call exitDispatcher, which will load the old frame and return back here after this call.
+    // This way we can support signals inside signal handlers too.
+    // The only problem would be longjmps out of signal handlers. This is evil but possible that a game or something does it
+    // In that case the frames would eventually overflow and at least we'd gave an appropriate message.
+    state->recompiler->enterDispatcher(state);
+
+    if (state->exit_reason == EXIT_REASON_SIGRETURN) {
+        // All went fine, we returned from the dispatcher normally
+    } else {
+        ERROR("Something went wrong when returning from dispatcher on signal handler: %s", print_exit_reason(state->exit_reason));
+    }
+
+    // Reset the exit reason
+    state->exit_reason = EXIT_REASON_UNKNOWN;
+
+    return true;
+}
+
+// Main signal handler function, all signals come here
+void signal_handler(int sig, siginfo_t* info, void* ctx) {
+    // First, check if this is a host signal
+    bool handled;
+
+    handled = dispatch_host(sig, info, ctx);
+    if (handled) {
+        // Ok it was a host signal
+        return;
+    }
+
+    handled = dispatch_guest(sig, info, ctx);
+    if (handled) {
+        return;
+    }
+
+    // Uncaught signal even though we have a signal handler?
+    ERROR("Couldn't find host or guest signal handler for %s", strsignal(sig));
+}
 
 void Signals::initialize() {
     struct sigaction sa;
@@ -677,16 +881,16 @@ void Signals::initialize() {
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
-    sigaction(SIGILL, &sa, nullptr);
-    sigaction(SIGBUS, &sa, nullptr);
-    sigaction(SIGSEGV, &sa, nullptr);
+    for (auto& handler : host_signals) {
+        sigaction(handler.sig, &sa, nullptr);
+    }
 }
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, GuestAddress handler, sigset_t mask, int flags) {
     ASSERT(sig >= 1 && sig <= 64);
 
-    // Hopefully externally synchronized, no need for locks :cluegi: (TODO: add mutex to signal_handlers)
-    (*state->signal_handlers)[sig - 1] = {handler, mask, flags};
+    // Hopefully externally synchronized, no need for locks :cluegi:
+    state->signal_table->registerSignal(sig, handler, mask, flags);
 
     // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
     if (!handler.isNull()) {
@@ -700,7 +904,7 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, GuestAddress ha
 
 RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
     ASSERT(sig >= 1 && sig <= 64);
-    return (*state->signal_handlers)[sig - 1];
+    return *state->signal_table->getRegisteredSignal(sig);
 }
 
 void Signals::sigsuspend(ThreadState* state, sigset_t* mask) {

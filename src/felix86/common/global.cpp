@@ -106,9 +106,12 @@ bool is_running_under_perf() {
     return false;
 }
 
-void ProcessGlobals::initialize() {
-    // Open a new shared memory region
+ProcessGlobals::ProcessGlobals() {
     memory = std::make_unique<SharedMemory>(shared_memory_size);
+}
+
+void ProcessGlobals::initialize() {
+    // Re-initialize these
     states_lock = ProcessLock(*memory);
     symbols_lock = ProcessLock(*memory);
 

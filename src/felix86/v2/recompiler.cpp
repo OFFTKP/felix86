@@ -85,13 +85,26 @@ void Recompiler::emitNecessaryStuff() {
 void Recompiler::emitDispatcher() {
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
-    // Save the current register state of callee-saved registers and return address
-    static_assert(sizeof(saved_host_gprs) == saved_gprs.size() * 8);
-    as.LI(t0, (u64)this);
-    as.ADDI(t0, t0, offsetof(Recompiler, saved_host_gprs));
+    Label stack_overflow;
+
+    // Disable guest signal handling while we are modifying the frame stack pointer
+    as.LI(t3, 1);
+    as.SB(t3, offsetof(ThreadState, signals_disabled), a0);
+
+    // Save the current frame. This means the return address, the stack pointer and
+    // the saved registers. We don't save these in the stack, as we do RSB and our stack pointer may not
+    // be back to what it was when we exit the dispatcher. We save it in this separate stack-like structure instead.
+    as.LD(t0, offsetof(ThreadState, frame_pointer), a0);
+    as.LD(t1, offsetof(ThreadState, frames), a0);
+    as.ADDI(t2, t0, saved_gprs.size() * sizeof(u64));
+    // Make sure we wouldn't overflow our stack
+    as.BGT(t2, t1, &stack_overflow);
     for (size_t i = 0; i < saved_gprs.size(); i++) {
         as.SD(saved_gprs[i], i * sizeof(u64), t0);
     }
+    as.SD(t2, offsetof(ThreadState, frame_pointer), a0);
+
+    as.SB(x0, offsetof(ThreadState, signals_disabled), a0);
 
     as.MV(threadStatePointer(), a0);
 
@@ -133,13 +146,28 @@ void Recompiler::emitDispatcher() {
 
     exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();
 
-    as.LI(t0, (u64)this);
-    as.ADDI(t0, t0, offsetof(Recompiler, saved_host_gprs));
+    // Disable guest signal handling while we are modifying the frame stack pointer
+    as.LI(t3, 1);
+    as.SB(t3, offsetof(ThreadState, signals_disabled), a0);
+
+    // Load the frame we had before entering the dispatcher from our custom stack
+    as.LD(t0, offsetof(ThreadState, frames), a0);
+    as.ADDI(t0, t0, -(int)saved_gprs.size() * (int)sizeof(u64));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
         as.LD(saved_gprs[i], i * sizeof(u64), t0);
     }
+    as.SD(t0, offsetof(ThreadState, frame_pointer), a0);
 
+    as.SB(x0, offsetof(ThreadState, signals_disabled), a0);
+
+    // Return to wherever the dispatcher was originally entered from using enter_dispatcher
     as.JR(ra);
+
+    as.Bind(&stack_overflow);
+
+    as.LI(t0, EXIT_REASON_FRAME_STACK_OVERFLOW);
+    as.SB(t0, offsetof(ThreadState, exit_reason), threadStatePointer());
+    as.J(&exit_dispatcher_label);
 
     flush_icache();
 }
@@ -147,6 +175,8 @@ void Recompiler::emitDispatcher() {
 HostAddress Recompiler::emitSigreturnThunk() {
     // This piece of code is responsible for moving the thread state pointer to the right place (so we don't have to find it using tid)
     // calling sigreturn, returning and going back to the dispatcher.
+    // It sets exit reason as sigreturn so the dispatcher will then jump to exit dispatcher, and return to the signal handler
+    // that the dispatcher was entered from. The signal handler will then return and peace will be restored or something.
     HostAddress here{(u64)as.GetCursorPointer()};
     getBlockMetadata(Signals::magicSigreturnAddress()).address = here;
 
@@ -186,9 +216,12 @@ void Recompiler::clearCodeCache(ThreadState* state) {
         // Need to zero out the stack that rsb has used thus far.
         // Because if the cache is cleared and we hit more RETs than calls,
         // we are gonna be returning to potentially invalid places
-        constexpr int index = 1;
-        static_assert(saved_gprs[index] == sp);
-        u64 stack_start = saved_host_gprs[index];
+        // Our frame pointer (see dispatcher for how it's made) points past
+        // the saved registers so we need to point at the start of the frame
+        constexpr int sp_index = 1;
+        u64* frame = (u64*)(state->frame_pointer - saved_gprs.size() * sizeof(u64));
+        u64 stack_start = frame[sp_index];
+        static_assert(saved_gprs[sp_index] == sp);
         u64 stack_end = state->current_sp;
 
         for (u64 i = stack_end; i < stack_start; i++) {
@@ -1019,42 +1052,18 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
 
         switch (operand->size) {
         case 128: {
-            if (g_paranoid) { // don't patch vector accesses in paranoid mode
-                setVectorState(SEW::E8, 128 / 8);
-                as.VSE8(vec, address);
-            } else {
-                if (!setVectorState(SEW::E64, 2)) {
-                    as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
-                }
-                as.VSE64(vec, address);
-                as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-            }
+            setVectorState(SEW::E8, 128 / 8);
+            as.VSE8(vec, address);
             break;
         }
         case 64: {
-            if (g_paranoid) {
-                setVectorState(SEW::E8, 64 / 8);
-                as.VSE8(vec, address);
-            } else {
-                if (!setVectorState(SEW::E64, 1)) {
-                    as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
-                }
-                as.VSE64(vec, address);
-                as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-            }
+            setVectorState(SEW::E8, 64 / 8);
+            as.VSE8(vec, address);
             break;
         }
         case 32: {
-            if (g_paranoid) {
-                setVectorState(SEW::E8, 32 / 8);
-                as.VSE8(vec, address);
-            } else {
-                if (!setVectorState(SEW::E32, 1)) {
-                    as.NOP(); // Add a NOP in case this store needs to be patched and we need to insert a vsetivli
-                }
-                as.VSE32(vec, address);
-                as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-            }
+            setVectorState(SEW::E8, 32 / 8);
+            as.VSE8(vec, address);
             break;
         }
         }
@@ -1992,55 +2001,23 @@ void Recompiler::readMemoryVectorNoBase(biscuit::Vec vec, biscuit::GPR address, 
         break;
     }
     case 16: {
-        if (g_paranoid) {
-            setVectorState(SEW::E8, 2);
-            as.VLE8(vec, address);
-        } else {
-            if (!setVectorState(SEW::E16, 1)) {
-                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
-            }
-            as.VLE16(vec, address);
-            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-        }
+        setVectorState(SEW::E8, 2);
+        as.VLE8(vec, address);
         break;
     }
     case 32: {
-        if (g_paranoid) {
-            setVectorState(SEW::E8, 4);
-            as.VLE8(vec, address);
-        } else {
-            if (!setVectorState(SEW::E32, 1)) {
-                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
-            }
-            as.VLE32(vec, address);
-            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-        }
+        setVectorState(SEW::E8, 4);
+        as.VLE8(vec, address);
         break;
     }
     case 64: {
-        if (g_paranoid) {
-            setVectorState(SEW::E8, 8);
-            as.VLE8(vec, address);
-        } else {
-            if (!setVectorState(SEW::E64, 1)) {
-                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
-            }
-            as.VLE64(vec, address);
-            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-        }
+        setVectorState(SEW::E8, 8);
+        as.VLE8(vec, address);
         break;
     }
     case 128: {
-        if (g_paranoid) {
-            setVectorState(SEW::E8, 16);
-            as.VLE8(vec, address);
-        } else {
-            if (!setVectorState(SEW::E64, 2)) {
-                as.NOP(); // Add a NOP in case this load needs to be patched and we need to insert a vsetivli
-            }
-            as.VLE64(vec, address);
-            as.NOP(); // in case of a patch, the old vsetivli needs to be moved here to maintain integrity
-        }
+        setVectorState(SEW::E8, 16);
+        as.VLE8(vec, address);
         break;
     }
     default: {
