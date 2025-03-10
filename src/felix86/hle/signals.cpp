@@ -195,8 +195,15 @@ BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
     auto& map = state->recompiler->getHostPcMap();
     auto it = map.lower_bound(host_pc.raw());
     ASSERT(it != map.end());
-    ASSERT_MSG(host_pc >= it->second->address && host_pc <= it->second->address_end, "PC: %lx not inside range %lx-%lx?", host_pc.raw(),
-               it->second->address.raw(), it->second->address_end.raw());
+    if (!(host_pc >= it->second->address && host_pc <= it->second->address_end)) {
+        // Print all the blocks so we can see what is going on
+        if (g_verbose) {
+            for (auto& range : map) {
+                printf("Block: %lx-%lx", range.second->address.raw(), range.second->address_end.raw());
+            }
+        }
+        ERROR("PC: %lx not inside range %lx-%lx?", host_pc.raw(), it->second->address.raw(), it->second->address_end.raw());
+    }
     return it->second;
 }
 
