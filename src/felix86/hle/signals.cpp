@@ -277,7 +277,8 @@ BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
     auto& map = state->recompiler->getHostPcMap();
     auto it = map.lower_bound(host_pc.raw());
     ASSERT(it != map.end());
-    ASSERT(host_pc >= it->second->address && host_pc <= it->second->address_end);
+    ASSERT_MSG(host_pc >= it->second->address && host_pc <= it->second->address_end, "PC: %lx not inside range %lx-%lx?", host_pc,
+               it->second->address.raw(), it->second->address_end.raw());
     return it->second;
 }
 
