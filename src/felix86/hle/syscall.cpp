@@ -1139,6 +1139,7 @@ void felix86_syscall(ThreadState* state) {
             if (g_verbose) {
                 printf("Installed signal handler %s at:\n", strsignal(rdi));
                 print_address((u64)handler);
+                printf("Flags: %x", act->sa_flags);
             }
         }
 
