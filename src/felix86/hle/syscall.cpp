@@ -24,6 +24,13 @@
 // We add felix86_${ARCH}_ in front of the linux related identifiers to avoid
 // naming conflicts
 
+struct x86_sigaction {
+    void (*handler)(int, siginfo_t*, void*);
+    u64 sa_flags;
+    void (*restorer)(void);
+    sigset_t sa_mask;
+};
+
 #define felix86_x86_64_ARCH_SET_GS 0x1001
 #define felix86_x86_64_ARCH_SET_FS 0x1002
 #define felix86_x86_64_ARCH_GET_FS 0x1003
@@ -1131,15 +1138,14 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_rt_sigaction: {
-        struct sigaction* act = (struct sigaction*)rsi;
+        struct x86_sigaction* act = (struct x86_sigaction*)rsi;
         if (act) {
-            bool sigaction = act->sa_flags & SA_SIGINFO;
-            void* handler = sigaction ? (void*)act->sa_sigaction : (void*)act->sa_handler;
+            auto handler = act->handler;
             Signals::registerSignalHandler(state, rdi, GuestAddress{(u64)handler}, act->sa_mask, act->sa_flags);
             if (g_verbose) {
                 printf("Installed signal handler %s at:\n", strsignal(rdi));
                 print_address((u64)handler);
-                printf("Flags: %x", act->sa_flags);
+                printf("Flags: %lx", act->sa_flags);
             }
         }
 
