@@ -86,7 +86,7 @@ struct Signals {
     // So we want the signal handler to return here. So the address we give it is to a thunk that jumps here.
     static void sigreturn(ThreadState* state);
 
-    static void sigsuspend(ThreadState* state, sigset_t* mask);
+    static int sigsuspend(ThreadState* state, sigset_t* mask);
 
     // Our recompiler checks guest addresses using an unordered_map to get the host address with the recompiled piece of code
     // Signal handlers return to an address the kernel pushes to the stack, which calls ra_sigreturn and all that.

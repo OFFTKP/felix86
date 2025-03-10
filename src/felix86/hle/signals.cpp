@@ -751,7 +751,7 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
 }
 
 bool handle_ctrl_c(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    if (getenv("FELIX86_ALLOW_SIGINT")) {
+    if (!getenv("FELIX86_ALLOW_SIGINT")) {
         WARN("CTRL+C pressed, terminating...");
         exit(0);
     }
@@ -931,7 +931,11 @@ RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
     return *state->signal_table->getRegisteredSignal(sig);
 }
 
-void Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
-    // TODO: stuff - you know what
-    ::sigsuspend(mask);
+int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
+    int result = ::sigsuspend(mask);
+    if (result == -1) {
+        return -errno;
+    } else {
+        return result;
+    }
 }

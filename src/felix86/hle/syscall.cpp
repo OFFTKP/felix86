@@ -1451,6 +1451,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("getpeername(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_rt_sigsuspend: {
+        result = Signals::sigsuspend(state, (sigset_t*)rdi);
+        STRACE("rt_sigsuspend(%p, %d) = %d", (void*)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_rt_sigprocmask: {
         int how = rdi;
         sigset_t* set = (sigset_t*)rsi;
