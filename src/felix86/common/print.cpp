@@ -56,8 +56,18 @@ std::string print_guest_register(x86_ref_e guest) {
         return "fsbase";
     case X86_REF_GS:
         return "gsbase";
+    case X86_REF_CS:
+        return "cs";
+    case X86_REF_ES:
+        return "es";
+    case X86_REF_DS:
+        return "ds";
+    case X86_REF_SS:
+        return "ss";
     case X86_REF_XMM0 ... X86_REF_XMM15:
         return "xmm" + std::to_string(guest - X86_REF_XMM0);
+    case X86_REF_YMM0 ... X86_REF_YMM15:
+        return "ymm" + std::to_string(guest - X86_REF_YMM0);
     case X86_REF_ST0 ... X86_REF_ST7:
         return "st" + std::to_string(guest - X86_REF_ST0);
     case X86_REF_COUNT:

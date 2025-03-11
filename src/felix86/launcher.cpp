@@ -314,6 +314,7 @@ int main(int argc, const char** argv) {
     jit_args.push_back(nullptr);
 
     constexpr static const char* launched = "__FELIX86_LAUNCHED=1";
+    // $FELIX86_ROOTFS/felix86/lib is mounted to /usr/lib, these two are the most common search paths
     constexpr static const char* ld_lib_path = "LD_LIBRARY_PATH=/felix86/lib:/felix86/lib/riscv64-linux-gnu";
     char** environ_copy = environ;
     std::vector<const char*> jit_envs;

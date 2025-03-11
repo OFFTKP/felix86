@@ -120,6 +120,7 @@ struct Extensions {
     X(Zabha)                                                                                                                                         \
     X(Zicond)                                                                                                                                        \
     X(Zfa)                                                                                                                                           \
+    X(Zvfh)                                                                                                                                          \
     X(Zvbb)                                                                                                                                          \
     X(Xtheadcondmov)                                                                                                                                 \
     X(Xtheadba)                                                                                                                                      \

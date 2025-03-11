@@ -311,7 +311,7 @@ struct Recompiler {
     bool setVectorState(SEW sew, int elem_count, LMUL grouping = LMUL::M1);
 
     static constexpr u16 maxVlen() {
-        return 128;
+        return sizeof(XmmReg) * 8;
     }
 
     void sextb(biscuit::GPR dest, biscuit::GPR src);
@@ -439,6 +439,68 @@ struct Recompiler {
 
     u8* getStartOfCodeCache() {
         return (u8*)start_of_code_cache;
+    }
+
+    static bool isXMM(x86_ref_e ref) {
+        return ref >= X86_REF_XMM0 && ref <= X86_REF_XMM15;
+    }
+
+    static bool isYMM(x86_ref_e ref) {
+        return ref >= X86_REF_YMM0 && ref <= X86_REF_YMM15;
+    }
+
+    // return true if SEW and VL add up to 128 bits
+    bool isCurrentLength128() {
+        if (current_grouping != LMUL::M1) {
+            return false;
+        }
+
+        switch (current_sew) {
+        case biscuit::SEW::E64: {
+            return current_vlen == 2;
+        }
+        case biscuit::SEW::E32: {
+            return current_vlen == 4;
+        }
+        case biscuit::SEW::E16: {
+            return current_vlen == 8;
+        }
+        case biscuit::SEW::E8: {
+            return current_vlen == 16;
+        }
+        default: {
+            break;
+        }
+        }
+
+        return false;
+    }
+
+    // Return true if SEW and VL add up to 256 bits
+    bool isCurrentLength256() {
+        if (current_grouping != LMUL::M1) {
+            return false;
+        }
+
+        switch (current_sew) {
+        case biscuit::SEW::E64: {
+            return current_vlen == 4;
+        }
+        case biscuit::SEW::E32: {
+            return current_vlen == 8;
+        }
+        case biscuit::SEW::E16: {
+            return current_vlen == 16;
+        }
+        case biscuit::SEW::E8: {
+            return current_vlen == 32;
+        }
+        default: {
+            break;
+        }
+        }
+
+        return false;
     }
 
 private:

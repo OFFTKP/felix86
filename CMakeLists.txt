@@ -112,7 +112,6 @@ endif()
 if (BUILD_TESTS)
     set(FELIX86_TEST_SOURCES
         tests/common.cpp
-        tests/Binaries/binary_test_loader.cpp
         tests/FEX/fex_test_loader.cpp
         tests/FEX/primary.cpp
         tests/FEX/primary_group.cpp
@@ -124,6 +123,7 @@ if (BUILD_TESTS)
         tests/FEX/two_byte.cpp
         tests/FEX/felix86_bugs.cpp
         tests/FEX/x87.cpp
+        tests/Binaries/binary_test_loader.cpp
     )
 
     add_executable(felix86_test)

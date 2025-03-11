@@ -1,3 +1,4 @@
+#include <array>
 #include <cstring>
 #include <fstream>
 #include <sys/ioctl.h>
@@ -817,4 +818,257 @@ void felix86_fcos(ThreadState* state) {
     memcpy(&boop, &state->fp[state->fpu_top], sizeof(double));
     double result = ::cos(boop);
     memcpy(&state->fp[state->fpu_top], &result, sizeof(double));
+}
+
+template <class Int, int Size = 128 / (sizeof(Int) * 8), int UpperBound = Size - 1 /* 7 or 15 */, u32 Mask = (1u << Size) - 1u>
+void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 control) {
+    WARN("PCMPxSTRx called, known to have broken functionality ATM");
+    enum Mode {
+        EqualAny = 0b00,
+        Ranges = 0b01,
+        EqualEach = 0b10,
+        EqualOrdered = 0b11,
+    };
+
+    enum Polarity {
+        Positive = 0b00,
+        Negative = 0b01,
+        MaskedPositive = 0b10,
+        MaskedNegative = 0b11,
+    };
+
+    bool implicit = !(((u8)type >> 1) & 1);
+    bool index = !(((u8)type) & 1);
+
+    int dst_length;
+    int src_length;
+
+    Mode mode = (Mode)((control >> 2) & 0b11);
+    Polarity polarity = (Polarity)((control >> 4) & 0b11);
+    bool output_selection = (control >> 6) & 1;
+
+    std::array<bool, Size * Size> BoolRes = {0};
+    if (implicit) {
+        dst_length = Size;
+        src_length = Size;
+
+        bool dst_length_found = false;
+        bool src_length_found = false;
+
+        for (int i = 0; i < Size; i++) {
+            if (!dst_length_found && dst[i] == 0) {
+                dst_length = i;
+                dst_length_found = true;
+            }
+
+            if (!src_length_found && src[i] == 0) {
+                src_length = i;
+                src_length_found = true;
+            }
+
+            if (dst_length_found && src_length_found) {
+                break;
+            }
+        }
+    } else {
+        dst_length = (int)state->gprs[0]; // eax
+        src_length = (int)state->gprs[2]; // edx
+
+        ASSERT(dst_length >= 0);
+        ASSERT(src_length >= 0);
+    }
+
+    for (int j = 0; j < Size; j++) {
+        for (int i = 0; i < Size; i++) {
+            if (mode == Ranges) {
+                if (i % 2 == 0) {
+                    BoolRes[j * Size + i] = src[j] >= dst[i];
+                } else {
+                    BoolRes[j * Size + i] = src[j] <= dst[i];
+                }
+            } else {
+                BoolRes[j * Size + i] = dst[i] == src[j];
+            }
+        }
+    }
+
+    auto dst_invalid = [&](int index) { return index >= dst_length; };
+    auto src_invalid = [&](int index) { return index >= src_length; };
+
+    auto overrideIfInvalid = [&](u64 dst_index, u64 src_index) {
+        bool dstinv = dst_invalid(dst_index);
+        bool srcinv = src_invalid(src_index);
+
+        switch (mode) {
+        case Ranges:
+        case EqualAny: {
+            if (!dstinv && !srcinv) {
+                return BoolRes[src_index * Size + dst_index];
+            }
+            return false;
+        }
+        case EqualEach: {
+            if (!dstinv && !srcinv) {
+                return BoolRes[src_index * Size + dst_index];
+            }
+
+            if (dstinv && srcinv) {
+                return true;
+            }
+
+            return false;
+        }
+        case EqualOrdered: {
+            if (!dstinv && !srcinv) {
+                return BoolRes[src_index * Size + dst_index];
+            }
+
+            if ((dstinv && srcinv) || (dstinv && !srcinv)) {
+                return true;
+            }
+
+            return false;
+        }
+        }
+
+        __builtin_unreachable();
+    };
+
+    u32 intres1 = 0;
+    switch (mode) {
+    case EqualAny: {
+        for (int j = 0; j <= UpperBound; j++) {
+            for (int i = 0; i <= UpperBound; i++) {
+                u32 bit = overrideIfInvalid(i, j);
+                intres1 |= bit << j;
+            }
+        }
+        break;
+    }
+    case Ranges: {
+        for (int j = 0; j <= UpperBound; j++) {
+            for (int i = 0; i <= UpperBound; i += 2) {
+                u32 bit1 = overrideIfInvalid(i, j);
+                u32 bit2 = overrideIfInvalid(i + 1, j);
+                intres1 |= (bit1 & bit2) << j;
+            }
+        }
+        break;
+    }
+    case EqualEach: {
+        for (int i = 0; i <= UpperBound; i++) {
+            u32 bit = overrideIfInvalid(i, i);
+            intres1 |= bit << i;
+        }
+        break;
+    }
+    case EqualOrdered: {
+        intres1 = Mask;
+        for (int j = 0; j <= UpperBound; j++) {
+            for (int i = 0; i <= UpperBound - j; i++) {
+                for (int k = j; k <= UpperBound; k++) {
+                    u32 bit = overrideIfInvalid(i, k);
+                    intres1 &= bit << j;
+                }
+            }
+        }
+    }
+    }
+
+    u32 intres2 = intres1;
+    switch (polarity) {
+    case Negative: {
+        intres2 = -1 ^ intres1;
+        break;
+    }
+    case MaskedNegative: {
+        intres2 = 0;
+        for (int i = 0; i <= UpperBound; i++) {
+            u32 old_bit = (intres1 >> i) & 1;
+            u32 bit = src_invalid(i) ? old_bit : (old_bit ^ 1);
+            intres2 |= bit << i;
+        }
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+    intres2 &= Mask;
+
+    if (index) {
+        // pcmpxstri instructions
+        static_assert(X86_REF_RCX == 1);
+        if (!output_selection) {
+            state->gprs[1] = __builtin_ctz(intres2);
+        } else {
+            u32 shifted = intres2 << (32 - Size);
+            state->gprs[1] = (Size - 1) - __builtin_clz(shifted);
+        }
+    } else {
+        // pcmpxstrm instructions
+        if (!output_selection) {
+            for (u32 i = 0; i < (sizeof(XmmReg) / sizeof(u64)); i++) {
+                state->xmm[0].data[i] = 0;
+            }
+
+            state->xmm[0].data[0] = intres2;
+        } else {
+            static_assert(Size == 8 || Size == 16);
+            if (Size == 8) {
+                u8* xmm0 = (u8*)&state->xmm[0].data[0];
+                for (int i = 0; i < 16; i++) {
+                    u32 bit = (intres2 >> i) & 1;
+                    if (bit) {
+                        xmm0[i] = 0xFF;
+                    } else {
+                        xmm0[i] = 0;
+                    }
+                }
+            } else {
+                u16* xmm0 = (u16*)&state->xmm[0].data[0];
+                for (int i = 0; i < 8; i++) {
+                    u32 bit = (intres2 >> i) & 1;
+                    if (bit) {
+                        xmm0[i] = 0xFFFF;
+                    } else {
+                        xmm0[i] = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    state->cf = intres2 != 0;
+    state->zf = src_length < Size;
+    state->sf = dst_length < Size;
+    state->of = intres2 & 1;
+    state->af = 0;
+    state->pf = 0;
+}
+
+void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control) {
+    enum Type {
+        UnsignedBytes = 0b00,
+        UnsignedWords = 0b01,
+        SignedBytes = 0b10,
+        SignedWords = 0b11,
+    };
+
+    switch ((Type)(control & 0b11)) {
+    case UnsignedBytes: {
+        return pcmpxstrx_impl<u8>(state, type, (u8*)dst, (u8*)src, control);
+    }
+    case UnsignedWords: {
+        return pcmpxstrx_impl<u16>(state, type, (u16*)dst, (u16*)src, control);
+    }
+    case SignedBytes: {
+        return pcmpxstrx_impl<i8>(state, type, (i8*)dst, (i8*)src, control);
+    }
+    case SignedWords: {
+        return pcmpxstrx_impl<i16>(state, type, (i16*)dst, (i16*)src, control);
+    }
+    }
+
+    __builtin_unreachable();
 }

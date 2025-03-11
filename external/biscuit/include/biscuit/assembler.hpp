@@ -1270,6 +1270,9 @@ public:
     void VFSGNJX(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VFSGNJX(Vec vd, Vec vs2, FPR rs1, VecMask mask = VecMask::No) noexcept;
 
+    void VFABS(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
+    void VFNEG(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
+
     void VFSQRT(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
     void VFRSQRT7(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
 

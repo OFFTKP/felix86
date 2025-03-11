@@ -653,6 +653,18 @@ x86_ref_e Recompiler::zydisToRef(ZydisRegister reg) {
     case ZYDIS_REGISTER_ST0 ... ZYDIS_REGISTER_ST7: {
         return (x86_ref_e)(X86_REF_ST0 + (reg - ZYDIS_REGISTER_ST0));
     }
+    case ZYDIS_REGISTER_CS: {
+        return X86_REF_CS;
+    }
+    case ZYDIS_REGISTER_DS: {
+        return X86_REF_DS;
+    }
+    case ZYDIS_REGISTER_SS: {
+        return X86_REF_SS;
+    }
+    case ZYDIS_REGISTER_ES: {
+        return X86_REF_ES;
+    }
     default: {
         ERROR("Unhandled register %s", ZydisRegisterGetString(reg));
         ref = X86_REF_RAX;
@@ -1015,7 +1027,30 @@ void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
     biscuit::Vec dest = allocatedVec(ref);
 
     if (dest != vec) {
-        as.VMV1R(dest, vec);
+        if (Extensions::VLEN == 128) {
+            ASSERT_MSG(isXMM(ref), "setRefVec dealing with YMM registers but your VLEN is 128");
+            as.VMV1R(dest, vec);
+        } else if (Extensions::VLEN >= 256) {
+            if (isXMM(ref)) {
+                if (!isCurrentLength128()) {
+                    setVectorState(SEW::E8, 16);
+                }
+
+                as.VMV(dest, vec);
+            } else if (isYMM(ref)) {
+                if (Extensions::VLEN == 256) {
+                    as.VMV1R(dest, vec); // doesn't have to mess with vector state
+                } else {
+                    if (!isCurrentLength256()) {
+                        setVectorState(SEW::E8, 32);
+                    }
+
+                    as.VMV(dest, vec);
+                }
+            } else {
+                UNREACHABLE();
+            }
+        }
     }
 
     RegisterMetadata& meta = getMetadata(ref);
@@ -1053,6 +1088,11 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
         biscuit::GPR address = leaAddBase(operand);
 
         switch (operand->size) {
+        case 256: {
+            setVectorState(SEW::E8, 256 / 8);
+            as.VSE8(vec, address);
+            break;
+        }
         case 128: {
             setVectorState(SEW::E8, 128 / 8);
             as.VSE8(vec, address);
@@ -1067,6 +1107,9 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
             setVectorState(SEW::E8, 32 / 8);
             as.VSE8(vec, address);
             break;
+        }
+        default: {
+            UNREACHABLE();
         }
         }
         break;
@@ -2019,6 +2062,11 @@ void Recompiler::readMemoryVectorNoBase(biscuit::Vec vec, biscuit::GPR address, 
     }
     case 128: {
         setVectorState(SEW::E8, 16);
+        as.VLE8(vec, address);
+        break;
+    }
+    case 256: {
+        setVectorState(SEW::E8, 32);
         as.VLE8(vec, address);
         break;
     }

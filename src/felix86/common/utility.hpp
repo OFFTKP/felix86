@@ -126,3 +126,7 @@ inline std::vector<std::string> split_string(const std::string& txt, char ch) {
 
     return strs;
 }
+
+enum class pcmpxstrx { ImplicitIndex = 0b00, ImplicitMask = 0b01, ExplicitIndex = 0b10, ExplicitMask = 0b11 };
+
+void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control);

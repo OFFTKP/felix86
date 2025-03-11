@@ -417,6 +417,12 @@ void felix86_syscall(ThreadState* state) {
         STRACE("rename(%s, %s) = %d", oldpath.c_str(), (char*)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_epoll_create: {
+        // epoll_create has obsolete and ignored argument size, acts the same as epoll_create1 with flags=0
+        result = HOST_SYSCALL(epoll_create1, 0);
+        STRACE("epoll_create1(%d) = %d", (int)rdi, (int)result);
+        break;
+    }
     case felix86_x86_64_epoll_create1: {
         result = HOST_SYSCALL(epoll_create1, rdi);
         STRACE("epoll_create1(%d) = %d", (int)rdi, (int)result);
@@ -1301,6 +1307,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("mincore(%p, %d, %p) = %d", (void*)rdi, (int)rsi, (void*)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_listen: {
+        result = HOST_SYSCALL(listen, rdi, rsi);
+        STRACE("listen(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
+        break;
+    }
     case felix86_x86_64_clone3: {
         result = -ENOSYS; // don't support these for now
         break;
@@ -1391,7 +1402,7 @@ void felix86_syscall(ThreadState* state) {
         }
         envp.push_back("__FELIX86_LAUNCHED=1");
         envp.push_back("__FELIX86_EXECVE=1");
-        envp.push_back("LD_LIBRARY_PATH=/felix86/lib");
+        envp.push_back("LD_LIBRARY_PATH=/felix86/lib:/felix86/lib/riscv64-linux-gnu");
         char** host_environ = environ;
         while (*host_environ) {
             std::string env = *host_environ;

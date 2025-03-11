@@ -90,7 +90,11 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
 #define fill(x)                                                                                                                                      \
     if (regs.find(#x) != regs.end()) {                                                                                                               \
-        expected_gpr[X86_REF_##x - X86_REF_RAX] = std::stoull(regs[#x].get<std::string>(), nullptr, 16);                                             \
+        int base = 10;                                                                                                                               \
+        std::string str = regs[#x].get<std::string>();                                                                                               \
+        if (str.size() > 2 && str[0] == '0' && str[1] == 'x')                                                                                        \
+            base = 16;                                                                                                                               \
+        expected_gpr[X86_REF_##x - X86_REF_RAX] = std::stoull(regs[#x].get<std::string>(), nullptr, base);                                           \
     }
         fill(RAX);
         fill(RCX);
