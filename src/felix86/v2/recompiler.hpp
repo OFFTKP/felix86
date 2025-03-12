@@ -505,6 +505,8 @@ struct Recompiler {
 
     void compileInstruction(HandlerMetadata& meta);
 
+    void assumeLoaded();
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

@@ -2780,3 +2780,10 @@ void Recompiler::linkIndirect() {
     as.Place(&link_indirect);
     as.Place(&link_address);
 }
+
+// Assume all registers have been loaded. Only good for instruction count generation.
+void Recompiler::assumeLoaded() {
+    for (auto& meta : metadata) {
+        meta.loaded = true;
+    }
+}

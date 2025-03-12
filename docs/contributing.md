@@ -38,6 +38,13 @@ Some functions are helpful when called from gdb.
 ## Profiling
 felix86 will try to heuristically detect `perf` and emit symbols at `/tmp/perf-%pid.map`. If it fails to detect perf (it will tell you "Running under perf"), use `FELIX86_PERF=1` environment variable to force it to emit those symbols.
 
+## Instruction counts
+Generally we want to reduce the amount of RISC-V instructions needed to emulate each x86-64 instruction.
+The current instruction counts can be seen in `counts/`. If you modify instructions, it would be good to update this list by using the
+instruction count generator. The source is in `generate_instruction_count.cpp`. By default it doesn't build as it takes a long time,
+you can set `-DBUILD_INSTRUCTION_COUNTER=1` in CMake configuration to build it. Running it like `./build/felix86_instruction_counter` 
+should produce the new results.
+
 ## Coding
 There are no strict coding guidelines. [Some recommendations exist](./conventions.md).
 Do try to follow the coding style of the file you are editing.

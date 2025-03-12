@@ -891,7 +891,8 @@ FAST_HANDLE(SAR_imm) {
 
     if (shift != 0) {
         switch (size) {
-        case X86_SIZE_BYTE: {
+        case X86_SIZE_BYTE:
+        case X86_SIZE_BYTE_HIGH: {
             as.SLLI(result, dst, 56);
             if (shift + 56 < 64) {
                 as.SRAI(result, result, 56 + shift);
@@ -1123,7 +1124,8 @@ FAST_HANDLE(SAR) {
         rec.flag(X86_REF_SF);
 
     switch (size) {
-    case X86_SIZE_BYTE: {
+    case X86_SIZE_BYTE:
+    case X86_SIZE_BYTE_HIGH: {
         as.SLLI(result, dst, 56);
         as.SRAI(result, result, 56);
         as.SRA(result, result, count);
