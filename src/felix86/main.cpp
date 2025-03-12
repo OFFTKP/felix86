@@ -161,6 +161,9 @@ int main(int argc, char* argv[]) {
     if (!extensions.empty()) {
         LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
     }
+    if (Extensions::VLEN != 256) {
+        WARN_ONCE("felix86 is untested on chips with VLEN != 256, problems are expected to happen :(");
+    }
     Signals::initialize();
 
     static bool initialized = false;

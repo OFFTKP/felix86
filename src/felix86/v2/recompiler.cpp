@@ -1205,7 +1205,7 @@ biscuit::GPR Recompiler::leaAddBase(ZydisDecodedOperand* operand) {
 }
 
 biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
-    if (false && cached_lea_operand == operand) {
+    if (cached_lea_operand == operand) {
         ASSERT(cached_lea_operand->mem.base == operand->mem.base);
         ASSERT(cached_lea_operand->mem.index == operand->mem.index);
         ASSERT(cached_lea_operand->mem.scale == operand->mem.scale);
