@@ -25,7 +25,7 @@ bool g_calltrace = false;
 bool g_use_block_cache = true;
 bool g_single_step = false;
 bool g_safe_flags = true;
-bool g_dont_protect_pages = false;
+bool g_dont_protect_pages = true; // disabled by default until SMC is fixed and tested
 bool g_print_all_calls = false;
 bool g_no_sse2 = false;
 bool g_no_sse3 = false;
@@ -37,7 +37,7 @@ bool g_dont_inline_syscalls = false;
 bool g_min_max_accurate = false;
 int g_block_trace = 0;
 bool g_mode32 = false;
-bool g_rsb = true;
+bool g_rsb = false; // off by default until we fix stack overflow problems ie in Celeste (or probably similar apps with jit)
 bool g_perf = false;
 bool g_thunking = false;
 bool g_always_tso = false;
@@ -282,10 +282,10 @@ void initialize_globals() {
         environment += "\nFELIX86_PARANOID";
     }
 
-    const char* dont_rsb_env = getenv("FELIX86_DONT_RSB");
-    if (is_truthy(dont_rsb_env)) {
-        g_rsb = false;
-        environment += "\nFELIX86_DONT_RSB";
+    const char* dont_rsb_env = getenv("FELIX86_RSB");
+    if (!is_truthy(dont_rsb_env)) {
+        g_rsb = true;
+        environment += "\nFELIX86_RSB";
     }
 
     const char* min_max_accurate_env = getenv("FELIX86_MIN_MAX_ACCURATE");
