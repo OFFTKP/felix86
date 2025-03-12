@@ -346,8 +346,6 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
     std::fill(zexted_gprs.begin(), zexted_gprs.end(), false);
 
     while (compiling) {
-        resetScratch();
-
         block_meta.instruction_spans.push_back({meta.rip.toGuest(), HostAddress{(u64)as.GetCursorPointer()}});
 
         if (g_breakpoints.find(meta.rip.raw()) != g_breakpoints.end()) {
@@ -356,45 +354,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
 
-        ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
-
-        if (g_no_sse2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2)) {
-            ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
-        }
-
-        if (g_no_sse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE3)) {
-            ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
-        }
-
-        if (g_no_ssse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSSE3)) {
-            ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
-        }
-
-        if (g_no_sse4_1 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
-            ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
-        }
-
-        if (g_no_sse4_2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
-            ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
-        }
-
-        switch (mnemonic) {
-#define X(name)                                                                                                                                      \
-    case ZYDIS_MNEMONIC_##name:                                                                                                                      \
-        fast_##name(*this, meta, as, instruction, operands);                                                                                         \
-        break;
-#include "felix86/v2/handlers.inc"
-#undef X
-        default: {
-            ZydisDisassembledInstruction disassembled;
-            if (ZYAN_SUCCESS(ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip.raw(), (u8*)meta.rip.raw(), 15, &disassembled))) {
-                ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
-            } else {
-                ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);
-            }
-            break;
-        }
-        }
+        compileInstruction(meta);
 
         if (!g_dont_inline_syscalls) {
             checkModifiesRax(instruction, operands);
@@ -423,6 +383,50 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
     return meta.rip;
 }
 
+void Recompiler::compileInstruction(HandlerMetadata& meta) {
+    resetScratch();
+
+    ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
+
+    if (g_no_sse2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2)) {
+        ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+    }
+
+    if (g_no_sse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE3)) {
+        ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+    }
+
+    if (g_no_ssse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSSE3)) {
+        ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+    }
+
+    if (g_no_sse4_1 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
+        ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+    }
+
+    if (g_no_sse4_2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
+        ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+    }
+
+    switch (mnemonic) {
+#define X(name)                                                                                                                                      \
+    case ZYDIS_MNEMONIC_##name:                                                                                                                      \
+        fast_##name(*this, meta, as, instruction, operands);                                                                                         \
+        break;
+#include "felix86/v2/handlers.inc"
+#undef X
+    default: {
+        ZydisDisassembledInstruction disassembled;
+        if (ZYAN_SUCCESS(ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip.raw(), (u8*)meta.rip.raw(), 15, &disassembled))) {
+            ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
+        } else {
+            ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);
+        }
+        break;
+    }
+    }
+}
+
 biscuit::GPR Recompiler::scratch() {
     // TODO: constexpr list of regs
     switch (scratch_index++) {
@@ -441,7 +445,7 @@ biscuit::GPR Recompiler::scratch() {
     case 6:
         return x7;
     default:
-        ERROR("Tried to use more than 6 scratch GPRs");
+        ERROR("Tried to use more than 7 scratch GPRs");
         return x0;
     }
 }
@@ -522,6 +526,8 @@ void Recompiler::resetScratch() {
     scratch_index = 0;
     vector_scratch_index = 0;
     fpu_scratch_index = 0;
+    cached_lea = x0;
+    cached_lea_operand = nullptr;
 }
 
 x86_ref_e Recompiler::zydisToRef(ZydisRegister reg) {
@@ -818,9 +824,10 @@ biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
         return reg;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        biscuit::GPR address = leaAddBase(operand); // avoids having to use a scratch to add the base address
-        readMemoryNoBase(address, address, 0, zydisToSize(operand->size));
-        return address;
+        biscuit::GPR dest = scratch();
+        biscuit::GPR address = leaAddBase(operand);
+        readMemoryNoBase(dest, address, 0, zydisToSize(operand->size));
+        return dest;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 value = operand->imm.value.s;
@@ -1198,7 +1205,18 @@ biscuit::GPR Recompiler::leaAddBase(ZydisDecodedOperand* operand) {
 }
 
 biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
+    if (false && cached_lea_operand == operand) {
+        ASSERT(cached_lea_operand->mem.base == operand->mem.base);
+        ASSERT(cached_lea_operand->mem.index == operand->mem.index);
+        ASSERT(cached_lea_operand->mem.scale == operand->mem.scale);
+        ASSERT(cached_lea_operand->mem.disp.value == operand->mem.disp.value);
+        ASSERT(cached_lea_operand->mem.segment == operand->mem.segment);
+        return cached_lea;
+    }
+
     biscuit::GPR address = scratch();
+    cached_lea = address;
+    cached_lea_operand = operand;
 
     biscuit::GPR base, index;
 
@@ -1285,6 +1303,169 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
     }
 
     return address;
+
+#if 0 // Buggy for whatever reason
+    printf("base %d\n", operand->mem.base == ZYDIS_REGISTER_NONE ? -1 : zydisToRef(operand->mem.base));
+    printf("index %d\n", operand->mem.index == ZYDIS_REGISTER_NONE ? -1 : zydisToRef(operand->mem.index));
+    printf("scale %d\n", operand->mem.scale);
+    printf("disp %lx\n", operand->mem.disp.value);
+
+    biscuit::GPR address = scratch();
+    cached_lea = address;
+    cached_lea_operand = operand;
+
+    biscuit::GPR base, index;
+
+    if (operand->mem.base == ZYDIS_REGISTER_RIP) {
+        as.LI(address, current_meta->rip.toGuest().raw() + instruction.length + operand->mem.disp.value);
+        return address;
+    }
+
+    bool has_base = operand->mem.base != ZYDIS_REGISTER_NONE;
+    bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
+    bool has_segment = operand->mem.segment != ZYDIS_REGISTER_NONE;
+    bool has_disp = operand->mem.disp.value != 0;
+
+    // Cover the case of just a segment register
+    if (has_segment && !has_base && !has_index && !has_disp) {
+        if (operand->mem.segment == ZYDIS_REGISTER_FS) {
+            as.LD(address, offsetof(ThreadState, fsbase), threadStatePointer());
+        } else if (operand->mem.segment == ZYDIS_REGISTER_GS) {
+            as.LD(address, offsetof(ThreadState, gsbase), threadStatePointer());
+        } else {
+            UNREACHABLE();
+        }
+        return address;
+    }
+
+    if (has_disp) {
+        // Load the displacement first
+        as.LI(address, operand->mem.disp.value);
+
+        if (has_base) {
+            base = gpr(operand->mem.base);
+            as.ADD(address, address, base);
+        }
+
+        if (has_index) {
+            index = gpr(operand->mem.index);
+            u8 scale = operand->mem.scale;
+            if (scale != 1) {
+                if (Extensions::B) {
+                    switch (scale) {
+                    case 2:
+                        as.SH1ADD(address, index, address);
+                        break;
+                    case 4:
+                        as.SH2ADD(address, index, address);
+                        break;
+                    case 8: {
+                        as.SH3ADD(address, index, address);
+                        break;
+                    }
+                    default: {
+                        UNREACHABLE();
+                        break;
+                    }
+                    }
+                } else {
+                    switch (scale) {
+                    case 2:
+                        scale = 1;
+                        break;
+                    case 4:
+                        scale = 2;
+                        break;
+                    case 8:
+                        scale = 3;
+                        break;
+                    default:
+                        UNREACHABLE();
+                        break;
+                    }
+                    biscuit::GPR scale_reg = scratch();
+                    as.SLLI(scale_reg, index, scale);
+                    as.ADD(address, address, scale_reg);
+                    popScratch();
+                }
+            } else {
+                as.ADD(address, address, index);
+            }
+        }
+    } else {
+        if (has_index) {
+            index = gpr(operand->mem.index);
+            u8 scale = operand->mem.scale;
+            if (!has_base) {
+                // No base, shift directly into address
+                as.SLLI(address, index, scale);
+            } else {
+                // Add index to the base
+                base = gpr(operand->mem.base);
+                if (scale != 1) {
+                    if (Extensions::B) {
+                        switch (scale) {
+                        case 2:
+                            as.SH1ADD(address, index, base);
+                            break;
+                        case 4:
+                            as.SH2ADD(address, index, base);
+                            break;
+                        case 8: {
+                            as.SH3ADD(address, index, base);
+                            break;
+                        }
+                        default: {
+                            UNREACHABLE();
+                            break;
+                        }
+                        }
+                    } else {
+                        switch (scale) {
+                        case 2:
+                            scale = 1;
+                            break;
+                        case 4:
+                            scale = 2;
+                            break;
+                        case 8:
+                            scale = 3;
+                            break;
+                        default:
+                            UNREACHABLE();
+                            break;
+                        }
+                        biscuit::GPR scale_reg = scratch();
+                        as.SLLI(scale_reg, index, scale);
+                        as.ADD(address, base, scale_reg);
+                        popScratch();
+                    }
+                } else {
+                    as.ADD(address, base, index);
+                }
+            }
+        } else {
+            ASSERT(has_base);
+            base = gpr(operand->mem.base);
+            as.MV(address, base);
+        }
+    }
+
+    // Whether or not there's a displacement, at this point it's guaranteed that there's something in `address`
+    if (operand->mem.segment == ZYDIS_REGISTER_FS) {
+        biscuit::GPR fs = scratch();
+        as.LD(fs, offsetof(ThreadState, fsbase), threadStatePointer());
+        as.ADD(address, address, fs);
+        popScratch();
+    } else if (operand->mem.segment == ZYDIS_REGISTER_GS) {
+        biscuit::GPR gs = scratch();
+        as.LD(gs, offsetof(ThreadState, gsbase), threadStatePointer());
+        as.ADD(address, address, gs);
+        popScratch();
+    }
+
+    return address;
+#endif
 }
 
 void Recompiler::stopCompiling() {

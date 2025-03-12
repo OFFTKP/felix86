@@ -213,7 +213,7 @@ void VEC_function(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, Z
 
     biscuit::GPR temp;
     if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        temp = rec.lea(&operands[1]);
+        temp = rec.leaAddBase(&operands[1]);
     }
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
@@ -5690,38 +5690,33 @@ FAST_HANDLE(CVTTSD2SI) {
 
     rec.setOperandGPR(&operands[0], dst);
 }
-
 FAST_HANDLE(CVTPD2PS) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     as.VFNCVT_F_F(result, src);
-
     as.VMV(v0, 0b1100);
     as.VAND(result, result, 0, VecMask::Yes);
-
     rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(CVTPS2PD) { // Fuzzed, inaccuracies with NaNs
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-
     rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     as.VFWCVT_F_F(result, src);
-
     rec.setOperandVec(&operands[0], result);
 }
 
 FAST_HANDLE(CVTTPS2DQ) { // Fuzzed, returns 0x7FFF'FFFF instead of 0x8000'0000
-    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E32, 4);
-    as.VFCVT_RTZ_X_F(result, src);
+    as.VFCVT_RTZ_X_F(dst, src);
 
-    rec.setOperandVec(&operands[0], result);
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(CVTPS2DQ) {
@@ -5738,11 +5733,11 @@ FAST_HANDLE(CVTTPD2DQ) { // Fuzzed, same problem as cvttps2dq
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E8, 16);
-    as.VXOR(dst, dst, dst);
-
     rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     as.VFNCVT_RTZ_X_F(dst, src);
+    rec.setVectorState(SEW::E32, 4);
+    as.VMV(v0, 0b1100);
+    as.VAND(dst, dst, 0, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], dst);
 }
@@ -5751,11 +5746,12 @@ FAST_HANDLE(CVTPD2DQ) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E8, 16);
-    as.VXOR(dst, dst, dst);
-
     rec.setVectorState(SEW::E32, 2, LMUL::MF2);
     as.VFNCVT_X_F(dst, src);
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VMV(v0, 0b1100);
+    as.VAND(dst, dst, 0, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], dst);
 }

@@ -503,6 +503,8 @@ struct Recompiler {
         return false;
     }
 
+    void compileInstruction(HandlerMetadata& meta);
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -597,6 +599,9 @@ private:
     LMUL current_grouping = LMUL::M1;
     bool rounding_mode_set = false;
     int perf_fd = -1;
+
+    biscuit::GPR cached_lea = x0;
+    ZydisDecodedOperand* cached_lea_operand;
 
     std::vector<u64> block_trace;
     size_t block_trace_index = 0;

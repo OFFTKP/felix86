@@ -109,6 +109,12 @@ if (BUILD_THUNKGEN)
     target_include_directories(felix86_thunkgen PRIVATE src/felix86/hle)
 endif()
 
+if (BUILD_INSTRUCTION_COUNTER)
+    add_executable(felix86_instruction_counter src/felix86/tools/generate_instruction_count.cpp external/box64/rv64_printer.c)
+    target_include_directories(felix86_instruction_counter PRIVATE src external/box64)
+    target_link_libraries(felix86_instruction_counter PRIVATE felix86_core)
+endif()
+
 if (BUILD_TESTS)
     set(FELIX86_TEST_SOURCES
         tests/common.cpp

@@ -31,14 +31,8 @@ FAST_HANDLE(FILD) {
 void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
         ZydisDecodedOperand* operands, bool pop) {
     biscuit::GPR top = rec.getTOP();
-    biscuit::FPR lhs, rhs;
-    if (instruction.operand_count == 1) {
-        lhs = rec.getST(top, 0);
-        rhs = rec.getST(top, &operands[0]);
-    } else {
-        lhs = rec.getST(top, &operands[0]);
-        rhs = rec.getST(top, &operands[1]);
-    }
+    biscuit::FPR lhs = rec.getST(top, &operands[0]);
+    biscuit::FPR rhs = rec.getST(top, &operands[1]);
 
     biscuit::FPR result = rec.scratchFPR();
     (as.*func)(result, lhs, rhs, RMode::DYN);
