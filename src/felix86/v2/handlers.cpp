@@ -206,34 +206,6 @@ enum CmpPredicate {
     TRUE_US = 0x1F,
 };
 
-void VEC_function(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
-                  u64 func) {
-    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
-    ASSERT(dst_ref >= X86_REF_XMM0 && dst_ref <= X86_REF_XMM15);
-
-    biscuit::GPR temp;
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        temp = rec.leaAddBase(&operands[1]);
-    }
-    rec.writebackDirtyState();
-    rec.invalidStateUntilJump();
-
-    as.LI(t0, func);
-
-    as.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (dst_ref - X86_REF_XMM0) * 16);
-
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        x86_ref_e src_ref = rec.zydisToRef(operands[1].reg.value);
-        ASSERT(src_ref >= X86_REF_XMM0 && src_ref <= X86_REF_XMM15);
-        as.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (src_ref - X86_REF_XMM0) * 16);
-    } else {
-        as.MV(a1, temp);
-    }
-
-    as.JALR(t0);
-    rec.restoreRoundingMode();
-}
-
 FAST_HANDLE(MOV) {
     biscuit::GPR src;
     if (is_segment(operands[0])) {
