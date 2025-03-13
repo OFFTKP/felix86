@@ -97,7 +97,6 @@ target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version)
 add_executable(felix86_jit)
 target_sources(felix86_jit PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86_jit PRIVATE felix86_core)
-target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-linux-riscv64-lp64d.so.1")
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/launcher.cpp src/felix86/common/info.cpp)

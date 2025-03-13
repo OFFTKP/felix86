@@ -307,6 +307,21 @@ int main(int argc, const char** argv) {
 
     std::vector<const char*> jit_args;
 
+    // There's a reasoning for launching like this:
+    // 1. We want to chroot in the rootfs
+    // 2. We want the emulator to use RISC-V libraries from our host system
+    // 3. If we chroot, it won't be able to access our actual /usr/lib and the libraries to link with
+    // 4. Even if we launch it before chrooting, execve would suffer the same problem
+    // 5. Thus: mount /usr/lib to /felix86/lib inside the rootfs and point it somehow
+    // 6. Don't use LD_LIBRARY_PATH: that would clobber whatever value it had and a pain to work with
+    // 7. Instead, launch directly using the dynamic linker itself, as it allows for passing a library path as seen below!
+    ASSERT(std::filesystem::exists("/felix86/lib/ld-linux-riscv64-lp64d.so.1"),
+           "I couldn't find the dynamic linker at /felix86/lib/ld-linux-riscv64-lp64d.so.1 -- was everything mounted correctly?\n"
+           "If everything was mounted correctly, I need ld-linux-riscv64-lp64d.so.1 to exist inside your host /usr/lib to launch the emulator.");
+
+    jit_args.push_back("/felix86/lib/ld-linux-riscv64-lp64d.so.1");
+    jit_args.push_back("--library-path");
+    jit_args.push_back("/felix86/lib");
     jit_args.push_back(jit_path_chroot);
     for (int i = 1; i < argc; i++) {
         jit_args.push_back(argv[i]);
@@ -314,8 +329,6 @@ int main(int argc, const char** argv) {
     jit_args.push_back(nullptr);
 
     constexpr static const char* launched = "__FELIX86_LAUNCHED=1";
-    // $FELIX86_ROOTFS/felix86/lib is mounted to /usr/lib, these two are the most common search paths
-    constexpr static const char* ld_lib_path = "LD_LIBRARY_PATH=/felix86/lib:/felix86/lib/riscv64-linux-gnu";
     char** environ_copy = environ;
     std::vector<const char*> jit_envs;
     while (*environ_copy) {
@@ -323,7 +336,6 @@ int main(int argc, const char** argv) {
         environ_copy++;
     }
     jit_envs.push_back(launched);
-    jit_envs.push_back(ld_lib_path);
     jit_envs.push_back(nullptr);
 
     execvpe(jit_path_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
