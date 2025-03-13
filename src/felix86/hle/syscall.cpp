@@ -1365,7 +1365,7 @@ void felix86_syscall(ThreadState* state) {
         // See rationale in launcher.cpp
         argv.push_back(linker_chroot); // dynamic linker, so we can provide our own library path
         argv.push_back("--library-path");
-        argv.push_back("/felix86/lib");
+        argv.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
         argv.push_back(my_path.c_str()); // emulator path
         if (rsi) {
             const char** guest_argv = (const char**)rsi;

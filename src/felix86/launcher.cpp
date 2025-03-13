@@ -311,6 +311,8 @@ int main(int argc, const char** argv) {
 
     std::vector<const char*> jit_args;
 
+    // TODO: there's some shared code here and in the execve handler in syscall.cpp, can we merge it
+
     // There's a reasoning for launching like this:
     // 1. We want to chroot in the rootfs
     // 2. We want the emulator to use RISC-V libraries from our host system
@@ -321,7 +323,7 @@ int main(int argc, const char** argv) {
     // 7. Instead, launch directly using the dynamic linker itself, as it allows for passing a library path as seen below!
     jit_args.push_back(linker_chroot);
     jit_args.push_back("--library-path");
-    jit_args.push_back("/felix86/lib");
+    jit_args.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
     jit_args.push_back(jit_path_chroot);
     for (int i = 1; i < argc; i++) {
         jit_args.push_back(argv[i]);
