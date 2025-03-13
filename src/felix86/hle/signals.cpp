@@ -751,8 +751,9 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
 }
 
 bool handle_ctrl_c(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    if (!getenv("FELIX86_ALLOW_SIGINT")) {
-        WARN("CTRL+C pressed, terminating...");
+    static bool allowed = !!getenv("FELIX86_ALLOW_SIGINT");
+    if (!allowed) {
+        WARN("SIGINT received and FELIX86_ALLOW_SIGINT not set, terminating...");
         exit(0);
     }
 

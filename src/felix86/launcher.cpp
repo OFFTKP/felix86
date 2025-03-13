@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <filesystem>
 #include <string>
@@ -170,10 +171,25 @@ error:
     return ok;
 }
 
+bool is_truthy(const char* str) {
+    if (!str) {
+        return false;
+    }
+
+    std::string lower = str;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    return lower == "true" || lower == "1" || lower == "yes" || lower == "on" || lower == "y" || lower == "enable";
+}
+
 int main(int argc, const char** argv) {
     if (argc < 2) {
         printf("Usage: ./felix86 <executable> <args to executable>\n");
         exit(1);
+    }
+
+    bool use_gdb = false;
+    if (is_truthy(getenv("FELIX86_GDB"))) {
+        use_gdb = true;
     }
 
     if (std::string(argv[1]) == "-v") {
@@ -210,6 +226,7 @@ int main(int argc, const char** argv) {
 
     const std::filesystem::path rootfs = rootfs_env;
     const std::filesystem::path libpath = rootfs / "felix86" / "lib";
+    const std::filesystem::path binpath = rootfs / "felix86" / "bin";
     const std::filesystem::path felix_jit_path = current_path.parent_path() / "felix86_jit";
     ASSERT(std::filesystem::exists(felix_jit_path), "I couldn't find the `felix86_jit` executable, is it in the same directory as `felix86`?");
 
@@ -252,7 +269,8 @@ int main(int argc, const char** argv) {
         mountme("devpts", rootfs / "dev/pts", "devpts");
         mountme("/run", rootfs / "run", "none", MS_BIND | MS_REC);
         mountme("/tmp", rootfs / "tmp", "none", MS_BIND);       // mounting it for perf (the profiler)
-        mountme("/usr/lib", libpath, "none", MS_BIND | MS_REC); // mount /usr/lib (host) to /felix86/lib (in rotfs)
+        mountme("/usr/lib", libpath, "none", MS_BIND | MS_REC); // mount /usr/lib (host) to /felix86/lib (in rootfs)
+        mountme("/usr/bin", binpath, "none", MS_BIND | MS_REC); // mount /usr/bin (host) to /felix86/bin (in rootfs)
 
         int fd = open(has_mounted_var_path.c_str(), O_CREAT | O_EXCL, 0666);
         if (fd == -1) {
@@ -339,6 +357,16 @@ int main(int argc, const char** argv) {
     // 5. Thus: mount /usr/lib to /felix86/lib inside the rootfs and point it somehow
     // 6. Don't use LD_LIBRARY_PATH: that would clobber whatever value it had and a pain to work with
     // 7. Instead, launch directly using the dynamic linker itself, as it allows for passing a library path as seen below!
+    if (use_gdb) {
+        static const std::filesystem::path gdb_path = "/felix86/bin/gdb";
+        if (!std::filesystem::exists(gdb_path)) {
+            ERROR("Wanted to launch with gdb, but %s doesn't exist", gdb_path.c_str());
+        }
+
+        jit_args.push_back(gdb_path.c_str());
+        jit_args.push_back("--args");
+    }
+
     jit_args.push_back(linker_chroot);
     jit_args.push_back("--library-path");
     jit_args.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
