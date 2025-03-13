@@ -1352,11 +1352,9 @@ void felix86_syscall(ThreadState* state) {
         std::vector<const char*> envp;
 
         constexpr static const char* linker_chroot = "/felix86/lib/ld-linux-riscv64-lp64d.so.1";
-        std::string my_path;
-        my_path.resize(PATH_MAX);
-        int size = readlink("/proc/self/exe", my_path.data(), PATH_MAX);
-        ASSERT(size > 0);
+        constexpr static const char* jit_path_chroot = "/felix86/felix86_jit";
 
+        ASSERT_MSG(std::filesystem::exists(jit_path_chroot), "felix86_jit not in /felix86/felix86_jit?");
         ASSERT_MSG(
             std::filesystem::exists(linker_chroot),
             "Could not find the dynamic linker at /felix86/lib/ld-linux-riscv64-lp64d.so.1 during execve -- please move it there inside the rootfs!\n"
@@ -1366,7 +1364,7 @@ void felix86_syscall(ThreadState* state) {
         argv.push_back(linker_chroot); // dynamic linker, so we can provide our own library path
         argv.push_back("--library-path");
         argv.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
-        argv.push_back(my_path.c_str()); // emulator path
+        argv.push_back(jit_path_chroot); // emulator path
         if (rsi) {
             const char** guest_argv = (const char**)rsi;
             guest_argv++;
