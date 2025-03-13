@@ -34,9 +34,12 @@ void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assemble
     biscuit::FPR lhs = rec.getST(top, &operands[0]);
     biscuit::FPR rhs = rec.getST(top, &operands[1]);
 
+    printf("OP - %s (%d) %s (%d)\n", operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER ? "reg" : "mem", operands[0].reg.value - ZYDIS_REGISTER_ST0,
+           operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER ? "reg" : "mem", operands[1].reg.value - ZYDIS_REGISTER_ST0);
+
     biscuit::FPR result = rec.scratchFPR();
     (as.*func)(result, lhs, rhs, RMode::DYN);
-    rec.setST(top, 0, result);
+    rec.setST(top, &operands[0], result);
 
     if (pop) {
         rec.popST(top);

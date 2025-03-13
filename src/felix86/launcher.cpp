@@ -187,11 +187,6 @@ int main(int argc, const char** argv) {
         exit(1);
     }
 
-    bool use_gdb = false;
-    if (is_truthy(getenv("FELIX86_GDB"))) {
-        use_gdb = true;
-    }
-
     if (std::string(argv[1]) == "-v") {
         int ret = print_version_stuff();
         exit(ret);
@@ -348,23 +343,6 @@ int main(int argc, const char** argv) {
     std::vector<const char*> jit_args;
 
     // TODO: there's some shared code here and in the execve handler in syscall.cpp, can we merge it
-
-    // Allowing gdb to run like this is neat because we don't have to run the gross `sudo -E` in front of it
-    // What I'm saying is, we are done with root privileges so running it right now rather than at the start of execution
-    // is pretty neat. Oh and also it starts directly with the emulator, not the launcher.
-    static const std::filesystem::path gdb_path = "/felix86/bin/gdb";
-    if (use_gdb) {
-        if (!std::filesystem::exists(gdb_path)) {
-            ERROR("Wanted to launch with gdb, but %s doesn't exist", gdb_path.c_str());
-        }
-
-        // Make sure we run it with the linker, as gdb doesn't have a different .interp section like our felix86_jit
-        jit_args.push_back(linker_chroot);
-        jit_args.push_back("--library-path");
-        jit_args.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
-        jit_args.push_back(gdb_path.c_str());
-        jit_args.push_back("--args");
-    }
 
     // No need to do this, we add rpath and interpreter in cmake directly now
     // jit_args.push_back(linker_chroot);

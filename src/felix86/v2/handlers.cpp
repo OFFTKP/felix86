@@ -5937,8 +5937,8 @@ FAST_HANDLE(HSUBPD) {
     as.VFNEG(dst_neg, dst, VecMask::Yes);
     as.VMV(result1, 0);
     as.VMV(result2, 0);
-    as.VFREDUSUM(result1, src, result1);
-    as.VFREDUSUM(result2, dst, result2);
+    as.VFREDUSUM(result1, src_neg, result1);
+    as.VFREDUSUM(result2, dst_neg, result2);
     as.VSLIDEUP(result2, result1, 1);
 
     rec.setOperandVec(&operands[0], result2);
