@@ -111,6 +111,13 @@ target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-li
 set(CMAKE_INSTALL_RPATH "/felix86/lib")
 list(APPEND CMAKE_INSTALL_RPATH "/felix86/lib/riscv64-linux-gnu")
 
+set_target_properties(felix86_jit
+    PROPERTIES
+    BUILD_WITH_INSTALL_RPATH true
+    LINK_OPTIONS "-Wl,--disable-new-dtags"
+)
+
+
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/launcher.cpp src/felix86/common/info.cpp)
 target_include_directories(felix86 PUBLIC ${FELIX86_INCLUDES})

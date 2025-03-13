@@ -375,7 +375,7 @@ int main(int argc, const char** argv) {
     if (getenv("FELIX86_VERBOSE")) {
         printf("I am firing the emulator for the first time!\n");
         printf("Arguments:\n");
-        for (int i = 0; i < jit_args.size(); i++) {
+        for (size_t i = 0; i < jit_args.size(); i++) {
             if (jit_args[i]) {
                 printf("%s\n", jit_args[i]);
             }
