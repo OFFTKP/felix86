@@ -393,4 +393,7 @@ int main(int argc, const char** argv) {
     jit_envs.push_back(nullptr);
 
     execvpe(jit_path_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
+    int error = errno;
+    printf("Error while execve'ing felix86_jit: %s", strerror(error));
+    return -error;
 }
