@@ -110,12 +110,11 @@ target_link_libraries(felix86_jit PRIVATE felix86_core)
 
 # /felix86/lib (inside the rootfs) points to host /usr/lib, which *should* contain at least a symlink to the interpreter
 # which is most likely inside /felix86/lib/riscv64-linux-gnu
-target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-linux-riscv64-lp64d.so.1")
+target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-linux-riscv64-lp64d.so.1,--disable-new-dtags")
 
 set_target_properties(felix86_jit
     PROPERTIES
     BUILD_WITH_INSTALL_RPATH true
-    LINK_OPTIONS "-Wl,--disable-new-dtags"
 )
 
 # Back to reality

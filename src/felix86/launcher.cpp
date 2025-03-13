@@ -394,6 +394,6 @@ int main(int argc, const char** argv) {
 
     execvpe(jit_path_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
     int error = errno;
-    printf("Error while execve'ing felix86_jit: %s", strerror(error));
+    printf("Error while execve'ing felix86_jit: %s\n", strerror(error));
     return -error;
 }
