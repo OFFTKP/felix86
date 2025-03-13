@@ -352,8 +352,8 @@ int main(int argc, const char** argv) {
     // Allowing gdb to run like this is neat because we don't have to run the gross `sudo -E` in front of it
     // What I'm saying is, we are done with root privileges so running it right now rather than at the start of execution
     // is pretty neat. Oh and also it starts directly with the emulator, not the launcher.
+    static const std::filesystem::path gdb_path = "/felix86/bin/gdb";
     if (use_gdb) {
-        static const std::filesystem::path gdb_path = "/felix86/bin/gdb";
         if (!std::filesystem::exists(gdb_path)) {
             ERROR("Wanted to launch with gdb, but %s doesn't exist", gdb_path.c_str());
         }
@@ -392,7 +392,9 @@ int main(int argc, const char** argv) {
     jit_envs.push_back(launched);
     jit_envs.push_back(nullptr);
 
-    execvpe(jit_path_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
+    const char* final_exec_path = use_gdb ? gdb_path.c_str() : jit_path_chroot;
+
+    execvpe(final_exec_path, (char**)jit_args.data(), (char**)jit_envs.data());
     int error = errno;
     printf("Error while execve'ing felix86_jit: %s\n", strerror(error));
     return -error;
