@@ -358,6 +358,8 @@ int main(int argc, const char** argv) {
             ERROR("Wanted to launch with gdb, but %s doesn't exist", gdb_path.c_str());
         }
 
+        // Make sure we run it with the linker, as gdb doesn't have a different .interp section like our felix86_jit
+        jit_args.push_back(linker_chroot);
         jit_args.push_back(gdb_path.c_str());
         jit_args.push_back("--args");
     }
@@ -392,9 +394,7 @@ int main(int argc, const char** argv) {
     jit_envs.push_back(launched);
     jit_envs.push_back(nullptr);
 
-    const char* final_exec_path = use_gdb ? gdb_path.c_str() : jit_path_chroot;
-
-    execvpe(final_exec_path, (char**)jit_args.data(), (char**)jit_envs.data());
+    execvpe(jit_args[0], (char**)jit_args.data(), (char**)jit_envs.data());
     int error = errno;
     printf("Error while execve'ing felix86_jit: %s\n", strerror(error));
     return -error;
