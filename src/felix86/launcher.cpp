@@ -360,6 +360,8 @@ int main(int argc, const char** argv) {
 
         // Make sure we run it with the linker, as gdb doesn't have a different .interp section like our felix86_jit
         jit_args.push_back(linker_chroot);
+        jit_args.push_back("--library-path");
+        jit_args.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
         jit_args.push_back(gdb_path.c_str());
         jit_args.push_back("--args");
     }
