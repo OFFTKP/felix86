@@ -392,5 +392,5 @@ int main(int argc, const char** argv) {
     jit_envs.push_back(launched);
     jit_envs.push_back(nullptr);
 
-    execvpe(linker_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
+    execvpe(jit_path_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
 }
