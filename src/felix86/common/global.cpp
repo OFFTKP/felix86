@@ -81,6 +81,14 @@ bool is_truthy(const char* str) {
     return lower == "true" || lower == "1" || lower == "yes" || lower == "on" || lower == "y" || lower == "enable";
 }
 
+bool is_falsey(const char* str) {
+    if (!str) {
+        return false; // doesn't exist, neither false or true
+    }
+
+    return !is_truthy(str);
+}
+
 bool is_running_under_perf() {
     // Always enable symbol emission when this is enabled, in case our detection fails
     const char* perf_env = getenv("FELIX86_PERF");
@@ -270,6 +278,12 @@ void initialize_globals() {
         environment += "\nFELIX86_THUNKING";
     }
 
+    const char* tso_env = getenv("FELIX86_TSO");
+    if (is_truthy(tso_env)) {
+        g_always_tso = true;
+        environment += "\nFELIX86_TSO";
+    }
+
     const char* calltrace_env = getenv("FELIX86_CALLTRACE");
     if (is_truthy(calltrace_env)) {
         g_calltrace = true;
@@ -282,8 +296,8 @@ void initialize_globals() {
         environment += "\nFELIX86_PARANOID";
     }
 
-    const char* dont_rsb_env = getenv("FELIX86_RSB");
-    if (!is_truthy(dont_rsb_env)) {
+    const char* rsb_env = getenv("FELIX86_RSB");
+    if (is_truthy(rsb_env)) {
         g_rsb = true;
         environment += "\nFELIX86_RSB";
     }
