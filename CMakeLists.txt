@@ -108,8 +108,8 @@ target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-li
 # According to the ELF specification, if these paths don't have the libraries (and neither does LD_LIBRARY_PATH),
 # the dynamic linker will search /usr/lib next, which is great in the cases someone wants to run felix86_jit by itself
 # for whatever reason.
-set(CMAKE_BUILD_RPATH "/felix86/lib")
-list(APPEND CMAKE_BUILD_RPATH "/felix86/lib/riscv64-linux-gnu")
+set(CMAKE_INSTALL_RPATH "/felix86/lib")
+list(APPEND CMAKE_INSTALL_RPATH "/felix86/lib/riscv64-linux-gnu")
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/launcher.cpp src/felix86/common/info.cpp)
