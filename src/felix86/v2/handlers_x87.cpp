@@ -34,8 +34,10 @@ void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assemble
     biscuit::FPR lhs = rec.getST(top, &operands[0]);
     biscuit::FPR rhs = rec.getST(top, &operands[1]);
 
-    printf("OP - %s (%d) %s (%d)\n", operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER ? "reg" : "mem", operands[0].reg.value - ZYDIS_REGISTER_ST0,
-           operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER ? "reg" : "mem", operands[1].reg.value - ZYDIS_REGISTER_ST0);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        // Funnily, when the operand is memory the operation happens rhs op lhs
+        std::swap(lhs, rhs);
+    }
 
     biscuit::FPR result = rec.scratchFPR();
     (as.*func)(result, lhs, rhs, RMode::DYN);
