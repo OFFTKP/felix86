@@ -5,6 +5,7 @@
 #include <linux/futex.h>
 #include <poll.h>
 #include <sched.h>
+#include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
@@ -1139,6 +1140,21 @@ void felix86_syscall(ThreadState* state) {
         STRACE("sendmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_semget: {
+        result = HOST_SYSCALL(semget, rdi, rsi, rdx);
+        STRACE("semget(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_semop: {
+        result = HOST_SYSCALL(semop, rdi, rsi, rdx);
+        STRACE("semop(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
+        break;
+    }
+    case felix86_x86_64_semctl: {
+        result = HOST_SYSCALL(semctl, rdi, rsi, rdx, r10);
+        STRACE("semctl(%d, %d, %d, %ld) = %d", (int)rdi, (int)rsi, (int)rdx, r10, (int)result);
+        break;
+    }
     case felix86_x86_64_flock: {
         result = HOST_SYSCALL(flock, rdi, rsi);
         STRACE("flock(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
@@ -1520,6 +1536,8 @@ void felix86_syscall(ThreadState* state) {
         if (oldset) {
             memcpy(oldset, &old_host_set, sizeof(u64));
         }
+
+        STRACE("rt_sigprocmask(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
     default: {

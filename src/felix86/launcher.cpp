@@ -73,6 +73,20 @@ void copy_recursive(const char* dir_cstr, const std::filesystem::path& dest) {
     }
 }
 
+void copy_single(const char* file_str, const std::filesystem::path& file_dest) {
+    std::filesystem::path dir = file_str;
+    if (!std::filesystem::exists(dir)) {
+        printf("I couldn't find %s to copy to the rootfs, may cause problems with some games", dir.c_str());
+        return;
+    }
+
+    std::error_code ec;
+    std::filesystem::copy(dir, file_dest, std::filesystem::copy_options::overwrite_existing, ec);
+    if (ec) {
+        ERROR("Error while copying %s: %s", dir.c_str(), ec.message().c_str());
+    }
+}
+
 std::string version_full = get_version_full();
 
 int print_version_stuff() {
@@ -216,6 +230,9 @@ int main(int argc, const char** argv) {
     copy_recursive("/etc/mtab", rootfs / "etc" / "mtab");
     copy_recursive("/etc/passwd", rootfs / "etc" / "passwd");
     copy_recursive("/etc/passwd-", rootfs / "etc" / "passwd");
+    copy_single("/etc/hosts", rootfs / "etc" / "hosts");
+    copy_single("/etc/hostname", rootfs / "etc" / "hostname");
+    copy_single("/etc/resolv.conf", rootfs / "etc" / "resolv.conf");
 
     std::filesystem::path has_mounted_var_path = "/run/felix86.mounted";
 
