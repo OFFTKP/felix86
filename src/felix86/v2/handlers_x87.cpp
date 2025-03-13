@@ -34,14 +34,17 @@ void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assemble
     biscuit::FPR lhs = rec.getST(top, &operands[0]);
     biscuit::FPR rhs = rec.getST(top, &operands[1]);
 
+    ZydisDecodedOperand* result_operand = &operands[0];
+
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         // Funnily, when the operand is memory the operation happens rhs op lhs
         std::swap(lhs, rhs);
+        result_operand = &operands[1];
     }
 
     biscuit::FPR result = rec.scratchFPR();
     (as.*func)(result, lhs, rhs, RMode::DYN);
-    rec.setST(top, &operands[0], result);
+    rec.setST(top, result_operand, result);
 
     if (pop) {
         rec.popST(top);
