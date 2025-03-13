@@ -141,6 +141,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
+#ifdef __x86_64__
+    WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
+#endif
+    g_output_fd = STDOUT_FILENO;
+
+    initialize_globals();
+
     LOG("%s", version_full.c_str());
 
     std::string args = "Arguments: ";
@@ -150,12 +157,6 @@ int main(int argc, char* argv[]) {
     }
     VERBOSE("%s", args.c_str());
 
-#ifdef __x86_64__
-    WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
-#endif
-    g_output_fd = STDOUT_FILENO;
-
-    initialize_globals();
     initialize_extensions();
     std::string extensions = get_extensions();
     if (!extensions.empty()) {
