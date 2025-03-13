@@ -1378,20 +1378,11 @@ void felix86_syscall(ThreadState* state) {
         std::vector<const char*> argv;
         std::vector<const char*> envp;
 
-        constexpr static const char* linker_chroot = "/felix86/lib/ld-linux-riscv64-lp64d.so.1";
         constexpr static const char* jit_path_chroot = "/felix86/felix86_jit";
-
         ASSERT_MSG(std::filesystem::exists(jit_path_chroot), "felix86_jit not in /felix86/felix86_jit?");
-        ASSERT_MSG(
-            std::filesystem::exists(linker_chroot),
-            "Could not find the dynamic linker at /felix86/lib/ld-linux-riscv64-lp64d.so.1 during execve -- please move it there inside the rootfs!\n"
-            "$FELIX86_ROOTFS/felix86/lib is mounted to your /usr/lib, you may create a symlink or copy the dynamic linker there");
 
-        // See rationale in launcher.cpp
-        argv.push_back(linker_chroot); // dynamic linker, so we can provide our own library path
-        argv.push_back("--library-path");
-        argv.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
         argv.push_back(jit_path_chroot); // emulator path
+
         if (rsi) {
             const char** guest_argv = (const char**)rsi;
             guest_argv++;
@@ -1430,6 +1421,10 @@ void felix86_syscall(ThreadState* state) {
                 argv.push_back(*guest_argv);
                 guest_argv++;
             }
+        } else {
+            ASSERT_MSG(rdi, "Both rdi and rsi null during execve...?");
+            // Args shouldn't be null normally, but at least push the emulated executable here
+            argv.push_back((char*)rdi);
         }
         argv.push_back(nullptr);
 
@@ -1460,7 +1455,7 @@ void felix86_syscall(ThreadState* state) {
 
         LOG("Running execve, wish me luck:%s", args.c_str());
 
-        syscall(SYS_execve, linker_chroot, argv.data(), envp.data());
+        syscall(SYS_execve, jit_path_chroot, argv.data(), envp.data());
 
         UNREACHABLE();
         break;

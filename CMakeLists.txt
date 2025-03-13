@@ -98,6 +98,19 @@ add_executable(felix86_jit)
 target_sources(felix86_jit PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86_jit PRIVATE felix86_core)
 
+# /felix86/lib (inside the rootfs) points to host /usr/lib, which *should* contain at least a symlink to the interpreter
+# which is most likely inside /felix86/lib/riscv64-linux-gnu
+target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-linux-riscv64-lp64d.so.1")
+
+# felix86_jit is usually copied by the launcher to the rootfs and launched from inside the rootfs.
+# So we want to set the primary search path to be /felix86/lib. Not /usr/lib, because that would be the
+# x86-64 search path since we are inside the rootfs. We also want it to check /felix86/lib/riscv64-linux-gnu.
+# According to the ELF specification, if these paths don't have the libraries (and neither does LD_LIBRARY_PATH),
+# the dynamic linker will search /usr/lib next, which is great in the cases someone wants to run felix86_jit by itself
+# for whatever reason.
+set(CMAKE_BUILD_RPATH "/felix86/lib")
+list(APPEND CMAKE_BUILD_RPATH "/felix86/lib/riscv64-linux-gnu")
+
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/launcher.cpp src/felix86/common/info.cpp)
 target_include_directories(felix86 PUBLIC ${FELIX86_INCLUDES})

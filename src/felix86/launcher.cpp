@@ -349,14 +349,9 @@ int main(int argc, const char** argv) {
 
     // TODO: there's some shared code here and in the execve handler in syscall.cpp, can we merge it
 
-    // There's a reasoning for launching like this:
-    // 1. We want to chroot in the rootfs
-    // 2. We want the emulator to use RISC-V libraries from our host system
-    // 3. If we chroot, it won't be able to access our actual /usr/lib and the libraries to link with
-    // 4. Even if we launch it before chrooting, execve would suffer the same problem
-    // 5. Thus: mount /usr/lib to /felix86/lib inside the rootfs and point it somehow
-    // 6. Don't use LD_LIBRARY_PATH: that would clobber whatever value it had and a pain to work with
-    // 7. Instead, launch directly using the dynamic linker itself, as it allows for passing a library path as seen below!
+    // Allowing gdb to run like this is neat because we don't have to run the gross `sudo -E` in front of it
+    // What I'm saying is, we are done with root privileges so running it right now rather than at the start of execution
+    // is pretty neat. Oh and also it starts directly with the emulator, not the launcher.
     if (use_gdb) {
         static const std::filesystem::path gdb_path = "/felix86/bin/gdb";
         if (!std::filesystem::exists(gdb_path)) {
@@ -367,9 +362,10 @@ int main(int argc, const char** argv) {
         jit_args.push_back("--args");
     }
 
-    jit_args.push_back(linker_chroot);
-    jit_args.push_back("--library-path");
-    jit_args.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
+    // No need to do this, we add rpath and interpreter in cmake directly now
+    // jit_args.push_back(linker_chroot);
+    // jit_args.push_back("--library-path");
+    // jit_args.push_back("/felix86/lib:/felix86/lib/riscv64-linux-gnu");
     jit_args.push_back(jit_path_chroot);
     for (int i = 1; i < argc; i++) {
         jit_args.push_back(argv[i]);
@@ -377,6 +373,8 @@ int main(int argc, const char** argv) {
     jit_args.push_back(nullptr);
 
     if (getenv("FELIX86_VERBOSE")) {
+        printf("I am firing the emulator for the first time!\n");
+        printf("Arguments:\n");
         for (int i = 0; i < jit_args.size(); i++) {
             if (jit_args[i]) {
                 printf("%s\n", jit_args[i]);
