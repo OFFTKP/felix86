@@ -376,6 +376,14 @@ int main(int argc, const char** argv) {
     }
     jit_args.push_back(nullptr);
 
+    if (getenv("FELIX86_VERBOSE")) {
+        for (int i = 0; i < jit_args.size(); i++) {
+            if (jit_args[i]) {
+                printf("%s\n", jit_args[i]);
+            }
+        }
+    }
+
     constexpr static const char* launched = "__FELIX86_LAUNCHED=1";
     char** environ_copy = environ;
     std::vector<const char*> jit_envs;
