@@ -1150,6 +1150,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("semop(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
+    case felix86_x86_64_semtimedop: {
+        result = HOST_SYSCALL(semtimedop, rdi, rsi, rdx, r10);
+        STRACE("semtimedop(%d, %p, %d, %p) = %d", (int)rdi, (void*)rsi, (int)rdx, (void*)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_semctl: {
         result = HOST_SYSCALL(semctl, rdi, rsi, rdx, r10);
         STRACE("semctl(%d, %d, %d, %ld) = %d", (int)rdi, (int)rsi, (int)rdx, r10, (int)result);
