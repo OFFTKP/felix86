@@ -94,6 +94,16 @@ target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version)
 
+# felix86_jit is usually copied by the launcher to the rootfs and launched from inside the rootfs.
+# So we want to set the primary search path to be /felix86/lib. Not /usr/lib, because that would be the
+# x86-64 search path since we are inside the rootfs. We also want it to check /felix86/lib/riscv64-linux-gnu.
+# According to the ELF specification, if these paths don't have the libraries (and neither does LD_LIBRARY_PATH),
+# the dynamic linker will search /usr/lib next, which is great in the cases someone wants to run felix86_jit by itself
+# for whatever reason.
+# Note: these have to be set before creating the target. Genius!
+set(CMAKE_INSTALL_RPATH "/felix86/lib")
+list(APPEND CMAKE_INSTALL_RPATH "/felix86/lib/riscv64-linux-gnu")
+
 add_executable(felix86_jit)
 target_sources(felix86_jit PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86_jit PRIVATE felix86_core)
@@ -102,21 +112,14 @@ target_link_libraries(felix86_jit PRIVATE felix86_core)
 # which is most likely inside /felix86/lib/riscv64-linux-gnu
 target_link_options(felix86_jit PRIVATE "-Wl,--dynamic-linker=/felix86/lib/ld-linux-riscv64-lp64d.so.1")
 
-# felix86_jit is usually copied by the launcher to the rootfs and launched from inside the rootfs.
-# So we want to set the primary search path to be /felix86/lib. Not /usr/lib, because that would be the
-# x86-64 search path since we are inside the rootfs. We also want it to check /felix86/lib/riscv64-linux-gnu.
-# According to the ELF specification, if these paths don't have the libraries (and neither does LD_LIBRARY_PATH),
-# the dynamic linker will search /usr/lib next, which is great in the cases someone wants to run felix86_jit by itself
-# for whatever reason.
-set(CMAKE_INSTALL_RPATH "/felix86/lib")
-list(APPEND CMAKE_INSTALL_RPATH "/felix86/lib/riscv64-linux-gnu")
-
 set_target_properties(felix86_jit
     PROPERTIES
     BUILD_WITH_INSTALL_RPATH true
     LINK_OPTIONS "-Wl,--disable-new-dtags"
 )
 
+# Back to reality
+unset(CMAKE_INSTALL_RPATH)
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/launcher.cpp src/felix86/common/info.cpp)
