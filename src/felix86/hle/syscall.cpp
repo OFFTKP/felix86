@@ -1351,17 +1351,19 @@ void felix86_syscall(ThreadState* state) {
         std::vector<const char*> argv;
         std::vector<const char*> envp;
 
+        constexpr static const char* linker_chroot = "/felix86/lib/ld-linux-riscv64-lp64d.so.1";
         std::string my_path;
         my_path.resize(PATH_MAX);
         int size = readlink("/proc/self/exe", my_path.data(), PATH_MAX);
         ASSERT(size > 0);
 
-        ASSERT_MSG(std::filesystem::exists("/felix86/lib/ld-linux-riscv64-lp64d.so.1"),
-                   "Could not find the dynamic linker at /felix86/lib/ld-linux-riscv64-lp64d.so.1 -- please move it there inside the rootfs!\n"
-                   "$FELIX86_ROOTFS/felix86/lib is mounted to your /usr/lib, you may create a symlink or copy the dynamic linker there");
+        ASSERT_MSG(
+            std::filesystem::exists(linker_chroot),
+            "Could not find the dynamic linker at /felix86/lib/ld-linux-riscv64-lp64d.so.1 during execve -- please move it there inside the rootfs!\n"
+            "$FELIX86_ROOTFS/felix86/lib is mounted to your /usr/lib, you may create a symlink or copy the dynamic linker there");
 
         // See rationale in launcher.cpp
-        argv.push_back("/felix86/lib/ld-linux-riscv64-lp64d.so.1"); // dynamic linker, so we can provide our own library path
+        argv.push_back(linker_chroot); // dynamic linker, so we can provide our own library path
         argv.push_back("--library-path");
         argv.push_back("/felix86/lib");
         argv.push_back(my_path.c_str()); // emulator path
@@ -1433,7 +1435,7 @@ void felix86_syscall(ThreadState* state) {
 
         LOG("Running execve, wish me luck:%s", args.c_str());
 
-        syscall(SYS_execve, "/proc/self/exe", argv.data(), envp.data());
+        syscall(SYS_execve, linker_chroot, argv.data(), envp.data());
 
         UNREACHABLE();
         break;

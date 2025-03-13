@@ -303,7 +303,11 @@ int main(int argc, const char** argv) {
     }
 
     constexpr static const char* jit_path_chroot = "/felix86/felix86_jit";
+    constexpr static const char* linker_chroot = "/felix86/lib/ld-linux-riscv64-lp64d.so.1";
     ASSERT(std::filesystem::exists(jit_path_chroot), "felix86_jit not copied?");
+    ASSERT(std::filesystem::exists(linker_chroot),
+           "I couldn't find the dynamic linker at /felix86/lib/ld-linux-riscv64-lp64d.so.1 -- was everything mounted correctly?\n"
+           "If everything was mounted correctly, I need ld-linux-riscv64-lp64d.so.1 to exist inside your host /usr/lib to launch the emulator.");
 
     std::vector<const char*> jit_args;
 
@@ -315,11 +319,7 @@ int main(int argc, const char** argv) {
     // 5. Thus: mount /usr/lib to /felix86/lib inside the rootfs and point it somehow
     // 6. Don't use LD_LIBRARY_PATH: that would clobber whatever value it had and a pain to work with
     // 7. Instead, launch directly using the dynamic linker itself, as it allows for passing a library path as seen below!
-    ASSERT(std::filesystem::exists("/felix86/lib/ld-linux-riscv64-lp64d.so.1"),
-           "I couldn't find the dynamic linker at /felix86/lib/ld-linux-riscv64-lp64d.so.1 -- was everything mounted correctly?\n"
-           "If everything was mounted correctly, I need ld-linux-riscv64-lp64d.so.1 to exist inside your host /usr/lib to launch the emulator.");
-
-    jit_args.push_back("/felix86/lib/ld-linux-riscv64-lp64d.so.1");
+    jit_args.push_back(linker_chroot);
     jit_args.push_back("--library-path");
     jit_args.push_back("/felix86/lib");
     jit_args.push_back(jit_path_chroot);
@@ -338,5 +338,5 @@ int main(int argc, const char** argv) {
     jit_envs.push_back(launched);
     jit_envs.push_back(nullptr);
 
-    execvpe(jit_path_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
+    execvpe(linker_chroot, (char**)jit_args.data(), (char**)jit_envs.data());
 }

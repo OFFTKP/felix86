@@ -474,12 +474,6 @@ void Thunks::initialize() {
     constexpr const char* glx_name = "libGLX.so";
     const std::filesystem::path glx_path = find_lib(glx_name);
 
-    const char* ld_lib_path = getenv("LD_LIBRARY_PATH");
-    const char* ld_lib_expected = "/felix86/lib:/felix86/lib/riscv64-linux-gnu";
-    if (!ld_lib_path || std::string(ld_lib_path) != ld_lib_expected) {
-        ERROR("When initializing thunks, LD_LIBRARY_PATH had an unexpected value (not %s), so dlopen would not find the libraries", ld_lib_expected);
-    }
-
     if (glx_path.empty()) {
         ERROR("I couldn't find %s in /felix86/lib, is it mounted correctly?", glx_name);
     }
