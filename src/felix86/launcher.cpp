@@ -85,6 +85,7 @@ int print_version_stuff() {
     int len = 0;
     if (V) {
         len = info.GetVlenb();
+        printf("VLEN: %d\n", len * 8);
     }
 
     if (!I) {

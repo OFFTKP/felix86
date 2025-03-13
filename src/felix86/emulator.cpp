@@ -314,6 +314,7 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     }
 
     if (peek == Elf::PeekResult::Elf32) {
+        WARN("32-bit ELF, there's currently no support for 32-bit apps, expect a crash soon");
         g_mode32 = true;
         initialize32BitAddressSpace();
     } else {

@@ -428,6 +428,12 @@ void felix86_syscall(ThreadState* state) {
         STRACE("epoll_create1(%d) = %d", (int)rdi, (int)result);
         break;
     }
+    case felix86_x86_64_epoll_wait: {
+        // epoll_pwait with NULL mask is equivalent to epoll_wait
+        result = HOST_SYSCALL(epoll_pwait, rdi, rsi, rdx, r10, NULL);
+        STRACE("epoll_wait(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
+        break;
+    }
     case felix86_x86_64_epoll_ctl: {
         result = HOST_SYSCALL(epoll_ctl, rdi, rsi, rdx, r10);
         STRACE("epoll_ctl(%d, %d, %d, %p) = %d", (int)rdi, (int)rsi, (int)rdx, (void*)r10, (int)result);
