@@ -270,10 +270,14 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     g_fs = std::make_unique<Filesystem>();
 
     Elf::PeekResult peek = Elf::Peek(g_config.executable_path);
+    std::filesystem::path script_path;
+    bool is_script = false;
     if (peek == Elf::PeekResult::NotElf) {
         Script::PeekResult peek = Script::Peek(g_config.executable_path);
         if (peek == Script::PeekResult::Script) {
+            is_script = true;
             Script script(g_config.executable_path);
+            script_path = g_config.executable_path;
             const std::filesystem::path& interpreter = script.GetInterpreter();
             const std::string& args = script.GetArgs();
 
@@ -317,6 +321,31 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     }
 
     g_fs->LoadExecutable(g_config.executable_path);
+
+    // Only set the CWD for the initial process, don't change it around when new ones come by with execve
+    if (!g_execve_process) {
+        const char* cwd = getenv("FELIX86_CWD");
+
+        if (cwd) {
+            int res = chdir(cwd);
+            if (res == -1) {
+                WARN("Failed to chdir to %s", cwd);
+            }
+        } else {
+            int res;
+            if (is_script) {
+                // executable_path here is the shell itself, parent path would be /usr/bin, we wanna be where the script is
+                res = chdir(script_path.parent_path().c_str());
+            } else {
+                res = chdir(g_config.executable_path.parent_path().c_str());
+            }
+
+            if (res == -1) {
+                WARN("Failed to chdir to %s", g_config.executable_path.parent_path().c_str());
+            }
+        }
+    }
+
     ThreadState* main_state = ThreadState::Create(nullptr);
     main_state->signal_table = SignalHandlerTable::Create(*g_process_globals.memory, nullptr);
     main_state->SetRip(g_fs->GetEntrypoint());

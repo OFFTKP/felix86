@@ -39,23 +39,6 @@ struct Filesystem {
             }
         }
 
-        // Only set the CWD for the initial process, don't change it around when new ones come by with execve
-        if (!g_execve_process) {
-            const char* cwd = getenv("FELIX86_CWD");
-
-            if (cwd) {
-                int res = chdir(cwd);
-                if (res == -1) {
-                    WARN("Failed to chdir to %s", cwd);
-                }
-            } else {
-                int res = chdir(executable_path.parent_path().c_str());
-                if (res == -1) {
-                    WARN("Failed to chdir to %s", executable_path.parent_path().c_str());
-                }
-            }
-        }
-
         return true;
     }
 
