@@ -1402,7 +1402,16 @@ void felix86_syscall(ThreadState* state) {
         }
         envp.push_back("__FELIX86_LAUNCHED=1");
         envp.push_back("__FELIX86_EXECVE=1");
-        envp.push_back("LD_LIBRARY_PATH=/felix86/lib:/felix86/lib/riscv64-linux-gnu");
+        const char* current_ld = getenv("LD_LIBRARY_PATH");
+        std::string new_ld = "LD_LIBRARY_PATH=";
+        if (current_ld) {
+            new_ld += current_ld;
+            new_ld += ":/felix86/lib:/felix86/lib/riscv64-linux-gnu";
+        } else {
+            new_ld += "/felix86/lib:/felix86/lib/riscv64-linux-gnu";
+        }
+
+        envp.push_back(new_ld.c_str());
         char** host_environ = environ;
         while (*host_environ) {
             std::string env = *host_environ;
