@@ -611,4 +611,6 @@ private:
     std::array<bool, 16> zexted_gprs; // gprs that have been set in 32-bit form, to avoid future zexts
 
     std::array<BlockCacheEntry, 1 << block_cache_bits> block_cache{};
+
+    constexpr static std::array scratch_gprs = {x1, x6, x28, x29, x30, x31, x7};
 };

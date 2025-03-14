@@ -96,3 +96,7 @@ CATCH_TEST_CASE("Simple", "[Simple]") {
 CATCH_TEST_CASE("Clone", "[Clone]") {
     common_loader("Clone");
 }
+
+CATCH_TEST_CASE("SMC", "[SMC]") {
+    common_loader("SMC");
+}

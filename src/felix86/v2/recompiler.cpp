@@ -245,7 +245,7 @@ HostAddress Recompiler::compile(ThreadState* state, HostAddress rip) {
     BlockMetadata& block_meta = getBlockMetadata(rip);
     block_meta.address = start;
 
-    // A sequence of code. This is so that we can also call it recursively later.
+    // A sequence of code (ie. basic block). This is so that we can also call it recursively later.
     HostAddress end_rip = compileSequence(rip);
 
     host_pc_map[block_meta.address_end.raw() - 1] = &block_meta;
@@ -428,33 +428,18 @@ void Recompiler::compileInstruction(HandlerMetadata& meta) {
 }
 
 biscuit::GPR Recompiler::scratch() {
-    // TODO: constexpr list of regs
-    switch (scratch_index++) {
-    case 0:
-        return x1;
-    case 1:
-        return x6;
-    case 2:
-        return x28;
-    case 3:
-        return x29;
-    case 4:
-        return x30;
-    case 5:
-        return x31;
-    case 6:
-        return x7;
-    default:
-        ERROR("Tried to use more than 7 scratch GPRs");
-        return x0;
-    }
+    return scratch_gprs[scratch_index++];
 }
 
 bool Recompiler::isScratch(biscuit::GPR reg) {
-    // TODO: constexpr list of regs, std::find
-    return reg == x1 || reg == x6 || reg == x28 || reg == x29 || reg == x30 || reg == x31 || reg == x7;
+    if (std::find(scratch_gprs.begin(), scratch_gprs.end(), reg)) {
+        return true;
+    }
+
+    return false;
 }
 
+// TODO: array like above
 biscuit::Vec Recompiler::scratchVec() {
     switch (vector_scratch_index++) {
     case 0:
