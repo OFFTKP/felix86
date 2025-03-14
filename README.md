@@ -49,4 +49,4 @@ felix86 was started for several reasons, including:
 
 - [Panda3DS](https://github.com/wheremyfoodat/Panda3DS), a 3DS emulator for Windows, macOS, Linux, and Android
 - [shadPS4](https://github.com/shadps4-emu/shadPS4), one of the leading PS4 emulators
-
+- [ChonkyStation3](https://github.com/liuk7071/ChonkyStation3), experimental HLE PS3 emulator for Windows, MacOS and Linux

@@ -1,5 +1,7 @@
 #include <Zydis/Zydis.h>
 #include "felix86/common/state.hpp"
+#include "felix86/hle/cpuid.hpp"
+#include "felix86/hle/syscall.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 #define INTR_HANDLE(name)                                                                                                                            \
@@ -326,6 +328,110 @@ INTR_HANDLE(TEST) {
     SetSign(state, result, size);
 }
 
+INTR_HANDLE(SHL) {
+    x86_size_e size = rec.zydisToSize(operands[0].size);
+    u64 op = GetOperand(state, operands[0]);
+    u64 shift = GetOperand(state, operands[1]);
+    shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
+    u64 result = op << shift;
+    SetOperand(state, operands[0], result);
+
+    if (shift != 0) {
+        SetZero(state, result, size);
+        SetParity(state, result);
+        SetSign(state, result, size);
+
+        {
+            u8 shift_right = size - shift;
+            shift_right &= 0x3F;
+            u64 cf = (op >> shift_right) & 1;
+            state->cf = cf;
+        }
+
+        if (shift == 1) {
+            u8 shift_right = size - 1;
+            u64 of = (op >> shift_right) & 1;
+            state->of = state->cf ^ of;
+        }
+    }
+}
+
+INTR_HANDLE(SHR) {
+    x86_size_e size = rec.zydisToSize(operands[0].size);
+    u64 op = GetOperand(state, operands[0]);
+    u64 shift = GetOperand(state, operands[1]);
+    shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
+    u64 result = op >> shift;
+    SetOperand(state, operands[0], result);
+
+    if (shift != 0) {
+        SetZero(state, result, size);
+        SetParity(state, result);
+        SetSign(state, result, size);
+
+        {
+            u8 shift_right = shift - 1;
+            u64 cf = (op >> shift_right) & 1;
+            state->cf = cf;
+        }
+
+        if (shift == 1) {
+            u64 of = (op >> (size - 1)) & 1;
+            state->of = of;
+        }
+    }
+}
+
+INTR_HANDLE(SAR) {
+    x86_size_e size = rec.zydisToSize(operands[0].size);
+    u64 op = GetOperand(state, operands[0]);
+    u64 shift = GetOperand(state, operands[1]);
+    shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
+    u64 result;
+    switch (operands[0].size) {
+    case 8: {
+        if (shift >= 8) {
+            shift = 7;
+        }
+        result = (i8)op >> shift;
+        break;
+    }
+    case 16: {
+        if (shift >= 16) {
+            shift = 15;
+        }
+        result = (i16)op >> shift;
+        break;
+    }
+    case 32: {
+        result = (i32)op >> shift;
+        break;
+    }
+    case 64: {
+        result = (i64)op >> shift;
+        break;
+    }
+    }
+    SetOperand(state, operands[0], result);
+
+    if (shift != 0) {
+        SetZero(state, result, size);
+        SetParity(state, result);
+        SetSign(state, result, size);
+
+        {
+            u8 shift_right = shift - 1;
+            u64 cf = (op >> shift_right) & 1;
+            state->cf = cf;
+        }
+
+        if (shift == 1) {
+            u64 of = (op >> (size - 1)) & 1;
+            state->of = of;
+        }
+    }
+}
+
 INTR_HANDLE(HLT) {
     state->exit_reason = EXIT_REASON_HLT;
 }
@@ -584,4 +690,13 @@ INTR_HANDLE(MAXPD) {
         lhs[0] = lhs[0] > rhs[0] ? lhs[0] : rhs[0];
         lhs[1] = lhs[1] > rhs[1] ? lhs[1] : rhs[1];
     });
+}
+
+INTR_HANDLE(CPUID) {
+    felix86_cpuid(state);
+}
+
+INTR_HANDLE(SYSCALL) {
+    // state->gprs[X86_REF_RCX] = meta.rip
+    felix86_syscall(state);
 }

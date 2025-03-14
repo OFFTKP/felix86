@@ -1,0 +1,374 @@
+; See README.md
+bits 64
+
+extern __felix86_XGetVisualInfo
+extern __felix86_XSync
+
+; These are guest function pointers that we wanna call from host code at will
+section .data
+
+align 16
+libname:
+db "libGLX.so", 0
+
+guest_func_names:
+XGetVisualInfo_name:
+db "XGetVisualInfo", 0
+
+XSync_name:
+db "XSync", 0
+
+
+section .text
+
+global __felix86_constructor
+align 16
+__felix86_constructor:
+invlpg [rbx]
+ret
+dd 0x12345678 ; invlpg + ret are 4 bytes, four more here to align to pointer
+dq libname
+; Here follows the null terminated list of {const char*, void*} (names, functions)
+dq XGetVisualInfo_name
+dq __felix86_XGetVisualInfo
+dq XSync_name
+dq __felix86_XSync
+dq 0
+dq 0
+
+global glXChooseVisual
+align 16
+glXChooseVisual:
+invlpg [rax]
+ret
+db "glXChooseVisual", 0
+
+global glXCreateContext
+align 16
+glXCreateContext:
+invlpg [rax]
+ret
+db "glXCreateContext", 0
+
+global glXDestroyContext
+align 16
+glXDestroyContext:
+invlpg [rax]
+ret
+db "glXDestroyContext", 0
+
+global glXMakeCurrent
+align 16
+glXMakeCurrent:
+invlpg [rax]
+ret
+db "glXMakeCurrent", 0
+
+global glXCopyContext
+align 16
+glXCopyContext:
+invlpg [rax]
+ret
+db "glXCopyContext", 0
+
+global glXSwapBuffers
+align 16
+glXSwapBuffers:
+invlpg [rax]
+ret
+db "glXSwapBuffers", 0
+
+global glXCreateGLXPixmap
+align 16
+glXCreateGLXPixmap:
+invlpg [rax]
+ret
+db "glXCreateGLXPixmap", 0
+
+global glXDestroyGLXPixmap
+align 16
+glXDestroyGLXPixmap:
+invlpg [rax]
+ret
+db "glXDestroyGLXPixmap", 0
+
+global glXQueryExtension
+align 16
+glXQueryExtension:
+invlpg [rax]
+ret
+db "glXQueryExtension", 0
+
+global glXQueryVersion
+align 16
+glXQueryVersion:
+invlpg [rax]
+ret
+db "glXQueryVersion", 0
+
+global glXIsDirect
+align 16
+glXIsDirect:
+invlpg [rax]
+ret
+db "glXIsDirect", 0
+
+global glXGetConfig
+align 16
+glXGetConfig:
+invlpg [rax]
+ret
+db "glXGetConfig", 0
+
+global glXGetCurrentContext
+align 16
+glXGetCurrentContext:
+invlpg [rax]
+ret
+db "glXGetCurrentContext", 0
+
+global glXGetCurrentDrawable
+align 16
+glXGetCurrentDrawable:
+invlpg [rax]
+ret
+db "glXGetCurrentDrawable", 0
+
+global glXWaitGL
+align 16
+glXWaitGL:
+invlpg [rax]
+ret
+db "glXWaitGL", 0
+
+global glXWaitX
+align 16
+glXWaitX:
+invlpg [rax]
+ret
+db "glXWaitX", 0
+
+global glXUseXFont
+align 16
+glXUseXFont:
+invlpg [rax]
+ret
+db "glXUseXFont", 0
+
+global glXChooseFBConfig
+align 16
+glXChooseFBConfig:
+invlpg [rax]
+ret
+db "glXChooseFBConfig", 0
+
+global glXCreateNewContext
+align 16
+glXCreateNewContext:
+invlpg [rax]
+ret
+db "glXCreateNewContext", 0
+
+global glXCreatePbuffer
+align 16
+glXCreatePbuffer:
+invlpg [rax]
+ret
+db "glXCreatePbuffer", 0
+
+global glXCreatePixmap
+align 16
+glXCreatePixmap:
+invlpg [rax]
+ret
+db "glXCreatePixmap", 0
+
+global glXCreateWindow
+align 16
+glXCreateWindow:
+invlpg [rax]
+ret
+db "glXCreateWindow", 0
+
+global glXDestroyPbuffer
+align 16
+glXDestroyPbuffer:
+invlpg [rax]
+ret
+db "glXDestroyPbuffer", 0
+
+global glXDestroyPixmap
+align 16
+glXDestroyPixmap:
+invlpg [rax]
+ret
+db "glXDestroyPixmap", 0
+
+global glXDestroyWindow
+align 16
+glXDestroyWindow:
+invlpg [rax]
+ret
+db "glXDestroyWindow", 0
+
+global glXGetClientString
+align 16
+glXGetClientString:
+invlpg [rax]
+ret
+db "glXGetClientString", 0
+
+global glXGetCurrentDisplay
+align 16
+glXGetCurrentDisplay:
+invlpg [rax]
+ret
+db "glXGetCurrentDisplay", 0
+
+global glXGetCurrentReadDrawable
+align 16
+glXGetCurrentReadDrawable:
+invlpg [rax]
+ret
+db "glXGetCurrentReadDrawable", 0
+
+global glXGetFBConfigAttrib
+align 16
+glXGetFBConfigAttrib:
+invlpg [rax]
+ret
+db "glXGetFBConfigAttrib", 0
+
+global glXGetFBConfigs
+align 16
+glXGetFBConfigs:
+invlpg [rax]
+ret
+db "glXGetFBConfigs", 0
+
+global glXGetProcAddress
+align 16
+glXGetProcAddress:
+invlpg [rax]
+ret
+db "glXGetProcAddress", 0
+
+global glXGetProcAddressARB
+align 16
+glXGetProcAddressARB:
+invlpg [rax]
+ret
+db "glXGetProcAddressARB", 0
+
+global glXGetSelectedEvent
+align 16
+glXGetSelectedEvent:
+invlpg [rax]
+ret
+db "glXGetSelectedEvent", 0
+
+global glXGetVisualFromFBConfig
+align 16
+glXGetVisualFromFBConfig:
+invlpg [rax]
+ret
+db "glXGetVisualFromFBConfig", 0
+
+global glXMakeContextCurrent
+align 16
+glXMakeContextCurrent:
+invlpg [rax]
+ret
+db "glXMakeContextCurrent", 0
+
+global glXQueryContext
+align 16
+glXQueryContext:
+invlpg [rax]
+ret
+db "glXQueryContext", 0
+
+global glXQueryDrawable
+align 16
+glXQueryDrawable:
+invlpg [rax]
+ret
+db "glXQueryDrawable", 0
+
+global glXQueryExtensionsString
+align 16
+glXQueryExtensionsString:
+invlpg [rax]
+ret
+db "glXQueryExtensionsString", 0
+
+global glXQueryServerString
+align 16
+glXQueryServerString:
+invlpg [rax]
+ret
+db "glXQueryServerString", 0
+
+global glXSelectEvent
+align 16
+glXSelectEvent:
+invlpg [rax]
+ret
+db "glXSelectEvent", 0
+
+global __glXGLLoadGLXFunction
+align 16
+__glXGLLoadGLXFunction:
+invlpg [rax]
+ret
+db "__glXGLLoadGLXFunction", 0
+
+
+section .data.rel.ro
+global __GLXGL_CORE_FUNCTIONS
+align 16
+
+__GLXGL_CORE_FUNCTIONS:
+    dq glXChooseFBConfig
+    dq glXChooseVisual
+    dq glXCopyContext
+    dq glXCreateContext
+    dq glXCreateGLXPixmap
+    dq glXCreateNewContext
+    dq glXCreatePbuffer
+    dq glXCreatePixmap
+    dq glXCreateWindow
+    dq glXDestroyContext
+    dq glXDestroyGLXPixmap
+    dq glXDestroyPbuffer
+    dq glXDestroyPixmap
+    dq glXDestroyWindow
+    dq glXGetClientString
+    dq glXGetConfig
+    dq glXGetCurrentContext
+    dq glXGetCurrentDrawable
+    dq glXGetCurrentReadDrawable
+    dq glXGetFBConfigAttrib
+    dq glXGetFBConfigs
+    dq glXGetProcAddress
+    dq glXGetProcAddressARB
+    dq glXGetSelectedEvent
+    dq glXGetVisualFromFBConfig
+    dq glXIsDirect
+    dq glXMakeContextCurrent
+    dq glXMakeCurrent
+    dq glXQueryContext
+    dq glXQueryDrawable
+    dq glXQueryExtension
+    dq glXQueryExtensionsString
+    dq glXQueryServerString
+    dq glXQueryVersion
+    dq glXSelectEvent
+    dq glXSwapBuffers
+    dq glXUseXFont
+    dq glXWaitGL
+    dq glXWaitX
+
+section .init_array
+    dq __felix86_constructor
+    dq 0

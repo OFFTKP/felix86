@@ -7037,8 +7037,39 @@ FAST_HANDLE(INVLPG) {
         ERROR("INVLPG while not thunking, did you forget to set FELIX86_THUNKING=1");
     }
 
+    enum {
+        INVLPG_GENERATE_TRAMPOLINE = ZYDIS_REGISTER_RAX,
+        INVLPG_THUNK_CONSTRUCTOR = ZYDIS_REGISTER_RBX,
+    };
+
     ASSERT_MSG(instruction.length == 3, "Hit INVLPG instruction but it's not 3 bytes?");
-    const char* address = (const char*)(meta.rip.raw() + instruction.length + 1); // also skip a RET -> 1 byte
-    void* trampoline = Thunks::generateTrampoline(rec, as, address);
-    ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", address, (u64)address);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
+
+    switch (operands[0].mem.base) {
+    case INVLPG_GENERATE_TRAMPOLINE: {
+        const char* address = (const char*)(meta.rip.raw() + instruction.length + 1); // also skip a RET -> 1 byte
+        void* trampoline = Thunks::generateTrampoline(rec, as, address);
+        ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", address, (u64)address);
+        break;
+    }
+    case INVLPG_THUNK_CONSTRUCTOR: {
+        u8* signature = (u8*)(meta.rip.raw() + instruction.length + 1);
+        u64 pointers = (u64)signature + 4;
+        ASSERT_MSG(*(u32*)signature == 0x12345678, "Signature check failed on library constructor");
+        ASSERT_MSG((pointers & 0b111) == 0, "Pointer table not aligned?");
+
+        const char* name = (const char*)*(u64*)pointers;
+        GuestPointers* guest_pointers = (GuestPointers*)(pointers + 8);
+        ASSERT_MSG(name, "Library name is null?");
+        ASSERT_MSG(strlen(name) < 30, "Library name too long? For thunked library %s", name);
+        VERBOSE("Running constructor for thunked library %s", name);
+
+        Thunks::runConstructor(name, guest_pointers);
+        break;
+    }
+    default: {
+        ERROR("Unknown INVLPG instruction base operand?");
+        break;
+    }
+    }
 }

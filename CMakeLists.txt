@@ -130,6 +130,17 @@ if (BUILD_THUNKGEN)
     target_include_directories(felix86_thunkgen PRIVATE src/felix86/hle)
 endif()
 
+if (BUILD_THUNKS)
+    if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+        message(FATAL_ERROR "Thunk libraries themselves need to be built in x86-64")
+    endif()
+
+    enable_language(ASM_NASM)
+    set_source_files_properties(src/felix86/hle/guest_libs/libGLX.asm PROPERTIES LANGUAGE ASM_NASM)
+    add_library(GLX-thunked SHARED src/felix86/hle/guest_libs/libGLX.asm src/felix86/hle/guest_libs/libGLX.c)
+    target_link_libraries(GLX-thunked X11)
+endif()
+
 if (BUILD_INSTRUCTION_COUNTER)
     add_executable(felix86_instruction_counter src/felix86/tools/generate_instruction_count.cpp external/box64/rv64_printer.c)
     target_include_directories(felix86_instruction_counter PRIVATE src external/box64)

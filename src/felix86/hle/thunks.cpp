@@ -21,6 +21,12 @@ static void* libGLX = nullptr;
 static void* libX11 = nullptr;
 static void* libEGL = nullptr;
 
+using XGetVisualInfoType = decltype(&XGetVisualInfo);
+using XSyncType = decltype(&XSync);
+
+static XGetVisualInfoType felix86__x86_64__XGetVisualInfo = nullptr;
+static XSyncType felix86__x86_64__XSync = nullptr;
+
 static std::mutex display_map_mutex;
 static std::unordered_map<void*, void*> host_to_guest;
 static std::unordered_map<void*, void*> guest_to_host;
@@ -668,5 +674,36 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
     }
 
     return trampoline;
+}
+
+void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
+    std::string libname = lib;
+
+    if (libname == "libGLX.so") {
+        while (pointers) {
+            const void* func = pointers->func;
+            if (!func) {
+                break;
+            }
+
+            const std::string name = pointers->name;
+
+            if (name == "XGetVisualInfo") {
+                felix86__x86_64__XGetVisualInfo = (XGetVisualInfoType)func;
+            } else if (name == "XSync") {
+                felix86__x86_64__XSync = (XSyncType)func;
+            } else {
+                ERROR("Unknown function name when trying to run constructor: %s", pointers->name);
+            }
+
+            pointers++;
+        }
+
+        ASSERT_MSG(felix86__x86_64__XGetVisualInfo, "Failed to find XGetVisualInfo in thunked libGLX");
+        ASSERT_MSG(felix86__x86_64__XSync, "Failed to find XSync in thunked libGLX");
+        return; // everything ok!
+    }
+
+    ERROR("Unknown library name when trying to run constructor: %s", lib);
 }
 #endif
