@@ -507,6 +507,12 @@ struct Recompiler {
 
     void assumeLoaded();
 
+    void markDirty(x86_ref_e ref) {
+        auto& metadata = getMetadata(ref);
+        metadata.dirty = true;
+        metadata.loaded = true; // since the value is fresh it's as if we read it from memory
+    }
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;

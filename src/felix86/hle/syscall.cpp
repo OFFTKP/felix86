@@ -844,6 +844,7 @@ void felix86_syscall(ThreadState* state) {
     case felix86_x86_64_openat: {
         std::string path = (char*)rsi;
         if (path == "/run/systemd/userdb/") { // TODO: There's some bug in Qt apps with this path
+            WARN("Accessing /run/systemd/userdb/, returning -ENOENT");
             result = -ENOENT;
             break;
         }

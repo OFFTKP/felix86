@@ -6053,6 +6053,14 @@ FAST_HANDLE(WRFSBASE) {
 }
 
 FAST_HANDLE(XADD) {
+    bool update_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool update_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool update_af = rec.shouldEmitFlag(meta.rip, X86_REF_AF);
+    bool update_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool update_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool update_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool update_any = update_af | update_cf | update_zf | update_pf | update_of | update_sf;
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR dst;
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
@@ -6060,12 +6068,14 @@ FAST_HANDLE(XADD) {
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16; // amoadd.h amoadd.b aren't out yet, TODO: implement with lr/sc
     bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
+        // TODO: ugly ugly, split into multiple
         // In this case the add+writeback needs to happen atomically
         biscuit::GPR address = rec.leaAddBase(&operands[0]);
 
         dst = rec.scratch();
         if (instruction.operand_width == 32) {
             as.AMOADD_W(Ordering::AQRL, dst, src, address);
+            rec.zext(dst, dst, X86_SIZE_DWORD);
         } else if (instruction.operand_width == 64) {
             as.AMOADD_D(Ordering::AQRL, dst, src, address);
         } else {
@@ -6091,27 +6101,27 @@ FAST_HANDLE(XADD) {
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+    if (update_cf) {
         rec.updateCarryAdd(dst, result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+    if (update_pf) {
         rec.updateParity(result);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+    if (update_af) {
         rec.updateAuxiliaryAdd(dst, src);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+    if (update_zf) {
         rec.updateZero(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+    if (update_sf) {
         rec.updateSign(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+    if (update_of) {
         rec.updateOverflowAdd(dst, src, result, size);
     }
 

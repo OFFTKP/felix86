@@ -1010,9 +1010,7 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     }
     }
 
-    RegisterMetadata& meta = getMetadata(ref);
-    meta.dirty = true;
-    meta.loaded = true; // since the value is fresh it's as if we read it from memory
+    markDirty(ref);
 }
 
 void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
