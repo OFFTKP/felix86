@@ -101,6 +101,10 @@ struct Recompiler {
 
     void setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg);
 
+    void setRefGPR(ZydisRegister ref, x86_size_e size, biscuit::GPR reg) {
+        return setRefGPR(zydisToRef(ref), size, reg);
+    }
+
     void setRefVec(x86_ref_e ref, biscuit::Vec vec);
 
     biscuit::GPR lea(ZydisDecodedOperand* operand);

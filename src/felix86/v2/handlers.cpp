@@ -6052,7 +6052,7 @@ FAST_HANDLE(WRFSBASE) {
     }
 }
 
-FAST_HANDLE(XADD) {
+FAST_HANDLE(XADD_lock_32) {
     bool update_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
     bool update_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
     bool update_af = rec.shouldEmitFlag(meta.rip, X86_REF_AF);
@@ -6061,43 +6061,123 @@ FAST_HANDLE(XADD) {
     bool update_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
     bool update_any = update_af | update_cf | update_zf | update_pf | update_of | update_sf;
 
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR dst;
+    biscuit::GPR dst = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
-    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16; // amoadd.h amoadd.b aren't out yet, TODO: implement with lr/sc
-    bool writeback = true;
-    if (needs_atomic && !too_small_for_atomic) {
-        // TODO: ugly ugly, split into multiple
-        // In this case the add+writeback needs to happen atomically
-        biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    as.AMOADD_W(Ordering::AQRL, dst, src, address);
+    rec.zext(dst, dst, X86_SIZE_DWORD); // amoadd sign extends
 
-        dst = rec.scratch();
-        if (instruction.operand_width == 32) {
-            as.AMOADD_W(Ordering::AQRL, dst, src, address);
-            rec.zext(dst, dst, X86_SIZE_DWORD);
-        } else if (instruction.operand_width == 64) {
-            as.AMOADD_D(Ordering::AQRL, dst, src, address);
-        } else {
-            UNREACHABLE();
+    if (update_any) {
+        biscuit::GPR result = rec.scratch();
+        as.ADD(result, dst, src);
+
+        x86_size_e size = rec.getOperandSize(&operands[0]);
+
+        if (update_cf) {
+            rec.updateCarryAdd(dst, result, size);
         }
 
-        // Still perform the addition in registers to calculate the flags
-        // AMOADD stores the loaded value in Rd
-        as.ADD(result, dst, src);
-        rec.setOperandGPR(&operands[1], dst);
-        rec.popScratch(); // pop LEA scratch
-        rec.popScratch();
-        writeback = false;
-    } else {
-        if (needs_atomic) {
-            WARN("Atomic XADD with 8 or 16 bit operands encountered");
+        if (update_pf) {
+            rec.updateParity(result);
         }
 
-        dst = rec.getOperandGPR(&operands[0]);
-        as.ADD(result, dst, src);
-        rec.setOperandGPR(&operands[1], dst);
+        if (update_af) {
+            rec.updateAuxiliaryAdd(dst, src);
+        }
+
+        if (update_zf) {
+            rec.updateZero(result, size);
+        }
+
+        if (update_sf) {
+            rec.updateSign(result, size);
+        }
+
+        if (update_of) {
+            rec.updateOverflowAdd(dst, src, result, size);
+        }
     }
+
+    rec.setRefGPR(operands[1].reg.value, X86_SIZE_QWORD, dst);
+}
+
+FAST_HANDLE(XADD_lock_64) {
+    bool update_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool update_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool update_af = rec.shouldEmitFlag(meta.rip, X86_REF_AF);
+    bool update_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool update_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool update_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool update_any = update_af | update_cf | update_zf | update_pf | update_of | update_sf;
+
+    biscuit::GPR dst = rec.scratch();
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    as.AMOADD_D(Ordering::AQRL, dst, src, address);
+
+    if (update_any) {
+        biscuit::GPR result = rec.scratch();
+        as.ADD(result, dst, src);
+
+        x86_size_e size = rec.getOperandSize(&operands[0]);
+
+        if (update_cf) {
+            rec.updateCarryAdd(dst, result, size);
+        }
+
+        if (update_pf) {
+            rec.updateParity(result);
+        }
+
+        if (update_af) {
+            rec.updateAuxiliaryAdd(dst, src);
+        }
+
+        if (update_zf) {
+            rec.updateZero(result, size);
+        }
+
+        if (update_sf) {
+            rec.updateSign(result, size);
+        }
+
+        if (update_of) {
+            rec.updateOverflowAdd(dst, src, result, size);
+        }
+    }
+
+    rec.setRefGPR(operands[1].reg.value, X86_SIZE_QWORD, dst);
+}
+
+FAST_HANDLE(XADD) {
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    if (needs_atomic) {
+        switch (instruction.operand_width) {
+        case 32: {
+            return fast_XADD_lock_32(rec, meta, as, instruction, operands);
+        }
+        case 64: {
+            return fast_XADD_lock_64(rec, meta, as, instruction, operands);
+        }
+        default: {
+            WARN("Unhandled atomic width: %d for XADD", instruction.operand_width);
+        }
+        }
+    }
+
+    bool update_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool update_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool update_af = rec.shouldEmitFlag(meta.rip, X86_REF_AF);
+    bool update_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool update_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool update_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    // bool update_any = update_af | update_cf | update_zf | update_pf | update_of | update_sf;
+
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+
+    as.ADD(result, dst, src);
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
@@ -6125,10 +6205,10 @@ FAST_HANDLE(XADD) {
         rec.updateOverflowAdd(dst, src, result, size);
     }
 
-    // In this case we also need to writeback the result, otherwise amoadd will do it for us
-    if (writeback) {
-        rec.setOperandGPR(&operands[0], result);
-    }
+    // Set operands[1] first, as dst could be an allocated register, if we did it the other way
+    // around it could cause problems -- result is a scratch so it won't be modified by this set
+    rec.setOperandGPR(&operands[1], dst);
+    rec.setOperandGPR(&operands[0], result);
 }
 
 FAST_HANDLE(CMPSD_sse) { // Fuzzed
