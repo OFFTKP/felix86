@@ -677,6 +677,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
 }
 
 void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
+    VERBOSE("Constructor for %s with pointers at %p", lib, (void*)pointers);
     std::string libname = lib;
 
     if (libname == "libGLX.so") {
