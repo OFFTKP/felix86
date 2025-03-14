@@ -7048,6 +7048,7 @@ FAST_HANDLE(INVLPG) {
     switch (operands[0].mem.base) {
     case INVLPG_GENERATE_TRAMPOLINE: {
         const char* address = (const char*)(meta.rip.raw() + instruction.length + 1); // also skip a RET -> 1 byte
+        VERBOSE("Generating trampoline for %s", address);
         void* trampoline = Thunks::generateTrampoline(rec, as, address);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", address, (u64)address);
         break;

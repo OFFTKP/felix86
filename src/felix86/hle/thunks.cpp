@@ -702,6 +702,7 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
 
         ASSERT_MSG(felix86__x86_64__XGetVisualInfo, "Failed to find XGetVisualInfo in thunked libGLX");
         ASSERT_MSG(felix86__x86_64__XSync, "Failed to find XSync in thunked libGLX");
+        VERBOSE("Constructor for %s finished!", lib);
         return; // everything ok!
     }
 
