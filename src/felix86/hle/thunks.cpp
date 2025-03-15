@@ -1,3 +1,4 @@
+#include "felix86/hle/libgl_guest_ptrs.hpp"
 #include "felix86/hle/thunks.hpp"
 
 // Thunks need libX11
@@ -217,7 +218,7 @@ static Thunk thunk_metadata[] = {
 
 #undef X
 
-constexpr unsigned long hashstr(const std::string_view& str, int h = 0) {
+constexpr unsigned long hashstr(const char* str, int h = 0) {
     return !str[h] ? 55 : (hashstr(str, h + 1) * 33) + (unsigned char)(str[h]);
 }
 
@@ -226,10 +227,10 @@ void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* nam
     // when it is actually called.
     switch (hashstr(name)) {
 #define X(libname, function, ...)                                                                                                                    \
-    case hashstr(function):                                                                                                                          \
-        thunkptr::function = getProcAddress(name);                                                                                                   \
-        return felix86_thunk_##function;
-
+    case hashstr(#function):                                                                                                                         \
+        thunkptr::function = (u64)getProcAddress(name);                                                                                              \
+        return (void*)felix86_guest_##function;
+#include "gl_thunks.inc"
     default: {
         ERROR("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
         return getProcAddress(name);
