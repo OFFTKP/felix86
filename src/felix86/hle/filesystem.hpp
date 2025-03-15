@@ -128,6 +128,8 @@ private:
 
     static std::pair<int, const char*> resolve(int fd, const char* path);
 
+    static bool isProcSelfExe(const char* path);
+
     std::filesystem::path executable_path;
     std::shared_ptr<Elf> elf;
     std::shared_ptr<Elf> interpreter;

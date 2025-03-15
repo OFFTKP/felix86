@@ -38,6 +38,15 @@ int Filesystem::StatFs(const char* filename, struct statfs* buf) {
 }
 
 int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) {
+    if (isProcSelfExe(filename)) {
+        // If it's /proc/self/exe or similar, we don't want to resolve the path then readlink,
+        // because readlink will fail as the resolved path would not be a link
+        std::string path = resolve(filename);
+        int bytes = std::min((int)path.size(), bufsiz);
+        memcpy(buf, path.c_str(), bytes);
+        return bytes;
+    }
+
     auto [new_fd, new_filename] = resolve(fd, filename);
 
     int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
@@ -186,10 +195,7 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
         return {fd, nullptr};
     }
 
-    // Special case for /proc/self/exe and similar variants
-    std::string spath = path;
-    std::string pidpath = "/proc/" + std::to_string(getpid()) + "/exe";
-    if (spath == "/proc/self/exe" || spath == "/proc/thread-self/exe" || spath == pidpath) {
+    if (isProcSelfExe(path)) {
         return {AT_FDCWD, g_fs->GetExecutablePath().c_str()};
     }
 
@@ -203,10 +209,7 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
 std::filesystem::path Filesystem::resolve(const char* path) {
     ASSERT(path);
 
-    // Special case for /proc/self/exe and similar variants
-    std::string spath = path;
-    std::string pidpath = "/proc/" + std::to_string(getpid()) + "/exe";
-    if (spath == "/proc/self/exe" || spath == "/proc/thread-self/exe" || spath == pidpath) {
+    if (isProcSelfExe(path)) {
         return g_fs->GetExecutablePath();
     }
 
@@ -242,4 +245,13 @@ int Filesystem::removeRootfsPrefix(char* buf, int size) {
 
     VERBOSE("Removed rootfs prefix %s -> %s", old.c_str(), buf);
     return new_size;
+}
+
+bool Filesystem::isProcSelfExe(const char* path) {
+    std::string spath = path;
+    std::string pidpath = "/proc/" + std::to_string(getpid()) + "/exe";
+    if (spath == "/proc/self/exe" || spath == "/proc/thread-self/exe" || spath == pidpath) {
+        return true;
+    }
+    return false;
 }

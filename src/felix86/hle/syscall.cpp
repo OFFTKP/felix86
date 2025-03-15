@@ -175,29 +175,8 @@ void felix86_syscall(ThreadState* state) {
     u64 r8 = state->GetGpr(X86_REF_R8);
     u64 r9 = state->GetGpr(X86_REF_R9);
 
-    struct Result {
-        Result& operator=(ssize_t inner) {
-            if (inner == -1) {
-                this->inner = -errno;
-            } else {
-                this->inner = inner;
-            }
-            return *this;
-        }
-
-        operator ssize_t() const {
-            return inner;
-        }
-
-        operator void*() const {
-            return (void*)inner;
-        }
-
-    private:
-        ssize_t inner = -1;
-    };
-
-    Result result;
+    // TODO: find where libc functions are used and replace with errno
+    i64 result;
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
@@ -747,13 +726,13 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_tgkill: {
-        STRACE("tgkill(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         result = HOST_SYSCALL(tgkill, rdi, rsi, rdx);
+        STRACE("tgkill(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_kill: {
-        STRACE("kill(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         result = HOST_SYSCALL(kill, rdi, rsi);
+        STRACE("kill(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_mmap: {
