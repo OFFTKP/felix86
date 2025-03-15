@@ -474,6 +474,12 @@ void Thunks::initialize() {
         ERROR("I couldn't open libX11.so, error: %s", dlerror());
     }
 
+    constexpr const char* egl_name = "libEGL.so";
+    libEGL = dlopen(egl_name, RTLD_LAZY);
+    if (!libEGL) {
+        ERROR("I couldn't open libEGL.so, error: %s", dlerror());
+    }
+
 #define X(libname, name, ...)                                                                                                                        \
     if (thunkptr::name == 0) {                                                                                                                       \
         thunkptr::name = (u64)dlsym(libGLX, #name);                                                                                                  \
@@ -483,15 +489,15 @@ void Thunks::initialize() {
     }
 #include "glx_thunks.inc"
 #undef X
-    // #define X(libname, name, ...)                                                                                                                        \
-    //     if (thunkptr::name == 0) {                                                                                                                       \
-    //         thunkptr::name = (u64)dlsym(libEGL, #name);                                                                                                  \
-    //         if (thunkptr::name == 0) {                                                                                                                   \
-    //             ERROR("Failed to find symbol %s in %s, error: %s", #name, "libEGL.so", dlerror());                                                       \
-    //         }                                                                                                                                            \
-    //     }
-    // #include "egl_thunks.inc"
-    // #undef X
+#define X(libname, name, ...)                                                                                                                        \
+    if (thunkptr::name == 0) {                                                                                                                       \
+        thunkptr::name = (u64)dlsym(libEGL, #name);                                                                                                  \
+        if (thunkptr::name == 0) {                                                                                                                   \
+            ERROR("Failed to find symbol %s in %s, error: %s", #name, "libEGL.so", dlerror());                                                       \
+        }                                                                                                                                            \
+    }
+#include "egl_thunks.inc"
+#undef X
     // gl_thunks are loaded from the getprocaddress functions
 }
 

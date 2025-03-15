@@ -304,6 +304,28 @@ void initialize_globals() {
 
         if (!glx_thunk.empty()) {
             Overlays::addOverlay("libGLX.so.0", glx_thunk);
+        } else {
+            WARN("I couldn't find libGLX-thunked.so in %s", thunks.c_str());
+        }
+
+        std::filesystem::path egl_thunk;
+        bool found_egl = false;
+
+        auto check_egl = [&](const char* path) {
+            if (!found_egl && std::filesystem::exists(thunks / path)) {
+                egl_thunk = thunks / path;
+                found_egl = true;
+            }
+        };
+
+        check_egl("libEGL.so.1");
+        check_egl("libEGL.so");
+        check_egl("libEGL-thunked.so");
+
+        if (!egl_thunk.empty()) {
+            Overlays::addOverlay("libEGL.so.1", egl_thunk);
+        } else {
+            WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
         }
     }
 
