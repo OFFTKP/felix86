@@ -232,7 +232,7 @@ void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* nam
         return (void*)felix86_guest_##function;
 #include "gl_thunks.inc"
     default: {
-        WARN("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
+        VERBOSE("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
         return nullptr;
     }
     }
@@ -247,7 +247,7 @@ void* felix86_thunk_glXGetProcAddress(const char* name) {
 }
 
 void* felix86_thunk_eglGetProcAddress(const char* name) {
-    printf("eglGetProcAddress: %s\n", name);
+    VERBOSE("eglGetProcAddress: %s", name);
     static auto actual = (void* (*)(const char*))dlsym(libEGL, "eglGetProcAddress");
     ASSERT_MSG(actual, "Couldn't find eglGetProcAddress?");
     return felix86_thunk_GetProcAddressCommon(actual, name);
