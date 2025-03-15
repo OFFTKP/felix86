@@ -206,15 +206,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         thread_state->recompiler->trace(thread_state->GetRip().toHost().raw());
     }
 
-#if 0
-    if (thread_state->rip.raw() == 0x42F1C0) {
-        u64 rdi = thread_state->gprs[X86_REF_RDI];
-        u64 rsi = thread_state->gprs[X86_REF_RSI];
-        u64 rdx = thread_state->gprs[X86_REF_RDX];
-        printf("Jumping to the thing: amd_patch(%lx, %lx)\n", rdi, rsi, rdx);
-        fflush(stdout);
-    }
-#endif
+    ASSERT_MSG(!next_block.isNull(), "getCompiledBlock returned null?");
 
     return (void*)next_block.raw();
 }
