@@ -287,14 +287,6 @@ void initialize_globals() {
         environment += "\nFELIX86_THUNKS=";
         environment += thunk_env;
 
-        // At this point we know the thunks path is inside the rootfs
-        // Remove the rootfs part
-        std::string spath = thunks.string().substr(g_rootfs_path.string().size());
-        if (spath.size() == 0 || spath[0] != '/') {
-            spath.insert(spath.begin(), '/');
-        }
-        thunks = spath;
-
         // TODO: should probably not be done here?
         std::filesystem::path glx_thunk;
         bool found_glx = false;
