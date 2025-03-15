@@ -175,7 +175,7 @@ void felix86_syscall(ThreadState* state) {
     u64 r8 = state->GetGpr(X86_REF_R8);
     u64 r9 = state->GetGpr(X86_REF_R9);
 
-    // TODO: find where libc functions are used and replace with errno
+    // TODO: find where libc functions are used and replace with syscalls
     i64 result;
 
     switch (syscall_number) {
@@ -250,6 +250,9 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_time: {
         result = ::time((time_t*)rdi);
+        if (result == -1) {
+            result = -errno;
+        }
         STRACE("time(%p) = %016lx", (void*)rdi, (u64)result);
         break;
     }
@@ -451,6 +454,9 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_poll: {
         result = poll((struct pollfd*)rdi, rsi, rdx);
+        if (result == -1) {
+            result = -errno;
+        }
         STRACE("poll(%p, %d, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
@@ -675,7 +681,10 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_pipe: {
-        result = pipe((int*)rdi);
+        result = ::pipe((int*)rdi);
+        if (result == -1) {
+            result = -errno;
+        }
         STRACE("pipe(%p) = %d", (void*)rdi, (int)result);
         break;
     }
@@ -882,7 +891,10 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_alarm: {
-        result = alarm(rdi);
+        result = ::alarm(rdi);
+        if (result == -1) {
+            result = -errno;
+        }
         STRACE("alarm(%d) = %d", (int)rdi, (int)result);
         break;
     }
