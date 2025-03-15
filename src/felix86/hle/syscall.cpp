@@ -176,7 +176,33 @@ void felix86_syscall(ThreadState* state) {
     u64 r9 = state->GetGpr(X86_REF_R9);
 
     // TODO: find where libc functions are used and replace with syscalls
-    i64 result;
+
+    // Annoyingly, the syscall function returns -1 instead of the actual error number.
+    // But we also don't wanna check at the end because the STRACE printf and such might have modified errno
+    // We need to check the moment result gets set
+    struct Result {
+        Result& operator=(ssize_t inner) {
+            if (inner == -1) {
+                this->inner = -errno;
+            } else {
+                this->inner = inner;
+            }
+            return *this;
+        }
+
+        operator ssize_t() const {
+            return inner;
+        }
+
+        operator void*() const {
+            return (void*)inner;
+        }
+
+    private:
+        ssize_t inner = -1;
+    };
+
+    Result result;
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
@@ -250,9 +276,6 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_time: {
         result = ::time((time_t*)rdi);
-        if (result == -1) {
-            result = -errno;
-        }
         STRACE("time(%p) = %016lx", (void*)rdi, (u64)result);
         break;
     }
@@ -454,9 +477,6 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_poll: {
         result = poll((struct pollfd*)rdi, rsi, rdx);
-        if (result == -1) {
-            result = -errno;
-        }
         STRACE("poll(%p, %d, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
@@ -511,7 +531,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_dup2: {
-        result = dup2(rdi, rsi);
+        result = ::dup2(rdi, rsi);
         STRACE("dup2(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
@@ -682,9 +702,6 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_pipe: {
         result = ::pipe((int*)rdi);
-        if (result == -1) {
-            result = -errno;
-        }
         STRACE("pipe(%p) = %d", (void*)rdi, (int)result);
         break;
     }
@@ -892,9 +909,6 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_alarm: {
         result = ::alarm(rdi);
-        if (result == -1) {
-            result = -errno;
-        }
         STRACE("alarm(%d) = %d", (int)rdi, (int)result);
         break;
     }
@@ -1389,10 +1403,6 @@ void felix86_syscall(ThreadState* state) {
         WARN("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
         break;
     }
-    }
-
-    if (result == -1 && g_strace) {
-        WARN("Result -1 returned from syscall %s", print_syscall_name(syscall_number));
     }
 
     state->SetGpr(X86_REF_RAX, result);
