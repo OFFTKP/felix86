@@ -11,6 +11,7 @@ struct Overlay {
 std::vector<Overlay> overlays;
 
 void Overlays::addOverlay(const char* lib_name, const std::filesystem::path& dest) {
+    VERBOSE("Adding overlay %s -> %s", lib_name, dest.c_str());
     overlays.push_back({lib_name, dest});
 }
 
@@ -20,7 +21,7 @@ const char* Overlays::isOverlay(const char* pathname) {
 
     for (auto& entry : overlays) {
         if (filename == entry.lib_name) {
-            VERBOSE("Found overlay %s -> %s", pathname, entry.overlayed_path.c_str());
+            LOG("Found overlay %s -> %s", pathname, entry.overlayed_path.c_str());
             return entry.overlayed_path.c_str();
         }
     }
