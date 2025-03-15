@@ -200,19 +200,19 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    g_execve_process = !!getenv("__FELIX86_EXECVE");
+    bool launched = !!getenv("__FELIX86_LAUNCHED");
 
-    if (!g_execve_process) {
+    if (!launched) {
         if (!Sudo::hasPermissions()) {
             Sudo::requestPermissions(argc, argv);
             UNREACHABLE();
         }
     }
 
-    LOG("%s", version_full.c_str());
+    // TODO: split environment variable initialization and the rest in another func
     initialize_globals();
 
-    if (!g_execve_process) {
+    if (!launched) {
         ASSERT_MSG(Sudo::hasPermissions(), "Somehow we don't have root permissions at this point?");
         const std::filesystem::path rootfs = g_rootfs_path;
         ASSERT_MSG(!rootfs.empty(), "Empty rootfs -- Please set the rootfs path using the FELIX86_ROOTFS environment variable");
@@ -254,6 +254,9 @@ int main(int argc, char* argv[]) {
             copy_recursive("/etc/hostname", rootfs / "etc" / "hostname");
             copy_recursive("/etc/resolv.conf", rootfs / "etc" / "resolv.conf");
 
+            // Copy executable inside rootfs
+            copy_recursive("/proc/self/exe", rootfs / "felix86");
+
             FILE* f = fopen("/run/felix86.mounted", "w");
             ASSERT(f);
             fclose(f);
@@ -270,8 +273,21 @@ int main(int argc, char* argv[]) {
         Sudo::dropPermissions();
         ASSERT_MSG(chdir("/") == 0, "Failed to chdir after chrooting");
         ASSERT(!Sudo::hasPermissions());
+
+        // Restart emulator after chrooting. This ensures the emulator starts execution only after we are already inside
+        // the rootfs. This makes our DT_RUNPATH which is /felix86/lib work fine.
+        std::vector<const char*> new_environ;
+        while (environ) {
+            new_environ.push_back(*environ);
+            environ++;
+        }
+        new_environ.push_back("__FELIX86_LAUNCHED");
+        new_environ.push_back(nullptr);
+        execve("/proc/self/exe", argv, environ);
+        UNREACHABLE();
     }
 
+    LOG("%s", version_full.c_str());
     initialize_extensions();
     std::string extensions = get_extensions();
     if (!extensions.empty()) {
