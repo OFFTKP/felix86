@@ -43,21 +43,19 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
     int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
 
     if (result > 0) {
-        // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
-        char copy[PATH_MAX];
-        memcpy(copy, buf, result);
-        copy[result] = 0;
-        std::string str = copy;
-        if (str.find(g_rootfs_path.string()) == 0) {
-            size_t rootfs_size = g_rootfs_path.string().size();
-            size_t new_size = bufsiz - rootfs_size;
-            memmove(copy, copy + rootfs_size, new_size);
-            copy[new_size] = 0;
-            VERBOSE("Readlink translation: %s", copy);
+        int new_size = removeRootfsPrefix(buf, result);
+        return new_size;
+    }
 
-            memcpy(buf, copy, new_size);
-            result = new_size;
-        }
+    return result;
+}
+
+int Filesystem::Getcwd(char* buf, size_t size) {
+    int result = syscall(SYS_getcwd, buf, size);
+
+    if (result > 0) {
+        int new_size = removeRootfsPrefix(buf, result);
+        return new_size;
     }
 
     return result;
@@ -217,4 +215,27 @@ std::filesystem::path Filesystem::resolve(const char* path) {
     }
 
     return path;
+}
+
+int Filesystem::removeRootfsPrefix(char* buf, int size) {
+    // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
+    ASSERT(buf);
+
+    std::string rootfs = g_rootfs_path.string();
+    for (int i = 0; i < rootfs.size(); i++) {
+        if (i > size) {
+            return size;
+        }
+
+        if (buf[i] != rootfs[i]) {
+            return size;
+        }
+    }
+
+    // At this point we know for sure that buf starts with rootfs
+    int new_size = size - rootfs.size();
+    ASSERT(new_size > 0);
+    memmove(buf, buf + rootfs.size(), size - rootfs.size());
+    ASSERT(buf[0] == '/');
+    return new_size;
 }

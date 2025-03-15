@@ -369,8 +369,8 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_getcwd: {
-        result = HOST_SYSCALL(getcwd, rdi, rsi);
-        STRACE("getcwd(%p, %d) = %d", (void*)rdi, (int)rsi, (int)result);
+        result = Filesystem::Getcwd((char*)rdi, rsi);
+        STRACE("getcwd(%s, %d) = %d", (char*)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_rename: {

@@ -95,6 +95,8 @@ struct Filesystem {
 
     static int Mkdir(const char* filename, u64 mode);
 
+    static int Getcwd(char* buf, size_t size);
+
     static int LGetXAttr(const char* filename, const char* name, void* value, size_t size);
 
     static int UtimensAt(int fd, const char* filename, struct timespec* spec, int flags);
@@ -121,6 +123,8 @@ private:
     static int lgetxattrInternal(const char* filename, const char* name, void* value, size_t size);
 
     static int utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags);
+
+    static int removeRootfsPrefix(char* buf, int size);
 
     static std::pair<int, const char*> resolve(int fd, const char* path);
 
