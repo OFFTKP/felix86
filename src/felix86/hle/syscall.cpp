@@ -1386,9 +1386,13 @@ void felix86_syscall(ThreadState* state) {
     }
     default: {
         result = -ENOSYS;
-        ERROR("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
+        WARN("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
         break;
     }
+    }
+
+    if (result == -1 && g_strace) {
+        WARN("Result -1 returned from syscall %s", print_syscall_name(syscall_number));
     }
 
     state->SetGpr(X86_REF_RAX, result);
