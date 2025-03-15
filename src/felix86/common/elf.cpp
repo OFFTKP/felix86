@@ -407,7 +407,7 @@ void Elf::Load(const std::filesystem::path& path) {
             interpreter_str.resize(phdr.filesz());
             fseek(file, phdr.offset(), SEEK_SET);
             result = fread(interpreter_str.data(), 1, phdr.filesz(), file);
-            if (result != phdr.filesz()) {
+            if ((u64)result != phdr.filesz()) {
                 ERROR("Failed to read interpreter from file %s", path.c_str());
             }
 

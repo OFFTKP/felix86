@@ -234,11 +234,11 @@ int main(int argc, char* argv[]) {
         copy("/etc/resolv.conf", g_rootfs_path / "etc" / "resolv.conf");
 
         // Symlink some directories to make our lives easier and not have to overlay them
-        ASSERT_MSG(Symlinker::link("/run", g_rootfs_path / "run"), "Failed to symlink /run");
-        ASSERT_MSG(Symlinker::link("/proc", g_rootfs_path / "proc"), "Failed to symlink /proc");
-        ASSERT_MSG(Symlinker::link("/sys", g_rootfs_path / "sys"), "Failed to symlink /sys");
-        ASSERT_MSG(Symlinker::link("/dev", g_rootfs_path / "dev"), "Failed to symlink /dev");
-        ASSERT_MSG(Symlinker::link("/tmp", g_rootfs_path / "tmp"), "Failed to symlink /dev");
+        ASSERT_MSG(Symlinker::link("/run", g_rootfs_path / "run"), "Failed to symlink /run: %s", strerror(errno));
+        ASSERT_MSG(Symlinker::link("/proc", g_rootfs_path / "proc"), "Failed to symlink /proc: %s", strerror(errno));
+        ASSERT_MSG(Symlinker::link("/sys", g_rootfs_path / "sys"), "Failed to symlink /sys: %s", strerror(errno));
+        ASSERT_MSG(Symlinker::link("/dev", g_rootfs_path / "dev"), "Failed to symlink /dev: %s", strerror(errno));
+        ASSERT_MSG(Symlinker::link("/tmp", g_rootfs_path / "tmp"), "Failed to symlink /tmp: %s", strerror(errno));
     }
 
     LOG("%s", version_full.c_str());
