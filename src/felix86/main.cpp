@@ -203,6 +203,10 @@ int main(int argc, char* argv[]) {
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
 
+    LOG("%s", version_full.c_str());
+    initialize_globals();
+    initialize_extensions();
+
     if (!g_execve_process) {
         // First time running the emulator (ie. the emulator is not running itself with execve) we need to link some stuff
         // and copy some stuff inside the rootfs
@@ -241,9 +245,6 @@ int main(int argc, char* argv[]) {
         ASSERT_MSG(Symlinker::link("/tmp", g_rootfs_path / "tmp"), "Failed to symlink /tmp: %s", strerror(errno));
     }
 
-    LOG("%s", version_full.c_str());
-    initialize_globals();
-    initialize_extensions();
     std::string extensions = get_extensions();
     if (!extensions.empty()) {
         LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
