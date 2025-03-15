@@ -11,6 +11,9 @@ struct Symlinker {
         if (result != 0 && errno == EEXIST) {
             char path[PATH_MAX];
             int size = readlink(dest_path.c_str(), path, PATH_MAX);
+            if (size < 0) {
+                ERROR("Failed to readlink %s", dest_path.c_str());
+            }
             path[size] = 0;
 
             if (real_path.string() == path) {
