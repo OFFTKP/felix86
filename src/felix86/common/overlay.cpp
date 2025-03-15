@@ -14,20 +14,16 @@ void Overlays::addOverlay(const char* lib_name, const std::filesystem::path& des
     overlays.push_back({lib_name, dest});
 }
 
-const char* Overlays::isOverlay(int fd, const char* pathname) {
-    // char path[PATH_MAX];
-    // int end = readlinkat(fd, pathname, path, PATH_MAX);
-    // ASSERT(end > 0);
-    // path[end] = 0;
+const char* Overlays::isOverlay(const char* pathname) {
+    std::filesystem::path path = pathname;
+    std::string filename = path.filename();
 
-    // for (auto& entry : overlays) {
-    //     if (path == entry.real_path) {
-    //         VERBOSE("Found overlay %s (%d) -> %s", pathname, fd, entry.real_path.c_str());
-    //         return entry.overlayed_path.c_str();
-    //     }
-    // }
-
-    // return nullptr;
+    for (auto& entry : overlays) {
+        if (filename == entry.lib_name) {
+            VERBOSE("Found overlay %s -> %s", pathname, entry.overlayed_path.c_str());
+            return entry.overlayed_path.c_str();
+        }
+    }
 
     return nullptr;
 }

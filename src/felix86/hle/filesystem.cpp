@@ -1,9 +1,20 @@
 #include <cstring>
 #include <fcntl.h>
+#include "felix86/common/overlay.hpp"
 #include "felix86/hle/filesystem.hpp"
 
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename);
+
+    if (fd == AT_FDCWD && filename && filename[0] == '/') {
+        // We may be opening a library, check if it's one of our overlays
+        const char* overlay = Overlays::isOverlay(filename);
+        if (overlay) {
+            // Open the overlayed path instead of filename
+            return openatInternal(AT_FDCWD, overlay, flags, mode);
+        }
+    }
+
     return openatInternal(new_fd, new_filename, flags, mode);
 }
 
