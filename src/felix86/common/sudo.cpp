@@ -71,7 +71,7 @@ bool Sudo::isMounted() {
     return std::filesystem::exists(mounted_path);
 }
 
-void Sudo::chroot(const std::filesystem::path& path) {
+bool Sudo::chroot(const std::filesystem::path& path) {
     VERBOSE("Chrooting into %s", path.c_str());
-    ::chroot(path.c_str());
+    return ::chroot(path.c_str()) == 0;
 }

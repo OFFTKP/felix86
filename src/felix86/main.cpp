@@ -202,7 +202,7 @@ int main(int argc, char* argv[]) {
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
 
-    if (g_execve_process) {
+    if (!g_execve_process) {
         if (!Sudo::hasPermissions()) {
             Sudo::requestPermissions(argc, argv);
             UNREACHABLE();
@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
 
     initialize_globals();
 
-    if (g_execve_process) {
+    if (!g_execve_process) {
         ASSERT_MSG(Sudo::hasPermissions(), "Somehow we don't have root permissions at this point?");
         const std::filesystem::path rootfs = g_rootfs_path;
         ASSERT_MSG(!rootfs.empty(), "Empty rootfs -- Please set the rootfs path using the FELIX86_ROOTFS environment variable");
@@ -254,7 +254,10 @@ int main(int argc, char* argv[]) {
                        "remove the file /run/felix86.mounted");
         }
 
-        Sudo::chroot(g_rootfs_path);
+        if (!Sudo::chroot(g_rootfs_path)) {
+            ERROR("Failed to chroot to %s", g_rootfs_path.c_str());
+        }
+
         Sudo::dropPermissions();
         chdir("/");
         ASSERT(!Sudo::hasPermissions());

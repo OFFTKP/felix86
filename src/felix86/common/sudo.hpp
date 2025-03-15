@@ -11,7 +11,7 @@ struct Sudo {
 
     [[noreturn]] static void requestPermissions(int argc, char** argv);
 
-    static void chroot(const std::filesystem::path& path);
+    static bool chroot(const std::filesystem::path& path);
 
     static void mount(const char* path, const std::filesystem::path& dest, const char* fs_type, u32 flags = 0);
 
