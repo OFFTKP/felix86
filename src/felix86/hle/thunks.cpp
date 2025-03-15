@@ -227,12 +227,12 @@ void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* nam
     switch (hashstr(name)) {
 #define X(libname, function, ...)                                                                                                                    \
     case hashstr(function):                                                                                                                          \
-        thunkptr::function = actual(name);                                                                                                           \
+        thunkptr::function = getProcAddress(name);                                                                                                   \
         return felix86_thunk_##function;
 
     default: {
         WARN("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
-        return nullptr;
+        return getProcAddress(name);
     }
     }
 #undef X
