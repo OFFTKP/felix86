@@ -7034,7 +7034,7 @@ FAST_HANDLE(CMPXCHG16B) {
 // After this INVLPG there will always be a RET, to simulate what a normal function would do
 FAST_HANDLE(INVLPG) {
     if (!g_thunking) {
-        ERROR("INVLPG while not thunking, did you forget to set FELIX86_THUNKING=1");
+        ERROR("INVLPG while not thunking?");
     }
 
     enum {

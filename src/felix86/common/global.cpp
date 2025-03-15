@@ -9,6 +9,7 @@
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/overlay.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "fmt/format.h"
@@ -272,10 +273,40 @@ void initialize_globals() {
         }
     }
 
-    const char* thunk_env = getenv("FELIX86_THUNKING");
-    if (is_truthy(thunk_env)) {
+    if (!g_rootfs_path.empty()) {
+        ASSERT(std::filesystem::exists(g_rootfs_path));
+    }
+
+    const char* thunk_env = getenv("FELIX86_THUNKS");
+    if (thunk_env && !g_testing) {
+        ASSERT_MSG(!g_rootfs_path.empty(), "You have set FELIX86_THUNKS but not FELIX86_ROOTFS, please set FELIX86_ROOTFS");
+        const std::filesystem::path thunks = thunk_env;
+        ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunk_env);
+        std::string srootfs = g_rootfs_path.string();
+        ASSERT_MSG(thunks.string().find(srootfs.c_str()) == 0, "The thunks path set with FELIX86_THUNKS %s is not part of the rootfs (%s)", thunk_env,
+                   srootfs.c_str());
+
         g_thunking = true;
         environment += "\nFELIX86_THUNKING";
+
+        // TODO: should probably not be done here?
+        std::filesystem::path glx_thunk;
+        bool found = false;
+
+        auto check_glx = [&](const char* path) {
+            if (!found && std::filesystem::exists(thunks / path)) {
+                glx_thunk = thunks / path;
+                found = true;
+            }
+        };
+
+        check_glx("libGLX.so.0");
+        check_glx("libGLX.so");
+        check_glx("libGLX-thunked.so");
+
+        if (!glx_thunk.empty()) {
+            Overlays::addOverlay("libGLX.so.0", glx_thunk);
+        }
     }
 
     const char* tso_env = getenv("FELIX86_TSO");

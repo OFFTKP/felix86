@@ -9,7 +9,7 @@ bool Sudo::hasPermissions() {
 }
 
 void Sudo::requestPermissions(int argc, char** argv) {
-    LOG("I need administrator permissions to chroot and mount if necessary. Requesting administrator privileges...\n");
+    LOG("I need administrator permissions to chroot and mount if necessary. Requesting administrator privileges...");
     std::vector<const char*> sudo_args = {"sudo"};
     sudo_args.push_back("-E");
     for (int i = 0; i < argc; i++) {

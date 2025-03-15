@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <termios.h>
+#include "felix86/common/overlay.hpp"
 #undef VMIN
 #include <unistd.h>
 #include "felix86/common/log.hpp"
@@ -853,6 +854,16 @@ void felix86_syscall(ThreadState* state) {
             std::filesystem::path path = fs.GetExecutablePath();
             result = HOST_SYSCALL(openat, rdi, path.c_str(), rdx, r10);
         } else {
+            if (g_thunking) {
+                const char* overlay = Overlays::isOverlay(rdi, (const char*)rsi);
+                if (overlay) {
+                    // We found an overlay -- we want to redirect the open syscall to our new path
+                    // so it uses the thunked library
+                    rdi = AT_FDCWD;     // we are gonna give it an absolute path
+                    rsi = (u64)overlay; // the lifetime of this pointer exists outside this scope so this is ok
+                }
+            }
+
             result = HOST_SYSCALL(openat, rdi, rsi, rdx, r10);
             std::filesystem::path path = (char*)rsi;
         }

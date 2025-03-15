@@ -209,6 +209,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    LOG("%s", version_full.c_str());
     initialize_globals();
 
     if (!g_execve_process) {
@@ -240,6 +241,9 @@ int main(int argc, char* argv[]) {
                 }
             };
 
+            std::filesystem::create_directories(rootfs / "var" / "lib");
+            std::filesystem::create_directories(rootfs / "etc");
+
             // Copy some stuff to the rootfs
             copy_recursive("/var/lib/dbus", rootfs / "var" / "lib" / "dbus");
             copy_recursive("/etc/mtab", rootfs / "etc" / "mtab");
@@ -259,7 +263,7 @@ int main(int argc, char* argv[]) {
         }
 
         Sudo::dropPermissions();
-        chdir("/");
+        ASSERT_MSG(chdir("/") == 0, "Failed to chdir after chrooting");
         ASSERT(!Sudo::hasPermissions());
     }
 
@@ -278,8 +282,6 @@ int main(int argc, char* argv[]) {
         initialized = true;
         Thunks::initialize();
     }
-
-    LOG("%s", version_full.c_str());
 
     std::string args = "Arguments: ";
     for (const auto& arg : config.argv) {

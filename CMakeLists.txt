@@ -50,6 +50,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/exit.cpp
     src/felix86/common/info.cpp
     src/felix86/common/global.cpp
+    src/felix86/common/overlay.cpp
     src/felix86/common/print.cpp
     src/felix86/common/process_lock.cpp
     src/felix86/common/script.cpp

@@ -1,0 +1,43 @@
+#include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
+#include "felix86/common/overlay.hpp"
+
+struct Overlay {
+    std::string real_path;
+    std::string overlayed_path;
+};
+
+// Shouldn't need mutex, we only add to this during initialization and then only iterate it
+std::vector<Overlay> overlays;
+
+void Overlays::addOverlay(const char* lib_name, const std::filesystem::path& dest) {
+    ASSERT(!g_rootfs_path.empty());
+
+    // Find the library inside the rootfs -- if found, create an overlay
+    std::filesystem::directory_iterator it(g_rootfs_path / "lib");
+    for (auto& entry : it) {
+        if (entry.is_regular_file()) {
+            if (entry.path().filename() == lib_name) {
+                Overlay overlay;
+                overlay.real_path = entry.path();
+                overlay.overlayed_path = dest;
+            }
+        }
+    }
+}
+
+const char* Overlays::isOverlay(int fd, const char* pathname) {
+    char path[PATH_MAX];
+    int end = readlinkat(fd, pathname, path, PATH_MAX);
+    ASSERT(end > 0);
+    path[end] = 0;
+
+    for (auto& entry : overlays) {
+        if (path == entry.real_path) {
+            VERBOSE("Found overlay %s (%d) -> %s", pathname, fd, entry.real_path.c_str());
+            return entry.overlayed_path.c_str();
+        }
+    }
+
+    return nullptr;
+}
