@@ -90,6 +90,7 @@ extern u64 g_address_space_base;
 extern int g_output_fd;
 extern u32 g_spilled_count;
 extern std::filesystem::path g_rootfs_path;
+extern int g_rootfs_fd;
 extern HostAddress g_interpreter_start, g_interpreter_end;
 extern HostAddress g_executable_start, g_executable_end;
 extern u64 g_interpreter_base_hint;

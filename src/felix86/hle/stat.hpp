@@ -57,7 +57,7 @@ struct __attribute__((packed)) x64Stat {
     u64 st_rdev;
     int64_t st_size;
     int64_t st_blksize;
-    int64_t st_blocks; /* Number 512-byte blocks allocated. */
+    int64_t st_blocks;
 
     u64 st_atime_;
     u64 fex_st_atime_nsec;

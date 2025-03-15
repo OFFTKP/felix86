@@ -63,6 +63,7 @@ Config g_config{};
 
 int g_output_fd = STDOUT_FILENO;
 std::filesystem::path g_rootfs_path{};
+int g_rootfs_fd = 0;
 u64 g_executable_base_hint = 0;
 u64 g_interpreter_base_hint = 0;
 u64 g_brk_base_hint = 0;
@@ -257,29 +258,19 @@ void initialize_globals() {
 
     const char* rootfs_path = getenv("FELIX86_ROOTFS");
     if (rootfs_path) {
-        if (!g_rootfs_path.empty()) {
-            WARN("Rootfs overwritten by environment variable FELIX86_ROOTFS");
-        }
         g_rootfs_path = rootfs_path;
         environment += "\nFELIX86_ROOTFS=" + std::string(rootfs_path);
-    } else {
-        const char* rootfs_path = getenv("FELIX86_ROOTFS_PATH");
-        if (rootfs_path) {
-            if (!g_rootfs_path.empty()) {
-                WARN("Rootfs overwritten by environment variable FELIX86_ROOTFS_PATH");
-            }
-            g_rootfs_path = rootfs_path;
-            environment += "\nFELIX86_ROOTFS_PATH=" + std::string(rootfs_path);
-        }
-    }
 
-    if (!g_rootfs_path.empty()) {
         ASSERT(std::filesystem::exists(g_rootfs_path));
+        ASSERT(std::filesystem::is_directory(g_rootfs_path));
+        g_rootfs_fd = open(g_rootfs_path.c_str(), O_DIRECTORY);
+    } else {
+        ERROR("Rootfs path is empty, set it with the environment variable FELIX86_ROOTFS\n"
+              "Example: `export FELIX86_ROOTFS=/home/me/somefolder/myx86rootfs`");
     }
 
     const char* thunk_env = getenv("FELIX86_THUNKS");
     if (thunk_env && !g_testing) {
-        ASSERT_MSG(!g_rootfs_path.empty(), "You have set FELIX86_THUNKS but not FELIX86_ROOTFS, please set FELIX86_ROOTFS");
         std::filesystem::path thunks = thunk_env;
         ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunk_env);
         std::string srootfs = g_rootfs_path.string();

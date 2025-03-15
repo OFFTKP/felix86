@@ -14,6 +14,7 @@
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/sudo.hpp"
+#include "felix86/common/symlink.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thunks.hpp"
 
@@ -200,94 +201,48 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    bool launched = !!getenv("__FELIX86_LAUNCHED");
+    g_execve_process = !!getenv("__FELIX86_EXECVE");
 
-    if (!launched) {
-        if (!Sudo::hasPermissions()) {
-            Sudo::requestPermissions(argc, argv);
-            UNREACHABLE();
-        }
-    }
+    if (!g_execve_process) {
+        // First time running the emulator (ie. the emulator is not running itself with execve) we need to link some stuff
+        // and copy some stuff inside the rootfs
+        auto copy = [](const char* src, const std::filesystem::path& dst) {
+            if (!std::filesystem::exists(src)) {
+                printf("I couldn't find %s to copy to the rootfs, may cause problems with some games", src);
+                return;
+            }
 
-    // TODO: split environment variable initialization and the rest in another func
-    initialize_globals();
+            using co = std::filesystem::copy_options;
 
-    if (!launched) {
-        ASSERT_MSG(Sudo::hasPermissions(), "Somehow we don't have root permissions at this point?");
-        const std::filesystem::path rootfs = g_rootfs_path;
-        ASSERT_MSG(!rootfs.empty(), "Empty rootfs -- Please set the rootfs path using the FELIX86_ROOTFS environment variable");
+            std::error_code ec;
+            std::filesystem::copy(src, dst, co::overwrite_existing | co::recursive, ec);
+            if (ec) {
+                ERROR("Error while copying %s: %s", src, ec.message().c_str());
+            }
+        };
 
-        if (!Sudo::isMounted()) {
-            // These things need to happen only once per session (ie. until the user reboots)
-            Sudo::mount("proc", rootfs / "proc", "proc");
-            Sudo::mount("sysfs", rootfs / "sys", "sysfs");
-            Sudo::mount("udev", rootfs / "dev", "devtmpfs");
-            Sudo::mount("devpts", rootfs / "dev/pts", "devpts");
-            Sudo::mount("/run", rootfs / "run", "none", MS_BIND | MS_REC);
-            Sudo::mount("/tmp", rootfs / "tmp", "none", MS_BIND);                          // mounting it for perf (the profiler)
-            Sudo::mount("/usr/lib", rootfs / "felix86" / "lib", "none", MS_BIND | MS_REC); // for finding host libs when thunking
+        std::filesystem::create_directories(g_rootfs_path / "var" / "lib");
+        std::filesystem::create_directories(g_rootfs_path / "etc");
 
-            auto copy_recursive = [](const char* src, const std::filesystem::path& dst) {
-                if (!std::filesystem::exists(src)) {
-                    printf("I couldn't find %s to copy to the rootfs, may cause problems with some games", src);
-                    return;
-                }
+        // Copy some stuff to the g_rootfs_path
+        copy("/var/lib/dbus", g_rootfs_path / "var" / "lib" / "dbus");
+        copy("/etc/mtab", g_rootfs_path / "etc" / "mtab");
+        copy("/etc/passwd", g_rootfs_path / "etc" / "passwd");
+        copy("/etc/passwd-", g_rootfs_path / "etc" / "passwd");
+        copy("/etc/hosts", g_rootfs_path / "etc" / "hosts");
+        copy("/etc/hostname", g_rootfs_path / "etc" / "hostname");
+        copy("/etc/resolv.conf", g_rootfs_path / "etc" / "resolv.conf");
 
-                using co = std::filesystem::copy_options;
-
-                std::error_code ec;
-                std::filesystem::copy(src, dst, co::overwrite_existing | co::recursive, ec);
-                if (ec) {
-                    ERROR("Error while copying %s: %s", src, ec.message().c_str());
-                }
-            };
-
-            std::filesystem::create_directories(rootfs / "var" / "lib");
-            std::filesystem::create_directories(rootfs / "etc");
-
-            // Copy some stuff to the rootfs
-            copy_recursive("/var/lib/dbus", rootfs / "var" / "lib" / "dbus");
-            copy_recursive("/etc/mtab", rootfs / "etc" / "mtab");
-            copy_recursive("/etc/passwd", rootfs / "etc" / "passwd");
-            copy_recursive("/etc/passwd-", rootfs / "etc" / "passwd");
-            copy_recursive("/etc/hosts", rootfs / "etc" / "hosts");
-            copy_recursive("/etc/hostname", rootfs / "etc" / "hostname");
-            copy_recursive("/etc/resolv.conf", rootfs / "etc" / "resolv.conf");
-
-            // Copy executable inside rootfs
-            copy_recursive("/proc/self/exe", rootfs / "felix86");
-
-            FILE* f = fopen("/run/felix86.mounted", "w");
-            ASSERT(f);
-            fclose(f);
-        } else {
-            ASSERT_MSG(std::filesystem::exists(g_rootfs_path / "proc" / "self" / "exe"),
-                       "I couldn't find /proc/self/exe inside rootfs, are we correctly mounted? If you want me to try to mount in a new rootfs "
-                       "remove the file /run/felix86.mounted");
-        }
-
-        if (!Sudo::chroot(g_rootfs_path)) {
-            ERROR("Failed to chroot to %s", g_rootfs_path.c_str());
-        }
-
-        Sudo::dropPermissions();
-        ASSERT_MSG(chdir("/") == 0, "Failed to chdir after chrooting");
-        ASSERT(!Sudo::hasPermissions());
-
-        // Restart emulator after chrooting. This ensures the emulator starts execution only after we are already inside
-        // the rootfs. This makes our DT_RUNPATH which is /felix86/lib work fine.
-        std::vector<const char*> new_environ;
-        while (environ) {
-            new_environ.push_back(*environ);
-            environ++;
-        }
-        new_environ.push_back("__FELIX86_LAUNCHED");
-        new_environ.push_back(nullptr);
-        execve("/proc/self/exe", argv, environ);
-        UNREACHABLE();
+        // Symlink some directories to make our lives easier and not have to overlay them
+        ASSERT_MSG(Symlinker::link("/run", g_rootfs_path / "run"), "Failed to symlink /run");
+        ASSERT_MSG(Symlinker::link("/proc", g_rootfs_path / "proc"), "Failed to symlink /proc");
+        ASSERT_MSG(Symlinker::link("/sys", g_rootfs_path / "sys"), "Failed to symlink /sys");
+        ASSERT_MSG(Symlinker::link("/dev", g_rootfs_path / "dev"), "Failed to symlink /dev");
+        ASSERT_MSG(Symlinker::link("/tmp", g_rootfs_path / "tmp"), "Failed to symlink /dev");
     }
 
     LOG("%s", version_full.c_str());
+    initialize_globals();
     initialize_extensions();
     std::string extensions = get_extensions();
     if (!extensions.empty()) {
@@ -345,17 +300,6 @@ int main(int argc, char* argv[]) {
             it = config.envp.erase(it);
         } else {
             it++;
-        }
-    }
-
-    if (!g_rootfs_path.empty()) {
-        // Remove rootfs from executable path, if the user prepended it
-        if (config.executable_path.string().find(g_rootfs_path.string()) == 0) {
-            std::string new_path = config.executable_path.string().substr(g_rootfs_path.string().size());
-            ASSERT(new_path.size() > 0);
-            ASSERT(new_path[0] == '/');
-            config.executable_path = new_path;
-            config.argv[0] = config.executable_path;
         }
     }
 

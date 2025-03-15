@@ -328,6 +328,8 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
         const char* cwd = getenv("FELIX86_CWD");
 
         if (cwd) {
+            std::string scwd = cwd;
+            ASSERT_MSG(scwd.find(g_rootfs_path.string()) == 0, "FELIX86_CWD is not inside FELIX86_ROOTFS!");
             int res = chdir(cwd);
             if (res == -1) {
                 WARN("Failed to chdir to %s", cwd);
