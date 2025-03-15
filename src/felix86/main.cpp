@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
             std::error_code ec;
             std::filesystem::copy(src, dst, co::overwrite_existing | co::recursive, ec);
             if (ec) {
-                ERROR("Error while copying %s: %s", src, ec.message().c_str());
+                WARN("Error while copying %s: %s", src, ec.message().c_str());
             }
         };
 

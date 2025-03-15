@@ -125,7 +125,12 @@ int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
 
 int Filesystem::Chdir(const char* filename) {
     std::filesystem::path path = resolve(filename);
-    return chdir(path.c_str());
+    return ::chdir(path.c_str());
+}
+
+int Filesystem::Mkdir(const char* filename, u64 mode) {
+    std::filesystem::path path = resolve(filename);
+    return ::mkdir(path.c_str(), mode);
 }
 
 int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, size_t size) {

@@ -711,7 +711,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_mkdir: {
-        result = mkdir((char*)rdi, rsi);
+        result = Filesystem::Mkdir((char*)rdi, rsi);
         STRACE("mkdir(%s, %d) = %d", (char*)rdi, (int)rsi, (int)result);
         break;
     }
@@ -1163,6 +1163,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_inotify_add_watch: {
+        ERROR("TODO: inotify_add_watch move me to Filesystem");
         result = HOST_SYSCALL(inotify_add_watch, rdi, (const char*)rsi, rdx);
         STRACE("inotify_add_watch(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
         break;

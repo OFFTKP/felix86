@@ -93,6 +93,8 @@ struct Filesystem {
 
     static int Chdir(const char* filename);
 
+    static int Mkdir(const char* filename, u64 mode);
+
     static int LGetXAttr(const char* filename, const char* name, void* value, size_t size);
 
     static int UtimensAt(int fd, const char* filename, struct timespec* spec, int flags);
