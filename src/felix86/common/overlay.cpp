@@ -14,13 +14,28 @@ void Overlays::addOverlay(const char* lib_name, const std::filesystem::path& des
     ASSERT(!g_rootfs_path.empty());
 
     // Find the library inside the rootfs -- if found, create an overlay
-    std::filesystem::directory_iterator it(g_rootfs_path / "lib");
+    std::filesystem::directory_iterator it(g_rootfs_path / "usr" / "lib");
     for (auto& entry : it) {
         if (entry.is_regular_file()) {
             if (entry.path().filename() == lib_name) {
                 Overlay overlay;
                 overlay.real_path = entry.path();
                 overlay.overlayed_path = dest;
+                overlays.push_back(overlay);
+                VERBOSE("Added overlay %s -> %s", overlay.real_path.c_str(), overlay.overlayed_path.c_str());
+            }
+        }
+    }
+
+    std::filesystem::directory_iterator it2(g_rootfs_path / "lib");
+    for (auto& entry : it2) {
+        if (entry.is_regular_file()) {
+            if (entry.path().filename() == lib_name) {
+                Overlay overlay;
+                overlay.real_path = entry.path();
+                overlay.overlayed_path = dest;
+                overlays.push_back(overlay);
+                VERBOSE("Added overlay %s -> %s", overlay.real_path.c_str(), overlay.overlayed_path.c_str());
             }
         }
     }

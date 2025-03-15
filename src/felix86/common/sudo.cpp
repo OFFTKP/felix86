@@ -64,7 +64,7 @@ void Sudo::mount(const char* path, const std::filesystem::path& dest, const char
         ERROR("Failed to mount %s to %s. Error: %d", path, dest.c_str(), errno);
     }
 
-    LOG("Mounting %s to %s\n", path, dest.c_str());
+    LOG("Mounting %s to %s", path, dest.c_str());
 }
 
 bool Sudo::isMounted() {

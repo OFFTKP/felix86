@@ -280,14 +280,23 @@ void initialize_globals() {
     const char* thunk_env = getenv("FELIX86_THUNKS");
     if (thunk_env && !g_testing) {
         ASSERT_MSG(!g_rootfs_path.empty(), "You have set FELIX86_THUNKS but not FELIX86_ROOTFS, please set FELIX86_ROOTFS");
-        const std::filesystem::path thunks = thunk_env;
+        std::filesystem::path thunks = thunk_env;
         ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunk_env);
         std::string srootfs = g_rootfs_path.string();
         ASSERT_MSG(thunks.string().find(srootfs.c_str()) == 0, "The thunks path set with FELIX86_THUNKS %s is not part of the rootfs (%s)", thunk_env,
                    srootfs.c_str());
 
         g_thunking = true;
-        environment += "\nFELIX86_THUNKING";
+        environment += "\nFELIX86_THUNKS=";
+        environment += thunk_env;
+
+        // At this point we know the thunks path is inside the rootfs
+        // Remove the rootfs part
+        std::string spath = thunks.string().substr(g_rootfs_path.string().size());
+        if (spath.size() == 0 || spath[0] != '/') {
+            spath.insert(spath.begin(), '/');
+        }
+        thunks = spath;
 
         // TODO: should probably not be done here?
         std::filesystem::path glx_thunk;
