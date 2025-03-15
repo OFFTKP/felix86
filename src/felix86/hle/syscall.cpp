@@ -716,7 +716,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_lgetxattr: {
-        result = HOST_SYSCALL(lgetxattr, rdi, rsi, rdx, r10);
+        result = Filesystem::LGetXAttr((char*)rdi, (char*)rsi, (void*)rdx, r10);
         STRACE("lgetxattr(%s, %s, %p, %d) = %d", (char*)rdi, (char*)rsi, (void*)rdx, (int)r10, (int)result);
         break;
     }
@@ -843,7 +843,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_utimensat: {
-        result = HOST_SYSCALL(utimensat, rdi, (const char*)rsi, (struct timespec*)rdx, r10);
+        result = Filesystem::UtimensAt(rdi, (const char*)rsi, (struct timespec*)rdx, r10);
         STRACE("utimensat(%d, %s, %p, %d) = %d", (int)rdi, (const char*)rsi, (void*)rdx, (int)r10, (int)result);
         break;
     }

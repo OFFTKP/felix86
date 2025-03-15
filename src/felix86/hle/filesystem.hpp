@@ -93,24 +93,32 @@ struct Filesystem {
 
     static int Chdir(const char* filename);
 
+    static int LGetXAttr(const char* filename, const char* name, void* value, size_t size);
+
+    static int UtimensAt(int fd, const char* filename, struct timespec* spec, int flags);
+
     static std::filesystem::path resolve(const char* path);
 
 private:
-    static int openAtInternal(int fd, const char* filename, int flags, u64 mode);
+    static int openatInternal(int fd, const char* filename, int flags, u64 mode);
 
-    static int faccessAtInternal(int fd, const char* filename, int mode, int flags);
+    static int faccessatInternal(int fd, const char* filename, int mode, int flags);
 
-    static int fstatAtInternal(int fd, const char* filename, struct stat* host_stat, int flags);
+    static int fstatatInternal(int fd, const char* filename, struct stat* host_stat, int flags);
 
     static int statfsInternal(const std::filesystem::path& path, struct statfs* buf);
 
-    static int readlinkAtInternal(int fd, const char* filename, char* buf, int bufsiz);
+    static int readlinkatInternal(int fd, const char* filename, char* buf, int bufsiz);
 
     static int statxInternal(int fd, const char* filename, int flags, u32 mask, struct statx* statxbuf);
 
-    static int linkAtInternal(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags);
+    static int linkatInternal(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags);
 
-    static int unlinkAtInternal(int fd, const char* filename, int flags);
+    static int unlinkatInternal(int fd, const char* filename, int flags);
+
+    static int lgetxattrInternal(const char* filename, const char* name, void* value, size_t size);
+
+    static int utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags);
 
     static std::pair<int, const char*> resolve(int fd, const char* path);
 

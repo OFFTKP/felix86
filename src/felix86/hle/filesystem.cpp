@@ -4,12 +4,12 @@
 
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename);
-    return openAtInternal(new_fd, new_filename, flags, mode);
+    return openatInternal(new_fd, new_filename, flags, mode);
 }
 
 int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
     auto [new_fd, new_filename] = resolve(fd, filename);
-    return faccessAtInternal(new_fd, new_filename, mode, flags);
+    return faccessatInternal(new_fd, new_filename, mode, flags);
 }
 
 int Filesystem::FStatAt(int fd, const char* filename, x64Stat* guest_stat, int flags) {
@@ -17,7 +17,7 @@ int Filesystem::FStatAt(int fd, const char* filename, x64Stat* guest_stat, int f
 
     struct stat host_stat;
 
-    int result = fstatAtInternal(new_fd, new_filename, &host_stat, flags);
+    int result = fstatatInternal(new_fd, new_filename, &host_stat, flags);
 
     if (result == 0) {
         // This will do the marshalling, see stat.hpp
@@ -40,7 +40,7 @@ int Filesystem::StatFs(const char* filename, struct statfs* buf) {
 int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) {
     auto [new_fd, new_filename] = resolve(fd, filename);
 
-    int result = readlinkAtInternal(new_fd, new_filename, buf, bufsiz);
+    int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
 
     if (result > 0) {
         // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
@@ -108,14 +108,14 @@ int Filesystem::UnlinkAt(int fd, const char* filename, int flags) {
     }
 
     auto [new_fd, new_filename] = resolve(fd, filename);
-    return unlinkAtInternal(new_fd, new_filename, flags);
+    return unlinkatInternal(new_fd, new_filename, flags);
 }
 
 int Filesystem::LinkAt(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags) {
     auto [roldfd, roldpath] = resolve(oldfd, oldpath);
     auto [rnewfd, rnewpath] = resolve(newfd, newpath);
 
-    return linkAtInternal(roldfd, roldpath, rnewfd, rnewpath, flags);
+    return linkatInternal(roldfd, roldpath, rnewfd, rnewpath, flags);
 }
 
 int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
@@ -128,15 +128,25 @@ int Filesystem::Chdir(const char* filename) {
     return chdir(path.c_str());
 }
 
-int Filesystem::openAtInternal(int fd, const char* filename, int flags, u64 mode) {
+int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, size_t size) {
+    std::filesystem::path path = resolve(filename);
+    return lgetxattrInternal(path.c_str(), name, value, size);
+}
+
+int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, int flags) {
+    auto [new_fd, new_filename] = resolve(fd, filename);
+    return utimensatInternal(new_fd, new_filename, spec, flags);
+}
+
+int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode) {
     return ::syscall(SYS_openat, fd, filename, flags, mode);
 }
 
-int Filesystem::faccessAtInternal(int fd, const char* filename, int mode, int flags) {
+int Filesystem::faccessatInternal(int fd, const char* filename, int mode, int flags) {
     return ::syscall(SYS_faccessat2, fd, filename, mode, flags);
 }
 
-int Filesystem::fstatAtInternal(int fd, const char* filename, struct stat* host_stat, int flags) {
+int Filesystem::fstatatInternal(int fd, const char* filename, struct stat* host_stat, int flags) {
     return ::syscall(SYS_newfstatat, fd, filename, host_stat, flags);
 }
 
@@ -144,7 +154,7 @@ int Filesystem::statfsInternal(const std::filesystem::path& path, struct statfs*
     return ::syscall(SYS_statfs, path.c_str(), buf);
 }
 
-int Filesystem::readlinkAtInternal(int fd, const char* filename, char* buf, int bufsiz) {
+int Filesystem::readlinkatInternal(int fd, const char* filename, char* buf, int bufsiz) {
     return ::syscall(SYS_readlinkat, fd, filename, buf, bufsiz);
 }
 
@@ -152,12 +162,20 @@ int Filesystem::statxInternal(int fd, const char* filename, int flags, u32 mask,
     return ::syscall(SYS_statx, fd, filename, flags, mask, statxbuf);
 }
 
-int Filesystem::linkAtInternal(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags) {
+int Filesystem::linkatInternal(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags) {
     return ::syscall(SYS_linkat, oldfd, oldpath, newfd, newpath, flags);
 }
 
-int Filesystem::unlinkAtInternal(int fd, const char* filename, int flags) {
+int Filesystem::unlinkatInternal(int fd, const char* filename, int flags) {
     return ::syscall(SYS_unlinkat, fd, filename, flags);
+}
+
+int Filesystem::lgetxattrInternal(const char* filename, const char* name, void* value, size_t size) {
+    return ::syscall(SYS_lgetxattr, filename, name, value, size);
+}
+
+int Filesystem::utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags) {
+    return ::syscall(SYS_utimensat, fd, filename, spec, flags);
 }
 
 std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
