@@ -291,12 +291,12 @@ void initialize_globals() {
 
         // TODO: should probably not be done here?
         std::filesystem::path glx_thunk;
-        bool found = false;
+        bool found_glx = false;
 
         auto check_glx = [&](const char* path) {
-            if (!found && std::filesystem::exists(thunks / path)) {
+            if (!found_glx && std::filesystem::exists(thunks / path)) {
                 glx_thunk = thunks / path;
-                found = true;
+                found_glx = true;
             }
         };
 
