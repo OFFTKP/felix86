@@ -80,6 +80,3 @@
         if (!(condition))                                                                                                                            \
             ERROR(format, ##__VA_ARGS__);                                                                                                            \
     } while (false)
-
-void enable_verbose();
-void disable_logging();

@@ -60,7 +60,7 @@ bool g_execve_process = false;
 std::unique_ptr<Filesystem> g_fs{};
 Config g_config{};
 
-int g_output_fd = 1;
+int g_output_fd = STDOUT_FILENO;
 std::filesystem::path g_rootfs_path{};
 u64 g_executable_base_hint = 0;
 u64 g_interpreter_base_hint = 0;

@@ -10,8 +10,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "biscuit/cpuinfo.hpp"
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/sudo.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thunks.hpp"
 
@@ -27,6 +29,7 @@ static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
+    {"info", 'i', 0, 0, "Print system info"},
     {"verbose", 'V', 0, 0, "Produce verbose output"},
     {"quiet", 'q', 0, 0, "Don't produce any output"},
     {"strace", 't', 0, 0, "Trace emulated application syscalls"},
@@ -37,6 +40,78 @@ static struct argp_option options[] = {
     {0}};
 
 int guest_arg_start_index = -1;
+
+int print_system_info() {
+    printf("%s\n", version_full.c_str());
+
+    using namespace biscuit;
+    biscuit::CPUInfo info;
+    bool V = info.Has(Extension::V);
+    int len = 0;
+    if (V) {
+        len = info.GetVlenb();
+        printf("VLEN: %d\n", len * 8);
+    }
+
+    fflush(stdout);
+
+    std::vector<const char*> args = {"neofetch", "cpu", nullptr};
+
+    pid_t pid;
+    int status;
+    int ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "gpu";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "model";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "distro";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "de";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "wm";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "kernel";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    args[1] = "memory";
+    ok = posix_spawnp(&pid, "neofetch", nullptr, nullptr, (char**)args.data(), environ);
+    if (ok != 0)
+        goto error;
+    waitpid(pid, &status, 0);
+
+    return 0;
+
+error:
+    printf("Please install neofetch for more information\n");
+    return ok;
+}
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     Config* config = (Config*)state->input;
@@ -54,11 +129,15 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
     switch (key) {
     case 'V': {
-        enable_verbose();
+        g_verbose = true;
         break;
     }
     case 'q': {
-        disable_logging();
+        g_quiet = true;
+        break;
+    }
+    case 'i': {
+        exit(print_system_info());
         break;
     }
     case 't': {
@@ -106,29 +185,9 @@ static struct argp argp = {options, parse_opt, args_doc, doc};
 // }
 
 int main(int argc, char* argv[]) {
-#if 0 // for testing zydis behavior on specific instructions
-    ZydisDecoder decoder;
-    ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
-
-    u8 data[] = {
-        0x4c,
-        0x8d,
-        0x14,
-        0x82,
-    };
-
-    ZydisDecodedInstruction instruction;
-    ZydisDecodedOperand operands[10];
-    ZyanStatus status = ZydisDecoderDecodeFull(&decoder, data, sizeof(data), &instruction, operands);
-    ASSERT(ZYAN_SUCCESS(status));
-
-    printf("operand count: %d\n", instruction.operand_count_visible);
-    printf("op 0: %d\n", operands[1].mem.scale);
+#ifdef __x86_64__
+    WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
-    if (!getenv("__FELIX86_LAUNCHED")) {
-        ERROR("felix86_jit should be launched from the launcher, not directly -- If you want to run it regardless set the __FELIX86_LAUNCHED "
-              "environment variable");
-    }
 
     Config config = {};
 
@@ -141,21 +200,65 @@ int main(int argc, char* argv[]) {
         }
     }
 
-#ifdef __x86_64__
-    WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
-#endif
-    g_output_fd = STDOUT_FILENO;
+    g_execve_process = !!getenv("__FELIX86_EXECVE");
+
+    if (g_execve_process) {
+        if (!Sudo::hasPermissions()) {
+            Sudo::requestPermissions(argc, argv);
+            UNREACHABLE();
+        }
+    }
 
     initialize_globals();
 
-    LOG("%s", version_full.c_str());
+    if (g_execve_process) {
+        ASSERT_MSG(Sudo::hasPermissions(), "Somehow we don't have root permissions at this point?");
+        const std::filesystem::path rootfs = g_rootfs_path;
+        ASSERT_MSG(!rootfs.empty(), "Empty rootfs -- Please set the rootfs path using the FELIX86_ROOTFS environment variable");
 
-    std::string args = "Arguments: ";
-    for (const auto& arg : config.argv) {
-        args += arg;
-        args += " ";
+        if (!Sudo::isMounted()) {
+            // These things need to happen only once per session (ie. until the user reboots)
+            Sudo::mount("proc", rootfs / "proc", "proc");
+            Sudo::mount("sysfs", rootfs / "sys", "sysfs");
+            Sudo::mount("udev", rootfs / "dev", "devtmpfs");
+            Sudo::mount("devpts", rootfs / "dev/pts", "devpts");
+            Sudo::mount("/run", rootfs / "run", "none", MS_BIND | MS_REC);
+            Sudo::mount("/tmp", rootfs / "tmp", "none", MS_BIND); // mounting it for perf (the profiler)
+
+            auto copy_recursive = [](const char* src, const std::filesystem::path& dst) {
+                if (!std::filesystem::exists(src)) {
+                    printf("I couldn't find %s to copy to the rootfs, may cause problems with some games", src);
+                    return;
+                }
+
+                using co = std::filesystem::copy_options;
+
+                std::error_code ec;
+                std::filesystem::copy(src, dst, co::overwrite_existing | co::recursive, ec);
+                if (ec) {
+                    ERROR("Error while copying %s: %s", src, ec.message().c_str());
+                }
+            };
+
+            // Copy some stuff to the rootfs
+            copy_recursive("/var/lib/dbus", rootfs / "var" / "lib" / "dbus");
+            copy_recursive("/etc/mtab", rootfs / "etc" / "mtab");
+            copy_recursive("/etc/passwd", rootfs / "etc" / "passwd");
+            copy_recursive("/etc/passwd-", rootfs / "etc" / "passwd");
+            copy_recursive("/etc/hosts", rootfs / "etc" / "hosts");
+            copy_recursive("/etc/hostname", rootfs / "etc" / "hostname");
+            copy_recursive("/etc/resolv.conf", rootfs / "etc" / "resolv.conf");
+        } else {
+            ASSERT_MSG(std::filesystem::exists(g_rootfs_path / "proc" / "self" / "exe"),
+                       "I couldn't find /proc/self/exe inside rootfs, are we correctly mounted? If you want me to try to mount in a new rootfs "
+                       "remove the file /run/felix86.mounted");
+        }
+
+        Sudo::chroot(g_rootfs_path);
+        Sudo::dropPermissions();
+        chdir("/");
+        ASSERT(!Sudo::hasPermissions());
     }
-    VERBOSE("%s", args.c_str());
 
     initialize_extensions();
     std::string extensions = get_extensions();
@@ -172,6 +275,15 @@ int main(int argc, char* argv[]) {
         initialized = true;
         Thunks::initialize();
     }
+
+    LOG("%s", version_full.c_str());
+
+    std::string args = "Arguments: ";
+    for (const auto& arg : config.argv) {
+        args += arg;
+        args += " ";
+    }
+    VERBOSE("%s", args.c_str());
 
     bool purposefully_empty = false;
     const char* env_file = getenv("FELIX86_ENV_FILE");
@@ -237,8 +349,6 @@ int main(int argc, char* argv[]) {
             return 1;
         }
     }
-
-    g_execve_process = !!getenv("__FELIX86_EXECVE");
 
     if (g_execve_process) {
         pthread_setname_np(pthread_self(), "ExecveProcess");
