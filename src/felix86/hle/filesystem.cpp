@@ -80,7 +80,11 @@ int Filesystem::Rename(const char* oldname, const char* newname) {
 
     std::filesystem::path oldpath = resolve(oldname);
     std::filesystem::path newpath = resolve(newname);
-    return ::rename(oldpath.c_str(), newpath.c_str());
+    int result = ::rename(oldpath.c_str(), newpath.c_str());
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
 }
 
 int Filesystem::Symlink(const char* oldname, const char* newname) {
@@ -90,7 +94,11 @@ int Filesystem::Symlink(const char* oldname, const char* newname) {
 
     std::filesystem::path oldpath = resolve(oldname);
     std::filesystem::path newpath = resolve(newname);
-    return ::symlink(oldpath.c_str(), newpath.c_str());
+    int result = ::symlink(oldpath.c_str(), newpath.c_str());
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
 }
 
 int Filesystem::Chmod(const char* filename, u64 mode) {
@@ -99,7 +107,11 @@ int Filesystem::Chmod(const char* filename, u64 mode) {
     }
 
     std::filesystem::path path = resolve(filename);
-    return ::chmod(path.c_str(), mode);
+    int result = ::chmod(path.c_str(), mode);
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
 }
 
 int Filesystem::Statx(int fd, const char* filename, int flags, u32 mask, struct statx* statxbuf) {
@@ -130,17 +142,29 @@ int Filesystem::LinkAt(int oldfd, const char* oldpath, int newfd, const char* ne
 
 int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
     std::filesystem::path path = resolve(filename);
-    return ::chown(path.c_str(), owner, group);
+    int result = ::chown(path.c_str(), owner, group);
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
 }
 
 int Filesystem::Chdir(const char* filename) {
     std::filesystem::path path = resolve(filename);
-    return ::chdir(path.c_str());
+    int result = ::chdir(path.c_str());
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
 }
 
 int Filesystem::Mkdir(const char* filename, u64 mode) {
     std::filesystem::path path = resolve(filename);
-    return ::mkdir(path.c_str(), mode);
+    int result = ::mkdir(path.c_str(), mode);
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
 }
 
 int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, size_t size) {

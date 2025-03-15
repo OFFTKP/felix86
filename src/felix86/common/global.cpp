@@ -231,6 +231,12 @@ void initialize_globals() {
         environment += "\nFELIX86_STRACE";
     }
 
+    const char* dont_inline_syscalls_env = getenv("FELIX86_DONT_INLINE_SYSCALLS");
+    if (is_truthy(dont_inline_syscalls_env)) {
+        g_dont_inline_syscalls = true;
+        environment += "\nFELIX86_DONT_INLINE_SYSCALLS";
+    }
+
     const char* verbose_env = getenv("FELIX86_VERBOSE");
     if (is_truthy(verbose_env)) {
         g_verbose = true;
