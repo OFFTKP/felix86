@@ -1239,6 +1239,11 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_execve: {
+        if (!rdi) {
+            WARN("execve with nullptr as executable path?");
+            result = -EINVAL;
+            break;
+        }
         std::filesystem::path path = Filesystem::resolve((char*)rdi);
         std::string filename = (char*)rdi;
 
@@ -1298,7 +1303,7 @@ void felix86_syscall(ThreadState* state) {
         } else {
             ASSERT_MSG(rdi, "Both rdi and rsi null during execve...?");
             // Args shouldn't be null normally, but at least push the emulated executable here
-            argv.push_back((char*)rdi);
+            argv.push_back(path.c_str());
         }
         argv.push_back(nullptr);
 

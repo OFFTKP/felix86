@@ -422,19 +422,6 @@ void felix86_thunk_glXGetSelectedEvent(Display* dpy, GLXDrawable drawable, unsig
     return host_glXGetSelectedEvent(guestToHostDisplay(dpy), drawable, mask);
 }
 
-std::filesystem::path find_lib(const std::filesystem::path& lib) {
-#define CHECK(dir)                                                                                                                                   \
-    if (std::filesystem::exists(dir / lib)) {                                                                                                        \
-        return dir / lib;                                                                                                                            \
-    }
-
-    CHECK("/felix86/lib")
-    CHECK("/felix86/lib/riscv64-linux-gnu")
-    // Is there any more we need to check?
-
-    return "";
-}
-
 // Load the host function pointers in the thunkptr namespace with pointers using dlopen + dlsym
 void Thunks::initialize() {
     thunkptr::glXGetProcAddress = (u64)felix86_thunk_glXGetProcAddress;
@@ -476,37 +463,15 @@ void Thunks::initialize() {
     thunkptr::glXGetSelectedEvent = (u64)felix86_thunk_glXGetSelectedEvent;
 
     constexpr const char* glx_name = "libGLX.so";
-    const std::filesystem::path glx_path = find_lib(glx_name);
-
-    if (glx_path.empty()) {
-        ERROR("I couldn't find %s in /felix86/lib, is it mounted correctly?", glx_name);
-    }
-
-    libGLX = dlopen(glx_path.c_str(), RTLD_LAZY);
+    libGLX = dlopen(glx_name, RTLD_LAZY);
     if (!libGLX) {
-        ERROR("I couldn't open libGLX at %s, error: %s", glx_path.c_str(), dlerror());
+        ERROR("I couldn't open libGLX.so, error: %s", dlerror());
     }
 
     constexpr const char* x11_name = "libX11.so";
-    const std::filesystem::path x11_path = find_lib(x11_name);
-    if (x11_path.empty()) {
-        ERROR("I couldn't find %s in /felix86/lib, is it mounted correctly?", x11_name);
-    }
-
-    libX11 = dlopen(x11_path.c_str(), RTLD_LAZY);
+    libX11 = dlopen(x11_name, RTLD_LAZY);
     if (!libX11) {
-        ERROR("I couldn't open libX11 at %s, error: %s", x11_path.c_str(), dlerror());
-    }
-
-    constexpr const char* egl_name = "libEGL.so.1";
-    const std::filesystem::path egl_path = find_lib(egl_name);
-    if (egl_path.empty()) {
-        ERROR("I couldn't find %s in /felix86/lib, is it mounted correctly?", egl_name);
-    }
-
-    libEGL = dlopen(egl_path.c_str(), RTLD_LAZY);
-    if (!libEGL) {
-        ERROR("I couldn't open libEGL at %s, error: %s", egl_path.c_str(), dlerror());
+        ERROR("I couldn't open libX11.so, error: %s", dlerror());
     }
 
 #define X(libname, name, ...)                                                                                                                        \
@@ -518,15 +483,15 @@ void Thunks::initialize() {
     }
 #include "glx_thunks.inc"
 #undef X
-#define X(libname, name, ...)                                                                                                                        \
-    if (thunkptr::name == 0) {                                                                                                                       \
-        thunkptr::name = (u64)dlsym(libEGL, #name);                                                                                                  \
-        if (thunkptr::name == 0) {                                                                                                                   \
-            ERROR("Failed to find symbol %s in %s, error: %s", #name, "libEGL.so", dlerror());                                                       \
-        }                                                                                                                                            \
-    }
-#include "egl_thunks.inc"
-#undef X
+    // #define X(libname, name, ...)                                                                                                                        \
+    //     if (thunkptr::name == 0) {                                                                                                                       \
+    //         thunkptr::name = (u64)dlsym(libEGL, #name);                                                                                                  \
+    //         if (thunkptr::name == 0) {                                                                                                                   \
+    //             ERROR("Failed to find symbol %s in %s, error: %s", #name, "libEGL.so", dlerror());                                                       \
+    //         }                                                                                                                                            \
+    //     }
+    // #include "egl_thunks.inc"
+    // #undef X
     // gl_thunks are loaded from the getprocaddress functions
 }
 
