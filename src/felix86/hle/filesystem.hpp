@@ -62,7 +62,7 @@ struct Filesystem {
         return interpreter;
     }
 
-    std::filesystem::path GetExecutablePath() {
+    const std::filesystem::path& GetExecutablePath() {
         return executable_path;
     }
 

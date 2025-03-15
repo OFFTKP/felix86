@@ -208,6 +208,8 @@ int main(int argc, char* argv[]) {
     initialize_extensions();
 
     if (!g_execve_process) {
+        ASSERT(!g_rootfs_path.empty());
+
         // First time running the emulator (ie. the emulator is not running itself with execve) we need to link some stuff
         // and copy some stuff inside the rootfs
         auto copy = [](const char* src, const std::filesystem::path& dst) {
