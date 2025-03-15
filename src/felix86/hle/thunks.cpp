@@ -231,7 +231,7 @@ void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* nam
         return felix86_thunk_##function;
 
     default: {
-        ERROR("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
+        WARN("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
         return nullptr;
     }
     }
