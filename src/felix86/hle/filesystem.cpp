@@ -222,7 +222,7 @@ int Filesystem::removeRootfsPrefix(char* buf, int size) {
     ASSERT(buf);
 
     std::string rootfs = g_rootfs_path.string();
-    for (int i = 0; i < rootfs.size(); i++) {
+    for (int i = 0; i < (int)rootfs.size(); i++) {
         if (i > size) {
             return size;
         }

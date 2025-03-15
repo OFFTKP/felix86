@@ -1250,10 +1250,7 @@ void felix86_syscall(ThreadState* state) {
         std::vector<const char*> argv;
         std::vector<const char*> envp;
 
-        constexpr static const char* jit_path_chroot = "/felix86/felix86_jit";
-        ASSERT_MSG(std::filesystem::exists(jit_path_chroot), "felix86_jit not in /felix86/felix86_jit?");
-
-        argv.push_back(jit_path_chroot); // emulator path
+        argv.push_back("/proc/self/exe"); // emulator path
 
         if (rsi) {
             const char** guest_argv = (const char**)rsi;
@@ -1327,7 +1324,7 @@ void felix86_syscall(ThreadState* state) {
 
         LOG("Running execve, wish me luck:%s", args.c_str());
 
-        syscall(SYS_execve, jit_path_chroot, argv.data(), envp.data());
+        syscall(SYS_execve, "/proc/self/exe", argv.data(), envp.data());
 
         UNREACHABLE();
         break;
