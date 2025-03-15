@@ -221,22 +221,17 @@ constexpr unsigned long hashstr(const std::string_view& str, int h = 0) {
     return !str[h] ? 55 : (hashstr(str, h + 1) * 33) + (unsigned char)(str[h]);
 }
 
-void* felix86_host_glXGetProcAddress(const char* name) {
-    static void* (*getprocaddress)(const char*) = (void* (*)(const char*))dlsym(libGLX, "glXGetProcAddress");
-    return getprocaddress(name);
-}
-
 void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* name), const char* name) {
     // Get the host pointer, return a pointer from libgl_guest_ptrs.hpp for the recompiler to generate a trampoline
     // when it is actually called.
     switch (hashstr(name)) {
 #define X(libname, function, ...)                                                                                                                    \
     case hashstr(function):                                                                                                                          \
-        thunkptr::function = felix86_host_glXGetProcAddress(name);                                                                                   \
+        thunkptr::function = actual(name);                                                                                                           \
         return felix86_thunk_##function;
 
     default: {
-        ERROR("felix86_glXGetProcAddress could not find %s in thunked functions", name);
+        ERROR("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
         return nullptr;
     }
     }
