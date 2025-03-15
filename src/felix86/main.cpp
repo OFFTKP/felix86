@@ -224,7 +224,8 @@ int main(int argc, char* argv[]) {
             Sudo::mount("udev", rootfs / "dev", "devtmpfs");
             Sudo::mount("devpts", rootfs / "dev/pts", "devpts");
             Sudo::mount("/run", rootfs / "run", "none", MS_BIND | MS_REC);
-            Sudo::mount("/tmp", rootfs / "tmp", "none", MS_BIND); // mounting it for perf (the profiler)
+            Sudo::mount("/tmp", rootfs / "tmp", "none", MS_BIND);                          // mounting it for perf (the profiler)
+            Sudo::mount("/usr/lib", rootfs / "felix86" / "lib", "none", MS_BIND | MS_REC); // for finding host libs when thunking
 
             auto copy_recursive = [](const char* src, const std::filesystem::path& dst) {
                 if (!std::filesystem::exists(src)) {
@@ -252,6 +253,10 @@ int main(int argc, char* argv[]) {
             copy_recursive("/etc/hosts", rootfs / "etc" / "hosts");
             copy_recursive("/etc/hostname", rootfs / "etc" / "hostname");
             copy_recursive("/etc/resolv.conf", rootfs / "etc" / "resolv.conf");
+
+            FILE* f = fopen("/run/felix86.mounted", "w");
+            ASSERT(f);
+            fclose(f);
         } else {
             ASSERT_MSG(std::filesystem::exists(g_rootfs_path / "proc" / "self" / "exe"),
                        "I couldn't find /proc/self/exe inside rootfs, are we correctly mounted? If you want me to try to mount in a new rootfs "
@@ -277,9 +282,7 @@ int main(int argc, char* argv[]) {
     }
     Signals::initialize();
 
-    static bool initialized = false;
-    if (g_thunking && !initialized) {
-        initialized = true;
+    if (g_thunking) {
         Thunks::initialize();
     }
 
