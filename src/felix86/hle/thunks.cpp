@@ -1,4 +1,3 @@
-#include <EGL/egl.h>
 #include "felix86/hle/thunks.hpp"
 
 // Thunks need libX11
@@ -232,8 +231,8 @@ void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* nam
         return felix86_thunk_##function;
 
     default: {
-        WARN("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
-        return nullptr;
+        ERROR("felix86_thunk_GetProcAddressCommon could not find %s in thunked functions", name);
+        return getProcAddress(name);
     }
     }
 #undef X
