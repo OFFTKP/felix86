@@ -95,9 +95,22 @@ target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version ${PCAP_LIBRARY})
 
+# Set these as runtime paths so our `dlopen` can work while chrooted inside the rootfs
+# when opening the host thunk libraries like libGLX -- we wanna search in /felix86/lib first.
+# And in the cases we haven't chrooted yet, /felix86/lib shouldn't exist so it continues to use the normal paths
+set(CMAKE_INSTALL_RPATH "/felix86/lib")
+list(APPEND CMAKE_INSTALL_RPATH "/felix86/lib/riscv64-linux-gnu")
+
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
+
+set_target_properties(felix86
+    PROPERTIES
+    BUILD_WITH_INSTALL_RPATH true
+)
+
+unset(CMAKE_INSTALL_RPATH)
 
 if (BUILD_THUNKGEN)
     add_executable(felix86_thunkgen src/felix86/hle/guest_libs/generator.cpp)
