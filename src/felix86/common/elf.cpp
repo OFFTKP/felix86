@@ -564,6 +564,10 @@ void Elf::Load(const std::filesystem::path& path) {
             }
         }
 
+        if (max_brk_size < brk_size) {
+            max_brk_size = brk_size;
+        }
+
         if (max_brk_size == 0) {
             // Somehow still 0, set to 1GiB
             max_brk_size = 1ull * 1024 * 1024 * 1024;
@@ -575,7 +579,7 @@ void Elf::Load(const std::filesystem::path& path) {
         // Allocate the max brk size with MAP_NORESERVE, and the actual brk normally, so we can expand as we go and the memory
         // doesn't get stolen by something else
         u64 base = g_brk_base_hint ? g_brk_base_hint : (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
-        base &= PAGE_START(base);
+        base = PAGE_START(base);
 
         u8* brk_base = nullptr;
         int attempts = 30;

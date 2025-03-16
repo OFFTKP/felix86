@@ -216,7 +216,7 @@ void felix86_syscall(ThreadState* state) {
         if (g_current_brk > g_initial_brk + g_current_brk_size) {
             // Allocate more of our NORESERVE space as actual allocated pages
             u64 new_size = (g_current_brk - g_initial_brk) * 2;
-            int flags = MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED;
+            int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
             void* new_map = mmap((void*)g_initial_brk, new_size, PROT_READ | PROT_WRITE, flags, -1, 0);
             if ((u64)new_map != g_initial_brk) {
                 ERROR("Failed to remap brk with new size: %lx", new_size);
@@ -229,7 +229,7 @@ void felix86_syscall(ThreadState* state) {
             ASSERT(g_current_brk >= g_address_space_base && g_current_brk <= g_address_space_base + UINT32_MAX);
         }
 
-        STRACE("brk(%p) = %p", (void*)rdi, (void*)result);
+        VERBOSE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;
     }
     case felix86_x86_64_arch_prctl: {
