@@ -823,8 +823,8 @@ void felix86_syscall(ThreadState* state) {
                 flags |= MAP_FIXED_NOREPLACE; // <= at least fix it so it obeys the hint
             }
         } else {
-            result = HOST_SYSCALL(mmap, rdi, rsi, rdx, flags, r8, r9);
-            STRACE("mmap(%p, %016lx, %d, %d, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)flags, (int)r8, (int)r9, (u64)result);
+            result = HOST_SYSCALL(mmap, rdi, rsi, rdx, flags, (int)r8, r9);
+            STRACE("mmap(%p, %016lx, %d, %x, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)flags, (int)r8, (int)r9, (u64)result);
         }
         break;
     }
