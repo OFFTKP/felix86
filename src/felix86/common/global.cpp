@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/global.hpp"
+#include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/overlay.hpp"
 #include "felix86/common/state.hpp"
@@ -194,8 +195,6 @@ std::string get_extensions() {
     return extensions;
 }
 
-extern std::string version_full;
-
 void initialize_globals() {
     std::string environment;
 
@@ -210,7 +209,7 @@ void initialize_globals() {
         }
     }
 
-    LOG("%s", version_full.c_str());
+    LOG("%s", get_version_full());
 
     // Check for FELIX86_EXTENSIONS environment variable
     const char* all_extensions_env = getenv("FELIX86_ALL_EXTENSIONS");
