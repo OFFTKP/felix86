@@ -7,7 +7,7 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/utility.hpp"
 
-constexpr u64 brk_size = 1024 * 1024;
+constexpr u64 brk_size = 4096;
 
 struct Elf {
     enum class PeekResult {
