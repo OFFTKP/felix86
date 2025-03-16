@@ -5062,21 +5062,51 @@ FAST_HANDLE(PSRLQ) {
 }
 
 FAST_HANDLE(PSRAW) {
-    u8 shift = rec.getImmediate(&operands[1]);
+    biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        if (val > 15)
+            val = 15;
+        as.LI(shift, val);
+    } else {
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 2);
+        as.VMV_XS(shift, src);
+
+        Label ok;
+        biscuit::GPR max = rec.scratch();
+        as.LI(max, 15);
+        as.BLEU(shift, max, &ok);
+        as.LI(shift, 15); // bigger than 15, set to 15
+        as.Bind(&ok);
+    }
     rec.setVectorState(SEW::E16, 8);
-    if (shift > 15)
-        shift = 15;
     as.VSRA(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSRAD) {
-    u8 shift = rec.getImmediate(&operands[1]);
+    biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 val = rec.getImmediate(&operands[1]);
+        if (val > 31)
+            val = 31;
+        as.LI(shift, val);
+    } else {
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 2);
+        as.VMV_XS(shift, src);
+
+        Label ok;
+        biscuit::GPR max = rec.scratch();
+        as.LI(max, 31);
+        as.BLTU(shift, max, &ok);
+        as.LI(shift, 31); // bigger than 31, set to 31
+        as.Bind(&ok);
+    }
     rec.setVectorState(SEW::E32, 4);
-    if (shift > 31)
-        shift = 31;
     as.VSRA(dst, dst, shift);
     rec.setOperandVec(&operands[0], dst);
 }
