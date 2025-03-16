@@ -61,6 +61,7 @@ HostAddress g_guest_auxv{};
 size_t g_guest_auxv_size = 0;
 bool g_execve_process = false;
 std::unique_ptr<Filesystem> g_fs{};
+std::string g_emulator_path;
 Config g_config{};
 
 int g_output_fd = STDOUT_FILENO;
@@ -215,6 +216,10 @@ void initialize_globals() {
     }
 
     LOG("%s", get_version_full());
+
+    g_emulator_path.resize(PATH_MAX);
+    int read = readlink("/proc/self/exe", g_emulator_path.data(), PATH_MAX);
+    ASSERT(read != -1);
 
     // Check for FELIX86_EXTENSIONS environment variable
     const char* all_extensions_env = getenv("FELIX86_ALL_EXTENSIONS");

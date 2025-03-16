@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
+#include "felix86/common/symlink.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/stat.hpp"
@@ -1276,7 +1277,9 @@ void felix86_syscall(ThreadState* state) {
         std::vector<const char*> argv;
         std::vector<const char*> envp;
 
-        argv.push_back("/proc/self/exe"); // emulator path
+        // Resolving this symlink helps gdb find the path
+        std::filesystem::path emulator = g_emulator_path;
+        argv.push_back(emulator.c_str());
 
         if (rsi) {
             const char** guest_argv = (const char**)rsi;
@@ -1350,7 +1353,7 @@ void felix86_syscall(ThreadState* state) {
 
         LOG("Running execve, wish me luck:%s", args.c_str());
 
-        syscall(SYS_execve, "/proc/self/exe", argv.data(), envp.data());
+        syscall(SYS_execve, emulator.c_str(), argv.data(), envp.data());
 
         UNREACHABLE();
         break;
