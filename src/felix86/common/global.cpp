@@ -49,6 +49,7 @@ std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
+u64 g_brk_max_size = 0;
 u64 g_dispatcher_exit_count = 0;
 u64 g_address_space_base = 0;
 std::list<ThreadState*> g_thread_states{};
@@ -357,6 +358,13 @@ void initialize_globals() {
     if (is_truthy(min_max_accurate_env)) {
         g_min_max_accurate = true;
         environment += "\nFELIX86_MIN_MAX_ACCURATE";
+    }
+
+    const char* brk_size = getenv("FELIX86_BRK_SIZE");
+    if (brk_size) {
+        g_brk_max_size = std::atoll(brk_size); // if can't be parsed returns 0, that's fine
+        environment += "\nFELIX86_BRK_SIZE=";
+        environment += brk_size;
     }
 
     const char* block_trace = getenv("FELIX86_BLOCK_TRACE");

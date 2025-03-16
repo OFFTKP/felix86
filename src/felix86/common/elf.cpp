@@ -9,6 +9,7 @@
 #include <sys/personality.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
+#include <sys/sysinfo.h>
 #include "felix86/common/debug.hpp"
 #include "felix86/common/elf.hpp"
 #include "felix86/common/global.hpp"
@@ -553,18 +554,57 @@ void Elf::Load(const std::filesystem::path& path) {
     if (!is_interpreter) {
         // Don't add to unmap_me, unmapped elsewhere
         program_base = base_ptr;
-        if (!g_brk_base_hint) {
-            g_current_brk = (u64)mmap(base_ptr + PAGE_ALIGN(highest_vaddr), brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        } else {
-            g_current_brk =
-                (u64)mmap((void*)g_brk_base_hint, brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+        u64 max_brk_size = g_brk_max_size;
+        if (max_brk_size == 0) {
+            // Try to get max ram size from sysinfo and use that
+            struct sysinfo info;
+            int res = sysinfo(&info);
+            if (res == 0) {
+                max_brk_size = info.totalram;
+            }
         }
+
+        if (max_brk_size == 0) {
+            // Somehow still 0, set to 1GiB
+            max_brk_size = 1ull * 1024 * 1024 * 1024;
+        }
+
+        VERBOSE("Max BRK size: %lx", max_brk_size);
+        VERBOSE("Initial BRK size: %lx", brk_size);
+
+        // Allocate the max brk size with MAP_NORESERVE, and the actual brk normally, so we can expand as we go and the memory
+        // doesn't get stolen by something else
+        u64 base = g_brk_base_hint ? g_brk_base_hint : (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
+        base &= PAGE_START(base);
+
+        u8* brk_base = nullptr;
+        int attempts = 30;
+        int flags = MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS;
+        while (true) {
+            brk_base = (u8*)mmap((void*)base, max_brk_size, PROT_READ | PROT_WRITE, flags | MAP_FIXED_NOREPLACE, -1, 0);
+            if (brk_base != MAP_FAILED) {
+                break;
+            }
+
+            // Try a different page
+            brk_base += max_brk_size;
+            attempts--;
+            if (attempts == 0) {
+                WARN("Ran out of attempts while trying to allocate BRK");
+                brk_base = (u8*)mmap(nullptr, max_brk_size, PROT_READ | PROT_WRITE, flags, -1, 0);
+                ASSERT_MSG(brk_base != MAP_FAILED, "Could not allocate BRK base, try setting it to a lower amount with FELIX86_BRK_SIZE");
+            }
+        }
+
+        g_current_brk = (u64)mmap(brk_base, brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+
         if ((void*)g_current_brk == MAP_FAILED) {
             ERROR("Failed to allocate memory for brk in file %s", path.c_str());
         }
+
         g_initial_brk = g_current_brk;
         g_current_brk_size = brk_size;
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "brk");
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "emulated-brk");
         VERBOSE("BRK base at %p", (void*)g_current_brk);
 
         g_executable_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
