@@ -178,6 +178,11 @@ int Filesystem::Mkdir(const char* filename, u64 mode) {
     return result;
 }
 
+int Filesystem::FChmodAt(int fd, const char* filename, u64 mode) {
+    auto [new_fd, new_filename] = resolve(fd, filename);
+    return fchmodatInternal(new_fd, new_filename, mode);
+}
+
 int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, size_t size) {
     std::filesystem::path path = resolve(filename);
     return lgetxattrInternal(path.c_str(), name, value, size);
@@ -226,6 +231,10 @@ int Filesystem::lgetxattrInternal(const char* filename, const char* name, void* 
 
 int Filesystem::utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags) {
     return ::syscall(SYS_utimensat, fd, filename, spec, flags);
+}
+
+int Filesystem::fchmodatInternal(int fd, const char* filename, u64 mode) {
+    return ::syscall(SYS_fchmodat, fd, filename, mode);
 }
 
 std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {

@@ -273,7 +273,8 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
             const std::filesystem::path& interpreter = script.GetInterpreter();
             const std::string& args = script.GetArgs();
 
-            ASSERT(g_config.argv[0] == g_config.executable_path);
+            ASSERT_MSG(g_config.argv[0] == g_config.executable_path.string(), "%s != %s", g_config.argv[0].c_str(),
+                       g_config.executable_path.string().c_str());
 
             std::string path = g_config.argv[0];
             ASSERT(path.find(g_rootfs_path.string()) == 0);

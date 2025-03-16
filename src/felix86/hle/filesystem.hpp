@@ -101,6 +101,8 @@ struct Filesystem {
 
     static int UtimensAt(int fd, const char* filename, struct timespec* spec, int flags);
 
+    static int FChmodAt(int fd, const char* filename, u64 mode);
+
     static std::filesystem::path resolve(const char* path);
 
 private:
@@ -123,6 +125,8 @@ private:
     static int lgetxattrInternal(const char* filename, const char* name, void* value, size_t size);
 
     static int utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags);
+
+    static int fchmodatInternal(int fd, const char* filename, u64 mode);
 
     static int removeRootfsPrefix(char* buf, int size);
 

@@ -1019,6 +1019,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("fchmod(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
+    case felix86_x86_64_fchmodat: {
+        result = Filesystem::FChmodAt((int)rdi, (char*)rsi, rdx);
+        STRACE("fchmodat(%d, %s, %lx) = %d", (int)rdi, (char*)rsi, rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_recvmsg: {
         result = HOST_SYSCALL(recvmsg, rdi, (struct msghdr*)rsi, rdx);
         STRACE("recvmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);

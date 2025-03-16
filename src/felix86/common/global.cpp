@@ -200,7 +200,12 @@ void initialize_globals() {
 
     const char* log_file = getenv("FELIX86_LOG_FILE");
     if (log_file) {
-        int fd = open(log_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        int fd;
+        if (g_execve_process) {
+            fd = open(log_file, O_WRONLY, 0644);
+        } else {
+            fd = open(log_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        }
         if (fd == -1) {
             ERROR("Failed to open log file %s: %s", log_file, strerror(errno));
         } else {
