@@ -27,9 +27,22 @@ struct Symlinker {
         return result == 0;
     }
 
+    // Resolve symlinks while placing results in rootfs to perpetually resolve them
     static std::filesystem::path resolve(const std::filesystem::path& path) {
-        char buffer[PATH_MAX];
-        std::filesystem::path ret = realpath(path.c_str(), buffer);
-        return ret;
+        std::filesystem::path current = path;
+        while (std::filesystem::is_symlink(current)) {
+            std::error_code ec;
+            std::filesystem::path resolved = std::filesystem::read_symlink(path, ec);
+            if (ec) {
+                ERROR("Failed to resolve symlink %s: %s", path.c_str(), ec.message().c_str());
+            }
+
+            if (!is_subpath(path, g_rootfs_path)) {
+                current = g_rootfs_path / resolved.relative_path();
+            } else {
+                current = resolved;
+            }
+        }
+        return current;
     }
 };
