@@ -225,7 +225,7 @@ void felix86_syscall(ThreadState* state) {
             u64 size_past_end = new_size - g_current_brk_size;
             int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
             void* new_map = mmap((void*)end_brk, size_past_end, PROT_READ | PROT_WRITE, flags, -1, 0);
-            if ((u64)new_map != g_initial_brk) {
+            if ((u64)new_map != end_brk) {
                 ERROR("Failed to remap brk with new size: %lx", new_size);
             }
 
