@@ -273,6 +273,18 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
             const std::filesystem::path& interpreter = script.GetInterpreter();
             const std::string& args = script.GetArgs();
 
+            ASSERT(g_config.argv[0] == g_config.executable_path);
+
+            std::string path = g_config.argv[0];
+            ASSERT(path.find(g_rootfs_path.string()) == 0);
+
+            // We need to remove the rootfs prefix in the arguments, because the interpreter is going to see it
+            path = path.substr(g_rootfs_path.string().size());
+            ASSERT(!path.empty());
+            ASSERT(path[0] == '/');
+
+            g_config.argv[0] = path;
+
             // Scripts start with a line that goes #! (usually) and that means
             // use the interpreter after #!. This can be bash, zsh, python, whatever.
             // So, set executable path to be the interpreter itself and push it to the front of argv.

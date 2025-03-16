@@ -13,6 +13,7 @@
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/script.hpp"
 #include "felix86/common/symlink.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thunks.hpp"
