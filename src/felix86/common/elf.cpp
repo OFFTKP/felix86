@@ -608,7 +608,8 @@ void Elf::Load(const std::filesystem::path& path) {
 
         g_initial_brk = g_current_brk;
         g_current_brk_size = brk_size;
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "emulated-brk");
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "current-brk");
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, max_brk_size, "max-brk");
         VERBOSE("BRK base at %p", (void*)g_current_brk);
 
         g_executable_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
