@@ -32,7 +32,7 @@ struct Symlinker {
         std::filesystem::path current = path;
         while (std::filesystem::is_symlink(current)) {
             std::error_code ec;
-            std::filesystem::path resolved = std::filesystem::read_symlink(path, ec);
+            std::filesystem::path resolved = std::filesystem::read_symlink(current, ec);
             if (ec) {
                 ERROR("Failed to resolve symlink %s: %s", path.c_str(), ec.message().c_str());
             }
