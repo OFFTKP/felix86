@@ -37,6 +37,8 @@ struct Symlinker {
                 ERROR("Failed to resolve symlink %s: %s", path.c_str(), ec.message().c_str());
             }
 
+            VERBOSE("Resolved %s -> %s", current.c_str(), resolved.c_str());
+
             if (!is_subpath(path, g_rootfs_path)) {
                 current = g_rootfs_path / resolved.relative_path();
             } else {
