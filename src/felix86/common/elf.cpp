@@ -717,7 +717,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 const char* symbol = string_table.data() + index;
                 if (elf_symbols[i]->address() == 0 || elf_symbols[i]->type() != STT_FUNC) {
                     // We don't care about this symbol
-                    VERBOSE("Skipping symbol %s (address: %lx)", symbol, elf_symbols[i]->address());
+                    // VERBOSE("Skipping symbol %s (address: %lx)", symbol, elf_symbols[i]->address());
                     continue;
                 }
 
@@ -861,7 +861,8 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 // VERBOSE("Added new dynamic symbol `%s` at %lx-%lx", new_symbol.name.c_str(), new_symbol.start, new_symbol.start + new_symbol.size);
             }
         } else {
-            VERBOSE("symtab > start_of_data && (u8*)strtab > start_of_data failed: %p > %p && %p > %p", symtab, start_of_data, strtab, start_of_data);
+            // VERBOSE("symtab > start_of_data && (u8*)strtab > start_of_data failed: %p > %p && %p > %p", symtab, start_of_data, strtab,
+            // start_of_data);
         }
     } else {
         VERBOSE("dynamic section not found for file %s", path.c_str());

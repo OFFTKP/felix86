@@ -9,6 +9,8 @@ X("libEGL.so", eglCreateSyncKHR, q_qdq)
 X("libEGL.so", eglDestroySyncKHR, d_qq)
 X("libEGL.so", eglClientWaitSyncKHR, d_qqdq)
 X("libEGL.so", eglGetSyncAttribKHR, d_qqdq)
+X("libEGL.so", eglWaitSyncKHR, d_qqd)
+X("libEGL.so", eglDupNativeFenceFDANDROID, d_qq)
 
 X("libGL.so", glAccum, v_dF)
 X("libGL.so", glAlphaFunc, v_dF)
