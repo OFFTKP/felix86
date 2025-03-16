@@ -306,6 +306,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Resolve symlinks, get absolute path
+    config.executable_path = Symlinker::resolve(config.executable_path);
+
     if (config.executable_path.empty()) {
         ERROR("Executable path not specified");
         return 1;

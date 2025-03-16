@@ -26,4 +26,10 @@ struct Symlinker {
 
         return result == 0;
     }
+
+    static std::filesystem::path resolve(const std::filesystem::path& path) {
+        char buffer[PATH_MAX];
+        std::filesystem::path ret = realpath(path.c_str(), buffer);
+        return ret;
+    }
 };
