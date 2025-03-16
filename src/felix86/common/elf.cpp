@@ -561,7 +561,7 @@ void Elf::Load(const std::filesystem::path& path) {
             struct sysinfo info;
             int res = sysinfo(&info);
             if (res == 0) {
-                max_brk_size = info.totalram;
+                max_brk_size = info.totalram >> 1;
             }
         }
 
