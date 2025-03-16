@@ -194,8 +194,23 @@ std::string get_extensions() {
     return extensions;
 }
 
+extern std::string version_full;
+
 void initialize_globals() {
     std::string environment;
+
+    const char* log_file = getenv("FELIX86_LOG_FILE");
+    if (log_file) {
+        int fd = open(log_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd == -1) {
+            ERROR("Failed to open log file %s: %s", log_file, strerror(errno));
+        } else {
+            g_output_fd = fd;
+            environment += "\nFELIX86_LOG_FILE=" + std::string(log_file);
+        }
+    }
+
+    LOG("%s", version_full.c_str());
 
     // Check for FELIX86_EXTENSIONS environment variable
     const char* all_extensions_env = getenv("FELIX86_ALL_EXTENSIONS");
@@ -424,17 +439,6 @@ void initialize_globals() {
         g_dont_cache = true;
         g_dont_protect_pages = true;
         environment += "\nFELIX86_DONT_CACHE";
-    }
-
-    const char* log_file = getenv("FELIX86_LOG_FILE");
-    if (log_file) {
-        int fd = open(log_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (fd == -1) {
-            ERROR("Failed to open log file %s: %s", log_file, strerror(errno));
-        } else {
-            g_output_fd = fd;
-            environment += "\nFELIX86_LOG_FILE=" + std::string(log_file);
-        }
     }
 
     const char* no_sse2_env = getenv("FELIX86_NO_SSE2");

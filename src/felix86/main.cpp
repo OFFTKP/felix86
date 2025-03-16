@@ -203,7 +203,6 @@ int main(int argc, char* argv[]) {
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
 
-    LOG("%s", version_full.c_str());
     initialize_globals();
     initialize_extensions();
 
