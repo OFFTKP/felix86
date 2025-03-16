@@ -306,8 +306,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Resolve symlinks, get absolute path
-    config.executable_path = Symlinker::resolve(config.executable_path);
+    // Resolve symlinks, get absolute path. If the symlink is resolved, it may not start with
+    // the rootfs prefix, and we need to add it back
+    const std::string rootfs_string = g_rootfs_path.string();
+    std::filesystem::path resolved = Symlinker::resolve(config.executable_path);
+    if (resolved.string().find(rootfs_string) != 0) {
+        resolved = g_rootfs_path / resolved.relative_path();
+    }
+    config.executable_path = resolved;
 
     if (config.executable_path.empty()) {
         ERROR("Executable path not specified");
