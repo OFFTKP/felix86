@@ -555,6 +555,7 @@ void Elf::Load(const std::filesystem::path& path) {
         // Don't add to unmap_me, unmapped elsewhere
         program_base = base_ptr;
         u64 max_brk_size = g_brk_max_size;
+        u64 initial_brk_size = brk_size;
         if (max_brk_size == 0) {
             // Try to get max ram size from sysinfo and use that
             struct sysinfo info;
@@ -564,13 +565,14 @@ void Elf::Load(const std::filesystem::path& path) {
             }
         }
 
-        if (max_brk_size < brk_size) {
-            max_brk_size = brk_size;
-        }
-
         if (max_brk_size == 0) {
             // Somehow still 0, set to 1GiB
             max_brk_size = 1ull * 1024 * 1024 * 1024;
+        }
+
+        // Make our initial brk size always be <= max, if the user specified their own max
+        if (max_brk_size < initial_brk_size) {
+            initial_brk_size = max_brk_size;
         }
 
         VERBOSE("Max BRK size: %lx", max_brk_size);
