@@ -45,6 +45,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
 set(FELIX86_COMMON_SOURCES
+    src/felix86/common/alloc.c
     src/felix86/common/debug.cpp
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp
