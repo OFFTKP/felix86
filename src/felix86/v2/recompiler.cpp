@@ -2628,7 +2628,6 @@ bool Recompiler::tryInlineSyscall() {
         CASE(connect, 3);
         CASE(writev, 3);
         CASE(ppoll, 5);
-        CASE(getcwd, 2);
         CASE(rt_sigpending, 2);
         CASE(tgkill, 3);
         CASE(geteuid, 0);
@@ -2649,7 +2648,6 @@ bool Recompiler::tryInlineSyscall() {
         CASE(accept, 3);
         CASE(io_cancel, 3);
         CASE(io_destroy, 1);
-        CASE(pivot_root, 2);
         CASE(sched_rr_get_interval, 2);
         CASE(pipe2, 2);
         CASE(rt_sigtimedwait, 4);
@@ -2665,22 +2663,18 @@ bool Recompiler::tryInlineSyscall() {
         CASE(semtimedop, 4);
         CASE(recvfrom, 6);
         CASE(setpgid, 2);
-        CASE(inotify_add_watch, 3);
         CASE(clock_nanosleep, 4);
         CASE(mincore, 3);
-        CASE(mount, 5);
         CASE(readv, 3);
         CASE(mlock, 2);
         CASE(pselect6, 6);
         CASE(set_robust_list, 2);
-        CASE(renameat2, 5);
         CASE(listen, 2);
         CASE(mprotect, 3);
         CASE(sched_yield, 0);
         CASE(sched_setattr, 3);
         CASE(read, 3);
         CASE(pwrite64, 4);
-        CASE(memfd_create, 2);
         CASE(madvise, 3);
         CASE(inotify_init1, 1);
         CASE(ptrace, 4);
@@ -2704,11 +2698,9 @@ bool Recompiler::tryInlineSyscall() {
         CASE(sendmsg, 3);
         CASE(kill, 2);
         CASE(dup3, 3);
-        CASE(inotify_rm_watch, 2);
         CASE(accept4, 4);
         CASE(getpid, 0);
         CASE(prlimit64, 4);
-        CASE(rt_sigprocmask, 4);
         CASE(gettimeofday, 2);
 
 #undef CASE
