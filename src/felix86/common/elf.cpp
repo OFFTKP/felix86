@@ -586,8 +586,9 @@ void Elf::Load(const std::filesystem::path& path) {
         u8* brk_base = nullptr;
         int attempts = 30;
         int flags = MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS;
+        int prot = PROT_NONE;
         while (true) {
-            brk_base = (u8*)mmap((void*)base, max_brk_size, PROT_READ | PROT_WRITE, flags | MAP_FIXED_NOREPLACE, -1, 0);
+            brk_base = (u8*)mmap((void*)base, max_brk_size, prot, flags | MAP_FIXED_NOREPLACE, -1, 0);
             if (brk_base != MAP_FAILED) {
                 break;
             }
@@ -597,7 +598,7 @@ void Elf::Load(const std::filesystem::path& path) {
             attempts--;
             if (attempts == 0) {
                 WARN("Ran out of attempts while trying to allocate BRK");
-                brk_base = (u8*)mmap(nullptr, max_brk_size, PROT_READ | PROT_WRITE, flags, -1, 0);
+                brk_base = (u8*)mmap(nullptr, max_brk_size, prot, flags, -1, 0);
                 ASSERT_MSG(brk_base != MAP_FAILED, "Could not allocate BRK base, try setting it to a lower amount with FELIX86_BRK_SIZE");
             }
         }

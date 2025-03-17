@@ -213,30 +213,44 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
 void Emulator::initialize32BitAddressSpace() {
     constexpr u64 GB = 1024 * 1024 * 1024;
-    constexpr u64 size = 2 * GB + 4 * GB + 2 * GB;
 
     // Find a 32-bit address space that is not used by the host
-    // We also allocate a guard on either side of 2GB to catch
+    // We also allocate a guard of 2GB to catch
     // any out-of-bounds accesses
-    u8* cur = (u8*)0x1'0000'0000;
-    int attempts = 0; // don't try forever
-    while (true) {
-        void* addr = mmap(cur, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
-        if (addr != MAP_FAILED) {
-            ASSERT(addr == cur);
-            break;
-        }
+    // constexpr u64 size = 4 * GB + 2 * GB;
+    // u8* cur = (u8*)0x1'0000'0000;
+    // int attempts = 0; // don't try forever
+    // while (true) {
+    //     void* addr = mmap(cur, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE, -1, 0);
+    //     if (addr != MAP_FAILED) {
+    //         ASSERT(addr == cur);
+    //         break;
+    //     }
 
-        if (++attempts >= 100) {
-            ERROR("Failed to find a 32-bit address space after %d", attempts);
-            return;
-        }
+    //     if (++attempts >= 100) {
+    //         ERROR("Failed to find a 32-bit address space after %d", attempts);
+    //         return;
+    //     }
 
-        cur += size;
+    //     cur += size;
+    // }
+
+    // g_address_space_base = (u64)(cur + 2 * GB);
+    // VERBOSE("32-bit address space at %p", (void*)g_address_space_base);
+
+    // Actually, instead of doing that, allocate the actual 32-bit address space. Surely this can't go wrong! :cluegi:
+    u64 min = mmap_min_addr();
+    int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE;
+    void* address_space = mmap((void*)min, 4 * GB - min, PROT_NONE, flags, -1, 0);
+    if (address_space == MAP_FAILED) {
+        ERROR("I failed to allocate the 32-bit address space");
     }
 
-    g_address_space_base = (u64)(cur + 2 * GB);
-    VERBOSE("32-bit address space at %p", (void*)g_address_space_base);
+    // Also allocate a 2GiB guard right after to catch bad addresses (that may need to loop around the address space?)
+    void* guard = mmap((void*)(4 * GB), 2 * GB, PROT_NONE, flags, -1, 0);
+    if (guard == MAP_FAILED) {
+        ERROR("I failed to allocate the 32-bit guard");
+    }
 }
 
 void Emulator::ExitDispatcher(ThreadState* state) {

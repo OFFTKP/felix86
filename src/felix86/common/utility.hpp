@@ -136,3 +136,5 @@ inline bool is_subpath(const std::filesystem::path& path, const std::filesystem:
     const auto mismatch_pair = std::mismatch(path.begin(), path.end(), base.begin(), base.end());
     return mismatch_pair.second == base.end();
 }
+
+u64 mmap_min_addr();

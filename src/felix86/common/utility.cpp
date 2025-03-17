@@ -1072,3 +1072,25 @@ void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 
 
     __builtin_unreachable();
 }
+
+u64 mmap_min_addr() {
+    static u64 addr = -1;
+    if (addr == -1) {
+        FILE* file = fopen("/proc/sys/vm/mmap_min_addr", "r");
+        if (!file) {
+            WARN("Failed to open /proc/sys/vm/mmap_min_addr");
+            addr = 0x10000;
+        } else {
+            u64 mmap_min_addr;
+            if (fscanf(file, "%lu", &mmap_min_addr) != 1) {
+                WARN("Failed to read mmap_min_addr");
+                addr = 0x10000;
+            } else {
+                addr = mmap_min_addr;
+            }
+            fclose(file);
+        }
+    }
+
+    return addr;
+}
