@@ -407,8 +407,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_epoll_wait: {
-        // epoll_pwait with NULL mask is equivalent to epoll_wait
-        result = HOST_SYSCALL(epoll_pwait, rdi, rsi, rdx, r10, NULL);
+        result = epoll_wait((int)rdi, (struct epoll_event*)rsi, (int)rdx, (int)rdx);
         STRACE("epoll_wait(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
