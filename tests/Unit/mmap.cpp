@@ -41,17 +41,17 @@ namespace Catch {
     do { \
         for (size_t i = 0; i < unmap_me.size(); i++) { \
             auto [addr, size] = unmap_me[i]; \
-            munmap((void*)addr, size); \
+            munmap((void*)(u64)addr, size); \
         } \
     } while (0)
 
-void verifyRegions(Mapper& mapper, const std::vector<std::pair<u64, u64>>& expected_regions) {
+void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& expected_regions) {
     auto actual_regions = mapper.getRegions();
     CATCH_REQUIRE(expected_regions == actual_regions);
 }
 
 CATCH_TEST_CASE("Simple1", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -66,7 +66,7 @@ CATCH_TEST_CASE("Simple1", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("Simple2", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -82,7 +82,7 @@ CATCH_TEST_CASE("Simple2", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("Simple3", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -99,7 +99,7 @@ CATCH_TEST_CASE("Simple3", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("FirstPages", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -114,7 +114,7 @@ CATCH_TEST_CASE("FirstPages", "[mmap32]") {
 
 
 CATCH_TEST_CASE("FirstPagesUnmap", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -134,7 +134,7 @@ CATCH_TEST_CASE("FirstPagesUnmap", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("LastPages", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -150,7 +150,7 @@ CATCH_TEST_CASE("LastPages", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("Split2", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -167,7 +167,7 @@ CATCH_TEST_CASE("Split2", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("Split2Pick1", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -186,7 +186,7 @@ CATCH_TEST_CASE("Split2Pick1", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("Overlapping1", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -202,7 +202,7 @@ CATCH_TEST_CASE("Overlapping1", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("Overlapping2", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -219,7 +219,7 @@ CATCH_TEST_CASE("Overlapping2", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("Overlapping2ConsumeLast", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -245,7 +245,7 @@ CATCH_TEST_CASE("Overlapping2ConsumeLast", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("UnmapPerfect", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -266,7 +266,7 @@ CATCH_TEST_CASE("UnmapPerfect", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("UnmapPerfect2", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -291,7 +291,7 @@ CATCH_TEST_CASE("UnmapPerfect2", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("UnmapMiddle", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -316,7 +316,7 @@ CATCH_TEST_CASE("UnmapMiddle", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("UnmapGreedyMin", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -339,7 +339,7 @@ CATCH_TEST_CASE("UnmapGreedyMin", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("UnmapGreedyMax", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 
@@ -362,7 +362,7 @@ CATCH_TEST_CASE("UnmapGreedyMax", "[mmap32]") {
 }
 
 CATCH_TEST_CASE("MapRandom", "[mmap32]") {
-    std::vector<std::pair<u64, u64>> unmap_me;
+    std::vector<std::pair<u32, u32>> unmap_me;
     Mapper mapper;
     g_mode32 = true;
 

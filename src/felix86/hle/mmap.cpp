@@ -138,7 +138,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
                 continue;
             } else if (size < current_size) {
                 // We can allocate here
-                void* address = (void*)current->start;
+                void* address = (void*)(u64)current->start;
                 current->start = current->start + size;
 
                 void* result = mmap(address, size, prot, flags | MAP_FIXED_NOREPLACE, fd, offset);
@@ -272,8 +272,8 @@ void Mapper::deleteBlock(Node* current, Node* previous, Node* next) {
     delete current;
 }
 
-std::vector<std::pair<u64, u64>> Mapper::getRegions() {
-    std::vector<std::pair<u64, u64>> result;
+std::vector<std::pair<u32, u32>> Mapper::getRegions() {
+    std::vector<std::pair<u32, u32>> result;
 
     Node* current = freelist;
     while (current) {

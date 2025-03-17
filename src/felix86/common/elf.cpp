@@ -449,19 +449,9 @@ void Elf::Load(const std::filesystem::path& path) {
     }
 
     if (ehdr.type() == ET_DYN) {
-        // TODO: fix this hack
-        if (mode32 && !is_interpreter) {
-            WARN("Setting base hint to 0x100000");
-            base_hint = 0x100000 + g_address_space_base;
-        } else if (mode32 && is_interpreter) {
-            WARN("Setting base hint to 0x2000000");
-            base_hint = 0x2000000 + g_address_space_base;
-        }
-
-        // In 32-bit mode the 4GiB address space was already allocated at these addresses so we use MAP_FIXED instead of NOREPLACE
-        auto fixed_flag = mode32 ? MAP_FIXED : MAP_FIXED_NOREPLACE;
+        // In 32-bit mode the Mapper will properly choose a 32-bit address
         if (base_hint) {
-            base_ptr = (u8*)g_mapper->map((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | fixed_flag, -1, 0);
+            base_ptr = (u8*)g_mapper->map((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
         } else {
             base_ptr = (u8*)g_mapper->map(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         }

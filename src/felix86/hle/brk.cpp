@@ -37,8 +37,18 @@ void BRK::allocate32() {
 
     ASSERT_MSG(base <= UINT32_MAX, "BRK hint is outside 32-bit address space for 32-bit application");
 
-    // Some way to allocate and check we aren't ruining pages
-    UNREACHABLE();
+    void* max_brk = g_mapper->map((void*)base, max_brk_size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+    ASSERT_MSG(max_brk != MAP_FAILED, "Failed when trying to allocate the max BRK at %p", (void*)base);
+
+    g_current_brk = (u64)g_mapper->map((void*)base, initial_brk_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+    ASSERT_MSG((void*)g_current_brk != MAP_FAILED, "Failed when trying to allocate the current BRK at %p", (void*)base);
+
+    g_initial_brk = g_current_brk;
+    g_current_brk_size = initial_brk_size;
+    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, max_brk_size, "max-brk");
+    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, initial_brk_size, "current-brk");
+    VERBOSE("BRK base at %p", (void*)g_current_brk);
+    g_max_brk_size = max_brk_size;
 }
 
 void BRK::allocate64() {
@@ -93,10 +103,7 @@ void BRK::allocate64() {
     }
 
     g_current_brk = (u64)g_mapper->map(brk_base, initial_brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-
-    if ((void*)g_current_brk == MAP_FAILED) {
-        ERROR("Failed to allocate memory for initial brk");
-    }
+    ASSERT_MSG((void*)g_current_brk != MAP_FAILED, "Failed when trying to allocate the current BRK at %p", (void*)brk_base);
 
     g_initial_brk = g_current_brk;
     g_current_brk_size = initial_brk_size;

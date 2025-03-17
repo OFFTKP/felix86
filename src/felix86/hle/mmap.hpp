@@ -22,8 +22,8 @@ private:
     // so this overhead isn't that bad
     struct Node {
         Node* next = nullptr;
-        u64 start = 0;
-        u64 end = 0;
+        u32 start = 0;
+        u32 end = 0;
     };
 
     Node* freelist = nullptr;
@@ -33,7 +33,7 @@ private:
 
     void deleteBlock(Node* current, Node* previous, Node* next);
 
-    std::vector<std::pair<u64, u64>> getRegions();
+    std::vector<std::pair<u32, u32>> getRegions();
 
-    friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u64, u64>>& regions);
+    friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
 };
