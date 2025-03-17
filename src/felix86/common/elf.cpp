@@ -14,6 +14,7 @@
 #include "felix86/common/elf.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/hle/mmap.hpp"
 
 // Not a full ELF implementation, but one that suits our needs as a loader of
 // both the executable and the dynamic linker, and one that only supports x86/x86_64
@@ -460,9 +461,9 @@ void Elf::Load(const std::filesystem::path& path) {
         // In 32-bit mode the 4GiB address space was already allocated at these addresses so we use MAP_FIXED instead of NOREPLACE
         auto fixed_flag = mode32 ? MAP_FIXED : MAP_FIXED_NOREPLACE;
         if (base_hint) {
-            base_ptr = (u8*)mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | fixed_flag, -1, 0);
+            base_ptr = (u8*)felix86_mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | fixed_flag, -1, 0);
         } else {
-            base_ptr = (u8*)mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            base_ptr = (u8*)felix86_mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         }
 
         unmap_me.push_back({base_ptr, highest_vaddr});
@@ -504,9 +505,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             if (segment_size) {
-                void* addr = mmap((void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
-                VERBOSE("Running mmap(%p, %lx, 0, MAP_PRIVATE | MAP_FIXED, %d, %lx)", (void*)segment_base, segment_size, fd, offset);
-
+                void* addr = felix86_mmap((void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
                 if (addr == MAP_FAILED) {
                     ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
                 } else if (addr != (void*)segment_base) {
@@ -533,7 +532,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
                 if (bss_page_start != bss_page_end) {
                     size_t excess_size = bss_page_end - bss_page_start;
-                    void* bss_excess = mmap((void*)bss_page_start, excess_size, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+                    void* bss_excess = felix86_mmap((void*)bss_page_start, excess_size, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     if (bss_excess == MAP_FAILED) {
                         ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
                     }
@@ -554,67 +553,7 @@ void Elf::Load(const std::filesystem::path& path) {
     if (!is_interpreter) {
         // Don't add to unmap_me, unmapped elsewhere
         program_base = base_ptr;
-        u64 max_brk_size = g_brk_max_size;
-        u64 initial_brk_size = brk_size;
-        if (max_brk_size == 0) {
-            // Try to get max ram size from sysinfo and use that
-            struct sysinfo info;
-            int res = sysinfo(&info);
-            if (res == 0) {
-                max_brk_size = info.totalram >> 1;
-            }
-        }
-
-        if (max_brk_size == 0) {
-            // Somehow still 0, set to 1GiB
-            max_brk_size = 1ull * 1024 * 1024 * 1024;
-        }
-
-        // Make our initial brk size always be <= max, if the user specified their own max
-        if (max_brk_size < initial_brk_size) {
-            initial_brk_size = max_brk_size;
-        }
-
-        VERBOSE("Max BRK size: %lx", max_brk_size);
-        VERBOSE("Initial BRK size: %lx", brk_size);
-
-        // Allocate the max brk size with MAP_NORESERVE, and the actual brk normally, so we can expand as we go and the memory
-        // doesn't get stolen by something else
-        u64 base = g_brk_base_hint ? g_brk_base_hint : (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
-        base = PAGE_START(base);
-
-        u8* brk_base = nullptr;
-        int attempts = 30;
-        int flags = MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS;
-        int prot = PROT_NONE;
-        while (true) {
-            brk_base = (u8*)mmap((void*)base, max_brk_size, prot, flags | MAP_FIXED_NOREPLACE, -1, 0);
-            if (brk_base != MAP_FAILED) {
-                break;
-            }
-
-            // Try a different page
-            brk_base += max_brk_size;
-            attempts--;
-            if (attempts == 0) {
-                WARN("Ran out of attempts while trying to allocate BRK");
-                brk_base = (u8*)mmap(nullptr, max_brk_size, prot, flags, -1, 0);
-                ASSERT_MSG(brk_base != MAP_FAILED, "Could not allocate BRK base, try setting it to a lower amount with FELIX86_BRK_SIZE");
-            }
-        }
-
-        g_current_brk = (u64)mmap(brk_base, brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-
-        if ((void*)g_current_brk == MAP_FAILED) {
-            ERROR("Failed to allocate memory for brk in file %s", path.c_str());
-        }
-
-        g_initial_brk = g_current_brk;
-        g_current_brk_size = brk_size;
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, brk_size, "current-brk");
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, max_brk_size, "max-brk");
-        VERBOSE("BRK base at %p", (void*)g_current_brk);
-
+        g_program_end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
         g_executable_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
         g_executable_end = HostAddress{PAGE_ALIGN((u64)(base_ptr + highest_vaddr))};
         MemoryMetadata::AddRegion("Executable", g_executable_start.raw(), g_executable_end.raw());

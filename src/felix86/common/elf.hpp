@@ -5,9 +5,6 @@
 #include <vector>
 #include "felix86/common/address.hpp"
 #include "felix86/common/global.hpp"
-#include "felix86/common/utility.hpp"
-
-constexpr u64 brk_size = 128 * 1024 * 1024;
 
 struct Elf {
     enum class PeekResult {

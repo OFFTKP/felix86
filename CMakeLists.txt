@@ -61,9 +61,11 @@ set(FELIX86_COMMON_SOURCES
 )
 
 set(FELIX86_HLE_SOURCES
+    src/felix86/hle/brk.cpp
     src/felix86/hle/cpuid.cpp
     src/felix86/hle/filesystem.cpp
     src/felix86/hle/libgl_guest_ptrs.cpp
+    src/felix86/hle/mmap.cpp
     src/felix86/hle/signals.cpp
     src/felix86/hle/syscall.cpp
     src/felix86/hle/thread.cpp

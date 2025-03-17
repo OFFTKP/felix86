@@ -57,6 +57,7 @@ std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{}; // TODO: HostAddress
 pthread_key_t g_thread_state_key = -1;
 ProcessGlobals g_process_globals{};
+u64 g_program_end;
 HostAddress g_guest_auxv{};
 size_t g_guest_auxv_size = 0;
 bool g_execve_process = false;
@@ -124,9 +125,11 @@ ProcessGlobals::ProcessGlobals() {
 }
 
 void ProcessGlobals::initialize() {
+    // New address space (clone used without CLONE_VM)
     // Re-initialize these
     states_lock = ProcessLock(*memory);
     symbols_lock = ProcessLock(*memory);
+    // mmap_lock = ProcessLock(*memory);
 
     // Reset the states stored here
     states = {};
