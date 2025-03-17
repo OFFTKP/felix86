@@ -437,6 +437,11 @@ void felix86_syscall(ThreadState* state) {
         STRACE("mount(%p, %p, %p, %lx, %p) = %d", (void*)rdi, (void*)rsi, (void*)rdx, r10, (void*)r8, (int)result);
         break;
     }
+    case felix86_x86_64_accept: {
+        result = HOST_SYSCALL(accept, rdi, rsi, rdx);
+        STRACE("accept(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
+        break;
+    }
     case felix86_x86_64_socketpair: {
         result = HOST_SYSCALL(socketpair, rdi, rsi, rdx, r10);
         STRACE("socketpair(%d, %d, %d, %p) = %d", (int)rdi, (int)rsi, (int)rdx, (void*)r10, (int)result);
