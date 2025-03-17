@@ -1154,6 +1154,7 @@ void felix86_syscall(ThreadState* state) {
         switch (option) {
         case PR_GET_AUXV: {
             if (r10 || r8) {
+                WARN("PR_GET_AUXV with r10 or r8");
                 result = -EINVAL;
             } else {
                 void* addr = (void*)rsi;
@@ -1175,7 +1176,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         }
-        STRACE("prctl(%d, %016lx, %016lx, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, r10, r8, (u64)result);
+        STRACE("prctl(%d, %016lx, %016lx, %016lx, %016lx) = %d", (int)rdi, rsi, rdx, r10, r8, (int)result);
         break;
     }
     case felix86_x86_64_futex: {
