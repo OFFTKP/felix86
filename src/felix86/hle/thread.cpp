@@ -47,7 +47,7 @@ void* pthread_handler(void* args) {
         state->signal_table = clone_args.parent_state->signal_table;
     } else {
         // otherwise it gets a copy
-        state->signal_table = SignalHandlerTable::Create(*g_process_globals.memory, clone_args.parent_state->signal_table);
+        state->signal_table = SignalHandlerTable::Create(clone_args.parent_state->signal_table);
     }
 
     state->tid = gettid();

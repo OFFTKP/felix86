@@ -16,7 +16,7 @@ void BRK::allocate() {
 }
 
 void BRK::allocate32() {
-    u64 max_brk_size = g_brk_max_size;
+    u64 max_brk_size = g_max_brk_size;
     u64 initial_brk_size = BRK::size32;
     if (max_brk_size == 0) {
         max_brk_size = 256 * 1024 * 1024;
@@ -35,12 +35,14 @@ void BRK::allocate32() {
     u64 base = g_brk_base_hint ? g_brk_base_hint : g_program_end;
     base &= ~0xFFF;
 
+    ASSERT_MSG(base <= UINT32_MAX, "BRK hint is outside 32-bit address space for 32-bit application");
+
     // Some way to allocate and check we aren't ruining pages
     UNREACHABLE();
 }
 
 void BRK::allocate64() {
-    u64 max_brk_size = g_brk_max_size;
+    u64 max_brk_size = g_max_brk_size;
     u64 initial_brk_size = BRK::size64;
     if (max_brk_size == 0) {
         // Try to get max ram size from sysinfo and use that
@@ -74,7 +76,7 @@ void BRK::allocate64() {
     int flags = MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS;
     int prot = PROT_NONE;
     while (true) {
-        brk_base = (u8*)felix86_mmap((void*)base, max_brk_size, prot, flags | MAP_FIXED_NOREPLACE, -1, 0);
+        brk_base = (u8*)g_mapper->map((void*)base, max_brk_size, prot, flags | MAP_FIXED_NOREPLACE, -1, 0);
         if (brk_base != MAP_FAILED) {
             break;
         }
@@ -84,13 +86,13 @@ void BRK::allocate64() {
         attempts--;
         if (attempts == 0) {
             WARN("Ran out of attempts while trying to allocate BRK");
-            brk_base = (u8*)felix86_mmap(nullptr, max_brk_size, prot, flags, -1, 0);
+            brk_base = (u8*)g_mapper->map(nullptr, max_brk_size, prot, flags, -1, 0);
             ASSERT_MSG(brk_base != MAP_FAILED, "Could not allocate BRK base, try setting it to a lower amount with FELIX86_BRK_SIZE");
             break;
         }
     }
 
-    g_current_brk = (u64)felix86_mmap(brk_base, initial_brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    g_current_brk = (u64)g_mapper->map(brk_base, initial_brk_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 
     if ((void*)g_current_brk == MAP_FAILED) {
         ERROR("Failed to allocate memory for initial brk");
@@ -101,4 +103,5 @@ void BRK::allocate64() {
     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, initial_brk_size, "current-brk");
     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, max_brk_size, "max-brk");
     VERBOSE("BRK base at %p", (void*)g_current_brk);
+    g_max_brk_size = max_brk_size;
 }

@@ -33,9 +33,6 @@ struct Emulator {
 private:
     [[nodiscard]] static std::pair<void*, size_t> setupMainStack(ThreadState* state);
 
-    static void initialize32BitAddressSpace();
-    static void uninitialize32BitAddressSpace();
-
     Filesystem fs;
     void* stack = nullptr;
     size_t stack_size = 0;

@@ -219,7 +219,7 @@ void felix86_syscall(ThreadState* state) {
             u64 end_brk = g_initial_brk + g_current_brk_size;
             ASSERT(!(end_brk & 0xFFF)); // assert page aligned
             u64 new_size = (g_current_brk - g_initial_brk) * 2;
-            if (new_size > g_brk_max_size) {
+            if (new_size > g_max_brk_size) {
                 WARN("BRK is exceding maximum size we have allocated, good luck!");
             }
 
@@ -788,54 +788,30 @@ void felix86_syscall(ThreadState* state) {
 #define MAP_32BIT 0x40
 #endif
         u64 flags = r10;
-        if ((flags & MAP_32BIT) && !(flags & MAP_FIXED)) {
+        bool is_fixed = (flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE);
+        if ((flags & MAP_32BIT) || (is_fixed && rdi < Mapper::addressSpaceEnd32)) {
             // This flag is x86 only but we need to emulate it
             // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
             // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
-            if (rdi == 0) {
-                // TODO: better less hacky support
-                // We only wanna act in the case there's no hint, otherwise we don't care?
-                r10 &= ~MAP_32BIT;
-                u64 new_flags = r10 | MAP_FIXED_NOREPLACE;
-                u64 aligned_size = (rsi + 0x1000) & ~0xFFF;
-                // MAP_32BIT allocates in the first 2 GiB of memory
-                u64 bottom = 0x4000'0000 - aligned_size;
-                int attempts = (0x4000'0000 / aligned_size) - 1;
-                bool ok = false;
-                while (true) {
-                    LOG("Attemping at: %lx with size %lx", bottom, rsi);
-                    result = HOST_SYSCALL(mmap, bottom, aligned_size, rdx, new_flags, r8, r9);
-
-                    if ((i64)result > 0) {
-                        ok = true;
-                        LOG("Returning mapped region with MAP_32BIT: %lx", (u64)result);
-                        break;
-                    }
-
-                    bottom -= aligned_size;
-
-                    if (attempts-- == 0) {
-                        WARN("Ran out of attempts while allocating with MAP32_BIT, we might crash");
-                        break;
-                    }
-                }
-
-                if (ok) {
-                    break;
-                }
-            } else {
-                WARN("MAP32_BIT with hint: %lx?", rdi);
-                flags |= MAP_FIXED_NOREPLACE; // <= at least fix it so it obeys the hint
-            }
+            // We need to also track fixed mappings in the 32-bit address space
+            result = (ssize_t)g_mapper->map32((void*)rdi, rsi, rdx, (int)r10, (int)r8, r9);
+            STRACE("mmap32(%p, %016lx, %d, %x, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
         } else {
-            result = HOST_SYSCALL(mmap, rdi, rsi, rdx, flags, (int)r8, r9);
-            STRACE("mmap(%p, %016lx, %d, %x, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)flags, (int)r8, (int)r9, (u64)result);
+            // No need to use mapper
+            result = HOST_SYSCALL(mmap, rdi, rsi, rdx, (int)r10, (int)r8, r9);
+            STRACE("mmap(%p, %016lx, %d, %x, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
         }
         break;
     }
     case felix86_x86_64_munmap: {
-        result = HOST_SYSCALL(munmap, rdi, rsi);
-        STRACE("munmap(%p, %016lx) = %016lx", (void*)rdi, rsi, (u64)result);
+        if (rdi < Mapper::addressSpaceEnd32) {
+            // Track unmaps in the 32-bit address space for MAP_32BIT
+            result = g_mapper->unmap32((void*)rdi, rsi);
+            STRACE("munmap32(%p, %016lx) = %016lx", (void*)rdi, rsi, (u64)result);
+        } else {
+            result = HOST_SYSCALL(munmap, rdi, rsi);
+            STRACE("munmap(%p, %016lx) = %016lx", (void*)rdi, rsi, (u64)result);
+        }
         break;
     }
     case felix86_x86_64_setitimer: {

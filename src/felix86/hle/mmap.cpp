@@ -3,15 +3,283 @@
 #include "felix86/common/log.hpp"
 #include "felix86/hle/mmap.hpp"
 
-void* felix86_mmap(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
-    if (g_mode32) {
-        // We need these allocations to happen in the 32-bit address space
-        // auto lock = g_process_globals.mmap_lock.lock();
-        UNREACHABLE();
-        return nullptr;
+#define PAGE_SIZE 4096
+
+void Mapper::initialize() {
+    std::call_once(initialized, [&]() {
+        mode32 = g_mode32;
+        freelist = new Node;
+        freelist->start = mmap_min_addr();
+        freelist->end = addressSpaceEnd32;
+        freelist->next = nullptr;
+    });
+}
+
+void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
+    initialize();
+    auto guard = lock.lock();
+
+    if ((flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE)) {
+        // Fixed mapping, make sure it's inside 32-bit address space
+        ASSERT_MSG((u64)addr < addressSpaceEnd32, "felix86_mmap tried to FIXED allocate outside of 32-bit address space");
+
+        // MAP_FIXED says allocate it at that address, and we don't care if it overlaps with other stuff
+        // MAP_FIXED_NOREPLACE will fail if other stuff is at that address
+        // If the mapping succeeds, we need to update our freelist accordingly
+        void* result = mmap(addr, size, prot, flags, fd, offset);
+        if (result == MAP_FAILED) {
+            // For some reason the kernel rejected our mapping
+            // Just return the result
+            i64 error = -errno;
+            if (!(flags & MAP_FIXED_NOREPLACE)) {
+                WARN("MAP_FIXED 32-bit mapping rejected by kernel: %ld", error);
+            } else {
+                // Don't warn here, programs can use MAP_FIXED_NOREPLACE to probe memory regions
+            }
+            return (void*)error;
+        }
+
+        if (size & 0xFFF) {
+            size = (size + PAGE_SIZE) & ~0xFFF;
+        }
+
+        u64 mmap_start = (u64)addr;
+        u64 mmap_end = mmap_start + size;
+        ASSERT(mmap_start <= addressSpaceEnd32 - 0x1000);
+        ASSERT(mmap_end <= addressSpaceEnd32 + 1);
+        Node* current = freelist;
+        ASSERT(current);
+        Node* previous = nullptr;
+
+        while (current) {
+            if (mmap_start == current->start && mmap_end - 1 == current->end) {
+                // The mmap is exactly this block, delete it and break
+                deleteBlock(current, previous, current->next);
+                break;
+            }
+
+            if (mmap_start >= current->start && mmap_start <= current->end) {
+                // The mmap definitely starts in this block, the problem is where does it end
+                if (mmap_end - 1 <= current->end) {
+                    // Ok the mmap is entirely contained in this singular block
+                    // This means that a new block needs to be inserted to split the current block
+                    u64 new_block_start = mmap_end;
+                    u64 new_block_end = current->end;
+
+                    // End the current block where the mmap starts
+                    current->end = mmap_start - 1;
+
+                    if (new_block_start != new_block_end + 1) {
+                        Node* new_node = new Node;
+                        new_node->start = new_block_start;
+                        new_node->end = new_block_end;
+                        new_node->next = current->next;
+                        current->next = new_node;
+                    }
+
+                    if (current->start == current->end + 1) {
+                        // We consumed the entire block
+                        deleteBlock(current, previous, current->next);
+                    }
+                    break;
+                } else {
+                    // Allocation starts here but spans multiple blocks
+                    // End the current block where the mmap starts
+                    current->end = mmap_start - 1;
+
+                    // Find the block that this allocation ends in
+                    previous = current;
+                    current = current->next;
+                    while (current) {
+                        if (mmap_end >= current->start && mmap_end - 1 <= current->end) {
+                            // mmap ends in this block, we are finished here
+                            current->start = mmap_end;
+                            if (current->start == current->end + 1) {
+                                // We consumed the entire block
+                                deleteBlock(current, previous, current->next);
+                            }
+                            break;
+                        } else {
+                            ASSERT(mmap_end >= current->start);
+                            // mmap ends past this block, delete this block
+                            Node* next = current->next;
+                            deleteBlock(current, previous, next);
+                            current = next;
+                        }
+                    }
+                    break;
+                }
+                UNREACHABLE();
+            } else {
+                // Doesn't start in this block, continue...
+                previous = current;
+                current = current->next;
+                continue;
+            }
+            UNREACHABLE();
+        }
+        return result;
     } else {
+        // We need to use our freelist to find a free mapping that has enough size
+        // Also we completely ignore the addr hint, since there's no MAP_FIXED this should be fine...
+        // Align up the size...
+        if (size & 0xFFF)
+            size = (size + PAGE_SIZE) & ~0xFFF;
+
+        // Iterate the free list...
+        Node* previous = nullptr;
+        Node* current = freelist;
+        while (current) {
+            u64 current_size = current->end - current->start;
+            if (size > current_size) {
+                // Not enough space in this free space
+                previous = current;
+                current = current->next;
+                continue;
+            } else if (size < current_size) {
+                // We can allocate here
+                void* address = (void*)current->start;
+                current->start = current->start + size;
+
+                void* result = mmap(address, size, prot, flags | MAP_FIXED_NOREPLACE, fd, offset);
+                if (result == MAP_FAILED) {
+                    i64 error = -errno;
+                    WARN("Even though our freelist says we have memory at %lx-%lx, mmap failed with: %ld", (u64)address, (u64)address + size, error);
+                    return (void*)error;
+                }
+                ASSERT(result == address); // is it even possible for this to fail?
+                return result;
+            } else if (size == current_size) {
+                // Just enough -- link previous with next and delete the current listing
+                deleteBlock(current, previous, current->next);
+                break;
+            }
+        }
+
+        WARN("Freelist allocator ran out of free spaces when trying to allocate %lx bytes", size);
+        return (void*)-ENOMEM;
+    }
+}
+
+int Mapper::unmap32(void* addr, u64 size) {
+    initialize();
+    ASSERT((u64)addr < addressSpaceEnd32);
+    int result = munmap(addr, size);
+    if (result != -1) {
+        u64 unmap_start = (u64)addr;
+        if (size & 0xFFF) {
+            size = ((size + PAGE_SIZE) & ~0xFFF);
+        }
+        u64 unmap_end = unmap_start + size;
+        ASSERT(unmap_start <= addressSpaceEnd32 - 0x1000);
+        ASSERT(unmap_end <= addressSpaceEnd32 + 1);
+        Node* current = freelist;
+        Node* min = nullptr;
+        Node* max = nullptr;
+        Node* nearest = nullptr;
+        while (current) {
+            if (unmap_start >= current->start && unmap_end <= current->end + 1) {
+                // Area that was munmap'ed is not mapped to anything
+                // as it is entirely contained in a block, return early
+                return result;
+            }
+
+            if (unmap_start >= current->start && unmap_start <= current->end + 1) {
+                min = current;
+            }
+
+            if (unmap_end >= current->start && unmap_end <= current->end + 1) {
+                max = current;
+            }
+
+            if (current->next) {
+                if (unmap_start > current->end && unmap_end < current->next->start) {
+                    nearest = current;
+                }
+            }
+
+            current = current->next;
+        }
+
+        if (min && !max) {
+            min->end = unmap_end - 1;
+        } else if (!min && max) {
+            max->start = unmap_start;
+        } else if (min && max) {
+            // Link min and max, delete everything in between
+            current = min->next;
+            Node* max_next = max->next;
+            while (current != max_next) {
+                Node* next = current->next;
+                min->end = current->end;
+                deleteBlock(current, min, next);
+                current = next;
+            }
+        } else {
+            // No min or max, means unmap in the middle of allocated region
+            // Create a new free block
+            Node* new_node = new Node;
+            new_node->start = unmap_start;
+            new_node->end = unmap_end - 1;
+
+            if (nearest) {
+                new_node->next = nearest->next;
+                nearest->next = new_node;
+            } else {
+                // It is the new first block
+                new_node->next = freelist;
+                freelist = new_node;
+            }
+        }
+        return result;
+    } else {
+        return -errno;
+    }
+}
+
+void* Mapper::map(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
+    initialize();
+    if (mode32) {
+        ASSERT(g_mode32);
+        return map32(addr, size, prot, flags, fd, offset);
+    } else {
+        ASSERT(!g_mode32);
         // Nothing to do here
         // In the future if we want to track mmaps we can add something
         return mmap(addr, size, prot, flags, fd, offset);
     }
+}
+
+int Mapper::unmap(void* addr, u64 size) {
+    initialize();
+    if (mode32) {
+        ASSERT(g_mode32);
+        return unmap32(addr, size);
+    } else {
+        ASSERT(!g_mode32);
+        return munmap(addr, size);
+    }
+}
+
+void Mapper::deleteBlock(Node* current, Node* previous, Node* next) {
+    if (previous) {
+        previous->next = next;
+    } else {
+        ASSERT(current == freelist);
+        freelist = next;
+    }
+
+    delete current;
+}
+
+std::vector<std::pair<u64, u64>> Mapper::getRegions() {
+    std::vector<std::pair<u64, u64>> result;
+
+    Node* current = freelist;
+    while (current) {
+        result.push_back({current->start, current->end});
+        current = current->next;
+    }
+
+    return result;
 }

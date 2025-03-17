@@ -2681,7 +2681,6 @@ bool Recompiler::tryInlineSyscall() {
         CASE(read, 3);
         CASE(pwrite64, 4);
         CASE(memfd_create, 2);
-        CASE(munmap, 2);
         CASE(madvise, 3);
         CASE(inotify_init1, 1);
         CASE(ptrace, 4);

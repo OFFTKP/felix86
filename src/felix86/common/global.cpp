@@ -50,13 +50,14 @@ std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
 u64 g_current_brk_size = 0;
-u64 g_brk_max_size = 0;
+u64 g_max_brk_size = 0;
 u64 g_dispatcher_exit_count = 0;
 u64 g_address_space_base = 0;
 std::list<ThreadState*> g_thread_states{};
 std::unordered_map<u64, std::vector<u64>> g_breakpoints{}; // TODO: HostAddress
 pthread_key_t g_thread_state_key = -1;
 ProcessGlobals g_process_globals{};
+std::unique_ptr<Mapper> g_mapper{};
 u64 g_program_end;
 HostAddress g_guest_auxv{};
 size_t g_guest_auxv_size = 0;
@@ -120,21 +121,19 @@ bool is_running_under_perf() {
     return false;
 }
 
-ProcessGlobals::ProcessGlobals() {
-    memory = std::make_unique<SharedMemory>(shared_memory_size);
-}
-
 void ProcessGlobals::initialize() {
     // New address space (clone used without CLONE_VM)
     // Re-initialize these
-    states_lock = ProcessLock(*memory);
-    symbols_lock = ProcessLock(*memory);
-    // mmap_lock = ProcessLock(*memory);
+    states_lock = Semaphore();
+    symbols_lock = Semaphore();
 
     // Reset the states stored here
     states = {};
 
-    // Don't reset the mapped regions, we can reuse the ones from parent process
+    // Also reset our allocator
+    g_mapper = std::make_unique<Mapper>();
+
+    // Don't reset the /proc/self/maps mapped regions, we can reuse the ones from parent process
 }
 
 #define X(ext) bool Extensions::ext = false;
@@ -389,7 +388,7 @@ void initialize_globals() {
 
     const char* brk_size = getenv("FELIX86_BRK_SIZE");
     if (brk_size) {
-        g_brk_max_size = std::atoll(brk_size); // if can't be parsed returns 0, that's fine
+        g_max_brk_size = std::atoll(brk_size); // if can't be parsed returns 0, that's fine
         environment += "\nFELIX86_BRK_SIZE=";
         environment += brk_size;
     }

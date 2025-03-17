@@ -461,9 +461,9 @@ void Elf::Load(const std::filesystem::path& path) {
         // In 32-bit mode the 4GiB address space was already allocated at these addresses so we use MAP_FIXED instead of NOREPLACE
         auto fixed_flag = mode32 ? MAP_FIXED : MAP_FIXED_NOREPLACE;
         if (base_hint) {
-            base_ptr = (u8*)felix86_mmap((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | fixed_flag, -1, 0);
+            base_ptr = (u8*)g_mapper->map((u8*)base_hint, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS | fixed_flag, -1, 0);
         } else {
-            base_ptr = (u8*)felix86_mmap(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            base_ptr = (u8*)g_mapper->map(nullptr, highest_vaddr, 0, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         }
 
         unmap_me.push_back({base_ptr, highest_vaddr});
@@ -505,7 +505,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             if (segment_size) {
-                void* addr = felix86_mmap((void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
+                void* addr = g_mapper->map((void*)segment_base, segment_size, prot, MAP_PRIVATE | MAP_FIXED, fd, offset);
                 if (addr == MAP_FAILED) {
                     ERROR("Failed to allocate memory for segment in file %s. Error: %s", path.c_str(), strerror(errno));
                 } else if (addr != (void*)segment_base) {
@@ -532,7 +532,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
                 if (bss_page_start != bss_page_end) {
                     size_t excess_size = bss_page_end - bss_page_start;
-                    void* bss_excess = felix86_mmap((void*)bss_page_start, excess_size, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+                    void* bss_excess = g_mapper->map((void*)bss_page_start, excess_size, prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
                     if (bss_excess == MAP_FAILED) {
                         ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
                     }

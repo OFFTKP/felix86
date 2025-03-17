@@ -23,9 +23,8 @@ struct SignalHandlerTable {
     SignalHandlerTable& operator=(SignalHandlerTable&& other) = delete;
 
     // Allocate the signal handler table in shared memory and return a pointer
-    static SignalHandlerTable* Create(SharedMemory& memory, SignalHandlerTable* copy) {
-        SignalHandlerTable* table = (SignalHandlerTable*)memory.allocate(sizeof(SignalHandlerTable));
-        new (table) SignalHandlerTable();
+    static SignalHandlerTable* Create(SignalHandlerTable* copy) {
+        SignalHandlerTable* table = new SignalHandlerTable;
         if (copy) {
             table->copy(copy);
         }

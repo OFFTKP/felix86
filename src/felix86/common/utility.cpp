@@ -1074,8 +1074,8 @@ void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 
 }
 
 u64 mmap_min_addr() {
-    static u64 addr = -1;
-    if (addr == -1) {
+    static u64 addr = -1ull;
+    if (addr == -1ull) {
         FILE* file = fopen("/proc/sys/vm/mmap_min_addr", "r");
         if (!file) {
             WARN("Failed to open /proc/sys/vm/mmap_min_addr");

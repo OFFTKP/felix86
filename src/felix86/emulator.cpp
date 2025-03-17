@@ -213,36 +213,8 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     return (void*)next_block.raw();
 }
 
-void Emulator::initialize32BitAddressSpace() {
-    constexpr u64 GB = 1024 * 1024 * 1024;
-    u64 min = mmap_min_addr();
-    u64 size = 4 * GB - min;
-    int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE | MAP_FIXED_NOREPLACE;
-    void* address_space = mmap((void*)min, size, PROT_NONE, flags, -1, 0);
-    if (address_space == MAP_FAILED) {
-        ERROR("I failed to allocate the 32-bit address space");
-    }
-
-    // Also allocate a 2GiB guard right after to catch bad addresses (that may need to loop around the address space?)
-    void* guard = mmap((void*)(4 * GB), 2 * GB, PROT_NONE, flags, -1, 0);
-    if (guard == MAP_FAILED) {
-        ERROR("I failed to allocate the 32-bit guard");
-    }
-
-    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, min, size, "address-space-32");
-    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "guard");
-}
-
 void Emulator::ExitDispatcher(ThreadState* state) {
     state->recompiler->exitDispatcher(state);
-}
-
-void Emulator::uninitialize32BitAddressSpace() {
-    constexpr u64 GB = 1024 * 1024 * 1024;
-    constexpr u64 size = 4 * GB + 2 * GB;
-
-    u64 min = mmap_min_addr();
-    munmap((void*)min, size);
 }
 
 std::pair<ExitReason, int> Emulator::Start(const Config& config) {
@@ -311,7 +283,14 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     if (peek == Elf::PeekResult::Elf32) {
         WARN("32-bit ELF, there's currently no support for 32-bit apps, expect a crash soon");
         g_mode32 = true;
-        initialize32BitAddressSpace();
+        // Allocate a 2GiB guard right after to catch bad addresses (that may need to loop around the address space?)
+        constexpr u64 GB = 1024 * 1024 * 1024;
+        void* guard = mmap((void*)(4 * GB), 2 * GB, PROT_NONE, MAP_FIXED_NOREPLACE | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        if (guard == MAP_FAILED) {
+            ERROR("I failed to allocate the 32-bit guard");
+        }
+
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "guard");
     } else {
         g_mode32 = false;
     }
@@ -347,7 +326,7 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     }
 
     ThreadState* main_state = ThreadState::Create(nullptr);
-    main_state->signal_table = SignalHandlerTable::Create(*g_process_globals.memory, nullptr);
+    main_state->signal_table = SignalHandlerTable::Create(nullptr);
     main_state->SetRip(g_fs->GetEntrypoint());
 
     auto [stack, size] = setupMainStack(main_state);
@@ -371,10 +350,6 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     exit_reason = main_state->exit_reason;
     exit_code = main_state->exit_code;
 
-    if (g_mode32) {
-        uninitialize32BitAddressSpace();
-    }
-
     munmap(stack, size);
     munmap((void*)g_initial_brk, g_current_brk_size);
     g_fs.reset();
@@ -391,10 +366,6 @@ void Emulator::StartTest(const TestConfig& config, GuestAddress stack) {
     ThreadState* main_state = ThreadState::Create(nullptr);
     main_state->SetGpr(X86_REF_RSP, stack.raw());
     main_state->SetRip(config.entrypoint.toGuest());
-
-    if (g_mode32) {
-        initialize32BitAddressSpace();
-    }
 
     Threads::StartThread(main_state);
 }

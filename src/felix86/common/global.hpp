@@ -9,8 +9,8 @@
 #include "felix86/common/address.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/process_lock.hpp"
-#include "felix86/common/shared_memory.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/hle/mmap.hpp"
 
 struct Filesystem;
 
@@ -35,16 +35,14 @@ struct Symbol {
 // Globals that are shared across processes, including threads, that have CLONE_VM set.
 // This means they share the same memory space, which means access needs to be synchronized.
 struct ProcessGlobals {
-    ProcessGlobals();
     void initialize(); // If a clone happens without CLONE_VM, these need to be reinitialized.
 
-    std::unique_ptr<SharedMemory> memory{};
-    ProcessLock states_lock{};
+    Semaphore states_lock{};
     // States in this memory space. We don't care about states in different memory spaces, as they will have their
     // own copy of the process memory, which means we don't worry about self-modifying code there.
     std::vector<ThreadState*> states{};
 
-    ProcessLock symbols_lock{};
+    Semaphore symbols_lock{};
     std::map<u64, MappedRegion> mapped_regions{};
     std::map<u64, Symbol> symbols{};
 
@@ -53,6 +51,7 @@ private:
 };
 
 extern ProcessGlobals g_process_globals;
+extern std::unique_ptr<Mapper> g_mapper;
 
 extern bool g_verbose;
 extern bool g_quiet;
@@ -103,7 +102,7 @@ extern HostAddress g_executable_start, g_executable_end;
 extern u64 g_interpreter_base_hint;
 extern u64 g_executable_base_hint;
 extern u64 g_brk_base_hint;
-extern u64 g_brk_max_size;
+extern u64 g_max_brk_size;
 extern const char* g_git_hash;
 extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
 extern pthread_key_t g_thread_state_key;
