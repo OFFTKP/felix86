@@ -400,7 +400,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
             int size = strlen(inst.text);
             inst.text[size] = '\n';
             fwrite(inst.text, size + 1, 1, gdb_block->file);
-            gdb_block->lines[i].line = i;
+            gdb_block->lines[i].line = 1 + i;
             gdb_block->lines[i].pc = host_address.raw();
         }
 
