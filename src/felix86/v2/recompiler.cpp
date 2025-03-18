@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
 #include "biscuit/decoder.hpp"
+#include "felix86/common/gdbjit.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -345,6 +346,12 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
     HandlerMetadata meta = {rip, rip};
     BlockMetadata& block_meta = getBlockMetadata(rip);
 
+    felix86_jit_block_t gdb_block;
+    if (g_gdb) {
+        gdb_block = GDBJIT::createBlock();
+        gdb_block.host_start = (u64)as.GetCursorPointer();
+    }
+
     current_meta = &meta;
     current_block_metadata = &block_meta;
     current_sew = SEW::E1024;
@@ -381,6 +388,24 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
             backToDispatcher();
             stopCompiling();
         }
+    }
+
+    if (g_gdb) {
+        size_t inst_count = current_block_metadata->instruction_spans.size();
+        gdb_block.lines = (gdb_line_mapping*)malloc(sizeof(gdb_line_mapping) * inst_count);
+        for (size_t i = 0; i < inst_count; i++) {
+            GuestAddress guest_address = current_block_metadata->instruction_spans[i].first;
+            HostAddress host_address = current_block_metadata->instruction_spans[i].second;
+            ZydisDisassembledInstruction inst;
+            ZydisDisassembleIntel(decoder.machine_mode, guest_address.raw(), (void*)guest_address.toHost().raw(), 15, &inst);
+            int size = strlen(inst.text);
+            inst.text[size] = '\n';
+            fwrite(inst.text, size + 1, 1, gdb_block.file);
+            gdb_block.lines[i].line = i;
+            gdb_block.lines[i].pc = host_address.raw();
+        }
+
+        g_gdbjit->fire(gdb_block);
     }
 
     current_block_metadata->guest_address_end = meta.rip;

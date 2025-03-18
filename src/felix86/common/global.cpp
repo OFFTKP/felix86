@@ -7,6 +7,7 @@
 #include <linux/perf_event.h>
 #include <sys/mman.h>
 #include "biscuit/cpuinfo.hpp"
+#include "felix86/common/gdbjit.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
@@ -41,6 +42,7 @@ int g_block_trace = 0;
 bool g_mode32 = false;
 bool g_rsb = false; // off by default until we fix stack overflow problems ie in Celeste (or probably similar apps with jit)
 bool g_perf = false;
+bool g_gdb = false;
 bool g_thunking = false;
 bool g_always_tso = false;
 bool g_dont_cache = false;
@@ -57,6 +59,7 @@ std::unordered_map<u64, std::vector<u64>> g_breakpoints{}; // TODO: HostAddress
 pthread_key_t g_thread_state_key = -1;
 ProcessGlobals g_process_globals{};
 std::unique_ptr<Mapper> g_mapper{};
+std::unique_ptr<GDBJIT> g_gdbjit;
 u64 g_program_end;
 HostAddress g_guest_auxv{};
 size_t g_guest_auxv_size = 0;
@@ -120,6 +123,31 @@ bool is_running_under_perf() {
     return false;
 }
 
+bool is_running_under_gdb() {
+    const char* gdb_env = getenv("FELIX86_GDB");
+    if (is_truthy(gdb_env)) {
+        return true;
+    }
+
+    // Don't detect, only enable this when the environment variable is set
+    // int ppid = getppid();
+
+    // std::string line;
+    // std::ifstream ifs("/proc/" + std::to_string(ppid) + "/comm");
+    // if (!ifs) {
+    //     WARN("Failed to check if gdb is a parent process");
+    //     return false;
+    // }
+
+    // std::getline(ifs, line);
+
+    // if (line == "gdb") {
+    //     return true;
+    // }
+
+    return false;
+}
+
 void ProcessGlobals::initialize() {
     // New address space (clone used without CLONE_VM)
     // Re-initialize these
@@ -131,6 +159,9 @@ void ProcessGlobals::initialize() {
 
     // Also reset our allocator
     g_mapper = std::make_unique<Mapper>();
+
+    // And the GDB mappings
+    g_gdbjit = std::make_unique<GDBJIT>();
 
     // Don't reset the /proc/self/maps mapped regions, we can reuse the ones from parent process
 }
@@ -493,7 +524,16 @@ void initialize_globals() {
             std::filesystem::create_directory("/tmp");
         }
 
-        LOG("Running under " ANSI_BOLD "perf" ANSI_COLOR_RESET "!");
+        LOG("Emitting symbols for " ANSI_BOLD "perf" ANSI_COLOR_RESET "!");
+    }
+
+    g_gdb = is_running_under_gdb();
+    if (g_gdb) {
+        if (!std::filesystem::exists("/tmp")) {
+            std::filesystem::create_directory("/tmp");
+        }
+
+        LOG("Emitting symbols for " ANSI_BOLD "gdb" ANSI_COLOR_RESET "!");
     }
 
     const char* single_step = getenv("FELIX86_SINGLE_STEP");

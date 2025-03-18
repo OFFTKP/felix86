@@ -14,6 +14,8 @@
 
 struct Filesystem;
 
+struct GDBJIT;
+
 struct MappedRegion {
     u64 base{};
     u64 end{};
@@ -80,6 +82,7 @@ extern bool g_print_all_insts;
 extern bool g_mode32;
 extern bool g_rsb;
 extern bool g_perf;
+extern bool g_gdb;
 extern bool g_min_max_accurate;
 extern bool g_always_tso;
 extern bool g_thunking;
@@ -110,6 +113,7 @@ extern size_t g_guest_auxv_size;
 extern bool g_execve_process;
 extern Config g_config;
 extern std::unique_ptr<Filesystem> g_fs;
+extern std::unique_ptr<GDBJIT> g_gdbjit;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
