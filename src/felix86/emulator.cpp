@@ -281,7 +281,6 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
     }
 
     if (peek == Elf::PeekResult::Elf32) {
-        WARN("32-bit ELF, there's currently no support for 32-bit apps, expect a crash soon");
         g_mode32 = true;
         // Allocate a 2GiB guard right after to catch bad addresses (that may need to loop around the address space?)
         constexpr u64 GB = 1024 * 1024 * 1024;
