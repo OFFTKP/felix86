@@ -643,6 +643,31 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         STRACE("setitimer(%d, %p, %p) = %d", (int)arg1, (void*)arg1, (void*)arg2, (int)result);
         break;
     }
+    case felix86_riscv64_timer_create: {
+        result = SYSCALL64(timer_create, arg1, arg2, arg3);
+        STRACE("timer_create(%ld, %p, %p) = %d", (long)arg1, (void*)arg2, (void*)arg3, (int)result);
+        break;
+    }
+    case felix86_riscv64_timer_gettime: {
+        result = SYSCALL64(timer_gettime, arg1, arg2);
+        STRACE("timer_gettime(%ld, %p) = %d", (long)arg1, (void*)arg2, (int)result);
+        break;
+    }
+    case felix86_riscv64_timer_settime: {
+        result = SYSCALL64(timer_settime, arg1, arg2, arg3, arg4);
+        STRACE("timer_gettime(%ld, %p, %p, %p) = %d", (long)arg1, (void*)arg2, (void*)arg3, (void*)arg4, (int)result);
+        break;
+    }
+    case felix86_riscv64_timer_getoverrun: {
+        result = SYSCALL64(timer_getoverrun, arg1);
+        STRACE("timer_getoverrun(%ld) = %d", (long)arg1, (int)result);
+        break;
+    }
+    case felix86_riscv64_timer_delete: {
+        result = SYSCALL64(timer_delete, arg1);
+        STRACE("timer_delete(%ld) = %d", (long)arg1, (int)result);
+        break;
+    }
     case felix86_riscv64_getuid: {
         result = SYSCALL64(getuid);
         STRACE("getuid() = %d", (int)result);
