@@ -12,11 +12,15 @@ struct jit_descriptor __jit_debug_descriptor = {1, 0, 0, 0};
 felix86_jit_block_t GDBJIT::createBlock() {
     felix86_jit_block_t block;
     memset(&block, 0, sizeof(felix86_jit_block_t));
-    constexpr static const char temp[] = "/tmp/felix86_gdb_XXXXXX.map";
-    static_assert(sizeof(temp) <= 31);
-    strcpy(block.filename, temp);
+    int pid = getpid();
+    int chars = snprintf(block.filename, sizeof(block.filename), "/tmp/f86_%x", pid);
+    ASSERT(chars < sizeof(block.filename));
+    if (!std::filesystem::exists(block.filename)) {
+        std::filesystem::create_directory(block.filename);
+    }
+    chars = snprintf(block.filename, sizeof(block.filename), "/tmp/f86_%x/XXXXXX.map", pid);
+    ASSERT(chars < sizeof(block.filename));
     block.file = fdopen(mkstemps(block.filename, 4), "w");
-    printf("file: %s\n", block.filename);
     ASSERT(block.file);
     return block;
 }

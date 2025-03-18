@@ -22,7 +22,7 @@ struct jit_code_entry {
 
 // Represents a block of recompiled instructions and their names for gdb
 typedef struct {
-    char filename[32];
+    char filename[64];
     FILE* file;
     u64 host_start;
     u64 host_end;
