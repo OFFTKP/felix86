@@ -27,7 +27,7 @@ felix86_jit_block_t* GDBJIT::createBlock(size_t line_count) {
 
 void GDBJIT::fire(felix86_jit_block_t* block) {
     auto lock = semaphore.lock();
-    felix86_jit_block_t* previous = (felix86_jit_block_t*)__jit_debug_descriptor.relevant_entry;
+    jit_code_entry* previous = (jit_code_entry*)__jit_debug_descriptor.relevant_entry;
     felix86_jit_block_t* new_entry = block;
 
     new_entry->entry.symfile_addr = (const char*)new_entry; // point to itself
@@ -35,8 +35,8 @@ void GDBJIT::fire(felix86_jit_block_t* block) {
     new_entry->entry.next_entry = nullptr;
 
     if (previous) {
-        previous->entry.next_entry = &new_entry->entry;
-        new_entry->entry.prev_entry = &previous->entry;
+        previous->next_entry = &new_entry->entry;
+        new_entry->entry.prev_entry = previous;
     } else {
         new_entry->entry.prev_entry = nullptr;
     }

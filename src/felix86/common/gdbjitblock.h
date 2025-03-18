@@ -30,6 +30,9 @@ typedef struct {
     u64 line_count;
     // Also contains the node for the interface
     jit_code_entry entry;
+
+    // Unfortunately this can't be a pointer to some other storage -- we need to allocate the line mappings
+    // in this linear storage for when we pass it to gdb, presumably because it copies it to its own address space?
     struct gdb_line_mapping lines[0];
 } felix86_jit_block_t;
 

@@ -391,6 +391,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
         size_t inst_count = current_block_metadata->instruction_spans.size();
         felix86_jit_block_t* gdb_block = GDBJIT::createBlock(inst_count);
         gdb_block->host_start = (u64)as.GetCursorPointer();
+
         for (size_t i = 0; i < inst_count; i++) {
             GuestAddress guest_address = current_block_metadata->instruction_spans[i].first;
             HostAddress host_address = current_block_metadata->instruction_spans[i].second;
