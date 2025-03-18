@@ -40,7 +40,12 @@ struct Symlinker {
             VERBOSE("Resolved %s -> %s", current.c_str(), resolved.c_str());
 
             if (!is_subpath(resolved, g_rootfs_path)) {
-                current = g_rootfs_path / resolved.relative_path();
+                if (resolved.is_absolute()) {
+                    current = g_rootfs_path / resolved.relative_path();
+                } else {
+                    current = path.parent_path() / resolved;
+                    ASSERT(is_subpath(current, g_rootfs_path));
+                }
             } else {
                 current = resolved;
             }

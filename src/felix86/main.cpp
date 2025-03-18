@@ -305,7 +305,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // TODO !!!: make it so resolve can also search PATH if it can't find executable -- then reuse in execve
     // Resolve symlinks, get absolute path. If the symlink is resolved, it may not start with
     // the rootfs prefix, and we need to add it back
     const std::string rootfs_string = g_rootfs_path.string();

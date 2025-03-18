@@ -410,6 +410,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
 
         gdb_block.host_start = current_block_metadata->address.raw();
         gdb_block.host_end = current_block_metadata->address_end.raw();
+        gdb_block.guest_address = current_block_metadata->guest_address.raw();
 
         fclose(gdb_block.file);
         g_gdbjit->fire(gdb_block);
