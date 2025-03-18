@@ -26,7 +26,33 @@ enum {
 #undef X
 };
 
-consteval static int x64_to_riscv(int syscall) {
+constexpr static bool is_x64_common(int syscall) {
+#define X(name)                                                                                                                                      \
+    case felix86_x86_64_##name:                                                                                                                      \
+        return true;
+    switch (syscall) {
+#include "felix86/hle/syscalls_common_64.inc"
+#undef X
+    default:
+        return false;
+    }
+#undef X
+}
+
+constexpr static bool is_x86_common(int syscall) {
+#define X(name)                                                                                                                                      \
+    case felix86_x86_32_##name:                                                                                                                      \
+        return true;
+    switch (syscall) {
+#include "felix86/hle/syscalls_common_32.inc"
+#undef X
+    default:
+        return false;
+    }
+#undef X
+}
+
+constexpr static int x64_to_riscv(int syscall) {
 #define X(name)                                                                                                                                      \
     case felix86_x86_64_##name:                                                                                                                      \
         return felix86_riscv64_##name;
@@ -40,7 +66,7 @@ consteval static int x64_to_riscv(int syscall) {
 #undef X
 }
 
-consteval static int x86_to_riscv(int syscall) {
+constexpr static int x86_to_riscv(int syscall) {
 #define X(name)                                                                                                                                      \
     case felix86_x86_32_##name:                                                                                                                      \
         return felix86_riscv64_##name;
@@ -74,6 +100,20 @@ constexpr static const char* x86_get_name(int syscall) {
         return #name;
     switch (syscall) {
 #include "felix86/hle/syscalls_x86_32.inc"
+#undef X
+    default:
+        ASSERT_MSG(false, "%d is not a syscall", syscall);
+        return nullptr;
+    }
+#undef X
+}
+
+constexpr static const char* riscv_get_name(int syscall) {
+#define X(name, ...)                                                                                                                                 \
+    case felix86_riscv64_##name:                                                                                                                     \
+        return #name;
+    switch (syscall) {
+#include "felix86/hle/syscalls_riscv64.inc"
 #undef X
     default:
         ASSERT_MSG(false, "%d is not a syscall", syscall);

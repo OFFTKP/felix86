@@ -205,7 +205,7 @@ struct Recompiler {
             return biscuit::x18;
         }
         case X86_REF_RSI: {
-            return biscuit::x11; // a1
+            return biscuit::x11; // a1 -- TODO: one day match abi for 32-bit version also
         }
         case X86_REF_RDI: {
             return biscuit::x10; // a0
