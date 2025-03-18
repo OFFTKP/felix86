@@ -1,0 +1,2 @@
+# Simulator can't handle `mrs x0, nzcv`
+Test_32Bit_SecondaryModRM/Reg_7_1.asm
