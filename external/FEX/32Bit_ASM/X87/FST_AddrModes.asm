@@ -14,6 +14,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 section .bss
 base resb 4096

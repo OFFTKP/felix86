@@ -6,6 +6,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 lea edx, [.data]
 

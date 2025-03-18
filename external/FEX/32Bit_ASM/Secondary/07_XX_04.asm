@@ -12,6 +12,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 mov eax, 0x41424344
 mov ebx, 0x41424344

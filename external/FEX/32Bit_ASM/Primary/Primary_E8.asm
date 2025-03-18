@@ -6,6 +6,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; Tests for 32-bit signed displacement wrapping
 ; Testing for underflow specifically

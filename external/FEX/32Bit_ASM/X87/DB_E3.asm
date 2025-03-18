@@ -6,6 +6,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 mov eax, 0
 mov esp, 0xe0000008

@@ -6,6 +6,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 %macro ofcfmerge 0
   ; Get CF

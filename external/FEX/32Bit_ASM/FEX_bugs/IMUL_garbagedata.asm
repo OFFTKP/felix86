@@ -12,6 +12,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; FEX had a bug where smaller than 64-bit imul could leave garbage data in the upper 32-bits of the 32-bit result.
 ; This would cause subsequent instructions after the imul to receive garbage bits.

@@ -8,6 +8,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; FEX had a bug that only manifests in 32-bit mode around pushing and popping flags around rep lobs{b,w,d,q}
 ; This manifested as a corrupt CF and ZF flag even though rep lodsb isn't supposed to affect flags.

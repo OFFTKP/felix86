@@ -5,6 +5,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; Clear OF just incase
 test eax, eax

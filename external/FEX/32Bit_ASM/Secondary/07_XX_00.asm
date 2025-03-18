@@ -7,6 +7,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 sgdt [rel data]
 

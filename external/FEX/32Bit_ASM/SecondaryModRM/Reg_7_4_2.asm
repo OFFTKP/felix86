@@ -9,6 +9,7 @@
   "HostFeatures": ["CLZERO"]
 }
 %endif
+bits 32
 
 ; Starting address to store to
 mov eax, 0xe8000000

@@ -6,6 +6,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; FEX had a bug where inverting CF to match the ABI when flushing the register cache didn't mark CF as possibly being set.
 ; This caused accesses relying on that flag to be set correctly to return wrong values.

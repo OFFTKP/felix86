@@ -28,6 +28,7 @@
 
 }
 %endif
+bits 32
 
 mov esp, 0xe0000000
 mov ebp, 0xe0000500

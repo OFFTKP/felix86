@@ -3,6 +3,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 mov ecx, 0x10
 .loop:

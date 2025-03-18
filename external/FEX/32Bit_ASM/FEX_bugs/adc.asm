@@ -7,6 +7,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; FEX had a bug where ADD or SUB with carry was generating results with garbage in the upper 32-bits.
 

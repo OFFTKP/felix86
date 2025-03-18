@@ -9,6 +9,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 lea edx, [data]
 fld tword [edx + 8 * 0]

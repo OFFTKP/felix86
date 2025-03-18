@@ -16,6 +16,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; Ensures that zero extension of addresses are adhered to.
 lea eax, [0xf000_0000]

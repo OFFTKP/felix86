@@ -7,6 +7,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; FEX-Emu had a bug where a16 loop instructions weren't treating the input RCX register as 16-bit.
 ; Effectively always treating it as 32-bit.

@@ -5,6 +5,7 @@
   "Mode": "32BIT"
 }
 %endif
+bits 32
 
 ; FEX 32-bit inline syscalls hit an assert in uxtw
 ; Just use an inline syscall and throw it zero data to catch the assert
