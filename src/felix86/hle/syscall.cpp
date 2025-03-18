@@ -330,6 +330,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         STRACE("setreuid(%d, %d) = %d", (int)arg1, (int)arg2, (int)result);
         break;
     }
+    case felix86_riscv64_setresuid: {
+        result = SYSCALL64(setresuid, arg1, arg2, arg3);
+        STRACE("setreuid(%d, %d, %d) = %d", (int)arg1, (int)arg2, (int)arg3, (int)result);
+        break;
+    }
     case felix86_riscv64_setregid: {
         result = SYSCALL64(setregid, arg1, arg2);
         STRACE("setregid(%d, %d) = %d", (int)arg1, (int)arg2, (int)result);
