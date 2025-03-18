@@ -405,6 +405,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
             gdb_block.lines[i].pc = host_address.raw();
         }
 
+        fclose(gdb_block.file);
         g_gdbjit->fire(gdb_block);
     }
 
