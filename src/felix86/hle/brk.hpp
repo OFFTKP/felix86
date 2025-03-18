@@ -5,6 +5,8 @@
 struct BRK {
     static void allocate();
 
+    static u64 set(u64 new_brk);
+
 private:
     constexpr static u64 size32 = 32 * 1024 * 1024;
 

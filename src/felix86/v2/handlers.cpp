@@ -4,6 +4,8 @@
 
 void felix86_syscall(ThreadState* state);
 
+void felix86_syscall32(ThreadState* state);
+
 void felix86_cpuid(ThreadState* state);
 
 #define FAST_HANDLE(name)                                                                                                                            \
@@ -476,7 +478,7 @@ FAST_HANDLE(XOR) {
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
     if (needs_atomic && !too_small_for_atomic) {
         dst = rec.scratch();
-        biscuit::GPR address = rec.leaAddBase(&operands[0]);
+        biscuit::GPR address = rec.lea(&operands[0]);
         if (size == X86_SIZE_DWORD) {
             as.AMOXOR_W(Ordering::AQRL, dst, src, address);
         } else if (size == X86_SIZE_QWORD) {
@@ -1530,7 +1532,7 @@ FAST_HANDLE(INC) {
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
     bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
-        biscuit::GPR address = rec.leaAddBase(&operands[0]);
+        biscuit::GPR address = rec.lea(&operands[0]);
         biscuit::GPR one = rec.scratch();
         dst = rec.scratch();
         as.LI(one, 1);
@@ -1589,7 +1591,7 @@ FAST_HANDLE(DEC) {
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
     bool writeback = true;
     if (needs_atomic && !too_small_for_atomic) {
-        biscuit::GPR address = rec.leaAddBase(&operands[0]);
+        biscuit::GPR address = rec.lea(&operands[0]);
         biscuit::GPR one = rec.scratch();
         dst = rec.scratch();
         as.LI(one, -1);
@@ -1695,7 +1697,7 @@ FAST_HANDLE(SAHF) {
 FAST_HANDLE(XCHG_lock) {
     ASSERT(operands[0].size != 8 && operands[0].size != 16);
     x86_size_e size = rec.getOperandSize(&operands[0]);
-    biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR scratch = rec.scratch();
     biscuit::GPR dst = rec.scratch();
@@ -2470,8 +2472,8 @@ FAST_HANDLE(VECTOR_MOV) {
         int size = operands[0].size;
         ASSERT(operands[0].size == operands[1].size);
         ASSERT(operands[0].size > 64);
-        biscuit::GPR address = rec.leaAddBase(&operands[1]);
-        rec.readMemoryVectorNoBase(dst, address, size);
+        biscuit::GPR address = rec.lea(&operands[1]);
+        rec.readMemory(dst, address, size);
         rec.setOperandVec(&operands[0], dst);
     }
 }
@@ -2535,11 +2537,17 @@ FAST_HANDLE(SYSCALL) {
 
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
+    rec.call((u64)rec.getSyscallThunk());
+    rec.restoreRoundingMode();
+}
 
-    biscuit::GPR address = rec.scratch();
-    as.LI(address, (u64)&felix86_syscall);
-    as.MV(a0, rec.threadStatePointer());
-    as.JALR(address);
+FAST_HANDLE(INT) {
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
+    ASSERT(operands[0].imm.value.u == 0x80);
+
+    rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
+    rec.call((u64)rec.getSyscallThunk());
     rec.restoreRoundingMode();
 }
 
@@ -5395,7 +5403,7 @@ FAST_HANDLE(CMPXCHG_lock) {
     ASSERT(operands[0].size != 8 && operands[0].size != 16);
 
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
-    biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
     biscuit::GPR dst = rec.scratch();
@@ -6093,7 +6101,7 @@ FAST_HANDLE(XADD_lock_32) {
 
     biscuit::GPR dst = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    biscuit::GPR address = rec.lea(&operands[0]);
     as.AMOADD_W(Ordering::AQRL, dst, src, address);
     rec.zext(dst, dst, X86_SIZE_DWORD); // amoadd sign extends
 
@@ -6142,7 +6150,7 @@ FAST_HANDLE(XADD_lock_64) {
 
     biscuit::GPR dst = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    biscuit::GPR address = rec.lea(&operands[0]);
     as.AMOADD_D(Ordering::AQRL, dst, src, address);
 
     if (update_any) {
@@ -6719,7 +6727,7 @@ void PCMPXSTRX(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, Zydi
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         as.ADDI(a3, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * (operands[1].reg.value - ZYDIS_REGISTER_XMM0)));
     } else {
-        biscuit::GPR scratch = rec.leaAddBase(&operands[1]);
+        biscuit::GPR scratch = rec.lea(&operands[1]);
         ASSERT(scratch != a0 && scratch != a1 && scratch != a2);
         as.MV(a3, scratch);
     }
@@ -6991,7 +6999,7 @@ FAST_HANDLE(PAVGW) {
 }
 
 FAST_HANDLE(CMPXCHG16B) {
-    biscuit::GPR address = rec.leaAddBase(&operands[0]);
+    biscuit::GPR address = rec.lea(&operands[0]);
     if (Extensions::Zacas) {
         WARN_ONCE("cmpxchg16b with zacas, untested, please report results");
         // We are the luckiest emulator alive!
@@ -7032,8 +7040,8 @@ FAST_HANDLE(CMPXCHG16B) {
         biscuit::GPR mem0 = rec.scratch();
         biscuit::GPR mem1 = rec.scratch();
 
-        rec.readMemoryNoBase(mem0, address, 0, X86_SIZE_QWORD);
-        rec.readMemoryNoBase(mem1, address, 8, X86_SIZE_QWORD);
+        rec.readMemory(mem0, address, 0, X86_SIZE_QWORD);
+        rec.readMemory(mem1, address, 8, X86_SIZE_QWORD);
 
         Label not_equal;
         biscuit::GPR zf = rec.flagW(X86_REF_ZF);
@@ -7042,8 +7050,8 @@ FAST_HANDLE(CMPXCHG16B) {
         as.BNE(mem1, rdx, &not_equal);
 
         as.LI(zf, 1);
-        rec.writeMemoryNoBase(rbx, address, 0, X86_SIZE_QWORD);
-        rec.writeMemoryNoBase(rcx, address, 8, X86_SIZE_QWORD);
+        rec.writeMemory(rbx, address, 0, X86_SIZE_QWORD);
+        rec.writeMemory(rcx, address, 8, X86_SIZE_QWORD);
 
         as.Bind(&not_equal);
 

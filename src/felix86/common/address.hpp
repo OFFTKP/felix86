@@ -3,8 +3,6 @@
 #include <cassert>
 #include "felix86/common/utility.hpp"
 
-extern u64 g_address_space_base;
-
 // Constructs for explicit conversion between guest and host addresses
 struct GuestAddress;
 
@@ -66,9 +64,8 @@ struct GuestAddress {
     }
 
     [[nodiscard]] HostAddress toHost() const {
-        // Add the address space base pointer. On 64-bit mode this does nothing as the address space base is 0.
-        // On 32-bit mode this converts to a host accessible pointer.
-        return HostAddress(g_address_space_base + address);
+        // This would add the address space base in 32-bit mode. However we no longer use it and now it does nothing.
+        return HostAddress(address);
     }
 
     [[nodiscard]] u64 raw() const {
@@ -88,7 +85,5 @@ private:
 };
 
 inline GuestAddress HostAddress::toGuest() const {
-    // Subtract the address space base pointer. On 64-bit mode this does nothing as the address space base is 0.
-    // On 32-bit mode this converts to a guest accessible pointer, as it will now be in the 32-bit address space.
-    return GuestAddress(address - g_address_space_base);
+    return GuestAddress(address);
 }

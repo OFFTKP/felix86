@@ -458,8 +458,7 @@ void Elf::Load(const std::filesystem::path& path) {
 
         unmap_me.push_back({base_ptr, highest_vaddr});
     } else {
-        // Start at the address space base. 0 in 64-bit, some address in 32-bit mode.
-        base_ptr = (u8*)g_address_space_base;
+        base_ptr = 0;
     }
 
     if (base_ptr == MAP_FAILED) {

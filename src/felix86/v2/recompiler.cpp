@@ -79,6 +79,7 @@ void Recompiler::emitNecessaryStuff() {
     emitDispatcher();
     emitSigreturnThunk();
     emitUnlinkIndirectThunk();
+    emitSyscallThunk();
     start_of_code_cache = as.GetCursorPointer();
 }
 
@@ -172,6 +173,15 @@ void Recompiler::emitDispatcher() {
     as.J(&exit_dispatcher_label);
 
     flush_icache();
+}
+
+void Recompiler::emitSyscallThunk() {
+    syscall_thunk = as.GetCursorPointer();
+    u64 address = g_mode32 ? (u64)felix86_syscall32 : (u64)felix86_syscall;
+    as.MV(a0, threadStatePointer());
+    Recompiler::call(as, address, /* don't link -- tail call */ false);
+    // Do not return here
+    as.GetCodeBuffer().Emit32(0);
 }
 
 HostAddress Recompiler::emitSigreturnThunk() {
@@ -810,8 +820,8 @@ biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
-        biscuit::GPR address = leaAddBase(operand);
-        readMemoryNoBase(dest, address, 0, zydisToSize(operand->size));
+        biscuit::GPR address = lea(operand);
+        readMemory(dest, address, 0, zydisToSize(operand->size));
         return dest;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
@@ -835,9 +845,9 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::Vec vec = scratchVec();
-        biscuit::GPR address = leaAddBase(operand);
+        biscuit::GPR address = lea(operand);
 
-        readMemoryVectorNoBase(vec, address, operand->size);
+        readMemory(vec, address, operand->size);
 
         popScratch(); // pop lea scratch
 
@@ -1057,8 +1067,8 @@ void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        biscuit::GPR address = leaAddBase(operand);
-        writeMemoryNoBase(reg, address, 0, zydisToSize(operand->size));
+        biscuit::GPR address = lea(operand);
+        writeMemory(reg, address, 0, zydisToSize(operand->size));
         break;
     }
     default: {
@@ -1075,7 +1085,7 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        biscuit::GPR address = leaAddBase(operand);
+        biscuit::GPR address = lea(operand);
 
         switch (operand->size) {
         case 256: {
@@ -1176,15 +1186,6 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     // TODO: One day when we have chips that perform better with VTA::Yes, enable it
     as.VSETIVLI(x0, vlen, sew, grouping, VTA::No, VMA::No);
     return true;
-}
-
-biscuit::GPR Recompiler::leaAddBase(ZydisDecodedOperand* operand) {
-    // Make sure the lea does an LI including the address space base
-    operand->mem.disp.value += g_address_space_base;
-    biscuit::GPR ret = lea(operand);
-    operand->mem.disp.value -= g_address_space_base;
-
-    return ret;
 }
 
 biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
@@ -2191,18 +2192,35 @@ biscuit::GPR Recompiler::getCond(int cond) {
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
-    if (g_address_space_base) {
-        biscuit::GPR temp = scratch();
-        as.LI(temp, g_address_space_base);
-        as.ADD(temp, temp, address);
-        address = temp;
-        popScratch();
+    switch (size) {
+    case X86_SIZE_BYTE: {
+        as.LBU(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_WORD: {
+        as.LHU(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.LWU(dest, offset, address);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        as.LD(dest, offset, address);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
     }
 
-    readMemoryNoBase(dest, address, offset, size);
+    if (g_always_tso && !Extensions::TSO) {
+        as.FENCE(FenceOrder::R, FenceOrder::RW);
+    }
 }
 
-void Recompiler::readMemoryVectorNoBase(biscuit::Vec vec, biscuit::GPR address, int size) {
+void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
     switch (size) {
     case 8: {
         setVectorState(SEW::E8, 1);
@@ -2241,48 +2259,7 @@ void Recompiler::readMemoryVectorNoBase(biscuit::Vec vec, biscuit::GPR address, 
     }
 }
 
-void Recompiler::readMemoryNoBase(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
-    switch (size) {
-    case X86_SIZE_BYTE: {
-        as.LBU(dest, offset, address);
-        break;
-    }
-    case X86_SIZE_WORD: {
-        as.LHU(dest, offset, address);
-        break;
-    }
-    case X86_SIZE_DWORD: {
-        as.LWU(dest, offset, address);
-        break;
-    }
-    case X86_SIZE_QWORD: {
-        as.LD(dest, offset, address);
-        break;
-    }
-    default: {
-        UNREACHABLE();
-        break;
-    }
-    }
-
-    if (g_always_tso && !Extensions::TSO) {
-        as.FENCE(FenceOrder::R, FenceOrder::RW);
-    }
-}
-
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
-    if (g_address_space_base) {
-        biscuit::GPR temp = scratch();
-        as.LI(temp, g_address_space_base);
-        as.ADD(temp, temp, address);
-        address = temp;
-        popScratch();
-    }
-
-    writeMemoryNoBase(src, address, offset, size);
-}
-
-void Recompiler::writeMemoryNoBase(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
     if (g_always_tso && !Extensions::TSO) {
         as.FENCE(FenceOrder::RW, FenceOrder::W);
     }
@@ -2469,14 +2446,14 @@ biscuit::FPR Recompiler::getST(biscuit::GPR top, ZydisDecodedOperand* operand) {
         switch (operand->size) {
         case 32: {
             biscuit::FPR st = scratchFPR();
-            as.FLW(st, 0, leaAddBase(operand));
+            as.FLW(st, 0, lea(operand));
             as.FCVT_D_S(st, st);
             popScratch(); // the gpr address scratch
             return st;
         }
         case 64: {
             biscuit::FPR st = scratchFPR();
-            as.FLD(st, 0, leaAddBase(operand));
+            as.FLD(st, 0, lea(operand));
             popScratch(); // the gpr address scratch
             return st;
         }
@@ -2535,12 +2512,12 @@ void Recompiler::setST(biscuit::GPR top, ZydisDecodedOperand* operand, biscuit::
         case 32: {
             biscuit::FPR temp = scratchFPR();
             as.FCVT_S_D(temp, value);
-            as.FSW(temp, 0, leaAddBase(operand));
+            as.FSW(temp, 0, lea(operand));
             popScratch(); // the gpr address scratch
             break;
         }
         case 64: {
-            as.FSD(value, 0, leaAddBase(operand));
+            as.FSD(value, 0, lea(operand));
             popScratch(); // the gpr address scratch
             break;
         }
@@ -2594,10 +2571,15 @@ void Recompiler::unlinkAt(u8* address_of_jump) {
 }
 
 bool Recompiler::tryInlineSyscall() {
+    if (g_mode32) {
+        // Unimplemented for now
+        return false;
+    }
+
     switch (rax_value) {
 #define CASE(sysno, argcount)                                                                                                                        \
     case felix86_x86_64_##sysno:                                                                                                                     \
-        inlineSyscall(match_host(felix86_x86_64_##sysno), argcount);                                                                                 \
+        inlineSyscall(x64_to_riscv(felix86_x86_64_##sysno), argcount);                                                                               \
         return true
 
         CASE(unshare, 1);

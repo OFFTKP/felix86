@@ -112,3 +112,36 @@ void BRK::allocate64() {
     VERBOSE("BRK base at %p", (void*)g_current_brk);
     g_max_brk_size = max_brk_size;
 }
+
+u64 BRK::set(u64 new_brk) {
+    u64 result;
+    if (new_brk == 0) {
+        result = g_current_brk;
+    } else {
+        g_current_brk = new_brk;
+        result = new_brk;
+    }
+
+    if (g_current_brk > g_initial_brk + g_current_brk_size) {
+        // Allocate more of our NORESERVE space as actual allocated pages
+        u64 end_brk = g_initial_brk + g_current_brk_size;
+        ASSERT(!(end_brk & 0xFFF)); // assert page aligned
+        u64 new_size = (g_current_brk - g_initial_brk) * 2;
+        if (new_size > g_max_brk_size) {
+            WARN("BRK is exceding maximum size we have allocated, good luck!");
+        }
+
+        u64 size_past_end = new_size - g_current_brk_size;
+        int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
+        void* new_map = g_mapper->map((void*)end_brk, size_past_end, PROT_READ | PROT_WRITE, flags, -1, 0);
+        if ((u64)new_map != end_brk) {
+            ERROR("Failed to remap brk with new size: %lx", new_size);
+        }
+
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, new_size, "current-brk");
+        WARN("Resized BRK to %lx", new_size);
+        g_current_brk_size = new_size;
+    }
+
+    return result;
+}

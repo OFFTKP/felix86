@@ -42,8 +42,6 @@ u64 GetEffectiveAddress(ThreadState* state, ZydisDecodedOperand& operand) {
         effective_address &= 0xFFFF'FFFF;
     }
 
-    effective_address += g_address_space_base;
-
     return effective_address;
 }
 

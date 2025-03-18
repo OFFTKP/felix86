@@ -18,10 +18,36 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/symlink.hpp"
 #include "felix86/emulator.hpp"
+#include "felix86/hle/brk.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/stat.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
+
+// Annoyingly, the ::syscall function returns -1 instead of the actual error number.
+// But we also don't wanna check at the end because the STRACE printf and such might have modified errno
+// We need to check the moment result gets set
+struct Result {
+    Result& operator=(ssize_t inner) {
+        if (inner == -1) {
+            this->inner = -errno;
+        } else {
+            this->inner = inner;
+        }
+        return *this;
+    }
+
+    operator ssize_t() const {
+        return inner;
+    }
+
+    operator void*() const {
+        return (void*)inner;
+    }
+
+private:
+    ssize_t inner = -1;
+};
 
 // We add felix86_${ARCH}_ in front of the linux related identifiers to avoid
 // naming conflicts
@@ -38,17 +64,14 @@ struct x86_sigaction {
 #define felix86_x86_64_ARCH_GET_FS 0x1003
 #define felix86_x86_64_ARCH_GET_GS 0x1004
 
-#define HOST_SYSCALL(name, ...) (syscall(match_host(felix86_x86_64_##name), ##__VA_ARGS__))
+#define SYSCALL32(name, ...) (syscall(x86_to_riscv(felix86_x86_32_##name), ##__VA_ARGS__))
+#define SYSCALL64(name, ...) (syscall(x64_to_riscv(felix86_x86_64_##name), ##__VA_ARGS__))
 
 const char* print_syscall_name(u64 syscall_number) {
-    switch (syscall_number) {
-#define X(name, id)                                                                                                                                  \
-    case id:                                                                                                                                         \
-        return #name;
-#include "felix86/hle/syscalls_x86_64.inc"
-#undef X
-    default:
-        return "Unknown";
+    if (g_mode32) {
+        return x86_get_name(syscall_number);
+    } else {
+        return x64_get_name(syscall_number);
     }
 }
 
@@ -176,69 +199,11 @@ void felix86_syscall(ThreadState* state) {
     u64 r8 = state->GetGpr(X86_REF_R8);
     u64 r9 = state->GetGpr(X86_REF_R9);
 
-    // TODO: find where libc functions are used and replace with syscalls
-
-    // Annoyingly, the syscall function returns -1 instead of the actual error number.
-    // But we also don't wanna check at the end because the STRACE printf and such might have modified errno
-    // We need to check the moment result gets set
-    struct Result {
-        Result& operator=(ssize_t inner) {
-            if (inner == -1) {
-                this->inner = -errno;
-            } else {
-                this->inner = inner;
-            }
-            return *this;
-        }
-
-        operator ssize_t() const {
-            return inner;
-        }
-
-        operator void*() const {
-            return (void*)inner;
-        }
-
-    private:
-        ssize_t inner = -1;
-    };
-
     Result result;
 
     switch (syscall_number) {
     case felix86_x86_64_brk: {
-        if (rdi == 0) {
-            result = g_current_brk - g_address_space_base;
-        } else {
-            g_current_brk = rdi + g_address_space_base;
-            result = rdi;
-        }
-
-        if (g_current_brk > g_initial_brk + g_current_brk_size) {
-            // Allocate more of our NORESERVE space as actual allocated pages
-            u64 end_brk = g_initial_brk + g_current_brk_size;
-            ASSERT(!(end_brk & 0xFFF)); // assert page aligned
-            u64 new_size = (g_current_brk - g_initial_brk) * 2;
-            if (new_size > g_max_brk_size) {
-                WARN("BRK is exceding maximum size we have allocated, good luck!");
-            }
-
-            u64 size_past_end = new_size - g_current_brk_size;
-            int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
-            void* new_map = mmap((void*)end_brk, size_past_end, PROT_READ | PROT_WRITE, flags, -1, 0);
-            if ((u64)new_map != end_brk) {
-                ERROR("Failed to remap brk with new size: %lx", new_size);
-            }
-
-            prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, new_size, "current-brk");
-            WARN("Resized BRK to %lx", new_size);
-            g_current_brk_size = new_size;
-        }
-
-        if (g_address_space_base) {
-            ASSERT(g_current_brk >= g_address_space_base && g_current_brk <= g_address_space_base + UINT32_MAX);
-        }
-
+        result = BRK::set(rdi);
         VERBOSE("brk(%p) = %p", (void*)rdi, (void*)result);
         break;
     }
@@ -292,7 +257,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_prlimit64: {
-        result = HOST_SYSCALL(prlimit64, rdi, rsi, rdx, r10);
+        result = SYSCALL64(prlimit64, rdi, rsi, rdx, r10);
         STRACE("prlimit64(%016lx, %016lx, %016lx, %016lx) = %016lx", rdi, rsi, rdx, r10, (u64)result);
         break;
     }
@@ -307,12 +272,12 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_getrandom: {
-        result = HOST_SYSCALL(getrandom, rdi, rsi, rdx);
+        result = SYSCALL64(getrandom, rdi, rsi, rdx);
         STRACE("getrandom(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (u64)result);
         break;
     }
     case felix86_x86_64_mprotect: {
-        result = HOST_SYSCALL(mprotect, rdi, rsi, rdx);
+        result = SYSCALL64(mprotect, rdi, rsi, rdx);
         STRACE("mprotect(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (u64)result);
         break;
     }
@@ -320,7 +285,7 @@ void felix86_syscall(ThreadState* state) {
         // Don't close our stdout
         // TODO: better implementation where it closes an emulated stdout instead
         if (rdi != 1 && rdi != 2) {
-            result = HOST_SYSCALL(close, rdi);
+            result = SYSCALL64(close, rdi);
         } else {
             result = 0;
         }
@@ -331,52 +296,52 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_shutdown: {
-        result = HOST_SYSCALL(shutdown, rdi, rsi);
+        result = SYSCALL64(shutdown, rdi, rsi);
         STRACE("shutdown(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_shmget: {
-        result = HOST_SYSCALL(shmget, rdi, rsi, rdx);
+        result = SYSCALL64(shmget, rdi, rsi, rdx);
         STRACE("shmget(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_shmat: {
-        result = HOST_SYSCALL(shmat, rdi, (void*)rsi, rdx);
+        result = SYSCALL64(shmat, rdi, (void*)rsi, rdx);
         STRACE("shmat(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_shmctl: {
-        result = HOST_SYSCALL(shmctl, rdi, rsi, rdx);
+        result = SYSCALL64(shmctl, rdi, rsi, rdx);
         STRACE("shmctl(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_shmdt: {
-        result = HOST_SYSCALL(shmdt, (void*)rdi);
+        result = SYSCALL64(shmdt, (void*)rdi);
         STRACE("shmdt(%p) = %d", (void*)rdi, (int)result);
         break;
     }
     case felix86_x86_64_bind: {
-        result = HOST_SYSCALL(bind, rdi, (struct sockaddr*)rsi, rdx);
+        result = SYSCALL64(bind, rdi, (struct sockaddr*)rsi, rdx);
         STRACE("bind(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_setpgid: {
-        result = HOST_SYSCALL(setpgid, rdi, rsi);
+        result = SYSCALL64(setpgid, rdi, rsi);
         STRACE("setpgid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_setpriority: {
-        result = HOST_SYSCALL(setpriority, rdi, rsi, rdx);
+        result = SYSCALL64(setpriority, rdi, rsi, rdx);
         STRACE("setpriority(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_getpriority: {
-        result = HOST_SYSCALL(getpriority, rdi, rsi);
+        result = SYSCALL64(getpriority, rdi, rsi);
         STRACE("getpriority(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_getrusage: {
-        result = HOST_SYSCALL(getrusage, rdi, (struct rusage*)rsi);
+        result = SYSCALL64(getrusage, rdi, (struct rusage*)rsi);
         STRACE("getrusage(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
@@ -397,12 +362,12 @@ void felix86_syscall(ThreadState* state) {
     }
     case felix86_x86_64_epoll_create: {
         // epoll_create has obsolete and ignored argument size, acts the same as epoll_create1 with flags=0
-        result = HOST_SYSCALL(epoll_create1, 0);
+        result = SYSCALL64(epoll_create1, 0);
         STRACE("epoll_create1(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_epoll_create1: {
-        result = HOST_SYSCALL(epoll_create1, rdi);
+        result = SYSCALL64(epoll_create1, rdi);
         STRACE("epoll_create1(%d) = %d", (int)rdi, (int)result);
         break;
     }
@@ -412,17 +377,17 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_epoll_ctl: {
-        result = HOST_SYSCALL(epoll_ctl, rdi, rsi, rdx, r10);
+        result = SYSCALL64(epoll_ctl, rdi, rsi, rdx, r10);
         STRACE("epoll_ctl(%d, %d, %d, %p) = %d", (int)rdi, (int)rsi, (int)rdx, (void*)r10, (int)result);
         break;
     }
     case felix86_x86_64_epoll_pwait: {
-        result = HOST_SYSCALL(epoll_pwait, rdi, rsi, rdx, r10, r8, r9);
+        result = SYSCALL64(epoll_pwait, rdi, rsi, rdx, r10, r8, r9);
         STRACE("epoll_pwait(%d, %p, %d, %d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (int)r9, (int)result);
         break;
     }
     case felix86_x86_64_epoll_pwait2: {
-        result = HOST_SYSCALL(epoll_pwait2, rdi, rsi, rdx, r10, r8, r9);
+        result = SYSCALL64(epoll_pwait2, rdi, rsi, rdx, r10, r8, r9);
         STRACE("epoll_pwait2(%d, %p, %d, %d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (int)r9, (int)result);
         break;
     }
@@ -432,57 +397,57 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_mount: {
-        result = HOST_SYSCALL(mount, rdi, rsi, rdx, r10, r8);
+        result = SYSCALL64(mount, rdi, rsi, rdx, r10, r8);
         STRACE("mount(%p, %p, %p, %lx, %p) = %d", (void*)rdi, (void*)rsi, (void*)rdx, r10, (void*)r8, (int)result);
         break;
     }
     case felix86_x86_64_accept: {
-        result = HOST_SYSCALL(accept, rdi, rsi, rdx);
+        result = SYSCALL64(accept, rdi, rsi, rdx);
         STRACE("accept(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_socketpair: {
-        result = HOST_SYSCALL(socketpair, rdi, rsi, rdx, r10);
+        result = SYSCALL64(socketpair, rdi, rsi, rdx, r10);
         STRACE("socketpair(%d, %d, %d, %p) = %d", (int)rdi, (int)rsi, (int)rdx, (void*)r10, (int)result);
         break;
     }
     case felix86_x86_64_setgid: {
-        result = HOST_SYSCALL(setgid, rdi);
+        result = SYSCALL64(setgid, rdi);
         STRACE("setgid(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_setsid: {
-        result = HOST_SYSCALL(setsid, rdi);
+        result = SYSCALL64(setsid, rdi);
         STRACE("setsid(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_setreuid: {
-        result = HOST_SYSCALL(setreuid, rdi, rsi);
+        result = SYSCALL64(setreuid, rdi, rsi);
         STRACE("setreuid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_setregid: {
-        result = HOST_SYSCALL(setregid, rdi, rsi);
+        result = SYSCALL64(setregid, rdi, rsi);
         STRACE("setregid(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_setgroups: {
-        result = HOST_SYSCALL(setgroups, rdi, rsi);
+        result = SYSCALL64(setgroups, rdi, rsi);
         STRACE("setgroups(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_getgroups: {
-        result = HOST_SYSCALL(getgroups, rdi, rsi);
+        result = SYSCALL64(getgroups, rdi, rsi);
         STRACE("getgroups(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_setuid: {
-        result = HOST_SYSCALL(setuid, rdi);
+        result = SYSCALL64(setuid, rdi);
         STRACE("setuid(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_umount2: {
-        result = HOST_SYSCALL(umount2, rdi, rsi);
+        result = SYSCALL64(umount2, rdi, rsi);
         STRACE("umount2(%s, %lx) = %d", (const char*)rdi, rsi, (int)result);
         break;
     }
@@ -497,52 +462,52 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_ppoll: {
-        result = HOST_SYSCALL(ppoll, rdi, rsi, rdx, r10);
+        result = SYSCALL64(ppoll, rdi, rsi, rdx, r10);
         STRACE("ppoll(%p, %d, %p, %p) = %d", (void*)rdi, (int)rsi, (void*)rdx, (void*)r10, (int)result);
         break;
     }
     case felix86_x86_64_sched_getscheduler: {
-        result = HOST_SYSCALL(sched_getscheduler, rdi);
+        result = SYSCALL64(sched_getscheduler, rdi);
         STRACE("sched_getscheduler(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_sched_getparam: {
-        result = HOST_SYSCALL(sched_getparam, rdi, (struct sched_param*)rsi);
+        result = SYSCALL64(sched_getparam, rdi, (struct sched_param*)rsi);
         STRACE("sched_getparam(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_sched_setparam: {
-        result = HOST_SYSCALL(sched_setparam, rdi, rsi);
+        result = SYSCALL64(sched_setparam, rdi, rsi);
         STRACE("sched_setparam(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_clock_gettime: {
-        result = HOST_SYSCALL(clock_gettime, rdi, (struct timespec*)rsi);
+        result = SYSCALL64(clock_gettime, rdi, (struct timespec*)rsi);
         STRACE("clock_gettime(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_clock_getres: {
-        result = HOST_SYSCALL(clock_getres, rdi, (struct timespec*)rsi);
+        result = SYSCALL64(clock_getres, rdi, (struct timespec*)rsi);
         STRACE("clock_getres(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_getresuid: {
-        result = HOST_SYSCALL(getresuid, (uid_t*)rdi, (uid_t*)rsi, (uid_t*)rdx);
+        result = SYSCALL64(getresuid, (uid_t*)rdi, (uid_t*)rsi, (uid_t*)rdx);
         STRACE("getresuid(%p, %p, %p) = %d", (void*)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_getresgid: {
-        result = HOST_SYSCALL(getresgid, (gid_t*)rdi, (gid_t*)rsi, (gid_t*)rdx);
+        result = SYSCALL64(getresgid, (gid_t*)rdi, (gid_t*)rsi, (gid_t*)rdx);
         STRACE("getresgid(%p, %p, %p) = %d", (void*)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_gettimeofday: {
-        result = HOST_SYSCALL(gettimeofday, (struct timeval*)rdi, (struct timezone*)rsi);
+        result = SYSCALL64(gettimeofday, (struct timeval*)rdi, (struct timezone*)rsi);
         STRACE("gettimeofday(%p, %p) = %d", (void*)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_dup: {
-        result = HOST_SYSCALL(dup, rdi);
+        result = SYSCALL64(dup, rdi);
         STRACE("dup(%d) = %d", (int)rdi, (int)result);
         break;
     }
@@ -552,14 +517,14 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_dup3: {
-        result = HOST_SYSCALL(dup3, rdi, rsi, rdx);
+        result = SYSCALL64(dup3, rdi, rsi, rdx);
         STRACE("dup3(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_fstat: {
         x64Stat* guest_stat = (x64Stat*)rsi;
         struct stat host_stat;
-        result = HOST_SYSCALL(fstat, rdi, &host_stat);
+        result = SYSCALL64(fstat, rdi, &host_stat);
         STRACE("fstat(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         if (result >= 0) {
             *guest_stat = host_stat;
@@ -572,37 +537,37 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_fsync: {
-        result = HOST_SYSCALL(fsync, rdi);
+        result = SYSCALL64(fsync, rdi);
         STRACE("fsync(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_sync: {
-        result = HOST_SYSCALL(sync);
+        result = SYSCALL64(sync);
         STRACE("sync() = %d", (int)result);
         break;
     }
     case felix86_x86_64_syncfs: {
-        result = HOST_SYSCALL(syncfs, rdi);
+        result = SYSCALL64(syncfs, rdi);
         STRACE("syncfs(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_sendmmsg: {
-        result = HOST_SYSCALL(sendmmsg, rdi, (struct mmsghdr*)rsi, rdx, r10);
+        result = SYSCALL64(sendmmsg, rdi, (struct mmsghdr*)rsi, rdx, r10);
         STRACE("sendmmsg(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
     case felix86_x86_64_recvmmsg: {
-        result = HOST_SYSCALL(recvmmsg, rdi, (struct mmsghdr*)rsi, rdx, r10, r8);
+        result = SYSCALL64(recvmmsg, rdi, (struct mmsghdr*)rsi, rdx, r10, r8);
         STRACE("recvmmsg(%d, %p, %d, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
         break;
     }
     case felix86_x86_64_setsockopt: {
-        result = HOST_SYSCALL(setsockopt, rdi, rsi, rdx, r10, r8);
+        result = SYSCALL64(setsockopt, rdi, rsi, rdx, r10, r8);
         STRACE("setsockopt(%d, %d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
         break;
     }
     case felix86_x86_64_getsockopt: {
-        result = HOST_SYSCALL(getsockopt, rdi, rsi, rdx, r10, r8);
+        result = SYSCALL64(getsockopt, rdi, rsi, rdx, r10, r8);
         STRACE("getsockopt(%d, %d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)r8, (int)result);
         break;
     }
@@ -612,17 +577,17 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_fadvise64: {
-        result = HOST_SYSCALL(fadvise64, rdi, rsi, rdx, r10);
+        result = SYSCALL64(fadvise64, rdi, rsi, rdx, r10);
         STRACE("fadvise64(%d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
     case felix86_x86_64_fcntl: {
-        result = HOST_SYSCALL(fcntl, rdi, rsi, rdx);
+        result = SYSCALL64(fcntl, rdi, rsi, rdx);
         STRACE("fcntl(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_pselect6: {
-        result = HOST_SYSCALL(pselect6, rdi, rsi, rdx, r10, r8, r9);
+        result = SYSCALL64(pselect6, rdi, rsi, rdx, r10, r8, r9);
         STRACE("pselect6(%d, %p, %p, %p, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (void*)r10, (void*)r8, (void*)r9, (int)result);
         break;
     }
@@ -632,7 +597,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_fchown: {
-        result = HOST_SYSCALL(fchown, rdi, rsi, rdx);
+        result = SYSCALL64(fchown, rdi, rsi, rdx);
         STRACE("fchown(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
@@ -647,7 +612,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_fchdir: {
-        result = HOST_SYSCALL(fchdir, rdi);
+        result = SYSCALL64(fchdir, rdi);
         STRACE("fchdir(%d) = %d", (int)rdi, (int)result);
         break;
     }
@@ -657,12 +622,12 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_sysinfo: {
-        result = HOST_SYSCALL(sysinfo, rdi);
+        result = SYSCALL64(sysinfo, rdi);
         STRACE("sysinfo(%p) = %d", (void*)rdi, (int)result);
         break;
     }
     case felix86_x86_64_ioctl: {
-        result = HOST_SYSCALL(ioctl, rdi, rsi, rdx);
+        result = SYSCALL64(ioctl, rdi, rsi, rdx);
 
         if (!try_strace_ioctl(rdi, rsi, rdx, result)) {
             STRACE("ioctl(%d, %016lx, %016lx) = %016lx", (int)rdi, rsi, rdx, (u64)result);
@@ -670,7 +635,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_write: {
-        result = HOST_SYSCALL(write, rdi, rsi, rdx);
+        result = SYSCALL64(write, rdi, rsi, rdx);
 
         if (g_strace) {
             STRACE("write(%d, %s, %d) = %d", (int)rdi, (char*)rsi, (int)rdx, (int)result);
@@ -678,7 +643,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_writev: {
-        result = HOST_SYSCALL(writev, rdi, rsi, rdx);
+        result = SYSCALL64(writev, rdi, rsi, rdx);
         STRACE("writev(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
@@ -702,17 +667,17 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_pipe2: {
-        result = HOST_SYSCALL(pipe2, rdi, rsi);
+        result = SYSCALL64(pipe2, rdi, rsi);
         STRACE("pipe2(%p, %d) = %d", (void*)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_memfd_create: {
-        result = HOST_SYSCALL(memfd_create, (const char*)rdi, rsi);
+        result = SYSCALL64(memfd_create, (const char*)rdi, rsi);
         STRACE("memfd_create(%s, %d) = %d", (const char*)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_ftruncate: {
-        result = HOST_SYSCALL(ftruncate, rdi, rsi);
+        result = SYSCALL64(ftruncate, rdi, rsi);
         STRACE("ftruncate(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
@@ -722,12 +687,12 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_read: {
-        result = HOST_SYSCALL(read, rdi, rsi, rdx);
+        result = SYSCALL64(read, rdi, rsi, rdx);
         STRACE("read(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_getdents64: {
-        result = HOST_SYSCALL(getdents64, rdi, rsi, rdx);
+        result = SYSCALL64(getdents64, rdi, rsi, rdx);
         STRACE("getdents64(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
@@ -742,12 +707,12 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_pwrite64: {
-        result = HOST_SYSCALL(pwrite64, rdi, rsi, rdx, r10);
+        result = SYSCALL64(pwrite64, rdi, rsi, rdx, r10);
         STRACE("pwrite64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
     case felix86_x86_64_pread64: {
-        result = HOST_SYSCALL(pread64, rdi, rsi, rdx, r10);
+        result = SYSCALL64(pread64, rdi, rsi, rdx, r10);
         STRACE("pread64(%d, %p, %d, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
@@ -768,12 +733,12 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_tgkill: {
-        result = HOST_SYSCALL(tgkill, rdi, rsi, rdx);
+        result = SYSCALL64(tgkill, rdi, rsi, rdx);
         STRACE("tgkill(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_kill: {
-        result = HOST_SYSCALL(kill, rdi, rsi);
+        result = SYSCALL64(kill, rdi, rsi);
         STRACE("kill(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
@@ -798,7 +763,7 @@ void felix86_syscall(ThreadState* state) {
             STRACE("mmap32(%p, %016lx, %d, %x, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
         } else {
             // No need to use mapper
-            result = HOST_SYSCALL(mmap, rdi, rsi, rdx, (int)r10, (int)r8, r9);
+            result = SYSCALL64(mmap, rdi, rsi, rdx, (int)r10, (int)r8, r9);
             STRACE("mmap(%p, %016lx, %d, %x, %d, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (int)r10, (int)r8, (int)r9, (u64)result);
         }
         break;
@@ -809,33 +774,33 @@ void felix86_syscall(ThreadState* state) {
             result = g_mapper->unmap32((void*)rdi, rsi);
             STRACE("munmap32(%p, %016lx) = %016lx", (void*)rdi, rsi, (u64)result);
         } else {
-            result = HOST_SYSCALL(munmap, rdi, rsi);
+            result = SYSCALL64(munmap, rdi, rsi);
             STRACE("munmap(%p, %016lx) = %016lx", (void*)rdi, rsi, (u64)result);
         }
         break;
     }
     case felix86_x86_64_setitimer: {
-        result = HOST_SYSCALL(setitimer, rdi, rsi, rdx);
+        result = SYSCALL64(setitimer, rdi, rsi, rdx);
         STRACE("setitimer(%d, %p, %p) = %d", (int)rdi, (void*)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_getuid: {
-        result = HOST_SYSCALL(getuid);
+        result = SYSCALL64(getuid);
         STRACE("getuid() = %d", (int)result);
         break;
     }
     case felix86_x86_64_fdatasync: {
-        result = HOST_SYSCALL(fdatasync, rdi);
+        result = SYSCALL64(fdatasync, rdi);
         STRACE("fdatasync(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_geteuid: {
-        result = HOST_SYSCALL(geteuid);
+        result = SYSCALL64(geteuid);
         STRACE("geteuid() = %d", (int)result);
         break;
     }
     case felix86_x86_64_getegid: {
-        result = HOST_SYSCALL(getegid);
+        result = SYSCALL64(getegid);
         STRACE("getegid() = %d", (int)result);
         break;
     }
@@ -845,57 +810,57 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_getgid: {
-        result = HOST_SYSCALL(getgid);
+        result = SYSCALL64(getgid);
         STRACE("getgid() = %d", (int)result);
         break;
     }
     case felix86_x86_64_setfsgid: {
-        result = HOST_SYSCALL(setfsgid, rdi);
+        result = SYSCALL64(setfsgid, rdi);
         STRACE("setfsgid(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_setfsuid: {
-        result = HOST_SYSCALL(setfsuid, rdi);
+        result = SYSCALL64(setfsuid, rdi);
         STRACE("setfsuid(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_getppid: {
-        result = HOST_SYSCALL(getppid);
+        result = SYSCALL64(getppid);
         STRACE("getppid() = %d", (int)result);
         break;
     }
     case felix86_x86_64_getpid: {
-        result = HOST_SYSCALL(getpid);
+        result = SYSCALL64(getpid);
         STRACE("getpid() = %d", (int)result);
         break;
     }
     case felix86_x86_64_gettid: {
-        result = HOST_SYSCALL(gettid);
+        result = SYSCALL64(gettid);
         STRACE("gettid() = %d", (int)result);
         break;
     }
     case felix86_x86_64_socket: {
-        result = HOST_SYSCALL(socket, rdi, rsi, rdx);
+        result = SYSCALL64(socket, rdi, rsi, rdx);
         STRACE("socket(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_connect: {
-        result = HOST_SYSCALL(connect, rdi, rsi, rdx);
+        result = SYSCALL64(connect, rdi, rsi, rdx);
         STRACE("connect(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_mremap: {
-        result = HOST_SYSCALL(mremap, rdi, rsi, rdx, r10, r8);
+        result = SYSCALL64(mremap, rdi, rsi, rdx, r10, r8);
         STRACE("mremap(%p, %016lx, %016lx, %d, %016lx) = %016lx", (void*)rdi, rsi, rdx, (int)r10, r8, (u64)result);
         break;
     }
     case felix86_x86_64_msync: {
-        result = HOST_SYSCALL(msync, rdi, rsi, rdx);
+        result = SYSCALL64(msync, rdi, rsi, rdx);
         STRACE("msync(%p, %016lx, %d) = %016lx", (void*)rdi, rsi, (int)rdx, (u64)result);
         break;
     }
     case felix86_x86_64_sendto: {
-        result = HOST_SYSCALL(sendto, rdi, rsi, rdx, r10, r8, r9);
+        result = SYSCALL64(sendto, rdi, rsi, rdx, r10, r8, r9);
         STRACE("sendto(%d, %p, %d, %d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (int)r9, (int)result);
         break;
     }
@@ -905,17 +870,17 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_times: {
-        result = HOST_SYSCALL(times, (struct tms*)rdi);
+        result = SYSCALL64(times, (struct tms*)rdi);
         STRACE("times(%p) = %d", (void*)rdi, (int)result);
         break;
     }
     case felix86_x86_64_recvfrom: {
-        result = HOST_SYSCALL(recvfrom, rdi, rsi, rdx, r10, r8, r9);
+        result = SYSCALL64(recvfrom, rdi, rsi, rdx, r10, r8, r9);
         STRACE("recvfrom(%d, %p, %d, %d, %p, %p) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)r10, (void*)r8, (void*)r9, (int)result);
         break;
     }
     case felix86_x86_64_lseek: {
-        result = HOST_SYSCALL(lseek, rdi, rsi, rdx);
+        result = SYSCALL64(lseek, rdi, rsi, rdx);
         STRACE("lseek(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
@@ -938,17 +903,17 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_timerfd_create: {
-        result = HOST_SYSCALL(timerfd_create, rdi, rsi);
+        result = SYSCALL64(timerfd_create, rdi, rsi);
         STRACE("timerfd_create(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_timerfd_settime: {
-        result = HOST_SYSCALL(timerfd_settime, rdi, rsi, rdx, r10);
+        result = SYSCALL64(timerfd_settime, rdi, rsi, rdx, r10);
         STRACE("timerfd_settime(%d, %d, %p, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (void*)r10, (int)result);
         break;
     }
     case felix86_x86_64_timerfd_gettime: {
-        result = HOST_SYSCALL(timerfd_gettime, rdi, (struct itimerspec*)rsi);
+        result = SYSCALL64(timerfd_gettime, rdi, (struct itimerspec*)rsi);
         STRACE("timerfd_gettime(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
@@ -963,17 +928,17 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_fstatfs: {
-        result = HOST_SYSCALL(fstatfs, rdi, (struct statfs*)rsi);
+        result = SYSCALL64(fstatfs, rdi, (struct statfs*)rsi);
         STRACE("fstatfs(%d, %p) = %d", (int)rdi, (void*)rsi, (int)result);
         break;
     }
     case felix86_x86_64_getsockname: {
-        result = HOST_SYSCALL(getsockname, rdi, (struct sockaddr*)rsi, (socklen_t*)rdx);
+        result = SYSCALL64(getsockname, rdi, (struct sockaddr*)rsi, (socklen_t*)rdx);
         STRACE("getsockname(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_madvise: {
-        result = HOST_SYSCALL(madvise, rdi, rsi, rdx);
+        result = SYSCALL64(madvise, rdi, rsi, rdx);
         STRACE("madvise(%p, %016lx, %d) = %d", (void*)rdi, rsi, (int)rdx, (int)result);
         break;
     }
@@ -991,12 +956,12 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_eventfd2: {
-        result = HOST_SYSCALL(eventfd2, rdi, rsi);
+        result = SYSCALL64(eventfd2, rdi, rsi);
         STRACE("eventfd2(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_fchmod: {
-        result = HOST_SYSCALL(fchmod, rdi, rsi);
+        result = SYSCALL64(fchmod, rdi, rsi);
         STRACE("fchmod(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
@@ -1006,42 +971,42 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_recvmsg: {
-        result = HOST_SYSCALL(recvmsg, rdi, (struct msghdr*)rsi, rdx);
+        result = SYSCALL64(recvmsg, rdi, (struct msghdr*)rsi, rdx);
         STRACE("recvmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_sendmsg: {
-        result = HOST_SYSCALL(sendmsg, rdi, (struct msghdr*)rsi, rdx);
+        result = SYSCALL64(sendmsg, rdi, (struct msghdr*)rsi, rdx);
         STRACE("sendmsg(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_semget: {
-        result = HOST_SYSCALL(semget, rdi, rsi, rdx);
+        result = SYSCALL64(semget, rdi, rsi, rdx);
         STRACE("semget(%d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_semop: {
-        result = HOST_SYSCALL(semop, rdi, rsi, rdx);
+        result = SYSCALL64(semop, rdi, rsi, rdx);
         STRACE("semop(%d, %p, %d) = %d", (int)rdi, (void*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_semtimedop: {
-        result = HOST_SYSCALL(semtimedop, rdi, rsi, rdx, r10);
+        result = SYSCALL64(semtimedop, rdi, rsi, rdx, r10);
         STRACE("semtimedop(%d, %p, %d, %p) = %d", (int)rdi, (void*)rsi, (int)rdx, (void*)r10, (int)result);
         break;
     }
     case felix86_x86_64_semctl: {
-        result = HOST_SYSCALL(semctl, rdi, rsi, rdx, r10);
+        result = SYSCALL64(semctl, rdi, rsi, rdx, r10);
         STRACE("semctl(%d, %d, %d, %ld) = %d", (int)rdi, (int)rsi, (int)rdx, r10, (int)result);
         break;
     }
     case felix86_x86_64_flock: {
-        result = HOST_SYSCALL(flock, rdi, rsi);
+        result = SYSCALL64(flock, rdi, rsi);
         STRACE("flock(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_clock_nanosleep: {
-        result = HOST_SYSCALL(clock_nanosleep, rdi, rsi, rdx, r10);
+        result = SYSCALL64(clock_nanosleep, rdi, rsi, rdx, r10);
         STRACE("clock_nanosleep(%d, %d, %p, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (void*)r10, (int)result);
         break;
     }
@@ -1075,13 +1040,13 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_rt_sigtimedwait: {
-        result = HOST_SYSCALL(rt_sigtimedwait, rdi, rsi, rdx, r10);
+        result = SYSCALL64(rt_sigtimedwait, rdi, rsi, rdx, r10);
         STRACE("rt_sigtimedwait(%p, %p, %p, %d, %d) = %d", (void*)rdi, (void*)rsi, (void*)rdx, (int)r10, (int)r8, (int)result);
         WARN_ONCE("This program uses rt_sigtimedwait");
         break;
     }
     case felix86_x86_64_sched_yield: {
-        result = HOST_SYSCALL(sched_yield);
+        result = SYSCALL64(sched_yield);
         STRACE("sched_yield() = %d", (int)result);
         break;
     }
@@ -1148,7 +1113,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         default: {
-            result = HOST_SYSCALL(prctl, rdi, rsi, rdx, r10, r8);
+            result = SYSCALL64(prctl, rdi, rsi, rdx, r10, r8);
             break;
         }
         }
@@ -1156,63 +1121,63 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_futex: {
-        result = HOST_SYSCALL(futex, rdi, rsi, rdx, r10, r8, r9);
+        result = SYSCALL64(futex, rdi, rsi, rdx, r10, r8, r9);
         STRACE("futex(%p, %d, %d, %p, %p, %d) = %d", (void*)rdi, (int)rsi, (int)rdx, (void*)r10, (void*)r8, (int)r9, (int)result);
         break;
     }
     case felix86_x86_64_inotify_init1: {
-        result = HOST_SYSCALL(inotify_init1, rdi);
+        result = SYSCALL64(inotify_init1, rdi);
         STRACE("inotify_init1(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_inotify_add_watch: {
         ERROR("TODO: inotify_add_watch move me to Filesystem");
-        result = HOST_SYSCALL(inotify_add_watch, rdi, (const char*)rsi, rdx);
+        result = SYSCALL64(inotify_add_watch, rdi, (const char*)rsi, rdx);
         STRACE("inotify_add_watch(%d, %s, %d) = %d", (int)rdi, (const char*)rsi, (int)rdx, (int)result);
         break;
     }
     case felix86_x86_64_inotify_rm_watch: {
-        result = HOST_SYSCALL(inotify_rm_watch, rdi, rsi);
+        result = SYSCALL64(inotify_rm_watch, rdi, rsi);
         STRACE("inotify_rm_watch(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
     case felix86_x86_64_fallocate: {
-        result = HOST_SYSCALL(fallocate, rdi, rsi, rdx, r10);
+        result = SYSCALL64(fallocate, rdi, rsi, rdx, r10);
         STRACE("fallocate(%d, %d, %d, %d) = %d", (int)rdi, (int)rsi, (int)rdx, (int)r10, (int)result);
         break;
     }
     case felix86_x86_64_sched_getaffinity: {
-        result = HOST_SYSCALL(sched_getaffinity, rdi, rsi, rdx);
+        result = SYSCALL64(sched_getaffinity, rdi, rsi, rdx);
         STRACE("sched_getaffinity(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_sched_setaffinity: {
-        result = HOST_SYSCALL(sched_setaffinity, rdi, rsi, rdx);
+        result = SYSCALL64(sched_setaffinity, rdi, rsi, rdx);
         STRACE("sched_setaffinity(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_sched_get_priority_min: {
-        result = HOST_SYSCALL(sched_get_priority_min, rdi);
+        result = SYSCALL64(sched_get_priority_min, rdi);
         STRACE("sched_get_priority_min(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_sched_get_priority_max: {
-        result = HOST_SYSCALL(sched_get_priority_max, rdi);
+        result = SYSCALL64(sched_get_priority_max, rdi);
         STRACE("sched_get_priority_max(%d) = %d", (int)rdi, (int)result);
         break;
     }
     case felix86_x86_64_sched_setscheduler: {
-        result = HOST_SYSCALL(sched_setscheduler, rdi, rsi, rdx);
+        result = SYSCALL64(sched_setscheduler, rdi, rsi, rdx);
         STRACE("sched_setscheduler(%d, %d, %p) = %d", (int)rdi, (int)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_mincore: {
-        result = HOST_SYSCALL(mincore, rdi, rsi, rdx);
+        result = SYSCALL64(mincore, rdi, rsi, rdx);
         STRACE("mincore(%p, %d, %p) = %d", (void*)rdi, (int)rsi, (void*)rdx, (int)result);
         break;
     }
     case felix86_x86_64_listen: {
-        result = HOST_SYSCALL(listen, rdi, rsi);
+        result = SYSCALL64(listen, rdi, rsi);
         STRACE("listen(%d, %d) = %d", (int)rdi, (int)rsi, (int)result);
         break;
     }
@@ -1232,7 +1197,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_wait4: {
-        result = HOST_SYSCALL(wait4, rdi, rsi, rdx, r10);
+        result = SYSCALL64(wait4, rdi, rsi, rdx, r10);
         STRACE("wait4(%d, %p, %d, %p)", (int)rdi, (void*)rsi, (int)rdx, (void*)r10);
         break;
     }
@@ -1340,7 +1305,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_umask: {
-        result = HOST_SYSCALL(umask, rdi);
+        result = SYSCALL64(umask, rdi);
         STRACE("umask(%d) = %d", (int)rdi, (int)result);
         break;
     }
@@ -1355,7 +1320,7 @@ void felix86_syscall(ThreadState* state) {
         break;
     }
     case felix86_x86_64_getpeername: {
-        result = HOST_SYSCALL(getpeername, rdi, (struct sockaddr*)rsi, (socklen_t*)rdx);
+        result = SYSCALL64(getpeername, rdi, (struct sockaddr*)rsi, (socklen_t*)rdx);
         STRACE("getpeername(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
@@ -1403,6 +1368,28 @@ void felix86_syscall(ThreadState* state) {
         STRACE("rt_sigprocmask(%d, %p, %p) = %d", (int)rdi, (void*)rsi, (void*)rdx, (int)result);
         break;
     }
+    default: {
+        result = -ENOSYS;
+        WARN("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);
+        break;
+    }
+    }
+
+    state->SetGpr(X86_REF_RAX, result);
+}
+
+void felix86_syscall32(ThreadState* state) {
+    u64 syscall_number = state->GetGpr(X86_REF_RAX);
+    u32 arg1 = state->GetGpr(X86_REF_RBX);
+    u32 arg2 = state->GetGpr(X86_REF_RCX);
+    u32 arg3 = state->GetGpr(X86_REF_RDX);
+    u32 arg4 = state->GetGpr(X86_REF_RSI);
+    u32 arg5 = state->GetGpr(X86_REF_RDI);
+    u32 arg6 = state->GetGpr(X86_REF_RBP);
+
+    Result result;
+
+    switch (syscall_number) {
     default: {
         result = -ENOSYS;
         WARN("Unimplemented syscall %s (%016lx)", print_syscall_name(syscall_number), syscall_number);

@@ -90,7 +90,6 @@ extern u64 g_initial_brk;
 extern u64 g_current_brk;
 extern u64 g_current_brk_size;
 extern u64 g_dispatcher_exit_count;
-extern u64 g_address_space_base;
 extern u64 g_program_end;
 extern int g_output_fd;
 extern u32 g_spilled_count;
