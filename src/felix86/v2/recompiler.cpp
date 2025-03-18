@@ -390,6 +390,9 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
         }
     }
 
+    current_block_metadata->guest_address_end = meta.rip;
+    current_block_metadata->address_end = HostAddress{(u64)as.GetCursorPointer()};
+
     if (g_gdb) {
         size_t inst_count = current_block_metadata->instruction_spans.size();
         gdb_block.lines = (gdb_line_mapping*)malloc(sizeof(gdb_line_mapping) * inst_count);
@@ -405,12 +408,13 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
             gdb_block.lines[i].pc = host_address.raw();
         }
 
+        gdb_block.host_start = current_block_metadata->address.raw();
+        gdb_block.host_end = current_block_metadata->address_end.raw();
+
         fclose(gdb_block.file);
         g_gdbjit->fire(gdb_block);
     }
 
-    current_block_metadata->guest_address_end = meta.rip;
-    current_block_metadata->address_end = HostAddress{(u64)as.GetCursorPointer()};
     flush_icache();
 
     current_block_metadata = nullptr;

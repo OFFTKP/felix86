@@ -14,12 +14,12 @@ felix86_jit_block_t GDBJIT::createBlock() {
     memset(&block, 0, sizeof(felix86_jit_block_t));
     int pid = getpid();
     int chars = snprintf(block.filename, sizeof(block.filename), "/tmp/f86_%x", pid);
-    ASSERT(chars < sizeof(block.filename));
+    ASSERT(chars < (int)sizeof(block.filename));
     if (!std::filesystem::exists(block.filename)) {
         std::filesystem::create_directory(block.filename);
     }
     chars = snprintf(block.filename, sizeof(block.filename), "/tmp/f86_%x/XXXXXX.map", pid);
-    ASSERT(chars < sizeof(block.filename));
+    ASSERT(chars < (int)sizeof(block.filename));
     block.file = fdopen(mkstemps(block.filename, 4), "w");
     ASSERT(block.file);
     return block;
