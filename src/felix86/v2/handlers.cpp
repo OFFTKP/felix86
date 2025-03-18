@@ -3548,6 +3548,33 @@ FAST_HANDLE(LEAVE) {
     rec.setRefGPR(X86_REF_RBP, size, rbp);
 }
 
+FAST_HANDLE(ENTER) {
+    x86_size_e size = rec.zydisToSize(instruction.operand_width);
+    int alloc_size = rec.getImmediate(&operands[0]);
+    u8 nesting_level = rec.getImmediate(&operands[1]) & 0x1F;
+    biscuit::GPR frame_temp = rec.scratch();
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    biscuit::GPR rbp = rec.getRefGPR(X86_REF_RBP, X86_SIZE_QWORD);
+    int offset = instruction.operand_width / 8;
+    as.ADDI(frame_temp, rsp, -offset);
+    rec.writeMemory(rbp, rsp, -offset, size);
+
+    if (nesting_level > 1) {
+        biscuit::GPR mem = rec.scratch();
+        for (u8 i = 1; i < nesting_level; i++) {
+            rec.readMemory(mem, rbp, -i * offset, size);
+            rec.writeMemory(mem, frame_temp, -i * offset, size);
+        }
+    } else if (nesting_level == 1) {
+        rec.writeMemory(frame_temp, frame_temp, -offset, size);
+    }
+
+    rec.setRefGPR(X86_REF_RBP, size, frame_temp);
+    biscuit::GPR new_rsp = rec.scratch();
+    rec.addi(new_rsp, rsp, -alloc_size);
+    rec.setRefGPR(X86_REF_RSP, size, new_rsp);
+}
+
 void SETCC(Recompiler& rec, const HandlerMetadata& meta, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     rec.setOperandGPR(&operands[0], cond);
 }

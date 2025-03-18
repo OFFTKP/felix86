@@ -5,6 +5,11 @@
         FEXTestLoader::RunTest("ASM/PrimaryGroup/" #opcode ".asm");                                                                                  \
     }
 
+#define PRIMARY_GROUP32(opcode)                                                                                                                      \
+    CATCH_TEST_CASE(#opcode, "[PrimaryGroup32]") {                                                                                                   \
+        FEXTestLoader::RunTest("32Bit_ASM/PrimaryGroup/" #opcode ".asm");                                                                            \
+    }
+
 PRIMARY_GROUP(1_80_00)
 PRIMARY_GROUP(1_80_01)
 PRIMARY_GROUP(1_80_02)
@@ -152,3 +157,8 @@ PRIMARY_GROUP(5_FF_06)
 
 PRIMARY_GROUP(6_C6_00)
 PRIMARY_GROUP(6_C7_00)
+
+PRIMARY_GROUP32(3_F6_05)
+PRIMARY_GROUP32(5_FF_02)
+PRIMARY_GROUP32(5_FF_02_2)
+PRIMARY_GROUP32(5_FF_02_3)
