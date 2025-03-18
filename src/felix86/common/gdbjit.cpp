@@ -1,6 +1,7 @@
 #include <cstring>
 #include <mutex>
 #include "felix86/common/gdbjit.hpp"
+#include "felix86/common/log.hpp"
 #include "felix86/common/process_lock.hpp"
 
 extern "C" {
@@ -16,6 +17,8 @@ felix86_jit_block_t GDBJIT::createBlock() {
     static_assert(sizeof(temp) <= 31);
     strcpy(block.filename, temp);
     block.file = fdopen(mkstemps(block.filename, 2), "w");
+    printf("file: %s\n", block.filename);
+    ASSERT(block.file);
     return block;
 }
 
