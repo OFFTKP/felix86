@@ -182,7 +182,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     switch (rv_syscall) {
     case felix86_riscv64_brk: {
         result = BRK::set(arg1);
-        VERBOSE("brk(%p) = %p", (void*)arg1, (void*)result);
+        STRACE("brk(%p) = %p", (void*)arg1, (void*)result);
         break;
     }
     case felix86_riscv64_set_tid_address: {

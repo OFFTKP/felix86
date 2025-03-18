@@ -30,6 +30,14 @@ constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
     (Cpuid){0x80000004, NO_SUBLEAF, 0x20342029, 0x20555043, 0x30382E32, 0x007A4847},
 };
 
+[[maybe_unused]] constexpr std::array p3_mappings = {
+    // Pentium 3 CPU, for x86 mode
+    (Cpuid){0x00000000, NO_SUBLEAF, 0x00000003, 0x756E6547, 0x6C65746E, 0x49656E69},
+    (Cpuid){0x00000001, NO_SUBLEAF, 0x00000673, 0x00000000, 0x00000000, 0x0387FBFF},
+    (Cpuid){0x00000002, NO_SUBLEAF, 0x03020101, 0x00000000, 0x00000000, 0x0C040843},
+    (Cpuid){0x00000003, NO_SUBLEAF, 0x00000000, 0x00000000, 0x4CECC782, 0x00006778},
+};
+
 [[maybe_unused]] constexpr std::array nehalem_mappings = {
     // http://users.atw.hu/instlatx64/GenuineIntel/GenuineIntel00106A2_Nehalem-EP_CPUID.txt
     (Cpuid){0x00000000, NO_SUBLEAF, 0x0000000A, 0x756E6547, 0x6C65746E, 0x49656E69},
@@ -57,6 +65,7 @@ constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
 };
 
 std::span<const Cpuid> selected_mappings = p4_mappings;
+std::span<const Cpuid> selected_mappings_32 = p3_mappings;
 
 void felix86_cpuid(ThreadState* thread_state) {
     u32 eax = 0;
@@ -67,7 +76,8 @@ void felix86_cpuid(ThreadState* thread_state) {
     u32 subleaf = thread_state->GetGpr(X86_REF_RCX);
     bool found = false;
 
-    for (const Cpuid& cpuid : selected_mappings) {
+    auto& mappings = g_mode32 ? selected_mappings_32 : selected_mappings;
+    for (const Cpuid& cpuid : mappings) {
         if (cpuid.leaf == leaf && (cpuid.subleaf == subleaf || cpuid.subleaf == NO_SUBLEAF)) {
             eax = cpuid.eax;
             ebx = cpuid.ebx;
