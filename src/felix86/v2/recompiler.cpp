@@ -1281,9 +1281,8 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
     }
 
     // Address override prefix
-    if (instruction.address_width == 32 && !g_mode32) {
-        WARN("Address size override prefix in 64-bit mode?");
-        zext(address, address, X86_SIZE_DWORD);
+    if (instruction.address_width != 64) {
+        zext(address, address, zydisToSize(instruction.address_width));
     }
 
     return address;
