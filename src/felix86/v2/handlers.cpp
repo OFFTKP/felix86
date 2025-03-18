@@ -3571,7 +3571,7 @@ FAST_HANDLE(ENTER) {
 
     rec.setRefGPR(X86_REF_RBP, size, frame_temp);
     biscuit::GPR new_rsp = rec.scratch();
-    rec.addi(new_rsp, rsp, -alloc_size);
+    rec.addi(new_rsp, frame_temp, -alloc_size);
     rec.setRefGPR(X86_REF_RSP, size, new_rsp);
 }
 
