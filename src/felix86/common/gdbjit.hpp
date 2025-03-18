@@ -24,11 +24,10 @@ struct jit_descriptor {
 #endif
 
 struct GDBJIT {
-    static felix86_jit_block_t createBlock();
+    static felix86_jit_block_t* createBlock(size_t line_count);
 
-    void fire(const felix86_jit_block_t& block);
+    void fire(felix86_jit_block_t* block);
 
 private:
     Semaphore semaphore;
-    std::list<felix86_jit_block_t> blocks;
 };

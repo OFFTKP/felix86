@@ -346,12 +346,6 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
     HandlerMetadata meta = {rip, rip};
     BlockMetadata& block_meta = getBlockMetadata(rip);
 
-    felix86_jit_block_t gdb_block;
-    if (g_gdb) {
-        gdb_block = GDBJIT::createBlock();
-        gdb_block.host_start = (u64)as.GetCursorPointer();
-    }
-
     current_meta = &meta;
     current_block_metadata = &block_meta;
     current_sew = SEW::E1024;
@@ -395,7 +389,8 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
 
     if (g_gdb) {
         size_t inst_count = current_block_metadata->instruction_spans.size();
-        gdb_block.lines = (gdb_line_mapping*)malloc(sizeof(gdb_line_mapping) * inst_count);
+        felix86_jit_block_t* gdb_block = GDBJIT::createBlock(inst_count);
+        gdb_block->host_start = (u64)as.GetCursorPointer();
         for (size_t i = 0; i < inst_count; i++) {
             GuestAddress guest_address = current_block_metadata->instruction_spans[i].first;
             HostAddress host_address = current_block_metadata->instruction_spans[i].second;
@@ -403,17 +398,17 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
             ZydisDisassembleIntel(decoder.machine_mode, guest_address.raw(), (void*)guest_address.toHost().raw(), 15, &inst);
             int size = strlen(inst.text);
             inst.text[size] = '\n';
-            fwrite(inst.text, size + 1, 1, gdb_block.file);
-            gdb_block.lines[i].line = i;
-            gdb_block.lines[i].pc = host_address.raw();
+            fwrite(inst.text, size + 1, 1, gdb_block->file);
+            gdb_block->lines[i].line = i;
+            gdb_block->lines[i].pc = host_address.raw();
         }
 
-        gdb_block.host_start = current_block_metadata->address.raw();
-        gdb_block.host_end = current_block_metadata->address_end.raw();
-        gdb_block.guest_address = current_block_metadata->guest_address.raw();
-        gdb_block.line_count = inst_count;
+        gdb_block->host_start = current_block_metadata->address.raw();
+        gdb_block->host_end = current_block_metadata->address_end.raw();
+        gdb_block->guest_address = current_block_metadata->guest_address.raw();
+        gdb_block->line_count = inst_count;
 
-        fclose(gdb_block.file);
+        fclose(gdb_block->file);
         g_gdbjit->fire(gdb_block);
     }
 

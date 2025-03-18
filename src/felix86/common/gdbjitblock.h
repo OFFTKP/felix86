@@ -27,10 +27,10 @@ typedef struct {
     u64 host_start;
     u64 host_end;
     u64 guest_address;
-    struct gdb_line_mapping* lines;
     u64 line_count;
     // Also contains the node for the interface
     jit_code_entry entry;
+    struct gdb_line_mapping lines[0];
 } felix86_jit_block_t;
 
 #ifdef __cplusplus
