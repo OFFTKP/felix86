@@ -1,5 +1,4 @@
 #include <cstring>
-#include <mutex>
 #include "felix86/common/gdbjit.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/process_lock.hpp"
@@ -16,7 +15,7 @@ felix86_jit_block_t GDBJIT::createBlock() {
     constexpr static const char temp[] = "/tmp/felix86_gdb_XXXXXX.map";
     static_assert(sizeof(temp) <= 31);
     strcpy(block.filename, temp);
-    block.file = fdopen(mkstemps(block.filename, 2), "w");
+    block.file = fdopen(mkstemps(block.filename, 4), "w");
     printf("file: %s\n", block.filename);
     ASSERT(block.file);
     return block;
