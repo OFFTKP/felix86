@@ -68,9 +68,8 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
     if (result > 0) {
         std::string path(buf, result);
         removeRootfsPrefix(path);
-        size_t new_size = std::min((size_t)result, path.size());
-        strncpy(buf, path.data(), new_size);
-        return new_size;
+        strncpy(buf, path.data(), path.size());
+        return path.size() - 1; // readlink size doesn't factor the '\0'
     }
 
     return result;
@@ -82,9 +81,8 @@ int Filesystem::Getcwd(char* buf, size_t size) {
     if (result > 0) {
         std::string path(buf, size);
         removeRootfsPrefix(path);
-        size_t new_size = std::min(size, path.size());
-        strncpy(buf, path.data(), new_size);
-        return new_size;
+        strncpy(buf, path.data(), path.size());
+        return path.size();
     }
 
     return result;

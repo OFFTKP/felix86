@@ -253,7 +253,7 @@ int main(int argc, char* argv[]) {
         ASSERT_MSG(Symlinker::link("/proc", g_rootfs_path / "proc"), "Failed to symlink /proc: %s", strerror(errno));
         ASSERT_MSG(Symlinker::link("/sys", g_rootfs_path / "sys"), "Failed to symlink /sys: %s", strerror(errno));
         ASSERT_MSG(Symlinker::link("/dev", g_rootfs_path / "dev"), "Failed to symlink /dev: %s", strerror(errno));
-        ASSERT_MSG(Symlinker::link("/tmp", g_rootfs_path / "tmp"), "Failed to symlink /tmp: %s", strerror(errno));
+        mkdirat(g_rootfs_fd, "tmp", 0666);
     }
 
     if (Extensions::VLEN != 256) {
