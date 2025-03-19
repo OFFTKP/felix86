@@ -275,6 +275,8 @@ int Filesystem::removeRootfsPrefix(char* buf, int size) {
     std::string rootfs = g_rootfs_path.string();
     std::string old(buf, buf + size);
 
+    printf("%s == %s\n", rootfs.c_str(), old.c_str());
+
     if (old.find(rootfs) == 0) {
         if (old.size() == rootfs.size()) {
             // Special case, it is the rootfs path
@@ -284,7 +286,7 @@ int Filesystem::removeRootfsPrefix(char* buf, int size) {
             new_size = 2;
         } else {
             std::string sub = old.substr(rootfs.size());
-            ASSERT(size >= sub.size() + 1);
+            ASSERT(size >= (int)sub.size() + 1);
             memcpy(buf, sub.data(), sub.size());
             buf[sub.size()] = 0;
             new_size = sub.size();
