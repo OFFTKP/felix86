@@ -136,8 +136,8 @@ void Recompiler::emitDispatcher() {
     as.ADDI(sp, sp, -16);
     as.SD(ra, 8, sp); // save return address for gdb
     as.LI(t0, (u64)Emulator::CompileNext);
-    as.ADDI(sp, sp, 16);
     as.JALR(t0); // returns the function pointer to the compiled function
+    as.ADDI(sp, sp, 16);
     restoreRoundingMode();
     if (g_rsb) {
         as.MV(ra, a0);
@@ -1932,6 +1932,7 @@ void Recompiler::updateParity(biscuit::GPR result) {
         biscuit::GPR pf = scratch();
 
         // We need another scratch but on many instructions there isn't one available at this point :(
+        // TODO: fix me...
         ASSERT(pf != t0);
         as.LD(pf, &address);
         as.ADDI(sp, sp, -8);
