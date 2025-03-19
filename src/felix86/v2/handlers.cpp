@@ -6001,9 +6001,11 @@ FAST_HANDLE(HSUBPD) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     rec.setVectorState(SEW::E64, 2);
+    as.VMV(src_neg, src);
+    as.VMV(dst_neg, dst);
     as.VMV(v0, 0b10);
-    as.VFNEG(src_neg, src, VecMask::Yes);
-    as.VFNEG(dst_neg, dst, VecMask::Yes);
+    as.VFNEG(src_neg, src_neg, VecMask::Yes);
+    as.VFNEG(dst_neg, dst_neg, VecMask::Yes);
     as.VMV(result1, 0);
     as.VMV(result2, 0);
     as.VFREDUSUM(result1, src_neg, result1);

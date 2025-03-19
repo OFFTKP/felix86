@@ -1113,6 +1113,16 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         }
         argv.push_back(nullptr);
 
+        // Pass the host arguments first because they may need to be overwritten by the ones the guest specifies
+        char** host_environ = environ;
+        while (*host_environ) {
+            std::string env = *host_environ;
+            if (env.find("FELIX86") != std::string::npos) {
+                envp.push_back(*host_environ);
+            }
+            host_environ++;
+        }
+
         if (arg3) {
             const char** guest_env = (const char**)arg3;
             while (*guest_env) {
@@ -1123,17 +1133,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             WARN("envp null during execve...?");
         }
 
+        // We need to tell the new process where the server is
         std::string log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
         envp.push_back("__FELIX86_EXECVE=1");
         envp.push_back(log_env.c_str());
-        char** host_environ = environ;
-        while (*host_environ) {
-            std::string env = *host_environ;
-            if (env.find("FELIX86") != std::string::npos) {
-                envp.push_back(*host_environ);
-            }
-            host_environ++;
-        }
         envp.push_back(nullptr);
 
         std::string args = "";
