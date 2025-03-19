@@ -210,7 +210,10 @@ int main(int argc, char* argv[]) {
         const char* file = getenv("__FELIX86_PIPE");
         ASSERT(file);
         g_output_fd = open(file, O_WRONLY, 0644);
-        ASSERT(g_output_fd != -1);
+        if (g_output_fd == -1) {
+            printf("Bad g_output_fd -- errno: %d\n", errno);
+            exit(42);
+        }
     }
 
     initialize_globals();
