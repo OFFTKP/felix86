@@ -49,7 +49,7 @@ void start_log_server() {
             fseek(f, index, SEEK_SET);
 
             std::string message(size, 0);
-            size_t read_size = fread(message.data(), size, 1, f);
+            size_t read_size = fread(message.data(), 1, size, f);
             ASSERT_MSG(read_size == size, "%lx == %lx", read_size, size);
 
             // Print the message to our stdout
