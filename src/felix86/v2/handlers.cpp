@@ -5741,6 +5741,7 @@ FAST_HANDLE(CVTPD2PS) {
 
     rec.setVectorState(SEW::E32, 4, LMUL::MF2);
     as.VFNCVT_F_F(result, src);
+    rec.setVectorState(SEW::E32, 4);
     as.VMV(v0, 0b1100);
     as.VAND(result, result, 0, VecMask::Yes);
     rec.setOperandVec(&operands[0], result);
@@ -5785,10 +5786,6 @@ FAST_HANDLE(CVTTPD2DQ) { // Fuzzed, same problem as cvttps2dq
     as.VMV(v0, 0b1100);
     as.VAND(dst, dst, 0, VecMask::Yes);
 
-    // TODO: avoid masking?
-    as.VMV(v0, 0b1100);
-    as.VAND(dst, dst, 0, VecMask::Yes);
-
     rec.setOperandVec(&operands[0], dst);
 }
 
@@ -5799,6 +5796,7 @@ FAST_HANDLE(CVTPD2DQ) {
     rec.setVectorState(SEW::E32, 4, LMUL::MF2);
     as.VFNCVT_X_F(result, src);
 
+    rec.setVectorState(SEW::E32, 4);
     as.VMV(v0, 0b1100);
     as.VAND(result, result, 0, VecMask::Yes);
 
