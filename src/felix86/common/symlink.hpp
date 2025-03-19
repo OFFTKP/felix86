@@ -29,7 +29,6 @@ struct Symlinker {
 
     // Resolve symlinks while placing results in rootfs to perpetually resolve them
     static std::filesystem::path resolve(const std::filesystem::path& path) {
-        printf("Calling resolve on %s\n", path.c_str());
         std::filesystem::path current = std::filesystem::absolute(path);
         if (!is_subpath(current, g_rootfs_path)) {
             current = g_rootfs_path / current.relative_path();
