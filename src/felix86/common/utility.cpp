@@ -659,7 +659,7 @@ void print_address(u64 address) {
 
     if (symbol_str) {
         u64 offset = address - symbol->start;
-        dprintf(g_output_fd,
+        Logger::log(
             ANSI_COLOR_CYAN "%s+0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET " (0x%lx)\n",
             symbol_trunc.c_str(),
             offset,
@@ -667,7 +667,7 @@ void print_address(u64 address) {
             address
         );
     } else {
-        dprintf(g_output_fd,
+        Logger::log(
             ANSI_COLOR_CYAN "0x%lx" ANSI_COLOR_RESET " in " ANSI_COLOR_YELLOW "%s" ANSI_COLOR_RESET "\n",
             address,
             filename_offset.c_str()

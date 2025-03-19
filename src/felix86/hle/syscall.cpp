@@ -885,9 +885,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             auto handler = act->handler;
             Signals::registerSignalHandler(state, arg1, GuestAddress{(u64)handler}, act->sa_mask, act->sa_flags);
             if (g_verbose) {
-                printf("Installed signal handler %s at:\n", strsignal(arg1));
+                PLAIN("Installed signal handler %s at:", strsignal(arg1));
                 print_address((u64)handler);
-                printf("Flags: %lx\n", act->sa_flags);
+                PLAIN("Flags: %lx\n", act->sa_flags);
             }
         }
 
@@ -1076,6 +1076,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             result = -EINVAL;
             break;
         }
+
+        printf("AAAAAA: %s\n", arg1);
+
         std::filesystem::path path = Filesystem::resolve((char*)arg1);
         std::string filename = (char*)arg1;
 
