@@ -126,18 +126,17 @@ void Recompiler::emitDispatcher() {
 
     Label exit_dispatcher_label;
 
+    // Save current stack pointer to clear the RSB data if we clear the code cache
+    if (g_rsb) {
+        as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
+    }
+
     as.MV(a0, threadStatePointer());
     // If it's not zero it has some exit reason, exit the dispatcher
     as.LBU(t2, offsetof(ThreadState, exit_reason), threadStatePointer());
     as.BNEZ(t2, &exit_dispatcher_label);
-    if (g_rsb) {
-        as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
-    }
-    as.ADDI(sp, sp, -16);
-    as.SD(ra, 8, sp); // save return address for gdb
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
-    as.ADDI(sp, sp, 16);
     restoreRoundingMode();
     if (g_rsb) {
         as.MV(ra, a0);
