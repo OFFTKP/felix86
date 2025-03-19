@@ -41,7 +41,7 @@ struct Symlinker {
                 if (resolved.is_absolute()) {
                     current = g_rootfs_path / resolved.relative_path();
                 } else {
-                    resolved = std::filesystem::absolute(resolved);
+                    resolved = g_rootfs_path / std::filesystem::absolute(resolved).relative_path();
                     ASSERT_MSG(is_subpath(current, g_rootfs_path), "Resolved path is outside rootfs?");
                 }
             } else {
