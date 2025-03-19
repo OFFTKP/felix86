@@ -7,8 +7,6 @@
 #include <unistd.h>
 #include "common.h"
 
-const char* message = "This is the signal handler calling\n";
-
 int bad = 0;
 int good = 0;
 int continued = 0;

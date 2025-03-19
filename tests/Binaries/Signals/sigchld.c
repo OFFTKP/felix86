@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <sys/signal.h>
 #include <unistd.h>
+#include "common.h"
 
 volatile int waitme = 1;
 
@@ -27,4 +28,6 @@ int main() {
             ;
         printf("Done waiting!!\n");
     }
+
+    return FELIX86_BTEST_SUCCESS;
 }
