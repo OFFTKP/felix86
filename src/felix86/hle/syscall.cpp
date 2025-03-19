@@ -1077,10 +1077,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             break;
         }
 
-        PLAIN("AAAAAA: %s\n", arg1);
-
-        std::filesystem::path path = Filesystem::resolve((char*)arg1);
-        std::string filename = (char*)arg1;
+        std::filesystem::path path = Symlinker::resolve((char*)arg1);
 
         if (!std::filesystem::exists(path)) {
             result = -ENOENT;
@@ -1101,44 +1098,12 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
 
         if (arg2) {
             const char** guest_argv = (const char**)arg2;
-            guest_argv++;
-
-            if (filename.find('/') == std::string::npos) {
-                // If there's no '/' characters, this is probably just a filename by itself
-                // That means we need to look for the absolute path in PATH
-                bool found = false;
-                std::string PATH = getenv("PATH");
-                size_t current_start = 0;
-                size_t size = PATH.size();
-                for (size_t i = 0; i < size; i++) {
-                    if (PATH[i] == ':' || i == size - 1) {
-                        // Set it to 0 so that the string creation ends there
-                        if (PATH[i] == ':')
-                            PATH[i] = '\0';
-                        std::filesystem::path dir = PATH.data() + current_start;
-                        current_start = i + 1;
-                        std::filesystem::path executable = g_rootfs_path / dir / path;
-                        if (std::filesystem::exists(executable) && std::filesystem::is_regular_file(executable)) {
-                            path = executable;
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!found) {
-                    ERROR("Failed to find %s during execve", path.c_str());
-                }
-            }
-
-            argv.push_back(path.c_str());
-
             while (*guest_argv) {
                 argv.push_back(*guest_argv);
                 guest_argv++;
             }
         } else {
-            ASSERT_MSG(arg1, "Both arg1 and arg2 null during execve...?");
+            WARN("argv null during execve...?");
             // Args shouldn't be null normally, but at least push the emulated executable here
             argv.push_back(path.c_str());
         }
@@ -1150,7 +1115,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
                 envp.push_back(*guest_env);
                 guest_env++;
             }
+        } else {
+            WARN("envp null during execve...?");
         }
+
         std::string log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
         envp.push_back("__FELIX86_EXECVE=1");
         envp.push_back(log_env.c_str());
