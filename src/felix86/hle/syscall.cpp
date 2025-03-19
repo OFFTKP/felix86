@@ -1080,11 +1080,13 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         std::filesystem::path path = Symlinker::resolve((char*)arg1);
 
         if (!std::filesystem::exists(path)) {
+            WARN("Execve couldn't find path: %s", path.c_str());
             result = -ENOENT;
             break;
         }
 
         if (!std::filesystem::is_regular_file(path)) {
+            WARN("Not regular file during execve: %s", path.c_str());
             result = -ENOENT;
             break;
         }

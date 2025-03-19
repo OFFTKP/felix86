@@ -27,3 +27,12 @@ CATCH_TEST_CASE("IsRootfs2", "[paths]") {
 
     CATCH_REQUIRE(my_path == "/");
 }
+
+CATCH_TEST_CASE("OutsideRootfs", "[paths]") {
+    g_rootfs_path = "/home/someuser/myrootfs";
+
+    std::string my_path = "/home";
+    Filesystem::removeRootfsPrefix(my_path);
+
+    CATCH_REQUIRE(my_path == "/home");
+}
