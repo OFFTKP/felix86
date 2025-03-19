@@ -10,6 +10,8 @@
 #include "nlohmann/json.hpp"
 
 FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
+    g_output_fd = STDOUT_FILENO;
+
     std::filesystem::path cpath = std::filesystem::absolute(path);
     if (!std::filesystem::exists(cpath)) {
         ERROR("File does not exist: %s", cpath.string().c_str());

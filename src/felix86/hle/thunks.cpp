@@ -9,6 +9,10 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
     return nullptr;
 }
 
+void* Thunks::runConstructor(const char* libname, GuestPointers* pointers) {
+    return nullptr;
+}
+
 #else
 #include <cmath>
 #include <dlfcn.h>
