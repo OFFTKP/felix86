@@ -270,11 +270,6 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
             LOG("I built the script arguments: %s", final.c_str());
 
             g_config.executable_path = interpreter;
-
-            if (g_output_fd == STDOUT_FILENO) {
-                WARN("felix86 is outputting to stdout and executing a script, but scripts may capture stdout. This may lead to problems.\n"
-                     "Use FELIX86_LOG_FILE=/path/to/file/inside/rootfs.txt to redirect the felix86 output.");
-            }
         } else {
             ERROR("Unknown file format: %s", g_config.executable_path.c_str());
         }

@@ -43,11 +43,14 @@ void start_log_server() {
 
             // File has been modified with new logs!
             fseek(f, 0, SEEK_END);
-            u64 size = ftell(f) - index;
+            u64 tell = ftell(f);
+            ASSERT_MSG(tell > index, "%lx > %lx", tell, index);
+            u64 size = tell - index;
             fseek(f, index, SEEK_SET);
 
             std::string message(size, 0);
-            fread(message.data(), size, 1, f);
+            size_t read_size = fread(message.data(), size, 1, f);
+            ASSERT(read_size == size);
 
             // Print the message to our stdout
             printf("%s", message.c_str());

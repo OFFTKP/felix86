@@ -94,7 +94,7 @@ Or, don't prepend the executable path with the rootfs path:
 
 By default, the host environment variables are passed to the executable.
 
-If an executable makes frequent use of the console, you may want to disable felix86's logging via the `-q` flag, or redirect it to a file via the `FELIX86_LOG_FILE` environment variable.
+You can find log files from runs of the emulator in `/tmp/felix86-XXXXXX.log`
 
 Use `--help` to view all the options.
 
