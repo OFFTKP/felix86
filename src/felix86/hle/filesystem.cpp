@@ -273,8 +273,11 @@ int Filesystem::removeRootfsPrefix(char* buf, int size) {
 
     std::string old(buf, buf + size);
 
-    // End it with a '/' so if we remove the entire path there's at least a '/'
-    std::string rootfs = g_rootfs_path.string() + "/";
+    if (old == g_rootfs_path) {
+        old = '/';
+    }
+
+    std::string rootfs = g_rootfs_path.string();
     for (int i = 0; i < (int)rootfs.size(); i++) {
         if (i > size) {
             return size;
