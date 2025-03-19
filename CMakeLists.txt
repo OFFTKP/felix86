@@ -143,6 +143,7 @@ if (BUILD_TESTS)
         tests/FEX/x87.cpp
         tests/Binaries/binary_test_loader.cpp
         tests/Unit/mmap.cpp
+        tests/Unit/paths.cpp
     )
 
     add_executable(felix86_test)

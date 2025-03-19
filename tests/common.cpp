@@ -8,6 +8,7 @@ public:
     using Catch::EventListenerBase::EventListenerBase;
 
     void testRunStarting(Catch::TestRunInfo const&) override {
+        g_output_fd = STDOUT_FILENO;
         g_testing = true;
         initialize_globals();
         g_process_globals.initialize();

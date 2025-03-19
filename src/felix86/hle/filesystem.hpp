@@ -105,6 +105,8 @@ struct Filesystem {
 
     static std::filesystem::path resolve(const char* path);
 
+    static void removeRootfsPrefix(std::string& path);
+
 private:
     static int openatInternal(int fd, const char* filename, int flags, u64 mode);
 
@@ -127,8 +129,6 @@ private:
     static int utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags);
 
     static int fchmodatInternal(int fd, const char* filename, u64 mode);
-
-    static int removeRootfsPrefix(char* buf, int size);
 
     static std::pair<int, const char*> resolve(int fd, const char* path);
 

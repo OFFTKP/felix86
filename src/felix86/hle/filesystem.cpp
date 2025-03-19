@@ -66,7 +66,10 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
     int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
 
     if (result > 0) {
-        int new_size = removeRootfsPrefix(buf, result);
+        std::string path(buf, result);
+        removeRootfsPrefix(path);
+        size_t new_size = std::min((size_t)result, path.size());
+        strncpy(buf, path.data(), new_size);
         return new_size;
     }
 
@@ -77,7 +80,10 @@ int Filesystem::Getcwd(char* buf, size_t size) {
     int result = syscall(SYS_getcwd, buf, size);
 
     if (result > 0) {
-        int new_size = removeRootfsPrefix(buf, result);
+        std::string path(buf, size);
+        removeRootfsPrefix(path);
+        size_t new_size = std::min(size, path.size());
+        strncpy(buf, path.data(), new_size);
         return new_size;
     }
 
@@ -267,34 +273,24 @@ std::filesystem::path Filesystem::resolve(const char* path) {
     return path;
 }
 
-int Filesystem::removeRootfsPrefix(char* buf, int size) {
+void Filesystem::removeRootfsPrefix(std::string& path) {
     // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
-    ASSERT(buf);
+    std::string rootfs = g_rootfs_path.lexically_normal().string();
 
-    int new_size;
-    std::string rootfs = g_rootfs_path.string();
-    std::string old(buf, buf + size);
-
-    if (old.find(rootfs) == 0) {
-        if (std::filesystem::path(old) == g_rootfs_path) {
+    if (path.find(rootfs) == 0) {
+        if (path == g_rootfs_path) {
             // Special case, it is the rootfs path
-            ASSERT(size >= 2);
-            buf[0] = '/';
-            buf[1] = 0;
-            new_size = 2;
+            path = "/";
         } else {
-            std::string sub = old.substr(rootfs.size());
-            ASSERT(size >= (int)sub.size() + 1);
-            memcpy(buf, sub.data(), sub.size());
-            buf[sub.size()] = 0;
-            new_size = sub.size();
+            std::string sub = path.substr(rootfs.size());
+            path = sub;
         }
-        VERBOSE("Removed rootfs prefix %s -> %s", old.c_str(), buf);
-    } else {
-        new_size = size;
-    }
 
-    return new_size;
+        ASSERT(!path.empty());
+        if (path[0] != '/') {
+            path = '/' + path;
+        }
+    }
 }
 
 bool Filesystem::isProcSelfExe(const char* path) {

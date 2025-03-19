@@ -304,6 +304,14 @@ void initialize_globals() {
     const char* rootfs_path = getenv("FELIX86_ROOTFS");
     if (rootfs_path) {
         g_rootfs_path = rootfs_path;
+        ASSERT_MSG(!g_rootfs_path.empty(), "Rootfs path is empty?");
+
+        if (g_rootfs_path.string().back() == '/') {
+            // User ended the path with '/', we need to remove it to make sure some of our comparisons
+            // on whether a path is inside the rootfs continue to work
+            g_rootfs_path = g_rootfs_path.string().substr(0, g_rootfs_path.string().size() - 1);
+        }
+
         environment += "\nFELIX86_ROOTFS=" + std::string(rootfs_path);
 
         ASSERT(std::filesystem::exists(g_rootfs_path));
