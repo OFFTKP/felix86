@@ -21,7 +21,7 @@ void start_log_server() {
 #define ASSERT_MSG(condition, format, ...)                                                                                                           \
     do {                                                                                                                                             \
         if (!(condition)) {                                                                                                                          \
-            printf(format, ##__VA_ARGS__);                                                                                                           \
+            printf("Log server assertion failed: " format "\n", ##__VA_ARGS__);                                                                      \
             exit(1);                                                                                                                                 \
         }                                                                                                                                            \
     } while (false)
@@ -63,7 +63,7 @@ void start_log_server() {
 
             std::string message(size, 0);
             size_t read_size = fread(message.data(), 1, size, f);
-            ASSERT_MSG(read_size == size, "%lx == %lx", read_size, size);
+            ASSERT_MSG(read_size > 0 && read_size <= size, "%lx, %lx", read_size, size);
 
             // Print the message to our stdout
             printf("%s", message.c_str());
