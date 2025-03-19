@@ -1148,7 +1148,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
                 guest_env++;
             }
         }
-        std::string log_env = std::string("__FELIX86_PIPE=") + get_pipe_name();
+        std::string log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
         envp.push_back("__FELIX86_EXECVE=1");
         envp.push_back(log_env.c_str());
         char** host_environ = environ;

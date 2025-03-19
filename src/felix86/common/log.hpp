@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,47 +15,57 @@
 #define ANSI_BOLD "\x1b[1m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
+struct Logger {
+    static void log(const char* format, ...);
+
+    static const char* getPipeName();
+
+    static void startServer();
+};
+
 #define LOG(format, ...)                                                                                                                             \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
-            dprintf(g_output_fd, ANSI_COLOR_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
+            Logger::log(ANSI_COLOR_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                \
         }                                                                                                                                            \
     } while (0)
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
-        dprintf(g_output_fd, ANSI_COLOR_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, getpid(), ##__VA_ARGS__);        \
+        Logger::log(ANSI_COLOR_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, getpid(), ##__VA_ARGS__);                 \
         felix86_exit(1);                                                                                                                             \
     } while (0)
 #define WARN(format, ...)                                                                                                                            \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
-            dprintf(g_output_fd, ANSI_COLOR_YELLOW format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                     \
+            Logger::log(ANSI_COLOR_YELLOW format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                              \
         }                                                                                                                                            \
     } while (0)
 #define VERBOSE(format, ...)                                                                                                                         \
     do {                                                                                                                                             \
         if (g_verbose && !g_quiet) {                                                                                                                 \
-            dprintf(g_output_fd, ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                       \
+            Logger::log(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                \
         }                                                                                                                                            \
     } while (0)
 
 #define STRACE(format, ...)                                                                                                                          \
     do {                                                                                                                                             \
         if (g_strace && !g_quiet) {                                                                                                                  \
-            dprintf(g_output_fd, ANSI_COLOR_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
+            Logger::log(ANSI_COLOR_BLUE format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                \
         }                                                                                                                                            \
     } while (0)
 
 #define SUCCESS(format, ...)                                                                                                                         \
     do {                                                                                                                                             \
         if (!g_quiet) {                                                                                                                              \
-            dprintf(g_output_fd, ANSI_COLOR_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                      \
+            Logger::log(ANSI_COLOR_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                               \
         }                                                                                                                                            \
     } while (0)
 
 #define PLAIN(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
-        dprintf(g_output_fd, format "\n", ##__VA_ARGS__);                                                                                            \
+        if (!g_quiet) {                                                                                                                              \
+            Logger::log(format "\n", ##__VA_ARGS__);                                                                                                 \
+        }                                                                                                                                            \
     } while (0)
 
 #define WARN_ONCE(format, ...)                                                                                                                       \
@@ -80,6 +92,3 @@
         if (!(condition))                                                                                                                            \
             ERROR(format, ##__VA_ARGS__);                                                                                                            \
     } while (false)
-
-const char* get_pipe_name();
-void start_log_server();

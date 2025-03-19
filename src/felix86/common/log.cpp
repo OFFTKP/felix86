@@ -1,4 +1,5 @@
 #include <csignal>
+#include <cstdarg>
 #include <sys/file.h>
 #include <sys/inotify.h>
 #include <sys/prctl.h>
@@ -7,7 +8,18 @@
 
 std::string pipe_name;
 
-void start_log_server() {
+void Logger::log(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vdprintf(g_output_fd, format, args);
+    va_end(args);
+}
+
+const char* Logger::getPipeName() {
+    return pipe_name.c_str();
+}
+
+void Logger::startServer() {
     std::string log_path = "/tmp/felix86-" + std::to_string(getpid());
     pipe_name = log_path + ".pipe";
     log_path += "-XXXXXX.log";

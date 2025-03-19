@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
     if (!g_execve_process) {
-        start_log_server();
+        Logger::startServer();
     } else {
         // Open the existing write pipe of the emulator instance, passed to this execve process
         // via the __FELIX86_PIPE environment variable
