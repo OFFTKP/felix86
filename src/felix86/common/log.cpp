@@ -68,7 +68,7 @@ void start_log_server() {
             // Print the message to our stdout
             printf("%s", message.c_str());
 
-            index += size;
+            index += read_size;
         }
     }
 }
