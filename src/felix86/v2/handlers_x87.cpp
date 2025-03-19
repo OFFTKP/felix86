@@ -6,9 +6,9 @@
 
 FAST_HANDLE(FLD) {
     if (operands[0].size == 80) {
+        biscuit::GPR address = rec.lea(&operands[0]);
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
-        biscuit::GPR address = rec.lea(&operands[0]);
         as.MV(a0, address);
         rec.call((u64)f80_to_64);
         biscuit::GPR top = rec.getTOP();
