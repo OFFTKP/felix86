@@ -69,7 +69,7 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
         std::string path(buf, result);
         removeRootfsPrefix(path);
         strncpy(buf, path.data(), path.size());
-        return path.size() - 1; // readlink size doesn't factor the '\0'
+        return path.size();
     }
 
     return result;
@@ -79,7 +79,7 @@ int Filesystem::Getcwd(char* buf, size_t size) {
     int result = syscall(SYS_getcwd, buf, size);
 
     if (result > 0) {
-        std::string path(buf, size);
+        std::string path(buf, result);
         removeRootfsPrefix(path);
         strncpy(buf, path.data(), path.size());
         return path.size();
