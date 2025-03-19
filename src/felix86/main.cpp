@@ -265,6 +265,14 @@ int main(int argc, char* argv[]) {
         Thunks::initialize();
     }
 
+    if (is_subpath(config.argv[0], g_rootfs_path)) {
+        config.argv[0] = config.argv[0].substr(g_rootfs_path.string().size());
+        ASSERT(!config.argv[0].empty());
+        if (config.argv[0].at(0) != '/') {
+            config.argv[0] = '/' + config.argv[0];
+        }
+    }
+
     std::string args = "Arguments: ";
     for (const auto& arg : config.argv) {
         args += arg;
