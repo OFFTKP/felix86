@@ -75,3 +75,20 @@ void Logger::startServer() {
         g_output_fd = open(pipe_name.c_str(), O_WRONLY, 0644);
     }
 }
+
+void Logger::joinServer() {
+    // Open the existing write pipe of the emulator instance, passed to this execve process
+    // via the __FELIX86_PIPE environment variable
+    const char* file = getenv("__FELIX86_PIPE");
+    if (!file) {
+        // Use printf as we haven't connected yet
+        ERROR("__FELIX86_PIPE not set?");
+    }
+    g_output_fd = open(file, O_WRONLY, 0644);
+    if (g_output_fd == -1) {
+        ERROR("Bad g_output_fd -- errno: %d -- pipe: %s", errno, file);
+    }
+
+    // Also set this for when this process runs execve...
+    pipe_name = file;
+}

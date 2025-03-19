@@ -205,15 +205,7 @@ int main(int argc, char* argv[]) {
     if (!g_execve_process) {
         Logger::startServer();
     } else {
-        // Open the existing write pipe of the emulator instance, passed to this execve process
-        // via the __FELIX86_PIPE environment variable
-        const char* file = getenv("__FELIX86_PIPE");
-        ASSERT(file);
-        g_output_fd = open(file, O_WRONLY, 0644);
-        if (g_output_fd == -1) {
-            printf("Bad g_output_fd -- errno: %d -- pipe: %s\n", errno, file);
-            exit(42);
-        }
+        Logger::joinServer();
     }
 
     initialize_globals();

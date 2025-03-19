@@ -68,7 +68,8 @@ std::unique_ptr<Filesystem> g_fs{};
 std::string g_emulator_path;
 Config g_config{};
 
-int g_output_fd = -1;
+// g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
+int g_output_fd = STDERR_FILENO;
 std::filesystem::path g_rootfs_path{};
 int g_rootfs_fd = 0;
 u64 g_executable_base_hint = 0;
