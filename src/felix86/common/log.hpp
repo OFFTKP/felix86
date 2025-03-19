@@ -80,3 +80,6 @@
         if (!(condition))                                                                                                                            \
             ERROR(format, ##__VA_ARGS__);                                                                                                            \
     } while (false)
+
+const char* get_log_path();
+void start_log_server();

@@ -202,6 +202,14 @@ int main(int argc, char* argv[]) {
     }
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
+    if (!g_execve_process) {
+        start_log_server();
+    } else {
+        const char* file = getenv("__FELIX86_LOG_FILE");
+        ASSERT(file);
+        g_output_fd = open(file, O_WRONLY | O_APPEND, 0644);
+        ASSERT(g_output_fd != -1);
+    }
 
     initialize_globals();
     initialize_extensions();

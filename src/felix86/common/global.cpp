@@ -68,7 +68,7 @@ std::unique_ptr<Filesystem> g_fs{};
 std::string g_emulator_path;
 Config g_config{};
 
-int g_output_fd = STDOUT_FILENO;
+int g_output_fd = -1;
 std::filesystem::path g_rootfs_path{};
 int g_rootfs_fd = 0;
 u64 g_executable_base_hint = 0;
@@ -230,22 +230,6 @@ std::string get_extensions() {
 
 void initialize_globals() {
     std::string environment;
-
-    const char* log_file = getenv("FELIX86_LOG_FILE");
-    if (log_file) {
-        int fd;
-        if (g_execve_process) {
-            fd = open(log_file, O_WRONLY, 0644);
-        } else {
-            fd = open(log_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        }
-        if (fd == -1) {
-            ERROR("Failed to open log file %s: %s", log_file, strerror(errno));
-        } else {
-            g_output_fd = fd;
-            environment += "\nFELIX86_LOG_FILE=" + std::string(log_file);
-        }
-    }
 
     LOG("%s", get_version_full());
 
