@@ -1,19 +1,23 @@
 #include <csignal>
+#include <sys/file.h>
 #include <sys/inotify.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
 #include "felix86/common/log.hpp"
 
-std::string log_path;
-
-const char* get_log_path() {
-    return log_path.c_str();
-}
+std::string pipe_name;
 
 void start_log_server() {
-    log_path = "/tmp/felix86-XXXXXX.log";
+    std::string log_path = "/tmp/felix86-" + std::to_string(getpid());
+    pipe_name = log_path + ".pipe";
+    log_path += "-XXXXXX.log";
     int fd = mkstemps(log_path.data(), 4);
-    g_output_fd = fd;
     ASSERT(fd != -1);
+
+    int ok = mkfifo(pipe_name.c_str(), 0666);
+    ASSERT(ok == 0);
+    g_output_fd = open(pipe_name.c_str(), O_WRONLY, 0644);
+
     int pid = fork();
     if (pid == 0) {
 #undef ASSERT_MSG
@@ -31,44 +35,29 @@ void start_log_server() {
         // the displaying of messages.
         // When the parent dies (main emulator thread), make sure the logging "server" also dies
         prctl(PR_SET_PDEATHSIG, SIGTERM);
-        FILE* f = fdopen(fd, "r");
-        int notify_fd = inotify_init();
-        int watch = inotify_add_watch(notify_fd, log_path.c_str(), IN_MODIFY);
-        size_t index = 0;
+        int read_pipe = open(pipe_name.c_str(), O_RDONLY, 0666);
+        FILE* f = fdopen(fd, "w"); // create the log file to store the log if we need it later
+        constexpr size_t buffer_size = 0x10000;
+        char buffer[buffer_size];
         while (true) {
-            inotify_event event;
-            int result = read(notify_fd, &event, sizeof(inotify_event));
-            if (result == -1) {
+            // Writes to pipes less than PIPE_BUF in size (which all our logs should be) are atomic
+            int size = read(read_pipe, buffer, buffer_size);
+            if (size == -1) {
                 if (errno == EAGAIN) {
                     continue;
                 } else {
                     ASSERT_MSG(false, "Logging server got error %d during read?", errno);
                 }
-            } else if (result != sizeof(inotify_event)) {
-                ASSERT_MSG(false, "Bad size during read?");
             }
 
-            ASSERT_MSG(event.wd == watch, "What?");
-            ASSERT_MSG(event.mask == IN_MODIFY, "What?");
-
-            // File has been modified with new logs!
-            fseek(f, 0, SEEK_END);
-            u64 tell = ftell(f);
-            ASSERT_MSG(tell >= index, "%lx > %lx", tell, index);
-            u64 size = tell - index;
-            fseek(f, index, SEEK_SET);
-
-            if (size == 0)
-                continue;
-
-            std::string message(size, 0);
-            size_t read_size = fread(message.data(), 1, size, f);
-            ASSERT_MSG(read_size > 0 && read_size <= size, "%lx, %lx", read_size, size);
-
+            // There's new logs to output!
             // Print the message to our stdout
+            std::string message(buffer, size);
             printf("%s", message.c_str());
 
-            index += read_size;
+            // Also write it to the file
+            size_t written = fwrite(message.c_str(), 1, message.size(), f);
+            ASSERT_MSG(message.size() == written, "Failed to write %zu bytes to file", written);
         }
     }
 }

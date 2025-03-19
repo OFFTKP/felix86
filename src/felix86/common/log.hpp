@@ -81,5 +81,5 @@
             ERROR(format, ##__VA_ARGS__);                                                                                                            \
     } while (false)
 
-const char* get_log_path();
+const char* get_pipe_name();
 void start_log_server();

@@ -205,9 +205,11 @@ int main(int argc, char* argv[]) {
     if (!g_execve_process) {
         start_log_server();
     } else {
-        const char* file = getenv("__FELIX86_LOG_FILE");
+        // Open the existing write pipe of the emulator instance, passed to this execve process
+        // via the __FELIX86_PIPE environment variable
+        const char* file = getenv("__FELIX86_PIPE");
         ASSERT(file);
-        g_output_fd = open(file, O_WRONLY | O_APPEND, 0644);
+        g_output_fd = open(file, O_WRONLY, 0644);
         ASSERT(g_output_fd != -1);
     }
 
