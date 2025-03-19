@@ -28,7 +28,6 @@ void Logger::startServer() {
 
     int ok = mkfifo(pipe_name.c_str(), 0666);
     ASSERT(ok == 0);
-    g_output_fd = open(pipe_name.c_str(), O_WRONLY, 0644);
 
     int pid = fork();
     if (pid == 0) {
@@ -71,5 +70,8 @@ void Logger::startServer() {
             size_t written = fwrite(message.c_str(), 1, message.size(), f);
             ASSERT_MSG(message.size() == written, "Failed to write %zu bytes to file", written);
         }
+    } else {
+        // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
+        g_output_fd = open(pipe_name.c_str(), O_WRONLY, 0644);
     }
 }
