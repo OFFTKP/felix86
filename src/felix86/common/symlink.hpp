@@ -42,9 +42,13 @@ struct Symlinker {
                 ERROR("Failed to resolve symlink %s: %s", path.c_str(), ec.message().c_str());
             }
 
-            printf("reslved: %s\n", resolved.c_str());
             if (!is_subpath(resolved, g_rootfs_path)) {
-                current = g_rootfs_path / resolved.relative_path();
+                if (resolved.is_absolute()) {
+                    current = g_rootfs_path / resolved.relative_path();
+                } else {
+                    current = std::filesystem::absolute(resolved);
+                    ASSERT_MSG(is_subpath(current, g_rootfs_path), "Resolved path is outside rootfs?");
+                }
             } else {
                 current = resolved;
             }
