@@ -1098,6 +1098,8 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
 
         if (arg2) {
             const char** guest_argv = (const char**)arg2;
+            argv.push_back(path.c_str()); // push the resolved path instead of the path in argv[0];
+            guest_argv++;
             while (*guest_argv) {
                 argv.push_back(*guest_argv);
                 guest_argv++;
