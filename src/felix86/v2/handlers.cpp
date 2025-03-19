@@ -680,14 +680,14 @@ FAST_HANDLE(CALL) {
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         rec.setRip(src);
-        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.addressWidth());
+        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
         as.ADDI(rsp, rsp, -rec.stackPointerSize());
-        rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), rsp);
+        rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         biscuit::GPR scratch = rec.scratch();
         GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
         as.LI(scratch, return_address.raw());
-        rec.writeMemory(scratch, rsp, 0, rec.addressWidth());
+        rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
 
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
@@ -700,13 +700,13 @@ FAST_HANDLE(CALL) {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
         GuestAddress return_address = meta.rip.add(instruction.length).toGuest();
 
-        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.addressWidth());
+        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
         as.ADDI(rsp, rsp, -rec.stackPointerSize());
-        rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), rsp);
+        rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         biscuit::GPR scratch = rec.scratch();
         as.LI(scratch, return_address.raw());
-        rec.writeMemory(scratch, rsp, 0, rec.addressWidth());
+        rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
 
         rec.addi(scratch, scratch, displacement);
 
@@ -730,9 +730,9 @@ FAST_HANDLE(RET) {
         return fast_RET_rsb(rec, meta, as, instruction, operands);
     }
 
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.addressWidth());
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
     biscuit::GPR scratch = rec.scratch();
-    rec.readMemory(scratch, rsp, 0, rec.addressWidth());
+    rec.readMemory(scratch, rsp, 0, rec.stackWidth());
 
     u64 imm = rec.stackPointerSize();
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
@@ -741,7 +741,7 @@ FAST_HANDLE(RET) {
 
     rec.addi(rsp, rsp, imm);
 
-    rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), rsp);
+    rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
     rec.setRip(scratch);
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
@@ -752,17 +752,17 @@ FAST_HANDLE(RET) {
 
 FAST_HANDLE(PUSH) {
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.addressWidth());
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
     int imm = -size_to_bytes(instruction.operand_width);
     rec.writeMemory(src, rsp, imm, rec.zydisToSize(instruction.operand_width));
 
     as.ADDI(rsp, rsp, imm);
-    rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), rsp);
+    rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 }
 
 FAST_HANDLE(POP) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.addressWidth());
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
 
     rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
 
@@ -772,10 +772,10 @@ FAST_HANDLE(POP) {
     x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
     if (ref == X86_REF_RSP) {
         // pop rsp special case
-        rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), result);
+        rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), result);
     } else {
         as.ADDI(rsp, rsp, imm);
-        rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), rsp);
+        rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
     }
 }
 
@@ -3219,9 +3219,10 @@ FAST_HANDLE(RSQRTPS) {
 FAST_HANDLE(MOVSB) {
     ASSERT(instruction.address_width > 16);
     u8 width = instruction.operand_width;
-    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, rec.addressWidth());
-    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, rec.addressWidth());
-    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, rec.addressWidth()); // TODO: technically wrong, should use ecx/cx sometimes
+    x86_size_e address_width = rec.zydisToSize(instruction.address_width);
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, address_width);
+    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, address_width);
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, address_width); // TODO: technically wrong, should use ecx/cx sometimes
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR data = rec.scratch();
     biscuit::GPR df = rec.scratch();
@@ -3250,9 +3251,9 @@ FAST_HANDLE(MOVSB) {
         as.Bind(&loop_end);
     }
 
-    rec.setRefGPR(X86_REF_RDI, rec.addressWidth(), rdi);
-    rec.setRefGPR(X86_REF_RSI, rec.addressWidth(), rsi);
-    rec.setRefGPR(X86_REF_RCX, rec.addressWidth(), rcx);
+    rec.setRefGPR(X86_REF_RDI, address_width, rdi);
+    rec.setRefGPR(X86_REF_RSI, address_width, rsi);
+    rec.setRefGPR(X86_REF_RCX, address_width, rcx);
 }
 
 FAST_HANDLE(MOVSW) {
@@ -3294,9 +3295,10 @@ FAST_HANDLE(MOVSQ) {
 FAST_HANDLE(CMPSB) {
     ASSERT(instruction.address_width > 16);
     u8 width = instruction.operand_width;
-    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, rec.addressWidth());
-    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, rec.addressWidth());
-    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, rec.addressWidth());
+    x86_size_e address_width = rec.zydisToSize(instruction.address_width);
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, address_width);
+    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, address_width);
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, address_width);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR src1 = rec.scratch();
     biscuit::GPR src2 = rec.scratch();
@@ -3332,9 +3334,9 @@ FAST_HANDLE(CMPSB) {
         as.Bind(&loop_end);
     }
 
-    rec.setRefGPR(X86_REF_RDI, rec.addressWidth(), rdi);
-    rec.setRefGPR(X86_REF_RSI, rec.addressWidth(), rsi);
-    rec.setRefGPR(X86_REF_RCX, rec.addressWidth(), rcx);
+    rec.setRefGPR(X86_REF_RDI, address_width, rdi);
+    rec.setRefGPR(X86_REF_RSI, address_width, rsi);
+    rec.setRefGPR(X86_REF_RCX, address_width, rcx);
 }
 
 FAST_HANDLE(CMPSW) {
@@ -3353,9 +3355,10 @@ FAST_HANDLE(SCASB) {
     ASSERT(instruction.address_width > 16);
     u8 width = instruction.operand_width;
     x86_size_e size = rec.zydisToSize(width);
+    x86_size_e address_width = rec.zydisToSize(instruction.address_width);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, size);
-    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, rec.addressWidth());
-    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, rec.addressWidth());
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, address_width);
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, address_width);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR src2 = rec.scratch();
     biscuit::GPR result = rec.scratch();
@@ -3387,8 +3390,8 @@ FAST_HANDLE(SCASB) {
         as.Bind(&loop_end);
     }
 
-    rec.setRefGPR(X86_REF_RDI, rec.addressWidth(), rdi);
-    rec.setRefGPR(X86_REF_RCX, rec.addressWidth(), rcx);
+    rec.setRefGPR(X86_REF_RDI, address_width, rdi);
+    rec.setRefGPR(X86_REF_RCX, address_width, rcx);
 }
 
 FAST_HANDLE(SCASW) {
@@ -3407,8 +3410,9 @@ FAST_HANDLE(LODSB) {
     ASSERT(!HAS_REP); // it can have rep, but it would be too silly
     ASSERT(instruction.address_width > 16);
     int width = instruction.operand_width;
+    x86_size_e address_width = rec.zydisToSize(instruction.address_width);
     x86_size_e size = rec.zydisToSize(width);
-    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, X86_SIZE_QWORD);
+    biscuit::GPR rsi = rec.getRefGPR(X86_REF_RSI, address_width);
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR loaded = rec.scratch();
     biscuit::GPR df = rec.scratch();
@@ -3425,7 +3429,7 @@ FAST_HANDLE(LODSB) {
     as.ADD(rsi, rsi, temp);
 
     rec.setRefGPR(X86_REF_RAX, size, loaded);
-    rec.setRefGPR(X86_REF_RSI, X86_SIZE_QWORD, rsi);
+    rec.setRefGPR(X86_REF_RSI, address_width, rsi);
 }
 
 FAST_HANDLE(LODSW) {
@@ -3444,8 +3448,9 @@ FAST_HANDLE(STOSB) {
     ASSERT(instruction.address_width > 16);
     Label loop_end, loop_body;
     u8 width = instruction.operand_width;
-    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, rec.addressWidth());
-    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, rec.addressWidth());
+    x86_size_e address_width = rec.zydisToSize(instruction.address_width);
+    biscuit::GPR rdi = rec.getRefGPR(X86_REF_RDI, address_width);
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, address_width);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, rec.zydisToSize(width));
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR df = rec.scratch();
@@ -3470,8 +3475,8 @@ FAST_HANDLE(STOSB) {
         as.Bind(&loop_end);
     }
 
-    rec.setRefGPR(X86_REF_RDI, rec.addressWidth(), rdi);
-    rec.setRefGPR(X86_REF_RCX, rec.addressWidth(), rcx);
+    rec.setRefGPR(X86_REF_RDI, address_width, rdi);
+    rec.setRefGPR(X86_REF_RCX, address_width, rcx);
 }
 
 FAST_HANDLE(STOSW) {
@@ -6918,18 +6923,18 @@ FAST_HANDLE(PREFETCHNTA) {
 
 FAST_HANDLE(PUSHFQ) {
     biscuit::GPR src = rec.getFlags();
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.addressWidth());
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
     as.ADDI(rsp, rsp, -rec.stackPointerSize());
-    rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), rsp);
-    rec.writeMemory(src, rsp, 0, rec.addressWidth());
+    rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
+    rec.writeMemory(src, rsp, 0, rec.stackWidth());
 }
 
 FAST_HANDLE(POPFQ) {
     biscuit::GPR flags = rec.scratch();
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.addressWidth());
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
     as.LD(flags, 0, rsp);
     as.ADDI(rsp, rsp, rec.stackPointerSize());
-    rec.setRefGPR(X86_REF_RSP, rec.addressWidth(), rsp);
+    rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);

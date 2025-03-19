@@ -378,7 +378,7 @@ struct Recompiler {
         return g_mode32 ? 4 : 8;
     }
 
-    x86_size_e addressWidth() {
+    x86_size_e stackWidth() {
         return g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
     }
 
