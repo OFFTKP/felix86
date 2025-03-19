@@ -451,8 +451,12 @@ struct Recompiler {
         }
     }
 
-    u8* getStartOfCodeCache() {
+    u8* getStartOfCodeCache() const {
         return (u8*)start_of_code_cache;
+    }
+
+    u8* getEndOfCodeCache() const {
+        return (u8*)as.GetCursorPointer();
     }
 
     static bool isXMM(x86_ref_e ref) {

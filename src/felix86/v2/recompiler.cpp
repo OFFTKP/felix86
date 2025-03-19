@@ -133,7 +133,10 @@ void Recompiler::emitDispatcher() {
     if (g_rsb) {
         as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
     }
+    as.ADDI(sp, sp, -16);
+    as.SD(ra, 8, sp); // save return address for gdb
     as.LI(t0, (u64)Emulator::CompileNext);
+    as.ADDI(sp, sp, 16);
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
     if (g_rsb) {
