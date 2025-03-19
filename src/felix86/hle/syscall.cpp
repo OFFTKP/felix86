@@ -1184,6 +1184,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         STRACE("linkat(%d, %s, %d, %s, %d) = %d", (int)arg1, (char*)arg2, (int)arg3, (char*)arg4, (int)arg5, (int)result);
         break;
     }
+    case felix86_riscv64_readlinkat: {
+        result = Filesystem::ReadlinkAt((int)arg1, (char*)arg2, (char*)arg3, (int)arg4);
+        STRACE("readlinkat(%d, %s, %s, %d) = %d", (int)arg1, (const char*)arg2, (char*)arg3, (int)arg4, (int)result);
+        break;
+    }
     case felix86_riscv64_getpeername: {
         result = SYSCALL64(getpeername, arg1, (struct sockaddr*)arg2, (socklen_t*)arg3);
         STRACE("getpeername(%d, %p, %p) = %d", (int)arg1, (void*)arg2, (void*)arg3, (int)result);
@@ -1267,11 +1272,6 @@ void felix86_syscall(ThreadState* state) {
         case felix86_x86_64_readlink: {
             result = Filesystem::ReadlinkAt(AT_FDCWD, (char*)arg1, (char*)arg2, (int)arg3);
             STRACE("readlink(%s, %s, %d) = %d", (const char*)arg1, (char*)arg2, (int)arg3, (int)result);
-            break;
-        }
-        case felix86_x86_64_readlinkat: {
-            result = Filesystem::ReadlinkAt((int)arg1, (char*)arg2, (char*)arg3, (int)arg4);
-            STRACE("readlinkat(%d, %s, %s, %d) = %d", (int)arg1, (const char*)arg2, (char*)arg3, (int)arg4, (int)result);
             break;
         }
         case felix86_x86_64_getpgrp: {
