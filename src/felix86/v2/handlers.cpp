@@ -2276,16 +2276,16 @@ void PUNPCKH(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisD
 
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec temp1 = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::Vec dst_down = rec.scratchVec();
-    biscuit::Vec src_down = rec.scratchVec();
 
-    rec.setVectorState(sew, vlen, LMUL::MF2);
+    // Pick even scratch registers for the widening add (can't use MF2, ruins 128 VLEN)
+    biscuit::Vec temp1 = v22;
+    biscuit::Vec temp2 = v24;
+    biscuit::Vec dst_down = v26;
+    biscuit::Vec src_down = v27;
+
+    rec.setVectorState(sew, vlen);
     as.VSLIDEDOWN(dst_down, dst, num);
     as.VSLIDEDOWN(src_down, src, num);
-
-    rec.setVectorState(sew, vlen / 2, LMUL::MF2);
     as.VWADDU(temp1, dst_down, x0);
     as.VWADDU(temp2, src_down, x0);
 
