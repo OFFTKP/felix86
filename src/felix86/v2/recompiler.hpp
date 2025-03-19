@@ -618,8 +618,6 @@ private:
 
     int rax_value = -1;
 
-    // TODO: replace this method of flag detection with 5 (4? remove AF) assemblers that emit flag calculations seperately.
-    // TODO: Then when a flag is used copy the instructions over from the equivalent assembler, reset it when overwritten
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 
     BlockMetadata* current_block_metadata{};

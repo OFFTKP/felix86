@@ -231,8 +231,6 @@ std::string get_extensions() {
 void initialize_globals() {
     std::string environment;
 
-    LOG("%s", get_version_full());
-
     g_emulator_path.resize(PATH_MAX);
     int read = readlink("/proc/self/exe", g_emulator_path.data(), PATH_MAX);
     ASSERT(read != -1);
@@ -527,8 +525,11 @@ void initialize_globals() {
         environment += "\nFELIX86_SINGLE_STEP";
     }
 
-    if (!g_quiet && !environment.empty()) {
-        LOG("Environment:%s", environment.c_str());
+    if (!g_execve_process) {
+        LOG("%s", get_version_full());
+        if (!environment.empty()) {
+            LOG("Environment:%s", environment.c_str());
+        }
     }
 
     g_vlen = biscuit::CPUInfo().GetVlenb() * 8;
