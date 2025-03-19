@@ -1077,7 +1077,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             break;
         }
 
-        printf("AAAAAA: %s\n", arg1);
+        PLAIN("AAAAAA: %s\n", arg1);
 
         std::filesystem::path path = Filesystem::resolve((char*)arg1);
         std::string filename = (char*)arg1;

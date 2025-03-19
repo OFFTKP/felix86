@@ -530,6 +530,11 @@ void initialize_globals() {
         if (!environment.empty()) {
             LOG("Environment:%s", environment.c_str());
         }
+
+        std::string extensions = get_extensions();
+        if (!extensions.empty()) {
+            LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
+        }
     }
 
     g_vlen = biscuit::CPUInfo().GetVlenb() * 8;
