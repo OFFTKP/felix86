@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
         ASSERT(file);
         g_output_fd = open(file, O_WRONLY, 0644);
         if (g_output_fd == -1) {
-            printf("Bad g_output_fd -- errno: %d\n", errno);
+            printf("Bad g_output_fd -- errno: %d -- pipe: %s\n", errno, file);
             exit(42);
         }
     }
