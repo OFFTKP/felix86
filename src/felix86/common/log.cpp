@@ -50,7 +50,7 @@ void start_log_server() {
 
             std::string message(size, 0);
             size_t read_size = fread(message.data(), size, 1, f);
-            ASSERT(read_size == size);
+            ASSERT_MSG(read_size == size, "%lx == %lx", read_size, size);
 
             // Print the message to our stdout
             printf("%s", message.c_str());
