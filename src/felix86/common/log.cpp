@@ -16,6 +16,16 @@ void start_log_server() {
     ASSERT(fd != -1);
     int pid = fork();
     if (pid == 0) {
+#undef ASSERT_MSG
+        // Use printf if we die so it's more obvious than writing to the file
+#define ASSERT_MSG(condition, format, ...)                                                                                                           \
+    do {                                                                                                                                             \
+        if (!(condition)) {                                                                                                                          \
+            printf(format, ##__VA_ARGS__);                                                                                                           \
+            exit(1);                                                                                                                                 \
+        }                                                                                                                                            \
+    } while (false)
+
         // This is going to be the logging "server". Basically we don't want to print anything to stdout
         // as applications may read it. So we start a separate process with its own stdout to handle
         // the displaying of messages.
@@ -32,14 +42,14 @@ void start_log_server() {
                 if (errno == EAGAIN) {
                     continue;
                 } else {
-                    ERROR("Logging server got error %d during read?", errno);
+                    ASSERT_MSG(false, "Logging server got error %d during read?", errno);
                 }
             } else if (result != sizeof(inotify_event)) {
-                ERROR("Bad size during read?");
+                ASSERT_MSG(false, "Bad size during read?");
             }
 
-            ASSERT(event.wd == watch);
-            ASSERT(event.mask == IN_MODIFY);
+            ASSERT_MSG(event.wd == watch, "What?");
+            ASSERT_MSG(event.mask == IN_MODIFY, "What?");
 
             // File has been modified with new logs!
             fseek(f, 0, SEEK_END);
