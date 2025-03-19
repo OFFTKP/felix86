@@ -271,30 +271,29 @@ int Filesystem::removeRootfsPrefix(char* buf, int size) {
     // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
     ASSERT(buf);
 
+    int new_size;
+    std::string rootfs = g_rootfs_path.string();
     std::string old(buf, buf + size);
 
-    if (old == g_rootfs_path) {
-        old = '/';
+    if (old.find(rootfs) == 0) {
+        if (old.size() == rootfs.size()) {
+            // Special case, it is the rootfs path
+            ASSERT(size >= 2);
+            buf[0] = '/';
+            buf[1] = 0;
+            new_size = 2;
+        } else {
+            std::string sub = old.substr(rootfs.size());
+            ASSERT(size >= sub.size() + 1);
+            memcpy(buf, sub.data(), sub.size());
+            buf[sub.size()] = 0;
+            new_size = sub.size();
+        }
+        VERBOSE("Removed rootfs prefix %s -> %s", old.c_str(), buf);
+    } else {
+        new_size = size;
     }
 
-    std::string rootfs = g_rootfs_path.string();
-    for (int i = 0; i < (int)rootfs.size(); i++) {
-        if (i > size) {
-            return size;
-        }
-
-        if (buf[i] != rootfs[i]) {
-            return size;
-        }
-    }
-
-    // At this point we know for sure that buf starts with rootfs
-    int new_size = size - rootfs.size();
-    ASSERT(new_size > 0);
-    memmove(buf, buf + rootfs.size(), size - rootfs.size());
-    ASSERT(buf[0] == '/');
-
-    VERBOSE("Removed rootfs prefix %s -> %s", old.c_str(), buf);
     return new_size;
 }
 
