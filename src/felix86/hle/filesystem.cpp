@@ -275,10 +275,8 @@ int Filesystem::removeRootfsPrefix(char* buf, int size) {
     std::string rootfs = g_rootfs_path.string();
     std::string old(buf, buf + size);
 
-    printf("%s == %s %d %d\n", rootfs.c_str(), old.c_str(), rootfs.size(), old.size());
-
     if (old.find(rootfs) == 0) {
-        if (old.size() == rootfs.size()) {
+        if (std::filesystem::path(old) == g_rootfs_path) {
             // Special case, it is the rootfs path
             ASSERT(size >= 2);
             buf[0] = '/';
