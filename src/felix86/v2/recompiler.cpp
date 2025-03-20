@@ -1313,8 +1313,8 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
         as.LD(gs, offsetof(ThreadState, gsbase), threadStatePointer());
         as.ADD(address, address, gs);
         popScratch();
-    } else if (operand->mem.segment != ZYDIS_REGISTER_NONE) {
-        ASSERT_MSG(false, "Tried to use segment: %s", operand->mem.segment);
+    } else if (operand->mem.segment != ZYDIS_REGISTER_DS) { // Implicitly uses DS normally (even in 64-bit mode I guess)
+        ASSERT_MSG(false, "Tried to use segment: %d", operand->mem.segment);
     }
 
     return address;
