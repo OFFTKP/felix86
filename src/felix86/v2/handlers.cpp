@@ -1346,6 +1346,18 @@ FAST_HANDLE(LEA) {
     rec.setOperandGPR(&operands[0], address);
 }
 
+FAST_HANDLE(RDFSBASE) {
+    biscuit::GPR fs = rec.scratch();
+    as.LD(fs, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+    rec.setOperandGPR(&operands[0], fs);
+}
+
+FAST_HANDLE(RDGSBASE) {
+    biscuit::GPR gs = rec.scratch();
+    as.LD(gs, offsetof(ThreadState, gsbase), rec.threadStatePointer());
+    rec.setOperandGPR(&operands[0], gs);
+}
+
 FAST_HANDLE(DIV) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     // we don't need to move src to scratch because the rdx and rax in all these cases are in scratches
@@ -6169,6 +6181,18 @@ FAST_HANDLE(FXRSTOR64) {
 }
 
 FAST_HANDLE(WRFSBASE) {
+    biscuit::GPR reg = rec.getOperandGPR(&operands[0]);
+
+    if (instruction.operand_width == 32) {
+        as.SW(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+    } else if (instruction.operand_width == 64) {
+        as.SD(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+    } else {
+        UNREACHABLE();
+    }
+}
+
+FAST_HANDLE(WRGSBASE) {
     biscuit::GPR reg = rec.getOperandGPR(&operands[0]);
 
     if (instruction.operand_width == 32) {
