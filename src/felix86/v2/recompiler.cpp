@@ -1313,7 +1313,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
         as.LD(gs, offsetof(ThreadState, gsbase), threadStatePointer());
         as.ADD(address, address, gs);
         popScratch();
-    } else {
+    } else if (operand->mem.segment != ZYDIS_REGISTER_NONE) {
         UNREACHABLE();
     }
 
