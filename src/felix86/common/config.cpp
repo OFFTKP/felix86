@@ -172,7 +172,11 @@ void Config::save(const std::filesystem::path& path, const Config& config) {
         if (!toml.contains(#group)) {                                                                                                                \
             toml[#group] = toml::ordered_table{};                                                                                                    \
         }                                                                                                                                            \
-        toml[#group][#name] = config.name;                                                                                                           \
+        auto& value = toml[#group][#name];                                                                                                           \
+        value = config.name;                                                                                                                         \
+        value.comments().push_back("# " #name " (" #type ")");                                                                                       \
+        value.comments().push_back("# Description: " description);                                                                                   \
+        value.comments().push_back("# Environment variable: " #env_name);                                                                            \
     }
 #include "config.inc"
 #undef X
