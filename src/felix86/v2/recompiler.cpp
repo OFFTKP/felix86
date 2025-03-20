@@ -1215,105 +1215,14 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
 }
 
 biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
-    // if (cached_lea_operand == operand) {
-    //     ASSERT(cached_lea_operand->mem.base == operand->mem.base);
-    //     ASSERT(cached_lea_operand->mem.index == operand->mem.index);
-    //     ASSERT(cached_lea_operand->mem.scale == operand->mem.scale);
-    //     ASSERT(cached_lea_operand->mem.disp.value == operand->mem.disp.value);
-    //     ASSERT(cached_lea_operand->mem.segment == operand->mem.segment);
-    //     return cached_lea;
-    // }
-
-    // biscuit::GPR address = scratch();
-    // cached_lea = address;
-    // cached_lea_operand = operand;
-
-    // biscuit::GPR base, index;
-
-    // if (operand->mem.base == ZYDIS_REGISTER_RIP) {
-    //     as.LI(address, current_meta->rip.toGuest().raw() + instruction.length + operand->mem.disp.value);
-    //     return address;
-    // }
-
-    // // Load displacement first
-    // as.LI(address, operand->mem.disp.value);
-
-    // if (operand->mem.index != ZYDIS_REGISTER_NONE) {
-    //     index = gpr(operand->mem.index);
-    //     u8 scale = operand->mem.scale;
-    //     if (scale != 1) {
-    //         if (Extensions::B) {
-    //             switch (scale) {
-    //             case 2:
-    //                 as.SH1ADD(address, index, address);
-    //                 break;
-    //             case 4:
-    //                 as.SH2ADD(address, index, address);
-    //                 break;
-    //             case 8: {
-    //                 as.SH3ADD(address, index, address);
-    //                 break;
-    //             }
-    //             default: {
-    //                 UNREACHABLE();
-    //                 break;
-    //             }
-    //             }
-    //         } else {
-    //             switch (scale) {
-    //             case 2:
-    //                 scale = 1;
-    //                 break;
-    //             case 4:
-    //                 scale = 2;
-    //                 break;
-    //             case 8:
-    //                 scale = 3;
-    //                 break;
-    //             default:
-    //                 UNREACHABLE();
-    //                 break;
-    //             }
-    //             if (operand->mem.disp.value == 0) {
-    //                 // Can use the address register directly as there's only zero there
-    //                 as.SLLI(address, index, scale);
-    //             } else {
-    //                 biscuit::GPR scale_reg = scratch();
-    //                 as.SLLI(scale_reg, index, scale);
-    //                 as.ADD(address, address, scale_reg);
-    //                 popScratch();
-    //             }
-    //         }
-    //     } else {
-    //         as.ADD(address, address, index);
-    //     }
-    // }
-
-    // if (operand->mem.base != ZYDIS_REGISTER_NONE) {
-    //     base = gpr(operand->mem.base);
-    //     as.ADD(address, address, base);
-    // }
-
-    // // Address override prefix, this needs to happen before adding the segment override
-    // if (instruction.address_width != 64) {
-    //     zext(address, address, zydisToSize(instruction.address_width));
-    // }
-
-    // if (operand->mem.segment == ZYDIS_REGISTER_FS) {
-    //     biscuit::GPR fs = scratch();
-    //     as.LD(fs, offsetof(ThreadState, fsbase), threadStatePointer());
-    //     as.ADD(address, address, fs);
-    //     popScratch();
-    // } else if (operand->mem.segment == ZYDIS_REGISTER_GS) {
-    //     biscuit::GPR gs = scratch();
-    //     as.LD(gs, offsetof(ThreadState, gsbase), threadStatePointer());
-    //     as.ADD(address, address, gs);
-    //     popScratch();
-    // } else if (instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) {
-    //     ASSERT_MSG(false, "Tried to use segment: %d", operand->mem.segment);
-    // }
-
-    // return address;
+    if (cached_lea_operand == operand) {
+        ASSERT(cached_lea_operand->mem.base == operand->mem.base);
+        ASSERT(cached_lea_operand->mem.index == operand->mem.index);
+        ASSERT(cached_lea_operand->mem.scale == operand->mem.scale);
+        ASSERT(cached_lea_operand->mem.disp.value == operand->mem.disp.value);
+        ASSERT(cached_lea_operand->mem.segment == operand->mem.segment);
+        return cached_lea;
+    }
 
     biscuit::GPR address = scratch();
     cached_lea = address;
@@ -1330,8 +1239,6 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
     bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
     bool has_segment = instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
     bool has_disp = operand->mem.disp.value != 0;
-
-    printf("has_base: %d\nhas_index:%d\nhas_segment:%d\nhas_disp:%d\n", has_base, has_index, has_segment, has_disp);
 
     // Cover the case of just a segment register
     if (has_segment && !has_base && !has_index && !has_disp) {
