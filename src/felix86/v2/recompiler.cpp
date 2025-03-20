@@ -1309,7 +1309,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
     //     as.LD(gs, offsetof(ThreadState, gsbase), threadStatePointer());
     //     as.ADD(address, address, gs);
     //     popScratch();
-    // } else if (operand->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) {
+    // } else if (instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) {
     //     ASSERT_MSG(false, "Tried to use segment: %d", operand->mem.segment);
     // }
 
@@ -1328,7 +1328,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
 
     bool has_base = operand->mem.base != ZYDIS_REGISTER_NONE;
     bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
-    bool has_segment = operand->attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
+    bool has_segment = instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
     bool has_disp = operand->mem.disp.value != 0;
 
     printf("has_base: %d\nhas_index:%d\nhas_segment:%d\nhas_disp:%d\n", has_base, has_index, has_segment, has_disp);
