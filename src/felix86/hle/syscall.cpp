@@ -1157,6 +1157,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         STRACE("umask(%d) = %d", (int)arg1, (int)result);
         break;
     }
+    case felix86_riscv64_ppoll: {
+        result = SYSCALL64(ppoll, arg1, arg2, arg3, arg4, arg5);
+        STRACE("ppoll(%p, %d, %p, %p, %lx) = %d", (void*)arg1, (int)arg2, (void*)arg3, (void*)arg4, arg5, (int)result);
+        break;
+    }
     case felix86_riscv64_linkat: {
         result = Filesystem::LinkAt((int)arg1, (char*)arg2, (int)arg3, (char*)arg4, (int)arg5);
         STRACE("linkat(%d, %s, %d, %s, %d) = %d", (int)arg1, (char*)arg2, (int)arg3, (char*)arg4, (int)arg5, (int)result);
@@ -1291,11 +1296,6 @@ void felix86_syscall(ThreadState* state) {
         case felix86_x86_64_poll: {
             result = poll((struct pollfd*)arg1, arg2, arg3);
             STRACE("poll(%p, %d, %d) = %d", (void*)arg1, (int)arg2, (int)arg3, (int)result);
-            break;
-        }
-        case felix86_x86_64_ppoll: {
-            result = SYSCALL64(ppoll, arg1, arg2, arg3, arg4);
-            STRACE("ppoll(%p, %d, %p, %p) = %d", (void*)arg1, (int)arg2, (void*)arg3, (void*)arg4, (int)result);
             break;
         }
         case felix86_x86_64_dup2: {

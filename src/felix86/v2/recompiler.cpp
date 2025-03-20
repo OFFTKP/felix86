@@ -365,7 +365,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
 
         compileInstruction(meta);
 
-        if (!g_config.inline_syscalls) {
+        if (g_config.inline_syscalls) {
             checkModifiesRax(instruction, operands);
         }
 
