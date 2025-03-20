@@ -1408,6 +1408,20 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
                 if (scale == 1) {
                     as.MV(address, index);
                 } else {
+                    switch (scale) {
+                    case 2:
+                        scale = 1;
+                        break;
+                    case 4:
+                        scale = 2;
+                        break;
+                    case 8:
+                        scale = 3;
+                        break;
+                    default:
+                        UNREACHABLE();
+                        break;
+                    }
                     as.SLLI(address, index, scale);
                 }
             } else {
