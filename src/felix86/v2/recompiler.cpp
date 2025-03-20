@@ -1405,7 +1405,11 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
             u8 scale = operand->mem.scale;
             if (!has_base) {
                 // No base, shift directly into address
-                as.SLLI(address, index, scale);
+                if (scale == 1) {
+                    as.MV(address, index);
+                } else {
+                    as.SLLI(address, index, scale);
+                }
             } else {
                 // Add index to the base
                 base = gpr(operand->mem.base);
