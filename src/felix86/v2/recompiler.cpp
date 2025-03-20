@@ -1331,6 +1331,8 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
     bool has_segment = operand->attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
     bool has_disp = operand->mem.disp.value != 0;
 
+    printf("has_base: %d\nhas_index:%d\nhas_segment:%d\nhas_disp:%d\n", has_base, has_index, has_segment, has_disp);
+
     // Cover the case of just a segment register
     if (has_segment && !has_base && !has_index && !has_disp) {
         if (operand->mem.segment == ZYDIS_REGISTER_FS) {
