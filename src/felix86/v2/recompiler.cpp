@@ -112,7 +112,7 @@ void Recompiler::emitDispatcher() {
 
     as.MV(threadStatePointer(), a0);
 
-    if (g_rsb) {
+    if (g_config.rsb) {
         // Try to lower the chances that our return stack buffer optimizations end up
         // ruining the data in the host stack, if somehow there's multiple returns before any calls
         as.ADDI(sp, sp, -1024);
@@ -127,7 +127,7 @@ void Recompiler::emitDispatcher() {
     Label exit_dispatcher_label;
 
     // Save current stack pointer to clear the RSB data if we clear the code cache
-    if (g_rsb) {
+    if (g_config.rsb) {
         as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
     }
 
@@ -138,7 +138,7 @@ void Recompiler::emitDispatcher() {
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
-    if (g_rsb) {
+    if (g_config.rsb) {
         as.MV(ra, a0);
         // "return" to the compiled function. This encoding hints to the
         // return stack buffer to pop, which should have been pushed by a jalr
@@ -223,11 +223,11 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     as.RewindBuffer();
     block_metadata.clear();
     host_pc_map.clear();
-    std::fill(std::begin(block_cache), std::end(block_cache), BlockCacheEntry{});
+    std::fill(std::begin(address_cache), std::end(address_cache), AddressCacheEntry{});
 
     emitNecessaryStuff();
 
-    if (g_rsb) {
+    if (g_config.rsb) {
         // Need to zero out the stack that rsb has used thus far.
         // Because if the cache is cleared and we hit more RETs than calls,
         // we are gonna be returning to potentially invalid places
@@ -269,7 +269,7 @@ HostAddress Recompiler::compile(ThreadState* state, HostAddress rip) {
     // Mark the page as read-only to catch self-modifying code
     markPagesAsReadOnly(rip, end_rip);
 
-    if (g_perf) {
+    if (g_config.perf) {
         if (perf_fd == -1) {
             std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
             FILE* file = fopen(path.c_str(), "w");
@@ -300,7 +300,7 @@ HostAddress Recompiler::compile(ThreadState* state, HostAddress rip) {
 }
 
 void Recompiler::markPagesAsReadOnly(HostAddress start, HostAddress end) {
-    if (g_dont_protect_pages) {
+    if (g_config.dont_protect_pages) {
         return;
     }
 
@@ -314,12 +314,8 @@ void Recompiler::markPagesAsReadOnly(HostAddress start, HostAddress end) {
 }
 
 HostAddress Recompiler::getCompiledBlock(ThreadState* state, HostAddress rip) {
-    if (g_dont_cache) {
-        return compile(state, rip);
-    }
-
-    if (g_use_block_cache) {
-        BlockCacheEntry& entry = block_cache[rip.raw() & ((1 << block_cache_bits) - 1)];
+    if (g_config.address_cache) {
+        AddressCacheEntry& entry = address_cache[rip.raw() & ((1 << address_cache_bits) - 1)];
         if (entry.guest == rip) {
             return entry.host;
         } else if (blockExists(rip)) {
@@ -369,13 +365,13 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
 
         compileInstruction(meta);
 
-        if (!g_dont_inline_syscalls) {
+        if (!g_config.inline_syscalls) {
             checkModifiesRax(instruction, operands);
         }
 
         meta.rip += instruction.length;
 
-        if (g_single_step && compiling) {
+        if (g_config.single_step && compiling) {
             resetScratch();
             biscuit::GPR rip_after = scratch();
             as.LI(rip_after, meta.rip.toGuest().raw());
@@ -389,7 +385,7 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
     current_block_metadata->guest_address_end = meta.rip;
     current_block_metadata->address_end = HostAddress{(u64)as.GetCursorPointer()};
 
-    if (g_gdb) {
+    if (g_config.gdb) {
         size_t inst_count = current_block_metadata->instruction_spans.size();
         felix86_jit_block_t* gdb_block = GDBJIT::createBlock(inst_count);
         gdb_block->host_start = (u64)as.GetCursorPointer();
@@ -428,23 +424,23 @@ void Recompiler::compileInstruction(HandlerMetadata& meta) {
 
     ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
 
-    if (g_no_sse2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2)) {
+    if (g_config.no_sse2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2)) {
         ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
     }
 
-    if (g_no_sse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE3)) {
+    if (g_config.no_sse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE3)) {
         ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
     }
 
-    if (g_no_ssse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSSE3)) {
+    if (g_config.no_ssse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSSE3)) {
         ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
     }
 
-    if (g_no_sse4_1 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
+    if (g_config.no_sse4_1 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
         ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
     }
 
-    if (g_no_sse4_2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
+    if (g_config.no_sse4_2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
         ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
     }
 
@@ -1489,7 +1485,7 @@ void Recompiler::stopCompiling() {
 }
 
 void Recompiler::pushCalltrace() {
-    if (g_calltrace) {
+    if (g_config.calltrace) {
         as.LI(t0, (u64)push_calltrace);
         as.MV(a0, threadStatePointer());
         as.LI(a1, current_meta->rip.raw());
@@ -1498,7 +1494,7 @@ void Recompiler::pushCalltrace() {
 }
 
 void Recompiler::popCalltrace() {
-    if (g_calltrace) {
+    if (g_config.calltrace) {
         as.LI(t0, (u64)pop_calltrace);
         as.MV(a0, threadStatePointer());
         as.JALR(t0);
@@ -1620,9 +1616,9 @@ void Recompiler::scanFlagUsageAhead(HostAddress rip) {
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
 
-        if (!g_safe_flags && !g_paranoid) {
+        if (g_config.unsafe_flags && !g_paranoid) {
             if (is_call || is_ret) {
-                // Pretend that the call changes the flags so that we don't calculate the flags
+                // Pretend that the call/ret changes the flags so that we don't calculate the flags
                 // This is most often the case so it's a good optimization.
                 flag_access_cpazso[0].push_back({true, rip});
                 flag_access_cpazso[1].push_back({true, rip});
@@ -1974,7 +1970,7 @@ biscuit::GPR Recompiler::getRip() {
 }
 
 void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
-    if (g_dont_link) {
+    if (!g_config.link) {
         // Just emit jump to dispatcher
         backToDispatcher(use_rsb);
         return;
@@ -2043,7 +2039,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr
 }
 
 void Recompiler::expirePendingLinks(HostAddress rip) {
-    if (g_dont_link) {
+    if (!g_config.link) {
         return;
     }
 
@@ -2067,7 +2063,7 @@ void Recompiler::expirePendingLinks(HostAddress rip) {
         }
 
         if (instruction.mnemonic == Mnemonic::JALR && operands[0].GPR() == ra) {
-            ASSERT(g_rsb);
+            ASSERT(g_config.rsb);
             use_rsb = true;
         }
 
@@ -2247,7 +2243,7 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
     }
     }
 
-    if (g_always_tso && !Extensions::TSO) {
+    if (g_config.always_tso && !Extensions::TSO) {
         as.FENCE(FenceOrder::R, FenceOrder::RW);
     }
 }
@@ -2292,7 +2288,7 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
 }
 
 void Recompiler::writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size) {
-    if (g_always_tso && !Extensions::TSO) {
+    if (g_config.always_tso && !Extensions::TSO) {
         as.FENCE(FenceOrder::RW, FenceOrder::W);
     }
 
@@ -2829,7 +2825,7 @@ void Recompiler::printTrace() {
 }
 
 void Recompiler::linkIndirect() {
-    if (g_rsb) {
+    if (g_config.rsb) {
         as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
     }
 

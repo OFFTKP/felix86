@@ -93,7 +93,7 @@ Script::Script(const std::filesystem::path& script) {
 
     ASSERT(interpreter[0] == '/');
 
-    this->interpreter = g_rootfs_path / &interpreter[1];
+    this->interpreter = g_config.rootfs_path / &interpreter[1];
 
     LOG("Running a script file: %s, interpreter: %s, args: %s", script.c_str(), interpreter.c_str(), args.c_str());
     ASSERT(std::filesystem::exists(interpreter));

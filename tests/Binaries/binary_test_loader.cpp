@@ -19,7 +19,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     CATCH_INFO(fmt::format("Running test: {}", path.filename().string()));
 
     std::string buffer(1024 * 1024, 0);
-    std::string srootfs = "FELIX86_ROOTFS=" + g_rootfs_path.string();
+    std::string srootfs = "FELIX86_ROOTFS=" + g_config.rootfs_path.string();
     std::string spath = exec_path;
 
     const char* argv[] = {
@@ -37,10 +37,10 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     envp.push_back(srootfs.c_str());
     envp.push_back(nullptr);
 
-    std::filesystem::create_directories(g_rootfs_path / tmp_path.relative_path());
+    std::filesystem::create_directories(g_config.rootfs_path / tmp_path.relative_path());
 
     // Copy our test binary to the temp path
-    std::filesystem::copy(path, g_rootfs_path / exec_path.relative_path(), std::filesystem::copy_options::overwrite_existing);
+    std::filesystem::copy(path, g_config.rootfs_path / exec_path.relative_path(), std::filesystem::copy_options::overwrite_existing);
 
     pid_t fork_result = fork();
     if (fork_result == 0) {
@@ -71,7 +71,7 @@ void common_loader(const std::filesystem::path& path) {
         ERROR("felix86 executable not found");
     }
 
-    if (g_rootfs_path.empty() || !std::filesystem::exists(g_rootfs_path)) {
+    if (g_config.rootfs_path.empty() || !std::filesystem::exists(g_config.rootfs_path)) {
         ERROR("This test requires a rootfs directory, set via FELIX86_ROOTFS");
     }
 

@@ -1,8 +1,7 @@
 #pragma once
 
 #include <sys/mman.h>
-#include "felix86/common/config.hpp"
-#include "felix86/common/log.hpp"
+#include "felix86/common/start_params.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
 
@@ -22,7 +21,7 @@ struct Emulator {
 
     static void UnlinkIndirect(ThreadState* state, u8* link_address);
 
-    [[nodiscard]] static std::pair<ExitReason, int> Start(const Config& config);
+    [[nodiscard]] static std::pair<ExitReason, int> Start(const StartParameters& config);
 
     static void StartTest(const TestConfig& config, GuestAddress stack);
 

@@ -32,7 +32,7 @@ void BRK::allocate32() {
 
     // Allocate the max brk size with MAP_NORESERVE, and the actual brk normally, so we can expand as we go and the memory
     // doesn't get stolen by something else
-    u64 base = g_brk_base_hint ? g_brk_base_hint : g_program_end;
+    u64 base = g_config.brk_base ? g_config.brk_base : g_program_end;
     base &= ~0xFFF;
 
     ASSERT_MSG(base <= UINT32_MAX, "BRK hint is outside 32-bit address space for 32-bit application");
@@ -78,7 +78,7 @@ void BRK::allocate64() {
 
     // Allocate the max brk size with MAP_NORESERVE, and the actual brk normally, so we can expand as we go and the memory
     // doesn't get stolen by something else
-    u64 base = g_brk_base_hint ? g_brk_base_hint : g_program_end;
+    u64 base = g_config.brk_base ? g_config.brk_base : g_program_end;
     base &= ~0xFFF;
 
     u8* brk_base = nullptr;

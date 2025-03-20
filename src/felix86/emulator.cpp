@@ -42,15 +42,15 @@ typedef struct {
 } auxv_t;
 
 std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
-    ssize_t argc = g_config.argv.size();
+    ssize_t argc = g_params.argv.size();
     if (argc > 1) {
         VERBOSE("Passing %zu arguments to guest executable", argc - 1);
         for (ssize_t i = 1; i < argc; i++) {
-            VERBOSE("Guest argument %zu: %s", i, g_config.argv[i].c_str());
+            VERBOSE("Guest argument %zu: %s", i, g_params.argv[i].c_str());
         }
     }
 
-    const char* path = g_config.argv[0].c_str();
+    const char* path = g_params.argv[0].c_str();
 
     std::shared_ptr<Elf> elf = g_fs->GetExecutable();
 
@@ -68,15 +68,15 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     const char* platform_name = (const char*)rsp;
 
     for (ssize_t i = 0; i < argc; i++) {
-        rsp = stack_push_string(rsp, g_config.argv[i].c_str());
+        rsp = stack_push_string(rsp, g_params.argv[i].c_str());
         argv_addresses[i] = rsp;
     }
 
-    size_t envc = g_config.envp.size();
+    size_t envc = g_params.envp.size();
     u64* envp_addresses = (u64*)alloca(envc * sizeof(u64));
 
     for (size_t i = 0; i < envc; i++) {
-        const char* env = g_config.envp[i].c_str();
+        const char* env = g_params.envp[i].c_str();
         rsp = stack_push_string(rsp, env);
         envp_addresses[i] = rsp;
     }
@@ -217,36 +217,36 @@ void Emulator::ExitDispatcher(ThreadState* state) {
     state->recompiler->exitDispatcher(state);
 }
 
-std::pair<ExitReason, int> Emulator::Start(const Config& config) {
-    g_config = config;
+std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
+    g_params = config;
     ExitReason exit_reason;
     int exit_code;
-    g_config = config;
+    g_params = config;
 
     g_process_globals.initialize();
     g_fs = std::make_unique<Filesystem>();
 
-    Elf::PeekResult peek = Elf::Peek(g_config.executable_path);
+    Elf::PeekResult peek = Elf::Peek(g_params.executable_path);
     std::filesystem::path script_path;
     bool is_script = false;
     if (peek == Elf::PeekResult::NotElf) {
-        Script::PeekResult peek = Script::Peek(g_config.executable_path);
+        Script::PeekResult peek = Script::Peek(g_params.executable_path);
         if (peek == Script::PeekResult::Script) {
             is_script = true;
-            Script script(g_config.executable_path);
-            script_path = g_config.executable_path;
+            Script script(g_params.executable_path);
+            script_path = g_params.executable_path;
             const std::filesystem::path& interpreter = script.GetInterpreter();
             const std::string& args = script.GetArgs();
 
-            std::string path = g_config.executable_path;
-            ASSERT(path.find(g_rootfs_path.string()) == 0);
+            std::string path = g_params.executable_path;
+            ASSERT(path.find(g_config.rootfs_path.string()) == 0);
 
             // We need to remove the rootfs prefix in the arguments, because the interpreter is going to see it
-            path = path.substr(g_rootfs_path.string().size());
+            path = path.substr(g_config.rootfs_path.string().size());
             ASSERT(!path.empty());
             ASSERT(path[0] == '/');
 
-            g_config.argv[0] = path;
+            g_params.argv[0] = path;
 
             // Scripts start with a line that goes #! (usually) and that means
             // use the interpreter after #!. This can be bash, zsh, python, whatever.
@@ -257,21 +257,21 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
                 if (it->empty())
                     continue;
 
-                g_config.argv.push_front(*it);
+                g_params.argv.push_front(*it);
             }
 
-            g_config.argv.push_front(interpreter.string());
+            g_params.argv.push_front(interpreter.string());
 
             std::string final;
-            for (auto& arg : g_config.argv) {
+            for (auto& arg : g_params.argv) {
                 final += arg + " ";
             }
 
             LOG("I built the script arguments: %s", final.c_str());
 
-            g_config.executable_path = interpreter;
+            g_params.executable_path = interpreter;
         } else {
-            ERROR("Unknown file format: %s", g_config.executable_path.c_str());
+            ERROR("Unknown file format: %s", g_params.executable_path.c_str());
         }
     }
 
@@ -289,7 +289,7 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
         g_mode32 = false;
     }
 
-    g_fs->LoadExecutable(g_config.executable_path);
+    g_fs->LoadExecutable(g_params.executable_path);
 
     BRK::allocate();
 
@@ -299,7 +299,7 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
 
         if (cwd) {
             std::string scwd = cwd;
-            ASSERT_MSG(scwd.find(g_rootfs_path.string()) == 0, "FELIX86_CWD is not inside FELIX86_ROOTFS!");
+            ASSERT_MSG(scwd.find(g_config.rootfs_path.string()) == 0, "FELIX86_CWD is not inside FELIX86_ROOTFS!");
             int res = chdir(cwd);
             if (res == -1) {
                 WARN("Failed to chdir to %s", cwd);
@@ -310,11 +310,11 @@ std::pair<ExitReason, int> Emulator::Start(const Config& config) {
                 // executable_path here is the shell itself, parent path would be /usr/bin, we wanna be where the script is
                 res = chdir(script_path.parent_path().c_str());
             } else {
-                res = chdir(g_config.executable_path.parent_path().c_str());
+                res = chdir(g_params.executable_path.parent_path().c_str());
             }
 
             if (res == -1) {
-                WARN("Failed to chdir to %s", g_config.executable_path.parent_path().c_str());
+                WARN("Failed to chdir to %s", g_params.executable_path.parent_path().c_str());
             }
         }
     }
@@ -378,7 +378,7 @@ void Emulator::LinkIndirect(u64 host_address, u64 guest_address, u8* link_addres
     as.LD(t0, &guest);
     as.BNE(t0, t1, &unlink_indirect);
     as.LD(t2, &host);
-    if (g_rsb) {
+    if (g_config.rsb) {
         as.JALR(t2); // push to rsb
     } else {
         as.JR(t2);

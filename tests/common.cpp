@@ -10,11 +10,12 @@ public:
     void testRunStarting(Catch::TestRunInfo const&) override {
         g_output_fd = STDOUT_FILENO;
         g_testing = true;
+        Config::initialize();
         initialize_globals();
         g_process_globals.initialize();
         initialize_extensions();
         Signals::initialize();
-        g_dont_protect_pages = true;
+        g_config.dont_protect_pages = true;
     }
 };
 

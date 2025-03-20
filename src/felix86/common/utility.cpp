@@ -442,7 +442,7 @@ void dump_states() {
         dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld):" ANSI_COLOR_RESET "\n", i, state->tid);
         print_address(state->rip.toHost().raw());
 
-        if (g_calltrace) {
+        if (g_config.calltrace) {
             auto it = state->calltrace.rbegin();
             while (it != state->calltrace.rend()) {
                 print_address((*it).raw());
@@ -483,7 +483,7 @@ void update_symbols() {
                 continue;
             }
 
-            if (std::string(buffer).find(g_rootfs_path.string()) != 0) {
+            if (std::string(buffer).find(g_config.rootfs_path.string()) != 0) {
                 // It's our emulator or its libraries, skip
                 continue;
             }

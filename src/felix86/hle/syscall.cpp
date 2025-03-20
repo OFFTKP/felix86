@@ -69,7 +69,7 @@ struct x86_sigaction {
 
 // TODO: move me elsewhere
 bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
-    if (!g_strace) {
+    if (!g_config.strace) {
         return false;
     }
 
@@ -516,7 +516,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     case felix86_riscv64_write: {
         result = SYSCALL64(write, arg1, arg2, arg3);
 
-        if (g_strace) {
+        if (g_config.strace) {
             STRACE("write(%d, %s, %d) = %d", (int)arg1, (char*)arg2, (int)arg3, (int)result);
         }
         break;
@@ -884,7 +884,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         if (act) {
             auto handler = act->handler;
             Signals::registerSignalHandler(state, arg1, GuestAddress{(u64)handler}, act->sa_mask, act->sa_flags);
-            if (g_verbose) {
+            if (g_config.verbose) {
                 PLAIN("Installed signal handler %s at:", strsignal(arg1));
                 print_address((u64)handler);
                 PLAIN("Flags: %lx\n", act->sa_flags);

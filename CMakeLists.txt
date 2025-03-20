@@ -46,6 +46,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(FELIX86_COMMON_SOURCES
     src/felix86/common/alloc.c
+    src/felix86/common/config.cpp
     src/felix86/common/debug.cpp
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp
@@ -94,6 +95,7 @@ set(FELIX86_INCLUDES
     external/robin-map/include
     external/json
     external/biscuit/include
+    external/toml11
 )
 
 add_library(felix86_core STATIC)

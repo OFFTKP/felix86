@@ -30,8 +30,8 @@ struct Symlinker {
     // Resolve symlinks while placing results in rootfs to perpetually resolve them
     static std::filesystem::path resolve(const std::filesystem::path& path) {
         std::filesystem::path current = std::filesystem::absolute(path);
-        if (!is_subpath(current, g_rootfs_path)) {
-            current = g_rootfs_path / current.relative_path();
+        if (!is_subpath(current, g_config.rootfs_path)) {
+            current = g_config.rootfs_path / current.relative_path();
         }
 
         while (std::filesystem::is_symlink(current)) {
@@ -41,12 +41,12 @@ struct Symlinker {
                 ERROR("Failed to resolve symlink %s: %s", path.c_str(), ec.message().c_str());
             }
 
-            if (!is_subpath(resolved, g_rootfs_path)) {
+            if (!is_subpath(resolved, g_config.rootfs_path)) {
                 if (resolved.is_absolute()) {
-                    current = g_rootfs_path / resolved.relative_path();
+                    current = g_config.rootfs_path / resolved.relative_path();
                 } else {
                     current = current.parent_path() / resolved.relative_path();
-                    ASSERT_MSG(is_subpath(current, g_rootfs_path), "Resolved path is outside rootfs?");
+                    ASSERT_MSG(is_subpath(current, g_config.rootfs_path), "Resolved path is outside rootfs?");
                 }
             } else {
                 current = resolved;

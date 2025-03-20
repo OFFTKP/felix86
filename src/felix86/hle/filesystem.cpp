@@ -53,9 +53,9 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
         // If it's /proc/self/exe or similar, we don't want to resolve the path then readlink,
         // because readlink will fail as the resolved path would not be a link
         std::string path = resolve(filename);
-        const size_t rootfs_size = g_rootfs_path.string().size();
+        const size_t rootfs_size = g_config.rootfs_path.string().size();
         const size_t stem_size = path.size() - rootfs_size;
-        ASSERT(path.find(g_rootfs_path.string()) == 0); // it should be in rootfs but lets make sure
+        ASSERT(path.find(g_config.rootfs_path.string()) == 0); // it should be in rootfs but lets make sure
         int bytes = std::min((int)stem_size, bufsiz);
         memcpy(buf, path.c_str() + rootfs_size, bytes);
         return bytes;
@@ -265,7 +265,7 @@ std::filesystem::path Filesystem::resolve(const char* path) {
     }
 
     if (path[0] == '/') {
-        return g_rootfs_path / &path[1];
+        return g_config.rootfs_path / &path[1];
     }
 
     return path;
@@ -273,10 +273,10 @@ std::filesystem::path Filesystem::resolve(const char* path) {
 
 void Filesystem::removeRootfsPrefix(std::string& path) {
     // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
-    std::string rootfs = g_rootfs_path.lexically_normal().string();
+    std::string rootfs = g_config.rootfs_path.lexically_normal().string();
 
     if (path.find(rootfs) == 0) {
-        if (path == g_rootfs_path) {
+        if (path == g_config.rootfs_path) {
             // Special case, it is the rootfs path
             path = "/";
         } else {

@@ -414,7 +414,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             ASSERT(!interpreter_str.empty() && interpreter_str[0] == '/');
-            interpreter = g_rootfs_path / (&interpreter_str[1]);
+            interpreter = g_config.rootfs_path / (&interpreter_str[1]);
             break;
         }
         case PT_GNU_STACK: {
@@ -443,7 +443,7 @@ void Elf::Load(const std::filesystem::path& path) {
     VERBOSE("Highest vaddr: %lx", highest_vaddr);
 
     u8* base_ptr;
-    u64 base_hint = is_interpreter ? g_interpreter_base_hint : g_executable_base_hint;
+    u64 base_hint = is_interpreter ? g_config.interpreter_base : g_config.executable_base;
     if ((base_hint & 0xFFF) != 0) {
         ERROR("Base hint is not page aligned for: %s", is_interpreter ? "Interpreter" : "Executable");
     }

@@ -5,7 +5,7 @@
 #include "felix86/common/state.hpp"
 
 void felix86_exit(int code) {
-    if (g_dump_regs) {
+    if (g_config.dump_regs) {
         ThreadState* state = ThreadState::Get();
         if (state) {
             print_state(state);

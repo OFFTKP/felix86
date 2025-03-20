@@ -605,14 +605,14 @@ FAST_HANDLE(CALL_rsb) {
 
     // AUIPC + ADDI + SD + 2 instructions for jump = 20
     // If there's indirect linking, the jump will take 12 (AUIPC + ADDI + SD) + 12 * 4 + 3 * 8 for the linkIndirect
-    int offset = (g_dont_link_indirect || operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) ? 20 : 12 + (12 * 4 + 3 * 8);
+    int offset = (!g_config.link_indirect || operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) ? 20 : 12 + (12 * 4 + 3 * 8);
     as.AUIPC(host_return_address, 0);
     as.ADDI(host_return_address, host_return_address, offset);
     as.SD(host_return_address, 0, sp);
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
         rec.jumpAndLink(meta.rip.add(instruction.length + displacement), true /* push to rsb */);
     } else {
-        if (g_dont_link_indirect) {
+        if (!g_config.link_indirect) {
             rec.backToDispatcher(true); // true = push to rsb
         } else {
             rec.linkIndirect();
@@ -670,7 +670,7 @@ FAST_HANDLE(RET_rsb) {
 }
 
 FAST_HANDLE(CALL) {
-    if (g_rsb) {
+    if (g_config.rsb) {
         return fast_CALL_rsb(rec, meta, as, instruction, operands);
     }
 
@@ -726,7 +726,7 @@ FAST_HANDLE(CALL) {
 }
 
 FAST_HANDLE(RET) {
-    if (g_rsb) {
+    if (g_config.rsb) {
         return fast_RET_rsb(rec, meta, as, instruction, operands);
     }
 
@@ -1314,7 +1314,7 @@ FAST_HANDLE(JMP) {
         rec.setRip(src);
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
-        if (!g_dont_link_indirect) {
+        if (!!g_config.link_indirect) {
             rec.linkIndirect();
         } else {
             rec.backToDispatcher();
@@ -2591,7 +2591,7 @@ FAST_HANDLE(CPUID) {
 }
 
 FAST_HANDLE(SYSCALL) {
-    if (!g_strace && !g_dont_inline_syscalls) {
+    if (!g_config.strace && g_config.inline_syscalls) {
         bool inlined = rec.tryInlineSyscall();
         if (inlined) {
             return;
@@ -2871,7 +2871,7 @@ FAST_HANDLE(SUBPD) {
 }
 
 FAST_HANDLE(MINPS) {
-    if (!g_min_max_accurate && !g_paranoid) {
+    if (g_config.inaccurate_minmax && !g_paranoid) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -2908,7 +2908,7 @@ FAST_HANDLE(MINPS) {
 }
 
 FAST_HANDLE(MINPD) {
-    if (!g_min_max_accurate && !g_paranoid) {
+    if (g_config.inaccurate_minmax && !g_paranoid) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
@@ -3138,7 +3138,7 @@ FAST_HANDLE(PMADDWD) {
 }
 
 FAST_HANDLE(MAXPS) {
-    if (!g_min_max_accurate && !g_paranoid) {
+    if (g_config.inaccurate_minmax && !g_paranoid) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -3175,7 +3175,7 @@ FAST_HANDLE(MAXPS) {
 }
 
 FAST_HANDLE(MAXPD) {
-    if (!g_min_max_accurate && !g_paranoid) {
+    if (g_config.inaccurate_minmax && !g_paranoid) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);

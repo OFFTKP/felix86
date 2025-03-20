@@ -197,7 +197,7 @@ BlockMetadata* get_block_metadata(ThreadState* state, HostAddress host_pc) {
     ASSERT(it != map.end());
     if (!(host_pc >= it->second->address && host_pc <= it->second->address_end)) {
         // Print all the blocks so we can see what is going on
-        if (g_verbose) {
+        if (g_config.verbose) {
             for (auto& range : map) {
                 printf("Block: %lx-%lx\n", range.second->address.raw(), range.second->address_end.raw());
             }
@@ -666,7 +666,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         }
 
         // It should be safe past this point to use stuff like printf, since this code is guaranteed to be jit code
-        if (g_strace) {
+        if (g_config.strace) {
             STRACE("------- Guest signal %s -------", strsignal(sig));
         }
 

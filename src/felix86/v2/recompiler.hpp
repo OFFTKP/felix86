@@ -12,14 +12,14 @@
 // 16 gprs, 5 flags, 16 xmm registers
 constexpr u64 allocated_reg_count = 16 + 5 + 16;
 
-constexpr int block_cache_bits = 16;
+constexpr int address_cache_bits = 16;
 
 struct HandlerMetadata {
     HostAddress rip{};
     HostAddress block_start{};
 };
 
-struct BlockCacheEntry {
+struct AddressCacheEntry {
     HostAddress host{}, guest{};
 };
 
@@ -636,7 +636,7 @@ private:
 
     std::array<bool, 16> zexted_gprs; // gprs that have been set in 32-bit form, to avoid future zexts
 
-    std::array<BlockCacheEntry, 1 << block_cache_bits> block_cache{};
+    std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
 
     constexpr static std::array scratch_gprs = {x1, x6, x28, x29, x30, x31, x7};
 };
