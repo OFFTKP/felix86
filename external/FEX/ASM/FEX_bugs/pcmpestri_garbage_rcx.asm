@@ -1,9 +1,9 @@
 %ifdef CONFIG
 {
   "RegData": {
-      "RAX": ["15"],
-      "RCX": ["5"],
-      "RDX": ["16"]
+      "RAX": "15",
+      "RCX": "5",
+      "RDX": "16"
   }
 }
 %endif

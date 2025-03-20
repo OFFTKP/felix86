@@ -1298,6 +1298,11 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
         as.ADD(address, address, base);
     }
 
+    // Address override prefix, this needs to happen before adding the segment override
+    if (instruction.address_width != 64) {
+        zext(address, address, zydisToSize(instruction.address_width));
+    }
+
     if (operand->mem.segment == ZYDIS_REGISTER_FS) {
         biscuit::GPR fs = scratch();
         as.LD(fs, offsetof(ThreadState, fsbase), threadStatePointer());
@@ -1308,11 +1313,8 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
         as.LD(gs, offsetof(ThreadState, gsbase), threadStatePointer());
         as.ADD(address, address, gs);
         popScratch();
-    }
-
-    // Address override prefix
-    if (instruction.address_width != 64) {
-        zext(address, address, zydisToSize(instruction.address_width));
+    } else {
+        UNREACHABLE();
     }
 
     return address;
