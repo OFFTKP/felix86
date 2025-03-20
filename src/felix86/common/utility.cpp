@@ -847,7 +847,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     Polarity polarity = (Polarity)((control >> 4) & 0b11);
     bool output_selection = (control >> 6) & 1;
 
-    std::array<bool, Size * Size> BoolRes = {0};
+    std::array<bool, Size * Size> BoolRes{};
     if (implicit) {
         dst_length = Size;
         src_length = Size;
@@ -963,15 +963,29 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         break;
     }
     case EqualOrdered: {
-        intres1 = Mask;
-        for (int j = 0; j <= UpperBound; j++) {
-            for (int i = 0; i <= UpperBound - j; i++) {
-                for (int k = j; k <= UpperBound; k++) {
-                    u32 bit = overrideIfInvalid(i, k);
-                    intres1 &= bit << j;
+        // intres1 = Mask;
+        // for (int j = 0; j <= UpperBound; j++) {
+        //     for (int i = 0; i <= UpperBound - j; i++) {
+        //         for (int k = j; k <= UpperBound; k++) {
+        //             u32 bit = overrideIfInvalid(i, k);
+        //             intres1 &= bit << j;
+        //         }
+        //     }
+        // }
+        intres1 = 0;
+        for (int j = 0; j < src_length; j++) {
+            bool match = true;
+            for (int i = 0; i < dst_length && (j + i) < src_length; i++) {
+                if (!overrideIfInvalid(i, j + i)) {
+                    match = false;
+                    break;
                 }
             }
+            if (match) {
+                intres1 |= (1 << j);
+            }
         }
+        break;
     }
     }
 
