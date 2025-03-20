@@ -995,15 +995,6 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         }
         break;
     }
-    case MaskedPositive: {
-        intres2 = 0;
-        for (int i = 0; i <= UpperBound; i++) {
-            u32 old_bit = (intres1 >> i) & 1;
-            u32 bit = src_invalid(i) ? 0 : old_bit;
-            intres2 |= bit << i;
-        }
-        break;
-    }
     default: {
         break;
     }
@@ -1013,11 +1004,15 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     if (index) {
         // pcmpxstri instructions
         static_assert(X86_REF_RCX == 1);
-        if (!output_selection) {
-            state->gprs[1] = __builtin_ctz(intres2);
+        if (intres2 == 0) {
+            state->gprs[1] = Size;
         } else {
-            u32 shifted = intres2 << (32 - Size);
-            state->gprs[1] = (Size - 1) - __builtin_clz(shifted);
+            if (!output_selection) {
+                state->gprs[1] = __builtin_ctz(intres2);
+            } else {
+                u32 shifted = intres2 << (32 - Size);
+                state->gprs[1] = (Size - 1) - __builtin_clz(shifted);
+            }
         }
     } else {
         // pcmpxstrm instructions
@@ -1054,6 +1049,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     }
 
     state->cf = intres2 != 0;
+    // Works for both implicit and explicit variants
     state->zf = src_length < Size;
     state->sf = dst_length < Size;
     state->of = intres2 & 1;
