@@ -820,9 +820,8 @@ void felix86_fcos(ThreadState* state) {
     memcpy(&state->fp[state->fpu_top], &result, sizeof(double));
 }
 
-template <class Int, int Size = 128 / (sizeof(Int) * 8), int UpperBound = Size - 1 /* 7 or 15 */, u32 Mask = (1u << Size) - 1u>
+template <class Int, int Count = 128 / (sizeof(Int) * 8), int UpperBound = Count - 1 /* 7 or 15 */, u32 Mask = (1u << Count) - 1u>
 void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 control) {
-    WARN("PCMPxSTRx called, known to have broken functionality ATM");
     enum Mode {
         EqualAny = 0b00,
         Ranges = 0b01,
@@ -847,15 +846,15 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     Polarity polarity = (Polarity)((control >> 4) & 0b11);
     bool output_selection = (control >> 6) & 1;
 
-    std::array<bool, Size * Size> BoolRes{};
+    std::array<bool, Count * Count> BoolRes{};
     if (implicit) {
-        dst_length = Size;
-        src_length = Size;
+        dst_length = Count;
+        src_length = Count;
 
         bool dst_length_found = false;
         bool src_length_found = false;
 
-        for (int i = 0; i < Size; i++) {
+        for (int i = 0; i < Count; i++) {
             if (!dst_length_found && dst[i] == 0) {
                 dst_length = i;
                 dst_length_found = true;
@@ -878,16 +877,16 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         ASSERT(src_length >= 0);
     }
 
-    for (int j = 0; j < Size; j++) {
-        for (int i = 0; i < Size; i++) {
+    for (int j = 0; j < Count; j++) {
+        for (int i = 0; i < Count; i++) {
             if (mode == Ranges) {
                 if (i % 2 == 0) {
-                    BoolRes[j * Size + i] = src[j] >= dst[i];
+                    BoolRes[j * Count + i] = src[j] >= dst[i];
                 } else {
-                    BoolRes[j * Size + i] = src[j] <= dst[i];
+                    BoolRes[j * Count + i] = src[j] <= dst[i];
                 }
             } else {
-                BoolRes[j * Size + i] = dst[i] == src[j];
+                BoolRes[j * Count + i] = dst[i] == src[j];
             }
         }
     }
@@ -903,13 +902,13 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         case Ranges:
         case EqualAny: {
             if (!dstinv && !srcinv) {
-                return BoolRes[src_index * Size + dst_index];
+                return BoolRes[src_index * Count + dst_index];
             }
             return false;
         }
         case EqualEach: {
             if (!dstinv && !srcinv) {
-                return BoolRes[src_index * Size + dst_index];
+                return BoolRes[src_index * Count + dst_index];
             }
 
             if (dstinv && srcinv) {
@@ -920,7 +919,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         }
         case EqualOrdered: {
             if (!dstinv && !srcinv) {
-                return BoolRes[src_index * Size + dst_index];
+                return BoolRes[src_index * Count + dst_index];
             }
 
             if ((dstinv && srcinv) || (dstinv && !srcinv)) {
@@ -1005,13 +1004,13 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         // pcmpxstri instructions
         static_assert(X86_REF_RCX == 1);
         if (intres2 == 0) {
-            state->gprs[1] = Size;
+            state->gprs[1] = Count;
         } else {
             if (!output_selection) {
                 state->gprs[1] = __builtin_ctz(intres2);
             } else {
-                u32 shifted = intres2 << (32 - Size);
-                state->gprs[1] = (Size - 1) - __builtin_clz(shifted);
+                u32 shifted = intres2 << (32 - Count);
+                state->gprs[1] = (Count - 1) - __builtin_clz(shifted);
             }
         }
     } else {
@@ -1023,8 +1022,8 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
 
             state->xmm[0].data[0] = intres2;
         } else {
-            static_assert(Size == 8 || Size == 16);
-            if (Size == 16) {
+            static_assert(Count == 8 || Count == 16);
+            if (Count == 16) {
                 u8* xmm0 = (u8*)&state->xmm[0].data[0];
                 for (int i = 0; i < 16; i++) {
                     u32 bit = (intres2 >> i) & 1;
@@ -1050,8 +1049,8 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
 
     state->cf = intres2 != 0;
     // Works for both implicit and explicit variants
-    state->zf = src_length < Size;
-    state->sf = dst_length < Size;
+    state->zf = src_length < Count;
+    state->sf = dst_length < Count;
     state->of = intres2 & 1;
     state->af = 0;
     state->pf = 0;

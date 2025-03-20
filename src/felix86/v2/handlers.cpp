@@ -3611,7 +3611,7 @@ FAST_HANDLE(LEAVE) {
 }
 
 FAST_HANDLE(ENTER) {
-    WARN("ENTER instruction is not thoroughly tested");
+    ERROR("ENTER instruction is broken");
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
     int alloc_size = rec.getImmediate(&operands[0]);
     u8 nesting_level = rec.getImmediate(&operands[1]) & 0x1F;
