@@ -29,7 +29,7 @@ void from_json(const json& j, Instruction& p) {
     j.at("disassembly").get_to(p.disassembly);
 }
 
-void gen(Recompiler& rec, nlohmann::json& json, auto func) {
+void gen(Recompiler& rec, nlohmann::json& json, void (*func)(Xbyak::CodeGenerator&), bool flags = false) {
     static Decoder decoder{};
     static bool init = false;
     static ZydisDecoder zydis;
@@ -42,6 +42,7 @@ void gen(Recompiler& rec, nlohmann::json& json, auto func) {
     // Set bogus vector state so we see the vector state changes
     rec.setVectorState(SEW::E1024, 0);
     rec.assumeLoaded();
+    rec.setFlagMode(flags ? FlagMode::AlwaysEmit : FlagMode::NeverEmit);
 
     DecodedInstruction instruction;
     DecodedOperand operands[4];
@@ -87,7 +88,7 @@ void gen(Recompiler& rec, nlohmann::json& json, auto func) {
 }
 
 int main() {
-    g_dont_inline_syscalls = true;
+    g_config.inline_syscalls = false;
     Extensions::G = true;
     Extensions::B = true;
     Extensions::C = true;
@@ -98,68 +99,72 @@ int main() {
     Recompiler rec;
     nlohmann::json json;
 
-#define GEN(inst) gen(rec, json, [&](Xbyak::CodeGenerator& x) { x.inst; })
+#define GEN(inst) gen(rec, json, [](Xbyak::CodeGenerator& x) { x.inst; }, flags)
+
+    for (int i = 0; i < 2; i++) {
+        std::string name = i != 0 ? "Base.json" : "Base_NoFlags.json";
+        bool flags = i;
 
 #define GEN_Group1(name)                                                                                                                             \
-    GEN(name(al, bl));                                                                                                                               \
-    GEN(name(al, bh));                                                                                                                               \
-    GEN(name(ah, bl));                                                                                                                               \
-    GEN(name(ah, bh));                                                                                                                               \
-    GEN(name(ax, bx));                                                                                                                               \
-    GEN(name(eax, ebx));                                                                                                                             \
-    GEN(name(rax, rbx));                                                                                                                             \
-    GEN(name(al, byte[rdi]));                                                                                                                        \
-    GEN(name(ah, byte[rdi]));                                                                                                                        \
-    GEN(name(ax, word[rdi]));                                                                                                                        \
-    GEN(name(eax, dword[rdi]));                                                                                                                      \
-    GEN(name(rax, qword[rdi]));                                                                                                                      \
-    GEN(name(byte[rdi], al));                                                                                                                        \
-    GEN(name(byte[rdi], ah));                                                                                                                        \
-    GEN(name(word[rdi], ax));                                                                                                                        \
-    GEN(name(dword[rdi], eax));                                                                                                                      \
-    GEN(name(qword[rdi], rax));                                                                                                                      \
-    GEN(name(al, 1));                                                                                                                                \
-    GEN(name(al, -1));                                                                                                                               \
-    GEN(name(ah, 1));                                                                                                                                \
-    GEN(name(ah, -1));                                                                                                                               \
-    GEN(name(ax, 1));                                                                                                                                \
-    GEN(name(ax, -1));                                                                                                                               \
-    GEN(name(eax, 1));                                                                                                                               \
-    GEN(name(eax, -1));                                                                                                                              \
-    GEN(name(rax, 1));                                                                                                                               \
-    GEN(name(rax, -1));                                                                                                                              \
+    GEN(name(dl, bl));                                                                                                                               \
+    GEN(name(dl, bh));                                                                                                                               \
+    GEN(name(dh, bl));                                                                                                                               \
+    GEN(name(dh, bh));                                                                                                                               \
+    GEN(name(dx, bx));                                                                                                                               \
+    GEN(name(edx, ebx));                                                                                                                             \
+    GEN(name(rdx, rbx));                                                                                                                             \
+    GEN(name(dl, byte[rdi]));                                                                                                                        \
+    GEN(name(dh, byte[rdi]));                                                                                                                        \
+    GEN(name(dx, word[rdi]));                                                                                                                        \
+    GEN(name(edx, dword[rdi]));                                                                                                                      \
+    GEN(name(rdx, qword[rdi]));                                                                                                                      \
+    GEN(name(byte[rdi], dl));                                                                                                                        \
+    GEN(name(byte[rdi], dh));                                                                                                                        \
+    GEN(name(word[rdi], dx));                                                                                                                        \
+    GEN(name(dword[rdi], edx));                                                                                                                      \
+    GEN(name(qword[rdi], rdx));                                                                                                                      \
+    GEN(name(dl, 1));                                                                                                                                \
+    GEN(name(dl, -1));                                                                                                                               \
+    GEN(name(dh, 1));                                                                                                                                \
+    GEN(name(dh, -1));                                                                                                                               \
+    GEN(name(dx, 1));                                                                                                                                \
+    GEN(name(dx, -1));                                                                                                                               \
+    GEN(name(edx, 1));                                                                                                                               \
+    GEN(name(edx, -1));                                                                                                                              \
+    GEN(name(rdx, 1));                                                                                                                               \
+    GEN(name(rdx, -1));                                                                                                                              \
     GEN(name(byte[rdi], 1));                                                                                                                         \
     GEN(name(word[rdi], 1));                                                                                                                         \
     GEN(name(dword[rdi], 1));                                                                                                                        \
     GEN(name(qword[rdi], 1))
 
 #define GEN_SingleRM(name)                                                                                                                           \
-    GEN(name(al));                                                                                                                                   \
-    GEN(name(ah));                                                                                                                                   \
-    GEN(name(ax));                                                                                                                                   \
-    GEN(name(eax));                                                                                                                                  \
-    GEN(name(rax));                                                                                                                                  \
+    GEN(name(dl));                                                                                                                                   \
+    GEN(name(dh));                                                                                                                                   \
+    GEN(name(dx));                                                                                                                                   \
+    GEN(name(edx));                                                                                                                                  \
+    GEN(name(rdx));                                                                                                                                  \
     GEN(name(byte[rdi]));                                                                                                                            \
     GEN(name(word[rdi]));                                                                                                                            \
     GEN(name(dword[rdi]));                                                                                                                           \
     GEN(name(qword[rdi]));
 
 #define GEN_Shift(name)                                                                                                                              \
-    GEN(name(al, 1));                                                                                                                                \
-    GEN(name(ah, 1));                                                                                                                                \
-    GEN(name(ax, 1));                                                                                                                                \
-    GEN(name(eax, 1));                                                                                                                               \
-    GEN(name(rax, 1));                                                                                                                               \
-    GEN(name(al, 63));                                                                                                                               \
-    GEN(name(ah, 63));                                                                                                                               \
-    GEN(name(ax, 63));                                                                                                                               \
-    GEN(name(eax, 63));                                                                                                                              \
-    GEN(name(rax, 63));                                                                                                                              \
-    GEN(name(al, cl));                                                                                                                               \
-    GEN(name(ah, cl));                                                                                                                               \
-    GEN(name(ax, cl));                                                                                                                               \
-    GEN(name(eax, cl));                                                                                                                              \
-    GEN(name(rax, cl));                                                                                                                              \
+    GEN(name(dl, 1));                                                                                                                                \
+    GEN(name(dh, 1));                                                                                                                                \
+    GEN(name(dx, 1));                                                                                                                                \
+    GEN(name(edx, 1));                                                                                                                               \
+    GEN(name(rdx, 1));                                                                                                                               \
+    GEN(name(dl, 63));                                                                                                                               \
+    GEN(name(dh, 63));                                                                                                                               \
+    GEN(name(dx, 63));                                                                                                                               \
+    GEN(name(edx, 63));                                                                                                                              \
+    GEN(name(rdx, 63));                                                                                                                              \
+    GEN(name(dl, cl));                                                                                                                               \
+    GEN(name(dh, cl));                                                                                                                               \
+    GEN(name(dx, cl));                                                                                                                               \
+    GEN(name(edx, cl));                                                                                                                              \
+    GEN(name(rdx, cl));                                                                                                                              \
     GEN(name(byte[rdi], 1));                                                                                                                         \
     GEN(name(word[rdi], 1));                                                                                                                         \
     GEN(name(dword[rdi], 1));                                                                                                                        \
@@ -173,59 +178,92 @@ int main() {
     GEN(name(dword[rdi], cl));                                                                                                                       \
     GEN(name(qword[rdi], cl))
 
-    GEN_Group1(add);
-    GEN_Group1(sub);
-    GEN_Group1(adc);
-    GEN_Group1(sbb);
-    GEN_Group1(or_);
-    GEN_Group1(and_);
-    GEN_Group1(xor_);
-    GEN_Group1(cmp);
-    GEN_Group1(mov);
-    GEN_Shift(shl);
-    GEN_Shift(shr);
-    GEN_Shift(sar);
-    GEN_Shift(rol);
-    GEN_Shift(ror);
-    GEN_Shift(rcl);
-    GEN_Shift(rcr);
-    GEN_SingleRM(inc);
-    GEN_SingleRM(dec);
-    GEN(cwd());
-    GEN(cdq());
-    GEN(cqo());
-    GEN(cbw());
-    GEN(cwde());
-    GEN(cdqe());
-    GEN(cld());
-    GEN(std());
-    GEN(clc());
-    GEN(stc());
-    GEN(sahf());
-    GEN(lahf());
-    GEN(pushfq());
-    GEN(popfq());
-    GEN(cmpsb());
-    GEN(cmpsw());
-    GEN(cmpsd());
-    GEN(cmpsq());
-    GEN(movsb());
-    GEN(movsw());
-    GEN(movsd());
-    GEN(movsq());
-    GEN(stosb());
-    GEN(stosw());
-    GEN(stosd());
-    GEN(stosq());
-    GEN(lodsb());
-    GEN(lodsw());
-    GEN(lodsd());
-    GEN(lodsq());
+        GEN_Group1(add);
+        GEN_Group1(sub);
+        GEN_Group1(adc);
+        GEN_Group1(sbb);
+        GEN_Group1(or_);
+        GEN_Group1(and_);
+        GEN_Group1(xor_);
+        GEN_Group1(cmp);
+        GEN_Group1(mov);
+        GEN_Shift(shl);
+        GEN_Shift(shr);
+        GEN_Shift(sar);
+        GEN_Shift(rol);
+        GEN_Shift(ror);
+        GEN_Shift(rcl);
+        GEN_Shift(rcr);
+        GEN_SingleRM(inc);
+        GEN_SingleRM(dec);
+        GEN(cwd());
+        GEN(cdq());
+        GEN(cqo());
+        GEN(cbw());
+        GEN(cwde());
+        GEN(cdqe());
+        GEN(cld());
+        GEN(std());
+        GEN(clc());
+        GEN(stc());
+        GEN(sahf());
+        GEN(lahf());
+        GEN(pushfq());
+        GEN(popfq());
+        GEN(cmpsb());
+        GEN(cmpsw());
+        GEN(cmpsd());
+        GEN(cmpsq());
+        GEN(movsb());
+        GEN(movsw());
+        GEN(movsd());
+        GEN(movsq());
+        GEN(stosb());
+        GEN(stosw());
+        GEN(stosd());
+        GEN(stosq());
+        GEN(scasb());
+        GEN(scasw());
+        GEN(scasd());
+        GEN(scasq());
+        GEN(lodsb());
+        GEN(lodsw());
+        GEN(lodsd());
+        GEN(lodsq());
+        if (flags) {
+            GEN(rep(); x.movsb());
+            GEN(rep(); x.movsw());
+            GEN(rep(); x.movsd());
+            GEN(rep(); x.movsq());
+            GEN(rep(); x.stosb());
+            GEN(rep(); x.stosw());
+            GEN(rep(); x.stosd());
+            GEN(rep(); x.stosq());
+            GEN(rep(); x.cmpsb());
+            GEN(rep(); x.cmpsw());
+            GEN(rep(); x.cmpsd());
+            GEN(rep(); x.cmpsq());
+            GEN(rep(); x.scasb());
+            GEN(rep(); x.scasw());
+            GEN(rep(); x.scasd());
+            GEN(rep(); x.scasq());
+            GEN(repnz(); x.cmpsb());
+            GEN(repnz(); x.cmpsw());
+            GEN(repnz(); x.cmpsd());
+            GEN(repnz(); x.cmpsq());
+            GEN(repnz(); x.scasb());
+            GEN(repnz(); x.scasw());
+            GEN(repnz(); x.scasd());
+            GEN(repnz(); x.scasq());
+        }
 
-    std::ofstream base("counts/Base.json");
-    base << json.dump(4);
-    json.clear();
+        std::ofstream base("counts/" + name);
+        base << json.dump(4);
+        json.clear();
+    }
+#undef GEN
 
+#define GEN(inst) gen(rec, json, [](Xbyak::CodeGenerator& x) { x.inst; })
 #define GEN_SSE(name)                                                                                                                                \
     GEN(name(xmm3, xmm4));                                                                                                                           \
     GEN(name(xmm2, xmm2));                                                                                                                           \
@@ -327,11 +365,12 @@ int main() {
     GEN_SSE_CMP(cmpss);
     GEN_SSE_CMP(cmpps);
 
-    for (int i = 0; i < 256; i++) {
-        GEN(shufps(xmm3, xmm4, (u8)i));
-        GEN(shufps(xmm2, xmm2, (u8)i));
-        GEN(shufps(xmm3, ptr[rdi], (u8)i));
-    }
+    GEN(shufps(xmm3, xmm4, (u8)0));
+    GEN(shufps(xmm2, xmm2, (u8)0));
+    GEN(shufps(xmm3, ptr[rdi], (u8)0));
+    GEN(shufps(xmm3, xmm4, (u8)0xE4));
+    GEN(shufps(xmm2, xmm2, (u8)0xE4));
+    GEN(shufps(xmm3, ptr[rdi], (u8)0xE4));
 
     GEN(unpckhps(xmm3, xmm4));
     GEN(unpckhps(xmm2, xmm2));

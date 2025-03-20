@@ -1610,6 +1610,12 @@ bool Recompiler::shouldEmitFlag(HostAddress rip, x86_ref_e ref) {
         return true;
     }
 
+    if (flag_mode == FlagMode::AlwaysEmit) {
+        return true;
+    } else if (flag_mode == FlagMode::NeverEmit) {
+        return false;
+    }
+
     int index = 0;
     switch (ref) {
     case X86_REF_CF: {

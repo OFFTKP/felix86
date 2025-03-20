@@ -23,6 +23,12 @@ struct AddressCacheEntry {
     HostAddress host{}, guest{};
 };
 
+enum class FlagMode {
+    Default,
+    AlwaysEmit,
+    NeverEmit,
+};
+
 // This struct is for indicating within a block at which points a register contains a value of a guest register,
 // and when it is just undefined. For example within a block, the register that represents RAX is not valid until it's loaded
 // for the first time, and then when it's written back it becomes invalid again because it may change due to a syscall or something.
@@ -531,6 +537,10 @@ struct Recompiler {
         metadata.loaded = true; // since the value is fresh it's as if we read it from memory
     }
 
+    void setFlagMode(FlagMode mode) {
+        flag_mode = mode;
+    }
+
 private:
     struct RegisterMetadata {
         x86_ref_e reg;
@@ -637,6 +647,8 @@ private:
     std::array<bool, 16> zexted_gprs; // gprs that have been set in 32-bit form, to avoid future zexts
 
     std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
+
+    FlagMode flag_mode = FlagMode::Default;
 
     constexpr static std::array scratch_gprs = {x1, x6, x28, x29, x30, x31, x7};
 };
