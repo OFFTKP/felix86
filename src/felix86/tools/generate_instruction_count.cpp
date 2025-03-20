@@ -19,17 +19,17 @@ struct Instruction {
     std::vector<std::string> expected_asm;
 };
 
-void to_json(json& j, const Instruction& p) {
-    j = json{{"instruction_count", p.count}, {"expected_asm", p.expected_asm}, {"disassembly", p.disassembly}};
+void to_json(ordered_json& j, const Instruction& p) {
+    j = ordered_json{{"instruction_count", p.count}, {"expected_asm", p.expected_asm}, {"disassembly", p.disassembly}};
 }
 
-void from_json(const json& j, Instruction& p) {
+void from_json(const ordered_json& j, Instruction& p) {
     j.at("instruction_count").get_to(p.count);
     j.at("expected_asm").get_to(p.expected_asm);
     j.at("disassembly").get_to(p.disassembly);
 }
 
-void gen(Recompiler& rec, nlohmann::json& json, void (*func)(Xbyak::CodeGenerator&), bool flags = false) {
+void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&), bool flags = false) {
     static Decoder decoder{};
     static bool init = false;
     static ZydisDecoder zydis;
@@ -97,7 +97,7 @@ int main() {
     Extensions::Zicond = true;
 
     Recompiler rec;
-    nlohmann::json json;
+    nlohmann::ordered_json json;
 
 #define GEN(inst) gen(rec, json, [](Xbyak::CodeGenerator& x) { x.inst; }, flags)
 

@@ -113,7 +113,7 @@ struct Recompiler {
 
     void setRefVec(x86_ref_e ref, biscuit::Vec vec);
 
-    biscuit::GPR lea(ZydisDecodedOperand* operand);
+    biscuit::GPR lea(ZydisDecodedOperand* operand, bool use_temp = true);
 
     void stopCompiling();
 

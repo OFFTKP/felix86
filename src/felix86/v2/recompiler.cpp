@@ -846,7 +846,7 @@ biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
-        biscuit::GPR address = lea(operand);
+        biscuit::GPR address = lea(operand, false);
         readMemory(dest, address, 0, zydisToSize(operand->size));
         return dest;
     }
@@ -871,7 +871,7 @@ biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::Vec vec = scratchVec();
-        biscuit::GPR address = lea(operand);
+        biscuit::GPR address = lea(operand, false);
 
         readMemory(vec, address, operand->size);
 
@@ -1093,7 +1093,7 @@ void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        biscuit::GPR address = lea(operand);
+        biscuit::GPR address = lea(operand, false);
         writeMemory(reg, address, 0, zydisToSize(operand->size));
         break;
     }
@@ -1111,7 +1111,7 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
-        biscuit::GPR address = lea(operand);
+        biscuit::GPR address = lea(operand, false);
 
         switch (operand->size) {
         case 256: {
@@ -1214,7 +1214,7 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     return true;
 }
 
-biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
+biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
     if (cached_lea_operand == operand) {
         ASSERT(cached_lea_operand->mem.base == operand->mem.base);
         ASSERT(cached_lea_operand->mem.index == operand->mem.index);
@@ -1250,6 +1250,20 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
             UNREACHABLE();
         }
         return address;
+    }
+
+    if (!use_temp) {
+        if (!has_segment && has_base && !has_index && !has_disp) {
+            cached_lea_operand = nullptr;
+            biscuit::GPR base = gpr(operand->mem.base);
+            return base;
+        }
+
+        if (!has_segment && !has_base && has_index && !has_disp && operand->mem.scale == 1) {
+            cached_lea_operand = nullptr;
+            biscuit::GPR index = gpr(operand->mem.index);
+            return index;
+        }
     }
 
     if (has_disp) {
@@ -2405,14 +2419,14 @@ biscuit::FPR Recompiler::getST(biscuit::GPR top, ZydisDecodedOperand* operand) {
         switch (operand->size) {
         case 32: {
             biscuit::FPR st = scratchFPR();
-            as.FLW(st, 0, lea(operand));
+            as.FLW(st, 0, lea(operand, false));
             as.FCVT_D_S(st, st);
             popScratch(); // the gpr address scratch
             return st;
         }
         case 64: {
             biscuit::FPR st = scratchFPR();
-            as.FLD(st, 0, lea(operand));
+            as.FLD(st, 0, lea(operand, false));
             popScratch(); // the gpr address scratch
             return st;
         }
@@ -2471,12 +2485,12 @@ void Recompiler::setST(biscuit::GPR top, ZydisDecodedOperand* operand, biscuit::
         case 32: {
             biscuit::FPR temp = scratchFPR();
             as.FCVT_S_D(temp, value);
-            as.FSW(temp, 0, lea(operand));
+            as.FSW(temp, 0, lea(operand, false));
             popScratch(); // the gpr address scratch
             break;
         }
         case 64: {
-            as.FSD(value, 0, lea(operand));
+            as.FSD(value, 0, lea(operand, false));
             popScratch(); // the gpr address scratch
             break;
         }
