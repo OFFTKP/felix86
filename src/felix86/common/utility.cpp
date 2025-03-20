@@ -1024,7 +1024,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
             state->xmm[0].data[0] = intres2;
         } else {
             static_assert(Size == 8 || Size == 16);
-            if (Size == 8) {
+            if (Size == 16) {
                 u8* xmm0 = (u8*)&state->xmm[0].data[0];
                 for (int i = 0; i < 16; i++) {
                     u32 bit = (intres2 >> i) & 1;
