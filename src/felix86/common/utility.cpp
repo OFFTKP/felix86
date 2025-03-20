@@ -881,11 +881,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     for (int j = 0; j < Size; j++) {
         for (int i = 0; i < Size; i++) {
             if (mode == Ranges) {
-                if (i % 2 == 0) {
-                    BoolRes[j * Size + i] = src[j] >= dst[i];
-                } else {
-                    BoolRes[j * Size + i] = src[j] <= dst[i];
-                }
+                BoolRes[j * Size + i] = (src[j] >= dst[i]) && (src[j] <= dst[i + 1]);
             } else {
                 BoolRes[j * Size + i] = dst[i] == src[j];
             }
@@ -963,15 +959,6 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         break;
     }
     case EqualOrdered: {
-        // intres1 = Mask;
-        // for (int j = 0; j <= UpperBound; j++) {
-        //     for (int i = 0; i <= UpperBound - j; i++) {
-        //         for (int k = j; k <= UpperBound; k++) {
-        //             u32 bit = overrideIfInvalid(i, k);
-        //             intres1 &= bit << j;
-        //         }
-        //     }
-        // }
         intres1 = 0;
         for (int j = 0; j < src_length; j++) {
             bool match = true;
