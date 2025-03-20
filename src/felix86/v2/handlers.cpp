@@ -1883,6 +1883,63 @@ FAST_HANDLE(JNLE) {
     JCC(rec, meta, as, instruction, operands, rec.getCond(instruction.opcode & 0xF));
 }
 
+FAST_HANDLE(JRCXZ) {
+    biscuit::GPR is_zero = rec.scratch();
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    as.SEQZ(is_zero, rcx);
+    JCC(rec, meta, as, instruction, operands, is_zero);
+}
+
+FAST_HANDLE(JECXZ) {
+    biscuit::GPR is_zero = rec.scratch();
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_DWORD);
+    as.SEQZ(is_zero, rcx);
+    JCC(rec, meta, as, instruction, operands, is_zero);
+}
+
+FAST_HANDLE(JCXZ) {
+    biscuit::GPR is_zero = rec.scratch();
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_WORD);
+    as.SEQZ(is_zero, rcx);
+    JCC(rec, meta, as, instruction, operands, is_zero);
+}
+
+FAST_HANDLE(LOOP) {
+    x86_size_e address_size = rec.zydisToSize(instruction.address_width);
+    biscuit::GPR is_not_zero = rec.scratch();
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, address_size);
+    as.ADDI(rcx, rcx, -1);
+    as.SNEZ(is_not_zero, rcx);
+    rec.setRefGPR(X86_REF_RCX, address_size, rcx);
+    JCC(rec, meta, as, instruction, operands, is_not_zero);
+}
+
+FAST_HANDLE(LOOPE) {
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    x86_size_e address_size = rec.zydisToSize(instruction.address_width);
+    biscuit::GPR is_not_zero = rec.scratch();
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, address_size);
+    as.ADDI(rcx, rcx, -1);
+    as.SNEZ(is_not_zero, rcx);
+    as.AND(is_not_zero, is_not_zero, zf);
+    rec.setRefGPR(X86_REF_RCX, address_size, rcx);
+    JCC(rec, meta, as, instruction, operands, is_not_zero);
+}
+
+FAST_HANDLE(LOOPNE) {
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR not_zf = rec.scratch();
+    x86_size_e address_size = rec.zydisToSize(instruction.address_width);
+    biscuit::GPR is_not_zero = rec.scratch();
+    biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, address_size);
+    as.ADDI(rcx, rcx, -1);
+    as.SNEZ(is_not_zero, rcx);
+    as.XORI(not_zf, zf, 1);
+    as.AND(is_not_zero, is_not_zero, not_zf);
+    rec.setRefGPR(X86_REF_RCX, address_size, rcx);
+    JCC(rec, meta, as, instruction, operands, is_not_zero);
+}
+
 void CMOV(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
           biscuit::GPR cond) {
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
