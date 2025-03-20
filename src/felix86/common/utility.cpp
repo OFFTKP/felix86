@@ -881,7 +881,11 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     for (int j = 0; j < Size; j++) {
         for (int i = 0; i < Size; i++) {
             if (mode == Ranges) {
-                BoolRes[j * Size + i] = (src[j] >= dst[i]) && (src[j] <= dst[i + 1]);
+                if (i % 2 == 0) {
+                    BoolRes[j * Size + i] = src[j] >= dst[i];
+                } else {
+                    BoolRes[j * Size + i] = src[j] <= dst[i];
+                }
             } else {
                 BoolRes[j * Size + i] = dst[i] == src[j];
             }
@@ -987,6 +991,15 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         for (int i = 0; i <= UpperBound; i++) {
             u32 old_bit = (intres1 >> i) & 1;
             u32 bit = src_invalid(i) ? old_bit : (old_bit ^ 1);
+            intres2 |= bit << i;
+        }
+        break;
+    }
+    case MaskedPositive: {
+        intres2 = 0;
+        for (int i = 0; i <= UpperBound; i++) {
+            u32 old_bit = (intres1 >> i) & 1;
+            u32 bit = src_invalid(i) ? 0 : old_bit;
             intres2 |= bit << i;
         }
         break;
