@@ -1314,7 +1314,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand) {
         as.ADD(address, address, gs);
         popScratch();
     } else if (operand->mem.segment != ZYDIS_REGISTER_NONE) {
-        UNREACHABLE();
+        ASSERT_MSG(false, "Tried to use segment: %s", operand->mem.segment);
     }
 
     return address;
