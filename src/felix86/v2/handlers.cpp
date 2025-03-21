@@ -118,32 +118,6 @@ enum CmpPredicate {
     TRUE_US = 0x1F,
 };
 
-FAST_HANDLE(MOV) {
-    biscuit::GPR src;
-    if (is_segment(operands[0])) {
-        // Destination is es/cs/ds/ss... In long mode I'm pretty sure this does nothing?
-        if (!g_mode32) {
-            WARN("MOV with segment register destination??");
-        } else {
-            WARN("MOV with segment register destination?? Is this supposed to do something?");
-        }
-        return;
-    } else if (is_segment(operands[1])) {
-        // Source is es/cs/ds/ss... in long mode these are zero afaik
-        if (!g_mode32) {
-            WARN("MOV with segment register source??");
-        } else {
-            WARN("MOV with segment register source?? Is this supposed to do something?");
-        }
-
-        src = x0;
-    } else {
-        src = rec.getOperandGPR(&operands[1]);
-    }
-
-    rec.setOperandGPR(&operands[0], src);
-}
-
 void OP_noflags_destreg(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction,
                         ZydisDecodedOperand* operands, void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
                         void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
@@ -206,6 +180,104 @@ void OP_noflags_destreg(Recompiler& rec, const HandlerMetadata& meta, Assembler&
     }
 
     rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
+}
+
+void SHIFT_noflags(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
+                   void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
+                   void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
+    biscuit::GPR result;
+    biscuit::GPR dst;
+    biscuit::GPR shift;
+    x86_size_e size = rec.zydisToSize(operands[0].reg.value);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        switch (operands[0].size) {
+        case 8: {
+            if (func64 == &Assembler::SLL) {
+                if (size == X86_SIZE_BYTE_HIGH) {
+                    dst = rec.getRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD);
+                    biscuit::GPR dst_adjusted = rec.scratch();
+                    as.SRLI(dst_adjusted, dst, 8);
+                    dst = dst_adjusted;
+                } else {
+                    dst = rec.getRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD);
+                }
+                result = rec.scratch();
+            } else {
+                dst = rec.getOperandGPR(&operands[0]);
+                result = rec.scratch();
+            }
+            break;
+        }
+        case 16: {
+            if (func64 == &Assembler::SLL) {
+                dst = rec.getRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD);
+                result = rec.scratch();
+            } else {
+                dst = rec.getOperandGPR(&operands[0]);
+                result = rec.scratch();
+            }
+            break;
+        }
+        case 32: {
+            // Will save a zext if we get it this way
+            dst = rec.getRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD);
+            result = dst;
+            break;
+        }
+        case 64: {
+            // Perform directly on the whole register
+            dst = rec.getOperandGPR(&operands[0]);
+            result = dst;
+            break;
+        }
+        }
+    } else {
+        dst = rec.getOperandGPR(&operands[0]);
+        result = dst;
+    }
+
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(rec.zydisToRef(operands[1].reg.value) == X86_REF_RCX);
+        shift = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    } else {
+        shift = rec.getOperandGPR(&operands[1]);
+    }
+
+    // The 64-bit shifts use 6 bits, the 32-bit shifts use 5 bits. Doing it this way means we don't
+    // have to mask the shift amount
+    if (instruction.operand_width == 64) {
+        (as.*func64)(result, dst, shift);
+    } else {
+        (as.*func32)(result, dst, shift);
+    }
+
+    rec.setOperandGPR(&operands[0], result);
+}
+
+FAST_HANDLE(MOV) {
+    biscuit::GPR src;
+    if (is_segment(operands[0])) {
+        // Destination is es/cs/ds/ss... In long mode I'm pretty sure this does nothing?
+        if (!g_mode32) {
+            WARN("MOV with segment register destination??");
+        } else {
+            WARN("MOV with segment register destination?? Is this supposed to do something?");
+        }
+        return;
+    } else if (is_segment(operands[1])) {
+        // Source is es/cs/ds/ss... in long mode these are zero afaik
+        if (!g_mode32) {
+            WARN("MOV with segment register source??");
+        } else {
+            WARN("MOV with segment register source?? Is this supposed to do something?");
+        }
+
+        src = x0;
+    } else {
+        src = rec.getOperandGPR(&operands[1]);
+    }
+
+    rec.setOperandGPR(&operands[0], src);
 }
 
 FAST_HANDLE(ADD) {
@@ -822,22 +894,32 @@ FAST_HANDLE(SHL_imm) {
     u8 shift = rec.getImmediate(&operands[1]);
     shift &= instruction.operand_width == 64 ? 0x3F : 0x1F;
 
+    bool needs_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool needs_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF) && shift == 1;
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
+    if (!needs_any_flag && operands[0].size == X86_SIZE_QWORD) {
+        result = dst; // shift the allocated register directly
+    }
+
     if (shift != 0) {
         as.SLLI(result, dst, shift);
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+        if (needs_pf) {
             rec.updateParity(result);
         }
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+        if (needs_zf) {
             rec.updateZero(result, size);
         }
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+        if (needs_sf) {
             rec.updateSign(result, size);
         }
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+        if (needs_cf) {
             biscuit::GPR cf = rec.flagW(X86_REF_CF);
             u8 shift_right = rec.getBitSize(size) - shift;
             shift_right &= 0x3F;
@@ -845,7 +927,7 @@ FAST_HANDLE(SHL_imm) {
             as.ANDI(cf, cf, 1);
         }
 
-        if (rec.shouldEmitFlag(meta.rip, X86_REF_OF) && shift == 1) {
+        if (needs_of) {
             biscuit::GPR of = rec.flagW(X86_REF_OF);
             u8 shift_right = rec.getBitSize(size) - 1;
             as.SRLI(of, dst, shift_right);
@@ -985,6 +1067,17 @@ FAST_HANDLE(SHL) {
         return fast_SHL_imm(rec, meta, as, instruction, operands);
     }
 
+    bool needs_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool needs_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
+
+    if (g_config.noflag_opts && !needs_any_flag) {
+        return SHIFT_noflags(rec, meta, as, instruction, operands, &Assembler::SLL, &Assembler::SLLW);
+    }
+
     biscuit::GPR result = rec.scratch();
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -1000,35 +1093,35 @@ FAST_HANDLE(SHL) {
     Label zero_source;
 
     // Gotta load these values as we don't know if the instruction is gonna modify them until runtime
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF))
+    if (needs_cf)
         rec.flag(X86_REF_CF);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF))
+    if (needs_of)
         rec.flag(X86_REF_OF);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF))
+    if (needs_zf)
         rec.flag(X86_REF_ZF);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
+    if (needs_sf)
         rec.flag(X86_REF_SF);
 
     as.SLL(result, dst, count);
 
     as.BEQZ(count, &zero_source);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+    if (needs_pf) {
         rec.updateParity(result);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+    if (needs_zf) {
         rec.updateZero(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+    if (needs_sf) {
         rec.updateSign(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+    if (needs_cf) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
         as.LI(cf, rec.getBitSize(size));
         as.SUB(cf, cf, count);
@@ -1036,7 +1129,7 @@ FAST_HANDLE(SHL) {
         as.ANDI(cf, cf, 1);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+    if (needs_of) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         as.SRLI(of, result, rec.getBitSize(size) - 1);
         as.ANDI(of, of, 1);
@@ -1053,6 +1146,17 @@ FAST_HANDLE(SHR) {
         return fast_SHR_imm(rec, meta, as, instruction, operands);
     }
 
+    bool needs_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool needs_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
+
+    if (g_config.noflag_opts && !needs_any_flag) {
+        return SHIFT_noflags(rec, meta, as, instruction, operands, &Assembler::SRL, &Assembler::SRLW);
+    }
+
     biscuit::GPR result = rec.scratch();
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -1068,42 +1172,42 @@ FAST_HANDLE(SHR) {
     Label zero_source;
 
     // Gotta load these values as we don't know if the instruction is gonna modify them until runtime
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF))
+    if (needs_cf)
         rec.flag(X86_REF_CF);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF))
+    if (needs_of)
         rec.flag(X86_REF_OF);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF))
+    if (needs_zf)
         rec.flag(X86_REF_ZF);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF))
+    if (needs_sf)
         rec.flag(X86_REF_SF);
 
     as.SRL(result, dst, count);
 
     as.BEQZ(count, &zero_source);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+    if (needs_pf) {
         rec.updateParity(result);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+    if (needs_zf) {
         rec.updateZero(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+    if (needs_sf) {
         rec.updateSign(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+    if (needs_cf) {
         biscuit::GPR cf = rec.flagW(X86_REF_CF);
         as.ADDI(cf, count, -1);
         as.SRL(cf, dst, cf);
         as.ANDI(cf, cf, 1);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+    if (needs_of) {
         biscuit::GPR of = rec.flagW(X86_REF_OF);
         as.SRLI(of, dst, rec.getBitSize(size) - 1);
         as.ANDI(of, of, 1);

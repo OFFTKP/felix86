@@ -73,7 +73,7 @@
         "disassembly": "add dl, bh"
     },
     "00de": {
-        "instruction_count": 35,
+        "instruction_count": 33,
         "expected_asm": [
             "ANDI            t1, s0, 0xff(255)",
             "SRLI            t3, a2, 0x8(8)",
@@ -103,18 +103,16 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "add dh, bl"
     },
     "00fe": {
-        "instruction_count": 36,
+        "instruction_count": 34,
         "expected_asm": [
             "SRLI            t1, s0, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -145,13 +143,11 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "add dh, bh"
     },
@@ -295,7 +291,7 @@
         "disassembly": "add dl, [rdi]"
     },
     "0237": {
-        "instruction_count": 35,
+        "instruction_count": 33,
         "expected_asm": [
             "LBU             t1, a0, 0x0(0)",
             "SRLI            t4, a2, 0x8(8)",
@@ -325,13 +321,11 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t5",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "add dh, [rdi]"
     },
@@ -682,7 +676,7 @@
         "disassembly": "add dl, 0xFF"
     },
     "80c601": {
-        "instruction_count": 35,
+        "instruction_count": 33,
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -712,18 +706,16 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "add dh, 0x01"
     },
     "80c6ff": {
-        "instruction_count": 35,
+        "instruction_count": 33,
         "expected_asm": [
             "ADDIW           t1, zero, 0xffffffff(-1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -753,13 +745,11 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "add dh, 0xFF"
     },
@@ -1178,7 +1168,7 @@
         "disassembly": "sub dl, bh"
     },
     "28de": {
-        "instruction_count": 34,
+        "instruction_count": 32,
         "expected_asm": [
             "ANDI            t1, s0, 0xff(255)",
             "SRLI            t3, a2, 0x8(8)",
@@ -1207,18 +1197,16 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sub dh, bl"
     },
     "28fe": {
-        "instruction_count": 35,
+        "instruction_count": 33,
         "expected_asm": [
             "SRLI            t1, s0, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -1248,13 +1236,11 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sub dh, bh"
     },
@@ -1394,7 +1380,7 @@
         "disassembly": "sub dl, [rdi]"
     },
     "2a37": {
-        "instruction_count": 34,
+        "instruction_count": 32,
         "expected_asm": [
             "LBU             t1, a0, 0x0(0)",
             "SRLI            t4, a2, 0x8(8)",
@@ -1423,13 +1409,11 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t5",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sub dh, [rdi]"
     },
@@ -1772,7 +1756,7 @@
         "disassembly": "sub dl, 0xFF"
     },
     "80ee01": {
-        "instruction_count": 35,
+        "instruction_count": 33,
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -1802,18 +1786,16 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sub dh, 0x01"
     },
     "80eeff": {
-        "instruction_count": 35,
+        "instruction_count": 33,
         "expected_asm": [
             "ADDIW           t1, zero, 0xffffffff(-1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -1843,13 +1825,11 @@
             "SRLI            s9, s9, 0x7(7)",
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sub dh, 0xFF"
     },
@@ -2281,7 +2261,7 @@
         "disassembly": "adc dl, bh"
     },
     "10de": {
-        "instruction_count": 42,
+        "instruction_count": 40,
         "expected_asm": [
             "ANDI            t3, s0, 0xff(255)",
             "SRLI            t4, a2, 0x8(8)",
@@ -2318,18 +2298,16 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, t1, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "adc dh, bl"
     },
     "10fe": {
-        "instruction_count": 43,
+        "instruction_count": 41,
         "expected_asm": [
             "SRLI            t3, s0, 0x8(8)",
             "ANDI            t3, t3, 0xff(255)",
@@ -2367,13 +2345,11 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, t1, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "adc dh, bh"
     },
@@ -2545,7 +2521,7 @@
         "disassembly": "adc dl, [rdi]"
     },
     "1237": {
-        "instruction_count": 42,
+        "instruction_count": 40,
         "expected_asm": [
             "LBU             t3, a0, 0x0(0)",
             "SRLI            t5, a2, 0x8(8)",
@@ -2582,13 +2558,11 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, t1, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "adc dh, [rdi]"
     },
@@ -3009,7 +2983,7 @@
         "disassembly": "adc dl, 0xFF"
     },
     "80d601": {
-        "instruction_count": 42,
+        "instruction_count": 40,
         "expected_asm": [
             "ADDIW           t3, zero, 0x1(1)",
             "SRLI            t4, a2, 0x8(8)",
@@ -3046,18 +3020,16 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, t1, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "adc dh, 0x01"
     },
     "80d6ff": {
-        "instruction_count": 42,
+        "instruction_count": 40,
         "expected_asm": [
             "ADDIW           t3, zero, 0xffffffff(-1)",
             "SRLI            t4, a2, 0x8(8)",
@@ -3094,13 +3066,11 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, t1, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "adc dh, 0xFF"
     },
@@ -3611,7 +3581,7 @@
         "disassembly": "sbb dl, bh"
     },
     "18de": {
-        "instruction_count": 45,
+        "instruction_count": 43,
         "expected_asm": [
             "ANDI            t3, s0, 0xff(255)",
             "SRLI            t4, a2, 0x8(8)",
@@ -3651,18 +3621,16 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, t1, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sbb dh, bl"
     },
     "18fe": {
-        "instruction_count": 46,
+        "instruction_count": 44,
         "expected_asm": [
             "SRLI            t3, s0, 0x8(8)",
             "ANDI            t3, t3, 0xff(255)",
@@ -3703,13 +3671,11 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, t1, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sbb dh, bh"
     },
@@ -3897,7 +3863,7 @@
         "disassembly": "sbb dl, [rdi]"
     },
     "1a37": {
-        "instruction_count": 45,
+        "instruction_count": 43,
         "expected_asm": [
             "LBU             t3, a0, 0x0(0)",
             "SRLI            t5, a2, 0x8(8)",
@@ -3937,13 +3903,11 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, t1, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sbb dh, [rdi]"
     },
@@ -4404,7 +4368,7 @@
         "disassembly": "sbb dl, 0xFF"
     },
     "80de01": {
-        "instruction_count": 46,
+        "instruction_count": 44,
         "expected_asm": [
             "ADDIW           t3, zero, 0x1(1)",
             "SRLI            t4, a2, 0x8(8)",
@@ -4445,18 +4409,16 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, t1, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sbb dh, 0x01"
     },
     "80deff": {
-        "instruction_count": 46,
+        "instruction_count": 44,
         "expected_asm": [
             "ADDIW           t3, zero, 0xffffffff(-1)",
             "SRLI            t4, a2, 0x8(8)",
@@ -4497,13 +4459,11 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, t1, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, t1, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sbb dh, 0xFF"
     },
@@ -5017,7 +4977,7 @@
         "disassembly": "or dl, bh"
     },
     "08de": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ANDI            t1, s0, 0xff(255)",
             "SRLI            t3, a2, 0x8(8)",
@@ -5034,18 +4994,16 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "or dh, bl"
     },
     "08fe": {
-        "instruction_count": 23,
+        "instruction_count": 21,
         "expected_asm": [
             "SRLI            t1, s0, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -5063,13 +5021,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "or dh, bh"
     },
@@ -5161,7 +5117,7 @@
         "disassembly": "or dl, [rdi]"
     },
     "0a37": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "LBU             t1, a0, 0x0(0)",
             "SRLI            t4, a2, 0x8(8)",
@@ -5178,13 +5134,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "or dh, [rdi]"
     },
@@ -5405,7 +5359,7 @@
         "disassembly": "or dl, 0xFF"
     },
     "80ce01": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -5422,18 +5376,16 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "or dh, 0x01"
     },
     "80ceff": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ADDIW           t1, zero, 0xffffffff(-1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -5450,13 +5402,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "or dh, 0xFF"
     },
@@ -5721,7 +5671,7 @@
         "disassembly": "and dl, bh"
     },
     "20de": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ANDI            t1, s0, 0xff(255)",
             "SRLI            t3, a2, 0x8(8)",
@@ -5738,18 +5688,16 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "and dh, bl"
     },
     "20fe": {
-        "instruction_count": 23,
+        "instruction_count": 21,
         "expected_asm": [
             "SRLI            t1, s0, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -5767,13 +5715,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "and dh, bh"
     },
@@ -5865,7 +5811,7 @@
         "disassembly": "and dl, [rdi]"
     },
     "2237": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "LBU             t1, a0, 0x0(0)",
             "SRLI            t4, a2, 0x8(8)",
@@ -5882,13 +5828,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "and dh, [rdi]"
     },
@@ -6109,7 +6053,7 @@
         "disassembly": "and dl, 0xFF"
     },
     "80e601": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -6126,18 +6070,16 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "and dh, 0x01"
     },
     "80e6ff": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ADDIW           t1, zero, 0xffffffff(-1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -6154,13 +6096,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "and dh, 0xFF"
     },
@@ -6425,7 +6365,7 @@
         "disassembly": "xor dl, bh"
     },
     "30de": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ANDI            t1, s0, 0xff(255)",
             "SRLI            t3, a2, 0x8(8)",
@@ -6442,18 +6382,16 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "xor dh, bl"
     },
     "30fe": {
-        "instruction_count": 23,
+        "instruction_count": 21,
         "expected_asm": [
             "SRLI            t1, s0, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -6471,13 +6409,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "xor dh, bh"
     },
@@ -6569,7 +6505,7 @@
         "disassembly": "xor dl, [rdi]"
     },
     "3237": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "LBU             t1, a0, 0x0(0)",
             "SRLI            t4, a2, 0x8(8)",
@@ -6586,13 +6522,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "xor dh, [rdi]"
     },
@@ -6813,7 +6747,7 @@
         "disassembly": "xor dl, 0xFF"
     },
     "80f601": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -6830,18 +6764,16 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "xor dh, 0x01"
     },
     "80f6ff": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "ADDIW           t1, zero, 0xffffffff(-1)",
             "SRLI            t3, a2, 0x8(8)",
@@ -6858,13 +6790,11 @@
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
             "ADDIW           s9, zero, 0x0(0)",
-            "LUI             t5, 0x10000(65536)",
-            "ADDIW           t5, t5, 0xffffff00(-256)",
-            "SLLI            t4, ra, 0x8(8)",
-            "AND             t4, t4, t5",
-            "XORI            t5, t5, 0xffffffff(-1)",
-            "AND             a2, a2, t5",
-            "OR              a2, a2, t4"
+            "ANDI            t4, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t4",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "xor dh, 0xFF"
     },
@@ -8108,31 +8038,27 @@
         "disassembly": "mov dl, bh"
     },
     "88de": {
-        "instruction_count": 8,
+        "instruction_count": 6,
         "expected_asm": [
             "ANDI            ra, s0, 0xff(255)",
-            "LUI             t3, 0x10000(65536)",
-            "ADDIW           t3, t3, 0xffffff00(-256)",
-            "SLLI            t1, ra, 0x8(8)",
-            "AND             t1, t1, t3",
-            "XORI            t3, t3, 0xffffffff(-1)",
-            "AND             a2, a2, t3",
-            "OR              a2, a2, t1"
+            "ANDI            t1, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t1",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "mov dh, bl"
     },
     "88fe": {
-        "instruction_count": 9,
+        "instruction_count": 7,
         "expected_asm": [
             "SRLI            ra, s0, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
-            "LUI             t3, 0x10000(65536)",
-            "ADDIW           t3, t3, 0xffffff00(-256)",
-            "SLLI            t1, ra, 0x8(8)",
-            "AND             t1, t1, t3",
-            "XORI            t3, t3, 0xffffffff(-1)",
-            "AND             a2, a2, t3",
-            "OR              a2, a2, t1"
+            "ANDI            t1, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t1",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "mov dh, bh"
     },
@@ -8173,16 +8099,14 @@
         "disassembly": "mov dl, [rdi]"
     },
     "8a37": {
-        "instruction_count": 8,
+        "instruction_count": 6,
         "expected_asm": [
             "LBU             ra, a0, 0x0(0)",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "mov dh, [rdi]"
     },
@@ -8274,30 +8198,26 @@
         "disassembly": "mov dl, 0xFF"
     },
     "b601": {
-        "instruction_count": 8,
+        "instruction_count": 6,
         "expected_asm": [
             "ADDIW           ra, zero, 0x1(1)",
-            "LUI             t3, 0x10000(65536)",
-            "ADDIW           t3, t3, 0xffffff00(-256)",
-            "SLLI            t1, ra, 0x8(8)",
-            "AND             t1, t1, t3",
-            "XORI            t3, t3, 0xffffffff(-1)",
-            "AND             a2, a2, t3",
-            "OR              a2, a2, t1"
+            "ANDI            t1, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t1",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "mov dh, 0x01"
     },
     "b6ff": {
-        "instruction_count": 8,
+        "instruction_count": 6,
         "expected_asm": [
             "ADDIW           ra, zero, 0xffffffff(-1)",
-            "LUI             t3, 0x10000(65536)",
-            "ADDIW           t3, t3, 0xffffff00(-256)",
-            "SLLI            t1, ra, 0x8(8)",
-            "AND             t1, t1, t3",
-            "XORI            t3, t3, 0xffffffff(-1)",
-            "AND             a2, a2, t3",
-            "OR              a2, a2, t1"
+            "ANDI            t1, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t1",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "mov dh, 0xFF"
     },
@@ -8405,7 +8325,7 @@
         "disassembly": "shl dl, 0x01"
     },
     "d0e6": {
-        "instruction_count": 24,
+        "instruction_count": 22,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -8424,13 +8344,11 @@
             "SRLI            s9, t1, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "shl dh, 0x01"
     },
@@ -8528,7 +8446,7 @@
         "disassembly": "shl dl, 0x3F"
     },
     "c0e63f": {
-        "instruction_count": 21,
+        "instruction_count": 19,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -8544,13 +8462,11 @@
             "ANDI            s8, s8, 0x1(1)",
             "SRLI            s5, t1, 0x29(41)",
             "ANDI            s5, s5, 0x1(1)",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "shl dh, 0x3F"
     },
@@ -8647,7 +8563,7 @@
         "disassembly": "shl dl, cl"
     },
     "d2e6": {
-        "instruction_count": 29,
+        "instruction_count": 27,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -8671,13 +8587,11 @@
             "SRLI            s9, ra, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "shl dh, cl"
     },
@@ -9076,7 +8990,7 @@
         "disassembly": "shr dl, 0x01"
     },
     "d0ee": {
-        "instruction_count": 23,
+        "instruction_count": 21,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -9094,13 +9008,11 @@
             "ANDI            s5, s5, 0x1(1)",
             "SRLI            s9, t1, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "shr dh, 0x01"
     },
@@ -9195,7 +9107,7 @@
         "disassembly": "shr dl, 0x3F"
     },
     "c0ee3f": {
-        "instruction_count": 21,
+        "instruction_count": 19,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -9211,13 +9123,11 @@
             "ANDI            s8, s8, 0x1(1)",
             "SRLI            s5, t1, 0x1e(30)",
             "ANDI            s5, s5, 0x1(1)",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "shr dh, 0x3F"
     },
@@ -9312,7 +9222,7 @@
         "disassembly": "shr dl, cl"
     },
     "d2ee": {
-        "instruction_count": 27,
+        "instruction_count": 25,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -9334,13 +9244,11 @@
             "ANDI            s5, s5, 0x1(1)",
             "SRLI            s9, t1, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "shr dh, cl"
     },
@@ -9721,7 +9629,7 @@
         "disassembly": "sar dl, 0x01"
     },
     "d0fe": {
-        "instruction_count": 23,
+        "instruction_count": 21,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -9739,13 +9647,11 @@
             "SRLI            s5, t1, 0x0(0)",
             "ANDI            s5, s5, 0x1(1)",
             "ADDI            s9, zero, 0x0(0)",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sar dh, 0x01"
     },
@@ -9840,7 +9746,7 @@
         "disassembly": "sar dl, 0x3F"
     },
     "c0fe3f": {
-        "instruction_count": 23,
+        "instruction_count": 21,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -9858,13 +9764,11 @@
             "SRLI            s5, t1, 0x1e(30)",
             "ANDI            s5, s5, 0x1(1)",
             "ADDI            s9, zero, 0x0(0)",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sar dh, 0x3F"
     },
@@ -9964,7 +9868,7 @@
         "disassembly": "sar dl, cl"
     },
     "d2fe": {
-        "instruction_count": 28,
+        "instruction_count": 26,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -9987,13 +9891,11 @@
             "SRL             s5, t1, s5",
             "ANDI            s5, s5, 0x1(1)",
             "ADDI            s9, zero, 0x0(0)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             a2, a2, t6",
-            "OR              a2, a2, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t5",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "sar dh, cl"
     },
@@ -10374,13 +10276,13 @@
         "disassembly": "rol dl, 0x01"
     },
     "d0c6": {
-        "instruction_count": 20,
+        "instruction_count": 18,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
             "ADDIW           t1, zero, 0x1(1)",
             "ANDI            t3, t1, 0x1f(31)",
-            "BEQ             t3, zero, 0x40(64)",
+            "BEQ             t3, zero, 0x38(56)",
             "SUB             t5, zero, t3",
             "ANDI            t5, t5, 0x7(7)",
             "SLL             t4, ra, t3",
@@ -10389,13 +10291,11 @@
             "ANDI            s5, ra, 0x1(1)",
             "SRLI            s9, ra, 0x7(7)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, ra, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rol dh, 0x01"
     },
@@ -10479,13 +10379,13 @@
         "disassembly": "rol dl, 0x3F"
     },
     "c0c63f": {
-        "instruction_count": 20,
+        "instruction_count": 18,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
             "ADDIW           t1, zero, 0x3f(63)",
             "ANDI            t3, t1, 0x1f(31)",
-            "BEQ             t3, zero, 0x40(64)",
+            "BEQ             t3, zero, 0x38(56)",
             "SUB             t5, zero, t3",
             "ANDI            t5, t5, 0x7(7)",
             "SLL             t4, ra, t3",
@@ -10494,13 +10394,11 @@
             "ANDI            s5, ra, 0x1(1)",
             "SRLI            s9, ra, 0x7(7)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, ra, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rol dh, 0x3F"
     },
@@ -10584,13 +10482,13 @@
         "disassembly": "rol dl, cl"
     },
     "d2c6": {
-        "instruction_count": 20,
+        "instruction_count": 18,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
             "ANDI            t1, s10, 0xff(255)",
             "ANDI            t3, t1, 0x1f(31)",
-            "BEQ             t3, zero, 0x40(64)",
+            "BEQ             t3, zero, 0x38(56)",
             "SUB             t5, zero, t3",
             "ANDI            t5, t5, 0x7(7)",
             "SLL             t4, ra, t3",
@@ -10599,13 +10497,11 @@
             "ANDI            s5, ra, 0x1(1)",
             "SRLI            s9, ra, 0x7(7)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, ra, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rol dh, cl"
     },
@@ -10919,13 +10815,13 @@
         "disassembly": "ror dl, 0x01"
     },
     "d0ce": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
             "ADDIW           t1, zero, 0x1(1)",
             "ANDI            t3, t1, 0x1f(31)",
-            "BEQ             t3, zero, 0x48(72)",
+            "BEQ             t3, zero, 0x40(64)",
             "SUB             t5, zero, t3",
             "ANDI            t5, t5, 0x7(7)",
             "SRL             t4, ra, t3",
@@ -10936,13 +10832,11 @@
             "SRLI            s9, ra, 0x6(6)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, ra, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "ror dh, 0x01"
     },
@@ -11034,13 +10928,13 @@
         "disassembly": "ror dl, 0x3F"
     },
     "c0ce3f": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
             "ADDIW           t1, zero, 0x3f(63)",
             "ANDI            t3, t1, 0x1f(31)",
-            "BEQ             t3, zero, 0x48(72)",
+            "BEQ             t3, zero, 0x40(64)",
             "SUB             t5, zero, t3",
             "ANDI            t5, t5, 0x7(7)",
             "SRL             t4, ra, t3",
@@ -11051,13 +10945,11 @@
             "SRLI            s9, ra, 0x6(6)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, ra, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "ror dh, 0x3F"
     },
@@ -11149,13 +11041,13 @@
         "disassembly": "ror dl, cl"
     },
     "d2ce": {
-        "instruction_count": 22,
+        "instruction_count": 20,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
             "ANDI            t1, s10, 0xff(255)",
             "ANDI            t3, t1, 0x1f(31)",
-            "BEQ             t3, zero, 0x48(72)",
+            "BEQ             t3, zero, 0x40(64)",
             "SUB             t5, zero, t3",
             "ANDI            t5, t5, 0x7(7)",
             "SRL             t4, ra, t3",
@@ -11166,13 +11058,11 @@
             "SRLI            s9, ra, 0x6(6)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, ra, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "ror dh, cl"
     },
@@ -11522,7 +11412,7 @@
         "disassembly": "rcl dl, 0x01"
     },
     "d0d6": {
-        "instruction_count": 28,
+        "instruction_count": 26,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -11545,13 +11435,11 @@
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, t3, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, t3, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rcl dh, 0x01"
     },
@@ -11664,7 +11552,7 @@
         "disassembly": "rcl dl, 0x3F"
     },
     "c0d63f": {
-        "instruction_count": 28,
+        "instruction_count": 26,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -11687,13 +11575,11 @@
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, t3, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, t3, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rcl dh, 0x3F"
     },
@@ -11806,7 +11692,7 @@
         "disassembly": "rcl dl, cl"
     },
     "d2d6": {
-        "instruction_count": 28,
+        "instruction_count": 26,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -11829,13 +11715,11 @@
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, t3, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, t3, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rcl dh, cl"
     },
@@ -12260,7 +12144,7 @@
         "disassembly": "rcr dl, 0x01"
     },
     "d0de": {
-        "instruction_count": 28,
+        "instruction_count": 26,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
@@ -12283,13 +12167,11 @@
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
             "SB              zero, s11, 0x220(544)",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, t1, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rcr dh, 0x01"
     },
@@ -12402,7 +12284,7 @@
         "disassembly": "rcr dl, 0x3F"
     },
     "c0de3f": {
-        "instruction_count": 28,
+        "instruction_count": 26,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
@@ -12425,13 +12307,11 @@
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
             "SB              zero, s11, 0x220(544)",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, t1, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rcr dh, 0x3F"
     },
@@ -12544,7 +12424,7 @@
         "disassembly": "rcr dl, cl"
     },
     "d2de": {
-        "instruction_count": 28,
+        "instruction_count": 26,
         "expected_asm": [
             "SRLI            ra, a2, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
@@ -12567,13 +12447,11 @@
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
             "SB              zero, s11, 0x220(544)",
-            "LUI             t2, 0x10000(65536)",
-            "ADDIW           t2, t2, 0xffffff00(-256)",
-            "SLLI            t6, t1, 0x8(8)",
-            "AND             t6, t6, t2",
-            "XORI            t2, t2, 0xffffffff(-1)",
-            "AND             a2, a2, t2",
-            "OR              a2, a2, t6"
+            "ANDI            t6, t1, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t6",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "rcr dh, cl"
     },
@@ -13003,7 +12881,7 @@
         "disassembly": "inc dl"
     },
     "fec6": {
-        "instruction_count": 33,
+        "instruction_count": 31,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -13031,13 +12909,11 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "inc dh"
     },
@@ -13303,7 +13179,7 @@
         "disassembly": "dec dl"
     },
     "fece": {
-        "instruction_count": 34,
+        "instruction_count": 32,
         "expected_asm": [
             "SRLI            t1, a2, 0x8(8)",
             "ANDI            t1, t1, 0xff(255)",
@@ -13332,13 +13208,11 @@
             "SLTIU           s7, s7, 0x1(1)",
             "SRLI            s8, ra, 0x7(7)",
             "ANDI            s8, s8, 0x1(1)",
-            "LUI             t4, 0x10000(65536)",
-            "ADDIW           t4, t4, 0xffffff00(-256)",
-            "SLLI            t3, ra, 0x8(8)",
-            "AND             t3, t3, t4",
-            "XORI            t4, t4, 0xffffffff(-1)",
-            "AND             a2, a2, t4",
-            "OR              a2, a2, t3"
+            "ANDI            t3, ra, 0xff(255)",
+            "RORI            a2, a2, 0x8(8)",
+            "ANDI            a2, a2, 0xffffff00(-256)",
+            "OR              a2, a2, t3",
+            "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "dec dh"
     },
@@ -13681,7 +13555,7 @@
         "disassembly": "sahf"
     },
     "9f": {
-        "instruction_count": 18,
+        "instruction_count": 16,
         "expected_asm": [
             "LBU             t3, s11, 0x1c9(457)",
             "SLLI            t1, t3, 0x2(2)",
@@ -13694,13 +13568,11 @@
             "SLLI            t1, s8, 0x7(7)",
             "OR              ra, ra, t1",
             "ORI             ra, ra, 0x2(2)",
-            "LUI             t6, 0x10000(65536)",
-            "ADDIW           t6, t6, 0xffffff00(-256)",
-            "SLLI            t5, ra, 0x8(8)",
-            "AND             t5, t5, t6",
-            "XORI            t6, t6, 0xffffffff(-1)",
-            "AND             t0, t0, t6",
-            "OR              t0, t0, t5"
+            "ANDI            t5, ra, 0xff(255)",
+            "RORI            t0, t0, 0x8(8)",
+            "ANDI            t0, t0, 0xffffff00(-256)",
+            "OR              t0, t0, t5",
+            "RORI            t0, t0, 0x38(56)"
         ],
         "disassembly": "lahf"
     },

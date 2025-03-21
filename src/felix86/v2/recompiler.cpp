@@ -993,17 +993,28 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     }
     case X86_SIZE_BYTE_HIGH: {
         ASSERT(reg != allocatedGPR(ref));
-        biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
-        biscuit::GPR gpr8 = scratch();
-        biscuit::GPR mask = scratch();
-        as.LI(mask, 0xff00);
-        as.SLLI(gpr8, reg, 8);
-        as.AND(gpr8, gpr8, mask);
-        as.NOT(mask, mask);
-        as.AND(dest, dest, mask);
-        as.OR(dest, dest, gpr8);
-        popScratch();
-        popScratch();
+        if (!Extensions::B) {
+            biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
+            biscuit::GPR gpr8 = scratch();
+            biscuit::GPR mask = scratch();
+            as.LI(mask, 0xff00);
+            as.SLLI(gpr8, reg, 8);
+            as.AND(gpr8, gpr8, mask);
+            as.NOT(mask, mask);
+            as.AND(dest, dest, mask);
+            as.OR(dest, dest, gpr8);
+            popScratch();
+            popScratch();
+        } else {
+            biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
+            biscuit::GPR gpr8 = scratch();
+            as.ANDI(gpr8, reg, 0xFF);
+            as.RORI(dest, dest, 8);
+            as.ANDI(dest, dest, ~0xFF);
+            as.OR(dest, dest, gpr8);
+            as.RORI(dest, dest, 56);
+            popScratch();
+        }
         break;
     }
     case X86_SIZE_WORD: {
