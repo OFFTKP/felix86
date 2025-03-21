@@ -144,10 +144,10 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
                       argc * pointer_size +             // argv
                       pointer_size;                     // argc
 
+    // 16-byte align the RSP
+    rsp -= 16;
+    rsp &= ~0xF;
     u64 final_rsp = rsp - size_needed;
-    if (final_rsp & 0xF) {
-        rsp -= pointer_size;
-    }
 
     u64 (*stack_push)(u64, u64) = g_mode32 ? stack_push32 : stack_push64;
 
@@ -175,12 +175,11 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     // Argument count
     rsp = stack_push(rsp, argc);
 
+    ASSERT_MSG(rsp == final_rsp, "%lx == %lx", rsp, final_rsp);
     if (rsp & 0xF) {
         ERROR("Stack not aligned to 16 bytes");
         return pair;
     }
-
-    ASSERT(rsp == final_rsp);
 
     GuestAddress rsp_guest = HostAddress{rsp}.toGuest();
     state->SetGpr(X86_REF_RSP, rsp_guest.raw());
