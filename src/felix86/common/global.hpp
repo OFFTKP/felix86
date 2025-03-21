@@ -103,6 +103,7 @@ struct Extensions {
     X(Zam)                                                                                                                                           \
     X(Zabha)                                                                                                                                         \
     X(Zicond)                                                                                                                                        \
+    X(Zba)                                                                                                                                           \
     X(Zfa)                                                                                                                                           \
     X(Zvfh)                                                                                                                                          \
     X(Zvbb)                                                                                                                                          \

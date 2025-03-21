@@ -29,3 +29,4 @@ X(Performance, bool, inaccurate_minmax, true, FELIX86_INACCURATE_MINMAX, "Don't 
 X(Performance, bool, rsb, false, FELIX86_RSB, "Try to guess return addresses -- may cause stack overflow in some games currently", false)
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games", false)
 X(Performance, bool, dont_protect_pages, true, FELIX86_DONT_PROTECT_PAGES, "Don't protect pages for catching self-modifying code", false)
+X(Performance, bool, noflag_opts, true, FELIX86_NOFLAG_OPTS, "Optimize some instructions when the flag calculations aren't necessary", false)

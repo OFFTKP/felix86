@@ -1,7 +1,7 @@
 %ifdef CONFIG
 {
   "RegData": {
-    "RAX": ["0"]
+    "RAX": "0"
   },
   "Env": { "FEX_X87REDUCEDPRECISION" : "1" }
 }

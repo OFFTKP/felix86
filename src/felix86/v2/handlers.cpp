@@ -63,96 +63,6 @@ bool is_segment(ZydisDecodedOperand& operand) {
     return false;
 }
 
-// TODO: test, finish, and integrate. Would only work for no flag usage
-bool NoFlagsFastOp(Recompiler& rec, Assembler& as, biscuit::GPR result, void (Assembler::*func)(GPR, GPR, GPR),
-                   void (Assembler::*funcW)(GPR, GPR, GPR), ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, bool rotate) {
-    if (!Extensions::B && (instruction.operand_width == 8 || instruction.operand_width == 16)) {
-        // Optimizing 8/16 bit operands needs B extension
-        return false;
-    }
-
-    switch (instruction.operand_width) {
-    case 8: {
-        return false;
-    }
-    case 16: {
-        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            operands[0].size = 64; // Load the entire destination register
-        }
-
-        // This will load the full register
-        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-
-        if (rotate) {
-            if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-                operands[1].size = 64; // Load the entire source register
-            }
-
-            biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-            biscuit::GPR src_left = rec.scratch();
-            as.SLLI(src_left, src, 64 - 16);
-            as.RORI(result, dst, 16);
-            (as.*func)(result, result, src_left);
-            as.RORI(result, result, 48);
-            rec.popScratch();
-        } else {
-            biscuit::GPR src_zexted;
-            if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER || operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-                src_zexted = rec.getOperandGPR(&operands[1]);
-            } else if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-                src_zexted = rec.scratch();
-                // Don't load with getOperandGPR as that loads a sign extended value
-                as.LI(src_zexted, (u16)operands[1].imm.value.u);
-                rec.popScratch();
-            }
-            // for OR/XOR/AND we don't need to rotate
-            (as.*func)(result, dst, src_zexted);
-        }
-
-        operands[0].size = 16;
-        operands[1].size = 16;
-        break;
-    }
-    case 32: {
-        // The optimization here is that we don't zext the operands
-        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            operands[0].size = 64; // Just load the whole register
-        }
-
-        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            operands[1].size = 64; // Ditto
-        }
-
-        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-        (as.*funcW)(result, dst, src);
-        rec.zext(result, result, X86_SIZE_DWORD);
-
-        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            operands[0].size = 32; // Restore the size in case we need to use it later
-        }
-
-        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-            operands[1].size = 32; // Ditto
-        }
-        break;
-    }
-    case 64: {
-        // Easiest, just grab the registers and do the operation directly on the destination reg
-        biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
-        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-        (as.*func)(result, dst, src);
-        break;
-    }
-    default: {
-        UNREACHABLE();
-        break;
-    }
-    }
-
-    return true;
-}
-
 int size_to_bytes(int size) {
     switch (size) {
     case 8: {
@@ -234,7 +144,82 @@ FAST_HANDLE(MOV) {
     rec.setOperandGPR(&operands[0], src);
 }
 
+void OP_noflags_destreg(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction,
+                        ZydisDecodedOperand* operands, void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
+                        void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
+    biscuit::GPR dst = rec.getRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD);
+    biscuit::GPR src;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        src = rec.getRefGPR(rec.zydisToRef(operands[1].reg.value), X86_SIZE_QWORD);
+    } else {
+        src = rec.getOperandGPR(&operands[1]);
+    }
+
+    switch (instruction.operand_width) {
+    case 8: {
+        // https://news.ycombinator.com/item?id=41364904 :)
+        bool dst_high = rec.zydisToSize(operands[0].reg.value) == X86_SIZE_BYTE_HIGH;
+        bool src_high = rec.zydisToSize(operands[1].reg.value) == X86_SIZE_BYTE_HIGH;
+        biscuit::GPR temp = rec.scratch();
+        if (!dst_high && !src_high) {
+            as.SLLI(temp, src, 56);
+            as.RORI(dst, dst, 8);
+            (as.*func64)(dst, dst, temp);
+            as.RORI(dst, dst, 56);
+        } else if (!dst_high && src_high) {
+            as.SRLI(temp, src, 8);
+            as.SLLI(temp, temp, 56);
+            as.RORI(dst, dst, 8);
+            (as.*func64)(dst, dst, temp);
+            as.RORI(dst, dst, 56);
+        } else if (dst_high && !src_high) {
+            as.SLLI(temp, src, 56);
+            as.RORI(dst, dst, 16);
+            (as.*func64)(dst, dst, temp);
+            as.RORI(dst, dst, 48);
+        } else if (dst_high && src_high) {
+            as.SRLI(temp, src, 8);
+            as.SLLI(temp, temp, 56);
+            as.RORI(dst, dst, 16);
+            (as.*func64)(dst, dst, temp);
+            as.RORI(dst, dst, 48);
+        }
+        break;
+    }
+    case 16: {
+        biscuit::GPR temp = rec.scratch();
+        as.SLLI(temp, src, 48);
+        as.RORI(dst, dst, 16);
+        (as.*func64)(dst, dst, temp);
+        as.RORI(dst, dst, 48);
+        break;
+    }
+    case 32: {
+        (as.*func32)(dst, dst, src);
+        rec.zext(dst, dst, X86_SIZE_DWORD);
+        break;
+    }
+    case 64: {
+        (as.*func64)(dst, dst, src);
+        break;
+    }
+    }
+}
+
 FAST_HANDLE(ADD) {
+    bool needs_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool needs_af = rec.shouldEmitFlag(meta.rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
+    bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+        // We can do it faster if we don't need to calculate flags
+        return OP_noflags_destreg(rec, meta, as, instruction, operands, &Assembler::ADD, &Assembler::ADDW);
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -243,27 +228,27 @@ FAST_HANDLE(ADD) {
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+    if (needs_cf) {
         rec.updateCarryAdd(dst, result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+    if (needs_pf) {
         rec.updateParity(result);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_AF)) {
+    if (needs_af) {
         rec.updateAuxiliaryAdd(dst, result);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+    if (needs_zf) {
         rec.updateZero(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+    if (needs_sf) {
         rec.updateSign(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+    if (needs_of) {
         rec.updateOverflowAdd(dst, src, result, size);
     }
 
@@ -271,6 +256,19 @@ FAST_HANDLE(ADD) {
 }
 
 FAST_HANDLE(SUB) {
+    bool needs_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool needs_af = rec.shouldEmitFlag(meta.rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
+    bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+        // We can do it faster if we don't need to calculate flags
+        return OP_noflags_destreg(rec, meta, as, instruction, operands, &Assembler::SUB, &Assembler::SUBW);
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -402,6 +400,18 @@ FAST_HANDLE(CMP) {
 }
 
 FAST_HANDLE(OR) {
+    bool needs_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
+    bool needs_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
+    bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+        // We can do it faster if we don't need to calculate flags
+        return OP_noflags_destreg(rec, meta, as, instruction, operands, &Assembler::OR, &Assembler::OR);
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
@@ -410,23 +420,23 @@ FAST_HANDLE(OR) {
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_CF)) {
+    if (needs_cf) {
         rec.zeroFlag(X86_REF_CF);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
+    if (needs_pf) {
         rec.updateParity(result);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
+    if (needs_zf) {
         rec.updateZero(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
+    if (needs_sf) {
         rec.updateSign(result, size);
     }
 
-    if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
+    if (needs_of) {
         rec.zeroFlag(X86_REF_OF);
     }
 
@@ -446,7 +456,10 @@ FAST_HANDLE(XOR) {
         }
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
-            rec.updateParity(x0);
+            biscuit::GPR pf = rec.scratch();
+            as.LI(pf, 1);
+            as.SB(pf, offsetof(ThreadState, pf), rec.threadStatePointer());
+            rec.popScratch();
         }
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_ZF)) {
@@ -454,7 +467,8 @@ FAST_HANDLE(XOR) {
         }
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_SF)) {
-            rec.updateSign(x0, size);
+            biscuit::GPR sf = rec.flagW(X86_REF_SF);
+            as.MV(sf, x0);
         }
 
         if (rec.shouldEmitFlag(meta.rip, X86_REF_OF)) {
@@ -463,16 +477,22 @@ FAST_HANDLE(XOR) {
         return;
     }
 
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR dst;
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-
     bool needs_cf = rec.shouldEmitFlag(meta.rip, X86_REF_CF);
     bool needs_pf = rec.shouldEmitFlag(meta.rip, X86_REF_PF);
     bool needs_zf = rec.shouldEmitFlag(meta.rip, X86_REF_ZF);
     bool needs_sf = rec.shouldEmitFlag(meta.rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(meta.rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
+    bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+        // We can do it faster if we don't need to calculate flags
+        return OP_noflags_destreg(rec, meta, as, instruction, operands, &Assembler::XOR, &Assembler::XOR);
+    }
+
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst;
+    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+
     bool writeback = true;
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
@@ -487,7 +507,7 @@ FAST_HANDLE(XOR) {
             UNREACHABLE();
         }
 
-        if (needs_any_flag) {
+        if (needs_any_flag || !g_config.noflag_opts) {
             as.XOR(result, dst, src);
         }
 
@@ -992,7 +1012,6 @@ FAST_HANDLE(SHL) {
 
     as.SLL(result, dst, count);
 
-    // TODO: separate function for immediate encoding to remove this branch
     as.BEQZ(count, &zero_source);
 
     if (rec.shouldEmitFlag(meta.rip, X86_REF_PF)) {
