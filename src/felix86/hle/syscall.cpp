@@ -1298,7 +1298,8 @@ void felix86_syscall32(ThreadState* state) {
             }
 
             state->gdt[index] = udesc->base_addr;
-            result = 12 + index;
+            udesc->entry_number = 12 + index;
+            result = 0;
             break;
         }
         case felix86_x86_32_get_thread_area: {
