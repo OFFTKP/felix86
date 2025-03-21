@@ -56,7 +56,7 @@ bool is_segment(ZydisDecodedOperand& operand) {
         return false;
     }
 
-    if (operand.reg.value >= ZYDIS_REGISTER_ES && operand.reg.value <= ZYDIS_REGISTER_DS) {
+    if (operand.reg.value >= ZYDIS_REGISTER_ES && operand.reg.value <= ZYDIS_REGISTER_GS) {
         return true;
     }
 
