@@ -19,9 +19,15 @@ extern char** environ;
 static char x86_string[] = "i686";
 static char x86_64_string[] = "x86_64";
 
-u64 stack_push(u64 stack, u64 value) {
+u64 stack_push64(u64 stack, u64 value) {
     stack -= 8;
     *(u64*)stack = value;
+    return stack;
+}
+
+u64 stack_push32(u64 stack, u64 value) {
+    stack -= 4;
+    *(u32*)stack = value;
     return stack;
 }
 
@@ -32,7 +38,7 @@ u64 stack_push_string(u64 stack, const char* str) {
     return stack;
 }
 
-typedef struct {
+struct auxv64_t {
     int a_type;
 
     union {
@@ -40,7 +46,12 @@ typedef struct {
         void* a_ptr;
         void (*a_fnc)();
     } a_un;
-} auxv_t;
+};
+
+struct auxv32_t {
+    int a_type;
+    u32 a_val;
+};
 
 std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     ssize_t argc = g_params.argv.size();
@@ -52,7 +63,6 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     }
 
     const char* path = g_params.argv[0].c_str();
-    printf("PATH: %s\n", path);
 
     std::shared_ptr<Elf> elf = g_fs->GetExecutable();
 
@@ -71,8 +81,6 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
     for (ssize_t i = 0; i < argc; i++) {
         rsp = stack_push_string(rsp, g_params.argv[i].c_str());
-        if (i == 0)
-            printf("argv0: %s\n", (char*)rsp);
         argv_addresses[i] = rsp;
     }
 
@@ -91,8 +99,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     }
 
     // Push 128-bits to stack that are gonna be used as random data
-    rsp = stack_push(rsp, 0);
-    rsp = stack_push(rsp, 0);
+    rsp = stack_push64(rsp, 0);
+    rsp = stack_push64(rsp, 0);
     u64 rand_address = rsp;
 
     int result = getrandom((void*)rand_address, 16, 0);
@@ -101,7 +109,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         return pair;
     }
 
-    auxv_t auxv_entries[18] = {
+    std::pair<u64, u64> auxv_entries[18] = {
         {AT_PAGESZ, {4096}},
         {AT_EXECFN, {(u64)program_name}},
         {AT_CLKTCK, {100}},
@@ -122,36 +130,34 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         {AT_NULL, {0}} // null terminator
     };
 
-    VERBOSE("AT_PHDR: %p", auxv_entries[12].a_un.a_ptr);
-    VERBOSE("AT_PHENT: %lu", auxv_entries[13].a_un.a_val);
-    VERBOSE("AT_PHNUM: %lu", auxv_entries[14].a_un.a_val);
-    VERBOSE("AT_RANDOM: %p", auxv_entries[15].a_un.a_ptr);
-    VERBOSE("AT_ENTRY: %p", auxv_entries[3].a_un.a_ptr);
     u16 auxv_count = std::size(auxv_entries);
 
     // This is the varying amount of space needed for the stack
     // past our own information block
     // It's important to calculate this because the RSP final
     // value needs to be aligned to 16 bytes
-    u16 size_needed = 16 * auxv_count + // aux vector entries
-                      8 +               // null terminator
-                      envc * 8 +        // envp
-                      8 +               // null terminator
-                      argc * 8 +        // argv
-                      8;                // argc
+    int pointer_size = g_mode32 ? 4 : 8;
+    u16 size_needed = (2 * pointer_size) * auxv_count + // aux vector entries
+                      pointer_size +                    // null terminator
+                      envc * pointer_size +             // envp
+                      pointer_size +                    // null terminator
+                      argc * pointer_size +             // argv
+                      pointer_size;                     // argc
 
     u64 final_rsp = rsp - size_needed;
     if (final_rsp & 0xF) {
-        rsp -= 8;
+        rsp -= pointer_size;
     }
 
+    u64 (*stack_push)(u64, u64) = g_mode32 ? stack_push32 : stack_push64;
+
     for (int i = auxv_count - 1; i >= 0; i--) {
-        rsp = stack_push(rsp, (u64)auxv_entries[i].a_un.a_ptr);
-        rsp = stack_push(rsp, auxv_entries[i].a_type);
+        rsp = stack_push(rsp, auxv_entries[i].second);
+        rsp = stack_push(rsp, auxv_entries[i].first);
     }
 
     g_guest_auxv = HostAddress{rsp};
-    g_guest_auxv_size = auxv_count * 16;
+    g_guest_auxv_size = auxv_count * pointer_size;
 
     // End of environment variables
     rsp = stack_push(rsp, 0);
@@ -173,6 +179,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         ERROR("Stack not aligned to 16 bytes");
         return pair;
     }
+
+    ASSERT(rsp == final_rsp);
 
     GuestAddress rsp_guest = HostAddress{rsp}.toGuest();
     state->SetGpr(X86_REF_RSP, rsp_guest.raw());
