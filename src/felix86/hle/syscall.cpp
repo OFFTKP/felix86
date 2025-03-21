@@ -1022,6 +1022,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_readlinkat: {
+        if (arg2 == arg3) {
+            WARN("arg2 == arg3 during readlinkat");
+        }
         result = Filesystem::ReadlinkAt((int)arg1, (char*)arg2, (char*)arg3, (int)arg4);
         break;
     }
@@ -1102,6 +1105,9 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_readlink: {
+            if (arg1 == arg2) {
+                WARN("arg1 == arg2 during readlink");
+            }
             result = Filesystem::ReadlinkAt(AT_FDCWD, (char*)arg1, (char*)arg2, (int)arg3);
             break;
         }

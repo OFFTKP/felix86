@@ -2389,7 +2389,7 @@ void Recompiler::enableSignals() {
     as.SB(x0, offsetof(ThreadState, signals_disabled), threadStatePointer());
 }
 
-biscuit::GPR Recompiler::getTOP() { // TODO: allocate a reg for this maybe
+biscuit::GPR Recompiler::getTOP() { // TODO: allocate a reg for this maybe -- load once at start of block and writeback at end
     biscuit::GPR top = scratch();
     as.LB(top, offsetof(ThreadState, fpu_top), threadStatePointer());
     return top;

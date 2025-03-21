@@ -410,5 +410,12 @@ X(FCOMIP)
 X(FUCOMI)
 X(FUCOMIP)
 X(FRNDINT)
+X(FLD1)
+X(FLDL2T)
+X(FLDL2E)
+X(FLDPI)
+X(FLDLG2)
+X(FLDLN2)
+X(FLDZ)
 
 X(INVLPG) /* thunking dummy instruction */

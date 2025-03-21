@@ -1,3 +1,4 @@
+#include <cmath>
 #include <Zydis/Zydis.h>
 #include "felix86/v2/recompiler.hpp"
 
@@ -226,4 +227,76 @@ FAST_HANDLE(FRNDINT) {
     }
 
     rec.setST(top, 0, st0);
+}
+
+FAST_HANDLE(FLD1) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st = rec.scratchFPR();
+
+    if (Extensions::Zfa) {
+        as.FLI_D(st, 1.0);
+    } else {
+        biscuit::GPR temp = rec.scratch();
+        as.LI(temp, 0x3FF0000000000000ull);
+        as.FMV_D_X(st, temp);
+    }
+
+    rec.pushST(top, st);
+}
+
+FAST_HANDLE(FLDL2T) {
+    constexpr u64 value = 0x400A'934F'0979'A371ull;
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st = rec.scratchFPR();
+    biscuit::GPR temp = rec.scratch();
+    as.LI(temp, value);
+    as.FMV_D_X(st, temp);
+    rec.pushST(top, st);
+}
+
+FAST_HANDLE(FLDL2E) {
+    constexpr u64 value = 0x3FF7'1547'652B'82FEull;
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st = rec.scratchFPR();
+    biscuit::GPR temp = rec.scratch();
+    as.LI(temp, value);
+    as.FMV_D_X(st, temp);
+    rec.pushST(top, st);
+}
+
+FAST_HANDLE(FLDPI) {
+    constexpr u64 value = 0x4009'21FB'5444'2D18ull;
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st = rec.scratchFPR();
+    biscuit::GPR temp = rec.scratch();
+    as.LI(temp, value);
+    as.FMV_D_X(st, temp);
+    rec.pushST(top, st);
+}
+
+FAST_HANDLE(FLDLG2) {
+    constexpr u64 value = 0x3FD3'4413'509F'79FFull;
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st = rec.scratchFPR();
+    biscuit::GPR temp = rec.scratch();
+    as.LI(temp, value);
+    as.FMV_D_X(st, temp);
+    rec.pushST(top, st);
+}
+
+FAST_HANDLE(FLDLN2) {
+    constexpr u64 value = 0x3FE6'2E42'FEFA'39EFull;
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st = rec.scratchFPR();
+    biscuit::GPR temp = rec.scratch();
+    as.LI(temp, value);
+    as.FMV_D_X(st, temp);
+    rec.pushST(top, st);
+}
+
+FAST_HANDLE(FLDZ) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st = rec.scratchFPR();
+    as.FMV_D_X(st, x0);
+    rec.pushST(top, st);
 }
