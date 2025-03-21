@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <termios.h>
@@ -57,6 +58,23 @@ struct x86_sigaction {
     u64 sa_flags;
     void (*restorer)(void);
     sigset_t sa_mask;
+};
+
+struct x86_user_desc {
+    u32 entry_number = 0;
+    u32 base_addr = 0;
+    u32 limit = 0;
+    u32 seg_32bit : 1 = 0;
+    u32 contents : 2 = 0;
+    u32 read_exec_only : 1 = 0;
+    u32 limit_in_pages : 1 = 0;
+    u32 seg_not_present : 1 = 0;
+    u32 usable : 1 = 0;
+};
+
+struct x86_rlimit {
+    u32 rlim_cur;
+    u32 rlim_max;
 };
 
 #define felix86_x86_64_ARCH_SET_GS 0x1001
@@ -1260,6 +1278,64 @@ void felix86_syscall32(ThreadState* state) {
             // mmap2 is like mmap but file offset is in pages (4096 bytes) to help with the lack of big enough integers in x86-32
             u64 offset = arg6 * 4096;
             result = (ssize_t)g_mapper->map((void*)(u64)arg1, arg2, arg3, arg4, arg5, offset);
+            break;
+        }
+        case felix86_x86_32_set_thread_area: {
+            x86_user_desc* udesc = (x86_user_desc*)(u64)arg1;
+            int index = udesc->entry_number;
+            if (index == -1) {
+                for (int i = 0; i < 3; i++) {
+                    if (state->gdt[i] == 0) {
+                        index = i;
+                        break;
+                    }
+                }
+            }
+
+            if (index == -1) {
+                result = -ESRCH;
+                break;
+            }
+
+            state->gdt[index] = udesc->base_addr;
+            result = 12 + index;
+            break;
+        }
+        case felix86_x86_32_get_thread_area: {
+            x86_user_desc* udesc = (x86_user_desc*)(u64)arg1;
+            int index = udesc->entry_number;
+
+            // These are the only valid entries in x86 64-bit kernel
+            if (index < 12 || index > 12 + 3) {
+                result = -EINVAL;
+                break;
+            }
+
+            *udesc = {};
+
+            udesc->base_addr = state->gdt[index - 12];
+
+            if (udesc->base_addr != 0) {
+                udesc->limit = 0xFFFFF;
+                udesc->seg_32bit = 1;
+                udesc->limit_in_pages = 1;
+                udesc->usable = 1;
+            } else {
+                udesc->read_exec_only = 1;
+                udesc->seg_not_present = 1;
+            }
+
+            result = 0;
+            break;
+        }
+        case felix86_x86_32_ugetrlimit: {
+            rlimit limit;
+            result = getrlimit((int)arg1, &limit);
+            if (result == 0) {
+                x86_rlimit* guest_limit = (x86_rlimit*)(u64)arg2;
+                guest_limit->rlim_cur = limit.rlim_cur;
+                guest_limit->rlim_max = limit.rlim_max;
+            }
             break;
         }
         default: {

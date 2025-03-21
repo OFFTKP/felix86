@@ -345,6 +345,7 @@ void initialize_extensions() {
                         cpuinfo.Has(RISCVExtension::Zbs);
         Extensions::Zacas = cpuinfo.Has(RISCVExtension::Zacas);
         Extensions::Zicond = cpuinfo.Has(RISCVExtension::Zicond);
+        Extensions::Zihintpause = cpuinfo.Has(RISCVExtension::Zihintpause);
         Extensions::Zfa = cpuinfo.Has(RISCVExtension::Zfa);
         Extensions::Zba = cpuinfo.Has(RISCVExtension::Zba);
         Extensions::Zvbb = cpuinfo.Has(RISCVExtension::Zvbb);

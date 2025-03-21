@@ -235,9 +235,6 @@ int main(int argc, char* argv[]) {
         mkdirat(g_rootfs_fd, "tmp", 0777);
     }
 
-    if (Extensions::VLEN != 256) {
-        WARN_ONCE("felix86 is untested on chips with VLEN != 256, problems are expected to happen :(");
-    }
     Signals::initialize();
 
     if (g_thunking) {

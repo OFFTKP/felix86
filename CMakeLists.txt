@@ -24,7 +24,6 @@ option(BUILD_THUNKING "Build with thunking support" ON)
 
 if (BUILD_THUNKING)
     message("Building with thunking support")
-    add_compile_definitions(BUILD_THUNKING)
 else()
     message("Building without thunking support")
 endif()
@@ -103,6 +102,10 @@ add_library(felix86_core STATIC)
 target_sources(felix86_core PRIVATE ${FELIX86_CORE_SOURCES})
 target_include_directories(felix86_core PUBLIC ${FELIX86_INCLUDES})
 target_link_libraries(felix86_core PUBLIC Zydis fmt biscuit git_version)
+
+if (BUILD_THUNKING)
+    target_compile_definitions(felix86_core PUBLIC BUILD_THUNKING)
+endif()
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)

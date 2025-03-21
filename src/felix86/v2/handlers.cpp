@@ -7306,6 +7306,12 @@ FAST_HANDLE(CMPXCHG16B) {
     }
 }
 
+FAST_HANDLE(PAUSE) {
+    if (Extensions::Zihintpause) {
+        as.PAUSE();
+    }
+}
+
 // This is a pseudo-instruction that we generate in our thunked guest libraries to basically
 // notify the recompiler that whatever follows here is thunked code and it should call the equivalent
 // host function.
