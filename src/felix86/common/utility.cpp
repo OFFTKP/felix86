@@ -471,8 +471,7 @@ void update_symbols() {
         int result = sscanf(line.c_str(), "%lx-%lx %*s %*s %*s %*s %s", &start, &end, buffer);
         if (result == 3) {
             if (!std::filesystem::is_regular_file(buffer)) {
-                // Not a regular file, either a library outside the chroot or something like
-                // /dev/zero, so we don't add it
+                // Not a regular file, perhaps something like /dev/zero, so we don't add it
                 VERBOSE("Buffer: %s is not regular file", buffer);
                 continue;
             }

@@ -2,7 +2,7 @@
 
 # felix86
 
-felix86 is a Linux userspace emulator that allows you to run x86-64 Linux programs on RISC-V processors. It is in the early stages of development.
+felix86 is a Linux userspace emulator that allows you to run x86-64 Linux programs on RISC-V processors
 
 > [!NOTE]
 > felix86 has not fully released yet. There are no compiled binaries available for download.
@@ -17,15 +17,9 @@ felix86 is a Linux userspace emulator that allows you to run x86-64 Linux progra
 - Supports a variety of optional extensions, such as XThead custom extensions
 
 ## Compatibility
-felix86 is in the very early stages of development and does not support AArch64.
+felix86 is in the very early stages of development.
 
-A compatibility list can be found here: https://github.com/felix86-emu/compatibility-list/issues
-
-If you need a more mature x86-64 userspace emulator, consider using one of these:
-
-- [FEX](https://github.com/FEX-Emu/FEX) for x86 & x86-64 on AArch64
-- [box64](https://github.com/ptitSeb/box64) for x86 & x86-64 on AArch64 and RISC-V
-- [qemu-user](https://www.qemu.org/docs/master/user/main.html) for a wide range of architectures
+A compatibility list can be found here: https://felix86.com/compat
 
 ## Dependencies
 felix86 relies on several great projects:
