@@ -146,7 +146,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
     // 16-byte align the RSP
     if (size_needed & 0xF) {
-        rsp -= size_needed & 0xF;
+        rsp -= 16 - (size_needed & 0xF);
     }
 
     u64 final_rsp = rsp - size_needed;
