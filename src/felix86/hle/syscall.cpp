@@ -216,22 +216,22 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_prlimit64: {
-        result = SYSCALL64(prlimit64, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(prlimit64, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_getrandom: {
-        result = SYSCALL64(getrandom, arg1, arg2, arg3);
+        result = SYSCALL64(getrandom, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_mprotect: {
-        result = SYSCALL64(mprotect, arg1, arg2, arg3);
+        result = SYSCALL64(mprotect, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_close: {
         // Don't close our stdout
         // TODO: better implementation where it closes an emulated stdout instead
         if (arg1 != 1 && arg1 != 2) {
-            result = SYSCALL64(close, arg1);
+            result = SYSCALL64(close, arg1, arg2, arg3, arg4, arg5, arg6);
         } else {
             result = 0;
         }
@@ -241,11 +241,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_shutdown: {
-        result = SYSCALL64(shutdown, arg1, arg2);
+        result = SYSCALL64(shutdown, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_shmget: {
-        result = SYSCALL64(shmget, arg1, arg2, arg3);
+        result = SYSCALL64(shmget, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_shmat: {
@@ -253,7 +253,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_shmctl: {
-        result = SYSCALL64(shmctl, arg1, arg2, arg3);
+        result = SYSCALL64(shmctl, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_shmdt: {
@@ -265,15 +265,15 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_setpgid: {
-        result = SYSCALL64(setpgid, arg1, arg2);
+        result = SYSCALL64(setpgid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setpriority: {
-        result = SYSCALL64(setpriority, arg1, arg2, arg3);
+        result = SYSCALL64(setpriority, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_getpriority: {
-        result = SYSCALL64(getpriority, arg1, arg2);
+        result = SYSCALL64(getpriority, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_getrusage: {
@@ -285,7 +285,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_epoll_ctl: {
-        result = SYSCALL64(epoll_ctl, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(epoll_ctl, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_epoll_pwait: {
@@ -297,55 +297,55 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_mount: {
-        result = SYSCALL64(mount, arg1, arg2, arg3, arg4, arg5);
+        result = SYSCALL64(mount, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_accept: {
-        result = SYSCALL64(accept, arg1, arg2, arg3);
+        result = SYSCALL64(accept, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_socketpair: {
-        result = SYSCALL64(socketpair, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(socketpair, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setgid: {
-        result = SYSCALL64(setgid, arg1);
+        result = SYSCALL64(setgid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setsid: {
-        result = SYSCALL64(setsid, arg1);
+        result = SYSCALL64(setsid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setreuid: {
-        result = SYSCALL64(setreuid, arg1, arg2);
+        result = SYSCALL64(setreuid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setresuid: {
-        result = SYSCALL64(setresuid, arg1, arg2, arg3);
+        result = SYSCALL64(setresuid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setregid: {
-        result = SYSCALL64(setregid, arg1, arg2);
+        result = SYSCALL64(setregid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setgroups: {
-        result = SYSCALL64(setgroups, arg1, arg2);
+        result = SYSCALL64(setgroups, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_getgroups: {
-        result = SYSCALL64(getgroups, arg1, arg2);
+        result = SYSCALL64(getgroups, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setuid: {
-        result = SYSCALL64(setuid, arg1);
+        result = SYSCALL64(setuid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_umount2: {
-        result = SYSCALL64(umount2, arg1, arg2);
+        result = SYSCALL64(umount2, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sched_getscheduler: {
-        result = SYSCALL64(sched_getscheduler, arg1);
+        result = SYSCALL64(sched_getscheduler, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sched_getparam: {
@@ -353,7 +353,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_sched_setparam: {
-        result = SYSCALL64(sched_setparam, arg1, arg2);
+        result = SYSCALL64(sched_setparam, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_clock_gettime: {
@@ -377,11 +377,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_dup: {
-        result = SYSCALL64(dup, arg1);
+        result = SYSCALL64(dup, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_dup3: {
-        result = SYSCALL64(dup3, arg1, arg2, arg3);
+        result = SYSCALL64(dup3, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_fstat: {
@@ -394,7 +394,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_fsync: {
-        result = SYSCALL64(fsync, arg1);
+        result = SYSCALL64(fsync, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sync: {
@@ -402,23 +402,23 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_syncfs: {
-        result = SYSCALL64(syncfs, arg1);
+        result = SYSCALL64(syncfs, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sendmmsg: {
-        result = SYSCALL64(sendmmsg, arg1, (struct mmsghdr*)arg2, arg3, arg4);
+        result = SYSCALL64(sendmmsg, arg1, arg2, arg3, arg4);
         break;
     }
     case felix86_riscv64_recvmmsg: {
-        result = SYSCALL64(recvmmsg, arg1, (struct mmsghdr*)arg2, arg3, arg4, arg5);
+        result = SYSCALL64(recvmmsg, arg1, arg2, arg3, arg4, arg5);
         break;
     }
     case felix86_riscv64_setsockopt: {
-        result = SYSCALL64(setsockopt, arg1, arg2, arg3, arg4, arg5);
+        result = SYSCALL64(setsockopt, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_getsockopt: {
-        result = SYSCALL64(getsockopt, arg1, arg2, arg3, arg4, arg5);
+        result = SYSCALL64(getsockopt, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_statx: {
@@ -426,11 +426,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_fadvise64: {
-        result = SYSCALL64(fadvise64, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(fadvise64, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_fcntl: {
-        result = SYSCALL64(fcntl, arg1, arg2, arg3);
+        result = SYSCALL64(fcntl, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_pselect6: {
@@ -442,7 +442,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_fchown: {
-        result = SYSCALL64(fchown, arg1, arg2, arg3);
+        result = SYSCALL64(fchown, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_unlinkat: {
@@ -450,7 +450,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_fchdir: {
-        result = SYSCALL64(fchdir, arg1);
+        result = SYSCALL64(fchdir, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_newfstatat: {
@@ -458,25 +458,25 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_sysinfo: {
-        result = SYSCALL64(sysinfo, arg1);
+        result = SYSCALL64(sysinfo, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_ioctl: {
-        result = SYSCALL64(ioctl, arg1, arg2, arg3);
+        result = SYSCALL64(ioctl, arg1, arg2, arg3, arg4, arg5, arg6);
 
         if (!try_strace_ioctl(arg1, arg2, arg3, result)) {
         }
         break;
     }
     case felix86_riscv64_write: {
-        result = SYSCALL64(write, arg1, arg2, arg3);
+        result = SYSCALL64(write, arg1, arg2, arg3, arg4, arg5, arg6);
 
         if (g_config.strace) {
         }
         break;
     }
     case felix86_riscv64_writev: {
-        result = SYSCALL64(writev, arg1, arg2, arg3);
+        result = SYSCALL64(writev, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_exit_group: {
@@ -492,23 +492,23 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_pipe2: {
-        result = SYSCALL64(pipe2, arg1, arg2);
+        result = SYSCALL64(pipe2, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_memfd_create: {
-        result = SYSCALL64(memfd_create, (const char*)arg1, arg2);
+        result = SYSCALL64(memfd_create, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_ftruncate: {
-        result = SYSCALL64(ftruncate, arg1, arg2);
+        result = SYSCALL64(ftruncate, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_read: {
-        result = SYSCALL64(read, arg1, arg2, arg3);
+        result = SYSCALL64(read, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_getdents64: {
-        result = SYSCALL64(getdents64, arg1, arg2, arg3);
+        result = SYSCALL64(getdents64, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_lgetxattr: {
@@ -516,11 +516,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_pwrite64: {
-        result = SYSCALL64(pwrite64, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(pwrite64, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_pread64: {
-        result = SYSCALL64(pread64, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(pread64, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_openat: {
@@ -534,11 +534,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_tgkill: {
-        result = SYSCALL64(tgkill, arg1, arg2, arg3);
+        result = SYSCALL64(tgkill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_kill: {
-        result = SYSCALL64(kill, arg1, arg2);
+        result = SYSCALL64(kill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_mmap: {
@@ -570,32 +570,32 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
             result = g_mapper->unmap32((void*)arg1, arg2);
         } else {
-            result = SYSCALL64(munmap, arg1, arg2);
+            result = SYSCALL64(munmap, arg1, arg2, arg3, arg4, arg5, arg6);
         }
         break;
     }
     case felix86_riscv64_setitimer: {
-        result = SYSCALL64(setitimer, arg1, arg2, arg3);
+        result = SYSCALL64(setitimer, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_timer_create: {
-        result = SYSCALL64(timer_create, arg1, arg2, arg3);
+        result = SYSCALL64(timer_create, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_timer_gettime: {
-        result = SYSCALL64(timer_gettime, arg1, arg2);
+        result = SYSCALL64(timer_gettime, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_timer_settime: {
-        result = SYSCALL64(timer_settime, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(timer_settime, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_timer_getoverrun: {
-        result = SYSCALL64(timer_getoverrun, arg1);
+        result = SYSCALL64(timer_getoverrun, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_timer_delete: {
-        result = SYSCALL64(timer_delete, arg1);
+        result = SYSCALL64(timer_delete, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_getuid: {
@@ -603,7 +603,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_fdatasync: {
-        result = SYSCALL64(fdatasync, arg1);
+        result = SYSCALL64(fdatasync, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_geteuid: {
@@ -623,11 +623,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_setfsgid: {
-        result = SYSCALL64(setfsgid, arg1);
+        result = SYSCALL64(setfsgid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_setfsuid: {
-        result = SYSCALL64(setfsuid, arg1);
+        result = SYSCALL64(setfsuid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_getppid: {
@@ -643,19 +643,19 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_socket: {
-        result = SYSCALL64(socket, arg1, arg2, arg3);
+        result = SYSCALL64(socket, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_connect: {
-        result = SYSCALL64(connect, arg1, arg2, arg3);
+        result = SYSCALL64(connect, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_mremap: {
-        result = SYSCALL64(mremap, arg1, arg2, arg3, arg4, arg5);
+        result = SYSCALL64(mremap, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_msync: {
-        result = SYSCALL64(msync, arg1, arg2, arg3);
+        result = SYSCALL64(msync, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sendto: {
@@ -671,7 +671,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_lseek: {
-        result = SYSCALL64(lseek, arg1, arg2, arg3);
+        result = SYSCALL64(lseek, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_uname: {
@@ -693,11 +693,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_timerfd_create: {
-        result = SYSCALL64(timerfd_create, arg1, arg2);
+        result = SYSCALL64(timerfd_create, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_timerfd_settime: {
-        result = SYSCALL64(timerfd_settime, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(timerfd_settime, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_timerfd_gettime: {
@@ -717,7 +717,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_madvise: {
-        result = SYSCALL64(madvise, arg1, arg2, arg3);
+        result = SYSCALL64(madvise, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_exit: {
@@ -728,11 +728,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_eventfd2: {
-        result = SYSCALL64(eventfd2, arg1, arg2);
+        result = SYSCALL64(eventfd2, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_fchmod: {
-        result = SYSCALL64(fchmod, arg1, arg2);
+        result = SYSCALL64(fchmod, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_fchmodat: {
@@ -748,27 +748,27 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_semget: {
-        result = SYSCALL64(semget, arg1, arg2, arg3);
+        result = SYSCALL64(semget, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_semop: {
-        result = SYSCALL64(semop, arg1, arg2, arg3);
+        result = SYSCALL64(semop, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_semtimedop: {
-        result = SYSCALL64(semtimedop, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(semtimedop, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_semctl: {
-        result = SYSCALL64(semctl, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(semctl, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_flock: {
-        result = SYSCALL64(flock, arg1, arg2);
+        result = SYSCALL64(flock, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_clock_nanosleep: {
-        result = SYSCALL64(clock_nanosleep, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(clock_nanosleep, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_rt_sigaction: {
@@ -800,7 +800,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_rt_sigtimedwait: {
-        result = SYSCALL64(rt_sigtimedwait, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(rt_sigtimedwait, arg1, arg2, arg3, arg4, arg5, arg6);
         WARN_ONCE("This program uses rt_sigtimedwait");
         break;
     }
@@ -871,7 +871,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             break;
         }
         default: {
-            result = SYSCALL64(prctl, arg1, arg2, arg3, arg4, arg5);
+            result = SYSCALL64(prctl, arg1, arg2, arg3, arg4, arg5, arg6);
             break;
         }
         }
@@ -882,7 +882,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_inotify_init1: {
-        result = SYSCALL64(inotify_init1, arg1);
+        result = SYSCALL64(inotify_init1, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_inotify_add_watch: {
@@ -891,39 +891,39 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_inotify_rm_watch: {
-        result = SYSCALL64(inotify_rm_watch, arg1, arg2);
+        result = SYSCALL64(inotify_rm_watch, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_fallocate: {
-        result = SYSCALL64(fallocate, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(fallocate, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sched_getaffinity: {
-        result = SYSCALL64(sched_getaffinity, arg1, arg2, arg3);
+        result = SYSCALL64(sched_getaffinity, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sched_setaffinity: {
-        result = SYSCALL64(sched_setaffinity, arg1, arg2, arg3);
+        result = SYSCALL64(sched_setaffinity, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sched_get_priority_min: {
-        result = SYSCALL64(sched_get_priority_min, arg1);
+        result = SYSCALL64(sched_get_priority_min, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sched_get_priority_max: {
-        result = SYSCALL64(sched_get_priority_max, arg1);
+        result = SYSCALL64(sched_get_priority_max, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_sched_setscheduler: {
-        result = SYSCALL64(sched_setscheduler, arg1, arg2, arg3);
+        result = SYSCALL64(sched_setscheduler, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_mincore: {
-        result = SYSCALL64(mincore, arg1, arg2, arg3);
+        result = SYSCALL64(mincore, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_listen: {
-        result = SYSCALL64(listen, arg1, arg2);
+        result = SYSCALL64(listen, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_clone3: {
@@ -942,7 +942,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_wait4: {
-        result = SYSCALL64(wait4, arg1, arg2, arg3, arg4);
+        result = SYSCALL64(wait4, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_execve: {
@@ -1028,11 +1028,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_umask: {
-        result = SYSCALL64(umask, arg1);
+        result = SYSCALL64(umask, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_ppoll: {
-        result = SYSCALL64(ppoll, arg1, arg2, arg3, arg4, arg5);
+        result = SYSCALL64(ppoll, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_linkat: {
@@ -1143,7 +1143,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_epoll_create1: {
-            result = SYSCALL64(epoll_create1, arg1);
+            result = SYSCALL64(epoll_create1, arg1, arg2, arg3, arg4, arg5, arg6);
             break;
         }
         case felix86_x86_64_epoll_wait: {
