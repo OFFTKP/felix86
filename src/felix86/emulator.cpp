@@ -145,8 +145,10 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
                       pointer_size;                     // argc
 
     // 16-byte align the RSP
-    rsp -= 16;
-    rsp &= ~0xF;
+    if (size_needed & 0xF) {
+        rsp -= size_needed & 0xF;
+    }
+
     u64 final_rsp = rsp - size_needed;
 
     u64 (*stack_push)(u64, u64) = g_mode32 ? stack_push32 : stack_push64;
