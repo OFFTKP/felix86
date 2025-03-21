@@ -228,16 +228,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_close: {
-        // Don't close our stdout
-        // TODO: better implementation where it closes an emulated stdout instead
-        if (arg1 != 1 && arg1 != 2) {
-            result = SYSCALL64(close, arg1, arg2, arg3, arg4, arg5, arg6);
-        } else {
-            result = 0;
-        }
-        // if (added_region && !(path_copy.empty() || name_copy.empty())) {
-        //     Elf::LoadSymbols(name_copy, path_copy, (void*)min_address_copy);
-        // }
+        result = SYSCALL64(close, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_shutdown: {
@@ -261,7 +252,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_bind: {
-        result = SYSCALL64(bind, arg1, (struct sockaddr*)arg2, arg3);
+        result = SYSCALL64(bind, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_setpgid: {
@@ -277,7 +268,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_getrusage: {
-        result = SYSCALL64(getrusage, arg1, (struct rusage*)arg2);
+        result = SYSCALL64(getrusage, arg1, arg2);
         break;
     }
     case felix86_riscv64_getcwd: {
@@ -349,7 +340,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_sched_getparam: {
-        result = SYSCALL64(sched_getparam, arg1, (struct sched_param*)arg2);
+        result = SYSCALL64(sched_getparam, arg1, arg2);
         break;
     }
     case felix86_riscv64_sched_setparam: {
@@ -357,23 +348,23 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_clock_gettime: {
-        result = SYSCALL64(clock_gettime, arg1, (struct timespec*)arg2);
+        result = SYSCALL64(clock_gettime, arg1, arg2);
         break;
     }
     case felix86_riscv64_clock_getres: {
-        result = SYSCALL64(clock_getres, arg1, (struct timespec*)arg2);
+        result = SYSCALL64(clock_getres, arg1, arg2);
         break;
     }
     case felix86_riscv64_getresuid: {
-        result = SYSCALL64(getresuid, (uid_t*)arg1, (uid_t*)arg2, (uid_t*)arg3);
+        result = SYSCALL64(getresuid, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_getresgid: {
-        result = SYSCALL64(getresgid, (gid_t*)arg1, (gid_t*)arg2, (gid_t*)arg3);
+        result = SYSCALL64(getresgid, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_gettimeofday: {
-        result = SYSCALL64(gettimeofday, (struct timeval*)arg1, (struct timezone*)arg2);
+        result = SYSCALL64(gettimeofday, arg1, arg2);
         break;
     }
     case felix86_riscv64_dup: {
@@ -663,7 +654,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_times: {
-        result = SYSCALL64(times, (struct tms*)arg1);
+        result = SYSCALL64(times, arg1);
         break;
     }
     case felix86_riscv64_recvfrom: {
@@ -701,7 +692,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_timerfd_gettime: {
-        result = SYSCALL64(timerfd_gettime, arg1, (struct itimerspec*)arg2);
+        result = SYSCALL64(timerfd_gettime, arg1, arg2);
         break;
     }
     case felix86_riscv64_statfs: {
@@ -709,11 +700,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_fstatfs: {
-        result = SYSCALL64(fstatfs, arg1, (struct statfs*)arg2);
+        result = SYSCALL64(fstatfs, arg1, arg2);
         break;
     }
     case felix86_riscv64_getsockname: {
-        result = SYSCALL64(getsockname, arg1, (struct sockaddr*)arg2, (socklen_t*)arg3);
+        result = SYSCALL64(getsockname, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_madvise: {
@@ -740,11 +731,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_recvmsg: {
-        result = SYSCALL64(recvmsg, arg1, (struct msghdr*)arg2, arg3);
+        result = SYSCALL64(recvmsg, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_sendmsg: {
-        result = SYSCALL64(sendmsg, arg1, (struct msghdr*)arg2, arg3);
+        result = SYSCALL64(sendmsg, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_semget: {
@@ -1047,7 +1038,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_getpeername: {
-        result = SYSCALL64(getpeername, arg1, (struct sockaddr*)arg2, (socklen_t*)arg3);
+        result = SYSCALL64(getpeername, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_rt_sigsuspend: {

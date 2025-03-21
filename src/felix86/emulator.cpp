@@ -16,6 +16,7 @@
 
 extern char** environ;
 
+static char x86_string[] = "i686";
 static char x86_64_string[] = "x86_64";
 
 u64 stack_push(u64 stack, u64 value) {
@@ -51,6 +52,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     }
 
     const char* path = g_params.argv[0].c_str();
+    printf("PATH: %s\n", path);
 
     std::shared_ptr<Elf> elf = g_fs->GetExecutable();
 
@@ -64,11 +66,13 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     rsp = stack_push_string(rsp, path);
     const char* program_name = (const char*)rsp;
 
-    rsp = stack_push_string(rsp, x86_64_string);
+    rsp = stack_push_string(rsp, g_mode32 ? x86_string : x86_64_string);
     const char* platform_name = (const char*)rsp;
 
     for (ssize_t i = 0; i < argc; i++) {
         rsp = stack_push_string(rsp, g_params.argv[i].c_str());
+        if (i == 0)
+            printf("argv0: %s\n", (char*)rsp);
         argv_addresses[i] = rsp;
     }
 
