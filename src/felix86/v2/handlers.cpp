@@ -204,6 +204,8 @@ void OP_noflags_destreg(Recompiler& rec, const HandlerMetadata& meta, Assembler&
         break;
     }
     }
+
+    rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
 }
 
 FAST_HANDLE(ADD) {
