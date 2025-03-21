@@ -1489,7 +1489,8 @@ FAST_HANDLE(DIV) {
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
 
     switch (size) {
-    case X86_SIZE_BYTE: {
+    case X86_SIZE_BYTE:
+    case X86_SIZE_BYTE_HIGH: {
         biscuit::GPR mod = rec.scratch();
         biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
 
@@ -1555,7 +1556,8 @@ FAST_HANDLE(IDIV) {
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
 
     switch (size) {
-    case X86_SIZE_BYTE: {
+    case X86_SIZE_BYTE:
+    case X86_SIZE_BYTE_HIGH: {
         biscuit::GPR mod = rec.scratch();
         biscuit::GPR divisor = rec.scratch();
         biscuit::GPR ax_sext = rec.scratch();
@@ -2184,7 +2186,8 @@ FAST_HANDLE(IMUL) {
     if (opcount == 1) {
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
         switch (size) {
-        case X86_SIZE_BYTE: {
+        case X86_SIZE_BYTE:
+        case X86_SIZE_BYTE_HIGH: {
             biscuit::GPR result = rec.scratch();
             biscuit::GPR sext = rec.scratch();
             biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
@@ -2360,7 +2363,8 @@ FAST_HANDLE(MUL) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
     switch (size) {
-    case X86_SIZE_BYTE: {
+    case X86_SIZE_BYTE:
+    case X86_SIZE_BYTE_HIGH: {
         biscuit::GPR result = rec.scratch();
         biscuit::GPR al = rec.getRefGPR(X86_REF_RAX, X86_SIZE_BYTE);
         as.MULW(result, al, src);
