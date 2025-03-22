@@ -14,8 +14,8 @@
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <termios.h>
-#undef VMIN
 #include <unistd.h>
+#undef VMIN
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/strace.hpp"
@@ -23,7 +23,7 @@
 #include "felix86/emulator.hpp"
 #include "felix86/hle/brk.hpp"
 #include "felix86/hle/filesystem.hpp"
-#include "felix86/hle/guest_structs.hpp"
+#include "felix86/hle/guest_types.hpp"
 #include "felix86/hle/stat.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
@@ -349,7 +349,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_dup3: {
-        result = SYSCALL(dup3, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = SYSCALL(dup3, arg1, arg2, x86_to_riscv_flags(arg3), arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_fstat: {
@@ -398,7 +398,24 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_fcntl: {
-        result = SYSCALL(fcntl, arg1, arg2, arg3, arg4, arg5, arg6);
+        switch (arg2) {
+        case F_GETFL: {
+            result = SYSCALL(fcntl, arg1, arg2, arg3);
+            if (result >= 0) {
+                result = riscv_to_x86_flags(result);
+            }
+            break;
+        }
+        case F_SETFL: {
+            result = SYSCALL(fcntl, arg1, arg2, x86_to_riscv_flags(arg3));
+            break;
+        }
+        default: {
+            result = SYSCALL(fcntl, arg1, arg2, arg3);
+            break;
+        }
+        }
+
         break;
     }
     case felix86_riscv64_pselect6: {
@@ -457,7 +474,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_pipe2: {
-        result = SYSCALL(pipe2, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = SYSCALL(pipe2, arg1, x86_to_riscv_flags(arg2));
         break;
     }
     case felix86_riscv64_memfd_create: {
@@ -495,7 +512,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             break;
         }
 
-        result = Filesystem::OpenAt((int)arg1, (char*)arg2, (int)arg3, arg4);
+        result = Filesystem::OpenAt((int)arg1, (char*)arg2, x86_to_riscv_flags((int)arg3), arg4);
         break;
     }
     case felix86_riscv64_tgkill: {
@@ -1153,7 +1170,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_open: {
-            result = Filesystem::OpenAt(AT_FDCWD, (char*)arg1, (int)arg2, arg3);
+            result = Filesystem::OpenAt(AT_FDCWD, (char*)arg1, x86_to_riscv_flags((int)arg2), arg3);
             break;
         }
         case felix86_x86_64_alarm: {
