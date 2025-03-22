@@ -7022,14 +7022,6 @@ FAST_HANDLE(PCMPESTRM) {
     PCMPXSTRX(rec, meta, as, instruction, operands, pcmpxstrx::ExplicitMask);
 }
 
-FAST_HANDLE(FNSTCW) {
-    WARN("FNSTCW is not implemented, ignoring");
-}
-
-FAST_HANDLE(FLDCW) {
-    WARN("FLDCW is not implemented, ignoring");
-}
-
 FAST_HANDLE(STMXCSR) {
     biscuit::GPR mxcsr = rec.scratch();
     biscuit::GPR address = rec.scratch();

@@ -13,6 +13,7 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
 #undef VMIN
@@ -349,7 +350,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_dup3: {
-        result = SYSCALL(dup3, arg1, arg2, x86_to_riscv_flags(arg3), arg4, arg5, arg6);
+        result = SYSCALL(dup3, arg1, arg2, x86_to_riscv_flags(arg3));
         break;
     }
     case felix86_riscv64_fstat: {
@@ -1276,6 +1277,22 @@ void felix86_syscall32(ThreadState* state) {
         result = felix86_syscall_common(state, rv_syscall, arg1, arg2, arg3, arg4, arg5, arg6);
     } else {
         switch (syscall_number) {
+        case felix86_x86_32_alarm: {
+            result = ::alarm(arg1);
+            break;
+        }
+        case felix86_x86_32_rename: {
+            result = Filesystem::Rename((char*)arg1, (char*)arg2);
+            break;
+        }
+        case felix86_x86_32_mkdir: {
+            result = Filesystem::Mkdir((char*)arg1, arg2);
+            break;
+        }
+        case felix86_x86_32_pipe: {
+            result = ::pipe((int*)arg1);
+            break;
+        }
         case felix86_x86_32_writev: {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
@@ -1286,6 +1303,10 @@ void felix86_syscall32(ThreadState* state) {
             // mmap2 is like mmap but file offset is in pages (4096 bytes) to help with the lack of big enough integers in x86-32
             u64 offset = arg6 * 4096;
             result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
+            break;
+        }
+        case felix86_x86_32_open: {
+            result = Filesystem::OpenAt(AT_FDCWD, (char*)arg1, x86_to_riscv_flags((int)arg2), arg3);
             break;
         }
         case felix86_x86_32_set_thread_area: {
@@ -1360,6 +1381,23 @@ void felix86_syscall32(ThreadState* state) {
         }
         case felix86_x86_32_access: {
             result = Filesystem::FAccessAt(AT_FDCWD, (char*)arg1, (int)arg2, 0);
+            break;
+        }
+        case felix86_x86_32_unlink: {
+            result = Filesystem::UnlinkAt(AT_FDCWD, (char*)arg1, 0);
+            break;
+        }
+        case felix86_x86_32_waitpid: {
+            result = ::waitpid((pid_t)arg1, (int*)arg2, (int)arg3);
+            break;
+        }
+        case felix86_x86_32_time32: {
+            time_t time;
+            result = ::time(&time);
+
+            if (result == 0) {
+                *(u32*)arg1 = time;
+            }
             break;
         }
         case felix86_x86_32_clock_nanosleep_time32: {

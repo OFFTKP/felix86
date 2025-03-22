@@ -6,6 +6,11 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/signals.hpp"
 
+#define C0_BIT (1 << 8)
+#define C1_BIT (1 << 9)
+#define C2_BIT (1 << 10)
+#define C3_BIT (1 << 14)
+
 struct Recompiler;
 
 typedef enum : u8 {
@@ -138,6 +143,7 @@ struct ThreadState {
     RMode rmode{RMode::RNE};
     u16 fpu_cw{};
     u16 fpu_tw{};
+    u16 fpu_sw{};
     u8 fpu_top{};
 
     pid_t* clear_tid_address = nullptr;

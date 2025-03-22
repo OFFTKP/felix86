@@ -127,7 +127,11 @@ FAST_HANDLE(FWAIT) {
 }
 
 FAST_HANDLE(FPREM) {
-    WARN("Unhandled instruction FPREM, no operation");
+    rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
+
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fprem);
 }
 
 FAST_HANDLE(FNSTENV) {
@@ -135,7 +139,9 @@ FAST_HANDLE(FNSTENV) {
 }
 
 FAST_HANDLE(FNSTSW) {
-    WARN("Unhandled instruction FNSTSW, no operation");
+    biscuit::GPR temp = rec.scratch();
+    as.LWU(temp, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    rec.setOperandGPR(&operands[0], temp);
 }
 
 FAST_HANDLE(FLDENV) {
@@ -299,4 +305,12 @@ FAST_HANDLE(FLDZ) {
     biscuit::FPR st = rec.scratchFPR();
     as.FMV_D_X(st, x0);
     rec.pushST(top, st);
+}
+
+FAST_HANDLE(FNSTCW) {
+    WARN("FNSTCW is not implemented, ignoring");
+}
+
+FAST_HANDLE(FLDCW) {
+    WARN("FLDCW is not implemented, ignoring");
 }

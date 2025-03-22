@@ -324,6 +324,7 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
 
     state->fpu_cw = data->fcw;
     state->fpu_tw = data->ftw;
+    state->fpu_sw = data->fsw;
     state->fpu_top = (data->fsw >> 11) & 7;
     state->mxcsr = data->mxcsr;
     state->rmode = rounding_mode((x86RoundingMode)((state->mxcsr >> 13) & 3));
@@ -1145,4 +1146,33 @@ void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment) {
         break;
     }
     }
+}
+
+void felix86_fprem(ThreadState* state) {
+    const int top = state->fpu_top;
+    ASSERT(top >= 0 && top <= 7);
+    const u64 st0 = state->fp[top];
+    const u64 st1 = state->fp[(top + 1) & 0b111];
+    double st0d, st1d;
+    memcpy(&st0d, &st0, 8);
+    memcpy(&st1d, &st1, 8);
+    const int exp0 = (st0 >> 52) & 0x7FF;
+    const int exp1 = (st1 >> 52) & 0x7FF;
+    const int D = exp0 - exp1;
+    if (D < 64) {
+        const i64 Q = (i64)(trunc(st0d / st1d));
+        st0d -= st1d * Q;
+        state->fpu_sw &= ~(C0_BIT | C1_BIT | C2_BIT | C3_BIT);
+        state->fpu_sw |= (Q & 1) ? C1_BIT : 0;
+        state->fpu_sw |= (Q & 2) ? C3_BIT : 0;
+        state->fpu_sw |= (Q & 4) ? C0_BIT : 0;
+    } else {
+        const double p2 = exp2(D - 32);
+        const i64 Q = trunc((st0d / st1d) / p2);
+        st0d -= st1d * Q * p2;
+        state->fpu_sw |= C2_BIT;
+    }
+
+    // Writeback the new ST(0) value
+    memcpy(&state->fp[top], &st0d, 8);
 }
