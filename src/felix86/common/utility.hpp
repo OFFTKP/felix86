@@ -7,6 +7,7 @@
 #include <vector>
 #include <stdbool.h>
 #include <stdint.h>
+#include "Zydis/Register.h"
 #include "biscuit/isa.hpp"
 
 using u64 = uint64_t;
@@ -138,3 +139,5 @@ inline bool is_subpath(const std::filesystem::path& path, const std::filesystem:
 }
 
 u64 mmap_min_addr();
+
+void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment);

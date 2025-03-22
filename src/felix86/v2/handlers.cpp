@@ -255,29 +255,54 @@ void SHIFT_noflags(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, 
 }
 
 FAST_HANDLE(MOV) {
-    biscuit::GPR src;
     if (is_segment(operands[0])) {
-        // Destination is es/cs/ds/ss... In long mode I'm pretty sure this does nothing?
-        if (!g_mode32) {
-            WARN("MOV with segment register destination??");
-        } else {
-            WARN("MOV with segment register destination?? Is this supposed to do something?");
-        }
-        return;
+        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+        rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
+        as.MV(a0, rec.threadStatePointer());
+        as.MV(a1, src);
+        as.LI(a2, operands[0].reg.value);
+        rec.call((u64)felix86_set_segment);
+        rec.restoreRoundingMode();
     } else if (is_segment(operands[1])) {
-        // Source is es/cs/ds/ss... in long mode these are zero afaik
-        if (!g_mode32) {
-            WARN("MOV with segment register source??");
-        } else {
-            WARN("MOV with segment register source?? Is this supposed to do something?");
+        biscuit::GPR seg = rec.scratch();
+        int offset = 0;
+        switch (operands[1].reg.value) {
+        case ZYDIS_REGISTER_CS: {
+            offset = offsetof(ThreadState, cs);
+            break;
         }
-
-        src = x0;
+        case ZYDIS_REGISTER_DS: {
+            offset = offsetof(ThreadState, ds);
+            break;
+        }
+        case ZYDIS_REGISTER_SS: {
+            offset = offsetof(ThreadState, ss);
+            break;
+        }
+        case ZYDIS_REGISTER_ES: {
+            offset = offsetof(ThreadState, es);
+            break;
+        }
+        case ZYDIS_REGISTER_FS: {
+            offset = offsetof(ThreadState, fs);
+            break;
+        }
+        case ZYDIS_REGISTER_GS: {
+            offset = offsetof(ThreadState, gs);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+        as.LWU(seg, offset, rec.threadStatePointer());
+        rec.setOperandGPR(&operands[0], seg);
     } else {
-        src = rec.getOperandGPR(&operands[1]);
+        biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+        rec.setOperandGPR(&operands[0], src);
     }
-
-    rec.setOperandGPR(&operands[0], src);
 }
 
 FAST_HANDLE(ADD) {
@@ -6325,9 +6350,9 @@ FAST_HANDLE(WRGSBASE) {
     biscuit::GPR reg = rec.getOperandGPR(&operands[0]);
 
     if (instruction.operand_width == 32) {
-        as.SW(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+        as.SW(reg, offsetof(ThreadState, gsbase), rec.threadStatePointer());
     } else if (instruction.operand_width == 64) {
-        as.SD(reg, offsetof(ThreadState, fsbase), rec.threadStatePointer());
+        as.SD(reg, offsetof(ThreadState, gsbase), rec.threadStatePointer());
     } else {
         UNREACHABLE();
     }
@@ -6978,6 +7003,7 @@ void PCMPXSTRX(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, Zydi
     as.LI(a4, operands[2].imm.value.u);
 
     rec.call((u64)felix86_pcmpxstrx);
+    rec.restoreRoundingMode();
 }
 
 FAST_HANDLE(PCMPISTRI) {

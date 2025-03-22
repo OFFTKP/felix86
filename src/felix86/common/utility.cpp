@@ -1102,3 +1102,45 @@ u64 mmap_min_addr() {
 
     return addr;
 }
+
+void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment) {
+    int index = value >> 3;
+    ASSERT_MSG(index >= 12 && index <= 14, "Segment register index is not 12, 13, 14");
+
+    switch (segment) {
+    case ZYDIS_REGISTER_CS: {
+        state->cs = value;
+        state->csbase = state->gdt[index];
+        break;
+    }
+    case ZYDIS_REGISTER_DS: {
+        state->ds = value;
+        state->dsbase = state->gdt[index];
+        break;
+    }
+    case ZYDIS_REGISTER_SS: {
+        state->ss = value;
+        state->ssbase = state->gdt[index];
+        break;
+    }
+    case ZYDIS_REGISTER_ES: {
+        state->es = value;
+        state->esbase = state->gdt[index];
+        break;
+    }
+    case ZYDIS_REGISTER_FS: {
+        state->fs = value;
+        state->fsbase = state->gdt[index];
+        break;
+    }
+    case ZYDIS_REGISTER_GS: {
+        state->gs = value;
+        state->gsbase = state->gdt[index];
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+}

@@ -1296,6 +1296,18 @@ void felix86_syscall32(ThreadState* state) {
             state->gdt[index] = udesc->base_addr;
             udesc->entry_number = 12 + index;
             result = 0;
+
+#define CHECK_SEG(name)                                                                                                                              \
+    if ((state->name >> 3) == index) {                                                                                                               \
+        state->name##base = udesc->base_addr;                                                                                                        \
+    }
+            CHECK_SEG(fs);
+            CHECK_SEG(gs);
+            CHECK_SEG(es);
+            CHECK_SEG(ss);
+            CHECK_SEG(cs);
+            CHECK_SEG(ds);
+#undef CHECK_SEG
             break;
         }
         case felix86_x86_32_get_thread_area: {

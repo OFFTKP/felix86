@@ -33,6 +33,8 @@ u64 GetEffectiveAddress(ThreadState* state, ZydisDecodedOperand& operand) {
         effective_address += state->fsbase;
     } else if (operand.mem.segment == ZYDIS_REGISTER_GS) {
         effective_address += state->gsbase;
+    } else {
+        UNREACHABLE();
     }
 
     if ((operand.attributes & ZYDIS_ATTRIB_HAS_ADDRESSSIZE) || g_mode32) {

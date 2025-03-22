@@ -120,8 +120,20 @@ struct ThreadState {
     bool sf{};
     bool of{};
     bool df{};
+    // Actual segment values
+    u16 gs{};
+    u16 fs{};
+    u16 cs{};
+    u16 ds{};
+    u16 ss{};
+    u16 es{};
+    // Base addresses (either fsbase/gsbase on 64-bit mode or all of them set by ie. mov gs, ax & on set_thread_area in 32-bit mode)
     u64 gsbase{};
     u64 fsbase{};
+    u64 csbase{};
+    u64 dsbase{};
+    u64 ssbase{};
+    u64 esbase{};
     u32 mxcsr{0x1F80}; // default value
     RMode rmode{RMode::RNE};
     u16 fpu_cw{};

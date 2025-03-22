@@ -1424,6 +1424,8 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
         as.LD(gs, offsetof(ThreadState, gsbase), threadStatePointer());
         as.ADD(address, address, gs);
         popScratch();
+    } else if (has_segment) {
+        UNREACHABLE();
     }
 
     return address;
@@ -1507,7 +1509,7 @@ void Recompiler::writebackDirtyState() {
 
 void Recompiler::invalidStateUntilJump() {
     // This instruction hints to the state reconstruction in the signal handler that the state was written back
-    // and is invalid, until a jump. For example, if a block does something like
+    // and is invalid, until a jump. For example, if a block does something like:
     // writebackDirtyState()
     // modify a0, a1, t0
     // jump to function to handle stuff
