@@ -1,4 +1,9 @@
+// Due to differences inside structs, only syscalls that are trivial go here
+// any syscall that deals with a struct that has size/type differences is handled specially in syscall.cpp
+
 X(brk)
+X(read)
+X(write)
 
 // X(accept4)
 // X(acct)
@@ -157,7 +162,6 @@ X(brk)
 // X(pwritev)
 // X(pwritev2)
 // X(quotactl)
-// X(read)
 // X(readahead)
 // X(readlinkat)
 // X(readv)
@@ -258,5 +262,4 @@ X(brk)
 // X(vmsplice)
 // X(wait4)
 // X(waitid)
-// X(write)
 // X(writev)
