@@ -1107,6 +1107,8 @@ void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment) {
     int index = value >> 3;
     ASSERT_MSG(index >= 12 && index <= 14, "Segment register index is not 12, 13, 14");
 
+    index -= 12;
+
     switch (segment) {
     case ZYDIS_REGISTER_CS: {
         state->cs = value;
