@@ -30,12 +30,16 @@ constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
     (Cpuid){0x80000004, NO_SUBLEAF, 0x20342029, 0x20555043, 0x30382E32, 0x007A4847},
 };
 
-[[maybe_unused]] constexpr std::array p3_mappings = {
-    // Pentium 3 CPU, for x86 mode
-    (Cpuid){0x00000000, NO_SUBLEAF, 0x00000003, 0x756E6547, 0x6C65746E, 0x49656E69},
-    (Cpuid){0x00000001, NO_SUBLEAF, 0x00000673, 0x00000000, 0x00000000, 0x0387FBFF},
-    (Cpuid){0x00000002, NO_SUBLEAF, 0x03020101, 0x00000000, 0x00000000, 0x0C040843},
-    (Cpuid){0x00000003, NO_SUBLEAF, 0x00000000, 0x00000000, 0x4CECC782, 0x00006778},
+[[maybe_unused]] constexpr std::array p4_mappings_32 = {
+    // Pentium 4 CPU, no x86-64
+    (Cpuid){00000000, NO_SUBLEAF, 0x00000002, 0x756E6547, 0x6C65746E, 0x49656E69},
+    (Cpuid){00000001, NO_SUBLEAF, 0x00000F29, 0x00020809, 0x00004400, 0xBFEBFBFF},
+    (Cpuid){00000002, NO_SUBLEAF, 0x665B5001, 0x00000000, 0x00000000, 0x007B7040},
+    (Cpuid){80000000, NO_SUBLEAF, 0x80000004, 0x00000000, 0x00000000, 0x00000000},
+    (Cpuid){80000001, NO_SUBLEAF, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
+    (Cpuid){80000002, NO_SUBLEAF, 0x20202020, 0x20202020, 0x20202020, 0x6E492020},
+    (Cpuid){80000003, NO_SUBLEAF, 0x286C6574, 0x50202952, 0x69746E65, 0x52286D75},
+    (Cpuid){80000004, NO_SUBLEAF, 0x20342029, 0x20555043, 0x30382E32, 0x007A4847},
 };
 
 [[maybe_unused]] constexpr std::array nehalem_mappings = {
@@ -65,7 +69,7 @@ constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
 };
 
 std::span<const Cpuid> selected_mappings = p4_mappings;
-std::span<const Cpuid> selected_mappings_32 = p3_mappings;
+std::span<const Cpuid> selected_mappings_32 = p4_mappings_32;
 
 void felix86_cpuid(ThreadState* thread_state) {
     u32 eax = 0;
@@ -93,13 +97,13 @@ void felix86_cpuid(ThreadState* thread_state) {
     }
 
     // We can't unset mmx bits for interpreter cpuid calls as those are needed to even get the program started
-    // if (thread_state->rip.toHost() >= g_interpreter_end || thread_state->rip.toHost() < g_interpreter_start) {
-    //     u64 mmxbits = 0b11 << 22;
-    //     if (leaf == 1) {
-    //         // Unset the MMX bits for now, SDL chooses MMX paths when it's present
-    //         edx &= ~mmxbits;
-    //     }
-    // }
+    if (thread_state->rip.toHost() >= g_interpreter_end || thread_state->rip.toHost() < g_interpreter_start) {
+        u64 mmxbits = 0b11 << 22;
+        if (leaf == 1) {
+            // Unset the MMX bits for now, SDL chooses MMX paths when it's present
+            edx &= ~mmxbits;
+        }
+    }
 
     STRACE("CPUID(%08x, %08x) -> %08x %08x %08x %08x", leaf, subleaf, eax, ebx, ecx, edx);
     thread_state->SetGpr(X86_REF_RAX, eax);
