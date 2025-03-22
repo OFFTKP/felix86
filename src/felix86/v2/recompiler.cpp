@@ -453,7 +453,7 @@ void Recompiler::compileInstruction(HandlerMetadata& meta) {
 #undef X
     default: {
         ZydisDisassembledInstruction disassembled;
-        if (ZYAN_SUCCESS(ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, meta.rip.raw(), (u8*)meta.rip.raw(), 15, &disassembled))) {
+        if (ZYAN_SUCCESS(ZydisDisassembleIntel(decoder.machine_mode, meta.rip.raw(), (u8*)meta.rip.raw(), 15, &disassembled))) {
             ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
         } else {
             ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);

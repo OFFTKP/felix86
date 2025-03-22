@@ -7209,6 +7209,14 @@ FAST_HANDLE(POPFQ) {
     as.SB(temp, offsetof(ThreadState, cpuid_bit), rec.threadStatePointer());
 }
 
+FAST_HANDLE(PUSHFD) {
+    fast_PUSHFQ(rec, meta, as, instruction, operands);
+}
+
+FAST_HANDLE(POPFD) {
+    fast_POPFQ(rec, meta, as, instruction, operands);
+}
+
 FAST_HANDLE(MOVDDUP) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec iota = rec.scratchVec();
