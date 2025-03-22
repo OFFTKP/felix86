@@ -870,7 +870,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     }
     case felix86_riscv64_inotify_add_watch: {
         ERROR("TODO: inotify_add_watch move me to Filesystem");
-        result = SYSCALL(inotify_add_watch, arg1, (const char*)arg2, arg3);
+        result = SYSCALL(inotify_add_watch, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_inotify_rm_watch: {
