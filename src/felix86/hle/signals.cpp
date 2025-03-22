@@ -812,6 +812,8 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     VERBOSE("------- Guest signal %s (%d) %s -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code");
 
+    ASSERT(!g_mode32);
+
     XmmReg* xmms;
 
     u64* gprs = get_regs(ctx);
