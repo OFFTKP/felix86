@@ -957,12 +957,18 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         argv.push_back(emulator.c_str());
 
         if (arg2) {
-            const char** guest_argv = (const char**)arg2;
+            u8* guest_argv = (u8*)arg2;
             argv.push_back(path.c_str()); // push the resolved path instead of the path in argv[0];
-            guest_argv++;
-            while (*guest_argv) {
-                argv.push_back(*guest_argv);
-                guest_argv++;
+            guest_argv += g_mode32 ? 4 : 8;
+            while (true) {
+                u64 ptr = 0;
+                memcpy(&ptr, guest_argv, g_mode32 ? 4 : 8);
+                if (ptr == 0) {
+                    break;
+                }
+
+                argv.push_back((const char*)ptr);
+                guest_argv += g_mode32 ? 4 : 8;
             }
         } else {
             WARN("argv null during execve...?");
@@ -982,10 +988,16 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         }
 
         if (arg3) {
-            const char** guest_env = (const char**)arg3;
-            while (*guest_env) {
-                envp.push_back(*guest_env);
-                guest_env++;
+            u8* guest_envp = (u8*)arg3;
+            while (true) {
+                u64 ptr = 0;
+                memcpy(&ptr, guest_envp, g_mode32 ? 4 : 8);
+                if (ptr == 0) {
+                    break;
+                }
+
+                envp.push_back((const char*)ptr);
+                guest_envp += g_mode32 ? 4 : 8;
             }
         } else {
             WARN("envp null during execve...?");
