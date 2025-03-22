@@ -1270,7 +1270,7 @@ void felix86_syscall32(ThreadState* state) {
             result = SYSCALL(writev, arg1, iovecs.data(), arg3);
             break;
         }
-        case felix86_x86_32_mmap2: {
+        case felix86_x86_32_mmap_pgoff: {
             // mmap2 is like mmap but file offset is in pages (4096 bytes) to help with the lack of big enough integers in x86-32
             u64 offset = arg6 * 4096;
             result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
@@ -1337,7 +1337,7 @@ void felix86_syscall32(ThreadState* state) {
             result = 0;
             break;
         }
-        case felix86_x86_32_ugetrlimit: {
+        case felix86_x86_32_getrlimit: {
             rlimit limit;
             result = getrlimit((int)arg1, &limit);
             if (result == 0) {

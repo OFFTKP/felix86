@@ -12,6 +12,7 @@ X(statx)
 X(close)
 X(set_tid_address)
 X(set_robust_list)
+X(rseq)
 
 // X(accept4)
 // X(acct)
