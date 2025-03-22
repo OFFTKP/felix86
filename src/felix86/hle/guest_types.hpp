@@ -31,7 +31,7 @@ struct x86_rlimit {
         this->rlim_max = guest64.rlim_max;
     }
 
-    operator rlimit() {
+    operator rlimit() const {
         rlimit guest64;
         guest64.rlim_cur = (i32)this->rlim_cur;
         guest64.rlim_max = (i32)this->rlim_max;
@@ -48,7 +48,7 @@ struct x86_iovec {
         this->iov_len = guest64.iov_len;
     }
 
-    operator iovec() {
+    operator iovec() const {
         iovec guest64;
         guest64.iov_base = (void*)(u64)this->iov_base;
         guest64.iov_len = this->iov_len;
@@ -65,7 +65,7 @@ struct x86_timespec {
         this->tv_nsec = guest64.tv_nsec;
     }
 
-    operator timespec() {
+    operator timespec() const {
         timespec guest64;
         guest64.tv_sec = this->tv_sec;
         guest64.tv_nsec = this->tv_nsec;

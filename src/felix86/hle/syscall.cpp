@@ -1362,6 +1362,12 @@ void felix86_syscall32(ThreadState* state) {
             result = Filesystem::FAccessAt(AT_FDCWD, (char*)arg1, (int)arg2, 0);
             break;
         }
+        case felix86_x86_32_futex_time32: {
+            const x86_timespec* guest_spec = (x86_timespec*)arg4;
+            const timespec host_spec = *guest_spec;
+            result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg4, arg5);
+            break;
+        }
         default: {
             result = -ENOSYS;
             ERROR("Unimplemented syscall %s (%d)", x86_get_name(syscall_number), (int)syscall_number);
