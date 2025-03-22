@@ -156,6 +156,8 @@ struct ThreadState {
 
     u32 gdt[3]{};
 
+    u64 persona = 0;
+
     // We need a place to save execution frames so we can return from the JIT back to C code.
     // It can't be the stack, we use that for return stack buffer optimization.
     // This happens in two places:
