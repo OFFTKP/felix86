@@ -1362,6 +1362,23 @@ void felix86_syscall32(ThreadState* state) {
             result = Filesystem::FAccessAt(AT_FDCWD, (char*)arg1, (int)arg2, 0);
             break;
         }
+        case felix86_x86_32_clock_nanosleep_time32: {
+            timespec rqtp, rmtp;
+            const x86_timespec* guest_rqtp = (x86_timespec*)arg3;
+            x86_timespec* guest_rmtp = (x86_timespec*)arg4;
+            if (!guest_rqtp) {
+                result = -EFAULT;
+                break;
+            }
+
+            rqtp = *guest_rqtp;
+            result = SYSCALL(clock_nanosleep, arg1, arg2, &rqtp, &rmtp);
+
+            if (result == 0 && guest_rmtp) {
+                *guest_rmtp = rmtp;
+            }
+            break;
+        }
         case felix86_x86_32_futex_time32: {
             const x86_timespec* guest_spec = (x86_timespec*)arg4;
             if (guest_spec) {
