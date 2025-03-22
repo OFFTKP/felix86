@@ -1364,8 +1364,12 @@ void felix86_syscall32(ThreadState* state) {
         }
         case felix86_x86_32_futex_time32: {
             const x86_timespec* guest_spec = (x86_timespec*)arg4;
-            const timespec host_spec = *guest_spec;
-            result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg4, arg5);
+            if (guest_spec) {
+                const timespec host_spec = *guest_spec;
+                result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg4, arg5);
+            } else {
+                result = SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
+            }
             break;
         }
         default: {
