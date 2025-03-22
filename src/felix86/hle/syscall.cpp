@@ -653,7 +653,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         strcpy(guest_uname->release, "5.0.0");
         std::string version = "#1 SMP " __DATE__ " " __TIME__;
         strcpy(guest_uname->version, version.c_str());
-        strcpy(guest_uname->machine, (state->persona & PER_LINUX32) ? "i386" : "x86_64");
+        strcpy(guest_uname->machine, (state->persona & PER_LINUX32) ? "i686" : "x86_64");
         ASSERT(!(state->persona & UNAME26));
         result = 0;
         break;
