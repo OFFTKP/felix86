@@ -243,6 +243,8 @@ long ForkMe(CloneArgs& host_clone_args) {
         std::string name = "ForkedFrom" + std::to_string(parent_tid); // forked from parent tid
         prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
         LOG("fork process %ld started", syscall(SYS_getpid));
+        ThreadState* state = ThreadState::Get();
+        state->tid = gettid();
     } else {
         if (ret < 0) {
             ERROR("clone (probably fork) failed with %d", errno);
@@ -273,6 +275,8 @@ long VForkMe(CloneArgs& args) {
         if (args.new_rsp) {
             state->gprs[X86_REF_RSP] = args.new_rsp;
         }
+
+        state->tid = gettid();
 
         if (args.new_fsbase) {
             WARN("vfork giving us new TLS?");

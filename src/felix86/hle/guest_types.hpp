@@ -59,6 +59,23 @@ struct x86_iovec {
     u32 iov_len;
 };
 
+struct x86_timespec {
+    x86_timespec(const timespec& guest64) {
+        this->tv_sec = guest64.tv_sec;
+        this->tv_nsec = guest64.tv_nsec;
+    }
+
+    operator timespec() {
+        timespec guest64;
+        guest64.tv_sec = this->tv_sec;
+        guest64.tv_nsec = this->tv_nsec;
+        return guest64;
+    }
+
+    u32 tv_sec;
+    u32 tv_nsec;
+};
+
 constexpr int x86_O_DIRECT = 040000;
 constexpr int x86_O_LARGEFILE = 0100000;
 constexpr int x86_O_DIRECTORY = 0200000;
