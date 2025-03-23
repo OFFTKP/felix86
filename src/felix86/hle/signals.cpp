@@ -773,7 +773,7 @@ bool handle_rsb_overflow(ThreadState* current_state, siginfo_t* info, ucontext_t
     u64 write_page = write_address & ~0xFFF;
     u64 current_sp = 0;
 #ifdef __riscv
-    current_sp = context->__gregs[REG_SP];
+    current_sp = context->uc_mcontext.__gregs[REG_SP];
 #endif
     ASSERT(current_sp != 0);
     ASSERT(current_state->overflow_page != 0);
@@ -787,7 +787,7 @@ bool handle_rsb_overflow(ThreadState* current_state, siginfo_t* info, ucontext_t
         new_sp &= ~0xFFF;
         WARN("RSB overflowed, setting stack pointer to 0x%lx", new_sp);
 #ifdef __riscv
-        context->__gregs[REG_SP] = new_sp;
+        context->uc_mcontext.__gregs[REG_SP] = new_sp;
 #endif
         return true;
     }
@@ -798,7 +798,7 @@ bool handle_rsb_overflow(ThreadState* current_state, siginfo_t* info, ucontext_t
         new_sp &= ~0xFFF;
         WARN("RSB underflowed, setting stack pointer to 0x%lx", new_sp);
 #ifdef __riscv
-        context->__gregs[REG_SP] = new_sp;
+        context->uc_mcontext.__gregs[REG_SP] = new_sp;
 #endif
     }
 
