@@ -760,9 +760,55 @@ bool handle_ctrl_c(ThreadState* current_state, siginfo_t* info, ucontext_t* cont
     return false;
 }
 
-constexpr std::array<RegisteredHostSignal, 2> host_signals = {{
+bool handle_rsb_overflow(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    if (!g_config.rsb) {
+        return false;
+    }
+
+    if (!is_in_jit_code(current_state, (u8*)pc)) {
+        return false;
+    }
+
+    u64 write_address = (u64)info->si_addr;
+    u64 write_page = write_address & ~0xFFF;
+    u64 current_sp = 0;
+#ifdef __riscv
+    current_sp = context->__gregs[REG_SP];
+#endif
+    ASSERT(current_sp != 0);
+    ASSERT(current_state->overflow_page != 0);
+    ASSERT(current_state->underflow_page != 0);
+    ASSERT(write_address != 0);
+
+    if (write_page == current_state->overflow_page) {
+        // Set the stack pointer to the original value -- It's fine to modify it like this
+        // because we are in JIT code and this happened during RSB optimization
+        u64 new_sp = current_state->underflow_page - 4096 * 2;
+        new_sp &= ~0xFFF;
+        WARN("RSB overflowed, setting stack pointer to 0x%lx", new_sp);
+#ifdef __riscv
+        context->__gregs[REG_SP] = new_sp;
+#endif
+        return true;
+    }
+
+    if (write_page == current_state->underflow_page) {
+        // Ditto, this is much more unlikely to happen
+        u64 new_sp = current_state->underflow_page - 4096 * 2;
+        new_sp &= ~0xFFF;
+        WARN("RSB underflowed, setting stack pointer to 0x%lx", new_sp);
+#ifdef __riscv
+        context->__gregs[REG_SP] = new_sp;
+#endif
+    }
+
+    return false;
+}
+
+constexpr std::array<RegisteredHostSignal, 3> host_signals = {{
     {SIGILL, 0, handle_breakpoint},
     {SIGINT, 0, handle_ctrl_c},
+    {SIGSEGV, SEGV_ACCERR, handle_rsb_overflow},
 }};
 
 bool dispatch_host(int sig, siginfo_t* info, void* ctx) {

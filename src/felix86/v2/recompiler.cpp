@@ -115,7 +115,8 @@ void Recompiler::emitDispatcher() {
     if (g_config.rsb) {
         // Try to lower the chances that our return stack buffer optimizations end up
         // ruining the data in the host stack, if somehow there's multiple returns before any calls
-        as.ADDI(sp, sp, -1024);
+        // Also the page right before is guarded to catch underflows, see StartThread
+        as.ADDI(sp, sp, -4096 * 4);
         // Also make sure it's aligned
         as.ANDI(sp, sp, -16);
         // In exit_dispatcher the original stack pointer is restored so it's fine that we don't

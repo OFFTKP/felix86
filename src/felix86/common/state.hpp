@@ -186,6 +186,9 @@ struct ThreadState {
     u64 frame_pointer = 0;
     u8 frames[4096]{};
 
+    u64 underflow_page = 0;
+    u64 overflow_page = 0;
+
     std::unique_ptr<Recompiler> recompiler;
 
     biscuit::RMode GetRMode() {
