@@ -4023,44 +4023,52 @@ void ROUND(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDec
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     bool dyn_round = imm & 0b100;
-    RMode rmode = RMode::DYN;
-
-    if (!dyn_round) {
-        rmode = rounding_mode((x86RoundingMode)(imm & 0b11));
-    }
-
     if (!(imm & 0b1000)) {
         WARN("Ignore precision bit not set for roundsd/roundss");
     }
 
     rec.setVectorState(sew, vlen);
-    as.VFMV_FS(ft8, src);
+    if (!dyn_round) {
+        // Use floats so we can hardcode a different rounding mode without changing it
+        // TODO: it may be faster to just change the rounding mode
+        biscuit::FPR temp1 = rec.scratchFPR();
+        biscuit::FPR temp2 = rec.scratchFPR();
+        RMode rmode = rounding_mode((x86RoundingMode)(imm & 0b11));
 
-    if (Extensions::Zfa) {
-        WARN_ONCE("Zfa extension code, untested");
-        if (sew == SEW::E64) {
-            as.FROUND_D(ft9, ft8, rmode);
-        } else if (sew == SEW::E32) {
-            as.FROUND_S(ft9, ft8, rmode);
+        as.VFMV_FS(temp1, src);
+
+        if (Extensions::Zfa) {
+            WARN_ONCE("Zfa extension code, untested");
+            if (sew == SEW::E64) {
+                as.FROUND_D(temp2, temp1, rmode);
+            } else if (sew == SEW::E32) {
+                as.FROUND_S(temp2, temp1, rmode);
+            } else {
+                UNREACHABLE();
+            }
         } else {
-            UNREACHABLE();
+            biscuit::GPR temp = rec.scratch();
+            if (sew == SEW::E64) {
+                as.FCVT_L_D(temp, temp1, rmode);
+                as.FCVT_D_L(temp2, temp, rmode);
+            } else if (sew == SEW::E32) {
+                as.FCVT_W_S(temp, temp1, rmode);
+                as.FCVT_S_W(temp2, temp, rmode);
+            } else {
+                UNREACHABLE();
+            }
         }
+
+        as.VFMV_SF(dst, temp2);
+
+        rec.setOperandVec(&operands[0], dst);
     } else {
-        biscuit::GPR temp = rec.scratch();
-        if (sew == SEW::E64) {
-            as.FCVT_L_D(temp, ft8, rmode);
-            as.FCVT_D_L(ft9, temp, rmode);
-        } else if (sew == SEW::E32) {
-            as.FCVT_W_S(temp, ft8, rmode);
-            as.FCVT_S_W(ft9, temp, rmode);
-        } else {
-            UNREACHABLE();
-        }
+        // Dynamic rounding mode, use vectors directly
+        biscuit::Vec temp = rec.scratchVec();
+        as.VFCVT_X_F(temp, src);
+        as.VFCVT_F_X(dst, temp);
+        rec.setOperandVec(&operands[0], dst);
     }
-
-    as.VFMV_SF(dst, ft9);
-
-    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(ROUNDSS) {
