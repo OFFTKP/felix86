@@ -60,6 +60,14 @@ FAST_HANDLE(FDIVP) {
     OP(&Assembler::FDIV_D, rec, as, instruction, operands, true);
 }
 
+FAST_HANDLE(FMUL) {
+    OP(&Assembler::FMUL_D, rec, as, instruction, operands, false);
+}
+
+FAST_HANDLE(FMULP) {
+    OP(&Assembler::FMUL_D, rec, as, instruction, operands, true);
+}
+
 FAST_HANDLE(FST) {
     biscuit::GPR top = rec.getTOP();
     biscuit::FPR st0 = rec.getST(top, 0);
