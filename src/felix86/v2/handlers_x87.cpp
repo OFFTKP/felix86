@@ -148,6 +148,40 @@ FAST_HANDLE(FLDENV) {
     WARN("Unhandled instruction FLDENV, no operation");
 }
 
+void FIST(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedOperand* operands, bool pop, RMode mode = RMode::DYN) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR integer = rec.scratch();
+
+    if (operands[0].size == 16) {
+        as.FCVT_W_D(integer, st0);
+        rec.writeMemory(integer, address, 0, X86_SIZE_WORD);
+    } else if (operands[0].size == 32) {
+        as.FCVT_W_D(integer, st0);
+        rec.writeMemory(integer, address, 0, X86_SIZE_DWORD);
+    } else if (operands[0].size == 32) {
+        as.FCVT_L_D(integer, st0);
+        rec.writeMemory(integer, address, 0, X86_SIZE_QWORD);
+    }
+
+    if (pop) {
+        rec.popST(top);
+    }
+}
+
+FAST_HANDLE(FIST) {
+    FIST(rec, meta, as, operands, false);
+}
+
+FAST_HANDLE(FISTP) {
+    FIST(rec, meta, as, operands, true);
+}
+
+FAST_HANDLE(FISTTP) {
+    FIST(rec, meta, as, operands, true, RMode::RTZ);
+}
+
 void FCOM(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
     u8 index = operands[1].reg.value - ZYDIS_REGISTER_ST0;
     ASSERT(index >= 1 && index <= 7);

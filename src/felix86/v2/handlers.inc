@@ -420,5 +420,8 @@ X(FLDPI)
 X(FLDLG2)
 X(FLDLN2)
 X(FLDZ)
+X(FIST)
+X(FISTP)
+X(FISTTP)
 
 X(INVLPG) /* thunking dummy instruction */

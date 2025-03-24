@@ -1,0 +1,189 @@
+{
+    "660f3808dc": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMSLT.VX        v0, v5, zero, none",
+            "VMV.V.V         v22, v4",
+            "VRSUB.VX        v22, v4, zero, v0.t",
+            "VMSEQ.VX        v0, v5, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v4, v22"
+        ],
+        "disassembly": "psignb xmm3, xmm4"
+    },
+    "660f3808d2": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMSLT.VX        v0, v3, zero, none",
+            "VMV.V.V         v22, v3",
+            "VRSUB.VX        v22, v3, zero, v0.t",
+            "VMSEQ.VX        v0, v3, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v3, v22"
+        ],
+        "disassembly": "psignb xmm2, xmm2"
+    },
+    "660f38080f": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v23, a0, none, 1",
+            "VMSLT.VX        v0, v23, zero, none",
+            "VMV.V.V         v22, v2",
+            "VRSUB.VX        v22, v2, zero, v0.t",
+            "VMSEQ.VX        v0, v23, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v2, v22"
+        ],
+        "disassembly": "psignb xmm1, [rdi]"
+    },
+    "660f3809dc": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "VSETIVLI        zero, 8, e16, m1, tu, mu",
+            "VMSLT.VX        v0, v5, zero, none",
+            "VMV.V.V         v22, v4",
+            "VRSUB.VX        v22, v4, zero, v0.t",
+            "VMSEQ.VX        v0, v5, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v4, v22"
+        ],
+        "disassembly": "psignw xmm3, xmm4"
+    },
+    "660f3809d2": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "VSETIVLI        zero, 8, e16, m1, tu, mu",
+            "VMSLT.VX        v0, v3, zero, none",
+            "VMV.V.V         v22, v3",
+            "VRSUB.VX        v22, v3, zero, v0.t",
+            "VMSEQ.VX        v0, v3, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v3, v22"
+        ],
+        "disassembly": "psignw xmm2, xmm2"
+    },
+    "660f38090f": {
+        "instruction_count": 9,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v23, a0, none, 1",
+            "VSETIVLI        zero, 8, e16, m1, tu, mu",
+            "VMSLT.VX        v0, v23, zero, none",
+            "VMV.V.V         v22, v2",
+            "VRSUB.VX        v22, v2, zero, v0.t",
+            "VMSEQ.VX        v0, v23, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v2, v22"
+        ],
+        "disassembly": "psignw xmm1, [rdi]"
+    },
+    "660f380adc": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VMSLT.VX        v0, v5, zero, none",
+            "VMV.V.V         v22, v4",
+            "VRSUB.VX        v22, v4, zero, v0.t",
+            "VMSEQ.VX        v0, v5, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v4, v22"
+        ],
+        "disassembly": "psignd xmm3, xmm4"
+    },
+    "660f380ad2": {
+        "instruction_count": 7,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VMSLT.VX        v0, v3, zero, none",
+            "VMV.V.V         v22, v3",
+            "VRSUB.VX        v22, v3, zero, v0.t",
+            "VMSEQ.VX        v0, v3, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v3, v22"
+        ],
+        "disassembly": "psignd xmm2, xmm2"
+    },
+    "660f380a0f": {
+        "instruction_count": 9,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v23, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VMSLT.VX        v0, v23, zero, none",
+            "VMV.V.V         v22, v2",
+            "VRSUB.VX        v22, v2, zero, v0.t",
+            "VMSEQ.VX        v0, v23, zero, none",
+            "VXOR.VV         v22, v22, v22, v0.t",
+            "VMV.V.V         v2, v22"
+        ],
+        "disassembly": "psignd xmm1, [rdi]"
+    },
+    "660f3800dc": {
+        "instruction_count": 5,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "ADDIW           ra, zero, 0x8f(143)",
+            "VAND.VX         v23, v5, ra, none",
+            "VRGATHER.VV     v22, v4, v23, none",
+            "VMV.V.V         v4, v22"
+        ],
+        "disassembly": "pshufb xmm3, xmm4"
+    },
+    "660f3800d2": {
+        "instruction_count": 5,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "ADDIW           ra, zero, 0x8f(143)",
+            "VAND.VX         v23, v3, ra, none",
+            "VRGATHER.VV     v22, v3, v23, none",
+            "VMV.V.V         v3, v22"
+        ],
+        "disassembly": "pshufb xmm2, xmm2"
+    },
+    "660f38000f": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v24, a0, none, 1",
+            "ADDIW           ra, zero, 0x8f(143)",
+            "VAND.VX         v23, v24, ra, none",
+            "VRGATHER.VV     v22, v2, v23, none",
+            "VMV.V.V         v2, v22"
+        ],
+        "disassembly": "pshufb xmm1, [rdi]"
+    },
+    "660f3a0fd30a": {
+        "instruction_count": 11,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "ADDIW           ra, zero, 0xffffffc0(-64)",
+            "VMV.S.X         v0, ra",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMV.V.I         v22, 0x0(0)",
+            "VSLIDEDOWN.VI   v22, v4, 0xa(10), none",
+            "VAND.VI         v22, v22, 0x0(0), v0.t",
+            "VMV.V.I         v23, 0x0(0)",
+            "VSLIDEUP.VI     v23, v3, 0x6(6), none",
+            "VOR.VV          v22, v22, v23, none",
+            "VMV.V.V         v3, v22"
+        ],
+        "disassembly": "palignr xmm2, xmm3, 0x0A"
+    },
+    "660f3a0fd310": {
+        "instruction_count": 8,
+        "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "LUI             ra, 0xffff0000(-65536)",
+            "VMV.S.X         v0, ra",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMV.V.I         v22, 0x0(0)",
+            "VSLIDEDOWN.VI   v22, v3, 0x0(0), none",
+            "VAND.VI         v22, v22, 0x0(0), v0.t",
+            "VMV.V.V         v3, v22"
+        ],
+        "disassembly": "palignr xmm2, xmm3, 0x10"
+    }
+}

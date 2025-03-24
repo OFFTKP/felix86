@@ -1236,6 +1236,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
         return cached_lea;
     }
 
+    ASSERT(operand->type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::GPR address = scratch();
     cached_lea = address;
     cached_lea_operand = operand;

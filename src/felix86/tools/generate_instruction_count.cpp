@@ -356,6 +356,9 @@ int main() {
     GEN_SSE(xorps);
     GEN_SSE(andnps);
 
+    GEN_SSE(comiss);
+    GEN_SSE(ucomiss);
+
     GEN(cvtsi2ss(xmm3, rax));
     GEN(cvtsi2ss(xmm2, eax));
     GEN(cvtsi2ss(xmm1, dword[rdi]));
@@ -434,6 +437,13 @@ int main() {
     GEN_SSE(xorpd);
     GEN_SSE(andnpd);
 
+    GEN_SSE(comisd);
+    GEN_SSE(ucomisd);
+
+    GEN_SSE(pcmpeqb);
+    GEN_SSE(pcmpeqw);
+    GEN_SSE(pcmpeqd);
+
     GEN(cvtsi2sd(xmm3, rax));
     GEN(cvtsi2sd(xmm2, eax));
     GEN(cvtsi2sd(xmm1, dword[rdi]));
@@ -446,12 +456,165 @@ int main() {
     GEN(cvttsd2si(eax, xmm2));
     GEN(cvttsd2si(eax, dword[rdi]));
     GEN(cvttsd2si(rax, dword[rdi]));
+    GEN(cvtps2pd(xmm3, xmm4));
+    GEN(cvtps2pd(xmm2, xmm2));
+    GEN(cvtps2pd(xmm3, ptr[rdi]));
+    GEN(cvtpd2dq(xmm3, xmm4));
+    GEN(cvtpd2dq(xmm2, xmm2));
+    GEN(cvtpd2dq(xmm3, ptr[rdi]));
+    GEN(cvtpd2ps(xmm3, xmm4));
+    GEN(cvtpd2ps(xmm2, xmm2));
+    GEN(cvtpd2ps(xmm3, ptr[rdi]));
+    GEN(cvtps2dq(xmm3, xmm4));
+    GEN(cvtps2dq(xmm2, xmm2));
+    GEN(cvtps2dq(xmm3, ptr[rdi]));
+    GEN(cvttps2dq(xmm3, xmm4));
+    GEN(cvttps2dq(xmm2, xmm2));
+    GEN(cvttps2dq(xmm3, ptr[rdi]));
+    GEN(cvttpd2dq(xmm3, xmm4));
+    GEN(cvttpd2dq(xmm2, xmm2));
+    GEN(cvttpd2dq(xmm3, ptr[rdi]));
 
+    GEN(unpckhpd(xmm3, xmm4));
+    GEN(unpckhpd(xmm2, xmm2));
+    GEN(unpckhpd(xmm3, ptr[rdi]));
+    GEN(unpcklpd(xmm3, xmm4));
+    GEN(unpcklpd(xmm2, xmm2));
+    GEN(unpcklpd(xmm3, ptr[rdi]));
+
+    GEN(pshufd(xmm3, xmm4, (u8)0));
+    GEN(pshufd(xmm2, xmm2, (u8)0));
+    GEN(pshufd(xmm3, ptr[rdi], (u8)0));
+    GEN(pshufd(xmm3, xmm4, (u8)0xE4));
+    GEN(pshufd(xmm2, xmm2, (u8)0xE4));
+    GEN(pshufd(xmm3, ptr[rdi], (u8)0xE4));
+    GEN(pshuflw(xmm3, xmm4, (u8)0));
+    GEN(pshuflw(xmm2, xmm2, (u8)0));
+    GEN(pshuflw(xmm3, ptr[rdi], (u8)0));
+    GEN(pshuflw(xmm3, xmm4, (u8)0xE4));
+    GEN(pshuflw(xmm2, xmm2, (u8)0xE4));
+    GEN(pshuflw(xmm3, ptr[rdi], (u8)0xE4));
+    GEN(pshufhw(xmm3, xmm4, (u8)0));
+    GEN(pshufhw(xmm2, xmm2, (u8)0));
+    GEN(pshufhw(xmm3, ptr[rdi], (u8)0));
+    GEN(pshufhw(xmm3, xmm4, (u8)0xE4));
+    GEN(pshufhw(xmm2, xmm2, (u8)0xE4));
+    GEN(pshufhw(xmm3, ptr[rdi], (u8)0xE4));
+    GEN(pslldq(xmm2, 5));
+    GEN(psrldq(xmm2, 5));
+    GEN_SSE_CMP(cmpsd);
+    GEN_SSE_CMP(cmppd);
+
+    GEN(shufpd(xmm3, xmm4, (u8)0));
+    GEN(shufpd(xmm2, xmm2, (u8)0));
+    GEN(shufpd(xmm3, ptr[rdi], (u8)0));
+    GEN(shufpd(xmm3, xmm4, (u8)0xE4));
+    GEN(shufpd(xmm2, xmm2, (u8)0xE4));
+    GEN(shufpd(xmm3, ptr[rdi], (u8)0xE4));
+
+    GEN_SSE(punpcklbw);
+    GEN_SSE(punpcklwd);
+    GEN_SSE(punpckldq);
+    GEN_SSE(punpcklqdq);
+    GEN_SSE(punpckhbw);
+    GEN_SSE(punpckhwd);
+    GEN_SSE(punpckhdq);
+    GEN_SSE(punpckhqdq);
+    GEN_SSE(pmaddwd);
+
+    GEN(movlpd(ptr[rdi], xmm3));
+    GEN(movlpd(xmm3, ptr[rdi]));
+    GEN(movhpd(ptr[rdi], xmm3));
+    GEN(movhpd(xmm3, ptr[rdi]));
     GEN_SSE_MOV(movsd);
     GEN_SSE_MOV(movapd);
     GEN_SSE_MOV(movupd);
+    GEN_SSE_MOV(movdqa);
+    GEN_SSE_MOV(movdqu);
+    GEN(movmskpd(eax, xmm2));
+    GEN(movmskpd(rax, xmm2));
 
     std::ofstream sse2("counts/SSE2.json");
     sse2 << json.dump(4);
+    json.clear();
+
+    GEN_SSE(addsubps);
+    GEN_SSE(addsubpd);
+    // GEN_SSE(haddps);
+    GEN_SSE(haddpd);
+    // GEN_SSE(hsubps);
+    GEN_SSE(hsubpd);
+    GEN_SSE(movshdup);
+    GEN_SSE(movsldup);
+    GEN_SSE(movddup);
+
+    std::ofstream sse3("counts/SSE3.json");
+    sse3 << json.dump(4);
+    json.clear();
+
+    // GEN_SSE(pabsb);
+    // GEN_SSE(pabsw);
+    // GEN_SSE(pabsd);
+    GEN_SSE(psignb);
+    GEN_SSE(psignw);
+    GEN_SSE(psignd);
+    GEN_SSE(pshufb);
+    GEN(palignr(xmm2, xmm3, 10));
+    GEN(palignr(xmm2, xmm3, 16));
+
+    std::ofstream ssse3("counts/SSSE3.json");
+    ssse3 << json.dump(4);
+    json.clear();
+
+    GEN_SSE(pmulld);
+    GEN_SSE(pmuldq);
+    GEN(dpps(xmm2, xmm3, 0b11110000));
+    // GEN_SSE(dppd);
+    GEN(blendpd(xmm2, xmm3, 0b10101010));
+    GEN(blendps(xmm2, xmm3, 0b10101010));
+    GEN(pblendw(xmm2, xmm3, 0b10101010));
+    GEN(blendvpd(xmm2, xmm3));
+    GEN(blendvps(xmm2, xmm3));
+    GEN(pblendvb(xmm2, xmm3));
+
+    GEN(pminuw(xmm2, xmm3));
+    GEN(pminud(xmm2, xmm3));
+    GEN(pminsb(xmm2, xmm3));
+    GEN(pminsd(xmm2, xmm3));
+    GEN(pmaxuw(xmm2, xmm3));
+    GEN(pmaxud(xmm2, xmm3));
+    GEN(pmaxsb(xmm2, xmm3));
+    GEN(pmaxsd(xmm2, xmm3));
+
+    GEN(roundss(xmm2, xmm3, 0b00000011));
+    GEN(roundsd(xmm2, xmm3, 0b00000011));
+    // GEN(roundps(xmm2, xmm3, 0b00000011));
+    // GEN(roundpd(xmm2, xmm3, 0b00000011));
+
+    GEN(pinsrb(xmm2, ptr[rdi], 5));
+    GEN(pinsrw(xmm2, ptr[rdi], 4));
+    GEN(pinsrd(xmm2, ptr[rdi], 3));
+    GEN(pextrb(ptr[rdi], xmm2, 5));
+    GEN(pextrw(ptr[rdi], xmm2, 4));
+    GEN(pextrd(ptr[rdi], xmm2, 3));
+
+    GEN_SSE(pmovsxbw);
+    GEN_SSE(pmovsxbd);
+    GEN_SSE(pmovsxbq);
+    GEN_SSE(pmovsxwd);
+    GEN_SSE(pmovsxwq);
+    GEN_SSE(pmovsxdq);
+    GEN_SSE(pmovzxbw);
+    GEN_SSE(pmovzxbd);
+    GEN_SSE(pmovzxbq);
+    GEN_SSE(pmovzxwd);
+    GEN_SSE(pmovzxwq);
+    GEN_SSE(pmovzxdq);
+
+    GEN_SSE(pcmpeqq);
+    GEN_SSE(ptest);
+
+    std::ofstream sse4_1("counts/SSE4_1.json");
+    sse4_1 << json.dump(4);
     json.clear();
 }
