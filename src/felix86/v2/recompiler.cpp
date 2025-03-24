@@ -1984,18 +1984,26 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
     ASSERT(as.GetCursorPointer() - start == 2 * 4);
 }
 
-void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, HostAddress rip_true,
-                                        HostAddress rip_false) {
+void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, HostAddress rip_true, HostAddress rip_false) {
     Label false_label;
     as.BEQZ(condition, &false_label);
 
+    Literal lrip_true(rip_true.toGuest().raw());
+    biscuit::GPR gpr_true = scratch();
+    as.LD(gpr_true, &lrip_true);
     setRip(gpr_true);
     jumpAndLink(rip_true);
 
     as.Bind(&false_label);
 
+    Literal lrip_false(rip_false.toGuest().raw());
+    biscuit::GPR gpr_false = scratch();
+    as.LD(gpr_false, &lrip_false);
     setRip(gpr_false);
     jumpAndLink(rip_false);
+
+    as.Place(&lrip_true);
+    as.Place(&lrip_false);
 }
 
 void Recompiler::expirePendingLinks(HostAddress rip) {

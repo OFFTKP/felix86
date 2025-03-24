@@ -1932,7 +1932,7 @@ FAST_HANDLE(CBW) {
 }
 
 FAST_HANDLE(CWDE) {
-    biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_WORD);
+    biscuit::GPR ax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
     rec.sexth(ax, ax);
     rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, ax);
 }
@@ -1952,14 +1952,14 @@ FAST_HANDLE(CWD) {
 }
 
 FAST_HANDLE(CDQ) {
-    biscuit::GPR sext = rec.scratch();
-    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+    biscuit::GPR sext = rec.allocatedGPR(X86_REF_RDX);
+    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
     as.SRAIW(sext, eax, 31);
     rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, sext);
 }
 
 FAST_HANDLE(CQO) {
-    biscuit::GPR sext = rec.scratch();
+    biscuit::GPR sext = rec.allocatedGPR(X86_REF_RDX);
     biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
     as.SRAI(sext, rax, 63);
     rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, sext);
@@ -1971,15 +1971,9 @@ void JCC(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecod
     HostAddress address_false = meta.rip.add(instruction.length);
     HostAddress address_true = address_false.add(immediate);
 
-    biscuit::GPR rip_true = rec.scratch();
-    biscuit::GPR rip_false = rec.scratch();
-
-    as.LI(rip_false, address_false.toGuest().raw());
-    as.LI(rip_true, address_true.toGuest().raw());
-
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
-    rec.jumpAndLinkConditional(cond, rip_true, rip_false, address_true, address_false);
+    rec.jumpAndLinkConditional(cond, address_true, address_false);
     rec.stopCompiling();
 }
 

@@ -167,7 +167,7 @@ struct Recompiler {
 
     void jumpAndLink(HostAddress rip, bool use_rsb = false);
 
-    void jumpAndLinkConditional(biscuit::GPR condition, biscuit::GPR gpr_true, biscuit::GPR gpr_false, HostAddress rip_true, HostAddress rip_false);
+    void jumpAndLinkConditional(biscuit::GPR condition, HostAddress rip_true, HostAddress rip_false);
 
     void invalidateBlock(BlockMetadata* block);
 
