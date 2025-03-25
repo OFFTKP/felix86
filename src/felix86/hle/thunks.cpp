@@ -242,14 +242,14 @@ void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* nam
 }
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
-    printf("glXGetProcAddress: %s\n", name);
+    PLAIN("glXGetProcAddress: %s\n", name);
     static auto actual = (void* (*)(const char*))dlsym(libGLX, "glXGetProcAddress");
     ASSERT_MSG(actual, "Couldn't find glXGetProcAddress?");
     return felix86_thunk_GetProcAddressCommon(actual, name);
 }
 
 void* felix86_thunk_eglGetProcAddress(const char* name) {
-    VERBOSE("eglGetProcAddress: %s", name);
+    PLAIN("eglGetProcAddress: %s", name);
     static auto actual = (void* (*)(const char*))dlsym(libEGL, "eglGetProcAddress");
     ASSERT_MSG(actual, "Couldn't find eglGetProcAddress?");
     return felix86_thunk_GetProcAddressCommon(actual, name);
@@ -263,157 +263,190 @@ using GLXFBConfig = void*;
 using GLXWindow = void*;
 using GLXPbuffer = void*;
 
+#define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
+
 XVisualInfo* felix86_thunk_glXChooseVisual(Display* dpy, int screen, int* attribList) {
+    PRINTME;
     static auto host_glXChooseVisual = (decltype(&felix86_thunk_glXChooseVisual))dlsym(libGLX, "glXChooseVisual");
     return host_glXChooseVisual(guestToHostDisplay(dpy), screen, attribList);
 }
 
 GLXContext felix86_thunk_glXCreateContext(Display* dpy, XVisualInfo* vis, GLXContext shareList, Bool direct) {
+    PRINTME;
     static auto host_glXCreateContext = (decltype(&felix86_thunk_glXCreateContext))dlsym(libGLX, "glXCreateContext");
     return host_glXCreateContext(guestToHostDisplay(dpy), vis, shareList, direct);
 }
 
 void felix86_thunk_glXDestroyContext(Display* dpy, GLXContext ctx) {
+    PRINTME;
     static auto host_glXDestroyContext = (decltype(&felix86_thunk_glXDestroyContext))dlsym(libGLX, "glXDestroyContext");
     return host_glXDestroyContext(guestToHostDisplay(dpy), ctx);
 }
 
 Bool felix86_thunk_glXMakeCurrent(Display* dpy, GLXDrawable drawable, GLXContext ctx) {
+    PRINTME;
     static auto host_glXMakeCurrent = (decltype(&felix86_thunk_glXMakeCurrent))dlsym(libGLX, "glXMakeCurrent");
     return host_glXMakeCurrent(guestToHostDisplay(dpy), drawable, ctx);
 }
 
 void felix86_thunk_glXCopyContext(Display* dpy, GLXContext src, GLXContext dst, unsigned long mask) {
+    PRINTME;
     static auto host_glXCopyContext = (decltype(&felix86_thunk_glXCopyContext))dlsym(libGLX, "glXCopyContext");
     return host_glXCopyContext(guestToHostDisplay(dpy), src, dst, mask);
 }
 
 void felix86_thunk_glXSwapBuffers(Display* dpy, GLXDrawable drawable) {
+    PRINTME;
     static auto host_glXSwapBuffers = (decltype(&felix86_thunk_glXSwapBuffers))dlsym(libGLX, "glXSwapBuffers");
     return host_glXSwapBuffers(guestToHostDisplay(dpy), drawable);
 }
 
 GLXPixmap felix86_thunk_glXCreateGLXPixmap(Display* dpy, XVisualInfo* visual, Pixmap pixmap) {
+    PRINTME;
     static auto host_glXCreateGLXPixmap = (decltype(&felix86_thunk_glXCreateGLXPixmap))dlsym(libGLX, "glXCreateGLXPixmap");
     return host_glXCreateGLXPixmap(guestToHostDisplay(dpy), visual, pixmap);
 }
 
 void felix86_thunk_glXDestroyGLXPixmap(Display* dpy, GLXPixmap pixmap) {
+    PRINTME;
     static auto host_glXDestroyGLXPixmap = (decltype(&felix86_thunk_glXDestroyGLXPixmap))dlsym(libGLX, "glXDestroyGLXPixmap");
     return host_glXDestroyGLXPixmap(guestToHostDisplay(dpy), pixmap);
 }
 
 Bool felix86_thunk_glXQueryExtension(Display* dpy, int* errorb, int* event) {
+    PRINTME;
     static auto host_glXQueryExtension = (decltype(&felix86_thunk_glXQueryExtension))dlsym(libGLX, "glXQueryExtension");
     return host_glXQueryExtension(guestToHostDisplay(dpy), errorb, event);
 }
 
 Bool felix86_thunk_glXQueryVersion(Display* dpy, int* maj, int* min) {
+    PRINTME;
     static auto host_glXQueryVersion = (decltype(&felix86_thunk_glXQueryVersion))dlsym(libGLX, "glXQueryVersion");
     return host_glXQueryVersion(guestToHostDisplay(dpy), maj, min);
 }
 
 Bool felix86_thunk_glXIsDirect(Display* dpy, GLXContext ctx) {
+    PRINTME;
     static auto host_glXIsDirect = (decltype(&felix86_thunk_glXIsDirect))dlsym(libGLX, "glXIsDirect");
     return host_glXIsDirect(guestToHostDisplay(dpy), ctx);
 }
 
 int felix86_thunk_glXGetConfig(Display* dpy, XVisualInfo* visual, int attrib, int* value) {
+    PRINTME;
     static auto host_glXGetConfig = (decltype(&felix86_thunk_glXGetConfig))dlsym(libGLX, "glXGetConfig");
     return host_glXGetConfig(guestToHostDisplay(dpy), visual, attrib, value);
 }
 
 const char* felix86_thunk_glXQueryExtensionsString(Display* dpy, int screen) {
+    PRINTME;
     static auto host_glXQueryExtensionsString = (decltype(&felix86_thunk_glXQueryExtensionsString))dlsym(libGLX, "glXQueryExtensionsString");
     return host_glXQueryExtensionsString(guestToHostDisplay(dpy), screen);
 }
 
 const char* felix86_thunk_glXQueryServerString(Display* dpy, int screen, int name) {
+    PRINTME;
     static auto host_glXQueryServerString = (decltype(&felix86_thunk_glXQueryServerString))dlsym(libGLX, "glXQueryServerString");
     return host_glXQueryServerString(guestToHostDisplay(dpy), screen, name);
 }
 
 const char* felix86_thunk_glXGetClientString(Display* dpy, int name) {
+    PRINTME;
     static auto host_glXGetClientString = (decltype(&felix86_thunk_glXGetClientString))dlsym(libGLX, "glXGetClientString");
     return host_glXGetClientString(guestToHostDisplay(dpy), name);
 }
 
 GLXFBConfig* felix86_thunk_glXChooseFBConfig(Display* dpy, int screen, const int* attribList, int* nitems) {
+    PRINTME;
     static auto host_glXChooseFBConfig = (decltype(&felix86_thunk_glXChooseFBConfig))dlsym(libGLX, "glXChooseFBConfig");
     return host_glXChooseFBConfig(guestToHostDisplay(dpy), screen, attribList, nitems);
 }
 
 int felix86_thunk_glXGetFBConfigAttrib(Display* dpy, GLXFBConfig config, int attribute, int* value) {
+    PRINTME;
     static auto host_glXGetFBConfigAttrib = (decltype(&felix86_thunk_glXGetFBConfigAttrib))dlsym(libGLX, "glXGetFBConfigAttrib");
     return host_glXGetFBConfigAttrib(guestToHostDisplay(dpy), config, attribute, value);
 }
 
 GLXFBConfig* felix86_thunk_glXGetFBConfigs(Display* dpy, int screen, int* nelements) {
+    PRINTME;
     static auto host_glXGetFBConfigs = (decltype(&felix86_thunk_glXGetFBConfigs))dlsym(libGLX, "glXGetFBConfigs");
     return host_glXGetFBConfigs(guestToHostDisplay(dpy), screen, nelements);
 }
 
 XVisualInfo* felix86_thunk_glXGetVisualFromFBConfig(Display* dpy, GLXFBConfig config) {
+    PRINTME;
     static auto host_glXGetVisualFromFBConfig = (decltype(&felix86_thunk_glXGetVisualFromFBConfig))dlsym(libGLX, "glXGetVisualFromFBConfig");
     return host_glXGetVisualFromFBConfig(guestToHostDisplay(dpy), config);
 }
 
 GLXWindow felix86_thunk_glXCreateWindow(Display* dpy, GLXFBConfig config, Window win, const int* attribList) {
+    PRINTME;
     static auto host_glXCreateWindow = (decltype(&felix86_thunk_glXCreateWindow))dlsym(libGLX, "glXCreateWindow");
     return host_glXCreateWindow(guestToHostDisplay(dpy), config, win, attribList);
 }
 
 void felix86_thunk_glXDestroyWindow(Display* dpy, GLXWindow window) {
+    PRINTME;
     static auto host_glXDestroyWindow = (decltype(&felix86_thunk_glXDestroyWindow))dlsym(libGLX, "glXDestroyWindow");
     return host_glXDestroyWindow(guestToHostDisplay(dpy), window);
 }
 
 GLXPixmap felix86_thunk_glXCreatePixmap(Display* dpy, GLXFBConfig config, Pixmap pixmap, const int* attribList) {
+    PRINTME;
     static auto host_glXCreatePixmap = (decltype(&felix86_thunk_glXCreatePixmap))dlsym(libGLX, "glXCreatePixmap");
     return host_glXCreatePixmap(guestToHostDisplay(dpy), config, pixmap, attribList);
 }
 
 void felix86_thunk_glXDestroyPixmap(Display* dpy, GLXPixmap pixmap) {
+    PRINTME;
     static auto host_glXDestroyPixmap = (decltype(&felix86_thunk_glXDestroyPixmap))dlsym(libGLX, "glXDestroyPixmap");
     return host_glXDestroyPixmap(guestToHostDisplay(dpy), pixmap);
 }
 
 GLXPbuffer felix86_thunk_glXCreatePbuffer(Display* dpy, GLXFBConfig config, const int* attribList) {
+    PRINTME;
     static auto host_glXCreatePbuffer = (decltype(&felix86_thunk_glXCreatePbuffer))dlsym(libGLX, "glXCreatePbuffer");
     return host_glXCreatePbuffer(guestToHostDisplay(dpy), config, attribList);
 }
 
 void felix86_thunk_glXDestroyPbuffer(Display* dpy, GLXPbuffer pbuf) {
+    PRINTME;
     static auto host_glXDestroyPbuffer = (decltype(&felix86_thunk_glXDestroyPbuffer))dlsym(libGLX, "glXDestroyPbuffer");
     return host_glXDestroyPbuffer(guestToHostDisplay(dpy), pbuf);
 }
 
 void felix86_thunk_glXQueryDrawable(Display* dpy, GLXDrawable draw, int attribute, unsigned int* value) {
+    PRINTME;
     static auto host_glXQueryDrawable = (decltype(&felix86_thunk_glXQueryDrawable))dlsym(libGLX, "glXQueryDrawable");
     return host_glXQueryDrawable(guestToHostDisplay(dpy), draw, attribute, value);
 }
 
 GLXContext felix86_thunk_glXCreateNewContext(Display* dpy, GLXFBConfig config, int renderType, GLXContext shareList, Bool direct) {
+    PRINTME;
     static auto host_glXCreateNewContext = (decltype(&felix86_thunk_glXCreateNewContext))dlsym(libGLX, "glXCreateNewContext");
     return host_glXCreateNewContext(guestToHostDisplay(dpy), config, renderType, shareList, direct);
 }
 
 Bool felix86_thunk_glXMakeContextCurrent(Display* dpy, GLXDrawable draw, GLXDrawable read, GLXContext ctx) {
+    PRINTME;
     static auto host_glXMakeContextCurrent = (decltype(&felix86_thunk_glXMakeContextCurrent))dlsym(libGLX, "glXMakeContextCurrent");
     return host_glXMakeContextCurrent(guestToHostDisplay(dpy), draw, read, ctx);
 }
 
 int felix86_thunk_glXQueryContext(Display* dpy, GLXContext ctx, int attribute, int* value) {
+    PRINTME;
     static auto host_glXQueryContext = (decltype(&felix86_thunk_glXQueryContext))dlsym(libGLX, "glXQueryContext");
     return host_glXQueryContext(guestToHostDisplay(dpy), ctx, attribute, value);
 }
 
 void felix86_thunk_glXSelectEvent(Display* dpy, GLXDrawable drawable, unsigned long mask) {
+    PRINTME;
     static auto host_glXSelectEvent = (decltype(&felix86_thunk_glXSelectEvent))dlsym(libGLX, "glXSelectEvent");
     return host_glXSelectEvent(guestToHostDisplay(dpy), drawable, mask);
 }
 
 void felix86_thunk_glXGetSelectedEvent(Display* dpy, GLXDrawable drawable, unsigned long* mask) {
+    PRINTME;
     static auto host_glXGetSelectedEvent = (decltype(&felix86_thunk_glXGetSelectedEvent))dlsym(libGLX, "glXGetSelectedEvent");
     return host_glXGetSelectedEvent(guestToHostDisplay(dpy), drawable, mask);
 }
