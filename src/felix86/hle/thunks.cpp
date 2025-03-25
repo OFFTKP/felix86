@@ -100,12 +100,10 @@ void* hostToGuestDisplay(void* host) {
     }
 }
 
-// NOTE: due to RISC-V ABI, returning void* void* like this is perfect, as they will be returned
-// directly into a0 and a1, which is exactly where we wanted these pointers
-std::pair<void*, void*> getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
+XVisualInfo* getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
     if (!host_display) {
         WARN("getHostVisualInfo with nil display?");
-        return {host_display, nullptr};
+        return nullptr;
     }
 
     XVisualInfo v;
@@ -116,11 +114,11 @@ std::pair<void*, void*> getHostVisualInfo(Display* host_display, XVisualInfo* gu
     XVisualInfo* info = felix86_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
 
     if (c >= 1 && info != nullptr) {
-        LOG("getHostVisualInfo(%p, %p) has created an XVisualInfo: %p", host_display, guest, info);
-        return {host_display, info};
+        PLAIN("getHostVisualInfo(%p, %p) has created an XVisualInfo: %p", host_display, guest, info);
+        return info;
     } else {
         WARN("getHostVisualInfo returned null?");
-        return {host_display, nullptr};
+        return nullptr;
     }
 }
 
@@ -271,10 +269,11 @@ XVisualInfo* felix86_thunk_glXChooseVisual(Display* dpy, int screen, int* attrib
     return host_glXChooseVisual(guestToHostDisplay(dpy), screen, attribList);
 }
 
-GLXContext felix86_thunk_glXCreateContext(Display* dpy, XVisualInfo* vis, GLXContext shareList, Bool direct) {
+GLXContext felix86_thunk_glXCreateContext(Display* dpy, XVisualInfo* visual, GLXContext shareList, Bool direct) {
     PRINTME;
     static auto host_glXCreateContext = (decltype(&felix86_thunk_glXCreateContext))dlsym(libGLX, "glXCreateContext");
-    return host_glXCreateContext(guestToHostDisplay(dpy), vis, shareList, direct);
+    Display* host_dpy = guestToHostDisplay(dpy);
+    return host_glXCreateContext(host_dpy, getHostVisualInfo(host_dpy, visual), shareList, direct);
 }
 
 void felix86_thunk_glXDestroyContext(Display* dpy, GLXContext ctx) {
@@ -304,7 +303,8 @@ void felix86_thunk_glXSwapBuffers(Display* dpy, GLXDrawable drawable) {
 GLXPixmap felix86_thunk_glXCreateGLXPixmap(Display* dpy, XVisualInfo* visual, Pixmap pixmap) {
     PRINTME;
     static auto host_glXCreateGLXPixmap = (decltype(&felix86_thunk_glXCreateGLXPixmap))dlsym(libGLX, "glXCreateGLXPixmap");
-    return host_glXCreateGLXPixmap(guestToHostDisplay(dpy), visual, pixmap);
+    Display* host_dpy = guestToHostDisplay(dpy);
+    return host_glXCreateGLXPixmap(host_dpy, getHostVisualInfo(host_dpy, visual), pixmap);
 }
 
 void felix86_thunk_glXDestroyGLXPixmap(Display* dpy, GLXPixmap pixmap) {
@@ -334,7 +334,8 @@ Bool felix86_thunk_glXIsDirect(Display* dpy, GLXContext ctx) {
 int felix86_thunk_glXGetConfig(Display* dpy, XVisualInfo* visual, int attrib, int* value) {
     PRINTME;
     static auto host_glXGetConfig = (decltype(&felix86_thunk_glXGetConfig))dlsym(libGLX, "glXGetConfig");
-    return host_glXGetConfig(guestToHostDisplay(dpy), visual, attrib, value);
+    Display* host_dpy = guestToHostDisplay(dpy);
+    return host_glXGetConfig(host_dpy, getHostVisualInfo(host_dpy, visual), attrib, value);
 }
 
 const char* felix86_thunk_glXQueryExtensionsString(Display* dpy, int screen) {
