@@ -8,6 +8,8 @@
 
 #define ALIAS(name) __attribute__((alias(#name), visibility("default")))
 
+int (*original_posix_memalign)(void**, size_t, size_t) = posix_memalign;
+
 extern "C" {
 extern void* __libc_malloc(size_t);
 extern void* __libc_calloc(size_t, size_t);
@@ -15,7 +17,6 @@ extern void __libc_free(void*);
 extern void* __libc_memalign(size_t, size_t);
 extern void* __libc_realloc(void*, size_t);
 extern void* __libc_valloc(size_t);
-extern int __posix_memalign(void**, size_t, size_t);
 
 void* validate(void* ptr) {
     uint64_t address = (uint64_t)ptr;
@@ -68,7 +69,7 @@ void* felix86_valloc(size_t size) {
 }
 
 int felix86_posix_memalign(void** memptr, size_t alignment, size_t size) {
-    int result = ::posix_memalign(memptr, alignment, size);
+    int result = original_posix_memalign(memptr, alignment, size);
     void* address = *memptr;
     validate(address);
     return result;
