@@ -527,6 +527,8 @@ struct Recompiler {
         return false;
     }
 
+    HostAddress compileSequence(HostAddress rip);
+
     void compileInstruction(HandlerMetadata& meta);
 
     void assumeLoaded();
@@ -553,8 +555,6 @@ private:
         bool modification; // true if modified, false if used
         HostAddress position;
     };
-
-    HostAddress compileSequence(HostAddress rip);
 
     // Get the register and load the value into it if needed
     biscuit::GPR gpr(ZydisRegister reg);

@@ -7032,119 +7032,134 @@
         "disassembly": "imul rdx, [rdi], 0xFFFFFFFFFFFFFFFF"
     },
     "64488d042501000000": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDIW           t0, zero, 0x1(1)"
+            "ADDIW           ra, zero, 0x1(1)",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [0x0000000000000001]"
     },
     "64488d07": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDI            t0, a0, 0x0(0)"
+            "ADDI            ra, a0, 0x0(0)",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi]"
     },
     "64488d0437": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD             t0, a0, a1"
+            "ADD             ra, a0, a1",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+rsi*1]"
     },
     "64488d0436": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD             t0, a1, a1"
+            "ADD             ra, a1, a1",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rsi+rsi*1]"
     },
     "64488d0477": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "SH1ADD          t0, a1, a0"
+            "SH1ADD          ra, a1, a0",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+rsi*2]"
     },
     "64488d04b7": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "SH2ADD          t0, a1, a0"
+            "SH2ADD          ra, a1, a0",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+rsi*4]"
     },
     "64488d04f7": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "SH3ADD          t0, a1, a0"
+            "SH3ADD          ra, a1, a0",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+rsi*8]"
     },
     "64488d84f778563412": {
-        "instruction_count": 4,
+        "instruction_count": 5,
         "expected_asm": [
-            "LUI             t0, 0x12345000(305418240)",
-            "ADDIW           t0, t0, 0x678(1656)",
-            "ADD             t0, t0, a0",
-            "SH3ADD          t0, a1, t0"
+            "LUI             ra, 0x12345000(305418240)",
+            "ADDIW           ra, ra, 0x678(1656)",
+            "ADD             ra, ra, a0",
+            "SH3ADD          ra, a1, ra",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+rsi*8+0x12345678]"
     },
     "488d042578563412": {
-        "instruction_count": 2,
+        "instruction_count": 3,
         "expected_asm": [
-            "LUI             t0, 0x12345000(305418240)",
-            "ADDIW           t0, t0, 0x678(1656)"
+            "LUI             ra, 0x12345000(305418240)",
+            "ADDIW           ra, ra, 0x678(1656)",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [0x0000000012345678]"
     },
     "488d07": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDI            t0, a0, 0x0(0)"
+            "ADDI            ra, a0, 0x0(0)",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi]"
     },
     "488d8778563412": {
-        "instruction_count": 3,
+        "instruction_count": 4,
         "expected_asm": [
-            "LUI             t0, 0x12345000(305418240)",
-            "ADDIW           t0, t0, 0x678(1656)",
-            "ADD             t0, t0, a0"
+            "LUI             ra, 0x12345000(305418240)",
+            "ADDIW           ra, ra, 0x678(1656)",
+            "ADD             ra, ra, a0",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+0x12345678]"
     },
     "488d0436": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD             t0, a1, a1"
+            "ADD             ra, a1, a1",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rsi+rsi*1]"
     },
     "488d843678563412": {
-        "instruction_count": 4,
+        "instruction_count": 5,
         "expected_asm": [
-            "LUI             t0, 0x12345000(305418240)",
-            "ADDIW           t0, t0, 0x678(1656)",
-            "ADD             t0, t0, a1",
-            "ADD             t0, t0, a1"
+            "LUI             ra, 0x12345000(305418240)",
+            "ADDIW           ra, ra, 0x678(1656)",
+            "ADD             ra, ra, a1",
+            "ADD             ra, ra, a1",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rsi+rsi*1+0x12345678]"
     },
     "488d04b7": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "SH2ADD          t0, a1, a0"
+            "SH2ADD          ra, a1, a0",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+rsi*4]"
     },
     "488d84b778563412": {
-        "instruction_count": 4,
+        "instruction_count": 5,
         "expected_asm": [
-            "LUI             t0, 0x12345000(305418240)",
-            "ADDIW           t0, t0, 0x678(1656)",
-            "ADD             t0, t0, a0",
-            "SH2ADD          t0, a1, t0"
+            "LUI             ra, 0x12345000(305418240)",
+            "ADDIW           ra, ra, 0x678(1656)",
+            "ADD             ra, ra, a0",
+            "SH2ADD          ra, a1, ra",
+            "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+rsi*4+0x12345678]"
     },

@@ -4503,6 +4503,7 @@ FAST_HANDLE(SHUFPS) {
     u64 el1 = (imm >> 2) & 0b11;
     u64 el2 = (imm >> 4) & 0b11;
     u64 el3 = (imm >> 6) & 0b11;
+    bool all_same = el0 == el1 && el0 == el2 && el0 == el3;
 
     biscuit::Vec iota = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
@@ -4510,15 +4511,18 @@ FAST_HANDLE(SHUFPS) {
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec result = rec.scratchVec();
 
-    rec.setVectorState(SEW::E64, 1);
-    u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
-    as.LI(temp, mask);
-    as.VMV_SX(iota, temp);
+    if (!all_same) {
+        rec.setVectorState(SEW::E64, 1);
+        u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
+        as.LI(temp, mask);
+        as.VMV_SX(iota, temp);
+    } else {
+        rec.setVectorState(SEW::E16, 4);
+        as.VMV(iota, el0);
+    }
 
-    as.VMV(v0, 0b11);
-    as.VMV(result, 0);
     rec.setVectorState(SEW::E32, 4);
-    as.VRGATHEREI16(result, dst, iota, VecMask::Yes);
+    as.VRGATHEREI16(result, dst, iota);
     as.VMV(v0, 0b1100);
     as.VRGATHEREI16(result, src, iota, VecMask::Yes);
 

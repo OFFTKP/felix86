@@ -20,13 +20,61 @@ struct Instruction {
 };
 
 void to_json(ordered_json& j, const Instruction& p) {
-    j = ordered_json{{"instruction_count", p.count}, {"expected_asm", p.expected_asm}, {"disassembly", p.disassembly}};
+    if (!p.disassembly.empty())
+        j = ordered_json{{"instruction_count", p.count}, {"expected_asm", p.expected_asm}, {"disassembly", p.disassembly}};
+    else
+        j = ordered_json{{"instruction_count", p.count}, {"expected_asm", p.expected_asm}};
 }
 
 void from_json(const ordered_json& j, Instruction& p) {
     j.at("instruction_count").get_to(p.count);
     j.at("expected_asm").get_to(p.expected_asm);
-    j.at("disassembly").get_to(p.disassembly);
+    if (!p.disassembly.empty())
+        j.at("disassembly").get_to(p.disassembly);
+}
+
+void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&)) {
+    static Decoder decoder{};
+    static bool init = false;
+    static ZydisDecoder zydis;
+    if (!init) {
+        init = true;
+        ZydisDecoderInit(&zydis, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+        ZydisDecoderEnableMode(&zydis, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
+    }
+
+    rec.setVectorState(SEW::E1024, 0);
+    rec.assumeLoaded();
+    DecodedInstruction instruction;
+    DecodedOperand operands[4];
+    Xbyak::CodeGenerator x;
+    auto x86_start = x.getCurr();
+    func(x);
+
+    auto bisc = rec.getAssembler().GetCursorPointer();
+    rec.compileSequence(HostAddress{(u64)x86_start});
+    auto after = rec.getAssembler().GetCursorPointer();
+    int count = 0;
+    Instruction inst;
+    for (int i = 0; i < after - bisc;) {
+        void* address = bisc + i;
+        auto status = decoder.Decode(bisc, 4, instruction, operands);
+        if (status == biscuit::DecoderStatus::Ok) {
+            i += instruction.length;
+        } else if (status == biscuit::DecoderStatus::UnknownInstructionCompressed) {
+            i += 2;
+        } else {
+            i += 4;
+        }
+        u32 data = 0;
+        memcpy(&data, address, 4);
+        const char* out = rv64_print(data, (u64)address);
+        inst.expected_asm.push_back(out);
+        count++;
+    }
+
+    inst.count = count;
+    json[name] = inst;
 }
 
 void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&), bool flags = false) {
@@ -628,5 +676,89 @@ int main() {
 
     std::ofstream sse4_1("counts/SSE4_1.json");
     sse4_1 << json.dump(4);
+    json.clear();
+
+    gen_many(rec, "llvmpipe_shader", json, [](Xbyak::CodeGenerator& x) {
+        x.mov(r14, ptr[rsi]);
+        x.mov(r14d, ptr[r14 + 0x04]);
+        x.movaps(xmm5, ptr[rsp + 0x70]);
+        x.movaps(xmm8, ptr[rsp + 0x60]);
+        x.movaps(xmm0, ptr[rsp + 0x50]);
+        x.movaps(xmm1, ptr[rsp + 0x30]);
+        x.movaps(xmm2, ptr[rsp + 0x10]);
+        x.movaps(xmm3, ptr[rsp + 0x40]);
+        x.movaps(xmm7, ptr[rsp + 0x20]);
+        x.movaps(xmm9, ptr[rsp]);
+        x.movaps(xmm4, ptr[rdx]);
+        x.movdqa(ptr[rsp - 0x80], xmm11);
+        x.shufps(xmm5, xmm5, 0x00);
+        x.shufps(xmm8, xmm8, 0x00);
+        x.shufps(xmm0, xmm0, 0xFF);
+        x.shufps(xmm1, xmm1, 0xFF);
+        x.shufps(xmm2, xmm2, 0xFF);
+        x.movaps(xmm12, xmm7);
+        x.movaps(xmm15, xmm7);
+        x.movaps(xmm6, xmm7);
+        x.addps(xmm5, ptr[rsp + rcx * 1 + 0xA0]);
+        x.addps(xmm8, ptr[rsp + rcx * 1 + 0xE0]);
+        x.shufps(xmm12, xmm7, 0x00);
+        x.shufps(xmm15, xmm7, 0x55);
+        x.shufps(xmm6, xmm7, 0xAA);
+        x.mulps(xmm0, xmm5);
+        x.mulps(xmm1, xmm8);
+        x.mulps(xmm12, xmm8);
+        x.mulps(xmm15, xmm8);
+        x.mulps(xmm6, xmm8);
+        x.addps(xmm0, xmm2);
+        x.movaps(xmm2, xmm9);
+        x.addps(xmm1, xmm0);
+        x.movaps(xmm0, xmm3);
+        x.shufps(xmm2, xmm9, 0x00);
+        x.shufps(xmm0, xmm3, 0x00);
+        x.divps(xmm4, xmm1);
+        x.movaps(xmm1, xmm9);
+        x.mulps(xmm0, xmm5);
+        x.shufps(xmm1, xmm9, 0x55);
+        x.addps(xmm0, xmm2);
+        x.movaps(xmm2, xmm9);
+        x.addps(xmm12, xmm0);
+        x.movaps(xmm0, xmm3);
+        x.shufps(xmm2, xmm9, 0xFF);
+        x.shufps(xmm0, xmm3, 0x55);
+        x.mulps(xmm0, xmm5);
+        x.addps(xmm0, xmm1);
+        x.movaps(xmm1, xmm9);
+        x.addps(xmm15, xmm0);
+        x.movaps(xmm0, xmm3);
+        x.shufps(xmm1, xmm9, 0xAA);
+        x.shufps(xmm0, xmm3, 0xAA);
+        x.mulps(xmm0, xmm5);
+        x.addps(xmm0, xmm1);
+        x.movaps(xmm1, xmm3);
+        x.mulps(xmm12, xmm4);
+        x.mulps(xmm15, xmm4);
+        x.addps(xmm6, xmm0);
+        x.shufps(xmm1, xmm3, 0xFF);
+        x.movaps(xmm0, xmm7);
+        x.shufps(xmm0, xmm7, 0xFF);
+        x.mulps(xmm1, xmm5);
+        x.mulps(xmm6, xmm4);
+        x.addps(xmm1, xmm2);
+        x.mulps(xmm0, xmm8);
+        x.addps(xmm0, xmm1);
+        x.movd(xmm1, r14d);
+        x.pshufd(xmm2, xmm1, 0x00);
+        x.mulps(xmm0, xmm4);
+        x.movdqa(xmm1, xmm2);
+        x.pand(xmm1, xmm11);
+        x.pcmpeqd(xmm1, xmm10);
+        x.movmskps(r14d, xmm1);
+        x.xor_(r14d, 0x0F);
+        u8* curr = x.getCurr<u8*>();
+        x.jz((void*)(curr + 0xcafe));
+    });
+
+    std::ofstream many("counts/HotBlocks.json");
+    many << json.dump(4);
     json.clear();
 }
