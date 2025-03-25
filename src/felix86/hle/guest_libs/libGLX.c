@@ -80,6 +80,7 @@ extern void* glXSelectEvent;
 __attribute__((noinline)) void* __felix86_glXGetProcAddressSelf(const char* name) {
 #define CASE(func)                                                                                                                                   \
     if (strcmp(name, #func) == 0) {                                                                                                                  \
+        printf("Resolved %s to %p", name, func);                                                                                                     \
         return func;                                                                                                                                 \
     }
 
