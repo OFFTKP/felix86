@@ -242,7 +242,7 @@ void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* nam
 }
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
-    PLAIN("glXGetProcAddress: %s\n", name);
+    PLAIN("glXGetProcAddress: %s", name);
     static auto actual = (void* (*)(const char*))dlsym(libGLX, "glXGetProcAddress");
     ASSERT_MSG(actual, "Couldn't find glXGetProcAddress?");
     return felix86_thunk_GetProcAddressCommon(actual, name);

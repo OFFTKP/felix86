@@ -254,16 +254,21 @@ ret
 global glXGetProcAddress
 align 16
 glXGetProcAddress:
+; glXGetProcAddress can be called with a glX function such as glXChooseVisual
+; We need to return a guest pointer to that function which is easier to do in guest code
+call __felix86_glXGetProcAddressSelf
+test rax, rax
+jnz ptr_ok
+; If not found, use the host function. It's probably a GL function in this case
 invlpg [rax]
 db "glXGetProcAddress", 0
+ptr_ok:
 ret
 
 global glXGetProcAddressARB
 align 16
 glXGetProcAddressARB:
-invlpg [rax]
-db "glXGetProcAddressARB", 0
-ret
+jmp glXGetProcAddress
 
 global glXGetSelectedEvent
 align 16
