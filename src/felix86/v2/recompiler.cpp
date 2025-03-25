@@ -1583,6 +1583,15 @@ void Recompiler::scanFlagUsageAhead(HostAddress rip) {
             }
         }
 
+        if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG && operands[0].mem.base == ZYDIS_REGISTER_RAX) {
+            // Super hack! After invlpg comes a string which the recompiler skips and we also need to skip here.
+            ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
+            const char* string = (const char*)(rip.raw() + instruction.length);
+            size_t size = strlen(string);
+            rip += instruction.length + size + 1; // don't forget null terminator
+            continue;
+        }
+
         if (instruction.attributes & ZYDIS_ATTRIB_CPUFLAG_ACCESS) {
             u32 changed =
                 instruction.cpu_flags->modified | instruction.cpu_flags->set_0 | instruction.cpu_flags->set_1 | instruction.cpu_flags->undefined;

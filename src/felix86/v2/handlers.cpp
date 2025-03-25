@@ -7347,7 +7347,7 @@ FAST_HANDLE(PAUSE) {
 // This is a pseudo-instruction that we generate in our thunked guest libraries to basically
 // notify the recompiler that whatever follows here is thunked code and it should call the equivalent
 // host function.
-// After this instruction (which must be 3 bytes as it always is INVLPG[RAX], see generator.cpp) and a RET follows
+// After this instruction (which must be 3 bytes as it always is INVLPG[RAX], see generator.cpp) follows
 // a null terminated string with the name of the host function we want to call. We pass this name to
 // Thunks::generateTrampoline to generate us a trampoline to go boing.
 // After this INVLPG there will always be a RET, to simulate what a normal function would do
