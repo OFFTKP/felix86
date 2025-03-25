@@ -85,7 +85,7 @@ __attribute__((noinline)) void* __felix86_glXGetProcAddressSelf(const char* name
 #define CASE(func)                                                                                                                                   \
     if (strcmp(name, #func) == 0) {                                                                                                                  \
         printf("Resolved %s to %p\n", name, __GLXGL_CORE_FUNCTIONS.ptr_##func);                                                                      \
-        return &func;                                                                                                                                \
+        return __GLXGL_CORE_FUNCTIONS.ptr_##func;                                                                                                    \
     }
 
     CASE(glXChooseVisual);
