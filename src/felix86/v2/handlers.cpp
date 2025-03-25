@@ -7370,6 +7370,8 @@ FAST_HANDLE(INVLPG) {
         size_t name_size = strlen(name);
         ASSERT(name_size > 0);
         VERBOSE("Generating trampoline for %s", name);
+        rec.writebackDirtyState();
+        rec.invalidStateUntilJump();
         void* trampoline = Thunks::generateTrampoline(rec, as, name);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", name, (u64)name);
         meta.rip += name_size;
