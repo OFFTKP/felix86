@@ -7374,7 +7374,7 @@ FAST_HANDLE(INVLPG) {
         rec.invalidStateUntilJump();
         void* trampoline = Thunks::generateTrampoline(rec, as, name);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", name, (u64)name);
-        meta.rip += name_size;
+        meta.rip += name_size + 1; // also skip null byte
         break;
     }
     case INVLPG_THUNK_CONSTRUCTOR: {
