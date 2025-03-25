@@ -67,7 +67,7 @@ void* felix86_valloc(size_t size) {
 }
 
 int felix86_posix_memalign(void** memptr, size_t alignment, size_t size) {
-    int result = __posix_memalign(memptr, alignment, size);
+    int result = posix_memalign(memptr, alignment, size);
     void* address = *memptr;
     validate(address);
     return result;
