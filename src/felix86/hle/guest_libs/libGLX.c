@@ -36,52 +36,52 @@ __attribute__((noinline)) XVisualInfo* __felix86_ConvertVisualInfo(Display* gues
     }
 }
 
-extern void* glXChooseVisual;
-extern void* glXCreateContext;
-extern void* glXDestroyContext;
-extern void* glXMakeCurrent;
-extern void* glXCopyContext;
-extern void* glXSwapBuffers;
-extern void* glXCreateGLXPixmap;
-extern void* glXDestroyGLXPixmap;
-extern void* glXQueryExtension;
-extern void* glXQueryVersion;
-extern void* glXIsDirect;
-extern void* glXGetConfig;
-extern void* glXGetCurrentContext;
-extern void* glXGetCurrentDrawable;
-extern void* glXWaitGL;
-extern void* glXWaitX;
-extern void* glXUseXFont;
-extern void* glXChooseFBConfig;
-extern void* glXCreateNewContext;
-extern void* glXCreatePbuffer;
-extern void* glXCreatePixmap;
-extern void* glXCreateWindow;
-extern void* glXDestroyPbuffer;
-extern void* glXDestroyPixmap;
-extern void* glXDestroyWindow;
-extern void* glXGetClientString;
-extern void* glXGetCurrentDisplay;
-extern void* glXGetCurrentReadDrawable;
-extern void* glXGetFBConfigAttrib;
-extern void* glXGetFBConfigs;
-extern void* glXGetProcAddress;
-extern void* glXGetProcAddressARB;
-extern void* glXGetSelectedEvent;
-extern void* glXGetVisualFromFBConfig;
-extern void* glXMakeContextCurrent;
-extern void* glXQueryContext;
-extern void* glXQueryDrawable;
-extern void* glXQueryExtensionsString;
-extern void* glXQueryServerString;
-extern void* glXSelectEvent;
+extern void glXChooseVisual();
+extern void glXCreateContext();
+extern void glXDestroyContext();
+extern void glXMakeCurrent();
+extern void glXCopyContext();
+extern void glXSwapBuffers();
+extern void glXCreateGLXPixmap();
+extern void glXDestroyGLXPixmap();
+extern void glXQueryExtension();
+extern void glXQueryVersion();
+extern void glXIsDirect();
+extern void glXGetConfig();
+extern void glXGetCurrentContext();
+extern void glXGetCurrentDrawable();
+extern void glXWaitGL();
+extern void glXWaitX();
+extern void glXUseXFont();
+extern void glXChooseFBConfig();
+extern void glXCreateNewContext();
+extern void glXCreatePbuffer();
+extern void glXCreatePixmap();
+extern void glXCreateWindow();
+extern void glXDestroyPbuffer();
+extern void glXDestroyPixmap();
+extern void glXDestroyWindow();
+extern void glXGetClientString();
+extern void glXGetCurrentDisplay();
+extern void glXGetCurrentReadDrawable();
+extern void glXGetFBConfigAttrib();
+extern void glXGetFBConfigs();
+extern void glXGetProcAddress();
+extern void glXGetProcAddressARB();
+extern void glXGetSelectedEvent();
+extern void glXGetVisualFromFBConfig();
+extern void glXMakeContextCurrent();
+extern void glXQueryContext();
+extern void glXQueryDrawable();
+extern void glXQueryExtensionsString();
+extern void glXQueryServerString();
+extern void glXSelectEvent();
 
 __attribute__((noinline)) void* __felix86_glXGetProcAddressSelf(const char* name) {
 #define CASE(func)                                                                                                                                   \
     if (strcmp(name, #func) == 0) {                                                                                                                  \
-        printf("Resolved %s to %p", name, func);                                                                                                     \
-        return func;                                                                                                                                 \
+        printf("Resolved %s to %p\n", name, &func);                                                                                                  \
+        return &func;                                                                                                                                \
     }
 
     CASE(glXChooseVisual);

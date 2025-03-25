@@ -2,11 +2,6 @@
 ; See guest_libs/README.md
 bits 64
 
-extern __felix86_XGetVisualInfo
-extern __felix86_XSync
-extern __felix86_ConvertVisualInfo
-extern __felix86_glXGetProcAddressSelf
-
 ; These are guest function pointers that we wanna call from host code at will
 section .data
 
@@ -23,6 +18,11 @@ db "XSync", 0
 
 
 section .text
+
+extern __felix86_XGetVisualInfo
+extern __felix86_XSync
+extern __felix86_ConvertVisualInfo
+extern __felix86_glXGetProcAddressSelf
 
 global __felix86_constructor
 align 16
