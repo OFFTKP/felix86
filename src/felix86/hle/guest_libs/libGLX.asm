@@ -5,6 +5,7 @@ bits 64
 extern __felix86_XGetVisualInfo
 extern __felix86_XSync
 extern __felix86_ConvertVisualInfo
+extern __felix86_glXGetProcAddressSelf
 
 ; These are guest function pointers that we wanna call from host code at will
 section .data
@@ -256,7 +257,7 @@ align 16
 glXGetProcAddress:
 ; glXGetProcAddress can be called with a glX function such as glXChooseVisual
 ; We need to return a guest pointer to that function which is easier to do in guest code
-call __felix86_glXGetProcAddressSelf
+call __felix86_glXGetProcAddressSelf wrt ..plt
 test rax, rax
 jnz ptr_ok
 ; If not found, use the host function. It's probably a GL function in this case
