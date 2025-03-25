@@ -3,7 +3,7 @@
 #include "felix86/v2/recompiler.hpp"
 
 #define FAST_HANDLE(name)                                                                                                                            \
-    void fast_##name(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
+    void fast_##name(Recompiler& rec, HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
 FAST_HANDLE(FLD) {
     if (operands[0].size == 80) {

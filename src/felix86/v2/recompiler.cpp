@@ -10,8 +10,7 @@
 #include "felix86/v2/recompiler.hpp"
 
 #define X(name)                                                                                                                                      \
-    void fast_##name(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction,                              \
-                     ZydisDecodedOperand* operands);
+    void fast_##name(Recompiler& rec, HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 #include "felix86/v2/handlers.inc"
 #undef X
 
@@ -1986,7 +1985,7 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, HostAddress rip_true, HostAddress rip_false) {
     Label true_label;
-    as.BEQZ(condition, &true_label);
+    as.BNEZ(condition, &true_label);
 
     biscuit::GPR gpr_false = scratch();
     as.LI(gpr_false, rip_false.toGuest().raw());

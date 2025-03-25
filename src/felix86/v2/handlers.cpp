@@ -9,7 +9,7 @@ void felix86_syscall32(ThreadState* state);
 void felix86_cpuid(ThreadState* state);
 
 #define FAST_HANDLE(name)                                                                                                                            \
-    void fast_##name(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
+    void fast_##name(Recompiler& rec, HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
 #define IS_MMX (instruction.attributes & (ZYDIS_ATTRIB_FPU_STATE_CR | ZYDIS_ATTRIB_FPU_STATE_CW))
 
@@ -7366,10 +7366,13 @@ FAST_HANDLE(INVLPG) {
 
     switch (operands[0].mem.base) {
     case INVLPG_GENERATE_TRAMPOLINE: {
-        const char* address = (const char*)(meta.rip.raw() + instruction.length + 1); // also skip a RET -> 1 byte
-        VERBOSE("Generating trampoline for %s", address);
-        void* trampoline = Thunks::generateTrampoline(rec, as, address);
-        ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", address, (u64)address);
+        const char* name = (const char*)(meta.rip.raw() + instruction.length); // also skip a RET -> 1 byte
+        size_t name_size = strlen(name);
+        ASSERT(name_size > 0);
+        VERBOSE("Generating trampoline for %s", name);
+        void* trampoline = Thunks::generateTrampoline(rec, as, name);
+        ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", name, (u64)name);
+        meta.rip += name_size;
         break;
     }
     case INVLPG_THUNK_CONSTRUCTOR: {

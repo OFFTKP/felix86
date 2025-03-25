@@ -264,8 +264,6 @@ using GLXWindow = void*;
 using GLXPbuffer = void*;
 
 XVisualInfo* felix86_thunk_glXChooseVisual(Display* dpy, int screen, int* attribList) {
-    // ERROR("TODO: VisualInfo mapping stuff");
-    // ERROR("Don't forget to add XFlush");
     static auto host_glXChooseVisual = (decltype(&felix86_thunk_glXChooseVisual))dlsym(libGLX, "glXChooseVisual");
     return host_glXChooseVisual(guestToHostDisplay(dpy), screen, attribList);
 }
