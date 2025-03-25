@@ -1985,25 +1985,19 @@ void Recompiler::jumpAndLink(HostAddress rip, bool use_rsb) {
 }
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, HostAddress rip_true, HostAddress rip_false) {
-    Label false_label;
-    as.BEQZ(condition, &false_label);
+    Label true_label;
+    as.BEQZ(condition, &true_label);
 
-    Literal lrip_true(rip_true.toGuest().raw());
-    biscuit::GPR gpr_true = scratch();
-    as.LD(gpr_true, &lrip_true);
-    setRip(gpr_true);
-    jumpAndLink(rip_true);
-
-    as.Bind(&false_label);
-
-    Literal lrip_false(rip_false.toGuest().raw());
     biscuit::GPR gpr_false = scratch();
-    as.LD(gpr_false, &lrip_false);
+    as.LI(gpr_false, rip_false.toGuest().raw());
     setRip(gpr_false);
     jumpAndLink(rip_false);
 
-    as.Place(&lrip_true);
-    as.Place(&lrip_false);
+    as.Bind(&true_label);
+    biscuit::GPR gpr_true = scratch();
+    as.LI(gpr_true, rip_true.toGuest().raw());
+    setRip(gpr_true);
+    jumpAndLink(rip_true);
 }
 
 void Recompiler::expirePendingLinks(HostAddress rip) {
