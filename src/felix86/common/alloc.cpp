@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -7,8 +8,6 @@
 #include <unistd.h>
 
 #define ALIAS(name) __attribute__((alias(#name), visibility("default")))
-
-int (*original_posix_memalign)(void**, size_t, size_t) = posix_memalign;
 
 extern "C" {
 extern void* __libc_malloc(size_t);
@@ -69,10 +68,13 @@ void* felix86_valloc(size_t size) {
 }
 
 int felix86_posix_memalign(void** memptr, size_t alignment, size_t size) {
-    int result = original_posix_memalign(memptr, alignment, size);
-    void* address = *memptr;
-    validate(address);
-    return result;
+    void* ptr = __libc_memalign(alignment, size);
+    if (!ptr) {
+        return -errno;
+    }
+
+    *memptr = validate(ptr);
+    return 0;
 }
 
 void* felix86_aligned_alloc(size_t alignment, size_t size) {
