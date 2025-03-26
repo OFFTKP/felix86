@@ -1126,7 +1126,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_epoll_wait: {
-            result = epoll_wait((int)arg1, (struct epoll_event*)arg2, (int)arg3, (int)arg3);
+            result = epoll_wait((int)arg1, (struct epoll_event*)arg2, (int)arg3, (int)arg4);
             break;
         }
         case felix86_x86_64_chmod: {
