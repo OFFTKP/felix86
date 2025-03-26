@@ -328,9 +328,9 @@ int main(int argc, char* argv[]) {
     auto [exit_reason, exit_code] = Emulator::Start(params);
 
     if (!g_execve_process) {
-        LOG("Main process exited with reason: %s. Exit code: %d", print_exit_reason(exit_reason), exit_code);
+        LOG("Main process %d exited with reason: %s. Exit code: %d", getpid(), print_exit_reason(exit_reason), exit_code);
     } else {
-        LOG("Execve process exited with reason: %s. Exit code: %d", print_exit_reason(exit_reason), exit_code);
+        LOG("Execve process %d exited with reason: %s. Exit code: %d", getpid(), print_exit_reason(exit_reason), exit_code);
     }
 
     return exit_code;
