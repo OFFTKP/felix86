@@ -69,6 +69,7 @@ void Logger::startServer() {
             // Also write it to the file
             size_t written = fwrite(message.c_str(), 1, message.size(), f);
             ASSERT_MSG(message.size() == written, "Failed to write %zu bytes to file", written);
+            fflush(f);
         }
     } else {
         // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
