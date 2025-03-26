@@ -254,15 +254,33 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_epoll_ctl: {
-        result = SYSCALL(epoll_ctl, arg1, arg2, arg3, arg4, arg5, arg6);
+        epoll_event host_event = *(x86_epoll_event*)arg4;
+        result = SYSCALL(epoll_ctl, arg1, arg2, arg3, &host_event);
+        if (result == 0) {
+            *(x86_epoll_event*)arg4 = host_event;
+        }
         break;
     }
     case felix86_riscv64_epoll_pwait: {
-        result = SYSCALL(epoll_pwait, arg1, arg2, arg3, arg4, arg5, arg6);
+        std::vector<epoll_event> host_events(std::max(0, (int)arg3));
+        result = SYSCALL(epoll_pwait, arg1, host_events.data(), arg3, arg4, arg5, arg6);
+        if (result >= 0) {
+            x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
+            for (int i = 0; i < result; i++) {
+                guest_event[i] = host_events[i];
+            }
+        }
         break;
     }
     case felix86_riscv64_epoll_pwait2: {
-        result = SYSCALL(epoll_pwait2, arg1, arg2, arg3, arg4, arg5, arg6);
+        std::vector<epoll_event> host_events(std::max(0, (int)arg3));
+        result = SYSCALL(epoll_pwait2, arg1, host_events.data(), arg3, arg4, arg5, arg6);
+        if (result >= 0) {
+            x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
+            for (int i = 0; i < result; i++) {
+                guest_event[i] = host_events[i];
+            }
+        }
         break;
     }
     case felix86_riscv64_mount: {
@@ -1126,7 +1144,14 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_epoll_wait: {
-            result = epoll_wait((int)arg1, (struct epoll_event*)arg2, (int)arg3, (int)arg4);
+            std::vector<epoll_event> host_events(std::max(0, (int)arg3));
+            result = epoll_wait((int)arg1, host_events.data(), (int)arg3, (int)arg4);
+            if (result >= 0) {
+                x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
+                for (int i = 0; i < result; i++) {
+                    guest_event[i] = host_events[i];
+                }
+            }
             break;
         }
         case felix86_x86_64_chmod: {

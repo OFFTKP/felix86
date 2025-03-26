@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fcntl.h>
+#include <sys/epoll.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/uio.h>
@@ -76,35 +77,19 @@ struct x86_timespec {
     u32 tv_nsec;
 };
 
-constexpr int x86_O_DIRECT = 040000;
-constexpr int x86_O_LARGEFILE = 0100000;
-constexpr int x86_O_DIRECTORY = 0200000;
-constexpr int x86_O_NOFOLLOW = 0400000;
-
-inline int x86_to_riscv_flags(int flags) {
-#define MAP(name)                                                                                                                                    \
-    if (flags & x86_##name) {                                                                                                                        \
-        flags &= ~x86_##name;                                                                                                                        \
-        flags |= name;                                                                                                                               \
+struct __attribute__((packed)) x86_epoll_event {
+    x86_epoll_event(const epoll_event& guest64) {
+        this->events = guest64.events;
+        this->data = guest64.data.u64;
     }
-    MAP(O_DIRECT);
-    MAP(O_LARGEFILE);
-    MAP(O_DIRECTORY);
-    MAP(O_NOFOLLOW);
-#undef MAP
-    return flags;
-}
 
-inline int riscv_to_x86_flags(int flags) {
-#define MAP(name)                                                                                                                                    \
-    if (flags & name) {                                                                                                                              \
-        flags &= ~name;                                                                                                                              \
-        flags |= x86_##name;                                                                                                                         \
+    operator epoll_event() const {
+        epoll_event guest64;
+        guest64.events = this->events;
+        guest64.data.u64 = this->data;
+        return guest64;
     }
-    MAP(O_DIRECT);
-    MAP(O_LARGEFILE);
-    MAP(O_DIRECTORY);
-    MAP(O_NOFOLLOW);
-#undef MAP
-    return flags;
-}
+
+    u32 events = 0;
+    u64 data = 0;
+};
