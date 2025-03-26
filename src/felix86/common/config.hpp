@@ -19,11 +19,16 @@ struct Config {
         return __environment.c_str();
     }
 
+    std::filesystem::path path() const {
+        return config_path;
+    }
+
 private:
     [[nodiscard]] static Config load(const std::filesystem::path& path);
     static void save(const std::filesystem::path& path, const Config& config);
 
     std::string __environment;
+    std::filesystem::path config_path;
 
     friend void addToEnvironment(Config& config, const char* env_name, const char* env);
 };

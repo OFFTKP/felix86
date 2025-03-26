@@ -1588,6 +1588,7 @@ void Recompiler::scanFlagUsageAhead(HostAddress rip) {
             ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
             const char* string = (const char*)(rip.raw() + instruction.length);
             size_t size = strlen(string);
+            ASSERT(size > 0);
             rip += instruction.length + size + 1; // don't forget null terminator
             continue;
         }

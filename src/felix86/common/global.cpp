@@ -219,7 +219,8 @@ void initialize_globals() {
         }
     }
 
-    ASSERT_MSG(!g_config.rootfs_path.empty(), "Rootfs path is empty?");
+    ASSERT_MSG(!g_config.rootfs_path.empty(), "Rootfs path is empty. Please set the FELIX86_ROOTFS environment variable or the rootfs path in %s",
+               g_config.path().c_str());
     if (g_config.rootfs_path.string().back() == '/') {
         // User ended the path with '/', we need to remove it to make sure some of our comparisons
         // on whether a path is inside the rootfs continue to work

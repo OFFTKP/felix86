@@ -163,13 +163,13 @@ void FIST(Recompiler& rec, const HandlerMetadata& meta, Assembler& as, ZydisDeco
     biscuit::GPR integer = rec.scratch();
 
     if (operands[0].size == 16) {
-        as.FCVT_W_D(integer, st0);
+        as.FCVT_W_D(integer, st0, mode);
         rec.writeMemory(integer, address, 0, X86_SIZE_WORD);
     } else if (operands[0].size == 32) {
-        as.FCVT_W_D(integer, st0);
+        as.FCVT_W_D(integer, st0, mode);
         rec.writeMemory(integer, address, 0, X86_SIZE_DWORD);
     } else if (operands[0].size == 32) {
-        as.FCVT_L_D(integer, st0);
+        as.FCVT_L_D(integer, st0, mode);
         rec.writeMemory(integer, address, 0, X86_SIZE_QWORD);
     }
 
