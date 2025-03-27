@@ -97,13 +97,17 @@ struct Filesystem {
 
     static int Getcwd(char* buf, size_t size);
 
+    static int GetXAttr(const char* filename, const char* name, void* value, size_t size);
+
+    static int LGetXAttr(const char* filename, const char* name, void* value, size_t size);
+
     static int SetXAttr(const char* filename, const char* name, void* value, size_t size, int flags);
 
     static int LSetXAttr(const char* filename, const char* name, void* value, size_t size, int flags);
 
-    static int GetXAttr(const char* filename, const char* name, void* value, size_t size);
+    static int RemoveXAttr(const char* filename, const char* name);
 
-    static int LGetXAttr(const char* filename, const char* name, void* value, size_t size);
+    static int LRemoveXAttr(const char* filename, const char* name);
 
     static int UtimensAt(int fd, const char* filename, struct timespec* spec, int flags);
 
@@ -137,6 +141,10 @@ private:
     static int setxattrInternal(const char* filename, const char* name, void* value, size_t size, int flags);
 
     static int lsetxattrInternal(const char* filename, const char* name, void* value, size_t size, int flags);
+
+    static int removexattrInternal(const char* filename, const char* name);
+
+    static int lremovexattrInternal(const char* filename, const char* name);
 
     static int utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags);
 

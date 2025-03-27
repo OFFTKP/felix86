@@ -207,6 +207,16 @@ int Filesystem::SetXAttr(const char* filename, const char* name, void* value, si
     return setxattrInternal(path.c_str(), name, value, size, flags);
 }
 
+int Filesystem::RemoveXAttr(const char* filename, const char* name) {
+    std::filesystem::path path = resolve(filename);
+    return removexattrInternal(path.c_str(), name);
+}
+
+int Filesystem::LRemoveXAttr(const char* filename, const char* name) {
+    std::filesystem::path path = resolve(filename);
+    return lremovexattrInternal(path.c_str(), name);
+}
+
 int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, int flags) {
     auto [new_fd, new_filename] = resolve(fd, filename);
     return utimensatInternal(new_fd, new_filename, spec, flags);
@@ -258,6 +268,14 @@ int Filesystem::setxattrInternal(const char* filename, const char* name, void* v
 
 int Filesystem::lsetxattrInternal(const char* filename, const char* name, void* value, size_t size, int flags) {
     return ::syscall(SYS_lsetxattr, filename, name, value, size, flags);
+}
+
+int Filesystem::removexattrInternal(const char* filename, const char* name) {
+    return ::syscall(SYS_removexattr, filename, name);
+}
+
+int Filesystem::lremovexattrInternal(const char* filename, const char* name) {
+    return ::syscall(SYS_lremovexattr, filename, name);
 }
 
 int Filesystem::utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags) {

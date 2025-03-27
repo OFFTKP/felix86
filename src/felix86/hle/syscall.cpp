@@ -519,6 +519,18 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = SYSCALL(fsetxattr, arg1, arg2, arg3, arg4, arg5);
         break;
     }
+    case felix86_riscv64_removexattr: {
+        result = Filesystem::RemoveXAttr((char*)arg1, (char*)arg2);
+        break;
+    }
+    case felix86_riscv64_lremovexattr: {
+        result = Filesystem::LRemoveXAttr((char*)arg1, (char*)arg2);
+        break;
+    }
+    case felix86_riscv64_fremovexattr: {
+        result = SYSCALL(fremovexattr, arg1, arg2);
+        break;
+    }
     case felix86_riscv64_pwrite64: {
         result = SYSCALL(pwrite64, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
@@ -1426,6 +1438,13 @@ void felix86_syscall32(ThreadState* state) {
             if (result == 0) {
                 *(u32*)arg1 = time;
             }
+            break;
+        }
+        case felix86_x86_32_readlink: {
+            if (arg1 == arg2) {
+                WARN("arg1 == arg2 during readlink");
+            }
+            result = Filesystem::ReadlinkAt(AT_FDCWD, (char*)arg1, (char*)arg2, (int)arg3);
             break;
         }
         case felix86_x86_32_clock_nanosleep_time32: {
