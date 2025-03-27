@@ -943,6 +943,16 @@ FAST_HANDLE(RSTORSSP) {}
 
 FAST_HANDLE(SAVEPREVSSP) {}
 
+FAST_HANDLE(FNCLEX) {}
+
+FAST_HANDLE(PREFETCHT0) {}
+
+FAST_HANDLE(PREFETCHT1) {}
+
+FAST_HANDLE(PREFETCHT2) {}
+
+FAST_HANDLE(PREFETCHNTA) {}
+
 FAST_HANDLE(SHL_imm) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR result = rec.scratch();
@@ -7168,22 +7178,6 @@ FAST_HANDLE(INSERTPS) {
     }
 
     rec.setOperandVec(&operands[0], dst);
-}
-
-FAST_HANDLE(PREFETCHT0) {
-    // NOP
-}
-
-FAST_HANDLE(PREFETCHT1) {
-    // NOP
-}
-
-FAST_HANDLE(PREFETCHT2) {
-    // NOP
-}
-
-FAST_HANDLE(PREFETCHNTA) {
-    // NOP
 }
 
 FAST_HANDLE(PUSHFQ) {
