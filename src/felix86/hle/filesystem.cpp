@@ -1,5 +1,6 @@
 #include <cstring>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include "felix86/common/overlay.hpp"
 #include "felix86/hle/filesystem.hpp"
 
@@ -23,7 +24,7 @@ int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
     return faccessatInternal(new_fd, new_filename, mode, flags);
 }
 
-int Filesystem::FStatAt(int fd, const char* filename, x64Stat* guest_stat, int flags) {
+int Filesystem::FStatAt(int fd, const char* filename, x86_stat* guest_stat, int flags) {
     auto [new_fd, new_filename] = resolve(fd, filename);
 
     struct stat host_stat;
@@ -31,7 +32,7 @@ int Filesystem::FStatAt(int fd, const char* filename, x64Stat* guest_stat, int f
     int result = fstatatInternal(new_fd, new_filename, &host_stat, flags);
 
     if (result == 0) {
-        // This will do the marshalling, see stat.hpp
+        // This will do the marshalling, see guest_types.hpp
         *guest_stat = host_stat;
     }
 
@@ -296,6 +297,10 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
     }
 
     if (path[0] == '/') {
+        if (path[1] == '\0') {
+            return {g_rootfs_fd, NULL};
+        }
+
         return {g_rootfs_fd, &path[1]}; // return rootfs fd, skip the '/'
     } else {
         return {fd, path};
@@ -310,6 +315,10 @@ std::filesystem::path Filesystem::resolve(const char* path) {
     }
 
     if (path[0] == '/') {
+        if (path[1] == '\0') {
+            return g_config.rootfs_path;
+        }
+
         return g_config.rootfs_path / &path[1];
     }
 

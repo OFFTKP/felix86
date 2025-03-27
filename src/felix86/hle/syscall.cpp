@@ -25,7 +25,6 @@
 #include "felix86/hle/brk.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/guest_types.hpp"
-#include "felix86/hle/stat.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
 
@@ -372,7 +371,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_fstat: {
-        x64Stat* guest_stat = (x64Stat*)arg2;
+        x86_stat* guest_stat = (x86_stat*)arg2;
         struct stat host_stat;
         result = SYSCALL(fstat, arg1, &host_stat);
         if (result >= 0) {
@@ -441,7 +440,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_newfstatat: {
-        result = Filesystem::FStatAt((int)arg1, (char*)arg2, (x64Stat*)arg3, (int)arg4);
+        result = Filesystem::FStatAt((int)arg1, (char*)arg2, (x86_stat*)arg3, (int)arg4);
         break;
     }
     case felix86_riscv64_sysinfo: {
@@ -1203,7 +1202,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_lstat: {
-            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x64Stat*)arg2, AT_SYMLINK_NOFOLLOW);
+            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x86_stat*)arg2, AT_SYMLINK_NOFOLLOW);
             break;
         }
         case felix86_x86_64_chown: {
@@ -1235,7 +1234,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_stat: {
-            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x64Stat*)arg2, 0);
+            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x86_stat*)arg2, 0);
             break;
         }
         case felix86_x86_64_vfork: {

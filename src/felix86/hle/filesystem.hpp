@@ -5,7 +5,7 @@
 #include "felix86/common/elf.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/hle/stat.hpp"
+#include "felix86/hle/guest_types.hpp"
 
 struct Filesystem {
     bool LoadExecutable(const std::filesystem::path& path) {
@@ -71,7 +71,7 @@ struct Filesystem {
 
     static int FAccessAt(int fd, const char* filename, int mode, int flags);
 
-    static int FStatAt(int fd, const char* filename, x64Stat* guest_stat, int flags);
+    static int FStatAt(int fd, const char* filename, x86_stat* guest_stat, int flags);
 
     static int StatFs(const char* path, struct statfs* buf);
 
