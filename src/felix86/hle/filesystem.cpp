@@ -298,7 +298,7 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
 
     if (path[0] == '/') {
         if (path[1] == '\0') {
-            return {g_rootfs_fd, NULL};
+            return {g_rootfs_fd, "."};
         }
 
         return {g_rootfs_fd, &path[1]}; // return rootfs fd, skip the '/'
