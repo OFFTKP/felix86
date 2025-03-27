@@ -503,6 +503,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = Filesystem::GetXAttr((char*)arg1, (char*)arg2, (void*)arg3, arg4);
         break;
     }
+    case felix86_riscv64_fgetxattr: {
+        result = SYSCALL(fgetxattr, arg1, arg2, arg3, arg4);
+        break;
+    }
     case felix86_riscv64_pwrite64: {
         result = SYSCALL(pwrite64, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
