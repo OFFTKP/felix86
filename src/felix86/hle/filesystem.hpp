@@ -97,6 +97,10 @@ struct Filesystem {
 
     static int Getcwd(char* buf, size_t size);
 
+    static int SetXAttr(const char* filename, const char* name, void* value, size_t size, int flags);
+
+    static int LSetXAttr(const char* filename, const char* name, void* value, size_t size, int flags);
+
     static int GetXAttr(const char* filename, const char* name, void* value, size_t size);
 
     static int LGetXAttr(const char* filename, const char* name, void* value, size_t size);
@@ -129,6 +133,10 @@ private:
     static int getxattrInternal(const char* filename, const char* name, void* value, size_t size);
 
     static int lgetxattrInternal(const char* filename, const char* name, void* value, size_t size);
+
+    static int setxattrInternal(const char* filename, const char* name, void* value, size_t size, int flags);
+
+    static int lsetxattrInternal(const char* filename, const char* name, void* value, size_t size, int flags);
 
     static int utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags);
 

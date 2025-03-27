@@ -197,6 +197,16 @@ int Filesystem::GetXAttr(const char* filename, const char* name, void* value, si
     return getxattrInternal(path.c_str(), name, value, size);
 }
 
+int Filesystem::LSetXAttr(const char* filename, const char* name, void* value, size_t size, int flags) {
+    std::filesystem::path path = resolve(filename);
+    return lsetxattrInternal(path.c_str(), name, value, size, flags);
+}
+
+int Filesystem::SetXAttr(const char* filename, const char* name, void* value, size_t size, int flags) {
+    std::filesystem::path path = resolve(filename);
+    return setxattrInternal(path.c_str(), name, value, size, flags);
+}
+
 int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, int flags) {
     auto [new_fd, new_filename] = resolve(fd, filename);
     return utimensatInternal(new_fd, new_filename, spec, flags);
@@ -240,6 +250,14 @@ int Filesystem::getxattrInternal(const char* filename, const char* name, void* v
 
 int Filesystem::lgetxattrInternal(const char* filename, const char* name, void* value, size_t size) {
     return ::syscall(SYS_lgetxattr, filename, name, value, size);
+}
+
+int Filesystem::setxattrInternal(const char* filename, const char* name, void* value, size_t size, int flags) {
+    return ::syscall(SYS_setxattr, filename, name, value, size, flags);
+}
+
+int Filesystem::lsetxattrInternal(const char* filename, const char* name, void* value, size_t size, int flags) {
+    return ::syscall(SYS_lsetxattr, filename, name, value, size, flags);
 }
 
 int Filesystem::utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags) {
