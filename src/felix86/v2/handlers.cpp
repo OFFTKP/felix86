@@ -869,6 +869,37 @@ FAST_HANDLE(RET) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(IRETQ) {
+    ASSERT(!g_mode32);
+    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    biscuit::GPR rip = rec.scratch();
+    biscuit::GPR cs = rec.scratch();
+    biscuit::GPR rflags = rec.scratch();
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR ss = rec.scratch();
+
+    as.LD(rip, 0, rsp);
+    as.LD(cs, 8, rsp);
+    as.LD(rflags, 16, rsp);
+    as.LD(ss, 32, rsp);
+
+    as.LI(temp, 0x3F7FD7 & ~0x400);
+    as.AND(rflags, rflags, temp);
+    rec.setFlags(rflags);
+
+    as.LD(rsp, 24, rsp);
+
+    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+    rec.setRip(rip);
+    // TODO: for 32-bit mode set segments... needs changing cached from gdt
+
+    rec.writebackDirtyState();
+    rec.invalidStateUntilJump();
+    rec.popCalltrace();
+    rec.backToDispatcher();
+    rec.stopCompiling();
+}
+
 FAST_HANDLE(PUSH) {
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
@@ -7169,42 +7200,7 @@ FAST_HANDLE(POPFQ) {
     as.LD(flags, 0, rsp);
     as.ADDI(rsp, rsp, rec.stackPointerSize());
     rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
-
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
-    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-    biscuit::GPR sf = rec.flagW(X86_REF_SF);
-    biscuit::GPR of = rec.flagW(X86_REF_OF);
-    biscuit::GPR temp = rec.scratch();
-
-    as.ANDI(cf, flags, 1);
-
-    biscuit::GPR pf = rec.scratch();
-    as.SRLI(pf, flags, 2);
-    as.ANDI(pf, pf, 1);
-    as.SB(pf, offsetof(ThreadState, pf), rec.threadStatePointer());
-
-    biscuit::GPR af = rec.scratch();
-    as.SRLI(af, flags, 4);
-    as.ANDI(af, af, 1);
-    as.SB(af, offsetof(ThreadState, af), rec.threadStatePointer());
-
-    as.SRLI(zf, flags, 6);
-    as.ANDI(zf, zf, 1);
-
-    as.SRLI(sf, flags, 7);
-    as.ANDI(sf, sf, 1);
-
-    as.SRLI(temp, flags, 10);
-    as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, df), rec.threadStatePointer());
-
-    as.SRLI(of, flags, 11);
-    as.ANDI(of, of, 1);
-
-    // CPUID bit may have been modified, which we need to emulate because this is how some programs detect CPUID support
-    as.SRLI(temp, flags, 21);
-    as.ANDI(temp, temp, 1);
-    as.SB(temp, offsetof(ThreadState, cpuid_bit), rec.threadStatePointer());
+    rec.setFlags(flags);
 }
 
 FAST_HANDLE(PUSHFD) {

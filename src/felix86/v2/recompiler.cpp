@@ -2404,6 +2404,42 @@ biscuit::GPR Recompiler::getFlags() {
     return reg;
 }
 
+void Recompiler::setFlags(biscuit::GPR flags) {
+    biscuit::GPR cf = flagW(X86_REF_CF);
+    biscuit::GPR zf = flagW(X86_REF_ZF);
+    biscuit::GPR sf = flagW(X86_REF_SF);
+    biscuit::GPR of = flagW(X86_REF_OF);
+    biscuit::GPR temp = scratch();
+
+    as.ANDI(cf, flags, 1);
+
+    as.SRLI(temp, flags, 2);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, pf), threadStatePointer());
+
+    as.SRLI(zf, flags, 6);
+    as.ANDI(zf, zf, 1);
+
+    as.SRLI(temp, flags, 4);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, af), threadStatePointer());
+
+    as.SRLI(sf, flags, 7);
+    as.ANDI(sf, sf, 1);
+
+    as.SRLI(temp, flags, 10);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, df), threadStatePointer());
+
+    as.SRLI(of, flags, 11);
+    as.ANDI(of, of, 1);
+
+    // CPUID bit may have been modified, which we need to emulate because this is how some programs detect CPUID support
+    as.SRLI(temp, flags, 21);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, cpuid_bit), threadStatePointer());
+}
+
 void Recompiler::disableSignals() {
     biscuit::GPR i_love_risc_architecture = scratch();
     as.LI(i_love_risc_architecture, 1);

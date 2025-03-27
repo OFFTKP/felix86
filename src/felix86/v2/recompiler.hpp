@@ -354,6 +354,8 @@ struct Recompiler {
 
     biscuit::GPR getFlags();
 
+    void setFlags(biscuit::GPR flags);
+
     u64 getImmediate(ZydisDecodedOperand* operand);
 
     HostAddress emitSigreturnThunk();
