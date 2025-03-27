@@ -97,6 +97,8 @@ struct Filesystem {
 
     static int Getcwd(char* buf, size_t size);
 
+    static int GetXAttr(const char* filename, const char* name, void* value, size_t size);
+
     static int LGetXAttr(const char* filename, const char* name, void* value, size_t size);
 
     static int UtimensAt(int fd, const char* filename, struct timespec* spec, int flags);
@@ -123,6 +125,8 @@ private:
     static int linkatInternal(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags);
 
     static int unlinkatInternal(int fd, const char* filename, int flags);
+
+    static int getxattrInternal(const char* filename, const char* name, void* value, size_t size);
 
     static int lgetxattrInternal(const char* filename, const char* name, void* value, size_t size);
 

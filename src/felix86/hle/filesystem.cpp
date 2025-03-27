@@ -192,6 +192,11 @@ int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, s
     return lgetxattrInternal(path.c_str(), name, value, size);
 }
 
+int Filesystem::GetXAttr(const char* filename, const char* name, void* value, size_t size) {
+    std::filesystem::path path = resolve(filename);
+    return getxattrInternal(path.c_str(), name, value, size);
+}
+
 int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, int flags) {
     auto [new_fd, new_filename] = resolve(fd, filename);
     return utimensatInternal(new_fd, new_filename, spec, flags);
@@ -227,6 +232,10 @@ int Filesystem::linkatInternal(int oldfd, const char* oldpath, int newfd, const 
 
 int Filesystem::unlinkatInternal(int fd, const char* filename, int flags) {
     return ::syscall(SYS_unlinkat, fd, filename, flags);
+}
+
+int Filesystem::getxattrInternal(const char* filename, const char* name, void* value, size_t size) {
+    return ::syscall(SYS_getxattr, filename, name, value, size);
 }
 
 int Filesystem::lgetxattrInternal(const char* filename, const char* name, void* value, size_t size) {
