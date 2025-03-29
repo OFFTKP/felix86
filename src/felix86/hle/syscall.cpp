@@ -947,6 +947,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_clone: {
+        // TODO: remove all usages of clone_args struct, use our own CloneArgs struct
         clone_args args;
         memset(&args, 0, sizeof(clone_args));
         args.flags = arg1;
@@ -1238,7 +1239,10 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_vfork: {
-            result = -ENOSYS; // make it use clone instead
+            clone_args args = {};
+            memset(&args, 0, sizeof(clone_args));
+            args.flags = CLONE_VM | CLONE_VFORK | SIGCLD;
+            result = Threads::Clone(state, &args);
             break;
         }
         case felix86_x86_64_arch_prctl: {
