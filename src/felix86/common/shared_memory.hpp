@@ -1,6 +1,5 @@
 #pragma once
 
-#include <sys/shm.h>
 #include "felix86/common/utility.hpp"
 
 struct SharedMemory {

@@ -3,7 +3,6 @@
 #include <csignal>
 #include "felix86/common/address.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/shared_memory.hpp"
 #include "felix86/common/utility.hpp"
 
 #ifndef SA_NODEFER

@@ -1,7 +1,6 @@
 #include <cstring>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/shm.h>
 #include <sys/stat.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/shared_memory.hpp"

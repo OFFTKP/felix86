@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <fmt/format.h>
 #include <linux/futex.h>
+#include <linux/sem.h>
 #include <poll.h>
 #include <sched.h>
 #include <sys/epoll.h>
@@ -776,7 +777,47 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_semctl: {
-        result = SYSCALL(semctl, arg1, arg2, arg3, arg4, arg5, arg6);
+        x86_semid64_ds* guest_semi = (x86_semid64_ds*)arg4;
+        switch (arg3) {
+        case IPC_SET: {
+            ASSERT(guest_semi);
+            struct semid64_ds host_semi{};
+            host_semi = *guest_semi;
+            result = SYSCALL(semctl, arg1, arg2, arg3, &host_semi);
+            if (result == 0) {
+                *guest_semi = host_semi;
+            }
+            break;
+        }
+        case SEM_STAT:
+        case SEM_STAT_ANY:
+        case IPC_STAT: {
+            struct semid64_ds host_semi{};
+            result = SYSCALL(semctl, arg1, arg2, arg3, &host_semi);
+            if (result == 0) {
+                ASSERT(guest_semi);
+                *guest_semi = host_semi;
+            }
+            break;
+        }
+        case SEM_INFO:
+        case IPC_INFO:
+        case IPC_RMID:
+        case GETPID:
+        case GETNCNT:
+        case GETZCNT:
+        case GETVAL:
+        case GETALL:
+        case SETALL:
+        case SETVAL: {
+            result = SYSCALL(semctl, arg1, arg2, arg3, arg4, arg5, arg6);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
         break;
     }
     case felix86_riscv64_flock: {

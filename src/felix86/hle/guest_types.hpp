@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fcntl.h>
+#include <linux/sem.h>
 #include <sys/epoll.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
@@ -27,16 +28,16 @@ struct x86_user_desc {
 };
 
 struct x86_rlimit {
-    x86_rlimit(const rlimit& guest64) {
-        this->rlim_cur = guest64.rlim_cur;
-        this->rlim_max = guest64.rlim_max;
+    x86_rlimit(const rlimit& rlimit) {
+        this->rlim_cur = rlimit.rlim_cur;
+        this->rlim_max = rlimit.rlim_max;
     }
 
     operator rlimit() const {
-        rlimit guest64;
-        guest64.rlim_cur = (i32)this->rlim_cur;
-        guest64.rlim_max = (i32)this->rlim_max;
-        return guest64;
+        rlimit rlimit;
+        rlimit.rlim_cur = (i32)this->rlim_cur;
+        rlimit.rlim_max = (i32)this->rlim_max;
+        return rlimit;
     }
 
     u32 rlim_cur;
@@ -44,16 +45,16 @@ struct x86_rlimit {
 };
 
 struct x86_iovec {
-    x86_iovec(const iovec& guest64) {
-        this->iov_base = (u64)guest64.iov_base;
-        this->iov_len = guest64.iov_len;
+    x86_iovec(const iovec& iovec) {
+        this->iov_base = (u64)iovec.iov_base;
+        this->iov_len = iovec.iov_len;
     }
 
     operator iovec() const {
-        iovec guest64;
-        guest64.iov_base = (void*)(u64)this->iov_base;
-        guest64.iov_len = this->iov_len;
-        return guest64;
+        iovec iovec;
+        iovec.iov_base = (void*)(u64)this->iov_base;
+        iovec.iov_len = this->iov_len;
+        return iovec;
     }
 
     u32 iov_base;
@@ -61,16 +62,16 @@ struct x86_iovec {
 };
 
 struct x86_timespec {
-    x86_timespec(const timespec& guest64) {
-        this->tv_sec = guest64.tv_sec;
-        this->tv_nsec = guest64.tv_nsec;
+    x86_timespec(const timespec& host_timespec) {
+        this->tv_sec = host_timespec.tv_sec;
+        this->tv_nsec = host_timespec.tv_nsec;
     }
 
     operator timespec() const {
-        timespec guest64;
-        guest64.tv_sec = this->tv_sec;
-        guest64.tv_nsec = this->tv_nsec;
-        return guest64;
+        timespec timespec;
+        timespec.tv_sec = this->tv_sec;
+        timespec.tv_nsec = this->tv_nsec;
+        return timespec;
     }
 
     u32 tv_sec;
@@ -78,16 +79,16 @@ struct x86_timespec {
 };
 
 struct __attribute__((packed)) x86_epoll_event {
-    x86_epoll_event(const epoll_event& guest64) {
-        this->events = guest64.events;
-        this->data = guest64.data.u64;
+    x86_epoll_event(const epoll_event& epoll_event) {
+        this->events = epoll_event.events;
+        this->data = epoll_event.data.u64;
     }
 
     operator epoll_event() const {
-        epoll_event guest64;
-        guest64.events = this->events;
-        guest64.data.u64 = this->data;
-        return guest64;
+        epoll_event epoll_event;
+        epoll_event.events = this->events;
+        epoll_event.data.u64 = this->data;
+        return epoll_event;
     }
 
     u32 events = 0;
@@ -97,44 +98,44 @@ struct __attribute__((packed)) x86_epoll_event {
 struct __attribute__((packed)) x86_stat {
     x86_stat() = delete;
 
-    x86_stat(const struct stat& host_stat) {
-        st_dev = host_stat.st_dev;
-        st_ino = host_stat.st_ino;
-        st_nlink = host_stat.st_nlink;
-        st_mode = host_stat.st_mode;
-        st_uid = host_stat.st_uid;
-        st_gid = host_stat.st_gid;
-        st_rdev = host_stat.st_rdev;
-        st_size = host_stat.st_size;
-        st_blksize = host_stat.st_blksize;
-        st_blocks = host_stat.st_blocks;
-        st_atime_ = host_stat.st_atim.tv_sec;
-        fex_st_atime_nsec = host_stat.st_atim.tv_nsec;
-        st_mtime_ = host_stat.st_mtime;
-        fex_st_mtime_nsec = host_stat.st_mtim.tv_nsec;
-        st_ctime_ = host_stat.st_ctime;
-        fex_st_ctime_nsec = host_stat.st_ctim.tv_nsec;
+    x86_stat(const struct stat& stat) {
+        st_dev = stat.st_dev;
+        st_ino = stat.st_ino;
+        st_nlink = stat.st_nlink;
+        st_mode = stat.st_mode;
+        st_uid = stat.st_uid;
+        st_gid = stat.st_gid;
+        st_rdev = stat.st_rdev;
+        st_size = stat.st_size;
+        st_blksize = stat.st_blksize;
+        st_blocks = stat.st_blocks;
+        st_atime_ = stat.st_atim.tv_sec;
+        fex_st_atime_nsec = stat.st_atim.tv_nsec;
+        st_mtime_ = stat.st_mtime;
+        fex_st_mtime_nsec = stat.st_mtim.tv_nsec;
+        st_ctime_ = stat.st_ctime;
+        fex_st_ctime_nsec = stat.st_ctim.tv_nsec;
     }
 
     operator struct stat() const {
-        struct stat host_stat;
-        host_stat.st_dev = st_dev;
-        host_stat.st_ino = st_ino;
-        host_stat.st_nlink = st_nlink;
-        host_stat.st_mode = st_mode;
-        host_stat.st_uid = st_uid;
-        host_stat.st_gid = st_gid;
-        host_stat.st_rdev = st_rdev;
-        host_stat.st_size = st_size;
-        host_stat.st_blksize = st_blksize;
-        host_stat.st_blocks = st_blocks;
-        host_stat.st_atim.tv_sec = st_atime_;
-        host_stat.st_atim.tv_nsec = fex_st_atime_nsec;
-        host_stat.st_mtim.tv_sec = st_mtime_;
-        host_stat.st_mtim.tv_nsec = fex_st_mtime_nsec;
-        host_stat.st_ctim.tv_sec = st_ctime_;
-        host_stat.st_ctim.tv_nsec = fex_st_ctime_nsec;
-        return host_stat;
+        struct stat stat;
+        stat.st_dev = st_dev;
+        stat.st_ino = st_ino;
+        stat.st_nlink = st_nlink;
+        stat.st_mode = st_mode;
+        stat.st_uid = st_uid;
+        stat.st_gid = st_gid;
+        stat.st_rdev = st_rdev;
+        stat.st_size = st_size;
+        stat.st_blksize = st_blksize;
+        stat.st_blocks = st_blocks;
+        stat.st_atim.tv_sec = st_atime_;
+        stat.st_atim.tv_nsec = fex_st_atime_nsec;
+        stat.st_mtim.tv_sec = st_mtime_;
+        stat.st_mtim.tv_nsec = fex_st_mtime_nsec;
+        stat.st_ctim.tv_sec = st_ctime_;
+        stat.st_ctim.tv_nsec = fex_st_ctime_nsec;
+        return stat;
     }
 
     u64 st_dev;
@@ -161,3 +162,78 @@ struct __attribute__((packed)) x86_stat {
 
 static_assert(std::is_trivial<x86_stat>::value);
 static_assert(sizeof(x86_stat) == 144);
+
+struct x86_ipc_perm {
+    u32 key;
+    u32 uid;
+    u32 gid;
+    u32 cuid;
+    u32 cgid;
+    u16 mode;
+    u16 padding;
+    u16 seq;
+    u16 padding2;
+    u64 padding3[2];
+
+    x86_ipc_perm() = delete;
+
+    x86_ipc_perm(const struct ipc64_perm& perm) {
+        key = perm.key;
+        uid = perm.uid;
+        gid = perm.gid;
+        cuid = perm.cuid;
+        cgid = perm.cgid;
+        mode = perm.mode;
+        seq = perm.seq;
+        padding = 0;
+        padding2 = 0;
+        padding3[0] = 0;
+        padding3[1] = 0;
+    }
+
+    operator ipc64_perm() const {
+        struct ipc64_perm perm{};
+        perm.key = key;
+        perm.uid = uid;
+        perm.gid = gid;
+        perm.cuid = cuid;
+        perm.cgid = cgid;
+        perm.mode = mode;
+        perm.seq = seq;
+        return perm;
+    }
+};
+
+static_assert(std::is_trivial<x86_ipc_perm>::value);
+static_assert(sizeof(x86_ipc_perm) == 48);
+
+struct x86_semid64_ds {
+    x86_ipc_perm sem_perm;
+    u64 sem_otime;
+    u64 unused1;
+    u64 sem_ctime;
+    u64 unused2;
+    u64 sem_nsems;
+    u64 unused3;
+    u64 unused4;
+
+    x86_semid64_ds() = delete;
+
+    operator struct semid64_ds() const {
+        struct semid64_ds semi{};
+        semi.sem_perm = sem_perm;
+        semi.sem_otime = sem_otime;
+        semi.sem_ctime = sem_ctime;
+        semi.sem_nsems = sem_nsems;
+        return semi;
+    }
+
+    x86_semid64_ds(const struct semid64_ds& semi) : sem_perm(semi.sem_perm) {
+        sem_otime = semi.sem_otime;
+        sem_ctime = semi.sem_ctime;
+        sem_nsems = semi.sem_nsems;
+    }
+};
+
+static_assert(std::is_trivial<x86_semid64_ds>::value);
+static_assert(sizeof(x86_semid64_ds) == 104);
