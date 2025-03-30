@@ -10,7 +10,7 @@
 #include "felix86/v2/recompiler.hpp"
 
 #define X(name)                                                                                                                                      \
-    void fast_##name(Recompiler& rec, HandlerMetadata& meta, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+    void fast_##name(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 #include "felix86/v2/handlers.inc"
 #undef X
 
@@ -340,49 +340,53 @@ HostAddress Recompiler::getCompiledBlock(ThreadState* state, HostAddress rip) {
 
 HostAddress Recompiler::compileSequence(HostAddress rip) {
     compiling = true;
-    scanFlagUsageAhead(rip);
-    HandlerMetadata meta = {rip, rip};
+    scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
 
-    current_meta = &meta;
     current_block_metadata = &block_meta;
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
 
-    current_block_metadata->guest_address = meta.rip;
+    current_block_metadata->guest_address = rip;
 
     std::fill(zexted_gprs.begin(), zexted_gprs.end(), false);
 
-    while (compiling) {
-        block_meta.instruction_spans.push_back({meta.rip.toGuest(), HostAddress{(u64)as.GetCursorPointer()}});
+    int index = 0;
 
-        if (g_breakpoints.find(meta.rip.raw()) != g_breakpoints.end()) {
+    while (compiling) {
+        auto& [instruction, operands] = instructions[index];
+
+        block_meta.instruction_spans.push_back({rip.toGuest(), HostAddress{(u64)as.GetCursorPointer()}});
+
+        if (g_breakpoints.find(rip.raw()) != g_breakpoints.end()) {
             u64 current_address = (u64)as.GetCursorPointer();
-            g_breakpoints[meta.rip.raw()].push_back(current_address);
+            g_breakpoints[rip.raw()].push_back(current_address);
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
 
-        compileInstruction(meta);
+        compileInstruction(instruction, operands, rip);
 
         if (g_config.inline_syscalls) {
             checkModifiesRax(instruction, operands);
         }
 
-        meta.rip += instruction.length;
+        rip += instruction.length;
 
         if (g_config.single_step && compiling) {
             resetScratch();
             biscuit::GPR rip_after = scratch();
-            as.LI(rip_after, meta.rip.toGuest().raw());
+            as.LI(rip_after, rip.toGuest().raw());
             setRip(rip_after);
             writebackDirtyState();
             backToDispatcher();
             stopCompiling();
         }
+
+        index += 1;
     }
 
-    current_block_metadata->guest_address_end = meta.rip;
+    current_block_metadata->guest_address_end = rip;
     current_block_metadata->address_end = HostAddress{(u64)as.GetCursorPointer()};
 
     if (g_config.gdb) {
@@ -414,46 +418,48 @@ HostAddress Recompiler::compileSequence(HostAddress rip) {
     flush_icache();
 
     current_block_metadata = nullptr;
-    current_meta = nullptr;
 
-    return meta.rip;
+    return rip;
 }
 
-void Recompiler::compileInstruction(HandlerMetadata& meta) {
+void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, HostAddress rip) {
+    current_instruction = &instruction;
+    current_operands = operands;
+    current_rip = rip;
     resetScratch();
 
-    ZydisMnemonic mnemonic = decode(meta.rip, instruction, operands);
+    ZydisMnemonic mnemonic = instruction.mnemonic;
 
     if (g_config.no_sse2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE2)) {
-        ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+        ERROR("SSE2 instruction %s at %016lx when FELIX86_NO_SSE2 is enabled", ZydisMnemonicGetString(mnemonic), rip.raw());
     }
 
     if (g_config.no_sse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE3)) {
-        ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+        ERROR("SSE3 instruction %s at %016lx when FELIX86_NO_SSE3 is enabled", ZydisMnemonicGetString(mnemonic), rip.raw());
     }
 
     if (g_config.no_ssse3 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSSE3)) {
-        ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+        ERROR("SSSE3 instruction %s at %016lx when FELIX86_NO_SSSE3 is enabled", ZydisMnemonicGetString(mnemonic), rip.raw());
     }
 
     if (g_config.no_sse4_1 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
-        ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+        ERROR("SSE4.1 instruction %s at %016lx when FELIX86_NO_SSE4_1 is enabled", ZydisMnemonicGetString(mnemonic), rip.raw());
     }
 
     if (g_config.no_sse4_2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
-        ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), meta.rip.raw());
+        ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), rip.raw());
     }
 
     switch (mnemonic) {
 #define X(name)                                                                                                                                      \
     case ZYDIS_MNEMONIC_##name:                                                                                                                      \
-        fast_##name(*this, meta, as, instruction, operands);                                                                                         \
+        fast_##name(*this, rip, as, instruction, operands);                                                                                          \
         break;
 #include "felix86/v2/handlers.inc"
 #undef X
     default: {
         ZydisDisassembledInstruction disassembled;
-        if (ZYAN_SUCCESS(ZydisDisassembleIntel(decoder.machine_mode, meta.rip.raw(), (u8*)meta.rip.raw(), 15, &disassembled))) {
+        if (ZYAN_SUCCESS(ZydisDisassembleIntel(decoder.machine_mode, rip.raw(), (u8*)rip.raw(), 15, &disassembled))) {
             ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
         } else {
             ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);
@@ -1243,13 +1249,13 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
     biscuit::GPR base, index;
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
-        as.LI(address, current_meta->rip.toGuest().raw() + instruction.length + operand->mem.disp.value);
+        as.LI(address, current_rip.toGuest().raw() + current_instruction->length + operand->mem.disp.value);
         return address;
     }
 
     bool has_base = operand->mem.base != ZYDIS_REGISTER_NONE;
     bool has_index = operand->mem.index != ZYDIS_REGISTER_NONE;
-    bool has_segment = instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
+    bool has_segment = current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT;
     bool has_disp = operand->mem.disp.value != 0;
 
     // Cover the case of just a segment register
@@ -1410,8 +1416,8 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
     }
 
     // Address override prefix, this needs to happen before adding the segment override
-    if (instruction.address_width != 64) {
-        zext(address, address, zydisToSize(instruction.address_width));
+    if (current_instruction->address_width != 64) {
+        zext(address, address, zydisToSize(current_instruction->address_width));
     }
 
     // Whether or not there's a displacement, at this point it's guaranteed that there's something in `address`
@@ -1441,7 +1447,7 @@ void Recompiler::pushCalltrace() {
     if (g_config.calltrace) {
         as.LI(t0, (u64)push_calltrace);
         as.MV(a0, threadStatePointer());
-        as.LI(a1, current_meta->rip.raw());
+        as.LI(a1, current_rip.raw());
         as.JALR(t0);
     }
 }
@@ -1552,16 +1558,15 @@ void* Recompiler::getCompileNext() {
     return compile_next_handler;
 }
 
-// TODO: this is bad. Make it so we emit flags right before an instruction that needs them as we go through emitting them
-// instead of scanning forward
-void Recompiler::scanFlagUsageAhead(HostAddress rip) {
+void Recompiler::scanAhead(HostAddress rip) {
     for (int i = 0; i < 6; i++) {
         flag_access_cpazso[i].clear();
     }
 
+    instructions.clear();
     while (true) {
-        ZydisDecodedInstruction instruction;
-        ZydisDecodedOperand operands[10];
+        instructions.push_back({});
+        auto& [instruction, operands] = instructions.back();
         ZydisMnemonic mnemonic = decode(rip, instruction, operands);
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
         bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET;
@@ -1648,7 +1653,7 @@ bool Recompiler::shouldEmitFlag(HostAddress rip, x86_ref_e ref) {
         return true;
     }
 
-    if (flag_mode == FlagMode::AlwaysEmit) {
+    if (flag_mode == FlagMode::AlwaysEmit || g_config.single_step) {
         return true;
     } else if (flag_mode == FlagMode::NeverEmit) {
         return false;

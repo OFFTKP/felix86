@@ -14,11 +14,6 @@ constexpr u64 allocated_reg_count = 16 + 5 + 16;
 
 constexpr int address_cache_bits = 16;
 
-struct HandlerMetadata {
-    HostAddress rip{};
-    HostAddress block_start{};
-};
-
 struct AddressCacheEntry {
     HostAddress host{}, guest{};
 };
@@ -66,6 +61,8 @@ struct Recompiler {
     biscuit::Vec scratchVec();
 
     biscuit::FPR scratchFPR();
+
+    ZydisMnemonic decode(HostAddress rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     bool isScratch(biscuit::GPR reg);
 
@@ -531,7 +528,7 @@ struct Recompiler {
 
     HostAddress compileSequence(HostAddress rip);
 
-    void compileInstruction(HandlerMetadata& meta);
+    void compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, HostAddress rip);
 
     void assumeLoaded();
 
@@ -575,9 +572,7 @@ private:
 
     RegisterMetadata& getMetadata(x86_ref_e reg);
 
-    void scanFlagUsageAhead(HostAddress rip);
-
-    ZydisMnemonic decode(HostAddress rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+    void scanAhead(HostAddress rip);
 
     void expirePendingLinks(HostAddress rip);
 
@@ -593,8 +588,12 @@ private:
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
 
-    ZydisDecodedInstruction instruction{};
-    ZydisDecodedOperand operands[10]{};
+    using Operands = ZydisDecodedOperand[ZYDIS_MAX_OPERAND_COUNT];
+    std::vector<std::pair<ZydisDecodedInstruction, Operands>> instructions;
+
+    ZydisDecodedInstruction* current_instruction;
+    ZydisDecodedOperand* current_operands;
+    HostAddress current_rip;
 
     void (*enter_dispatcher)(ThreadState*){};
 
@@ -633,7 +632,6 @@ private:
     std::array<std::vector<FlagAccess>, 6> flag_access_cpazso{};
 
     BlockMetadata* current_block_metadata{};
-    HandlerMetadata* current_meta{};
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
     LMUL current_grouping = LMUL::M1;

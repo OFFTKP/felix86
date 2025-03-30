@@ -99,9 +99,11 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
     func(x);
     auto x86_end = x.getCurr();
     auto bisc = rec.getAssembler().GetCursorPointer();
-    HandlerMetadata meta;
-    meta.rip = HostAddress{(u64)x86_start};
-    rec.compileInstruction(meta);
+    ZydisDecodedInstruction zinstruction;
+    ZydisDecodedOperand zoperands[10];
+    HostAddress rip{(u64)x86_start};
+    rec.decode(rip, zinstruction, zoperands);
+    rec.compileInstruction(zinstruction, zoperands, rip);
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;
@@ -127,11 +129,11 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
         count++;
     }
 
-    ZydisDisassembledInstruction zinstruction;
-    ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, (u64)x86_start, x86_start, 15, &zinstruction);
+    ZydisDisassembledInstruction dinstruction;
+    ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, (u64)x86_start, x86_start, 15, &dinstruction);
 
     inst.count = count;
-    inst.disassembly = zinstruction.text;
+    inst.disassembly = dinstruction.text;
     json[bytes] = inst;
 }
 
