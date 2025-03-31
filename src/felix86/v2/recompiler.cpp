@@ -141,9 +141,9 @@ void Recompiler::emitDispatcher() {
         as.SD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
         as.LD(t4, offsetof(ThreadState, jit_stack), threadStatePointer());
 
+        as.Bind(&already_initialized);
         // Load the JIT stack as that's what the compile_next_handler expects
         as.MV(sp, t4);
-        as.Bind(&already_initialized);
     }
 
     compile_next_handler = as.GetCursorPointer();
