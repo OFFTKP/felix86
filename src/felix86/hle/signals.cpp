@@ -780,26 +780,16 @@ bool handle_rsb_overflow(ThreadState* current_state, siginfo_t* info, ucontext_t
     ASSERT(current_state->underflow_page != 0);
     ASSERT(write_address != 0);
 
-    if (write_page == current_state->overflow_page) {
+    if (write_page == current_state->overflow_page || write_page == current_state->underflow_page) {
         // Set the stack pointer to the original value -- It's fine to modify it like this
         // because we are in JIT code and this happened during RSB optimization
-        u64 new_sp = current_state->underflow_page - 4096 * 2;
-        new_sp &= ~0xFFF;
+        u64 new_sp = current_state->jit_stack;
+        memset((void*)(current_state->overflow_page + 4096), 0, jit_stack_size);
         WARN("RSB overflowed, setting stack pointer to 0x%lx", new_sp);
 #ifdef __riscv
         context->uc_mcontext.__gregs[REG_SP] = new_sp;
 #endif
         return true;
-    }
-
-    if (write_page == current_state->underflow_page) {
-        // Ditto, this is much more unlikely to happen
-        u64 new_sp = current_state->underflow_page - 4096 * 2;
-        new_sp &= ~0xFFF;
-        WARN("RSB underflowed, setting stack pointer to 0x%lx", new_sp);
-#ifdef __riscv
-        context->uc_mcontext.__gregs[REG_SP] = new_sp;
-#endif
     }
 
     return false;
@@ -949,9 +939,20 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 }
 
 void Signals::initialize() {
+    if (g_config.rsb) {
+        // Setup an alternative stack so our RSB stack is unused
+        stack_t altstack;
+        u8* mem = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        ASSERT(mem != MAP_FAILED);
+        altstack.ss_flags = 0;
+        altstack.ss_size = 1024 * 1024;
+        altstack.ss_sp = mem + 1024 * 1024;
+        sigaltstack(&altstack, nullptr);
+    }
+
     struct sigaction sa;
     sa.sa_sigaction = signal_handler;
-    sa.sa_flags = SA_SIGINFO;
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
     sigemptyset(&sa.sa_mask);
 
     for (auto& handler : host_signals) {

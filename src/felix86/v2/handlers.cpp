@@ -1597,11 +1597,9 @@ FAST_HANDLE(DIV) {
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
 
-        biscuit::GPR address = rec.scratch();
-        as.LI(address, (u64)&felix86_divu128);
         as.MV(a1, src);
         as.MV(a0, rec.threadStatePointer());
-        as.JALR(address);
+        rec.call((u64)&felix86_divu128);
         rec.restoreRoundingMode();
         break;
     }
@@ -1677,11 +1675,9 @@ FAST_HANDLE(IDIV) {
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
 
-        biscuit::GPR address = rec.scratch();
-        as.LI(address, (u64)&felix86_div128);
         as.MV(a1, src);
         as.MV(a0, rec.threadStatePointer());
-        as.JALR(address);
+        rec.call((u64)&felix86_div128);
         rec.restoreRoundingMode();
         break;
     }
@@ -2769,10 +2765,8 @@ FAST_HANDLE(CPUID) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    biscuit::GPR address = rec.scratch();
-    as.LI(address, (u64)&felix86_cpuid);
     as.MV(a0, rec.threadStatePointer());
-    as.JALR(address);
+    rec.call((u64)&felix86_cpuid);
     rec.restoreRoundingMode();
 }
 
@@ -2792,7 +2786,7 @@ FAST_HANDLE(SYSCALL) {
 
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
-    rec.call((u64)rec.getSyscallThunk());
+    rec.call((u64)&felix86_syscall);
     rec.restoreRoundingMode();
 }
 
@@ -2802,7 +2796,7 @@ FAST_HANDLE(INT) {
 
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
-    rec.call((u64)rec.getSyscallThunk());
+    rec.call((u64)&felix86_syscall32);
     rec.restoreRoundingMode();
 }
 
@@ -3019,6 +3013,7 @@ FAST_HANDLE(PSUBQ) {
 }
 
 FAST_HANDLE(ADDPS) {
+    rec.setVectorState(SEW::E32, 4);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(SEW::E32, 4);
@@ -4857,8 +4852,7 @@ void BITSTRING_func(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecode
     rec.invalidStateUntilJump();
     rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
     as.MV(a0, base);
-    as.LI(t0, func);
-    as.JALR(t0);
+    rec.call(func);
 
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
     as.MV(cf, a0); // Write result to cf
@@ -6302,12 +6296,10 @@ FAST_HANDLE(FXSAVE) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    as.LI(t0, (u64)&felix86_fxsave);
-
     as.MV(a0, rec.threadStatePointer());
     as.MV(a1, address);
     as.LI(a2, 0);
-    as.JALR(t0);
+    rec.call((u64)&felix86_fxsave);
     rec.restoreRoundingMode();
 }
 
@@ -6316,12 +6308,10 @@ FAST_HANDLE(FXSAVE64) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    as.LI(t0, (u64)&felix86_fxsave);
-
     as.MV(a0, rec.threadStatePointer());
     as.MV(a1, address);
     as.LI(a2, 1);
-    as.JALR(t0);
+    rec.call((u64)&felix86_fxsave);
     rec.restoreRoundingMode();
 }
 
@@ -6330,18 +6320,10 @@ FAST_HANDLE(FXRSTOR) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    Literal literal((u64)&felix86_fxrstor);
-    as.LD(t0, &literal);
-
     as.MV(a0, rec.threadStatePointer());
     as.MV(a1, address);
     as.LI(a2, 0);
-    as.JALR(t0);
-
-    Label end;
-    as.J(&end);
-    as.Place(&literal);
-    as.Bind(&end);
+    rec.call((u64)&felix86_fxrstor);
     rec.restoreRoundingMode();
 }
 
@@ -6350,18 +6332,10 @@ FAST_HANDLE(FXRSTOR64) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    Literal literal((u64)&felix86_fxrstor);
-    as.LD(t0, &literal);
-
     as.MV(a0, rec.threadStatePointer());
     as.MV(a1, address);
     as.LI(a2, 1);
-    as.JALR(t0);
-
-    Label end;
-    as.J(&end);
-    as.Place(&literal);
-    as.Bind(&end);
+    rec.call((u64)&felix86_fxrstor);
     rec.restoreRoundingMode();
 }
 

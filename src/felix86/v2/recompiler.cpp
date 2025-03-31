@@ -75,11 +75,31 @@ Recompiler::~Recompiler() {
     deallocateCodeCache(code_cache);
 }
 
+void Recompiler::setupJitStack(ThreadState* state) {
+    state->jit_stack = (u64)mmap(nullptr, 4096 + jit_stack_size + 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    ASSERT(state->jit_stack != (u64)MAP_FAILED);
+
+    // We need to guard both sides of the JIT stack to catch overflows/underflows
+    // Protect lowest page of the stack
+    state->overflow_page = state->jit_stack;
+    int res = mprotect((void*)state->overflow_page, 4096, PROT_NONE);
+    ASSERT(res == 0);
+
+    // Protect highest page of the stack
+    state->underflow_page = state->jit_stack + 4096 + jit_stack_size;
+    res = mprotect((void*)state->underflow_page, 4096, PROT_NONE);
+    ASSERT(res == 0);
+
+    state->jit_stack += 4096 + jit_stack_size;
+    // Give the stack some extra space in case there's some weird multiple return shenanigans
+    // This value will now be the value we always reset to when clearing the code cache
+    state->jit_stack -= 65536;
+}
+
 void Recompiler::emitNecessaryStuff() {
     emitDispatcher();
     emitSigreturnThunk();
     emitUnlinkIndirectThunk();
-    emitSyscallThunk();
     start_of_code_cache = as.GetCursorPointer();
 }
 
@@ -112,23 +132,22 @@ void Recompiler::emitDispatcher() {
     as.MV(threadStatePointer(), a0);
 
     if (g_config.rsb) {
-        // Try to lower the chances that our return stack buffer optimizations end up
-        // ruining the data in the host stack, if somehow there's multiple returns before any calls
-        // Also the page right before is guarded to catch underflows, see StartThread
-        as.ADDI(sp, sp, -4096 * 4);
-        // Also make sure it's aligned
-        as.ANDI(sp, sp, -16);
-        // In exit_dispatcher the original stack pointer is restored so it's fine that we don't
-        // add 1024 to the stack pointer at any point
+        call((u64)&Recompiler::setupJitStack);
+        as.SD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
+
+        // Load the JIT stack as that's what the compile_next_handler expects
+        as.LD(sp, offsetof(ThreadState, jit_stack), threadStatePointer());
     }
 
     compile_next_handler = as.GetCursorPointer();
 
     Label exit_dispatcher_label;
 
-    // Save current stack pointer to clear the RSB data if we clear the code cache
     if (g_config.rsb) {
-        as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
+        // Save current stack (the JIT stack) so we don't have to LD later
+        as.MV(s0, sp);
+        // Load the C++ stack as we are about to call C++ code
+        as.LD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
     }
 
     as.MV(a0, threadStatePointer());
@@ -139,11 +158,14 @@ void Recompiler::emitDispatcher() {
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
     if (g_config.rsb) {
-        as.MV(ra, a0);
-        // "return" to the compiled function. This encoding hints to the
+        // Reload the JIT stack which was saved to s0 earlier
+        // Since s0 is a saved register the CompileNext function will not ruin its value
+        as.MV(sp, s0);
+        // "Return" to the compiled function. This encoding hints to the
         // return stack buffer to pop, which should have been pushed by a jalr
         // when doing backToDispatcher or jumpAndLink
-        as.JR(ra);
+        as.MV(ra, a0);
+        as.RET();
     } else {
         as.JR(a0);
     }
@@ -176,15 +198,6 @@ void Recompiler::emitDispatcher() {
     as.J(&exit_dispatcher_label);
 
     flush_icache();
-}
-
-void Recompiler::emitSyscallThunk() {
-    syscall_thunk = as.GetCursorPointer();
-    u64 address = g_mode32 ? (u64)felix86_syscall32 : (u64)felix86_syscall;
-    as.MV(a0, threadStatePointer());
-    Recompiler::call(as, address, /* don't link -- tail call */ false);
-    // Do not return here
-    as.GetCodeBuffer().Emit32(0);
 }
 
 HostAddress Recompiler::emitSigreturnThunk() {
@@ -228,20 +241,12 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     emitNecessaryStuff();
 
     if (g_config.rsb) {
-        // Need to zero out the stack that rsb has used thus far.
+        // Need to zero out the JIT stack.
         // Because if the cache is cleared and we hit more RETs than calls,
         // we are gonna be returning to potentially invalid places
         // Our frame pointer (see dispatcher for how it's made) points past
         // the saved registers so we need to point at the start of the frame
-        constexpr int sp_index = 1;
-        u64* frame = (u64*)(state->frame_pointer - saved_gprs.size() * sizeof(u64));
-        u64 stack_start = frame[sp_index];
-        static_assert(saved_gprs[sp_index] == sp);
-        u64 stack_end = state->current_sp;
-
-        for (u64 i = stack_end; i < stack_start; i++) {
-            *(u8*)i = 0;
-        }
+        memset((void*)(state->overflow_page + 4096), 0, jit_stack_size);
     }
 }
 
@@ -2837,42 +2842,43 @@ void Recompiler::printTrace() {
 }
 
 void Recompiler::linkIndirect() {
-    if (g_config.rsb) {
-        as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
-    }
+    ERROR("I've retired this function as it didn't provide any speedup, needs adjustments to work with RSB (save stack and stuff)");
+    // if (g_config.rsb) {
+    //     as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
+    // }
 
-    // Self modifying piece of code that rewrites itself as a check + link, where
-    // if the check fails it unlinks itself and always jumps to dispatcher
-    // We assume that we can use every register as they have been written back at this point.
-    Label back_here;
-    as.Bind(&back_here);
+    // // Self modifying piece of code that rewrites itself as a check + link, where
+    // // if the check fails it unlinks itself and always jumps to dispatcher
+    // // We assume that we can use every register as they have been written back at this point.
+    // Label back_here;
+    // as.Bind(&back_here);
 
-    u8* start = as.GetCursorPointer();
-    Literal link_address((u64)start);
-    Literal compile_next((u64)Emulator::CompileNext);
-    Literal link_indirect((u64)Emulator::LinkIndirect);
+    // u8* start = as.GetCursorPointer();
+    // Literal link_address((u64)start);
+    // Literal compile_next((u64)Emulator::CompileNext);
+    // Literal link_indirect((u64)Emulator::LinkIndirect);
 
-    // Get host address for block we wanna link to, get the guest address that should match when we jump there.
-    // AUIPC + LD + MV + JALR + LD + AUIPC + LD + MV + AUIPC + LD + JALR = 11 instructions we can replace at most
-    as.LD(t0, &compile_next);
-    as.MV(a0, threadStatePointer());
-    as.JALR(t0);
-    // At this point, a0 has the host address, load a1 with the expected guest address
-    as.LD(a1, offsetof(ThreadState, rip), threadStatePointer());
-    // Put link address in a2
-    as.LD(a2, &link_address);
-    as.MV(a3, threadStatePointer());
-    as.LD(t0, &link_indirect);
-    as.JALR(t0); // (guest address, host address, link address, thread state)
+    // // Get host address for block we wanna link to, get the guest address that should match when we jump there.
+    // // AUIPC + LD + MV + JALR + LD + AUIPC + LD + MV + AUIPC + LD + JALR = 11 instructions we can replace at most
+    // as.LD(t0, &compile_next);
+    // as.MV(a0, threadStatePointer());
+    // as.JALR(t0);
+    // // At this point, a0 has the host address, load a1 with the expected guest address
+    // as.LD(a1, offsetof(ThreadState, rip), threadStatePointer());
+    // // Put link address in a2
+    // as.LD(a2, &link_address);
+    // as.MV(a3, threadStatePointer());
+    // as.LD(t0, &link_indirect);
+    // as.JALR(t0); // (guest address, host address, link address, thread state)
 
-    // Emulator::LinkIndirect depends on the above sequence being 11 instructions
-    u8* here = as.GetCursorPointer();
-    ASSERT(here - start == 11 * 4);
+    // // Emulator::LinkIndirect depends on the above sequence being 11 instructions
+    // u8* here = as.GetCursorPointer();
+    // ASSERT(here - start == 11 * 4);
 
-    as.J(&back_here);
-    as.Place(&compile_next);
-    as.Place(&link_indirect);
-    as.Place(&link_address);
+    // as.J(&back_here);
+    // as.Place(&compile_next);
+    // as.Place(&link_indirect);
+    // as.Place(&link_address);
 }
 
 // Assume all registers have been loaded. Only good for instruction count generation.

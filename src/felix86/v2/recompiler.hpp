@@ -14,6 +14,8 @@ constexpr u64 allocated_reg_count = 16 + 5 + 16;
 
 constexpr int address_cache_bits = 16;
 
+constexpr static u64 jit_stack_size = 1024 * 1024;
+
 struct AddressCacheEntry {
     HostAddress host{}, guest{};
 };
@@ -419,40 +421,35 @@ struct Recompiler {
         return unlink_indirect_thunk;
     }
 
-    u8* getSyscallThunk() {
-        return syscall_thunk;
-    }
-
     void clearCodeCache(ThreadState* state);
 
     void call(u64 target) {
         call(as, target);
     }
 
-    static void call(Assembler& as, u64 target, bool do_link = true) {
+    static void call(Assembler& as, u64 target) {
+        if (g_config.rsb) {
+            // Save JIT stack, load C++ stack
+            as.MV(s0, sp);
+            as.LD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
+        }
+
         i64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset)) {
-            if (do_link) {
-                as.JAL(offset);
-            } else {
-                as.J(offset);
-            }
+            as.JAL(offset);
         } else if (IsValid2GBImm(offset)) {
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
             as.AUIPC(t0, hi20);
-            if (do_link) {
-                as.JALR(ra, lo12, t0);
-            } else {
-                as.JR(ra, lo12);
-            }
+            as.JALR(ra, lo12, t0);
         } else {
             as.LI(t0, target);
-            if (do_link) {
-                as.JALR(t0);
-            } else {
-                as.JR(t0);
-            }
+            as.JALR(t0);
+        }
+
+        if (g_config.rsb) {
+            // Restore JIT stack
+            as.MV(sp, s0);
         }
     }
 
@@ -564,8 +561,6 @@ private:
 
     void emitDispatcher();
 
-    void emitSyscallThunk();
-
     void loadGPR(x86_ref_e reg, biscuit::GPR gpr);
 
     void loadVec(x86_ref_e reg, biscuit::Vec vec);
@@ -583,6 +578,8 @@ private:
     void inlineSyscall(int sysno, int argcount);
 
     void unlinkAt(u8* address_of_jump);
+
+    static void setupJitStack(ThreadState* state);
 
     u8* code_cache{};
     biscuit::Assembler as{};
@@ -604,8 +601,6 @@ private:
     void* start_of_code_cache{};
 
     u8* unlink_indirect_thunk{};
-
-    u8* syscall_thunk{};
 
     // 16 GPRS followed by 4 flags (CF,OF,ZF,SF) then 16 XMMs
     std::array<RegisterMetadata, 16 + 4 + 16> metadata{};

@@ -146,6 +146,11 @@ struct ThreadState {
     u16 fpu_sw{};
     u8 fpu_top{};
 
+    // We use two separate stacks, one for jit code and one for cpp code -- this only happens when RSB optimization
+    // is enabled to ensure that the C++ code doesn't trigger our guards for stack overflow on call/ret predictions
+    u64 jit_stack{};
+    u64 cpp_stack{};
+
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
     u64 tid{};
@@ -169,8 +174,6 @@ struct ThreadState {
     u8 exit_code{}; // process exit code
 
     bool mode32 = false; // 32-bit execution mode, changes the behavior of some instructions and the decoder
-
-    u64 current_sp = 0;
 
     u32 gdt[3]{};
 
