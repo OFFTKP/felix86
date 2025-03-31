@@ -946,8 +946,8 @@ void Signals::initialize() {
         ASSERT(mem != MAP_FAILED);
         altstack.ss_flags = 0;
         altstack.ss_size = 1024 * 1024;
-        altstack.ss_sp = mem + 1024 * 1024 - 4096;
-        sigaltstack(&altstack, nullptr);
+        altstack.ss_sp = mem;
+        ASSERT(sigaltstack(&altstack, nullptr) == 0);
     }
 
     struct sigaction sa;
