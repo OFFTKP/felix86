@@ -972,7 +972,9 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, GuestAddress ha
         sa.sa_sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
         sigemptyset(&sa.sa_mask);
-        ASSERT(sigaction(sig, &sa, nullptr) == 0);
+
+        // The libc `sigaction` function fails when you try to modify handlers for SIG33 for example
+        ASSERT(syscall(SYS_rt_sigaction, sig, &sa, nullptr) == 0);
     }
 }
 
