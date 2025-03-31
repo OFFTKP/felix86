@@ -968,10 +968,11 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, GuestAddress ha
 
     // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
     if (!handler.isNull()) {
-        struct sigaction sa;
-        sa.sa_sigaction = signal_handler;
+        struct real_sigaction sa;
+        sa.sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
-        sigemptyset(&sa.sa_mask);
+        sa.restorer = nullptr;
+        sa.sa_mask = 0;
 
         // The libc `sigaction` function fails when you try to modify handlers for SIG33 for example
         if (syscall(SYS_rt_sigaction, sig, &sa, nullptr, 8) != 0) {

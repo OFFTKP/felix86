@@ -15,6 +15,18 @@ struct RegisteredSignal {
     int flags = 0;
 };
 
+struct real_sigaction {
+    union {
+        void (*handler)(int);
+        void (*sigaction)(int, siginfo_t*, void*);
+    };
+
+    uint64_t sa_flags;
+
+    void (*restorer)();
+    uint64_t sa_mask;
+};
+
 struct SignalHandlerTable {
     SignalHandlerTable(const SignalHandlerTable& other) = delete;
     SignalHandlerTable& operator=(const SignalHandlerTable& other) = delete;
