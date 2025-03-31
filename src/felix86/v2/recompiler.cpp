@@ -132,11 +132,17 @@ void Recompiler::emitDispatcher() {
     as.MV(threadStatePointer(), a0);
 
     if (g_config.rsb) {
-        call((u64)&Recompiler::setupJitStack);
+        Label already_initialized;
+        as.LD(t4, offsetof(ThreadState, jit_stack), threadStatePointer());
+        as.BNEZ(t4, &already_initialized);
+        // Purposefully not using Recompiler::call here
+        as.LI(t0, (u64)&Recompiler::setupJitStack);
+        as.JALR(t0);
         as.SD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
 
         // Load the JIT stack as that's what the compile_next_handler expects
-        as.LD(sp, offsetof(ThreadState, jit_stack), threadStatePointer());
+        as.MV(sp, t4);
+        as.Bind(&already_initialized);
     }
 
     compile_next_handler = as.GetCursorPointer();
