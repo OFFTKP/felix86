@@ -5,6 +5,8 @@
 ThreadState::ThreadState(ThreadState* copy_state) {
     recompiler = std::make_unique<Recompiler>();
 
+    sigemptyset(&signal_mask);
+
     if (copy_state) {
         for (size_t i = 0; i < sizeof(this->gprs) / sizeof(this->gprs[0]); i++) {
             this->gprs[i] = copy_state->gprs[i];

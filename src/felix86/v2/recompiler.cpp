@@ -2662,10 +2662,8 @@ bool Recompiler::tryInlineSyscall() {
         CASE(connect, 3);
         CASE(writev, 3);
         CASE(ppoll, 5);
-        CASE(rt_sigpending, 2);
         CASE(tgkill, 3);
         CASE(geteuid, 0);
-        CASE(rt_tgsigqueueinfo, 4);
         CASE(socket, 3);
         CASE(setsockopt, 5);
         CASE(capget, 2);
@@ -2684,7 +2682,6 @@ bool Recompiler::tryInlineSyscall() {
         CASE(io_destroy, 1);
         CASE(sched_rr_get_interval, 2);
         CASE(pipe2, 2);
-        CASE(rt_sigtimedwait, 4);
         CASE(getppid, 0);
         CASE(pread64, 4);
         CASE(getsid, 1);

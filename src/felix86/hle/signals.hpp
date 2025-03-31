@@ -71,7 +71,7 @@ struct Signals {
         static bool initialized = false;
         if (!initialized) {
             sigfillset(&mask);
-            sigdelset(&mask, SIGBUS);
+            sigdelset(&mask, SIGINT);
             sigdelset(&mask, SIGILL);
             sigdelset(&mask, SIGSEGV);
             initialized = true;
