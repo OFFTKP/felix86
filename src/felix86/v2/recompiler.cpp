@@ -139,6 +139,7 @@ void Recompiler::emitDispatcher() {
         as.LI(t0, (u64)&Recompiler::setupJitStack);
         as.JALR(t0);
         as.SD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
+        as.LD(t4, offsetof(ThreadState, jit_stack), threadStatePointer());
 
         // Load the JIT stack as that's what the compile_next_handler expects
         as.MV(sp, t4);
