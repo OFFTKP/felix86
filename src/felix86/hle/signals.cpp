@@ -956,7 +956,7 @@ void Signals::initialize() {
     sigemptyset(&sa.sa_mask);
 
     for (auto& handler : host_signals) {
-        sigaction(handler.sig, &sa, nullptr);
+        ASSERT(sigaction(handler.sig, &sa, nullptr) == 0);
     }
 }
 
