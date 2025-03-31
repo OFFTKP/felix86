@@ -1151,11 +1151,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
                 break;
             }
 
-            sigset_t host_mask;
-            printf("Setting mask to %lx\n", state->signal_mask);
-            sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
-            int result = pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
-            ASSERT(result == 0);
+            // sigset_t host_mask;
+            // sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
+            // int result = pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
+            // ASSERT(result == 0);
         }
 
         if (oldset) {
