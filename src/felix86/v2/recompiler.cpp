@@ -221,8 +221,7 @@ HostAddress Recompiler::emitSigreturnThunk() {
     getBlockMetadata(Signals::magicSigreturnAddress()).address = here;
 
     as.MV(a0, threadStatePointer());
-    as.LI(t0, (u64)Signals::sigreturn);
-    as.JALR(t0);
+    call((u64)Signals::sigreturn);
     backToDispatcher();
 
     return here;
