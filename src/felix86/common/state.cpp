@@ -33,6 +33,8 @@ ThreadState::ThreadState(ThreadState* copy_state) {
         this->alt_stack = copy_state->alt_stack;
     }
 
+    Signals::initializeAltstack();
+
     frame_pointer = (u64)&frames[0];
 }
 

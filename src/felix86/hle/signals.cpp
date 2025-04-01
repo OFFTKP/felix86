@@ -939,17 +939,6 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 }
 
 void Signals::initialize() {
-    if (g_config.rsb) {
-        // Setup an alternative stack so our RSB stack is unused
-        stack_t altstack;
-        u8* mem = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-        ASSERT(mem != MAP_FAILED);
-        altstack.ss_flags = 0;
-        altstack.ss_size = 1024 * 1024;
-        altstack.ss_sp = mem;
-        ASSERT(sigaltstack(&altstack, nullptr) == 0);
-    }
-
     struct sigaction sa;
     sa.sa_sigaction = signal_handler;
     sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
@@ -958,6 +947,19 @@ void Signals::initialize() {
     for (auto& handler : host_signals) {
         ASSERT(sigaction(handler.sig, &sa, nullptr) == 0);
     }
+}
+
+void Signals::initializeAltstack() {
+    // Setup an alternative stack so our RSB stack is unused
+    stack_t altstack;
+    stack_t old_stack;
+    u8* mem = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    ASSERT(mem != MAP_FAILED);
+    altstack.ss_flags = 0;
+    altstack.ss_size = 1024 * 1024;
+    altstack.ss_sp = mem;
+    ASSERT(sigaltstack(&altstack, &old_stack) == 0);
+    ASSERT(old_stack.ss_sp == 0);
 }
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, GuestAddress handler, sigset_t mask, int flags) {

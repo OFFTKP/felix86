@@ -74,6 +74,7 @@ struct XmmReg;
 
 struct Signals {
     static void initialize();
+    static void initializeAltstack();
     static void registerSignalHandler(ThreadState* state, int sig, GuestAddress handler, sigset_t mask, int flags);
     [[nodiscard]] static RegisteredSignal getSignalHandler(ThreadState* state, int sig);
 
