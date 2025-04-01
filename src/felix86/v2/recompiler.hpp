@@ -581,6 +581,8 @@ private:
 
     static void setupJitStack(ThreadState* state);
 
+    static void clearJitStack(ThreadState* state);
+
     u8* code_cache{};
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
