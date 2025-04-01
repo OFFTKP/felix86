@@ -414,30 +414,6 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 }
 
 void Threads::StartThread(ThreadState* state) {
-    if (g_config.rsb) {
-        u64 sp = 0;
-#ifdef __riscv
-        asm volatile("mv %0, sp" : "=r"(sp));
-#endif
-        ASSERT(sp != 0);
-
-        // Let's protect a page a few megabytes away from our current stack pointer
-        // If memory access happens at that page we are going to reset the stack
-        // to the initial pointer value
-        u64 far_page = sp -= 4 * 1024 * 1024;
-        far_page &= ~0xFFF;
-        mprotect((void*)far_page, 4096, PROT_NONE);
-        state->overflow_page = far_page;
-
-        // Also protect two pages away from where we currently are, when entering the dispatcher
-        // we are going to subtract sp by four pages so this protection will be hit only if we underflow
-        // during rsb optimizations
-        sp -= 4096 * 2;
-        sp &= ~0xFFF;
-        mprotect((void*)sp, 4096, PROT_NONE);
-        state->underflow_page = sp;
-    }
-
     state->tid = gettid();
     state->recompiler->enterDispatcher(state);
     VERBOSE("Thread exited with reason %s", print_exit_reason(state->exit_reason));

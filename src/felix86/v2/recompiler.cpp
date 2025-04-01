@@ -76,6 +76,7 @@ Recompiler::~Recompiler() {
 }
 
 void Recompiler::setupJitStack(ThreadState* state) {
+    ASSERT(state->jit_stack == 0);
     state->jit_stack = (u64)mmap(nullptr, 4096 + jit_stack_size + 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     ASSERT(state->jit_stack != (u64)MAP_FAILED);
 
