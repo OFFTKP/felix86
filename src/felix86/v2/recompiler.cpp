@@ -76,29 +76,25 @@ Recompiler::~Recompiler() {
 }
 
 void Recompiler::setupJitStack(ThreadState* state) {
-    if (state->jit_stack == 0) {
-        state->jit_stack = (u64)mmap(nullptr, 4096 + jit_stack_size + 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-        ASSERT(state->jit_stack != (u64)MAP_FAILED);
+    ASSERT(state->jit_stack == 0);
+    state->jit_stack = (u64)mmap(nullptr, 4096 + jit_stack_size + 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    ASSERT(state->jit_stack != (u64)MAP_FAILED);
 
-        // We need to guard both sides of the JIT stack to catch overflows/underflows
-        // Protect lowest page of the stack
-        state->overflow_page = state->jit_stack;
-        int res = mprotect((void*)state->overflow_page, 4096, PROT_NONE);
-        ASSERT(res == 0);
+    // We need to guard both sides of the JIT stack to catch overflows/underflows
+    // Protect lowest page of the stack
+    state->overflow_page = state->jit_stack;
+    int res = mprotect((void*)state->overflow_page, 4096, PROT_NONE);
+    ASSERT(res == 0);
 
-        // Protect highest page of the stack
-        state->underflow_page = state->jit_stack + 4096 + jit_stack_size;
-        res = mprotect((void*)state->underflow_page, 4096, PROT_NONE);
-        ASSERT(res == 0);
+    // Protect highest page of the stack
+    state->underflow_page = state->jit_stack + 4096 + jit_stack_size;
+    res = mprotect((void*)state->underflow_page, 4096, PROT_NONE);
+    ASSERT(res == 0);
 
-        state->jit_stack += 4096 + jit_stack_size;
-        // Give the stack some extra space in case there's some weird multiple return shenanigans
-        // This value will now be the value we always reset to when clearing the code cache
-        state->jit_stack -= 65536;
-    } else {
-        // We already have a JIT stack, but we need to clear it
-        clearJitStack(state);
-    }
+    state->jit_stack += 4096 + jit_stack_size;
+    // Give the stack some extra space in case there's some weird multiple return shenanigans
+    // This value will now be the value we always reset to when clearing the code cache
+    state->jit_stack -= 65536;
 }
 
 void Recompiler::clearJitStack(ThreadState* state) {
@@ -142,12 +138,15 @@ void Recompiler::emitDispatcher() {
     as.MV(threadStatePointer(), a0);
 
     if (g_config.rsb) {
+        Label already_setup;
         as.LD(t4, offsetof(ThreadState, jit_stack), threadStatePointer());
+        as.BNEZ(t4, &already_setup);
         // Purposefully not using Recompiler::call here
         as.LI(t0, (u64)&Recompiler::setupJitStack);
         as.JALR(t0);
         as.SD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
         as.LD(t4, offsetof(ThreadState, jit_stack), threadStatePointer());
+        as.Bind(&already_setup);
         // Load the JIT stack as that's what the compile_next_handler expects
         as.MV(sp, t4);
     }

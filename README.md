@@ -1,4 +1,4 @@
-[中文](./README_CN.md)
+[中文](./README_CN.md) | [Website](https://felix86.com)
 
 # felix86
 
