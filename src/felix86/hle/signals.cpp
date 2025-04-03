@@ -950,16 +950,28 @@ void Signals::initialize() {
 }
 
 void Signals::initializeAltstack() {
-    // Setup an alternative stack so our RSB stack is unused
-    stack_t altstack;
-    stack_t old_stack;
-    u8* mem = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-    ASSERT(mem != MAP_FAILED);
-    altstack.ss_flags = 0;
-    altstack.ss_size = 1024 * 1024;
-    altstack.ss_sp = mem;
-    ASSERT(sigaltstack(&altstack, &old_stack) == 0);
-    ASSERT(old_stack.ss_sp == 0);
+    if (g_config.rsb) {
+        // TODO: on signal handler switch to cpp stack before entering thread;
+        // Setup an alternative stack so our RSB stack is unused
+        stack_t altstack;
+        stack_t old_stack;
+        u8* mem = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        ASSERT(mem != MAP_FAILED);
+        altstack.ss_flags = 0;
+        altstack.ss_size = 1024 * 1024;
+        altstack.ss_sp = mem;
+        ASSERT(sigaltstack(&altstack, &old_stack) == 0);
+        ASSERT(old_stack.ss_sp == 0);
+    }
+}
+
+void Signals::uninitializeAltstack() {
+    if (g_config.rsb) {
+        stack_t old_stack;
+        ASSERT(sigaltstack(nullptr, &old_stack) == 0);
+        ASSERT(old_stack.ss_sp != 0);
+        ASSERT(munmap((void*)old_stack.ss_sp, 1024 * 1024) == 0);
+    }
 }
 
 void Signals::registerSignalHandler(ThreadState* state, int sig, GuestAddress handler, sigset_t mask, int flags) {

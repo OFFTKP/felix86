@@ -63,6 +63,8 @@ ThreadState* ThreadState::Get() {
 
 void ThreadState::Destroy(ThreadState* state) {
     auto lock = g_process_globals.states_lock.lock();
+    state->signals_disabled = true;
+    Signals::uninitializeAltstack();
     auto it = std::find(g_process_globals.states.begin(), g_process_globals.states.end(), state);
     if (it != g_process_globals.states.end()) {
         g_process_globals.states.erase(it);
