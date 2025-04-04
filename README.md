@@ -24,12 +24,13 @@ A compatibility list can be found here: https://felix86.com/compat
 ## Dependencies
 felix86 relies on several great projects:
 
-- [FEX](https://github.com/FEX-Emu/FEX)'s comprehensive unit test suite and rootfs generation
+- [FEX](https://github.com/FEX-Emu/FEX)'s comprehensive unit test suite
 - [Biscuit](https://github.com/lioncash/biscuit) for RISC-V code emission
 - [Zydis](https://github.com/zyantific/zydis) for decoding and disassembly
 - [Catch2](https://github.com/catchorg/Catch2) for unit testing
 - [fmt](https://github.com/fmtlib/fmt) for string formatting
 - [nlohmann/json](https://github.com/nlohmann/json) for JSON parsing
+- [toml11](https://github.com/ToruNiina/toml11) for TOML parsing
 
 ## Why?
 felix86 was started for several reasons, including:
