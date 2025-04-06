@@ -113,6 +113,8 @@ struct Filesystem {
 
     static int FChmodAt(int fd, const char* filename, u64 mode);
 
+    static int Rmdir(const char* path);
+
     static std::filesystem::path resolve(const char* path);
 
     static void removeRootfsPrefix(std::string& path);
@@ -149,6 +151,8 @@ private:
     static int utimensatInternal(int fd, const char* filename, struct timespec* spec, int flags);
 
     static int fchmodatInternal(int fd, const char* filename, u64 mode);
+
+    static int rmdirInternal(const char* path);
 
     static std::pair<int, const char*> resolve(int fd, const char* path);
 

@@ -1280,6 +1280,10 @@ void felix86_syscall(ThreadState* state) {
             result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x86_stat*)arg2, 0);
             break;
         }
+        case felix86_x86_64_rmdir: {
+            result = Filesystem::Rmdir((char*)arg1);
+            break;
+        }
         case felix86_x86_64_vfork: {
             clone_args args = {};
             memset(&args, 0, sizeof(clone_args));

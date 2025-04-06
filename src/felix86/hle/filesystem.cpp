@@ -223,6 +223,11 @@ int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, i
     return utimensatInternal(new_fd, new_filename, spec, flags);
 }
 
+int Filesystem::Rmdir(const char* dir) {
+    std::filesystem::path path = resolve(dir);
+    return rmdirInternal(path.c_str());
+}
+
 int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode) {
     return ::syscall(SYS_openat, fd, filename, flags, mode);
 }
@@ -285,6 +290,10 @@ int Filesystem::utimensatInternal(int fd, const char* filename, struct timespec*
 
 int Filesystem::fchmodatInternal(int fd, const char* filename, u64 mode) {
     return ::syscall(SYS_fchmodat, fd, filename, mode);
+}
+
+int Filesystem::rmdirInternal(const char* path) {
+    return ::rmdir(path);
 }
 
 std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
