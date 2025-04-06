@@ -183,10 +183,6 @@ struct Recompiler {
 
     static x86_size_e zydisToSize(ZyanU8 size);
 
-    std::lock_guard<std::mutex> lock() {
-        return std::lock_guard{block_map_mutex};
-    }
-
     // Get the allocated register for the given register reference
     static constexpr biscuit::GPR allocatedGPR(x86_ref_e reg) {
         // RDI, RSI, RDX, R10, R8, R9 are allocated to a0, a1, a2, a3, a4, a5 to match the syscall abi and save some swapping instructions
@@ -606,9 +602,6 @@ private:
 
     // 16 GPRS followed by 4 flags (CF,OF,ZF,SF) then 16 XMMs
     std::array<RegisterMetadata, 16 + 4 + 16> metadata{};
-
-    // This may be locked by a different thread on a signal handler to unlink a block
-    std::mutex block_map_mutex{};
 
     std::unordered_map<u64, BlockMetadata> block_metadata{};
 

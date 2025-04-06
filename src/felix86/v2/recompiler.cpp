@@ -242,7 +242,6 @@ HostAddress Recompiler::emitUnlinkIndirectThunk() {
 }
 
 void Recompiler::clearCodeCache(ThreadState* state) {
-    std::lock_guard lock(block_map_mutex);
     WARN("Clearing cache on thread %u", gettid());
     as.RewindBuffer();
     block_metadata.clear();
@@ -267,7 +266,6 @@ HostAddress Recompiler::compile(ThreadState* state, HostAddress rip) {
         clearCodeCache(state);
     }
 
-    std::lock_guard lock(block_map_mutex);
     HostAddress start{(u64)as.GetCursorPointer()};
 
     // Map it immediately so we can optimize conditional branch to self
