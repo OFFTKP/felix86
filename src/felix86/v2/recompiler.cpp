@@ -2638,19 +2638,11 @@ bool Recompiler::tryInlineSyscall() {
         inlineSyscall(x64_to_riscv(felix86_x86_64_##sysno), argcount);                                                                               \
         return true
 
-        CASE(unshare, 1);
         CASE(setuid, 1);
         CASE(write, 3);
-        CASE(io_getevents, 4);
-        CASE(get_robust_list, 3);
-        CASE(capset, 2);
         CASE(getgid, 0);
         CASE(fsync, 1);
-        CASE(membarrier, 2);
         CASE(fallocate, 4);
-        CASE(tkill, 2);
-        CASE(set_mempolicy, 3);
-        CASE(set_tid_address, 1);
         CASE(clock_getres, 2);
         CASE(setsid, 0);
         CASE(io_setup, 2);
