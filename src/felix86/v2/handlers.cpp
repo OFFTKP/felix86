@@ -5772,18 +5772,48 @@ FAST_HANDLE(CMPXCHG_lock) {
     case X86_SIZE_QWORD: {
         if (Extensions::Zacas) {
             as.MV(dst, rax);
-            as.AMOCAS_D(Ordering::AQRL, dst, src, address);
+            as.AMOCAS_D(Ordering::AQRL, dst, src, address); // TODO: unaligned support
             WARN_ONCE("Zacas & CMPXCHG, untested");
         } else {
+            biscuit::Label unaligned, end;
+            biscuit::GPR masked = rec.scratch();
+            biscuit::GPR scratch = rec.scratch();
+            as.ANDI(masked, address, 0b111);
+            as.BNEZ(masked, &unaligned);
+
             biscuit::Label not_equal;
             biscuit::Label start;
-            biscuit::GPR scratch = rec.scratch();
             as.Bind(&start);
             as.LR_D(Ordering::AQRL, dst, address);
             as.BNE(dst, rax, &not_equal);
             as.SC_D(Ordering::AQRL, scratch, src, address);
             as.BNEZ(scratch, &start);
             as.Bind(&not_equal);
+            as.J(&end);
+
+            as.Bind(&unaligned);
+            // If the address is not aligned, we can't use LR.D
+            // Which means we also can't be technically correct atomically
+            // Use LR.D/SC.D on the aligned address anyway to at least have a little bit of guarantee
+            biscuit::Label not_equal_unaligned;
+            biscuit::Label start_unaligned;
+            as.ANDI(masked, address, ~0b111);
+            as.Bind(&start_unaligned);
+            as.LD(dst, 0, address);
+            as.LR_D(Ordering::AQRL, scratch, masked);
+            // We do the comparison on the load from the unaligned address, obviously
+            as.BNE(dst, rax, &not_equal_unaligned);
+            // If any of the bytes we can see with the aligned address are changed we retry
+            // Of course this isn't actually atomic (we'd need hardware unaligned atomics support for that)
+            // but it's better than nothing
+            as.SC_D(Ordering::AQRL, scratch, scratch, masked); // Write the same thing we just loaded in scratch
+            as.BNEZ(scratch, &start_unaligned);
+            as.SD(src, 0, address);
+
+            as.Bind(&not_equal_unaligned);
+            as.Bind(&end);
+
+            rec.popScratch();
             rec.popScratch();
         }
         break;
