@@ -215,11 +215,15 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
     g_dispatcher_exit_count++;
 
+    thread_state->signals_disabled = true;
+
     HostAddress next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip().toHost());
 
     if (g_block_trace) {
         thread_state->recompiler->trace(thread_state->GetRip().toHost().raw());
     }
+
+    thread_state->signals_disabled = false;
 
     ASSERT_MSG(!next_block.isNull(), "getCompiledBlock returned null?");
 

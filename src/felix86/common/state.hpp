@@ -155,10 +155,11 @@ struct ThreadState {
     pthread_t thread{}; // The pthread this state belongs to
     u64 tid{};
     stack_t alt_stack{};
-    bool signals_disabled{}; // some instructions would make it annoying to allow for signals to occur, be it because they have loops like rep, or use
-                             // lr/sc instructions. So, this flag is set to true when we absolutely don't want a signal to be handled here.
-    bool cpuid_bit{};        // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
-                             // check presence of cpuid... on x86-64 processors... lol...
+    // some instructions would make it annoying to allow for signals to occur, be it because they have loops like rep, or use
+    // lr/sc instructions. So, this flag is set to true when we absolutely don't want a signal to be handled here.
+    volatile bool signals_disabled{}; // volatile to prevent reordering
+    bool cpuid_bit{}; // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
+                      // check presence of cpuid... on x86-64 processors... lol...
 
     std::vector<PendingSignal> pending_signals{}; // signals that were raised during an unsafe time, queued for later
 
