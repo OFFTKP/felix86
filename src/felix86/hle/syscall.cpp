@@ -1496,6 +1496,10 @@ void felix86_syscall32(ThreadState* state) {
             result = Filesystem::ReadlinkAt(AT_FDCWD, (char*)arg1, (char*)arg2, (int)arg3);
             break;
         }
+        case felix86_x86_32_stat64: {
+            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x86_stat*)arg2, 0);
+            break;
+        }
         case felix86_x86_32_clock_nanosleep_time32: {
             timespec rqtp, rmtp;
             const x86_timespec* guest_rqtp = (x86_timespec*)arg3;
