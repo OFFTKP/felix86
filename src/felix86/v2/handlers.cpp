@@ -7252,6 +7252,30 @@ FAST_HANDLE(PAVGW) {
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(AESENC) {
+    if (Extensions::Zvkned) {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E32, 4);
+        as.VAESEM_VV(dst, src);
+        rec.setOperandVec(&operands[0], dst);
+    } else {
+        ERROR("Hit AESENC instruction but system does not support Zvkned extension");
+    }
+}
+
+FAST_HANDLE(AESENCLAST) {
+    if (Extensions::Zvkned) {
+        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+        biscuit::Vec src = rec.getOperandVec(&operands[1]);
+        rec.setVectorState(SEW::E32, 4);
+        as.VAESEF_VV(dst, src);
+        rec.setOperandVec(&operands[0], dst);
+    } else {
+        ERROR("Hit AESENCLAST instruction but system does not support Zvkned extension");
+    }
+}
+
 FAST_HANDLE(CMPXCHG16B) {
     biscuit::GPR address = rec.lea(&operands[0]);
     if (Extensions::Zacas) {
