@@ -178,7 +178,6 @@ int main(int argc, char* argv[]) {
 
     Config::initialize();
     initialize_globals();
-    initialize_extensions();
 
     if (!g_execve_process) {
         ASSERT(!g_config.rootfs_path.empty());

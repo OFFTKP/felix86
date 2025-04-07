@@ -179,8 +179,49 @@ std::string get_extensions() {
             extensions += ",";
         extensions += "zfa";
     }
+    if (Extensions::Zvbb) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zvbb";
+    }
+    if (Extensions::Zvkned) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zvkned";
+    }
 
     return extensions;
+}
+
+void initialize_extensions() {
+    if (!g_extensions_manually_specified) {
+        biscuit::CPUInfo cpuinfo;
+        Extensions::VLEN = cpuinfo.GetVlenb() * 8;
+        Extensions::G = cpuinfo.Has(RISCVExtension::I) && cpuinfo.Has(RISCVExtension::M) && cpuinfo.Has(RISCVExtension::A) &&
+                        cpuinfo.Has(RISCVExtension::F) && cpuinfo.Has(RISCVExtension::D);
+        Extensions::V = cpuinfo.Has(RISCVExtension::V);
+        Extensions::C = cpuinfo.Has(RISCVExtension::C);
+        Extensions::B = cpuinfo.Has(RISCVExtension::Zba) && cpuinfo.Has(RISCVExtension::Zbb) && cpuinfo.Has(RISCVExtension::Zbc) &&
+                        cpuinfo.Has(RISCVExtension::Zbs);
+        Extensions::Zacas = cpuinfo.Has(RISCVExtension::Zacas);
+        Extensions::Zicond = cpuinfo.Has(RISCVExtension::Zicond);
+        Extensions::Zihintpause = cpuinfo.Has(RISCVExtension::Zihintpause);
+        Extensions::Zfa = cpuinfo.Has(RISCVExtension::Zfa);
+        Extensions::Zba = cpuinfo.Has(RISCVExtension::Zba);
+        Extensions::Zvbb = cpuinfo.Has(RISCVExtension::Zvbb);
+        Extensions::Zvkned = cpuinfo.Has(RISCVExtension::Zvkned);
+    }
+
+#ifdef __riscv
+    if (!Extensions::G) {
+        WARN("G extension was not specified, enabling it by default");
+        Extensions::G = true;
+    }
+
+    if (!Extensions::V) {
+        ERROR("V extension is required for SSE instructions");
+    }
+#endif
 }
 
 void initialize_globals() {
@@ -324,45 +365,17 @@ void initialize_globals() {
         }
 
         std::string extensions = get_extensions();
-        if (!extensions.empty()) {
-            LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
+        if (extensions.empty()) {
+            initialize_extensions();
+            extensions = get_extensions();
+            ASSERT(!extensions.empty());
         }
+        LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
     }
 
     g_vlen = biscuit::CPUInfo().GetVlenb() * 8;
 
     ThreadState::InitializeKey();
-}
-
-void initialize_extensions() {
-    if (!g_extensions_manually_specified) {
-        biscuit::CPUInfo cpuinfo;
-        Extensions::VLEN = cpuinfo.GetVlenb() * 8;
-        Extensions::G = cpuinfo.Has(RISCVExtension::I) && cpuinfo.Has(RISCVExtension::M) && cpuinfo.Has(RISCVExtension::A) &&
-                        cpuinfo.Has(RISCVExtension::F) && cpuinfo.Has(RISCVExtension::D);
-        Extensions::V = cpuinfo.Has(RISCVExtension::V);
-        Extensions::C = cpuinfo.Has(RISCVExtension::C);
-        Extensions::B = cpuinfo.Has(RISCVExtension::Zba) && cpuinfo.Has(RISCVExtension::Zbb) && cpuinfo.Has(RISCVExtension::Zbc) &&
-                        cpuinfo.Has(RISCVExtension::Zbs);
-        Extensions::Zacas = cpuinfo.Has(RISCVExtension::Zacas);
-        Extensions::Zicond = cpuinfo.Has(RISCVExtension::Zicond);
-        Extensions::Zihintpause = cpuinfo.Has(RISCVExtension::Zihintpause);
-        Extensions::Zfa = cpuinfo.Has(RISCVExtension::Zfa);
-        Extensions::Zba = cpuinfo.Has(RISCVExtension::Zba);
-        Extensions::Zvbb = cpuinfo.Has(RISCVExtension::Zvbb);
-        Extensions::Zvkned = cpuinfo.Has(RISCVExtension::Zvkned);
-    }
-
-#ifdef __riscv
-    if (!Extensions::G) {
-        WARN("G extension was not specified, enabling it by default");
-        Extensions::G = true;
-    }
-
-    if (!Extensions::V) {
-        ERROR("V extension is required for SSE instructions");
-    }
-#endif
 }
 
 bool parse_extensions(const char* arg) {
