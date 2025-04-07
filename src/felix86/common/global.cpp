@@ -211,17 +211,6 @@ void initialize_extensions() {
         Extensions::Zvbb = cpuinfo.Has(RISCVExtension::Zvbb);
         Extensions::Zvkned = cpuinfo.Has(RISCVExtension::Zvkned);
     }
-
-#ifdef __riscv
-    if (!Extensions::G) {
-        WARN("G extension was not specified, enabling it by default");
-        Extensions::G = true;
-    }
-
-    if (!Extensions::V) {
-        ERROR("V extension is required for SSE instructions");
-    }
-#endif
 }
 
 void initialize_globals() {
@@ -364,6 +353,17 @@ void initialize_globals() {
         extensions = get_extensions();
         ASSERT(!extensions.empty());
     }
+
+#ifdef __riscv
+    if (!Extensions::G) {
+        WARN("G extension was not specified, enabling it by default");
+        Extensions::G = true;
+    }
+
+    if (!Extensions::V) {
+        ERROR("V extension is required for SSE instructions");
+    }
+#endif
 
     if (!g_execve_process) {
         LOG("%s", get_version_full());

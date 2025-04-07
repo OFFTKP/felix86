@@ -1107,6 +1107,8 @@ void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
             } else {
                 UNREACHABLE();
             }
+        } else {
+            UNREACHABLE();
         }
     }
 
