@@ -103,14 +103,14 @@ int Filesystem::Rename(const char* oldname, const char* newname) {
     return result;
 }
 
-int Filesystem::Symlink(const char* oldname, const char* newname) {
+int Filesystem::SymlinkAt(const char* oldname, int newfd, const char* newname) {
     if (!oldname || !newname) {
         return -EINVAL;
     }
 
     std::filesystem::path oldpath = resolve(oldname);
-    std::filesystem::path newpath = resolve(newname);
-    int result = ::symlink(oldpath.c_str(), newpath.c_str());
+    auto [newfd2, newpath] = resolve(newfd, newname);
+    int result = ::symlinkat(oldpath.c_str(), newfd2, newpath);
     if (result == -1) {
         result = -errno;
     }

@@ -79,7 +79,7 @@ struct Filesystem {
 
     static int Rename(const char* oldname, const char* newname);
 
-    static int Symlink(const char* oldname, const char* newname);
+    static int SymlinkAt(const char* oldname, int newfd, const char* newname);
 
     static int Chmod(const char* path, u64 mode);
 

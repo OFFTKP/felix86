@@ -1233,7 +1233,11 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_symlink: {
-            result = Filesystem::Symlink((char*)arg1, (char*)arg2);
+            result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
+            break;
+        }
+        case felix86_x86_64_symlinkat: {
+            result = Filesystem::SymlinkAt((char*)arg1, arg2, (char*)arg3);
             break;
         }
         case felix86_x86_64_poll: {
