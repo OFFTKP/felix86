@@ -253,6 +253,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = Filesystem::Getcwd((char*)arg1, arg2);
         break;
     }
+    case felix86_riscv64_symlinkat: {
+        result = Filesystem::SymlinkAt((char*)arg1, arg2, (char*)arg3);
+        break;
+    }
     case felix86_riscv64_epoll_ctl: {
         epoll_event host_event = *(x86_epoll_event*)arg4;
         result = SYSCALL(epoll_ctl, arg1, arg2, arg3, &host_event);
@@ -1234,10 +1238,6 @@ void felix86_syscall(ThreadState* state) {
         }
         case felix86_x86_64_symlink: {
             result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
-            break;
-        }
-        case felix86_x86_64_symlinkat: {
-            result = Filesystem::SymlinkAt((char*)arg1, arg2, (char*)arg3);
             break;
         }
         case felix86_x86_64_poll: {
