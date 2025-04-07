@@ -582,7 +582,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
             // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
             // We need to also track fixed mappings in the 32-bit address space
+            state->signals_disabled = true;
             result = (ssize_t)g_mapper->map32((void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
+            state->signals_disabled = false;
         } else {
             // No need to use mapper
             result = SYSCALL(mmap, arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
@@ -1403,7 +1405,9 @@ void felix86_syscall32(ThreadState* state) {
         case felix86_x86_32_mmap_pgoff: {
             // mmap2 is like mmap but file offset is in pages (4096 bytes) to help with the lack of big enough integers in x86-32
             u64 offset = arg6 * 4096;
+            state->signals_disabled = true;
             result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
+            state->signals_disabled = false;
             break;
         }
         case felix86_x86_32_open: {

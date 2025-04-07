@@ -471,9 +471,6 @@ void Elf::Load(const std::filesystem::path& path) {
         Elf_Phdr& phdr = phdrtable[i];
         switch (phdr.type()) {
         case PT_LOAD: {
-            if (phdr.filesz() == 0) {
-            }
-
             VERBOSE("Segment %d: %lx-%lx", i, phdr.vaddr(), phdr.vaddr() + phdr.memsz());
 
             u8* segment_base = base_ptr + PAGE_START(phdr.vaddr());
@@ -548,6 +545,8 @@ void Elf::Load(const std::filesystem::path& path) {
         MemoryMetadata::AddRegion("Executable", g_executable_start.raw(), g_executable_end.raw());
         // LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
+        ASSERT(g_program_end != 0);
+        g_program_end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
         g_interpreter_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
         g_interpreter_end = HostAddress{(u64)(base_ptr + highest_vaddr)};
         program_base = (u8*)base_ptr;

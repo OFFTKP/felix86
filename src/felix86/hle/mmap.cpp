@@ -39,6 +39,12 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
             return (void*)error;
         }
 
+        if (flags & MAP_FIXED) {
+            // Since this mapping could be overwritting another existing mapping, let's do the quick
+            // and dirty solution of unallocating it in freelist so we can reallocate it
+            unmap32Impl(result, size);
+        }
+
         if (size & 0xFFF) {
             size = (size + PAGE_SIZE) & ~0xFFF;
         }
@@ -50,15 +56,17 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
         Node* current = freelist;
         ASSERT(current);
         Node* previous = nullptr;
-
+        bool all_ok = false; // makes sure the freelist agrees with host mmap
         while (current) {
             if (mmap_start == current->start && mmap_end - 1 == current->end) {
                 // The mmap is exactly this block, delete it and break
+                all_ok = true;
                 deleteBlock(current, previous, current->next);
                 break;
             }
 
             if (mmap_start >= current->start && mmap_start <= current->end) {
+                all_ok = true;
                 // The mmap definitely starts in this block, the problem is where does it end
                 if (mmap_end - 1 <= current->end) {
                     // Ok the mmap is entirely contained in this singular block
@@ -118,6 +126,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
             }
             UNREACHABLE();
         }
+        ASSERT(all_ok);
         return result;
     } else {
         // We need to use our freelist to find a free mapping that has enough size
@@ -166,71 +175,7 @@ int Mapper::unmap32(void* addr, u64 size) {
     ASSERT((u64)addr < addressSpaceEnd32);
     int result = munmap(addr, size);
     if (result != -1) {
-        u64 unmap_start = (u64)addr;
-        if (size & 0xFFF) {
-            size = ((size + PAGE_SIZE) & ~0xFFF);
-        }
-        u64 unmap_end = unmap_start + size;
-        ASSERT(unmap_start <= addressSpaceEnd32 - 0x1000);
-        ASSERT(unmap_end <= addressSpaceEnd32 + 1);
-        Node* current = freelist;
-        Node* min = nullptr;
-        Node* max = nullptr;
-        Node* nearest = nullptr;
-        while (current) {
-            if (unmap_start >= current->start && unmap_end <= current->end + 1) {
-                // Area that was munmap'ed is not mapped to anything
-                // as it is entirely contained in a block, return early
-                return result;
-            }
-
-            if (unmap_start >= current->start && unmap_start <= current->end + 1) {
-                min = current;
-            }
-
-            if (unmap_end >= current->start && unmap_end <= current->end + 1) {
-                max = current;
-            }
-
-            if (current->next) {
-                if (unmap_start > current->end && unmap_end < current->next->start) {
-                    nearest = current;
-                }
-            }
-
-            current = current->next;
-        }
-
-        if (min && !max) {
-            min->end = unmap_end - 1;
-        } else if (!min && max) {
-            max->start = unmap_start;
-        } else if (min && max) {
-            // Link min and max, delete everything in between
-            current = min->next;
-            Node* max_next = max->next;
-            while (current != max_next) {
-                Node* next = current->next;
-                min->end = current->end;
-                deleteBlock(current, min, next);
-                current = next;
-            }
-        } else {
-            // No min or max, means unmap in the middle of allocated region
-            // Create a new free block
-            Node* new_node = new Node;
-            new_node->start = unmap_start;
-            new_node->end = unmap_end - 1;
-
-            if (nearest) {
-                new_node->next = nearest->next;
-                nearest->next = new_node;
-            } else {
-                // It is the new first block
-                new_node->next = freelist;
-                freelist = new_node;
-            }
-        }
+        unmap32Impl(addr, size);
         return result;
     } else {
         return -errno;
@@ -258,6 +203,74 @@ int Mapper::unmap(void* addr, u64 size) {
     } else {
         ASSERT(!g_mode32);
         return munmap(addr, size);
+    }
+}
+
+void Mapper::unmap32Impl(void* addr, size_t size) {
+    u64 unmap_start = (u64)addr;
+    if (size & 0xFFF) {
+        size = ((size + PAGE_SIZE) & ~0xFFF);
+    }
+    u64 unmap_end = unmap_start + size;
+    ASSERT(unmap_start <= addressSpaceEnd32 - 0x1000);
+    ASSERT(unmap_end <= addressSpaceEnd32 + 1);
+    Node* current = freelist;
+    Node* min = nullptr;
+    Node* max = nullptr;
+    Node* nearest = nullptr;
+    while (current) {
+        if (unmap_start >= current->start && unmap_end <= current->end + 1) {
+            // Area that was munmap'ed is not mapped to anything
+            // as it is entirely contained in a block, return early
+            return;
+        }
+
+        if (unmap_start >= current->start && unmap_start <= current->end + 1) {
+            min = current;
+        }
+
+        if (unmap_end >= current->start && unmap_end <= current->end + 1) {
+            max = current;
+        }
+
+        if (current->next) {
+            if (unmap_start > current->end && unmap_end < current->next->start) {
+                nearest = current;
+            }
+        }
+
+        current = current->next;
+    }
+
+    if (min && !max) {
+        min->end = unmap_end - 1;
+    } else if (!min && max) {
+        max->start = unmap_start;
+    } else if (min && max) {
+        // Link min and max, delete everything in between
+        current = min->next;
+        Node* max_next = max->next;
+        while (current != max_next) {
+            Node* next = current->next;
+            min->end = current->end;
+            deleteBlock(current, min, next);
+            current = next;
+        }
+    } else {
+        // No min or max, means unmap in the middle of allocated region
+        // Create a new free block
+        Node* new_node = new Node;
+        new_node->start = unmap_start;
+        new_node->end = unmap_end - 1;
+
+        if (nearest) {
+            new_node->next = nearest->next;
+            nearest->next = new_node;
+        } else {
+            // It is the new first block
+            new_node->next = freelist;
+            freelist = new_node;
+        }
     }
 }
 

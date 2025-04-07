@@ -35,5 +35,7 @@ private:
 
     std::vector<std::pair<u32, u32>> getRegions();
 
+    void unmap32Impl(void* addr, size_t size);
+
     friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
 };

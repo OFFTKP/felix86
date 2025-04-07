@@ -38,7 +38,7 @@ pthread_key_t g_thread_state_key = -1;
 ProcessGlobals g_process_globals{};
 std::unique_ptr<Mapper> g_mapper{};
 std::unique_ptr<GDBJIT> g_gdbjit;
-u64 g_program_end;
+u64 g_program_end = 0;
 HostAddress g_guest_auxv{};
 size_t g_guest_auxv_size = 0;
 bool g_execve_process = false;
@@ -211,6 +211,13 @@ void initialize_extensions() {
         Extensions::Zvbb = cpuinfo.Has(RISCVExtension::Zvbb);
         Extensions::Zvkned = cpuinfo.Has(RISCVExtension::Zvkned);
     }
+
+#ifdef __x86_64__
+    // Just so we can run some unit tests fine
+    Extensions::G = true;
+    Extensions::V = true;
+    Extensions::VLEN = 128;
+#endif
 }
 
 void initialize_globals() {

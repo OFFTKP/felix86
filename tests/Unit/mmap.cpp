@@ -7,8 +7,8 @@
 
 namespace Catch {
     template <>
-    struct StringMaker<std::pair<uint64_t, uint64_t>> {
-        static std::string convert(const std::pair<uint64_t, uint64_t>& range) {
+    struct StringMaker<std::pair<uint32_t, uint32_t>> {
+        static std::string convert(const std::pair<uint32_t, uint32_t>& range) {
             std::ostringstream oss;
             oss << "0x" << std::hex << std::setw(16) << std::setfill('0') << range.first
                 << " - 0x" << std::hex << std::setw(16) << std::setfill('0') << range.second;
@@ -371,6 +371,38 @@ CATCH_TEST_CASE("MapRandom", "[mmap32]") {
     // Random mmaps always pick from first page if possible
     verifyRegions(mapper, {
         {mmap_min_addr() + 0x100000, Mapper::addressSpaceEnd32},
+    });
+
+    MUNMAP_ALL();
+}
+
+CATCH_TEST_CASE("OverwriteFixed", "[mmap32]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x10000, 0x200c);
+    MMAP_AT(0x13000, 0x34a18);
+    MMAP_AT(0x13000, 0x60000);
+
+    verifyRegions(mapper, {
+        {mmap_min_addr() + 0x63000, Mapper::addressSpaceEnd32},
+    });
+
+    MUNMAP_ALL();
+}
+
+CATCH_TEST_CASE("OverwriteFixed2", "[mmap32]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x13000, 0x34a18);
+    MMAP_AT(0x12000, 0x60000);
+
+    verifyRegions(mapper, {
+        {mmap_min_addr(), 0x11fff},
+        {mmap_min_addr() + 0x62000, Mapper::addressSpaceEnd32},
     });
 
     MUNMAP_ALL();
