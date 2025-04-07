@@ -7276,18 +7276,6 @@ FAST_HANDLE(AESENCLAST) {
     }
 }
 
-FAST_HANDLE(AESDEC) {
-    if (Extensions::Zvkned) {
-        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-        biscuit::Vec src = rec.getOperandVec(&operands[1]);
-        rec.setVectorState(SEW::E32, 4);
-        as.VAESDM_VV(dst, src);
-        rec.setOperandVec(&operands[0], dst);
-    } else {
-        ERROR("Hit AESDEC instruction but system does not support Zvkned extension");
-    }
-}
-
 FAST_HANDLE(AESDECLAST) {
     if (Extensions::Zvkned) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
