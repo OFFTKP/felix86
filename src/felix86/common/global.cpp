@@ -358,18 +358,19 @@ void initialize_globals() {
         LOG("Emitting symbols for " ANSI_BOLD "gdb" ANSI_COLOR_RESET "!");
     }
 
+    std::string extensions = get_extensions();
+    if (extensions.empty()) {
+        initialize_extensions();
+        extensions = get_extensions();
+        ASSERT(!extensions.empty());
+    }
+
     if (!g_execve_process) {
         LOG("%s", get_version_full());
         if (!environment.empty()) {
             LOG("Environment:%s", environment.c_str());
         }
 
-        std::string extensions = get_extensions();
-        if (extensions.empty()) {
-            initialize_extensions();
-            extensions = get_extensions();
-            ASSERT(!extensions.empty());
-        }
         LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
     }
 
