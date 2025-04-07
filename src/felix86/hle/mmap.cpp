@@ -175,7 +175,7 @@ int Mapper::unmap32(void* addr, u64 size) {
     ASSERT((u64)addr < addressSpaceEnd32);
     int result = munmap(addr, size);
     if (result != -1) {
-        unmap32Impl(addr, size);
+        unmap32Impl(addr, size); // unmap it from our freelist as well
         return result;
     } else {
         return -errno;

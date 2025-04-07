@@ -55,6 +55,8 @@ X(rt_sigaction)
 X(rt_sigprocmask)
 X(readlinkat)
 X(tgkill)
+X(clock_gettime)
+X(clock_settime)
 
 // X(accept4)
 // X(acct)
