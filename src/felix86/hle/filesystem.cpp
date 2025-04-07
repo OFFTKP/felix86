@@ -117,6 +117,20 @@ int Filesystem::SymlinkAt(const char* oldname, int newfd, const char* newname) {
     return result;
 }
 
+int Filesystem::RenameAt2(int oldfd, const char* oldname, int newfd, const char* newname, int flags) {
+    if (!oldname || !newname) {
+        return -EINVAL;
+    }
+
+    auto [oldfd2, oldpath] = resolve(oldfd, oldname);
+    auto [newfd2, newpath] = resolve(newfd, newname);
+    int result = ::renameat2(oldfd2, oldpath, newfd2, newpath, flags);
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
+}
+
 int Filesystem::Chmod(const char* filename, u64 mode) {
     if (!filename) {
         return -EINVAL;

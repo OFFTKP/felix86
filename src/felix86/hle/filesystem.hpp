@@ -81,6 +81,8 @@ struct Filesystem {
 
     static int SymlinkAt(const char* oldname, int newfd, const char* newname);
 
+    static int RenameAt2(int oldfd, const char* oldname, int newfd, const char* newname, int flags);
+
     static int Chmod(const char* path, u64 mode);
 
     static int Statx(int fd, const char* filename, int flags, u32 mask, struct statx* statxbuf);
