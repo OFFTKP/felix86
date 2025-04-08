@@ -1265,6 +1265,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
     biscuit::GPR base, index;
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
+        ASSERT(!g_mode32);
         as.LI(address, current_rip.toGuest().raw() + current_instruction->length + operand->mem.disp.value);
         return address;
     }
