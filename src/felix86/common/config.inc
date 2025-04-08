@@ -19,6 +19,7 @@ X(Debugging, u64, interpreter_base, 0, FELIX86_INTERPRETER_BASE, "Make the inter
 X(Debugging, u64, executable_base, 0, FELIX86_EXECUTABLE_BASE, "Make the executable be loaded at this address -- 0 to let the emulator choose", false)
 X(Debugging, u64, brk_base, 0, FELIX86_BRK_BASE, "Make the BRK be loaded at this address -- 0 to let the emulator choose", false)
 X(Debugging, u64, max_brk_size, 0, FELIX86_MAX_BRK_SIZE, "Set the maximum BRK (ram for the application) size -- 0 to let the emulator choose", false)
+X(Debugging, bool, sleep_on_error, false, FELIX86_SLEEP_ERROR, "Sleep for 30 seconds on error to give enough time to attach gdb", false)
 
 X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance", false)
 X(Performance, bool, link_indirect, false, FELIX86_LINK_INDIRECT, "Try to link some indirect jumps, doesn't seem to help with performance", false)

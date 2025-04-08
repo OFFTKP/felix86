@@ -828,7 +828,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     }
 
     if (handler->func.raw() == (u64)SIG_IGN || handler->func.raw() == (u64)SIG_DFL) {
-        WARN("Signal %d hit but signal handler is %s, returning...", sig, handler->func.raw() ? "SIG_IGN" : "SIG_DFL");
+        ERROR("Signal %d hit but signal handler is %s", sig, handler->func.raw() ? "SIG_IGN" : "SIG_DFL");
         return true;
     }
 
