@@ -1493,6 +1493,83 @@ void felix86_syscall32(ThreadState* state) {
             result = Filesystem::UnlinkAt(AT_FDCWD, (char*)arg1, 0);
             break;
         }
+        case felix86_x86_32_fcntl:
+        case felix86_x86_32_fcntl64: {
+            constexpr int X86_GETLK64 = 12;
+            constexpr int X86_SETLK64 = 13;
+            constexpr int X86_SETLKW64 = 14;
+            const int fd = arg1;
+            struct flock host_flock;
+            x86_flock64* guest_flock64 = (x86_flock64*)arg3;
+            x86_flock* guest_flock32 = (x86_flock*)arg3;
+            switch (arg2) {
+            case X86_GETLK64: {
+                host_flock = *guest_flock64;
+                result = ::fcntl(fd, F_GETLK, &host_flock);
+                if (result >= 0) {
+                    *guest_flock64 = host_flock;
+                }
+                break;
+            }
+            case X86_SETLK64: {
+                host_flock = *guest_flock64;
+                result = ::fcntl(fd, F_SETLK, &host_flock);
+                break;
+            }
+            case X86_SETLKW64: {
+                host_flock = *guest_flock64;
+                result = ::fcntl(fd, F_SETLKW, &host_flock);
+                break;
+            }
+            case F_OFD_GETLK: {
+                host_flock = *guest_flock64;
+                result = ::fcntl(fd, F_OFD_GETLK, &host_flock);
+                if (result >= 0) {
+                    *guest_flock64 = host_flock;
+                }
+                break;
+            }
+            case F_OFD_SETLK:
+            case F_OFD_SETLKW: {
+                host_flock = *guest_flock64;
+                result = ::fcntl(fd, arg2, &host_flock);
+                break;
+            }
+            case F_GETLK: {
+                host_flock = *guest_flock32;
+                result = ::fcntl(fd, F_GETLK, &host_flock);
+                if (result >= 0) {
+                    *guest_flock32 = host_flock;
+                }
+                break;
+            }
+            case F_SETLK: {
+                host_flock = *guest_flock32;
+                result = ::fcntl(fd, F_SETLK, &host_flock);
+                break;
+            }
+            case F_SETLKW: {
+                host_flock = *guest_flock32;
+                result = ::fcntl(fd, F_SETLKW, &host_flock);
+                break;
+            }
+            case F_SETFL:
+            case F_DUPFD:
+            case F_DUPFD_CLOEXEC:
+            case F_GETFD:
+            case F_SETFD:
+            case F_GETFL: {
+                result = ::fcntl(arg1, arg2, arg3);
+                break;
+            }
+            default: {
+                WARN("Unknown fcntl: %d", arg2);
+                result = -EINVAL;
+                break;
+            }
+            }
+            break;
+        }
         case felix86_x86_32_waitpid: {
             result = ::waitpid((pid_t)arg1, (int*)arg2, (int)arg3);
             break;

@@ -237,3 +237,65 @@ struct x86_semid64_ds {
 
 static_assert(std::is_trivial<x86_semid64_ds>::value);
 static_assert(sizeof(x86_semid64_ds) == 104);
+
+struct __attribute__((packed)) x86_flock64 {
+    i16 l_type;
+    i16 l_whence;
+    i64 l_start;
+    i64 l_len;
+    i32 l_pid;
+
+    x86_flock64() = delete;
+
+    x86_flock64(const struct flock& flock) {
+        l_type = flock.l_type;
+        l_whence = flock.l_whence;
+        l_start = flock.l_start;
+        l_len = flock.l_len;
+        l_pid = flock.l_pid;
+    }
+
+    operator struct flock() const {
+        struct flock flock{};
+        flock.l_type = l_type;
+        flock.l_whence = l_whence;
+        flock.l_start = l_start;
+        flock.l_len = l_len;
+        flock.l_pid = l_pid;
+        return flock;
+    }
+};
+
+static_assert(std::is_trivial<x86_flock64>::value);
+static_assert(sizeof(x86_flock64) == 24);
+
+struct __attribute__((packed)) x86_flock {
+    i16 l_type;
+    i16 l_whence;
+    i32 l_start;
+    i32 l_len;
+    i32 l_pid;
+
+    x86_flock() = delete;
+
+    x86_flock(const struct flock& flock) {
+        l_type = flock.l_type;
+        l_whence = flock.l_whence;
+        l_start = flock.l_start;
+        l_len = flock.l_len;
+        l_pid = flock.l_pid;
+    }
+
+    operator struct flock() const {
+        struct flock flock{};
+        flock.l_type = l_type;
+        flock.l_whence = l_whence;
+        flock.l_start = l_start;
+        flock.l_len = l_len;
+        flock.l_pid = l_pid;
+        return flock;
+    }
+};
+
+static_assert(std::is_trivial<x86_flock>::value);
+static_assert(sizeof(x86_flock) == 16);
