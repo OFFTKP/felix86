@@ -48,16 +48,6 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
 }
 
 Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
-    for (int i = 0; i < 16; i++) {
-        metadata[i].reg = (x86_ref_e)(X86_REF_RAX + i);
-        metadata[i + 16 + 4].reg = (x86_ref_e)(X86_REF_XMM0 + i);
-    }
-
-    metadata[16].reg = X86_REF_CF;
-    metadata[17].reg = X86_REF_ZF;
-    metadata[18].reg = X86_REF_SF;
-    metadata[19].reg = X86_REF_OF;
-
     emitNecessaryStuff();
 
     ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
@@ -484,6 +474,7 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
 }
 
 biscuit::GPR Recompiler::scratch() {
+    ASSERT(scratch_index != (int)scratch_gprs.size());
     return scratch_gprs[scratch_index++];
 }
 
@@ -495,35 +486,12 @@ bool Recompiler::isScratch(biscuit::GPR reg) {
     return false;
 }
 
-// TODO: array like above
 biscuit::Vec Recompiler::scratchVec() {
-    switch (vector_scratch_index++) {
-    case 0:
-        return v22;
-    case 1:
-        return v23;
-    case 2:
-        return v24;
-    case 3:
-        return v25;
-    case 4:
-        return v26;
-    case 5:
-        return v27;
-    case 6:
-        return v28;
-    case 7:
-        return v29;
-    case 8:
-        return v30;
-    case 9:
-        return v31;
-    default:
-        ERROR("Tried to use more than 10 scratch vecs");
-        return v0;
-    }
+    ASSERT(vector_scratch_index != (int)scratch_vec.size());
+    return scratch_vec[vector_scratch_index++];
 }
 
+// TODO: register list like above
 biscuit::FPR Recompiler::scratchFPR() {
     switch (fpu_scratch_index++) {
     case 0:
@@ -790,26 +758,29 @@ ZydisMnemonic Recompiler::decode(HostAddress rip, ZydisDecodedInstruction& instr
 Recompiler::RegisterMetadata& Recompiler::getMetadata(x86_ref_e reg) {
     switch (reg) {
     case X86_REF_RAX ... X86_REF_R15: {
-        return metadata[reg - X86_REF_RAX];
+        return gpr_metadata[reg - X86_REF_RAX];
     }
     case X86_REF_CF: {
-        return metadata[16];
+        return flag_metadata[0];
     }
     case X86_REF_ZF: {
-        return metadata[17];
+        return flag_metadata[1];
     }
     case X86_REF_SF: {
-        return metadata[18];
+        return flag_metadata[2];
     }
     case X86_REF_OF: {
-        return metadata[19];
+        return flag_metadata[3];
     }
     case X86_REF_XMM0 ... X86_REF_XMM15: {
-        return metadata[reg - X86_REF_XMM0 + 16 + 4];
+        return xmm_metadata[reg - X86_REF_XMM0];
+    }
+    case X86_REF_MM0 ... X86_REF_MM7: {
+        return mm_metadata[reg - X86_REF_MM0];
     }
     default: {
         UNREACHABLE();
-        return metadata[0];
+        return gpr_metadata[0];
     }
     }
 }
@@ -1489,6 +1460,15 @@ void Recompiler::setExitReason(ExitReason reason) {
     popScratch();
 }
 
+void Recompiler::writebackMMXState() {
+    for (int i = 0; i < 8; i++) {
+        x86_ref_e ref = (x86_ref_e)(X86_REF_MM0 + i);
+        if (getMetadata(ref).dirty) {
+            as.SD(allocatedGPR(ref), offsetof(ThreadState, fp) + i * sizeof(u64), threadStatePointer());
+        }
+    }
+}
+
 void Recompiler::writebackDirtyState() {
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
@@ -1509,6 +1489,8 @@ void Recompiler::writebackDirtyState() {
     }
     popScratch();
 
+    writebackMMXState();
+
     if (getMetadata(X86_REF_CF).dirty) {
         as.SB(allocatedGPR(X86_REF_CF), offsetof(ThreadState, cf), threadStatePointer());
     }
@@ -1525,9 +1507,21 @@ void Recompiler::writebackDirtyState() {
         as.SB(allocatedGPR(X86_REF_OF), offsetof(ThreadState, of), threadStatePointer());
     }
 
-    for (size_t i = 0; i < metadata.size(); i++) {
-        metadata[i].dirty = false;
-        metadata[i].loaded = false;
+    for (size_t i = 0; i < 16; i++) {
+        gpr_metadata[i].dirty = false;
+        gpr_metadata[i].loaded = false;
+        xmm_metadata[i].dirty = false;
+        xmm_metadata[i].loaded = false;
+    }
+
+    for (size_t i = 0; i < 8; i++) {
+        mm_metadata[i].dirty = false;
+        mm_metadata[i].loaded = false;
+    }
+
+    for (size_t i = 0; i < 4; i++) {
+        flag_metadata[i].dirty = false;
+        flag_metadata[i].loaded = false;
     }
 
     current_sew = SEW::E1024;
@@ -2889,7 +2883,19 @@ void Recompiler::linkIndirect() {
 
 // Assume all registers have been loaded. Only good for instruction count generation.
 void Recompiler::assumeLoaded() {
-    for (auto& meta : metadata) {
+    for (auto& meta : gpr_metadata) {
+        meta.loaded = true;
+    }
+
+    for (auto& meta : xmm_metadata) {
+        meta.loaded = true;
+    }
+
+    for (auto& meta : mm_metadata) {
+        meta.loaded = true;
+    }
+
+    for (auto& meta : flag_metadata) {
         meta.loaded = true;
     }
 }

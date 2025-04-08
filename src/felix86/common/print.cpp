@@ -64,6 +64,8 @@ std::string print_guest_register(x86_ref_e guest) {
         return "ds";
     case X86_REF_SS:
         return "ss";
+    case X86_REF_MM0 ... X86_REF_MM7:
+        return "mm" + std::to_string(guest - X86_REF_MM0);
     case X86_REF_XMM0 ... X86_REF_XMM15:
         return "xmm" + std::to_string(guest - X86_REF_XMM0);
     case X86_REF_YMM0 ... X86_REF_YMM15:
