@@ -1452,6 +1452,11 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
         UNREACHABLE();
     }
 
+    if (g_mode32) {
+        // The additions may have overflown the address
+        as.ZEXTW(address, address);
+    }
+
     return address;
 }
 
