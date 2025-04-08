@@ -1438,6 +1438,7 @@ void felix86_syscall32(ThreadState* state) {
 #define CHECK_SEG(name)                                                                                                                              \
     if ((state->name >> 3) == index) {                                                                                                               \
         state->name##base = udesc->base_addr;                                                                                                        \
+        VERBOSE("Set " #name " to %p", udesc->base_addr);                                                                                            \
     }
             CHECK_SEG(fs);
             CHECK_SEG(gs);
