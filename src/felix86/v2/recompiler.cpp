@@ -662,6 +662,10 @@ x86_ref_e Recompiler::zydisToRef(ZydisRegister reg) {
         ref = (x86_ref_e)(X86_REF_XMM0 + (reg - ZYDIS_REGISTER_XMM0));
         break;
     }
+    case ZYDIS_REGISTER_MM0 ... ZYDIS_REGISTER_MM7: {
+        ref = (x86_ref_e)(X86_REF_MM0 + (reg - ZYDIS_REGISTER_MM0));
+        break;
+    }
     case ZYDIS_REGISTER_RIP: {
         return X86_REF_RIP;
     }
@@ -727,6 +731,9 @@ x86_size_e Recompiler::zydisToSize(ZydisRegister reg) {
     }
     case ZYDIS_REGISTER_XMM0 ... ZYDIS_REGISTER_XMM15: {
         return X86_SIZE_XMM;
+    }
+    case ZYDIS_REGISTER_MM0 ... ZYDIS_REGISTER_MM7: {
+        return X86_SIZE_QWORD;
     }
     default: {
         UNREACHABLE();
