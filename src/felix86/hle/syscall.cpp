@@ -1384,6 +1384,21 @@ void felix86_syscall32(ThreadState* state) {
             result = ::alarm(arg1);
             break;
         }
+        case felix86_x86_32_clone: {
+            // TODO: remove all usages of clone_args struct, use our own CloneArgs struct
+            clone_args args;
+            memset(&args, 0, sizeof(clone_args));
+            args.flags = arg1;
+            args.stack = arg2;
+            args.parent_tid = arg3;
+            args.child_tid = arg5; // different than on x64
+            args.tls = 0;
+            x86_user_desc* udesc = (x86_user_desc*)arg4;
+            result = state->SetUserDesc(udesc);
+            ASSERT(result == 0);
+            result = Threads::Clone(state, &args);
+            break;
+        }
         case felix86_x86_32_rename: {
             result = Filesystem::Rename((char*)arg1, (char*)arg2);
             break;
@@ -1416,37 +1431,7 @@ void felix86_syscall32(ThreadState* state) {
         }
         case felix86_x86_32_set_thread_area: {
             x86_user_desc* udesc = (x86_user_desc*)arg1;
-            int index = udesc->entry_number;
-            if (index == -1) {
-                for (int i = 0; i < 3; i++) {
-                    if (state->gdt[i] == 0) {
-                        index = i;
-                        break;
-                    }
-                }
-            }
-
-            if (index == -1) {
-                result = -ESRCH;
-                break;
-            }
-
-            state->gdt[index] = udesc->base_addr;
-            udesc->entry_number = 12 + index;
-            result = 0;
-
-#define CHECK_SEG(name)                                                                                                                              \
-    if ((state->name >> 3) == index) {                                                                                                               \
-        state->name##base = udesc->base_addr;                                                                                                        \
-        VERBOSE("Set " #name " to %p", udesc->base_addr);                                                                                            \
-    }
-            CHECK_SEG(fs);
-            CHECK_SEG(gs);
-            CHECK_SEG(es);
-            CHECK_SEG(ss);
-            CHECK_SEG(cs);
-            CHECK_SEG(ds);
-#undef CHECK_SEG
+            result = state->SetUserDesc(udesc);
             break;
         }
         case felix86_x86_32_get_thread_area: {

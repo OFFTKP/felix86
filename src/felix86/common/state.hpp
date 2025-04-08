@@ -4,6 +4,7 @@
 #include "felix86/common/address.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/hle/guest_types.hpp"
 #include "felix86/hle/signals.hpp"
 
 #define C0_BIT (1 << 8)
@@ -291,6 +292,40 @@ struct ThreadState {
 
     void SetRip(GuestAddress value) {
         rip = value;
+    }
+
+    int SetUserDesc(x86_user_desc* udesc) {
+        int index = udesc->entry_number;
+        if (index == -1) {
+            for (int i = 0; i < 3; i++) {
+                if (gdt[i] == 0) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        if (index == -1) {
+            return -ESRCH;
+        }
+
+        gdt[index] = udesc->base_addr;
+        udesc->entry_number = 12 + index;
+
+#define CHECK_SEG(name)                                                                                                                              \
+    if ((name >> 3) == index) {                                                                                                                      \
+        name##base = udesc->base_addr;                                                                                                               \
+        VERBOSE("Set " #name " to %p", udesc->base_addr);                                                                                            \
+    }
+        CHECK_SEG(fs);
+        CHECK_SEG(gs);
+        CHECK_SEG(es);
+        CHECK_SEG(ss);
+        CHECK_SEG(cs);
+        CHECK_SEG(ds);
+#undef CHECK_SEG
+
+        return 0;
     }
 
     u64 GetFlags() {
