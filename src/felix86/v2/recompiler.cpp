@@ -742,7 +742,7 @@ biscuit::GPR Recompiler::gpr(ZydisRegister reg) {
 }
 
 biscuit::Vec Recompiler::vec(ZydisRegister reg) {
-    ASSERT(reg >= ZYDIS_REGISTER_XMM0 && reg <= ZYDIS_REGISTER_XMM15);
+    ASSERT((reg >= ZYDIS_REGISTER_XMM0 && reg <= ZYDIS_REGISTER_XMM15) || (reg >= ZYDIS_REGISTER_MM0 && reg <= ZYDIS_REGISTER_MM7));
     x86_ref_e ref = zydisToRef(reg);
     return getRefVec(ref);
 }
