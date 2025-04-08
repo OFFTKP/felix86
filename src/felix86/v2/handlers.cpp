@@ -4744,6 +4744,10 @@ FAST_HANDLE(PSHUFHW) {
 }
 
 FAST_HANDLE(PALIGNR) {
+    x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+    if (ref >= X86_REF_MM0 && ref <= X86_REF_MM7) {
+        ERROR("palignr not implemented for mmx registers");
+    }
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::GPR temp = rec.scratch();
     biscuit::Vec result = rec.scratchVec();
@@ -6082,6 +6086,88 @@ FAST_HANDLE(CVTPD2DQ) {
     as.VAND(result, result, 0, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
+}
+
+FAST_HANDLE(CVTPI2PD) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    as.VFWCVT_F_X(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTPD2PI) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    as.VFNCVT_X_F(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTTPD2PI) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 2, LMUL::MF2);
+    as.VFNCVT_RTZ_X_F(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTPI2PS) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 2);
+    as.VFCVT_F_X(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTPS2PI) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 2);
+    as.VFCVT_X_F(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(CVTTPS2PI) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E32, 2);
+    as.VFCVT_RTZ_X_F(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(MOVQ2DQ) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 2);
+    as.VMV(dst, 0);
+    rec.setVectorState(SEW::E64, 1);
+    as.VMV(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
+FAST_HANDLE(MOVDQ2Q) {
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+
+    rec.setVectorState(SEW::E64, 1);
+    as.VMV(dst, src);
+
+    rec.setOperandVec(&operands[0], dst);
 }
 
 FAST_HANDLE(XGETBV) {
