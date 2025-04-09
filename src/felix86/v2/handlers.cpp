@@ -4583,7 +4583,13 @@ FAST_HANDLE(PSHUFB) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec mask = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E8, 16);
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
+    if (is_mmx) {
+        rec.setVectorState(SEW::E8, 8);
+    } else {
+        rec.setVectorState(SEW::E8, 16);
+    }
+
     // Keep 0...3 for regular shifting and bit 7 which indicates resulting element goes to 0, maps well with vrgather this way
     as.LI(bitmask, 0b10001111);
     as.VAND(mask_masked, mask, bitmask);
@@ -7330,24 +7336,34 @@ FAST_HANDLE(PSADBW) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
-    rec.setVectorState(SEW::E8, 16);
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
+    if (is_mmx) {
+        rec.setVectorState(SEW::E8, 8);
+    } else {
+        rec.setVectorState(SEW::E8, 16);
+    }
+
     as.VMV(result, 0);
-    as.VMV(result2, 0);
     as.VMIN(min, dst, src);
     as.VMAX(max, dst, src);
     as.VSUB(sub, max, min);
-    as.VSLIDEDOWN(sub_upper, sub, 8);
 
-    rec.setVectorState(SEW::E8, 8, LMUL::MF2);
-    as.VWREDSUMU(result, sub, result);
-    as.VWREDSUMU(result2, sub_upper, result2);
-
-    rec.setVectorState(SEW::E64, 2);
-    biscuit::Vec result2_up = max;
-    as.VSLIDE1UP(result2_up, result2, x0);
-    as.VOR(dst, result2_up, result);
-
-    rec.setOperandVec(&operands[0], dst);
+    if (is_mmx) {
+        rec.setVectorState(SEW::E8, 4, LMUL::MF2);
+        as.VWREDSUMU(result, sub, result);
+        rec.setOperandVec(&operands[0], result);
+    } else {
+        as.VSLIDEDOWN(sub_upper, sub, 8);
+        as.VMV(result2, 0);
+        rec.setVectorState(SEW::E8, 8, LMUL::MF2);
+        as.VWREDSUMU(result, sub, result);
+        as.VWREDSUMU(result2, sub_upper, result2);
+        rec.setVectorState(SEW::E64, 2);
+        biscuit::Vec result2_up = max;
+        as.VSLIDE1UP(result2_up, result2, x0);
+        as.VOR(dst, result2_up, result);
+        rec.setOperandVec(&operands[0], dst);
+    }
 }
 
 FAST_HANDLE(PAVGB) {
