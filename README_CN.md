@@ -7,8 +7,7 @@ felix86 是一个 Linux 用户空间模拟器，允许您在 RISC-V 处理器上
 > [!NOTE]
 > felix86 尚未完全发布。没有编译后的二进制文件可供下载。
 >
-> 如果你想协助开发，请查看 [compilation and usage guide](./docs/how-to-use.md)
-> 以及 [developer tips](./docs/contributing.md).
+> 如果你想协助开发，请查看 [汇编和使用指南](./docs/how-to-use.md) 和[软件开发人员小贴士](./docs/contributing.md).
 
 ## 特点
 - 准时 (JIT) 重编译器
