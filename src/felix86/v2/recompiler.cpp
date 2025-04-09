@@ -943,10 +943,15 @@ biscuit::GPR Recompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
         return gpr16;
     }
     case X86_SIZE_DWORD: {
-        // Need to zext and store in scratch
-        biscuit::GPR gpr32 = scratch();
-        zext(gpr32, gpr, X86_SIZE_DWORD);
-        return gpr32;
+        if (!g_mode32) {
+            // Need to zext and store in scratch
+            biscuit::GPR gpr32 = scratch();
+            zext(gpr32, gpr, X86_SIZE_DWORD);
+            return gpr32;
+        } else {
+            // Already loaded as 32-bit zero-extended register
+            return gpr;
+        }
     }
     case X86_SIZE_QWORD: {
         return gpr;
@@ -1156,7 +1161,10 @@ void Recompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
 
     meta.loaded = true;
     if (reg >= X86_REF_RAX && reg <= X86_REF_R15) {
-        as.LD(gpr, offsetof(ThreadState, gprs) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+        if (!g_mode32)
+            as.LD(gpr, offsetof(ThreadState, gprs) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
+        else
+            as.LWU(gpr, offsetof(ThreadState, gprs) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
     } else {
         switch (reg) {
         case X86_REF_CF: {
