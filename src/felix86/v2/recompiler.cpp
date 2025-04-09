@@ -1468,12 +1468,16 @@ void Recompiler::setExitReason(ExitReason reason) {
 }
 
 void Recompiler::writebackMMXState() {
+    biscuit::GPR address = scratch();
     for (int i = 0; i < 8; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_MM0 + i);
         if (getMetadata(ref).dirty) {
-            as.SD(allocatedGPR(ref), offsetof(ThreadState, fp) + i * sizeof(u64), threadStatePointer());
+            setVectorState(SEW::E64, maxVlen() / 64);
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + i * sizeof(u64));
+            as.VSE64(allocatedVec(ref), address);
         }
     }
+    popScratch();
 }
 
 void Recompiler::writebackDirtyState() {
@@ -1490,7 +1494,7 @@ void Recompiler::writebackDirtyState() {
         if (getMetadata(ref).dirty) {
             // TODO: can we group multiple registers if adjacent ones need to be written
             setVectorState(SEW::E64, maxVlen() / 64);
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * 16);
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * sizeof(XmmReg));
             as.VSE64(allocatedVec(ref), address);
         }
     }
