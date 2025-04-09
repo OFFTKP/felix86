@@ -669,5 +669,5 @@ private:
     // This has to do with the fact we want even registers sometimes so widening operations can use
     // the register group. In the future with a proper allocator we can make it so the order here doesn't
     // matter and the order picks an available group.
-    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v25};
+    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v25}; // If changed, also change hardcoded in punpckh
 };

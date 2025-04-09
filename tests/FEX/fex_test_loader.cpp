@@ -139,6 +139,24 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         fill(XMM14);
         fill(XMM15);
 #undef fill
+
+#define fill(x)                                                                                                                                      \
+    if (regs.find(#x) != regs.end()) {                                                                                                               \
+        int base = 10;                                                                                                                               \
+        std::string str = regs[#x].get<std::string>();                                                                                               \
+        if (str.size() > 2 && str[0] == '0' && str[1] == 'x')                                                                                        \
+            base = 16;                                                                                                                               \
+        expected_mm[X86_REF_##x - X86_REF_MM0] = std::stoull(regs[#x].get<std::string>(), nullptr, base);                                            \
+    }
+        fill(MM0);
+        fill(MM1);
+        fill(MM2);
+        fill(MM3);
+        fill(MM4);
+        fill(MM5);
+        fill(MM6);
+        fill(MM7);
+#undef fill
     }
 
     bool is_mode32 = false;

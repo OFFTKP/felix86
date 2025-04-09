@@ -2528,10 +2528,10 @@ void PUNPCKH(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     // Pick even scratch registers for the widening add (can't use MF2, ruins 128 VLEN)
-    biscuit::Vec temp1 = v22;
-    biscuit::Vec temp2 = v24;
-    biscuit::Vec dst_down = v26;
-    biscuit::Vec src_down = v27;
+    biscuit::Vec temp1 = v26;
+    biscuit::Vec temp2 = v28;
+    biscuit::Vec dst_down = v30;
+    biscuit::Vec src_down = v31;
 
     rec.setVectorState(sew, vlen);
     as.VSLIDEDOWN(dst_down, dst, num);
