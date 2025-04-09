@@ -2498,58 +2498,7 @@ FAST_HANDLE(MUL) {
 
 void PUNPCKH(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     // Like PUNPCKL but we add a number to iota to pick the high elements
-    int num = 0;
-    int size = 0;
-    biscuit::GPR shift = rec.scratch();
-    switch (sew) {
-    case SEW::E8: {
-        num = 8;
-        size = 8;
-        break;
-    }
-    case SEW::E16: {
-        num = 4;
-        size = 16;
-        break;
-    }
-    case SEW::E32: {
-        as.LI(shift, 32);
-        num = 2;
-        break;
-    }
-    default: {
-        UNREACHABLE();
-        break;
-    }
-    }
-
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-
-    // Pick even scratch registers for the widening add (can't use MF2, ruins 128 VLEN)
-    biscuit::Vec temp1 = v22;
-    biscuit::Vec temp2 = v24;
-    biscuit::Vec dst_down = v26;
-    biscuit::Vec src_down = v27;
-
-    rec.setVectorState(sew, vlen);
-    as.VSLIDEDOWN(dst_down, dst, num);
-    as.VSLIDEDOWN(src_down, src, num);
-    as.VWADDU(temp1, dst_down, x0);
-    as.VWADDU(temp2, src_down, x0);
-
-    rec.setVectorState(SEW::E64, 2);
-    if (sew == SEW::E32) {
-        as.VSLL(temp2, temp2, shift);
-    } else {
-        as.VSLL(temp2, temp2, size);
-    }
-    as.VOR(dst, temp1, temp2);
-
-    rec.setOperandVec(&operands[0], dst);
-}
-
-void PUNPCKH_MMX(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     int num = 0;
     int size = 0;
     biscuit::GPR shift = rec.scratch();
@@ -2667,39 +2616,15 @@ FAST_HANDLE(PUNPCKLQDQ) {
 }
 
 FAST_HANDLE(PUNPCKHBW) {
-    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
-    if (is_mmx) {
-        PUNPCKH_MMX(rec, as, instruction, operands, SEW::E8, 16);
-    } else {
-        PUNPCKH(rec, as, instruction, operands, SEW::E8, 16);
-    }
+    PUNPCKH(rec, as, instruction, operands, SEW::E8, 16);
 }
 
 FAST_HANDLE(PUNPCKHWD) {
-    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
-    if (is_mmx) {
-        PUNPCKH_MMX(rec, as, instruction, operands, SEW::E16, 8);
-    } else {
-        PUNPCKH(rec, as, instruction, operands, SEW::E16, 8);
-    }
+    PUNPCKH(rec, as, instruction, operands, SEW::E16, 8);
 }
 
 FAST_HANDLE(PUNPCKHDQ) {
-    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
-    if (is_mmx) {
-        biscuit::Vec temp = rec.scratchVec();
-        biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-        biscuit::Vec src = rec.getOperandVec(&operands[1]);
-
-        rec.setVectorState(SEW::E32, 4);
-        as.VMV(v0, 0b10);
-        as.VSLIDE1DOWN(temp, dst, x0);
-        as.VMERGE(dst, temp, src);
-
-        rec.setOperandVec(&operands[0], dst);
-    } else {
-        PUNPCKH(rec, as, instruction, operands, SEW::E32, 4);
-    }
+    PUNPCKH(rec, as, instruction, operands, SEW::E32, 4);
 }
 
 FAST_HANDLE(PUNPCKHQDQ) {
