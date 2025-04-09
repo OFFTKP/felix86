@@ -7349,7 +7349,7 @@ FAST_HANDLE(PSADBW) {
     as.VSUB(sub, max, min);
 
     if (is_mmx) {
-        rec.setVectorState(SEW::E8, 4, LMUL::MF2);
+        rec.setVectorState(SEW::E8, 8, LMUL::MF2);
         as.VWREDSUMU(result, sub, result);
         rec.setOperandVec(&operands[0], result);
     } else {
