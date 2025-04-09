@@ -12,6 +12,7 @@
 #include <sys/personality.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
@@ -1626,6 +1627,96 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
                 result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg4, arg5);
             } else {
                 result = SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
+            }
+            break;
+        }
+        case felix86_x86_32_socketcall: { // Funny syscall before the functions were seperated
+            enum {
+                SYS_SOCKET = 1,
+                SYS_BIND = 2,
+                SYS_CONNECT = 3,
+                SYS_LISTEN = 4,
+                SYS_ACCEPT = 5,
+                SYS_GETSOCKNAME = 6,
+                SYS_GETPEERNAME = 7,
+                SYS_SOCKETPAIR = 8,
+                SYS_SEND = 9,
+                SYS_RECV = 10,
+                SYS_SENDTO = 11,
+                SYS_RECVFROM = 12,
+                SYS_SHUTDOWN = 13,
+                SYS_SETSOCKOPT = 14,
+                SYS_GETSOCKOPT = 15,
+                SYS_SENDMSG = 16,
+                SYS_RECVMSG = 17,
+                SYS_ACCEPT4 = 18,
+                SYS_RECVMMSG = 19,
+                SYS_SENDMMSG = 20,
+            };
+
+            u32* args = (u32*)arg2;
+            switch (arg1) {
+            case SYS_SOCKET: {
+                result = ::socket(args[0], args[1], args[2]);
+                break;
+            }
+            case SYS_BIND: {
+                result = ::bind(args[0], (sockaddr*)(u64)args[1], args[2]);
+                break;
+            }
+            case SYS_CONNECT: {
+                result = ::connect(args[0], (sockaddr*)(u64)args[1], args[2]);
+                break;
+            }
+            case SYS_LISTEN: {
+                result = ::listen(args[0], args[1]);
+                break;
+            }
+            case SYS_ACCEPT: {
+                result = ::accept(args[0], (sockaddr*)(u64)args[1], (socklen_t*)(u64)args[2]);
+                break;
+            }
+            case SYS_GETSOCKNAME: {
+                result = ::getsockname(args[0], (sockaddr*)(u64)args[1], (socklen_t*)(u64)args[2]);
+                break;
+            }
+            case SYS_GETPEERNAME: {
+                result = ::getpeername(args[0], (sockaddr*)(u64)args[1], (socklen_t*)(u64)args[2]);
+                break;
+            }
+            case SYS_SOCKETPAIR: {
+                result = ::socketpair(args[0], args[1], args[2], (i32*)(u64)args[3]);
+                break;
+            }
+            case SYS_SEND: {
+                result = ::send(args[0], (void*)(u64)args[1], args[2], args[3]);
+                break;
+            }
+            case SYS_RECV: {
+                result = ::recv(args[0], (void*)(u64)args[1], args[2], args[3]);
+                break;
+            }
+            case SYS_SENDTO: {
+                result = ::sendto(args[0], (void*)(u64)args[1], args[2], args[3], (sockaddr*)(u64)args[4], args[5]);
+                break;
+            }
+            case SYS_RECVFROM: {
+                result = ::recvfrom(args[0], (void*)(u64)args[1], args[2], args[3], (sockaddr*)(u64)args[4], (socklen_t*)(u64)args[5]);
+                break;
+            }
+            case SYS_SHUTDOWN: {
+                result = ::shutdown(args[0], args[1]);
+                break;
+            }
+            case SYS_ACCEPT4: {
+                result = ::accept4(args[0], (sockaddr*)(u64)args[1], (socklen_t*)(u64)args[2], args[3]);
+                break;
+            }
+            default: {
+                ERROR("Unimplemented socketcall command: %d", arg1);
+                result = -EINVAL;
+                break;
+            }
             }
             break;
         }
