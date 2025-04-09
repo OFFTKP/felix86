@@ -1390,6 +1390,8 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             break;
         }
         case felix86_x86_32_clone: {
+            ASSERT(rip_next < UINT32_MAX);
+
             u64 child_tid = arg5;
             u64 parent_tid = arg3;
             u64 guest_flags = arg1;
