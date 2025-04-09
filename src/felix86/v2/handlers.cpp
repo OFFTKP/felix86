@@ -5891,6 +5891,10 @@ void SCALAR(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruc
     rec.setOperandVec(&operands[0], dst);
 }
 
+FAST_HANDLE(EMMS) {
+    rec.writebackMMXState();
+}
+
 FAST_HANDLE(DIVSS) {
     SCALAR(rec, rip, as, instruction, operands, SEW::E32, 1, &Assembler::VFDIV);
 }
