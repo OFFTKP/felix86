@@ -1604,6 +1604,21 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_clock_getres: {
+            timespec tp;
+            x86_timespec* guest_tp = (x86_timespec*)arg2;
+            if (!guest_tp) {
+                result = -EFAULT;
+                break;
+            }
+
+            result = SYSCALL(clock_getres, arg1, &tp);
+
+            if (result == 0) {
+                *guest_tp = tp;
+            }
+            break;
+        }
         case felix86_x86_32_futex_time32: {
             const x86_timespec* guest_spec = (x86_timespec*)arg4;
             if (guest_spec) {
