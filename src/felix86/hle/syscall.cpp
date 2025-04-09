@@ -27,6 +27,7 @@
 #include "felix86/hle/brk.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/guest_types.hpp"
+#include "felix86/hle/socket.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
 
@@ -1710,6 +1711,10 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             }
             case SYS_SHUTDOWN: {
                 result = ::shutdown(args[0], args[1]);
+                break;
+            }
+            case SYS_SENDMSG: {
+                result = ::sendmsg32(args[0], (x86_msghdr*)(u64)args[1], args[2]);
                 break;
             }
             case SYS_ACCEPT4: {

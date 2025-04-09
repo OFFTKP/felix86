@@ -299,3 +299,26 @@ struct __attribute__((packed)) x86_flock {
 
 static_assert(std::is_trivial<x86_flock>::value);
 static_assert(sizeof(x86_flock) == 16);
+
+struct x86_cmsghdr {
+    u32 cmsg_len;
+    u32 cmsg_level;
+    u32 cmsg_type;
+    u8 cmsg_data[0]; // variable sized
+};
+
+static_assert(std::is_trivial<x86_cmsghdr>::value);
+static_assert(sizeof(x86_cmsghdr) == 12);
+
+struct x86_msghdr {
+    u32 msg_name;
+    u32 msg_namelen;
+    u32 msg_iov;
+    u32 msg_iovlen;
+    u32 msg_control;
+    u32 msg_controllen;
+    u32 msg_flags;
+};
+
+static_assert(std::is_trivial<x86_msghdr>::value);
+static_assert(sizeof(x86_msghdr) == 28);
