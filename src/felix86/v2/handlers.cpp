@@ -7297,7 +7297,6 @@ FAST_HANDLE(PSADBW) {
     biscuit::Vec sub_upper = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
-    biscuit::Vec result2_up = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -7314,6 +7313,7 @@ FAST_HANDLE(PSADBW) {
     as.VWREDSUMU(result2, sub_upper, result2);
 
     rec.setVectorState(SEW::E64, 2);
+    biscuit::Vec result2_up = max;
     as.VSLIDE1UP(result2_up, result2, x0);
     as.VOR(dst, result2_up, result);
 
