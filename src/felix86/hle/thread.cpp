@@ -7,26 +7,9 @@
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include "felix86/common/log.hpp"
-#include "felix86/common/print.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/thread.hpp"
 #include "felix86/v2/recompiler.hpp"
-
-struct CloneArgs {
-    ThreadState* parent_state = nullptr;
-    void* stack = nullptr;
-    u64 flags = 0;
-    u64 guest_flags = 0;
-    pid_t* parent_tid = nullptr;
-    pid_t* child_tid = nullptr;
-
-    u64 new_fsbase = 0;
-    u64 new_rsp = 0;
-    GuestAddress new_rip = {};
-    pthread_t new_thread{};
-
-    u32 new_tid = 0; // to signal that clone_handler has finished using the pointer and get the tid
-};
 
 void* pthread_handler(void* args) {
     u32* finished;
@@ -74,13 +57,13 @@ void* pthread_handler(void* args) {
     }
 
     state->gprs[X86_REF_RAX] = 0; // return value
-    state->rip = clone_args.new_rip;
+    state->rip = GuestAddress{clone_args.new_rip};
     state->gprs[X86_REF_RSP] = clone_args.new_rsp;
     state->thread = clone_args.new_thread;
 
     if (clone_args.guest_flags & CLONE_SETTLS) {
-        state->fsbase = clone_args.new_fsbase;
-    } else if (clone_args.new_fsbase) {
+        state->SetTLS(clone_args.new_tls);
+    } else if (clone_args.new_tls) {
         ERROR("TLS specified but CLONE_SETTLS not set");
     }
 
@@ -121,7 +104,7 @@ int clone_handler(void* args) {
         ERROR("prctl failed with %d", errno);
     }
 
-    if (!(clone_args->flags & CLONE_VM)) {
+    if (!(clone_args->guest_flags & CLONE_VM)) {
         // New memory space, reinitialize the process globals
         g_process_globals.initialize();
     }
@@ -191,15 +174,15 @@ static std::string flags_to_string(u64 f) {
 }
 
 long CloneMe(CloneArgs& host_clone_args) {
-    ASSERT(host_clone_args.flags & CLONE_VM);       // we'll handle this when the time comes
-    ASSERT(!(host_clone_args.flags & CLONE_VFORK)); // should be handled in a vfork handler
-    host_clone_args.stack = malloc(1024 * 1024);
+    ASSERT(host_clone_args.guest_flags & CLONE_VM);       // we'll handle this when the time comes
+    ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK)); // should be handled in a vfork handler
+    void* host_stack = malloc(1024 * 1024);
 
     // We use this "tid" to check that the cloned process has finished
     pid_t clone_tid = -1;
 
-    long result =
-        clone(clone_handler, (u8*)host_clone_args.stack + 1024 * 1024, host_clone_args.flags, &host_clone_args, nullptr, nullptr, &clone_tid);
+    int host_flags = (host_clone_args.guest_flags & (~CLONE_SETTLS)) | CLONE_CHILD_CLEARTID;
+    long result = clone(clone_handler, (u8*)host_stack + 1024 * 1024, host_flags, &host_clone_args, nullptr, nullptr, &clone_tid);
 
     // Wait for the clone_handler to finish
     syscall(SYS_futex, &clone_tid, FUTEX_WAIT, -1, nullptr, nullptr, 0);
@@ -209,7 +192,7 @@ long CloneMe(CloneArgs& host_clone_args) {
         ;
 
     // This is finally safe to free
-    free(host_clone_args.stack);
+    free(host_stack);
 
     if (result < 0) {
         ERROR("clone failed with %d", errno);
@@ -226,8 +209,8 @@ long ForkMe(CloneArgs& host_clone_args) {
     // the syscall. Per the clone man page: Another difference for sys_clone is that the child_stack argument may be zero, in which case
     // copy-on-write semantics ensure that the child gets separate copies of stack pages when either process modifies the stack. In this case,
     // for correct operation, the CLONE_VM option should not be specified.
-    ASSERT(!(host_clone_args.flags & CLONE_VM));
-    ASSERT(!(host_clone_args.flags & CLONE_VFORK));
+    ASSERT(!(host_clone_args.guest_flags & CLONE_VM));
+    ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK));
     int parent_tid = host_clone_args.parent_state->tid;
 
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
@@ -278,9 +261,9 @@ long VForkMe(CloneArgs& args) {
 
         state->tid = gettid();
 
-        if (args.new_fsbase) {
+        if (args.new_tls) {
             WARN("vfork giving us new TLS?");
-            state->fsbase = args.new_fsbase;
+            state->SetTLS(args.new_tls);
         }
 
         if (args.child_tid) {
@@ -311,40 +294,26 @@ long VForkMe(CloneArgs& args) {
     return result;
 }
 
-long Threads::Clone(ThreadState* current_state, clone_args* args) {
-    std::string sflags = flags_to_string(args->flags);
-    STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->stack, args->parent_tid, args->child_tid, args->tls);
+long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
+    std::string sflags = flags_to_string(args->guest_flags);
+    STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid,
+           args->new_tls);
 
     u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_SYSVSEM | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND | CLONE_FILES | CLONE_FS |
                         CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_VFORK;
-    u64 host_flags = (args->flags & (~CLONE_SETTLS)) | CLONE_CHILD_CLEARTID;
-    if ((args->flags & ~CSIGNAL) & ~allowed_flags) {
-        ERROR("Unsupported flags %016llx", (args->flags & ~CSIGNAL) & ~allowed_flags);
+    if ((args->guest_flags & ~CSIGNAL) & ~allowed_flags) {
+        ERROR("Unsupported flags %016llx", (args->guest_flags & ~CSIGNAL) & ~allowed_flags);
         return -ENOSYS;
     }
 
-    CloneArgs host_clone_args{
-        .parent_state = current_state,
-        .stack = nullptr,
-        .flags = host_flags,
-        .guest_flags = args->flags,
-        .parent_tid = (pid_t*)args->parent_tid,
-        .child_tid = (pid_t*)args->child_tid,
-        .new_fsbase = args->tls,
-        .new_rsp = args->stack,
-        .new_rip = GuestAddress{current_state->gprs[X86_REF_RCX]},
-        .new_thread = 0,
-        .new_tid = 0,
-    };
-
     long result;
 
-    if (args->flags == (CLONE_VM | CLONE_VFORK | SIGCLD)) {
-        result = VForkMe(host_clone_args);
-    } else if (args->stack == 0) {
-        result = ForkMe(host_clone_args);
+    if (args->guest_flags == (CLONE_VM | CLONE_VFORK | SIGCLD)) {
+        result = VForkMe(*args);
+    } else if (args->new_rsp == 0) {
+        result = ForkMe(*args);
     } else {
-        result = CloneMe(host_clone_args);
+        result = CloneMe(*args);
     }
 
     return result;

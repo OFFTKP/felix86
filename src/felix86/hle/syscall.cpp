@@ -997,14 +997,20 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_clone: {
-        // TODO: remove all usages of clone_args struct, use our own CloneArgs struct
-        clone_args args;
-        memset(&args, 0, sizeof(clone_args));
-        args.flags = arg1;
-        args.stack = arg2;
-        args.parent_tid = arg3;
-        args.child_tid = arg4;
-        args.tls = arg5;
+        u64 child_tid = arg4;
+        u64 parent_tid = arg3;
+        u64 guest_flags = arg1;
+        CloneArgs args{
+            .parent_state = state,
+            .guest_flags = guest_flags,
+            .parent_tid = (pid_t*)parent_tid,
+            .child_tid = (pid_t*)child_tid,
+            .new_tls = arg5,
+            .new_rsp = arg2,
+            .new_rip = state->gprs[X86_REF_RCX],
+            .new_thread = 0,
+            .new_tid = 0,
+        };
         result = Threads::Clone(state, &args);
         break;
     }
@@ -1298,9 +1304,9 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_vfork: {
-            clone_args args = {};
-            memset(&args, 0, sizeof(clone_args));
-            args.flags = CLONE_VM | CLONE_VFORK | SIGCLD;
+            CloneArgs args = {};
+            u64 guest_flags = CLONE_VM | CLONE_VFORK | SIGCLD;
+            args.guest_flags = guest_flags;
             result = Threads::Clone(state, &args);
             break;
         }
@@ -1354,7 +1360,7 @@ void felix86_syscall(ThreadState* state) {
     }
 }
 
-void felix86_syscall32(ThreadState* state) {
+void felix86_syscall32(ThreadState* state, u32 rip_next) {
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 arg1 = state->GetGpr(X86_REF_RBX);
     u64 arg2 = state->GetGpr(X86_REF_RCX);
@@ -1384,17 +1390,20 @@ void felix86_syscall32(ThreadState* state) {
             break;
         }
         case felix86_x86_32_clone: {
-            // TODO: remove all usages of clone_args struct, use our own CloneArgs struct
-            clone_args args;
-            memset(&args, 0, sizeof(clone_args));
-            args.flags = arg1;
-            args.stack = arg2;
-            args.parent_tid = arg3;
-            args.child_tid = arg5; // different than on x64
-            args.tls = 0;
-            x86_user_desc* udesc = (x86_user_desc*)arg4;
-            result = state->SetUserDesc(udesc);
-            ASSERT(result == 0);
+            u64 child_tid = arg5;
+            u64 parent_tid = arg3;
+            u64 guest_flags = arg1;
+            CloneArgs args{
+                .parent_state = state,
+                .guest_flags = guest_flags,
+                .parent_tid = (pid_t*)parent_tid,
+                .child_tid = (pid_t*)child_tid,
+                .new_tls = arg4, // in this case it's a x86_user_desc*
+                .new_rsp = arg2,
+                .new_rip = rip_next,
+                .new_thread = 0,
+                .new_tid = 0,
+            };
             result = Threads::Clone(state, &args);
             break;
         }

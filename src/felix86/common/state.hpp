@@ -319,6 +319,14 @@ struct ThreadState {
         rip = value;
     }
 
+    void SetTLS(u64 address) {
+        if (g_mode32) {
+            ASSERT(SetUserDesc((x86_user_desc*)address) == 0);
+        } else {
+            fsbase = address;
+        }
+    }
+
     int SetUserDesc(x86_user_desc* udesc) {
         int index = udesc->entry_number;
         if (index == -1) {

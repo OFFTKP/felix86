@@ -3,6 +3,8 @@
 #include <cassert>
 #include "felix86/common/utility.hpp"
 
+// TODO: remove all of this. We no longer allocate a 32-bit address space in some random address, we allocate it at the start of the address space
+
 // Constructs for explicit conversion between guest and host addresses
 struct GuestAddress;
 

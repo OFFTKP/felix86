@@ -2799,6 +2799,7 @@ FAST_HANDLE(INT) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
     as.MV(a0, rec.threadStatePointer());
+    as.LI(a1, rip.add(instruction.length).toGuest().raw());
     rec.call((u64)&felix86_syscall32);
     rec.restoreRoundingMode();
 }
