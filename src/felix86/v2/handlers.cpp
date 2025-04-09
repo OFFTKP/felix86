@@ -7475,10 +7475,10 @@ FAST_HANDLE(CMPXCHG8B) {
     biscuit::GPR ecx_ebx = rec.scratch();
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR bit = rec.scratch();
-    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
-    biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_DWORD);
-    biscuit::GPR ebx = rec.getRefGPR(X86_REF_RBX, X86_SIZE_DWORD);
-    biscuit::GPR ecx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_DWORD);
+    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
+    biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
+    biscuit::GPR ebx = rec.getRefGPR(X86_REF_RBX, X86_SIZE_QWORD);
+    biscuit::GPR ecx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
 
     as.SLLI(edx_eax, edx, 32);
     as.OR(edx_eax, edx_eax, eax);
