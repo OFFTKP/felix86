@@ -1,10 +1,12 @@
 #include <signal.h>
+#include <stdio.h>
 #include <unistd.h>
 #include "common.h"
 
 volatile int you_can_leave = 0;
 
 void signal_handler(int sig, siginfo_t* info, void* ucontext) {
+    printf("Alarm hit\n");
     you_can_leave = 1;
 }
 

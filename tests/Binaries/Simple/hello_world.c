@@ -1,6 +1,7 @@
 #include <stdio.h>
+#include "common.h"
 
 int main() {
     printf("Hello, World!\n");
-    return 0x42;
+    return FELIX86_BTEST_SUCCESS;
 }

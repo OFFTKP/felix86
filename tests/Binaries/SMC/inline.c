@@ -1,5 +1,5 @@
 // This fun pattern is found in some DRM stuff :)
-// You know who you are...
+// I learned about this in the FEX discord
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/mman.h>
