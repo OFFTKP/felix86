@@ -2522,6 +2522,10 @@ void PUNPCKH(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     }
     }
 
+    if (is_mmx) {
+        num /= 2;
+    }
+
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -5553,8 +5557,7 @@ FAST_HANDLE(UCOMISS) {
 }
 
 FAST_HANDLE(PINSRB) {
-    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
-    u8 imm = rec.getImmediate(&operands[2]) & (is_mmx ? 0b111 : 0b1111);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR mask = rec.scratch();
@@ -5633,8 +5636,7 @@ FAST_HANDLE(PINSRQ) {
 }
 
 FAST_HANDLE(PEXTRB) {
-    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
-    u8 imm = rec.getImmediate(&operands[2]) & (is_mmx ? 0b111 : 0b1111);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
     biscuit::Vec temp = rec.scratchVec();
     biscuit::GPR result = rec.scratch();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
