@@ -11,8 +11,6 @@ void felix86_cpuid(ThreadState* state);
 #define FAST_HANDLE(name)                                                                                                                            \
     void fast_##name(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
-#define IS_MMX (instruction.attributes & (ZYDIS_ATTRIB_FPU_STATE_CR | ZYDIS_ATTRIB_FPU_STATE_CW))
-
 #define HAS_VEX (instruction.attributes & (ZYDIS_ATTRIB_HAS_VEX))
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
@@ -5555,7 +5553,8 @@ FAST_HANDLE(UCOMISS) {
 }
 
 FAST_HANDLE(PINSRB) {
-    u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
+    u8 imm = rec.getImmediate(&operands[2]) & (is_mmx ? 0b111 : 0b1111);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR mask = rec.scratch();
@@ -5576,7 +5575,8 @@ FAST_HANDLE(PINSRB) {
 }
 
 FAST_HANDLE(PINSRW) {
-    u8 imm = rec.getImmediate(&operands[2]) & 0b111;
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
+    u8 imm = rec.getImmediate(&operands[2]) & (is_mmx ? 0b11 : 0b111);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR mask = rec.scratch();
@@ -5633,10 +5633,11 @@ FAST_HANDLE(PINSRQ) {
 }
 
 FAST_HANDLE(PEXTRB) {
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
+    u8 imm = rec.getImmediate(&operands[2]) & (is_mmx ? 0b111 : 0b1111);
     biscuit::Vec temp = rec.scratchVec();
     biscuit::GPR result = rec.scratch();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
 
     rec.setVectorState(SEW::E8, 16);
     as.VSLIDEDOWN(temp, src, imm);
@@ -5647,10 +5648,11 @@ FAST_HANDLE(PEXTRB) {
 }
 
 FAST_HANDLE(PEXTRW) {
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
+    u8 imm = rec.getImmediate(&operands[2]) & (is_mmx ? 0b11 : 0b111);
     biscuit::Vec temp = rec.scratchVec();
     biscuit::GPR result = rec.scratch();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    u8 imm = rec.getImmediate(&operands[2]) & 0b111;
 
     rec.setVectorState(SEW::E16, 8);
     as.VSLIDEDOWN(temp, src, imm);
