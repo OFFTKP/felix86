@@ -2498,6 +2498,7 @@ FAST_HANDLE(MUL) {
 
 void PUNPCKH(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     // Like PUNPCKL but we add a number to iota to pick the high elements
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     int num = 0;
     int size = 0;
     biscuit::GPR shift = rec.scratch();
@@ -2521,6 +2522,10 @@ void PUNPCKH(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstru
         UNREACHABLE();
         break;
     }
+    }
+
+    if (is_mmx) {
+        num /= 2;
     }
 
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
