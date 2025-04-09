@@ -117,6 +117,8 @@ struct Filesystem {
 
     static int Rmdir(const char* path);
 
+    static int INotifyAddWatch(int fd, const char* path, u32 mask);
+
     static std::filesystem::path resolve(const char* path);
 
     static void removeRootfsPrefix(std::string& path);

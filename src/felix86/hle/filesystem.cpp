@@ -1,5 +1,6 @@
 #include <cstring>
 #include <fcntl.h>
+#include <sys/inotify.h>
 #include <sys/stat.h>
 #include "felix86/common/overlay.hpp"
 #include "felix86/hle/filesystem.hpp"
@@ -240,6 +241,11 @@ int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, i
 int Filesystem::Rmdir(const char* dir) {
     std::filesystem::path path = resolve(dir);
     return rmdirInternal(path.c_str());
+}
+
+int Filesystem::INotifyAddWatch(int fd, const char* path, u32 mask) {
+    std::filesystem::path file = resolve(path);
+    return inotify_add_watch(fd, file.c_str(), mask);
 }
 
 int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode) {
