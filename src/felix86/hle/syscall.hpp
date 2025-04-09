@@ -6,7 +6,7 @@ struct ThreadState;
 
 void felix86_syscall(ThreadState* state);
 
-void felix86_syscall32(ThreadState* state, u64 rip_next);
+void felix86_syscall32(ThreadState* state, u32 rip_next);
 
 enum {
 #define X(name, id) felix86_x86_32_##name = id,

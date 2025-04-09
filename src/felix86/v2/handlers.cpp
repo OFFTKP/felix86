@@ -4,7 +4,7 @@
 
 void felix86_syscall(ThreadState* state);
 
-void felix86_syscall32(ThreadState* state);
+void felix86_syscall32(ThreadState* state, u32 rip_nex);
 
 void felix86_cpuid(ThreadState* state);
 
