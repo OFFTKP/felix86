@@ -3958,6 +3958,7 @@ FAST_HANDLE(NEG) {
 // using vnclipu can be used if setting vxsat value for negative numbers is not required. A vsetvli is required inbetween these two
 // instructions to change SEW.
 FAST_HANDLE(PACKUSWB) {
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     biscuit::Vec result1 = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
     biscuit::Vec result3 = rec.scratchVec();
@@ -3973,7 +3974,11 @@ FAST_HANDLE(PACKUSWB) {
     rec.setVectorState(SEW::E8, 8, LMUL::MF2);
     as.VNCLIPU(result3, result1, 0);
     as.VNCLIPU(result4, result2, 0);
-    rec.setVectorState(SEW::E64, 2);
+    if (is_mmx) {
+        rec.setVectorState(SEW::E32, 2);
+    } else {
+        rec.setVectorState(SEW::E64, 2);
+    }
     as.VMV(v0, 0b10);
     as.VSLIDEUP(result_up, result4, 1);
     as.VMERGE(result, result3, result_up);
@@ -3981,6 +3986,7 @@ FAST_HANDLE(PACKUSWB) {
 }
 
 FAST_HANDLE(PACKUSDW) {
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     biscuit::Vec result1 = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
     biscuit::Vec result3 = rec.scratchVec();
@@ -3996,7 +4002,11 @@ FAST_HANDLE(PACKUSDW) {
     rec.setVectorState(SEW::E16, 4, LMUL::MF2);
     as.VNCLIPU(result3, result1, 0);
     as.VNCLIPU(result4, result2, 0);
-    rec.setVectorState(SEW::E64, 2);
+    if (is_mmx) {
+        rec.setVectorState(SEW::E32, 2);
+    } else {
+        rec.setVectorState(SEW::E64, 2);
+    }
     as.VMV(v0, 0b10);
     as.VSLIDEUP(result_up, result4, 1);
     as.VMERGE(result, result3, result_up);
@@ -4004,6 +4014,7 @@ FAST_HANDLE(PACKUSDW) {
 }
 
 FAST_HANDLE(PACKSSWB) {
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     biscuit::Vec result1 = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
     biscuit::Vec result2_up = rec.scratchVec();
@@ -4015,7 +4026,11 @@ FAST_HANDLE(PACKSSWB) {
     rec.setVectorState(SEW::E8, 8, LMUL::MF2);
     as.VNCLIP(result1, dst, 0);
     as.VNCLIP(result2, src, 0);
-    rec.setVectorState(SEW::E64, 2);
+    if (is_mmx) {
+        rec.setVectorState(SEW::E32, 2);
+    } else {
+        rec.setVectorState(SEW::E64, 2);
+    }
     as.VMV(v0, 0b10);
     as.VSLIDEUP(result2_up, result2, 1);
     as.VMERGE(result, result1, result2_up);
@@ -4023,6 +4038,7 @@ FAST_HANDLE(PACKSSWB) {
 }
 
 FAST_HANDLE(PACKSSDW) {
+    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     biscuit::Vec result1 = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
     biscuit::Vec result2_up = rec.scratchVec();
@@ -4034,7 +4050,11 @@ FAST_HANDLE(PACKSSDW) {
     rec.setVectorState(SEW::E16, 4, LMUL::MF2);
     as.VNCLIP(result1, dst, 0);
     as.VNCLIP(result2, src, 0);
-    rec.setVectorState(SEW::E64, 2);
+    if (is_mmx) {
+        rec.setVectorState(SEW::E32, 2);
+    } else {
+        rec.setVectorState(SEW::E64, 2);
+    }
     as.VMV(v0, 0b10);
     as.VSLIDEUP(result2_up, result2, 1);
     as.VMERGE(result, result1, result2_up);

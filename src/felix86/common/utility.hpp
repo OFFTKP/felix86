@@ -64,8 +64,6 @@ void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64);
 
 void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64);
 
-void felix86_packuswb(u8* dst, u8* src);
-void felix86_packusdw(u16* dst, u8* src);
 void felix86_pmaddwd(i16* dst, i16* src);
 
 void push_calltrace(ThreadState* state, u64 address);
