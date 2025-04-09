@@ -96,15 +96,6 @@ void felix86_cpuid(ThreadState* thread_state) {
         WARN("Unknown CPUID(%08x, %08x)", leaf, subleaf);
     }
 
-    // We can't unset mmx bits for interpreter cpuid calls as those are needed to even get the program started
-    if (thread_state->rip.toHost() >= g_interpreter_end || thread_state->rip.toHost() < g_interpreter_start) {
-        u64 mmxbits = 0b11 << 22;
-        if (leaf == 1) {
-            // Unset the MMX bits for now, SDL chooses MMX paths when it's present
-            edx &= ~mmxbits;
-        }
-    }
-
     STRACE("CPUID(%08x, %08x) -> %08x %08x %08x %08x", leaf, subleaf, eax, ebx, ecx, edx);
     thread_state->SetGpr(X86_REF_RAX, eax);
     thread_state->SetGpr(X86_REF_RBX, ebx);

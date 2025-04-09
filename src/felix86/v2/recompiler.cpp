@@ -1063,10 +1063,10 @@ void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
 
     if (dest != vec) {
         if (Extensions::VLEN == 128) {
-            ASSERT_MSG(isXMM(ref), "setRefVec dealing with YMM registers but your VLEN is 128");
+            ASSERT_MSG(isXMMOrMM(ref), "setRefVec dealing with YMM registers but your VLEN is 128");
             as.VMV1R(dest, vec);
         } else if (Extensions::VLEN >= 256) {
-            if (isXMM(ref)) {
+            if (isXMMOrMM(ref)) {
                 if (!isCurrentLength128()) {
                     setVectorState(SEW::E8, 16);
                 }

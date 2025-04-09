@@ -480,8 +480,8 @@ struct Recompiler {
         return (u8*)as.GetCursorPointer();
     }
 
-    static bool isXMM(x86_ref_e ref) {
-        return ref >= X86_REF_XMM0 && ref <= X86_REF_XMM15;
+    static bool isXMMOrMM(x86_ref_e ref) {
+        return (ref >= X86_REF_XMM0 && ref <= X86_REF_XMM15) || (ref >= X86_REF_MM0 && ref <= X86_REF_MM7);
     }
 
     static bool isYMM(x86_ref_e ref) {
