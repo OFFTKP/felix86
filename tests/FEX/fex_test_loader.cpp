@@ -237,11 +237,22 @@ void FEXTestLoader::Validate() {
         if (pexpected.has_value()) {
             XmmReg expected = *pexpected;
             x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
-            XmmReg actual = state->GetXmmReg(ref);
+            XmmReg actual = state->GetXmm(ref);
             for (int j = 0; j < 2; j++) {
                 CATCH_INFO(fmt::format("Checking XMM{}[{}]", i, j));
                 CATCH_REQUIRE(expected.data[j] == actual.data[j]);
             }
+        }
+    }
+
+    for (size_t i = 0; i < expected_mm.size(); i++) {
+        auto& pexpected = expected_mm[i];
+        if (pexpected.has_value()) {
+            u64 expected = *pexpected;
+            x86_ref_e ref = (x86_ref_e)(X86_REF_MM0 + i);
+            u64 actual = state->GetMm(ref);
+            CATCH_INFO(fmt::format("Checking {}", print_guest_register(ref)));
+            CATCH_REQUIRE(expected == actual);
         }
     }
 

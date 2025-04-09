@@ -275,7 +275,7 @@ struct ThreadState {
         }
     }
 
-    XmmReg GetXmmReg(x86_ref_e ref) const {
+    XmmReg GetXmm(x86_ref_e ref) const {
         if (ref < X86_REF_XMM0 || ref > X86_REF_XMM15) {
             ERROR("Invalid XMM register reference: %d", ref);
             return {};
@@ -284,13 +284,31 @@ struct ThreadState {
         return xmm[ref - X86_REF_XMM0];
     }
 
-    void SetXmmReg(x86_ref_e ref, const XmmReg& value) {
+    void SetXmm(x86_ref_e ref, const XmmReg& value) {
         if (ref < X86_REF_XMM0 || ref > X86_REF_XMM15) {
             ERROR("Invalid XMM register reference: %d", ref);
             return;
         }
 
         xmm[ref - X86_REF_XMM0] = value;
+    }
+
+    u64 GetMm(x86_ref_e ref) const {
+        if (ref < X86_REF_MM0 || ref > X86_REF_MM7) {
+            ERROR("Invalid MM register reference: %d", ref);
+            return {};
+        }
+
+        return fp[ref - X86_REF_MM0];
+    }
+
+    void SetXmm(x86_ref_e ref, u64 value) {
+        if (ref < X86_REF_MM0 || ref > X86_REF_MM7) {
+            ERROR("Invalid MM register reference: %d", ref);
+            return;
+        }
+
+        fp[ref - X86_REF_XMM0] = value;
     }
 
     GuestAddress GetRip() const {

@@ -176,7 +176,7 @@ void reconstruct_state(ThreadState* state, BlockMetadata* current_block, HostAdd
                     x86_ref_e ref = vec_to_x86[vec_index];
                     if (ref != X86_REF_COUNT) {
                         XmmReg xmm = xmms[vec_index];
-                        state->SetXmmReg(ref, xmm);
+                        state->SetXmm(ref, xmm);
                     }
                 }
             }
@@ -289,22 +289,22 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
     frame->uc.uc_mcontext.gregs[REG_R15] = state->GetGpr(X86_REF_R15);
     frame->uc.uc_mcontext.gregs[REG_RIP] = state->GetRip().raw();
     frame->uc.uc_mcontext.gregs[REG_EFL] = state->GetFlags();
-    frame->uc.uc_mcontext.fpregs->xmm[0] = state->GetXmmReg(X86_REF_XMM0);
-    frame->uc.uc_mcontext.fpregs->xmm[1] = state->GetXmmReg(X86_REF_XMM1);
-    frame->uc.uc_mcontext.fpregs->xmm[2] = state->GetXmmReg(X86_REF_XMM2);
-    frame->uc.uc_mcontext.fpregs->xmm[3] = state->GetXmmReg(X86_REF_XMM3);
-    frame->uc.uc_mcontext.fpregs->xmm[4] = state->GetXmmReg(X86_REF_XMM4);
-    frame->uc.uc_mcontext.fpregs->xmm[5] = state->GetXmmReg(X86_REF_XMM5);
-    frame->uc.uc_mcontext.fpregs->xmm[6] = state->GetXmmReg(X86_REF_XMM6);
-    frame->uc.uc_mcontext.fpregs->xmm[7] = state->GetXmmReg(X86_REF_XMM7);
-    frame->uc.uc_mcontext.fpregs->xmm[8] = state->GetXmmReg(X86_REF_XMM8);
-    frame->uc.uc_mcontext.fpregs->xmm[9] = state->GetXmmReg(X86_REF_XMM9);
-    frame->uc.uc_mcontext.fpregs->xmm[10] = state->GetXmmReg(X86_REF_XMM10);
-    frame->uc.uc_mcontext.fpregs->xmm[11] = state->GetXmmReg(X86_REF_XMM11);
-    frame->uc.uc_mcontext.fpregs->xmm[12] = state->GetXmmReg(X86_REF_XMM12);
-    frame->uc.uc_mcontext.fpregs->xmm[13] = state->GetXmmReg(X86_REF_XMM13);
-    frame->uc.uc_mcontext.fpregs->xmm[14] = state->GetXmmReg(X86_REF_XMM14);
-    frame->uc.uc_mcontext.fpregs->xmm[15] = state->GetXmmReg(X86_REF_XMM15);
+    frame->uc.uc_mcontext.fpregs->xmm[0] = state->GetXmm(X86_REF_XMM0);
+    frame->uc.uc_mcontext.fpregs->xmm[1] = state->GetXmm(X86_REF_XMM1);
+    frame->uc.uc_mcontext.fpregs->xmm[2] = state->GetXmm(X86_REF_XMM2);
+    frame->uc.uc_mcontext.fpregs->xmm[3] = state->GetXmm(X86_REF_XMM3);
+    frame->uc.uc_mcontext.fpregs->xmm[4] = state->GetXmm(X86_REF_XMM4);
+    frame->uc.uc_mcontext.fpregs->xmm[5] = state->GetXmm(X86_REF_XMM5);
+    frame->uc.uc_mcontext.fpregs->xmm[6] = state->GetXmm(X86_REF_XMM6);
+    frame->uc.uc_mcontext.fpregs->xmm[7] = state->GetXmm(X86_REF_XMM7);
+    frame->uc.uc_mcontext.fpregs->xmm[8] = state->GetXmm(X86_REF_XMM8);
+    frame->uc.uc_mcontext.fpregs->xmm[9] = state->GetXmm(X86_REF_XMM9);
+    frame->uc.uc_mcontext.fpregs->xmm[10] = state->GetXmm(X86_REF_XMM10);
+    frame->uc.uc_mcontext.fpregs->xmm[11] = state->GetXmm(X86_REF_XMM11);
+    frame->uc.uc_mcontext.fpregs->xmm[12] = state->GetXmm(X86_REF_XMM12);
+    frame->uc.uc_mcontext.fpregs->xmm[13] = state->GetXmm(X86_REF_XMM13);
+    frame->uc.uc_mcontext.fpregs->xmm[14] = state->GetXmm(X86_REF_XMM14);
+    frame->uc.uc_mcontext.fpregs->xmm[15] = state->GetXmm(X86_REF_XMM15);
 
     state->SetGpr(X86_REF_RSP, rsp.toGuest().raw()); // set the new stack pointer
     state->SetGpr(X86_REF_RSI, (u64)&frame->info);   // set the siginfo pointer
@@ -360,22 +360,22 @@ void Signals::sigreturn(ThreadState* state) {
     state->SetFlag(X86_REF_SF, sf);
     state->SetFlag(X86_REF_OF, of);
 
-    state->SetXmmReg(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
-    state->SetXmmReg(X86_REF_XMM1, frame->uc.uc_mcontext.fpregs->xmm[1]);
-    state->SetXmmReg(X86_REF_XMM2, frame->uc.uc_mcontext.fpregs->xmm[2]);
-    state->SetXmmReg(X86_REF_XMM3, frame->uc.uc_mcontext.fpregs->xmm[3]);
-    state->SetXmmReg(X86_REF_XMM4, frame->uc.uc_mcontext.fpregs->xmm[4]);
-    state->SetXmmReg(X86_REF_XMM5, frame->uc.uc_mcontext.fpregs->xmm[5]);
-    state->SetXmmReg(X86_REF_XMM6, frame->uc.uc_mcontext.fpregs->xmm[6]);
-    state->SetXmmReg(X86_REF_XMM7, frame->uc.uc_mcontext.fpregs->xmm[7]);
-    state->SetXmmReg(X86_REF_XMM8, frame->uc.uc_mcontext.fpregs->xmm[8]);
-    state->SetXmmReg(X86_REF_XMM9, frame->uc.uc_mcontext.fpregs->xmm[9]);
-    state->SetXmmReg(X86_REF_XMM10, frame->uc.uc_mcontext.fpregs->xmm[10]);
-    state->SetXmmReg(X86_REF_XMM11, frame->uc.uc_mcontext.fpregs->xmm[11]);
-    state->SetXmmReg(X86_REF_XMM12, frame->uc.uc_mcontext.fpregs->xmm[12]);
-    state->SetXmmReg(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
-    state->SetXmmReg(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
-    state->SetXmmReg(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
+    state->SetXmm(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
+    state->SetXmm(X86_REF_XMM1, frame->uc.uc_mcontext.fpregs->xmm[1]);
+    state->SetXmm(X86_REF_XMM2, frame->uc.uc_mcontext.fpregs->xmm[2]);
+    state->SetXmm(X86_REF_XMM3, frame->uc.uc_mcontext.fpregs->xmm[3]);
+    state->SetXmm(X86_REF_XMM4, frame->uc.uc_mcontext.fpregs->xmm[4]);
+    state->SetXmm(X86_REF_XMM5, frame->uc.uc_mcontext.fpregs->xmm[5]);
+    state->SetXmm(X86_REF_XMM6, frame->uc.uc_mcontext.fpregs->xmm[6]);
+    state->SetXmm(X86_REF_XMM7, frame->uc.uc_mcontext.fpregs->xmm[7]);
+    state->SetXmm(X86_REF_XMM8, frame->uc.uc_mcontext.fpregs->xmm[8]);
+    state->SetXmm(X86_REF_XMM9, frame->uc.uc_mcontext.fpregs->xmm[9]);
+    state->SetXmm(X86_REF_XMM10, frame->uc.uc_mcontext.fpregs->xmm[10]);
+    state->SetXmm(X86_REF_XMM11, frame->uc.uc_mcontext.fpregs->xmm[11]);
+    state->SetXmm(X86_REF_XMM12, frame->uc.uc_mcontext.fpregs->xmm[12]);
+    state->SetXmm(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
+    state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
+    state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
 
     // Restore signal mask to what it was supposed to be outside of signal handler
     sigset_t host_mask;
