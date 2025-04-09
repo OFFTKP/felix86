@@ -1630,6 +1630,10 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_poll: {
+            result = ::poll((pollfd*)(u64)arg1, arg2, arg3);
+            break;
+        }
         case felix86_x86_32_socketcall: { // Funny syscall before the functions were seperated
             enum {
                 SYS_SOCKET = 1,
