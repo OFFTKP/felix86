@@ -60,6 +60,41 @@ FAST_HANDLE(FDIVP) {
     OP(&Assembler::FDIV_D, rec, as, instruction, operands, true);
 }
 
+FAST_HANDLE(FDIVR) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR lhs = rec.getST(top, &operands[0]);
+    biscuit::FPR rhs = rec.getST(top, &operands[1]);
+
+    ZydisDecodedOperand* result_operand = &operands[0];
+
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        std::swap(lhs, rhs);
+        result_operand = &operands[1];
+    }
+
+    biscuit::FPR result = rec.scratchFPR();
+    as.FDIV_D(result, rhs, lhs, RMode::DYN);
+    rec.setST(top, result_operand, result);
+}
+
+FAST_HANDLE(FDIVRP) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR lhs = rec.getST(top, &operands[0]);
+    biscuit::FPR rhs = rec.getST(top, &operands[1]);
+
+    ZydisDecodedOperand* result_operand = &operands[0];
+
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        std::swap(lhs, rhs);
+        result_operand = &operands[1];
+    }
+
+    biscuit::FPR result = rec.scratchFPR();
+    as.FDIV_D(result, rhs, lhs, RMode::DYN);
+    rec.setST(top, result_operand, result);
+    rec.popST(top);
+}
+
 FAST_HANDLE(FMUL) {
     OP(&Assembler::FMUL_D, rec, as, instruction, operands, false);
 }
