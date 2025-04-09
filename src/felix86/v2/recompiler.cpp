@@ -1832,7 +1832,7 @@ void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::
     popScratch();
 }
 
-void Recompiler::zeroFlag(x86_ref_e flag) {
+void Recompiler::clearFlag(x86_ref_e flag) {
     biscuit::GPR f = flagW(flag);
     as.LI(f, 0);
 }

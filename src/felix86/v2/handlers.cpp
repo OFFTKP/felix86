@@ -518,7 +518,7 @@ FAST_HANDLE(OR) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
     if (needs_cf) {
-        rec.zeroFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_CF);
     }
 
     if (needs_pf) {
@@ -534,7 +534,7 @@ FAST_HANDLE(OR) {
     }
 
     if (needs_of) {
-        rec.zeroFlag(X86_REF_OF);
+        rec.clearFlag(X86_REF_OF);
     }
 
     rec.setOperandGPR(&operands[0], result);
@@ -549,7 +549,7 @@ FAST_HANDLE(XOR) {
         rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, x0);
 
         if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
-            rec.zeroFlag(X86_REF_CF);
+            rec.clearFlag(X86_REF_CF);
         }
 
         if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
@@ -569,7 +569,7 @@ FAST_HANDLE(XOR) {
         }
 
         if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-            rec.zeroFlag(X86_REF_OF);
+            rec.clearFlag(X86_REF_OF);
         }
         return;
     }
@@ -619,7 +619,7 @@ FAST_HANDLE(XOR) {
     }
 
     if (needs_cf) {
-        rec.zeroFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_CF);
     }
 
     if (needs_pf) {
@@ -635,7 +635,7 @@ FAST_HANDLE(XOR) {
     }
 
     if (needs_of) {
-        rec.zeroFlag(X86_REF_OF);
+        rec.clearFlag(X86_REF_OF);
     }
 
     if (writeback) {
@@ -652,7 +652,7 @@ FAST_HANDLE(AND) {
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
-        rec.zeroFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_CF);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
@@ -668,7 +668,7 @@ FAST_HANDLE(AND) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.zeroFlag(X86_REF_OF);
+        rec.clearFlag(X86_REF_OF);
     }
 
     rec.setOperandGPR(&operands[0], result);
@@ -1700,7 +1700,7 @@ FAST_HANDLE(TEST) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
-        rec.zeroFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_CF);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
@@ -1716,7 +1716,7 @@ FAST_HANDLE(TEST) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.zeroFlag(X86_REF_OF);
+        rec.clearFlag(X86_REF_OF);
     }
 }
 
@@ -5812,7 +5812,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             biscuit::Label not_equal;
             biscuit::Label start;
             as.Bind(&start);
-            as.LR_D(Ordering::AQRL, dst, address);
+            as.LR_D(Ordering::AQRL, dst, address); // TODO: probably can have a more relaxed ordering
             as.BNE(dst, rax, &not_equal);
             as.SC_D(Ordering::AQRL, scratch, src, address);
             as.BNEZ(scratch, &start);
@@ -7465,6 +7465,44 @@ FAST_HANDLE(CMPXCHG16B) {
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rax);
         rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, rdx);
     }
+}
+
+FAST_HANDLE(CMPXCHG8B) {
+    // TODO: also implement using Zacas if available
+    biscuit::Label loop, not_equal, end;
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR edx_eax = rec.scratch();
+    biscuit::GPR ecx_ebx = rec.scratch();
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR bit = rec.scratch();
+    biscuit::GPR eax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_DWORD);
+    biscuit::GPR edx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_DWORD);
+    biscuit::GPR ebx = rec.getRefGPR(X86_REF_RBX, X86_SIZE_DWORD);
+    biscuit::GPR ecx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_DWORD);
+
+    as.SLLI(edx_eax, edx, 32);
+    as.OR(edx_eax, edx_eax, eax);
+
+    as.SLLI(ecx_ebx, ecx, 32);
+    as.OR(ecx_ebx, ecx_ebx, ebx);
+
+    as.Bind(&loop);
+    as.LR_D(Ordering::AQRL, temp, address); // TODO: probably can have a more relaxed ordering
+    as.BNE(temp, edx_eax, &not_equal);
+    as.SC_D(Ordering::AQRL, bit, ecx_ebx, address);
+    as.BNEZ(bit, &loop);
+
+    // If here EDX:EAX == m64, and ECX:EBX was loaded to m64, need to set ZF
+    rec.setFlag(X86_REF_ZF);
+    as.J(&end);
+
+    as.Bind(&not_equal);
+    rec.clearFlag(X86_REF_ZF);
+    as.SRLI(edx, temp, 32);
+    rec.setRefGPR(X86_REF_RAX, X86_SIZE_DWORD, temp); // will be zexted
+    rec.setRefGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
+
+    as.Bind(&end);
 }
 
 FAST_HANDLE(PAUSE) {

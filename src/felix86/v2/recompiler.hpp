@@ -426,7 +426,7 @@ struct Recompiler {
 
     void updateCarryAdc(biscuit::GPR dst, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size);
 
-    void zeroFlag(x86_ref_e flag);
+    void clearFlag(x86_ref_e flag);
 
     void setFlag(x86_ref_e flag);
 
