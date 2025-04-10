@@ -243,7 +243,7 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
         // Actually perform the remap now, but make it fixed
         void* result = ::mremap(old_address, old_size, new_size, flags | MREMAP_MAYMOVE | MREMAP_FIXED, new_address);
         if (result == MAP_FAILED) {
-            ERROR("Freelist and mremap disagree during mremap32");
+            ERROR("Freelist and mremap disagree during mremap32: %ld vs %p", result, new_address);
             freelistDeallocate(new_address, new_size);
             return MAP_FAILED;
         }
