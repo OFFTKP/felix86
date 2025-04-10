@@ -1,5 +1,6 @@
 #include <cstring>
 #include <sys/socket.h>
+#include "felix86/common/log.hpp"
 #include "felix86/hle/socket.hpp"
 
 int recvmsg32(int fd, x86_msghdr* guest_msghdr, int flags) {
@@ -98,4 +99,90 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
     }
 
     return ::sendmsg(fd, &host_msghdr, flags);
+}
+
+// Thanks FEX-Emu for these
+int setsockopt32(int fd, int level, int optname, char* optval, int optlen) {
+    if (level != SOL_SOCKET) {
+        return ::setsockopt(fd, level, optname, optval, optlen);
+    } else {
+        switch (optname) {
+        case SO_DEBUG:
+        case SO_REUSEADDR:
+        case SO_TYPE:
+        case SO_ERROR:
+        case SO_DONTROUTE:
+        case SO_BROADCAST:
+        case SO_SNDBUF:
+        case SO_RCVBUF:
+        case SO_SNDBUFFORCE:
+        case SO_RCVBUFFORCE:
+        case SO_KEEPALIVE:
+        case SO_OOBINLINE:
+        case SO_NO_CHECK:
+        case SO_PRIORITY:
+        case SO_LINGER:
+        case SO_BSDCOMPAT:
+        case SO_REUSEPORT:
+        case SO_PASSCRED:
+        case SO_PEERCRED:
+        case SO_RCVLOWAT:
+        case SO_SNDLOWAT:
+        case SO_SECURITY_AUTHENTICATION:
+        case SO_SECURITY_ENCRYPTION_TRANSPORT:
+        case SO_SECURITY_ENCRYPTION_NETWORK:
+        case SO_DETACH_FILTER:
+        case SO_PEERNAME:
+        case SO_TIMESTAMP_OLD:
+        case SO_ACCEPTCONN:
+        case SO_PEERSEC:
+        case SO_PASSSEC:
+        case SO_TIMESTAMPNS_OLD:
+        case SO_MARK:
+        case SO_TIMESTAMPING_OLD:
+        case SO_PROTOCOL:
+        case SO_DOMAIN:
+        case SO_RXQ_OVFL:
+        case SO_WIFI_STATUS:
+        case SO_PEEK_OFF:
+        case SO_NOFCS:
+        case SO_LOCK_FILTER:
+        case SO_SELECT_ERR_QUEUE:
+        case SO_BUSY_POLL:
+        case SO_MAX_PACING_RATE:
+        case SO_BPF_EXTENSIONS:
+        case SO_INCOMING_CPU:
+        case SO_ATTACH_BPF:
+        case SO_ATTACH_REUSEPORT_EBPF:
+        case SO_CNX_ADVICE:
+        case SO_MEMINFO:
+        case SO_INCOMING_NAPI_ID:
+        case SO_COOKIE:
+        case SO_PEERGROUPS:
+        case SO_ZEROCOPY:
+        case SO_TXTIME:
+        case SO_BINDTOIFINDEX:
+        case SO_TIMESTAMP_NEW:
+        case SO_TIMESTAMPNS_NEW:
+        case SO_TIMESTAMPING_NEW:
+        case SO_RCVTIMEO_NEW:
+        case SO_SNDTIMEO_NEW:
+        case SO_DETACH_REUSEPORT_BPF:
+        case SO_PREFER_BUSY_POLL:
+        case SO_BUSY_POLL_BUDGET:
+        case SO_NETNS_COOKIE:
+        case SO_BUF_LOCK:
+        case SO_RESERVE_MEM:
+        case SO_TXREHASH:
+        case SO_RCVMARK:
+        case SO_PASSPIDFD:
+        case SO_PEERPIDFD: {
+            return ::setsockopt(fd, level, optname, optval, optlen);
+        }
+        default: {
+            ERROR("Unhandled setsockopt optname: %d", optname);
+            return -ENOSYS;
+        }
+        }
+    }
 }
