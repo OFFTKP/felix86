@@ -1706,6 +1706,14 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             result = ::dup2(arg1, arg2);
             break;
         }
+        case felix86_x86_32_ia32_ftruncate64: {
+            int fd = arg1;
+            u64 offset_low = arg2;
+            u64 offset_high = arg3;
+            u64 offset = (offset_high << 32) | offset_low;
+            result = ftruncate(fd, offset);
+            break;
+        }
         case felix86_x86_32_socketcall: { // Funny syscall before the functions were seperated
             enum {
                 SYS_SOCKET = 1,
