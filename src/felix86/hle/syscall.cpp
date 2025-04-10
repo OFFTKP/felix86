@@ -596,7 +596,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     case felix86_riscv64_munmap: {
         if (arg1 < Mapper::addressSpaceEnd32 || g_mode32) {
             // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
+            state->signals_disabled = true;
             result = g_mapper->unmap32((void*)arg1, arg2);
+            state->signals_disabled = false;
         } else {
             result = SYSCALL(munmap, arg1, arg2, arg3, arg4, arg5, arg6);
         }
@@ -679,7 +681,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_mremap: {
-        result = SYSCALL(mremap, arg1, arg2, arg3, arg4, arg5, arg6);
+        state->signals_disabled = true;
+        result = (u64)g_mapper->remap((void*)arg1, arg2, arg3, arg4, (void*)arg5);
+        state->signals_disabled = false;
         break;
     }
     case felix86_riscv64_msync: {
@@ -1432,6 +1436,12 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             u64 offset = arg6 * 4096;
             state->signals_disabled = true;
             result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
+            state->signals_disabled = false;
+            break;
+        }
+        case felix86_x86_32_mremap: {
+            state->signals_disabled = true;
+            result = (ssize_t)g_mapper->remap32((void*)arg1, arg2, arg3, arg4, (void*)arg5);
             state->signals_disabled = false;
             break;
         }

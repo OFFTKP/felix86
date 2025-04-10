@@ -7,9 +7,11 @@
 struct Mapper {
     [[nodiscard]] void* map(void* addr, u64 size, int prot, int flags, int fd, u64 offset);
     int unmap(void* addr, u64 size);
+    [[nodiscard]] void* remap(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address);
 
     [[nodiscard]] void* map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset);
     int unmap32(void* addr, u64 size);
+    [[nodiscard]] void* remap32(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address);
 
     static constexpr u64 addressSpaceEnd32 = 0xBFFF'FFFF; // 32-bit userspace end
 
@@ -35,7 +37,9 @@ private:
 
     std::vector<std::pair<u32, u32>> getRegions();
 
-    void unmap32Impl(void* addr, size_t size);
+    [[nodiscard]] void* freelistAllocate(void* addr, u64 size);
+
+    void freelistDeallocate(void* addr, u64 size);
 
     friend void verifyRegions(Mapper& mapper, const std::vector<std::pair<u32, u32>>& regions);
 };

@@ -24,6 +24,13 @@ namespace Catch {
         unmap_me.push_back({(u64)(addr), size}); \
     } while (0)
 
+#define MREMAP_AT(old_addr, old_size, new_addr, new_size) \
+    do {\
+        void* address = mapper.remap((void*)old_addr, old_size, new_size, MREMAP_FIXED | MREMAP_MAYMOVE, (void*)new_addr); \
+        CATCH_REQUIRE(address == (void*)(u64)(new_addr)); \
+        unmap_me.push_back({(u64)(new_addr), new_size}); \
+    } while(0)
+
 #define MMAP_AT_R(size) \
     do { \
         void* address = mapper.map((void*)(0), size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0); \
@@ -403,6 +410,22 @@ CATCH_TEST_CASE("OverwriteFixed2", "[mmap32]") {
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x11fff},
         {mmap_min_addr() + 0x62000, Mapper::addressSpaceEnd32},
+    });
+
+    MUNMAP_ALL();
+}
+
+CATCH_TEST_CASE("Mremap", "[mmap32]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x13000, 0x10000);
+    MREMAP_AT(0x13000, 0x10000, 0x40000, 0x20000);
+
+    verifyRegions(mapper, {
+        {mmap_min_addr(), 0x3ffff},
+        {0x60000, Mapper::addressSpaceEnd32},
     });
 
     MUNMAP_ALL();
