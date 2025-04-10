@@ -201,6 +201,8 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
     ASSERT(old_size);
     ASSERT(new_size);
 
+    VERBOSE("Calling remap32 old: [%p, %zu] -> [%p, %zu]", old_address, old_size, new_address, new_size);
+
     auto guard = lock.lock();
 
     if (new_size & 0xFFF) {
