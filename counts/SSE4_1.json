@@ -19,9 +19,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VMUL.VV         v2, v2, v22, none"
+            "VMUL.VV         v2, v2, v26, none"
         ],
         "disassembly": "pmulld xmm1, [rdi]"
     },
@@ -30,12 +30,12 @@
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "ADDIW           ra, zero, 0x20(32)",
-            "VSLL.VX         v22, v4, ra, none",
-            "VSRA.VX         v22, v22, ra, none",
-            "VSLL.VX         v23, v5, ra, none",
-            "VSRA.VX         v23, v23, ra, none",
-            "VMUL.VV         v24, v22, v23, none",
-            "VMV.V.V         v4, v24"
+            "VSLL.VX         v26, v4, ra, none",
+            "VSRA.VX         v26, v26, ra, none",
+            "VSLL.VX         v27, v5, ra, none",
+            "VSRA.VX         v27, v27, ra, none",
+            "VMUL.VV         v28, v26, v27, none",
+            "VMV.V.V         v4, v28"
         ],
         "disassembly": "pmuldq xmm3, xmm4"
     },
@@ -44,12 +44,12 @@
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "ADDIW           ra, zero, 0x20(32)",
-            "VSLL.VX         v22, v3, ra, none",
-            "VSRA.VX         v22, v22, ra, none",
-            "VSLL.VX         v23, v3, ra, none",
-            "VSRA.VX         v23, v23, ra, none",
-            "VMUL.VV         v24, v22, v23, none",
-            "VMV.V.V         v3, v24"
+            "VSLL.VX         v26, v3, ra, none",
+            "VSRA.VX         v26, v26, ra, none",
+            "VSLL.VX         v27, v3, ra, none",
+            "VSRA.VX         v27, v27, ra, none",
+            "VMUL.VV         v28, v26, v27, none",
+            "VMV.V.V         v3, v28"
         ],
         "disassembly": "pmuldq xmm2, xmm2"
     },
@@ -57,15 +57,15 @@
         "instruction_count": 10,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "ADDIW           ra, zero, 0x20(32)",
-            "VSLL.VX         v23, v2, ra, none",
-            "VSRA.VX         v23, v23, ra, none",
-            "VSLL.VX         v24, v22, ra, none",
-            "VSRA.VX         v24, v24, ra, none",
-            "VMUL.VV         v25, v23, v24, none",
-            "VMV.V.V         v2, v25"
+            "VSLL.VX         v27, v2, ra, none",
+            "VSRA.VX         v27, v27, ra, none",
+            "VSLL.VX         v28, v26, ra, none",
+            "VSRA.VX         v28, v28, ra, none",
+            "VMUL.VV         v29, v27, v28, none",
+            "VMV.V.V         v2, v29"
         ],
         "disassembly": "pmuldq xmm1, [rdi]"
     },
@@ -74,11 +74,11 @@
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "VMV.V.I         v0, 0xf(15)",
-            "VMV.V.I         v22, 0x0(0)",
-            "VMV.V.I         v23, 0x0(0)",
-            "VFMUL.VV        v22, v3, v4, v0.t",
-            "VFREDUSUM.VS    v23, v22, v23, none",
-            "VMV.X.S         ra, v23",
+            "VMV.V.I         v26, 0x0(0)",
+            "VMV.V.I         v27, 0x0(0)",
+            "VFMUL.VV        v26, v3, v4, v0.t",
+            "VFREDUSUM.VS    v27, v26, v27, none",
+            "VMV.X.S         ra, v27",
             "VMV.V.X         v3, ra",
             "VMV.V.I         v0, 0xf(15)",
             "VXOR.VV         v3, v3, v3, v0.t"
@@ -234,10 +234,10 @@
             "ADDIW           t3, zero, 0x20(32)",
             "VMV.V.X         v0, t3",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VMV.S.X         v22, ra",
-            "VSLIDEUP.VI     v23, v22, 0x5(5), none",
-            "VMERGE.VVM      v24, v3, v23",
-            "VMV.V.V         v3, v24"
+            "VMV.S.X         v26, ra",
+            "VSLIDEUP.VI     v27, v26, 0x5(5), none",
+            "VMERGE.VVM      v28, v3, v27",
+            "VMV.V.V         v3, v28"
         ],
         "disassembly": "pinsrb xmm2, byte ptr [rdi], 0x05"
     },
@@ -248,10 +248,10 @@
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
             "ADDIW           t3, zero, 0x10(16)",
             "VMV.V.X         v0, t3",
-            "VMV.S.X         v22, ra",
-            "VSLIDEUP.VI     v23, v22, 0x4(4), none",
-            "VMERGE.VVM      v24, v3, v23",
-            "VMV.V.V         v3, v24"
+            "VMV.S.X         v26, ra",
+            "VSLIDEUP.VI     v27, v26, 0x4(4), none",
+            "VMERGE.VVM      v28, v3, v27",
+            "VMV.V.V         v3, v28"
         ],
         "disassembly": "pinsrw xmm2, word ptr [rdi], 0x04"
     },
@@ -262,10 +262,10 @@
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
             "ADDIW           t3, zero, 0x8(8)",
             "VMV.V.X         v0, t3",
-            "VMV.S.X         v22, ra",
-            "VSLIDEUP.VI     v23, v22, 0x3(3), none",
-            "VMERGE.VVM      v24, v3, v23",
-            "VMV.V.V         v3, v24"
+            "VMV.S.X         v26, ra",
+            "VSLIDEUP.VI     v27, v26, 0x3(3), none",
+            "VMERGE.VVM      v28, v3, v27",
+            "VMV.V.V         v3, v28"
         ],
         "disassembly": "pinsrd xmm2, dword ptr [rdi], 0x03"
     },
@@ -273,8 +273,8 @@
         "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VSLIDEDOWN.VI   v22, v3, 0x5(5), none",
-            "VMV.X.S         ra, v22",
+            "VSLIDEDOWN.VI   v26, v3, 0x5(5), none",
+            "VMV.X.S         ra, v26",
             "ANDI            ra, ra, 0xff(255)",
             "SB              ra, a0, 0x0(0)"
         ],
@@ -284,8 +284,8 @@
         "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VSLIDEDOWN.VI   v22, v3, 0x4(4), none",
-            "VMV.X.S         ra, v22",
+            "VSLIDEDOWN.VI   v26, v3, 0x4(4), none",
+            "VMV.X.S         ra, v26",
             "ZEXT.H          ra, ra",
             "SH              ra, a0, 0x0(0)"
         ],
@@ -295,8 +295,8 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VSLIDEDOWN.VI   v22, v3, 0x3(3), none",
-            "VMV.X.S         ra, v22",
+            "VSLIDEDOWN.VI   v26, v3, 0x3(3), none",
+            "VMV.X.S         ra, v26",
             "SW              ra, a0, 0x0(0)"
         ],
         "disassembly": "pextrd dword ptr [rdi], xmm2, 0x03"
@@ -321,9 +321,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VSEXT.VF2       v2, v22, none"
+            "VSEXT.VF2       v2, v26, none"
         ],
         "disassembly": "pmovsxbw xmm1, qword ptr [rdi]"
     },
@@ -347,9 +347,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VSEXT.VF4       v2, v22, none"
+            "VSEXT.VF4       v2, v26, none"
         ],
         "disassembly": "pmovsxbd xmm1, dword ptr [rdi]"
     },
@@ -373,9 +373,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 2, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSEXT.VF8       v2, v22, none"
+            "VSEXT.VF8       v2, v26, none"
         ],
         "disassembly": "pmovsxbq xmm1, word ptr [rdi]"
     },
@@ -399,9 +399,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VSEXT.VF2       v2, v22, none"
+            "VSEXT.VF2       v2, v26, none"
         ],
         "disassembly": "pmovsxwd xmm1, qword ptr [rdi]"
     },
@@ -425,9 +425,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSEXT.VF4       v2, v22, none"
+            "VSEXT.VF4       v2, v26, none"
         ],
         "disassembly": "pmovsxwq xmm1, dword ptr [rdi]"
     },
@@ -451,9 +451,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSEXT.VF2       v2, v22, none"
+            "VSEXT.VF2       v2, v26, none"
         ],
         "disassembly": "pmovsxdq xmm1, qword ptr [rdi]"
     },
@@ -477,9 +477,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VZEXT.VF2       v2, v22, none"
+            "VZEXT.VF2       v2, v26, none"
         ],
         "disassembly": "pmovzxbw xmm1, qword ptr [rdi]"
     },
@@ -503,9 +503,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VZEXT.VF4       v2, v22, none"
+            "VZEXT.VF4       v2, v26, none"
         ],
         "disassembly": "pmovzxbd xmm1, dword ptr [rdi]"
     },
@@ -529,9 +529,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 2, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VZEXT.VF8       v2, v22, none"
+            "VZEXT.VF8       v2, v26, none"
         ],
         "disassembly": "pmovzxbq xmm1, word ptr [rdi]"
     },
@@ -555,9 +555,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VZEXT.VF2       v2, v22, none"
+            "VZEXT.VF2       v2, v26, none"
         ],
         "disassembly": "pmovzxwd xmm1, qword ptr [rdi]"
     },
@@ -581,9 +581,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VZEXT.VF4       v2, v22, none"
+            "VZEXT.VF4       v2, v26, none"
         ],
         "disassembly": "pmovzxwq xmm1, dword ptr [rdi]"
     },
@@ -607,9 +607,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v22, a0, none, 1",
+            "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VZEXT.VF2       v2, v22, none"
+            "VZEXT.VF2       v2, v26, none"
         ],
         "disassembly": "pmovzxdq xmm1, qword ptr [rdi]"
     },
@@ -617,9 +617,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.V.I         v22, 0x0(0)",
+            "VMV.V.I         v26, 0x0(0)",
             "VMSEQ.VV        v0, v4, v5, none",
-            "VMERGE.VIM      v4, v22, 0xffffffff(-1)"
+            "VMERGE.VIM      v4, v26, 0xffffffff(-1)"
         ],
         "disassembly": "pcmpeqq xmm3, xmm4"
     },
@@ -627,9 +627,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.V.I         v22, 0x0(0)",
+            "VMV.V.I         v26, 0x0(0)",
             "VMSEQ.VV        v0, v3, v3, none",
-            "VMERGE.VIM      v3, v22, 0xffffffff(-1)"
+            "VMERGE.VIM      v3, v26, 0xffffffff(-1)"
         ],
         "disassembly": "pcmpeqq xmm2, xmm2"
     },
@@ -637,11 +637,11 @@
         "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v23, a0, none, 1",
+            "VLE8.V          v27, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VMV.V.I         v22, 0x0(0)",
-            "VMSEQ.VV        v0, v2, v23, none",
-            "VMERGE.VIM      v2, v22, 0xffffffff(-1)"
+            "VMV.V.I         v26, 0x0(0)",
+            "VMSEQ.VV        v0, v2, v27, none",
+            "VMERGE.VIM      v2, v26, 0xffffffff(-1)"
         ],
         "disassembly": "pcmpeqq xmm1, [rdi]"
     },
@@ -649,9 +649,9 @@
         "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VAND.VV         v24, v4, v5, none",
-            "VXOR.VI         v26, v4, 0xffffffff(-1), none",
-            "VAND.VV         v25, v5, v26, none"
+            "VAND.VV         v28, v4, v5, none",
+            "VXOR.VI         v30, v4, 0xffffffff(-1), none",
+            "VAND.VV         v29, v5, v30, none"
         ],
         "disassembly": "ptest xmm3, xmm4"
     },
@@ -666,11 +666,11 @@
         "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v26, a0, none, 1",
+            "VLE8.V          v30, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VAND.VV         v24, v2, v26, none",
-            "VXOR.VI         v27, v2, 0xffffffff(-1), none",
-            "VAND.VV         v25, v26, v27, none"
+            "VAND.VV         v28, v2, v30, none",
+            "VXOR.VI         v31, v2, 0xffffffff(-1), none",
+            "VAND.VV         v29, v30, v31, none"
         ],
         "disassembly": "ptest xmm1, [rdi]"
     }

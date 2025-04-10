@@ -1,6 +1,5 @@
 #include <csignal>
 #include <cstdarg>
-#include <thread>
 #include <sys/file.h>
 #include <sys/inotify.h>
 #include <sys/prctl.h>
