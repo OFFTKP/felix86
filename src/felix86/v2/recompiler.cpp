@@ -2680,7 +2680,6 @@ bool Recompiler::tryInlineSyscall() {
         CASE(io_submit, 3);
         CASE(wait4, 4);
         CASE(sched_getaffinity, 3);
-        CASE(ioctl, 3);
         CASE(recvmsg, 3);
         CASE(munlock, 2);
         CASE(accept, 3);
