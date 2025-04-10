@@ -6,7 +6,7 @@
     void fast_##name(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
 FAST_HANDLE(FLD) {
-    if (operands[0].size == 80) {
+    if (operands[0].size == 80 && operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         biscuit::GPR address = rec.lea(&operands[0]);
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
