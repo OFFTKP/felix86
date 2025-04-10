@@ -1643,7 +1643,7 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             break;
         }
         case felix86_x86_32_poll: {
-            result = ::poll((pollfd*)(u64)arg1, arg2, arg3);
+            result = ::poll((pollfd*)arg1, arg2, arg3);
             break;
         }
         case felix86_x86_32_sendmsg: {
@@ -1652,6 +1652,34 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
         }
         case felix86_x86_32_recvmsg: {
             result = ::recvmsg32(arg1, (x86_msghdr*)arg2, arg3);
+            break;
+        }
+        case felix86_x86_32_getsockopt: {
+            result = ::getsockopt32(arg1, arg2, arg3, (char*)arg4, (u32*)arg5);
+            break;
+        }
+        case felix86_x86_32_setsockopt: {
+            result = ::setsockopt32(arg1, arg2, arg3, (char*)arg4, arg5);
+            break;
+        }
+        case felix86_x86_32_wait4: {
+            x86_rusage* guest_rusage = (x86_rusage*)arg4;
+            rusage host_rusage;
+            rusage* host_rusage_ptr = nullptr;
+            if (guest_rusage) {
+                host_rusage = *guest_rusage;
+                host_rusage_ptr = &host_rusage;
+            }
+
+            result = ::wait4(arg1, (int*)arg2, arg3, host_rusage_ptr);
+
+            if (guest_rusage) {
+                *guest_rusage = host_rusage;
+            }
+            break;
+        }
+        case felix86_x86_32_dup2: {
+            result = ::dup2(arg1, arg2);
             break;
         }
         case felix86_x86_32_socketcall: { // Funny syscall before the functions were seperated
@@ -1730,6 +1758,14 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             }
             case SYS_SHUTDOWN: {
                 result = ::shutdown(args[0], args[1]);
+                break;
+            }
+            case SYS_SETSOCKOPT: {
+                result = ::setsockopt32(args[0], args[1], args[2], (char*)(u64)args[3], args[4]);
+                break;
+            }
+            case SYS_GETSOCKOPT: {
+                result = ::getsockopt32(args[0], args[1], args[2], (char*)(u64)args[3], (u32*)(u64)args[4]);
                 break;
             }
             case SYS_SENDMSG: {

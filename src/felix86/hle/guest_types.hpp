@@ -31,14 +31,14 @@ struct x86_user_desc {
 
 struct x86_rlimit {
     x86_rlimit(const rlimit& rlimit) {
-        this->rlim_cur = rlimit.rlim_cur;
-        this->rlim_max = rlimit.rlim_max;
+        rlim_cur = rlimit.rlim_cur;
+        rlim_max = rlimit.rlim_max;
     }
 
     operator rlimit() const {
         rlimit rlimit;
-        rlimit.rlim_cur = (i32)this->rlim_cur;
-        rlimit.rlim_max = (i32)this->rlim_max;
+        rlimit.rlim_cur = (i32)rlim_cur;
+        rlimit.rlim_max = (i32)rlim_max;
         return rlimit;
     }
 
@@ -48,14 +48,14 @@ struct x86_rlimit {
 
 struct x86_iovec {
     x86_iovec(const iovec& iovec) {
-        this->iov_base = (u64)iovec.iov_base;
-        this->iov_len = iovec.iov_len;
+        iov_base = (u64)iovec.iov_base;
+        iov_len = iovec.iov_len;
     }
 
     operator iovec() const {
         iovec iovec;
-        iovec.iov_base = (void*)(u64)this->iov_base;
-        iovec.iov_len = this->iov_len;
+        iovec.iov_base = (void*)(u64)iov_base;
+        iovec.iov_len = iov_len;
         return iovec;
     }
 
@@ -65,14 +65,14 @@ struct x86_iovec {
 
 struct x86_timespec {
     x86_timespec(const timespec& host_timespec) {
-        this->tv_sec = host_timespec.tv_sec;
-        this->tv_nsec = host_timespec.tv_nsec;
+        tv_sec = host_timespec.tv_sec;
+        tv_nsec = host_timespec.tv_nsec;
     }
 
     operator timespec() const {
         timespec timespec;
-        timespec.tv_sec = this->tv_sec;
-        timespec.tv_nsec = this->tv_nsec;
+        timespec.tv_sec = tv_sec;
+        timespec.tv_nsec = tv_nsec;
         return timespec;
     }
 
@@ -80,16 +80,33 @@ struct x86_timespec {
     u32 tv_nsec;
 };
 
+struct x86_timeval {
+    x86_timeval(const timeval& host_timeval) {
+        tv_sec = host_timeval.tv_sec;
+        tv_usec = host_timeval.tv_usec;
+    }
+
+    operator timeval() const {
+        timeval timeval;
+        timeval.tv_sec = tv_sec;
+        timeval.tv_usec = tv_usec;
+        return timeval;
+    }
+
+    u32 tv_sec;
+    u32 tv_usec;
+};
+
 struct __attribute__((packed)) x86_epoll_event {
     x86_epoll_event(const epoll_event& epoll_event) {
-        this->events = epoll_event.events;
-        this->data = epoll_event.data.u64;
+        events = epoll_event.events;
+        data = epoll_event.data.u64;
     }
 
     operator epoll_event() const {
         epoll_event epoll_event;
-        epoll_event.events = this->events;
-        epoll_event.data.u64 = this->data;
+        epoll_event.events = events;
+        epoll_event.data.u64 = data;
         return epoll_event;
     }
 
@@ -358,3 +375,65 @@ struct __attribute__((packed)) x86_statfs64 {
 
 static_assert(std::is_trivial<x86_statfs64>::value);
 static_assert(sizeof(x86_statfs64) == 84);
+
+struct x86_rusage {
+    x86_timeval ru_utime;
+    x86_timeval ru_stime;
+    u32 ru_maxrss;
+    u32 ru_ixrss;
+    u32 ru_idrss;
+    u32 ru_isrss;
+    u32 ru_minflt;
+    u32 ru_majflt;
+    u32 ru_nswap;
+    u32 ru_inblock;
+    u32 ru_oublock;
+    u32 ru_msgsnd;
+    u32 ru_msgrcv;
+    u32 ru_nsignals;
+    u32 ru_nvcsw;
+    u32 ru_nivcsw;
+
+    x86_rusage() = delete;
+
+    x86_rusage(const struct rusage& usage) : ru_utime{usage.ru_utime}, ru_stime{usage.ru_stime} {
+        ru_maxrss = usage.ru_maxrss;
+        ru_ixrss = usage.ru_ixrss;
+        ru_idrss = usage.ru_idrss;
+        ru_isrss = usage.ru_isrss;
+        ru_minflt = usage.ru_minflt;
+        ru_majflt = usage.ru_majflt;
+        ru_nswap = usage.ru_nswap;
+        ru_inblock = usage.ru_inblock;
+        ru_oublock = usage.ru_oublock;
+        ru_msgsnd = usage.ru_msgsnd;
+        ru_msgrcv = usage.ru_msgrcv;
+        ru_nsignals = usage.ru_nsignals;
+        ru_nvcsw = usage.ru_nvcsw;
+        ru_nivcsw = usage.ru_nivcsw;
+    }
+
+    operator struct rusage() const {
+        struct rusage usage{};
+        usage.ru_utime = ru_utime;
+        usage.ru_stime = ru_stime;
+        usage.ru_maxrss = ru_maxrss;
+        usage.ru_ixrss = ru_ixrss;
+        usage.ru_idrss = ru_idrss;
+        usage.ru_isrss = ru_isrss;
+        usage.ru_minflt = ru_minflt;
+        usage.ru_majflt = ru_majflt;
+        usage.ru_nswap = ru_nswap;
+        usage.ru_inblock = ru_inblock;
+        usage.ru_oublock = ru_oublock;
+        usage.ru_msgsnd = ru_msgsnd;
+        usage.ru_msgrcv = ru_msgrcv;
+        usage.ru_nsignals = ru_nsignals;
+        usage.ru_nvcsw = ru_nvcsw;
+        usage.ru_nivcsw = ru_nivcsw;
+        return usage;
+    }
+};
+
+static_assert(std::is_trivially_copyable<x86_rusage>::value);
+static_assert(sizeof(x86_rusage) == 72);
