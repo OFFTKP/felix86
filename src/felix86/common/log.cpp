@@ -47,12 +47,7 @@ void Logger::startServer() {
         // the displaying of messages.
         // When the parent dies (main emulator thread), make sure the logging "server" also dies
         prctl(PR_SET_PDEATHSIG, SIGTERM);
-        int read_pipe = -1;
-        while (read_pipe == -1) {
-            // Open non-blocking, if you do a blocking open and `follow-fork-mode child` on gdb you would get a hang for some reason
-            read_pipe = open(pipe_name.c_str(), O_RDONLY | O_NONBLOCK, 0666);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
+        int read_pipe = open(pipe_name.c_str(), O_RDONLY, 0666);
         ASSERT(read_pipe > 0);
         FILE* f = fdopen(fd, "w"); // create the log file to store the log if we need it later
         constexpr size_t buffer_size = 0x10000;
@@ -80,11 +75,7 @@ void Logger::startServer() {
         }
     } else {
         // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
-        g_output_fd = -1;
-        while (g_output_fd == -1) {
-            g_output_fd = open(pipe_name.c_str(), O_WRONLY | O_NONBLOCK, 0644);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
+        g_output_fd = open(pipe_name.c_str(), O_WRONLY, 0644);
         ASSERT(g_output_fd > 0);
     }
 }
