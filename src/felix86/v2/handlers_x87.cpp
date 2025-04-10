@@ -419,3 +419,65 @@ FAST_HANDLE(FNSTCW) {
 FAST_HANDLE(FLDCW) {
     WARN("FLDCW is not implemented, ignoring");
 }
+
+void FCMOV(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+    biscuit::Label not_true;
+    as.BEQZ(cond, &not_true);
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR sti = rec.getST(top, &operands[1]);
+    rec.setST(top, 0, sti);
+    as.Bind(&not_true);
+}
+
+FAST_HANDLE(FCMOVB) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    FCMOV(rec, as, operands, cf);
+}
+
+FAST_HANDLE(FCMOVE) {
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    FCMOV(rec, as, operands, zf);
+}
+
+FAST_HANDLE(FCMOVBE) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR cond = rec.scratch();
+    as.OR(cond, cf, zf);
+    FCMOV(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FCMOVU) {
+    biscuit::GPR pf = rec.flag(X86_REF_PF);
+    FCMOV(rec, as, operands, pf);
+}
+
+FAST_HANDLE(FCMOVNB) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR cond = rec.scratch();
+    as.XORI(cond, cf, 1);
+    FCMOV(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FCMOVNE) {
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR cond = rec.scratch();
+    as.XORI(cond, zf, 1);
+    FCMOV(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FCMOVNBE) {
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR cond = rec.scratch();
+    as.OR(cond, cf, zf);
+    as.XORI(cond, cond, 1);
+    FCMOV(rec, as, operands, cond);
+}
+
+FAST_HANDLE(FCMOVNU) {
+    biscuit::GPR pf = rec.flag(X86_REF_PF);
+    biscuit::GPR cond = rec.scratch();
+    as.XORI(cond, pf, 1);
+    FCMOV(rec, as, operands, cond);
+}
