@@ -314,6 +314,15 @@ FAST_HANDLE(FRNDINT) {
     rec.setST(top, 0, st0);
 }
 
+FAST_HANDLE(FCHS) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+
+    as.FNEG_D(st0, st0);
+
+    rec.setST(top, 0, st0);
+}
+
 FAST_HANDLE(FLD1) {
     biscuit::GPR top = rec.getTOP();
     biscuit::FPR st = rec.scratchFPR();

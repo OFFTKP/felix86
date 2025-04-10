@@ -442,5 +442,6 @@ X(FLDZ)
 X(FIST)
 X(FISTP)
 X(FISTTP)
+X(FCHS)
 
 X(INVLPG) /* thunking dummy instruction */
