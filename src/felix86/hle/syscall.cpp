@@ -1635,6 +1635,14 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             result = ::poll((pollfd*)(u64)arg1, arg2, arg3);
             break;
         }
+        case felix86_x86_32_sendmsg: {
+            result = ::sendmsg32(arg1, (x86_msghdr*)arg2, arg3);
+            break;
+        }
+        case felix86_x86_32_recvmsg: {
+            result = ::recvmsg32(arg1, (x86_msghdr*)arg2, arg3);
+            break;
+        }
         case felix86_x86_32_socketcall: { // Funny syscall before the functions were seperated
             enum {
                 SYS_SOCKET = 1,
@@ -1715,6 +1723,10 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             }
             case SYS_SENDMSG: {
                 result = ::sendmsg32(args[0], (x86_msghdr*)(u64)args[1], args[2]);
+                break;
+            }
+            case SYS_RECVMSG: {
+                result = ::recvmsg32(args[0], (x86_msghdr*)(u64)args[1], args[2]);
                 break;
             }
             case SYS_ACCEPT4: {

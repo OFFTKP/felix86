@@ -2,23 +2,71 @@
 #include <sys/socket.h>
 #include "felix86/hle/socket.hpp"
 
-int sendmsg32(int fd, const x86_msghdr* msg, int flags) {
+int recvmsg32(int fd, x86_msghdr* guest_msghdr, int flags) {
     struct msghdr host_msghdr;
-    host_msghdr.msg_flags = msg->msg_flags;
-    host_msghdr.msg_name = (void*)(u64)msg->msg_name;
-    host_msghdr.msg_namelen = msg->msg_namelen;
+    host_msghdr.msg_flags = guest_msghdr->msg_flags;
+    host_msghdr.msg_name = (void*)(u64)guest_msghdr->msg_name;
+    host_msghdr.msg_namelen = guest_msghdr->msg_namelen;
 
-    x86_iovec* iovecs32 = (x86_iovec*)(u64)msg->msg_iov;
-    std::vector<iovec> iovecs(iovecs32, iovecs32 + msg->msg_iovlen);
+    x86_iovec* iovecs32 = (x86_iovec*)(u64)guest_msghdr->msg_iov;
+    std::vector<iovec> iovecs(iovecs32, iovecs32 + guest_msghdr->msg_iovlen);
     host_msghdr.msg_iov = iovecs.data();
-    host_msghdr.msg_iovlen = msg->msg_iovlen;
+    host_msghdr.msg_iovlen = guest_msghdr->msg_iovlen;
 
     constexpr size_t cmsghdr_size_difference = sizeof(cmsghdr) - sizeof(x86_cmsghdr);
-    host_msghdr.msg_control = alloca(msg->msg_controllen * 2);
+    host_msghdr.msg_control = alloca(guest_msghdr->msg_controllen * 2);
+    host_msghdr.msg_controllen = guest_msghdr->msg_controllen * 2;
+
+    int result = ::recvmsg(fd, &host_msghdr, flags);
+    if (result != -1) {
+        for (u32 i = 0; i < guest_msghdr->msg_iovlen; i++) {
+            x86_iovec* guest_iovec = (x86_iovec*)(guest_msghdr->msg_iov + (i * sizeof(x86_iovec)));
+            *guest_iovec = host_msghdr.msg_iov[i];
+        }
+
+        guest_msghdr->msg_namelen = host_msghdr.msg_namelen;
+        guest_msghdr->msg_controllen = 0;
+        guest_msghdr->msg_flags = host_msghdr.msg_flags;
+
+        if (host_msghdr.msg_controllen != 0) {
+            u64 guest_cmsghdr_pointer = guest_msghdr->msg_control;
+
+            for (cmsghdr* host_cmsghdr = CMSG_FIRSTHDR(&host_msghdr); host_cmsghdr != nullptr;
+                 host_cmsghdr = CMSG_NXTHDR(&host_msghdr, host_cmsghdr)) {
+                x86_cmsghdr* guest_cmsghdr = (x86_cmsghdr*)guest_cmsghdr_pointer;
+                guest_cmsghdr->cmsg_level = host_cmsghdr->cmsg_level;
+                guest_cmsghdr->cmsg_type = host_cmsghdr->cmsg_type;
+
+                if (host_cmsghdr->cmsg_len != 0) {
+                    guest_cmsghdr->cmsg_len = host_cmsghdr->cmsg_len - cmsghdr_size_difference;
+                    guest_msghdr->msg_controllen += guest_cmsghdr->cmsg_len;
+                    memcpy(guest_cmsghdr->cmsg_data, CMSG_DATA(host_cmsghdr), host_cmsghdr->cmsg_len - sizeof(cmsghdr));
+                    guest_cmsghdr_pointer += guest_cmsghdr->cmsg_len;
+                    guest_cmsghdr_pointer = (guest_cmsghdr_pointer + 3) & ~0b11ull;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
+    struct msghdr host_msghdr;
+    host_msghdr.msg_flags = guest_msghdr->msg_flags;
+    host_msghdr.msg_name = (void*)(u64)guest_msghdr->msg_name;
+    host_msghdr.msg_namelen = guest_msghdr->msg_namelen;
+
+    x86_iovec* iovecs32 = (x86_iovec*)(u64)guest_msghdr->msg_iov;
+    std::vector<iovec> iovecs(iovecs32, iovecs32 + guest_msghdr->msg_iovlen);
+    host_msghdr.msg_iov = iovecs.data();
+    host_msghdr.msg_iovlen = guest_msghdr->msg_iovlen;
+
+    constexpr size_t cmsghdr_size_difference = sizeof(cmsghdr) - sizeof(x86_cmsghdr);
+    host_msghdr.msg_control = alloca(guest_msghdr->msg_controllen * 2);
     host_msghdr.msg_controllen = 0;
 
-    if (msg->msg_controllen) {
-        u64 guest_cmsghdr_pointer = msg->msg_control;
+    if (guest_msghdr->msg_controllen != 0) {
+        u64 guest_cmsghdr_pointer = guest_msghdr->msg_control;
         u64 host_cmsghdr_pointer = (u64)host_msghdr.msg_control;
 
         while (true) {
@@ -42,7 +90,7 @@ int sendmsg32(int fd, const x86_msghdr* msg, int flags) {
                 guest_cmsghdr_pointer += guest_cmsghdr->cmsg_len;
                 guest_cmsghdr_pointer = (guest_cmsghdr_pointer + 3) & ~0b11ull;
 
-                if (guest_cmsghdr_pointer > msg->msg_control + msg->msg_controllen) {
+                if (guest_cmsghdr_pointer > guest_msghdr->msg_control + guest_msghdr->msg_controllen) {
                     break;
                 }
             }
