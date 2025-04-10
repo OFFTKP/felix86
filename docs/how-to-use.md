@@ -34,6 +34,7 @@ Make sure to [grab a RootFS](#rootfs), set the `FELIX86_ROOTFS` environment vari
 ## QEMU
 
 This works fine for me: (change the cores/RAM to your liking)
+
 Make sure the disk image has enough space to compile.
 ```bash
 qemu-system-riscv64 \

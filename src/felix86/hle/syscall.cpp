@@ -1569,6 +1569,17 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             result = ::waitpid((pid_t)arg1, (int*)arg2, (int)arg3);
             break;
         }
+        case felix86_x86_32_statfs64: {
+            ASSERT(arg2 == sizeof(x86_statfs64));
+
+            struct statfs statfs;
+            x86_statfs64* guest_statfs = (x86_statfs64*)arg3;
+            result = Filesystem::StatFs((char*)arg1, &statfs);
+            if (result >= 0) {
+                *guest_statfs = statfs;
+            }
+            break;
+        }
         case felix86_x86_32_time32: {
             time_t time;
             result = ::time(&time);

@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstring>
 #include <fcntl.h>
 #include <linux/sem.h>
 #include <sys/epoll.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
+#include <sys/statfs.h>
 #include <sys/uio.h>
 #include "felix86/common/utility.hpp"
 
@@ -322,3 +324,37 @@ struct x86_msghdr {
 
 static_assert(std::is_trivial<x86_msghdr>::value);
 static_assert(sizeof(x86_msghdr) == 28);
+
+struct __attribute__((packed)) x86_statfs64 {
+    u32 f_type;
+    u32 f_bsize;
+    u64 f_blocks;
+    u64 f_bfree;
+    u64 f_bavail;
+    u64 f_files;
+    u64 f_ffree;
+    u64 f_fsid;
+    u32 f_namelen;
+    u32 f_frsize;
+    u32 f_flags;
+    u32 pad[4];
+
+    x86_statfs64() = delete;
+
+    x86_statfs64(const struct statfs& statfs) {
+        f_type = statfs.f_type;
+        f_bsize = statfs.f_bsize;
+        f_blocks = statfs.f_blocks;
+        f_bfree = statfs.f_bfree;
+        f_bavail = statfs.f_bavail;
+        f_files = statfs.f_files;
+        f_ffree = statfs.f_ffree;
+        memcpy(&f_fsid, &statfs.f_fsid, sizeof(u64));
+        f_namelen = statfs.f_namelen;
+        f_frsize = statfs.f_frsize;
+        f_flags = statfs.f_flags;
+    }
+};
+
+static_assert(std::is_trivial<x86_statfs64>::value);
+static_assert(sizeof(x86_statfs64) == 84);
