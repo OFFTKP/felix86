@@ -4,6 +4,7 @@
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/utility.hpp"
 
+// TODO: add verifications using /proc/self/maps and optional debugging mode that always verifies
 struct Mapper {
     [[nodiscard]] void* map(void* addr, u64 size, int prot, int flags, int fd, u64 offset);
     int unmap(void* addr, u64 size);

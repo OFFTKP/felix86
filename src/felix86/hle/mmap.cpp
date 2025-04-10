@@ -52,6 +52,10 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
         ASSERT(mapping == result);
         return result;
     } else {
+        if (size & 0xFFF) {
+            size = (size + PAGE_SIZE) & ~0xFFF;
+        }
+
         void* address = freelistAllocate(nullptr, size);
         if ((i64)address < 0) {
             WARN("freelistAllocate failed for map32: %ld", (i64)address);
@@ -73,10 +77,6 @@ void* Mapper::freelistAllocate(void* addr, u64 size) {
     if (addr == nullptr) {
         // We need to use our freelist to find a free mapping that has enough size
         // Also we completely ignore the addr hint, since there's no MAP_FIXED this should be fine...
-        // Align up the size...
-        if (size & 0xFFF)
-            size = (size + PAGE_SIZE) & ~0xFFF;
-
         // Iterate the free list...
         Node* previous = nullptr;
         Node* current = freelist;
@@ -202,7 +202,12 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
     ASSERT(new_size);
 
     auto guard = lock.lock();
-    if (flags & MREMAP_FIXED) {
+
+    if (new_size & 0xFFF) {
+        new_size = (new_size + PAGE_SIZE) & ~0xFFF;
+    }
+
+    if ((flags & MREMAP_FIXED) || !(flags & MREMAP_MAYMOVE)) {
         // Give it to the kernel first
         ASSERT((u64)new_address < addressSpaceEnd32);
         void* result = ::mremap(old_address, old_size, new_size, flags, new_address);
@@ -221,19 +226,24 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
         ASSERT(mapping == result);
         return result;
     } else {
-        // Since it's not fixed we must pick a mapping ourselves
+        // If we are here it means there's MREMAP_MAYMOVE and not MREMAP_FIXED
+        // So we need to unmap from freelist, find an adequate mapping, then pass that to host mremap
+        // Host mremap should not fail if everything is ok
         if (!(flags & MREMAP_DONTUNMAP)) {
             freelistDeallocate(old_address, old_size);
         }
 
         // Find an adequate mapping in our freelist
-        void* new_address = freelistAllocate(nullptr, new_size);
-        ASSERT(new_address);
+        void* new_address = freelistAllocate(old_address, new_size);
+        if ((i64)new_address < 0) {
+            WARN("freelistAllocate failed with %ld", (i64)new_address);
+            return new_address;
+        }
 
         // Actually perform the remap now, but make it fixed
-        void* result = ::mremap(old_address, old_size, new_size, flags | MREMAP_FIXED, new_address);
+        void* result = ::mremap(old_address, old_size, new_size, flags | MREMAP_MAYMOVE | MREMAP_FIXED, new_address);
         if (result == MAP_FAILED) {
-            WARN("mremap32 failed when trying to remap without MREMAP_FIXED");
+            ERROR("Freelist and mremap disagree during mremap32");
             freelistDeallocate(new_address, new_size);
             return MAP_FAILED;
         }

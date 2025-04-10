@@ -1425,6 +1425,20 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             result = ::pipe((int*)arg1);
             break;
         }
+        case felix86_x86_32_llseek: {
+            int fd = arg1;
+            u64 offset_high = arg2;
+            u64 offset_low = arg3;
+            loff_t* res = (loff_t*)arg4;
+            u64 whence = arg5;
+            u64 offset = (offset_high << 32) | offset_low;
+            result = ::lseek(fd, offset, whence);
+            if (result >= 0) {
+                *res = result;
+                result = 0;
+            }
+            break;
+        }
         case felix86_x86_32_writev: {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
