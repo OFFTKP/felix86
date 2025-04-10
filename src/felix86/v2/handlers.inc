@@ -443,5 +443,6 @@ X(FIST)
 X(FISTP)
 X(FISTTP)
 X(FCHS)
+X(FIMUL)
 
 X(INVLPG) /* thunking dummy instruction */

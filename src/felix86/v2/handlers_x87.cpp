@@ -227,6 +227,23 @@ FAST_HANDLE(FISTTP) {
     FIST(rec, rip, as, operands, true, RMode::RTZ);
 }
 
+FAST_HANDLE(FIMUL) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR scratch = rec.scratchFPR();
+    biscuit::FPR result = rec.scratchFPR();
+
+    if (operands[0].size == 16) {
+        rec.sext(integer, integer, X86_SIZE_WORD);
+    }
+
+    as.FCVT_D_W(scratch, integer);
+    as.FMUL_D(result, st0, scratch);
+
+    rec.setST(top, 0, result);
+}
+
 void FCOM(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
     u8 index = operands[1].reg.value - ZYDIS_REGISTER_ST0;
     ASSERT(index >= 1 && index <= 7);
