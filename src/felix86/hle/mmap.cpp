@@ -229,10 +229,10 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
         return result;
     } else {
         // If we are here it means there's MREMAP_MAYMOVE and not MREMAP_FIXED
-        // So we need to unmap from freelist, find an adequate mapping, then pass that to host mremap
+        // So we need to find an adequate mapping, pass that to host mremap with MREMAP_FIXED and unmap from freelist
         // Host mremap should not fail if everything is ok
         // Find an adequate mapping in our freelist first
-        void* new_address = freelistAllocate(old_address, new_size);
+        void* new_address = freelistAllocate(nullptr, new_size);
         if ((i64)new_address <= 0) {
             WARN("freelistAllocate failed with %ld", (i64)new_address);
             return new_address;
