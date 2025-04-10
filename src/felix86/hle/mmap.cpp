@@ -231,13 +231,9 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
         // If we are here it means there's MREMAP_MAYMOVE and not MREMAP_FIXED
         // So we need to unmap from freelist, find an adequate mapping, then pass that to host mremap
         // Host mremap should not fail if everything is ok
-        if (!(flags & MREMAP_DONTUNMAP)) {
-            freelistDeallocate(old_address, old_size);
-        }
-
-        // Find an adequate mapping in our freelist
+        // Find an adequate mapping in our freelist first
         void* new_address = freelistAllocate(old_address, new_size);
-        if ((i64)new_address < 0) {
+        if ((i64)new_address <= 0) {
             WARN("freelistAllocate failed with %ld", (i64)new_address);
             return new_address;
         }
@@ -248,6 +244,11 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
             ERROR("Freelist and mremap disagree during mremap32: %ld vs %p", result, new_address);
             freelistDeallocate(new_address, new_size);
             return MAP_FAILED;
+        }
+
+        // After everything goes ok we can unmap the old region
+        if (!(flags & MREMAP_DONTUNMAP)) {
+            freelistDeallocate(old_address, old_size);
         }
 
         ASSERT(result == new_address);
