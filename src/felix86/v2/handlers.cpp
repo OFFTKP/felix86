@@ -5677,7 +5677,7 @@ FAST_HANDLE(PEXTRB) {
 }
 
 FAST_HANDLE(PEXTRW) {
-    bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
+    bool is_mmx = operands[1].reg.value >= ZYDIS_REGISTER_MM0 && operands[1].reg.value <= ZYDIS_REGISTER_MM7;
     u8 imm = rec.getImmediate(&operands[2]) & (is_mmx ? 0b11 : 0b111);
     biscuit::Vec temp = rec.scratchVec();
     biscuit::GPR result = rec.scratch();
