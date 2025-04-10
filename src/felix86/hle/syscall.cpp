@@ -1706,6 +1706,22 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             result = ::dup2(arg1, arg2);
             break;
         }
+        case felix86_x86_32_utimensat_time32: {
+            struct timespec host_times[2];
+            int dirfd = arg1;
+            const char* pathname = (const char*)arg2;
+            x86_timespec* guest_times = (x86_timespec*)arg3;
+            int flags = arg4;
+
+            if (guest_times) {
+                host_times[0] = guest_times[0];
+                host_times[1] = guest_times[1];
+                result = Filesystem::UtimensAt(dirfd, pathname, host_times, flags);
+            } else {
+                result = Filesystem::UtimensAt(dirfd, pathname, nullptr, flags);
+            }
+            break;
+        }
         case felix86_x86_32_ia32_ftruncate64: {
             int fd = arg1;
             u64 offset_low = arg2;
