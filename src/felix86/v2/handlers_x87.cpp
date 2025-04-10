@@ -203,9 +203,11 @@ void FIST(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedOperand* 
     } else if (operands[0].size == 32) {
         as.FCVT_W_D(integer, st0, mode);
         rec.writeMemory(integer, address, 0, X86_SIZE_DWORD);
-    } else if (operands[0].size == 32) {
+    } else if (operands[0].size == 64) {
         as.FCVT_L_D(integer, st0, mode);
         rec.writeMemory(integer, address, 0, X86_SIZE_QWORD);
+    } else {
+        UNREACHABLE();
     }
 
     if (pop) {
