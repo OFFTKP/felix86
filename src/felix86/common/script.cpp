@@ -73,10 +73,19 @@ Script::Script(const std::filesystem::path& script) {
     }
 
     int arg_start = -1;
+    bool slash_found = false;
     for (int i = 0; i < PATH_MAX; i++) {
         if (data[i] == 0) {
             break;
+        } else if (data[i] == '/') {
+            slash_found = true;
         } else if (data[i] == ' ') {
+            // skip spaces before the first slash, for example there could be this:
+            // #! /bin/bash args here
+            //   ^--- gotta make sure to skip this space
+            if (!slash_found)
+                continue;
+
             data[i] = 0;
             arg_start = i + 1;
             if (data[arg_start] == 0) {
@@ -91,9 +100,11 @@ Script::Script(const std::filesystem::path& script) {
         args = &data[arg_start];
     }
 
-    ASSERT(interpreter[0] == '/');
+    auto first_slash = interpreter.find_first_of('/');
+    ASSERT(first_slash != std::string::npos);
+    ASSERT(interpreter.size() > first_slash + 1);
 
-    this->interpreter = g_config.rootfs_path / &interpreter[1];
+    this->interpreter = g_config.rootfs_path / &interpreter[first_slash + 1];
 
     LOG("Running a script file: %s, interpreter: %s, args: %s", script.c_str(), interpreter.c_str(), args.c_str());
     ASSERT(std::filesystem::exists(interpreter));
