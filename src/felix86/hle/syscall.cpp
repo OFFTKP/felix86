@@ -898,23 +898,6 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     }
     case felix86_riscv64_sigaltstack: {
         VERBOSE("----- sigaltstack was called -----");
-        stack_t host_stack; // save old stack here while we check if guest stack is valid
-        stack_t* guest_stack = (stack_t*)arg1;
-        stack_t guest_stack_copy = *guest_stack;
-
-        // Let the kernel decide if the guest_stack is valid
-        int result_temp = sigaltstack(&guest_stack_copy, &host_stack);
-
-        // Restore old stack
-        int result_must = sigaltstack(&host_stack, nullptr);
-        ASSERT(result_must == 0);
-
-        if (result_temp != 0) {
-            WARN("Failed to set sigaltstack");
-            result = result_temp;
-            break;
-        }
-
         stack_t* new_ss = (stack_t*)arg1;
         stack_t* old_ss = (stack_t*)arg2;
 
