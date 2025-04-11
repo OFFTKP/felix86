@@ -106,7 +106,7 @@ Script::Script(const std::filesystem::path& script) {
 
     this->interpreter = g_config.rootfs_path / &interpreter[first_slash + 1];
 
-    LOG("Running a script file: %s, interpreter: %s, args: %s", script.c_str(), interpreter.c_str(), args.c_str());
-    ASSERT(std::filesystem::exists(interpreter));
-    ASSERT(std::filesystem::is_regular_file(interpreter));
+    LOG("Running a script file: %s, interpreter: %s, args: %s", script.c_str(), this->interpreter.c_str(), args.c_str());
+    ASSERT(std::filesystem::exists(this->interpreter));
+    ASSERT(std::filesystem::is_regular_file(this->interpreter));
 }
