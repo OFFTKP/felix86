@@ -320,6 +320,14 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = SYSCALL(setreuid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_capset: {
+        result = SYSCALL(capset, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
+    case felix86_riscv64_capget: {
+        result = SYSCALL(capget, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
     case felix86_riscv64_setresuid: {
         result = SYSCALL(setresuid, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
