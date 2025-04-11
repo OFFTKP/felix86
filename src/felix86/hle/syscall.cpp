@@ -1036,6 +1036,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = SYSCALL(wait4, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_fchownat: {
+        result = SYSCALL(fchownat, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
     case felix86_riscv64_mkdirat: {
         result = Filesystem::MkdirAt(arg1, (char*)arg2, arg3);
         break;
