@@ -1153,6 +1153,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = Signals::sigsuspend(state, (sigset_t*)arg1);
         break;
     }
+    case felix86_riscv64_epoll_create1: {
+        result = SYSCALL(epoll_create1, arg1);
+        break;
+    }
     case felix86_riscv64_rt_sigprocmask: {
         int how = arg1;
         sigset_t* set = (sigset_t*)arg2;
@@ -1240,10 +1244,6 @@ void felix86_syscall(ThreadState* state) {
         case felix86_x86_64_epoll_create: {
             // epoll_create has obsolete and ignored argument size, acts the same as epoll_create1 with flags=0
             result = SYSCALL(epoll_create1, 0);
-            break;
-        }
-        case felix86_x86_64_epoll_create1: {
-            result = SYSCALL(epoll_create1, arg1, arg2, arg3, arg4, arg5, arg6);
             break;
         }
         case felix86_x86_64_epoll_wait: {
