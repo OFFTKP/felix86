@@ -1242,6 +1242,10 @@ void felix86_syscall(ThreadState* state) {
             result = ::time((time_t*)arg1);
             break;
         }
+        case felix86_x86_64_link: {
+            result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
+            break;
+        }
         case felix86_x86_64_readlink: {
             if (arg1 == arg2) {
                 WARN("arg1 == arg2 during readlink");
