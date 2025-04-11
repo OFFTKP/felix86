@@ -63,6 +63,14 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
         return bytes;
     }
 
+    // For the emulator to work we symlink some stuff like /proc to the rootfs, if we allow readlink to
+    // return `/proc` when `readlink(/proc)` happens we'd get infinite recursion and stuff would not behave
+    // For example the `realpath` function will cause problems if used on /proc
+    if (isOurSymlinks(filename)) {
+        // If the file is not a symlink we are supposed to return -EINVAL
+        return -EINVAL;
+    }
+
     auto [new_fd, new_filename] = resolve(fd, filename);
 
     int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
@@ -378,6 +386,14 @@ bool Filesystem::isProcSelfExe(const char* path) {
     std::string spath = path;
     std::string pidpath = "/proc/" + std::to_string(getpid()) + "/exe";
     if (spath == "/proc/self/exe" || spath == "/proc/thread-self/exe" || spath == pidpath) {
+        return true;
+    }
+    return false;
+}
+
+bool Filesystem::isOurSymlinks(const char* path) {
+    std::string spath = path;
+    if (spath == "/proc" || spath == "/run" || spath == "/sys" || spath == "/dev") {
         return true;
     }
     return false;
