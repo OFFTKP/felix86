@@ -565,12 +565,6 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_openat: {
-        if (std::string((char*)arg2) == "/run/systemd/userdb/") { // TODO: There's some bug in Qt apps with this path??
-            WARN("Accessing /run/systemd/userdb/, returning -ENOENT");
-            result = -ENOENT;
-            break;
-        }
-
         result = Filesystem::OpenAt((int)arg1, (char*)arg2, (int)arg3, arg4);
         break;
     }
