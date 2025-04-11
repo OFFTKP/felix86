@@ -27,12 +27,11 @@
 #include "felix86/hle/brk.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/guest_types.hpp"
-#include "felix86/hle/socket.hpp"
+#include "felix86/hle/socket32.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
 
 // Annoyingly, the ::syscall function returns -1 instead of the actual error number.
-// But we also don't wanna check at the end because the // We need to check the moment result gets set
 struct Result {
     Result& operator=(ssize_t inner) {
         if (inner == -1) {
@@ -193,6 +192,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     case felix86_riscv64_rseq: {
         // Couldn't find any solid documentation and FEX doesn't support it either
         result = -ENOSYS;
+        break;
+    }
+    case felix86_riscv64_personality: {
+        result = SYSCALL(personality, arg1 & ~PER_LINUX32);
         break;
     }
     case felix86_riscv64_prlimit64: {

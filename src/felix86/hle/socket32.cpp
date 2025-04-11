@@ -1,7 +1,7 @@
 #include <cstring>
 #include <sys/socket.h>
 #include "felix86/common/log.hpp"
-#include "felix86/hle/socket.hpp"
+#include "felix86/hle/socket32.hpp"
 
 int recvmsg32(int fd, x86_msghdr* guest_msghdr, int flags) {
     struct msghdr host_msghdr;
