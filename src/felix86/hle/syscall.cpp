@@ -1036,6 +1036,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = SYSCALL(wait4, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_mkdirat: {
+        result = Filesystem::MkdirAt(arg1, (char*)arg2, arg3);
+        break;
+    }
     case felix86_riscv64_execve: {
         if (!arg1) {
             WARN("execve with nullptr as executable path?");
@@ -1298,7 +1302,7 @@ void felix86_syscall(ThreadState* state) {
             break;
         }
         case felix86_x86_64_mkdir: {
-            result = Filesystem::Mkdir((char*)arg1, arg2);
+            result = Filesystem::MkdirAt(AT_FDCWD, (char*)arg1, arg2);
             break;
         }
         case felix86_x86_64_open: {
@@ -1430,7 +1434,7 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             break;
         }
         case felix86_x86_32_mkdir: {
-            result = Filesystem::Mkdir((char*)arg1, arg2);
+            result = Filesystem::MkdirAt(AT_FDCWD, (char*)arg1, arg2);
             break;
         }
         case felix86_x86_32_pipe: {

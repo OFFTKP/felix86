@@ -198,9 +198,9 @@ int Filesystem::Chdir(const char* filename) {
     return result;
 }
 
-int Filesystem::Mkdir(const char* filename, u64 mode) {
-    std::filesystem::path path = resolve(filename);
-    int result = ::mkdir(path.c_str(), mode);
+int Filesystem::MkdirAt(int fd, const char* filename, u64 mode) {
+    auto [new_fd, new_path] = resolve(fd, filename);
+    int result = ::mkdirat(new_fd, new_path, mode);
     if (result == -1) {
         result = -errno;
     }

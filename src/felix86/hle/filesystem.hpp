@@ -95,7 +95,7 @@ struct Filesystem {
 
     static int Chdir(const char* filename);
 
-    static int Mkdir(const char* filename, u64 mode);
+    static int MkdirAt(int fd, const char* filename, u64 mode);
 
     static int Getcwd(char* buf, size_t size);
 
