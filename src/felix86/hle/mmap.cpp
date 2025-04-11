@@ -291,7 +291,7 @@ void* Mapper::remap(void* old_address, u64 old_size, u64 new_size, int flags, vo
             return remap32(old_address, old_size, new_size, flags, new_address);
         } else {
             void* result = ::mremap(old_address, old_size, new_size, flags, new_address);
-            ASSERT((u64)new_address > addressSpaceEnd32); // we don't want an allocation in the low 32-bit area
+            ASSERT((u64)result > addressSpaceEnd32); // we don't want an allocation in the low 32-bit area
             return result;
         }
     }
