@@ -1305,6 +1305,10 @@ void felix86_syscall(ThreadState* state) {
             result = Filesystem::Chown((char*)arg1, arg2, arg3);
             break;
         }
+        case felix86_x86_64_lchown: {
+            result = Filesystem::LChown((char*)arg1, arg2, arg3);
+            break;
+        }
         case felix86_x86_64_access: {
             result = Filesystem::FAccessAt(AT_FDCWD, (char*)arg1, (int)arg2, 0);
             break;

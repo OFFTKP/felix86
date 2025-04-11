@@ -189,6 +189,15 @@ int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
     return result;
 }
 
+int Filesystem::LChown(const char* filename, u64 owner, u64 group) {
+    std::filesystem::path path = resolve(filename);
+    int result = ::lchown(path.c_str(), owner, group);
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
+}
+
 int Filesystem::Chdir(const char* filename) {
     std::filesystem::path path = resolve(filename);
     int result = ::chdir(path.c_str());
