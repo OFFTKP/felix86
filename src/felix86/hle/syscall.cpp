@@ -297,7 +297,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_mount: {
-        result = SYSCALL(mount, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = Filesystem::Mount((char*)arg1, (char*)arg2, (char*)arg3, arg4, (void*)arg5);
         break;
     }
     case felix86_riscv64_accept: {

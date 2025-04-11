@@ -117,6 +117,8 @@ struct Filesystem {
 
     static int Rmdir(const char* path);
 
+    static int Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data);
+
     static int INotifyAddWatch(int fd, const char* path, u32 mask);
 
     static std::filesystem::path resolve(const char* path);
