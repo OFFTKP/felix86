@@ -904,6 +904,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = SYSCALL(set_mempolicy, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_membarrier: {
+        result = SYSCALL(membarrier, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
     case felix86_riscv64_sigaltstack: {
         VERBOSE("----- sigaltstack was called -----");
         stack_t* new_ss = (stack_t*)arg1;
