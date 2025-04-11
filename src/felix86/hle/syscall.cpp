@@ -267,10 +267,14 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_epoll_ctl: {
-        epoll_event host_event = *(x86_epoll_event*)arg4;
-        result = SYSCALL(epoll_ctl, arg1, arg2, arg3, &host_event);
-        if (result == 0) {
-            *(x86_epoll_event*)arg4 = host_event;
+        if (arg4) {
+            epoll_event host_event = *(x86_epoll_event*)arg4;
+            result = SYSCALL(epoll_ctl, arg1, arg2, arg3, &host_event);
+            if (result == 0) {
+                *(x86_epoll_event*)arg4 = host_event;
+            }
+        } else {
+            result = SYSCALL(epoll_ctl, arg1, arg2, arg3, nullptr);
         }
         break;
     }
