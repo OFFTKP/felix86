@@ -2527,7 +2527,6 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
 }
 
 void Recompiler::invalidatePage(u64 page) {
-    WARN("Invalidating page %lx in %d", page, getpid());
     auto& blocks_in_page = page_map[page];
     for (BlockMetadata* block : blocks_in_page) {
         invalidateBlock(block);
