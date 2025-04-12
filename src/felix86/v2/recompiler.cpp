@@ -201,7 +201,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     {
         auto guard = page_map_lock.lock();
-        page_map[block_meta.address & ~0xFFFull].push_back(&block_meta);
+        page_map[block_meta.guest_address & ~0xFFFull].push_back(&block_meta);
     }
 
     // If other blocks were waiting for this block to be linked, link them now
