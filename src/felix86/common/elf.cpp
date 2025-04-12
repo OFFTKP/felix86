@@ -593,7 +593,6 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
 void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path& path, u8* start_of_data, u8* end_of_data) {
     // g_mode32 has already been set at this point
     // Load static symbols first
-    VERBOSE("Adding symbols from %s", path.c_str());
     size_t dynsym_size = 0;
     do {
         std::string spath = path.string();
@@ -718,7 +717,7 @@ void Elf::AddSymbols(std::map<u64, Symbol>& symbols, const std::filesystem::path
                 // VERBOSE("Added new static symbol `%s` at %lx-%lx", new_symbol.name.c_str(), new_symbol.start, new_symbol.start + new_symbol.size);
             }
         } else {
-            VERBOSE("symtab and strtab not found for file %s", path.c_str());
+            // VERBOSE("symtab and strtab not found for file %s", path.c_str());
         }
 
         fclose(file);

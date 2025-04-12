@@ -1695,7 +1695,7 @@ FAST_HANDLE(TEST) {
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
 
-    as.AND(result, dst, src);
+    as.AND(result, dst, src); // TODO: optimize case of dst == src
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
