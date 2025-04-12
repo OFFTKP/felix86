@@ -31,6 +31,7 @@
 #include "felix86/hle/socket32.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
+#include "felix86/v2/recompiler.hpp"
 
 // Annoyingly, the ::syscall function returns -1 instead of the actual error number.
 struct Result {
@@ -604,6 +605,11 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             // No need to use mapper
             result = SYSCALL(mmap, arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
         }
+
+        // If there's any blocks in any threads that match this mmapped range they need to be invalidated
+        if (result > 0) {
+            Recompiler::invalidateRangeGlobal(result, result + arg2);
+        }
         state->signals_disabled = false;
         break;
     }
@@ -697,6 +703,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     case felix86_riscv64_mremap: {
         state->signals_disabled = true;
         result = (u64)g_mapper->remap((void*)arg1, arg2, arg3, arg4, (void*)arg5);
+        Recompiler::invalidateRangeGlobal(result, result + arg3);
         state->signals_disabled = false;
         break;
     }
@@ -1483,12 +1490,18 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             u64 offset = arg6 * 4096;
             state->signals_disabled = true;
             result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
+            if (result > 0) {
+                Recompiler::invalidateRangeGlobal(result, result + arg2);
+            }
             state->signals_disabled = false;
             break;
         }
         case felix86_x86_32_mremap: {
             state->signals_disabled = true;
             result = (ssize_t)g_mapper->remap32((void*)arg1, arg2, arg3, arg4, (void*)arg5);
+            if (result > 0) {
+                Recompiler::invalidateRangeGlobal(result, result + arg3);
+            }
             state->signals_disabled = false;
             break;
         }

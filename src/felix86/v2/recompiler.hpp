@@ -168,6 +168,12 @@ struct Recompiler {
 
     void invalidateBlock(BlockMetadata* block);
 
+    static void invalidateRangeGlobal(u64 start, u64 end);
+
+    void invalidateRange(u64 start, u64 end);
+
+    void invalidatePage(u64 page);
+
     constexpr static biscuit::GPR threadStatePointer() {
         return x27; // saved register so that when we exit VM we don't have to save it
     }
@@ -375,7 +381,7 @@ struct Recompiler {
 
     u64 getImmediate(ZydisDecodedOperand* operand);
 
-    u64 emitSigreturnThunk();
+    void emitSigreturnThunk();
 
     auto& getBlockMap() {
         return block_metadata;
@@ -555,6 +561,8 @@ private:
 
     void emitDispatcher();
 
+    void emitInvalidateCallerThunk();
+
     void loadGPR(x86_ref_e reg, biscuit::GPR gpr);
 
     void loadVec(x86_ref_e reg, biscuit::Vec vec);
@@ -573,6 +581,8 @@ private:
 
     void unlinkAt(u8* address_of_jump);
 
+    static void invalidateAt(ThreadState* state, u8* address_of_block);
+
     u8* code_cache{};
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
@@ -589,6 +599,8 @@ private:
     void (*exit_dispatcher)(ThreadState*){};
 
     void* compile_next_handler{};
+
+    u64 invalidate_caller_thunk{};
 
     void* start_of_code_cache{};
 

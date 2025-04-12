@@ -3,7 +3,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
-#include "biscuit/decoder.hpp"
 #include "felix86/common/gdbjit.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/syscall.hpp"
@@ -63,7 +62,9 @@ Recompiler::~Recompiler() {
 void Recompiler::emitNecessaryStuff() {
     emitDispatcher();
     emitSigreturnThunk();
+    emitInvalidateCallerThunk();
     start_of_code_cache = as.GetCursorPointer();
+    flush_icache();
 }
 
 void Recompiler::emitDispatcher() {
@@ -132,11 +133,29 @@ void Recompiler::emitDispatcher() {
     as.LI(t0, EXIT_REASON_FRAME_STACK_OVERFLOW);
     as.SB(t0, offsetof(ThreadState, exit_reason), threadStatePointer());
     as.J(&exit_dispatcher_label);
-
-    flush_icache();
 }
 
-u64 Recompiler::emitSigreturnThunk() {
+void Recompiler::emitInvalidateCallerThunk() {
+    invalidate_caller_thunk = (u64)as.GetCursorPointer();
+
+    // Call the invalidateAt function (address should already be in a1) which will remove the block from the map
+    // when it's called and it will go back to the dispatcher, which will trigger a new compilation
+    as.MV(a0, threadStatePointer());
+    call((u64)Recompiler::invalidateAt);
+    backToDispatcher();
+}
+
+void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block) {
+    // We have an address that is +4 of the start of the block
+    // Normally our map is guest->host address but we also have this host_pc_map for signals and for here to do a backwards lookup
+    auto it = state->recompiler->host_pc_map.lower_bound((u64)address_of_block);
+    ASSERT(it != state->recompiler->host_pc_map.end());
+
+    // Setting it to 0 should be enough, as it will trigger recompilation for this block
+    it->second->address = 0;
+}
+
+void Recompiler::emitSigreturnThunk() {
     // This piece of code is responsible for moving the thread state pointer to the right place (so we don't have to find it using tid)
     // calling sigreturn, returning and going back to the dispatcher.
     // It sets exit reason as sigreturn so the dispatcher will then jump to exit dispatcher, and return to the signal handler
@@ -147,8 +166,6 @@ u64 Recompiler::emitSigreturnThunk() {
     as.MV(a0, threadStatePointer());
     call((u64)Signals::sigreturn);
     backToDispatcher();
-
-    return here;
 }
 
 void Recompiler::clearCodeCache(ThreadState* state) {
@@ -1484,7 +1501,7 @@ void Recompiler::backToDispatcher() {
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
     as.AUIPC(t0, hi20);
-    as.JALR(x31, lo12, t0);
+    as.JR(t0, lo12);
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
@@ -1904,8 +1921,15 @@ void Recompiler::jumpAndLink(u64 rip) {
 
         u64 offset = target - (u64)(as.GetCursorPointer() + 4);
         if (IsValidJTypeImm(offset)) {
-            as.NOP();
-            as.JAL(x31, offset);
+            if (offset != 4) {
+                as.NOP();
+                as.J(offset);
+            } else {
+                // Can just be inlined as target is just ahead
+                // Replace the AUIPC+JR with 2 NOPs
+                as.NOP();
+                as.NOP();
+            }
         } else {
             // Too far for a regular jump, use AUIPC+JR
             ASSERT(IsValid2GBImm(offset));
@@ -1914,7 +1938,7 @@ void Recompiler::jumpAndLink(u64 rip) {
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
 
             as.AUIPC(t0, hi20);
-            as.JALR(x31, lo12, t0);
+            as.JR(t0, lo12);
         }
     }
 
@@ -2491,21 +2515,41 @@ void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
 }
 
 void Recompiler::invalidateBlock(BlockMetadata* block) {
-    UNIMPLEMENTED();
-    // // This code assumes you've locked the map mutex
-    // // Unlink everywhere this block was linked
-    // for (u8* link : block->links) {
-    //     unlinkAt(link);
-    // }
+    u8* address = (u8*)block->address;
+    u8* old = as.GetCursorPointer();
+    as.SetCursorPointer(address);
+    const u64 offset = (u64)invalidate_caller_thunk - (u64)as.GetCursorPointer();
+    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+    as.AUIPC(t0, hi20);
+    as.JALR(a1, lo12, t0); // we link the jump directly to a1 so the thunk doesn't have to move
+    as.SetCursorPointer(old);
+}
 
-    // // Unlink ourselves, jump back to dispatcher at end
-    // u8* rewind_address = (u8*)block->address_end - 4 * 3; // 3 instructions for the ending jump/link
-    // unlinkAt(rewind_address);
+void Recompiler::invalidatePage(u64 page) {
+    WARN("Invalidating page %lx in %d", page, getpid());
+    auto& blocks_in_page = page_map[page];
+    for (BlockMetadata* block : blocks_in_page) {
+        invalidateBlock(block);
+    }
+}
 
-    // // Remove the block from the map
-    // bool was_present = block_metadata.erase(block->guest_address);
-    // ASSERT(was_present);
-    // flush_icache();
+void Recompiler::invalidateRange(u64 start, u64 end) {
+    auto guard = page_map_lock.lock();
+    u64 current = start & ~0xFFFull;
+    while (current < end) {
+        invalidatePage(current);
+        current += 0x1000;
+    }
+}
+
+void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
+    // Get all the pages in this range, search all thread states for these pages, invalidate the blocks in those pages
+    auto states_guard = g_process_globals.states_lock.lock();
+    for (ThreadState* state : g_process_globals.states) {
+        state->recompiler->invalidateRange(start, end);
+    }
+    flush_icache();
 }
 
 void Recompiler::unlinkAt(u8* address_of_jump) {
