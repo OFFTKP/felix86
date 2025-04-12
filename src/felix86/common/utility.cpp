@@ -217,9 +217,9 @@ void flush_icache() {
 }
 
 // Flush icache to other cores as well
-void flush_icache_global(const HostAddress& start, const HostAddress& end) {
+void flush_icache_global(const u64& start, const u64& end) {
 #if defined(__riscv)
-    __riscv_flush_icache((void*)start.raw(), (void*)end.raw(), 0);
+    __riscv_flush_icache((void*)start, (void*)end, 0);
 #endif
 }
 
@@ -246,14 +246,11 @@ __attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
     return g_breakpoints.size();
 }
 
-__attribute__((visibility("default"))) void disassemble_x64(u64 address) {
-    // in 32-bit mode we like to be able to provide a guest address to gdb when calling this function
-    HostAddress host_address = GuestAddress{address}.toHost();
-
+__attribute__((visibility("default"))) void disassemble_x64(u64 host_address) {
     ZydisDecoder decoder;
     ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
 
-    u64 cur = host_address.raw();
+    u64 cur = host_address;
     while (true) {
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[10];
@@ -373,12 +370,12 @@ void dump_states() {
     int i = 0;
     for (auto& state : states) {
         dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld):" ANSI_COLOR_RESET "\n", i, state->tid);
-        print_address(state->rip.toHost().raw());
+        print_address(state->rip);
 
         if (g_config.calltrace) {
             auto it = state->calltrace.rbegin();
             while (it != state->calltrace.rend()) {
-                print_address((*it).raw());
+                print_address(*it);
                 it++;
             }
         }
@@ -609,11 +606,11 @@ void print_address(u64 address) {
 }
 
 void push_calltrace(ThreadState* state, u64 address) {
-    state->calltrace.push_back(HostAddress{address});
+    state->calltrace.push_back(address);
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
-        print_address(state->rip.toHost().raw());
+        print_address(state->rip);
     }
 }
 
@@ -624,7 +621,7 @@ void pop_calltrace(ThreadState* state) {
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld returning: ", state->tid);
-        print_address(state->rip.toHost().raw());
+        print_address(state->rip);
     }
 
     state->calltrace.pop_back();

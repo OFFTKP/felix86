@@ -20,8 +20,6 @@ using i32 = int32_t;
 using i16 = int16_t;
 using i8 = int8_t;
 
-struct HostAddress;
-
 [[nodiscard]] constexpr bool IsValidSigned12BitImm(i64 value) {
     return value >= -2048 && value <= 2047;
 }
@@ -48,13 +46,13 @@ std::string get_perf_symbol(u64 address);
 
 void flush_icache();
 
-void flush_icache_global(const HostAddress& start, const HostAddress& end);
+void flush_icache_global(const u64& start, const u64& end);
 
 int guest_breakpoint(const char* name, u64 address);
 
 int clear_breakpoints();
 
-void print_address(u64 address); // u64 instead of HostAddress for convenient calling from gdb
+void print_address(u64 address);
 
 bool has_region(u64 address);
 

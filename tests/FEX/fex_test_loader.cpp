@@ -194,7 +194,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
     memcpy((void*)0x10'0000, buffer.data(), bytes_read);
 
-    config.entrypoint = HostAddress{0x10'0000};
+    config.entrypoint = 0x10'0000;
     config.mode32 = is_mode32;
 }
 
@@ -214,7 +214,7 @@ void FEXTestLoader::Run() {
         auto stuff = mmap((void*)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
         munmap_me.push_back({stuff, size});
     }
-    GuestAddress stack{0xC000'0000 + 4096};
+    u64 stack = 0xC000'0000 + 4096;
     Emulator::StartTest(config, stack);
     Validate();
 }

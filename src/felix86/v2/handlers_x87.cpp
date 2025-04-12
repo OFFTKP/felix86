@@ -3,7 +3,7 @@
 #include "felix86/v2/recompiler.hpp"
 
 #define FAST_HANDLE(name)                                                                                                                            \
-    void fast_##name(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
+    void fast_##name(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
 FAST_HANDLE(FLD) {
     if (operands[0].size == 80 && operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
@@ -191,7 +191,7 @@ FAST_HANDLE(FLDENV) {
     WARN("Unhandled instruction FLDENV, no operation");
 }
 
-void FIST(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedOperand* operands, bool pop, RMode mode = RMode::DYN) {
+void FIST(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands, bool pop, RMode mode = RMode::DYN) {
     biscuit::GPR top = rec.getTOP();
     biscuit::FPR st0 = rec.getST(top, 0);
     biscuit::GPR address = rec.lea(&operands[0]);
@@ -244,7 +244,7 @@ FAST_HANDLE(FIMUL) {
     rec.setST(top, 0, result);
 }
 
-void FCOM(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
+void FCOM(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
     u8 index = operands[1].reg.value - ZYDIS_REGISTER_ST0;
     ASSERT(index >= 1 && index <= 7);
     biscuit::GPR top = rec.getTOP();

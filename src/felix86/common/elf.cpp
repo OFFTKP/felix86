@@ -540,17 +540,17 @@ void Elf::Load(const std::filesystem::path& path) {
         // Don't add to unmap_me, unmapped elsewhere
         program_base = base_ptr;
         g_program_end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
-        g_executable_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
-        g_executable_end = HostAddress{PAGE_ALIGN((u64)(base_ptr + highest_vaddr))};
-        MemoryMetadata::AddRegion("Executable", g_executable_start.raw(), g_executable_end.raw());
+        g_executable_start = (u64)(base_ptr + lowest_vaddr);
+        g_executable_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
+        MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
         // LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
         ASSERT(g_program_end != 0);
         g_program_end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
-        g_interpreter_start = HostAddress{(u64)(base_ptr + lowest_vaddr)};
-        g_interpreter_end = HostAddress{(u64)(base_ptr + highest_vaddr)};
+        g_interpreter_start = (u64)(base_ptr + lowest_vaddr);
+        g_interpreter_end = (u64)(base_ptr + highest_vaddr);
         program_base = (u8*)base_ptr;
-        MemoryMetadata::AddInterpreterRegion(g_interpreter_start.raw(), g_interpreter_end.raw());
+        MemoryMetadata::AddInterpreterRegion(g_interpreter_start, g_interpreter_end);
         // LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 

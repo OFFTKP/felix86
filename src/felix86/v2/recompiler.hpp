@@ -14,7 +14,7 @@ constexpr int address_cache_bits = 16;
 constexpr static u64 jit_stack_size = 1024 * 1024;
 
 struct AddressCacheEntry {
-    HostAddress host{}, guest{};
+    u64 host{}, guest{};
 };
 
 enum class FlagMode {
@@ -27,18 +27,18 @@ enum class FlagMode {
 // and when it is just undefined. For example within a block, the register that represents RAX is not valid until it's loaded
 // for the first time, and then when it's written back it becomes invalid again because it may change due to a syscall or something.
 struct RegisterAccess {
-    HostAddress address; // address where the load or writeback happened
-    bool valid;          // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
+    u64 address; // address where the load or writeback happened
+    bool valid;  // true if loaded and potentially modified, false if written back to memory and allocated register holds garbage
 };
 
 struct BlockMetadata {
-    HostAddress address{};
-    HostAddress address_end{};
-    HostAddress guest_address{};
-    HostAddress guest_address_end{};
+    u64 address{};
+    u64 address_end{};
+    u64 guest_address{};
+    u64 guest_address_end{};
     std::vector<u8*> pending_links{};
     std::vector<u8*> links{}; // where this block was linked to, used for unlinking it
-    std::vector<std::pair<GuestAddress, HostAddress>> instruction_spans{};
+    std::vector<std::pair<u64, u64>> instruction_spans{};
 };
 
 struct Recompiler {
@@ -49,7 +49,7 @@ struct Recompiler {
     Recompiler(Recompiler&&) = delete;
     Recompiler& operator=(Recompiler&&) = delete;
 
-    HostAddress compile(ThreadState* state, HostAddress rip);
+    u64 compile(ThreadState* state, u64 rip);
 
     inline Assembler& getAssembler() {
         return as;
@@ -61,7 +61,7 @@ struct Recompiler {
 
     biscuit::FPR scratchFPR();
 
-    ZydisMnemonic decode(HostAddress rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
+    ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     bool isScratch(biscuit::GPR reg);
 
@@ -133,7 +133,7 @@ struct Recompiler {
 
     void enableSignals();
 
-    bool shouldEmitFlag(HostAddress current_rip, x86_ref_e ref);
+    bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
 
     void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
 
@@ -163,9 +163,9 @@ struct Recompiler {
 
     biscuit::GPR getRip();
 
-    void jumpAndLink(HostAddress rip, bool use_rsb = false);
+    void jumpAndLink(u64 rip, bool use_rsb = false);
 
-    void jumpAndLinkConditional(biscuit::GPR condition, HostAddress rip_true, HostAddress rip_false);
+    void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
     void invalidateBlock(BlockMetadata* block);
 
@@ -362,13 +362,13 @@ struct Recompiler {
 
     bool isGPR(ZydisRegister reg);
 
-    BlockMetadata& getBlockMetadata(HostAddress rip) {
-        return block_metadata[rip.raw()];
+    BlockMetadata& getBlockMetadata(u64 rip) {
+        return block_metadata[rip];
     }
 
     void vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask = VecMask::No);
 
-    bool blockExists(HostAddress rip);
+    bool blockExists(u64 rip);
 
     biscuit::GPR getFlags();
 
@@ -376,9 +376,9 @@ struct Recompiler {
 
     u64 getImmediate(ZydisDecodedOperand* operand);
 
-    HostAddress emitSigreturnThunk();
+    u64 emitSigreturnThunk();
 
-    HostAddress emitUnlinkIndirectThunk();
+    u64 emitUnlinkIndirectThunk();
 
     auto& getBlockMap() {
         return block_metadata;
@@ -388,13 +388,13 @@ struct Recompiler {
         return host_pc_map;
     }
 
-    HostAddress getCompiledBlock(ThreadState* state, HostAddress rip);
+    u64 getCompiledBlock(ThreadState* state, u64 rip);
 
     void pushCalltrace();
 
     void popCalltrace();
 
-    void unlinkBlock(ThreadState* state, HostAddress rip);
+    void unlinkBlock(ThreadState* state, u64 rip);
 
     bool tryInlineSyscall();
 
@@ -542,9 +542,9 @@ struct Recompiler {
         return false;
     }
 
-    HostAddress compileSequence(HostAddress rip);
+    u64 compileSequence(u64 rip);
 
-    void compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, HostAddress rip);
+    void compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip);
 
     void assumeLoaded();
 
@@ -567,7 +567,7 @@ private:
 
     struct FlagAccess {
         bool modification; // true if modified, false if used
-        HostAddress position;
+        u64 position;
     };
 
     // Get the register and load the value into it if needed
@@ -585,13 +585,13 @@ private:
 
     RegisterMetadata& getMetadata(x86_ref_e reg);
 
-    void scanAhead(HostAddress rip);
+    void scanAhead(u64 rip);
 
-    void expirePendingLinks(HostAddress rip);
+    void expirePendingLinks(u64 rip);
 
     void emitNecessaryStuff();
 
-    void markPagesAsReadOnly(HostAddress start, HostAddress end);
+    void markPagesAsReadOnly(u64 start, u64 end);
 
     void inlineSyscall(int sysno, int argcount);
 
@@ -610,7 +610,7 @@ private:
 
     ZydisDecodedInstruction* current_instruction;
     ZydisDecodedOperand* current_operands;
-    HostAddress current_rip;
+    u64 current_rip;
 
     void (*enter_dispatcher)(ThreadState*){};
 

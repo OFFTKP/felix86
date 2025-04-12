@@ -43,7 +43,7 @@ struct Filesystem {
         return true;
     }
 
-    GuestAddress GetEntrypoint() {
+    u64 GetEntrypoint() {
         if (interpreter) {
             return interpreter->GetEntrypoint();
         } else if (elf) {

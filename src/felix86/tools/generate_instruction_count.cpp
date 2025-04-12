@@ -52,7 +52,7 @@ void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& 
     func(x);
 
     auto bisc = rec.getAssembler().GetCursorPointer();
-    rec.compileSequence(HostAddress{(u64)x86_start});
+    rec.compileSequence((u64)x86_start);
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;
@@ -101,7 +101,7 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
     auto bisc = rec.getAssembler().GetCursorPointer();
     ZydisDecodedInstruction zinstruction;
     ZydisDecodedOperand zoperands[10];
-    HostAddress rip{(u64)x86_start};
+    u64 rip = (u64)x86_start;
     rec.decode(rip, zinstruction, zoperands);
     rec.compileInstruction(zinstruction, zoperands, rip);
     auto after = rec.getAssembler().GetCursorPointer();

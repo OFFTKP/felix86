@@ -33,13 +33,13 @@ u64 g_current_brk_size = 0;
 u64 g_max_brk_size = 0;
 u64 g_dispatcher_exit_count = 0;
 std::list<ThreadState*> g_thread_states{};
-std::unordered_map<u64, std::vector<u64>> g_breakpoints{}; // TODO: HostAddress
+std::unordered_map<u64, std::vector<u64>> g_breakpoints{};
 pthread_key_t g_thread_state_key = -1;
 ProcessGlobals g_process_globals{};
 std::unique_ptr<Mapper> g_mapper{};
 std::unique_ptr<GDBJIT> g_gdbjit;
 u64 g_program_end = 0;
-HostAddress g_guest_auxv{};
+u64 g_guest_auxv{};
 size_t g_guest_auxv_size = 0;
 bool g_execve_process = false;
 std::unique_ptr<Filesystem> g_fs{};
@@ -50,10 +50,10 @@ StartParameters g_params{};
 int g_output_fd = STDERR_FILENO;
 int g_rootfs_fd = 0;
 
-HostAddress g_interpreter_start{};
-HostAddress g_interpreter_end{};
-HostAddress g_executable_start{};
-HostAddress g_executable_end{};
+u64 g_interpreter_start{};
+u64 g_interpreter_end{};
+u64 g_executable_start{};
+u64 g_executable_end{};
 
 bool is_running_under_perf() {
     // Always enable symbol emission when this is enabled, in case our detection fails

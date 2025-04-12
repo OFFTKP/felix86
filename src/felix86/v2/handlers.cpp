@@ -9,13 +9,13 @@ void felix86_syscall32(ThreadState* state, u32 rip_nex);
 void felix86_cpuid(ThreadState* state);
 
 #define FAST_HANDLE(name)                                                                                                                            \
-    void fast_##name(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
+    void fast_##name(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
 #define HAS_VEX (instruction.attributes & (ZYDIS_ATTRIB_HAS_VEX))
 
 #define HAS_REP (instruction.attributes & (ZYDIS_ATTRIB_HAS_REP | ZYDIS_ATTRIB_HAS_REPZ | ZYDIS_ATTRIB_HAS_REPNZ))
 
-void SetCmpFlags(HostAddress rip, Recompiler& rec, Assembler& as, biscuit::GPR dst, biscuit::GPR src, biscuit::GPR result, x86_size_e size,
+void SetCmpFlags(u64 rip, Recompiler& rec, Assembler& as, biscuit::GPR dst, biscuit::GPR src, biscuit::GPR result, x86_size_e size,
                  bool zext_src = false, bool always_emit = false) {
     if (always_emit || rec.shouldEmitFlag(rip, X86_REF_CF)) {
         biscuit::GPR test = rec.scratch();
@@ -116,7 +116,7 @@ enum CmpPredicate {
     TRUE_US = 0x1F,
 };
 
-void OP_noflags_destreg(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
+void OP_noflags_destreg(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
                         void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
                         void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
     biscuit::GPR dst = rec.getRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD);
@@ -180,7 +180,7 @@ void OP_noflags_destreg(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDe
     rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
 }
 
-void SHIFT_noflags(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
+void SHIFT_noflags(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
                    void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
                    void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
     biscuit::GPR result;
@@ -689,7 +689,7 @@ FAST_HANDLE(CALL_rsb) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
         biscuit::GPR temp = rec.scratch();
         displacement = operands[0].imm.value.s;
-        as.LI(temp, rip.add(instruction.length + displacement).toGuest().raw());
+        as.LI(temp, rip + instruction.length + displacement);
         rec.setRip(temp);
         rec.popScratch();
     } else {
@@ -702,8 +702,8 @@ FAST_HANDLE(CALL_rsb) {
     rec.setRefGPR(X86_REF_RSP, size, rsp);
 
     biscuit::GPR guest_return_address = rec.scratch();
-    GuestAddress return_address = rip.add(instruction.length).toGuest();
-    as.LI(guest_return_address, return_address.raw());
+    u64 return_address = rip + instruction.length;
+    as.LI(guest_return_address, return_address);
     as.ADDI(sp, sp, -16);
     as.SD(guest_return_address, 8, sp); // this is the prediction, the guest address we hope the RET jumps to
 
@@ -727,7 +727,7 @@ FAST_HANDLE(CALL_rsb) {
     as.ADDI(host_return_address, host_return_address, offset);
     as.SD(host_return_address, 0, sp);
     if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        rec.jumpAndLink(rip.add(instruction.length + displacement), true /* push to rsb */);
+        rec.jumpAndLink(rip + instruction.length + displacement, true /* push to rsb */);
     } else {
         if (!g_config.link_indirect) {
             rec.backToDispatcher(true); // true = push to rsb
@@ -742,7 +742,7 @@ FAST_HANDLE(CALL_rsb) {
     // For example you compile a piece of code until a call, and then garbage may follow so you start compiling garbage instructions.
     // Or it's zeroed out and you compile a bunch of zeroes... not good. So for now we link to the next block after returning
     // and just stop compiling
-    rec.jumpAndLink(rip.add(instruction.length));
+    rec.jumpAndLink(rip + instruction.length);
     rec.stopCompiling();
 }
 
@@ -802,8 +802,8 @@ FAST_HANDLE(CALL) {
         rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         biscuit::GPR scratch = rec.scratch();
-        GuestAddress return_address = rip.add(instruction.length).toGuest();
-        as.LI(scratch, return_address.raw());
+        u64 return_address = rip + instruction.length;
+        as.LI(scratch, return_address);
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
 
         rec.writebackDirtyState();
@@ -815,14 +815,14 @@ FAST_HANDLE(CALL) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-        GuestAddress return_address = rip.add(instruction.length).toGuest();
+        u64 return_address = rip + instruction.length;
 
         biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
         as.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
         biscuit::GPR scratch = rec.scratch();
-        as.LI(scratch, return_address.raw());
+        as.LI(scratch, return_address);
         rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
 
         rec.addi(scratch, scratch, displacement);
@@ -831,7 +831,7 @@ FAST_HANDLE(CALL) {
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
         rec.pushCalltrace();
-        rec.jumpAndLink(rip.add(instruction.length + displacement));
+        rec.jumpAndLink(rip + instruction.length + displacement);
         rec.stopCompiling();
         break;
     }
@@ -1511,13 +1511,13 @@ FAST_HANDLE(JMP) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-        GuestAddress address = rip.add(instruction.length + displacement).toGuest();
+        u64 address = rip + instruction.length + displacement;
         biscuit::GPR scratch = rec.scratch();
-        as.LI(scratch, address.raw());
+        as.LI(scratch, address);
         rec.setRip(scratch);
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
-        rec.jumpAndLink(rip.add(instruction.length + displacement));
+        rec.jumpAndLink(rip + instruction.length + displacement);
         rec.stopCompiling();
         break;
     }
@@ -1998,10 +1998,10 @@ FAST_HANDLE(CQO) {
     rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, sext);
 }
 
-void JCC(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+void JCC(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     u64 immediate = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-    HostAddress address_false = rip.add(instruction.length);
-    HostAddress address_true = address_false.add(immediate);
+    u64 address_false = rip + instruction.length;
+    u64 address_true = address_false + immediate;
 
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
@@ -2130,7 +2130,7 @@ FAST_HANDLE(LOOPNE) {
     JCC(rec, rip, as, instruction, operands, is_not_zero);
 }
 
-void CMOV(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
@@ -2780,7 +2780,7 @@ FAST_HANDLE(SYSCALL) {
     }
 
     biscuit::GPR rcx = rec.allocatedGPR(X86_REF_RCX);
-    as.LI(rcx, rip.add(instruction.length).toGuest().raw());
+    as.LI(rcx, rip + instruction.length);
     rec.setRefGPR(X86_REF_RCX, X86_SIZE_QWORD, rcx);
 
     // Normally the syscall instruction also writes the flags to R11 but we don't need them in our syscall handler
@@ -2799,7 +2799,7 @@ FAST_HANDLE(INT) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a1, rip.add(instruction.length).toGuest().raw());
+    as.LI(a1, rip + instruction.length);
     rec.call((u64)&felix86_syscall32);
     rec.restoreRoundingMode();
 }
@@ -2904,7 +2904,7 @@ FAST_HANDLE(ANDNPD) { // Fuzzed
     fast_PANDN(rec, rip, as, instruction, operands);
 }
 
-void PADD(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PADD(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -2912,7 +2912,7 @@ void PADD(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstructi
     rec.setOperandVec(&operands[0], dst);
 }
 
-void PADDS(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PADDS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -2920,7 +2920,7 @@ void PADDS(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruct
     rec.setOperandVec(&operands[0], dst);
 }
 
-void PADDSU(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PADDSU(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -2928,7 +2928,7 @@ void PADDSU(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruc
     rec.setOperandVec(&operands[0], dst);
 }
 
-void PSUBS(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PSUBS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -2936,7 +2936,7 @@ void PSUBS(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruct
     rec.setOperandVec(&operands[0], dst);
 }
 
-void PSUBSU(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PSUBSU(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -2944,7 +2944,7 @@ void PSUBSU(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruc
     rec.setOperandVec(&operands[0], dst);
 }
 
-void PSUB(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PSUB(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     rec.setVectorState(sew, vlen);
@@ -3829,7 +3829,7 @@ FAST_HANDLE(ENTER) {
     rec.setRefGPR(X86_REF_RSP, size, new_rsp);
 }
 
-void SETCC(Recompiler& rec, HostAddress rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
+void SETCC(Recompiler& rec, u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     rec.setOperandGPR(&operands[0], cond);
 }
 
@@ -4062,7 +4062,7 @@ FAST_HANDLE(PACKSSDW) {
     rec.setOperandVec(&operands[0], result);
 }
 
-void ROUND(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -4386,7 +4386,7 @@ FAST_HANDLE(PMOVSXDQ) {
     rec.setOperandVec(&operands[0], dst);
 }
 
-void PCMPEQ(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PCMPEQ(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec zero = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -4397,7 +4397,7 @@ void PCMPEQ(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruc
     rec.setOperandVec(&operands[0], dst);
 }
 
-void PCMPGT(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void PCMPGT(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     biscuit::Vec zero = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -4440,7 +4440,7 @@ FAST_HANDLE(PCMPGTQ) {
     PCMPGT(rec, rip, as, instruction, operands, SEW::E64, 2);
 }
 
-void CMPP(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
+void CMPP(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec temp1 = rec.scratchVec();
@@ -4878,7 +4878,7 @@ FAST_HANDLE(TZCNT) {
     rec.setFlagUndefined(X86_REF_SF);
 }
 
-void BITSTRING_func(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 func) {
+void BITSTRING_func(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 func) {
     // Special case where the memory may index past the effective address, only when offset is a register
     biscuit::GPR base = rec.lea(&operands[0]);
     biscuit::GPR bit = rec.getOperandGPR(&operands[1]);
@@ -5472,7 +5472,7 @@ FAST_HANDLE(MOVSX) {
     rec.setOperandGPR(&operands[0], result);
 }
 
-void COMIS(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew) {
+void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew) {
     biscuit::GPR nan_1 = rec.scratch();
     biscuit::GPR nan_2 = rec.scratch();
     biscuit::Vec temp = rec.scratchVec();
@@ -5905,7 +5905,7 @@ FAST_HANDLE(CMPXCHG) {
     as.Bind(&end);
 }
 
-void SCALAR(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
+void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
             void (Assembler::*func)(Vec, Vec, Vec, VecMask)) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -5914,7 +5914,7 @@ void SCALAR(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruc
     rec.setOperandVec(&operands[0], dst);
 }
 
-void SCALAR(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
+void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen,
             void (Assembler::*func)(Vec, Vec, VecMask)) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -6416,7 +6416,7 @@ FAST_HANDLE(HSUBPD) {
     rec.setOperandVec(&operands[0], result2);
 }
 
-void PSIGN(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vl) {
+void PSIGN(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vl) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
@@ -7139,7 +7139,7 @@ FAST_HANDLE(SHRD) {
     rec.setOperandGPR(&operands[0], result);
 }
 
-void PCMPXSTRX(Recompiler& rec, HostAddress rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, pcmpxstrx type) {
+void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, pcmpxstrx type) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
@@ -7549,7 +7549,7 @@ FAST_HANDLE(INVLPG) {
 
     switch (operands[0].mem.base) {
     case INVLPG_GENERATE_TRAMPOLINE: {
-        const char* name = (const char*)(rip.raw() + instruction.length); // also skip a RET -> 1 byte
+        const char* name = (const char*)(rip + instruction.length); // also skip a RET -> 1 byte
         size_t name_size = strlen(name);
         ASSERT(name_size > 0);
         VERBOSE("Generating trampoline for %s", name);
@@ -7561,7 +7561,7 @@ FAST_HANDLE(INVLPG) {
         break;
     }
     case INVLPG_THUNK_CONSTRUCTOR: {
-        u8* signature = (u8*)(rip.raw() + instruction.length + 1);
+        u8* signature = (u8*)(rip + instruction.length + 1);
         u64 pointers = (u64)signature + 4;
         ASSERT_MSG(*(u32*)signature == 0x12345678, "Signature check failed on library constructor");
         ASSERT_MSG((pointers & 0b111) == 0, "Pointer table not aligned?");

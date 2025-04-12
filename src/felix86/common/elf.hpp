@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <map>
 #include <vector>
-#include "felix86/common/address.hpp"
 #include "felix86/common/global.hpp"
 
 struct Elf {
@@ -28,8 +27,8 @@ struct Elf {
         return interpreter;
     }
 
-    GuestAddress GetEntrypoint() const {
-        return HostAddress{(u64)(program_base + entry)}.toGuest();
+    u64 GetEntrypoint() const {
+        return (u64)(program_base + entry);
     }
 
     void* GetProgramBase() const {

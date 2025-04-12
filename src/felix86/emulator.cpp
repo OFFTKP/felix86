@@ -113,7 +113,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         {AT_PAGESZ, {4096}},
         {AT_EXECFN, {(u64)program_name}},
         {AT_CLKTCK, {100}},
-        {AT_ENTRY, {elf->GetEntrypoint().raw()}},
+        {AT_ENTRY, {elf->GetEntrypoint()}},
         {AT_PLATFORM, {(u64)platform_name}},
         {AT_BASE, {(u64)elf->GetProgramBase()}},
         {AT_FLAGS, {0}},
@@ -158,7 +158,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         rsp = stack_push(rsp, auxv_entries[i].first);
     }
 
-    g_guest_auxv = HostAddress{rsp};
+    g_guest_auxv = rsp;
     g_guest_auxv_size = auxv_count * pointer_size;
 
     // End of environment variables
@@ -183,8 +183,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         return pair;
     }
 
-    GuestAddress rsp_guest = HostAddress{rsp}.toGuest();
-    state->SetGpr(X86_REF_RSP, rsp_guest.raw());
+    u64 rsp_guest = rsp;
+    state->SetGpr(X86_REF_RSP, rsp_guest);
 
     return pair;
 }
@@ -217,17 +217,17 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
     thread_state->signals_disabled = true;
 
-    HostAddress next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip().toHost());
+    u64 next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip());
 
     if (g_block_trace) {
-        thread_state->recompiler->trace(thread_state->GetRip().toHost().raw());
+        thread_state->recompiler->trace(thread_state->GetRip());
     }
 
     thread_state->signals_disabled = false;
 
-    ASSERT_MSG(!next_block.isNull(), "getCompiledBlock returned null?");
+    ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
 
-    return (void*)next_block.raw();
+    return (void*)next_block;
 }
 
 void Emulator::ExitDispatcher(ThreadState* state) {
@@ -343,13 +343,13 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     auto [stack, size] = setupMainStack(main_state);
 
     // The Emulator::Run will only return when exit_dispatcher is jumped to
-    VERBOSE("Executable: %016lx - %016lx", g_executable_start.raw(), g_executable_end.raw());
-    if (!g_interpreter_start.isNull()) {
-        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start.raw(), g_interpreter_end.raw());
+    VERBOSE("Executable: %016lx - %016lx", g_executable_start, g_executable_end);
+    if (g_interpreter_start != 0) {
+        VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start, g_interpreter_end);
     }
 
     if (!g_testing) {
-        VERBOSE("Entrypoint: %016lx", g_fs->GetEntrypoint().toHost().raw());
+        VERBOSE("Entrypoint: %016lx", g_fs->GetEntrypoint());
     }
 
     VERBOSE("Entering main thread :)");
@@ -371,12 +371,12 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     return {exit_reason, exit_code};
 }
 
-void Emulator::StartTest(const TestConfig& config, GuestAddress stack) {
+void Emulator::StartTest(const TestConfig& config, u64 stack) {
     g_mode32 = config.mode32;
 
     ThreadState* main_state = ThreadState::Create(nullptr);
-    main_state->SetGpr(X86_REF_RSP, stack.raw());
-    main_state->SetRip(config.entrypoint.toGuest());
+    main_state->SetGpr(X86_REF_RSP, stack);
+    main_state->SetRip(config.entrypoint);
 
     Threads::StartThread(main_state);
 }

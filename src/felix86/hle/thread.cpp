@@ -57,7 +57,7 @@ void* pthread_handler(void* args) {
     }
 
     state->gprs[X86_REF_RAX] = 0; // return value
-    state->rip = GuestAddress{clone_args.new_rip};
+    state->rip = clone_args.new_rip;
     state->gprs[X86_REF_RSP] = clone_args.new_rsp;
     state->thread = clone_args.new_thread;
 

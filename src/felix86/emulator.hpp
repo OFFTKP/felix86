@@ -6,7 +6,7 @@
 #include "felix86/hle/filesystem.hpp"
 
 struct TestConfig {
-    HostAddress entrypoint;
+    u64 entrypoint;
     bool mode32;
 };
 
@@ -23,7 +23,7 @@ struct Emulator {
 
     [[nodiscard]] static std::pair<ExitReason, int> Start(const StartParameters& config);
 
-    static void StartTest(const TestConfig& config, GuestAddress stack);
+    static void StartTest(const TestConfig& config, u64 stack);
 
     // The exit dispatcher function also restores the stack pointer to what it was before
     // entering the dispatcher, so it can be called from anywhere

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "biscuit/isa.hpp"
-#include "felix86/common/address.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/guest_types.hpp"
@@ -123,7 +122,7 @@ struct ThreadState {
     explicit ThreadState(ThreadState* copy_state);
 
     u64 gprs[16]{};
-    GuestAddress rip{0};
+    u64 rip{};
     u64 fp[8]{}; // we support 64-bit precision instead of 80-bit for speed and simplicity
     XmmReg xmm[16]{};
     bool cf{};
@@ -171,7 +170,7 @@ struct ThreadState {
 
     std::vector<PendingSignal> pending_signals{}; // signals that were raised during an unsafe time, queued for later
 
-    std::vector<HostAddress> calltrace{}; // used if g_calltrace is true
+    std::vector<u64> calltrace{}; // used if g_calltrace is true
 
     // Two processes can share the same signal handler table
     SignalHandlerTable* signal_table{};
@@ -311,11 +310,11 @@ struct ThreadState {
         fp[ref - X86_REF_XMM0] = value;
     }
 
-    GuestAddress GetRip() const {
+    u64 GetRip() const {
         return rip;
     }
 
-    void SetRip(GuestAddress value) {
+    void SetRip(u64 value) {
         rip = value;
     }
 

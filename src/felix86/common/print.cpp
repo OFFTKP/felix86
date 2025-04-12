@@ -87,7 +87,7 @@ extern "C" __attribute__((visibility("default"))) void print_gprs(ThreadState* s
         PLAIN("%s = %lx", guest.c_str(), state->gprs[i]);
     }
 
-    PLAIN("rip = %lx", state->rip.toHost().raw());
+    PLAIN("rip = %lx", state->rip);
     PLAIN("cf = %d", state->cf);
     PLAIN("pf = %d", state->pf);
     PLAIN("af = %d", state->af);

@@ -862,7 +862,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         x64_sigaction* act = (x64_sigaction*)arg2;
         if (act) {
             auto handler = act->handler;
-            Signals::registerSignalHandler(state, arg1, GuestAddress{(u64)handler}, act->sa_mask, act->sa_flags);
+            Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags);
             if (g_config.verbose) {
                 PLAIN("Installed signal handler %s at:", strsignal(arg1));
                 print_address((u64)handler);
@@ -875,9 +875,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             RegisteredSignal old = Signals::getSignalHandler(state, arg1);
             bool was_sigaction = old.flags & SA_SIGINFO;
             if (was_sigaction) {
-                old_act->sa_sigaction = (decltype(old_act->sa_sigaction))old.func.raw();
+                old_act->sa_sigaction = (decltype(old_act->sa_sigaction))old.func;
             } else {
-                old_act->sa_handler = (decltype(old_act->sa_handler))old.func.raw();
+                old_act->sa_handler = (decltype(old_act->sa_handler))old.func;
             }
             old_act->sa_flags = old.flags;
             old_act->sa_mask = old.mask;
@@ -945,7 +945,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
                 void* addr = (void*)arg2;
                 size_t size = arg3;
                 size_t actual_size = std::min(size, g_guest_auxv_size);
-                memcpy(addr, (void*)g_guest_auxv.raw(), actual_size);
+                memcpy(addr, (void*)g_guest_auxv, actual_size);
                 result = actual_size;
             }
             break;

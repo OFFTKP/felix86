@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <vector>
 #include <unistd.h>
-#include "felix86/common/address.hpp"
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/start_params.hpp"
 #include "felix86/common/utility.hpp"
@@ -75,13 +74,13 @@ extern int g_output_fd;
 extern u32 g_spilled_count;
 extern std::string g_emulator_path;
 extern int g_rootfs_fd;
-extern HostAddress g_interpreter_start, g_interpreter_end;
-extern HostAddress g_executable_start, g_executable_end;
+extern u64 g_interpreter_start, g_interpreter_end;
+extern u64 g_executable_start, g_executable_end;
 extern u64 g_max_brk_size;
 extern const char* g_git_hash;
 extern std::unordered_map<u64, std::vector<u64>> g_breakpoints;
 extern pthread_key_t g_thread_state_key;
-extern HostAddress g_guest_auxv;
+extern u64 g_guest_auxv;
 extern size_t g_guest_auxv_size;
 extern bool g_execve_process;
 extern StartParameters g_params;
