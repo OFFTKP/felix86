@@ -29,15 +29,17 @@ const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issue
 static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
-static struct argp_option options[] = {
-    {"info", 'i', 0, 0, "Print system info"},
-    {"all-extensions", 'X', "EXTS", 0,
-     "Manually specify every available RISC-V extension. When using this, any extension not specified will be considered unavailable. "
-     "Usage example: -X g,c,v,b,zacas"},
-
-    {0}};
+static struct argp_option options[] = {{"info", 'i', 0, 0, "Print system info"}, {"configs", 'c', 0, 0, "Print the emulator configurations"}, {0}};
 
 int guest_arg_start_index = -1;
+
+template <>
+struct fmt::formatter<std::filesystem::path> : formatter<std::string_view> {
+    template <typename FormatContext>
+    auto format(const std::filesystem::path& path, FormatContext& ctx) const {
+        return formatter<std::string_view>::format(path.string(), ctx);
+    }
+};
 
 int print_system_info() {
     printf("%s\n", version_full.c_str());
@@ -130,12 +132,22 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         exit(print_system_info());
         break;
     }
-    case 'X': {
-        if (!parse_extensions(arg)) {
-            argp_usage(state);
-        } else {
-            g_extensions_manually_specified = true;
-        }
+    case 'c': {
+        Config::initialize();
+
+        std::string current_group;
+        printf("These are the configurations for felix86\n");
+        printf("You may edit %s or set the corresponding environment variable\n", g_config.path().c_str());
+
+#define X(group, type, name, def, env, description, required)                                                                                        \
+    if (current_group != #group) {                                                                                                                   \
+        current_group = #group;                                                                                                                      \
+        printf("\n[%s]\n", current_group.c_str());                                                                                                   \
+    }                                                                                                                                                \
+    fmt::print("{} {} = {} (default: {}) -- Environment variable: {}\n", #type, #name, g_config.name, #def, #env);
+#include "felix86/common/config.inc"
+#undef X
+        exit(0);
         break;
     }
     case ARGP_KEY_END: {
