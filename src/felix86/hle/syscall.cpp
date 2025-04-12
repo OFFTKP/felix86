@@ -27,6 +27,7 @@
 #include "felix86/hle/brk.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/guest_types.hpp"
+#include "felix86/hle/ipc32.hpp"
 #include "felix86/hle/socket32.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/hle/thread.hpp"
@@ -186,7 +187,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_set_robust_list: {
-        result = -ENOSYS;
+        result = SYSCALL(set_robust_list, arg1, arg2);
         break;
     }
     case felix86_riscv64_rseq: {
@@ -1650,6 +1651,10 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
                 WARN("arg1 == arg2 during readlink");
             }
             result = Filesystem::ReadlinkAt(AT_FDCWD, (char*)arg1, (char*)arg2, (int)arg3);
+            break;
+        }
+        case felix86_x86_32_ipc: {
+            result = ipc32(arg1, arg2, arg3, arg4, (void*)arg5, arg6);
             break;
         }
         case felix86_x86_32_stat64: {
