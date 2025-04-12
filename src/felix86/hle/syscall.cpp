@@ -570,11 +570,6 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_openat: {
-        if (arg2) {
-            if (std::string((char*)arg2).find("libEGL") != std::string::npos) {
-                raise(SIGINT);
-            }
-        }
         result = Filesystem::OpenAt((int)arg1, (char*)arg2, (int)arg3, arg4);
         break;
     }
