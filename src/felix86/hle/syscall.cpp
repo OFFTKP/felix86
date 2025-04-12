@@ -591,6 +591,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
 #ifndef MAP_32BIT
 #define MAP_32BIT 0x40
 #endif
+        state->signals_disabled = true;
         u64 flags = arg4;
         bool is_fixed = (flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE);
         if ((flags & MAP_32BIT) || (is_fixed && arg1 < Mapper::addressSpaceEnd32) || g_mode32) {
@@ -598,13 +599,12 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
             // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
             // We need to also track fixed mappings in the 32-bit address space
-            state->signals_disabled = true;
             result = (ssize_t)g_mapper->map32((void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
-            state->signals_disabled = false;
         } else {
             // No need to use mapper
             result = SYSCALL(mmap, arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
         }
+        state->signals_disabled = false;
         break;
     }
     case felix86_riscv64_munmap: {

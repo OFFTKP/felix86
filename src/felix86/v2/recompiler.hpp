@@ -37,7 +37,6 @@ struct BlockMetadata {
     u64 guest_address{};
     u64 guest_address_end{};
     std::vector<u8*> pending_links{};
-    std::vector<u8*> links{}; // where this block was linked to, used for unlinking it
     std::vector<std::pair<u64, u64>> instruction_spans{};
 };
 
@@ -121,7 +120,7 @@ struct Recompiler {
 
     void restoreRoundingMode();
 
-    void backToDispatcher(bool use_rsb = false);
+    void backToDispatcher();
 
     void enterDispatcher(ThreadState* state);
 
@@ -163,7 +162,7 @@ struct Recompiler {
 
     biscuit::GPR getRip();
 
-    void jumpAndLink(u64 rip, bool use_rsb = false);
+    void jumpAndLink(u64 rip);
 
     void jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false);
 
@@ -378,8 +377,6 @@ struct Recompiler {
 
     u64 emitSigreturnThunk();
 
-    u64 emitUnlinkIndirectThunk();
-
     auto& getBlockMap() {
         return block_metadata;
     }
@@ -430,16 +427,6 @@ struct Recompiler {
 
     void setFlag(x86_ref_e flag);
 
-    void trace(u64 address);
-
-    void printTrace();
-
-    void linkIndirect();
-
-    u8* getUnlinkIndirectThunk() {
-        return unlink_indirect_thunk;
-    }
-
     void clearCodeCache(ThreadState* state);
 
     void call(u64 target) {
@@ -447,12 +434,6 @@ struct Recompiler {
     }
 
     static void call(Assembler& as, u64 target) {
-        if (g_config.rsb) {
-            // Save JIT stack, load C++ stack
-            as.MV(s0, sp);
-            as.LD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
-        }
-
         i64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset)) {
             as.JAL(offset);
@@ -464,11 +445,6 @@ struct Recompiler {
         } else {
             as.LI(t0, target);
             as.JALR(t0);
-        }
-
-        if (g_config.rsb) {
-            // Restore JIT stack
-            as.MV(sp, s0);
         }
     }
 
@@ -597,10 +573,6 @@ private:
 
     void unlinkAt(u8* address_of_jump);
 
-    static void setupJitStack(ThreadState* state);
-
-    static void clearJitStack(ThreadState* state);
-
     u8* code_cache{};
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
@@ -620,14 +592,15 @@ private:
 
     void* start_of_code_cache{};
 
-    u8* unlink_indirect_thunk{};
-
     std::array<RegisterMetadata, 16> gpr_metadata{};
     std::array<RegisterMetadata, 16> xmm_metadata{};
     std::array<RegisterMetadata, 8> mm_metadata{};
     std::array<RegisterMetadata, 4> flag_metadata{};
 
     std::unordered_map<u64, BlockMetadata> block_metadata{};
+
+    Semaphore page_map_lock;
+    std::unordered_map<u64, std::vector<BlockMetadata*>> page_map{};
 
     // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
     // on signal handlers
@@ -654,9 +627,6 @@ private:
 
     biscuit::GPR cached_lea = x0;
     ZydisDecodedOperand* cached_lea_operand;
-
-    std::vector<u64> block_trace;
-    size_t block_trace_index = 0;
 
     std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
 

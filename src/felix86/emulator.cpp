@@ -219,10 +219,6 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
     u64 next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip());
 
-    if (g_block_trace) {
-        thread_state->recompiler->trace(thread_state->GetRip());
-    }
-
     thread_state->signals_disabled = false;
 
     ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
@@ -379,75 +375,4 @@ void Emulator::StartTest(const TestConfig& config, u64 stack) {
     main_state->SetRip(config.entrypoint);
 
     Threads::StartThread(main_state);
-}
-
-void Emulator::LinkIndirect(u64 host_address, u64 guest_address, u8* link_address, ThreadState* state) {
-    Assembler& as = state->recompiler->getAssembler();
-
-    u8* before = as.GetCursorPointer();
-    as.SetCursorPointer(link_address);
-
-    Label unlink_indirect;
-    Literal guest(guest_address);
-    Literal host(host_address);
-    Literal unlink_address((u64)Emulator::UnlinkIndirect);
-    as.LD(t1, offsetof(ThreadState, rip), Recompiler::threadStatePointer());
-    as.LD(t0, &guest);
-    as.BNE(t0, t1, &unlink_indirect);
-    as.LD(t2, &host);
-    if (g_config.rsb) {
-        as.JALR(t2); // push to rsb
-    } else {
-        as.JR(t2);
-    }
-    as.Bind(&unlink_indirect);
-    as.NOP(); // important it's here, due to -11 * 4 in unlink indirect
-    as.NOP();
-
-    const u64 offset = (u64)state->recompiler->getUnlinkIndirectThunk() - (u64)as.GetCursorPointer();
-    ASSERT(IsValid2GBImm(offset));
-    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-
-    as.AUIPC(t2, hi20);
-    as.JALR(ra, lo12, t2);
-
-    // The instruction following is a jump that goes back exactly 10 instructions, the same amount that we have here
-    // Note: LD with Literal is 2 instructions -> AUIPC + LD. So we have 11 instructions here too.
-    u8* here = as.GetCursorPointer();
-    ASSERT(here - link_address == 11 * 4);
-
-    // We don't wanna overwrite this jump. Not only do we need it after we return from this function,
-    // but we are also gonna need it in case the comparison fails, as UnlinkIndirect will once again rewrite this
-    // chunk of code
-    as.SetCursorPointer(here + 4);
-
-    // Now overwrite these 3 literals from Recompiler::linkIndirect with our own
-    as.Place(&guest);
-    as.Place(&host);
-    as.Place(&unlink_address);
-
-    as.SetCursorPointer(before);
-
-    // Spooky self-modifying code over
-    flush_icache();
-}
-
-void Emulator::UnlinkIndirect(ThreadState* state, u8* link_address) {
-    // This function is called when an indirect jump prediction fails once. One time is enough for it to not be worth
-    // the check anymore... for example OOP structs with vtables can change function pointers quite a bit so we would rather
-    // always jump to the dispatcher for those... So replace our link with a backToDispatcher
-
-    // This function takes no arguments, yet we have enough info to deduce where we are from the registers
-    Assembler& as = state->recompiler->getAssembler();
-    u8* before = as.GetCursorPointer();
-
-    as.SetCursorPointer(link_address);
-
-    // Replace the first two instructions with a back to dispatcher jump and forget whatever follows
-    state->recompiler->backToDispatcher();
-
-    as.SetCursorPointer(before);
-
-    flush_icache();
 }

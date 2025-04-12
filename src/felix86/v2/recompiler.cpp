@@ -54,47 +54,15 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
     ZydisDecoderInit(&decoder, mode, stack_width);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
-
-    if (g_block_trace > 0) {
-        block_trace.resize(g_block_trace);
-    }
 }
 
 Recompiler::~Recompiler() {
     deallocateCodeCache(code_cache);
 }
 
-void Recompiler::setupJitStack(ThreadState* state) {
-    ASSERT(state->jit_stack == 0);
-    state->jit_stack = (u64)mmap(nullptr, 4096 + jit_stack_size + 4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-    ASSERT(state->jit_stack != (u64)MAP_FAILED);
-
-    // We need to guard both sides of the JIT stack to catch overflows/underflows
-    // Protect lowest page of the stack
-    state->overflow_page = state->jit_stack;
-    int res = mprotect((void*)state->overflow_page, 4096, PROT_NONE);
-    ASSERT(res == 0);
-
-    // Protect highest page of the stack
-    state->underflow_page = state->jit_stack + 4096 + jit_stack_size;
-    res = mprotect((void*)state->underflow_page, 4096, PROT_NONE);
-    ASSERT(res == 0);
-
-    state->jit_stack += 4096 + jit_stack_size;
-    // Give the stack some extra space in case there's some weird multiple return shenanigans
-    // This value will now be the value we always reset to when clearing the code cache
-    state->jit_stack -= 65536;
-}
-
-void Recompiler::clearJitStack(ThreadState* state) {
-    WARN("Clearing JIT stack");
-    memset((void*)(state->overflow_page + 4096), 0, jit_stack_size);
-}
-
 void Recompiler::emitNecessaryStuff() {
     emitDispatcher();
     emitSigreturnThunk();
-    emitUnlinkIndirectThunk();
     start_of_code_cache = as.GetCursorPointer();
 }
 
@@ -108,8 +76,7 @@ void Recompiler::emitDispatcher() {
     as.SB(t3, offsetof(ThreadState, signals_disabled), a0);
 
     // Save the current frame. This means the return address, the stack pointer and
-    // the saved registers. We don't save these in the stack, as we do RSB and our stack pointer may not
-    // be back to what it was when we exit the dispatcher. We save it in this separate stack-like structure instead.
+    // the saved registers. TODO: lets save these in the stack instead
     as.LD(t0, offsetof(ThreadState, frame_pointer), a0);
     as.ADDI(t1, a0, offsetof(ThreadState, frames));
     as.LI(t3, sizeof(ThreadState::frames));
@@ -126,30 +93,9 @@ void Recompiler::emitDispatcher() {
 
     as.MV(threadStatePointer(), a0);
 
-    if (g_config.rsb) {
-        Label already_setup;
-        as.LD(t4, offsetof(ThreadState, jit_stack), threadStatePointer());
-        as.BNEZ(t4, &already_setup);
-        // Purposefully not using Recompiler::call here
-        as.LI(t0, (u64)&Recompiler::setupJitStack);
-        as.JALR(t0);
-        as.SD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
-        as.LD(t4, offsetof(ThreadState, jit_stack), threadStatePointer());
-        as.Bind(&already_setup);
-        // Load the JIT stack as that's what the compile_next_handler expects
-        as.MV(sp, t4);
-    }
-
     compile_next_handler = as.GetCursorPointer();
 
     Label exit_dispatcher_label;
-
-    if (g_config.rsb) {
-        // Save current stack (the JIT stack) so we don't have to LD later
-        as.MV(s0, sp);
-        // Load the C++ stack as we are about to call C++ code
-        as.LD(sp, offsetof(ThreadState, cpp_stack), threadStatePointer());
-    }
 
     as.MV(a0, threadStatePointer());
     // If it's not zero it has some exit reason, exit the dispatcher
@@ -158,18 +104,7 @@ void Recompiler::emitDispatcher() {
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
-    if (g_config.rsb) {
-        // Reload the JIT stack which was saved to s0 earlier
-        // Since s0 is a saved register the CompileNext function will not ruin its value
-        as.MV(sp, s0);
-        // "Return" to the compiled function. This encoding hints to the
-        // return stack buffer to pop, which should have been pushed by a jalr
-        // when doing backToDispatcher or jumpAndLink
-        as.MV(ra, a0);
-        as.RET();
-    } else {
-        as.JR(a0);
-    }
+    as.JR(a0);
 
     as.Bind(&exit_dispatcher_label);
 
@@ -216,20 +151,6 @@ u64 Recompiler::emitSigreturnThunk() {
     return here;
 }
 
-u64 Recompiler::emitUnlinkIndirectThunk() {
-    u64 here = (u64)as.GetCursorPointer();
-
-    unlink_indirect_thunk = (u8*)here;
-
-    as.MV(a0, threadStatePointer());
-    as.MV(a1, ra);
-    as.ADDI(a1, a1, -11 * 4); // see justification in Recompiler::linkIndirect
-    as.LI(t0, (u64)Emulator::UnlinkIndirect);
-    as.JR(t0); // Tail jump, UnlinkIndirect is gonna return to ra
-
-    return here;
-}
-
 void Recompiler::clearCodeCache(ThreadState* state) {
     WARN("Clearing cache on thread %u", gettid());
     as.RewindBuffer();
@@ -238,15 +159,6 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     std::fill(std::begin(address_cache), std::end(address_cache), AddressCacheEntry{});
 
     emitNecessaryStuff();
-
-    if (g_config.rsb) {
-        // Need to zero out the JIT stack.
-        // Because if the cache is cleared and we hit more RETs than calls,
-        // we are gonna be returning to potentially invalid places
-        // Our frame pointer (see dispatcher for how it's made) points past
-        // the saved registers so we need to point at the start of the frame
-        clearJitStack(state);
-    }
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
@@ -264,7 +176,16 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     // A sequence of code (ie. basic block). This is so that we can also call it recursively later.
     u64 end_rip = compileSequence(rip);
 
+    u64 end = (u64)as.GetCursorPointer();
+
+    ASSERT(end - start >= 8); // At least 2 instructions, so that our unlinking logic works
+
     host_pc_map[block_meta.address_end - 1] = &block_meta;
+
+    {
+        auto guard = page_map_lock.lock();
+        page_map[block_meta.address & ~0xFFFull].push_back(&block_meta);
+    }
 
     // If other blocks were waiting for this block to be linked, link them now
     expirePendingLinks(rip);
@@ -1557,17 +1478,13 @@ void Recompiler::restoreRoundingMode() {
     popScratch();
 }
 
-void Recompiler::backToDispatcher(bool use_rsb) {
+void Recompiler::backToDispatcher() {
     const u64 offset = (u64)compile_next_handler - (u64)as.GetCursorPointer();
     ASSERT(IsValid2GBImm(offset));
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
     as.AUIPC(t0, hi20);
-    if (use_rsb) {
-        as.JALR(ra, lo12, t0);
-    } else {
-        as.JR(t0, lo12);
-    }
+    as.JALR(x31, lo12, t0);
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
@@ -1968,41 +1885,27 @@ biscuit::GPR Recompiler::getRip() {
     return rip;
 }
 
-void Recompiler::jumpAndLink(u64 rip, bool use_rsb) {
+void Recompiler::jumpAndLink(u64 rip) {
     if (!g_config.link) {
         // Just emit jump to dispatcher
-        backToDispatcher(use_rsb);
+        backToDispatcher();
         return;
     }
 
     u8* start = as.GetCursorPointer();
     if (!blockExists(rip)) {
         u8* link_me = as.GetCursorPointer();
-        backToDispatcher(use_rsb);
+        backToDispatcher();
 
         getBlockMetadata(rip).pending_links.push_back(link_me);
     } else {
         auto& target_meta = getBlockMetadata(rip);
         u64 target = target_meta.address;
 
-        u8* link_me = as.GetCursorPointer();
-        target_meta.links.push_back(link_me); // for when we need to unlink
-
         u64 offset = target - (u64)(as.GetCursorPointer() + 4);
         if (IsValidJTypeImm(offset)) {
-            if (offset != 4) {
-                as.NOP();
-                if (use_rsb) {
-                    as.JAL(ra, offset);
-                } else {
-                    as.J(offset);
-                }
-            } else {
-                // Can just be inlined as target is just ahead
-                // Replace the AUIPC+JR with 2 NOPs
-                as.NOP();
-                as.NOP();
-            }
+            as.NOP();
+            as.JAL(x31, offset);
         } else {
             // Too far for a regular jump, use AUIPC+JR
             ASSERT(IsValid2GBImm(offset));
@@ -2011,11 +1914,7 @@ void Recompiler::jumpAndLink(u64 rip, bool use_rsb) {
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
 
             as.AUIPC(t0, hi20);
-            if (use_rsb) {
-                as.JALR(ra, lo12, t0); // hint to the rsb to push
-            } else {
-                as.JR(t0, lo12);
-            }
+            as.JALR(x31, lo12, t0);
         }
     }
 
@@ -2051,32 +1950,14 @@ void Recompiler::expirePendingLinks(u64 rip) {
     auto& block_meta = getBlockMetadata(rip);
     auto& pending_links = block_meta.pending_links;
     for (u8* link : pending_links) {
-        bool use_rsb = false;
-        u32 jump_inst = *(u32*)(link + 4);
-        // If it uses `ra`, we need to emit an rsb hinting jump
-        // `jalr t0` is emitted from backToDispatcher when needing RSB (ie from calls to reg)
-        static biscuit::Decoder decoder;
-        DecodedInstruction instruction;
-        DecodedOperand operands[4];
-        DecoderStatus status = decoder.Decode(&jump_inst, 4, instruction, operands);
-        if (status != DecoderStatus::Ok) {
-            WARN("Couldn't decode instruction during expirePendingLinks");
-        }
-
-        if (instruction.mnemonic == Mnemonic::JALR && operands[0].GPR() == ra) {
-            ASSERT(g_config.rsb);
-            use_rsb = true;
-        }
-
         u8* cursor = as.GetCursorPointer();
         as.SetCursorPointer(link);
-        jumpAndLink(rip, use_rsb);
+        jumpAndLink(rip);
         as.SetCursorPointer(cursor);
     }
 
     flush_icache();
 
-    block_meta.links.insert(block_meta.links.end(), pending_links.begin(), pending_links.end());
     block_meta.pending_links.clear();
 }
 
@@ -2610,20 +2491,21 @@ void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
 }
 
 void Recompiler::invalidateBlock(BlockMetadata* block) {
-    // This code assumes you've locked the map mutex
-    // Unlink everywhere this block was linked
-    for (u8* link : block->links) {
-        unlinkAt(link);
-    }
+    UNIMPLEMENTED();
+    // // This code assumes you've locked the map mutex
+    // // Unlink everywhere this block was linked
+    // for (u8* link : block->links) {
+    //     unlinkAt(link);
+    // }
 
-    // Unlink ourselves, jump back to dispatcher at end
-    u8* rewind_address = (u8*)block->address_end - 4 * 3; // 3 instructions for the ending jump/link
-    unlinkAt(rewind_address);
+    // // Unlink ourselves, jump back to dispatcher at end
+    // u8* rewind_address = (u8*)block->address_end - 4 * 3; // 3 instructions for the ending jump/link
+    // unlinkAt(rewind_address);
 
-    // Remove the block from the map
-    bool was_present = block_metadata.erase(block->guest_address);
-    ASSERT(was_present);
-    flush_icache();
+    // // Remove the block from the map
+    // bool was_present = block_metadata.erase(block->guest_address);
+    // ASSERT(was_present);
+    // flush_icache();
 }
 
 void Recompiler::unlinkAt(u8* address_of_jump) {
@@ -2832,61 +2714,6 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
             }
         }
     }
-}
-
-void Recompiler::trace(u64 address) {
-    block_trace[block_trace_index] = address;
-    block_trace_index++;
-    block_trace_index %= block_trace.size();
-}
-
-void Recompiler::printTrace() {
-    for (size_t i = 0; i < block_trace.size(); i++) {
-        int j = (block_trace_index + i) % block_trace.size();
-        u64 address = block_trace[j];
-        printf("#%zu ", i);
-        print_address(address);
-    }
-}
-
-void Recompiler::linkIndirect() {
-    ERROR("I've retired this function as it didn't provide any speedup, needs adjustments to work with RSB (save stack and stuff)");
-    // if (g_config.rsb) {
-    //     as.SD(sp, offsetof(ThreadState, current_sp), threadStatePointer());
-    // }
-
-    // // Self modifying piece of code that rewrites itself as a check + link, where
-    // // if the check fails it unlinks itself and always jumps to dispatcher
-    // // We assume that we can use every register as they have been written back at this point.
-    // Label back_here;
-    // as.Bind(&back_here);
-
-    // u8* start = as.GetCursorPointer();
-    // Literal link_address((u64)start);
-    // Literal compile_next((u64)Emulator::CompileNext);
-    // Literal link_indirect((u64)Emulator::LinkIndirect);
-
-    // // Get host address for block we wanna link to, get the guest address that should match when we jump there.
-    // // AUIPC + LD + MV + JALR + LD + AUIPC + LD + MV + AUIPC + LD + JALR = 11 instructions we can replace at most
-    // as.LD(t0, &compile_next);
-    // as.MV(a0, threadStatePointer());
-    // as.JALR(t0);
-    // // At this point, a0 has the host address, load a1 with the expected guest address
-    // as.LD(a1, offsetof(ThreadState, rip), threadStatePointer());
-    // // Put link address in a2
-    // as.LD(a2, &link_address);
-    // as.MV(a3, threadStatePointer());
-    // as.LD(t0, &link_indirect);
-    // as.JALR(t0); // (guest address, host address, link address, thread state)
-
-    // // Emulator::LinkIndirect depends on the above sequence being 11 instructions
-    // u8* here = as.GetCursorPointer();
-    // ASSERT(here - start == 11 * 4);
-
-    // as.J(&back_here);
-    // as.Place(&compile_next);
-    // as.Place(&link_indirect);
-    // as.Place(&link_address);
 }
 
 // Assume all registers have been loaded. Only good for instruction count generation.

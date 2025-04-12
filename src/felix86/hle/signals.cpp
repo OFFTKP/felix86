@@ -483,45 +483,9 @@ bool handle_ctrl_c(ThreadState* current_state, siginfo_t* info, ucontext_t* cont
     return false;
 }
 
-bool handle_rsb_overflow(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    if (!g_config.rsb) {
-        return false;
-    }
-
-    if (!is_in_jit_code(current_state, (u8*)pc)) {
-        return false;
-    }
-
-    u64 write_address = (u64)info->si_addr;
-    u64 write_page = write_address & ~0xFFF;
-    u64 current_sp = 0;
-#ifdef __riscv
-    current_sp = context->uc_mcontext.__gregs[REG_SP];
-#endif
-    ASSERT(current_sp != 0);
-    ASSERT(current_state->overflow_page != 0);
-    ASSERT(current_state->underflow_page != 0);
-    ASSERT(write_address != 0);
-
-    if (write_page == current_state->overflow_page || write_page == current_state->underflow_page) {
-        // Set the stack pointer to the original value -- It's fine to modify it like this
-        // because we are in JIT code and this happened during RSB optimization
-        u64 new_sp = current_state->jit_stack;
-        memset((void*)(current_state->overflow_page + 4096), 0, jit_stack_size);
-        WARN("RSB overflowed, setting stack pointer to 0x%lx", new_sp);
-#ifdef __riscv
-        context->uc_mcontext.__gregs[REG_SP] = new_sp;
-#endif
-        return true;
-    }
-
-    return false;
-}
-
-constexpr std::array<RegisteredHostSignal, 3> host_signals = {{
+constexpr std::array<RegisteredHostSignal, 2> host_signals = {{
     {SIGILL, 0, handle_breakpoint},
     {SIGINT, 0, handle_ctrl_c},
-    {SIGSEGV, SEGV_ACCERR, handle_rsb_overflow},
 }};
 
 bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
@@ -669,31 +633,6 @@ void Signals::initialize() {
 
     for (auto& handler : host_signals) {
         ASSERT(sigaction(handler.sig, &sa, nullptr) == 0);
-    }
-}
-
-void Signals::initializeAltstack() {
-    if (g_config.rsb) {
-        // TODO: on signal handler switch to cpp stack before entering thread;
-        // Setup an alternative stack so our RSB stack is unused
-        stack_t altstack;
-        stack_t old_stack;
-        u8* mem = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-        ASSERT(mem != MAP_FAILED);
-        altstack.ss_flags = 0;
-        altstack.ss_size = 1024 * 1024;
-        altstack.ss_sp = mem;
-        ASSERT(sigaltstack(&altstack, &old_stack) == 0);
-        ASSERT(old_stack.ss_sp == 0);
-    }
-}
-
-void Signals::uninitializeAltstack() {
-    if (g_config.rsb) {
-        stack_t old_stack;
-        ASSERT(sigaltstack(nullptr, &old_stack) == 0);
-        ASSERT(old_stack.ss_sp != 0);
-        ASSERT(munmap((void*)old_stack.ss_sp, 1024 * 1024) == 0);
     }
 }
 

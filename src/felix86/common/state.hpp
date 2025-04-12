@@ -153,11 +153,6 @@ struct ThreadState {
     u16 fpu_sw{};
     u8 fpu_top{};
 
-    // We use two separate stacks, one for jit code and one for cpp code -- this only happens when RSB optimization
-    // is enabled to ensure that the C++ code doesn't trigger our guards for stack overflow on call/ret predictions
-    u64 jit_stack{};
-    u64 cpp_stack{};
-
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
     u64 tid{};

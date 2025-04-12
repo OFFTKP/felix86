@@ -682,116 +682,8 @@ FAST_HANDLE(HLT) {
     rec.stopCompiling();
 }
 
-FAST_HANDLE(CALL_rsb) {
-    x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
-
-    u64 displacement = 0;
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        biscuit::GPR temp = rec.scratch();
-        displacement = operands[0].imm.value.s;
-        as.LI(temp, rip + instruction.length + displacement);
-        rec.setRip(temp);
-        rec.popScratch();
-    } else {
-        biscuit::GPR src = rec.getOperandGPR(&operands[0]);
-        rec.setRip(src);
-    }
-
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
-    as.ADDI(rsp, rsp, -rec.stackPointerSize());
-    rec.setRefGPR(X86_REF_RSP, size, rsp);
-
-    biscuit::GPR guest_return_address = rec.scratch();
-    u64 return_address = rip + instruction.length;
-    as.LI(guest_return_address, return_address);
-    as.ADDI(sp, sp, -16);
-    as.SD(guest_return_address, 8, sp); // this is the prediction, the guest address we hope the RET jumps to
-
-    rec.writeMemory(guest_return_address, rsp, 0, size);
-    rec.writebackDirtyState();
-    rec.invalidStateUntilJump();
-    rec.pushCalltrace();
-
-    // Instead of stopping and returning to dispatcher, continue compiling the current block
-    // And perform an actual call, pushing our predicted return address to the stack
-    // As long as each call corresponds to a ret this prediction will work out. If it doesn't,
-    // it goes back to the dispatcher. There's cases where calls don't correspond 1:1 to rets such as exceptions.
-
-    u64 start = (u64)as.GetCursorPointer();
-    biscuit::GPR host_return_address = rec.scratch();
-
-    // AUIPC + ADDI + SD + 2 instructions for jump = 20
-    // If there's indirect linking, the jump will take 12 (AUIPC + ADDI + SD) + 12 * 4 + 3 * 8 for the linkIndirect
-    int offset = (!g_config.link_indirect || operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) ? 20 : 12 + (12 * 4 + 3 * 8);
-    as.AUIPC(host_return_address, 0);
-    as.ADDI(host_return_address, host_return_address, offset);
-    as.SD(host_return_address, 0, sp);
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        rec.jumpAndLink(rip + instruction.length + displacement, true /* push to rsb */);
-    } else {
-        if (!g_config.link_indirect) {
-            rec.backToDispatcher(true); // true = push to rsb
-        } else {
-            rec.linkIndirect();
-        }
-    }
-    u64 here = (u64)as.GetCursorPointer();
-    ASSERT(here == start + offset);
-
-    // We could continue compiling instructions in this block. It's a bit tricky with software that use jits though.
-    // For example you compile a piece of code until a call, and then garbage may follow so you start compiling garbage instructions.
-    // Or it's zeroed out and you compile a bunch of zeroes... not good. So for now we link to the next block after returning
-    // and just stop compiling
-    rec.jumpAndLink(rip + instruction.length);
-    rec.stopCompiling();
-}
-
-FAST_HANDLE(RET_rsb) {
-    x86_size_e size = g_mode32 ? X86_SIZE_DWORD : X86_SIZE_QWORD;
-    biscuit::GPR ra = rec.scratch();
-    ASSERT(ra == biscuit::ra);
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, size);
-    biscuit::GPR scratch = rec.scratch();
-    rec.readMemory(scratch, rsp, 0, size);
-
-    u64 imm = rec.stackPointerSize();
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        imm += rec.getImmediate(&operands[0]);
-    }
-
-    rec.addi(rsp, rsp, imm);
-
-    rec.setRefGPR(X86_REF_RSP, size, rsp);
-    rec.setRip(scratch);
-
-    biscuit::Label misprediction;
-    rec.writebackDirtyState();
-    rec.invalidStateUntilJump();
-
-    biscuit::GPR prediction = rec.scratch();
-    as.LD(prediction, 8, sp);
-    as.BNE(scratch, prediction, &misprediction);
-    // Our prediction was correct, just return to ra
-    rec.popCalltrace();
-    as.LD(ra, 0, sp);
-    as.ADDI(sp, sp, 16);
-    as.RET();
-
-    // Prediction was incorrect, return to dispatcher
-    as.Bind(&misprediction);
-
-    rec.popCalltrace();
-    as.ADDI(sp, sp, 16);
-    rec.backToDispatcher();
-    rec.stopCompiling();
-}
-
 FAST_HANDLE(CALL) {
-    if (g_config.rsb) {
-        return fast_CALL_rsb(rec, rip, as, instruction, operands);
-    }
-
-    // TODO: deduplicate code like in call_rsb
+    // TODO: deduplicate code
     switch (operands[0].type) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -843,10 +735,6 @@ FAST_HANDLE(CALL) {
 }
 
 FAST_HANDLE(RET) {
-    if (g_config.rsb) {
-        return fast_RET_rsb(rec, rip, as, instruction, operands);
-    }
-
     biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
     biscuit::GPR scratch = rec.scratch();
     rec.readMemory(scratch, rsp, 0, rec.stackWidth());
@@ -1501,11 +1389,7 @@ FAST_HANDLE(JMP) {
         rec.setRip(src);
         rec.writebackDirtyState();
         rec.invalidStateUntilJump();
-        if (!!g_config.link_indirect) {
-            rec.linkIndirect();
-        } else {
-            rec.backToDispatcher();
-        }
+        rec.backToDispatcher();
         rec.stopCompiling();
         break;
     }

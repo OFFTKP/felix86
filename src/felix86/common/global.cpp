@@ -22,7 +22,6 @@ bool g_testing = false;
 bool g_extensions_manually_specified = false;
 bool g_print_all_calls = false;
 bool g_print_all_insts = false;
-int g_block_trace = 0;
 bool g_mode32 = false;
 bool g_thunking = false;
 int g_vlen = 0;
@@ -323,15 +322,6 @@ void initialize_globals() {
         } else {
             WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
         }
-    }
-
-    const char* block_trace = getenv("FELIX86_BLOCK_TRACE");
-    if (block_trace) {
-        g_block_trace = std::stoi(block_trace);
-        g_config.link = false; // needed to trace blocks
-        g_config.link_indirect = false;
-        environment += "\nFELIX86_BLOCK_TRACE=";
-        environment += block_trace;
     }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");
