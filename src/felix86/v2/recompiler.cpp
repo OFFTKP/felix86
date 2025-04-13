@@ -2550,6 +2550,7 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
         state->recompiler->invalidateRange(start, end);
     }
     flush_icache();
+    WARN("Invalidated global range: %lx - %lx", start, end);
 }
 
 void Recompiler::unlinkAt(u8* address_of_jump) {
