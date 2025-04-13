@@ -127,8 +127,11 @@ u64 BRK::set(u64 new_brk) {
         u64 end_brk = g_initial_brk + g_current_brk_size;
         ASSERT(!(end_brk & 0xFFF)); // assert page aligned
         u64 new_size = (g_current_brk - g_initial_brk) * 2;
-        if (new_size > g_max_brk_size) {
-            WARN("BRK is exceding maximum size we have allocated, good luck!");
+        if (g_current_brk_size < g_max_brk_size && new_size > g_max_brk_size) {
+            // We would go over the max limit, set it to max instead
+            new_size = g_max_brk_size;
+        } else if (new_size > g_max_brk_size) {
+            WARN("Trying to allocate more than the maximum BRK size, get ready for a crash!");
         }
 
         u64 size_past_end = new_size - g_current_brk_size;
