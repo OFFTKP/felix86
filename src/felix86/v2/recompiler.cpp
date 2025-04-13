@@ -2530,7 +2530,7 @@ void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
 
 void Recompiler::invalidateBlock(BlockMetadata* block) {
     u64* address = (u64*)block->address;
-    const u64 offset = (u64)invalidate_caller_thunk - (u64)as.GetCursorPointer();
+    const u64 offset = (u64)invalidate_caller_thunk - (u64)address;
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
     u64 storage;
