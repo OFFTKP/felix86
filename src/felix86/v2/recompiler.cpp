@@ -179,8 +179,10 @@ void Recompiler::emitSigreturnThunk() {
 void Recompiler::clearCodeCache(ThreadState* state) {
     WARN("Clearing cache on thread %u", gettid());
     as.RewindBuffer();
+    auto guard = page_map_lock.lock();
     block_metadata.clear();
     host_pc_map.clear();
+    page_map.clear();
     std::fill(std::begin(address_cache), std::end(address_cache), AddressCacheEntry{});
 
     emitNecessaryStuff();
