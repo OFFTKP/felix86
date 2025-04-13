@@ -154,6 +154,13 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block) {
     // Setting it to 0 should be enough, as it will trigger recompilation for this block
     it->second->address = 0;
     ASSERT((u64)address_of_block >= it->second->address && (u64)address_of_block <= it->second->address_end);
+
+    // We also need to remove it from the address cache
+    if (g_config.address_cache) {
+        AddressCacheEntry& entry = state->recompiler->address_cache[rip & ((1 << address_cache_bits) - 1)];
+        entry.guest = 0;
+        entry.host = 0;
+    }
 }
 
 void Recompiler::emitSigreturnThunk() {
