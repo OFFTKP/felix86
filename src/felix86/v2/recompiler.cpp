@@ -153,8 +153,6 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block) {
 
     // Setting it to 0 should be enough, as it will trigger recompilation for this block
     it->second->address = 0;
-
-    WARN("invalidateAt called for guest address: %lx", it->second->guest_address);
     ASSERT((u64)address_of_block >= it->second->address && (u64)address_of_block <= it->second->address_end);
 }
 
@@ -204,12 +202,11 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     {
         auto guard = page_map_lock.lock();
-        // u64 start_masked = block_meta.guest_address & ~0xFFFull;
-        // u64 end_masked = (block_meta.guest_address_end - 1) & ~0xFFFull;
-        // for (u64 page = start_masked; page < end_masked; page += 0x1000) {
-        //     page_map[page].push_back(&block_meta);
-        // }
-        page_map[block_meta.guest_address & ~0xFFFull].push_back(&block_meta);
+        u64 start_masked = block_meta.guest_address & ~0xFFFull;
+        u64 end_masked = (block_meta.guest_address_end - 1) & ~0xFFFull;
+        for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
+            page_map[page].push_back(&block_meta);
+        }
     }
 
     // If other blocks were waiting for this block to be linked, link them now
