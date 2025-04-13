@@ -135,7 +135,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     case 'c': {
         // TODO: add some color here
         Config::initialize();
-        initialize_globals();
 
         std::string current_group;
         printf("These are the configurations for felix86\n");
