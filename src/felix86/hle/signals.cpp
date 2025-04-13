@@ -457,7 +457,6 @@ bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context
         return false;
     }
 
-    WARN("SMC!!!");
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
     Recompiler::invalidateRangeGlobal(write_address, write_address);
     ::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE);
