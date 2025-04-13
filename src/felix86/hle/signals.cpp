@@ -451,6 +451,18 @@ std::optional<std::array<XmmReg, 32>> get_vector_state(void* ctx) {
     return xmm_regs;
 }
 
+bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    if (!is_in_jit_code(current_state, (u8*)pc)) {
+        WARN("We hit a SIGSEGV ACCERR but PC is not in JIT code...");
+        return false;
+    }
+
+    u64 write_address = (u64)info->si_addr & ~0xFFFull;
+    Recompiler::invalidateRangeGlobal(write_address, write_address);
+    ::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE);
+    return true;
+}
+
 bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (is_in_jit_code(current_state, (u8*)pc)) {
         // Search to see if it is our breakpoint
@@ -473,7 +485,8 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     return false;
 }
 
-constexpr std::array<RegisteredHostSignal, 1> host_signals = {{
+constexpr std::array<RegisteredHostSignal, 2> host_signals = {{
+    {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGILL, 0, handle_breakpoint},
 }};
 

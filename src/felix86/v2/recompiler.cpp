@@ -255,7 +255,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 }
 
 void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
-    if (g_config.dont_protect_pages) {
+    if (!g_config.protect_pages) {
         return;
     }
 

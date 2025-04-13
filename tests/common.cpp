@@ -15,7 +15,7 @@ public:
         g_process_globals.initialize();
         initialize_extensions();
         Signals::initialize();
-        g_config.dont_protect_pages = true;
+        g_config.protect_pages = false;
     }
 };
 

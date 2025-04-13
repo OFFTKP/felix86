@@ -246,7 +246,6 @@ FAST_HANDLE(FIMUL) {
 
 void FCOM(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
     u8 index = operands[1].reg.value - ZYDIS_REGISTER_ST0;
-    ASSERT(index >= 1 && index <= 7);
     biscuit::GPR top = rec.getTOP();
     biscuit::GPR cond = rec.scratch();
     biscuit::GPR cond2 = rec.scratch();
