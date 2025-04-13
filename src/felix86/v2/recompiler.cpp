@@ -2531,6 +2531,7 @@ void Recompiler::invalidatePage(u64 page) {
     for (BlockMetadata* block : blocks_in_page) {
         invalidateBlock(block);
     }
+    blocks_in_page.clear();
 }
 
 void Recompiler::invalidateRange(u64 start, u64 end) {
