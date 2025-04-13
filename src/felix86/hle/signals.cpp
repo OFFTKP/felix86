@@ -473,10 +473,10 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     return false;
 }
 
-bool handle_ctrl_c(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
-    static bool allowed = !!getenv("FELIX86_ALLOW_SIGINT");
+bool handle_ctrl_z(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    static bool allowed = !!getenv("FELIX86_ALLOW_SIGSTOP");
     if (!allowed) {
-        WARN("SIGINT received and FELIX86_ALLOW_SIGINT not set, terminating...");
+        WARN("SIGSTOP received and FELIX86_ALLOW_SIGSTOP not set, terminating...");
         exit(0);
     }
 
@@ -485,7 +485,7 @@ bool handle_ctrl_c(ThreadState* current_state, siginfo_t* info, ucontext_t* cont
 
 constexpr std::array<RegisteredHostSignal, 2> host_signals = {{
     {SIGILL, 0, handle_breakpoint},
-    {SIGINT, 0, handle_ctrl_c},
+    {SIGSTOP, 0, handle_ctrl_z},
 }};
 
 bool dispatch_host(int sig, siginfo_t* info, void* ctx) {

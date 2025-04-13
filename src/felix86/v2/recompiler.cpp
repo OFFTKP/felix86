@@ -153,6 +153,9 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block) {
 
     // Setting it to 0 should be enough, as it will trigger recompilation for this block
     it->second->address = 0;
+
+    WARN("invalidateAt called for guest address: %lx", it->second->guest_address);
+    ASSERT((u64)address_of_block >= it->second->address && (u64)address_of_block <= it->second->address_end);
 }
 
 void Recompiler::emitSigreturnThunk() {
