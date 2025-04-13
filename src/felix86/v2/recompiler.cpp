@@ -2518,7 +2518,7 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
 void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
     auto metadata = state->recompiler->getBlockMetadata(rip);
 
-    if (metadata.address_end != 0) {
+    if (metadata.address_end == 0) {
         // Not yet compiled, we are fine
         return;
     }
