@@ -172,8 +172,6 @@ struct Recompiler {
 
     void invalidateRange(u64 start, u64 end);
 
-    void invalidatePage(u64 page);
-
     constexpr static biscuit::GPR threadStatePointer() {
         return x27; // saved register so that when we exit VM we don't have to save it
     }
@@ -612,7 +610,7 @@ private:
     std::unordered_map<u64, BlockMetadata> block_metadata{};
 
     Semaphore page_map_lock;
-    std::unordered_map<u64, std::vector<BlockMetadata*>> page_map{};
+    std::map<u64, std::vector<BlockMetadata*>> page_map{};
 
     // For fast host pc -> block metadata lookup (binary search vs looking up one by one)
     // on signal handlers

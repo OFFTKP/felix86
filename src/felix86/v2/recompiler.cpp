@@ -204,7 +204,11 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     {
         auto guard = page_map_lock.lock();
-        page_map[block_meta.guest_address & ~0xFFFull].push_back(&block_meta);
+        u64 start_masked = block_meta.guest_address & ~0xFFFull;
+        u64 end_masked = (block_meta.guest_address_end - 1) & ~0xFFFull;
+        for (u64 page = start_masked; page < end_masked; page += 0x1000) {
+            page_map[page].push_back(&block_meta);
+        }
     }
 
     // If other blocks were waiting for this block to be linked, link them now
@@ -2529,26 +2533,25 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     as.SetCursorPointer(old);
 }
 
-void Recompiler::invalidatePage(u64 page) {
-    auto& blocks_in_page = page_map[page];
-    for (BlockMetadata* block : blocks_in_page) {
-        invalidateBlock(block);
-    }
-    blocks_in_page.clear();
-}
-
 void Recompiler::invalidateRange(u64 start, u64 end) {
     auto guard = page_map_lock.lock();
-    u64 current = start & ~0xFFFull;
-    while (current < end) {
-        invalidatePage(current);
-        current += 0x1000;
+    auto lower = page_map.lower_bound(start);
+    auto upper = page_map.upper_bound(end - 1);
+
+    for (auto it = lower; it != upper; it++) {
+        auto& blocks_in_page = it->second;
+        for (BlockMetadata* block : blocks_in_page) {
+            invalidateBlock(block);
+        }
+        blocks_in_page.clear();
     }
 }
 
 void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
     // Get all the pages in this range, search all thread states for these pages, invalidate the blocks in those pages
     auto states_guard = g_process_globals.states_lock.lock();
+    start &= ~0xFFFull;
+    end = (end + 0xFFF) & ~0xFFFull;
     for (ThreadState* state : g_process_globals.states) {
         state->recompiler->invalidateRange(start, end);
     }
