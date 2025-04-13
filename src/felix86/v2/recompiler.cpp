@@ -2529,15 +2529,15 @@ void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
 }
 
 void Recompiler::invalidateBlock(BlockMetadata* block) {
-    u8* address = (u8*)block->address;
-    u8* old = as.GetCursorPointer();
-    as.SetCursorPointer(address);
+    u64* address = (u64*)block->address;
     const u64 offset = (u64)invalidate_caller_thunk - (u64)as.GetCursorPointer();
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-    as.AUIPC(t0, hi20);
-    as.JALR(a1, lo12, t0); // we link the jump directly to a1 so the thunk doesn't have to move
-    as.SetCursorPointer(old);
+    u64 storage;
+    Assembler tas((u8*)&storage, 8);
+    tas.AUIPC(t0, hi20);
+    tas.JALR(a1, lo12, t0); // we link the jump directly to a1 so the thunk doesn't have to move
+    __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
 }
 
 void Recompiler::invalidateRange(u64 start, u64 end) {
@@ -2545,17 +2545,13 @@ void Recompiler::invalidateRange(u64 start, u64 end) {
     auto lower = page_map.lower_bound(start);
     auto upper = page_map.upper_bound(end - 1);
 
-    int i = 0;
     for (auto it = lower; it != upper; it++) {
         auto& blocks_in_page = it->second;
         for (BlockMetadata* block : blocks_in_page) {
             invalidateBlock(block);
-            i++;
         }
         blocks_in_page.clear();
     }
-    if (i > 0)
-        WARN("Invalidated %d blocks", i);
 }
 
 void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
@@ -2566,7 +2562,7 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
     for (ThreadState* state : g_process_globals.states) {
         state->recompiler->invalidateRange(start, end);
     }
-    flush_icache();
+    flush_icache_global(start, end);
 }
 
 void Recompiler::unlinkAt(u8* address_of_jump) {
