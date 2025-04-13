@@ -457,6 +457,7 @@ bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context
         return false;
     }
 
+    WARN("SMC!!!");
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
     Recompiler::invalidateRangeGlobal(write_address, write_address);
     ::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE);
@@ -485,9 +486,26 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
     return false;
 }
 
-constexpr std::array<RegisteredHostSignal, 2> host_signals = {{
+bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    // In many cases it's annoying to attach a debugger at the start of a program, because it may be spawning many processes which
+    // can trip up gdb and it won't know which fork to follow. The "don't detach forks" mode is also kind of jittery as far as I can see.
+    // The capture_sigsegv mode can help us sleep the process for a while to attach gdb and get a proper backtrace.
+    if (!g_config.capture_sigsegv) {
+        return false;
+    }
+
+    int pid = getpid();
+    PLAIN("I have been hit by a wild SIGSEGV! My PID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you think this "
+          "SIGSEGV was intended, disabled this mode by unsetting the `capture_sigsegv` option.",
+          pid, pid);
+    ::sleep(40);
+    return true;
+}
+
+constexpr std::array<RegisteredHostSignal, 3> host_signals = {{
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGILL, 0, handle_breakpoint},
+    {SIGSEGV, 0, handle_wild_sigsegv}, // order matters, relevant sigsegvs are handled before this handler
 }};
 
 bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
