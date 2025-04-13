@@ -2538,13 +2538,17 @@ void Recompiler::invalidateRange(u64 start, u64 end) {
     auto lower = page_map.lower_bound(start);
     auto upper = page_map.upper_bound(end - 1);
 
+    int i = 0;
     for (auto it = lower; it != upper; it++) {
         auto& blocks_in_page = it->second;
         for (BlockMetadata* block : blocks_in_page) {
             invalidateBlock(block);
+            i++;
         }
         blocks_in_page.clear();
     }
+    if (i > 0)
+        WARN("Invalidated %d blocks", i);
 }
 
 void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
@@ -2556,7 +2560,6 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
         state->recompiler->invalidateRange(start, end);
     }
     flush_icache();
-    WARN("Invalidated global range: %lx - %lx", start, end);
 }
 
 void Recompiler::unlinkAt(u8* address_of_jump) {
