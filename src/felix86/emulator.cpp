@@ -284,6 +284,19 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
 
             g_params.executable_path = interpreter;
         } else {
+            if (std::filesystem::exists(g_params.executable_path)) {
+                FILE* f = fopen(g_params.executable_path.c_str(), "r");
+                ASSERT(f);
+                fseek(f, 0L, SEEK_END);
+                size_t size = ftell(f);
+                fclose(f);
+                if (size == 0) {
+                    // Sometimes, things decide to just execute an empty file.
+                    // We need to return 0 and warn
+                    WARN("Tried to execute an empty file: %s, returning 0...", g_params.executable_path.c_str());
+                    _exit(0);
+                }
+            }
             ERROR("Unknown file format: %s", g_params.executable_path.c_str());
         }
     }
