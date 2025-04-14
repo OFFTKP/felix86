@@ -1787,14 +1787,70 @@ FAST_HANDLE(XCHG_lock) {
     biscuit::GPR scratch = rec.scratch();
     biscuit::GPR dst = rec.scratch();
 
-    as.MV(scratch, src);
-
     switch (size) {
+    case X86_SIZE_BYTE: {
+        if (Extensions::Zabha) {
+            WARN("Zabha is untested");
+            as.AMOSWAP_B(Ordering::AQRL, dst, src, address);
+        } else {
+            Label loop;
+            biscuit::GPR address_masked = rec.scratch();
+            biscuit::GPR mask = rec.scratch();
+            biscuit::GPR mask_shifted = rec.scratch();
+            as.ANDI(address_masked, address, -4ll);
+            as.SLLI(address, address, 3);
+            as.LI(mask, 0xFF);
+            as.SLLW(mask_shifted, mask, address);
+            as.SLLW(src, src, address);
+
+            as.Bind(&loop);
+            as.LR_W(Ordering::AQRL, dst, address_masked);
+            as.MV(scratch, src);
+            as.XOR(scratch, scratch, dst);
+            as.AND(scratch, scratch, mask_shifted);
+            as.XOR(scratch, scratch, dst);
+            as.SC_W(Ordering::AQRL, scratch, scratch, address_masked);
+            as.BNEZ(scratch, &loop);
+
+            as.SRLW(dst, dst, address_masked);
+        }
+        break;
+    }
+    case X86_SIZE_WORD: {
+        if (Extensions::Zabha) {
+            WARN("Zabha is untested");
+            as.AMOSWAP_H(Ordering::AQRL, dst, src, address);
+        } else {
+            Label loop;
+            biscuit::GPR address_masked = rec.scratch();
+            biscuit::GPR mask = rec.scratch();
+            biscuit::GPR mask_shifted = rec.scratch();
+            as.ANDI(address_masked, address, -4ll);
+            as.SLLI(address, address, 3);
+            as.LI(mask, 0xFFFF);
+            as.SLLW(mask_shifted, mask, address);
+            as.SLLW(src, src, address);
+
+            as.Bind(&loop);
+            as.LR_W(Ordering::AQRL, dst, address_masked);
+            as.MV(scratch, src);
+            as.XOR(scratch, scratch, dst);
+            as.AND(scratch, scratch, mask_shifted);
+            as.XOR(scratch, scratch, dst);
+            as.SC_W(Ordering::AQRL, scratch, scratch, address_masked);
+            as.BNEZ(scratch, &loop);
+
+            as.SRLW(dst, dst, address_masked);
+        }
+        break;
+    }
     case X86_SIZE_DWORD: {
+        as.MV(scratch, src);
         as.AMOSWAP_W(Ordering::AQRL, dst, scratch, address);
         break;
     }
     case X86_SIZE_QWORD: {
+        as.MV(scratch, src);
         as.AMOSWAP_D(Ordering::AQRL, dst, scratch, address);
         break;
     }
@@ -1809,8 +1865,8 @@ FAST_HANDLE(XCHG_lock) {
 
 FAST_HANDLE(XCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        if (operands[0].size == 8 || operands[0].size == 16) {
-            WARN("Atomic XCHG with 8 or 16-bit operands encountered");
+        if (operands[0].size == 8) {
+            WARN("Atomic XCHG with 8-bit operands encountered");
         } else {
             return fast_XCHG_lock(rec, rip, as, instruction, operands);
         }
@@ -5706,7 +5762,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             biscuit::Label not_equal;
             biscuit::Label start;
             as.Bind(&start);
-            as.LR_D(Ordering::AQRL, dst, address); // TODO: probably can have a more relaxed ordering
+            as.LR_D(Ordering::AQRL, dst, address);
             as.BNE(dst, rax, &not_equal);
             as.SC_D(Ordering::AQRL, scratch, src, address);
             as.BNEZ(scratch, &start);
@@ -7391,7 +7447,7 @@ FAST_HANDLE(CMPXCHG8B) {
     as.OR(ecx_ebx, ecx_ebx, ebx);
 
     as.Bind(&loop);
-    as.LR_D(Ordering::AQRL, temp, address); // TODO: probably can have a more relaxed ordering
+    as.LR_D(Ordering::AQRL, temp, address);
     as.BNE(temp, edx_eax, &not_equal);
     as.SC_D(Ordering::AQRL, bit, ecx_ebx, address);
     as.BNEZ(bit, &loop);

@@ -1,6 +1,6 @@
 {
     "llvmpipe_shader": {
-        "instruction_count": 285,
+        "instruction_count": 286,
         "expected_asm": [
             "LD              ra, a1, 0x0(0)",
             "ADDI            s3, ra, 0x0(0)",
@@ -234,6 +234,7 @@
             "SD              t0, s11, 0x0(0)",
             "SD              s10, s11, 0x8(8)",
             "SD              a2, s11, 0x10(16)",
+            "SD              s0, s11, 0x18(24)",
             "SD              s1, s11, 0x20(32)",
             "SD              a1, s11, 0x30(48)",
             "SD              a0, s11, 0x38(56)",
@@ -269,24 +270,24 @@
             "SB              s9, s11, 0x1cd(461)",
             "SRLI            zero, zero, 0x2a(42)",
             "BNE             zero, s7, 0x28(40)",
-            "LUI             ra, 0x750000(7667712)",
-            "ADDIW           ra, ra, 0x4c9(1225)",
+            "LUI             ra, 0x7f6000(8347648)",
+            "ADDIW           ra, ra, 0x215(533)",
             "SLLI            ra, ra, 0xc(12)",
-            "ADDI            ra, ra, 0xfffffab5(-1355)",
+            "ADDI            ra, ra, 0xfffffb15(-1259)",
             "SLLI            ra, ra, 0xc(12)",
             "ADDI            ra, ra, 0x13a(314)",
             "SD              ra, s11, 0x80(128)",
             "AUIPC           t0, 0xfffec000(-81920)",
-            "JALR            zero, t0, 0xffffff24(-220)",
-            "LUI             t1, 0xea000(958464)",
-            "ADDIW           t1, t1, 0x99(153)",
-            "SLLI            t1, t1, 0xe(14)",
-            "ADDI            t1, t1, 0x561(1377)",
+            "JALR            zero, t0, 0xfffff83c(-1988)",
+            "LUI             t1, 0x1fe000(2088960)",
+            "ADDIW           t1, t1, 0xfffff885(-1915)",
+            "SLLI            t1, t1, 0xd(13)",
+            "ADDI            t1, t1, 0x591(1425)",
             "SLLI            t1, t1, 0xd(13)",
             "ADDI            t1, t1, 0xfffffc32(-974)",
             "SD              t1, s11, 0x80(128)",
             "AUIPC           t0, 0xfffec000(-81920)",
-            "JALR            zero, t0, 0xffffff00(-256)"
+            "JALR            zero, t0, 0xfffff818(-2024)"
         ]
     }
 }

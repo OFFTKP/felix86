@@ -349,6 +349,23 @@ int main() {
             GEN(repnz(); x.scasd());
             GEN(repnz(); x.scasq());
         }
+        GEN(xchg(al, bl));
+        GEN(xchg(al, bh));
+        GEN(xchg(ah, bl));
+        GEN(xchg(ah, bh));
+        GEN(xchg(ax, bx));
+        GEN(xchg(eax, ebx));
+        GEN(xchg(rax, rbx));
+        GEN(xchg(ptr[rdi], bl));
+        GEN(xchg(ptr[rdi], bh));
+        GEN(xchg(ptr[rdi], bx));
+        GEN(xchg(ptr[rdi], ebx));
+        GEN(xchg(ptr[rdi], rbx));
+        GEN(cmpxchg(ptr[rdi], bl));
+        GEN(cmpxchg(ptr[rdi], bh));
+        GEN(cmpxchg(ptr[rdi], bx));
+        GEN(cmpxchg(ptr[rdi], ebx));
+        GEN(cmpxchg(ptr[rdi], rbx));
 
         std::ofstream base("counts/" + name);
         base << json.dump(4);
