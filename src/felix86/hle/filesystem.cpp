@@ -6,8 +6,29 @@
 #include "felix86/common/overlay.hpp"
 #include "felix86/hle/filesystem.hpp"
 
+#define FLAGS_SET(v, flags) ((~(v) & (flags)) == 0)
+
+bool statx_inode_same(const struct statx* a, const struct statx* b) {
+    return (a && a->stx_mask != 0) && (b && b->stx_mask != 0) && FLAGS_SET(a->stx_mask, STATX_TYPE | STATX_INO) &&
+           FLAGS_SET(b->stx_mask, STATX_TYPE | STATX_INO) && ((a->stx_mode ^ b->stx_mode) & S_IFMT) == 0 && a->stx_dev_major == b->stx_dev_major &&
+           a->stx_dev_minor == b->stx_dev_minor && a->stx_ino == b->stx_ino;
+}
+
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename);
+
+    static struct statx rootfs_statx;
+    static bool rootfs_statx_set = false;
+    if (!rootfs_statx_set) {
+        ASSERT(statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &rootfs_statx) == 0);
+        rootfs_statx_set = true;
+    }
+
+    bool is_same = false;
+    struct statx new_fd_statx;
+    if (statx(new_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &new_fd_statx) == 0) {
+        is_same = statx_inode_same(&rootfs_statx, &new_fd_statx);
+    }
 
     if (fd == AT_FDCWD && filename && filename[0] == '/') {
         // We may be opening a library, check if it's one of our overlays
@@ -18,7 +39,14 @@ int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
         }
     }
 
-    return openatInternal(new_fd, new_filename, flags, mode);
+    if (is_same && std::string(new_filename) == "..") {
+        // KINDA HACK: some programs like `systemd-tmpfiles --create` do some sort of root checking
+        // via `fd = open("/")` and `fd2 = openat(fd, "..")` and comparing if the two fd's have same inode ids
+        // among other things. We don't want this to happen, but a better solution might be possible.
+        return openatInternal(new_fd, ".", flags, mode);
+    } else {
+        return openatInternal(new_fd, new_filename, flags, mode);
+    }
 }
 
 int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
