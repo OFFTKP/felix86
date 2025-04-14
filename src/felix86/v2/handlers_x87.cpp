@@ -411,13 +411,9 @@ FAST_HANDLE(FLDZ) {
     rec.pushST(top, st);
 }
 
-FAST_HANDLE(FNSTCW) {
-    WARN("FNSTCW is not implemented, ignoring");
-}
+FAST_HANDLE(FNSTCW) {}
 
-FAST_HANDLE(FLDCW) {
-    WARN("FLDCW is not implemented, ignoring");
-}
+FAST_HANDLE(FLDCW) {}
 
 void FCMOV(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     biscuit::Label not_true;

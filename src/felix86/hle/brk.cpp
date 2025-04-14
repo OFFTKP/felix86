@@ -95,7 +95,6 @@ void BRK::allocate64() {
         brk_base += max_brk_size;
         attempts--;
         if (attempts == 0) {
-            WARN("Ran out of attempts while trying to allocate BRK");
             brk_base = (u8*)g_mapper->map(nullptr, max_brk_size, prot, flags, -1, 0);
             ASSERT_MSG(brk_base != MAP_FAILED, "Could not allocate BRK base, try setting it to a lower amount with FELIX86_BRK_SIZE");
             break;

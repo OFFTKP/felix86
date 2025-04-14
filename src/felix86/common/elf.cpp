@@ -10,7 +10,6 @@
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/sysinfo.h>
-#include "felix86/common/debug.hpp"
 #include "felix86/common/elf.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -542,16 +541,12 @@ void Elf::Load(const std::filesystem::path& path) {
         g_program_end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
         g_executable_start = (u64)(base_ptr + lowest_vaddr);
         g_executable_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
-        MemoryMetadata::AddRegion("Executable", g_executable_start, g_executable_end);
-        // LoadSymbols("Executable", path, (void*)g_executable_start);
     } else {
         ASSERT(g_program_end != 0);
         g_program_end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
         g_interpreter_start = (u64)(base_ptr + lowest_vaddr);
         g_interpreter_end = (u64)(base_ptr + highest_vaddr);
         program_base = (u8*)base_ptr;
-        MemoryMetadata::AddInterpreterRegion(g_interpreter_start, g_interpreter_end);
-        // LoadSymbols("Interpreter", path, (void*)g_interpreter_start);
     }
 
     phdr = base_ptr + lowest_vaddr + ehdr.phoff();

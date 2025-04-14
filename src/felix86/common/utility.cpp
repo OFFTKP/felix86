@@ -4,7 +4,6 @@
 #include <sys/ioctl.h>
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
-#include "felix86/common/debug.hpp"
 #include "felix86/common/elf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
@@ -221,24 +220,6 @@ void flush_icache_global(const u64& start, const u64& end) {
 #if defined(__riscv)
     __riscv_flush_icache((void*)start, (void*)end, 0);
 #endif
-}
-
-int guest_breakpoint(const char* region, u64 address) {
-    auto [start, end] = MemoryMetadata::GetRegionByName(region);
-
-    if (start == 0 && end == 0) {
-        WARN("Region %s not found, breakpoint will be added later if loaded", region);
-        MemoryMetadata::AddDeferredBreakpoint(region, address);
-        return -1;
-    }
-
-    if (address >= (end - start)) {
-        WARN("Address %016lx is out of bounds for region %s", address, region);
-        return -1;
-    }
-
-    g_breakpoints[address + start] = {};
-    return g_breakpoints.size();
 }
 
 __attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
