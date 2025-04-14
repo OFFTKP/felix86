@@ -839,6 +839,10 @@ FAST_HANDLE(PREFETCHT2) {}
 
 FAST_HANDLE(PREFETCHNTA) {}
 
+FAST_HANDLE(PREFETCHW) {}
+
+FAST_HANDLE(PREFETCHWT1) {}
+
 FAST_HANDLE(SHL_imm) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR result = rec.scratch();
