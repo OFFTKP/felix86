@@ -1780,7 +1780,6 @@ FAST_HANDLE(SAHF) {
 }
 
 FAST_HANDLE(XCHG_lock) {
-    ASSERT(operands[0].size != 8 && operands[0].size != 16);
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
@@ -1811,8 +1810,10 @@ FAST_HANDLE(XCHG_lock) {
             as.XOR(scratch, scratch, dst);
             as.SC_W(Ordering::AQRL, scratch, scratch, address_masked);
             as.BNEZ(scratch, &loop);
-
             as.SRLW(dst, dst, address_masked);
+            rec.popScratch();
+            rec.popScratch();
+            rec.popScratch();
         }
         break;
     }
@@ -1839,8 +1840,10 @@ FAST_HANDLE(XCHG_lock) {
             as.XOR(scratch, scratch, dst);
             as.SC_W(Ordering::AQRL, scratch, scratch, address_masked);
             as.BNEZ(scratch, &loop);
-
             as.SRLW(dst, dst, address_masked);
+            rec.popScratch();
+            rec.popScratch();
+            rec.popScratch();
         }
         break;
     }
@@ -1865,11 +1868,7 @@ FAST_HANDLE(XCHG_lock) {
 
 FAST_HANDLE(XCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        if (operands[0].size == 8) {
-            WARN("Atomic XCHG with 8-bit operands encountered");
-        } else {
-            return fast_XCHG_lock(rec, rip, as, instruction, operands);
-        }
+        return fast_XCHG_lock(rec, rip, as, instruction, operands);
     }
 
     biscuit::GPR temp = rec.scratch();
