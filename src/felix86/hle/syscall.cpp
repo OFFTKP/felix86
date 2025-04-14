@@ -703,7 +703,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     case felix86_riscv64_mremap: {
         state->signals_disabled = true;
         result = (u64)g_mapper->remap((void*)arg1, arg2, arg3, arg4, (void*)arg5);
-        Recompiler::invalidateRangeGlobal(result, result + arg3);
+        if (result > 0) {
+            Recompiler::invalidateRangeGlobal(result, result + arg3);
+        }
         state->signals_disabled = false;
         break;
     }

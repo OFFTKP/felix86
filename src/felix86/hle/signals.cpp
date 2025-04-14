@@ -619,6 +619,10 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     if (state->exit_reason == EXIT_REASON_SIGRETURN) {
         // All went fine, we returned from the dispatcher normally
     } else {
+        if (state->exit_reason == EXIT_REASON_EXIT_GROUP_SYSCALL || state->exit_reason == EXIT_REASON_EXIT_SYSCALL) {
+            WARN("Exitting thread %d from inside a signal handler with error code: %d", gettid(), state->exit_code);
+            _exit(state->exit_code);
+        }
         ERROR("Something went wrong when returning from dispatcher on signal handler: %s", print_exit_reason(state->exit_reason));
     }
 
