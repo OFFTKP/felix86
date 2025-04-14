@@ -72,15 +72,17 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
         return bytes;
     }
 
+    auto [new_fd, new_filename] = resolve(fd, filename);
+
     // For the emulator to work we symlink some stuff like /proc to the rootfs, if we allow readlink to
     // return `/proc` when `readlink(/proc)` happens we'd get infinite recursion and stuff would not behave
     // For example the `realpath` function will cause problems if used on /proc
-    if (isOurSymlinks(filename)) {
+    // This was also noticed on systemd-tmpfiles which would do stuff like readlinkat(fd, proc) over and over
+    // For our symlinks we are going to pretend like they aren't symlinks
+    if (isOurSymlinks(new_fd, new_filename)) {
         // If the file is not a symlink we are supposed to return -EINVAL
         return -EINVAL;
     }
-
-    auto [new_fd, new_filename] = resolve(fd, filename);
 
     int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
 
@@ -366,11 +368,8 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
     } else {
         if (std::string(path) == "..") {
             static struct statx rootfs_statx;
-            static bool rootfs_statx_set = false;
-            if (!rootfs_statx_set) {
-                ASSERT(statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &rootfs_statx) == 0);
-                rootfs_statx_set = true;
-            }
+            static std::once_flag flag;
+            std::call_once(flag, [&]() { ASSERT(statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &rootfs_statx) == 0); });
 
             bool is_same = false;
             struct statx new_fd_statx;
@@ -379,7 +378,7 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
             }
 
             if (is_same) {
-                // KINDA HACK: some programs like `systemd-tmpfiles --create` do some sort of root checking
+                // HACK: some programs like `systemd-tmpfiles --create` do some sort of root checking
                 // via `fd = open("/")` and `fd2 = openat(fd, "..")` and comparing if the two fd's have same inode ids
                 // among other things. We don't want this to happen, but a better solution might be possible.
                 return {fd, "."};
@@ -437,10 +436,28 @@ bool Filesystem::isProcSelfExe(const char* path) {
     return false;
 }
 
-bool Filesystem::isOurSymlinks(const char* path) {
-    std::string spath = path;
-    if (spath == "/proc" || spath == "/run" || spath == "/sys" || spath == "/dev") {
-        return true;
+bool Filesystem::isOurSymlinks(int fd, const char* path) {
+    static struct statx proc_statx, run_statx, sys_statx, dev_statx;
+    static std::once_flag flag;
+    std::call_once(flag, [&]() {
+        ASSERT(statx(g_rootfs_fd, "proc", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &proc_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "run", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &run_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "sys", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &sys_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "dev", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &dev_statx) == 0);
+    });
+
+    struct statx new_statx;
+    int result = statx(fd, path, AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &new_statx);
+    if (result == 0) {
+        if (statx_inode_same(&proc_statx, &new_statx))
+            return true;
+        if (statx_inode_same(&run_statx, &new_statx))
+            return true;
+        if (statx_inode_same(&sys_statx, &new_statx))
+            return true;
+        if (statx_inode_same(&dev_statx, &new_statx))
+            return true;
     }
+
     return false;
 }
