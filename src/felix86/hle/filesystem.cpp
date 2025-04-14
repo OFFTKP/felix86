@@ -382,7 +382,6 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
                 // KINDA HACK: some programs like `systemd-tmpfiles --create` do some sort of root checking
                 // via `fd = open("/")` and `fd2 = openat(fd, "..")` and comparing if the two fd's have same inode ids
                 // among other things. We don't want this to happen, but a better solution might be possible.
-                WARN("Tried to open directory before rootfs (openat(rootfs, '..'), returning rootfs fd)");
                 return {fd, "."};
             }
         }
