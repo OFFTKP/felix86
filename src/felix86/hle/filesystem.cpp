@@ -17,19 +17,6 @@ bool statx_inode_same(const struct statx* a, const struct statx* b) {
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename);
 
-    static struct statx rootfs_statx;
-    static bool rootfs_statx_set = false;
-    if (!rootfs_statx_set) {
-        ASSERT(statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &rootfs_statx) == 0);
-        rootfs_statx_set = true;
-    }
-
-    bool is_same = false;
-    struct statx new_fd_statx;
-    if (statx(new_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &new_fd_statx) == 0) {
-        is_same = statx_inode_same(&rootfs_statx, &new_fd_statx);
-    }
-
     if (fd == AT_FDCWD && filename && filename[0] == '/') {
         // We may be opening a library, check if it's one of our overlays
         const char* overlay = Overlays::isOverlay(filename);
@@ -39,14 +26,7 @@ int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
         }
     }
 
-    if (is_same && std::string(new_filename) == "..") {
-        // KINDA HACK: some programs like `systemd-tmpfiles --create` do some sort of root checking
-        // via `fd = open("/")` and `fd2 = openat(fd, "..")` and comparing if the two fd's have same inode ids
-        // among other things. We don't want this to happen, but a better solution might be possible.
-        return openatInternal(new_fd, ".", flags, mode);
-    } else {
-        return openatInternal(new_fd, new_filename, flags, mode);
-    }
+    return openatInternal(new_fd, new_filename, flags, mode);
 }
 
 int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
@@ -384,6 +364,29 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
 
         return {g_rootfs_fd, &path[1]}; // return rootfs fd, skip the '/'
     } else {
+        if (std::string(path) == "..") {
+            static struct statx rootfs_statx;
+            static bool rootfs_statx_set = false;
+            if (!rootfs_statx_set) {
+                ASSERT(statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &rootfs_statx) == 0);
+                rootfs_statx_set = true;
+            }
+
+            bool is_same = false;
+            struct statx new_fd_statx;
+            if (statx(fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &new_fd_statx) == 0) {
+                is_same = statx_inode_same(&rootfs_statx, &new_fd_statx);
+            }
+
+            if (is_same) {
+                // KINDA HACK: some programs like `systemd-tmpfiles --create` do some sort of root checking
+                // via `fd = open("/")` and `fd2 = openat(fd, "..")` and comparing if the two fd's have same inode ids
+                // among other things. We don't want this to happen, but a better solution might be possible.
+                WARN("Tried to open directory before rootfs (openat(rootfs, '..'), returning rootfs fd)");
+                return {fd, "."};
+            }
+        }
+
         return {fd, path};
     }
 }
