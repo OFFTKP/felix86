@@ -14,6 +14,40 @@ bool statx_inode_same(const struct statx* a, const struct statx* b) {
            a->stx_dev_minor == b->stx_dev_minor && a->stx_ino == b->stx_ino;
 }
 
+enum class OurSymlink {
+    No = 0,
+    Proc,
+    Run,
+    Sys,
+    Dev,
+};
+
+OurSymlink isOurSymlinks(int fd, const char* path) {
+    static struct statx proc_statx, run_statx, sys_statx, dev_statx;
+    static std::once_flag flag;
+    std::call_once(flag, [&]() {
+        ASSERT(statx(g_rootfs_fd, "proc", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &proc_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "run", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &run_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "sys", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &sys_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "dev", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &dev_statx) == 0);
+    });
+
+    struct statx new_statx;
+    int result = statx(fd, path, AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &new_statx);
+    if (result == 0) {
+        if (statx_inode_same(&proc_statx, &new_statx))
+            return OurSymlink::Proc;
+        if (statx_inode_same(&run_statx, &new_statx))
+            return OurSymlink::Run;
+        if (statx_inode_same(&sys_statx, &new_statx))
+            return OurSymlink::Sys;
+        if (statx_inode_same(&dev_statx, &new_statx))
+            return OurSymlink::Dev;
+    }
+
+    return OurSymlink::No;
+}
+
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename);
 
@@ -73,16 +107,6 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
     }
 
     auto [new_fd, new_filename] = resolve(fd, filename);
-
-    // For the emulator to work we symlink some stuff like /proc to the rootfs, if we allow readlink to
-    // return `/proc` when `readlink(/proc)` happens we'd get infinite recursion and stuff would not behave
-    // For example the `realpath` function will cause problems if used on /proc
-    // This was also noticed on systemd-tmpfiles which would do stuff like readlinkat(fd, proc) over and over
-    // For our symlinks we are going to pretend like they aren't symlinks
-    if (isOurSymlinks(new_fd, new_filename)) {
-        // If the file is not a symlink we are supposed to return -EINVAL
-        return -EINVAL;
-    }
 
     int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
 
@@ -350,7 +374,7 @@ int Filesystem::rmdirInternal(const char* path) {
     return ::rmdir(path);
 }
 
-std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
+std::pair<int, const char*> Filesystem::resolveInner(int fd, const char* path) {
     if (path == nullptr) {
         return {fd, nullptr};
     }
@@ -389,6 +413,38 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
     }
 }
 
+std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
+    auto [new_fd, new_filename] = resolveInner(fd, path);
+
+    // For the emulator to work we symlink some stuff like /proc to the rootfs, if we allow readlink to
+    // return `/proc` when `readlink(/proc)` happens we'd get infinite recursion and stuff would not behave
+    // For example the `realpath` function will cause problems if used on /proc
+    // This was also noticed on systemd-tmpfiles which would do stuff like readlinkat(fd, proc) over and over
+    // For our symlinks we are going to resolve them internally so a `stat` or `open` on them will open the original
+    OurSymlink symlink = isOurSymlinks(new_fd, new_filename);
+    if (symlink != OurSymlink::No) {
+        switch (symlink) {
+        case OurSymlink::Proc: {
+            return {AT_FDCWD, "/proc"};
+        }
+        case OurSymlink::Run: {
+            return {AT_FDCWD, "/run"};
+        }
+        case OurSymlink::Sys: {
+            return {AT_FDCWD, "/sys"};
+        }
+        case OurSymlink::Dev: {
+            return {AT_FDCWD, "/dev"};
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+    }
+
+    return {new_fd, new_filename};
+}
+
 std::filesystem::path Filesystem::resolve(const char* path) {
     ASSERT(path);
 
@@ -397,6 +453,27 @@ std::filesystem::path Filesystem::resolve(const char* path) {
     }
 
     if (path[0] == '/') {
+        OurSymlink symlink = isOurSymlinks(AT_FDCWD, path);
+        if (symlink != OurSymlink::No) {
+            switch (symlink) {
+            case OurSymlink::Proc: {
+                return "/proc";
+            }
+            case OurSymlink::Run: {
+                return "/run";
+            }
+            case OurSymlink::Sys: {
+                return "/sys";
+            }
+            case OurSymlink::Dev: {
+                return "/dev";
+            }
+            default: {
+                UNREACHABLE();
+            }
+            }
+        }
+
         if (path[1] == '\0') {
             return g_config.rootfs_path;
         }
@@ -433,31 +510,5 @@ bool Filesystem::isProcSelfExe(const char* path) {
     if (spath == "/proc/self/exe" || spath == "/proc/thread-self/exe" || spath == pidpath) {
         return true;
     }
-    return false;
-}
-
-bool Filesystem::isOurSymlinks(int fd, const char* path) {
-    static struct statx proc_statx, run_statx, sys_statx, dev_statx;
-    static std::once_flag flag;
-    std::call_once(flag, [&]() {
-        ASSERT(statx(g_rootfs_fd, "proc", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &proc_statx) == 0);
-        ASSERT(statx(g_rootfs_fd, "run", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &run_statx) == 0);
-        ASSERT(statx(g_rootfs_fd, "sys", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &sys_statx) == 0);
-        ASSERT(statx(g_rootfs_fd, "dev", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &dev_statx) == 0);
-    });
-
-    struct statx new_statx;
-    int result = statx(fd, path, AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &new_statx);
-    if (result == 0) {
-        if (statx_inode_same(&proc_statx, &new_statx))
-            return true;
-        if (statx_inode_same(&run_statx, &new_statx))
-            return true;
-        if (statx_inode_same(&sys_statx, &new_statx))
-            return true;
-        if (statx_inode_same(&dev_statx, &new_statx))
-            return true;
-    }
-
     return false;
 }

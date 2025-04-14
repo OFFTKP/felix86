@@ -162,11 +162,11 @@ private:
 
     static int rmdirInternal(const char* path);
 
+    static std::pair<int, const char*> resolveInner(int fd, const char* path);
+
     static std::pair<int, const char*> resolve(int fd, const char* path);
 
     static bool isProcSelfExe(const char* path);
-
-    static bool isOurSymlinks(int fd, const char* path);
 
     std::filesystem::path executable_path;
     std::shared_ptr<Elf> elf;
