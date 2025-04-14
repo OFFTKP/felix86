@@ -799,6 +799,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = Filesystem::FChmodAt((int)arg1, (char*)arg2, arg3);
         break;
     }
+    case felix86_riscv64_fchmodat2: {
+        result = -ENOSYS; // TODO: support me in newer kernel versions (>= 6.6)
+        break;
+    }
     case felix86_riscv64_recvmsg: {
         result = SYSCALL(recvmsg, arg1, arg2, arg3);
         break;
