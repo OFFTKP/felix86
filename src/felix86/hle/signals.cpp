@@ -459,7 +459,7 @@ bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context
 
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
     Recompiler::invalidateRangeGlobal(write_address, write_address + 0x1000);
-    ::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE);
+    ASSERT(::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE) == 0);
     return true;
 }
 
@@ -552,7 +552,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
         // Unlink the current block, making it certain that we will eventually return to the dispatcher to handle this signal
         // even if we are stuck in a loop, for example in a block that branches back to itself forever.
-        WARN("Deferring signal");
         state->recompiler->unlinkBlock(state, state->GetRip());
         return true;
     }
