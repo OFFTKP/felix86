@@ -727,6 +727,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = SYSCALL(lseek, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_getcpu: {
+        result = SYSCALL(getcpu, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
     case felix86_riscv64_uname: {
         struct utsname host_uname;
         struct utsname* guest_uname = (struct utsname*)arg1;
