@@ -2523,6 +2523,7 @@ void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
         return;
     }
 
+    WARN("Unlinking block at %lx", rip);
     u8* rewind_address = (u8*)metadata.address_end - 4 * 2; // 2 instructions for the ending jump/link
     unlinkAt(rewind_address);
     flush_icache();

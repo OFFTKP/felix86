@@ -533,12 +533,16 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         return false;
     }
 
+    if ((void*)handler->func == SIG_DFL) {
+        return true;
+    }
+
     if (g_mode32) {
         WARN("WARN: Signals (%d) in 32-bit apps are currently not well supported", sig);
     }
 
-    if (handler->func == (u64)SIG_IGN || handler->func == (u64)SIG_DFL) {
-        ERROR("Signal %d hit but signal handler is %s", sig, handler->func ? "SIG_IGN" : "SIG_DFL");
+    if (handler->func == (u64)SIG_IGN) {
+        ERROR("Signal %d hit but signal handler is SIGIGN", sig);
         return true;
     }
 

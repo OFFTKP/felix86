@@ -83,6 +83,7 @@ struct Signals {
         if (!initialized) {
             sigfillset(&mask);
             sigdelset(&mask, SIGILL);
+            sigdelset(&mask, SIGSEGV);
             initialized = true;
         }
         return &mask;
