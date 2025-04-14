@@ -589,9 +589,6 @@ void print_address(u64 address) {
 void push_calltrace(ThreadState* state, u64 address) {
     state->calltrace.push_back(address);
 
-    u64 return_address = *(u64*)state->gprs[X86_REF_RSP];
-    printf("Return address at stack(%p) is %lx\n", state->gprs[X86_REF_RSP], return_address);
-
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
         print_address(state->rip);
@@ -602,11 +599,6 @@ void pop_calltrace(ThreadState* state) {
     if (state->calltrace.empty()) {
         return;
     }
-
-    u64 rsp = state->gprs[X86_REF_RSP] - 8;
-    u64 return_address = *(u64*)rsp;
-
-    printf("RETing to stack(%p) which has value: %lx\n", state->gprs[X86_REF_RSP], return_address);
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld returning: ", state->tid);

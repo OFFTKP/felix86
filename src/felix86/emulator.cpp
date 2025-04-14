@@ -190,8 +190,6 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
-    printf("RIP: %lx\n", thread_state->rip);
-
     // Check if there's any pending asynchronous signals. If there are, raise them.
     while (!thread_state->pending_signals.empty()) {
         ASSERT(!thread_state->signals_disabled);

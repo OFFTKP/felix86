@@ -59,7 +59,6 @@ extern bool g_extensions_manually_specified;
 extern bool g_paranoid;
 extern bool g_log_instructions;
 extern bool g_print_all_calls;
-extern bool g_print_all_insts;
 extern bool g_mode32;
 extern bool g_thunking;
 extern int g_vlen;

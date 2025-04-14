@@ -20,7 +20,6 @@ bool g_paranoid = false;
 bool g_testing = false;
 bool g_extensions_manually_specified = false;
 bool g_print_all_calls = false;
-bool g_print_all_insts = false;
 bool g_mode32 = false;
 bool g_thunking = false;
 int g_vlen = 0;
