@@ -9,7 +9,7 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
 
-constexpr int address_cache_bits = 16;
+constexpr int address_cache_bits = 20;
 
 constexpr static u64 jit_stack_size = 1024 * 1024;
 
