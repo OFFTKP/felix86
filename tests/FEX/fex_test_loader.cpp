@@ -68,7 +68,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         int status;
         waitpid(fork_result, &status, 0);
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-            ERROR("nasm failed with exit code: %d", WEXITSTATUS(status));
+            ERROR("nasm failed with exit code: %d -- Do you have nasm installed? It is required for these tests", WEXITSTATUS(status));
         }
         bytes_read = read(pipefd[0], buffer.data(), buffer.size());
         if (bytes_read == -1) {

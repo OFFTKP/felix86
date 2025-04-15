@@ -5416,13 +5416,7 @@ FAST_HANDLE(MOVSX) {
 }
 
 void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew) {
-    biscuit::GPR nan_1 = rec.scratch();
-    biscuit::GPR nan_2 = rec.scratch();
-    biscuit::Vec temp = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-
+    // If it's lhs < rhs, ZF remains 0 and CF gets set to 1
     biscuit::GPR cf = rec.flagW(X86_REF_CF);
     biscuit::GPR zf = rec.flagW(X86_REF_ZF);
     biscuit::GPR sf = rec.flagW(X86_REF_SF);
@@ -5440,74 +5434,53 @@ void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
         as.LI(sf, 0);
     }
 
-    Label end, nan, equal, less_than;
+    // Branch-less way to compute this
+    // Explanation:
+    // We calculate if either is NaN and OR cf and zf. If either is NaN they are all set to 1's so that makes sense
+    // If it's lhs > rhs, cf pf zf are zero. So they retain their default value because
+    // - FLT operates on CF, it will be false if it's greater than
+    // - FEQ operates on ZF, it will be false if it's greater than
+    // If it's lhs == rhs, ZF gets set to 1 and CF remains 0
+    as.LI(cf, 0);
+    as.LI(zf, 0);
+
+    biscuit::Vec vlhs = rec.getOperandVec(&operands[0]);
+    biscuit::Vec vrhs = rec.getOperandVec(&operands[1]);
+    biscuit::FPR lhs = rec.scratchFPR();
+    biscuit::FPR rhs = rec.scratchFPR();
 
     rec.setVectorState(sew, 1);
+    as.VFMV_FS(lhs, vlhs);
+    as.VFMV_FS(rhs, vrhs);
 
-    as.LI(nan_1, 0);
-    as.LI(nan_2, 0);
+    biscuit::GPR nan_bit = rec.scratch();
+    biscuit::GPR temp = rec.scratch();
 
-    as.VMFNE(temp, dst, dst);
-    as.VMV_XS(nan_1, temp);
+    if (sew == SEW::E32) {
+        as.FEQ_S(zf, lhs, rhs);
+        as.FEQ_S(temp, lhs, lhs);
+        as.FEQ_S(nan_bit, rhs, rhs);
+    } else {
+        as.FEQ_D(zf, lhs, rhs);
+        as.FEQ_D(temp, lhs, lhs);
+        as.FEQ_D(nan_bit, rhs, rhs);
+    }
 
-    as.VMFNE(temp2, src, src);
-    as.VMV_XS(nan_2, temp2);
-    as.OR(nan_1, nan_1, nan_2);
-    as.ANDI(nan_1, nan_1, 1);
+    if (sew == SEW::E32) {
+        as.FLT_S(cf, lhs, rhs);
+    } else {
+        as.FLT_D(cf, lhs, rhs);
+    }
 
-    as.BNEZ(nan_1, &nan);
+    // Combine the NaN-ness of both operands into the NaN bit
+    as.AND(nan_bit, nan_bit, temp);
+    as.XORI(nan_bit, nan_bit, 1);
 
-    // Check for equality
-    as.VMFEQ(temp, dst, src);
-    as.VMV_XS(nan_1, temp);
-    as.ANDI(nan_1, nan_1, 1);
+    as.SB(nan_bit, offsetof(ThreadState, pf), rec.threadStatePointer());
 
-    as.BNEZ(nan_1, &equal);
-
-    // Check for less than
-    as.VMFLT(temp, dst, src);
-    as.VMV_XS(nan_1, temp);
-    as.ANDI(nan_1, nan_1, 1);
-
-    as.BNEZ(nan_1, &less_than);
-
-    // Greater than
-    // ZF: 0, PF: 0, CF: 0
-    as.LI(zf, 0);
-    as.LI(cf, 0);
-    as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
-
-    as.J(&end);
-
-    as.Bind(&less_than);
-
-    // Less than
-    // ZF: 0, PF: 0, CF: 1
-    as.LI(zf, 0);
-    as.LI(cf, 1);
-    as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
-
-    as.J(&end);
-
-    as.Bind(&equal);
-
-    // Equal
-    // ZF: 1, PF: 0, CF: 0
-    as.LI(zf, 1);
-    as.LI(cf, 0);
-    as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
-
-    as.J(&end);
-
-    as.Bind(&nan);
-
-    // Unordered
-    // ZF: 1, PF: 1, CF: 1
-    as.LI(zf, 1);
-    as.LI(cf, 1);
-    as.SB(cf, offsetof(ThreadState, pf), rec.threadStatePointer());
-
-    as.Bind(&end);
+    // If the NaN bit is set we also overwrite the value of cf and zf with 1
+    as.OR(cf, cf, nan_bit);
+    as.OR(zf, zf, nan_bit);
 }
 
 FAST_HANDLE(COMISD) { // Fuzzed
