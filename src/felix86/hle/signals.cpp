@@ -640,11 +640,13 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
     handled = dispatch_host(sig, info, ctx);
     if (handled) {
         // Ok it was a host signal
+        VERBOSE("Host signal %d was handled successfully", sig);
         return;
     }
 
     handled = dispatch_guest(sig, info, ctx);
     if (handled) {
+        VERBOSE("Guest signal %d was handled successfully", sig);
         return;
     }
 
