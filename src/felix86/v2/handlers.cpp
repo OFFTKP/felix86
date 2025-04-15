@@ -4653,7 +4653,7 @@ FAST_HANDLE(PSHUFLW) {
     u64 el1 = (imm >> 2) & 0b11;
     u64 el2 = (imm >> 4) & 0b11;
     u64 el3 = (imm >> 6) & 0b11;
-    u64 low = el0 | el1 << 16 | el2 << 24 | el3 << 48;
+    u64 low = el0 | el1 << 16 | el2 << 32 | el3 << 48;
 
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec iota = rec.scratchVec();
@@ -4663,7 +4663,7 @@ FAST_HANDLE(PSHUFLW) {
 
     as.LI(low_gpr, low);
     rec.setVectorState(SEW::E16, 8);
-    // Slide down 4 words, so then the register looks like 8 7 6 5, then we can slide up the other 4 elements
+    // Slide down 4 words, so then the register looks like 7 6 5 4, then we can slide up the other 4 elements
     as.VID(iota);
     as.VSLIDEDOWN(iota, iota, 4);
     rec.setVectorState(SEW::E64, 2);
@@ -4688,7 +4688,7 @@ FAST_HANDLE(PSHUFHW) {
     u64 el1 = 4 + ((imm >> 2) & 0b11);
     u64 el2 = 4 + ((imm >> 4) & 0b11);
     u64 el3 = 4 + ((imm >> 6) & 0b11);
-    u64 high = el0 | el1 << 16 | el2 << 24 | el3 << 48;
+    u64 high = el0 | el1 << 16 | el2 << 32 | el3 << 48;
 
     rec.setVectorState(SEW::E64, 2);
     as.LI(high_gpr, high);
