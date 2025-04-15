@@ -657,7 +657,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 void Signals::initialize() {
     struct sigaction sa;
     sa.sa_sigaction = signal_handler;
-    sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+    sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
     for (auto& handler : host_signals) {
@@ -675,7 +675,7 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, si
     if (handler != 0) {
         struct real_sigaction sa;
         sa.sigaction = signal_handler;
-        sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+        sa.sa_flags = SA_SIGINFO;
         sa.restorer = nullptr;
         sa.sa_mask = 0;
 
