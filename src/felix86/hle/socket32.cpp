@@ -70,12 +70,9 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
         u64 guest_cmsghdr_pointer = guest_msghdr->msg_control;
         u64 host_cmsghdr_pointer = (u64)host_msghdr.msg_control;
 
-        int i = 0;
         while (true) {
-            PLAIN("Iteration: %d", i++);
             x86_cmsghdr* guest_cmsghdr = (x86_cmsghdr*)guest_cmsghdr_pointer;
             cmsghdr* host_cmsghdr = (cmsghdr*)host_cmsghdr_pointer;
-            PLAIN("Host: %p\nGuest: %p", host_cmsghdr_pointer, guest_cmsghdr_pointer);
 
             host_cmsghdr->cmsg_level = guest_cmsghdr->cmsg_level;
             host_cmsghdr->cmsg_type = guest_cmsghdr->cmsg_type;
@@ -85,14 +82,6 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
                 host_msghdr.msg_controllen += cmsghdr_size_difference;
                 memcpy(CMSG_DATA(host_cmsghdr), guest_cmsghdr->cmsg_data, guest_cmsghdr->cmsg_len - sizeof(x86_cmsghdr));
             }
-
-            size_t __size_needed = sizeof(struct cmsghdr) + __CMSG_PADDING(host_cmsghdr->cmsg_len);
-            bool cond1 = (((u8*)host_msghdr.msg_control + host_msghdr.msg_controllen - (u8*)host_cmsghdr) < __size_needed);
-            bool cond2 = (((u8*)host_msghdr.msg_control + host_msghdr.msg_controllen - (u8*)host_cmsghdr - __size_needed) < host_cmsghdr->cmsg_len);
-            PLAIN("%lx + %lx - %lx - %lx < %lx", host_msghdr.msg_control, host_msghdr.msg_controllen, host_cmsghdr, __size_needed,
-                  host_cmsghdr->cmsg_len);
-
-            PLAIN("Host len: %lx cond1: %d cond2: %d", host_cmsghdr->cmsg_len, cond1, cond2);
 
             host_cmsghdr_pointer = (u64)CMSG_NXTHDR(&host_msghdr, host_cmsghdr);
 
