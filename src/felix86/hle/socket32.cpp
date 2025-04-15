@@ -64,7 +64,7 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
 
     constexpr size_t cmsghdr_size_difference = sizeof(cmsghdr) - sizeof(x86_cmsghdr);
     host_msghdr.msg_control = alloca(guest_msghdr->msg_controllen * 2);
-    host_msghdr.msg_controllen = 0;
+    host_msghdr.msg_controllen = guest_msghdr->msg_controllen;
 
     if (guest_msghdr->msg_controllen != 0) {
         u64 guest_cmsghdr_pointer = guest_msghdr->msg_control;
@@ -81,7 +81,7 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
 
             if (guest_cmsghdr->cmsg_len) {
                 host_cmsghdr->cmsg_len = guest_cmsghdr->cmsg_len + cmsghdr_size_difference;
-                host_msghdr.msg_controllen += host_cmsghdr->cmsg_len;
+                host_msghdr.msg_controllen += cmsghdr_size_difference;
                 memcpy(CMSG_DATA(host_cmsghdr), guest_cmsghdr->cmsg_data, guest_cmsghdr->cmsg_len - sizeof(x86_cmsghdr));
             }
 

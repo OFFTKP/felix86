@@ -20,7 +20,7 @@ X(Debugging, u64, executable_base, 0, FELIX86_EXECUTABLE_BASE, "Make the executa
 X(Debugging, u64, brk_base, 0, FELIX86_BRK_BASE, "Make the BRK be loaded at this address -- 0 to let the emulator choose", false)
 X(Debugging, u64, max_brk_size, 0, FELIX86_MAX_BRK_SIZE, "Set the maximum BRK (ram for the application) size -- 0 to let the emulator choose", false)
 X(Debugging, bool, sleep_on_error, false, FELIX86_SLEEP_ERROR, "Sleep for 40 seconds on error to give enough time to attach gdb", false)
-X(Debugging, bool, capture_sigsegv, false, FELIX86_CAPTURE_SIGSEGV, "Sleep for 40 seconds on any SIGSEGV that is unrelated to self-modifying code", false)
+X(Debugging, bool, capture_sigsegv, true, FELIX86_CAPTURE_SIGSEGV, "Sleep for 40 seconds on any SIGSEGV that is unrelated to self-modifying code", false)
 
 X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance", false)
 X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup", false)
