@@ -70,7 +70,9 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
         u64 guest_cmsghdr_pointer = guest_msghdr->msg_control;
         u64 host_cmsghdr_pointer = (u64)host_msghdr.msg_control;
 
+        int i = 0;
         while (true) {
+            PLAIN("Iteration: %d", i++);
             x86_cmsghdr* guest_cmsghdr = (x86_cmsghdr*)guest_cmsghdr_pointer;
             cmsghdr* host_cmsghdr = (cmsghdr*)host_cmsghdr_pointer;
 

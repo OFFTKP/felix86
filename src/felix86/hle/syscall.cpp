@@ -1220,7 +1220,6 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
 
             sigset_t host_mask;
             sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
-            PLAIN("New mask: %016lx", host_mask);
             int result = pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
             ASSERT(result == 0);
         }
