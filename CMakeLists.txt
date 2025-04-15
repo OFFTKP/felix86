@@ -67,6 +67,7 @@ set(FELIX86_HLE_SOURCES
     src/felix86/hle/brk.cpp
     src/felix86/hle/cpuid.cpp
     src/felix86/hle/filesystem.cpp
+    src/felix86/hle/ioctl32.cpp
     src/felix86/hle/ipc32.cpp
     src/felix86/hle/libgl_guest_ptrs.cpp
     src/felix86/hle/mmap.cpp

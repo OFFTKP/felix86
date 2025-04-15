@@ -27,6 +27,7 @@
 #include "felix86/hle/brk.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/guest_types.hpp"
+#include "felix86/hle/ioctl32.hpp"
 #include "felix86/hle/ipc32.hpp"
 #include "felix86/hle/socket32.hpp"
 #include "felix86/hle/syscall.hpp"
@@ -1666,6 +1667,10 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             result = ::waitpid((pid_t)arg1, (int*)arg2, (int)arg3);
             break;
         }
+        case felix86_x86_32_ioctl: {
+            result = ::ioctl32(arg1, arg2, arg3);
+            break;
+        }
         case felix86_x86_32_statfs64: {
             ASSERT(arg2 == sizeof(x86_statfs64));
 
@@ -1694,7 +1699,7 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             break;
         }
         case felix86_x86_32_ipc: {
-            result = ipc32(arg1, arg2, arg3, arg4, (void*)arg5, arg6);
+            result = ::ipc32(arg1, arg2, arg3, arg4, (void*)arg5, arg6);
             break;
         }
         case felix86_x86_32_stat64: {
