@@ -4649,32 +4649,27 @@ FAST_HANDLE(DPPS) {
 
 FAST_HANDLE(PSHUFLW) {
     u8 imm = rec.getImmediate(&operands[2]);
-    u8 el0 = imm & 0b11;
-    u8 el1 = (imm >> 2) & 0b11;
-    u8 el2 = (imm >> 4) & 0b11;
-    u8 el3 = (imm >> 6) & 0b11;
+    u64 el0 = imm & 0b11;
+    u64 el1 = (imm >> 2) & 0b11;
+    u64 el2 = (imm >> 4) & 0b11;
+    u64 el3 = (imm >> 6) & 0b11;
+    u64 low = el0 | el1 << 16 | el2 << 24 | el3 << 48;
+    u64 high = 0x0007000600050004;
 
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec iota2 = rec.scratchVec();
-    biscuit::GPR temp = rec.scratch();
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec result = rec.scratchVec();
+    biscuit::GPR high_gpr = rec.scratch();
+    biscuit::GPR low_gpr = rec.scratch();
+
+    rec.setVectorState(SEW::E64, 2);
+    as.LI(high_gpr, high);
+    as.LI(low_gpr, low);
+    as.VMV_SX(iota2, high_gpr);
+    as.VSLIDE1UP(iota, iota2, low_gpr);
 
     rec.setVectorState(SEW::E16, 8);
-    as.VMV(iota, 0);
-    as.VID(iota2);
-    // Slide down 4 words, so then the register looks like 8 7 6 5, then we can slide up the other 4 elements
-    // TODO: VRGATHEREI16
-    as.VSLIDEDOWN(iota2, iota2, 4);
-    as.LI(temp, el3);
-    as.VSLIDE1UP(iota, iota2, temp);
-    as.LI(temp, el2);
-    as.VSLIDE1UP(iota2, iota, temp);
-    as.LI(temp, el1);
-    as.VSLIDE1UP(iota, iota2, temp);
-    as.LI(temp, el0);
-    as.VSLIDE1UP(iota2, iota, temp);
-
     as.VMV(result, 0);
     as.VRGATHER(result, src, iota2);
 
@@ -4685,31 +4680,30 @@ FAST_HANDLE(PSHUFHW) {
     u8 imm = rec.getImmediate(&operands[2]);
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::GPR high_gpr = rec.scratch();
     biscuit::GPR tmp = rec.scratch();
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec iota2 = rec.scratchVec();
 
+    // TODO: VRGATHEREI16
+    u64 el0 = 4 + (imm & 0b11);
+    u64 el1 = 4 + ((imm >> 2) & 0b11);
+    u64 el2 = 4 + ((imm >> 4) & 0b11);
+    u64 el3 = 4 + ((imm >> 6) & 0b11);
+    u64 high = el0 | el1 << 16 | el2 << 24 | el3 << 48;
+
+    rec.setVectorState(SEW::E64, 2);
+    as.LI(high_gpr, high);
+    as.VMV_SX(iota, high_gpr);
+    as.VSLIDEUP(iota2, iota, 4);
+
     rec.setVectorState(SEW::E16, 8);
     as.VMV(result, src); // to move the low words
-
-    // TODO: VRGATHEREI16
-    u8 el0 = 4 + (imm & 0b11);
-    u8 el1 = 4 + ((imm >> 2) & 0b11);
-    u8 el2 = 4 + ((imm >> 4) & 0b11);
-    u8 el3 = 4 + ((imm >> 6) & 0b11);
-    as.VMV(iota2, el3);
-    as.LI(tmp, el2);
-    as.VSLIDE1UP(iota, iota2, tmp);
-    as.LI(tmp, el1);
-    as.VSLIDE1UP(iota2, iota, tmp);
-    as.LI(tmp, el0);
-    as.VSLIDE1UP(iota, iota2, tmp);
-    as.VSLIDEUP(iota2, iota, 4);
 
     as.LI(tmp, 0b11110000); // operate on top words only
     as.VMV(v0, tmp);
 
-    rec.vrgather(result, src, iota2, VecMask::Yes);
+    as.VRGATHER(result, src, iota2, VecMask::Yes);
 
     rec.setOperandVec(&operands[0], result);
 }

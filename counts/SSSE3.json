@@ -176,7 +176,7 @@
         "instruction_count": 8,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "LUI             ra, 0xffff0000(-65536)",
+            "LUI             ra, 0xfffffff0(-16)",
             "VMV.S.X         v0, ra",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VMV.V.I         v26, 0x0(0)",
