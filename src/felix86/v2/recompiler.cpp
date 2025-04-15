@@ -53,6 +53,12 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
     ZydisDecoderInit(&decoder, mode, stack_width);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
+
+    // We create a paging-like table where we have offset = 12 and then each layer is 9-bit
+    // For now we support 39-bit address spaces
+    if (g_config.paging) {
+        page_table = (u64*)mmap(nullptr, sizeof(u64*) * 1 << 9, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    }
 }
 
 Recompiler::~Recompiler() {
@@ -156,11 +162,9 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block) {
     ASSERT((u64)address_of_block >= it->second->address && (u64)address_of_block <= it->second->address_end);
 
     // We also need to remove it from the address cache
-    if (g_config.address_cache) {
-        AddressCacheEntry& entry = state->recompiler->address_cache[it->second->guest_address & ((1 << address_cache_bits) - 1)];
-        entry.guest = 0;
-        entry.host = 0;
-    }
+    AddressCacheEntry& entry = state->recompiler->address_cache[it->second->guest_address & ((1 << address_cache_bits) - 1)];
+    entry.guest = 0;
+    entry.host = 0;
 }
 
 void Recompiler::emitSigreturnThunk() {
@@ -183,6 +187,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
     block_metadata.clear();
     host_pc_map.clear();
     page_map.clear();
+    clearPageTable();
     std::fill(std::begin(address_cache), std::end(address_cache), AddressCacheEntry{});
 
     emitNecessaryStuff();
@@ -269,28 +274,97 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
 }
 
 u64 Recompiler::getCompiledBlock(ThreadState* state, u64 rip) {
-    if (g_config.address_cache) {
-        AddressCacheEntry& entry = address_cache[rip & ((1 << address_cache_bits) - 1)];
-        if (entry.guest == rip) {
-            return entry.host;
-        } else if (blockExists(rip)) {
-            u64 host = getBlockMetadata(rip).address;
-            entry.guest = rip;
-            entry.host = host;
-            return host;
-        } else {
-            return compile(state, rip);
+    AddressCacheEntry& entry = address_cache[rip & ((1 << address_cache_bits) - 1)];
+    if (entry.guest == rip) {
+        return entry.host;
+    } else if (!(rip & ~(1ull << 39))) {
+        u64 mask = (1 << 9) - 1;
+        u64 l1 = (rip >> (39 - 9)) & mask;
+        u64 offset = rip & 0xFFF;
+
+        u64* first_layer = (u64*)page_table[l1];
+        if (first_layer) {
+            u64 l2 = (rip >> (39 - 18)) & mask;
+            u64* second_layer = (u64*)first_layer[l2];
+            if (second_layer) {
+                u64 l3 = (rip >> (39 - 27)) & mask;
+                u64* third_layer = (u64*)second_layer[l3];
+                if (third_layer) {
+                    u64 address = third_layer[offset];
+                    if (address) {
+                        entry.guest = rip;
+                        entry.host = address;
+                        return address;
+                    }
+                }
+            }
         }
+    }
+
+    if (blockExists(rip)) {
+        u64 host = getBlockMetadata(rip).address;
+        entry.guest = rip;
+        entry.host = host;
+        return host;
     } else {
-        if (blockExists(rip)) {
-            return getBlockMetadata(rip).address;
-        } else {
-            return compile(state, rip);
-        }
+        u64 host = compile(state, rip);
+        entry.guest = rip;
+        entry.host = host;
+        addToPageTable(rip, host);
+        return host;
     }
 
     UNREACHABLE();
     return {};
+}
+
+void Recompiler::addToPageTable(u64 host, u64 guest) {
+    u64 mask = (1 << 9) - 1;
+    u64 l1 = (guest >> (39 - 9)) & mask;
+    u64 offset = guest & 0xFFF;
+    u64* first_layer = (u64*)page_table[l1];
+    if (!first_layer) {
+        first_layer = (u64*)mmap(nullptr, sizeof(u64*) * 1 << 9, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        ASSERT(first_layer != MAP_FAILED);
+    }
+
+    u64 l2 = (guest >> (39 - 18)) & mask;
+    u64* second_layer = (u64*)first_layer[l2];
+    if (!second_layer) {
+        second_layer = (u64*)mmap(nullptr, sizeof(u64*) * 1 << 9, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        ASSERT(second_layer != MAP_FAILED);
+    }
+
+    u64 l3 = (guest >> (39 - 27)) & mask;
+    u64* third_layer = (u64*)second_layer[l3];
+    if (!third_layer) {
+        third_layer = (u64*)mmap(nullptr, sizeof(u64*) * 1 << 12, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        ASSERT(third_layer != MAP_FAILED);
+    }
+
+    third_layer[offset] = host;
+}
+
+void Recompiler::clearPageTable() {
+    for (int l1 = 0; l1 < (1 << 9); l1++) {
+        u64* first_layer = (u64*)page_table[l1];
+        if (first_layer) {
+            for (int l2 = 0; l2 < (1 << 9); l2++) {
+                u64* second_layer = (u64*)first_layer[l2];
+                if (second_layer) {
+                    for (int l3 = 0; l3 < (1 << 9); l3++) {
+                        u64* third_layer = (u64*)second_layer[l3];
+                        if (third_layer) {
+                            // Probably faster than memsetting everything to zero
+                            ASSERT(munmap(third_layer, sizeof(u64*) * 1 << 12) == 0);
+                            ASSERT((u64*)mmap(nullptr, sizeof(u64*) * 1 << 12, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0) !=
+                                   MAP_FAILED);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 u64 Recompiler::compileSequence(u64 rip) {

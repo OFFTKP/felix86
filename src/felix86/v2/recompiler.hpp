@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <mutex>
 #include <unordered_map>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
@@ -639,6 +638,12 @@ private:
     ZydisDecodedOperand* cached_lea_operand;
 
     std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
+
+    u64* page_table{};
+
+    void addToPageTable(u64 guest, u64 host);
+
+    void clearPageTable();
 
     FlagMode flag_mode = FlagMode::Default;
 
