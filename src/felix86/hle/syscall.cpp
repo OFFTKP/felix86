@@ -1489,6 +1489,18 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_ia32_fallocate: {
+            int fd = arg1;
+            int mode = arg2;
+            u64 offset_low = arg3;
+            u64 offset_high = arg4;
+            u64 length_low = arg5;
+            u64 length_high = arg6;
+            u64 offset = (offset_high << 32) | offset_low;
+            u64 length = (length_high << 32) | length_low;
+            result = fallocate(fd, mode, offset, length);
+            break;
+        }
         case felix86_x86_32_writev: {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
@@ -1633,13 +1645,18 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
             case F_DUPFD_CLOEXEC:
             case F_GETFD:
             case F_SETFD:
-            case F_GETFL: {
+            case F_GETFL:
+            case F_ADD_SEALS:
+            case F_GET_SEALS:
+            case F_GETPIPE_SZ:
+            case F_SETPIPE_SZ:
+            case F_NOTIFY: {
                 result = ::fcntl(arg1, arg2, arg3);
                 break;
             }
             default: {
                 WARN("Unknown fcntl: %d", arg2);
-                result = -EINVAL;
+                result = ::fcntl(arg1, arg2, arg3);
                 break;
             }
             }
