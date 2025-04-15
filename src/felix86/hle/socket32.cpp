@@ -89,6 +89,8 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
             size_t __size_needed = sizeof(struct cmsghdr) + __CMSG_PADDING(host_cmsghdr->cmsg_len);
             bool cond1 = (((u8*)host_msghdr.msg_control + host_msghdr.msg_controllen - (u8*)host_cmsghdr) < __size_needed);
             bool cond2 = (((u8*)host_msghdr.msg_control + host_msghdr.msg_controllen - (u8*)host_cmsghdr - __size_needed) < host_cmsghdr->cmsg_len);
+            PLAIN("%lx + %lx - %lx - %lx < %lx", host_msghdr.msg_control, host_msghdr.msg_controllen, host_cmsghdr, __size_needed,
+                  host_cmsghdr->cmsg_len);
 
             PLAIN("Host len: %lx cond1: %d cond2: %d", host_cmsghdr->cmsg_len, cond1, cond2);
 
