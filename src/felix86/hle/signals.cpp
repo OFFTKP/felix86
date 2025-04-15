@@ -264,7 +264,6 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
         reconstruct_state(state, current_block, actual_rip, pc, host_gprs, host_vecs);
     } else {
         // State reconstruction isn't necessary, the state should be in some stable form
-        // It's rare that a signal doesn't happen in jit code as we block signals during compilation, but it's possible
     }
 
     // Now we need to copy the state to the frame

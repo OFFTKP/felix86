@@ -411,6 +411,13 @@ FAST_HANDLE(FLDZ) {
     rec.pushST(top, st);
 }
 
+FAST_HANDLE(FABS) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    as.FABS_D(st0, st0);
+    rec.setST(top, 0, st0);
+}
+
 FAST_HANDLE(FNSTCW) {}
 
 FAST_HANDLE(FLDCW) {}
