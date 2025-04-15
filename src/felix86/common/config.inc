@@ -24,7 +24,7 @@ X(Debugging, bool, sleep_on_error, false, FELIX86_SLEEP_ERROR, "Sleep for 40 sec
 X(Debugging, bool, capture_sigsegv, true, FELIX86_CAPTURE_SIGSEGV, "Sleep for 40 seconds on any SIGSEGV that is unrelated to self-modifying code", false)
 
 X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance", false)
-X(Performance, bool, paging, true, FELIX86_PAGING, "Use paging to speed up block lookup", false)
+X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup", false)
 X(Performance, bool, unsafe_flags, false, FELIX86_UNSAFE_FLAGS, "Assume flags are thrashed on every call/ret to avoid some calculations", false)
 X(Performance, bool, inline_syscalls, true, FELIX86_INLINE_SYSCALLS, "Use ECALL directly instead of a function for some syscalls", false)
 X(Performance, bool, inaccurate_minmax, true, FELIX86_INACCURATE_MINMAX, "Don't accurately calculate minps/minpd/maxps/maxpd instructions when it comes to NaNs", false)
