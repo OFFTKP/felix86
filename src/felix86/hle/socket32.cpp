@@ -75,6 +75,7 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
             PLAIN("Iteration: %d", i++);
             x86_cmsghdr* guest_cmsghdr = (x86_cmsghdr*)guest_cmsghdr_pointer;
             cmsghdr* host_cmsghdr = (cmsghdr*)host_cmsghdr_pointer;
+            PLAIN("Host: %p\nGuest: %p", host_cmsghdr_pointer, guest_cmsghdr_pointer);
 
             host_cmsghdr->cmsg_level = guest_cmsghdr->cmsg_level;
             host_cmsghdr->cmsg_type = guest_cmsghdr->cmsg_type;
