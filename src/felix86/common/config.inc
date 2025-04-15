@@ -4,6 +4,7 @@ X(General, std::filesystem::path, rootfs_path, {}, FELIX86_ROOTFS, "Set the root
 X(Logging, bool, verbose, false, FELIX86_VERBOSE, "Enable verbose logging", false)
 X(Logging, bool, quiet, false, FELIX86_QUIET, "Disable all logging", false)
 X(Logging, bool, strace, false, FELIX86_STRACE, "Enable logging of syscalls", false)
+X(Logging, bool, print_signals, false, FELIX86_PRINT_SIGNALS, "Print on every guest signal handler", false);
 
 X(Debugging, bool, dump_regs, false, FELIX86_DUMP_REGS, "Dump register values on exit", false)
 X(Debugging, bool, calltrace, false, FELIX86_CALLTRACE, "Capture a calltrace (push on every call, pop on every ret)", false)

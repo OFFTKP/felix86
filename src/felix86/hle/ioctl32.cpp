@@ -6,7 +6,7 @@
 int ioctl32(int fd, u32 cmd, u32 args) {
     switch (_IOC_TYPE(cmd)) {
     default: {
-        WARN("Unknown ioctl command: %lx", cmd);
+        WARN("Unknown ioctl command: %x", cmd);
         return ::ioctl(fd, cmd, args);
     }
     }

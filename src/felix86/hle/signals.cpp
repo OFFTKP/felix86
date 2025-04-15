@@ -560,7 +560,9 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         return true;
     }
 
-    VERBOSE("------- Guest signal %s (%d) %s -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code");
+    if (g_config.print_signals || g_config.verbose) {
+        PLAIN("------- Guest signal %s (%d) %s -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code");
+    }
 
     ASSERT(!g_mode32);
 

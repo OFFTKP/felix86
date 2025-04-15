@@ -20,7 +20,7 @@ add_subdirectory(external/Catch2)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 
-option(BUILD_THUNKING "Build with thunking support" ON)
+option(BUILD_THUNKING "Build with thunking support" OFF)
 
 if (BUILD_THUNKING)
     message("Building with thunking support")

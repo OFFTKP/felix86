@@ -8,6 +8,7 @@
 #include <sys/signal.h>
 #include <sys/statfs.h>
 #include <sys/uio.h>
+#include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
 struct x64_sigaction {
@@ -437,3 +438,59 @@ struct x86_rusage {
 
 static_assert(std::is_trivially_copyable<x86_rusage>::value);
 static_assert(sizeof(x86_rusage) == 72);
+
+struct drm_version {
+    int version_major;
+    int version_minor;
+    int version_patchlevel;
+    size_t name_len;
+    char* name;
+    size_t date_len;
+    char* date;
+    size_t desc_len;
+    char* desc;
+};
+
+struct x86_drm_version {
+    u32 version_major;
+    u32 version_minor;
+    u32 version_patchlevel;
+    u32 name_len;
+    u32 name;
+    u32 date_len;
+    u32 date;
+    u32 desc_len;
+    u32 desc;
+
+    x86_drm_version() = delete;
+
+    operator drm_version() const {
+        drm_version host_drm_version;
+        host_drm_version.version_major = version_major;
+        host_drm_version.version_minor = version_minor;
+        host_drm_version.version_patchlevel = version_patchlevel;
+        host_drm_version.name_len = name_len;
+        host_drm_version.name = (char*)(u64)name;
+        host_drm_version.date_len = date_len;
+        host_drm_version.date = (char*)(u64)date;
+        host_drm_version.desc_len = desc_len;
+        host_drm_version.desc = (char*)(u64)desc;
+        return host_drm_version;
+    }
+
+    x86_drm_version(const drm_version& host_drm_version) {
+        version_major = host_drm_version.version_major;
+        version_minor = host_drm_version.version_minor;
+        version_patchlevel = host_drm_version.version_patchlevel;
+        name_len = host_drm_version.name_len;
+        name = (u64)host_drm_version.name;
+        date_len = host_drm_version.date_len;
+        date = (u64)host_drm_version.date;
+        desc_len = host_drm_version.desc_len;
+        desc = (u64)host_drm_version.desc;
+
+        ASSERT(name < 0xFFFF'FFFF);
+        ASSERT(date < 0xFFFF'FFFF);
+        ASSERT(desc < 0xFFFF'FFFF);
+    }
+};
