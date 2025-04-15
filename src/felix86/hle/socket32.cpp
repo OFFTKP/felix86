@@ -102,7 +102,7 @@ int sendmsg32(int fd, const x86_msghdr* guest_msghdr, int flags) {
                 guest_cmsghdr_pointer += guest_cmsghdr->cmsg_len;
                 guest_cmsghdr_pointer = (guest_cmsghdr_pointer + 3) & ~0b11ull;
 
-                if (guest_cmsghdr_pointer > guest_msghdr->msg_control + guest_msghdr->msg_controllen) {
+                if (guest_cmsghdr_pointer >= guest_msghdr->msg_control + guest_msghdr->msg_controllen) {
                     break;
                 }
             }
