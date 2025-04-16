@@ -1422,7 +1422,7 @@ void Recompiler::writebackMMXState() {
     for (int i = 0; i < 8; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_MM0 + i);
         if (getMetadata(ref).dirty) {
-            setVectorState(SEW::E64, maxVlen() / 64);
+            setVectorState(SEW::E64, 1);
             as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + i * sizeof(u64));
             as.VSE64(allocatedVec(ref), address);
         }
