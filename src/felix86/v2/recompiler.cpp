@@ -269,6 +269,7 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
 }
 
 u64 Recompiler::getCompiledBlock(ThreadState* state, u64 rip) {
+    printf("RIP: %lx -- RSP: %lx -- RBP: %lx\n", state->rip, state->gprs[X86_REF_RSP], state->gprs[X86_REF_RBP]);
     if (g_config.address_cache) {
         AddressCacheEntry& entry = address_cache[rip & ((1 << address_cache_bits) - 1)];
         if (entry.guest == rip) {

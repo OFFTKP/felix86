@@ -312,7 +312,7 @@ FAST_HANDLE(ADD) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::ADD, &Assembler::ADDW);
     }
@@ -361,7 +361,7 @@ FAST_HANDLE(SUB) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::SUB, &Assembler::SUBW);
     }
@@ -504,7 +504,7 @@ FAST_HANDLE(OR) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::OR, &Assembler::OR);
     }
@@ -581,7 +581,7 @@ FAST_HANDLE(XOR) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::XOR, &Assembler::XOR);
     }
