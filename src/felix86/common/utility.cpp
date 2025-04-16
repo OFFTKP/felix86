@@ -276,8 +276,7 @@ void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
     }
 
     for (int i = 0; i < 8; i++) {
-        Float80 f = f64_to_80(state->fp[i]);
-        memcpy(&data->st[i].st[0], &f, 10);
+        memcpy(&data->st[i].st[0], &state->fp[i], sizeof(u64));
     }
 
     data->fcw = state->fpu_cw;
@@ -294,9 +293,7 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
     }
 
     for (int i = 0; i < 8; i++) {
-        Float80 f;
-        memcpy(&f, &data->st[i].st[0], 10);
-        state->fp[i] = f80_to_64(&f);
+        memcpy(&state->fp[i], &data->st[i].st[0], sizeof(u64));
     }
 
     state->fpu_cw = data->fcw;
