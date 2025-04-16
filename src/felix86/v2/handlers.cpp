@@ -7236,12 +7236,11 @@ FAST_HANDLE(MOVDDUP) {
 }
 
 FAST_HANDLE(PSADBW) {
-    biscuit::Vec min = rec.scratchVec();
-    biscuit::Vec max = rec.scratchVec();
     biscuit::Vec sub = rec.scratchVec();
     biscuit::Vec sub_upper = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec result2 = rec.scratchVec();
+    biscuit::Vec mask = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
@@ -7252,10 +7251,10 @@ FAST_HANDLE(PSADBW) {
         rec.setVectorState(SEW::E8, 16);
     }
 
-    as.VMV(result, 0);
-    as.VMIN(min, dst, src);
-    as.VMAX(max, dst, src);
-    as.VSUB(sub, max, min);
+    as.VSUB(result, dst, src);
+    as.VSRA(mask, result, 15);
+    as.VXOR(result2, result, mask);
+    as.VSUB(result, result2, mask);
 
     if (is_mmx) {
         rec.setVectorState(SEW::E8, 8, LMUL::MF2);
@@ -7268,7 +7267,7 @@ FAST_HANDLE(PSADBW) {
         as.VWREDSUMU(result, sub, result);
         as.VWREDSUMU(result2, sub_upper, result2);
         rec.setVectorState(SEW::E64, 2);
-        biscuit::Vec result2_up = max;
+        biscuit::Vec result2_up = rec.scratchVec();
         as.VSLIDE1UP(result2_up, result2, x0);
         as.VOR(dst, result2_up, result);
         rec.setOperandVec(&operands[0], dst);
