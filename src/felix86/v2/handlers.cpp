@@ -7236,13 +7236,16 @@ FAST_HANDLE(MOVDDUP) {
 }
 
 FAST_HANDLE(PSADBW) {
-    biscuit::Vec sub = rec.scratchVec();
-    biscuit::Vec sub_upper = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec result2 = rec.scratchVec();
-    biscuit::Vec mask = rec.scratchVec();
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec result_high = rec.scratchVec();
+    ASSERT(result.Index() % 2 == 0); // even register for widening ops
+    ASSERT(result_high.Index() == result.Index() + 1);
+    biscuit::Vec mask = rec.scratchVec();
+    biscuit::Vec mask_high = rec.scratchVec();
+    ASSERT(mask.Index() % 2 == 0);
+    ASSERT(mask_high.Index() == mask.Index() + 1);
 
     bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     if (is_mmx) {
@@ -7251,26 +7254,27 @@ FAST_HANDLE(PSADBW) {
         rec.setVectorState(SEW::E8, 16);
     }
 
-    as.VSUB(result, dst, src);
-    as.VSRA(mask, result, 7);
-    as.VXOR(result2, result, mask);
-    as.VSUB(sub, result2, mask);
-    as.VMV(result, 0);
+    as.VWSUBU(result, dst, src);
+    rec.setVectorState(SEW::E16, 8, LMUL::M2);
+    as.VSRA(mask, result, 15);
+    as.VXOR(result, result, mask);
+    as.VSUB(result, result, mask);
+
+    rec.setVectorState(SEW::E16, 8);
+    biscuit::Vec reduction = rec.scratchVec();
+    as.VMV(reduction, 0);
 
     if (is_mmx) {
-        rec.setVectorState(SEW::E8, 8, LMUL::MF2);
-        as.VWREDSUMU(result, sub, result);
+        as.VREDSUM(reduction, result, reduction);
         rec.setOperandVec(&operands[0], result);
     } else {
-        as.VSLIDEDOWN(sub_upper, sub, 8);
-        as.VMV(result2, 0);
-        rec.setVectorState(SEW::E8, 8, LMUL::MF2);
-        as.VWREDSUMU(result, sub, result);
-        as.VWREDSUMU(result2, sub_upper, result2);
+        biscuit::Vec reduction2 = rec.scratchVec();
+        as.VMV(reduction2, 0);
+        as.VREDSUM(reduction, result, reduction);
+        as.VREDSUM(reduction2, result_high, reduction2);
         rec.setVectorState(SEW::E64, 2);
-        biscuit::Vec result2_up = rec.scratchVec();
-        as.VSLIDE1UP(result2_up, result2, x0);
-        as.VOR(dst, result2_up, result);
+        as.VSLIDE1UP(result, reduction2, x0);
+        as.VOR(dst, result, reduction);
         rec.setOperandVec(&operands[0], dst);
     }
 }
