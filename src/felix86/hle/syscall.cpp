@@ -928,14 +928,32 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         VERBOSE("----- sigaltstack was called -----");
         stack_t* new_ss = (stack_t*)arg1;
         stack_t* old_ss = (stack_t*)arg2;
+        u64 current_rsp = state->gprs[X86_REF_RSP];
+
+        bool on_stack = false;
+        if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp && current_rsp < state->alt_stack.ss_size) {
+            on_stack = true;
+        }
 
         if (old_ss) {
             old_ss->ss_sp = state->alt_stack.ss_sp;
-            old_ss->ss_flags = state->alt_stack.ss_flags;
+            old_ss->ss_flags = 0;
             old_ss->ss_size = state->alt_stack.ss_size;
+
+            if (on_stack) {
+                old_ss->ss_flags = SS_ONSTACK;
+            } else {
+                old_ss->ss_flags = SS_DISABLE;
+            }
         }
 
         if (new_ss) {
+            if (on_stack) {
+                WARN("Tried to set sigaltstack while using it");
+                result = -EPERM;
+                break;
+            }
+
             state->alt_stack.ss_sp = new_ss->ss_sp;
             state->alt_stack.ss_flags = new_ss->ss_flags;
             state->alt_stack.ss_size = new_ss->ss_size;
