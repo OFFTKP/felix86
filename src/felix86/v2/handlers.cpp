@@ -7271,7 +7271,7 @@ FAST_HANDLE(PSADBW) {
 
     if (is_mmx) {
         as.VREDSUM(reduction, result, reduction);
-        rec.setOperandVec(&operands[0], result);
+        rec.setOperandVec(&operands[0], reduction);
     } else {
         biscuit::Vec reduction2 = rec.scratchVec();
         as.VMV(reduction2, 0);
