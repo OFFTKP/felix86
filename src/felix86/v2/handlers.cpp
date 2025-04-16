@@ -7261,10 +7261,9 @@ FAST_HANDLE(PSADBW) {
 
     if (!is_mmx) {
         as.VSLIDEDOWN(scratch, result, 8);
-        rec.setVectorState(SEW::E16, 8);
-    } else {
-        rec.setVectorState(SEW::E16, 4);
     }
+
+    rec.setVectorState(SEW::E16, 8);
 
     biscuit::Vec reduction = rec.scratchVec();
     as.VMV(reduction, 0);
