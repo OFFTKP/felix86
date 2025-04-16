@@ -6356,8 +6356,8 @@ FAST_HANDLE(FXSAVE) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    as.MV(a0, rec.threadStatePointer());
     as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
     as.LI(a2, 0);
     rec.call((u64)&felix86_fxsave);
     rec.restoreRoundingMode();
@@ -6368,8 +6368,8 @@ FAST_HANDLE(FXSAVE64) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    as.MV(a0, rec.threadStatePointer());
     as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
     as.LI(a2, 1);
     rec.call((u64)&felix86_fxsave);
     rec.restoreRoundingMode();
@@ -6380,8 +6380,8 @@ FAST_HANDLE(FXRSTOR) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    as.MV(a0, rec.threadStatePointer());
     as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
     as.LI(a2, 0);
     rec.call((u64)&felix86_fxrstor);
     rec.restoreRoundingMode();
@@ -6392,8 +6392,8 @@ FAST_HANDLE(FXRSTOR64) {
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
 
-    as.MV(a0, rec.threadStatePointer());
     as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
     as.LI(a2, 1);
     rec.call((u64)&felix86_fxrstor);
     rec.restoreRoundingMode();
