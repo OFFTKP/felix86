@@ -7273,6 +7273,7 @@ FAST_HANDLE(PSADBW) {
         as.VREDSUM(reduction, result, reduction);
         as.VREDSUM(reduction2, result_high, reduction2);
         rec.setVectorState(SEW::E64, 2);
+        as.VMV(result, 0);
         as.VSLIDE1UP(result, reduction2, x0);
         as.VOR(dst, result, reduction);
         rec.setOperandVec(&operands[0], dst);
