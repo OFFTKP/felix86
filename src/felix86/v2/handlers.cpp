@@ -7241,9 +7241,7 @@ FAST_HANDLE(PSADBW) {
     ASSERT(result.Index() % 2 == 0); // even register for widening ops
     ASSERT(result_high.Index() == result.Index() + 1);
     biscuit::Vec mask = rec.scratchVec();
-    biscuit::Vec mask_high = rec.scratchVec();
     ASSERT(mask.Index() % 2 == 0);
-    ASSERT(mask_high.Index() == mask.Index() + 1);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec scratch = rec.scratchVec();
