@@ -7252,7 +7252,7 @@ FAST_HANDLE(PSADBW) {
     }
 
     as.VSUB(result, dst, src);
-    as.VSRA(mask, result, 15);
+    as.VSRA(mask, result, 7);
     as.VXOR(result2, result, mask);
     as.VSUB(result, result2, mask);
 
