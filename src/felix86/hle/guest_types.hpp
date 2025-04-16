@@ -15,7 +15,7 @@ struct x64_sigaction {
     void (*handler)(int, siginfo_t*, void*);
     u64 sa_flags;
     void (*restorer)(void);
-    sigset_t sa_mask;
+    u64 sa_mask;
 };
 
 struct x86_user_desc {

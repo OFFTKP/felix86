@@ -585,7 +585,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     }
 
     sigset_t mask_during_signal;
-    mask_during_signal = handler->mask;
+    mask_during_signal = *(sigset_t*)&handler->mask;
 
     if (!(handler->flags & SA_NODEFER)) {
         sigaddset(&mask_during_signal, sig);
@@ -667,7 +667,7 @@ void Signals::initialize() {
     }
 }
 
-void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, sigset_t mask, int flags) {
+void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u64 mask, int flags) {
     ASSERT(sig >= 1 && sig <= 64);
 
     // Hopefully externally synchronized, no need for locks :cluegi:

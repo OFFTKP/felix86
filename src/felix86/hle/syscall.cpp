@@ -896,12 +896,6 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             old_act->sa_mask = old.mask;
         }
 
-        PLAIN("rt_sigaction: %d %p %p\n", arg1, arg2, arg3);
-
-        if (state->rip == 0x575420) {
-            raise(SIGTRAP);
-        }
-
         result = 0;
         break;
     }

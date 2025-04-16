@@ -9,8 +9,8 @@
 #endif
 
 struct RegisteredSignal {
-    u64 func = {};      // handler function of signal
-    sigset_t mask = {}; // blocked during execution of this handler
+    u64 func = {}; // handler function of signal
+    u64 mask = {}; // blocked during execution of this handler
     int flags = 0;
 };
 
@@ -47,7 +47,7 @@ struct SignalHandlerTable {
         return &table[sig];
     }
 
-    void registerSignal(int sig, u64 func, sigset_t mask, int flags) {
+    void registerSignal(int sig, u64 func, u64 mask, int flags) {
         sig -= 1;
         ASSERT(sig >= 0 && sig <= 63);
         table[sig].flags = flags;
@@ -73,7 +73,7 @@ struct XmmReg;
 
 struct Signals {
     static void initialize();
-    static void registerSignalHandler(ThreadState* state, int sig, u64 handler, sigset_t mask, int flags);
+    static void registerSignalHandler(ThreadState* state, int sig, u64 handler, u64 mask, int flags);
     [[nodiscard]] static RegisteredSignal getSignalHandler(ThreadState* state, int sig);
 
     // To AND with a mask because these signals are necessary for the emulator to work
