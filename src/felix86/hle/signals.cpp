@@ -229,7 +229,7 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
         ERROR("RSP is null, use_altstack: %d", use_altstack);
     }
 
-    rsp = rsp - 1024; // red zone
+    rsp = rsp - 128; // red zone
     rsp = rsp - sizeof(x64_rt_sigframe);
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
@@ -583,6 +583,8 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         // If there's no altstack set up, use the default stack instead
         use_altstack = false;
     }
+
+    PLAIN("Use altstack: %d, alt stack: %lx", use_altstack, state->alt_stack.ss_sp);
 
     sigset_t mask_during_signal;
     mask_during_signal = *(sigset_t*)&handler->mask;
