@@ -877,6 +877,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         break;
     }
     case felix86_riscv64_rt_sigaction: {
+        RegisteredSignal old = Signals::getSignalHandler(state, arg1);
         x64_sigaction* act = (x64_sigaction*)arg2;
         if (act) {
             auto handler = act->handler;
@@ -888,15 +889,14 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             }
         }
 
-        struct x64_sigaction* old_act = (struct x64_sigaction*)arg3;
+        x64_sigaction* old_act = (x64_sigaction*)arg3;
         if (old_act) {
-            RegisteredSignal old = Signals::getSignalHandler(state, arg1);
             old_act->handler = (decltype(old_act->handler))old.func;
             old_act->sa_flags = old.flags;
             old_act->sa_mask = old.mask;
         }
 
-        printf("rt_sigaction: %d %p %p\n", arg1, arg2, arg3);
+        PLAIN("rt_sigaction: %d %p %p\n", arg1, arg2, arg3);
 
         if (state->rip == 0x575420) {
             raise(SIGTRAP);
