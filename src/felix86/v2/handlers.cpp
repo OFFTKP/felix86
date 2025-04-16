@@ -7236,8 +7236,6 @@ FAST_HANDLE(MOVDDUP) {
 }
 
 FAST_HANDLE(PSADBW) {
-    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
-    biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec result_high = rec.scratchVec();
     ASSERT(result.Index() % 2 == 0); // even register for widening ops
@@ -7246,6 +7244,8 @@ FAST_HANDLE(PSADBW) {
     biscuit::Vec mask_high = rec.scratchVec();
     ASSERT(mask.Index() % 2 == 0);
     ASSERT(mask_high.Index() == mask.Index() + 1);
+    biscuit::Vec dst = rec.getOperandVec(&operands[0]);
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
 
     bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     if (is_mmx) {
