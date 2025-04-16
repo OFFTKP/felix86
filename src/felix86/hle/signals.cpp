@@ -229,7 +229,7 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
         ERROR("RSP is null, use_altstack: %d", use_altstack);
     }
 
-    rsp = rsp - 128; // red zone
+    rsp = rsp - 1024; // red zone
     rsp = rsp - sizeof(x64_rt_sigframe);
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
