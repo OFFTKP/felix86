@@ -939,6 +939,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
             state->alt_stack.ss_sp = new_ss->ss_sp;
             state->alt_stack.ss_flags = new_ss->ss_flags;
             state->alt_stack.ss_size = new_ss->ss_size;
+            VERBOSE("New altstack: %lx", new_ss->ss_sp);
         }
 
         result = 0;
