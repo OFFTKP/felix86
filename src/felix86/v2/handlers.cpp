@@ -7246,6 +7246,7 @@ FAST_HANDLE(PSADBW) {
     ASSERT(mask_high.Index() == mask.Index() + 1);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::Vec scratch = rec.scratchVec();
 
     bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     if (is_mmx) {
@@ -7255,10 +7256,14 @@ FAST_HANDLE(PSADBW) {
     }
 
     as.VWSUBU(result, dst, src);
-    rec.setVectorState(SEW::E16, 8, LMUL::M2);
+    rec.setVectorState(SEW::E16, 16, LMUL::M2);
     as.VSRA(mask, result, 15);
     as.VXOR(result, result, mask);
     as.VSUB(result, result, mask);
+
+    if (!is_mmx) {
+        as.VSLIDEDOWN(scratch, result, 8);
+    }
 
     rec.setVectorState(SEW::E16, 8);
     biscuit::Vec reduction = rec.scratchVec();
@@ -7271,9 +7276,8 @@ FAST_HANDLE(PSADBW) {
         biscuit::Vec reduction2 = rec.scratchVec();
         as.VMV(reduction2, 0);
         as.VREDSUM(reduction, result, reduction);
-        as.VREDSUM(reduction2, result_high, reduction2);
+        as.VREDSUM(reduction2, scratch, reduction2);
         rec.setVectorState(SEW::E64, 2);
-        as.VMV(result, 0);
         as.VSLIDE1UP(result, reduction2, x0);
         as.VOR(dst, result, reduction);
         rec.setOperandVec(&operands[0], dst);
