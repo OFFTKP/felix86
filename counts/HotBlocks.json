@@ -1,6 +1,6 @@
 {
     "llvmpipe_shader": {
-        "instruction_count": 284,
+        "instruction_count": 286,
         "expected_asm": [
             "LD              ra, a1, 0x0(0)",
             "ADDI            s3, ra, 0x0(0)",
@@ -269,23 +269,25 @@
             "SB              s8, s11, 0x1cc(460)",
             "SB              s9, s11, 0x1cd(461)",
             "SRLI            zero, zero, 0x2a(42)",
-            "BNE             zero, s7, 0x20(32)",
-            "LUI             ra, 0x3e7a(15994)",
-            "ADDIW           ra, ra, 0x75f(1887)",
-            "SLLI            ra, ra, 0x15(21)",
+            "BNE             zero, s7, 0x28(40)",
+            "LUI             ra, 0x7f6(2038)",
+            "ADDIW           ra, ra, 0xfffffd01(-767)",
+            "SLLI            ra, ra, 0xc(12)",
+            "ADDI            ra, ra, 0x5ad(1453)",
+            "SLLI            ra, ra, 0xc(12)",
             "ADDI            ra, ra, 0x13a(314)",
             "SD              ra, s11, 0x80(128)",
             "AUIPC           t0, 0xffffffec(-20)",
-            "JALR            zero, t0, 0x434(1076)",
-            "LUI             t1, 0x1f4(500)",
-            "ADDIW           t1, t1, 0xfffffd3b(-709)",
-            "SLLI            t1, t1, 0xe(14)",
-            "ADDI            t1, t1, 0xfffffe0d(-499)",
+            "JALR            zero, t0, 0x408(1032)",
+            "LUI             t1, 0x3fb(1019)",
+            "ADDIW           t1, t1, 0xfffffe81(-383)",
             "SLLI            t1, t1, 0xc(12)",
+            "ADDI            t1, t1, 0xfffffadd(-1315)",
+            "SLLI            t1, t1, 0xd(13)",
             "ADDI            t1, t1, 0xfffffc32(-974)",
             "SD              t1, s11, 0x80(128)",
             "AUIPC           t0, 0xffffffec(-20)",
-            "JALR            zero, t0, 0x410(1040)"
+            "JALR            zero, t0, 0x3e4(996)"
         ]
     }
 }

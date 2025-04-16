@@ -124,8 +124,8 @@
     "660f3800dc": {
         "instruction_count": 5,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "ADDIW           ra, zero, 0x8f(143)",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VAND.VX         v27, v5, ra, none",
             "VRGATHER.VV     v26, v4, v27, none",
             "VMV.V.V         v4, v26"
@@ -135,8 +135,8 @@
     "660f3800d2": {
         "instruction_count": 5,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "ADDIW           ra, zero, 0x8f(143)",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VAND.VX         v27, v3, ra, none",
             "VRGATHER.VV     v26, v3, v27, none",
             "VMV.V.V         v3, v26"

@@ -584,8 +584,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         use_altstack = false;
     }
 
-    PLAIN("Use altstack: %d, alt stack: %lx", use_altstack, state->alt_stack.ss_sp);
-
     sigset_t mask_during_signal;
     mask_during_signal = *(sigset_t*)&handler->mask;
 
