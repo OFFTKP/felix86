@@ -4528,13 +4528,14 @@ FAST_HANDLE(PSHUFB) {
 
     bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     if (is_mmx) {
+        as.LI(bitmask, 0b10000111);
         rec.setVectorState(SEW::E8, 8);
     } else {
+        // Keep 0...3 for regular shifting and bit 7 which indicates resulting element goes to 0, maps well with vrgather this way
+        as.LI(bitmask, 0b10001111);
         rec.setVectorState(SEW::E8, 16);
     }
 
-    // Keep 0...3 for regular shifting and bit 7 which indicates resulting element goes to 0, maps well with vrgather this way
-    as.LI(bitmask, 0b10001111);
     as.VAND(mask_masked, mask, bitmask);
     as.VRGATHER(tmp, dst, mask_masked);
 
