@@ -580,7 +580,8 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     bool use_altstack = handler->flags & SA_ONSTACK;
     if (use_altstack && state->alt_stack.ss_sp == 0) {
-        WARN("Null alt-stack on signal handler %s, probably crashing soon", sigdescr_np(sig));
+        // If there's no altstack set up, use the default stack instead
+        use_altstack = false;
     }
 
     sigset_t mask_during_signal;
