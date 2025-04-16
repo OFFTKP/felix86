@@ -15,4 +15,4 @@ jobs:
           cmake --build build -j8
       - name: Test
         run: |
-          ${{runner.workspace}}/build/felix86_test
+          ./build/felix86_test
