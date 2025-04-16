@@ -61,7 +61,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         CATCH_REQUIRE(WEXITSTATUS(status) == FELIX86_BTEST_SUCCESS);
     }
 
-    SUCCESS("Test passed: %s", path.string().c_str());
+    SUCCESS("Test passed: %s", path.filename().c_str());
 }
 
 void common_loader(const std::filesystem::path& path) {

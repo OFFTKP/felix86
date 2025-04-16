@@ -270,7 +270,6 @@ int clear_breakpoints() {
 
 void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
     fxsave_data* data = (fxsave_data*)address;
-    memset(data, 0, sizeof(fxsave_data));
 
     for (int i = 0; i < 16; i++) {
         data->xmms[i] = state->xmm[i];
