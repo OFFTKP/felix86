@@ -7254,7 +7254,8 @@ FAST_HANDLE(PSADBW) {
     as.VSUB(result, dst, src);
     as.VSRA(mask, result, 7);
     as.VXOR(result2, result, mask);
-    as.VSUB(result, result2, mask);
+    as.VSUB(sub, result2, mask);
+    as.VMV(result, 0);
 
     if (is_mmx) {
         rec.setVectorState(SEW::E8, 8, LMUL::MF2);
