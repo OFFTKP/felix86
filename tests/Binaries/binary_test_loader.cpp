@@ -1,6 +1,8 @@
 
 #include <filesystem>
+#include <vector>
 #include <catch2/catch_test_macros.hpp>
+#include <spawn.h>
 #include <sys/wait.h>
 #include "common.h"
 #include "felix86/common/log.hpp"
@@ -13,8 +15,9 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         exit(1);
     }
 
-    const std::filesystem::path tmp_path = "/felix86_binary_tests";
+    const std::filesystem::path tmp_path = "/tmp/felix86_binary_tests";
     const std::filesystem::path exec_path = tmp_path / path.filename();
+    const std::string extension = path.extension();
 
     CATCH_INFO(fmt::format("Running test: {}", path.filename().string()));
 
@@ -22,11 +25,15 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     std::string srootfs = "FELIX86_ROOTFS=" + g_config.rootfs_path.string();
     std::string spath = exec_path;
 
-    const char* argv[] = {
-        felix_path.c_str(),
-        spath.c_str(),
-        nullptr,
-    };
+    std::vector<const char*> argv;
+    argv.push_back(felix_path.c_str());
+    if (extension == ".exe") {
+        // TODO: when 32-bit wine is more stable run it through that
+        CATCH_REQUIRE(std::filesystem::exists(g_config.rootfs_path / "usr" / "lib" / "wine" / "wine64"));
+        argv.push_back("/usr/lib/wine/wine64");
+    }
+    argv.push_back(spath.c_str());
+    argv.push_back(nullptr);
 
     std::vector<const char*> envp;
     char** env = environ;
@@ -47,7 +54,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         close(pipefd[0]);
         dup2(pipefd[1], 1);
         close(pipefd[1]);
-        execvpe(argv[0], (char* const*)argv, (char* const*)envp.data());
+        execvpe(argv[0], (char* const*)argv.data(), (char* const*)envp.data());
         perror("execvpe");
         exit(1);
     } else {
@@ -62,6 +69,15 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     }
 
     SUCCESS("Test passed: %s", path.filename().c_str());
+
+    // Kill any outstanding processes (ie. if we just ran a test with wine)
+    std::vector<const char*> args;
+    args.push_back(argv[0]);
+    args.push_back("-k");
+    args.push_back(nullptr);
+    int status;
+    int pid = posix_spawnp(&pid, args[0], nullptr, nullptr, (char**)args.data(), environ);
+    waitpid(pid, &status, 0);
 }
 
 void common_loader(const std::filesystem::path& path) {
