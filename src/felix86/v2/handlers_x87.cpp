@@ -422,10 +422,6 @@ FAST_HANDLE(FNSTCW) {}
 
 FAST_HANDLE(FLDCW) {}
 
-FAST_HANDLE(FINIT) {
-    WARN("Unhandled instruction FINIT, no operation");
-}
-
 FAST_HANDLE(FNINIT) {
     WARN("Unhandled instruction FNINIT, no operation");
 }
