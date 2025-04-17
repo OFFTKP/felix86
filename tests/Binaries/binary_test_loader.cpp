@@ -2,13 +2,14 @@
 #include <filesystem>
 #include <vector>
 #include <catch2/catch_test_macros.hpp>
+#include <fcntl.h>
 #include <spawn.h>
 #include <sys/wait.h>
 #include "common.h"
 #include "felix86/common/log.hpp"
 #include "fmt/format.h"
 
-void run_test(const std::filesystem::path& felix_path, const std::filesystem::path& path) {
+void run_test(const std::filesystem::path& felix_path, const std::filesystem::path& path, bool is_exe) {
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         perror("pipe");
@@ -75,9 +76,16 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     args.push_back(argv[0]);
     args.push_back("-k");
     args.push_back(nullptr);
+
+    posix_spawn_file_actions_t action;
+    posix_spawn_file_actions_init(&action);
+    posix_spawn_file_actions_addopen(&action, STDOUT_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
+
     int status;
-    int pid = posix_spawnp(&pid, args[0], nullptr, nullptr, (char**)args.data(), environ);
+    int pid = posix_spawnp(&pid, args[0], &action, nullptr, (char**)args.data(), environ);
     waitpid(pid, &status, 0);
+
+    posix_spawn_file_actions_destroy(&action);
 }
 
 void common_loader(const std::filesystem::path& path) {
@@ -95,8 +103,8 @@ void common_loader(const std::filesystem::path& path) {
     std::filesystem::directory_iterator it(dir / "Binaries" / path);
     for (const auto& entry : it) {
         std::string extension = entry.path().extension().string();
-        if (extension == ".out") {
-            run_test(dir / "felix86", entry.path().string());
+        if (extension == ".out" || extension == ".exe") {
+            run_test(dir / "felix86", entry.path().string(), extension == ".exe");
         }
     }
 }
