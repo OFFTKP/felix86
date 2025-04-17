@@ -29,7 +29,10 @@ const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issue
 static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
-static struct argp_option options[] = {{"info", 'i', 0, 0, "Print system info"}, {"configs", 'c', 0, 0, "Print the emulator configurations"}, {0}};
+static struct argp_option options[] = {{"info", 'i', 0, 0, "Print system info"},
+                                       {"configs", 'c', 0, 0, "Print the emulator configurations"},
+                                       {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
+                                       {0}};
 
 int guest_arg_start_index = -1;
 
@@ -113,6 +116,55 @@ error:
     return ok;
 }
 
+void kill_all() {
+    char exe_path[4096];
+    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+    if (len == -1) {
+        perror("readlink");
+    }
+    exe_path[len] = '\0';
+
+    std::vector<const char*> argv = {"pgrep", "-f", exe_path, NULL};
+    int pipefd[2];
+    if (pipe(pipefd) != 0) {
+        perror("pipe");
+    }
+
+    pid_t my_pid = getpid();
+
+    posix_spawn_file_actions_t actions;
+    posix_spawn_file_actions_init(&actions);
+    posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDOUT_FILENO);
+    posix_spawn_file_actions_addclose(&actions, pipefd[0]);
+
+    pid_t child_pid;
+    if (posix_spawnp(&child_pid, "pgrep", &actions, NULL, (char**)argv.data(), environ) != 0) {
+        perror("posix_spawnp");
+    }
+
+    close(pipefd[1]);
+    FILE* pgrep_output = fdopen(pipefd[0], "r");
+    if (!pgrep_output) {
+        perror("fdopen");
+    }
+
+    char line[32];
+    while (fgets(line, sizeof(line), pgrep_output)) {
+        pid_t pid = (pid_t)atoi(line);
+        if (pid > 0 && pid != my_pid) {
+            if (kill(pid, SIGKILL) == 0) {
+                printf("Killed PID %d\n", pid);
+            } else {
+                printf("Failed to kill PID %d (no privileges?)\n");
+            }
+        }
+    }
+
+    fclose(pgrep_output);
+    waitpid(child_pid, NULL, 0);
+    posix_spawn_file_actions_destroy(&actions);
+}
+
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     StartParameters* params = (StartParameters*)state->input;
 
@@ -130,6 +182,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     switch (key) {
     case 'i': {
         exit(print_system_info());
+        break;
+    }
+    case 'k': {
+        kill_all();
+        exit(0);
         break;
     }
     case 'c': {
