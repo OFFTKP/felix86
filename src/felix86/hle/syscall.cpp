@@ -769,6 +769,10 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = 0;
         break;
     }
+    case felix86_riscv64_listxattr: {
+        result = Filesystem::Listxattr((char*)arg1, (char*)arg2, arg3);
+        break;
+    }
     case felix86_riscv64_timerfd_create: {
         result = SYSCALL(timerfd_create, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
