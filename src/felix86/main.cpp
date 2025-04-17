@@ -121,6 +121,7 @@ error:
 void binfmt_misc() {
     if (!Sudo::hasPermissions()) {
         PLAIN("I need root permissions to register/unregister felix86 in binfmt_misc, please re-run with root permissions");
+        exit(1);
     }
 
     char exe_path[4096];
@@ -140,6 +141,10 @@ void binfmt_misc() {
     // Running felix86 -b either registers or unregisters if they already exist
     if (std::filesystem::exists("/proc/sys/fs/binfmt_misc/felix86-x86_64") || std::filesystem::exists("/proc/sys/fs/binfmt_misc/felix86-i386")) {
         auto unregister = [](const char* path) {
+            if (!std::filesystem::exists(path)) {
+                return;
+            }
+
             FILE* fp = fopen(path, "w");
             if (!fp) {
                 ERROR("Failed to fopen %s", path);
