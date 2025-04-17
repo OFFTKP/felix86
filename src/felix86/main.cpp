@@ -161,26 +161,27 @@ void binfmt_misc() {
         unregister("/proc/sys/fs/binfmt_misc/felix86-x86_64");
         unregister("/proc/sys/fs/binfmt_misc/felix86-i386");
 
-        printf("felix86 successfully unregistered from binfmt_misc");
+        printf("felix86 successfully unregistered from binfmt_misc\n");
     } else {
         FILE* fp = fopen("/proc/sys/fs/binfmt_misc/register", "w");
+
         if (!fp) {
             ERROR("Failed to open /proc/sys/fs/binfmt_misc/register");
         }
 
         if (fwrite(registration_string_x64.c_str(), 1, registration_string_x64.size(), fp) != registration_string_x64.size()) {
             fclose(fp);
-            ERROR("Failed to register x86-64");
+            ERROR("Failed to register for x86-64");
         }
+
+        fp = fopen("/proc/sys/fs/binfmt_misc/register", "w");
 
         if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != registration_string_i386.size()) {
             fclose(fp);
-            ERROR("Failed to register i386");
+            ERROR("Failed to register for i386");
         }
 
-        fclose(fp);
-
-        printf("felix86 successfully registered to binfmt_misc\nTo unregister run `felix86 -b`");
+        printf("felix86 successfully registered to binfmt_misc\nTo unregister run `felix86 -b`\n");
     }
 }
 
