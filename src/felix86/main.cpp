@@ -292,6 +292,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // TODO: These "hacky" environment variables are bandaid solutions to problems that we need to eventually fix
+    // They are enabled by default
+    if (g_config.hacky_envs) {
+        // Go uses a bunch of signals for preemption and this breaks our current signal handling
+        // Apps like `snap` use go, and those are used sometimes by `apt`, and this async preemption is useless in a lot of programs
+        params.envp.push_back("GODEBUG=asyncpreemptoff=1");
+    }
+
     auto it = params.envp.begin();
     while (it != params.envp.end()) {
         std::string env = *it;
