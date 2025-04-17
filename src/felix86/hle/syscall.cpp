@@ -183,6 +183,14 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
         result = BRK::set(arg1);
         break;
     }
+    case felix86_riscv64_getrlimit: {
+        result = SYSCALL(getrlimit, arg1, arg2);
+        break;
+    }
+    case felix86_riscv64_setrlimit: {
+        result = SYSCALL(setrlimit, arg1, arg2);
+        break;
+    }
     case felix86_riscv64_set_tid_address: {
         state->clear_tid_address = (pid_t*)arg1;
         result = gettid();
