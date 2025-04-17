@@ -9,7 +9,6 @@ bool Sudo::hasPermissions() {
 }
 
 void Sudo::requestPermissions(int argc, char** argv) {
-    LOG("I need administrator permissions to chroot and mount if necessary. Requesting administrator privileges...");
     std::vector<const char*> sudo_args = {"sudo"};
     sudo_args.push_back("-E");
     for (int i = 0; i < argc; i++) {
@@ -17,9 +16,7 @@ void Sudo::requestPermissions(int argc, char** argv) {
     }
     sudo_args.push_back(nullptr);
     execvpe("sudo", (char* const*)sudo_args.data(), environ);
-    ERROR("felix86 needs administrator privileges to chroot and mount. Failed to restart felix86 with sudo. Please run felix86 with "
-          "administrator privileges. Error code: %d",
-          errno);
+    ERROR("Failed to elevate permissions");
     __builtin_unreachable();
 }
 

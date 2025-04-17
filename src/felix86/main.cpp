@@ -13,7 +13,7 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/script.hpp"
+#include "felix86/common/sudo.hpp"
 #include "felix86/common/symlink.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/thunks.hpp"
@@ -119,6 +119,10 @@ error:
 }
 
 void binfmt_misc() {
+    if (!Sudo::hasPermissions()) {
+        PLAIN("I need root permissions to register/unregister felix86 in binfmt_misc, please re-run with root permissions");
+    }
+
     char exe_path[4096];
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if (len == -1) {
@@ -159,12 +163,12 @@ void binfmt_misc() {
             ERROR("Failed to open /proc/sys/fs/binfmt_misc/register");
         }
 
-        if (fwrite(registration_string_x64.c_str(), 1, registration_string_x64.size(), fp) != 2) {
+        if (fwrite(registration_string_x64.c_str(), 1, registration_string_x64.size(), fp) != registration_string_x64.size()) {
             fclose(fp);
             ERROR("Failed to register x86-64");
         }
 
-        if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != 2) {
+        if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != registration_string_i386.size()) {
             fclose(fp);
             ERROR("Failed to register i386");
         }
