@@ -685,7 +685,7 @@ void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u6
 
     // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
     if (handler != 0) {
-        struct real_sigaction sa;
+        struct riscv_sigaction sa;
         sa.sigaction = signal_handler;
         sa.sa_flags = SA_SIGINFO;
         sa.restorer = nullptr;

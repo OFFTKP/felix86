@@ -206,7 +206,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         // Raise the signal...
         ASSERT(kill(getpid(), sig) == 0);
 
-        thread_state->pending_signals &= ~sig_bit;
+        thread_state->pending_signals &= ~(1 << sig_bit);
 
         ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }

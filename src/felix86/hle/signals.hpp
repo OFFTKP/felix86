@@ -29,7 +29,7 @@ struct ComparePendingSignal {
     }
 };
 
-struct real_sigaction {
+struct riscv_sigaction {
     union {
         void (*handler)(int);
         void (*sigaction)(int, siginfo_t*, void*);
