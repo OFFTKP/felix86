@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <stdio.h>
 #include <unistd.h>
 #include "common.h"
 
@@ -8,6 +9,7 @@ volatile int broken = 0;
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
     if (handled_count < 5) {
         handled_count++;
+        printf("Incrementing count, new count: %d\n", handled_count);
         int pid = getpid();
         kill(pid, sig);
 
