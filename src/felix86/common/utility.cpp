@@ -703,10 +703,6 @@ const char* print_exit_reason(int reason) {
         return "Exit syscall";
     case EXIT_REASON_EXIT_GROUP_SYSCALL:
         return "Exit group syscall";
-    case EXIT_REASON_FRAME_STACK_OVERFLOW:
-        return "Frame stack overflow";
-    case EXIT_REASON_SIGRETURN:
-        return "Sigreturn";
     }
 
     return "Unknown";

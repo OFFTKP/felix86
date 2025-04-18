@@ -309,8 +309,6 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
 
 void Signals::sigreturn(ThreadState* state) {
     VERBOSE("------- sigreturn -------");
-    ASSERT_MSG(state->exit_reason == EXIT_REASON_UNKNOWN, "State had exit reason %s when entering sigreturn?", print_exit_reason(state->exit_reason));
-    state->exit_reason = EXIT_REASON_SIGRETURN;
 
     u64 rsp = state->GetGpr(X86_REF_RSP);
 
@@ -636,19 +634,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     // The only problem would be longjmps out of signal handlers. This is evil but possible that a game or something does it
     // In that case the frames would eventually overflow and at least we'd gave an appropriate message.
     state->recompiler->enterDispatcher(state);
-
-    if (state->exit_reason == EXIT_REASON_SIGRETURN) {
-        // All went fine, we returned from the dispatcher normally
-    } else {
-        if (state->exit_reason == EXIT_REASON_EXIT_GROUP_SYSCALL || state->exit_reason == EXIT_REASON_EXIT_SYSCALL) {
-            WARN("Exitting thread %d from inside a signal handler with error code: %d", gettid(), state->exit_code);
-            _exit(state->exit_code);
-        }
-        ERROR("Something went wrong when returning from dispatcher on signal handler: %s", print_exit_reason(state->exit_reason));
-    }
-
-    // Reset the exit reason
-    state->exit_reason = EXIT_REASON_UNKNOWN;
 
     return true;
 }
