@@ -1,28 +1,17 @@
 #pragma once
 
 #include <array>
-#include <mutex>
 #include <unordered_map>
 #include <Zydis/Utils.h>
 #include "Zydis/Decoder.h"
 #include "biscuit/assembler.hpp"
+#include "felix86/common/frame.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
 
 constexpr int address_cache_bits = 16;
 
 constexpr static u64 jit_stack_size = 1024 * 1024;
-
-constexpr static std::array saved_gprs = {ra, sp, gp, tp, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11};
-
-// A frame in the host stack that contains saved host registers
-struct felix86_frame {
-    constexpr static u64 expected_magic = 0x6814'8664'0000'FE86;
-    u64 magic; // to make sure this is indeed a frame
-    ThreadState* state;
-    u64 gprs[saved_gprs.size()];
-    // We don't modify the saved FPRs so we don't need to save them
-};
 
 struct AddressCacheEntry {
     u64 host{}, guest{};
@@ -135,7 +124,7 @@ struct Recompiler {
 
     void enterDispatcher(ThreadState* state);
 
-    [[noreturn]] void exitDispatcher(ThreadState* state);
+    [[noreturn]] void exitDispatcher(felix86_frame* state);
 
     void* getCompileNext();
 
@@ -605,7 +594,7 @@ private:
 
     void (*enter_dispatcher)(ThreadState*){};
 
-    void (*exit_dispatcher)(ThreadState*){};
+    void (*exit_dispatcher)(felix86_frame*){};
 
     void* compile_next_handler{};
 

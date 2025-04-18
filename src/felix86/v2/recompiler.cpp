@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
+#include "felix86/common/frame.hpp"
 #include "felix86/common/gdbjit.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/syscall.hpp"
@@ -121,8 +122,14 @@ void Recompiler::emitDispatcher() {
 
     exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();
 
+    // Move stack pointer to current frame (passed as an argument)
+    as.MV(sp, a0);
+
+    // Load ThreadState* into t4
+    as.LD(t4, offsetof(felix86_frame, state), a0);
+
     as.LI(t3, 1);
-    as.SB(t3, offsetof(ThreadState, signals_disabled), a0);
+    as.SB(t3, offsetof(ThreadState, signals_disabled), t4);
 
     // Load the frame we had before entering the dispatcher
     // First make sure our magic is correct
@@ -163,7 +170,7 @@ void Recompiler::emitDispatcher() {
     as.Bind(&stack_correct);
     as.MV(sp, t0);
 
-    as.SB(x0, offsetof(ThreadState, signals_disabled), a0);
+    as.SB(x0, offsetof(ThreadState, signals_disabled), t4);
 
     // Return to wherever the dispatcher was originally entered from using enter_dispatcher
     as.JR(ra);
@@ -1556,8 +1563,8 @@ void Recompiler::enterDispatcher(ThreadState* state) {
     enter_dispatcher(state);
 }
 
-void Recompiler::exitDispatcher(ThreadState* state) {
-    exit_dispatcher(state);
+void Recompiler::exitDispatcher(felix86_frame* frame) {
+    exit_dispatcher(frame);
     __builtin_unreachable();
 }
 

@@ -2730,7 +2730,7 @@ FAST_HANDLE(SYSCALL) {
 
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
-    as.MV(a0, rec.threadStatePointer());
+    as.MV(a0, sp);
     rec.call((u64)&felix86_syscall);
     rec.restoreRoundingMode();
 }
@@ -2741,7 +2741,7 @@ FAST_HANDLE(INT) {
 
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
-    as.MV(a0, rec.threadStatePointer());
+    as.MV(a0, sp);
     as.LI(a1, rip + instruction.length);
     rec.call((u64)&felix86_syscall32);
     rec.restoreRoundingMode();

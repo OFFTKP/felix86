@@ -176,7 +176,8 @@ bool try_strace_ioctl(int rdi, u64 rsi, u64 rdx, u64 result) {
     return false;
 }
 
-Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
+    ThreadState* state = frame->state;
     Result result;
     switch (rv_syscall) {
     case felix86_riscv64_brk: {
@@ -510,7 +511,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     case felix86_riscv64_exit_group: {
         state->exit_reason = EXIT_REASON_EXIT_GROUP_SYSCALL;
         state->exit_code = arg1;
-        Emulator::ExitDispatcher(state);
+        Emulator::ExitDispatcher(frame);
         UNREACHABLE();
         break;
     }
@@ -804,7 +805,7 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     case felix86_riscv64_exit: {
         state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
         state->exit_code = arg1;
-        Emulator::ExitDispatcher(state);
+        Emulator::ExitDispatcher(frame);
         UNREACHABLE();
         break;
     }
@@ -1274,7 +1275,9 @@ Result felix86_syscall_common(ThreadState* state, int rv_syscall, u64 arg1, u64 
     return result;
 }
 
-void felix86_syscall(ThreadState* state) {
+void felix86_syscall(felix86_frame* frame) {
+    ASSERT(frame->magic == felix86_frame::expected_magic);
+    ThreadState* state = frame->state;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 arg1 = state->GetGpr(X86_REF_RDI);
     u64 arg2 = state->GetGpr(X86_REF_RSI);
@@ -1288,7 +1291,7 @@ void felix86_syscall(ThreadState* state) {
 
     if (is_common) {
         int rv_syscall = x64_to_riscv(syscall_number);
-        result = felix86_syscall_common(state, rv_syscall, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = felix86_syscall_common(frame, rv_syscall, arg1, arg2, arg3, arg4, arg5, arg6);
     } else {
         switch (syscall_number) {
         case felix86_x86_64_time: {
@@ -1451,7 +1454,9 @@ void felix86_syscall(ThreadState* state) {
     }
 }
 
-void felix86_syscall32(ThreadState* state, u32 rip_next) {
+void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
+    ASSERT(frame->magic == felix86_frame::expected_magic);
+    ThreadState* state = frame->state;
     u64 syscall_number = state->GetGpr(X86_REF_RAX);
     u64 arg1 = state->GetGpr(X86_REF_RBX);
     u64 arg2 = state->GetGpr(X86_REF_RCX);
@@ -1473,7 +1478,7 @@ void felix86_syscall32(ThreadState* state, u32 rip_next) {
 
     if (is_common) {
         int rv_syscall = x86_to_riscv(syscall_number);
-        result = felix86_syscall_common(state, rv_syscall, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = felix86_syscall_common(frame, rv_syscall, arg1, arg2, arg3, arg4, arg5, arg6);
     } else {
         switch (syscall_number) {
         case felix86_x86_32_alarm: {
