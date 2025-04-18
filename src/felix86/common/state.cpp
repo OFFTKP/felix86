@@ -32,8 +32,6 @@ ThreadState::ThreadState(ThreadState* copy_state) {
 
         this->alt_stack = copy_state->alt_stack;
     }
-
-    frame_pointer = (u64)&frames[0];
 }
 
 void ThreadState::InitializeKey() {

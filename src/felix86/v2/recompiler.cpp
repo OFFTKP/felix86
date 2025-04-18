@@ -14,8 +14,6 @@
 
 constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
-constexpr static std::array saved_gprs = {ra, sp, gp, tp, s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11};
-
 static u8* allocateCodeCache() {
     u8 prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     u8 flags = MAP_PRIVATE | MAP_ANONYMOUS;
@@ -25,6 +23,14 @@ static u8* allocateCodeCache() {
 
 static void deallocateCodeCache(u8* memory) {
     munmap(memory, code_cache_size);
+}
+
+static void incorrect_magic(void* sp) {
+    ERROR("Incorrect magic in frame (sp: %lx)", sp);
+}
+
+static void incorrect_stack(void* sp_expected, void* sp_actual) {
+    ERROR("Incorrect stack in frame, expected %lx, but got %lx", sp_expected, sp_actual);
 }
 
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
@@ -70,25 +76,29 @@ void Recompiler::emitNecessaryStuff() {
 void Recompiler::emitDispatcher() {
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
-    Label stack_overflow;
-
-    // Disable guest signal handling while we are modifying the frame stack pointer
     as.LI(t3, 1);
     as.SB(t3, offsetof(ThreadState, signals_disabled), a0);
 
-    // Save the current frame. This means the return address, the stack pointer and
-    // the saved registers. TODO: lets save these in the stack instead
-    as.LD(t0, offsetof(ThreadState, frame_pointer), a0);
-    as.ADDI(t1, a0, offsetof(ThreadState, frames));
-    as.LI(t3, sizeof(ThreadState::frames));
-    as.ADD(t1, t1, t3);
-    as.ADDI(t2, t0, saved_gprs.size() * sizeof(u64));
-    // Make sure we wouldn't overflow our stack
-    as.BGT(t2, t1, &stack_overflow);
+    // Save the current frame in the stack
+    // The size of felix86_frame is bigger than the red zone, so we need to decrement the stack instead of using a temporary
+    // This is because a signal could technically thrash values outside the red zone if we don't decrement the stack pointer here
+    as.MV(t0, sp);
+    as.ADDI(sp, sp, -(int)sizeof(felix86_frame));
     for (size_t i = 0; i < saved_gprs.size(); i++) {
-        as.SD(saved_gprs[i], i * sizeof(u64), t0);
+        if (saved_gprs[i] != sp) {
+            as.SD(saved_gprs[i], offsetof(felix86_frame, gprs) + i * sizeof(u64), sp);
+        } else {
+            // Use t0 instead of sp to save our old stack
+            as.SD(t0, offsetof(felix86_frame, gprs) + i * sizeof(u64), sp);
+        }
     }
-    as.SD(t2, offsetof(ThreadState, frame_pointer), a0);
+
+    // Save the ThreadState pointer
+    as.SD(a0, offsetof(felix86_frame, state), sp);
+
+    // Also save the magic number
+    as.LI(t1, felix86_frame::expected_magic);
+    as.SD(t1, offsetof(felix86_frame, magic), sp);
 
     as.SB(x0, offsetof(ThreadState, signals_disabled), a0);
 
@@ -111,28 +121,52 @@ void Recompiler::emitDispatcher() {
 
     exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();
 
-    // Disable guest signal handling while we are modifying the frame stack pointer
     as.LI(t3, 1);
     as.SB(t3, offsetof(ThreadState, signals_disabled), a0);
 
-    // Load the frame we had before entering the dispatcher from our custom stack
-    as.LD(t0, offsetof(ThreadState, frame_pointer), a0);
-    as.ADDI(t0, t0, -(int)saved_gprs.size() * (int)sizeof(u64));
+    // Load the frame we had before entering the dispatcher
+    // First make sure our magic is correct
+    Label magic_correct;
+    as.LD(t1, offsetof(felix86_frame, magic), sp);
+    as.LI(t2, felix86_frame::expected_magic);
+    as.BEQ(t1, t2, &magic_correct);
+
+    // Magic is incorrect if we get here
+    as.MV(a0, sp);
+    as.LI(t0, (u64)incorrect_magic);
+    as.JALR(t0);
+    as.GetCodeBuffer().Emit32(0);
+
+    as.Bind(&magic_correct);
+
     for (size_t i = 0; i < saved_gprs.size(); i++) {
-        as.LD(saved_gprs[i], i * sizeof(u64), t0);
+        if (saved_gprs[i] != sp) {
+            as.LD(saved_gprs[i], offsetof(felix86_frame, gprs) + i * sizeof(u64), sp);
+        } else {
+            // Load the new stack pointer in t0 and set it later
+            as.LD(t0, offsetof(felix86_frame, gprs) + i * sizeof(u64), sp);
+        }
     }
-    as.SD(t0, offsetof(ThreadState, frame_pointer), a0);
+
+    // Sanity check that the stack is just sp + sizeof(felix86_frame)
+    Label stack_correct;
+    as.ADDI(t1, sp, sizeof(felix86_frame));
+    as.BEQ(t1, t0, &stack_correct);
+
+    // Stack pointer is incorrect if we get here
+    as.MV(a0, sp);
+    as.MV(a1, t0);
+    as.LI(t0, (u64)incorrect_stack);
+    as.JALR(t0);
+    as.GetCodeBuffer().Emit32(0);
+
+    as.Bind(&stack_correct);
+    as.MV(sp, t0);
 
     as.SB(x0, offsetof(ThreadState, signals_disabled), a0);
 
     // Return to wherever the dispatcher was originally entered from using enter_dispatcher
     as.JR(ra);
-
-    as.Bind(&stack_overflow);
-
-    as.LI(t0, EXIT_REASON_FRAME_STACK_OVERFLOW);
-    as.SB(t0, offsetof(ThreadState, exit_reason), threadStatePointer());
-    as.J(&exit_dispatcher_label);
 }
 
 void Recompiler::emitInvalidateCallerThunk() {

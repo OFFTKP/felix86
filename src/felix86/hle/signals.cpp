@@ -611,7 +611,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     }
 
     // Eventually, this should return right after this call and have the correct state.
-    // When entering the dispatcher, the host state is saved in ThreadState::frames. Including sp & ra.
+    // When entering the dispatcher, the host state is saved in the host stack
     // sigreturn will call exitDispatcher, which will load the old frame and return back here after this call.
     // This way we can support signals inside signal handlers too.
     // The only problem would be longjmps out of signal handlers. This is evil but possible that a game or something does it
