@@ -2,9 +2,9 @@
 #include "felix86/hle/thunks.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-void felix86_syscall(ThreadState* state);
+void felix86_syscall(felix86_frame* frame);
 
-void felix86_syscall32(ThreadState* state, u32 rip_nex);
+void felix86_syscall32(felix86_frame* frame, u32 rip_nex);
 
 void felix86_cpuid(ThreadState* state);
 
