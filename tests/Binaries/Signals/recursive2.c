@@ -22,7 +22,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
 int main() {
     struct sigaction act;
     act.sa_sigaction = signal_handler;
-    act.sa_flags = SA_SIGINFO | SA_NODEFER; // NODEFER allows recursion
+    act.sa_flags = SA_SIGINFO | SA_NODEFER; // NODEFER allows the signal to happen inside the handler
     sigemptyset(&act.sa_mask);
     sigaction(SIGURG, &act, 0);
 
@@ -30,8 +30,10 @@ int main() {
 
     kill(pid, SIGURG);
 
-    if (handled_count != 5 || broken) {
+    if (handled_count != 5) {
         return 1;
+    } else if (broken) {
+        return 2;
     } else {
         return FELIX86_BTEST_SUCCESS;
     }
