@@ -2,11 +2,11 @@
 
 #include "felix86/common/log.hpp"
 
-struct ThreadState;
+struct felix86_frame;
 
-void felix86_syscall(ThreadState* state);
+void felix86_syscall(felix86_frame* state);
 
-void felix86_syscall32(ThreadState* state, u32 rip_next);
+void felix86_syscall32(felix86_frame* state, u32 rip_next);
 
 enum {
 #define X(name, id) felix86_x86_32_##name = id,
