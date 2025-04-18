@@ -189,6 +189,11 @@ int Filesystem::Chmod(const char* filename, u64 mode) {
     return result;
 }
 
+int Filesystem::Creat(const char* filename, u64 mode) {
+    std::filesystem::path path = resolve(filename);
+    return ::creat(path.c_str(), mode);
+}
+
 int Filesystem::Statx(int fd, const char* filename, int flags, u32 mask, struct statx* statxbuf) {
     if (!filename) {
         return -EINVAL;

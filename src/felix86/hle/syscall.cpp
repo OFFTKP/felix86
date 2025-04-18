@@ -1337,6 +1337,10 @@ void felix86_syscall(felix86_frame* frame) {
             result = Filesystem::Chmod((char*)arg1, arg2);
             break;
         }
+        case felix86_x86_64_creat: {
+            result = Filesystem::Creat((char*)arg1, arg2);
+            break;
+        }
         case felix86_x86_64_symlink: {
             result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
             break;

@@ -95,6 +95,8 @@ struct Filesystem {
 
     static int LChown(const char* filename, u64 owner, u64 group);
 
+    static int Creat(const char* filename, u64 mode);
+
     static int Chdir(const char* filename);
 
     static int MkdirAt(int fd, const char* filename, u64 mode);
