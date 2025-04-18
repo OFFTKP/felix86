@@ -309,7 +309,7 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
 
 void Signals::sigreturn(ThreadState* state) {
     VERBOSE("------- sigreturn -------");
-    ASSERT_MSG(state->exit_reason == EXIT_REASON_UNKNOWN, "State had exit reason when entering sigreturn?");
+    ASSERT_MSG(state->exit_reason == EXIT_REASON_UNKNOWN, "State had exit reason %s when entering sigreturn?", print_exit_reason(state->exit_reason));
     state->exit_reason = EXIT_REASON_SIGRETURN;
 
     u64 rsp = state->GetGpr(X86_REF_RSP);
