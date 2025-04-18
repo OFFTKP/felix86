@@ -16,6 +16,7 @@ void signal_handler(int sig, siginfo_t* info, void* ctx) {
         // Don't get to this point unless if all signals have been handled
         // SA_NODEFER allows it to execute the signal while inside the handler
         if (handled_count != 5) {
+            printf("Broken, count: %d\n", handled_count);
             broken = 1;
         }
     }
