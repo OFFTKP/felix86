@@ -113,6 +113,16 @@ struct XmmReg {
 };
 static_assert(sizeof(XmmReg) == 16);
 
+struct SignalGuard {
+    SignalGuard(ThreadState* state);
+    ~SignalGuard();
+    SignalGuard(const SignalGuard&) = delete;
+    SignalGuard& operator=(const SignalGuard&) = delete;
+
+private:
+    ThreadState* state;
+};
+
 // TODO: Please make me standard layout type? offsetof warnings...
 struct ThreadState {
     explicit ThreadState(ThreadState* copy_state);
@@ -354,6 +364,10 @@ struct ThreadState {
         flags |= df << 10;
         flags |= of << 11;
         return flags;
+    }
+
+    SignalGuard GuardSignals() {
+        return SignalGuard(this);
     }
 
     static void InitializeKey();

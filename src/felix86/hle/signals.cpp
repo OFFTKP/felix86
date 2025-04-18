@@ -558,10 +558,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
                 ERROR("More than 5 pending signals, something is probably wrong, exiting to avoid spam");
             }
         }
-
-        // Unlink the current block, making it certain that we will eventually return to the dispatcher to handle this signal
-        // even if we are stuck in a loop, for example in a block that branches back to itself forever.
-        state->recompiler->unlinkBlock(state, state->GetRip());
         return true;
     }
 

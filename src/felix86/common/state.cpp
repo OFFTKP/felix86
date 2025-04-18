@@ -68,3 +68,11 @@ void ThreadState::Destroy(ThreadState* state) {
     }
     delete state;
 }
+
+SignalGuard::SignalGuard(ThreadState* state) : state(state) {
+    state->signals_disabled = true;
+}
+
+SignalGuard::~SignalGuard() {
+    state->signals_disabled = false;
+}
