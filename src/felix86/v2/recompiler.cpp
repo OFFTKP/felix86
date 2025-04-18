@@ -107,18 +107,11 @@ void Recompiler::emitDispatcher() {
 
     compile_next_handler = as.GetCursorPointer();
 
-    Label exit_dispatcher_label;
-
     as.MV(a0, threadStatePointer());
-    // If it's not zero it has some exit reason, exit the dispatcher
-    as.LBU(t2, offsetof(ThreadState, exit_reason), threadStatePointer());
-    as.BNEZ(t2, &exit_dispatcher_label);
     as.LI(t0, (u64)Emulator::CompileNext);
     as.JALR(t0); // returns the function pointer to the compiled function
     restoreRoundingMode();
     as.JR(a0);
-
-    as.Bind(&exit_dispatcher_label);
 
     exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();
 
@@ -214,7 +207,8 @@ void Recompiler::emitSigreturnThunk() {
 
     as.MV(a0, threadStatePointer());
     call((u64)Signals::sigreturn);
-    backToDispatcher();
+    as.MV(a0, sp);
+    call((u64)Emulator::ExitDispatcher);
 }
 
 void Recompiler::clearCodeCache(ThreadState* state) {

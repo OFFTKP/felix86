@@ -1,4 +1,5 @@
 #include <Zydis/Zydis.h>
+#include "felix86/emulator.hpp"
 #include "felix86/hle/thunks.hpp"
 #include "felix86/v2/recompiler.hpp"
 
@@ -678,7 +679,9 @@ FAST_HANDLE(HLT) {
     rec.setExitReason(ExitReason::EXIT_REASON_HLT);
     rec.writebackDirtyState();
     rec.invalidStateUntilJump();
-    rec.backToDispatcher();
+    as.LI(t0, (u64)Emulator::ExitDispatcher);
+    as.MV(a0, sp);
+    as.JR(t0);
     rec.stopCompiling();
 }
 
