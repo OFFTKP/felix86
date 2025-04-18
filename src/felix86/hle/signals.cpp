@@ -593,10 +593,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     sigset_t mask_during_signal;
     mask_during_signal = *(sigset_t*)&handler->mask;
 
-    if (!(handler->flags & SA_NODEFER)) {
-        sigaddset(&mask_during_signal, sig);
-    }
-
     siginfo_t guest_info;
     if (info->si_code == SI_QUEUE && state->incoming_signal) {
         // One of our queued signals, retrieve the siginfo_t from the pointer
@@ -621,7 +617,17 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     // Block the signals specified in the sa_mask until the signal handler returns
     sigset_t new_mask;
     sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());
-    pthread_sigmask(SIG_BLOCK, &new_mask, nullptr);
+
+    // Combine with the current signal mask
+    sigorset(&new_mask, &new_mask, &state->signal_mask);
+
+    if (handler->flags & SA_NODEFER) {
+        sigdelset(&new_mask, sig);
+    } else {
+        sigaddset(&new_mask, sig);
+    }
+
+    pthread_sigmask(SIG_SETMASK, &new_mask, nullptr);
 
     if (handler->flags & SA_RESETHAND) {
         handler->func = (u64)SIG_DFL;
