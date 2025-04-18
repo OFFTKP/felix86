@@ -27,16 +27,18 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     std::string spath = exec_path;
 
     std::vector<const char*> argv;
+    std::vector<const char*> envp;
+
     argv.push_back(felix_path.c_str());
     if (extension == ".exe") {
         // TODO: when 32-bit wine is more stable run it through that
         CATCH_REQUIRE(std::filesystem::exists(g_config.rootfs_path / "usr" / "lib" / "wine" / "wine64"));
         argv.push_back("/usr/lib/wine/wine64");
+        envp.push_back("WINEDEBUG=-all");
     }
     argv.push_back(spath.c_str());
     argv.push_back(nullptr);
 
-    std::vector<const char*> envp;
     char** env = environ;
     while (*env) {
         envp.push_back(*env);
