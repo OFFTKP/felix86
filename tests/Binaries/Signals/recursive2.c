@@ -1,0 +1,38 @@
+#include <signal.h>
+#include <unistd.h>
+#include "common.h"
+
+volatile int handled_count = 0;
+volatile int broken = 0;
+
+void signal_handler(int sig, siginfo_t* info, void* ctx) {
+    if (handled_count < 5) {
+        handled_count++;
+        int pid = getpid();
+        kill(pid, sig);
+
+        // Don't get to this point unless if all signals have been handled
+        // SA_NODEFER allows it to execute the signal while inside the handler
+        if (handled_count != 5) {
+            broken = 1;
+        }
+    }
+}
+
+int main() {
+    struct sigaction act;
+    act.sa_sigaction = signal_handler;
+    act.sa_flags = SA_SIGINFO | SA_NODEFER; // NODEFER allows recursion
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGURG, &act, 0);
+
+    int pid = getpid();
+
+    kill(pid, SIGURG);
+
+    if (handled_count != 5 || broken) {
+        return 1;
+    } else {
+        return FELIX86_BTEST_SUCCESS;
+    }
+}

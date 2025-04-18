@@ -6,9 +6,6 @@
 volatile int waitme = 1;
 
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
-    printf("hello it's me: %d\n", getpid());
-    printf("sigchld!! pid: %d uid: %d status: %d\n", info->si_pid, info->si_uid, info->si_status);
-    printf("BYE BYE SIGNAL HANDLER :3\n");
     waitme = 0;
 }
 

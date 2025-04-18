@@ -14,6 +14,7 @@ int main() {
     struct sigaction act;
     act.sa_sigaction = signal_handler;
     act.sa_flags = SA_SIGINFO;
+    sigemptyset(&act.sa_mask);
     sigaction(SIGALRM, &act, 0);
 
     alarm(1);
