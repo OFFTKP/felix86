@@ -545,12 +545,20 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         return true;
     }
 
-    if (state->signals_disabled) {
-        // Nothing we can do, the signals are disabled. Push it to the queue.
-        state->pending_signals.push_back({sig, *info});
+    ASSERT(sig > 0);
 
-        if (state->pending_signals.size() > 5) {
-            ERROR("More than 5 pending signals, something is probably wrong, exiting to avoid spam");
+    if (state->signals_disabled) {
+        if (sig < __SIGRTMIN) {
+            const int sig_bit = sig - 1;
+            state->pending_signals |= 1 << sig_bit;
+        } else {
+            // Unlike signals 1-31, signals 32 and up (realtime signals) can be queued and you can have multiple
+            // pending of each signal
+            state->queued_signals.push({sig, *info});
+
+            if (state->queued_signals.size() > 5) {
+                ERROR("More than 5 pending signals, something is probably wrong, exiting to avoid spam");
+            }
         }
 
         // Unlink the current block, making it certain that we will eventually return to the dispatcher to handle this signal
@@ -591,9 +599,20 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         sigaddset(&mask_during_signal, sig);
     }
 
+    siginfo_t guest_info;
+    if (info->si_code == SI_QUEUE && state->incoming_signal) {
+        // One of our queued signals, retrieve the siginfo_t from the pointer
+        FiredSignal* signal = (FiredSignal*)info->si_value.sival_ptr;
+        if (signal) {
+            guest_info = signal->guest_info;
+        }
+    } else {
+        guest_info = *info;
+    }
+
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    Signals::setupFrame(pc, state, mask_during_signal, gprs, xmms, use_altstack, in_jit_code, info);
+    Signals::setupFrame(pc, state, mask_during_signal, gprs, xmms, use_altstack, in_jit_code, &guest_info);
 
     // RSI and RDX are set by setupFrame
     state->SetGpr(X86_REF_RDI, sig);

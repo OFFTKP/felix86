@@ -1,5 +1,6 @@
 #pragma once
 
+#include <queue>
 #include "biscuit/isa.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
@@ -112,11 +113,6 @@ struct XmmReg {
 };
 static_assert(sizeof(XmmReg) == 16);
 
-struct PendingSignal {
-    int sig;
-    siginfo_t info;
-};
-
 // TODO: Please make me standard layout type? offsetof warnings...
 struct ThreadState {
     explicit ThreadState(ThreadState* copy_state);
@@ -163,7 +159,10 @@ struct ThreadState {
     bool cpuid_bit{}; // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
                       // check presence of cpuid... on x86-64 processors... lol...
 
-    std::vector<PendingSignal> pending_signals{}; // signals that were raised during an unsafe time, queued for later
+    u32 pending_signals{}; // non-realtime signals can't be queued, if multiple are signaled they are simply merged, this bitset represents them
+    std::priority_queue<PendingSignal, std::vector<PendingSignal>, ComparePendingSignal>
+        queued_signals{}; // realtime signals that were raised during an unsafe time, queued for later
+    bool incoming_signal{};
 
     std::vector<u64> calltrace{}; // used if g_calltrace is true
 
