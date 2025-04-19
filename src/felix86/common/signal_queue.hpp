@@ -12,7 +12,9 @@ struct PendingSignal {
 
 struct SignalQueue {
     void push(const PendingSignal& signal) {
-        int sig = signal.sig - 1;
+        ASSERT_MSG(signal.sig >= 32 && signal.sig <= 64, "Signal outside of range: %d", signal.sig);
+
+        int sig = signal.sig - 32 - 1;
         bool ok = signal_queues[sig].push(signal);
         if (!ok) {
             ERROR("Signal queue for realtime signal %d overflowed", signal.sig);
