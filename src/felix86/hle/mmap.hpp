@@ -14,12 +14,10 @@ struct Mapper {
     int unmap32(void* addr, u64 size);
     [[nodiscard]] void* remap32(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address);
 
-    static constexpr u64 addressSpaceEnd32 = 0xBFFF'FFFF; // 32-bit userspace end
+    static constexpr u64 addressSpaceEnd32 = 0xFFFF'FFFF; // 32-bit userspace end
 
 private:
     void initialize();
-
-    void validate();
 
     // In 32-bit mode we need to handle mmap page finding ourselves
     // Using a simple freelist sounds good
