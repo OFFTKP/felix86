@@ -665,11 +665,11 @@ void Signals::initialize() {
     }
 }
 
-void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u64 mask, int flags) {
+void Signals::registerSignalHandler(ThreadState* state, int sig, u64 handler, u64 mask, int flags, u64 restorer) {
     ASSERT(sig >= 1 && sig <= 64);
 
     // Hopefully externally synchronized, no need for locks :cluegi:
-    state->signal_table->registerSignal(sig, handler, mask, flags);
+    state->signal_table->registerSignal(sig, handler, mask, flags, restorer);
 
     // Start capturing at the first register of a signal handler and don't stop capturing even if it is disabled
     if (handler != 0) {

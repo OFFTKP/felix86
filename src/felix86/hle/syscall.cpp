@@ -1614,8 +1614,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             x86_sigaction* act = (x86_sigaction*)arg2;
             if (act) {
                 auto handler = act->handler;
-                Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags);
-                ASSERT(act->restorer == 0);
+                Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags, act->restorer);
                 if (g_config.verbose) {
                     PLAIN("Installed signal handler %s at:", strsignal(arg1));
                     print_address((u64)handler);
