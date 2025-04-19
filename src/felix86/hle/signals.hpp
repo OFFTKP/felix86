@@ -61,7 +61,6 @@ struct SignalHandlerTable {
         table[sig].flags = flags;
         table[sig].mask = mask;
         table[sig].func = func;
-        ASSERT(!(flags & SA_RESTORER));
     }
 
 private:
