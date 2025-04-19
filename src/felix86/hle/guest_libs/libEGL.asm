@@ -7,197 +7,197 @@ global eglChooseConfig
 align 16
 eglChooseConfig:
 invlpg [rax]
-ret
 db "eglChooseConfig", 0
+ret
 
 global eglCopyBuffers
 align 16
 eglCopyBuffers:
 invlpg [rax]
-ret
 db "eglCopyBuffers", 0
+ret
 
 global eglCreateContext
 align 16
 eglCreateContext:
 invlpg [rax]
-ret
 db "eglCreateContext", 0
+ret
 
 global eglCreatePbufferSurface
 align 16
 eglCreatePbufferSurface:
 invlpg [rax]
-ret
 db "eglCreatePbufferSurface", 0
+ret
 
 global eglCreatePixmapSurface
 align 16
 eglCreatePixmapSurface:
 invlpg [rax]
-ret
 db "eglCreatePixmapSurface", 0
+ret
 
 global eglCreateWindowSurface
 align 16
 eglCreateWindowSurface:
 invlpg [rax]
-ret
 db "eglCreateWindowSurface", 0
+ret
 
 global eglDestroyContext
 align 16
 eglDestroyContext:
 invlpg [rax]
-ret
 db "eglDestroyContext", 0
+ret
 
 global eglDestroySurface
 align 16
 eglDestroySurface:
 invlpg [rax]
-ret
 db "eglDestroySurface", 0
+ret
 
 global eglGetConfigAttrib
 align 16
 eglGetConfigAttrib:
 invlpg [rax]
-ret
 db "eglGetConfigAttrib", 0
+ret
 
 global eglGetConfigs
 align 16
 eglGetConfigs:
 invlpg [rax]
-ret
 db "eglGetConfigs", 0
+ret
 
 global eglGetCurrentDisplay
 align 16
 eglGetCurrentDisplay:
 invlpg [rax]
-ret
 db "eglGetCurrentDisplay", 0
+ret
 
 global eglGetCurrentSurface
 align 16
 eglGetCurrentSurface:
 invlpg [rax]
-ret
 db "eglGetCurrentSurface", 0
+ret
 
 global eglGetDisplay
 align 16
 eglGetDisplay:
 invlpg [rax]
-ret
 db "eglGetDisplay", 0
+ret
 
 global eglGetError
 align 16
 eglGetError:
 invlpg [rax]
-ret
 db "eglGetError", 0
+ret
 
 global eglGetProcAddress
 align 16
 eglGetProcAddress:
 invlpg [rax]
-ret
 db "eglGetProcAddress", 0
+ret
 
 global eglInitialize
 align 16
 eglInitialize:
 invlpg [rax]
-ret
 db "eglInitialize", 0
+ret
 
 global eglMakeCurrent
 align 16
 eglMakeCurrent:
 invlpg [rax]
-ret
 db "eglMakeCurrent", 0
+ret
 
 global eglQueryContext
 align 16
 eglQueryContext:
 invlpg [rax]
-ret
 db "eglQueryContext", 0
+ret
 
 global eglQueryString
 align 16
 eglQueryString:
 invlpg [rax]
-ret
 db "eglQueryString", 0
+ret
 
 global eglQuerySurface
 align 16
 eglQuerySurface:
 invlpg [rax]
-ret
 db "eglQuerySurface", 0
+ret
 
 global eglSwapBuffers
 align 16
 eglSwapBuffers:
 invlpg [rax]
-ret
 db "eglSwapBuffers", 0
+ret
 
 global eglTerminate
 align 16
 eglTerminate:
 invlpg [rax]
-ret
 db "eglTerminate", 0
+ret
 
 global eglWaitGL
 align 16
 eglWaitGL:
 invlpg [rax]
-ret
 db "eglWaitGL", 0
+ret
 
 global eglWaitNative
 align 16
 eglWaitNative:
 invlpg [rax]
-ret
 db "eglWaitNative", 0
+ret
 
 global eglBindAPI
 align 16
 eglBindAPI:
 invlpg [rax]
-ret
 db "eglBindAPI", 0
+ret
 
 global eglQueryAPI
 align 16
 eglQueryAPI:
 invlpg [rax]
-ret
 db "eglQueryAPI", 0
+ret
 
 global eglCreatePbufferFromClientBuffer
 align 16
 eglCreatePbufferFromClientBuffer:
 invlpg [rax]
-ret
 db "eglCreatePbufferFromClientBuffer", 0
+ret
 
 global eglReleaseThread
 align 16
 eglReleaseThread:
 invlpg [rax]
-ret
 db "eglReleaseThread", 0
+ret
 
 global eglWaitClient
 align 16
@@ -210,34 +210,34 @@ global eglGetCurrentContext
 align 16
 eglGetCurrentContext:
 invlpg [rax]
-ret
 db "eglGetCurrentContext", 0
+ret
 
 global eglBindTexImage
 align 16
 eglBindTexImage:
 invlpg [rax]
-ret
 db "eglBindTexImage", 0
+ret
 
 global eglReleaseTexImage
 align 16
 eglReleaseTexImage:
 invlpg [rax]
-ret
 db "eglReleaseTexImage", 0
+ret
 
 global eglSurfaceAttrib
 align 16
 eglSurfaceAttrib:
 invlpg [rax]
-ret
 db "eglSurfaceAttrib", 0
+ret
 
 global eglSwapInterval
 align 16
 eglSwapInterval:
 invlpg [rax]
-ret
 db "eglSwapInterval", 0
+ret
 
