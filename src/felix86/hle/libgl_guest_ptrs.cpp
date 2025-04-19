@@ -7,11 +7,12 @@
 // So we can allow the guest to use the guest libGL functions, which will call a function pointer that points
 // exactly to these felix86_guest_*** functions below. Yada yada, the recompiler will see invlpg, make a trampoline
 // to the host GL function, then a ret follows the invlpg so it will return as if the guest gl function was returning
-#define INVLPG_RET "\x0F\x01\x38\xC3"
+#define INVLPG "\x0F\x01\x38"
+#define RET "\xC3"
 
 extern "C" { // I like them unmangled
 // Each string will be the instructions and the name right after
-#define X(libname, function, ...) const char* felix86_guest_##function = INVLPG_RET #function;
+#define X(libname, function, ...) const char* felix86_guest_##function = INVLPG #function RET;
 #include "gl_thunks.inc"
 #undef X
 }
