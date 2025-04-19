@@ -492,6 +492,7 @@ void Thunks::initialize() {
     thunkptr::glXSelectEvent = (u64)felix86_thunk_glXSelectEvent;
     thunkptr::glXGetSelectedEvent = (u64)felix86_thunk_glXGetSelectedEvent;
 
+#if 0
     constexpr const char* glx_name = "libGLX.so";
     libGLX = dlopen(glx_name, RTLD_LAZY);
     if (!libGLX) {
@@ -503,13 +504,15 @@ void Thunks::initialize() {
     if (!libX11) {
         ERROR("I couldn't open libX11.so, error: %s", dlerror());
     }
+#endif
 
-    constexpr const char* egl_name = "libEGL.so";
+    constexpr const char* egl_name = "libEGL.so.1";
     libEGL = dlopen(egl_name, RTLD_LAZY);
     if (!libEGL) {
         ERROR("I couldn't open libEGL.so, error: %s", dlerror());
     }
 
+#if 0
 #define X(libname, name, ...)                                                                                                                        \
     if (thunkptr::name == 0) {                                                                                                                       \
         thunkptr::name = (u64)dlsym(libGLX, #name);                                                                                                  \
@@ -519,6 +522,7 @@ void Thunks::initialize() {
     }
 #include "glx_thunks.inc"
 #undef X
+#endif
 #define X(libname, name, ...)                                                                                                                        \
     if (thunkptr::name == 0) {                                                                                                                       \
         thunkptr::name = (u64)dlsym(libEGL, #name);                                                                                                  \

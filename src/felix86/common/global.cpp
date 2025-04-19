@@ -272,8 +272,6 @@ void initialize_globals() {
         std::filesystem::path thunks = thunk_env;
         ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunk_env);
         std::string srootfs = g_config.rootfs_path.string();
-        ASSERT_MSG(thunks.string().find(srootfs.c_str()) == 0, "The thunks path set with FELIX86_THUNKS %s is not part of the rootfs (%s)", thunk_env,
-                   srootfs.c_str());
 
         g_thunking = true;
         environment += "\nFELIX86_THUNKS=";
