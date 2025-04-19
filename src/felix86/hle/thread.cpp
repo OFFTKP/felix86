@@ -339,7 +339,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
     u64 stack_hint;
     if (mode32) {
-        stack_hint = 0x7FFF'F000 - max_stack_size;
+        stack_hint = 0xBFFF'F000 - max_stack_size;
     } else {
         // Randomish hint. Needs to be below 0x3f'ffff'ffff however as that is the lowest possible
         // user-space virtual memory (the one in Kernel SV39).
