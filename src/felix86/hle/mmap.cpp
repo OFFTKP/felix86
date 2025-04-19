@@ -7,7 +7,6 @@
 
 void Mapper::initialize() {
     std::call_once(initialized, [&]() {
-        mode32 = g_mode32;
         freelist = new Node;
         freelist->start = mmap_min_addr();
         freelist->end = addressSpaceEnd32;
@@ -258,11 +257,9 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
 
 void* Mapper::map(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
     initialize();
-    if (mode32) {
-        ASSERT(g_mode32);
+    if (g_mode32) {
         return map32(addr, size, prot, flags, fd, offset);
     } else {
-        ASSERT(!g_mode32);
         // Nothing to do here
         // In the future if we want to track mmaps we can add something
         return mmap(addr, size, prot, flags, fd, offset);
@@ -271,22 +268,18 @@ void* Mapper::map(void* addr, u64 size, int prot, int flags, int fd, u64 offset)
 
 int Mapper::unmap(void* addr, u64 size) {
     initialize();
-    if (mode32) {
-        ASSERT(g_mode32);
+    if (g_mode32) {
         return unmap32(addr, size);
     } else {
-        ASSERT(!g_mode32);
         return munmap(addr, size);
     }
 }
 
 void* Mapper::remap(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address) {
     initialize();
-    if (mode32) {
-        ASSERT(g_mode32);
+    if (g_mode32) {
         return remap32(old_address, old_size, new_size, flags, new_address);
     } else {
-        ASSERT(!g_mode32);
         if ((flags & MREMAP_FIXED) && (u64)new_address <= addressSpaceEnd32) {
             return remap32(old_address, old_size, new_size, flags, new_address);
         } else {

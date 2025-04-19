@@ -32,7 +32,6 @@ private:
     Node* freelist = nullptr;
     Semaphore lock;
     std::once_flag initialized;
-    bool mode32;
 
     void deleteBlock(Node* current, Node* previous, Node* next);
 
