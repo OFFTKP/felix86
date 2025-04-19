@@ -160,6 +160,7 @@ struct ThreadState {
     u16 fpu_sw{};
     u8 fpu_top{};
 
+    ExitReason exit_reason{};
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
     u64 tid{};
@@ -180,8 +181,6 @@ struct ThreadState {
     SignalHandlerTable* signal_table{};
 
     sigset_t signal_mask{};
-
-    ExitReason exit_reason{};
 
     u8 exit_code{}; // process exit code
 
