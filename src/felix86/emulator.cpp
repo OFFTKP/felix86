@@ -217,12 +217,10 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
         sigfillset(&full);
         pthread_sigmask(SIG_BLOCK, &full, &old); // block signals to make changing queued_signals safe
 
-        PendingSignal signal = thread_state->queued_signals.top();
+        PendingSignal signal = thread_state->queued_signals.pop();
 
         int sig = signal.sig;
         siginfo_t info = signal.info;
-
-        thread_state->queued_signals.pop();
 
         pthread_sigmask(SIG_SETMASK, &old, nullptr);
 

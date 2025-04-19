@@ -14,19 +14,8 @@ struct RegisteredSignal {
     int flags = 0;
 };
 
-struct PendingSignal {
-    int sig;
-    siginfo_t info;
-};
-
 struct FiredSignal {
     siginfo_t guest_info;
-};
-
-struct ComparePendingSignal {
-    bool operator()(const PendingSignal& a, const PendingSignal& b) const {
-        return a.sig > b.sig; // smaller sig = higher priority
-    }
 };
 
 struct riscv_sigaction {

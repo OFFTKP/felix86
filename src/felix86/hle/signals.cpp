@@ -553,10 +553,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
             // Unlike signals 1-31, signals 32 and up (realtime signals) can be queued and you can have multiple
             // pending of each signal
             state->queued_signals.push({sig, *info});
-
-            if (state->queued_signals.size() > 5) {
-                ERROR("More than 5 pending signals, something is probably wrong, exiting to avoid spam");
-            }
         }
         return true;
     }

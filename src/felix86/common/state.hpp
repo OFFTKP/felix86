@@ -3,6 +3,7 @@
 #include <queue>
 #include "biscuit/isa.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/common/signal_queue.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/guest_types.hpp"
 #include "felix86/hle/signals.hpp"
@@ -170,8 +171,7 @@ struct ThreadState {
                       // check presence of cpuid... on x86-64 processors... lol...
 
     u32 pending_signals{}; // non-realtime signals can't be queued, if multiple are signaled they are simply merged, this bitset represents them
-    std::priority_queue<PendingSignal, std::vector<PendingSignal>, ComparePendingSignal>
-        queued_signals{}; // realtime signals that were raised during an unsafe time, queued for later
+    SignalQueue queued_signals{}; // realtime signals that were raised during an unsafe time, queued for later
     bool incoming_signal{};
 
     std::vector<u64> calltrace{}; // used if g_calltrace is true
