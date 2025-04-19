@@ -1678,6 +1678,45 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_sigaltstack: {
+            VERBOSE("----- sigaltstack was called -----");
+            x86_stack_t* new_ss = (x86_stack_t*)arg1;
+            x86_stack_t* old_ss = (x86_stack_t*)arg2;
+            u64 current_rsp = state->gprs[X86_REF_RSP];
+
+            bool on_stack = false;
+            if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp && current_rsp < state->alt_stack.ss_size) {
+                on_stack = true;
+            }
+
+            if (old_ss) {
+                old_ss->ss_sp = (u32)(u64)state->alt_stack.ss_sp;
+                old_ss->ss_flags = 0;
+                old_ss->ss_size = state->alt_stack.ss_size;
+
+                if (on_stack) {
+                    old_ss->ss_flags = SS_ONSTACK;
+                } else {
+                    old_ss->ss_flags = SS_DISABLE;
+                }
+            }
+
+            if (new_ss) {
+                if (on_stack) {
+                    WARN("Tried to set sigaltstack while using it");
+                    result = -EPERM;
+                    break;
+                }
+
+                state->alt_stack.ss_sp = (void*)(u64)new_ss->ss_sp;
+                state->alt_stack.ss_flags = new_ss->ss_flags;
+                state->alt_stack.ss_size = new_ss->ss_size;
+                VERBOSE("New altstack: %lx", new_ss->ss_sp);
+            }
+
+            result = 0;
+            break;
+        }
         case felix86_x86_32_access: {
             auto guard = state->GuardSignals();
             result = Filesystem::FAccessAt(AT_FDCWD, (char*)arg1, (int)arg2, 0);

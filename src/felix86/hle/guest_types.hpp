@@ -35,6 +35,12 @@ struct x86_old_sigaction {
     u32 restorer;
 };
 
+struct x86_stack_t {
+    u32 ss_sp;
+    u32 ss_flags;
+    u32 ss_size;
+};
+
 struct x86_user_desc {
     u32 entry_number = 0;
     u32 base_addr = 0;
