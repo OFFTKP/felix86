@@ -233,7 +233,7 @@ void kill_all() {
     }
 
     if (!at_least_one) {
-        printf("No instances of the emulator are running, at least from the path %s\n\n", exe_path);
+        printf("No instances of the emulator are running, at least from the path %s\n", exe_path);
     }
 
     fclose(pgrep_output);
