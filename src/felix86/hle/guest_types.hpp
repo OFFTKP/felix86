@@ -18,6 +18,23 @@ struct x64_sigaction {
     u64 sa_mask;
 };
 
+struct x86_sigaction {
+    u32 handler;
+    u32 sa_flags;
+    u32 restorer;
+    u64 sa_mask;
+};
+
+// Funny reordering that had to happen, with sa_mask not being the last member of the struct it didn't allow
+// for it to grow bigger in the future if sigset_t grew, which it did with the introduction of realtime signals
+// so this struct was reordered in the rt_sigaction version
+struct x86_old_sigaction {
+    u32 handler;
+    u32 sa_flags;
+    u32 sa_mask;
+    u32 restorer;
+};
+
 struct x86_user_desc {
     u32 entry_number = 0;
     u32 base_addr = 0;

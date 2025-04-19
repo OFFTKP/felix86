@@ -8,6 +8,10 @@
 #define SA_NODEFER 0x40000000
 #endif
 
+#ifndef SA_RESTORER
+#define SA_RESTORER 0x04000000
+#endif
+
 struct RegisteredSignal {
     u64 func = {}; // handler function of signal
     u64 mask = {}; // blocked during execution of this handler
@@ -57,6 +61,7 @@ struct SignalHandlerTable {
         table[sig].flags = flags;
         table[sig].mask = mask;
         table[sig].func = func;
+        ASSERT(!(flags & SA_RESTORER));
     }
 
 private:
