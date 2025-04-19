@@ -400,6 +400,8 @@ void Mapper::validate() {
         return;
     }
 
+    PLAIN("Validating...");
+
     std::string line;
     std::ifstream ifs("/proc/self/maps");
     std::list<std::pair<u64, u64>> allocations;
