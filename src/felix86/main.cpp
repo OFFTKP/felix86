@@ -224,10 +224,10 @@ void kill_all() {
         if (pid > 0 && pid != my_pid) {
             if (kill(pid, SIGKILL) == 0) {
                 printf("Killed PID %d\n", pid);
-                at_least_one = true;
             } else {
                 printf("Failed to kill PID %d (no privileges?)\n", pid);
             }
+            at_least_one = true;
         }
     }
 

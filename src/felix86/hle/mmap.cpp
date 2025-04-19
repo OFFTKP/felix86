@@ -1,3 +1,5 @@
+#include <fstream>
+#include <list>
 #include <sys/mman.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -50,6 +52,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
 
         void* mapping = freelistAllocate(result, size);
         ASSERT(mapping == result);
+        validate();
         return result;
     } else {
         if (size & 0xFFF) {
@@ -69,6 +72,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
             return (void*)error;
         }
         ASSERT(result == address);
+        validate();
         return address;
     }
 }
@@ -190,6 +194,7 @@ int Mapper::unmap32(void* addr, u64 size) {
     int result = munmap(addr, size);
     if (result != -1) {
         freelistDeallocate(addr, size); // unmap it from our freelist as well
+        validate();
         return result;
     } else {
         return -errno;
@@ -226,6 +231,7 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
 
         void* mapping = freelistAllocate(result, new_size);
         ASSERT(mapping == result);
+        validate();
         return result;
     } else {
         // If we are here it means there's MREMAP_MAYMOVE and not MREMAP_FIXED
@@ -252,6 +258,7 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
         }
 
         ASSERT(result == new_address);
+        validate();
         return result;
     }
 }
@@ -386,4 +393,80 @@ std::vector<std::pair<u32, u32>> Mapper::getRegions() {
     }
 
     return result;
+}
+
+void Mapper::validate() {
+    if (!g_config.validate_map32) {
+        return;
+    }
+
+    std::string line;
+    std::ifstream ifs("/proc/self/maps");
+    std::list<std::pair<u64, u64>> allocations;
+    while (std::getline(ifs, line)) {
+        u64 start, end;
+        if (sscanf(line.c_str(), "%lx-%lx", &start, &end) != 2) {
+            ERROR("Failed to sscanf /proc/self/maps line: %s", line.c_str());
+        }
+
+        if (start <= 0xFFFF'FFFF) {
+            if (end > 0xFFFF'FFFF) {
+                end = 0xFFFF'FFFF;
+            }
+
+            allocations.push_back({start, end});
+        } else {
+            break;
+        }
+    }
+
+    // Merge overlapping mappings
+    auto it = allocations.begin();
+    while (it != allocations.end()) {
+        auto it2 = std::next(it);
+        if (it2 == allocations.end()) {
+            break;
+        } else {
+            if (it->second == it2->first) {
+                it->second = it2->second;
+                allocations.erase(it2);
+            } else {
+                it++;
+            }
+        }
+    }
+
+    // Create the expected freelist in an easy way
+    it = allocations.begin();
+    u64 current = mmap_min_addr();
+    std::list<std::pair<u64, u64>> freelist;
+    while (it != allocations.end()) {
+        u64 end = it->first - 1;
+        freelist.push_back({current, end});
+        current = it->second;
+        it++;
+    }
+
+    // And remove the mappings that are invalid
+    it = freelist.begin();
+    while (it != freelist.end()) {
+        if (it->first >= it->second) {
+            it = freelist.erase(it);
+        } else {
+            it++;
+        }
+    }
+
+    // Finally compare our freelist with the one we just created
+    it = freelist.begin();
+    Node* cur = this->freelist;
+    int i = 0;
+    while (it != freelist.end()) {
+        ASSERT_MSG(it->first == cur->start, "Freelist node %d start mismatch: ours %lx vs expected %lx", i, it->first, cur->start);
+        ASSERT_MSG(it->second == cur->end, "Freelist node %d end mismatch: ours %lx vs expected %lx", i, it->second, cur->end);
+        i++;
+        cur = cur->next;
+    }
+
+    ASSERT_MSG(cur == nullptr, "Had more mappings after expected freelist ended: %lx-%lx", cur->start, cur->end);
 }

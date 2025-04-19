@@ -19,6 +19,8 @@ struct Mapper {
 private:
     void initialize();
 
+    void validate();
+
     // In 32-bit mode we need to handle mmap page finding ourselves
     // Using a simple freelist sounds good
     // Hopefully mmap itself is *rarely* used in 32-bit applications (as the malloc implementation usually prefers using brk)

@@ -490,8 +490,8 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
         return false;
     }
 
-    int pid = getpid();
-    PLAIN("I have been hit by a wild SIGSEGV! My PID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you think this "
+    int pid = gettid();
+    PLAIN("I have been hit by a wild SIGSEGV! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you think this "
           "SIGSEGV was intended, disabled this mode by unsetting the `capture_sigsegv` option.",
           pid, pid);
     ::sleep(40);
