@@ -468,5 +468,20 @@ void Mapper::validate() {
         cur = cur->next;
     }
 
-    ASSERT_MSG(cur == nullptr, "Had more mappings after expected freelist ended: %lx-%lx", cur->start, cur->end);
+    if (cur != nullptr) {
+        printf("Expected:\n");
+        auto it = freelist.begin();
+        while (it != freelist.end()) {
+            printf("%lx - %lx\n", it->first, it->second);
+            it++;
+        }
+
+        Node* cur = this->freelist;
+        printf("\nActual:\n\n");
+        while (cur) {
+            printf("%lx - %lx\n", (u64)cur->start, (u64)cur->end);
+            cur = cur->next;
+        }
+        ERROR("Had more mappings after expected freelist ended: %lx-%lx", cur->start, cur->end);
+    }
 }
