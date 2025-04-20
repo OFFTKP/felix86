@@ -8,10 +8,10 @@
 FAST_HANDLE(FLD) {
     if (operands[0].size == 80 && operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         biscuit::GPR address = rec.lea(&operands[0]);
-        rec.writebackDirtyState();
-        rec.invalidStateUntilJump();
+        rec.writebackState();
         as.MV(a0, address);
         rec.call((u64)f80_to_64);
+        rec.restoreState();
         biscuit::GPR top = rec.getTOP();
         rec.pushST(top, fa0); // push return value
     } else {
@@ -150,19 +150,17 @@ FAST_HANDLE(FSQRT) {
 }
 
 FAST_HANDLE(FSIN) {
-    rec.writebackDirtyState();
-    rec.invalidStateUntilJump();
-
+    rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     rec.call((u64)felix86_fsin);
+    rec.restoreState();
 }
 
 FAST_HANDLE(FCOS) {
-    rec.writebackDirtyState();
-    rec.invalidStateUntilJump();
-
+    rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     rec.call((u64)felix86_fcos);
+    rec.restoreState();
 }
 
 FAST_HANDLE(FWAIT) {
@@ -170,11 +168,10 @@ FAST_HANDLE(FWAIT) {
 }
 
 FAST_HANDLE(FPREM) {
-    rec.writebackDirtyState();
-    rec.invalidStateUntilJump();
-
+    rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
     rec.call((u64)felix86_fprem);
+    rec.restoreState();
 }
 
 FAST_HANDLE(FNSTENV) {
@@ -252,8 +249,8 @@ void FCOM(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands
     biscuit::FPR st0 = rec.getST(top, 0);
     biscuit::FPR sti = rec.getST(top, index);
 
-    biscuit::GPR zf = rec.flagW(X86_REF_ZF);
-    biscuit::GPR cf = rec.flagW(X86_REF_CF);
+    biscuit::GPR zf = rec.flag(X86_REF_ZF);
+    biscuit::GPR cf = rec.flag(X86_REF_CF);
 
     Label less_than, equal, greater_than, unordered, end;
 

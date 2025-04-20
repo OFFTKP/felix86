@@ -20,15 +20,8 @@ using i32 = int32_t;
 using i16 = int16_t;
 using i8 = int8_t;
 
-[[nodiscard]] constexpr bool IsValidSigned12BitImm(i64 value) {
-    return value >= -2048 && value <= 2047;
-}
-
-[[nodiscard]] constexpr bool IsValidBTypeImm(ptrdiff_t value) {
-    return value >= -4096 && value <= 4095;
-}
-
 [[nodiscard]] constexpr bool IsValidJTypeImm(ptrdiff_t value) {
+    return false;
     return value >= -0x80000 && value <= 0x7FFFF;
 }
 

@@ -97,96 +97,31 @@ struct x64_rt_sigframe {
 static_assert(sizeof(siginfo_t) == 128);
 static_assert(sizeof(x64_rt_sigframe) == 1120);
 
-void reconstruct_state(ThreadState* state, BlockMetadata* current_block, u64 rip, uint64_t pc, const u64* gprs, const XmmReg* xmms) {
-    const u64 start = current_block->address;
-    const u64 end = pc;
-    u64 current = start;
-    bool valid = true;
-
-    // Go through the instructions in this block, find the ones that modify our allocated registers, extract the values
-    // from the registers and put them into `state`
-    biscuit::Decoder decoder;
-    DecodedInstruction instruction;
-    DecodedOperand operands[4];
-
-    // TODO: static method in recompiler for this conversion that doesn't do runtime computation
-    static std::array<x86_ref_e, 32> gpr_to_x86 = {};
-    static std::array<x86_ref_e, 32> vec_to_x86 = {};
-    static std::atomic_flag initialized = ATOMIC_FLAG_INIT;
-    if (!initialized.test_and_set()) {
-        memset(gpr_to_x86.data(), X86_REF_COUNT, 32);
-        memset(vec_to_x86.data(), X86_REF_COUNT, 32);
-
+void reconstruct_state(ThreadState* state, const u64* gprs, const XmmReg* xmms) {
+    if (state->state_is_correct) {
+        // The ThreadState struct already contains the correct values, don't pull them out
+        // This can happen if we are inside JIT code but already wrote the state when we hit the signal
+    } else {
         for (int i = 0; i < 16; i++) {
             biscuit::GPR allocated_gpr = Recompiler::allocatedGPR((x86_ref_e)(X86_REF_RAX + i));
+            state->gprs[i] = gprs[allocated_gpr.Index()];
+
             biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
-            gpr_to_x86[allocated_gpr.Index()] = (x86_ref_e)(X86_REF_RAX + i);
-            vec_to_x86[allocated_vec.Index()] = (x86_ref_e)(X86_REF_XMM0 + i);
+            state->xmm[i] = xmms[allocated_vec.Index()];
         }
 
-        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_ZF).Index()] = X86_REF_ZF;
-        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_CF).Index()] = X86_REF_CF;
-        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_OF).Index()] = X86_REF_OF;
-        gpr_to_x86[Recompiler::allocatedGPR(X86_REF_SF).Index()] = X86_REF_SF;
-    }
-
-    while (current < end) {
-        DecoderStatus status = decoder.Decode((void*)current, 4, instruction, operands);
-
-        if (status == DecoderStatus::UnknownInstruction) {
-            u32 buffer = *(u32*)current;
-            WARN("Couldn't decode: %08x", buffer);
-            current += 4;
-            continue;
-        } else if (status == DecoderStatus::UnknownInstructionCompressed) {
-            u16 buffer = *(u16*)current;
-            WARN("Couldn't decode: %04x", buffer);
-            current += 2;
-            continue;
-        } else {
-            current += instruction.length;
-        }
-
-        // See Recompiler::invalidStateUntilJump, we use this NOP to mark regions of the block
-        // that don't have valid register state and shouldn't be copied
-        if (instruction.mnemonic == Mnemonic::SRLI && operands[0].GPR() == x0 && operands[1].GPR() == x0 && operands[2].Immediate() == 42) {
-            valid = false;
-        }
-
-        if (valid) {
-            if (instruction.operand_count >= 1) {
-                bool write = operands[0].IsWrite();
-                if (write && operands[0].IsGPR()) {
-                    int gpr_index = operands[0].GPR().Index();
-                    x86_ref_e ref = gpr_to_x86[gpr_index];
-                    if (ref >= X86_REF_RAX && ref <= X86_REF_R15) {
-                        u64 value = gprs[gpr_index];
-                        u64 old_value = state->GetGpr(ref);
-                        VERBOSE("Reconstructing state: x86 gpr %d gets value %lx (old: %lx) at RISC-V PC: %lx", ref - X86_REF_RAX, value, old_value,
-                                current);
-                        state->SetGpr(ref, value);
-                    } else if (ref >= X86_REF_CF && ref <= X86_REF_OF) {
-                        u64 value = gprs[gpr_index];
-                        state->SetFlag(ref, value);
-                    }
-                } else if (write && operands[0].IsVec()) {
-                    int vec_index = operands[0].Vec().Index();
-                    x86_ref_e ref = vec_to_x86[vec_index];
-                    if (ref != X86_REF_COUNT) {
-                        XmmReg xmm = xmms[vec_index];
-                        state->SetXmm(ref, xmm);
-                    }
-                }
-            }
-        } else {
-            if (instruction.mnemonic == Mnemonic::JAL || instruction.mnemonic == Mnemonic::JALR) {
-                valid = true;
+        if (state->mmx_dirty) {
+            for (int i = 0; i < 8; i++) {
+                biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
+                state->fp[i] = xmms[allocated_vec.Index()].data[0];
             }
         }
-    }
 
-    // Finally also set the RIP
-    state->SetRip(rip);
+        state->cf = gprs[Recompiler::allocatedGPR(X86_REF_CF).Index()];
+        state->zf = gprs[Recompiler::allocatedGPR(X86_REF_ZF).Index()];
+        state->sf = gprs[Recompiler::allocatedGPR(X86_REF_SF).Index()];
+        state->of = gprs[Recompiler::allocatedGPR(X86_REF_OF).Index()];
+    }
 }
 
 BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
@@ -260,8 +195,9 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
         BlockMetadata* current_block = get_block_metadata(state, pc);
         u64 actual_rip = get_actual_rip(*current_block, pc);
-        ASSERT(current_block);
-        reconstruct_state(state, current_block, actual_rip, pc, host_gprs, host_vecs);
+        reconstruct_state(state, host_gprs, host_vecs);
+        // TODO: this may be wrong in some occasions? like sometimes we shouldn't do it because we already set the rip? needs investigation
+        state->SetRip(actual_rip);
     } else {
         // State reconstruction isn't necessary, the state should be in some stable form
     }

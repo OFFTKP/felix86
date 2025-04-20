@@ -40,7 +40,9 @@ static void incorrect_stack(void* sp_expected, void* sp_actual) {
 static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     switch (mnemonic) {
     case ZYDIS_MNEMONIC_SHL:
+    case ZYDIS_MNEMONIC_SHLD:
     case ZYDIS_MNEMONIC_SHR:
+    case ZYDIS_MNEMONIC_SHRD:
     case ZYDIS_MNEMONIC_SAR:
     case ZYDIS_MNEMONIC_ROL:
     case ZYDIS_MNEMONIC_ROR: {
@@ -60,6 +62,10 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
     ZydisDecoderInit(&decoder, mode, stack_width);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
+
+    if (g_config.always_flags || g_paranoid) {
+        flag_mode = FlagMode::AlwaysEmit;
+    }
 }
 
 Recompiler::~Recompiler() {
@@ -70,7 +76,9 @@ void Recompiler::emitNecessaryStuff() {
     emitDispatcher();
     emitSigreturnThunk();
     emitInvalidateCallerThunk();
+
     start_of_code_cache = as.GetCursorPointer();
+
     flush_icache();
 }
 
@@ -105,13 +113,19 @@ void Recompiler::emitDispatcher() {
 
     as.MV(threadStatePointer(), a0);
 
-    compile_next_handler = as.GetCursorPointer();
+    restoreState();
 
+    compile_next_handler = (u64)as.GetCursorPointer();
+
+    writebackState();
     as.MV(a0, threadStatePointer());
-    as.LI(t0, (u64)Emulator::CompileNext);
-    as.JALR(t0); // returns the function pointer to the compiled function
-    restoreRoundingMode();
-    as.JR(a0);
+    call((u64)Emulator::CompileNext);
+
+    biscuit::GPR retval = scratch();
+    as.MV(retval, a0);
+    restoreState();
+    as.JR(retval);
+    popScratch();
 
     exit_dispatcher = (decltype(exit_dispatcher))as.GetCursorPointer();
 
@@ -172,10 +186,14 @@ void Recompiler::emitDispatcher() {
 void Recompiler::emitInvalidateCallerThunk() {
     invalidate_caller_thunk = (u64)as.GetCursorPointer();
 
-    // Call the invalidateAt function (address should already be in a1) which will remove the block from the map
+    // Call the invalidateAt function which will remove the block from the map
     // when it's called and it will go back to the dispatcher, which will trigger a new compilation
+    // The JALR that jumps here links to t6. We ASSERT that writebackState doesn't modify t6.
+    writebackState();
     as.MV(a0, threadStatePointer());
+    as.MV(a1, t6);
     call((u64)Recompiler::invalidateAt);
+    restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
     backToDispatcher();
 }
 
@@ -337,20 +355,38 @@ u64 Recompiler::compileSequence(u64 rip) {
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
+    using_mmx = false;
 
     current_block_metadata->guest_address = rip;
 
-    int index = 0;
+    size_t index = 0;
 
     while (compiling) {
         auto& [instruction, operands] = instructions[index];
 
         block_meta.instruction_spans.push_back({rip, (u64)as.GetCursorPointer()});
 
+        bool is_mmx = (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_MM0 &&
+                       operands[0].reg.value <= ZYDIS_REGISTER_MM7) ||
+                      (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_MM0 &&
+                       operands[1].reg.value <= ZYDIS_REGISTER_MM7);
+        bool is_x87 = instruction.meta.isa_ext == ZYDIS_ISA_EXT_X87;
+        if (is_mmx && !using_mmx) {
+            restoreMMXState();
+        } else if (is_x87 && using_mmx) {
+            ERROR("MMX and x87 instructions mixed in a block?");
+        }
+
         if (g_breakpoints.find(rip) != g_breakpoints.end()) {
             u64 current_address = (u64)as.GetCursorPointer();
             g_breakpoints[rip].push_back(current_address);
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
+        }
+
+        if (using_mmx && index == instructions.size() - 1) {
+            // Block is over but we didn't run an EMMS, writeback MMX state here as it's not
+            // written back in the dispatcher
+            writebackMMXState();
         }
 
         compileInstruction(instruction, operands, rip);
@@ -363,10 +399,12 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         if (g_config.single_step && compiling) {
             resetScratch();
+            if (using_mmx) {
+                writebackMMXState();
+            }
             biscuit::GPR rip_after = scratch();
             as.LI(rip_after, rip);
             setRip(rip_after);
-            writebackDirtyState();
             backToDispatcher();
             stopCompiling();
         }
@@ -746,36 +784,6 @@ ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, 
     return instruction.mnemonic;
 }
 
-Recompiler::RegisterMetadata& Recompiler::getMetadata(x86_ref_e reg) {
-    switch (reg) {
-    case X86_REF_RAX ... X86_REF_R15: {
-        return gpr_metadata[reg - X86_REF_RAX];
-    }
-    case X86_REF_CF: {
-        return flag_metadata[0];
-    }
-    case X86_REF_ZF: {
-        return flag_metadata[1];
-    }
-    case X86_REF_SF: {
-        return flag_metadata[2];
-    }
-    case X86_REF_OF: {
-        return flag_metadata[3];
-    }
-    case X86_REF_XMM0 ... X86_REF_XMM15: {
-        return xmm_metadata[reg - X86_REF_XMM0];
-    }
-    case X86_REF_MM0 ... X86_REF_MM7: {
-        return mm_metadata[reg - X86_REF_MM0];
-    }
-    default: {
-        UNREACHABLE();
-        return gpr_metadata[0];
-    }
-    }
-}
-
 x86_size_e Recompiler::getOperandSize(ZydisDecodedOperand* operand) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
@@ -885,31 +893,11 @@ biscuit::GPR Recompiler::flag(x86_ref_e ref) {
     }
 
     biscuit::GPR reg = allocatedGPR(ref);
-    loadGPR(ref, reg);
-    return reg;
-}
-
-biscuit::GPR Recompiler::flagW(x86_ref_e ref) {
-    biscuit::GPR reg = allocatedGPR(ref);
-    RegisterMetadata& meta = getMetadata(ref);
-    meta.dirty = true;
-    meta.loaded = true;
-    return reg;
-}
-
-biscuit::GPR Recompiler::flagWR(x86_ref_e ref) {
-    biscuit::GPR reg = allocatedGPR(ref);
-    RegisterMetadata& meta = getMetadata(ref);
-    loadGPR(ref, reg);
-    meta.dirty = true;
-    meta.loaded = true;
     return reg;
 }
 
 biscuit::GPR Recompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
     biscuit::GPR gpr = allocatedGPR(ref);
-
-    loadGPR(ref, gpr);
 
     switch (size) {
     case X86_SIZE_BYTE: {
@@ -955,9 +943,6 @@ bool Recompiler::isGPR(ZydisRegister reg) {
 
 biscuit::Vec Recompiler::getRefVec(x86_ref_e ref) {
     biscuit::Vec vec = allocatedVec(ref);
-
-    loadVec(ref, vec);
-
     return vec;
 }
 
@@ -1036,8 +1021,6 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
         break;
     }
     }
-
-    markDirty(ref);
 }
 
 void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
@@ -1071,10 +1054,6 @@ void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
             UNREACHABLE();
         }
     }
-
-    RegisterMetadata& meta = getMetadata(ref);
-    meta.dirty = true;
-    meta.loaded = true; // since the value is fresh it's as if we read it from memory
 }
 
 void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
@@ -1139,65 +1118,8 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
     }
 }
 
-void Recompiler::loadGPR(x86_ref_e reg, biscuit::GPR gpr) {
-    RegisterMetadata& meta = getMetadata(reg);
-    if (meta.loaded) {
-        return;
-    }
-
-    meta.loaded = true;
-    if (reg >= X86_REF_RAX && reg <= X86_REF_R15) {
-        if (!g_mode32)
-            as.LD(gpr, offsetof(ThreadState, gprs) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-        else
-            as.LWU(gpr, offsetof(ThreadState, gprs) + (reg - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-    } else {
-        switch (reg) {
-        case X86_REF_CF: {
-            as.LBU(gpr, offsetof(ThreadState, cf), threadStatePointer());
-            break;
-        }
-        case X86_REF_AF: {
-            as.LBU(gpr, offsetof(ThreadState, af), threadStatePointer());
-            break;
-        }
-        case X86_REF_ZF: {
-            as.LBU(gpr, offsetof(ThreadState, zf), threadStatePointer());
-            break;
-        }
-        case X86_REF_SF: {
-            as.LBU(gpr, offsetof(ThreadState, sf), threadStatePointer());
-            break;
-        }
-        case X86_REF_OF: {
-            as.LBU(gpr, offsetof(ThreadState, of), threadStatePointer());
-            break;
-        }
-        default: {
-            UNREACHABLE();
-            break;
-        }
-        }
-    }
-}
-
-void Recompiler::loadVec(x86_ref_e reg, biscuit::Vec vec) {
-    RegisterMetadata& meta = getMetadata(reg);
-    if (meta.loaded) {
-        return;
-    }
-
-    meta.loaded = true;
-    biscuit::GPR address = scratch();
-    u64 offset = offsetof(ThreadState, xmm) + (reg - X86_REF_XMM0) * 16;
-    as.ADDI(address, threadStatePointer(), offset);
-    setVectorState(SEW::E64, maxVlen() / 64);
-    as.VLE64(vec, address);
-    popScratch();
-}
-
 bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
-    if (current_sew == sew && current_vlen == vlen && current_grouping == grouping) {
+    if (current_sew == sew && current_vlen == vlen && current_grouping == grouping && !g_paranoid) {
         return false;
     }
 
@@ -1424,25 +1346,9 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
 }
 
 void Recompiler::stopCompiling() {
+    // TODO: the stopCompiling should happen when we run out of instructions that were added on scanAhead
     ASSERT(compiling);
     compiling = false;
-}
-
-void Recompiler::pushCalltrace() {
-    if (g_config.calltrace) {
-        as.LI(t0, (u64)push_calltrace);
-        as.MV(a0, threadStatePointer());
-        as.LI(a1, current_rip);
-        as.JALR(t0);
-    }
-}
-
-void Recompiler::popCalltrace() {
-    if (g_config.calltrace) {
-        as.LI(t0, (u64)pop_calltrace);
-        as.MV(a0, threadStatePointer());
-        as.JALR(t0);
-    }
 }
 
 void Recompiler::setExitReason(ExitReason reason) {
@@ -1452,105 +1358,165 @@ void Recompiler::setExitReason(ExitReason reason) {
     popScratch();
 }
 
-void Recompiler::writebackMMXState() {
+void Recompiler::restoreMMXState() {
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+    current_grouping = LMUL::M1;
+
+    using_mmx = true;
     biscuit::GPR address = scratch();
+    ASSERT(address != t6);
+    // TODO: can we optimize these using special loads
+    setVectorState(SEW::E64, 1);
     for (int i = 0; i < 8; i++) {
-        x86_ref_e ref = (x86_ref_e)(X86_REF_MM0 + i);
-        if (getMetadata(ref).dirty) {
-            setVectorState(SEW::E64, 1);
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + i * sizeof(u64));
-            as.VSE64(allocatedVec(ref), address);
-        }
+        biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + sizeof(u64) * i);
+        as.VLE64(vec, address);
     }
+    as.LI(address, 1);
+    as.SB(address, offsetof(ThreadState, mmx_dirty), threadStatePointer());
     popScratch();
-}
-
-void Recompiler::writebackDirtyState() {
-    for (int i = 0; i < 16; i++) {
-        x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
-        if (getMetadata(ref).dirty) {
-            as.SD(allocatedGPR(ref), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
-        }
-    }
-
-    biscuit::GPR address = scratch();
-    for (int i = 0; i < 16; i++) {
-        x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
-        if (getMetadata(ref).dirty) {
-            // TODO: can we group multiple registers if adjacent ones need to be written
-            setVectorState(SEW::E64, maxVlen() / 64);
-            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * sizeof(XmmReg));
-            as.VSE64(allocatedVec(ref), address);
-        }
-    }
-    popScratch();
-
-    writebackMMXState();
-
-    if (getMetadata(X86_REF_CF).dirty) {
-        as.SB(allocatedGPR(X86_REF_CF), offsetof(ThreadState, cf), threadStatePointer());
-    }
-
-    if (getMetadata(X86_REF_ZF).dirty) {
-        as.SB(allocatedGPR(X86_REF_ZF), offsetof(ThreadState, zf), threadStatePointer());
-    }
-
-    if (getMetadata(X86_REF_SF).dirty) {
-        as.SB(allocatedGPR(X86_REF_SF), offsetof(ThreadState, sf), threadStatePointer());
-    }
-
-    if (getMetadata(X86_REF_OF).dirty) {
-        as.SB(allocatedGPR(X86_REF_OF), offsetof(ThreadState, of), threadStatePointer());
-    }
-
-    for (size_t i = 0; i < 16; i++) {
-        gpr_metadata[i].dirty = false;
-        gpr_metadata[i].loaded = false;
-        xmm_metadata[i].dirty = false;
-        xmm_metadata[i].loaded = false;
-    }
-
-    for (size_t i = 0; i < 8; i++) {
-        mm_metadata[i].dirty = false;
-        mm_metadata[i].loaded = false;
-    }
-
-    for (size_t i = 0; i < 4; i++) {
-        flag_metadata[i].dirty = false;
-        flag_metadata[i].loaded = false;
-    }
 
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
-    rounding_mode_set = false;
 }
 
-void Recompiler::invalidStateUntilJump() {
-    // This instruction hints to the state reconstruction in the signal handler that the state was written back
-    // and is invalid, until a jump. For example, if a block does something like:
-    // writebackDirtyState()
-    // modify a0, a1, t0
-    // jump to function to handle stuff
-    // Then we need a way of communicating that between writebackDirtyState and the jump, the state (a0, a1, t0) is invalid
-    // and to not reconstruct ThreadState using those registers. This NOP instruction below will serve this purpose.
-    as.SRLI(x0, x0, 42);
+void Recompiler::writebackMMXState() {
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+    current_grouping = LMUL::M1;
+
+    using_mmx = false;
+    biscuit::GPR address = scratch();
+    ASSERT(address != t6);
+    // TODO: can we optimize these using special stores
+    setVectorState(SEW::E64, 1);
+    for (int i = 0; i < 8; i++) {
+        biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + sizeof(u64) * i);
+        as.VSE64(vec, address);
+    }
+    as.SB(x0, offsetof(ThreadState, mmx_dirty), threadStatePointer());
+    popScratch();
+
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+    current_grouping = LMUL::M1;
 }
 
-void Recompiler::restoreRoundingMode() {
+void Recompiler::writebackState() {
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+    current_grouping = LMUL::M1;
+
+    for (int i = 0; i < 16; i++) {
+        x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
+        as.SD(allocatedGPR(ref), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
+    }
+
+    biscuit::GPR address = scratch();
+    ASSERT(address != t6);
+
+    static_assert(sizeof(XmmReg) == 16); // Change the below if XmmReg length is changed
+    setVectorState(SEW::E64, 2);
+
+    // TODO: can we optimize using special stores
+    for (int i = 0; i < 16; i++) {
+        biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * sizeof(XmmReg));
+        as.VSE64(vec, address);
+    }
+
+    popScratch();
+
+    if (using_mmx) {
+        writebackMMXState();
+    }
+
+    biscuit::GPR cf = allocatedGPR(X86_REF_CF);
+    biscuit::GPR zf = allocatedGPR(X86_REF_ZF);
+    biscuit::GPR sf = allocatedGPR(X86_REF_SF);
+    biscuit::GPR of = allocatedGPR(X86_REF_OF);
+
+    as.SB(cf, offsetof(ThreadState, cf), threadStatePointer());
+    as.SB(zf, offsetof(ThreadState, zf), threadStatePointer());
+    as.SB(sf, offsetof(ThreadState, sf), threadStatePointer());
+    as.SB(of, offsetof(ThreadState, of), threadStatePointer());
+
+    biscuit::GPR temp = scratch();
+    // Now that everything is written to ThreadState, signal handlers can use it
+    // instead of reading registers from ucontext
+    as.LI(temp, 1);
+    as.SB(temp, offsetof(ThreadState, state_is_correct), threadStatePointer());
+    popScratch();
+
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+    current_grouping = LMUL::M1;
+}
+
+void Recompiler::restoreState() {
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+    current_grouping = LMUL::M1;
+
+    for (int i = 0; i < 16; i++) {
+        x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
+        as.LD(allocatedGPR(ref), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
+    }
+
+    biscuit::GPR address = scratch();
+    ASSERT(address != t6); // reason: search for JALR(t6, ...)
+
+    static_assert(sizeof(XmmReg) == 16); // Change the below if XmmReg length is changed
+    setVectorState(SEW::E64, 2);
+
+    // TODO: can we optimize these using special loads
+    for (int i = 0; i < 16; i++) {
+        biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * i);
+        as.VLE64(vec, address);
+    }
+
+    popScratch();
+
+    if (using_mmx) {
+        restoreMMXState();
+    }
+
+    biscuit::GPR cf = allocatedGPR(X86_REF_CF);
+    biscuit::GPR zf = allocatedGPR(X86_REF_ZF);
+    biscuit::GPR sf = allocatedGPR(X86_REF_SF);
+    biscuit::GPR of = allocatedGPR(X86_REF_OF);
+
+    as.LBU(cf, offsetof(ThreadState, cf), threadStatePointer());
+    as.LBU(zf, offsetof(ThreadState, zf), threadStatePointer());
+    as.LBU(sf, offsetof(ThreadState, sf), threadStatePointer());
+    as.LBU(of, offsetof(ThreadState, of), threadStatePointer());
+
+    // Restore the rounding mode
     biscuit::GPR rm = scratch();
     as.LBU(rm, offsetof(ThreadState, rmode), threadStatePointer());
     as.FSRM(x0, rm);
     popScratch();
+
+    // Mark state as invalid again as we will be modifying the host registers
+    as.SB(x0, offsetof(ThreadState, state_is_correct), threadStatePointer());
+
+    current_sew = SEW::E1024;
+    current_vlen = 0;
+    current_grouping = LMUL::M1;
 }
 
 void Recompiler::backToDispatcher() {
-    const u64 offset = (u64)compile_next_handler - (u64)as.GetCursorPointer();
+    const u64 offset = compile_next_handler - (u64)as.GetCursorPointer();
     ASSERT(IsValid2GBImm(offset));
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-    as.AUIPC(t0, hi20);
-    as.JR(t0, lo12);
+    ASSERT(isScratch(t6));
+    as.AUIPC(t6, hi20);
+    as.JR(t6, lo12);
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
@@ -1560,10 +1526,6 @@ void Recompiler::enterDispatcher(ThreadState* state) {
 void Recompiler::exitDispatcher(felix86_frame* frame) {
     exit_dispatcher(frame);
     __builtin_unreachable();
-}
-
-void* Recompiler::getCompileNext() {
-    return compile_next_handler;
 }
 
 void Recompiler::scanAhead(u64 rip) {
@@ -1666,10 +1628,6 @@ void Recompiler::scanAhead(u64 rip) {
 }
 
 bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
-    if (g_paranoid) {
-        return true;
-    }
-
     if (flag_mode == FlagMode::AlwaysEmit || g_config.single_step) {
         return true;
     } else if (flag_mode == FlagMode::NeverEmit) {
@@ -1718,7 +1676,7 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
 // (res & (~d | s)) | (~d & s), xor top 2 bits
 void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
     int size = getBitSize(size_e);
-    biscuit::GPR of = flagW(X86_REF_OF);
+    biscuit::GPR of = flag(X86_REF_OF);
     biscuit::GPR temp = scratch();
     as.NOT(temp, lhs);
     as.OR(of, temp, rhs);
@@ -1735,7 +1693,7 @@ void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
 // ((s & d) | ((~res) & (s | d))), xor top 2 bits
 void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
     int size = getBitSize(size_e);
-    biscuit::GPR of = flagW(X86_REF_OF);
+    biscuit::GPR of = flag(X86_REF_OF);
     biscuit::GPR temp = scratch();
     as.OR(of, lhs, rhs);
     as.NOT(temp, result);
@@ -1800,20 +1758,20 @@ void Recompiler::updateAuxiliarySbb(biscuit::GPR lhs, biscuit::GPR rhs, biscuit:
 }
 
 void Recompiler::updateCarryAdd(biscuit::GPR lhs, biscuit::GPR result, x86_size_e size) {
-    biscuit::GPR cf = flagW(X86_REF_CF);
+    biscuit::GPR cf = flag(X86_REF_CF);
     zext(cf, result, size);
     as.SLTU(cf, cf, lhs);
 }
 
 void Recompiler::updateCarrySub(biscuit::GPR lhs, biscuit::GPR rhs) {
-    biscuit::GPR cf = flagW(X86_REF_CF);
+    biscuit::GPR cf = flag(X86_REF_CF);
     as.SLTU(cf, lhs, rhs);
 }
 
 void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::GPR result_2, x86_size_e size) {
     biscuit::GPR temp = scratch();
     biscuit::GPR temp2 = scratch();
-    biscuit::GPR cf = flagWR(X86_REF_CF);
+    biscuit::GPR cf = flag(X86_REF_CF);
     zext(temp, result, size);
     zext(temp2, result_2, size);
     as.SLTU(temp, temp, lhs);
@@ -1823,13 +1781,13 @@ void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::
     popScratch();
 }
 
-void Recompiler::clearFlag(x86_ref_e flag) {
-    biscuit::GPR f = flagW(flag);
+void Recompiler::clearFlag(x86_ref_e ref) {
+    biscuit::GPR f = flag(ref);
     as.LI(f, 0);
 }
 
-void Recompiler::setFlag(x86_ref_e flag) {
-    biscuit::GPR f = flagW(flag);
+void Recompiler::setFlag(x86_ref_e ref) {
+    biscuit::GPR f = flag(ref);
     as.LI(f, 1);
 }
 
@@ -1939,13 +1897,13 @@ void Recompiler::updateParity(biscuit::GPR result) {
 }
 
 void Recompiler::updateZero(biscuit::GPR result, x86_size_e size) {
-    biscuit::GPR zf = flagW(X86_REF_ZF);
+    biscuit::GPR zf = flag(X86_REF_ZF);
     zext(zf, result, size);
     as.SEQZ(zf, zf);
 }
 
 void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
-    biscuit::GPR sf = flagW(X86_REF_SF);
+    biscuit::GPR sf = flag(X86_REF_SF);
     as.SRLI(sf, result, getBitSize(size) - 1);
     as.ANDI(sf, sf, 1);
 }
@@ -1977,11 +1935,11 @@ void Recompiler::jumpAndLink(u64 rip) {
         auto& target_meta = getBlockMetadata(rip);
         u64 target = target_meta.address;
 
-        u64 offset = target - (u64)(as.GetCursorPointer() + 4);
-        if (IsValidJTypeImm(offset)) {
-            if (offset != 4) {
+        u64 offset_4 = target - (u64)(as.GetCursorPointer() + 4);
+        if (IsValidJTypeImm(offset_4)) {
+            if (offset_4 != 4) {
                 as.NOP();
-                as.J(offset);
+                as.J(offset_4);
             } else {
                 // Can just be inlined as target is just ahead
                 // Replace the AUIPC+JR with 2 NOPs
@@ -1990,13 +1948,14 @@ void Recompiler::jumpAndLink(u64 rip) {
             }
         } else {
             // Too far for a regular jump, use AUIPC+JR
-            ASSERT(IsValid2GBImm(offset));
             u64 offset = target - (u64)as.GetCursorPointer();
+            ASSERT(IsValid2GBImm(offset));
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
 
-            as.AUIPC(t0, hi20);
-            as.JR(t0, lo12);
+            ASSERT(isScratch(t5));
+            as.AUIPC(t5, hi20);
+            as.JR(t5, lo12);
         }
     }
 
@@ -2077,14 +2036,6 @@ void Recompiler::addi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
         as.ADD(dst, src, reg);
         popScratch();
     }
-}
-
-void Recompiler::setFlagUndefined(x86_ref_e ref) {
-    // Once a flag has been set to undefined state it doesn't need to be written back
-    // it's as if it was written with a random value, which we don't care to emulate
-    RegisterMetadata& meta = getMetadata(ref);
-    meta.loaded = false;
-    meta.dirty = false;
 }
 
 void Recompiler::sextb(biscuit::GPR dest, biscuit::GPR src) {
@@ -2398,10 +2349,10 @@ biscuit::GPR Recompiler::getFlags() {
 }
 
 void Recompiler::setFlags(biscuit::GPR flags) {
-    biscuit::GPR cf = flagW(X86_REF_CF);
-    biscuit::GPR zf = flagW(X86_REF_ZF);
-    biscuit::GPR sf = flagW(X86_REF_SF);
-    biscuit::GPR of = flagW(X86_REF_OF);
+    biscuit::GPR cf = flag(X86_REF_CF);
+    biscuit::GPR zf = flag(X86_REF_ZF);
+    biscuit::GPR sf = flag(X86_REF_SF);
+    biscuit::GPR of = flag(X86_REF_OF);
     biscuit::GPR temp = scratch();
 
     as.ANDI(cf, flags, 1);
@@ -2580,8 +2531,10 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
     u64 storage;
     Assembler tas((u8*)&storage, 8);
-    tas.AUIPC(t0, hi20);
-    tas.JALR(a1, lo12, t0); // we link the jump directly to a1 so the thunk doesn't have to move
+    ASSERT(isScratch(t5));
+    ASSERT(isScratch(t6));
+    tas.AUIPC(t5, hi20);
+    tas.JALR(t6, lo12, t5);
     __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
 }
 
@@ -2620,6 +2573,10 @@ void Recompiler::unlinkAt(u8* address_of_jump) {
 }
 
 bool Recompiler::tryInlineSyscall() {
+    if (g_paranoid) {
+        return false;
+    }
+
     if (g_mode32) {
         // Unimplemented for now
         return false;
@@ -2730,51 +2687,18 @@ bool Recompiler::tryInlineSyscall() {
 }
 
 void Recompiler::inlineSyscall(int sysno, int argcount) {
-    // Check if they were loaded before writing them to state, so we don't load them again
-    bool a0_was_loaded = getMetadata(X86_REF_RDI).loaded;
-    bool a1_was_loaded = getMetadata(X86_REF_RSI).loaded;
-    bool a2_was_loaded = getMetadata(X86_REF_RDX).loaded;
-    bool a3_was_loaded = getMetadata(X86_REF_R10).loaded;
-    bool a4_was_loaded = getMetadata(X86_REF_R8).loaded;
-    bool a5_was_loaded = getMetadata(X86_REF_R9).loaded;
-    static_assert(allocatedGPR(X86_REF_RDI) == a0);
-    static_assert(allocatedGPR(X86_REF_RSI) == a1);
-    static_assert(allocatedGPR(X86_REF_RDX) == a2);
-    static_assert(allocatedGPR(X86_REF_R10) == a3);
-    static_assert(allocatedGPR(X86_REF_R8) == a4);
-    static_assert(allocatedGPR(X86_REF_R9) == a5);
-
-    writebackDirtyState(); // I don't think we can count on the kernel not clobbering our regs
-
+    biscuit::GPR old_a0 = scratch();
+    biscuit::GPR old_a1 = scratch();
+    biscuit::GPR old_a7 = scratch();
+    as.MV(old_a0, a0);
+    as.MV(old_a1, a1);
+    as.MV(old_a7, a7);
     as.LI(a7, sysno);
-
-    if (!a0_was_loaded && argcount > 0) {
-        as.LD(a0, offsetof(ThreadState, gprs) + (X86_REF_RDI - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-    }
-
-    if (!a1_was_loaded && argcount > 1) {
-        as.LD(a1, offsetof(ThreadState, gprs) + (X86_REF_RSI - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-    }
-
-    if (!a2_was_loaded && argcount > 2) {
-        as.LD(a2, offsetof(ThreadState, gprs) + (X86_REF_RDX - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-    }
-
-    if (!a3_was_loaded && argcount > 3) {
-        as.LD(a3, offsetof(ThreadState, gprs) + (X86_REF_R10 - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-    }
-
-    if (!a4_was_loaded && argcount > 4) {
-        as.LD(a4, offsetof(ThreadState, gprs) + (X86_REF_R8 - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-    }
-
-    if (!a5_was_loaded && argcount > 5) {
-        as.LD(a5, offsetof(ThreadState, gprs) + (X86_REF_R9 - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-    }
-
     as.ECALL();
-
     setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, a0);
+    as.MV(a0, old_a0);
+    as.MV(a1, old_a1);
+    as.MV(a7, old_a7);
 }
 
 void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
@@ -2815,24 +2739,5 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
                 return;
             }
         }
-    }
-}
-
-// Assume all registers have been loaded. Only good for instruction count generation.
-void Recompiler::assumeLoaded() {
-    for (auto& meta : gpr_metadata) {
-        meta.loaded = true;
-    }
-
-    for (auto& meta : xmm_metadata) {
-        meta.loaded = true;
-    }
-
-    for (auto& meta : mm_metadata) {
-        meta.loaded = true;
-    }
-
-    for (auto& meta : flag_metadata) {
-        meta.loaded = true;
     }
 }

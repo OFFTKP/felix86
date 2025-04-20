@@ -30,6 +30,4 @@ private:
     [[nodiscard]] static std::pair<void*, size_t> setupMainStack(ThreadState* state);
 
     Filesystem fs;
-    void* stack = nullptr;
-    size_t stack_size = 0;
 };

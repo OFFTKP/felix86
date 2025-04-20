@@ -44,7 +44,6 @@ void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& 
     }
 
     rec.setVectorState(SEW::E1024, 0);
-    rec.assumeLoaded();
     DecodedInstruction instruction;
     DecodedOperand operands[4];
     Xbyak::CodeGenerator x;
@@ -89,7 +88,6 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
 
     // Set bogus vector state so we see the vector state changes
     rec.setVectorState(SEW::E1024, 0);
-    rec.assumeLoaded();
     rec.setFlagMode(flags ? FlagMode::AlwaysEmit : FlagMode::NeverEmit);
 
     DecodedInstruction instruction;

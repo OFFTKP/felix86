@@ -160,6 +160,12 @@ struct ThreadState {
     u16 fpu_sw{};
     u8 fpu_top{};
 
+    // Whenever we writeback the state we set this bool so that the signal handler knows not to pull registers from ucontext
+    // and instead pull them from ThreadState. If this is false then we haven't done a writeback so pull from ucontext.
+    // This is useful because sometimes we are in JIT code but we also are thrashing registers (setting a0, a1 etc.) so
+    // sometimes we want to pull from ThreadState even though we are in JIT code.
+    bool state_is_correct = false;
+    bool mmx_dirty = false; // similar reasons as above, but for the mmx/st stuff, because st0-st7 is state only while mmx can be in regs
     ExitReason exit_reason{};
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to

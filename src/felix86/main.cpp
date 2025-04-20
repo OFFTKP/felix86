@@ -229,7 +229,6 @@ void kill_all() {
             }
             at_least_one = true;
         }
-        printf("line: %s\n", line);
     }
 
     if (!at_least_one) {
