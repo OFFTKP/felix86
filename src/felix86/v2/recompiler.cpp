@@ -1598,6 +1598,15 @@ void Recompiler::scanAhead(u64 rip) {
 
         if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG && operands[0].mem.base == ZYDIS_REGISTER_RAX) {
             // Super hack! After invlpg comes a string which the recompiler skips and we also need to skip here.
+            // Don't calculate any flags
+            if (!g_paranoid) {
+                flag_access_cpazso[0].push_back({true, rip});
+                flag_access_cpazso[1].push_back({true, rip});
+                flag_access_cpazso[2].push_back({true, rip});
+                flag_access_cpazso[3].push_back({true, rip});
+                flag_access_cpazso[4].push_back({true, rip});
+                flag_access_cpazso[5].push_back({true, rip});
+            }
             ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
             const char* string = (const char*)(rip + instruction.length);
             size_t size = strlen(string);
