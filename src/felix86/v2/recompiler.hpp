@@ -259,76 +259,78 @@ struct Recompiler {
     static constexpr biscuit::Vec allocatedVec(x86_ref_e reg) {
         switch (reg) {
         case X86_REF_XMM0: {
-            return biscuit::v1;
-        }
-        case X86_REF_XMM1: {
+            // Important to start on an even vector register so vector grouping works when we save/restore the entire state,
+            // but also not use v0 because that's used for the mask register
             return biscuit::v2;
         }
-        case X86_REF_XMM2: {
+        case X86_REF_XMM1: {
             return biscuit::v3;
         }
-        case X86_REF_XMM3: {
+        case X86_REF_XMM2: {
             return biscuit::v4;
         }
-        case X86_REF_XMM4: {
+        case X86_REF_XMM3: {
             return biscuit::v5;
         }
-        case X86_REF_XMM5: {
+        case X86_REF_XMM4: {
             return biscuit::v6;
         }
-        case X86_REF_XMM6: {
+        case X86_REF_XMM5: {
             return biscuit::v7;
         }
-        case X86_REF_XMM7: {
+        case X86_REF_XMM6: {
             return biscuit::v8;
         }
-        case X86_REF_XMM8: {
+        case X86_REF_XMM7: {
             return biscuit::v9;
         }
-        case X86_REF_XMM9: {
+        case X86_REF_XMM8: {
             return biscuit::v10;
         }
-        case X86_REF_XMM10: {
+        case X86_REF_XMM9: {
             return biscuit::v11;
         }
-        case X86_REF_XMM11: {
+        case X86_REF_XMM10: {
             return biscuit::v12;
         }
-        case X86_REF_XMM12: {
+        case X86_REF_XMM11: {
             return biscuit::v13;
         }
-        case X86_REF_XMM13: {
+        case X86_REF_XMM12: {
             return biscuit::v14;
         }
-        case X86_REF_XMM14: {
+        case X86_REF_XMM13: {
             return biscuit::v15;
         }
-        case X86_REF_XMM15: {
+        case X86_REF_XMM14: {
             return biscuit::v16;
         }
-        case X86_REF_MM0: {
+        case X86_REF_XMM15: {
             return biscuit::v17;
         }
-        case X86_REF_MM1: {
+        case X86_REF_MM0: {
             return biscuit::v18;
         }
-        case X86_REF_MM2: {
+        case X86_REF_MM1: {
             return biscuit::v19;
         }
-        case X86_REF_MM3: {
+        case X86_REF_MM2: {
             return biscuit::v20;
         }
-        case X86_REF_MM4: {
+        case X86_REF_MM3: {
             return biscuit::v21;
         }
-        case X86_REF_MM5: {
+        case X86_REF_MM4: {
             return biscuit::v22;
         }
-        case X86_REF_MM6: {
+        case X86_REF_MM5: {
             return biscuit::v23;
         }
-        case X86_REF_MM7: {
+        case X86_REF_MM6: {
             return biscuit::v24;
+        }
+        case X86_REF_MM7: {
+            return biscuit::v25;
         }
         default: {
             UNREACHABLE();
@@ -649,5 +651,5 @@ private:
     // This has to do with the fact we want even registers sometimes so widening operations can use
     // the register group. In the future with a proper allocator we can make it so the order here doesn't
     // matter and the order picks an available group.
-    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v25}; // If changed, also change hardcoded in punpckh
+    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v1}; // If changed, also change hardcoded in punpckh
 };
