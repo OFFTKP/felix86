@@ -2583,7 +2583,8 @@ bool Recompiler::tryInlineSyscall() {
         return false;
     }
 
-    WARN_ONCE("Fix inline syscalls `snap advise-snap --from-apt` bug");
+    // TODO: currently inlined syscalls are disabled because ecall seems to thrash more regs than we expect
+    // and it wouldn't be any more worth to writeback entire state probably
     return false;
 
     switch (rax_value) {
@@ -2691,18 +2692,20 @@ bool Recompiler::tryInlineSyscall() {
 }
 
 void Recompiler::inlineSyscall(int sysno, int argcount) {
-    biscuit::GPR old_a0 = scratch();
-    biscuit::GPR old_a1 = scratch();
-    biscuit::GPR old_a7 = scratch();
-    as.MV(old_a0, a0);
-    as.MV(old_a1, a1);
-    as.MV(old_a7, a7);
-    as.LI(a7, sysno);
-    as.ECALL();
-    setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, a0);
-    as.MV(a0, old_a0);
-    as.MV(a1, old_a1);
-    as.MV(a7, old_a7);
+    // TODO: this doesn't work, I guess kernel thrashes some regs?
+    // biscuit::GPR old_a0 = scratch();
+    // biscuit::GPR old_a1 = scratch();
+    // biscuit::GPR old_a7 = scratch();
+    // as.MV(old_a0, a0);
+    // as.MV(old_a1, a1);
+    // as.MV(old_a7, a7);
+    // as.LI(a7, sysno);
+    // as.ECALL();
+    // setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, a0);
+    // as.MV(a0, old_a0);
+    // as.MV(a1, old_a1);
+    // as.MV(a7, old_a7);
+    UNIMPLEMENTED();
 }
 
 void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
