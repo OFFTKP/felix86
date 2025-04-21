@@ -72,22 +72,6 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     }
 
     SUCCESS("Test passed: %s", path.filename().c_str());
-
-    // Kill any outstanding processes (ie. if we just ran a test with wine)
-    std::vector<const char*> args;
-    args.push_back(argv[0]);
-    args.push_back("-k");
-    args.push_back(nullptr);
-
-    posix_spawn_file_actions_t action;
-    posix_spawn_file_actions_init(&action);
-    posix_spawn_file_actions_addopen(&action, STDOUT_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
-
-    int status;
-    int pid = posix_spawnp(&pid, args[0], &action, nullptr, (char**)args.data(), environ);
-    waitpid(pid, &status, 0);
-
-    posix_spawn_file_actions_destroy(&action);
 }
 
 void common_loader(const std::filesystem::path& path) {
