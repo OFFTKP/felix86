@@ -469,6 +469,30 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     }
 
     if ((void*)handler->func == SIG_DFL) {
+        switch (sig) {
+        case SIGHUP:
+        case SIGINT:
+        case SIGQUIT:
+        case SIGILL:
+        case SIGABRT:
+        case SIGBUS:
+        case SIGFPE:
+        case SIGUSR1:
+        case SIGSEGV:
+        case SIGUSR2:
+        case SIGPIPE:
+        case SIGALRM:
+        case SIGTERM:
+        case SIGSTKFLT:
+        case SIGVTALRM:
+        case SIGPROF:
+        case SIGIO:
+        case SIGPWR:
+        case SIGSYS: {
+            ERROR("Hit signal %s (%d) but signal handler is SIG_DFL, and the default behavior is terminate. Probably a bug.", strsignal(sig), sig);
+        }
+        }
+
         return true;
     }
 
