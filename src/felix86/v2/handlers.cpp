@@ -7126,9 +7126,11 @@ FAST_HANDLE(PSADBW) {
     ASSERT(result_high.Index() == result.Index() + 1);
     biscuit::Vec mask = rec.scratchVec();
     ASSERT(mask.Index() % 2 == 0);
+    rec.scratchVec(); // Waste a scratch so the next is even
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::Vec scratch = rec.scratchVec();
+    ASSERT(scratch.Index() % 2 == 0);
 
     bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     if (is_mmx) {
