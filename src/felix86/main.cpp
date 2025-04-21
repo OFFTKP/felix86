@@ -214,14 +214,19 @@ void kill_all() {
 
         exe_target[len] = '\0';
 
-        // Extract basename
-        char* base = basename(exe_target);
+        std::string path = exe_target;
+        if (path.find(' ') != std::string::npos) {
+            // Sometimes paths come up as "/path/to/felix86 (deleted)"
+            path = path.substr(0, path.find(' '));
+        }
+
+        char* base = basename(path.data());
 
         if (strcmp(base, "felix86") == 0) {
             if (kill(pid, SIGKILL) == 0) {
-                printf("Killed process %d running '%s'\n", pid, base);
+                printf("Killed process %d\n", pid);
             } else {
-                perror("Failed to kill process");
+                printf("Failed to kill process %d", pid);
             }
         }
     }
