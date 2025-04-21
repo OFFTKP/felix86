@@ -223,6 +223,7 @@ void Recompiler::emitSigreturnThunk() {
     u64 here = (u64)as.GetCursorPointer();
     getBlockMetadata(Signals::magicSigreturnAddress()).address = here;
 
+    writebackState();
     as.MV(a0, threadStatePointer());
     call((u64)Signals::sigreturn);
     as.MV(a0, sp);
@@ -2581,6 +2582,9 @@ bool Recompiler::tryInlineSyscall() {
         // Unimplemented for now
         return false;
     }
+
+    WARN_ONCE("Fix inline syscalls `snap advise-snap --from-apt` bug");
+    return false;
 
     switch (rax_value) {
 #define CASE(sysno, argcount)                                                                                                                        \

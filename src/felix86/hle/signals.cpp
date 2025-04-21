@@ -159,12 +159,25 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
 void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const XmmReg* host_vecs, bool use_altstack,
                          bool in_jit_code, siginfo_t* host_siginfo) {
+    if (in_jit_code) {
+        // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
+        BlockMetadata* current_block = get_block_metadata(state, pc);
+        u64 actual_rip = get_actual_rip(*current_block, pc);
+        reconstruct_state(state, host_gprs, host_vecs);
+        // TODO: this may be wrong in some occasions? like sometimes we shouldn't do it because we already set the rip? needs investigation
+        state->SetRip(actual_rip);
+    } else {
+        // State reconstruction isn't necessary, the state should be in some stable form
+    }
+
     u64 rsp = use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP);
     if (rsp == 0) {
         ERROR("RSP is null, use_altstack: %d", use_altstack);
     }
 
     rsp = rsp - 128; // red zone
+    rsp = rsp - 8;
+    rsp = rsp - (rsp % 8);
     rsp = rsp - sizeof(x64_rt_sigframe);
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
@@ -190,17 +203,6 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
 
     sigset_t* old_mask = &state->signal_mask;
     frame->uc.uc_sigmask = *old_mask;
-
-    if (in_jit_code) {
-        // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
-        BlockMetadata* current_block = get_block_metadata(state, pc);
-        u64 actual_rip = get_actual_rip(*current_block, pc);
-        reconstruct_state(state, host_gprs, host_vecs);
-        // TODO: this may be wrong in some occasions? like sometimes we shouldn't do it because we already set the rip? needs investigation
-        state->SetRip(actual_rip);
-    } else {
-        // State reconstruction isn't necessary, the state should be in some stable form
-    }
 
     // Now we need to copy the state to the frame
     frame->uc.uc_mcontext.gregs[REG_RAX] = state->GetGpr(X86_REF_RAX);
@@ -564,6 +566,20 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     // The only problem would be longjmps out of signal handlers. This is evil but possible that a game or something does it
     // In that case the frames would eventually overflow and at least we'd gave an appropriate message.
     state->recompiler->enterDispatcher(state);
+
+    if (in_jit_code) {
+        // We are returning to JIT code. We need to set the host registers from the ucontext accordingly,
+        // as they may have been changed in the signal handler.
+        u64* regs = get_regs(ctx);
+        for (int i = 0; i < 16; i++) {
+            x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
+            u64 new_value = state->GetGpr(ref);
+            regs[Recompiler::allocatedGPR(ref).Index()] = new_value;
+        }
+
+        // TODO: If signal handler changes REG_RIP, we are screwed with this implementation
+        // We need to jump back to the dispatcher if this is the case
+    }
 
     return true;
 }

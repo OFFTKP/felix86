@@ -256,6 +256,10 @@ void initialize_globals() {
     if (g_config.rootfs_path.empty()) {
         printf("Rootfs path is empty. Please set the FELIX86_ROOTFS environment variable or the rootfs_path variable in %s\n",
                g_config.path().c_str());
+
+        if (geteuid() == 0) {
+            printf("\nI noticed you are running as root, did you forget to pass `-E` to sudo?\n");
+        }
         exit(1);
     }
 
