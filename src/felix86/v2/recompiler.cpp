@@ -63,7 +63,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
     ZydisDecoderInit(&decoder, mode, stack_width);
     ZydisDecoderEnableMode(&decoder, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
 
-    if (g_config.always_flags || g_paranoid) {
+    if (g_config.always_flags || g_config.paranoid) {
         flag_mode = FlagMode::AlwaysEmit;
     }
 }
@@ -1120,7 +1120,7 @@ void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
 }
 
 bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
-    if (current_sew == sew && current_vlen == vlen && current_grouping == grouping && !g_paranoid) {
+    if (current_sew == sew && current_vlen == vlen && current_grouping == grouping && !g_config.paranoid) {
         return false;
     }
 
@@ -1545,7 +1545,7 @@ void Recompiler::scanAhead(u64 rip) {
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
 
-        if (g_config.unsafe_flags && !g_paranoid) {
+        if (g_config.unsafe_flags && !g_config.paranoid) {
             if (is_call || is_ret) {
                 // Pretend that the call/ret changes the flags so that we don't calculate the flags
                 // This is most often the case so it's a good optimization.
@@ -1562,7 +1562,7 @@ void Recompiler::scanAhead(u64 rip) {
         if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG && operands[0].mem.base == ZYDIS_REGISTER_RAX) {
             // Super hack! After invlpg comes a string which the recompiler skips and we also need to skip here.
             // Don't calculate any flags
-            if (!g_paranoid) {
+            if (!g_config.paranoid) {
                 flag_access_cpazso[0].push_back({true, rip});
                 flag_access_cpazso[1].push_back({true, rip});
                 flag_access_cpazso[2].push_back({true, rip});
@@ -2574,7 +2574,7 @@ void Recompiler::unlinkAt(u8* address_of_jump) {
 }
 
 bool Recompiler::tryInlineSyscall() {
-    if (g_paranoid) {
+    if (g_config.paranoid) {
         return false;
     }
 

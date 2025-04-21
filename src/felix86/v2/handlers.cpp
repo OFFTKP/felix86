@@ -2909,7 +2909,7 @@ FAST_HANDLE(SUBPD) {
 }
 
 FAST_HANDLE(MINPS) {
-    if (g_config.inaccurate_minmax && !g_paranoid) {
+    if (g_config.inaccurate_minmax && !g_config.paranoid) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -2946,7 +2946,7 @@ FAST_HANDLE(MINPS) {
 }
 
 FAST_HANDLE(MINPD) {
-    if (g_config.inaccurate_minmax && !g_paranoid) {
+    if (g_config.inaccurate_minmax && !g_config.paranoid) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
@@ -3176,7 +3176,7 @@ FAST_HANDLE(PMADDWD) {
 }
 
 FAST_HANDLE(MAXPS) {
-    if (g_config.inaccurate_minmax && !g_paranoid) {
+    if (g_config.inaccurate_minmax && !g_config.paranoid) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -3213,7 +3213,7 @@ FAST_HANDLE(MAXPS) {
 }
 
 FAST_HANDLE(MAXPD) {
-    if (g_config.inaccurate_minmax && !g_paranoid) {
+    if (g_config.inaccurate_minmax && !g_config.paranoid) {
         biscuit::Vec dst = rec.getOperandVec(&operands[0]);
         biscuit::Vec src = rec.getOperandVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
@@ -7125,8 +7125,8 @@ FAST_HANDLE(PSADBW) {
     ASSERT(result.Index() % 2 == 0); // even register for widening ops
     ASSERT(result_high.Index() == result.Index() + 1);
     biscuit::Vec mask = rec.scratchVec();
+    biscuit::Vec mask_high = rec.scratchVec();
     ASSERT(mask.Index() % 2 == 0);
-    rec.scratchVec(); // Waste a scratch so the next is even
     biscuit::Vec scratch = rec.scratchVec();
     ASSERT(scratch.Index() % 2 == 0);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
@@ -7151,14 +7151,14 @@ FAST_HANDLE(PSADBW) {
 
     rec.setVectorState(SEW::E16, 8);
 
-    biscuit::Vec reduction = rec.scratchVec();
+    biscuit::Vec reduction = mask;
     as.VMV(reduction, 0);
 
     if (is_mmx) {
         as.VREDSUM(reduction, result, reduction);
         rec.setOperandVec(&operands[0], reduction);
     } else {
-        biscuit::Vec reduction2 = rec.scratchVec();
+        biscuit::Vec reduction2 = mask_high;
         as.VMV(reduction2, 0);
         as.VREDSUM(reduction, result, reduction);
         as.VREDSUM(reduction2, scratch, reduction2);

@@ -17,7 +17,6 @@
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 
-bool g_paranoid = false;
 bool g_testing = false;
 bool g_extensions_manually_specified = false;
 bool g_print_all_calls = false;
@@ -346,12 +345,6 @@ void initialize_globals() {
         }
 
         LOG("Emitting symbols for " ANSI_BOLD "gdb" ANSI_COLOR_RESET "!");
-    }
-
-    // TODO: move to config.inc
-    const char* paranoid = getenv("FELIX86_PARANOID");
-    if (paranoid && std::string(paranoid) == "1") {
-        g_paranoid = true;
     }
 
     std::string extensions = get_extensions();
