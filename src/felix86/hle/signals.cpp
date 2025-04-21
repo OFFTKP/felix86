@@ -493,6 +493,10 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         }
         }
 
+        if (g_config.paranoid) {
+            WARN("Signal %s is going through default handler", strsignal(sig));
+        }
+
         return true;
     }
 
