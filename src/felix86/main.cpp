@@ -186,14 +186,7 @@ void binfmt_misc() {
 }
 
 void kill_all() {
-    char exe_path[4096];
-    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
-    if (len == -1) {
-        perror("readlink");
-    }
-    exe_path[len] = '\0';
-
-    std::vector<const char*> argv = {"pgrep", "-f", exe_path, NULL};
+    std::vector<const char*> argv = {"pgrep", "felix86", NULL};
     int pipefd[2];
     if (pipe(pipefd) != 0) {
         perror("pipe");

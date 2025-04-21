@@ -1221,6 +1221,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(umask, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_ptrace: {
+        result = SYSCALL(ptrace, arg1, arg2, arg3, arg4);
+        break;
+    }
     case felix86_riscv64_ppoll: {
         result = SYSCALL(ppoll, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
