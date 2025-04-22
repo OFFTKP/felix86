@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <fmt/base.h>
 #include <fmt/format.h>
+#include <linux/prctl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
@@ -190,61 +191,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
-    // Check if there's any pending signals. If there are, raise them.
-    while (thread_state->pending_signals) {
-        int sig_bit = __builtin_ctz(thread_state->pending_signals);
-        int sig = sig_bit + 1;
-
-        WARN("Handling deferred signal %d", sig);
-
-        sigset_t mask, old;
-        sigemptyset(&mask);
-        sigaddset(&mask, sig);
-
-        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
-
-        // Raise the signal...
-        ASSERT(kill(getpid(), sig) == 0);
-
-        thread_state->pending_signals &= ~(1 << sig_bit);
-
-        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
-    }
-
-    while (!thread_state->queued_signals.empty()) {
-        ASSERT(!thread_state->signals_disabled);
-        sigset_t full, old;
-        sigfillset(&full);
-        pthread_sigmask(SIG_BLOCK, &full, &old); // block signals to make changing queued_signals safe
-
-        PendingSignal signal = thread_state->queued_signals.pop();
-
-        int sig = signal.sig;
-        siginfo_t info = signal.info;
-
-        pthread_sigmask(SIG_SETMASK, &old, nullptr);
-
-        WARN("Handling deferred realtime signal %d", sig);
-
-        // Block the current signal that we are currently serving
-        sigset_t mask;
-        sigemptyset(&mask);
-        sigaddset(&mask, sig);
-
-        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
-
-        FiredSignal fired_signal{.guest_info = info};
-        sigval val{.sival_ptr = &fired_signal};
-
-        thread_state->incoming_signal = true;
-
-        // Raise the signal...
-        ASSERT(sigqueue(getpid(), sig, val) == 0);
-
-        thread_state->incoming_signal = false;
-
-        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
-    }
+    Signals::checkPending(thread_state);
 
     g_dispatcher_exit_count++;
 
@@ -271,6 +218,10 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
 
     g_process_globals.initialize();
     g_fs = std::make_unique<Filesystem>();
+
+#ifdef PR_RISCV_SET_ICACHE_FLUSH_CTX
+    prctl(PR_RISCV_SET_ICACHE_FLUSH_CTX, PR_RISCV_CTX_SW_FENCEI_ON, PR_RISCV_SCOPE_PER_PROCESS);
+#endif
 
     Elf::PeekResult peek = Elf::Peek(g_params.executable_path);
     std::filesystem::path script_path;

@@ -674,9 +674,69 @@ RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
 int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
     WARN("About to run sigsuspend");
     int result = ::sigsuspend(mask);
+    WARN("Sigsuspend finished");
     if (result == -1) {
         return -errno;
     } else {
         return result;
+    }
+}
+
+void Signals::checkPending(ThreadState* state) {
+    // Check if there's any pending signals. If there are, raise them.
+    while (state->pending_signals) {
+        int sig_bit = __builtin_ctz(state->pending_signals);
+        int sig = sig_bit + 1;
+
+        WARN("Handling deferred signal %d", sig);
+
+        sigset_t mask, old;
+        sigemptyset(&mask);
+        sigaddset(&mask, sig);
+
+        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
+
+        // Raise the signal...
+        ASSERT(kill(getpid(), sig) == 0);
+
+        state->pending_signals &= ~(1 << sig_bit);
+
+        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
+    }
+
+    while (!state->queued_signals.empty()) {
+        ASSERT(!state->signals_disabled);
+        sigset_t full, old;
+        sigfillset(&full);
+        pthread_sigmask(SIG_BLOCK, &full, &old); // block signals to make changing queued_signals safe
+
+        PendingSignal signal = state->queued_signals.pop();
+
+        int sig = signal.sig;
+        siginfo_t info = signal.info;
+
+        pthread_sigmask(SIG_SETMASK, &old, nullptr);
+
+        WARN("Handling deferred realtime signal %d", sig);
+
+        // Block the current signal that we are currently serving
+        // It may be unblocked from inside the handler if SA_NODEFER is set
+        sigset_t mask;
+        sigemptyset(&mask);
+        sigaddset(&mask, sig);
+
+        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
+
+        FiredSignal fired_signal{.guest_info = info};
+        sigval val{.sival_ptr = &fired_signal};
+
+        state->incoming_signal = true;
+
+        // Raise the signal...
+        ASSERT(sigqueue(getpid(), sig, val) == 0);
+
+        state->incoming_signal = false;
+
+        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }
 }

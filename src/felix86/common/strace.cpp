@@ -5,31 +5,41 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
+struct nullable {
+    const char* str;
+    explicit nullable(const char* s) : str(s) {}
+};
+
+auto format_as(nullable n) {
+    return n.str ? n.str : "(null)";
+}
+
 std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5, u64 arg6) {
     switch (syscall_no) {
     case 0: {
-        return fmt::format("read: {{\n    unsigned int fd = 0x{:x}\n    char *buf = {}\n    size_t count = 0x{:x}\n}}", (int)arg1, (const char*)arg2,
-                           (u64)arg3);
+        return fmt::format("read: {{\n    unsigned int fd = 0x{:x}\n    char *buf = {}\n    size_t count = 0x{:x}\n}}", (int)arg1,
+                           nullable((const char*)arg2), (u64)arg3);
     }
     case 1: {
         return fmt::format("write: {{\n    unsigned int fd = 0x{:x}\n    const char *buf = {}\n    size_t count = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (u64)arg3);
+                           nullable((const char*)arg2), (u64)arg3);
     }
     case 2: {
-        return fmt::format("open: {{\n    const char *filename = {}\n    int flags = 0x{:x}\n    umode_t mode = {}\n}}", (const char*)arg1, (int)arg2,
-                           (void*)arg3);
+        return fmt::format("open: {{\n    const char *filename = {}\n    int flags = 0x{:x}\n    umode_t mode = {}\n}}", nullable((const char*)arg1),
+                           (int)arg2, (void*)arg3);
     }
     case 3: {
         return fmt::format("close: {{\n    unsigned int fd = 0x{:x}\n}}", (int)arg1);
     }
     case 4: {
-        return fmt::format("newstat: {{\n    const char *filename = {}\n    struct stat *statbuf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("newstat: {{\n    const char *filename = {}\n    struct stat *statbuf = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 5: {
         return fmt::format("newfstat: {{\n    unsigned int fd = 0x{:x}\n    struct stat *statbuf = {}\n}}", (int)arg1, (void*)arg2);
     }
     case 6: {
-        return fmt::format("newlstat: {{\n    const char *filename = {}\n    struct stat *statbuf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("newlstat: {{\n    const char *filename = {}\n    struct stat *statbuf = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2);
     }
     case 7: {
         return fmt::format("poll: {{\n    struct pollfd *ufds = {}\n    unsigned int nfds = 0x{:x}\n    int timeout_msecs = 0x{:x}\n}}", (void*)arg1,
@@ -73,12 +83,12 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 17: {
         return fmt::format("pread64: {{\n    unsigned int fd = 0x{:x}\n    char *buf = {}\n    size_t count = 0x{:x}\n    loff_t pos = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (u64)arg3, (u64)arg4);
+                           (int)arg1, nullable((const char*)arg2), (u64)arg3, (u64)arg4);
     }
     case 18: {
         return fmt::format(
             "pwrite64: {{\n    unsigned int fd = 0x{:x}\n    const char *buf = {}\n    size_t count = 0x{:x}\n    loff_t pos = 0x{:x}\n}}", (int)arg1,
-            (const char*)arg2, (u64)arg3, (u64)arg4);
+            nullable((const char*)arg2), (u64)arg3, (u64)arg4);
     }
     case 19: {
         return fmt::format("readv: {{\n    unsigned long fd = 0x{:x}\n    const struct iovec *vec = {}\n    unsigned long vlen = 0x{:x}\n}}",
@@ -89,7 +99,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (u64)arg1, (void*)arg2, (u64)arg3);
     }
     case 21: {
-        return fmt::format("access: {{\n    const char *filename = {}\n    int mode = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("access: {{\n    const char *filename = {}\n    int mode = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 22: {
         return fmt::format("pipe: {{\n    int *fildes = {}\n}}", (void*)arg1);
@@ -124,8 +134,8 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (int)arg3);
     }
     case 30: {
-        return fmt::format("shmat: {{\n    int shmid = 0x{:x}\n    char *shmaddr = {}\n    int shmflg = 0x{:x}\n}}", (int)arg1, (const char*)arg2,
-                           (int)arg3);
+        return fmt::format("shmat: {{\n    int shmid = 0x{:x}\n    char *shmaddr = {}\n    int shmflg = 0x{:x}\n}}", (int)arg1,
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 31: {
         return fmt::format("shmctl: {{\n    int shmid = 0x{:x}\n    int cmd = 0x{:x}\n    struct shmid_ds *buf = {}\n}}", (int)arg1, (int)arg2,
@@ -217,12 +227,12 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 54: {
         return fmt::format("setsockopt: {{\n    int fd = 0x{:x}\n    int level = 0x{:x}\n    int optname = 0x{:x}\n    char *optval = {}\n    int "
                            "optlen = 0x{:x}\n}}",
-                           (int)arg1, (int)arg2, (int)arg3, (const char*)arg4, (int)arg5);
+                           (int)arg1, (int)arg2, (int)arg3, nullable((const char*)arg4), (int)arg5);
     }
     case 55: {
         return fmt::format(
             "getsockopt: {{\n    int fd = 0x{:x}\n    int level = 0x{:x}\n    int optname = 0x{:x}\n    char *optval = {}\n    int *optlen = {}\n}}",
-            (int)arg1, (int)arg2, (int)arg3, (const char*)arg4, (void*)arg5);
+            (int)arg1, (int)arg2, (int)arg3, nullable((const char*)arg4), (void*)arg5);
     }
     case 56: {
         return fmt::format("clone: {{\n    unsigned long clone_flags = 0x{:x}\n    unsigned long newsp = 0x{:x}\n    int *parent_tidptr = {}\n    "
@@ -237,7 +247,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 59: {
         return fmt::format("execve: {{\n    const char *filename = {}\n    const char *const *argv = {}\n    const char *const *envp = {}\n}}",
-                           (const char*)arg1, (void*)arg2, (void*)arg3);
+                           nullable((const char*)arg1), (void*)arg2, (void*)arg3);
     }
     case 60: {
         return fmt::format("exit: {{\n    int error_code = 0x{:x}\n}}", (int)arg1);
@@ -264,7 +274,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (int)arg1, (int)arg2, (int)arg3, (u64)arg4);
     }
     case 67: {
-        return fmt::format("shmdt: {{\n    char *shmaddr = {}\n}}", (const char*)arg1);
+        return fmt::format("shmdt: {{\n    char *shmaddr = {}\n}}", nullable((const char*)arg1));
     }
     case 68: {
         return fmt::format("msgget: {{\n    key_t key = {}\n    int msgflg = 0x{:x}\n}}", (void*)arg1, (int)arg2);
@@ -296,7 +306,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("fdatasync: {{\n    unsigned int fd = 0x{:x}\n}}", (int)arg1);
     }
     case 76: {
-        return fmt::format("truncate: {{\n    const char *path = {}\n    long length = 0x{:x}\n}}", (const char*)arg1, (u64)arg2);
+        return fmt::format("truncate: {{\n    const char *path = {}\n    long length = 0x{:x}\n}}", nullable((const char*)arg1), (u64)arg2);
     }
     case 77: {
         return fmt::format("ftruncate: {{\n    unsigned int fd = 0x{:x}\n    unsigned long length = 0x{:x}\n}}", (int)arg1, (u64)arg2);
@@ -306,56 +316,59 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (int)arg1, (void*)arg2, (int)arg3);
     }
     case 79: {
-        return fmt::format("getcwd: {{\n    char *buf = {}\n    unsigned long size = 0x{:x}\n}}", (const char*)arg1, (u64)arg2);
+        return fmt::format("getcwd: {{\n    char *buf = {}\n    unsigned long size = 0x{:x}\n}}", nullable((const char*)arg1), (u64)arg2);
     }
     case 80: {
-        return fmt::format("chdir: {{\n    const char *filename = {}\n}}", (const char*)arg1);
+        return fmt::format("chdir: {{\n    const char *filename = {}\n}}", nullable((const char*)arg1));
     }
     case 81: {
         return fmt::format("fchdir: {{\n    unsigned int fd = 0x{:x}\n}}", (int)arg1);
     }
     case 82: {
-        return fmt::format("rename: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("rename: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 83: {
-        return fmt::format("mkdir: {{\n    const char *pathname = {}\n    umode_t mode = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("mkdir: {{\n    const char *pathname = {}\n    umode_t mode = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 84: {
-        return fmt::format("rmdir: {{\n    const char *pathname = {}\n}}", (const char*)arg1);
+        return fmt::format("rmdir: {{\n    const char *pathname = {}\n}}", nullable((const char*)arg1));
     }
     case 85: {
-        return fmt::format("creat: {{\n    const char *pathname = {}\n    umode_t mode = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("creat: {{\n    const char *pathname = {}\n    umode_t mode = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 86: {
-        return fmt::format("link: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("link: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 87: {
-        return fmt::format("unlink: {{\n    const char *pathname = {}\n}}", (const char*)arg1);
+        return fmt::format("unlink: {{\n    const char *pathname = {}\n}}", nullable((const char*)arg1));
     }
     case 88: {
-        return fmt::format("symlink: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("symlink: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 89: {
-        return fmt::format("readlink: {{\n    const char *path = {}\n    char *buf = {}\n    int bufsiz = 0x{:x}\n}}", (const char*)arg1,
-                           (const char*)arg2, (int)arg3);
+        return fmt::format("readlink: {{\n    const char *path = {}\n    char *buf = {}\n    int bufsiz = 0x{:x}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 90: {
-        return fmt::format("chmod: {{\n    const char *filename = {}\n    umode_t mode = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("chmod: {{\n    const char *filename = {}\n    umode_t mode = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 91: {
         return fmt::format("fchmod: {{\n    unsigned int fd = 0x{:x}\n    umode_t mode = {}\n}}", (int)arg1, (void*)arg2);
     }
     case 92: {
-        return fmt::format("chown: {{\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n}}", (const char*)arg1, (void*)arg2,
-                           (void*)arg3);
+        return fmt::format("chown: {{\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2, (void*)arg3);
     }
     case 93: {
         return fmt::format("fchown: {{\n    unsigned int fd = 0x{:x}\n    uid_t user = {}\n    gid_t group = {}\n}}", (int)arg1, (void*)arg2,
                            (void*)arg3);
     }
     case 94: {
-        return fmt::format("lchown: {{\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n}}", (const char*)arg1, (void*)arg2,
-                           (void*)arg3);
+        return fmt::format("lchown: {{\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2, (void*)arg3);
     }
     case 95: {
         return fmt::format("umask: {{\n    int mask = 0x{:x}\n}}", (int)arg1);
@@ -384,7 +397,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("getuid: {{}}");
     }
     case 103: {
-        return fmt::format("syslog: {{\n    int type = 0x{:x}\n    char *buf = {}\n    int len = 0x{:x}\n}}", (int)arg1, (const char*)arg2,
+        return fmt::format("syslog: {{\n    int type = 0x{:x}\n    char *buf = {}\n    int len = 0x{:x}\n}}", (int)arg1, nullable((const char*)arg2),
                            (int)arg3);
     }
     case 104: {
@@ -477,10 +490,10 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("sigaltstack: {{\n    const stack_t *uss = {}\n    stack_t *uoss = {}\n}}", (void*)arg1, (void*)arg2);
     }
     case 132: {
-        return fmt::format("utime: {{\n    char *filename = {}\n    struct utimbuf *times = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("utime: {{\n    char *filename = {}\n    struct utimbuf *times = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 133: {
-        return fmt::format("mknod: {{\n    const char *filename = {}\n    umode_t mode = {}\n    unsigned dev = {}\n}}", (const char*)arg1,
+        return fmt::format("mknod: {{\n    const char *filename = {}\n    umode_t mode = {}\n    unsigned dev = {}\n}}", nullable((const char*)arg1),
                            (void*)arg2, (void*)arg3);
     }
     case 135: {
@@ -490,7 +503,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("ustat: {{\n    unsigned dev = {}\n    struct ustat *ubuf = {}\n}}", (void*)arg1, (void*)arg2);
     }
     case 137: {
-        return fmt::format("statfs: {{\n    const char *pathname = {}\n    struct statfs *buf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("statfs: {{\n    const char *pathname = {}\n    struct statfs *buf = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 138: {
         return fmt::format("fstatfs: {{\n    unsigned int fd = 0x{:x}\n    struct statfs *buf = {}\n}}", (int)arg1, (void*)arg2);
@@ -549,7 +562,8 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (void*)arg2, (u64)arg3);
     }
     case 155: {
-        return fmt::format("pivot_root: {{\n    const char *new_root = {}\n    const char *put_old = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("pivot_root: {{\n    const char *new_root = {}\n    const char *put_old = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 157: {
         return fmt::format("prctl: {{\n    int option = 0x{:x}\n    unsigned long arg2 = 0x{:x}\n    unsigned long arg3 = 0x{:x}\n    unsigned long "
@@ -566,13 +580,13 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("setrlimit: {{\n    unsigned int resource = 0x{:x}\n    struct rlimit *rlim = {}\n}}", (int)arg1, (void*)arg2);
     }
     case 161: {
-        return fmt::format("chroot: {{\n    const char *filename = {}\n}}", (const char*)arg1);
+        return fmt::format("chroot: {{\n    const char *filename = {}\n}}", nullable((const char*)arg1));
     }
     case 162: {
         return fmt::format("sync: {{}}");
     }
     case 163: {
-        return fmt::format("acct: {{\n    const char *name = {}\n}}", (const char*)arg1);
+        return fmt::format("acct: {{\n    const char *name = {}\n}}", nullable((const char*)arg1));
     }
     case 164: {
         return fmt::format("settimeofday: {{\n    struct __kernel_old_timeval *tv = {}\n    struct timezone *tz = {}\n}}", (void*)arg1, (void*)arg2);
@@ -580,26 +594,26 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 165: {
         return fmt::format("mount: {{\n    char *dev_name = {}\n    char *dir_name = {}\n    char *type = {}\n    unsigned long flags = 0x{:x}\n    "
                            "void *data = {}\n}}",
-                           (const char*)arg1, (const char*)arg2, (const char*)arg3, (u64)arg4, (void*)arg5);
+                           nullable((const char*)arg1), nullable((const char*)arg2), nullable((const char*)arg3), (u64)arg4, (void*)arg5);
     }
     case 166: {
-        return fmt::format("umount: {{\n    char *name = {}\n    int flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("umount: {{\n    char *name = {}\n    int flags = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 167: {
-        return fmt::format("swapon: {{\n    const char *specialfile = {}\n    int swap_flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("swapon: {{\n    const char *specialfile = {}\n    int swap_flags = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 168: {
-        return fmt::format("swapoff: {{\n    const char *specialfile = {}\n}}", (const char*)arg1);
+        return fmt::format("swapoff: {{\n    const char *specialfile = {}\n}}", nullable((const char*)arg1));
     }
     case 169: {
         return fmt::format("reboot: {{\n    int magic1 = 0x{:x}\n    int magic2 = 0x{:x}\n    unsigned int cmd = 0x{:x}\n    void *arg = {}\n}}",
                            (int)arg1, (int)arg2, (int)arg3, (void*)arg4);
     }
     case 170: {
-        return fmt::format("sethostname: {{\n    char *name = {}\n    int len = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("sethostname: {{\n    char *name = {}\n    int len = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 171: {
-        return fmt::format("setdomainname: {{\n    char *name = {}\n    int len = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("setdomainname: {{\n    char *name = {}\n    int len = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 172: {
         return fmt::format("iopl: {{\n    unsigned int level = 0x{:x}\n}}", (int)arg1);
@@ -610,14 +624,15 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 175: {
         return fmt::format("init_module: {{\n    void *umod = {}\n    unsigned long len = 0x{:x}\n    const char *uargs = {}\n}}", (void*)arg1,
-                           (u64)arg2, (const char*)arg3);
+                           (u64)arg2, nullable((const char*)arg3));
     }
     case 176: {
-        return fmt::format("delete_module: {{\n    const char *name_user = {}\n    unsigned int flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("delete_module: {{\n    const char *name_user = {}\n    unsigned int flags = 0x{:x}\n}}", nullable((const char*)arg1),
+                           (int)arg2);
     }
     case 179: {
         return fmt::format("quotactl: {{\n    unsigned int cmd = 0x{:x}\n    const char *special = {}\n    qid_t id = {}\n    void *addr = {}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4);
     }
     case 186: {
         return fmt::format("gettid: {{}}");
@@ -629,52 +644,54 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 188: {
         return fmt::format("setxattr: {{\n    const char *pathname = {}\n    const char *name = {}\n    const void *value = {}\n    size_t size = "
                            "0x{:x}\n    int flags = 0x{:x}\n}}",
-                           (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4, (int)arg5);
+                           nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4, (int)arg5);
     }
     case 189: {
         return fmt::format("lsetxattr: {{\n    const char *pathname = {}\n    const char *name = {}\n    const void *value = {}\n    size_t size = "
                            "0x{:x}\n    int flags = 0x{:x}\n}}",
-                           (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4, (int)arg5);
+                           nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4, (int)arg5);
     }
     case 190: {
         return fmt::format("fsetxattr: {{\n    int fd = 0x{:x}\n    const char *name = {}\n    const void *value = {}\n    size_t size = 0x{:x}\n    "
                            "int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (u64)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (u64)arg4, (int)arg5);
     }
     case 191: {
         return fmt::format(
             "getxattr: {{\n    const char *pathname = {}\n    const char *name = {}\n    void *value = {}\n    size_t size = 0x{:x}\n}}",
-            (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4);
+            nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4);
     }
     case 192: {
         return fmt::format(
             "lgetxattr: {{\n    const char *pathname = {}\n    const char *name = {}\n    void *value = {}\n    size_t size = 0x{:x}\n}}",
-            (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4);
+            nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4);
     }
     case 193: {
         return fmt::format("fgetxattr: {{\n    int fd = 0x{:x}\n    const char *name = {}\n    void *value = {}\n    size_t size = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (u64)arg4);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (u64)arg4);
     }
     case 194: {
-        return fmt::format("listxattr: {{\n    const char *pathname = {}\n    char *list = {}\n    size_t size = 0x{:x}\n}}", (const char*)arg1,
-                           (const char*)arg2, (u64)arg3);
+        return fmt::format("listxattr: {{\n    const char *pathname = {}\n    char *list = {}\n    size_t size = 0x{:x}\n}}",
+                           nullable((const char*)arg1), nullable((const char*)arg2), (u64)arg3);
     }
     case 195: {
-        return fmt::format("llistxattr: {{\n    const char *pathname = {}\n    char *list = {}\n    size_t size = 0x{:x}\n}}", (const char*)arg1,
-                           (const char*)arg2, (u64)arg3);
+        return fmt::format("llistxattr: {{\n    const char *pathname = {}\n    char *list = {}\n    size_t size = 0x{:x}\n}}",
+                           nullable((const char*)arg1), nullable((const char*)arg2), (u64)arg3);
     }
     case 196: {
-        return fmt::format("flistxattr: {{\n    int fd = 0x{:x}\n    char *list = {}\n    size_t size = 0x{:x}\n}}", (int)arg1, (const char*)arg2,
-                           (u64)arg3);
+        return fmt::format("flistxattr: {{\n    int fd = 0x{:x}\n    char *list = {}\n    size_t size = 0x{:x}\n}}", (int)arg1,
+                           nullable((const char*)arg2), (u64)arg3);
     }
     case 197: {
-        return fmt::format("removexattr: {{\n    const char *pathname = {}\n    const char *name = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("removexattr: {{\n    const char *pathname = {}\n    const char *name = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 198: {
-        return fmt::format("lremovexattr: {{\n    const char *pathname = {}\n    const char *name = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("lremovexattr: {{\n    const char *pathname = {}\n    const char *name = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 199: {
-        return fmt::format("fremovexattr: {{\n    int fd = 0x{:x}\n    const char *name = {}\n}}", (int)arg1, (const char*)arg2);
+        return fmt::format("fremovexattr: {{\n    int fd = 0x{:x}\n    const char *name = {}\n}}", (int)arg1, nullable((const char*)arg2));
     }
     case 200: {
         return fmt::format("tkill: {{\n    pid_t pid = {}\n    int sig = 0x{:x}\n}}", (void*)arg1, (int)arg2);
@@ -795,7 +812,8 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("tgkill: {{\n    pid_t tgid = {}\n    pid_t pid = {}\n    int sig = 0x{:x}\n}}", (void*)arg1, (void*)arg2, (int)arg3);
     }
     case 235: {
-        return fmt::format("utimes: {{\n    char *filename = {}\n    struct __kernel_old_timeval *utimes = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("utimes: {{\n    char *filename = {}\n    struct __kernel_old_timeval *utimes = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2);
     }
     case 237: {
         return fmt::format("mbind: {{\n    unsigned long start = 0x{:x}\n    unsigned long len = 0x{:x}\n    unsigned long mode = 0x{:x}\n    const "
@@ -814,20 +832,20 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 240: {
         return fmt::format(
             "mq_open: {{\n    const char *u_name = {}\n    int oflag = 0x{:x}\n    umode_t mode = {}\n    struct mq_attr *u_attr = {}\n}}",
-            (const char*)arg1, (int)arg2, (void*)arg3, (void*)arg4);
+            nullable((const char*)arg1), (int)arg2, (void*)arg3, (void*)arg4);
     }
     case 241: {
-        return fmt::format("mq_unlink: {{\n    const char *u_name = {}\n}}", (const char*)arg1);
+        return fmt::format("mq_unlink: {{\n    const char *u_name = {}\n}}", nullable((const char*)arg1));
     }
     case 242: {
         return fmt::format("mq_timedsend: {{\n    mqd_t mqdes = {}\n    const char *u_msg_ptr = {}\n    size_t msg_len = 0x{:x}\n    unsigned int "
                            "msg_prio = 0x{:x}\n    const struct __kernel_timespec *u_abs_timeout = {}\n}}",
-                           (void*)arg1, (const char*)arg2, (u64)arg3, (int)arg4, (void*)arg5);
+                           (void*)arg1, nullable((const char*)arg2), (u64)arg3, (int)arg4, (void*)arg5);
     }
     case 243: {
         return fmt::format("mq_timedreceive: {{\n    mqd_t mqdes = {}\n    char *u_msg_ptr = {}\n    size_t msg_len = 0x{:x}\n    unsigned int "
                            "*u_msg_prio = {}\n    const struct __kernel_timespec *u_abs_timeout = {}\n}}",
-                           (void*)arg1, (const char*)arg2, (u64)arg3, (void*)arg4, (void*)arg5);
+                           (void*)arg1, nullable((const char*)arg2), (u64)arg3, (void*)arg4, (void*)arg5);
     }
     case 244: {
         return fmt::format("mq_notify: {{\n    mqd_t mqdes = {}\n    const struct sigevent *u_notification = {}\n}}", (void*)arg1, (void*)arg2);
@@ -849,12 +867,12 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 248: {
         return fmt::format("add_key: {{\n    const char *_type = {}\n    const char *_description = {}\n    const void *_payload = {}\n    size_t "
                            "plen = 0x{:x}\n    key_serial_t ringid = {}\n}}",
-                           (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4, (void*)arg5);
+                           nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4, (void*)arg5);
     }
     case 249: {
         return fmt::format("request_key: {{\n    const char *_type = {}\n    const char *_description = {}\n    const char *_callout_info = {}\n    "
                            "key_serial_t destringid = {}\n}}",
-                           (const char*)arg1, (const char*)arg2, (const char*)arg3, (void*)arg4);
+                           nullable((const char*)arg1), nullable((const char*)arg2), nullable((const char*)arg3), (void*)arg4);
     }
     case 250: {
         return fmt::format("keyctl: {{\n    int option = 0x{:x}\n    unsigned long arg2 = 0x{:x}\n    unsigned long arg3 = 0x{:x}\n    unsigned long "
@@ -873,7 +891,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 254: {
         return fmt::format("inotify_add_watch: {{\n    int fd = 0x{:x}\n    const char *pathname = {}\n    u32 mask = {}\n}}", (int)arg1,
-                           (const char*)arg2, (void*)arg3);
+                           nullable((const char*)arg2), (void*)arg3);
     }
     case 255: {
         return fmt::format("inotify_rm_watch: {{\n    int fd = 0x{:x}\n    __s32 wd = {}\n}}", (int)arg1, (void*)arg2);
@@ -885,60 +903,60 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 257: {
         return fmt::format("openat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    int flags = 0x{:x}\n    umode_t mode = {}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (void*)arg4);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, (void*)arg4);
     }
     case 258: {
         return fmt::format("mkdirat: {{\n    int dfd = 0x{:x}\n    const char *pathname = {}\n    umode_t mode = {}\n}}", (int)arg1,
-                           (const char*)arg2, (void*)arg3);
+                           nullable((const char*)arg2), (void*)arg3);
     }
     case 259: {
         return fmt::format(
             "mknodat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    umode_t mode = {}\n    unsigned int dev = 0x{:x}\n}}", (int)arg1,
-            (const char*)arg2, (void*)arg3, (int)arg4);
+            nullable((const char*)arg2), (void*)arg3, (int)arg4);
     }
     case 260: {
         return fmt::format(
             "fchownat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n    int flag = 0x{:x}\n}}",
-            (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4, (int)arg5);
+            (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4, (int)arg5);
     }
     case 261: {
         return fmt::format("futimesat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    struct __kernel_old_timeval *utimes = {}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3);
     }
     case 262: {
         return fmt::format(
             "newfstatat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    struct stat *statbuf = {}\n    int flag = 0x{:x}\n}}",
-            (int)arg1, (const char*)arg2, (void*)arg3, (int)arg4);
+            (int)arg1, nullable((const char*)arg2), (void*)arg3, (int)arg4);
     }
     case 263: {
         return fmt::format("unlinkat: {{\n    int dfd = 0x{:x}\n    const char *pathname = {}\n    int flag = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (int)arg3);
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 264: {
         return fmt::format(
             "renameat: {{\n    int olddfd = 0x{:x}\n    const char *oldname = {}\n    int newdfd = 0x{:x}\n    const char *newname = {}\n}}",
-            (int)arg1, (const char*)arg2, (int)arg3, (const char*)arg4);
+            (int)arg1, nullable((const char*)arg2), (int)arg3, nullable((const char*)arg4));
     }
     case 265: {
         return fmt::format("linkat: {{\n    int olddfd = 0x{:x}\n    const char *oldname = {}\n    int newdfd = 0x{:x}\n    const char *newname = "
                            "{}\n    int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (const char*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, nullable((const char*)arg4), (int)arg5);
     }
     case 266: {
         return fmt::format("symlinkat: {{\n    const char *oldname = {}\n    int newdfd = 0x{:x}\n    const char *newname = {}\n}}",
-                           (const char*)arg1, (int)arg2, (const char*)arg3);
+                           nullable((const char*)arg1), (int)arg2, nullable((const char*)arg3));
     }
     case 267: {
         return fmt::format("readlinkat: {{\n    int dfd = 0x{:x}\n    const char *pathname = {}\n    char *buf = {}\n    int bufsiz = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (const char*)arg3, (int)arg4);
+                           (int)arg1, nullable((const char*)arg2), nullable((const char*)arg3), (int)arg4);
     }
     case 268: {
         return fmt::format("fchmodat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    umode_t mode = {}\n}}", (int)arg1,
-                           (const char*)arg2, (void*)arg3);
+                           nullable((const char*)arg2), (void*)arg3);
     }
     case 269: {
         return fmt::format("faccessat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    int mode = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (int)arg3);
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 270: {
         return fmt::format("pselect6: {{\n    int n = 0x{:x}\n    fd_set *inp = {}\n    fd_set *outp = {}\n    fd_set *exp = {}\n    struct "
@@ -987,7 +1005,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 280: {
         return fmt::format("utimensat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    struct __kernel_timespec *utimes = {}\n    int "
                            "flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (int)arg4);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (int)arg4);
     }
     case 281: {
         return fmt::format("epoll_pwait: {{\n    int epfd = 0x{:x}\n    struct epoll_event *events = {}\n    int maxevents = 0x{:x}\n    int timeout "
@@ -1072,7 +1090,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 301: {
         return fmt::format("fanotify_mark: {{\n    int fanotify_fd = 0x{:x}\n    unsigned int flags = 0x{:x}\n    __u64 mask = {}\n    int dfd = "
                            "0x{:x}\n    const char *pathname = {}\n}}",
-                           (int)arg1, (int)arg2, (void*)arg3, (int)arg4, (const char*)arg5);
+                           (int)arg1, (int)arg2, (void*)arg3, (int)arg4, nullable((const char*)arg5));
     }
     case 302: {
         return fmt::format("prlimit64: {{\n    pid_t pid = {}\n    unsigned int resource = 0x{:x}\n    const struct rlimit64 *new_rlim = {}\n    "
@@ -1082,7 +1100,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 303: {
         return fmt::format("name_to_handle_at: {{\n    int dfd = 0x{:x}\n    const char *name = {}\n    struct file_handle *handle = {}\n    int "
                            "*mnt_id = {}\n    int flag = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4, (int)arg5);
     }
     case 304: {
         return fmt::format("open_by_handle_at: {{\n    int mountdirfd = 0x{:x}\n    struct file_handle *handle = {}\n    int flags = 0x{:x}\n}}",
@@ -1124,7 +1142,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 313: {
         return fmt::format("finit_module: {{\n    int fd = 0x{:x}\n    const char *uargs = {}\n    int flags = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (int)arg3);
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 314: {
         return fmt::format("sched_setattr: {{\n    pid_t pid = {}\n    struct sched_attr *uattr = {}\n    unsigned int flags = 0x{:x}\n}}",
@@ -1138,23 +1156,24 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 316: {
         return fmt::format("renameat2: {{\n    int olddfd = 0x{:x}\n    const char *oldname = {}\n    int newdfd = 0x{:x}\n    const char *newname = "
                            "{}\n    unsigned int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (const char*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, nullable((const char*)arg4), (int)arg5);
     }
     case 317: {
         return fmt::format("seccomp: {{\n    unsigned int op = 0x{:x}\n    unsigned int flags = 0x{:x}\n    void *uargs = {}\n}}", (int)arg1,
                            (int)arg2, (void*)arg3);
     }
     case 318: {
-        return fmt::format("getrandom: {{\n    char *ubuf = {}\n    size_t len = 0x{:x}\n    unsigned int flags = 0x{:x}\n}}", (const char*)arg1,
-                           (u64)arg2, (int)arg3);
+        return fmt::format("getrandom: {{\n    char *ubuf = {}\n    size_t len = 0x{:x}\n    unsigned int flags = 0x{:x}\n}}",
+                           nullable((const char*)arg1), (u64)arg2, (int)arg3);
     }
     case 319: {
-        return fmt::format("memfd_create: {{\n    const char *uname = {}\n    unsigned int flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("memfd_create: {{\n    const char *uname = {}\n    unsigned int flags = 0x{:x}\n}}", nullable((const char*)arg1),
+                           (int)arg2);
     }
     case 320: {
         return fmt::format("kexec_file_load: {{\n    int kernel_fd = 0x{:x}\n    int initrd_fd = 0x{:x}\n    unsigned long cmdline_len = 0x{:x}\n    "
                            "const char *cmdline_ptr = {}\n    unsigned long flags = 0x{:x}\n}}",
-                           (int)arg1, (int)arg2, (u64)arg3, (const char*)arg4, (u64)arg5);
+                           (int)arg1, (int)arg2, (u64)arg3, nullable((const char*)arg4), (u64)arg5);
     }
     case 321: {
         return fmt::format("bpf: {{\n    int cmd = 0x{:x}\n    union bpf_attr *uattr = {}\n    unsigned int size = 0x{:x}\n}}", (int)arg1,
@@ -1163,7 +1182,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 322: {
         return fmt::format("execveat: {{\n    int fd = 0x{:x}\n    const char *filename = {}\n    const char *const *argv = {}\n    const char "
                            "*const *envp = {}\n    int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4, (int)arg5);
     }
     case 323: {
         return fmt::format("userfaultfd: {{\n    int flags = 0x{:x}\n}}", (int)arg1);
@@ -1205,7 +1224,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 332: {
         return fmt::format("statx: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    unsigned flags = {}\n    unsigned int mask = "
                            "0x{:x}\n    struct statx *buffer = {}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (int)arg4, (void*)arg5);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (int)arg4, (void*)arg5);
     }
     case 333: {
         return fmt::format("io_pgetevents: {{\n    aio_context_t ctx_id = {}\n    long min_nr = 0x{:x}\n    long nr = 0x{:x}\n    struct io_event "
@@ -1236,20 +1255,20 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 428: {
         return fmt::format("open_tree: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    unsigned flags = {}\n}}", (int)arg1,
-                           (const char*)arg2, (void*)arg3);
+                           nullable((const char*)arg2), (void*)arg3);
     }
     case 429: {
         return fmt::format("move_mount: {{\n    int from_dfd = 0x{:x}\n    const char *from_pathname = {}\n    int to_dfd = 0x{:x}\n    const char "
                            "*to_pathname = {}\n    unsigned int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (const char*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, nullable((const char*)arg4), (int)arg5);
     }
     case 430: {
-        return fmt::format("fsopen: {{\n    const char *_fs_name = {}\n    unsigned int flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("fsopen: {{\n    const char *_fs_name = {}\n    unsigned int flags = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 431: {
         return fmt::format("fsconfig: {{\n    int fd = 0x{:x}\n    unsigned int cmd = 0x{:x}\n    const char *_key = {}\n    const void *_value = "
                            "{}\n    int aux = 0x{:x}\n}}",
-                           (int)arg1, (int)arg2, (const char*)arg3, (void*)arg4, (int)arg5);
+                           (int)arg1, (int)arg2, nullable((const char*)arg3), (void*)arg4, (int)arg5);
     }
     case 432: {
         return fmt::format("fsmount: {{\n    int fs_fd = 0x{:x}\n    unsigned int flags = 0x{:x}\n    unsigned int attr_flags = 0x{:x}\n}}",
@@ -1257,7 +1276,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 433: {
         return fmt::format("fspick: {{\n    int dfd = 0x{:x}\n    const char *path = {}\n    unsigned int flags = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (int)arg3);
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 434: {
         return fmt::format("pidfd_open: {{\n    pid_t pid = {}\n    unsigned int flags = 0x{:x}\n}}", (void*)arg1, (int)arg2);
@@ -1272,7 +1291,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 437: {
         return fmt::format(
             "openat2: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    struct open_how *how = {}\n    size_t usize = 0x{:x}\n}}",
-            (int)arg1, (const char*)arg2, (void*)arg3, (u64)arg4);
+            (int)arg1, nullable((const char*)arg2), (void*)arg3, (u64)arg4);
     }
     case 438: {
         return fmt::format("pidfd_getfd: {{\n    int pidfd = 0x{:x}\n    int fd = 0x{:x}\n    unsigned int flags = 0x{:x}\n}}", (int)arg1, (int)arg2,
@@ -1280,7 +1299,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 439: {
         return fmt::format("faccessat2: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    int mode = 0x{:x}\n    int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (int)arg4);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, (int)arg4);
     }
     case 440: {
         return fmt::format("process_madvise: {{\n    int pidfd = 0x{:x}\n    const struct iovec *vec = {}\n    size_t vlen = 0x{:x}\n    int "
@@ -1295,7 +1314,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 442: {
         return fmt::format("mount_setattr: {{\n    int dfd = 0x{:x}\n    const char *path = {}\n    unsigned int flags = 0x{:x}\n    struct "
                            "mount_attr *uattr = {}\n    size_t usize = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (void*)arg4, (u64)arg5);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, (void*)arg4, (u64)arg5);
     }
     case 443: {
         return fmt::format("quotactl_fd: {{\n    unsigned int fd = 0x{:x}\n    unsigned int cmd = 0x{:x}\n    qid_t id = {}\n    void *addr = {}\n}}",
@@ -1348,16 +1367,16 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("fork: {{}}");
     }
     case 3: {
-        return fmt::format("read: {{\n    unsigned int fd = 0x{:x}\n    char *buf = {}\n    size_t count = 0x{:x}\n}}", (int)arg1, (const char*)arg2,
-                           (u64)arg3);
+        return fmt::format("read: {{\n    unsigned int fd = 0x{:x}\n    char *buf = {}\n    size_t count = 0x{:x}\n}}", (int)arg1,
+                           nullable((const char*)arg2), (u64)arg3);
     }
     case 4: {
         return fmt::format("write: {{\n    unsigned int fd = 0x{:x}\n    const char *buf = {}\n    size_t count = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (u64)arg3);
+                           nullable((const char*)arg2), (u64)arg3);
     }
     case 5: {
-        return fmt::format("open: {{\n    const char *filename = {}\n    int flags = 0x{:x}\n    umode_t mode = {}\n}}", (const char*)arg1, (int)arg2,
-                           (void*)arg3);
+        return fmt::format("open: {{\n    const char *filename = {}\n    int flags = 0x{:x}\n    umode_t mode = {}\n}}", nullable((const char*)arg1),
+                           (int)arg2, (void*)arg3);
     }
     case 6: {
         return fmt::format("close: {{\n    unsigned int fd = 0x{:x}\n}}", (int)arg1);
@@ -1367,37 +1386,39 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (int)arg3);
     }
     case 8: {
-        return fmt::format("creat: {{\n    const char *pathname = {}\n    umode_t mode = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("creat: {{\n    const char *pathname = {}\n    umode_t mode = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 9: {
-        return fmt::format("link: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("link: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 10: {
-        return fmt::format("unlink: {{\n    const char *pathname = {}\n}}", (const char*)arg1);
+        return fmt::format("unlink: {{\n    const char *pathname = {}\n}}", nullable((const char*)arg1));
     }
     case 11: {
         return fmt::format("execve: {{\n    const char *filename = {}\n    const char *const *argv = {}\n    const char *const *envp = {}\n}}",
-                           (const char*)arg1, (void*)arg2, (void*)arg3);
+                           nullable((const char*)arg1), (void*)arg2, (void*)arg3);
     }
     case 12: {
-        return fmt::format("chdir: {{\n    const char *filename = {}\n}}", (const char*)arg1);
+        return fmt::format("chdir: {{\n    const char *filename = {}\n}}", nullable((const char*)arg1));
     }
     case 13: {
         return fmt::format("time: {{\n    old_time32_t *tloc = {}\n}}", (void*)arg1);
     }
     case 14: {
-        return fmt::format("mknod: {{\n    const char *filename = {}\n    umode_t mode = {}\n    unsigned dev = {}\n}}", (const char*)arg1,
+        return fmt::format("mknod: {{\n    const char *filename = {}\n    umode_t mode = {}\n    unsigned dev = {}\n}}", nullable((const char*)arg1),
                            (void*)arg2, (void*)arg3);
     }
     case 15: {
-        return fmt::format("chmod: {{\n    const char *filename = {}\n    umode_t mode = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("chmod: {{\n    const char *filename = {}\n    umode_t mode = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 16: {
-        return fmt::format("lchown16: {{\n    const char *filename = {}\n    old_uid_t user = {}\n    old_gid_t group = {}\n}}", (const char*)arg1,
-                           (void*)arg2, (void*)arg3);
+        return fmt::format("lchown16: {{\n    const char *filename = {}\n    old_uid_t user = {}\n    old_gid_t group = {}\n}}",
+                           nullable((const char*)arg1), (void*)arg2, (void*)arg3);
     }
     case 18: {
-        return fmt::format("stat: {{\n    const char *filename = {}\n    struct __old_kernel_stat *statbuf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("stat: {{\n    const char *filename = {}\n    struct __old_kernel_stat *statbuf = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2);
     }
     case 19: {
         return fmt::format("lseek: {{\n    unsigned int fd = 0x{:x}\n    off_t offset = 0x{:x}\n    unsigned int whence = 0x{:x}\n}}", (int)arg1,
@@ -1409,10 +1430,10 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 21: {
         return fmt::format("mount: {{\n    char *dev_name = {}\n    char *dir_name = {}\n    char *type = {}\n    unsigned long flags = 0x{:x}\n    "
                            "void *data = {}\n}}",
-                           (const char*)arg1, (const char*)arg2, (const char*)arg3, (u64)arg4, (void*)arg5);
+                           nullable((const char*)arg1), nullable((const char*)arg2), nullable((const char*)arg3), (u64)arg4, (void*)arg5);
     }
     case 22: {
-        return fmt::format("oldumount: {{\n    char *name = {}\n}}", (const char*)arg1);
+        return fmt::format("oldumount: {{\n    char *name = {}\n}}", nullable((const char*)arg1));
     }
     case 23: {
         return fmt::format("setuid16: {{\n    old_uid_t uid = {}\n}}", (void*)arg1);
@@ -1438,10 +1459,11 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("pause: {{}}");
     }
     case 30: {
-        return fmt::format("utime: {{\n    const char *filename = {}\n    struct old_utimbuf32 *t = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("utime: {{\n    const char *filename = {}\n    struct old_utimbuf32 *t = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2);
     }
     case 33: {
-        return fmt::format("access: {{\n    const char *filename = {}\n    int mode = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("access: {{\n    const char *filename = {}\n    int mode = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 34: {
         return fmt::format("nice: {{\n    int increment = 0x{:x}\n}}", (int)arg1);
@@ -1453,13 +1475,14 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("kill: {{\n    pid_t pid = {}\n    int sig = 0x{:x}\n}}", (void*)arg1, (int)arg2);
     }
     case 38: {
-        return fmt::format("rename: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("rename: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 39: {
-        return fmt::format("mkdir: {{\n    const char *pathname = {}\n    umode_t mode = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("mkdir: {{\n    const char *pathname = {}\n    umode_t mode = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 40: {
-        return fmt::format("rmdir: {{\n    const char *pathname = {}\n}}", (const char*)arg1);
+        return fmt::format("rmdir: {{\n    const char *pathname = {}\n}}", nullable((const char*)arg1));
     }
     case 41: {
         return fmt::format("dup: {{\n    unsigned int fildes = 0x{:x}\n}}", (int)arg1);
@@ -1489,10 +1512,10 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("getegid16: {{}}");
     }
     case 51: {
-        return fmt::format("acct: {{\n    const char *name = {}\n}}", (const char*)arg1);
+        return fmt::format("acct: {{\n    const char *name = {}\n}}", nullable((const char*)arg1));
     }
     case 52: {
-        return fmt::format("umount: {{\n    char *name = {}\n    int flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("umount: {{\n    char *name = {}\n    int flags = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 54: {
         return fmt::format("ioctl: {{\n    unsigned int fd = 0x{:x}\n    unsigned int cmd = 0x{:x}\n    unsigned long arg = 0x{:x}\n}}", (int)arg1,
@@ -1512,7 +1535,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("umask: {{\n    int mask = 0x{:x}\n}}", (int)arg1);
     }
     case 61: {
-        return fmt::format("chroot: {{\n    const char *filename = {}\n}}", (const char*)arg1);
+        return fmt::format("chroot: {{\n    const char *filename = {}\n}}", nullable((const char*)arg1));
     }
     case 62: {
         return fmt::format("ustat: {{\n    unsigned dev = {}\n    struct ustat *ubuf = {}\n}}", (void*)arg1, (void*)arg2);
@@ -1553,7 +1576,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("sigpending: {{\n    old_sigset_t *uset = {}\n}}", (void*)arg1);
     }
     case 74: {
-        return fmt::format("sethostname: {{\n    char *name = {}\n    int len = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("sethostname: {{\n    char *name = {}\n    int len = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 75: {
         return fmt::format("setrlimit: {{\n    unsigned int resource = 0x{:x}\n    struct rlimit *rlim = {}\n}}", (int)arg1, (void*)arg2);
@@ -1580,21 +1603,22 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("select: {{\n    struct sel_arg_struct *arg = {}\n}}", (void*)arg1);
     }
     case 83: {
-        return fmt::format("symlink: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("symlink: {{\n    const char *oldname = {}\n    const char *newname = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 84: {
-        return fmt::format("lstat: {{\n    const char *filename = {}\n    struct __old_kernel_stat *statbuf = {}\n}}", (const char*)arg1,
+        return fmt::format("lstat: {{\n    const char *filename = {}\n    struct __old_kernel_stat *statbuf = {}\n}}", nullable((const char*)arg1),
                            (void*)arg2);
     }
     case 85: {
-        return fmt::format("readlink: {{\n    const char *path = {}\n    char *buf = {}\n    int bufsiz = 0x{:x}\n}}", (const char*)arg1,
-                           (const char*)arg2, (int)arg3);
+        return fmt::format("readlink: {{\n    const char *path = {}\n    char *buf = {}\n    int bufsiz = 0x{:x}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 86: {
-        return fmt::format("uselib: {{\n    const char *library = {}\n}}", (const char*)arg1);
+        return fmt::format("uselib: {{\n    const char *library = {}\n}}", nullable((const char*)arg1));
     }
     case 87: {
-        return fmt::format("swapon: {{\n    const char *specialfile = {}\n    int swap_flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("swapon: {{\n    const char *specialfile = {}\n    int swap_flags = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 88: {
         return fmt::format("reboot: {{\n    int magic1 = 0x{:x}\n    int magic2 = 0x{:x}\n    unsigned int cmd = 0x{:x}\n    void *arg = {}\n}}",
@@ -1611,7 +1635,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("munmap: {{\n    unsigned long addr = 0x{:x}\n    size_t len = 0x{:x}\n}}", (u64)arg1, (u64)arg2);
     }
     case 92: {
-        return fmt::format("truncate: {{\n    const char *path = {}\n    long length = 0x{:x}\n}}", (const char*)arg1, (u64)arg2);
+        return fmt::format("truncate: {{\n    const char *path = {}\n    long length = 0x{:x}\n}}", nullable((const char*)arg1), (u64)arg2);
     }
     case 93: {
         return fmt::format("ftruncate: {{\n    unsigned int fd = 0x{:x}\n    unsigned long length = 0x{:x}\n}}", (int)arg1, (u64)arg2);
@@ -1631,7 +1655,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (int)arg3);
     }
     case 99: {
-        return fmt::format("statfs: {{\n    const char *pathname = {}\n    struct statfs *buf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("statfs: {{\n    const char *pathname = {}\n    struct statfs *buf = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 100: {
         return fmt::format("fstatfs: {{\n    unsigned int fd = 0x{:x}\n    struct statfs *buf = {}\n}}", (int)arg1, (void*)arg2);
@@ -1644,7 +1668,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("socketcall: {{\n    int call = 0x{:x}\n    unsigned long *args = {}\n}}", (int)arg1, (void*)arg2);
     }
     case 103: {
-        return fmt::format("syslog: {{\n    int type = 0x{:x}\n    char *buf = {}\n    int len = 0x{:x}\n}}", (int)arg1, (const char*)arg2,
+        return fmt::format("syslog: {{\n    int type = 0x{:x}\n    char *buf = {}\n    int len = 0x{:x}\n}}", (int)arg1, nullable((const char*)arg2),
                            (int)arg3);
     }
     case 104: {
@@ -1656,10 +1680,11 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("getitimer: {{\n    int which = 0x{:x}\n    struct __kernel_old_itimerval *value = {}\n}}", (int)arg1, (void*)arg2);
     }
     case 106: {
-        return fmt::format("newstat: {{\n    const char *filename = {}\n    struct stat *statbuf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("newstat: {{\n    const char *filename = {}\n    struct stat *statbuf = {}\n}}", nullable((const char*)arg1), (void*)arg2);
     }
     case 107: {
-        return fmt::format("newlstat: {{\n    const char *filename = {}\n    struct stat *statbuf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("newlstat: {{\n    const char *filename = {}\n    struct stat *statbuf = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2);
     }
     case 108: {
         return fmt::format("newfstat: {{\n    unsigned int fd = 0x{:x}\n    struct stat *statbuf = {}\n}}", (int)arg1, (void*)arg2);
@@ -1681,7 +1706,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (void*)arg1, (void*)arg2, (int)arg3, (void*)arg4);
     }
     case 115: {
-        return fmt::format("swapoff: {{\n    const char *specialfile = {}\n}}", (const char*)arg1);
+        return fmt::format("swapoff: {{\n    const char *specialfile = {}\n}}", nullable((const char*)arg1));
     }
     case 116: {
         return fmt::format("sysinfo: {{\n    struct sysinfo *info = {}\n}}", (void*)arg1);
@@ -1703,7 +1728,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (u64)arg1, (u64)arg2, (void*)arg3, (u64)arg4, (void*)arg5);
     }
     case 121: {
-        return fmt::format("setdomainname: {{\n    char *name = {}\n    int len = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("setdomainname: {{\n    char *name = {}\n    int len = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 122: {
         return fmt::format("newuname: {{\n    struct new_utsname *name = {}\n}}", (void*)arg1);
@@ -1725,14 +1750,15 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 128: {
         return fmt::format("init_module: {{\n    void *umod = {}\n    unsigned long len = 0x{:x}\n    const char *uargs = {}\n}}", (void*)arg1,
-                           (u64)arg2, (const char*)arg3);
+                           (u64)arg2, nullable((const char*)arg3));
     }
     case 129: {
-        return fmt::format("delete_module: {{\n    const char *name_user = {}\n    unsigned int flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("delete_module: {{\n    const char *name_user = {}\n    unsigned int flags = 0x{:x}\n}}", nullable((const char*)arg1),
+                           (int)arg2);
     }
     case 131: {
         return fmt::format("quotactl: {{\n    unsigned int cmd = 0x{:x}\n    const char *special = {}\n    qid_t id = {}\n    void *addr = {}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4);
     }
     case 132: {
         return fmt::format("getpgid: {{\n    pid_t pid = {}\n}}", (void*)arg1);
@@ -1892,19 +1918,19 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 180: {
         return fmt::format(
             "pread64: {{\n    unsigned int fd = 0x{:x}\n    char *ubuf = {}\n    u32 count = {}\n    u32 poslo = {}\n    u32 poshi = {}\n}}",
-            (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4, (void*)arg5);
+            (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4, (void*)arg5);
     }
     case 181: {
         return fmt::format(
             "pwrite64: {{\n    unsigned int fd = 0x{:x}\n    const char *ubuf = {}\n    u32 count = {}\n    u32 poslo = {}\n    u32 poshi = {}\n}}",
-            (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4, (void*)arg5);
+            (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4, (void*)arg5);
     }
     case 182: {
-        return fmt::format("chown16: {{\n    const char *filename = {}\n    old_uid_t user = {}\n    old_gid_t group = {}\n}}", (const char*)arg1,
-                           (void*)arg2, (void*)arg3);
+        return fmt::format("chown16: {{\n    const char *filename = {}\n    old_uid_t user = {}\n    old_gid_t group = {}\n}}",
+                           nullable((const char*)arg1), (void*)arg2, (void*)arg3);
     }
     case 183: {
-        return fmt::format("getcwd: {{\n    char *buf = {}\n    unsigned long size = 0x{:x}\n}}", (const char*)arg1, (u64)arg2);
+        return fmt::format("getcwd: {{\n    char *buf = {}\n    unsigned long size = 0x{:x}\n}}", nullable((const char*)arg1), (u64)arg2);
     }
     case 184: {
         return fmt::format("capget: {{\n    cap_user_header_t header = {}\n    cap_user_data_t dataptr = {}\n}}", (void*)arg1, (void*)arg2);
@@ -1933,7 +1959,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 193: {
         return fmt::format(
             "truncate64: {{\n    const char *filename = {}\n    unsigned long offset_low = 0x{:x}\n    unsigned long offset_high = 0x{:x}\n}}",
-            (const char*)arg1, (u64)arg2, (u64)arg3);
+            nullable((const char*)arg1), (u64)arg2, (u64)arg3);
     }
     case 194: {
         return fmt::format(
@@ -1941,17 +1967,19 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
             (int)arg1, (u64)arg2, (u64)arg3);
     }
     case 195: {
-        return fmt::format("stat64: {{\n    const char *filename = {}\n    struct stat64 *statbuf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("stat64: {{\n    const char *filename = {}\n    struct stat64 *statbuf = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2);
     }
     case 196: {
-        return fmt::format("lstat64: {{\n    const char *filename = {}\n    struct stat64 *statbuf = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("lstat64: {{\n    const char *filename = {}\n    struct stat64 *statbuf = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2);
     }
     case 197: {
         return fmt::format("fstat64: {{\n    unsigned long fd = 0x{:x}\n    struct stat64 *statbuf = {}\n}}", (u64)arg1, (void*)arg2);
     }
     case 198: {
-        return fmt::format("lchown: {{\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n}}", (const char*)arg1, (void*)arg2,
-                           (void*)arg3);
+        return fmt::format("lchown: {{\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2, (void*)arg3);
     }
     case 199: {
         return fmt::format("getuid: {{}}");
@@ -1996,8 +2024,8 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (void*)arg3);
     }
     case 212: {
-        return fmt::format("chown: {{\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n}}", (const char*)arg1, (void*)arg2,
-                           (void*)arg3);
+        return fmt::format("chown: {{\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2, (void*)arg3);
     }
     case 213: {
         return fmt::format("setuid: {{\n    uid_t uid = {}\n}}", (void*)arg1);
@@ -2012,7 +2040,8 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("setfsgid: {{\n    gid_t gid = {}\n}}", (void*)arg1);
     }
     case 217: {
-        return fmt::format("pivot_root: {{\n    const char *new_root = {}\n    const char *put_old = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("pivot_root: {{\n    const char *new_root = {}\n    const char *put_old = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 218: {
         return fmt::format("mincore: {{\n    unsigned long start = 0x{:x}\n    size_t len = 0x{:x}\n    unsigned char *vec = {}\n}}", (u64)arg1,
@@ -2042,52 +2071,54 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 226: {
         return fmt::format("setxattr: {{\n    const char *pathname = {}\n    const char *name = {}\n    const void *value = {}\n    size_t size = "
                            "0x{:x}\n    int flags = 0x{:x}\n}}",
-                           (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4, (int)arg5);
+                           nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4, (int)arg5);
     }
     case 227: {
         return fmt::format("lsetxattr: {{\n    const char *pathname = {}\n    const char *name = {}\n    const void *value = {}\n    size_t size = "
                            "0x{:x}\n    int flags = 0x{:x}\n}}",
-                           (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4, (int)arg5);
+                           nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4, (int)arg5);
     }
     case 228: {
         return fmt::format("fsetxattr: {{\n    int fd = 0x{:x}\n    const char *name = {}\n    const void *value = {}\n    size_t size = 0x{:x}\n    "
                            "int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (u64)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (u64)arg4, (int)arg5);
     }
     case 229: {
         return fmt::format(
             "getxattr: {{\n    const char *pathname = {}\n    const char *name = {}\n    void *value = {}\n    size_t size = 0x{:x}\n}}",
-            (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4);
+            nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4);
     }
     case 230: {
         return fmt::format(
             "lgetxattr: {{\n    const char *pathname = {}\n    const char *name = {}\n    void *value = {}\n    size_t size = 0x{:x}\n}}",
-            (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4);
+            nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4);
     }
     case 231: {
         return fmt::format("fgetxattr: {{\n    int fd = 0x{:x}\n    const char *name = {}\n    void *value = {}\n    size_t size = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (u64)arg4);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (u64)arg4);
     }
     case 232: {
-        return fmt::format("listxattr: {{\n    const char *pathname = {}\n    char *list = {}\n    size_t size = 0x{:x}\n}}", (const char*)arg1,
-                           (const char*)arg2, (u64)arg3);
+        return fmt::format("listxattr: {{\n    const char *pathname = {}\n    char *list = {}\n    size_t size = 0x{:x}\n}}",
+                           nullable((const char*)arg1), nullable((const char*)arg2), (u64)arg3);
     }
     case 233: {
-        return fmt::format("llistxattr: {{\n    const char *pathname = {}\n    char *list = {}\n    size_t size = 0x{:x}\n}}", (const char*)arg1,
-                           (const char*)arg2, (u64)arg3);
+        return fmt::format("llistxattr: {{\n    const char *pathname = {}\n    char *list = {}\n    size_t size = 0x{:x}\n}}",
+                           nullable((const char*)arg1), nullable((const char*)arg2), (u64)arg3);
     }
     case 234: {
-        return fmt::format("flistxattr: {{\n    int fd = 0x{:x}\n    char *list = {}\n    size_t size = 0x{:x}\n}}", (int)arg1, (const char*)arg2,
-                           (u64)arg3);
+        return fmt::format("flistxattr: {{\n    int fd = 0x{:x}\n    char *list = {}\n    size_t size = 0x{:x}\n}}", (int)arg1,
+                           nullable((const char*)arg2), (u64)arg3);
     }
     case 235: {
-        return fmt::format("removexattr: {{\n    const char *pathname = {}\n    const char *name = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("removexattr: {{\n    const char *pathname = {}\n    const char *name = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 236: {
-        return fmt::format("lremovexattr: {{\n    const char *pathname = {}\n    const char *name = {}\n}}", (const char*)arg1, (const char*)arg2);
+        return fmt::format("lremovexattr: {{\n    const char *pathname = {}\n    const char *name = {}\n}}", nullable((const char*)arg1),
+                           nullable((const char*)arg2));
     }
     case 237: {
-        return fmt::format("fremovexattr: {{\n    int fd = 0x{:x}\n    const char *name = {}\n}}", (int)arg1, (const char*)arg2);
+        return fmt::format("fremovexattr: {{\n    int fd = 0x{:x}\n    const char *name = {}\n}}", (int)arg1, nullable((const char*)arg2));
     }
     case 238: {
         return fmt::format("tkill: {{\n    pid_t pid = {}\n    int sig = 0x{:x}\n}}", (void*)arg1, (int)arg2);
@@ -2197,7 +2228,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 268: {
         return fmt::format("statfs64: {{\n    const char *pathname = {}\n    size_t sz = 0x{:x}\n    struct statfs64 *buf = {}\n}}",
-                           (const char*)arg1, (u64)arg2, (void*)arg3);
+                           nullable((const char*)arg1), (u64)arg2, (void*)arg3);
     }
     case 269: {
         return fmt::format("fstatfs64: {{\n    unsigned int fd = 0x{:x}\n    size_t sz = 0x{:x}\n    struct statfs64 *buf = {}\n}}", (int)arg1,
@@ -2207,7 +2238,8 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
         return fmt::format("tgkill: {{\n    pid_t tgid = {}\n    pid_t pid = {}\n    int sig = 0x{:x}\n}}", (void*)arg1, (void*)arg2, (int)arg3);
     }
     case 271: {
-        return fmt::format("utimes: {{\n    const char *filename = {}\n    struct old_timeval32 *t = {}\n}}", (const char*)arg1, (void*)arg2);
+        return fmt::format("utimes: {{\n    const char *filename = {}\n    struct old_timeval32 *t = {}\n}}", nullable((const char*)arg1),
+                           (void*)arg2);
     }
     case 272: {
         return fmt::format("fadvise64_64: {{\n    int fd = 0x{:x}\n    __u32 offset_low = {}\n    __u32 offset_high = {}\n    __u32 len_low = {}\n   "
@@ -2231,20 +2263,20 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 277: {
         return fmt::format(
             "mq_open: {{\n    const char *u_name = {}\n    int oflag = 0x{:x}\n    umode_t mode = {}\n    struct mq_attr *u_attr = {}\n}}",
-            (const char*)arg1, (int)arg2, (void*)arg3, (void*)arg4);
+            nullable((const char*)arg1), (int)arg2, (void*)arg3, (void*)arg4);
     }
     case 278: {
-        return fmt::format("mq_unlink: {{\n    const char *u_name = {}\n}}", (const char*)arg1);
+        return fmt::format("mq_unlink: {{\n    const char *u_name = {}\n}}", nullable((const char*)arg1));
     }
     case 279: {
         return fmt::format("mq_timedsend: {{\n    mqd_t mqdes = {}\n    const char *u_msg_ptr = {}\n    unsigned int msg_len = 0x{:x}\n    unsigned "
                            "int msg_prio = 0x{:x}\n    const struct old_timespec32 *u_abs_timeout = {}\n}}",
-                           (void*)arg1, (const char*)arg2, (int)arg3, (int)arg4, (void*)arg5);
+                           (void*)arg1, nullable((const char*)arg2), (int)arg3, (int)arg4, (void*)arg5);
     }
     case 280: {
         return fmt::format("mq_timedreceive: {{\n    mqd_t mqdes = {}\n    char *u_msg_ptr = {}\n    unsigned int msg_len = 0x{:x}\n    unsigned int "
                            "*u_msg_prio = {}\n    const struct old_timespec32 *u_abs_timeout = {}\n}}",
-                           (void*)arg1, (const char*)arg2, (int)arg3, (void*)arg4, (void*)arg5);
+                           (void*)arg1, nullable((const char*)arg2), (int)arg3, (void*)arg4, (void*)arg5);
     }
     case 281: {
         return fmt::format("mq_notify: {{\n    mqd_t mqdes = {}\n    const struct sigevent *u_notification = {}\n}}", (void*)arg1, (void*)arg2);
@@ -2266,12 +2298,12 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 286: {
         return fmt::format("add_key: {{\n    const char *_type = {}\n    const char *_description = {}\n    const void *_payload = {}\n    size_t "
                            "plen = 0x{:x}\n    key_serial_t ringid = {}\n}}",
-                           (const char*)arg1, (const char*)arg2, (void*)arg3, (u64)arg4, (void*)arg5);
+                           nullable((const char*)arg1), nullable((const char*)arg2), (void*)arg3, (u64)arg4, (void*)arg5);
     }
     case 287: {
         return fmt::format("request_key: {{\n    const char *_type = {}\n    const char *_description = {}\n    const char *_callout_info = {}\n    "
                            "key_serial_t destringid = {}\n}}",
-                           (const char*)arg1, (const char*)arg2, (const char*)arg3, (void*)arg4);
+                           nullable((const char*)arg1), nullable((const char*)arg2), nullable((const char*)arg3), (void*)arg4);
     }
     case 288: {
         return fmt::format("keyctl: {{\n    int option = 0x{:x}\n    unsigned long arg2 = 0x{:x}\n    unsigned long arg3 = 0x{:x}\n    unsigned long "
@@ -2290,7 +2322,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 292: {
         return fmt::format("inotify_add_watch: {{\n    int fd = 0x{:x}\n    const char *pathname = {}\n    u32 mask = {}\n}}", (int)arg1,
-                           (const char*)arg2, (void*)arg3);
+                           nullable((const char*)arg2), (void*)arg3);
     }
     case 293: {
         return fmt::format("inotify_rm_watch: {{\n    int fd = 0x{:x}\n    __s32 wd = {}\n}}", (int)arg1, (void*)arg2);
@@ -2302,60 +2334,60 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 295: {
         return fmt::format("openat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    int flags = 0x{:x}\n    umode_t mode = {}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (void*)arg4);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, (void*)arg4);
     }
     case 296: {
         return fmt::format("mkdirat: {{\n    int dfd = 0x{:x}\n    const char *pathname = {}\n    umode_t mode = {}\n}}", (int)arg1,
-                           (const char*)arg2, (void*)arg3);
+                           nullable((const char*)arg2), (void*)arg3);
     }
     case 297: {
         return fmt::format(
             "mknodat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    umode_t mode = {}\n    unsigned int dev = 0x{:x}\n}}", (int)arg1,
-            (const char*)arg2, (void*)arg3, (int)arg4);
+            nullable((const char*)arg2), (void*)arg3, (int)arg4);
     }
     case 298: {
         return fmt::format(
             "fchownat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    uid_t user = {}\n    gid_t group = {}\n    int flag = 0x{:x}\n}}",
-            (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4, (int)arg5);
+            (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4, (int)arg5);
     }
     case 299: {
         return fmt::format("futimesat: {{\n    unsigned int dfd = 0x{:x}\n    const char *filename = {}\n    struct old_timeval32 *t = {}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3);
     }
     case 300: {
         return fmt::format(
             "fstatat64: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    struct stat64 *statbuf = {}\n    int flag = 0x{:x}\n}}",
-            (int)arg1, (const char*)arg2, (void*)arg3, (int)arg4);
+            (int)arg1, nullable((const char*)arg2), (void*)arg3, (int)arg4);
     }
     case 301: {
         return fmt::format("unlinkat: {{\n    int dfd = 0x{:x}\n    const char *pathname = {}\n    int flag = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (int)arg3);
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 302: {
         return fmt::format(
             "renameat: {{\n    int olddfd = 0x{:x}\n    const char *oldname = {}\n    int newdfd = 0x{:x}\n    const char *newname = {}\n}}",
-            (int)arg1, (const char*)arg2, (int)arg3, (const char*)arg4);
+            (int)arg1, nullable((const char*)arg2), (int)arg3, nullable((const char*)arg4));
     }
     case 303: {
         return fmt::format("linkat: {{\n    int olddfd = 0x{:x}\n    const char *oldname = {}\n    int newdfd = 0x{:x}\n    const char *newname = "
                            "{}\n    int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (const char*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, nullable((const char*)arg4), (int)arg5);
     }
     case 304: {
         return fmt::format("symlinkat: {{\n    const char *oldname = {}\n    int newdfd = 0x{:x}\n    const char *newname = {}\n}}",
-                           (const char*)arg1, (int)arg2, (const char*)arg3);
+                           nullable((const char*)arg1), (int)arg2, nullable((const char*)arg3));
     }
     case 305: {
         return fmt::format("readlinkat: {{\n    int dfd = 0x{:x}\n    const char *pathname = {}\n    char *buf = {}\n    int bufsiz = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (const char*)arg3, (int)arg4);
+                           (int)arg1, nullable((const char*)arg2), nullable((const char*)arg3), (int)arg4);
     }
     case 306: {
         return fmt::format("fchmodat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    umode_t mode = {}\n}}", (int)arg1,
-                           (const char*)arg2, (void*)arg3);
+                           nullable((const char*)arg2), (void*)arg3);
     }
     case 307: {
         return fmt::format("faccessat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    int mode = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (int)arg3);
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 308: {
         return fmt::format("pselect6: {{\n    int n = 0x{:x}\n    fd_set *inp = {}\n    fd_set *outp = {}\n    fd_set *exp = {}\n    struct "
@@ -2413,7 +2445,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 320: {
         return fmt::format("utimensat: {{\n    unsigned int dfd = 0x{:x}\n    const char *filename = {}\n    struct old_timespec32 *t = {}\n    int "
                            "flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (int)arg4);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (int)arg4);
     }
     case 321: {
         return fmt::format("signalfd: {{\n    int ufd = 0x{:x}\n    sigset_t *user_mask = {}\n    size_t sizemask = 0x{:x}\n}}", (int)arg1,
@@ -2489,7 +2521,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 339: {
         return fmt::format("fanotify_mark: {{\n    int fanotify_fd = 0x{:x}\n    unsigned int flags = 0x{:x}\n    u32 mask_lo = {}\n    u32 mask_hi "
                            "= {}\n    int dfd = 0x{:x}\n    const char *pathname = {}\n}}",
-                           (int)arg1, (int)arg2, (void*)arg3, (void*)arg4, (int)arg5, (const char*)arg6);
+                           (int)arg1, (int)arg2, (void*)arg3, (void*)arg4, (int)arg5, nullable((const char*)arg6));
     }
     case 340: {
         return fmt::format("prlimit64: {{\n    pid_t pid = {}\n    unsigned int resource = 0x{:x}\n    const struct rlimit64 *new_rlim = {}\n    "
@@ -2499,7 +2531,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 341: {
         return fmt::format("name_to_handle_at: {{\n    int dfd = 0x{:x}\n    const char *name = {}\n    struct file_handle *handle = {}\n    int "
                            "*mnt_id = {}\n    int flag = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4, (int)arg5);
     }
     case 342: {
         return fmt::format("open_by_handle_at: {{\n    int mountdirfd = 0x{:x}\n    struct file_handle *handle = {}\n    int flags = 0x{:x}\n}}",
@@ -2536,7 +2568,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 350: {
         return fmt::format("finit_module: {{\n    int fd = 0x{:x}\n    const char *uargs = {}\n    int flags = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (int)arg3);
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 351: {
         return fmt::format("sched_setattr: {{\n    pid_t pid = {}\n    struct sched_attr *uattr = {}\n    unsigned int flags = 0x{:x}\n}}",
@@ -2550,18 +2582,19 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 353: {
         return fmt::format("renameat2: {{\n    int olddfd = 0x{:x}\n    const char *oldname = {}\n    int newdfd = 0x{:x}\n    const char *newname = "
                            "{}\n    unsigned int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (const char*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, nullable((const char*)arg4), (int)arg5);
     }
     case 354: {
         return fmt::format("seccomp: {{\n    unsigned int op = 0x{:x}\n    unsigned int flags = 0x{:x}\n    void *uargs = {}\n}}", (int)arg1,
                            (int)arg2, (void*)arg3);
     }
     case 355: {
-        return fmt::format("getrandom: {{\n    char *ubuf = {}\n    size_t len = 0x{:x}\n    unsigned int flags = 0x{:x}\n}}", (const char*)arg1,
-                           (u64)arg2, (int)arg3);
+        return fmt::format("getrandom: {{\n    char *ubuf = {}\n    size_t len = 0x{:x}\n    unsigned int flags = 0x{:x}\n}}",
+                           nullable((const char*)arg1), (u64)arg2, (int)arg3);
     }
     case 356: {
-        return fmt::format("memfd_create: {{\n    const char *uname = {}\n    unsigned int flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("memfd_create: {{\n    const char *uname = {}\n    unsigned int flags = 0x{:x}\n}}", nullable((const char*)arg1),
+                           (int)arg2);
     }
     case 357: {
         return fmt::format("bpf: {{\n    int cmd = 0x{:x}\n    union bpf_attr *uattr = {}\n    unsigned int size = 0x{:x}\n}}", (int)arg1,
@@ -2570,7 +2603,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 358: {
         return fmt::format("execveat: {{\n    int fd = 0x{:x}\n    const char *filename = {}\n    const char *const *argv = {}\n    const char "
                            "*const *envp = {}\n    int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (void*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (void*)arg4, (int)arg5);
     }
     case 359: {
         return fmt::format("socket: {{\n    int family = 0x{:x}\n    int type = 0x{:x}\n    int protocol = 0x{:x}\n}}", (int)arg1, (int)arg2,
@@ -2599,12 +2632,12 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 365: {
         return fmt::format(
             "getsockopt: {{\n    int fd = 0x{:x}\n    int level = 0x{:x}\n    int optname = 0x{:x}\n    char *optval = {}\n    int *optlen = {}\n}}",
-            (int)arg1, (int)arg2, (int)arg3, (const char*)arg4, (void*)arg5);
+            (int)arg1, (int)arg2, (int)arg3, nullable((const char*)arg4), (void*)arg5);
     }
     case 366: {
         return fmt::format("setsockopt: {{\n    int fd = 0x{:x}\n    int level = 0x{:x}\n    int optname = 0x{:x}\n    char *optval = {}\n    int "
                            "optlen = 0x{:x}\n}}",
-                           (int)arg1, (int)arg2, (int)arg3, (const char*)arg4, (int)arg5);
+                           (int)arg1, (int)arg2, (int)arg3, nullable((const char*)arg4), (int)arg5);
     }
     case 367: {
         return fmt::format("getsockname: {{\n    int fd = 0x{:x}\n    struct sockaddr *usockaddr = {}\n    int *usockaddr_len = {}\n}}", (int)arg1,
@@ -2664,7 +2697,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 383: {
         return fmt::format("statx: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    unsigned flags = {}\n    unsigned int mask = "
                            "0x{:x}\n    struct statx *buffer = {}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (int)arg4, (void*)arg5);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (int)arg4, (void*)arg5);
     }
     case 384: {
         return fmt::format("arch_prctl: {{\n    int option = 0x{:x}\n    unsigned long arg2 = 0x{:x}\n}}", (int)arg1, (u64)arg2);
@@ -2694,11 +2727,11 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (void*)arg3);
     }
     case 397: {
-        return fmt::format("shmat: {{\n    int shmid = 0x{:x}\n    char *shmaddr = {}\n    int shmflg = 0x{:x}\n}}", (int)arg1, (const char*)arg2,
-                           (int)arg3);
+        return fmt::format("shmat: {{\n    int shmid = 0x{:x}\n    char *shmaddr = {}\n    int shmflg = 0x{:x}\n}}", (int)arg1,
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 398: {
-        return fmt::format("shmdt: {{\n    char *shmaddr = {}\n}}", (const char*)arg1);
+        return fmt::format("shmdt: {{\n    char *shmaddr = {}\n}}", nullable((const char*)arg1));
     }
     case 399: {
         return fmt::format("msgget: {{\n    key_t key = {}\n    int msgflg = 0x{:x}\n}}", (void*)arg1, (int)arg2);
@@ -2757,7 +2790,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 412: {
         return fmt::format("utimensat: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    struct __kernel_timespec *utimes = {}\n    int "
                            "flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (void*)arg3, (int)arg4);
+                           (int)arg1, nullable((const char*)arg2), (void*)arg3, (int)arg4);
     }
     case 413: {
         return fmt::format("pselect6: {{\n    int n = 0x{:x}\n    fd_set *inp = {}\n    fd_set *outp = {}\n    fd_set *exp = {}\n    struct "
@@ -2782,12 +2815,12 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 418: {
         return fmt::format("mq_timedsend: {{\n    mqd_t mqdes = {}\n    const char *u_msg_ptr = {}\n    size_t msg_len = 0x{:x}\n    unsigned int "
                            "msg_prio = 0x{:x}\n    const struct __kernel_timespec *u_abs_timeout = {}\n}}",
-                           (void*)arg1, (const char*)arg2, (u64)arg3, (int)arg4, (void*)arg5);
+                           (void*)arg1, nullable((const char*)arg2), (u64)arg3, (int)arg4, (void*)arg5);
     }
     case 419: {
         return fmt::format("mq_timedreceive: {{\n    mqd_t mqdes = {}\n    char *u_msg_ptr = {}\n    size_t msg_len = 0x{:x}\n    unsigned int "
                            "*u_msg_prio = {}\n    const struct __kernel_timespec *u_abs_timeout = {}\n}}",
-                           (void*)arg1, (const char*)arg2, (u64)arg3, (void*)arg4, (void*)arg5);
+                           (void*)arg1, nullable((const char*)arg2), (u64)arg3, (void*)arg4, (void*)arg5);
     }
     case 420: {
         return fmt::format("semtimedop: {{\n    int semid = 0x{:x}\n    struct sembuf *tsops = {}\n    unsigned int nsops = 0x{:x}\n    const struct "
@@ -2828,20 +2861,20 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 428: {
         return fmt::format("open_tree: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    unsigned flags = {}\n}}", (int)arg1,
-                           (const char*)arg2, (void*)arg3);
+                           nullable((const char*)arg2), (void*)arg3);
     }
     case 429: {
         return fmt::format("move_mount: {{\n    int from_dfd = 0x{:x}\n    const char *from_pathname = {}\n    int to_dfd = 0x{:x}\n    const char "
                            "*to_pathname = {}\n    unsigned int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (const char*)arg4, (int)arg5);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, nullable((const char*)arg4), (int)arg5);
     }
     case 430: {
-        return fmt::format("fsopen: {{\n    const char *_fs_name = {}\n    unsigned int flags = 0x{:x}\n}}", (const char*)arg1, (int)arg2);
+        return fmt::format("fsopen: {{\n    const char *_fs_name = {}\n    unsigned int flags = 0x{:x}\n}}", nullable((const char*)arg1), (int)arg2);
     }
     case 431: {
         return fmt::format("fsconfig: {{\n    int fd = 0x{:x}\n    unsigned int cmd = 0x{:x}\n    const char *_key = {}\n    const void *_value = "
                            "{}\n    int aux = 0x{:x}\n}}",
-                           (int)arg1, (int)arg2, (const char*)arg3, (void*)arg4, (int)arg5);
+                           (int)arg1, (int)arg2, nullable((const char*)arg3), (void*)arg4, (int)arg5);
     }
     case 432: {
         return fmt::format("fsmount: {{\n    int fs_fd = 0x{:x}\n    unsigned int flags = 0x{:x}\n    unsigned int attr_flags = 0x{:x}\n}}",
@@ -2849,7 +2882,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 433: {
         return fmt::format("fspick: {{\n    int dfd = 0x{:x}\n    const char *path = {}\n    unsigned int flags = 0x{:x}\n}}", (int)arg1,
-                           (const char*)arg2, (int)arg3);
+                           nullable((const char*)arg2), (int)arg3);
     }
     case 434: {
         return fmt::format("pidfd_open: {{\n    pid_t pid = {}\n    unsigned int flags = 0x{:x}\n}}", (void*)arg1, (int)arg2);
@@ -2864,7 +2897,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 437: {
         return fmt::format(
             "openat2: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    struct open_how *how = {}\n    size_t usize = 0x{:x}\n}}",
-            (int)arg1, (const char*)arg2, (void*)arg3, (u64)arg4);
+            (int)arg1, nullable((const char*)arg2), (void*)arg3, (u64)arg4);
     }
     case 438: {
         return fmt::format("pidfd_getfd: {{\n    int pidfd = 0x{:x}\n    int fd = 0x{:x}\n    unsigned int flags = 0x{:x}\n}}", (int)arg1, (int)arg2,
@@ -2872,7 +2905,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     }
     case 439: {
         return fmt::format("faccessat2: {{\n    int dfd = 0x{:x}\n    const char *filename = {}\n    int mode = 0x{:x}\n    int flags = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (int)arg4);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, (int)arg4);
     }
     case 440: {
         return fmt::format("process_madvise: {{\n    int pidfd = 0x{:x}\n    const struct iovec *vec = {}\n    size_t vlen = 0x{:x}\n    int "
@@ -2887,7 +2920,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
     case 442: {
         return fmt::format("mount_setattr: {{\n    int dfd = 0x{:x}\n    const char *path = {}\n    unsigned int flags = 0x{:x}\n    struct "
                            "mount_attr *uattr = {}\n    size_t usize = 0x{:x}\n}}",
-                           (int)arg1, (const char*)arg2, (int)arg3, (void*)arg4, (u64)arg5);
+                           (int)arg1, nullable((const char*)arg2), (int)arg3, (void*)arg4, (u64)arg5);
     }
     case 443: {
         return fmt::format("quotactl_fd: {{\n    unsigned int fd = 0x{:x}\n    unsigned int cmd = 0x{:x}\n    qid_t id = {}\n    void *addr = {}\n}}",
