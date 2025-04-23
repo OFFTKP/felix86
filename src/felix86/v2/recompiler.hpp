@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <unordered_map>
 #include <Zydis/Utils.h>
@@ -62,7 +63,13 @@ struct Recompiler {
 
     ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
-    bool isScratch(biscuit::GPR reg);
+    constexpr static bool isScratch(biscuit::GPR reg) {
+        if (std::find(scratch_gprs.begin(), scratch_gprs.end(), reg) != scratch_gprs.end()) {
+            return true;
+        }
+
+        return false;
+    }
 
     void popScratch();
 
@@ -383,8 +390,6 @@ struct Recompiler {
 
     u64 getCompiledBlock(ThreadState* state, u64 rip);
 
-    void unlinkBlock(ThreadState* state, u64 rip);
-
     bool tryInlineSyscall();
 
     void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
@@ -427,37 +432,40 @@ struct Recompiler {
     }
 
     static void call(Assembler& as, u64 target) {
+        ASSERT(isScratch(t4));
         i64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset)) {
             as.JAL(offset);
         } else if (IsValid2GBImm(offset)) {
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-            as.AUIPC(t5, hi20);
-            as.JALR(ra, lo12, t5);
+            as.AUIPC(t4, hi20);
+            as.JALR(ra, lo12, t4);
         } else {
-            as.LI(t5, target);
-            as.JALR(t5);
+            as.LI(t4, target);
+            as.JALR(t4);
         }
     }
 
     void pushCalltrace() {
         if (g_config.calltrace) {
+            ASSERT(isScratch(t4));
             writebackState();
-            as.LI(t0, (u64)push_calltrace);
+            as.LI(t4, (u64)push_calltrace);
             as.MV(a0, threadStatePointer());
             as.LI(a1, current_rip);
-            as.JALR(t0);
+            as.JALR(t4);
             restoreState();
         }
     }
 
     void popCalltrace() {
         if (g_config.calltrace) {
+            ASSERT(isScratch(t4));
             writebackState();
-            as.LI(t0, (u64)pop_calltrace);
+            as.LI(t4, (u64)pop_calltrace);
             as.MV(a0, threadStatePointer());
-            as.JALR(t0);
+            as.JALR(t4);
             restoreState();
         }
     }
@@ -571,9 +579,7 @@ private:
 
     void inlineSyscall(int sysno, int argcount);
 
-    void unlinkAt(u8* address_of_jump);
-
-    static void invalidateAt(ThreadState* state, u8* address_of_block);
+    static void invalidateAt(ThreadState* state, u8* address_of_block, u8* linked_block);
 
     u8* code_cache{};
     biscuit::Assembler as{};

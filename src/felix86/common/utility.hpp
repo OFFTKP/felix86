@@ -21,7 +21,6 @@ using i16 = int16_t;
 using i8 = int8_t;
 
 [[nodiscard]] constexpr bool IsValidJTypeImm(ptrdiff_t value) {
-    return false;
     return value >= -0x80000 && value <= 0x7FFFF;
 }
 

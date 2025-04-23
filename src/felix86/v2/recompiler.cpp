@@ -124,6 +124,7 @@ void Recompiler::emitDispatcher() {
     biscuit::GPR retval = scratch();
     as.MV(retval, a0);
     restoreState();
+    as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
     as.JR(retval);
     popScratch();
 
@@ -192,26 +193,54 @@ void Recompiler::emitInvalidateCallerThunk() {
     writebackState();
     as.MV(a0, threadStatePointer());
     as.MV(a1, t6);
+    // All block links set the return address in t5, and we collect it here
+    // The dispatcher itself sets t5 to 0 to signal that the jump comes from there
+    as.MV(a2, t5);
     call((u64)Recompiler::invalidateAt);
     restoreState(); // TODO: instead, make a "backToDispatcherSkipWriteback" function and remove this restore
     backToDispatcher();
 }
 
-void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block) {
+// Note: This function is important. When we invalidate a block range, our choices are either iterate every block that links
+// to this block and unlink it, this is expensive both performance wise and memory wise, or we can instead insert a piece
+// of code that invalidates the block and also unlinks the caller. See invalidate_caller_thunk.
+void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* linked_block) {
     // We have an address that is +4 of the start of the block
     // Normally our map is guest->host address but we also have this host_pc_map for signals and for here to do a backwards lookup
     auto it = state->recompiler->host_pc_map.lower_bound((u64)address_of_block);
     ASSERT(it != state->recompiler->host_pc_map.end());
 
-    // Setting it to 0 should be enough, as it will trigger recompilation for this block
-    it->second->address = 0;
-    ASSERT((u64)address_of_block >= it->second->address && (u64)address_of_block <= it->second->address_end);
+    if (!((u64)address_of_block >= it->second->address && (u64)address_of_block <= it->second->address_end)) {
+        // Block was probably already invalidate by some other block that jumped here via a link, don't set address to 0
+        // as that would trigger another recompilation for no reason
+    } else {
+        // Setting it to 0 should be enough, as it will trigger recompilation for this block
+        it->second->address = 0;
+    }
 
     // We also need to remove it from the address cache
     if (g_config.address_cache) {
         AddressCacheEntry& entry = state->recompiler->address_cache[it->second->guest_address & ((1 << address_cache_bits) - 1)];
         entry.guest = 0;
         entry.host = 0;
+    }
+
+    if (linked_block) {
+        // This was jumped to by a link. We need to unlink the caller so it doesn't jump here again.
+        // The third argument is going to be the instruction after the linked JAL or JALR
+        // So we need to subtract 8
+        linked_block -= 8;
+
+        u8* cursor = state->recompiler->as.GetCursorPointer();
+        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
+                   state->recompiler->start_of_code_cache, linked_block, cursor);
+
+        // And here we need to replace with a back to dispatcher
+        state->recompiler->as.SetCursorPointer(linked_block);
+        state->recompiler->jumpAndLink(it->second->guest_address);
+        state->recompiler->as.SetCursorPointer(cursor);
+    } else {
+        // The dispatcher makes sure the third argument is set to 0 before we get here
     }
 }
 
@@ -499,14 +528,6 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
 biscuit::GPR Recompiler::scratch() {
     ASSERT(scratch_index != (int)scratch_gprs.size());
     return scratch_gprs[scratch_index++];
-}
-
-bool Recompiler::isScratch(biscuit::GPR reg) {
-    if (std::find(scratch_gprs.begin(), scratch_gprs.end(), reg)) {
-        return true;
-    }
-
-    return false;
 }
 
 biscuit::Vec Recompiler::scratchVec() {
@@ -1417,7 +1438,7 @@ void Recompiler::writebackState() {
     }
 
     biscuit::GPR address = scratch();
-    ASSERT(address != t6);
+    ASSERT(address != t6 && address != t5); // reason: see invalidate_caller_thunk
 
     static_assert(sizeof(XmmReg) == 16); // Change the below if XmmReg length is changed
     setVectorState(SEW::E64, 2);
@@ -1468,7 +1489,7 @@ void Recompiler::restoreState() {
     }
 
     biscuit::GPR address = scratch();
-    ASSERT(address != t6); // reason: search for JALR(t6, ...)
+    ASSERT(address != t6 && address != t5); // reason: see invalidate_caller_thunk
 
     static_assert(sizeof(XmmReg) == 16); // Change the below if XmmReg length is changed
     setVectorState(SEW::E64, 2);
@@ -1936,27 +1957,21 @@ void Recompiler::jumpAndLink(u64 rip) {
         auto& target_meta = getBlockMetadata(rip);
         u64 target = target_meta.address;
 
-        u64 offset_4 = target - (u64)(as.GetCursorPointer() + 4);
-        if (IsValidJTypeImm(offset_4)) {
-            if (offset_4 != 4) {
-                as.NOP();
-                as.J(offset_4);
-            } else {
-                // Can just be inlined as target is just ahead
-                // Replace the AUIPC+JR with 2 NOPs
-                as.NOP();
-                as.NOP();
-            }
+        u64 offset = target - (u64)as.GetCursorPointer();
+        if (IsValidJTypeImm(offset)) {
+            // TODO: if falling through to block, replace jump with auipc+addi to t5
+            as.NOP();
+            as.JAL(t5, offset - 4);
         } else {
             // Too far for a regular jump, use AUIPC+JR
-            u64 offset = target - (u64)as.GetCursorPointer();
             ASSERT(IsValid2GBImm(offset));
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
 
+            ASSERT(isScratch(t4));
             ASSERT(isScratch(t5));
-            as.AUIPC(t5, hi20);
-            as.JR(t5, lo12);
+            as.AUIPC(t4, hi20);
+            as.JALR(t5, lo12, t4); // for justification for this link to t5, see invalidate_caller_thunk
         }
     }
 
@@ -2511,20 +2526,6 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
     as.SB(new_top, offsetof(ThreadState, fpu_top), threadStatePointer());
 }
 
-void Recompiler::unlinkBlock(ThreadState* state, u64 rip) {
-    auto metadata = state->recompiler->getBlockMetadata(rip);
-
-    if (metadata.address_end == 0) {
-        // Not yet compiled, we are fine
-        return;
-    }
-
-    WARN("Unlinking block at %lx", rip);
-    u8* rewind_address = (u8*)metadata.address_end - 4 * 2; // 2 instructions for the ending jump/link
-    unlinkAt(rewind_address);
-    flush_icache();
-}
-
 void Recompiler::invalidateBlock(BlockMetadata* block) {
     u64* address = (u64*)block->address;
     const u64 offset = (u64)invalidate_caller_thunk - (u64)address;
@@ -2532,10 +2533,10 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
     u64 storage;
     Assembler tas((u8*)&storage, 8);
-    ASSERT(isScratch(t5));
+    ASSERT(isScratch(t4));
     ASSERT(isScratch(t6));
-    tas.AUIPC(t5, hi20);
-    tas.JALR(t6, lo12, t5);
+    tas.AUIPC(t4, hi20);
+    tas.JALR(t6, lo12, t4);
     __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
 }
 
@@ -2562,15 +2563,6 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
         state->recompiler->invalidateRange(start, end);
     }
     flush_icache_global(start, end);
-}
-
-void Recompiler::unlinkAt(u8* address_of_jump) {
-    u8* current_address = as.GetCursorPointer();
-
-    // Replace whatever was there with a jump back to dispatcher
-    as.SetCursorPointer(address_of_jump);
-    backToDispatcher();
-    as.SetCursorPointer(current_address);
 }
 
 bool Recompiler::tryInlineSyscall() {
