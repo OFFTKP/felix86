@@ -346,8 +346,10 @@ FAST_HANDLE(ADD) {
         }
         }
 
-        // Still calculate result for flags
-        as.ADD(result, dst, src);
+        if (needs_any_flag || !g_config.noflag_opts) {
+            as.ADD(result, dst, src);
+        }
+
         writeback = false;
     } else {
         if (needs_atomic) {
@@ -580,9 +582,38 @@ FAST_HANDLE(OR) {
 
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR dst;
 
-    as.OR(result, dst, src);
+    bool writeback = true;
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
+    if (needs_atomic && !too_small_for_atomic) {
+        biscuit::GPR address = rec.lea(&operands[0]);
+        dst = rec.scratch();
+        switch (operands[0].size) {
+        case 32: {
+            as.AMOOR_W(Ordering::AQRL, dst, src, address);
+            break;
+        }
+        case 64: {
+            as.AMOOR_D(Ordering::AQRL, dst, src, address);
+            break;
+        }
+        }
+
+        if (needs_any_flag || !g_config.noflag_opts) {
+            as.OR(result, dst, src);
+        }
+
+        writeback = false;
+    } else {
+        if (needs_atomic) {
+            WARN("Atomic OR with 8 or 16 bit operands encountered");
+        }
+
+        dst = rec.getOperandGPR(&operands[0]);
+        as.OR(result, dst, src);
+    }
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
 
@@ -606,7 +637,9 @@ FAST_HANDLE(OR) {
         rec.clearFlag(X86_REF_OF);
     }
 
-    rec.setOperandGPR(&operands[0], result);
+    if (writeback) {
+        rec.setOperandGPR(&operands[0], result);
+    }
 }
 
 FAST_HANDLE(XOR) {
@@ -715,9 +748,36 @@ FAST_HANDLE(XOR) {
 FAST_HANDLE(AND) {
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR dst;
 
-    as.AND(result, dst, src);
+    bool writeback = true;
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
+    if (needs_atomic && !too_small_for_atomic) {
+        biscuit::GPR address = rec.lea(&operands[0]);
+        dst = rec.scratch();
+        switch (operands[0].size) {
+        case 32: {
+            as.AMOAND_W(Ordering::AQRL, dst, src, address);
+            break;
+        }
+        case 64: {
+            as.AMOAND_D(Ordering::AQRL, dst, src, address);
+            break;
+        }
+        }
+
+        // TODO: noflags opt
+        as.AND(result, dst, src);
+        writeback = false;
+    } else {
+        if (needs_atomic) {
+            WARN("Atomic OR with 8 or 16 bit operands encountered");
+        }
+
+        dst = rec.getOperandGPR(&operands[0]);
+        as.AND(result, dst, src);
+    }
 
     x86_size_e size = rec.getOperandSize(&operands[0]);
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
@@ -740,7 +800,9 @@ FAST_HANDLE(AND) {
         rec.clearFlag(X86_REF_OF);
     }
 
-    rec.setOperandGPR(&operands[0], result);
+    if (writeback) {
+        rec.setOperandGPR(&operands[0], result);
+    }
 }
 
 FAST_HANDLE(HLT) {
