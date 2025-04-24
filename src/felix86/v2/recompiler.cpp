@@ -235,7 +235,8 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
         ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
                    state->recompiler->start_of_code_cache, linked_block, cursor);
 
-        // And here we need to replace with a back to dispatcher
+        // And here we need to mark the block for linking again. This will either link if the block is already compiled
+        // or jump back to dispatcher that will link when the block gets compiled.
         state->recompiler->as.SetCursorPointer(linked_block);
         state->recompiler->jumpAndLink(it->second->guest_address);
         state->recompiler->as.SetCursorPointer(cursor);
