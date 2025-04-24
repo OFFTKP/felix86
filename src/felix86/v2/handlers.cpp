@@ -5470,15 +5470,15 @@ FAST_HANDLE(PSRAD) {
 }
 
 FAST_HANDLE(SFENCE) {
-    as.FENCETSO(); // just make a full fence for now, TODO: we can optimize this some day
+    as.FENCE(FenceOrder::RW, FenceOrder::RW); // just make a full fence for now, TODO: we can optimize this some day
 }
 
 FAST_HANDLE(LFENCE) {
-    as.FENCETSO(); // just make a full fence for now, TODO: we can optimize this some day
+    as.FENCE(FenceOrder::RW, FenceOrder::RW); // just make a full fence for now, TODO: we can optimize this some day
 }
 
 FAST_HANDLE(MFENCE) {
-    as.FENCETSO(); // just make a full fence for now, TODO: we can optimize this some day
+    as.FENCE(FenceOrder::RW, FenceOrder::RW); // just make a full fence for now, TODO: we can optimize this some day
 }
 
 FAST_HANDLE(MOVSX) {
