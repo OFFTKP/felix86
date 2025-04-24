@@ -1959,7 +1959,7 @@ void Recompiler::jumpAndLink(u64 rip) {
         u64 target = target_meta.address;
 
         u64 offset = target - (u64)as.GetCursorPointer();
-        if (IsValidJTypeImm(offset)) {
+        if (IsValidJTypeImm(offset - 4)) {
             // TODO: if falling through to block, replace jump with auipc+addi to t5
             as.NOP();
             as.JAL(t5, offset - 4);
