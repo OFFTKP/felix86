@@ -206,7 +206,7 @@ struct __attribute__((packed)) x86_stat {
 static_assert(std::is_trivial<x86_stat>::value);
 static_assert(sizeof(x86_stat) == 144);
 
-struct x86_ipc_perm {
+struct x64_ipc_perm {
     u32 key;
     u32 uid;
     u32 gid;
@@ -218,16 +218,16 @@ struct x86_ipc_perm {
     u16 padding2;
     u64 padding3[2];
 
-    x86_ipc_perm() = delete;
+    x64_ipc_perm() = delete;
 
-    x86_ipc_perm(const struct ipc64_perm& perm) {
-        key = perm.key;
-        uid = perm.uid;
-        gid = perm.gid;
-        cuid = perm.cuid;
-        cgid = perm.cgid;
-        mode = perm.mode;
-        seq = perm.seq;
+    x64_ipc_perm(const struct ipc64_perm& host_perm) {
+        key = host_perm.key;
+        uid = host_perm.uid;
+        gid = host_perm.gid;
+        cuid = host_perm.cuid;
+        cgid = host_perm.cgid;
+        mode = host_perm.mode;
+        seq = host_perm.seq;
         padding = 0;
         padding2 = 0;
         padding3[0] = 0;
@@ -235,23 +235,23 @@ struct x86_ipc_perm {
     }
 
     operator ipc64_perm() const {
-        struct ipc64_perm perm{};
-        perm.key = key;
-        perm.uid = uid;
-        perm.gid = gid;
-        perm.cuid = cuid;
-        perm.cgid = cgid;
-        perm.mode = mode;
-        perm.seq = seq;
-        return perm;
+        struct ipc64_perm host_perm{};
+        host_perm.key = key;
+        host_perm.uid = uid;
+        host_perm.gid = gid;
+        host_perm.cuid = cuid;
+        host_perm.cgid = cgid;
+        host_perm.mode = mode;
+        host_perm.seq = seq;
+        return host_perm;
     }
 };
 
-static_assert(std::is_trivial<x86_ipc_perm>::value);
-static_assert(sizeof(x86_ipc_perm) == 48);
+static_assert(std::is_trivial<x64_ipc_perm>::value);
+static_assert(sizeof(x64_ipc_perm) == 48);
 
-struct x86_semid64_ds {
-    x86_ipc_perm sem_perm;
+struct x64_semid64_ds {
+    x64_ipc_perm sem_perm;
     u64 sem_otime;
     u64 unused1;
     u64 sem_ctime;
@@ -260,7 +260,7 @@ struct x86_semid64_ds {
     u64 unused3;
     u64 unused4;
 
-    x86_semid64_ds() = delete;
+    x64_semid64_ds() = delete;
 
     operator struct semid64_ds() const {
         struct semid64_ds semi{};
@@ -271,15 +271,15 @@ struct x86_semid64_ds {
         return semi;
     }
 
-    x86_semid64_ds(const struct semid64_ds& semi) : sem_perm(semi.sem_perm) {
+    x64_semid64_ds(const struct semid64_ds& semi) : sem_perm(semi.sem_perm) {
         sem_otime = semi.sem_otime;
         sem_ctime = semi.sem_ctime;
         sem_nsems = semi.sem_nsems;
     }
 };
 
-static_assert(std::is_trivial<x86_semid64_ds>::value);
-static_assert(sizeof(x86_semid64_ds) == 104);
+static_assert(std::is_trivial<x64_semid64_ds>::value);
+static_assert(sizeof(x64_semid64_ds) == 104);
 
 struct __attribute__((packed)) x86_flock64 {
     i16 l_type;
@@ -517,3 +517,298 @@ struct x86_drm_version {
         ASSERT(desc < 0xFFFF'FFFF);
     }
 };
+
+struct x86_ipc_perm_32 {
+    u32 key;
+    u16 uid;
+    u16 gid;
+    u16 cuid;
+    u16 cgid;
+    u16 mode;
+    u16 seq;
+
+    x86_ipc_perm_32() = delete;
+
+    operator struct ipc64_perm() const {
+        struct ipc64_perm host_perm{};
+        host_perm.key = key;
+        host_perm.uid = uid;
+        host_perm.gid = gid;
+        host_perm.cuid = cuid;
+        host_perm.cgid = cgid;
+        host_perm.mode = mode;
+        host_perm.seq = seq;
+        return host_perm;
+    }
+
+    x86_ipc_perm_32(const ipc64_perm& host_perm) {
+        key = host_perm.key;
+        uid = host_perm.uid;
+        gid = host_perm.gid;
+        cuid = host_perm.cuid;
+        cgid = host_perm.cgid;
+        mode = host_perm.mode;
+        seq = host_perm.seq;
+    }
+};
+
+static_assert(std::is_trivially_copyable_v<x86_ipc_perm_32>);
+static_assert(sizeof(x86_ipc_perm_32) == 16);
+
+struct x86_ipc_perm_64 {
+    uint32_t key;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t cuid;
+    uint32_t cgid;
+    uint16_t mode;
+    uint16_t _pad1;
+    uint16_t seq;
+    uint16_t _pad2;
+    u32 _pad[2];
+
+    x86_ipc_perm_64() = delete;
+
+    operator struct ipc64_perm() const {
+        struct ipc64_perm host_perm{};
+        host_perm.key = key;
+        host_perm.uid = uid;
+        host_perm.gid = gid;
+        host_perm.cuid = cuid;
+        host_perm.cgid = cgid;
+        host_perm.mode = mode;
+        host_perm.seq = seq;
+        return host_perm;
+    }
+
+    x86_ipc_perm_64(const ipc64_perm& host_perm) {
+        key = host_perm.key;
+        uid = host_perm.uid;
+        gid = host_perm.gid;
+        cuid = host_perm.cuid;
+        cgid = host_perm.cgid;
+        mode = host_perm.mode;
+        seq = host_perm.seq;
+    }
+};
+
+static_assert(std::is_trivially_copyable_v<x86_ipc_perm_64>);
+static_assert(sizeof(x86_ipc_perm_64) == 36);
+
+struct riscv64_shmid64_ds {
+    struct ipc64_perm shm_perm; /* operation permission struct */
+    size_t shm_segsz;           /* size of segment in bytes */
+    u64 shm_atime;              /* time of last shmat() */
+    u64 shm_dtime;              /* time of last shmdt() */
+    u64 shm_ctime;              /* time of last change by shmctl() */
+    u32 shm_cpid;               /* pid of creator */
+    u32 shm_lpid;               /* pid of last shmop */
+    u64 shm_nattch;             /* number of current attaches */
+    u64 __glibc_reserved5;
+    u64 __glibc_reserved6;
+};
+
+struct riscv64_shminfo {
+    u64 shmmax;
+    u64 shmmin;
+    u64 shmmni;
+    u64 shmseg;
+    u64 shmall;
+    u64 __glibc_reserved1;
+    u64 __glibc_reserved2;
+    u64 __glibc_reserved3;
+    u64 __glibc_reserved4;
+};
+
+struct riscv64_shm_info {
+    u32 used_ids;
+    u64 shm_tot; /* total allocated shm */
+    u64 shm_rss; /* total resident shm */
+    u64 shm_swp; /* total swapped shm */
+    u64 swap_attempts;
+    u64 swap_successes;
+};
+
+struct x86_shmid_ds_64 {
+    x86_ipc_perm_64 shm_perm;
+    u32 shm_segsz;
+    u32 shm_atime;
+    u32 shm_atime_high;
+    u32 shm_dtime;
+    u32 shm_dtime_high;
+    u32 shm_ctime;
+    u32 shm_ctime_high;
+    u32 shm_cpid;
+    u32 shm_lpid;
+    u32 shm_nattch;
+    u32 shm_unused4;
+    u32 shm_unused5;
+
+    x86_shmid_ds_64() = delete;
+
+    operator struct riscv64_shmid64_ds() const {
+        struct riscv64_shmid64_ds host_shmid{};
+        host_shmid.shm_perm = shm_perm;
+        host_shmid.shm_segsz = shm_segsz;
+        host_shmid.shm_atime = shm_atime_high;
+        host_shmid.shm_atime <<= 32;
+        host_shmid.shm_atime |= shm_atime;
+        host_shmid.shm_dtime = shm_dtime_high;
+        host_shmid.shm_dtime <<= 32;
+        host_shmid.shm_dtime |= shm_dtime;
+        host_shmid.shm_ctime = shm_ctime_high;
+        host_shmid.shm_ctime <<= 32;
+        host_shmid.shm_ctime |= shm_ctime;
+        host_shmid.shm_cpid = shm_cpid;
+        host_shmid.shm_lpid = shm_lpid;
+        host_shmid.shm_nattch = shm_nattch;
+        return host_shmid;
+    }
+
+    x86_shmid_ds_64(const riscv64_shmid64_ds& host_shmid) : shm_perm{host_shmid.shm_perm} {
+        shm_segsz = host_shmid.shm_segsz;
+        shm_atime = host_shmid.shm_atime;
+        shm_atime_high = host_shmid.shm_atime >> 32;
+        shm_dtime = host_shmid.shm_dtime;
+        shm_dtime_high = host_shmid.shm_dtime >> 32;
+        shm_ctime = host_shmid.shm_ctime;
+        shm_ctime_high = host_shmid.shm_ctime >> 32;
+        shm_cpid = host_shmid.shm_cpid;
+        shm_lpid = host_shmid.shm_lpid;
+        shm_nattch = host_shmid.shm_nattch;
+    }
+};
+
+static_assert(std::is_trivially_copyable_v<x86_shmid_ds_64>);
+static_assert(sizeof(x86_shmid_ds_64) == 84);
+
+struct x86_shmid_ds_32 {
+    x86_ipc_perm_32 shm_perm;
+    u32 shm_segsz;
+    u32 shm_atime;
+    u32 shm_dtime;
+    u32 shm_ctime;
+    u16 shm_cpid;
+    u16 shm_lpid;
+    u16 shm_nattch;
+    u16 shm_unused;
+    u32 shm_unused2;
+    u32 shm_unused3;
+
+    x86_shmid_ds_32() = delete;
+
+    operator struct riscv64_shmid64_ds() const {
+        struct riscv64_shmid64_ds host_shmid{};
+        host_shmid.shm_perm = shm_perm;
+        host_shmid.shm_segsz = shm_segsz;
+        host_shmid.shm_atime = shm_atime;
+        host_shmid.shm_dtime = shm_dtime;
+        host_shmid.shm_ctime = shm_ctime;
+        host_shmid.shm_cpid = shm_cpid;
+        host_shmid.shm_lpid = shm_lpid;
+        host_shmid.shm_nattch = shm_nattch;
+        return host_shmid;
+    }
+
+    x86_shmid_ds_32(const riscv64_shmid64_ds& host_shmid) : shm_perm{host_shmid.shm_perm} {
+        shm_segsz = host_shmid.shm_segsz;
+        shm_atime = host_shmid.shm_atime;
+        shm_dtime = host_shmid.shm_dtime;
+        shm_ctime = host_shmid.shm_ctime;
+        shm_cpid = host_shmid.shm_cpid;
+        shm_lpid = host_shmid.shm_lpid;
+        shm_nattch = host_shmid.shm_nattch;
+    }
+};
+
+static_assert(std::is_trivially_copyable_v<x86_shmid_ds_32>);
+static_assert(sizeof(x86_shmid_ds_32) == 48);
+
+struct x86_shminfo_32 {
+    uint32_t shmmax;
+    uint32_t shmmin;
+    uint32_t shmmni;
+    uint32_t shmseg;
+    uint32_t shmall;
+
+    x86_shminfo_32() = delete;
+
+    operator struct riscv64_shminfo() const {
+        struct riscv64_shminfo host_shminfo{};
+        host_shminfo.shmmax = shmmax;
+        host_shminfo.shmmin = shmmin;
+        host_shminfo.shmmni = shmmni;
+        host_shminfo.shmseg = shmseg;
+        host_shminfo.shmall = shmall;
+        return host_shminfo;
+    }
+
+    x86_shminfo_32(const riscv64_shminfo& host_shminfo) {
+        shmmax = host_shminfo.shmmax;
+        shmmin = host_shminfo.shmmin;
+        shmmni = host_shminfo.shmmni;
+        shmseg = host_shminfo.shmseg;
+        shmall = host_shminfo.shmall;
+    }
+};
+
+static_assert(std::is_trivially_copyable_v<x86_shminfo_32>);
+static_assert(sizeof(x86_shminfo_32) == 20);
+
+struct x86_shm_info_32 {
+    u32 used_ids;
+    u32 shm_tot;
+    u32 shm_rss;
+    u32 shm_swp;
+    u32 swap_attempts;
+    u32 swap_successes;
+
+    x86_shm_info_32() = delete;
+
+    x86_shm_info_32(struct riscv64_shm_info host_shm_info) {
+        used_ids = host_shm_info.used_ids;
+        shm_tot = host_shm_info.shm_tot;
+        shm_rss = host_shm_info.shm_rss;
+        shm_swp = host_shm_info.shm_swp;
+        swap_attempts = host_shm_info.swap_attempts;
+        swap_successes = host_shm_info.swap_successes;
+    }
+};
+
+static_assert(std::is_trivially_copyable_v<x86_shm_info_32>);
+static_assert(sizeof(x86_shm_info_32) == 24);
+
+struct x86_shminfo_64 {
+    u32 shmmax;
+    u32 shmmin;
+    u32 shmmni;
+    u32 shmseg;
+    u32 shmall;
+    u32 unused1;
+    u32 unused2;
+    u32 unused3;
+    u32 unused4;
+
+    x86_shminfo_64() = delete;
+
+    operator riscv64_shminfo() const {
+        riscv64_shminfo host_shminfo{};
+        host_shminfo.shmmax = shmmax;
+        host_shminfo.shmmin = shmmin;
+        host_shminfo.shmmni = shmmni;
+        host_shminfo.shmseg = shmseg;
+        host_shminfo.shmall = shmall;
+        return host_shminfo;
+    }
+
+    x86_shminfo_64(const riscv64_shminfo& host_shminfo) {
+        shmmax = host_shminfo.shmmax;
+        shmmin = host_shminfo.shmmin;
+        shmmni = host_shminfo.shmmni;
+        shmseg = host_shminfo.shmseg;
+        shmall = host_shminfo.shmall;
+    }
+};
+
+static_assert(std::is_trivially_copyable_v<x86_shminfo_64>);
+static_assert(sizeof(x86_shminfo_64) == 36);

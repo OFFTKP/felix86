@@ -864,7 +864,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_semctl: {
-        x86_semid64_ds* guest_semi = (x86_semid64_ds*)arg4;
+        x64_semid64_ds* guest_semi = (x64_semid64_ds*)arg4;
         switch (arg3) {
         case IPC_SET: {
             ASSERT(guest_semi);
