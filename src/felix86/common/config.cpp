@@ -118,8 +118,6 @@ void addToEnvironment(Config& config, const char* env_name, const char* env) {
 
 template <typename Type>
 bool loadFromEnv(Config& config, Type& value, const char* env_name, const char* env) {
-    addToEnvironment(config, env_name, env);
-
     if constexpr (std::is_same_v<Type, bool>) {
         value = is_truthy(env);
         return true;
@@ -157,6 +155,9 @@ Config Config::load(const std::filesystem::path& path) {
             ERROR("A value for %s is required but was not set. Please set it using the %s environment variable or in the configuration file %s in "  \
                   "group [\"%s\"]",                                                                                                                  \
                   #name, #env_name, path.c_str(), #group);                                                                                           \
+        }                                                                                                                                            \
+        if (config.name != type{default_value}) {                                                                                                    \
+            addToEnvironment(config, #env_name, env);                                                                                                \
         }                                                                                                                                            \
     }
 #include "config.inc"

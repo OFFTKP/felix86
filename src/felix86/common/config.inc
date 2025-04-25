@@ -1,5 +1,5 @@
 // GROUP --- TYPE --- NAME --- DEFAULT VALUE --- ENVIRONMENT VARIABLE NAME --- DESCRIPTION -- REQUIRED
-X(General, std::filesystem::path, rootfs_path, {}, FELIX86_ROOTFS, "Set the rootfs path, required for the emulator to work", true)
+X(General, std::filesystem::path, rootfs_path, "", FELIX86_ROOTFS, "Set the rootfs path, required for the emulator to work", true)
 
 X(Logging, bool, verbose, false, FELIX86_VERBOSE, "Enable verbose logging", false)
 X(Logging, bool, quiet, false, FELIX86_QUIET, "Disable all logging", false)
