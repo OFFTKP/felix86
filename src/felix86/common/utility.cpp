@@ -227,9 +227,11 @@ __attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
     return g_breakpoints.size();
 }
 
-__attribute__((visibility("default"))) void disassemble_x64(u64 host_address) {
+__attribute__((visibility("default"))) void disassemble(u64 host_address) {
     ZydisDecoder decoder;
-    ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+    ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+    ZydisStackWidth stack_width = g_mode32 ? ZYDIS_STACK_WIDTH_32 : ZYDIS_STACK_WIDTH_64;
+    ZydisDecoderInit(&decoder, mode, stack_width);
 
     u64 cur = host_address;
     while (true) {
@@ -250,7 +252,7 @@ __attribute__((visibility("default"))) void disassemble_x64(u64 host_address) {
         bool stop = is_jump || is_ret || is_call || is_illegal || is_hlt;
 
         ZydisDisassembledInstruction instr;
-        ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, cur, (void*)cur, 15, &instr);
+        ZydisDisassembleIntel(mode, cur, (void*)cur, 15, &instr);
 
         printf("%016lx: %s\n", cur, instr.text);
 

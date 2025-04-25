@@ -919,21 +919,34 @@ FAST_HANDLE(PUSH) {
 }
 
 FAST_HANDLE(POP) {
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
-
-    rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
-
-    int imm = size_to_bytes(instruction.operand_width);
-    rec.setOperandGPR(&operands[0], result);
-
-    x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
-    if (ref == X86_REF_RSP) {
-        // pop rsp special case
-        rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), result);
-    } else {
+    if (is_segment(operands[0])) {
+        ASSERT_MSG(g_mode32, "Popping segment not in 32-bit mode?");
+        biscuit::GPR src = rec.scratch();
+        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
+        int imm = size_to_bytes(instruction.operand_width);
+        rec.readMemory(src, rsp, 0, X86_SIZE_WORD);
+        rec.writebackState();
+        as.MV(a0, rec.threadStatePointer());
+        as.MV(a1, src);
+        as.LI(a2, operands[0].reg.value);
+        rec.call((u64)felix86_set_segment);
+        rec.restoreState();
         as.ADDI(rsp, rsp, imm);
         rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
+    } else {
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
+        int imm = size_to_bytes(instruction.operand_width);
+        rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
+        rec.setOperandGPR(&operands[0], result);
+        x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+        if (ref == X86_REF_RSP) {
+            // pop rsp special case
+            rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), result);
+        } else {
+            as.ADDI(rsp, rsp, imm);
+            rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
+        }
     }
 }
 
