@@ -348,7 +348,7 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     u64 size = end_page - start_page;
     int result = mprotect((void*)start_page, size, PROT_READ);
     if (result != 0) {
-        ERROR("Failed to protect pages %016lx-%016lx", start_page, end_page);
+        ERROR("Failed to protect pages %016lx-%016lx -- Error: %s", start_page, end_page, strerror(errno));
     }
 }
 
