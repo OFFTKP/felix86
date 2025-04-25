@@ -6,7 +6,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 ; Clear OF just incase
 test eax, eax

@@ -5,7 +5,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 ; We can't really check the results of this
 rdtscp

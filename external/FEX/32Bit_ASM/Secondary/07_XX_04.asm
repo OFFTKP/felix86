@@ -13,7 +13,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 mov eax, 0x41424344
 mov ebx, 0x41424344

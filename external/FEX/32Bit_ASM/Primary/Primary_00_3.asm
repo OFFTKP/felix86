@@ -9,7 +9,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 mov eax, 0x01
 add al, 0x80

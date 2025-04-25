@@ -7,7 +7,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 mov edi, 0xe0000000
 lea esp, [edi + 8 * 4]

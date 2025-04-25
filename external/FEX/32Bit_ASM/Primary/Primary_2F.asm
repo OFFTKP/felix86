@@ -7,7 +7,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 mov eax, 0x1234561f
 das

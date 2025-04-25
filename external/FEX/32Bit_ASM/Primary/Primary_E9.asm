@@ -7,7 +7,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 ; Tests for 32-bit signed displacement wrapping
 ; Testing for underflow specifically

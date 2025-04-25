@@ -8,7 +8,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 lea edx, [.data]
 fld dword [edx + 8 * 0]

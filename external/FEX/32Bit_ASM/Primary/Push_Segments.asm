@@ -7,7 +7,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 mov esp, 0xe0000040
 

@@ -7,7 +7,7 @@
 }
 %endif
 org 10000h
-bits32
+bits 32
 
 %macro ofcfmerge 0
   ; Get CF
