@@ -1892,6 +1892,20 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_ia32_pread64: {
+            u64 pos_low = arg4;
+            u64 pos_high = arg5;
+            u64 pos = pos_low | (pos_high << 32);
+            result = pread64(arg1, (void*)arg2, arg3, pos);
+            break;
+        }
+        case felix86_x86_32_ia32_pwrite64: {
+            u64 pos_low = arg4;
+            u64 pos_high = arg5;
+            u64 pos = pos_low | (pos_high << 32);
+            result = pwrite64(arg1, (void*)arg2, arg3, pos);
+            break;
+        }
         case felix86_x86_32_futex_time32: {
             const x86_timespec* guest_spec = (x86_timespec*)arg4;
             if (guest_spec) {
