@@ -294,6 +294,7 @@ void felix86_iret(struct ThreadState* state) {
 
     if (g_mode32) {
         felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
+        state->SetGpr(X86_REF_RSP, rsp + 3 * 4); // 3 values popped
     }
 }
 
