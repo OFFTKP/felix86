@@ -7,6 +7,7 @@
 #include "felix86/common/elf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
 #ifdef __riscv
@@ -380,8 +381,8 @@ void dump_states() {
         print_address(state->rip);
 
         if (g_config.calltrace) {
-            auto it = state->calltrace.rbegin();
-            while (it != state->calltrace.rend()) {
+            auto it = state->recompiler->getCalltrace().rbegin();
+            while (it != state->recompiler->getCalltrace().rend()) {
                 print_address(*it);
                 it++;
             }
@@ -613,7 +614,7 @@ void print_address(u64 address) {
 }
 
 void push_calltrace(ThreadState* state, u64 address) {
-    state->calltrace.push_back(address);
+    state->recompiler->getCalltrace().push_back(address);
 
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
@@ -622,7 +623,7 @@ void push_calltrace(ThreadState* state, u64 address) {
 }
 
 void pop_calltrace(ThreadState* state) {
-    if (state->calltrace.empty()) {
+    if (state->recompiler->getCalltrace().empty()) {
         return;
     }
 
@@ -631,7 +632,7 @@ void pop_calltrace(ThreadState* state) {
         print_address(state->rip);
     }
 
-    state->calltrace.pop_back();
+    state->recompiler->getCalltrace().pop_back();
 }
 
 Float80 f64_to_80(double x) {

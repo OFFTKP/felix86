@@ -126,8 +126,6 @@ private:
 
 // TODO: Please make me standard layout type? offsetof warnings...
 struct ThreadState {
-    explicit ThreadState(ThreadState* copy_state);
-
     u64 gprs[16]{};
     u64 rip{};
     u64 fp[8]{}; // we support 64-bit precision instead of 80-bit for speed and simplicity
@@ -181,8 +179,6 @@ struct ThreadState {
     SignalQueue queued_signals{}; // realtime signals that were raised during an unsafe time, queued for later
     bool incoming_signal{};
 
-    std::vector<u64> calltrace{}; // used if g_calltrace is true
-
     // Two processes can share the same signal handler table
     SignalHandlerTable* signal_table{};
 
@@ -199,7 +195,7 @@ struct ThreadState {
     u64 underflow_page = 0;
     u64 overflow_page = 0;
 
-    std::unique_ptr<Recompiler> recompiler;
+    Recompiler* recompiler{};
 
     biscuit::RMode GetRMode() {
         u8 rc = (mxcsr >> 13) & 3;

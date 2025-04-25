@@ -548,6 +548,10 @@ struct Recompiler {
         flag_mode = mode;
     }
 
+    std::vector<u64>& getCalltrace() {
+        return calltrace;
+    }
+
 private:
     struct FlagAccess {
         bool modification; // true if modified, false if used
@@ -635,6 +639,8 @@ private:
     ZydisDecodedOperand* cached_lea_operand;
 
     std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
+
+    std::vector<u64> calltrace{};
 
     FlagMode flag_mode = FlagMode::Default;
 
