@@ -8,7 +8,8 @@
   "Mode": "32BIT"
 }
 %endif
-bits 32
+org 10000h
+bits32
 
 mov esp, 0xe0000000
 

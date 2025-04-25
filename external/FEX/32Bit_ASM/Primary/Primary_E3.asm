@@ -6,7 +6,8 @@
   "Mode": "32BIT"
 }
 %endif
-bits 32
+org 10000h
+bits32
 
 mov ecx, 0x10
 
