@@ -57,10 +57,8 @@ extern std::unique_ptr<Mapper> g_mapper;
 
 extern bool g_testing;
 extern bool g_extensions_manually_specified;
-extern bool g_log_instructions;
 extern bool g_print_all_calls;
 extern bool g_mode32;
-extern int g_vlen;
 extern std::atomic_bool g_symbols_cached;
 extern u64 g_initial_brk;
 extern u64 g_current_brk;
@@ -68,7 +66,6 @@ extern u64 g_current_brk_size;
 extern u64 g_dispatcher_exit_count;
 extern u64 g_program_end;
 extern int g_output_fd;
-extern u32 g_spilled_count;
 extern std::string g_emulator_path;
 extern int g_rootfs_fd;
 extern u64 g_interpreter_start, g_interpreter_end;

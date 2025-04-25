@@ -30,7 +30,7 @@ FAST_HANDLE(FILD) {
 }
 
 void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
-        ZydisDecodedOperand* operands, bool pop) {
+        ZydisDecodedOperand* operands, bool pop, bool reverse = false) {
     biscuit::GPR top = rec.getTOP();
     biscuit::FPR lhs = rec.getST(top, &operands[0]);
     biscuit::FPR rhs = rec.getST(top, &operands[1]);
@@ -44,7 +44,11 @@ void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assemble
     }
 
     biscuit::FPR result = rec.scratchFPR();
-    (as.*func)(result, lhs, rhs, RMode::DYN);
+    if (!reverse) {
+        (as.*func)(result, lhs, rhs, RMode::DYN);
+    } else {
+        (as.*func)(result, rhs, lhs, RMode::DYN);
+    }
     rec.setST(top, result_operand, result);
 
     if (pop) {
@@ -60,39 +64,46 @@ FAST_HANDLE(FDIVP) {
     OP(&Assembler::FDIV_D, rec, as, instruction, operands, true);
 }
 
-FAST_HANDLE(FDIVR) {
+FAST_HANDLE(FIDIV) {
     biscuit::GPR top = rec.getTOP();
-    biscuit::FPR lhs = rec.getST(top, &operands[0]);
-    biscuit::FPR rhs = rec.getST(top, &operands[1]);
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR scratch = rec.scratchFPR();
+    biscuit::FPR result = rec.scratchFPR();
 
-    ZydisDecodedOperand* result_operand = &operands[0];
-
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        std::swap(lhs, rhs);
-        result_operand = &operands[1];
+    if (operands[0].size == 16) {
+        rec.sext(integer, integer, X86_SIZE_WORD);
     }
 
-    biscuit::FPR result = rec.scratchFPR();
-    as.FDIV_D(result, rhs, lhs, RMode::DYN);
-    rec.setST(top, result_operand, result);
+    as.FCVT_D_W(scratch, integer);
+    as.FDIV_D(result, st0, scratch);
+
+    rec.setST(top, 0, result);
+}
+
+FAST_HANDLE(FDIVR) {
+    OP(&Assembler::FDIV_D, rec, as, instruction, operands, false, true);
 }
 
 FAST_HANDLE(FDIVRP) {
+    OP(&Assembler::FDIV_D, rec, as, instruction, operands, true, true);
+}
+
+FAST_HANDLE(FIDIVR) {
     biscuit::GPR top = rec.getTOP();
-    biscuit::FPR lhs = rec.getST(top, &operands[0]);
-    biscuit::FPR rhs = rec.getST(top, &operands[1]);
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR scratch = rec.scratchFPR();
+    biscuit::FPR result = rec.scratchFPR();
 
-    ZydisDecodedOperand* result_operand = &operands[0];
-
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        std::swap(lhs, rhs);
-        result_operand = &operands[1];
+    if (operands[0].size == 16) {
+        rec.sext(integer, integer, X86_SIZE_WORD);
     }
 
-    biscuit::FPR result = rec.scratchFPR();
-    as.FDIV_D(result, rhs, lhs, RMode::DYN);
-    rec.setST(top, result_operand, result);
-    rec.popST(top);
+    as.FCVT_D_W(scratch, integer);
+    as.FDIV_D(result, scratch, st0);
+
+    rec.setST(top, 0, result);
 }
 
 FAST_HANDLE(FMUL) {
@@ -101,6 +112,23 @@ FAST_HANDLE(FMUL) {
 
 FAST_HANDLE(FMULP) {
     OP(&Assembler::FMUL_D, rec, as, instruction, operands, true);
+}
+
+FAST_HANDLE(FIMUL) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR scratch = rec.scratchFPR();
+    biscuit::FPR result = rec.scratchFPR();
+
+    if (operands[0].size == 16) {
+        rec.sext(integer, integer, X86_SIZE_WORD);
+    }
+
+    as.FCVT_D_W(scratch, integer);
+    as.FMUL_D(result, st0, scratch);
+
+    rec.setST(top, 0, result);
 }
 
 FAST_HANDLE(FST) {
@@ -134,12 +162,71 @@ FAST_HANDLE(FADDP) {
     OP(&Assembler::FADD_D, rec, as, instruction, operands, true);
 }
 
+FAST_HANDLE(FIADD) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR scratch = rec.scratchFPR();
+    biscuit::FPR result = rec.scratchFPR();
+
+    if (operands[0].size == 16) {
+        rec.sext(integer, integer, X86_SIZE_WORD);
+    }
+
+    as.FCVT_D_W(scratch, integer);
+    as.FADD_D(result, st0, scratch);
+
+    rec.setST(top, 0, result);
+}
+
 FAST_HANDLE(FSUB) {
     OP(&Assembler::FSUB_D, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FSUBP) {
     OP(&Assembler::FSUB_D, rec, as, instruction, operands, true);
+}
+
+FAST_HANDLE(FISUB) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR scratch = rec.scratchFPR();
+    biscuit::FPR result = rec.scratchFPR();
+
+    if (operands[0].size == 16) {
+        rec.sext(integer, integer, X86_SIZE_WORD);
+    }
+
+    as.FCVT_D_W(scratch, integer);
+    as.FSUB_D(result, st0, scratch);
+
+    rec.setST(top, 0, result);
+}
+
+FAST_HANDLE(FSUBR) {
+    OP(&Assembler::FSUB_D, rec, as, instruction, operands, false, true);
+}
+
+FAST_HANDLE(FSUBRP) {
+    OP(&Assembler::FSUB_D, rec, as, instruction, operands, true, true);
+}
+
+FAST_HANDLE(FISUBR) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR scratch = rec.scratchFPR();
+    biscuit::FPR result = rec.scratchFPR();
+
+    if (operands[0].size == 16) {
+        rec.sext(integer, integer, X86_SIZE_WORD);
+    }
+
+    as.FCVT_D_W(scratch, integer);
+    as.FSUB_D(result, scratch, st0);
+
+    rec.setST(top, 0, result);
 }
 
 FAST_HANDLE(FSQRT) {
@@ -222,23 +309,6 @@ FAST_HANDLE(FISTP) {
 
 FAST_HANDLE(FISTTP) {
     FIST(rec, rip, as, operands, true, RMode::RTZ);
-}
-
-FAST_HANDLE(FIMUL) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
-    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
-    biscuit::FPR scratch = rec.scratchFPR();
-    biscuit::FPR result = rec.scratchFPR();
-
-    if (operands[0].size == 16) {
-        rec.sext(integer, integer, X86_SIZE_WORD);
-    }
-
-    as.FCVT_D_W(scratch, integer);
-    as.FMUL_D(result, st0, scratch);
-
-    rec.setST(top, 0, result);
 }
 
 void FCOM(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands, bool pop) {

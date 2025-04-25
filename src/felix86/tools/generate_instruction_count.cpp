@@ -1,3 +1,4 @@
+// TODO: This file is a big mess, refactor
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -711,6 +712,102 @@ int main() {
 
     std::ofstream sse4_1("counts/SSE4_1.json");
     sse4_1 << json.dump(4);
+    json.clear();
+
+    GEN(fadd(st3, st0));
+    GEN(fadd(st0, st3));
+    GEN(fadd(dword[rdi]));
+    GEN(fadd(qword[rdi]));
+    GEN(faddp(st3, st0));
+    GEN(fiadd(word[rdi]));
+    GEN(fiadd(dword[rdi]));
+
+    GEN(fsub(st3, st0));
+    GEN(fsub(st0, st3));
+    GEN(fsub(dword[rdi]));
+    GEN(fsub(qword[rdi]));
+    GEN(fsubp(st3, st0));
+    GEN(fisub(word[rdi]));
+    GEN(fisub(dword[rdi]));
+
+    GEN(fsubr(st3, st0));
+    GEN(fsubr(st0, st3));
+    GEN(fsubr(dword[rdi]));
+    GEN(fsubr(qword[rdi]));
+    GEN(fsubrp(st3, st0));
+    GEN(fisubr(word[rdi]));
+    GEN(fisubr(dword[rdi]));
+
+    GEN(fmul(st3, st0));
+    GEN(fmul(st0, st3));
+    GEN(fmul(dword[rdi]));
+    GEN(fmul(qword[rdi]));
+    GEN(fmulp(st3, st0));
+    GEN(fimul(dword[rdi]));
+    GEN(fimul(word[rdi]));
+
+    GEN(fdiv(st3, st0));
+    GEN(fdiv(st0, st3));
+    GEN(fdiv(dword[rdi]));
+    GEN(fdiv(qword[rdi]));
+    GEN(fdivp(st3, st0));
+    GEN(fidiv(dword[rdi]));
+    GEN(fidiv(word[rdi]));
+
+    GEN(fdivr(st3, st0));
+    GEN(fdivr(st0, st3));
+    GEN(fdivr(dword[rdi]));
+    GEN(fdivr(qword[rdi]));
+    GEN(fdivrp(st3, st0));
+    GEN(fidivr(dword[rdi]));
+    GEN(fidivr(word[rdi]));
+
+    GEN(fcomi(st0, st3));
+    GEN(fcomip(st0, st3));
+    GEN(fucomi(st0, st3));
+    GEN(fucomip(st0, st3));
+
+    GEN(fist(word[rdi]));
+    GEN(fist(dword[rdi]));
+
+    GEN(fistp(word[rdi]));
+    GEN(fistp(dword[rdi]));
+    GEN(fistp(qword[rdi]));
+
+    GEN(fisttp(word[rdi]));
+    GEN(fisttp(dword[rdi]));
+    GEN(fisttp(qword[rdi]));
+
+    GEN(fabs());
+    GEN(fsin());
+    GEN(fcos());
+    GEN(fld1());
+    GEN(fldl2t());
+    GEN(fldl2e());
+    GEN(fldpi());
+    GEN(fldlg2());
+    GEN(fldln2());
+    GEN(fldz());
+    GEN(fchs());
+    GEN(frndint());
+    GEN(fprem());
+    GEN(fsqrt());
+    GEN(fxch(st3));
+    GEN(fnstsw(ptr[rdi]));
+    GEN(fldenv(ptr[rdi]));
+    GEN(fnstenv(ptr[rdi]));
+
+    GEN(fcmovb(st0, st3));
+    GEN(fcmove(st0, st3));
+    GEN(fcmovbe(st0, st3));
+    GEN(fcmovu(st0, st3));
+    GEN(fcmovnb(st0, st3));
+    GEN(fcmovne(st0, st3));
+    GEN(fcmovnbe(st0, st3));
+    GEN(fcmovnu(st0, st3));
+
+    std::ofstream x87("counts/X87.json");
+    x87 << json.dump(4);
     json.clear();
 
     gen_many(rec, "llvmpipe_shader", json, [](Xbyak::CodeGenerator& x) {

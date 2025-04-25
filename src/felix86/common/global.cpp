@@ -21,7 +21,6 @@ bool g_testing = false;
 bool g_extensions_manually_specified = false;
 bool g_print_all_calls = false;
 bool g_mode32 = false;
-int g_vlen = 0;
 std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
 u64 g_current_brk = 0;
@@ -367,8 +366,6 @@ void initialize_globals() {
 
         LOG("Extensions enabled for the recompiler: %s", extensions.c_str());
     }
-
-    g_vlen = biscuit::CPUInfo().GetVlenb() * 8;
 
     ThreadState::InitializeKey();
 }
