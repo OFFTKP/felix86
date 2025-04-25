@@ -1519,11 +1519,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(!(arg5 & ~0xFFFF'FFFF));
     ASSERT(!(arg6 & ~0xFFFF'FFFF));
 
-    if (syscall_number == felix86_x86_32_fstat) {
-        printf("Sleep %d\n", gettid());
-        sleep(10);
-        raise(SIGTRAP);
-    }
+    PLAIN("Syscall number: %d", syscall_number);
 
     Result result;
 
