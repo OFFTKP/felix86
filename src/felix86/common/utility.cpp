@@ -245,7 +245,7 @@ __attribute__((visibility("default"))) void disassemble(u64 host_address) {
 
         ZydisMnemonic mnemonic = instruction.mnemonic;
         bool is_jump = instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
-        bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET;
+        bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
@@ -268,6 +268,32 @@ int clear_breakpoints() {
     int count = g_breakpoints.size();
     g_breakpoints.clear();
     return count;
+}
+
+void felix86_iret(struct ThreadState* state) {
+    int size = g_mode32 ? 4 : 8;
+    u64 rsp = state->gprs[X86_REF_RSP];
+    u8* rsp_ptr = (u8*)rsp;
+    u64 rip = 0, rflags = 0, cs = 0, ss = 0, new_rsp = 0;
+    memcpy(&rip, rsp_ptr, size);
+    memcpy(&cs, rsp_ptr + (size * 1), size);
+    memcpy(&rflags, rsp_ptr + (size * 2), size);
+
+    if (!g_mode32) {
+        memcpy(&new_rsp, rsp_ptr + (size * 3), size);
+        memcpy(&ss, rsp_ptr + (size * 4), size);
+        state->SetGpr(X86_REF_RSP, new_rsp);
+        // TODO: what are we supposed to do with ss?
+    }
+
+    u64 mask = 0x3F7BD7;
+    rflags &= mask;
+
+    state->SetRip(rip);
+
+    if (g_mode32) {
+        felix86_set_segment(state, cs, ZYDIS_REGISTER_CS);
+    }
 }
 
 void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {

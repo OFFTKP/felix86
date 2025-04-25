@@ -880,30 +880,22 @@ FAST_HANDLE(RET) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(IRETD) {
+    ASSERT(g_mode32);
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)&felix86_iret);
+    rec.restoreState();
+    rec.backToDispatcher();
+    rec.stopCompiling();
+}
+
 FAST_HANDLE(IRETQ) {
     ASSERT(!g_mode32);
-    biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, X86_SIZE_QWORD);
-    biscuit::GPR rip_reg = rec.scratch();
-    biscuit::GPR cs = rec.scratch();
-    biscuit::GPR rflags = rec.scratch();
-    biscuit::GPR temp = rec.scratch();
-    biscuit::GPR ss = rec.scratch();
-
-    as.LD(rip_reg, 0, rsp);
-    as.LD(cs, 8, rsp);
-    as.LD(rflags, 16, rsp);
-    as.LD(ss, 32, rsp);
-
-    as.LI(temp, 0x3F7FD7 & ~0x400);
-    as.AND(rflags, rflags, temp);
-    rec.setFlags(rflags);
-
-    as.LD(rsp, 24, rsp);
-
-    rec.setRefGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
-    rec.setRip(rip_reg);
-    // TODO: for 32-bit mode set segments... needs changing cached from gdt
-
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)&felix86_iret);
+    rec.restoreState();
     rec.backToDispatcher();
     rec.stopCompiling();
 }
