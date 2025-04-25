@@ -1519,8 +1519,6 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     ASSERT(!(arg5 & ~0xFFFF'FFFF));
     ASSERT(!(arg6 & ~0xFFFF'FFFF));
 
-    PLAIN("Syscall number: %d", syscall_number);
-
     Result result;
 
     bool is_common = is_x86_common(syscall_number);
@@ -1912,7 +1910,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             const x86_timespec* guest_spec = (x86_timespec*)arg4;
             if (guest_spec) {
                 const timespec host_spec = *guest_spec;
-                result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg4, arg5);
+                result = SYSCALL(futex, arg1, arg2, arg3, &host_spec, arg5, arg6);
             } else {
                 result = SYSCALL(futex, arg1, arg2, arg3, arg4, arg5, arg6);
             }
