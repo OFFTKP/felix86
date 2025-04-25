@@ -14,7 +14,8 @@
   "Mode": "32BIT"
 }
 %endif
-bits 32
+org 10000h
+bits32
 
 
 section .data

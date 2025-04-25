@@ -4,7 +4,8 @@
   "HostFeatures": ["Linux"]
 }
 %endif
-bits 32
+org 10000h
+bits32
 
 ; We can't really check the results of this
 rdtscp

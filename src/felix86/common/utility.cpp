@@ -288,6 +288,7 @@ void felix86_iret(struct ThreadState* state) {
 
     u64 mask = 0x3F7BD7;
     rflags &= mask;
+    // TODO: actually set rflags
 
     state->SetRip(rip);
 

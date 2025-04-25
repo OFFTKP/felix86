@@ -186,15 +186,15 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         }
     }
 
-    void* address = mmap((void*)0x10'0000, 0x10'0000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    if (address != (void*)0x10'0000) {
+    void* address = mmap((void*)0x10'000, 0x10'000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    if (address != (void*)0x10'000) {
         perror("mmap");
         exit(1);
     }
 
-    memcpy((void*)0x10'0000, buffer.data(), bytes_read);
+    memcpy((void*)0x10'000, buffer.data(), bytes_read);
 
-    config.entrypoint = 0x10'0000;
+    config.entrypoint = 0x10'000;
     config.mode32 = is_mode32;
 }
 

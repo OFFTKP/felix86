@@ -6,7 +6,8 @@
   "Mode": "32BIT"
 }
 %endif
-bits 32
+org 10000h
+bits32
 
 ; Tests for 32-bit signed displacement wrapping
 ; Testing for overflow specifically
