@@ -21,7 +21,6 @@ bool g_testing = false;
 bool g_extensions_manually_specified = false;
 bool g_print_all_calls = false;
 bool g_mode32 = false;
-bool g_thunking = false;
 int g_vlen = 0;
 std::atomic_bool g_symbols_cached = {false};
 u64 g_initial_brk = 0;
@@ -271,15 +270,10 @@ void initialize_globals() {
     ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_DIRECTORY);
 
-    const char* thunk_env = getenv("FELIX86_THUNKS");
-    if (thunk_env && !g_testing) {
-        std::filesystem::path thunks = thunk_env;
-        ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunk_env);
+    if (!g_config.thunks_path.empty() && !g_testing) {
+        std::filesystem::path thunks = g_config.thunks_path;
+        ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunks.c_str());
         std::string srootfs = g_config.rootfs_path.string();
-
-        g_thunking = true;
-        environment += "\nFELIX86_THUNKS=";
-        environment += thunk_env;
 
         // TODO: should probably not be done here?
         std::filesystem::path glx_thunk;

@@ -7546,8 +7546,8 @@ FAST_HANDLE(PAUSE) {
 // Thunks::generateTrampoline to generate us a trampoline to go boing.
 // After this INVLPG there will always be a RET, to simulate what a normal function would do
 FAST_HANDLE(INVLPG) {
-    if (!g_thunking) {
-        ERROR("INVLPG while not thunking?");
+    if (g_config.thunks_path.empty()) {
+        ERROR("INVLPG while thunking path not set?");
     }
 
     enum {

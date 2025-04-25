@@ -60,7 +60,6 @@ extern bool g_extensions_manually_specified;
 extern bool g_log_instructions;
 extern bool g_print_all_calls;
 extern bool g_mode32;
-extern bool g_thunking;
 extern int g_vlen;
 extern std::atomic_bool g_symbols_cached;
 extern u64 g_initial_brk;

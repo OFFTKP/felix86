@@ -375,7 +375,7 @@ int main(int argc, char* argv[]) {
 
     Signals::initialize();
 
-    if (g_thunking) {
+    if (!g_config.thunks_path.empty()) {
         Thunks::initialize();
     }
 
