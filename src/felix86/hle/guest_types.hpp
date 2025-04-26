@@ -138,6 +138,48 @@ struct __attribute__((packed)) x86_epoll_event {
     u64 data = 0;
 };
 
+struct __attribute__((packed)) x86_stat64 {
+    u64 st_dev;
+    u8 __pad0[4];
+    u32 __st_ino;
+    u32 st_mode;
+    u32 st_nlink;
+    u32 st_uid;
+    u32 st_gid;
+    u64 st_rdev;
+    u8 __pad3[4];
+    u64 st_size;
+    u32 st_blksize;
+    u64 st_blocks;
+    u32 st_atime_;
+    u32 st_atime_nsec;
+    u32 st_mtime_;
+    u32 st_mtime_nsec;
+    u32 st_ctime_;
+    u32 st_ctime_nsec;
+    u64 st_ino;
+
+    x86_stat64(struct stat host_stat) {
+        st_dev = host_stat.st_dev;
+        st_ino = host_stat.st_ino;
+        st_nlink = host_stat.st_nlink;
+        st_mode = host_stat.st_mode;
+        st_uid = host_stat.st_uid;
+        st_gid = host_stat.st_gid;
+        st_rdev = host_stat.st_rdev;
+        st_size = host_stat.st_size;
+        st_blksize = host_stat.st_blksize;
+        st_blocks = host_stat.st_blocks;
+        st_atime_ = host_stat.st_atim.tv_sec;
+        st_atime_nsec = host_stat.st_atim.tv_nsec;
+        st_mtime_ = host_stat.st_mtime;
+        st_mtime_nsec = host_stat.st_mtim.tv_nsec;
+        st_ctime_ = host_stat.st_ctime;
+        st_ctime_nsec = host_stat.st_ctim.tv_nsec;
+        __st_ino = host_stat.st_ino;
+    }
+};
+
 struct __attribute__((packed)) x86_stat {
     x86_stat() = delete;
 
@@ -556,15 +598,15 @@ static_assert(std::is_trivially_copyable_v<x86_ipc_perm_32>);
 static_assert(sizeof(x86_ipc_perm_32) == 16);
 
 struct x86_ipc_perm_64 {
-    uint32_t key;
-    uint32_t uid;
-    uint32_t gid;
-    uint32_t cuid;
-    uint32_t cgid;
-    uint16_t mode;
-    uint16_t _pad1;
-    uint16_t seq;
-    uint16_t _pad2;
+    u32 key;
+    u32 uid;
+    u32 gid;
+    u32 cuid;
+    u32 cgid;
+    u16 mode;
+    u16 _pad1;
+    u16 seq;
+    u16 _pad2;
     u32 _pad[2];
 
     x86_ipc_perm_64() = delete;
@@ -725,11 +767,11 @@ static_assert(std::is_trivially_copyable_v<x86_shmid_ds_32>);
 static_assert(sizeof(x86_shmid_ds_32) == 48);
 
 struct x86_shminfo_32 {
-    uint32_t shmmax;
-    uint32_t shmmin;
-    uint32_t shmmni;
-    uint32_t shmseg;
-    uint32_t shmall;
+    u32 shmmax;
+    u32 shmmin;
+    u32 shmmni;
+    u32 shmseg;
+    u32 shmall;
 
     x86_shminfo_32() = delete;
 

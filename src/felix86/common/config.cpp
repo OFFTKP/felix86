@@ -3,6 +3,7 @@
 #include <toml.hpp>
 #include "felix86/common/config.hpp"
 #include "felix86/common/log.hpp"
+#include "fmt/format.h"
 
 Config g_config{};
 
@@ -116,6 +117,24 @@ void addToEnvironment(Config& config, const char* env_name, const char* env) {
     config.__environment += env;
 }
 
+template <typename T>
+std::string namify(const T& val);
+
+template <>
+std::string namify(const bool& val) {
+    return val ? "true" : "false";
+}
+
+template <>
+std::string namify(const u64& val) {
+    return fmt::format("{:x}", val);
+}
+
+template <>
+std::string namify(const std::filesystem::path& val) {
+    return val;
+}
+
 template <typename Type>
 bool loadFromEnv(Config& config, Type& value, const char* env_name, const char* env) {
     if constexpr (std::is_same_v<Type, bool>) {
@@ -157,7 +176,7 @@ Config Config::load(const std::filesystem::path& path) {
                   #name, #env_name, path.c_str(), #group);                                                                                           \
         }                                                                                                                                            \
         if (config.name != type{default_value}) {                                                                                                    \
-            addToEnvironment(config, #env_name, env);                                                                                                \
+            addToEnvironment(config, #env_name, namify(config.name).c_str());                                                                        \
         }                                                                                                                                            \
     }
 #include "config.inc"

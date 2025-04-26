@@ -192,10 +192,7 @@ struct ThreadState {
 
     u64 persona = 0;
 
-    u64 underflow_page = 0;
-    u64 overflow_page = 0;
-
-    Recompiler* recompiler{};
+    Recompiler* recompiler;
 
     biscuit::RMode GetRMode() {
         u8 rc = (mxcsr >> 13) & 3;
@@ -322,6 +319,7 @@ struct ThreadState {
     }
 
     int SetUserDesc(x86_user_desc* udesc) {
+        ASSERT(udesc);
         int index = udesc->entry_number;
         if (index == -1) {
             for (int i = 0; i < 3; i++) {
@@ -330,12 +328,16 @@ struct ThreadState {
                     break;
                 }
             }
+        } else {
+            ASSERT_MSG(index >= 12 && index <= 14, "SetUserDesc index out of range: %d", index);
+            index -= 12;
         }
 
         if (index == -1) {
             return -ESRCH;
         }
 
+        ASSERT_MSG(index >= 0 && index <= 2, "SetUserDesc index out of range: %d", index);
         gdt[index] = udesc->base_addr;
         udesc->entry_number = 12 + index;
 

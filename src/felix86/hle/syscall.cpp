@@ -495,7 +495,11 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     }
     case felix86_riscv64_newfstatat: {
         auto guard = state->GuardSignals();
-        result = Filesystem::FStatAt((int)arg1, (char*)arg2, (x86_stat*)arg3, (int)arg4);
+        struct stat stat;
+        result = Filesystem::FStatAt((int)arg1, (char*)arg2, &stat, (int)arg4);
+        if (result >= 0) {
+            *(x86_stat*)arg3 = stat;
+        }
         break;
     }
     case felix86_riscv64_sysinfo: {
@@ -1393,7 +1397,11 @@ void felix86_syscall(felix86_frame* frame) {
         }
         case felix86_x86_64_lstat: {
             auto guard = state->GuardSignals();
-            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x86_stat*)arg2, AT_SYMLINK_NOFOLLOW);
+            struct stat stat;
+            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, &stat, AT_SYMLINK_NOFOLLOW);
+            if (result >= 0) {
+                *(x86_stat*)arg2 = stat;
+            }
             break;
         }
         case felix86_x86_64_chown: {
@@ -1436,7 +1444,11 @@ void felix86_syscall(felix86_frame* frame) {
         }
         case felix86_x86_64_stat: {
             auto guard = state->GuardSignals();
-            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x86_stat*)arg2, 0);
+            struct stat stat;
+            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, &stat, 0);
+            if (result >= 0) {
+                *(x86_stat*)arg2 = stat;
+            }
             break;
         }
         case felix86_x86_64_rmdir: {
@@ -1857,7 +1869,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_stat64: {
             auto guard = state->GuardSignals();
-            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, (x86_stat*)arg2, 0);
+            struct stat stat;
+            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, &stat, 0);
+            if (result >= 0) {
+                *(x86_stat64*)arg2 = stat;
+            }
             break;
         }
         case felix86_x86_32_clock_nanosleep_time32: {

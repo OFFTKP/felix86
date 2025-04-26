@@ -70,19 +70,9 @@ int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
     return faccessatInternal(new_fd, new_filename, mode, flags);
 }
 
-int Filesystem::FStatAt(int fd, const char* filename, x86_stat* guest_stat, int flags) {
+int Filesystem::FStatAt(int fd, const char* filename, struct stat* host_stat, int flags) {
     auto [new_fd, new_filename] = resolve(fd, filename);
-
-    struct stat host_stat;
-
-    int result = fstatatInternal(new_fd, new_filename, &host_stat, flags);
-
-    if (result == 0) {
-        // This will do the marshalling, see guest_types.hpp
-        *guest_stat = host_stat;
-    }
-
-    return result;
+    return fstatatInternal(new_fd, new_filename, host_stat, flags);
 }
 
 int Filesystem::StatFs(const char* filename, struct statfs* buf) {
