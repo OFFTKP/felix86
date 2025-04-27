@@ -7,6 +7,11 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Enabling link time optimization for Release build")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
 CheckGitSetup()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
