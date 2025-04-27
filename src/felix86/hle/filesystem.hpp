@@ -5,7 +5,6 @@
 #include "felix86/common/elf.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/hle/guest_types.hpp"
 
 struct Filesystem {
     bool LoadExecutable(const std::filesystem::path& path) {
