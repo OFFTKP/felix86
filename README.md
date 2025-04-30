@@ -1,4 +1,4 @@
-[中文](./README_CN.md) | [Website](https://felix86.com)
+[中文](./README_CN.md) | [Website](https://felix86.com) | [Discord](https://discord.gg/TgBxgFwByU)
 
 # felix86
 
