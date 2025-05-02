@@ -15,7 +15,7 @@ struct Mapper {
     int unmap32(void* addr, u64 size);
     [[nodiscard]] void* remap32(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address);
 
-    void* shmat32(int shmid, void* address, int flags);
+    int shmat32(int shmid, void* address, int flags, u32* result_address);
     int shmdt32(void* address);
 
     static constexpr u64 addressSpaceEnd32 = 0xFFF0'FFFF; // 32-bit userspace end

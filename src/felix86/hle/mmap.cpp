@@ -382,12 +382,12 @@ std::vector<std::pair<u32, u32>> Mapper::getRegions() {
     return result;
 }
 
-void* Mapper::shmat32(int shmid, void* address, int flags) {
+int Mapper::shmat32(int shmid, void* address, int flags, u32* result_address) {
     struct shmid_ds ds;
     int result = shmctl(shmid, IPC_STAT, &ds);
     if (result != 0) {
         WARN("Invalid shmid %d? Could not determine size", shmid);
-        return (void*)-EINVAL;
+        return -EINVAL;
     }
 
     size_t size = ds.shm_segsz;
@@ -407,7 +407,7 @@ void* Mapper::shmat32(int shmid, void* address, int flags) {
         our_mem = freelistAllocate(nullptr, size);
         if ((i64)our_mem < 0) {
             WARN("freelistAllocate failed for shmat: %ld", (i64)our_mem);
-            return our_mem;
+            return (i64)our_mem;
         }
 
         // Now we need to place the shmat exactly at that address. If that fails then we return an error
@@ -428,22 +428,23 @@ void* Mapper::shmat32(int shmid, void* address, int flags) {
             our_mem = freelistAllocate(shm_mem, size);
             if ((i64)our_mem < 0) {
                 ERROR("shmat succeeded, but freelistAllocate failed for address: %lx", address);
-                return our_mem;
+                return (i64)our_mem;
             }
         } else {
-            return (void*)-1ull;
+            return (i64)-1ull;
         }
     }
 
     if (shm_mem != our_mem) {
         ERROR("While our freelistAllocate returned %lx, shmat failed to place the segment there and returned %lx", our_mem, shm_mem);
-        return (void*)(i64)-errno;
+        return (i64)-errno;
     }
 
     u64 top_bits = (u64)shm_mem >> 32;
     ASSERT_MSG(top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
+    *result_address = (u32)(u64)shm_mem;
     page_to_shmid[(u32)(u64)shm_mem & ~0xFFF] = shmid;
-    return shm_mem;
+    return 0;
 }
 
 int Mapper::shmdt32(void* address) {
