@@ -37,8 +37,10 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         return ::syscall(SYS_shmget, first, second, third);
     }
     case felix86_SHMCTL: {
-        u8 cmd = first & 0xFF;
-        bool ipc64 = first & 0x100;
+        u32 shmid = first;
+        u32 shmcmd = second;
+        u8 cmd = shmcmd & 0xFF;
+        bool ipc64 = shmcmd & 0x100;
         x86_shmid_ds_64* ptr64 = (x86_shmid_ds_64*)ptr;
         x86_shmid_ds_32* ptr32 = (x86_shmid_ds_32*)ptr;
         x86_shminfo_64* shminfo64 = (x86_shminfo_64*)ptr;
@@ -51,13 +53,13 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
             } else {
                 host_shmid = *ptr32;
             }
-            return ::syscall(SYS_shmctl, first, cmd, &host_shmid);
+            return ::syscall(SYS_shmctl, shmid, cmd, &host_shmid);
         }
         case SHM_STAT:
         case SHM_STAT_ANY:
         case IPC_STAT: {
             riscv64_shmid64_ds host_shmid{};
-            int result = ::syscall(SYS_shmctl, first, cmd, &host_shmid);
+            int result = ::syscall(SYS_shmctl, shmid, cmd, &host_shmid);
             if (result != -1) {
                 if (ipc64) {
                     *ptr64 = host_shmid;
@@ -69,7 +71,7 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         }
         case IPC_INFO: {
             struct riscv64_shminfo host_shminfo{};
-            int result = ::syscall(SYS_shmctl, first, cmd, &host_shminfo);
+            int result = ::syscall(SYS_shmctl, shmid, cmd, &host_shminfo);
             if (result != -1) {
                 if (ipc64) {
                     *shminfo64 = host_shminfo;
@@ -81,18 +83,18 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         }
         case SHM_INFO: {
             struct riscv64_shm_info host_shm_info{};
-            int result = ::syscall(SYS_shmctl, first, cmd, &host_shm_info);
+            int result = ::syscall(SYS_shmctl, shmid, cmd, &host_shm_info);
             if (result != -1) {
                 *(x86_shm_info_32*)ptr = host_shm_info;
             }
             return result;
         }
         case SHM_LOCK:
-            return ::syscall(SYS_shmctl, first, cmd, nullptr);
+            return ::syscall(SYS_shmctl, shmid, cmd, nullptr);
         case SHM_UNLOCK:
-            return ::syscall(SYS_shmctl, first, cmd, nullptr);
+            return ::syscall(SYS_shmctl, shmid, cmd, nullptr);
         case IPC_RMID:
-            return ::syscall(SYS_shmctl, first, cmd, nullptr);
+            return ::syscall(SYS_shmctl, shmid, cmd, nullptr);
         default: {
             ERROR("Unknown SHMCTL operation: %d", cmd);
             return 0;
