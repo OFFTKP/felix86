@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "Zydis/DecoderTypes.h"
+#include "Zydis/Disassembler.h"
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/info.hpp"

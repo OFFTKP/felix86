@@ -318,7 +318,7 @@ FAST_HANDLE(FISTTP) {
     FIST(rec, rip, as, operands, true, RMode::RTZ);
 }
 
-void FCOM(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
+void FCOMI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
     u8 index = operands[1].reg.value - ZYDIS_REGISTER_ST0;
     biscuit::GPR top = rec.getTOP();
     biscuit::GPR cond = rec.scratch();
@@ -374,19 +374,72 @@ void FCOM(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands
 
 // We don't support exceptions ATM, same as FUCOMI
 FAST_HANDLE(FCOMI) {
-    FCOM(rec, rip, as, operands, false);
+    FCOMI(rec, as, operands, false);
 }
 
 FAST_HANDLE(FUCOMI) {
-    FCOM(rec, rip, as, operands, false);
+    FCOMI(rec, as, operands, false);
 }
 
 FAST_HANDLE(FCOMIP) {
-    FCOM(rec, rip, as, operands, true);
+    FCOMI(rec, as, operands, true);
 }
 
 FAST_HANDLE(FUCOMIP) {
-    FCOM(rec, rip, as, operands, true);
+    FCOMI(rec, as, operands, true);
+}
+
+void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop_count) {
+    biscuit::GPR top = rec.getTOP();
+    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR src = rec.getST(top, &operands[0]);
+
+    biscuit::GPR c0 = rec.scratch();
+    biscuit::GPR c2 = rec.scratch();
+    biscuit::GPR c3 = rec.scratch();
+    biscuit::GPR nan1 = rec.scratch();
+    biscuit::GPR nan2 = rec.scratch();
+
+    // Branchless way of doing this
+    as.LI(c0, 0);
+    as.LI(c2, 0);
+    as.LI(c3, 0);
+    as.FEQ_D(nan1, st0, st0);
+    as.XORI(nan1, nan1, 1);
+    as.FEQ_D(nan2, src, src);
+    as.XORI(nan2, nan2, 1);
+    as.OR(nan1, nan1, nan2);
+
+    // If either is NaN set all to 1s
+    as.OR(c0, c0, nan1);
+    as.OR(c3, c3, nan1);
+    as.OR(c2, c2, nan1);
+    as.FLT_D(c0, st0, src);
+    as.FEQ_D(c3, st0, src);
+    as.SLLI(c2, c2, 10);
+    as.SLLI(c0, c0, 8);
+    as.SLLI(c3, c3, 14);
+    as.OR(c0, c0, c2);
+    as.OR(c0, c0, c3);
+
+    as.SW(c0, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+
+    // TODO: this stores twice for fcompp
+    for (int i = 0; i < pop_count; i++) {
+        rec.popST(top);
+    }
+}
+
+FAST_HANDLE(FCOM) {
+    FCOM(rec, as, operands, 0);
+}
+
+FAST_HANDLE(FCOMP) {
+    FCOM(rec, as, operands, 1);
+}
+
+FAST_HANDLE(FCOMPP) {
+    FCOM(rec, as, operands, 2);
 }
 
 FAST_HANDLE(FRNDINT) {
