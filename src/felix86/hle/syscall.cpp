@@ -1895,6 +1895,23 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_lstat64: {
+            auto guard = state->GuardSignals();
+            struct stat host_stat;
+            result = Filesystem::FStatAt(AT_FDCWD, (char*)arg1, &host_stat, AT_SYMLINK_NOFOLLOW);
+            if (result >= 0) {
+                *(x86_stat64*)arg2 = host_stat;
+            }
+            break;
+        }
+        case felix86_x86_32_fstat64: {
+            struct stat host_stat;
+            result = ::fstat(arg1, &host_stat);
+            if (result >= 0) {
+                *(x86_stat64*)arg2 = host_stat;
+            }
+            break;
+        }
         case felix86_x86_32_clock_nanosleep_time32: {
             timespec rqtp, rmtp;
             const x86_timespec* guest_rqtp = (x86_timespec*)arg3;
