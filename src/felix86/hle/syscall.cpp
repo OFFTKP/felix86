@@ -240,7 +240,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_shmat: {
-        result = SYSCALL(shmat, arg1, (void*)arg2, arg3);
+        result = SYSCALL(shmat, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_shmctl: {
@@ -248,7 +248,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_shmdt: {
-        result = SYSCALL(shmdt, (void*)arg1);
+        result = SYSCALL(shmdt, arg1);
         break;
     }
     case felix86_riscv64_bind: {

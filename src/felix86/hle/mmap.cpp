@@ -1,4 +1,5 @@
 #include <sys/mman.h>
+#include <sys/shm.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/hle/mmap.hpp"
@@ -376,6 +377,100 @@ std::vector<std::pair<u32, u32>> Mapper::getRegions() {
     while (current) {
         result.push_back({current->start, current->end});
         current = current->next;
+    }
+
+    return result;
+}
+
+void* Mapper::shmat32(int shmid, void* address, int flags) {
+    struct shmid_ds ds;
+    int result = shmctl(shmid, IPC_STAT, &ds);
+    if (result != 0) {
+        WARN("Invalid shmid %d? Could not determine size", shmid);
+        return (void*)-EINVAL;
+    }
+
+    size_t size = ds.shm_segsz;
+
+    if (size & 0xFFF) {
+        size_t new_size = (size + PAGE_SIZE) & ~0xFFF;
+        WARN("shmctl returned size not aligned to a page: %lx, setting to new size: %lx", size, new_size);
+        size = new_size;
+    }
+
+    ASSERT(size < 0xFFFF'FFFF);
+
+    void *our_mem, *shm_mem;
+
+    if (address == nullptr) {
+        // Use our freelist allocator to find a region in memory, but don't mmap it
+        our_mem = freelistAllocate(nullptr, size);
+        if ((i64)our_mem < 0) {
+            WARN("freelistAllocate failed for shmat: %ld", (i64)our_mem);
+            return our_mem;
+        }
+
+        // Now we need to place the shmat exactly at that address. If that fails then we return an error
+        // We can't let the shmat decide for itself what address it wants to go in, because it will
+        // almost always choose a 64-bit address which can't be used in 32-bit mode
+        shm_mem = shmat(shmid, our_mem, flags);
+    } else {
+        ASSERT_MSG((u64)address + size <= addressSpaceEnd32, "shmat segment would end up outside of address space");
+
+        // Since an address is provided by the application, we are going to assume it's
+        // inside 32-bit address space and just check after the shmat
+        shm_mem = shmat(shmid, address, flags);
+        if ((i64)shm_mem != -1) {
+            u64 top_bits = (u64)shm_mem >> 32;
+            ASSERT_MSG(top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
+
+            // Now remove it from the freelist to avoid overlaps
+            our_mem = freelistAllocate(shm_mem, size);
+            if ((i64)our_mem < 0) {
+                ERROR("shmat succeeded, but freelistAllocate failed for address: %lx", address);
+                return our_mem;
+            }
+        } else {
+            return (void*)-1ull;
+        }
+    }
+
+    if (shm_mem != our_mem) {
+        ERROR("While our freelistAllocate returned %lx, shmat failed to place the segment there and returned %lx", our_mem, shm_mem);
+        return (void*)(i64)-errno;
+    }
+
+    u64 top_bits = (u64)shm_mem >> 32;
+    ASSERT_MSG(top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
+    page_to_shmid[(u32)(u64)shm_mem & ~0xFFF] = shmid;
+    return shm_mem;
+}
+
+int Mapper::shmdt32(void* address) {
+    auto it = page_to_shmid.find((u32)(u64)address & ~0xFFF);
+    if (it == page_to_shmid.end()) {
+        WARN("Could not find page during shmdt: %lx", (u64)address & ~0xFFF);
+        return -EINVAL;
+    }
+
+    int shmid = it->second;
+    struct shmid_ds ds;
+    if (shmctl(shmid, IPC_STAT, &ds) == 0) {
+        size_t size = ds.shm_segsz;
+        if (size & 0xFFF) {
+            size_t new_size = (size + PAGE_SIZE) & ~0xFFF;
+            WARN("shmctl returned size not aligned to a page: %lx, setting to new size: %lx", size, new_size);
+            size = new_size;
+        }
+        freelistDeallocate(address, size);
+    } else {
+        WARN("shmctl returned error %d", -errno);
+    }
+
+    int result = shmdt(address);
+
+    if (result == 0) {
+        page_to_shmid.erase(it);
     }
 
     return result;
