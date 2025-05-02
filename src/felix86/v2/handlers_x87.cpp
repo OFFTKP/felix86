@@ -442,6 +442,18 @@ FAST_HANDLE(FCOMPP) {
     FCOM(rec, as, operands, 2);
 }
 
+FAST_HANDLE(FUCOM) {
+    FCOM(rec, as, operands, 0);
+}
+
+FAST_HANDLE(FUCOMP) {
+    FCOM(rec, as, operands, 1);
+}
+
+FAST_HANDLE(FUCOMPP) {
+    FCOM(rec, as, operands, 2);
+}
+
 FAST_HANDLE(FRNDINT) {
     biscuit::GPR top = rec.getTOP();
     biscuit::FPR st0 = rec.getST(top, 0);
