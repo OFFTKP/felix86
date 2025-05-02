@@ -1864,6 +1864,17 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_fstatfs64: {
+            auto guard = state->GuardSignals();
+            ASSERT(arg2 == sizeof(x86_statfs64));
+            struct statfs statfs;
+            x86_statfs64* guest_statfs = (x86_statfs64*)arg3;
+            result = ::fstatfs(arg1, &statfs);
+            if (result >= 0) {
+                *guest_statfs = statfs;
+            }
+            break;
+        }
         case felix86_x86_32_time32: {
             time_t time;
             result = ::time(&time);
