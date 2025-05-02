@@ -269,6 +269,36 @@ int setsockopt32(int fd, int level, int optname, char* optval, int optlen) {
         return ::setsockopt(fd, level, optname, optval, optlen);
     } else {
         switch (optname) {
+        case SO_ATTACH_FILTER:
+        case SO_ATTACH_REUSEPORT_CBPF: {
+            struct sock_fprog32 {
+                uint16_t len;
+                uint32_t filter;
+            };
+            struct sock_fprog64 {
+                uint16_t len;
+                uint64_t filter;
+            };
+
+            if (optlen != sizeof(sock_fprog32)) {
+                return -EINVAL;
+            }
+
+            sock_fprog32* prog = (sock_fprog32*)optval;
+            sock_fprog64 prog64{};
+            prog64.len = prog->len;
+            prog64.filter = prog->filter;
+
+            return ::setsockopt(fd, level, optname, &prog64, sizeof(sock_fprog64));
+        }
+        case SO_RCVTIMEO_OLD: {
+            struct timeval timeval = *(x86_timeval*)optval;
+            return ::setsockopt(fd, level, SO_RCVTIMEO_NEW, &timeval, sizeof(timeval));
+        }
+        case SO_SNDTIMEO_OLD: {
+            struct timeval timeval = *(x86_timeval*)optval;
+            return ::setsockopt(fd, level, SO_SNDTIMEO_NEW, &timeval, sizeof(timeval));
+        }
         case SO_DEBUG:
         case SO_REUSEADDR:
         case SO_TYPE:
