@@ -1,6 +1,5 @@
 #pragma once
 
-#include <queue>
 #include "biscuit/isa.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/signal_queue.hpp"

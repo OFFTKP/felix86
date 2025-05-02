@@ -1124,3 +1124,32 @@ void felix86_fprem(ThreadState* state) {
     // Writeback the new ST(0) value
     memcpy(&state->fp[top], &st0d, 8);
 }
+
+void felix86_fxam(ThreadState* state) {
+    // TODO: implement this instruction properly
+    const int top = state->fpu_top;
+    u64 st0 = state->fp[top];
+    bool sign = st0 >> 63;
+    double st0d;
+    memcpy(&st0d, &st0, 8);
+
+    u8 c3c2c0;
+    if (st0d == 0.0) {
+        c3c2c0 = 0b100;
+    } else if (std::isinf(st0d)) {
+        c3c2c0 = 0b011;
+    } else {
+        c3c2c0 = 0b010;
+    }
+
+    bool c0 = c3c2c0 & 1;
+    bool c1 = sign;
+    bool c2 = (c3c2c0 >> 1) & 1;
+    bool c3 = (c3c2c0 >> 2) & 1;
+
+    state->fpu_sw &= ~(C0_BIT | C1_BIT | C2_BIT | C3_BIT);
+    state->fpu_sw |= c0 ? C0_BIT : 0;
+    state->fpu_sw |= c1 ? C1_BIT : 0;
+    state->fpu_sw |= c2 ? C2_BIT : 0;
+    state->fpu_sw |= c3 ? C3_BIT : 0;
+}

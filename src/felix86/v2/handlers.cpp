@@ -5935,7 +5935,7 @@ void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& in
 }
 
 FAST_HANDLE(EMMS) {
-    rec.writebackMMXState();
+    rec.writebackMMXState(true);
 }
 
 FAST_HANDLE(DIVSS) {

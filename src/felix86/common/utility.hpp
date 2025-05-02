@@ -133,3 +133,5 @@ u64 mmap_min_addr();
 void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment);
 
 void felix86_fprem(ThreadState* state);
+
+void felix86_fxam(ThreadState* state);

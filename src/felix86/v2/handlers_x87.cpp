@@ -261,6 +261,13 @@ FAST_HANDLE(FPREM) {
     rec.restoreState();
 }
 
+FAST_HANDLE(FXAM) {
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fxam);
+    rec.restoreState();
+}
+
 FAST_HANDLE(FNSTENV) {
     WARN("Unhandled instruction FNSTENV, no operation");
 }

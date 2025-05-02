@@ -123,7 +123,7 @@ struct Recompiler {
 
     void restoreMMXState();
 
-    void writebackMMXState();
+    void writebackMMXState(bool reset_using_mmx);
 
     void backToDispatcher();
 
