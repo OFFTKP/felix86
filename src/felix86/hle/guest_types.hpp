@@ -7,6 +7,7 @@
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/statfs.h>
+#include <sys/sysinfo.h>
 #include <sys/uio.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
@@ -137,6 +138,56 @@ struct __attribute__((packed)) x86_epoll_event {
     u32 events = 0;
     u64 data = 0;
 };
+
+struct x86_sysinfo {
+    u32 uptime;
+    u32 loads[3];
+    u32 totalram;
+    u32 freeram;
+    u32 sharedram;
+    u32 bufferram;
+    u32 totalswap;
+    u32 freeswap;
+    u16 procs;
+    u32 totalhigh;
+    u32 freehigh;
+    u32 mem_unit;
+    char _pad[8];
+
+    x86_sysinfo() = delete;
+
+    x86_sysinfo(const struct sysinfo& host_sysinfo) {
+        uptime = std::min(host_sysinfo.uptime, (i64)INT32_MAX);
+        procs = host_sysinfo.procs;
+        mem_unit = host_sysinfo.mem_unit;
+        for (int i = 0; i < 3; i++) {
+            loads[i] = std::min(host_sysinfo.loads[i], (u64)UINT64_MAX);
+        }
+
+        // Shift all memory and increase the memory unit if they don't fit, idea borrowed from FEX
+        u32 shift = 0;
+        u32 temp_mem_unit = host_sysinfo.mem_unit;
+        if ((host_sysinfo.totalram >> 32) != 0 || (host_sysinfo.totalswap >> 32) != 0) {
+            while (temp_mem_unit < 4096) {
+                temp_mem_unit <<= 1;
+                ++shift;
+            }
+        }
+
+        totalram = host_sysinfo.totalram >> shift;
+        sharedram = host_sysinfo.sharedram >> shift;
+        bufferram = host_sysinfo.bufferram >> shift;
+        freeram = host_sysinfo.freeram >> shift;
+        totalhigh = host_sysinfo.totalhigh >> shift;
+        freehigh = host_sysinfo.freehigh >> shift;
+        totalswap = host_sysinfo.totalswap >> shift;
+        freeswap = host_sysinfo.freeswap >> shift;
+        mem_unit = temp_mem_unit;
+    }
+};
+
+static_assert(sizeof(x86_sysinfo) == 64);
+static_assert(std::is_trivial_v<x86_sysinfo>);
 
 struct __attribute__((packed)) x86_stat64 {
     u64 st_dev;
