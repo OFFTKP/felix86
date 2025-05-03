@@ -1896,6 +1896,28 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_ia32_fadvise64: {
+            int fd = arg1;
+            u64 offset_low = arg2;
+            u64 offset_high = arg3;
+            u64 len = arg4;
+            int advice = arg5;
+            u64 offset = offset_low | (offset_high << 32);
+            result = posix_fadvise64(fd, offset, len, advice);
+            break;
+        }
+        case felix86_x86_32_ia32_fadvise64_64: {
+            int fd = arg1;
+            u64 offset_low = arg2;
+            u64 offset_high = arg3;
+            u64 len_low = arg4;
+            u64 len_high = arg5;
+            int advice = arg6;
+            u64 offset = offset_low | (offset_high << 32);
+            u64 len = len_low | (len_high << 32);
+            result = posix_fadvise64(fd, offset, len, advice);
+            break;
+        }
         case felix86_x86_32_readlink: {
             auto guard = state->GuardSignals();
             if (arg1 == arg2) {
