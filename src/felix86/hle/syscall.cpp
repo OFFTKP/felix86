@@ -1883,6 +1883,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_link: {
+            auto guard = state->GuardSignals();
+            result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
+            break;
+        }
         case felix86_x86_32_time32: {
             time_t time;
             result = ::time(&time);
