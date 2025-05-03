@@ -24,15 +24,29 @@ function(CheckGitRead git_hash)
 endfunction()
 
 function(CheckGitVersion)
-    # Get the latest abbreviated commit hash of the working branch
     execute_process(
-        COMMAND git log -1 --format=%h
+        COMMAND git rev-parse --is-inside-work-tree
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-        OUTPUT_VARIABLE GIT_HASH
+        OUTPUT_VARIABLE IS_REPO
         OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    
+    if (NOT IS_REPO STREQUAL "true")
+        set(GIT_HASH "?")
+        set(GIT_HASH_CACHE "INVALID")
+    else()
+        # Get the latest abbreviated commit hash of the working branch
+        execute_process(
+            COMMAND git log -1 --format=%h
+            WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+            OUTPUT_VARIABLE GIT_HASH
+            OUTPUT_STRIP_TRAILING_WHITESPACE
         )
 
-    CheckGitRead(GIT_HASH_CACHE)
+        CheckGitRead(GIT_HASH_CACHE)
+    endif()
+
     if (NOT EXISTS ${post_configure_dir})
         file(MAKE_DIRECTORY ${post_configure_dir})
     endif ()

@@ -2,7 +2,10 @@
 
 extern const char* g_git_hash;
 
+#define YEAR "25"
+#define MONTH "05"
+
 const char* get_version_full() {
-    static std::string version = "felix86 25.05 (" + std::string(g_git_hash) + ")";
+    static std::string version = "felix86 " YEAR "." MONTH + (std::string(g_git_hash) == "?" ? "" : " (" + std::string(g_git_hash) + ")");
     return version.c_str();
 }
