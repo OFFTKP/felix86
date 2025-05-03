@@ -424,8 +424,10 @@ void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop
 
     as.SW(c0, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
 
-    // TODO: this stores twice for fcompp
-    for (int i = 0; i < pop_count; i++) {
+    if (pop_count == 1) {
+        rec.popST(top);
+    } else if (pop_count == 2) {
+        as.ADDI(top, top, 1);
         rec.popST(top);
     }
 }

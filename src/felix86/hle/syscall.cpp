@@ -1878,7 +1878,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         case felix86_x86_32_sysinfo: {
             struct sysinfo host_sysinfo;
             result = ::sysinfo(&host_sysinfo);
-            if (result >= 0) {
+            if (result == 0) {
                 *(x86_sysinfo*)arg1 = host_sysinfo;
             }
             break;
@@ -1886,7 +1886,6 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         case felix86_x86_32_time32: {
             time_t time;
             result = ::time(&time);
-
             if (result == 0) {
                 *(u32*)arg1 = time;
             }
