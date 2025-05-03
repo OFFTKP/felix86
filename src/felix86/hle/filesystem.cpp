@@ -2,6 +2,7 @@
 #include <mutex>
 #include <fcntl.h>
 #include <sys/inotify.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/xattr.h>
@@ -28,10 +29,10 @@ OurSymlink isOurSymlinks(int fd, const char* path) {
     static struct statx proc_statx, run_statx, sys_statx, dev_statx;
     static std::once_flag flag;
     std::call_once(flag, [&]() {
-        ASSERT(statx(g_rootfs_fd, "proc", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &proc_statx) == 0);
-        ASSERT(statx(g_rootfs_fd, "run", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &run_statx) == 0);
-        ASSERT(statx(g_rootfs_fd, "sys", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &sys_statx) == 0);
-        ASSERT(statx(g_rootfs_fd, "dev", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &dev_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "proc", 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &proc_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "run", 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &run_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "sys", 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &sys_statx) == 0);
+        ASSERT(statx(g_rootfs_fd, "dev", 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &dev_statx) == 0);
     });
 
     struct statx new_statx;
@@ -50,10 +51,44 @@ OurSymlink isOurSymlinks(int fd, const char* path) {
     return OurSymlink::No;
 }
 
+int generate_memfd(const char* path, int flags) {
+    if (flags & O_CLOEXEC) {
+        return memfd_create(path, MFD_ALLOW_SEALING | MFD_CLOEXEC);
+    } else {
+        return memfd_create(path, MFD_ALLOW_SEALING);
+    }
+}
+
+void seal_memfd(int fd) {
+    ASSERT(fcntl(fd, F_ADD_SEALS, F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_FUTURE_WRITE) == 0);
+}
+
+Filesystem::Filesystem() {
+    // clang-format off
+    emulated_nodes[PROC_CPUINFO] = EmulatedNode {
+        .path = "/proc/cpuinfo",
+        .open_func = [](const char* path, int flags) {
+            std::string cpuinfo = "TODO";
+            int fd = generate_memfd("/proc/cpuinfo", flags);
+            write(fd, cpuinfo.data(), cpuinfo.size());
+            lseek(fd, 0, SEEK_SET);
+            seal_memfd(fd);
+            return fd;
+        },
+    };
+    // clang-format on
+
+    // Populate the stat field in each node
+    for (int i = 0; i < EMULATED_NODE_COUNT; i++) {
+        ASSERT(statx(AT_FDCWD, emulated_nodes[i].path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &emulated_nodes[i].stat) == 0);
+    }
+}
+
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename);
 
     if (fd == AT_FDCWD && filename && filename[0] == '/') {
+        // TODO: use our emulated node stuff instead of this
         // We may be opening a library, check if it's one of our overlays
         const char* overlay = Overlays::isOverlay(filename);
         if (overlay) {
@@ -309,7 +344,22 @@ int Filesystem::INotifyAddWatch(int fd, const char* path, u32 mask) {
 }
 
 int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode) {
-    return ::syscall(SYS_openat, fd, filename, flags, mode);
+    int opened_fd = ::syscall(SYS_openat, fd, filename, flags, mode);
+    if (opened_fd != -1) {
+        struct statx stat;
+        ASSERT(statx(opened_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &stat) == 0);
+        for (int i = 0; i < EMULATED_NODE_COUNT; i++) {
+            EmulatedNode& node = emulated_nodes[i];
+            if (statx_inode_same(&stat, &node.stat)) {
+                // This is one of our emulated files, close the opened fd and replace it with our own
+                close(opened_fd);
+                int new_fd = node.open_func(filename, flags);
+                ASSERT(new_fd > 0);
+                return new_fd;
+            }
+        }
+    }
+    return opened_fd;
 }
 
 int Filesystem::faccessatInternal(int fd, const char* filename, int mode, int flags) {

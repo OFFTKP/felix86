@@ -1,12 +1,16 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <linux/limits.h>
+#include <linux/stat.h>
 #include "felix86/common/elf.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
 struct Filesystem {
+    Filesystem();
+
     bool LoadExecutable(const std::filesystem::path& path) {
         if (!executable_path.empty()) {
             ERROR("Executable already loaded");
@@ -66,7 +70,7 @@ struct Filesystem {
     }
 
     // Emulated syscall functions
-    static int OpenAt(int fd, const char* filename, int flags, u64 mode);
+    int OpenAt(int fd, const char* filename, int flags, u64 mode);
 
     static int FAccessAt(int fd, const char* filename, int mode, int flags);
 
@@ -131,7 +135,7 @@ struct Filesystem {
     static void removeRootfsPrefix(std::string& path);
 
 private:
-    static int openatInternal(int fd, const char* filename, int flags, u64 mode);
+    int openatInternal(int fd, const char* filename, int flags, u64 mode);
 
     static int faccessatInternal(int fd, const char* filename, int mode, int flags);
 
@@ -174,4 +178,20 @@ private:
     std::filesystem::path executable_path;
     std::shared_ptr<Elf> elf;
     std::shared_ptr<Elf> interpreter;
+
+    struct EmulatedNode {
+        std::string path;
+
+        // The statx of the actual file for comparison
+        struct statx stat{};
+
+        std::function<int(const char* path, int flags)> open_func{};
+    };
+
+    enum {
+        PROC_CPUINFO,
+        EMULATED_NODE_COUNT,
+    };
+
+    std::array<EmulatedNode, EMULATED_NODE_COUNT> emulated_nodes;
 };

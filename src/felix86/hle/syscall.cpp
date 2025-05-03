@@ -612,7 +612,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     }
     case felix86_riscv64_openat: {
         auto guard = state->GuardSignals();
-        result = Filesystem::OpenAt((int)arg1, (char*)arg2, (int)arg3, arg4);
+        result = g_fs->OpenAt((int)arg1, (char*)arg2, (int)arg3, arg4);
         break;
     }
     case felix86_riscv64_tgkill: {
@@ -1436,7 +1436,7 @@ void felix86_syscall(felix86_frame* frame) {
         }
         case felix86_x86_64_open: {
             auto guard = state->GuardSignals();
-            result = Filesystem::OpenAt(AT_FDCWD, (char*)arg1, (int)arg2, arg3);
+            result = g_fs->OpenAt(AT_FDCWD, (char*)arg1, (int)arg2, arg3);
             break;
         }
         case felix86_x86_64_alarm: {
@@ -1657,7 +1657,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_open: {
             auto guard = state->GuardSignals();
-            result = Filesystem::OpenAt(AT_FDCWD, (char*)arg1, (int)arg2, arg3);
+            result = g_fs->OpenAt(AT_FDCWD, (char*)arg1, (int)arg2, arg3);
             break;
         }
         case felix86_x86_32_shmat: {
