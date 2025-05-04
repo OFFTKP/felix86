@@ -625,6 +625,10 @@ void print_address(u64 address) {
 void push_calltrace(ThreadState* state, u64 address) {
     state->recompiler->getCalltrace().push_back(address);
 
+    if (state->recompiler->getCalltrace().size() > 20) {
+        state->recompiler->getCalltrace().pop_front();
+    }
+
     if (g_print_all_calls) {
         dprintf(g_output_fd, "Thread %ld calling: ", state->tid);
         print_address(state->rip);

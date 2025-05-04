@@ -548,7 +548,7 @@ struct Recompiler {
         flag_mode = mode;
     }
 
-    std::vector<u64>& getCalltrace() {
+    std::deque<u64>& getCalltrace() {
         return calltrace;
     }
 
@@ -640,7 +640,7 @@ private:
 
     std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
 
-    std::vector<u64> calltrace{};
+    std::deque<u64> calltrace{};
 
     FlagMode flag_mode = FlagMode::Default;
 

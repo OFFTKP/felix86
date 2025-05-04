@@ -1615,20 +1615,22 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_clock_gettime32: {
-            struct timespec time;
-            result = clock_gettime(arg1, &time);
             if (arg2) {
+                struct timespec time;
+                result = clock_gettime(arg1, &time);
                 *(x86_timespec*)arg2 = time;
+            } else {
+                result = -EFAULT;
             }
             break;
         }
         case felix86_x86_32_clock_settime32: {
-            if (!arg2) {
-                result = -EFAULT;
-            } else {
+            if (arg2) {
                 struct timespec time;
                 time = *(x86_timespec*)arg2;
                 result = clock_settime(arg1, &time);
+            } else {
+                result = -EFAULT;
             }
             break;
         }
