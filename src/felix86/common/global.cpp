@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <linux/perf_event.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 #include <sys/utsname.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/config.hpp"
@@ -16,6 +17,10 @@
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
+
+#ifdef SYS_riscv_hwprobe
+#include <asm/hwprobe.h>
+#endif
 
 bool g_testing = false;
 bool g_extensions_manually_specified = false;
@@ -383,15 +388,17 @@ void initialize_globals() {
     }
 
     // Make sure we have RVV and not xtheadvector
+    bool has_hwprobe = false;
+#ifdef SYS_riscv_hwprobe
+    has_hwprobe = true;
+#endif
     bool xtheadvector = false;
-    if (g_linux_major >= 6 && g_linux_minor >= 4) {
+    if (g_linux_major >= 6 && g_linux_minor >= 4 && has_hwprobe) {
+#ifndef SYS_riscv_hwprobe
         riscv_hwprobe pairs[] = {
             {RISCV_HWPROBE_KEY_MVENDORID, 0},
             {RISCV_HWPROBE_KEY_MIMPID, 0},
         };
-#ifndef SYS_riscv_hwprobe
-#define SYS_riscv_hwprobe 258
-#endif
         long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
         if (result != 0) {
             WARN("Failed to check if there's xtheadvector which we don't support");
@@ -406,6 +413,9 @@ void initialize_globals() {
                 xtheadvector = true;
             }
         }
+#else
+        UNREACHABLE();
+#endif
     } else {
         // We don't have __riscv_hwprobe, try to detect through /proc/cpuinfo
         std::ifstream ifs("/proc/cpuinfo");
