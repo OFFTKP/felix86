@@ -2562,8 +2562,8 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
     end = (end + 0xFFF) & ~0xFFFull;
     for (ThreadState* state : g_process_globals.states) {
         state->recompiler->invalidateRange(start, end);
+        flush_icache_global((u64)state->recompiler->getStartOfCodeCache(), (u64)state->recompiler->getEndOfCodeCache());
     }
-    flush_icache_global(start, end);
 }
 
 bool Recompiler::tryInlineSyscall() {

@@ -217,7 +217,7 @@ void flush_icache() {
 }
 
 // Flush icache to other cores as well
-void flush_icache_global(const u64& start, const u64& end) {
+void flush_icache_global(u64 start, u64 end) {
 #if defined(__riscv)
     __riscv_flush_icache((void*)start, (void*)end, 0);
 #endif

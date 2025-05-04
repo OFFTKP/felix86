@@ -40,7 +40,7 @@ std::string get_perf_symbol(u64 address);
 
 void flush_icache();
 
-void flush_icache_global(const u64& start, const u64& end);
+void flush_icache_global(u64 start, u64 end);
 
 int guest_breakpoint(const char* name, u64 address);
 
