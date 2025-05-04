@@ -3,6 +3,85 @@
 #include "felix86/common/log.hpp"
 #include "felix86/hle/socket32.hpp"
 
+#ifndef SO_RCVTIMEO_OLD
+#define SO_RCVTIMEO_OLD 20
+#endif
+#ifndef SO_SNDTIMEO_OLD
+#define SO_SNDTIMEO_OLD 21
+#endif
+#ifndef SO_TIMESTAMP_OLD
+#define SO_TIMESTAMP_OLD 29
+#endif
+#ifndef SO_TIMESTAMPNS_OLD
+#define SO_TIMESTAMPNS_OLD 35
+#endif
+#ifndef SO_TIMESTAMPING_OLD
+#define SO_TIMESTAMPING_OLD 37
+#endif
+#ifndef SO_MEMINFO
+#define SO_MEMINFO 55
+#endif
+#ifndef SO_INCOMING_NAPI_ID
+#define SO_INCOMING_NAPI_ID 56
+#endif
+#ifndef SO_PEERGROUPS
+#define SO_PEERGROUPS 59
+#endif
+#ifndef SO_ZEROCOPY
+#define SO_ZEROCOPY 60
+#endif
+#ifndef SO_TXTIME
+#define SO_TXTIME 61
+#endif
+#ifndef SO_BINDTOIFINDEX
+#define SO_BINDTOIFINDEX 62
+#endif
+#ifndef SO_TIMESTAMP_NEW
+#define SO_TIMESTAMP_NEW 63
+#endif
+#ifndef SO_TIMESTAMPNS_NEW
+#define SO_TIMESTAMPNS_NEW 64
+#endif
+#ifndef SO_TIMESTAMPING_NEW
+#define SO_TIMESTAMPING_NEW 65
+#endif
+#ifndef SO_RCVTIMEO_NEW
+#define SO_RCVTIMEO_NEW 66
+#endif
+#ifndef SO_SNDTIMEO_NEW
+#define SO_SNDTIMEO_NEW 67
+#endif
+#ifndef SO_DETACH_REUSEPORT_BPF
+#define SO_DETACH_REUSEPORT_BPF 68
+#endif
+#ifndef SO_PREFER_BUSY_POLL
+#define SO_PREFER_BUSY_POLL 69
+#endif
+#ifndef SO_BUSY_POLL_BUDGET
+#define SO_BUSY_POLL_BUDGET 70
+#endif
+#ifndef SO_NETNS_COOKIE
+#define SO_NETNS_COOKIE 71
+#endif
+#ifndef SO_BUF_LOCK
+#define SO_BUF_LOCK 72
+#endif
+#ifndef SO_RESERVE_MEM
+#define SO_RESERVE_MEM 73
+#endif
+#ifndef SO_TXREHASH
+#define SO_TXREHASH 74
+#endif
+#ifndef SO_RCVMARK
+#define SO_RCVMARK 75
+#endif
+#ifndef SO_PASSPIDFD
+#define SO_PASSPIDFD 76
+#endif
+#ifndef SO_PEERPIDFD
+#define SO_PEERPIDFD 77
+#endif
+
 int recvmsg32(int fd, x86_msghdr* guest_msghdr, int flags) {
     struct msghdr host_msghdr;
     host_msghdr.msg_flags = guest_msghdr->msg_flags;
