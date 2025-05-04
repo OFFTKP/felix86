@@ -21,7 +21,6 @@ check_pie_supported()
 set(BISCUIT_CODE_BUFFER_MMAP ON)
 set(BUILD_TESTING OFF)
 add_subdirectory(external/biscuit)
-add_subdirectory(external/Catch2)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 
@@ -141,6 +140,7 @@ if (BUILD_INSTRUCTION_COUNTER)
 endif()
 
 if (BUILD_TESTS)
+    add_subdirectory(external/Catch2)
     set(FELIX86_TEST_SOURCES
         tests/common.cpp
         tests/FEX/fex_test_loader.cpp

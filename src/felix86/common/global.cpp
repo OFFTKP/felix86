@@ -394,7 +394,7 @@ void initialize_globals() {
 #endif
     bool xtheadvector = false;
     if (g_linux_major >= 6 && g_linux_minor >= 4 && has_hwprobe) {
-#ifndef SYS_riscv_hwprobe
+#ifdef SYS_riscv_hwprobe
         riscv_hwprobe pairs[] = {
             {RISCV_HWPROBE_KEY_MVENDORID, 0},
             {RISCV_HWPROBE_KEY_MIMPID, 0},
