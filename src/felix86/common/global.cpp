@@ -241,8 +241,6 @@ void initialize_globals() {
         // Just set to earliest Linux version that supports RISC-V
         g_linux_major = 5;
         g_linux_minor = 17;
-    } else if (!g_execve_process) {
-        LOG("Running Linux %d.%d", g_linux_major, g_linux_minor);
     }
 
     std::string environment = g_config.getEnvironment();
@@ -439,6 +437,7 @@ void initialize_globals() {
 
     if (!g_execve_process) {
         LOG("%s", get_version_full());
+        LOG("Linux %d.%d", g_linux_major, g_linux_minor);
         if (!environment.empty()) {
             LOG("Environment:%s", environment.c_str());
         }
