@@ -406,7 +406,7 @@ void initialize_globals() {
     sigaction(SIGILL, &old_act, nullptr);
 
     if (Extensions::Xtheadvector) {
-        ERROR("This board has xtheadvector, but felix86 only works with RVV 1.0 currently");
+        WARN("This board has xtheadvector, but felix86 only works with RVV 1.0 currently");
     }
 #endif
 
