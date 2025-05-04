@@ -1614,6 +1614,24 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = SYSCALL(writev, arg1, iovecs.data(), arg3);
             break;
         }
+        case felix86_x86_32_clock_gettime32: {
+            struct timespec time;
+            result = clock_gettime(arg1, &time);
+            if (arg2) {
+                *(x86_timespec*)arg2 = time;
+            }
+            break;
+        }
+        case felix86_x86_32_clock_settime32: {
+            if (!arg2) {
+                result = -EFAULT;
+            } else {
+                struct timespec time;
+                time = *(x86_timespec*)arg2;
+                result = clock_settime(arg1, &time);
+            }
+            break;
+        }
         case felix86_x86_32_mmap_pgoff: {
             // mmap2 is like mmap but file offset is in pages (4096 bytes) to help with the lack of big enough integers in x86-32
             u64 offset = arg6 * 4096;
