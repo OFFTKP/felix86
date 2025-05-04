@@ -6,15 +6,6 @@
 
 const char* manufacturer_id = "GenuineIntel";
 
-struct Cpuid {
-    u32 leaf;
-    u32 subleaf;
-    u32 eax;
-    u32 ebx;
-    u32 ecx;
-    u32 edx;
-};
-
 constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
 
 // Generated using generate_cpuid.cpp
@@ -71,22 +62,14 @@ constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
 std::span<const Cpuid> selected_mappings = p4_mappings;
 std::span<const Cpuid> selected_mappings_32 = p4_mappings_32;
 
-void felix86_cpuid(ThreadState* thread_state) {
-    u32 eax = 0;
-    u32 ebx = 0;
-    u32 ecx = 0;
-    u32 edx = 0;
-    u32 leaf = thread_state->GetGpr(X86_REF_RAX);
-    u32 subleaf = thread_state->GetGpr(X86_REF_RCX);
+Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
+    Cpuid result{};
     bool found = false;
 
     auto& mappings = g_mode32 ? selected_mappings_32 : selected_mappings;
     for (const Cpuid& cpuid : mappings) {
         if (cpuid.leaf == leaf && (cpuid.subleaf == subleaf || cpuid.subleaf == NO_SUBLEAF)) {
-            eax = cpuid.eax;
-            ebx = cpuid.ebx;
-            ecx = cpuid.ecx;
-            edx = cpuid.edx;
+            result = cpuid;
             found = true;
             break;
         }
@@ -96,9 +79,18 @@ void felix86_cpuid(ThreadState* thread_state) {
         WARN("Unknown CPUID(%08x, %08x)", leaf, subleaf);
     }
 
-    STRACE("CPUID(%08x, %08x) -> %08x %08x %08x %08x", leaf, subleaf, eax, ebx, ecx, edx);
-    thread_state->SetGpr(X86_REF_RAX, eax);
-    thread_state->SetGpr(X86_REF_RBX, ebx);
-    thread_state->SetGpr(X86_REF_RCX, ecx);
-    thread_state->SetGpr(X86_REF_RDX, edx);
+    return result;
+}
+
+void felix86_cpuid(ThreadState* thread_state) {
+    u32 leaf = thread_state->GetGpr(X86_REF_RAX);
+    u32 subleaf = thread_state->GetGpr(X86_REF_RCX);
+
+    Cpuid cpuid = felix86_cpuid_impl(leaf, subleaf);
+
+    STRACE("CPUID(%08x, %08x) -> %08x %08x %08x %08x", leaf, subleaf, cpuid.eax, cpuid.ebx, cpuid.ecx, cpuid.edx);
+    thread_state->SetGpr(X86_REF_RAX, cpuid.eax);
+    thread_state->SetGpr(X86_REF_RBX, cpuid.ebx);
+    thread_state->SetGpr(X86_REF_RCX, cpuid.ecx);
+    thread_state->SetGpr(X86_REF_RDX, cpuid.edx);
 }

@@ -68,7 +68,7 @@ Filesystem::Filesystem() {
     emulated_nodes[PROC_CPUINFO] = EmulatedNode {
         .path = "/proc/cpuinfo",
         .open_func = [](const char* path, int flags) {
-            std::string cpuinfo = "TODO";
+            const std::string& cpuinfo = felix86_cpuinfo();
             int fd = generate_memfd("/proc/cpuinfo", flags);
             write(fd, cpuinfo.data(), cpuinfo.size());
             lseek(fd, 0, SEEK_SET);

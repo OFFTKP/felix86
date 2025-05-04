@@ -7,6 +7,7 @@
 #include "felix86/common/elf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/hle/cpuid.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
@@ -1152,4 +1153,158 @@ void felix86_fxam(ThreadState* state) {
     state->fpu_sw |= c1 ? C1_BIT : 0;
     state->fpu_sw |= c2 ? C2_BIT : 0;
     state->fpu_sw |= c3 ? C3_BIT : 0;
+}
+
+const std::string& felix86_cpuinfo() {
+#define ADD_FLAG(cond, name)                                                                                                                         \
+    do {                                                                                                                                             \
+        if (cond) {                                                                                                                                  \
+            flags += name;                                                                                                                           \
+            flags += " ";                                                                                                                            \
+        }                                                                                                                                            \
+    } while (0)
+
+    static std::string cpuinfo = []() {
+        std::string result;
+        std::string flags;
+        Cpuid cpuid_0 = felix86_cpuid_impl(0, 0);
+        Cpuid cpuid_1 = felix86_cpuid_impl(1, 0);
+        Cpuid cpuid_7 = felix86_cpuid_impl(7, 0);
+
+        ADD_FLAG(cpuid_1.edx & (1 << 0), "fpu");
+        ADD_FLAG(cpuid_1.edx & (1 << 1), "vme");
+        ADD_FLAG(cpuid_1.edx & (1 << 2), "de");
+        ADD_FLAG(cpuid_1.edx & (1 << 3), "pse");
+        ADD_FLAG(cpuid_1.edx & (1 << 4), "tsc");
+        ADD_FLAG(cpuid_1.edx & (1 << 5), "msr");
+        ADD_FLAG(cpuid_1.edx & (1 << 6), "pae");
+        ADD_FLAG(cpuid_1.edx & (1 << 7), "mce");
+        ADD_FLAG(cpuid_1.edx & (1 << 8), "cx8");
+        ADD_FLAG(cpuid_1.edx & (1 << 9), "apic");
+        ADD_FLAG(cpuid_1.edx & (1 << 11), "sep");
+        ADD_FLAG(cpuid_1.edx & (1 << 12), "mtrr");
+        ADD_FLAG(cpuid_1.edx & (1 << 13), "pge");
+        ADD_FLAG(cpuid_1.edx & (1 << 14), "mca");
+        ADD_FLAG(cpuid_1.edx & (1 << 15), "cmov");
+        ADD_FLAG(cpuid_1.edx & (1 << 16), "pat");
+        ADD_FLAG(cpuid_1.edx & (1 << 17), "pse36");
+        ADD_FLAG(cpuid_1.edx & (1 << 18), "pn");
+        ADD_FLAG(cpuid_1.edx & (1 << 19), "clflush");
+        ADD_FLAG(cpuid_1.edx & (1 << 21), "ds");
+        ADD_FLAG(cpuid_1.edx & (1 << 22), "acpi");
+        ADD_FLAG(cpuid_1.edx & (1 << 23), "mmx");
+        ADD_FLAG(cpuid_1.edx & (1 << 24), "fxsr");
+        ADD_FLAG(cpuid_1.edx & (1 << 25), "sse");
+        ADD_FLAG(cpuid_1.edx & (1 << 26), "sse2");
+        ADD_FLAG(cpuid_1.edx & (1 << 27), "ss");
+        ADD_FLAG(cpuid_1.edx & (1 << 28), "ht");
+        ADD_FLAG(cpuid_1.edx & (1 << 29), "tm");
+        ADD_FLAG(cpuid_1.edx & (1 << 30), "ia64");
+        ADD_FLAG(cpuid_1.edx & (1 << 31), "pbe");
+        ADD_FLAG(cpuid_1.ecx & (1 << 0), "pni");
+        ADD_FLAG(cpuid_1.ecx & (1 << 1), "pclmulqdq");
+        ADD_FLAG(cpuid_1.ecx & (1 << 2), "dtes64");
+        ADD_FLAG(cpuid_1.ecx & (1 << 3), "monitor");
+        ADD_FLAG(cpuid_1.ecx & (1 << 4), "ds_cpl");
+        ADD_FLAG(cpuid_1.ecx & (1 << 5), "vmx");
+        ADD_FLAG(cpuid_1.ecx & (1 << 6), "smx");
+        ADD_FLAG(cpuid_1.ecx & (1 << 7), "est");
+        ADD_FLAG(cpuid_1.ecx & (1 << 8), "tm2");
+        ADD_FLAG(cpuid_1.ecx & (1 << 9), "ssse3");
+        ADD_FLAG(cpuid_1.ecx & (1 << 11), "sdbg");
+        ADD_FLAG(cpuid_1.ecx & (1 << 12), "fma");
+        ADD_FLAG(cpuid_1.ecx & (1 << 13), "cx16");
+        ADD_FLAG(cpuid_1.ecx & (1 << 14), "xptr");
+        ADD_FLAG(cpuid_1.ecx & (1 << 15), "pdcm");
+        ADD_FLAG(cpuid_1.ecx & (1 << 17), "pcid");
+        ADD_FLAG(cpuid_1.ecx & (1 << 18), "dca");
+        ADD_FLAG(cpuid_1.ecx & (1 << 19), "sse4_1");
+        ADD_FLAG(cpuid_1.ecx & (1 << 20), "sse4_2");
+        ADD_FLAG(cpuid_1.ecx & (1 << 21), "x2apic");
+        ADD_FLAG(cpuid_1.ecx & (1 << 22), "movbe");
+        ADD_FLAG(cpuid_1.ecx & (1 << 23), "popcnt");
+        ADD_FLAG(cpuid_1.ecx & (1 << 24), "tsc_deadline_timer");
+        ADD_FLAG(cpuid_1.ecx & (1 << 25), "aes");
+        ADD_FLAG(cpuid_1.ecx & (1 << 26), "xsave");
+        ADD_FLAG(cpuid_1.ecx & (1 << 28), "avx");
+        ADD_FLAG(cpuid_1.ecx & (1 << 29), "f16c");
+        ADD_FLAG(cpuid_1.ecx & (1 << 30), "rdrand");
+        ADD_FLAG(cpuid_1.ecx & (1 << 31), "hypervisor");
+
+        ADD_FLAG(cpuid_7.ebx & (1 << 0), "fsgsbase");
+        ADD_FLAG(cpuid_7.ebx & (1 << 1), "tsc_adjust");
+        ADD_FLAG(cpuid_7.ebx & (1 << 3), "bmi1");
+        ADD_FLAG(cpuid_7.ebx & (1 << 4), "hle");
+        ADD_FLAG(cpuid_7.ebx & (1 << 5), "avx2");
+        ADD_FLAG(cpuid_7.ebx & (1 << 7), "smep");
+        ADD_FLAG(cpuid_7.ebx & (1 << 8), "bmi2");
+        ADD_FLAG(cpuid_7.ebx & (1 << 9), "erms");
+        ADD_FLAG(cpuid_7.ebx & (1 << 10), "invpcid");
+        ADD_FLAG(cpuid_7.ebx & (1 << 11), "rtm");
+        ADD_FLAG(cpuid_7.ebx & (1 << 12), "rdt_m");
+        ADD_FLAG(cpuid_7.ebx & (1 << 13), "depc_fpu_cs_ds");
+        ADD_FLAG(cpuid_7.ebx & (1 << 14), "mpx");
+        ADD_FLAG(cpuid_7.ebx & (1 << 15), "rdt_a");
+        ADD_FLAG(cpuid_7.ebx & (1 << 16), "avx512f");
+        ADD_FLAG(cpuid_7.ebx & (1 << 17), "avx512dq");
+        ADD_FLAG(cpuid_7.ebx & (1 << 18), "rdseed");
+        ADD_FLAG(cpuid_7.ebx & (1 << 19), "adx");
+        ADD_FLAG(cpuid_7.ebx & (1 << 20), "smap");
+        ADD_FLAG(cpuid_7.ebx & (1 << 21), "avx512ifma");
+        ADD_FLAG(cpuid_7.ebx & (1 << 23), "clflushopt");
+        ADD_FLAG(cpuid_7.ebx & (1 << 24), "clwb");
+        ADD_FLAG(cpuid_7.ebx & (1 << 25), "intel_pt");
+        ADD_FLAG(cpuid_7.ebx & (1 << 26), "avx512pf");
+        ADD_FLAG(cpuid_7.ebx & (1 << 27), "avx512er");
+        ADD_FLAG(cpuid_7.ebx & (1 << 28), "avx512cd");
+        ADD_FLAG(cpuid_7.ebx & (1 << 29), "sha_ni");
+        ADD_FLAG(cpuid_7.ebx & (1 << 30), "avx512bw");
+        ADD_FLAG(cpuid_7.ebx & (1 << 31), "avx512vl");
+
+        flags.pop_back();
+
+        u32 family_id = (cpuid_1.eax >> 8) & 0xF;
+        u32 ex_family_id = (cpuid_1.eax >> 20) & 0xFF;
+        u32 ex_model = ((cpuid_1.eax >> 16) & 0xF) << 4;
+        bool family_6_or_15 = family_id == 6 || family_id == 15;
+        u32 model = ((cpuid_1.eax >> 4) & 0xF) | (family_6_or_15 ? ex_model : 0);
+        u32 family = family_id + (family_id == 0xF ? ex_family_id : 0);
+
+        cpu_set_t cpuset;
+        sched_getaffinity(0, sizeof(cpuset), &cpuset);
+        int core_count = CPU_COUNT(&cpuset);
+        for (int i = 0; i < core_count; i++) {
+            result += fmt::format("processor\t: {}\n", i);
+            result += "vendor_id\t: GenuineIntel\n";
+            result += fmt::format("cpu family\t: {}\n", family);
+            result += fmt::format("model\t\t: {}\n", model);
+            result += "model name\t: felix86\n"; // TODO: get it from CPUID
+            result += fmt::format("stepping\t:{}\n", cpuid_1.eax & 0xF);
+            result += "microcode\t: 0x42c\n";
+            result += "cpu MHz\t: 1000.0\n";    // TODO: calculate it
+            result += "cache size\t: 512 KB\n"; // TODO: get from /sys/devices/system/cpu/cpu%d/cache/index%d/size (if no L3, use L2)
+            result += "physical id\t: 0\n";
+            result += fmt::format("siblings\t: {}\n", core_count);
+            result += fmt::format("core id\t: {}\n", i);
+            result += fmt::format("cpu cores\t: {}\n", core_count);
+            result += fmt::format("apicid\t: {}\n", i);
+            result += fmt::format("initial apicid\t: {}\n", i);
+            result += "fpu\t: 1\n";
+            result += "fpu exception\t: 1\n";
+            result += fmt::format("cpuid level\t: {}\n", cpuid_0.eax);
+            result += "wp\t\t: yes\n";
+            result += fmt::format("flags\t\t: {}\n", flags);
+            result += "bugs\t\t: \n";
+            result += "bogomips\t: 5000.0\n"; // TODO: also calculate this
+            result += "clflush size\t: 64\n";
+            result += "cache_alignment\t: 64\n";
+            result += "address sizes\t: 56 bits physical, 39 bits virtual\n"; // TODO: get virtual from mmu in /proc/cpuinfo
+            result += "power management:\n";
+            result += "\n";
+        }
+
+        return result;
+    }();
+    return cpuinfo;
+#undef ADD_FLAG
 }
