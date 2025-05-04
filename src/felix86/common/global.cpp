@@ -1,11 +1,11 @@
 #include <algorithm>
 #include <cstring>
 #include <fstream>
-#include <list>
 #include <string>
 #include <fcntl.h>
 #include <linux/perf_event.h>
 #include <sys/mman.h>
+#include <sys/utsname.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/gdbjit.hpp"
@@ -39,6 +39,8 @@ bool g_execve_process = false;
 std::unique_ptr<Filesystem> g_fs{};
 std::string g_emulator_path;
 StartParameters g_params{};
+int g_linux_major = 0;
+int g_linux_minor = 0;
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;
@@ -215,6 +217,29 @@ void initialize_extensions() {
 }
 
 void initialize_globals() {
+    struct utsname buffer;
+
+    bool detected = false;
+    if (uname(&buffer) != 0) {
+        WARN("Failed to detect Linux kernel version");
+    } else {
+        int major, minor;
+        int scanned = sscanf(buffer.release, "%d.%d", &major, &minor);
+        if (scanned == 2) {
+            detected = true;
+            g_linux_major = major;
+            g_linux_minor = minor;
+        }
+    }
+
+    if (!detected) {
+        // Just set to earliest Linux version that supports RISC-V
+        g_linux_major = 5;
+        g_linux_minor = 17;
+    } else if (!g_execve_process) {
+        LOG("Running Linux %d.%d", g_linux_major, g_linux_minor);
+    }
+
     std::string environment = g_config.getEnvironment();
 
     g_emulator_path.resize(PATH_MAX);
@@ -355,6 +380,50 @@ void initialize_globals() {
 
     if (!Extensions::V) {
         ERROR("V extension is required for SSE instructions");
+    }
+
+    // Make sure we have RVV and not xtheadvector
+    bool xtheadvector = false;
+    if (g_linux_major >= 6 && g_linux_minor >= 4) {
+        riscv_hwprobe pairs[] = {
+            {RISCV_HWPROBE_KEY_MVENDORID, 0},
+            {RISCV_HWPROBE_KEY_MIMPID, 0},
+        };
+#ifndef SYS_riscv_hwprobe
+#define SYS_riscv_hwprobe 258
+#endif
+        long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
+        if (result != 0) {
+            WARN("Failed to check if there's xtheadvector which we don't support");
+        } else {
+            // The XTheadVector extension is available if and only if all of the following conditions are met:
+            // - The value of the mvendor CSR is 0x5b7 ('T-Head')
+            // - Bit 21 of the misa CSR is 1 ('V') (we check for vector earlier)
+            // - The value of the mimpid CSR is 0
+            u32 vendor = pairs[0].value;
+            u32 impid = pairs[1].value;
+            if (vendor == 0x5b7 && impid == 0) {
+                xtheadvector = true;
+            }
+        }
+    } else {
+        // We don't have __riscv_hwprobe, try to detect through /proc/cpuinfo
+        std::ifstream ifs("/proc/cpuinfo");
+        if (!ifs.is_open()) {
+            ERROR("Failed to open /proc/cpuinfo")
+        }
+
+        std::stringstream buffer;
+        buffer << ifs.rdbuf();
+
+        std::string info = buffer.str();
+        if (info.find("xtheadvector") != std::string::npos) {
+            xtheadvector = true;
+        }
+    }
+
+    if (xtheadvector) {
+        ERROR("This board has xtheadvector, but felix86 only works with RVV 1.0 currently");
     }
 #endif
 

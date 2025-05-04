@@ -80,6 +80,8 @@ extern bool g_execve_process;
 extern StartParameters g_params;
 extern std::unique_ptr<Filesystem> g_fs;
 extern std::unique_ptr<GDBJIT> g_gdbjit;
+extern int g_linux_major;
+extern int g_linux_minor;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
