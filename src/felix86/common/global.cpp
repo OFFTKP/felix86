@@ -420,7 +420,7 @@ void initialize_globals() {
         // We don't have __riscv_hwprobe, try to detect through /proc/cpuinfo
         std::ifstream ifs("/proc/cpuinfo");
         if (!ifs.is_open()) {
-            ERROR("Failed to open /proc/cpuinfo")
+            ERROR("Failed to open /proc/cpuinfo");
         }
 
         std::stringstream buffer;
