@@ -2560,10 +2560,23 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
     auto states_guard = g_process_globals.states_lock.lock();
     start &= ~0xFFFull;
     end = (end + 0xFFF) & ~0xFFFull;
+    u64 min = UINT64_MAX;
+    u64 max = 0;
     for (ThreadState* state : g_process_globals.states) {
         state->recompiler->invalidateRange(start, end);
-        flush_icache_global((u64)state->recompiler->getStartOfCodeCache(), (u64)state->recompiler->getEndOfCodeCache());
+
+        u64 cache_start = (u64)state->recompiler->getStartOfCodeCache();
+        u64 cache_end = (u64)state->recompiler->getEndOfCodeCache();
+        if (cache_start < min) {
+            min = cache_start;
+        }
+        if (cache_end > max) {
+            max = cache_end;
+        }
     }
+
+    // Flush the entire affected range in one syscall
+    flush_icache_global(min, max);
 }
 
 bool Recompiler::tryInlineSyscall() {

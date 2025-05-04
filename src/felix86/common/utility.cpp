@@ -224,6 +224,7 @@ void flush_icache() {
 // For this reason, while we use fence.i when a thread changes its own code to avoid a syscall, when a thread changes a different
 // threads code we need to use the syscall instead
 // Since each thread has its own code cache this function is currently only used when we invalidate blocks globally
+// NOTE: the range is actually unused and only in the syscall for forwards compatibility, so we use it correctly regardless
 void flush_icache_global(u64 start, u64 end) {
 #if defined(__riscv)
     __riscv_flush_icache((void*)start, (void*)end, 0);
