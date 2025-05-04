@@ -1279,7 +1279,7 @@ const std::string& felix86_cpuinfo() {
             result += fmt::format("cpu family\t: {}\n", family);
             result += fmt::format("model\t\t: {}\n", model);
             result += "model name\t: felix86\n"; // TODO: get it from CPUID
-            result += fmt::format("stepping\t:  {}\n", cpuid_1.eax & 0xF);
+            result += fmt::format("stepping\t: {}\n", cpuid_1.eax & 0xF);
             result += "microcode\t: 0x42c\n";
             result += "cpu MHz\t\t: 1000.0\n";  // TODO: calculate it
             result += "cache size\t: 512 KB\n"; // TODO: get from /sys/devices/system/cpu/cpu%d/cache/index%d/size (if no L3, use L2)
