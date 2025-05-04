@@ -18,10 +18,6 @@
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 
-#ifdef SYS_riscv_hwprobe
-#include <asm/hwprobe.h>
-#endif
-
 bool g_testing = false;
 bool g_extensions_manually_specified = false;
 bool g_print_all_calls = false;
@@ -132,6 +128,15 @@ void Extensions::Clear() {
     FELIX86_EXTENSIONS_TOTAL
 #undef X
     VLEN = 0;
+}
+
+void set_xtheadvector(int sig, siginfo_t* info, void* ctx) {
+    Extensions::Xtheadvector = true;
+
+#ifdef __riscv
+    // Skip the illegal instruction
+    ((ucontext_t*)ctx)->uc_mcontext.__gregs[REG_PC] += 4;
+#endif
 }
 
 std::string get_extensions() {
@@ -385,52 +390,22 @@ void initialize_globals() {
         ERROR("V extension is required for SSE instructions");
     }
 
-    // Make sure we have RVV and not xtheadvector
-    bool has_hwprobe = false;
-#ifdef SYS_riscv_hwprobe
-    has_hwprobe = true;
-#endif
-    bool xtheadvector = false;
-    if (g_linux_major >= 6 && g_linux_minor >= 4 && has_hwprobe) {
-#ifdef SYS_riscv_hwprobe
-        riscv_hwprobe pairs[] = {
-            {RISCV_HWPROBE_KEY_MVENDORID, 0},
-            {RISCV_HWPROBE_KEY_MIMPID, 0},
-        };
-        long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
-        if (result != 0) {
-            WARN("Failed to check if there's xtheadvector which we don't support");
-        } else {
-            // The XTheadVector extension is available if and only if all of the following conditions are met:
-            // - The value of the mvendor CSR is 0x5b7 ('T-Head')
-            // - Bit 21 of the misa CSR is 1 ('V') (we check for vector earlier)
-            // - The value of the mimpid CSR is 0
-            u32 vendor = pairs[0].value;
-            u32 impid = pairs[1].value;
-            if (vendor == 0x5b7 && impid == 0) {
-                xtheadvector = true;
-            }
-        }
-#else
-        UNREACHABLE();
-#endif
-    } else {
-        // We don't have __riscv_hwprobe, try to detect through /proc/cpuinfo
-        std::ifstream ifs("/proc/cpuinfo");
-        if (!ifs.is_open()) {
-            ERROR("Failed to open /proc/cpuinfo");
-        }
+    struct sigaction old_act;
+    struct sigaction new_act;
+    new_act.sa_sigaction = set_xtheadvector;
+    new_act.sa_flags = SA_SIGINFO;
+    sigemptyset(&new_act.sa_mask);
 
-        std::stringstream buffer;
-        buffer << ifs.rdbuf();
+    sigaction(SIGILL, &new_act, &old_act);
 
-        std::string info = buffer.str();
-        if (info.find("xtheadvector") != std::string::npos) {
-            xtheadvector = true;
-        }
-    }
+    // VCSR doesn't exist in Xtheadvector, so this will hit an illegal instruction
+    // So we can detect Xtheadvector in a cross platform way that works in older kernels too
+    biscuit::CSRReader<CSR::VCSR> vcsr_reader;
+    (vcsr_reader.GetCode<u32 (*)()>())();
 
-    if (xtheadvector) {
+    sigaction(SIGILL, &old_act, nullptr);
+
+    if (Extensions::Xtheadvector) {
         ERROR("This board has xtheadvector, but felix86 only works with RVV 1.0 currently");
     }
 #endif

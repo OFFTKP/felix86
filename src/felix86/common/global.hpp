@@ -105,6 +105,7 @@ struct Extensions {
     X(Zvbb)                                                                                                                                          \
     X(Zvkned)                                                                                                                                        \
     X(Xtheadcondmov)                                                                                                                                 \
+    X(Xtheadvector)                                                                                                                                  \
     X(Xtheadba)                                                                                                                                      \
     X(TSO) /* no hardware has this so we don't care for now */
 
