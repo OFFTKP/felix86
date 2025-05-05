@@ -4588,6 +4588,29 @@ FAST_HANDLE(CMPPD) {
     CMPP(rec, rip, as, instruction, operands, SEW::E64, 2);
 }
 
+// This instruction is MMX only
+FAST_HANDLE(PSHUFW) {
+    biscuit::Vec dst = rec.scratchVec();
+    biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    u8 imm = rec.getImmediate(&operands[2]);
+    u64 el0 = imm & 0b11;
+    u64 el1 = (imm >> 2) & 0b11;
+    u64 el2 = (imm >> 4) & 0b11;
+    u64 el3 = (imm >> 6) & 0b11;
+
+    biscuit::GPR temp = rec.scratch();
+    biscuit::Vec iota = rec.scratchVec();
+    u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
+    rec.setVectorState(SEW::E64, 1);
+    as.LI(temp, mask);
+    as.VMV_SX(iota, temp);
+
+    rec.setVectorState(SEW::E16, 4);
+    as.VRGATHER(dst, src, iota);
+
+    rec.setOperandVec(&operands[0], dst);
+}
+
 FAST_HANDLE(PSHUFD) {
     u8 imm = rec.getImmediate(&operands[2]);
     u64 el0 = imm & 0b11;
