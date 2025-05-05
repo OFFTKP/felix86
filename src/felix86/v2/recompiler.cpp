@@ -2586,7 +2586,7 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
     }
 
     // Flush the entire affected range in one syscall
-    // flush_icache_global(min, max);
+    flush_icache_global(min, max);
 }
 
 bool Recompiler::tryInlineSyscall() {
