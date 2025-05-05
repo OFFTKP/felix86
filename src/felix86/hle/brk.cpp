@@ -141,7 +141,7 @@ u64 BRK::set(u64 new_brk) {
         }
 
         prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, new_size, "current-brk");
-        WARN("Resized BRK to %lx", new_size);
+        WARN("Resized BRK (new size: %lx, from %lx-%lx to %lx-%lx)", new_size, g_initial_brk, end_brk, g_initial_brk, end_brk + size_past_end);
         g_current_brk_size = new_size;
     }
 
