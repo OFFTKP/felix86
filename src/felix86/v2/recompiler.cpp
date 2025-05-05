@@ -379,6 +379,22 @@ u64 Recompiler::getCompiledBlock(ThreadState* state, u64 rip) {
 
 u64 Recompiler::compileSequence(u64 rip) {
     compiling = true;
+    u8* bytes = (u8*)rip;
+    bool all_zeroes = true;
+    if (bytes[0] == 0x00) {
+        for (int i = 0; i < 16; i++) {
+            if (bytes[i + 1] != 0x00) {
+                all_zeroes = false;
+            }
+        }
+    } else {
+        all_zeroes = false;
+    }
+
+    if (all_zeroes) {
+        ERROR("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?");
+    }
+
     scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
 
