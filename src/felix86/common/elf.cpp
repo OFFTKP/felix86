@@ -543,7 +543,6 @@ void Elf::Load(const std::filesystem::path& path) {
         g_executable_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
     } else {
         ASSERT(g_program_end != 0);
-        g_program_end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
         g_interpreter_start = (u64)(base_ptr + lowest_vaddr);
         g_interpreter_end = (u64)(base_ptr + highest_vaddr);
         program_base = (u8*)base_ptr;
