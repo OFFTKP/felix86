@@ -538,11 +538,15 @@ void Elf::Load(const std::filesystem::path& path) {
     if (!is_interpreter) {
         // Don't add to unmap_me, unmapped elsewhere
         program_base = base_ptr;
-        g_program_end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
+        u64 end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
+        // The interpreter may be allocated before or after the program. We want to place the brk definitely
+        // after both so it has ample room to grow
+        g_program_end = std::max(end, g_program_end);
         g_executable_start = (u64)(base_ptr + lowest_vaddr);
         g_executable_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
     } else {
-        ASSERT(g_program_end != 0);
+        u64 end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
+        g_program_end = std::max(end, g_program_end);
         g_interpreter_start = (u64)(base_ptr + lowest_vaddr);
         g_interpreter_end = (u64)(base_ptr + highest_vaddr);
         program_base = (u8*)base_ptr;
