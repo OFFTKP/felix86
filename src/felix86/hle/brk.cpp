@@ -37,11 +37,11 @@ void BRK::allocate32() {
 
     ASSERT_MSG(base <= UINT32_MAX, "BRK hint is outside 32-bit address space for 32-bit application");
 
-    void* max_brk = g_mapper->map((void*)base, max_brk_size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
-    ASSERT_MSG(max_brk != MAP_FAILED, "Failed when trying to allocate the max BRK at %p", (void*)base);
+    u64 max_brk = (u64)g_mapper->map((void*)base, max_brk_size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+    ASSERT_MSG((i64)max_brk >= 0, "Failed when trying to allocate the max BRK at %p", (void*)base);
 
     g_current_brk = (u64)g_mapper->map((void*)base, initial_brk_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
-    ASSERT_MSG((void*)g_current_brk != MAP_FAILED, "Failed when trying to allocate the current BRK at %p", (void*)base);
+    ASSERT_MSG((i64)g_current_brk >= 0, "Failed when trying to allocate the current BRK at %p", (void*)base);
 
     g_initial_brk = g_current_brk;
     g_current_brk_size = initial_brk_size;
