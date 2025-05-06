@@ -29,6 +29,13 @@ cmake -B build
 cmake --build build -j$(nproc)
 ```
 
+You can also cross-compile:
+
+```bash
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=riscv.cmake
+cmake --build build -j$(nproc)
+```
+
 Make sure to [grab a RootFS](#rootfs), set the `FELIX86_ROOTFS` environment variable, and then felix86 is ready to run!
 
 ## QEMU
