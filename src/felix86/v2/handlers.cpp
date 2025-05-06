@@ -168,8 +168,12 @@ void OP_noflags_destreg(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedIns
         break;
     }
     case 32: {
-        (as.*func32)(dst, dst, src);
-        rec.zext(dst, dst, X86_SIZE_DWORD);
+        if (func32 == &biscuit::Assembler::ADDW && Extensions::B) {
+            as.ADDUW(dst, dst, src); // save a zext
+        } else {
+            (as.*func32)(dst, dst, src);
+            rec.zext(dst, dst, X86_SIZE_DWORD);
+        }
         break;
     }
     case 64: {
