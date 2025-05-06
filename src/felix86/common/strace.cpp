@@ -274,7 +274,7 @@ std::string trace64(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            (int)arg1, (int)arg2, (int)arg3, (u64)arg4);
     }
     case 67: {
-        return fmt::format("shmdt: {{\n    char *shmaddr = {}\n}}", nullable((const char*)arg1));
+        return fmt::format("shmdt: {{\n    void *shmaddr = 0x{:x}\n}}", arg1);
     }
     case 68: {
         return fmt::format("msgget: {{\n    key_t key = {}\n    int msgflg = 0x{:x}\n}}", (void*)arg1, (int)arg2);
@@ -2731,7 +2731,7 @@ std::string trace32(int syscall_no, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 
                            nullable((const char*)arg2), (int)arg3);
     }
     case 398: {
-        return fmt::format("shmdt: {{\n    char *shmaddr = {}\n}}", nullable((const char*)arg1));
+        return fmt::format("shmdt: {{\n    void *shmaddr = 0x{:x}\n}}", arg1);
     }
     case 399: {
         return fmt::format("msgget: {{\n    key_t key = {}\n    int msgflg = 0x{:x}\n}}", (void*)arg1, (int)arg2);
