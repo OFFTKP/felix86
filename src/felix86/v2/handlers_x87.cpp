@@ -12,28 +12,26 @@ FAST_HANDLE(FLD) {
         as.MV(a0, address);
         rec.call((u64)f80_to_64);
         rec.restoreState();
-        biscuit::GPR top = rec.getTOP();
-        rec.pushST(top, fa0); // push return value
+        rec.pushX87(fa0); // push return value
     } else {
-        biscuit::GPR top = rec.getTOP();
-        biscuit::FPR st = rec.getST(top, &operands[0]);
-        rec.pushST(top, st);
+        biscuit::FPR st = rec.getST(&operands[0]);
+        biscuit::FPR temp = rec.scratchFPR();
+        as.FMV_D(temp, st); // move to temp because getST could return allocated FPR
+        rec.pushX87(temp);
     }
 }
 
 FAST_HANDLE(FILD) {
-    biscuit::GPR top = rec.getTOP();
     biscuit::FPR ftemp = rec.scratchFPR();
     biscuit::GPR value = rec.getOperandGPR(&operands[0]);
     as.FCVT_D_L(ftemp, value);
-    rec.pushST(top, ftemp);
+    rec.pushX87(ftemp);
 }
 
 void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
         ZydisDecodedOperand* operands, bool pop, bool reverse = false) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR lhs = rec.getST(top, &operands[0]);
-    biscuit::FPR rhs = rec.getST(top, &operands[1]);
+    biscuit::FPR lhs = rec.getST(&operands[0]);
+    biscuit::FPR rhs = rec.getST(&operands[1]);
 
     ZydisDecodedOperand* result_operand = &operands[0];
 
@@ -43,16 +41,19 @@ void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assemble
         result_operand = &operands[1];
     }
 
-    biscuit::FPR result = rec.scratchFPR();
+    // TODO: don't use a separate FPR here
+    biscuit::FPR result;
     if (!reverse) {
-        (as.*func)(result, lhs, rhs, RMode::DYN);
+        (as.*func)(lhs, lhs, rhs, RMode::DYN);
+        result = lhs;
     } else {
-        (as.*func)(result, rhs, lhs, RMode::DYN);
+        (as.*func)(lhs, rhs, lhs, RMode::DYN);
+        result = lhs;
     }
-    rec.setST(top, result_operand, result);
+    rec.setST(result_operand, result);
 
     if (pop) {
-        rec.popST(top);
+        rec.popX87();
     }
 }
 
@@ -65,8 +66,7 @@ FAST_HANDLE(FDIVP) {
 }
 
 FAST_HANDLE(FIDIV) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -78,7 +78,7 @@ FAST_HANDLE(FIDIV) {
     as.FCVT_D_W(scratch, integer);
     as.FDIV_D(result, st0, scratch);
 
-    rec.setST(top, 0, result);
+    rec.setST(0, result);
 }
 
 FAST_HANDLE(FDIVR) {
@@ -90,8 +90,7 @@ FAST_HANDLE(FDIVRP) {
 }
 
 FAST_HANDLE(FIDIVR) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -103,7 +102,7 @@ FAST_HANDLE(FIDIVR) {
     as.FCVT_D_W(scratch, integer);
     as.FDIV_D(result, scratch, st0);
 
-    rec.setST(top, 0, result);
+    rec.setST(0, result);
 }
 
 FAST_HANDLE(FMUL) {
@@ -115,8 +114,7 @@ FAST_HANDLE(FMULP) {
 }
 
 FAST_HANDLE(FIMUL) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -128,30 +126,29 @@ FAST_HANDLE(FIMUL) {
     as.FCVT_D_W(scratch, integer);
     as.FMUL_D(result, st0, scratch);
 
-    rec.setST(top, 0, result);
+    rec.setST(0, result);
 }
 
 FAST_HANDLE(FST) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
-    rec.setST(top, &operands[0], st0);
+    biscuit::FPR st0 = rec.getST(0);
+    rec.setST(&operands[0], st0);
 }
 
 FAST_HANDLE(FXCH) {
     u8 index = operands[0].reg.value - ZYDIS_REGISTER_ST0;
     ASSERT(index >= 1 && index <= 7);
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
-    biscuit::FPR sti = rec.getST(top, index);
-    rec.setST(top, 0, sti);
-    rec.setST(top, index, st0);
+    biscuit::FPR st0 = rec.getST(0);
+    biscuit::FPR sti = rec.getST(index);
+    biscuit::FPR temp = rec.scratchFPR();
+    as.FMV_D(temp, st0);
+    rec.setST(0, sti);
+    rec.setST(index, temp);
 }
 
 FAST_HANDLE(FSTP) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
-    rec.setST(top, &operands[0], st0);
-    rec.popST(top);
+    biscuit::FPR st0 = rec.getST(0);
+    rec.setST(&operands[0], st0);
+    rec.popX87();
 }
 
 FAST_HANDLE(FADD) {
@@ -163,8 +160,7 @@ FAST_HANDLE(FADDP) {
 }
 
 FAST_HANDLE(FIADD) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -176,7 +172,7 @@ FAST_HANDLE(FIADD) {
     as.FCVT_D_W(scratch, integer);
     as.FADD_D(result, st0, scratch);
 
-    rec.setST(top, 0, result);
+    rec.setST(0, result);
 }
 
 FAST_HANDLE(FSUB) {
@@ -188,8 +184,7 @@ FAST_HANDLE(FSUBP) {
 }
 
 FAST_HANDLE(FISUB) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -201,7 +196,7 @@ FAST_HANDLE(FISUB) {
     as.FCVT_D_W(scratch, integer);
     as.FSUB_D(result, st0, scratch);
 
-    rec.setST(top, 0, result);
+    rec.setST(0, result);
 }
 
 FAST_HANDLE(FSUBR) {
@@ -213,8 +208,7 @@ FAST_HANDLE(FSUBRP) {
 }
 
 FAST_HANDLE(FISUBR) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -226,14 +220,13 @@ FAST_HANDLE(FISUBR) {
     as.FCVT_D_W(scratch, integer);
     as.FSUB_D(result, scratch, st0);
 
-    rec.setST(top, 0, result);
+    rec.setST(0, result);
 }
 
 FAST_HANDLE(FSQRT) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     as.FSQRT_D(st0, st0);
-    rec.setST(top, 0, st0);
+    rec.setST(0, st0);
 }
 
 FAST_HANDLE(FSIN) {
@@ -283,8 +276,7 @@ FAST_HANDLE(FLDENV) {
 }
 
 void FIST(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands, bool pop, RMode mode = RMode::DYN) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR integer = rec.scratch();
 
@@ -302,7 +294,7 @@ void FIST(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands
     }
 
     if (pop) {
-        rec.popST(top);
+        rec.popX87();
     }
 }
 
@@ -320,11 +312,10 @@ FAST_HANDLE(FISTTP) {
 
 void FCOMI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
     u8 index = operands[1].reg.value - ZYDIS_REGISTER_ST0;
-    biscuit::GPR top = rec.getTOP();
     biscuit::GPR cond = rec.scratch();
     biscuit::GPR cond2 = rec.scratch();
-    biscuit::FPR st0 = rec.getST(top, 0);
-    biscuit::FPR sti = rec.getST(top, index);
+    biscuit::FPR st0 = rec.getST(0);
+    biscuit::FPR sti = rec.getST(index);
 
     biscuit::GPR zf = rec.flag(X86_REF_ZF);
     biscuit::GPR cf = rec.flag(X86_REF_CF);
@@ -368,7 +359,7 @@ void FCOMI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool p
     as.Bind(&end);
 
     if (pop) {
-        rec.popST(top);
+        rec.popX87();
     }
 }
 
@@ -390,9 +381,8 @@ FAST_HANDLE(FUCOMIP) {
 }
 
 void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop_count) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
-    biscuit::FPR src = rec.getST(top, &operands[0]);
+    biscuit::FPR st0 = rec.getST(0);
+    biscuit::FPR src = rec.getST(&operands[0]);
 
     biscuit::GPR c0 = rec.scratch();
     biscuit::GPR c2 = rec.scratch();
@@ -425,10 +415,11 @@ void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop
     as.SW(c0, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
 
     if (pop_count == 1) {
-        rec.popST(top);
+        rec.popX87();
     } else if (pop_count == 2) {
-        as.ADDI(top, top, 1);
-        rec.popST(top);
+        // TODO: optimize me please
+        rec.popX87();
+        rec.popX87();
     }
 }
 
@@ -457,8 +448,7 @@ FAST_HANDLE(FUCOMPP) {
 }
 
 FAST_HANDLE(FRNDINT) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
 
     if (Extensions::Zfa) {
         as.FROUND_D(st0, st0);
@@ -468,20 +458,16 @@ FAST_HANDLE(FRNDINT) {
         as.FCVT_D_L(st0, temp);
     }
 
-    rec.setST(top, 0, st0);
+    rec.setST(0, st0);
 }
 
 FAST_HANDLE(FCHS) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
-
+    biscuit::FPR st0 = rec.getST(0);
     as.FNEG_D(st0, st0);
-
-    rec.setST(top, 0, st0);
+    rec.setST(0, st0);
 }
 
 FAST_HANDLE(FLD1) {
-    biscuit::GPR top = rec.getTOP();
     biscuit::FPR st = rec.scratchFPR();
 
     if (Extensions::Zfa) {
@@ -492,71 +478,64 @@ FAST_HANDLE(FLD1) {
         as.FMV_D_X(st, temp);
     }
 
-    rec.pushST(top, st);
+    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDL2T) {
     constexpr u64 value = 0x400A'934F'0979'A371ull;
-    biscuit::GPR top = rec.getTOP();
     biscuit::FPR st = rec.scratchFPR();
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushST(top, st);
+    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDL2E) {
     constexpr u64 value = 0x3FF7'1547'652B'82FEull;
-    biscuit::GPR top = rec.getTOP();
     biscuit::FPR st = rec.scratchFPR();
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushST(top, st);
+    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDPI) {
     constexpr u64 value = 0x4009'21FB'5444'2D18ull;
-    biscuit::GPR top = rec.getTOP();
     biscuit::FPR st = rec.scratchFPR();
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushST(top, st);
+    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDLG2) {
     constexpr u64 value = 0x3FD3'4413'509F'79FFull;
-    biscuit::GPR top = rec.getTOP();
     biscuit::FPR st = rec.scratchFPR();
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushST(top, st);
+    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDLN2) {
     constexpr u64 value = 0x3FE6'2E42'FEFA'39EFull;
-    biscuit::GPR top = rec.getTOP();
     biscuit::FPR st = rec.scratchFPR();
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushST(top, st);
+    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDZ) {
-    biscuit::GPR top = rec.getTOP();
     biscuit::FPR st = rec.scratchFPR();
     as.FMV_D_X(st, x0);
-    rec.pushST(top, st);
+    rec.pushX87(st);
 }
 
 FAST_HANDLE(FABS) {
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR st0 = rec.getST(top, 0);
+    biscuit::FPR st0 = rec.getST(0);
     as.FABS_D(st0, st0);
-    rec.setST(top, 0, st0);
+    rec.setST(0, st0);
 }
 
 FAST_HANDLE(FNSTCW) {}
@@ -570,9 +549,8 @@ FAST_HANDLE(FNINIT) {
 void FCMOV(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     biscuit::Label not_true;
     as.BEQZ(cond, &not_true);
-    biscuit::GPR top = rec.getTOP();
-    biscuit::FPR sti = rec.getST(top, &operands[1]);
-    rec.setST(top, 0, sti);
+    biscuit::FPR sti = rec.getST(&operands[1]);
+    rec.setST(0, sti);
     as.Bind(&not_true);
 }
 

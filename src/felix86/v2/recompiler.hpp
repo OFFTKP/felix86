@@ -79,19 +79,15 @@ struct Recompiler {
 
     biscuit::GPR getTOP();
 
-    void pushST(biscuit::GPR top, biscuit::FPR st);
-
-    void popST(biscuit::GPR top);
-
     void setTOP(biscuit::GPR top);
 
-    biscuit::FPR getST(biscuit::GPR top, int index);
+    biscuit::FPR getST(int index);
 
-    biscuit::FPR getST(biscuit::GPR top, ZydisDecodedOperand* operand);
+    biscuit::FPR getST(ZydisDecodedOperand* operand);
 
-    void setST(biscuit::GPR top, int index, biscuit::FPR value);
+    void setST(int index, biscuit::FPR value);
 
-    void setST(biscuit::GPR top, ZydisDecodedOperand* operand, biscuit::FPR value);
+    void setST(ZydisDecodedOperand* operand, biscuit::FPR value);
 
     biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
 
@@ -120,10 +116,6 @@ struct Recompiler {
     void stopCompiling();
 
     void setExitReason(ExitReason reason);
-
-    void restoreMMXState();
-
-    void writebackMMXState(bool reset_using_mmx);
 
     void backToDispatcher();
 
@@ -251,6 +243,18 @@ struct Recompiler {
         default: {
             UNREACHABLE();
             return x0;
+        }
+        }
+    }
+
+    static constexpr biscuit::FPR allocatedFPR(x86_ref_e reg) {
+        switch (reg) {
+        case X86_REF_ST0 ... X86_REF_ST7: {
+            return biscuit::FPR(ft0.Index() + (reg - X86_REF_ST0));
+        }
+        default: {
+            UNREACHABLE();
+            return f0;
         }
         }
     }
@@ -552,6 +556,16 @@ struct Recompiler {
         return calltrace;
     }
 
+    void decrementTOP();
+
+    void pushX87(biscuit::FPR val);
+
+    void popX87();
+
+    void switchToMMX();
+
+    void switchToX87();
+
 private:
     struct FlagAccess {
         bool modification; // true if modified, false if used
@@ -617,6 +631,7 @@ private:
 
     bool compiling{};
 
+    // Whether the currently compiling block uses MMX instructions that need to be written back at the end
     bool using_mmx = false;
 
     int scratch_index = 0;
@@ -652,4 +667,6 @@ private:
     // the register group. In the future with a proper allocator we can make it so the order here doesn't
     // matter and the order picks an available group.
     constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v1}; // If changed, also change hardcoded in punpckh
+
+    constexpr static std::array scratch_fprs = {ft8, ft9, ft10, ft11};
 };

@@ -3061,17 +3061,19 @@ FAST_HANDLE(MINPS) {
     biscuit::Vec equal_mask = rec.scratchVec();
     biscuit::Vec zero_mask = rec.scratchVec();
     biscuit::Vec neg_zero_mask = rec.scratchVec();
+    biscuit::FPR temp1 = rec.scratchFPR();
+    biscuit::FPR temp2 = rec.scratchFPR();
     rec.setVectorState(SEW::E32, 4);
 
     // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
     as.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
     as.VMFNE(nan_mask_2, src, src);
     as.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
-    as.FMV_W_X(ft8, x0);                          // 0.0
-    as.FSGNJN_S(ft9, ft8, ft8);                   // -0.0
+    as.FMV_W_X(temp1, x0);                        // 0.0
+    as.FSGNJN_S(temp2, temp1, temp1);             // -0.0
     as.VMFEQ(equal_mask, dst, src);               // Check where they are equal
-    as.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
-    as.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
+    as.VMFEQ(zero_mask, dst, temp1);              // Check where dst is 0.0
+    as.VMFEQ(neg_zero_mask, dst, temp2);          // Check where dst is -0.0
     as.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
     as.VMAND(equal_mask, equal_mask, zero_mask);  // Check where they are both zeroes
     as.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
@@ -3098,17 +3100,19 @@ FAST_HANDLE(MINPD) {
     biscuit::Vec equal_mask = rec.scratchVec();
     biscuit::Vec zero_mask = rec.scratchVec();
     biscuit::Vec neg_zero_mask = rec.scratchVec();
+    biscuit::FPR temp1 = rec.scratchFPR();
+    biscuit::FPR temp2 = rec.scratchFPR();
     rec.setVectorState(SEW::E64, 2);
 
     // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
     as.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
     as.VMFNE(nan_mask_2, src, src);
     as.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
-    as.FMV_D_X(ft8, x0);                          // 0.0
-    as.FSGNJN_D(ft9, ft8, ft8);                   // -0.0
+    as.FMV_D_X(temp1, x0);                        // 0.0
+    as.FSGNJN_D(temp2, temp1, temp1);             // -0.0
     as.VMFEQ(equal_mask, dst, src);               // Check where they are equal
-    as.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
-    as.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
+    as.VMFEQ(zero_mask, dst, temp1);              // Check where dst is 0.0
+    as.VMFEQ(neg_zero_mask, dst, temp2);          // Check where dst is -0.0
     as.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
     as.VMAND(equal_mask, equal_mask, zero_mask);  // They are both zeroes
     as.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
@@ -3328,17 +3332,19 @@ FAST_HANDLE(MAXPS) {
     biscuit::Vec equal_mask = rec.scratchVec();
     biscuit::Vec zero_mask = rec.scratchVec();
     biscuit::Vec neg_zero_mask = rec.scratchVec();
+    biscuit::FPR temp1 = rec.scratchFPR();
+    biscuit::FPR temp2 = rec.scratchFPR();
     rec.setVectorState(SEW::E32, 4);
 
     // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
     as.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
     as.VMFNE(nan_mask_2, src, src);
     as.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
-    as.FMV_W_X(ft8, x0);                          // 0.0
-    as.FSGNJN_S(ft9, ft8, ft8);                   // -0.0
+    as.FMV_W_X(temp1, x0);                        // 0.0
+    as.FSGNJN_S(temp2, temp1, temp1);             // -0.0
     as.VMFEQ(equal_mask, dst, src);               // Check where they are equal
-    as.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
-    as.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
+    as.VMFEQ(zero_mask, dst, temp1);              // Check where dst is 0.0
+    as.VMFEQ(neg_zero_mask, dst, temp2);          // Check where dst is -0.0
     as.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
     as.VMAND(equal_mask, equal_mask, zero_mask);  // Check where they are both zeroes
     as.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
@@ -3365,17 +3371,19 @@ FAST_HANDLE(MAXPD) {
     biscuit::Vec equal_mask = rec.scratchVec();
     biscuit::Vec zero_mask = rec.scratchVec();
     biscuit::Vec neg_zero_mask = rec.scratchVec();
+    biscuit::FPR temp1 = rec.scratchFPR();
+    biscuit::FPR temp2 = rec.scratchFPR();
     rec.setVectorState(SEW::E64, 2);
 
     // When either operand is NaN, or they are both 0.0 or both are -0.0, the result is the source
     as.VMFNE(nan_mask_1, dst, dst); // When a register isn't equal to itself, that element must be NaN
     as.VMFNE(nan_mask_2, src, src);
     as.VMOR(nan_mask_1, nan_mask_1, nan_mask_2);
-    as.FMV_D_X(ft8, x0);                          // 0.0
-    as.FSGNJN_D(ft9, ft8, ft8);                   // -0.0
+    as.FMV_D_X(temp1, x0);                        // 0.0
+    as.FSGNJN_D(temp2, temp1, temp1);             // -0.0
     as.VMFEQ(equal_mask, dst, src);               // Check where they are equal
-    as.VMFEQ(zero_mask, dst, ft8);                // Check where dst is 0.0
-    as.VMFEQ(neg_zero_mask, dst, ft9);            // Check where dst is -0.0
+    as.VMFEQ(zero_mask, dst, temp1);              // Check where dst is 0.0
+    as.VMFEQ(neg_zero_mask, dst, temp2);          // Check where dst is -0.0
     as.VMOR(zero_mask, zero_mask, neg_zero_mask); // Either 0.0 or -0.0
     as.VMAND(equal_mask, equal_mask, zero_mask);  // They are both zeroes
     as.VMOR(v0, nan_mask_1, equal_mask);          // Combine the masks
@@ -5958,7 +5966,7 @@ void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& in
 }
 
 FAST_HANDLE(EMMS) {
-    rec.writebackMMXState(true);
+    rec.switchToX87();
 }
 
 FAST_HANDLE(DIVSS) {
@@ -6013,15 +6021,16 @@ FAST_HANDLE(CVTSI2SD) {
     x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::FPR temp = rec.scratchFPR();
 
     if (gpr_size == X86_SIZE_DWORD) {
-        as.FCVT_D_W(ft8, src);
+        as.FCVT_D_W(temp, src);
         rec.setVectorState(SEW::E64, 1);
-        as.VFMV_SF(dst, ft8);
+        as.VFMV_SF(dst, temp);
     } else if (gpr_size == X86_SIZE_QWORD) {
-        as.FCVT_D_L(ft8, src);
+        as.FCVT_D_L(temp, src);
         rec.setVectorState(SEW::E64, 1);
-        as.VFMV_SF(dst, ft8);
+        as.VFMV_SF(dst, temp);
     } else {
         UNREACHABLE();
     }
@@ -6033,15 +6042,16 @@ FAST_HANDLE(CVTSI2SS) {
     x86_size_e gpr_size = rec.getOperandSize(&operands[1]);
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+    biscuit::FPR temp = rec.scratchFPR();
 
     if (gpr_size == X86_SIZE_DWORD) {
-        as.FCVT_S_W(ft8, src);
+        as.FCVT_S_W(temp, src);
         rec.setVectorState(SEW::E32, 1);
-        as.VFMV_SF(dst, ft8);
+        as.VFMV_SF(dst, temp);
     } else if (gpr_size == X86_SIZE_QWORD) {
-        as.FCVT_S_L(ft8, src);
+        as.FCVT_S_L(temp, src);
         rec.setVectorState(SEW::E32, 1);
-        as.VFMV_SF(dst, ft8);
+        as.VFMV_SF(dst, temp);
     } else {
         UNREACHABLE();
     }
@@ -6053,15 +6063,16 @@ FAST_HANDLE(CVTTSS2SI) {
     x86_size_e gpr_size = rec.getOperandSize(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR temp = rec.scratchFPR();
 
     if (gpr_size == X86_SIZE_DWORD) {
         rec.setVectorState(SEW::E32, 1);
-        as.VFMV_FS(ft8, src);
-        as.FCVT_W_S(dst, ft8, RMode::RTZ);
+        as.VFMV_FS(temp, src);
+        as.FCVT_W_S(dst, temp, RMode::RTZ);
     } else if (gpr_size == X86_SIZE_QWORD) {
         rec.setVectorState(SEW::E32, 1);
-        as.VFMV_FS(ft8, src);
-        as.FCVT_L_S(dst, ft8, RMode::RTZ);
+        as.VFMV_FS(temp, src);
+        as.FCVT_L_S(dst, temp, RMode::RTZ);
     } else {
         UNREACHABLE();
     }
@@ -6073,15 +6084,16 @@ FAST_HANDLE(CVTTSD2SI) {
     x86_size_e gpr_size = rec.getOperandSize(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR temp = rec.scratchFPR();
 
     if (gpr_size == X86_SIZE_DWORD) {
         rec.setVectorState(SEW::E64, 1);
-        as.VFMV_FS(ft8, src);
-        as.FCVT_W_D(dst, ft8, RMode::RTZ);
+        as.VFMV_FS(temp, src);
+        as.FCVT_W_D(dst, temp, RMode::RTZ);
     } else if (gpr_size == X86_SIZE_QWORD) {
         rec.setVectorState(SEW::E64, 1);
-        as.VFMV_FS(ft8, src);
-        as.FCVT_L_D(dst, ft8, RMode::RTZ);
+        as.VFMV_FS(temp, src);
+        as.FCVT_L_D(dst, temp, RMode::RTZ);
     } else {
         UNREACHABLE();
     }
@@ -6268,15 +6280,16 @@ FAST_HANDLE(CVTSS2SI) {
     x86_size_e gpr_size = rec.getOperandSize(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR temp = rec.scratchFPR();
 
     if (gpr_size == X86_SIZE_DWORD) {
         rec.setVectorState(SEW::E32, 1);
-        as.VFMV_FS(ft8, src);
-        as.FCVT_W_S(dst, ft8);
+        as.VFMV_FS(temp, src);
+        as.FCVT_W_S(dst, temp);
     } else if (gpr_size == X86_SIZE_QWORD) {
         rec.setVectorState(SEW::E32, 1);
-        as.VFMV_FS(ft8, src);
-        as.FCVT_L_S(dst, ft8);
+        as.VFMV_FS(temp, src);
+        as.FCVT_L_S(dst, temp);
     } else {
         UNREACHABLE();
     }
@@ -6288,14 +6301,15 @@ FAST_HANDLE(CVTSD2SI) {
     x86_size_e gpr_size = rec.getOperandSize(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
+    biscuit::FPR temp = rec.scratchFPR();
 
     rec.setVectorState(SEW::E64, 1);
     if (gpr_size == X86_SIZE_DWORD) {
-        as.VFMV_FS(ft8, src);
-        as.FCVT_W_D(dst, ft8);
+        as.VFMV_FS(temp, src);
+        as.FCVT_W_D(dst, temp);
     } else if (gpr_size == X86_SIZE_QWORD) {
-        as.VFMV_FS(ft8, src);
-        as.FCVT_L_D(dst, ft8);
+        as.VFMV_FS(temp, src);
+        as.FCVT_L_D(dst, temp);
     } else {
         UNREACHABLE();
     }
@@ -6306,12 +6320,14 @@ FAST_HANDLE(CVTSD2SI) {
 FAST_HANDLE(CVTSS2SD) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::FPR temp = rec.scratchFPR();
+    biscuit::FPR temp2 = rec.scratchFPR();
 
     rec.setVectorState(SEW::E32, 1);
-    as.VFMV_FS(ft8, src);
-    as.FCVT_D_S(ft9, ft8);
+    as.VFMV_FS(temp, src);
+    as.FCVT_D_S(temp2, temp);
     rec.setVectorState(SEW::E64, 1);
-    as.VFMV_SF(dst, ft9);
+    as.VFMV_SF(dst, temp2);
 
     rec.setOperandVec(&operands[0], dst);
 }
@@ -6319,12 +6335,14 @@ FAST_HANDLE(CVTSS2SD) {
 FAST_HANDLE(CVTSD2SS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::FPR temp = rec.scratchFPR();
+    biscuit::FPR temp2 = rec.scratchFPR();
 
     rec.setVectorState(SEW::E64, 1);
-    as.VFMV_FS(ft8, src);
-    as.FCVT_S_D(ft9, ft8);
+    as.VFMV_FS(temp, src);
+    as.FCVT_S_D(temp2, temp);
     rec.setVectorState(SEW::E32, 1);
-    as.VFMV_SF(dst, ft9);
+    as.VFMV_SF(dst, temp2);
 
     rec.setOperandVec(&operands[0], dst);
 }
@@ -6704,31 +6722,33 @@ FAST_HANDLE(CMPSD_sse) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::FPR temp = rec.scratchFPR();
+    biscuit::FPR temp2 = rec.scratchFPR();
 
     rec.setVectorState(SEW::E64, 1);
-    as.VFMV_FS(ft8, dst);
-    as.VFMV_FS(ft9, src);
+    as.VFMV_FS(temp, dst);
+    as.VFMV_FS(temp2, src);
 
     biscuit::GPR result = rec.scratch();
     switch ((CmpPredicate)imm) {
     case EQ_OQ: {
-        as.FEQ_D(result, ft8, ft9);
+        as.FEQ_D(result, temp, temp2);
         break;
     }
     case LT_OS: {
-        as.FLT_D(result, ft8, ft9);
+        as.FLT_D(result, temp, temp2);
         break;
     }
     case LE_OS: {
-        as.FLE_D(result, ft8, ft9);
+        as.FLE_D(result, temp, temp2);
         break;
     }
     case UNORD_Q: {
         // Check if it's a qNan or sNan, check bit 8 and 9
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_D(result, ft8);
-        as.FCLASS_D(nan, ft9);
+        as.FCLASS_D(result, temp);
+        as.FCLASS_D(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6740,8 +6760,8 @@ FAST_HANDLE(CMPSD_sse) {
     case NEQ_UQ: {
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_D(result, ft8);
-        as.FCLASS_D(nan, ft9);
+        as.FCLASS_D(result, temp);
+        as.FCLASS_D(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6750,7 +6770,7 @@ FAST_HANDLE(CMPSD_sse) {
         rec.popScratch();
 
         // After checking if either are nan, also check if they are equal
-        as.FEQ_D(nan, ft8, ft9);
+        as.FEQ_D(nan, temp, temp2);
         as.XORI(nan, nan, 1);
         as.OR(result, result, nan);
         break;
@@ -6758,8 +6778,8 @@ FAST_HANDLE(CMPSD_sse) {
     case NLT_US: {
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_D(result, ft8);
-        as.FCLASS_D(nan, ft9);
+        as.FCLASS_D(result, temp);
+        as.FCLASS_D(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6768,7 +6788,7 @@ FAST_HANDLE(CMPSD_sse) {
         rec.popScratch();
 
         // After checking if either are nan, also check if they are equal
-        as.FLT_D(nan, ft8, ft9);
+        as.FLT_D(nan, temp, temp2);
         as.XORI(nan, nan, 1);
         as.OR(result, result, nan);
         break;
@@ -6776,8 +6796,8 @@ FAST_HANDLE(CMPSD_sse) {
     case NLE_US: {
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_D(result, ft8);
-        as.FCLASS_D(nan, ft9);
+        as.FCLASS_D(result, temp);
+        as.FCLASS_D(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6786,7 +6806,7 @@ FAST_HANDLE(CMPSD_sse) {
         rec.popScratch();
 
         // After checking if either are nan, also check if they are equal
-        as.FLE_D(nan, ft8, ft9);
+        as.FLE_D(nan, temp, temp2);
         as.XORI(nan, nan, 1);
         as.OR(result, result, nan);
         break;
@@ -6795,8 +6815,8 @@ FAST_HANDLE(CMPSD_sse) {
         // Check if neither are NaN
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_D(result, ft8);
-        as.FCLASS_D(nan, ft9);
+        as.FCLASS_D(result, temp);
+        as.FCLASS_D(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6822,31 +6842,33 @@ FAST_HANDLE(CMPSS) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b111;
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
+    biscuit::FPR temp = rec.scratchFPR();
+    biscuit::FPR temp2 = rec.scratchFPR();
 
     rec.setVectorState(SEW::E32, 1);
-    as.VFMV_FS(ft8, dst);
-    as.VFMV_FS(ft9, src);
+    as.VFMV_FS(temp, dst);
+    as.VFMV_FS(temp2, src);
 
     biscuit::GPR result = rec.scratch();
     switch ((CmpPredicate)imm) {
     case EQ_OQ: {
-        as.FEQ_S(result, ft8, ft9);
+        as.FEQ_S(result, temp, temp2);
         break;
     }
     case LT_OS: {
-        as.FLT_S(result, ft8, ft9);
+        as.FLT_S(result, temp, temp2);
         break;
     }
     case LE_OS: {
-        as.FLE_S(result, ft8, ft9);
+        as.FLE_S(result, temp, temp2);
         break;
     }
     case UNORD_Q: {
         // Check if it's a qNan or sNan, check bit 8 and 9
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_S(result, ft8);
-        as.FCLASS_S(nan, ft9);
+        as.FCLASS_S(result, temp);
+        as.FCLASS_S(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6858,8 +6880,8 @@ FAST_HANDLE(CMPSS) {
     case NEQ_UQ: {
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_S(result, ft8);
-        as.FCLASS_S(nan, ft9);
+        as.FCLASS_S(result, temp);
+        as.FCLASS_S(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6868,7 +6890,7 @@ FAST_HANDLE(CMPSS) {
         rec.popScratch();
 
         // After checking if either are nan, also check if they are equal
-        as.FEQ_S(nan, ft8, ft9);
+        as.FEQ_S(nan, temp, temp2);
         as.XORI(nan, nan, 1);
         as.OR(result, result, nan);
         break;
@@ -6876,8 +6898,8 @@ FAST_HANDLE(CMPSS) {
     case NLT_US: {
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_S(result, ft8);
-        as.FCLASS_S(nan, ft9);
+        as.FCLASS_S(result, temp);
+        as.FCLASS_S(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6885,15 +6907,15 @@ FAST_HANDLE(CMPSS) {
         rec.popScratch();
         rec.popScratch();
 
-        as.FLE_S(nan, ft9, ft8);
+        as.FLE_S(nan, temp2, temp);
         as.OR(result, result, nan);
         break;
     }
     case NLE_US: {
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_S(result, ft8);
-        as.FCLASS_S(nan, ft9);
+        as.FCLASS_S(result, temp);
+        as.FCLASS_S(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);
@@ -6902,7 +6924,7 @@ FAST_HANDLE(CMPSS) {
         rec.popScratch();
 
         // After checking if either are nan, also check if they are equal
-        as.FLT_S(nan, ft9, ft8);
+        as.FLT_S(nan, temp2, temp);
         as.OR(result, result, nan);
         break;
     }
@@ -6910,8 +6932,8 @@ FAST_HANDLE(CMPSS) {
         // Check if neither are NaN
         biscuit::GPR nan = rec.scratch();
         biscuit::GPR mask = rec.scratch();
-        as.FCLASS_S(result, ft8);
-        as.FCLASS_S(nan, ft9);
+        as.FCLASS_S(result, temp);
+        as.FCLASS_S(nan, temp2);
         as.OR(result, result, nan);
         as.LI(mask, 0b11 << 8);
         as.AND(result, result, mask);

@@ -315,8 +315,12 @@ void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
         data->xmms[i] = state->xmm[i];
     }
 
+    // ThreadState::fp and fxsave memory is different -- ThreadState::fp[0] is always TOP[0]
+    // while fxsave::st[0] is the first st register, so we adjust for that
+    int top = state->fpu_top;
     for (int i = 0; i < 8; i++) {
-        memcpy(&data->st[i].st[0], &state->fp[i], sizeof(u64));
+        int index_offset = (i + top) & 0b111;
+        memcpy(&data->st[index_offset].st[0], &state->fp[i], sizeof(u64));
     }
 
     data->fcw = state->fpu_cw;
@@ -332,14 +336,16 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
         state->xmm[i] = data->xmms[i];
     }
 
-    for (int i = 0; i < 8; i++) {
-        memcpy(&state->fp[i], &data->st[i].st[0], sizeof(u64));
-    }
-
     state->fpu_cw = data->fcw;
     state->fpu_tw = data->ftw;
     state->fpu_sw = data->fsw;
     state->fpu_top = (data->fsw >> 11) & 7;
+
+    int top = state->fpu_top;
+    for (int i = 0; i < 8; i++) {
+        memcpy(&state->fp[i], &data->st[(top + i) & 0b111].st[0], sizeof(u64));
+    }
+
     state->mxcsr = data->mxcsr;
     state->rmode = rounding_mode((x86RoundingMode)((state->mxcsr >> 13) & 3));
 }
@@ -754,16 +760,16 @@ const char* print_exit_reason(int reason) {
 
 void felix86_fsin(ThreadState* state) {
     double boop;
-    memcpy(&boop, &state->fp[state->fpu_top], sizeof(double));
+    memcpy(&boop, &state->fp[0], sizeof(double));
     double result = ::sin(boop);
-    memcpy(&state->fp[state->fpu_top], &result, sizeof(double));
+    memcpy(&state->fp[0], &result, sizeof(double));
 }
 
 void felix86_fcos(ThreadState* state) {
     double boop;
-    memcpy(&boop, &state->fp[state->fpu_top], sizeof(double));
+    memcpy(&boop, &state->fp[0], sizeof(double));
     double result = ::cos(boop);
-    memcpy(&state->fp[state->fpu_top], &result, sizeof(double));
+    memcpy(&state->fp[0], &result, sizeof(double));
 }
 
 template <class Int, int Count = 128 / (sizeof(Int) * 8), int UpperBound = Count - 1 /* 7 or 15 */, u32 Mask = (1u << Count) - 1u>
@@ -1102,10 +1108,8 @@ void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment) {
 }
 
 void felix86_fprem(ThreadState* state) {
-    const int top = state->fpu_top;
-    ASSERT(top >= 0 && top <= 7);
-    const u64 st0 = state->fp[top];
-    const u64 st1 = state->fp[(top + 1) & 0b111];
+    const u64 st0 = state->fp[0];
+    const u64 st1 = state->fp[1];
     double st0d, st1d;
     memcpy(&st0d, &st0, 8);
     memcpy(&st1d, &st1, 8);
@@ -1127,13 +1131,11 @@ void felix86_fprem(ThreadState* state) {
     }
 
     // Writeback the new ST(0) value
-    memcpy(&state->fp[top], &st0d, 8);
+    memcpy(&state->fp[0], &st0d, 8);
 }
 
 void felix86_fxam(ThreadState* state) {
-    // TODO: implement this instruction properly
-    const int top = state->fpu_top;
-    u64 st0 = state->fp[top];
+    u64 st0 = state->fp[0];
     bool sign = st0 >> 63;
     double st0d;
     memcpy(&st0d, &st0, 8);

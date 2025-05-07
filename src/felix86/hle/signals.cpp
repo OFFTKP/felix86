@@ -1,6 +1,5 @@
 #include <array>
 #include <sys/mman.h>
-#include "biscuit/decoder.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -97,7 +96,7 @@ struct x64_rt_sigframe {
 static_assert(sizeof(siginfo_t) == 128);
 static_assert(sizeof(x64_rt_sigframe) == 1120);
 
-void reconstruct_state(ThreadState* state, const u64* gprs, const XmmReg* xmms) {
+void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, const XmmReg* xmms) {
     if (state->state_is_correct) {
         // The ThreadState struct already contains the correct values, don't pull them out
         // This can happen if we are inside JIT code but already wrote the state when we hit the signal
@@ -110,10 +109,15 @@ void reconstruct_state(ThreadState* state, const u64* gprs, const XmmReg* xmms) 
             state->xmm[i] = xmms[allocated_vec.Index()];
         }
 
-        if (state->mmx_dirty) {
+        if (state->x87_state == x87State::MMX) {
             for (int i = 0; i < 8; i++) {
                 biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
                 state->fp[i] = xmms[allocated_vec.Index()].data[0];
+            }
+        } else {
+            for (int i = 0; i < 8; i++) {
+                biscuit::FPR allocated_fpr = Recompiler::allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
+                state->fp[i] = fprs[allocated_fpr.Index()];
             }
         }
 
@@ -157,13 +161,13 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const XmmReg* host_vecs, bool use_altstack,
-                         bool in_jit_code, siginfo_t* host_siginfo) {
+void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
+                         bool use_altstack, bool in_jit_code, siginfo_t* host_siginfo) {
     if (in_jit_code) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
         BlockMetadata* current_block = get_block_metadata(state, pc);
         u64 actual_rip = get_actual_rip(*current_block, pc);
-        reconstruct_state(state, host_gprs, host_vecs);
+        reconstruct_state(state, host_gprs, host_fprs, host_vecs);
         // TODO: this may be wrong in some occasions? like sometimes we shouldn't do it because we already set the rip? needs investigation
         state->SetRip(actual_rip);
     } else {
@@ -240,6 +244,19 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
     frame->uc.uc_mcontext.fpregs->xmm[14] = state->GetXmm(X86_REF_XMM14);
     frame->uc.uc_mcontext.fpregs->xmm[15] = state->GetXmm(X86_REF_XMM15);
 
+    int top = state->fpu_top;
+    for (int i = 0; i < 8; i++) {
+        x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[(top + i) & 0b111];
+        if (state->x87_state == x87State::MMX) {
+            memcpy(reg, &state->fp[i], sizeof(u64));
+            reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
+        } else {
+            Float80 f80 = f64_to_80(state->fp[i]);
+            memcpy(reg, &f80, sizeof(Float80));
+            static_assert(sizeof(Float80) == 10);
+        }
+    }
+
     state->SetGpr(X86_REF_RSP, rsp);               // set the new stack pointer
     state->SetGpr(X86_REF_RSI, (u64)&frame->info); // set the siginfo pointer
     state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
@@ -309,6 +326,8 @@ void Signals::sigreturn(ThreadState* state) {
     state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
     state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
 
+    // TODO: restore x87 state (needs storing/restoring fsw)
+
     // Restore signal mask to what it was supposed to be outside of signal handler
     sigset_t host_mask;
     sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
@@ -350,6 +369,15 @@ u64* get_regs(void* ctx) {
 #endif
 }
 
+u64* get_fprs(void* ctx) {
+#ifdef __riscv
+    return (u64*)((ucontext_t*)ctx)->uc_mcontext.__fpregs.__d.__f;
+#else
+    UNREACHABLE();
+    return nullptr;
+#endif
+}
+
 riscv_v_state* get_riscv_vector_state(void* ctx) {
 #ifdef __riscv
     ucontext_t* context = (ucontext_t*)ctx;
@@ -358,7 +386,7 @@ riscv_v_state* get_riscv_vector_state(void* ctx) {
 
     // Normally the glibc should have better support for this, but this will be fine for now
     if (reserved[1] != 0x53465457) { // RISC-V V extension magic number that indicates the presence of vector state
-        return nullptr;              // old kernel version, unsupported, we can't get the vector state and the vector regs may= be unstable
+        return nullptr;              // old kernel version, unsupported, we can't get the vector state and the vector regs may be unstable
     }
 
     void* after_fpregs = reserved + 3;
@@ -528,6 +556,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     XmmReg* xmms;
 
     u64* gprs = get_regs(ctx);
+    u64* fprs = get_fprs(ctx);
     auto host_vecs = get_vector_state(ctx);
     if (host_vecs) {
         // Xmms start at the first allocated register, xmm0-xmm15 are allocated to sequential host registers so we are fine
@@ -560,7 +589,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    Signals::setupFrame(pc, state, mask_during_signal, gprs, xmms, use_altstack, in_jit_code, &guest_info);
+    Signals::setupFrame(pc, state, mask_during_signal, gprs, fprs, xmms, use_altstack, in_jit_code, &guest_info);
 
     // RSI and RDX are set by setupFrame
     state->SetGpr(X86_REF_RDI, sig);

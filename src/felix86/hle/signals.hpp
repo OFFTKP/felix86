@@ -117,8 +117,8 @@ struct Signals {
         return 0x1F00'0000'0000'0000;
     }
 
-    static void setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const XmmReg* host_vecs, bool use_altstack,
-                           bool in_jit_code, siginfo_t* host_siginfo);
+    static void setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
+                           bool use_altstack, bool in_jit_code, siginfo_t* host_siginfo);
 
     static void checkPending(ThreadState* state);
 };

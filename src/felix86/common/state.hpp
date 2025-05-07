@@ -7,6 +7,14 @@
 #include "felix86/hle/guest_types.hpp"
 #include "felix86/hle/signals.hpp"
 
+// We statically allocate 8 FPRs and 8 Vecs for x87 and MMX. But in x86 they share the same registers.
+// For this reason we need to have a way to communicate to signal handlers which registers hold the correct values.
+// For now, the dispatcher will always assume FPRs hold the correct values so blocks must restore state to x87 when finished.
+enum class x87State {
+    x87 = 0,
+    MMX = 1,
+};
+
 #define C0_BIT (1 << 8)
 #define C1_BIT (1 << 9)
 #define C2_BIT (1 << 10)
@@ -156,13 +164,13 @@ struct ThreadState {
     u16 fpu_tw{};
     u16 fpu_sw{};
     u8 fpu_top{};
+    x87State x87_state = x87State::x87;
 
     // Whenever we writeback the state we set this bool so that the signal handler knows not to pull registers from ucontext
     // and instead pull them from ThreadState. If this is false then we haven't done a writeback so pull from ucontext.
     // This is useful because sometimes we are in JIT code but we also are thrashing registers (setting a0, a1 etc.) so
     // sometimes we want to pull from ThreadState even though we are in JIT code.
     bool state_is_correct = false;
-    bool mmx_dirty = false; // similar reasons as above, but for the mmx/st stuff, because st0-st7 is state only while mmx can be in regs
     ExitReason exit_reason{};
     pid_t* clear_tid_address = nullptr;
     pthread_t thread{}; // The pthread this state belongs to
