@@ -12,6 +12,25 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/utility.hpp"
 
+using x86_fdset = u32;
+
+struct x86_linux_dirent {
+    u64 d_ino;
+    u64 d_off;
+    u16 d_reclen;
+    u8 d_type;
+    u8 _pad[5];
+    char d_name[];
+};
+
+static_assert(std::is_trivial_v<x86_linux_dirent>);
+static_assert(sizeof(x86_linux_dirent) == 24);
+
+struct x86_sigset_argpack {
+    u32 data; // pointer to u64
+    u32 size;
+};
+
 struct x64_sigaction {
     void (*handler)(int, siginfo_t*, void*);
     u64 sa_flags;

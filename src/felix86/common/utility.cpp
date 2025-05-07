@@ -772,6 +772,49 @@ void felix86_fcos(ThreadState* state) {
     memcpy(&state->fp[0], &result, sizeof(double));
 }
 
+void felix86_fpatan(ThreadState* state) {
+    double st0, st1;
+    memcpy(&st0, &state->fp[0], sizeof(double));
+    memcpy(&st1, &state->fp[1], sizeof(double));
+    double result = ::atan(st1 / st0);
+    memcpy(&state->fp[1], &result, sizeof(double));
+}
+
+void felix86_f2xm1(ThreadState* state) {
+    double boop;
+    memcpy(&boop, &state->fp[0], sizeof(double));
+    double result = ::exp2(boop) - 1.0;
+    memcpy(&state->fp[0], &result, sizeof(double));
+}
+
+void felix86_fscale(ThreadState* state) {
+    double st0, st1, result;
+    memcpy(&st0, &state->fp[0], sizeof(double));
+    if (st0 == 0) {
+        result = 0.0;
+    } else {
+        memcpy(&st1, &state->fp[1], sizeof(double));
+        result = st0 * ::exp2(trunc(st1));
+    }
+    memcpy(&state->fp[0], &result, sizeof(double));
+}
+
+void felix86_fyl2x(ThreadState* state) {
+    double st0, st1;
+    memcpy(&st0, &state->fp[0], sizeof(double));
+    memcpy(&st1, &state->fp[1], sizeof(double));
+    double result = st1 * log2(st0);
+    memcpy(&state->fp[1], &result, sizeof(double));
+}
+
+void felix86_fyl2xp1(ThreadState* state) {
+    double st0, st1;
+    memcpy(&st0, &state->fp[0], sizeof(double));
+    memcpy(&st1, &state->fp[1], sizeof(double));
+    double result = st1 * log2(st0 + 1.0);
+    memcpy(&state->fp[1], &result, sizeof(double));
+}
+
 template <class Int, int Count = 128 / (sizeof(Int) * 8), int UpperBound = Count - 1 /* 7 or 15 */, u32 Mask = (1u << Count) - 1u>
 void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 control) {
     enum Mode {

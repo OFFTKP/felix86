@@ -99,6 +99,11 @@ void felix86_psadbw(u8* dst, u8* src);
 
 void felix86_fsin(ThreadState* state);
 void felix86_fcos(ThreadState* state);
+void felix86_fpatan(ThreadState* state);
+void felix86_f2xm1(ThreadState* state);
+void felix86_fscale(ThreadState* state);
+void felix86_fyl2x(ThreadState* state);
+void felix86_fyl2xp1(ThreadState* state);
 
 const char* print_exit_reason(int reason);
 

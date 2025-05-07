@@ -1969,6 +1969,41 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_getdents64: {
+            u32 fd = arg1;
+            u64 dirp = arg2;
+            u32 count = arg3;
+
+            result = SYSCALL(getdents64, fd, dirp, count);
+            if (result >= 0) {
+                size_t bytes = result;
+                size_t num = 0;
+                for (size_t i = 0; i < bytes;) {
+                    x86_linux_dirent* current = (x86_linux_dirent*)(dirp + i);
+                    current->d_off = num++;
+                    i += current->d_reclen;
+                }
+            }
+            break;
+        }
+        case felix86_x86_32_ppoll_time32: {
+            struct pollfd* ufds = (struct pollfd*)arg1;
+            u64 nfds = arg2;
+            struct x86_timespec* tsp = (struct x86_timespec*)arg3;
+            u64* sigmask = (u64*)arg4;
+            u64 sigsetsize = arg5;
+            struct timespec host_timespec;
+            if (tsp) {
+                host_timespec = *tsp;
+            }
+
+            result = SYSCALL(ppoll, ufds, nfds, tsp ? &host_timespec : nullptr, sigmask, sigsetsize);
+
+            if (tsp) {
+                *tsp = host_timespec;
+            }
+            break;
+        }
         case felix86_x86_32_fstat64: {
             struct stat host_stat;
             result = ::fstat(arg1, &host_stat);
@@ -2066,6 +2101,121 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
 
             if (guest_rusage) {
                 *guest_rusage = host_rusage;
+            }
+            break;
+        }
+        case felix86_x86_32_pselect6_time32: {
+            // fd_set in x86-32 is a bunch of 32-bit integers, while in 64-bit architectures it's
+            // a bunch of 64-bit integers, so some marshalling is due
+            int nfds = arg1;
+            x86_fdset* readfds = (x86_fdset*)arg2;
+            x86_fdset* writefds = (x86_fdset*)arg3;
+            x86_fdset* exceptfds = (x86_fdset*)arg4;
+            x86_timespec* timeout = (x86_timespec*)arg5;
+            x86_sigset_argpack* sigset = (x86_sigset_argpack*)arg6;
+            struct timespec host_timespec;
+            if (timeout) {
+                host_timespec = *timeout;
+            }
+
+            fd_set host_readfds;
+            fd_set host_writefds;
+            fd_set host_exceptfds;
+            sigset_t host_sigset;
+            FD_ZERO(&host_readfds);
+            FD_ZERO(&host_writefds);
+            FD_ZERO(&host_exceptfds);
+            sigemptyset(&host_sigset);
+
+            nfds += 31;
+            nfds &= ~31;
+
+            int word_count = nfds / sizeof(u32);
+
+            if (readfds) {
+                for (int word_index = 0; word_index < word_count; word_index++) {
+                    int remaining = nfds - (word_index * 32);
+                    for (int i = 0; i < 32 && i < remaining; i++) {
+                        bool is_set = (readfds[word_index] >> i) & 1;
+                        if (is_set) {
+                            FD_SET(word_index * 32 + i, &host_readfds);
+                        }
+                    }
+                }
+            }
+
+            if (writefds) {
+                for (int word_index = 0; word_index < word_count; word_index++) {
+                    int remaining = nfds - (word_index * 32);
+                    for (int i = 0; i < 32 && i < remaining; i++) {
+                        bool is_set = (writefds[word_index] >> i) & 1;
+                        if (is_set) {
+                            FD_SET(word_index * 32 + i, &host_writefds);
+                        }
+                    }
+                }
+            }
+
+            if (exceptfds) {
+                for (int word_index = 0; word_index < word_count; word_index++) {
+                    int remaining = nfds - (word_index * 32);
+                    for (int i = 0; i < 32 && i < remaining; i++) {
+                        bool is_set = (exceptfds[word_index] >> i) & 1;
+                        if (is_set) {
+                            FD_SET(word_index * 32 + i, &host_exceptfds);
+                        }
+                    }
+                }
+            }
+
+            if (sigset) {
+                ASSERT(sigset->data);
+                u64* ptr = (u64*)(u64)sigset->data;
+                u64 val = *ptr;
+                u32 size = sigset->size;
+                ASSERT(size <= 8);
+                for (int i = 0; i < size * 8; i++) {
+                    if (val & (1ull << i)) {
+                        sigaddset(&host_sigset, i + 1);
+                    }
+                }
+            }
+
+            result = ::pselect(nfds, readfds ? &host_readfds : nullptr, writefds ? &host_writefds : nullptr, exceptfds ? &host_exceptfds : nullptr,
+                               timeout ? &host_timespec : nullptr, &host_sigset);
+
+            if (readfds) {
+                for (int i = 0; i < nfds; i++) {
+                    if (FD_ISSET(i, &host_readfds)) {
+                        readfds[i / 32] |= 1 << (i & 31);
+                    } else {
+                        readfds[i / 32] &= ~(1 << (i & 31));
+                    }
+                }
+            }
+
+            if (writefds) {
+                for (int i = 0; i < nfds; i++) {
+                    if (FD_ISSET(i, &host_writefds)) {
+                        writefds[i / 32] |= 1 << (i & 31);
+                    } else {
+                        writefds[i / 32] &= ~(1 << (i & 31));
+                    }
+                }
+            }
+
+            if (exceptfds) {
+                for (int i = 0; i < nfds; i++) {
+                    if (FD_ISSET(i, &host_exceptfds)) {
+                        exceptfds[i / 32] |= 1 << (i & 31);
+                    } else {
+                        exceptfds[i / 32] &= ~(1 << (i & 31));
+                    }
+                }
+            }
+
+            if (timeout) {
+                *timeout = host_timespec;
             }
             break;
         }

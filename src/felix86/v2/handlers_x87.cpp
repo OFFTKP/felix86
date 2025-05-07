@@ -243,6 +243,16 @@ FAST_HANDLE(FCOS) {
     rec.restoreState();
 }
 
+FAST_HANDLE(FPATAN) {
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fpatan);
+    rec.restoreState();
+
+    // FPATAN also pops the stack
+    rec.popX87();
+}
+
 FAST_HANDLE(FWAIT) {
     WARN("FWAIT encountered, treating as NOP");
 }
@@ -252,6 +262,40 @@ FAST_HANDLE(FPREM) {
     as.MV(a0, rec.threadStatePointer());
     rec.call((u64)felix86_fprem);
     rec.restoreState();
+}
+
+FAST_HANDLE(F2XM1) {
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_f2xm1);
+    rec.restoreState();
+}
+
+FAST_HANDLE(FSCALE) {
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fscale);
+    rec.restoreState();
+}
+
+FAST_HANDLE(FYL2X) {
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fyl2x);
+    rec.restoreState();
+
+    // FYL2X also pops the stack
+    rec.popX87();
+}
+
+FAST_HANDLE(FYL2XP1) {
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fyl2xp1);
+    rec.restoreState();
+
+    // FYL2XP1 also pops the stack
+    rec.popX87();
 }
 
 FAST_HANDLE(FXAM) {
