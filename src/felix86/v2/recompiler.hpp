@@ -10,7 +10,7 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/utility.hpp"
 
-constexpr int address_cache_bits = 16;
+constexpr int address_cache_bits = 20;
 
 constexpr static u64 jit_stack_size = 1024 * 1024;
 
@@ -392,7 +392,30 @@ struct Recompiler {
         return host_pc_map;
     }
 
-    u64 getCompiledBlock(ThreadState* state, u64 rip);
+    u64 getCompiledBlock(ThreadState* state, u64 rip) {
+        if (g_config.address_cache) {
+            AddressCacheEntry& entry = address_cache[rip & ((1 << address_cache_bits) - 1)];
+            if (entry.guest == rip) {
+                return entry.host;
+            } else if (blockExists(rip)) {
+                u64 host = getBlockMetadata(rip).address;
+                entry.guest = rip;
+                entry.host = host;
+                return host;
+            } else {
+                return compile(state, rip);
+            }
+        } else {
+            if (blockExists(rip)) {
+                return getBlockMetadata(rip).address;
+            } else {
+                return compile(state, rip);
+            }
+        }
+
+        UNREACHABLE();
+        return {};
+    }
 
     bool tryInlineSyscall();
 

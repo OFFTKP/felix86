@@ -352,31 +352,6 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
     }
 }
 
-u64 Recompiler::getCompiledBlock(ThreadState* state, u64 rip) {
-    if (g_config.address_cache) {
-        AddressCacheEntry& entry = address_cache[rip & ((1 << address_cache_bits) - 1)];
-        if (entry.guest == rip) {
-            return entry.host;
-        } else if (blockExists(rip)) {
-            u64 host = getBlockMetadata(rip).address;
-            entry.guest = rip;
-            entry.host = host;
-            return host;
-        } else {
-            return compile(state, rip);
-        }
-    } else {
-        if (blockExists(rip)) {
-            return getBlockMetadata(rip).address;
-        } else {
-            return compile(state, rip);
-        }
-    }
-
-    UNREACHABLE();
-    return {};
-}
-
 u64 Recompiler::compileSequence(u64 rip) {
     compiling = true;
     u8* bytes = (u8*)rip;
