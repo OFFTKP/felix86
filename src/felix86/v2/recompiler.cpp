@@ -66,6 +66,20 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
     if (g_config.always_flags || g_config.paranoid) {
         flag_mode = FlagMode::AlwaysEmit;
     }
+
+    if (g_config.perf_block || g_config.perf_symbols || g_config.perf_symbols) {
+        std::string path = "/tmp/perf-" + std::to_string(gettid()) + ".map";
+        FILE* file = fopen(path.c_str(), "w");
+        ASSERT(file);
+        perf_fd = fileno(file);
+    }
+
+    if (g_config.perf_global) {
+        char buffer[4096];
+        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 code cache", (u64)code_cache, code_cache_size);
+        int written = syscall(SYS_write, perf_fd, buffer, string_size);
+        ASSERT(written == string_size);
+    }
 }
 
 Recompiler::~Recompiler() {
@@ -211,6 +225,15 @@ void Recompiler::emitDispatcher() {
 
     // Return to wherever the dispatcher was originally entered from using enter_dispatcher
     as.JR(ra);
+
+    if (g_config.perf_block || g_config.perf_symbols) {
+        u64 end = (u64)as.GetCursorPointer();
+        u64 size = end - (u64)enter_dispatcher;
+        char buffer[4096];
+        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 dispatcher", (u64)enter_dispatcher, size);
+        int written = syscall(SYS_write, perf_fd, buffer, string_size);
+        ASSERT(written == string_size);
+    }
 }
 
 void Recompiler::emitInvalidateCallerThunk() {
@@ -343,31 +366,27 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     // Mark the page as read-only to catch self-modifying code
     markPagesAsReadOnly(rip, end_rip);
 
-    if (g_config.perf) {
-        if (perf_fd == -1) {
-            std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
-            FILE* file = fopen(path.c_str(), "w");
-            ASSERT(file);
-            perf_fd = fileno(file);
-        }
-
-        // Executed region not found, update the symbols
-        if (!has_region(rip)) {
-            update_symbols();
-        }
-
+    if (g_config.perf_block || g_config.perf_symbols) {
         BlockMetadata& metadata = getBlockMetadata(rip);
-        std::string symbol = get_perf_symbol(rip);
-        char buffer[4096];
-        size_t size = metadata.address_end - metadata.address;
-        int string_size = snprintf(buffer, 4096, "%lx %lx %s\n", metadata.address, size, symbol.c_str());
-        ASSERT(string_size > 0 && string_size < 4095);
 
-        int locked = flock(perf_fd, LOCK_EX);
-        ASSERT(locked == 0);
+        char buffer[4096];
+        int string_size = 0;
+        if (g_config.perf_symbols) {
+            // Executed region not found, update the symbols
+            if (!has_region(rip)) {
+                update_symbols();
+            }
+
+            std::string symbol = get_perf_symbol(rip);
+            size_t size = metadata.address_end - metadata.address;
+            string_size = snprintf(buffer, 4096, "%lx %lx %s\n", metadata.address, size, symbol.c_str());
+        } else {
+            size_t size = metadata.address_end - metadata.address;
+            string_size = snprintf(buffer, 4096, "%lx %lx block_0x%lx\n", metadata.address, size, metadata.guest_address);
+        }
+
         int written = syscall(SYS_write, perf_fd, buffer, string_size);
         ASSERT(written == string_size);
-        flock(perf_fd, LOCK_UN);
     }
 
     return start;

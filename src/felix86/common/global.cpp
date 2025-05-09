@@ -52,30 +52,6 @@ u64 g_interpreter_end{};
 u64 g_executable_start{};
 u64 g_executable_end{};
 
-bool is_running_under_perf() {
-    // Always enable symbol emission when this is enabled, in case our detection fails
-    if (g_config.perf) {
-        return true;
-    }
-
-    int ppid = getppid();
-
-    std::string line;
-    std::ifstream ifs("/proc/" + std::to_string(ppid) + "/comm");
-    if (!ifs) {
-        WARN("Failed to check if perf is a parent process");
-        return false;
-    }
-
-    std::getline(ifs, line);
-
-    if (line == "perf") {
-        return true;
-    }
-
-    return false;
-}
-
 bool is_running_under_gdb() {
     if (g_config.gdb) {
         return true;
@@ -355,21 +331,13 @@ void initialize_globals() {
         environment += "\nFELIX86_ENV_FILE=" + std::string(env_file);
     }
 
-    g_config.perf = is_running_under_perf();
-    if (g_config.perf) {
-        if (!std::filesystem::exists("/tmp")) {
-            std::filesystem::create_directory("/tmp");
-        }
-
-        LOG("Emitting symbols for " ANSI_BOLD "perf" ANSI_COLOR_RESET "!");
+    // For perf symbols
+    if (!std::filesystem::exists("/tmp")) {
+        std::filesystem::create_directory("/tmp");
     }
 
     g_config.gdb = is_running_under_gdb();
     if (g_config.gdb) {
-        if (!std::filesystem::exists("/tmp")) {
-            std::filesystem::create_directory("/tmp");
-        }
-
         LOG("Emitting symbols for " ANSI_BOLD "gdb" ANSI_COLOR_RESET "!");
     }
 
