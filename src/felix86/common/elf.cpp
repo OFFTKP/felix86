@@ -544,12 +544,14 @@ void Elf::Load(const std::filesystem::path& path) {
         g_program_end = std::max(end, g_program_end);
         g_executable_start = (u64)(base_ptr + lowest_vaddr);
         g_executable_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
+        g_process_globals.perf->addToFile(g_executable_start, g_executable_end - g_executable_start, path.filename());
     } else {
         u64 end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
         g_program_end = std::max(end, g_program_end);
         g_interpreter_start = (u64)(base_ptr + lowest_vaddr);
         g_interpreter_end = (u64)(base_ptr + highest_vaddr);
         program_base = (u8*)base_ptr;
+        g_process_globals.perf->addToFile(g_interpreter_start, g_interpreter_end - g_interpreter_start, path.filename());
     }
 
     phdr = base_ptr + lowest_vaddr + ehdr.phoff();
