@@ -79,14 +79,14 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
         u64 end = (u64)as.GetCursorPointer();
         u64 size = end - (u64)enter_dispatcher;
         char buffer[4096];
-        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 dispatcher", (u64)enter_dispatcher, size);
+        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 dispatcher\n", (u64)enter_dispatcher, size);
         int written = syscall(SYS_write, perf_fd, buffer, string_size);
         ASSERT(written == string_size);
     }
 
     if (g_config.perf_global) {
         char buffer[4096];
-        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 code cache", (u64)code_cache, code_cache_size);
+        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 code cache\n", (u64)code_cache, code_cache_size);
         int written = syscall(SYS_write, perf_fd, buffer, string_size);
         ASSERT(written == string_size);
     }
