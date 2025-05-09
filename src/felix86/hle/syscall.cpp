@@ -1,4 +1,5 @@
 #include <csignal>
+#include <fstream>
 #include <errno.h>
 #include <fcntl.h>
 #include <fmt/format.h>
@@ -650,6 +651,13 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // If there's any blocks in any threads that match this mmapped range they need to be invalidated
         if (result > 0) {
             Recompiler::invalidateRangeGlobal(result, result + arg2);
+        }
+
+        if (result > 0 && g_config.perf_libs && (int)arg5 != -1) {
+            std::ifstream ifs("/proc/self/fd/" + std::to_string(arg5));
+            std::filesystem::path name;
+            ifs >> name;
+            state->recompiler->addToPerfFile(fmt::format("{:x} {:x} guest_{}", (u64)result, arg2, name.filename().string()));
         }
         break;
     }
@@ -1641,6 +1649,13 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
             if (result > 0) {
                 Recompiler::invalidateRangeGlobal(result, result + arg2);
+            }
+
+            if (result > 0 && g_config.perf_libs && (int)arg5 != -1) {
+                std::ifstream ifs("/proc/self/fd/" + std::to_string(arg5));
+                std::filesystem::path name;
+                ifs >> name;
+                state->recompiler->addToPerfFile(fmt::format("{:x} {:x} guest_{}", (u64)result, arg2, name.filename().string()));
             }
             break;
         }

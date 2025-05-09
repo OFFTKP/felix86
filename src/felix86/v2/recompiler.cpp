@@ -8,6 +8,7 @@
 #include "felix86/emulator.hpp"
 #include "felix86/hle/syscall.hpp"
 #include "felix86/v2/recompiler.hpp"
+#include "fmt/format.h"
 
 #define X(name) void fast_##name(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 #include "felix86/v2/handlers.inc"
@@ -67,7 +68,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
         flag_mode = FlagMode::AlwaysEmit;
     }
 
-    if (g_config.perf_blocks || g_config.perf_symbols || g_config.perf_global) {
+    if (g_config.perf_blocks || g_config.perf_global) {
         std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
         FILE* file = fopen(path.c_str(), "a");
         ASSERT(file);
@@ -76,23 +77,22 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
         u64 end = (u64)as.GetCursorPointer();
         u64 size = end - (u64)enter_dispatcher;
-        char buffer[4096];
-        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 dispatcher\n", (u64)enter_dispatcher, size);
-        int written = syscall(SYS_write, perf_fd, buffer, string_size);
-        ASSERT(written == string_size);
+        addToPerfFile(fmt::format("{:x} {:x} felix86 dispatcher\n", (u64)enter_dispatcher, size));
     }
 
     if (g_config.perf_global) {
-        char buffer[4096];
-        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 code cache\n", (u64)start_of_code_cache,
-                                   code_cache_size - ((u64)start_of_code_cache - (u64)code_cache));
-        int written = syscall(SYS_write, perf_fd, buffer, string_size);
-        ASSERT(written == string_size);
+        addToPerfFile(
+            fmt::format("{:x} {:x} felix86 code cache\n", (u64)start_of_code_cache, code_cache_size - ((u64)start_of_code_cache - (u64)code_cache)));
     }
 }
 
 Recompiler::~Recompiler() {
     deallocateCodeCache(code_cache);
+}
+
+void Recompiler::addToPerfFile(const std::string& symbol) {
+    int written = syscall(SYS_write, perf_fd, symbol.data(), symbol.size());
+    ASSERT(written == symbol.size());
 }
 
 void Recompiler::emitNecessaryStuff() {
@@ -377,6 +377,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
                 update_symbols();
             }
 
+            // TODO: use addToPerfFile
             std::string symbol = get_perf_symbol(rip);
             size_t size = metadata.address_end - metadata.address;
             string_size = snprintf(buffer, 4096, "%lx %lx %s\n", metadata.address, size, symbol.c_str());

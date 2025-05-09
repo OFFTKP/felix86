@@ -336,8 +336,9 @@ void initialize_globals() {
         std::filesystem::create_directory("/tmp");
     }
 
-    if ((g_config.perf_blocks && g_config.perf_global) || (g_config.perf_symbols && g_config.perf_global)) {
-        ERROR("Conflicting perf settings, both per-block and global");
+    int perfs = g_config.perf_blocks + g_config.perf_libs + g_config.perf_global;
+    if (perfs > 1) {
+        ERROR("Conflicting perf settings, only enable per-block OR per-library OR global, not multiple at once");
     }
 
     g_config.gdb = is_running_under_gdb();
