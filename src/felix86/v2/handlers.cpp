@@ -1568,8 +1568,6 @@ FAST_HANDLE(DIV) {
         // we can use our RISC-V divide instruction rather than calling a function to emulate 128-bit div
         biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
         biscuit::GPR rdx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
-        biscuit::GPR mod = rec.scratch();
-        biscuit::GPR div = rec.scratch();
         biscuit::Label do_64bit, end;
 
         // Trick to check if val == 0 || val == -1
@@ -1587,6 +1585,9 @@ FAST_HANDLE(DIV) {
         as.J(&end);
 
         as.Bind(&do_64bit);
+
+        biscuit::GPR mod = rec.scratch();
+        biscuit::GPR div = rec.scratch();
 
         as.DIVU(div, rax, src);
         as.REMU(mod, rax, src);
