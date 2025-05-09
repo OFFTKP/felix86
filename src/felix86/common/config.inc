@@ -15,7 +15,7 @@ X(Debugging, bool, no_sse3, false, FELIX86_NO_SSE3, "Stop the emulator on SSE3 i
 X(Debugging, bool, no_ssse3, false, FELIX86_NO_SSSE3, "Stop the emulator on SSSE3 instructions", false)
 X(Debugging, bool, no_sse4_1, false, FELIX86_NO_SSE4_1, "Stop the emulator on SSE4.1 instructions", false)
 X(Debugging, bool, no_sse4_2, false, FELIX86_NO_SSE4_2, "Stop the emulator on SSE4.2 instructions", false)
-X(Debugging, bool, perf_block, false, FELIX86_PERF_BLOCKS, "Name blocks for perf", false)
+X(Debugging, bool, perf_blocks, false, FELIX86_PERF_BLOCKS, "Name blocks for perf", false)
 X(Debugging, bool, perf_symbols, false, FELIX86_PERF_SYMBOLS, "Name blocks for perf using symbols", false)
 X(Debugging, bool, perf_global, false, FELIX86_PERF_GLOBAL, "Name entire code cache for perf", false)
 X(Debugging, bool, gdb, false, FELIX86_GDB, "Emit symbols for gdb in /tmp -- Currently doesn't work due to gdb bug: https://sourceware.org/bugzilla/show_bug.cgi?id=32248", false)

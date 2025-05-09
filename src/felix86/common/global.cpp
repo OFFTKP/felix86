@@ -336,7 +336,7 @@ void initialize_globals() {
         std::filesystem::create_directory("/tmp");
     }
 
-    if ((g_config.perf_block && g_config.perf_global) || (g_config.perf_symbols && g_config.perf_global)) {
+    if ((g_config.perf_blocks && g_config.perf_global) || (g_config.perf_symbols && g_config.perf_global)) {
         ERROR("Conflicting perf settings, both per-block and global");
     }
 

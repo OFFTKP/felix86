@@ -67,12 +67,21 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
         flag_mode = FlagMode::AlwaysEmit;
     }
 
-    if (g_config.perf_block || g_config.perf_symbols || g_config.perf_global) {
+    if (g_config.perf_blocks || g_config.perf_symbols || g_config.perf_global) {
         std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
         FILE* file = fopen(path.c_str(), "a");
         ASSERT(file);
         perf_fd = fileno(file);
         ASSERT(perf_fd > 0);
+    }
+
+    if (g_config.perf_blocks || g_config.perf_symbols) {
+        u64 end = (u64)as.GetCursorPointer();
+        u64 size = end - (u64)enter_dispatcher;
+        char buffer[4096];
+        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 dispatcher", (u64)enter_dispatcher, size);
+        int written = syscall(SYS_write, perf_fd, buffer, string_size);
+        ASSERT(written == string_size);
     }
 
     if (g_config.perf_global) {
@@ -226,15 +235,6 @@ void Recompiler::emitDispatcher() {
 
     // Return to wherever the dispatcher was originally entered from using enter_dispatcher
     as.JR(ra);
-
-    if (g_config.perf_block || g_config.perf_symbols) {
-        u64 end = (u64)as.GetCursorPointer();
-        u64 size = end - (u64)enter_dispatcher;
-        char buffer[4096];
-        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 dispatcher", (u64)enter_dispatcher, size);
-        int written = syscall(SYS_write, perf_fd, buffer, string_size);
-        ASSERT_MSG(written == string_size, "%lx != %lx (errno: %d)", written, string_size, errno);
-    }
 }
 
 void Recompiler::emitInvalidateCallerThunk() {
@@ -367,7 +367,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     // Mark the page as read-only to catch self-modifying code
     markPagesAsReadOnly(rip, end_rip);
 
-    if (g_config.perf_block || g_config.perf_symbols) {
+    if (g_config.perf_blocks || g_config.perf_symbols) {
         BlockMetadata& metadata = getBlockMetadata(rip);
 
         char buffer[4096];
