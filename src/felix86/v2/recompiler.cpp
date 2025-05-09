@@ -1974,11 +1974,13 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     as.BNEZ(condition, &true_label);
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
-    as.LI(rip, rip_false);
+    u64 rip_false_offset = rip_false - getCurrentMetadata().guest_address;
+    addi(rip, rip, rip_false_offset);
     jumpAndLink(rip_false);
 
     as.Bind(&true_label);
-    as.LI(rip, rip_true);
+    u64 rip_true_offset = rip_true - getCurrentMetadata().guest_address;
+    addi(rip, rip, rip_true_offset);
     jumpAndLink(rip_true);
 }
 

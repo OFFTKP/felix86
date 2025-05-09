@@ -837,20 +837,16 @@ FAST_HANDLE(CALL) {
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
-        u64 return_address = rip + instruction.length;
+        u64 return_address_offset = (rip - rec.getCurrentMetadata().guest_address) + instruction.length;
 
         biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
         as.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
 
-        biscuit::GPR scratch = rec.scratch();
-        as.LI(scratch, return_address);
-        rec.writeMemory(scratch, rsp, 0, rec.stackWidth());
-
-        rec.addi(scratch, scratch, displacement);
-
         biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
-        as.MV(ripreg, scratch);
+        rec.addi(ripreg, ripreg, return_address_offset);
+        rec.writeMemory(ripreg, rsp, 0, rec.stackWidth());
+        rec.addi(ripreg, ripreg, displacement);
         rec.jumpAndLink(rip + instruction.length + displacement);
         rec.stopCompiling();
         break;
@@ -1491,9 +1487,10 @@ FAST_HANDLE(JMP) {
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
         u64 address = rip + instruction.length + displacement;
+        u64 offset = (rip - rec.getCurrentMetadata().guest_address) + instruction.length + displacement;
         biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
-        as.LI(ripreg, address);
-        rec.jumpAndLink(rip + instruction.length + displacement);
+        rec.addi(ripreg, ripreg, offset);
+        rec.jumpAndLink(address);
         rec.stopCompiling();
         break;
     }

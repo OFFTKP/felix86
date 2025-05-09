@@ -588,6 +588,11 @@ struct Recompiler {
 
     void switchToX87();
 
+    BlockMetadata& getCurrentMetadata() {
+        ASSERT(current_block_metadata);
+        return *current_block_metadata;
+    }
+
 private:
     struct FlagAccess {
         bool modification; // true if modified, false if used
