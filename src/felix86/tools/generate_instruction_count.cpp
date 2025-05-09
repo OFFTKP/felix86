@@ -145,7 +145,8 @@ int main() {
     Extensions::VLEN = 256;
     Extensions::Zicond = true;
 
-    Recompiler rec;
+    std::unique_ptr<Recompiler> rec_storage = std::make_unique<Recompiler>();
+    Recompiler& rec = *rec_storage;
     nlohmann::ordered_json json;
 
 #define GEN(inst) gen(rec, json, [](Xbyak::CodeGenerator& x) { x.inst; }, flags)
@@ -540,6 +541,10 @@ int main() {
     GEN_SSE(pcmpeqw);
     GEN_SSE(pcmpeqd);
 
+    GEN(cvtss2sd(xmm3, xmm2));
+    GEN(cvtss2sd(xmm3, ptr[rdi]));
+    GEN(cvtsd2ss(xmm3, xmm2));
+    GEN(cvtsd2ss(xmm3, ptr[rdi]));
     GEN(cvtsi2sd(xmm3, rax));
     GEN(cvtsi2sd(xmm2, eax));
     GEN(cvtsi2sd(xmm1, dword[rdi]));

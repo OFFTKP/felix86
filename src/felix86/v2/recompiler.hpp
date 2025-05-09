@@ -41,6 +41,7 @@ struct BlockMetadata {
     std::vector<std::pair<u64, u64>> instruction_spans{};
 };
 
+// WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
 struct Recompiler {
     explicit Recompiler();
     ~Recompiler();
