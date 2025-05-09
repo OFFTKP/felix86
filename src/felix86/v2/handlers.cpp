@@ -1586,6 +1586,9 @@ FAST_HANDLE(DIV) {
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, div);
         rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, mod);
 
+        rec.popScratch();
+        rec.popScratch();
+
         as.J(&end);
 
         as.Bind(&do_128bit);
@@ -1662,11 +1665,42 @@ FAST_HANDLE(IDIV) {
         break;
     }
     case X86_SIZE_QWORD: {
+        // Most of the time the program doesn't actually want a 128-bit divide
+        // and instead wants a 64-bit divide. If RDX is sign-extended from RAX then
+        // we can use our RISC-V divide instruction rather than calling a function to emulate 128-bit div
+        biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
+        biscuit::GPR rdx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
+        biscuit::Label do_128bit, end;
+
+        biscuit::GPR rax_sext = rec.scratch();
+        as.SRAI(rax_sext, rax, 63);
+        as.BNE(rax_sext, rdx, &do_128bit);
+        rec.popScratch();
+
+        // We need a slow 128-bit divide...
+
+        biscuit::GPR mod = rec.scratch();
+        biscuit::GPR div = rec.scratch();
+
+        as.DIV(div, rax, src);
+        as.REM(mod, rax, src);
+
+        rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, div);
+        rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, mod);
+
+        rec.popScratch();
+        rec.popScratch();
+
+        as.J(&end);
+
+        as.Bind(&do_128bit);
         rec.writebackState();
         as.MV(a1, src);
         as.MV(a0, rec.threadStatePointer());
         rec.call((u64)&felix86_div128);
         rec.restoreState();
+
+        as.Bind(&end);
         break;
     }
     default: {
