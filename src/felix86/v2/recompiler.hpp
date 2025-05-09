@@ -177,7 +177,7 @@ struct Recompiler {
         // RDI, RSI, RDX, R10, R8, R9 are allocated to a0, a1, a2, a3, a4, a5 to match the syscall abi and save some swapping instructions
         switch (reg) {
         case X86_REF_RIP: {
-            return biscuit::x7;
+            return biscuit::gp; // we set --no-relax flag so that we can allocate gp
         }
         case X86_REF_RAX: {
             return biscuit::x5;
@@ -681,7 +681,7 @@ private:
 
     FlagMode flag_mode = FlagMode::Default;
 
-    constexpr static std::array scratch_gprs = {x1, x6, x28, x29, x30, x31};
+    constexpr static std::array scratch_gprs = {x1, x6, x28, x29, x30, x31, x7};
 
     // TODO: For better or for worst (definitely for worst) we rely on the fact that we start with an even
     // register and go sequentially like this
