@@ -91,6 +91,8 @@ void ProcessGlobals::initialize() {
     // And the GDB mappings
     g_gdbjit = std::make_unique<GDBJIT>();
 
+    perf = std::make_unique<Perf>();
+
     // Don't reset the /proc/self/maps mapped regions, we can reuse the ones from parent process
 }
 

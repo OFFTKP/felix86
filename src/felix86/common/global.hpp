@@ -1,11 +1,11 @@
 #pragma once
 
 #include <atomic>
-#include <filesystem>
 #include <map>
 #include <unordered_map>
 #include <vector>
 #include <unistd.h>
+#include "felix86/common/perf.hpp"
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/start_params.hpp"
 #include "felix86/common/utility.hpp"
@@ -13,6 +13,8 @@
 struct Filesystem;
 
 struct GDBJIT;
+
+struct Perf;
 
 struct MappedRegion {
     u64 base{};
@@ -45,6 +47,7 @@ struct ProcessGlobals {
     Semaphore symbols_lock{};
     std::map<u64, MappedRegion> mapped_regions{};
     std::map<u64, Symbol> symbols{};
+    std::unique_ptr<Perf> perf;
 
 private:
     constexpr static size_t shared_memory_size = 0x10000;

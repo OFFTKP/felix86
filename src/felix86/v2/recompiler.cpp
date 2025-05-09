@@ -77,22 +77,17 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
         u64 end = (u64)as.GetCursorPointer();
         u64 size = end - (u64)enter_dispatcher;
-        addToPerfFile(fmt::format("{:x} {:x} felix86 dispatcher\n", (u64)enter_dispatcher, size));
+        g_process_globals.perf->addToFile((u64)enter_dispatcher, size, "felix86 dispatcher");
     }
 
     if (g_config.perf_global) {
-        addToPerfFile(
-            fmt::format("{:x} {:x} felix86 code cache\n", (u64)start_of_code_cache, code_cache_size - ((u64)start_of_code_cache - (u64)code_cache)));
+        g_process_globals.perf->addToFile((u64)start_of_code_cache, code_cache_size - ((u64)start_of_code_cache - (u64)code_cache),
+                                          "felix86 code cache");
     }
 }
 
 Recompiler::~Recompiler() {
     deallocateCodeCache(code_cache);
-}
-
-void Recompiler::addToPerfFile(const std::string& symbol) {
-    int written = syscall(SYS_write, perf_fd, symbol.data(), symbol.size());
-    ASSERT_MSG(written == symbol.size(), "%lx != %lx (errno: %d)", written, symbol.size(), errno);
 }
 
 void Recompiler::emitNecessaryStuff() {
@@ -369,25 +364,19 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     if (g_config.perf_blocks || g_config.perf_symbols) {
         BlockMetadata& metadata = getBlockMetadata(rip);
 
-        char buffer[4096];
-        int string_size = 0;
+        std::string symbol;
+        size_t size = metadata.address_end - metadata.address;
         if (g_config.perf_symbols) {
             // Executed region not found, update the symbols
             if (!has_region(rip)) {
                 update_symbols();
             }
 
-            // TODO: use addToPerfFile
-            std::string symbol = get_perf_symbol(rip);
-            size_t size = metadata.address_end - metadata.address;
-            string_size = snprintf(buffer, 4096, "%lx %lx %s\n", metadata.address, size, symbol.c_str());
+            symbol = get_perf_symbol(rip);
         } else {
-            size_t size = metadata.address_end - metadata.address;
-            string_size = snprintf(buffer, 4096, "%lx %lx block_0x%lx\n", metadata.address, size, metadata.guest_address);
+            symbol = fmt::format("block_{}", metadata.guest_address);
         }
-
-        int written = syscall(SYS_write, perf_fd, buffer, string_size);
-        ASSERT(written == string_size);
+        g_process_globals.perf->addToFile(metadata.address, size, symbol);
     }
 
     return start;

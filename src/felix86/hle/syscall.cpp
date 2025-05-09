@@ -657,7 +657,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             std::string path = "/proc/self/fd/" + std::to_string(arg5);
             size_t size = readlink(path.c_str(), buffer, PATH_MAX);
             buffer[size] = 0;
-            state->recompiler->addToPerfFile(fmt::format("{:x} {:x} guest_{}", (u64)result, arg2, buffer));
+            g_process_globals.perf->addToFile((u64)result, arg2, buffer);
         }
         break;
     }
@@ -1656,7 +1656,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 std::string path = "/proc/self/fd/" + std::to_string(arg5);
                 size_t size = readlink(path.c_str(), buffer, PATH_MAX);
                 buffer[size] = 0;
-                state->recompiler->addToPerfFile(fmt::format("{:x} {:x} guest_{}", (u64)result, arg2, buffer));
+                g_process_globals.perf->addToFile((u64)result, arg2, buffer);
             }
             break;
         }

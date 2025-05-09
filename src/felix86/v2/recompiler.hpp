@@ -419,8 +419,6 @@ struct Recompiler {
 
     bool tryInlineSyscall();
 
-    void addToPerfFile(const std::string&);
-
     void checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
 
     u8 stackPointerSize() {
