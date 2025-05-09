@@ -117,6 +117,34 @@ void Recompiler::emitDispatcher() {
 
     compile_next_handler = (u64)as.GetCursorPointer();
 
+    if (g_config.address_cache) {
+        biscuit::GPR temp = scratch();
+        biscuit::GPR temp2 = scratch();
+        biscuit::GPR rip = scratch();
+        biscuit::GPR mask = scratch();
+        biscuit::Label not_equal;
+        as.LD(temp2, offsetof(ThreadState, rip), threadStatePointer());
+        as.LI(temp, (u64)address_cache.data());
+        as.LI(mask, (1 << address_cache_bits) - 1);
+        as.MV(rip, temp2);
+        as.AND(temp2, temp2, mask);
+        // Multiply by 16, which is size of each address cache entry
+        as.SLLI(temp2, temp2, 4);
+        as.ADD(temp, temp, temp2);
+        as.LD(temp2, 8, temp);
+        as.BNE(rip, temp2, &not_equal);
+
+        // Address cache was correct, jump to host address
+        as.LD(rip, 0, temp);
+        as.MV(t5, x0); // zero out t5, see invalidate_caller_thunk
+        as.JR(rip);
+
+        as.Bind(&not_equal);
+        popScratch();
+        popScratch();
+        popScratch();
+    }
+
     writebackState();
     as.MV(a0, threadStatePointer());
     call((u64)Emulator::CompileNext);
