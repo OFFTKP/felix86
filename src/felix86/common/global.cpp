@@ -336,6 +336,10 @@ void initialize_globals() {
         std::filesystem::create_directory("/tmp");
     }
 
+    if ((g_config.perf_block && g_config.perf_global) || (g_config.perf_symbols && g_config.perf_global)) {
+        ERROR("Conflicting perf settings, both per-block and global");
+    }
+
     g_config.gdb = is_running_under_gdb();
     if (g_config.gdb) {
         LOG("Emitting symbols for " ANSI_BOLD "gdb" ANSI_COLOR_RESET "!");
