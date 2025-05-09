@@ -72,6 +72,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
         FILE* file = fopen(path.c_str(), "a");
         ASSERT(file);
         perf_fd = fileno(file);
+        ASSERT(perf_fd > 0);
     }
 
     if (g_config.perf_global) {
@@ -232,7 +233,7 @@ void Recompiler::emitDispatcher() {
         char buffer[4096];
         int string_size = snprintf(buffer, 4096, "%lx %lx felix86 dispatcher", (u64)enter_dispatcher, size);
         int written = syscall(SYS_write, perf_fd, buffer, string_size);
-        ASSERT(written == string_size);
+        ASSERT_MSG(written == string_size, "%lx != %lx", written, string_size);
     }
 }
 
