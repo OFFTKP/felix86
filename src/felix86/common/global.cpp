@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cstring>
-#include <fstream>
 #include <string>
 #include <fcntl.h>
 #include <linux/perf_event.h>
@@ -14,6 +13,7 @@
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/overlay.hpp"
+#include "felix86/common/perf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
