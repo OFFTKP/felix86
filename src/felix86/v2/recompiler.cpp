@@ -73,9 +73,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
         ASSERT(file);
         perf_fd = fileno(file);
         ASSERT(perf_fd > 0);
-    }
 
-    if (g_config.perf_blocks || g_config.perf_symbols) {
         u64 end = (u64)as.GetCursorPointer();
         u64 size = end - (u64)enter_dispatcher;
         char buffer[4096];
@@ -86,7 +84,8 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
 
     if (g_config.perf_global) {
         char buffer[4096];
-        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 code cache\n", (u64)code_cache, code_cache_size);
+        int string_size = snprintf(buffer, 4096, "%lx %lx felix86 code cache\n", (u64)start_of_code_cache,
+                                   code_cache_size - ((u64)start_of_code_cache - (u64)code_cache));
         int written = syscall(SYS_write, perf_fd, buffer, string_size);
         ASSERT(written == string_size);
     }
