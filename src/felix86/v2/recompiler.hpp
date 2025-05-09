@@ -178,7 +178,7 @@ struct Recompiler {
         // RDI, RSI, RDX, R10, R8, R9 are allocated to a0, a1, a2, a3, a4, a5 to match the syscall abi and save some swapping instructions
         switch (reg) {
         case X86_REF_RIP: {
-            return biscuit::gp; // we set --no-relax flag so that we can allocate gpg
+            return biscuit::gp; // we set --no-relax flag so that we can allocate gp
         }
         case X86_REF_RAX: {
             return biscuit::x5;
