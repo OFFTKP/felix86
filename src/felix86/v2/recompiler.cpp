@@ -140,14 +140,12 @@ void Recompiler::emitDispatcher() {
         biscuit::GPR temp = scratch();
         biscuit::GPR temp2 = scratch();
         biscuit::GPR rip = scratch();
-        biscuit::GPR mask = scratch();
         biscuit::GPR ripreg = allocatedGPR(X86_REF_RIP);
         biscuit::Label not_equal;
         as.LI(temp, (u64)address_cache.data());
-        as.LI(mask, (1 << address_cache_bits) - 1);
-        as.AND(temp2, ripreg, mask);
+        as.SLLI(temp2, ripreg, 64 - address_cache_bits);
         // Multiply by 16, which is size of each address cache entry
-        as.SLLI(temp2, temp2, 4);
+        as.SRLI(temp2, temp2, 64 - address_cache_bits - 4);
         as.ADD(temp, temp, temp2);
         as.LD(temp2, 8, temp); // read the AddressCacheEntry::guest field
         as.BNE(temp2, ripreg, &not_equal);
@@ -158,7 +156,6 @@ void Recompiler::emitDispatcher() {
         as.JR(rip);
 
         as.Bind(&not_equal);
-        popScratch();
         popScratch();
         popScratch();
         popScratch();
