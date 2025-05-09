@@ -143,6 +143,7 @@ void Recompiler::emitDispatcher() {
         popScratch();
         popScratch();
         popScratch();
+        popScratch();
     }
 
     writebackState();
