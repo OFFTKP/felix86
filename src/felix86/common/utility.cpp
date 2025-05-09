@@ -406,6 +406,8 @@ void dump_states() {
     }
 }
 
+// TODO: Super slow as it reconstructs the entire thing when mmapping a file
+// TODO: Only add the new symbols
 void update_symbols() {
     if (g_symbols_cached) {
         return;

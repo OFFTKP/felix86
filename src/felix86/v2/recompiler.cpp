@@ -373,7 +373,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
             symbol = get_perf_symbol(rip);
         } else {
-            symbol = fmt::format("block_{:x}", block_meta.guest_address);
+            symbol = fmt::format("block_0x{:x}", block_meta.guest_address);
         }
         g_process_globals.perf->addToFile(block_meta.address, size, symbol);
     }
