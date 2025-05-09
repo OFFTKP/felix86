@@ -233,7 +233,7 @@ void Recompiler::emitDispatcher() {
         char buffer[4096];
         int string_size = snprintf(buffer, 4096, "%lx %lx felix86 dispatcher", (u64)enter_dispatcher, size);
         int written = syscall(SYS_write, perf_fd, buffer, string_size);
-        ASSERT_MSG(written == string_size, "%lx != %lx", written, string_size);
+        ASSERT_MSG(written == string_size, "%lx != %lx (errno: %d)", written, string_size, errno);
     }
 }
 
