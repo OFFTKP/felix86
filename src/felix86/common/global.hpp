@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <vector>
 #include <unistd.h>
-#include "felix86/common/perf.hpp"
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/start_params.hpp"
 #include "felix86/common/utility.hpp"
