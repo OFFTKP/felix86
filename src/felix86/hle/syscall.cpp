@@ -20,6 +20,7 @@
 #include <unistd.h>
 #undef VMIN
 #include "felix86/common/log.hpp"
+#include "felix86/common/perf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/strace.hpp"
 #include "felix86/common/symlink.hpp"
