@@ -384,9 +384,9 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
             update_symbols();
         }
 
-        std::string symbol = get_region(rip);
+        std::filesystem::path symbol = get_region(rip);
         size_t size = block_meta.address_end - block_meta.address;
-        g_process_globals.perf->addToFile(block_meta.address, size, symbol);
+        g_process_globals.perf->addToFile(block_meta.address, size, "guest " + symbol.filename().string());
     }
 
     return start;
