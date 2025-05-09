@@ -1,5 +1,4 @@
 #include <csignal>
-#include <fstream>
 #include <errno.h>
 #include <fcntl.h>
 #include <fmt/format.h>
@@ -654,10 +653,11 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         }
 
         if (result > 0 && g_config.perf_libs && (int)arg5 != -1) {
-            std::ifstream ifs("/proc/self/fd/" + std::to_string(arg5));
-            std::filesystem::path name;
-            ifs >> name;
-            state->recompiler->addToPerfFile(fmt::format("{:x} {:x} guest_{}", (u64)result, arg2, name.filename().string()));
+            char buffer[PATH_MAX];
+            std::string path = "/proc/self/fd/" + std::to_string(arg5);
+            size_t size = readlink(path.c_str(), buffer, PATH_MAX);
+            buffer[size] = 0;
+            state->recompiler->addToPerfFile(fmt::format("{:x} {:x} guest_{}", (u64)result, arg2, buffer));
         }
         break;
     }
@@ -1652,10 +1652,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
 
             if (result > 0 && g_config.perf_libs && (int)arg5 != -1) {
-                std::ifstream ifs("/proc/self/fd/" + std::to_string(arg5));
-                std::filesystem::path name;
-                ifs >> name;
-                state->recompiler->addToPerfFile(fmt::format("{:x} {:x} guest_{}", (u64)result, arg2, name.filename().string()));
+                char buffer[PATH_MAX];
+                std::string path = "/proc/self/fd/" + std::to_string(arg5);
+                size_t size = readlink(path.c_str(), buffer, PATH_MAX);
+                buffer[size] = 0;
+                state->recompiler->addToPerfFile(fmt::format("{:x} {:x} guest_{}", (u64)result, arg2, buffer));
             }
             break;
         }
