@@ -1568,23 +1568,14 @@ FAST_HANDLE(DIV) {
         // we can use our RISC-V divide instruction rather than calling a function to emulate 128-bit div
         biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
         biscuit::GPR rdx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
-        biscuit::Label do_64bit, end;
+        biscuit::Label do_128bit, end;
 
-        // Trick to check if val == 0 || val == -1
-        biscuit::GPR scratch = rec.scratch();
-        as.ADDI(scratch, rdx, 1);
-        as.SLTIU(scratch, scratch, 2);
-        as.BNEZ(scratch, &do_64bit);
+        biscuit::GPR rax_sext = rec.scratch();
+        as.SRAI(rax_sext, rax, 63);
+        as.BNE(rax_sext, rdx, &do_128bit);
+        rec.popScratch();
 
         // We need a slow 128-bit divide...
-        rec.writebackState();
-        as.MV(a1, src);
-        as.MV(a0, rec.threadStatePointer());
-        rec.call((u64)&felix86_divu128);
-        rec.restoreState();
-        as.J(&end);
-
-        as.Bind(&do_64bit);
 
         biscuit::GPR mod = rec.scratch();
         biscuit::GPR div = rec.scratch();
@@ -1594,6 +1585,15 @@ FAST_HANDLE(DIV) {
 
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, div);
         rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, mod);
+
+        as.J(&end);
+
+        as.Bind(&do_128bit);
+        rec.writebackState();
+        as.MV(a1, src);
+        as.MV(a0, rec.threadStatePointer());
+        rec.call((u64)&felix86_divu128);
+        rec.restoreState();
 
         as.Bind(&end);
         break;
