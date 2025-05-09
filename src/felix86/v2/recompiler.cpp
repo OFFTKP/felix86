@@ -92,7 +92,7 @@ Recompiler::~Recompiler() {
 
 void Recompiler::addToPerfFile(const std::string& symbol) {
     int written = syscall(SYS_write, perf_fd, symbol.data(), symbol.size());
-    ASSERT(written == symbol.size());
+    ASSERT_MSG(written == symbol.size(), "%lx != %lx (errno: %d)", written, symbol.size(), errno);
 }
 
 void Recompiler::emitNecessaryStuff() {
