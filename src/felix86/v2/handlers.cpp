@@ -3621,15 +3621,17 @@ FAST_HANDLE(CMPSB) {
     biscuit::GPR src1 = rec.scratch();
     biscuit::GPR src2 = rec.scratch();
     biscuit::GPR result = rec.scratch();
+
+    x86_size_e size = rec.zydisToSize(width);
     biscuit::GPR df = rec.scratch();
     as.LBU(df, offsetof(ThreadState, df), rec.threadStatePointer());
-    x86_size_e size = rec.zydisToSize(width);
 
     Label end;
     as.LI(temp, -width / 8);
     as.BNEZ(df, &end);
     as.LI(temp, width / 8);
     as.Bind(&end);
+    rec.popScratch(); // pop df
 
     Label loop_end, loop_body;
     if (HAS_REP) {
@@ -5881,6 +5883,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             as.SC_W(Ordering::AQRL, tmp, tmp, address_aligned);
             as.BNEZ(tmp, &start);
             as.Bind(&not_equal);
+            rec.popScratch();
             rec.popScratch();
             rec.popScratch();
 
