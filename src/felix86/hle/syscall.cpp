@@ -625,12 +625,6 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_mmap: {
-        if ((int)arg5 != -1) {
-            // uses file descriptor, mmaps file to memory, may need to update mappings
-            // this can occur when using something like dlopen or when the interpreter initially loads the symbols
-            g_symbols_cached = false;
-        }
-
 #ifndef MAP_32BIT
 #define MAP_32BIT 0x40
 #endif
@@ -651,15 +645,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // If there's any blocks in any threads that match this mmapped range they need to be invalidated
         if (result > 0) {
             Recompiler::invalidateRangeGlobal(result, result + arg2);
-        }
 
-        if (result > 0 && g_config.perf_libs && (int)arg5 != -1) {
-            char buffer[PATH_MAX];
-            std::string path = "/proc/self/fd/" + std::to_string(arg5);
-            size_t size = readlink(path.c_str(), buffer, PATH_MAX);
-            buffer[size] = 0;
-            std::filesystem::path final_path = buffer;
-            g_process_globals.perf->addToFile((u64)result, arg2, final_path.filename());
+            if ((int)arg5 != -1) {
+                // uses file descriptor, mmaps file to memory, may need to update mappings
+                // this can occur when using something like dlopen or when the interpreter initially loads the symbols
+                g_symbols_cached = false;
+            }
         }
         break;
     }
@@ -1651,15 +1642,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
             if (result > 0) {
                 Recompiler::invalidateRangeGlobal(result, result + arg2);
-            }
 
-            if (result > 0 && g_config.perf_libs && (int)arg5 != -1) {
-                char buffer[PATH_MAX];
-                std::string path = "/proc/self/fd/" + std::to_string(arg5);
-                size_t size = readlink(path.c_str(), buffer, PATH_MAX);
-                buffer[size] = 0;
-                std::filesystem::path final_path = buffer;
-                g_process_globals.perf->addToFile((u64)result, arg2, final_path.filename());
+                if ((int)arg5 != -1) {
+                    g_symbols_cached = false;
+                }
             }
             break;
         }

@@ -363,21 +363,30 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     markPagesAsReadOnly(rip, end_rip);
 
     if (g_config.perf_blocks || g_config.perf_symbols) {
-        BlockMetadata& metadata = getBlockMetadata(rip);
-
         std::string symbol;
-        size_t size = metadata.address_end - metadata.address;
+        size_t size = block_meta.address_end - block_meta.address;
         if (g_config.perf_symbols) {
-            // Executed region not found, update the symbols
             if (!has_region(rip)) {
+                // Executed region not found, update the symbols
                 update_symbols();
             }
 
             symbol = get_perf_symbol(rip);
         } else {
-            symbol = fmt::format("block_{}", metadata.guest_address);
+            symbol = fmt::format("block_{:x}", block_meta.guest_address);
         }
-        g_process_globals.perf->addToFile(metadata.address, size, symbol);
+        g_process_globals.perf->addToFile(block_meta.address, size, symbol);
+    }
+
+    if (g_config.perf_libs) {
+        if (!has_region(rip)) {
+            // Executed region not found, update the symbols
+            update_symbols();
+        }
+
+        std::string symbol = get_region(rip);
+        size_t size = block_meta.address_end - block_meta.address;
+        g_process_globals.perf->addToFile(block_meta.address, size, symbol);
     }
 
     return start;

@@ -48,6 +48,7 @@ int clear_breakpoints();
 
 void print_address(u64 address);
 
+std::string get_region(u64 address);
 bool has_region(u64 address);
 
 void update_symbols();
