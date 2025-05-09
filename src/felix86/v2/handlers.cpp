@@ -821,7 +821,8 @@ FAST_HANDLE(CALL) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
-        rec.setRip(src);
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        as.MV(ripreg, src);
         biscuit::GPR rsp = rec.getRefGPR(X86_REF_RSP, rec.stackWidth());
         as.ADDI(rsp, rsp, -rec.stackPointerSize());
         rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
@@ -848,7 +849,8 @@ FAST_HANDLE(CALL) {
 
         rec.addi(scratch, scratch, displacement);
 
-        rec.setRip(scratch);
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        as.MV(ripreg, scratch);
         rec.jumpAndLink(rip + instruction.length + displacement);
         rec.stopCompiling();
         break;
@@ -875,7 +877,9 @@ FAST_HANDLE(RET) {
     rec.addi(rsp, rsp, imm);
 
     rec.setRefGPR(X86_REF_RSP, rec.stackWidth(), rsp);
-    rec.setRip(scratch);
+
+    biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+    as.MV(ripreg, scratch);
     rec.backToDispatcher();
     rec.stopCompiling();
 }
@@ -1478,7 +1482,8 @@ FAST_HANDLE(JMP) {
     case ZYDIS_OPERAND_TYPE_REGISTER:
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR src = rec.getOperandGPR(&operands[0]);
-        rec.setRip(src);
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        as.MV(ripreg, src);
         rec.backToDispatcher();
         rec.stopCompiling();
         break;
@@ -1486,9 +1491,8 @@ FAST_HANDLE(JMP) {
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {
         u64 displacement = rec.sextImmediate(rec.getImmediate(&operands[0]), operands[0].imm.size);
         u64 address = rip + instruction.length + displacement;
-        biscuit::GPR scratch = rec.scratch();
-        as.LI(scratch, address);
-        rec.setRip(scratch);
+        biscuit::GPR ripreg = rec.allocatedGPR(X86_REF_RIP);
+        as.LI(ripreg, address);
         rec.jumpAndLink(rip + instruction.length + displacement);
         rec.stopCompiling();
         break;

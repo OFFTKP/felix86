@@ -480,9 +480,8 @@ u64 Recompiler::compileSequence(u64 rip) {
             if (using_mmx) {
                 switchToX87();
             }
-            biscuit::GPR rip_after = scratch();
+            biscuit::GPR rip_after = allocatedGPR(X86_REF_RIP);
             as.LI(rip_after, rip);
-            setRip(rip_after);
             backToDispatcher();
             stopCompiling();
         }
@@ -1422,6 +1421,9 @@ void Recompiler::writebackState() {
 
     switchToX87();
 
+    biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
+    as.SD(rip, offsetof(ThreadState, rip), threadStatePointer());
+
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
         as.SD(allocatedGPR(ref), offsetof(ThreadState, gprs) + i * sizeof(u64), threadStatePointer());
@@ -1473,6 +1475,9 @@ void Recompiler::restoreState() {
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
+
+    biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
+    as.LD(rip, offsetof(ThreadState, rip), threadStatePointer());
 
     for (int i = 0; i < 16; i++) {
         x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
@@ -1926,16 +1931,6 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
     as.ANDI(sf, sf, 1);
 }
 
-void Recompiler::setRip(biscuit::GPR rip) {
-    as.SD(rip, offsetof(ThreadState, rip), threadStatePointer());
-}
-
-biscuit::GPR Recompiler::getRip() {
-    biscuit::GPR rip = scratch();
-    as.LD(rip, offsetof(ThreadState, rip), threadStatePointer());
-    return rip;
-}
-
 void Recompiler::jumpAndLink(u64 rip) {
     if (!g_config.link) {
         // Just emit jump to dispatcher
@@ -1979,15 +1974,12 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     Label true_label;
     as.BNEZ(condition, &true_label);
 
-    biscuit::GPR gpr_false = scratch();
-    as.LI(gpr_false, rip_false);
-    setRip(gpr_false);
+    biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
+    as.LI(rip, rip_false);
     jumpAndLink(rip_false);
 
     as.Bind(&true_label);
-    biscuit::GPR gpr_true = scratch();
-    as.LI(gpr_true, rip_true);
-    setRip(gpr_true);
+    as.LI(rip, rip_true);
     jumpAndLink(rip_true);
 }
 

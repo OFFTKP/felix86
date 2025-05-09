@@ -14,6 +14,14 @@ endif()
 
 CheckGitSetup()
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+    # Since felix86 needs RVV, specify the ISA here to get some free wins in the C++ side
+    # Also use --no-relax so that the `gp` register is free to do as we please
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
+endif()
+
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 cmake_policy(SET CMP0083 NEW)
 include(CheckPIESupported)
@@ -34,13 +42,6 @@ endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-fallthrough -Werror=incompatible-pointer-types -Wall -fPIE")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=implicit-fallthrough -Wall -Werror=switch -fPIE")
-
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
-    # GDB decides to tell you the perfectly fine vector instructions don't exist if you
-    # don't specify the ISA here
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei")
-endif()
 
 add_compile_options($<$<COMPILE_LANGUAGE:CPP>:-fno-rtti> $<$<COMPILE_LANGUAGE:CPP>:-fno-exceptions>)
 
