@@ -150,7 +150,7 @@ void Recompiler::emitDispatcher() {
         as.SLLI(temp2, temp2, 4);
         as.ADD(temp, temp, temp2);
         as.LD(temp2, 8, temp); // read the AddressCacheEntry::guest field
-        as.BNE(rip, ripreg, &not_equal);
+        as.BNE(temp2, ripreg, &not_equal);
 
         // Address cache was correct, jump to host address
         as.LD(rip, 0, temp);
