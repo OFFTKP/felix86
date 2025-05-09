@@ -708,26 +708,20 @@
         "disassembly": "cvtss2sd xmm3, dword ptr [rdi]"
     },
     "f20f5ada": {
-        "instruction_count": 5,
+        "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMV.F.S        f28, v4",
-            "FCVT.S.D        f29, f28, dyn",
-            "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMV.S.F        v5, f29"
+            "VSETIVLI        zero, 1, e32, mf2, tu, mu",
+            "VFNCVT.F.F.W    v5, v4, none"
         ],
         "disassembly": "cvtsd2ss xmm3, xmm2"
     },
     "f20f5a1f": {
-        "instruction_count": 7,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
             "VLE8.V          v26, a0, none, 1",
-            "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMV.F.S        f28, v26",
-            "FCVT.S.D        f29, f28, dyn",
-            "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMV.S.F        v5, f29"
+            "VSETIVLI        zero, 1, e32, mf2, tu, mu",
+            "VFNCVT.F.F.W    v5, v26, none"
         ],
         "disassembly": "cvtsd2ss xmm3, qword ptr [rdi]"
     },

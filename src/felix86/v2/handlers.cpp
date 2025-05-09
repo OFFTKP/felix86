@@ -6397,14 +6397,9 @@ FAST_HANDLE(CVTSS2SD) {
 FAST_HANDLE(CVTSD2SS) {
     biscuit::Vec dst = rec.getOperandVec(&operands[0]);
     biscuit::Vec src = rec.getOperandVec(&operands[1]);
-    biscuit::FPR temp = rec.scratchFPR();
-    biscuit::FPR temp2 = rec.scratchFPR();
 
-    rec.setVectorState(SEW::E64, 1);
-    as.VFMV_FS(temp, src);
-    as.FCVT_S_D(temp2, temp);
-    rec.setVectorState(SEW::E32, 1);
-    as.VFMV_SF(dst, temp2);
+    rec.setVectorState(SEW::E32, 1, LMUL::MF2);
+    as.VFNCVT_F_F(dst, src);
 
     rec.setOperandVec(&operands[0], dst);
 }
