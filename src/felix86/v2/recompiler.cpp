@@ -131,7 +131,7 @@ void Recompiler::emitDispatcher() {
         // Multiply by 16, which is size of each address cache entry
         as.SLLI(temp2, temp2, 4);
         as.ADD(temp, temp, temp2);
-        as.LD(temp2, 8, temp);
+        as.LD(temp2, 8, temp); // read the AddressCacheEntry::guest field
         as.BNE(rip, temp2, &not_equal);
 
         // Address cache was correct, jump to host address
@@ -328,6 +328,12 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         for (u64 page = start_masked; page <= end_masked; page += 0x1000) {
             page_map[page].push_back(&block_meta);
         }
+    }
+
+    if (g_config.address_cache) {
+        AddressCacheEntry& entry = address_cache[block_meta.guest_address & ((1 << address_cache_bits) - 1)];
+        entry.host = block_meta.address;
+        entry.guest = block_meta.guest_address;
     }
 
     // If other blocks were waiting for this block to be linked, link them now
