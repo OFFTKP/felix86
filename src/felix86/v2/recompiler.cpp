@@ -68,7 +68,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
     }
 
     if (g_config.perf_block || g_config.perf_symbols || g_config.perf_global) {
-        std::string path = "/tmp/perf-" + std::to_string(gettid()) + ".map";
+        std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
         FILE* file = fopen(path.c_str(), "a");
         ASSERT(file);
         perf_fd = fileno(file);
