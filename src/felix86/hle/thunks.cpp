@@ -558,12 +558,10 @@ void Thunks::initialize() {
 #define X(libname, name, ...)                                                                                                                        \
     if (thunkptr::name == 0) {                                                                                                                       \
         thunkptr::name = (u64)dlsym(libvulkan, #name);                                                                                               \
-        if (thunkptr::name == 0) {                                                                                                                   \
-            ERROR("Failed to find symbol %s in %s, error: %s", #name, "libvulkan.so", dlerror());                                                    \
-        }                                                                                                                                            \
     }
 #include "vulkan_thunks.inc"
 #undef X
+    ASSERT_MSG(thunkptr::vkGetInstanceProcAddr != 0, "Failed to load symbols from overlayed Vulkan library");
     // gl_thunks are loaded from the getprocaddress functions
 }
 
