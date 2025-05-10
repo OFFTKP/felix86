@@ -217,7 +217,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     }
 
     if (!thunk) {
-        VERBOSE("Couldn't find signature for %s", name);
+        WARN("Couldn't find signature for %s", name);
         return nullptr;
     }
 
@@ -233,7 +233,6 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     memcpy(&memory[3], &host_ptr, sizeof(u64));
     memcpy(&memory[3 + 8], signature, sigsize);
     memory[3 + 8 + sigsize + 1] = 0xc3;
-    printf("mem: %p\n", memory);
     return memory;
 }
 
