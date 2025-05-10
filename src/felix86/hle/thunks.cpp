@@ -13,7 +13,6 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #else
 #include <cmath>
 #include <dlfcn.h>
-#include <xbyak/xbyak.h>
 #include "felix86/common/state.hpp"
 #include "felix86/hle/abi.hpp"
 #include "felix86/hle/libgl_guest_ptrs.hpp"
