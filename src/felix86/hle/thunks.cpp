@@ -13,6 +13,7 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #else
 #include <cmath>
 #include <dlfcn.h>
+#include <sys/mman.h>
 #include "felix86/common/state.hpp"
 #include "felix86/hle/abi.hpp"
 #include "felix86/hle/libgl_guest_ptrs.hpp"
@@ -222,7 +223,10 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
 
     const char* signature = thunk->signature;
     size_t sigsize = strlen(signature);
-    u8* memory = new u8[3 + 8 + sigsize + 1 + 1](); // zeroed out for null byte
+    // TODO: wasteful to create a new page every time
+    // We need a whole page because mprotect would otherwise ruin nearby malloced data
+    u8* memory = (u8*)mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ASSERT(memory != MAP_FAILED);
     memory[0] = 0x0f;
     memory[1] = 0x01;
     memory[2] = 0x39;
