@@ -237,6 +237,26 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     return memory;
 }
 
+VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks*, VkInstance* pInstance) {
+    // Remove debug callbacks from VkInstanceCreateInfo
+    VkBaseInStructure* base = (VkBaseInStructure*)pCreateInfo;
+    while (base->pNext) {
+        VkBaseInStructure* next = (VkBaseInStructure*)base->pNext;
+        if (next->sType == VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT) {
+            base->pNext = next->pNext;
+        }
+
+        if (!base->pNext) {
+            break;
+        }
+
+        base = (VkBaseInStructure*)base->pNext;
+    }
+
+    static auto actual = (VkResult(*)(const VkInstanceCreateInfo*, const VkAllocationCallbacks*, VkInstance*))dlsym(libvulkan, "vkCreateInstance");
+    return actual(pCreateInfo, nullptr, pInstance);
+}
+
 // TODO: Kinda wasteful to code cache if this gets called more than once per name
 void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
     PLAIN("vkGetInstanceProcAddr: %s", name);
@@ -506,6 +526,7 @@ void Thunks::initialize() {
     thunkptr::glXSelectEvent = (u64)felix86_thunk_glXSelectEvent;
     thunkptr::glXGetSelectedEvent = (u64)felix86_thunk_glXGetSelectedEvent;
 
+    thunkptr::vkCreateInstance = (u64)felix86_thunk_vkCreateInstance;
     thunkptr::vkGetInstanceProcAddr = (u64)felix86_thunk_vkGetInstanceProcAddr;
     thunkptr::vkGetDeviceProcAddr = (u64)felix86_thunk_vkGetDeviceProcAddr;
 
