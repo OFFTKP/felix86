@@ -1,4 +1,3 @@
-#include "felix86/hle/libgl_guest_ptrs.hpp"
 #include "felix86/hle/thunks.hpp"
 
 // Thunks need libX11
@@ -15,6 +14,8 @@ void Thunks::runConstructor(const char* libname, GuestPointers* pointers) {}
 #include <cmath>
 #include <dlfcn.h>
 #include "felix86/common/state.hpp"
+#include "felix86/hle/abi.hpp"
+#include "felix86/hle/libgl_guest_ptrs.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 #include <X11/Xlibint.h>
@@ -23,6 +24,7 @@ void Thunks::runConstructor(const char* libname, GuestPointers* pointers) {}
 static void* libGLX = nullptr;
 static void* libX11 = nullptr;
 static void* libEGL = nullptr;
+static void* libvulkan = nullptr;
 
 using XGetVisualInfoType = decltype(&XGetVisualInfo);
 using XSyncType = decltype(&XSync);
@@ -122,82 +124,15 @@ XVisualInfo* getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
     }
 }
 
-biscuit::GPR gprarg(int i) {
-    switch (i) {
-    case 0:
-        return a0;
-    case 1:
-        return a1;
-    case 2:
-        return a2;
-    case 3:
-        return a3;
-    case 4:
-        return a4;
-    case 5:
-        return a5;
-    case 6:
-        return a6;
-    case 7:
-        return a7;
-    default:
-        ERROR("Invalid GPR argument index: %d", i);
-        return x0;
-    }
-}
-
-biscuit::FPR fprarg(int i) {
-    switch (i) {
-    case 0:
-        return fa0;
-    case 1:
-        return fa1;
-    case 2:
-        return fa2;
-    case 3:
-        return fa3;
-    case 4:
-        return fa4;
-    case 5:
-        return fa5;
-    case 6:
-        return fa6;
-    case 7:
-        return fa7;
-    default:
-        ERROR("Invalid FPR argument index: %d", i);
-        return fa0;
-    }
-}
-
-int x86offset(int i) {
-    switch (i) {
-    case 0:
-        return offsetof(ThreadState, gprs) + (8 * (X86_REF_RDI - X86_REF_RAX));
-    case 1:
-        return offsetof(ThreadState, gprs) + (8 * (X86_REF_RSI - X86_REF_RAX));
-    case 2:
-        return offsetof(ThreadState, gprs) + (8 * (X86_REF_RDX - X86_REF_RAX));
-    case 3:
-        return offsetof(ThreadState, gprs) + (8 * (X86_REF_RCX - X86_REF_RAX));
-    case 4:
-        return offsetof(ThreadState, gprs) + (8 * (X86_REF_R8 - X86_REF_RAX));
-    case 5:
-        return offsetof(ThreadState, gprs) + (8 * (X86_REF_R9 - X86_REF_RAX));
-    default:
-        ERROR("Invalid x86 offset index: %d", i);
-        return 0;
-    }
-}
-
 // Actual host function pointers
 // u64's as we don't really care about the type here,
 // these are just pointers for the assembler to create trampolines
 namespace thunkptr {
 #define X(libname, name, ...) u64 name = 0;
-#include "egl_thunks.inc" // <- these are loaded on Thunks::Initialize
-#include "gl_thunks.inc"  // <- these are loaded on felix86_thunk_glXGetProcAddress, as they are requested
-#include "glx_thunks.inc" // <- these are loaded on Thunks::Initialize
+#include "egl_thunks.inc"    // <- these are loaded on Thunks::Initialize
+#include "gl_thunks.inc"     // <- these are loaded on felix86_thunk_glXGetProcAddress, as they are requested
+#include "glx_thunks.inc"    // <- these are loaded on Thunks::Initialize
+#include "vulkan_thunks.inc" // <- these are loaded on Thunks::Initialize
 #undef X
 } // namespace thunkptr
 
@@ -504,12 +439,18 @@ void Thunks::initialize() {
     if (!libX11) {
         ERROR("I couldn't open libX11.so, error: %s", dlerror());
     }
-#endif
 
     constexpr const char* egl_name = "libEGL.so.1";
     libEGL = dlopen(egl_name, RTLD_LAZY);
     if (!libEGL) {
         ERROR("I couldn't open libEGL.so, error: %s", dlerror());
+    }
+#endif
+
+    constexpr const char* vulkan_name = "libvulkan.so.1";
+    libvulkan = dlopen(vulkan_name, RTLD_LAZY);
+    if (!libvulkan) {
+        ERROR("I couldn't open libvulkan.so, error: %s", dlerror());
     }
 
 #if 0
@@ -522,7 +463,6 @@ void Thunks::initialize() {
     }
 #include "glx_thunks.inc"
 #undef X
-#endif
 #define X(libname, name, ...)                                                                                                                        \
     if (thunkptr::name == 0) {                                                                                                                       \
         thunkptr::name = (u64)dlsym(libEGL, #name);                                                                                                  \
@@ -532,36 +472,19 @@ void Thunks::initialize() {
     }
 #include "egl_thunks.inc"
 #undef X
+#endif
+#define X(libname, name, ...)                                                                                                                        \
+    if (thunkptr::name == 0) {                                                                                                                       \
+        thunkptr::name = (u64)dlsym(libvulkan, #name);                                                                                               \
+        if (thunkptr::name == 0) {                                                                                                                   \
+            ERROR("Failed to find symbol %s in %s, error: %s", #name, "libvulkan.so", dlerror());                                                    \
+        }                                                                                                                                            \
+    }
+#include "vulkan_thunks.inc"
+#undef X
     // gl_thunks are loaded from the getprocaddress functions
 }
 
-/*
-    We use a custom signature format to describe the function.
-    return type, _, arguments.
-
-    void -> v
-    integer -> q, d, w, b with x86 naming convention (qword, dword, word, byte)
-    float, double -> F, D
-    add others here when we need them (will we?)
-
-    example:
-    v_iif -> void my_func(int a, short b, float c)
-
-    We only thunk simple functions so this should be fine.
-
-    x86-64 ABI:
-    If the class is INTEGER, the next available register of the sequence %rdi, %rsi, %rdx,
-    %rcx, %r8 and %r9 is used. Return value goes in %rax.
-
-    If the class is SSE, the next available vector register is used, the registers are taken
-    in the order from %xmm0 to %xmm7. Return value goes in %xmm0.
-
-    Note: When x86-64 functions return they zero the upper 96 or 64 bits of xmm0.
-
-    RISC-V ABI:
-    Uses a0-a7, fa0-fa7. This is enough for our purposes.
-    Return value goes in a0 or fa0.
-*/
 void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* name) {
     if (!name) {
         return nullptr;
@@ -587,94 +510,11 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
     ASSERT_MSG(target != 0, "Symbol has nullptr address: %s", name);
 
     void* trampoline = as.GetCursorPointer();
-    char return_type = signature[0];
 
-    ASSERT(signature[1] == '_'); // maybe in the future separating arguments and return type will be useful (it won't)
-
-    // Check if we have arguments
-    std::vector<char> arguments;
-    if (signature.size() > 1) {
-        arguments = std::vector<char>(signature.begin() + 2, signature.end());
-    }
-
-    int current_int_arg = 0;
-    int current_float_arg = 0;
-    for (size_t i = 0; i < arguments.size(); i++) {
-        switch (arguments[i]) {
-        case 'q':
-            as.LD(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
-            current_int_arg++;
-            ASSERT(current_int_arg <= 6);
-            break;
-        case 'd':
-            as.LWU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
-            current_int_arg++;
-            ASSERT(current_int_arg <= 6);
-            break;
-        case 'w':
-            as.LHU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
-            current_int_arg++;
-            ASSERT(current_int_arg <= 6);
-            break;
-        case 'b':
-            as.LBU(gprarg(current_int_arg), x86offset(current_int_arg), Recompiler::threadStatePointer());
-            current_int_arg++;
-            ASSERT(current_int_arg <= 6);
-            break;
-        case 'F':
-            as.FLW(fprarg(current_float_arg), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * current_float_arg), Recompiler::threadStatePointer());
-            current_float_arg++;
-            ASSERT(current_float_arg <= 8);
-            break;
-        case 'D':
-            as.FLD(fprarg(current_float_arg), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * current_float_arg), Recompiler::threadStatePointer());
-            current_float_arg++;
-            ASSERT(current_float_arg <= 8);
-            break;
-        default:
-            ERROR("Unknown argument type: %c", arguments[i]);
-            break;
-        }
-    }
-
+    ABIMarshaller marshaller(signature);
+    marshaller.emitPrologue(as);
     Recompiler::call(as, target);
-
-    // Save return value to the correct x86-64 register
-    switch (return_type) {
-    case 'b':
-        // Preserves top bits in x86-64
-        as.SB(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
-        break;
-    case 'w':
-        // Preserves top bits in x86-64
-        as.SH(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
-        break;
-    case 'd':
-        as.SW(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
-        as.SW(x0, offsetof(ThreadState, gprs) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
-        break;
-    case 'q':
-        as.SD(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
-        break;
-    case 'F':
-        as.FSW(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
-        as.SW(x0, offsetof(ThreadState, xmm) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
-        for (int i = 1; i < Recompiler::maxVlen() / 64; i++) {
-            as.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
-        }
-        break;
-    case 'D':
-        as.FSD(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
-        for (int i = 1; i < Recompiler::maxVlen() / 64; i++) {
-            as.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
-        }
-        break;
-    case 'v':
-        // No return value
-        break;
-    default:
-        ERROR("Unknown return type: %c", return_type);
-    }
+    marshaller.emitEpilogue(as);
 
     return trampoline;
 }

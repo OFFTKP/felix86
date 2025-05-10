@@ -1,4 +1,4 @@
-// Read thunks.hpp -> signature format
+// Read abi.cpp -> signature format
 // X(lib name, func name, signature)
 X("libEGL.so", eglBindAPI, d_d)
 X("libEGL.so", eglDestroyContext, d_qq)

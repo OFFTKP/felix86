@@ -1,4 +1,4 @@
-// Read thunks.hpp -> signature format
+// Read abi.cpp -> signature format
 // X(lib name, func name, signature)
 X("libGLX.so", glXChooseVisual, q_qdq)
 X("libGLX.so", glXCreateContext, q_qqqd)

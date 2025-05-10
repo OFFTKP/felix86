@@ -286,44 +286,65 @@ void initialize_globals() {
         std::string srootfs = g_config.rootfs_path.string();
 
         // TODO: should probably not be done here?
-        std::filesystem::path glx_thunk;
-        bool found_glx = false;
+        // std::filesystem::path glx_thunk;
+        // bool found_glx = false;
 
-        auto check_glx = [&](const char* path) {
-            if (!found_glx && std::filesystem::exists(thunks / path)) {
-                glx_thunk = thunks / path;
-                found_glx = true;
+        // auto check_glx = [&](const char* path) {
+        //     if (!found_glx && std::filesystem::exists(thunks / path)) {
+        //         glx_thunk = thunks / path;
+        //         found_glx = true;
+        //     }
+        // };
+
+        // check_glx("libGLX.so.0");
+        // check_glx("libGLX.so");
+        // check_glx("libGLX-thunked.so");
+
+        // if (!glx_thunk.empty()) {
+        //     Overlays::addOverlay("libGLX.so.0", glx_thunk);
+        // } else {
+        //     WARN("I couldn't find libGLX-thunked.so in %s", thunks.c_str());
+        // }
+
+        // std::filesystem::path egl_thunk;
+        // bool found_egl = false;
+
+        // auto check_egl = [&](const char* path) {
+        //     if (!found_egl && std::filesystem::exists(thunks / path)) {
+        //         egl_thunk = thunks / path;
+        //         found_egl = true;
+        //     }
+        // };
+
+        // check_egl("libEGL.so.1");
+        // check_egl("libEGL.so");
+        // check_egl("libEGL-thunked.so");
+
+        // if (!egl_thunk.empty()) {
+        //     Overlays::addOverlay("libEGL.so.1", egl_thunk);
+        // } else {
+        //     WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
+        // }
+
+        std::filesystem::path vulkan_thunk;
+        bool found_vulkan = false;
+
+        auto check_vulkan = [&](const char* path) {
+            if (!found_vulkan && std::filesystem::exists(thunks / path)) {
+                vulkan_thunk = thunks / path;
+                found_vulkan = true;
             }
         };
 
-        check_glx("libGLX.so.0");
-        check_glx("libGLX.so");
-        check_glx("libGLX-thunked.so");
+        check_vulkan("libvulkan.so.1");
+        check_vulkan("libvulkan.so");
+        check_vulkan("libvulkan-thunked.so");
 
-        if (!glx_thunk.empty()) {
-            Overlays::addOverlay("libGLX.so.0", glx_thunk);
+        if (!vulkan_thunk.empty()) {
+            Overlays::addOverlay("libvulkan.so.1", vulkan_thunk);
+            Overlays::addOverlay("libvulkan.so", vulkan_thunk);
         } else {
-            WARN("I couldn't find libGLX-thunked.so in %s", thunks.c_str());
-        }
-
-        std::filesystem::path egl_thunk;
-        bool found_egl = false;
-
-        auto check_egl = [&](const char* path) {
-            if (!found_egl && std::filesystem::exists(thunks / path)) {
-                egl_thunk = thunks / path;
-                found_egl = true;
-            }
-        };
-
-        check_egl("libEGL.so.1");
-        check_egl("libEGL.so");
-        check_egl("libEGL-thunked.so");
-
-        if (!egl_thunk.empty()) {
-            Overlays::addOverlay("libEGL.so.1", egl_thunk);
-        } else {
-            WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
+            WARN("I couldn't find libvulkan.so in %s", thunks.c_str());
         }
     }
 

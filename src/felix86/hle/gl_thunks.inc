@@ -1,4 +1,4 @@
-// Read thunks.hpp -> signature format
+// Read abi.cpp -> signature format
 // These are the functions that can be loaded by glXGetProcAddress or eglGetProcAddress
 // X(lib name, func name, signature)
 

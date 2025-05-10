@@ -1,0 +1,385 @@
+#include "felix86/common/log.hpp"
+#include "felix86/common/state.hpp"
+#include "felix86/hle/abi.hpp"
+#include "felix86/v2/recompiler.hpp"
+
+biscuit::GPR gprarg(int i) {
+    switch (i) {
+    case 0:
+        return a0;
+    case 1:
+        return a1;
+    case 2:
+        return a2;
+    case 3:
+        return a3;
+    case 4:
+        return a4;
+    case 5:
+        return a5;
+    case 6:
+        return a6;
+    case 7:
+        return a7;
+    default:
+        ERROR("Invalid GPR argument index: %d", i);
+        return x0;
+    }
+}
+
+biscuit::FPR fprarg(int i) {
+    switch (i) {
+    case 0:
+        return fa0;
+    case 1:
+        return fa1;
+    case 2:
+        return fa2;
+    case 3:
+        return fa3;
+    case 4:
+        return fa4;
+    case 5:
+        return fa5;
+    case 6:
+        return fa6;
+    case 7:
+        return fa7;
+    default:
+        ERROR("Invalid FPR argument index: %d", i);
+        return fa0;
+    }
+}
+
+x86_ref_e x86arg(int i) {
+    switch (i) {
+    case 0:
+        return X86_REF_RDI;
+    case 1:
+        return X86_REF_RSI;
+    case 2:
+        return X86_REF_RDX;
+    case 3:
+        return X86_REF_RCX;
+    case 4:
+        return X86_REF_R8;
+    case 5:
+        return X86_REF_R9;
+    default:
+        ERROR("Invalid x86 offset index: %d", i);
+        return X86_REF_COUNT;
+    }
+}
+
+int get_size(char c) {
+    switch (c) {
+    case 'q':
+        return 8;
+    case 'd':
+        return 4;
+    case 'w':
+        return 2;
+    case 'b':
+        return 1;
+    case 'F':
+        return 4;
+    case 'D':
+        return 8;
+    default: {
+        ERROR("Unknown type: %c", c);
+        return 0;
+    }
+    }
+}
+
+struct x86_location {
+    enum {
+        reg,
+        stack,
+    } type;
+    union {
+        x86_ref_e reg;
+        u32 stack_position;
+    } value;
+};
+
+struct riscv_location {
+    enum {
+        gpr,
+        fpr,
+        stack,
+    } type;
+    union {
+        int reg_index;
+        u32 stack_position;
+    } value;
+};
+
+struct Marshalling {
+    x86_location x86;
+    riscv_location riscv;
+    int size;
+};
+
+ABIMarshaller::ABIMarshaller(const std::string& signature) : signature(signature) {}
+
+/*
+    We use a custom signature format to describe the function.
+    return type, _, arguments.
+
+    void -> v
+    integer -> q, d, w, b with x86 naming convention (qword, dword, word, byte)
+    float, double -> F, D
+    add others here when we need them (will we?)
+
+    example:
+    v_iif -> void my_func(int a, short b, float c)
+
+    We only thunk simple functions so this should be fine.
+
+    x86-64 ABI:
+    If the class is INTEGER, the next available register of the sequence %rdi, %rsi, %rdx,
+    %rcx, %r8 and %r9 is used. Return value goes in %rax.
+
+    If the class is SSE, the next available vector register is used, the registers are taken
+    in the order from %xmm0 to %xmm7. Return value goes in %xmm0.
+
+    Note: When x86-64 functions return they zero the upper 96 or 64 bits of xmm0.
+
+    RISC-V ABI:
+    Uses a0-a7, fa0-fa7. This is enough for our purposes.
+    Return value goes in a0 or fa0.
+*/
+void ABIMarshaller::emitPrologue(biscuit::Assembler& as) {
+    ASSERT(signature.size() >= 2);
+    ASSERT(signature[1] == '_');
+
+    int gprcount = 0;
+    int fprcount = 0;
+    int guest_stackpos = 8; // [rsp + 0] has the return address, arguments start at [rsp + 8]
+    int host_stackpos = 0;  // riscv starts at 0 since there's the ra reg
+    std::vector<Marshalling> marshallings;
+    for (size_t i = 2; i < signature.size(); i++) {
+        char type = signature[i];
+        switch (type) {
+        case 'q':
+        case 'd':
+        case 'w':
+        case 'b': {
+            Marshalling marshalling;
+            marshalling.size = get_size(type);
+            if (gprcount < 6) {
+                // x86 ABI has 6 GPR argument registers
+                x86_ref_e x86_reg = x86arg(gprcount);
+                marshalling.x86.type = x86_location::reg;
+                marshalling.x86.value.reg = x86_reg;
+
+                biscuit::GPR riscv_reg = gprarg(gprcount);
+                marshalling.riscv.type = riscv_location::gpr;
+                marshalling.riscv.value.reg_index = riscv_reg.Index();
+            } else if (gprcount == 6 || gprcount == 7) {
+                // Since RISC-V ABI has 8 GPR argument registers some x86 stack variables go to registers
+                int x86_pos = guest_stackpos;
+                marshalling.x86.type = x86_location::stack;
+                marshalling.x86.value.stack_position = x86_pos;
+
+                biscuit::GPR riscv_reg = gprarg(gprcount);
+                marshalling.riscv.type = riscv_location::gpr;
+                marshalling.riscv.value.reg_index = riscv_reg.Index();
+                guest_stackpos += 8;
+            } else {
+                int x86_pos = guest_stackpos;
+                marshalling.x86.type = x86_location::stack;
+                marshalling.x86.value.stack_position = x86_pos;
+
+                int riscv_pos = host_stackpos;
+                marshalling.riscv.type = riscv_location::stack;
+                marshalling.riscv.value.stack_position = riscv_pos;
+                guest_stackpos += 8;
+                host_stackpos += 8;
+            }
+            marshallings.push_back(marshalling);
+            gprcount++;
+            break;
+        }
+        case 'F':
+        case 'D': {
+            // Same as GPR but with FPRs
+            Marshalling marshalling;
+            marshalling.size = get_size(type);
+            if (fprcount < 8) {
+                // x86 ABI has 8 FPR argument registers, just like RISC-V
+                x86_ref_e x86_reg = (x86_ref_e)(X86_REF_XMM0 + fprcount);
+                marshalling.x86.type = x86_location::reg;
+                marshalling.x86.value.reg = x86_reg;
+
+                biscuit::FPR riscv_reg = fprarg(fprcount);
+                marshalling.riscv.type = riscv_location::fpr;
+                marshalling.riscv.value.reg_index = riscv_reg.Index();
+            } else {
+                int x86_pos = guest_stackpos;
+                marshalling.x86.type = x86_location::stack;
+                marshalling.x86.value.stack_position = x86_pos;
+
+                int riscv_pos = host_stackpos;
+                marshalling.riscv.type = riscv_location::stack;
+                marshalling.riscv.value.stack_position = riscv_pos;
+                guest_stackpos += 8;
+                host_stackpos += 8;
+            }
+            marshallings.push_back(marshalling);
+            fprcount++;
+            break;
+        }
+        default:
+            ERROR("Unknown argument type: %c", type);
+            break;
+        }
+    }
+
+    // Align stack to 16 bytes
+    host_stackpos += 15;
+    host_stackpos &= ~15;
+
+    stack_size = host_stackpos;
+
+    if (stack_size != 0) {
+        as.ADDI(sp, sp, -stack_size);
+    }
+
+    for (auto& marshalling : marshallings) {
+        biscuit::GPR address_reg;
+        int offset;
+        if (marshalling.x86.type == x86_location::stack) {
+            // State is written back before jumping to trampoline but it should still hold
+            // the correct value here
+            address_reg = Recompiler::allocatedGPR(X86_REF_RSP);
+            offset = marshalling.x86.value.stack_position;
+        } else {
+            address_reg = Recompiler::threadStatePointer();
+            if (marshalling.x86.value.reg >= X86_REF_RAX && marshalling.x86.value.reg <= X86_REF_R15) {
+                offset = offsetof(ThreadState, gprs) + (marshalling.x86.value.reg - X86_REF_RAX) * 8;
+            } else if (marshalling.x86.value.reg >= X86_REF_XMM0 && marshalling.x86.value.reg <= X86_REF_XMM15) {
+                offset = offsetof(ThreadState, xmm) + (marshalling.x86.value.reg - X86_REF_XMM0) * 16;
+            } else {
+                UNREACHABLE();
+            }
+        }
+
+        if (marshalling.riscv.type == riscv_location::gpr || marshalling.riscv.type == riscv_location::stack) {
+            biscuit::GPR dest_reg;
+            bool is_stack = false;
+            if (marshalling.riscv.type == riscv_location::stack) {
+                dest_reg = x7;
+                is_stack = true;
+                static_assert(Recompiler::isScratch(x7));
+            } else {
+                dest_reg = biscuit::GPR(marshalling.riscv.value.reg_index);
+            }
+
+            switch (marshalling.size) {
+            case 8: {
+                as.LD(dest_reg, offset, address_reg);
+                break;
+            }
+            case 4: {
+                as.LW(dest_reg, offset, address_reg);
+                break;
+            }
+            case 2: {
+                as.LH(dest_reg, offset, address_reg);
+                break;
+            }
+            case 1: {
+                as.LB(dest_reg, offset, address_reg);
+                break;
+            }
+            }
+
+            if (is_stack) {
+                switch (marshalling.size) {
+                case 8: {
+                    as.SD(dest_reg, marshalling.riscv.value.stack_position, sp);
+                    break;
+                }
+                case 4: {
+                    as.SW(dest_reg, marshalling.riscv.value.stack_position, sp);
+                    break;
+                }
+                case 2: {
+                    as.SH(dest_reg, marshalling.riscv.value.stack_position, sp);
+                    break;
+                }
+                case 1: {
+                    as.SB(dest_reg, marshalling.riscv.value.stack_position, sp);
+                    break;
+                }
+                }
+            }
+        } else if (marshalling.riscv.type == riscv_location::fpr) {
+            biscuit::FPR dest_reg = biscuit::FPR(marshalling.riscv.value.reg_index);
+            ASSERT(marshalling.x86.type == x86_location::reg);
+            ASSERT(address_reg == Recompiler::threadStatePointer());
+            switch (marshalling.size) {
+            case 8: {
+                as.FLD(dest_reg, offset, address_reg);
+                break;
+            }
+            case 4: {
+                as.FLW(dest_reg, offset, address_reg);
+                break;
+            }
+            }
+        } else {
+            UNREACHABLE();
+        }
+    }
+}
+
+void ABIMarshaller::emitEpilogue(biscuit::Assembler& as) {
+    char return_type = signature[0];
+
+    if (return_type != 'v') {
+        // Save return type directly to ThreadState struct
+        switch (return_type) {
+        case 'b':
+            // Preserves top bits in x86-64
+            as.SB(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+            break;
+        case 'w':
+            // Preserves top bits in x86-64
+            as.SH(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+            break;
+        case 'd':
+            as.SW(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+            as.SW(x0, offsetof(ThreadState, gprs) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
+            break;
+        case 'q':
+            as.SD(a0, offsetof(ThreadState, gprs) + 0, Recompiler::threadStatePointer());
+            break;
+        case 'F': {
+            as.FSW(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
+            as.SW(x0, offsetof(ThreadState, xmm) + 4, Recompiler::threadStatePointer()); // store 0 into bits 32-63
+            for (int i = 1; i < sizeof(XmmReg) / 8; i++) {
+                as.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
+            }
+            break;
+        }
+        case 'D': {
+            as.FSD(fa0, offsetof(ThreadState, xmm) + 0, Recompiler::threadStatePointer());
+            for (int i = 1; i < sizeof(XmmReg) / 8; i++) {
+                as.SD(x0, offsetof(ThreadState, xmm) + (i * 8), Recompiler::threadStatePointer());
+            }
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+    }
+
+    if (stack_size != 0) {
+        as.ADDI(sp, sp, stack_size);
+    }
+}

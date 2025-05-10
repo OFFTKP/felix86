@@ -69,6 +69,7 @@ set(FELIX86_COMMON_SOURCES
 )
 
 set(FELIX86_HLE_SOURCES
+    src/felix86/hle/abi.cpp
     src/felix86/hle/brk.cpp
     src/felix86/hle/cpuid.cpp
     src/felix86/hle/filesystem.cpp
