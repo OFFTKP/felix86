@@ -205,6 +205,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
     // 00 00 00 00 00 00 00 00 ; pointer we jump to
     // ... 00 ; signature const char*
+    // c3 ; ret
     const Thunk* thunk = nullptr;
     std::string sname = name;
     for (auto& meta : thunk_metadata) { // TODO: speed it up? only search vulkan
@@ -221,12 +222,13 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
 
     const char* signature = thunk->signature;
     size_t sigsize = strlen(signature);
-    u8* memory = new u8[3 + 8 + sigsize + 1](); // zeroed out for null byte
+    u8* memory = new u8[3 + 8 + sigsize + 1 + 1](); // zeroed out for null byte
     memory[0] = 0x0f;
     memory[1] = 0x01;
     memory[2] = 0x39;
     memcpy(&memory[3], &host_ptr, sizeof(u64));
     memcpy(&memory[3 + 8], signature, sigsize);
+    memory[3 + 8 + sigsize + 1] = 0xc1;
     return memory;
 }
 
