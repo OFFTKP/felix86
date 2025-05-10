@@ -217,7 +217,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     }
 
     if (!thunk) {
-        WARN("Couldn't find signature for %s", name);
+        VERBOSE("Couldn't find signature for %s", name);
         return nullptr;
     }
 
@@ -244,10 +244,10 @@ VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
         VkBaseInStructure* next = (VkBaseInStructure*)base->pNext;
         if (next->sType == VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT) {
             base->pNext = next->pNext;
-        }
 
-        if (!base->pNext) {
-            break;
+            if (!base->pNext) {
+                break;
+            }
         }
 
         base = (VkBaseInStructure*)base->pNext;
@@ -259,7 +259,7 @@ VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
 
 // TODO: Kinda wasteful to code cache if this gets called more than once per name
 void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
-    PLAIN("vkGetInstanceProcAddr: %s", name);
+    VERBOSE("vkGetInstanceProcAddr: %s", name);
     static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetInstanceProcAddr");
     void* ptr = actual(instance, name);
     if (ptr) {
@@ -274,7 +274,7 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
 }
 
 void* felix86_thunk_vkGetDeviceProcAddr(VkInstance instance, const char* name) {
-    PLAIN("vkGetDeviceProcAddr: %s", name);
+    VERBOSE("vkGetDeviceProcAddr: %s", name);
     static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetDeviceProcAddr");
     void* ptr = actual(instance, name);
     if (ptr) {
@@ -532,26 +532,26 @@ void Thunks::initialize() {
 
 #if 0
     constexpr const char* glx_name = "libGLX.so";
-    libGLX = dlopen(glx_name, RTLD_LAZY);
+    libGLX = dlopen(glx_name, RTLD_NOW | RTLD_LOCAL);
     if (!libGLX) {
         ERROR("I couldn't open libGLX.so, error: %s", dlerror());
     }
 
     constexpr const char* x11_name = "libX11.so";
-    libX11 = dlopen(x11_name, RTLD_LAZY);
+    libX11 = dlopen(x11_name, RTLD_NOW | RTLD_LOCAL);
     if (!libX11) {
         ERROR("I couldn't open libX11.so, error: %s", dlerror());
     }
 
     constexpr const char* egl_name = "libEGL.so.1";
-    libEGL = dlopen(egl_name, RTLD_LAZY);
+    libEGL = dlopen(egl_name, RTLD_NOW | RTLD_LOCAL);
     if (!libEGL) {
         ERROR("I couldn't open libEGL.so, error: %s", dlerror());
     }
 #endif
 
     constexpr const char* vulkan_name = "libvulkan.so.1";
-    libvulkan = dlopen(vulkan_name, RTLD_LAZY);
+    libvulkan = dlopen(vulkan_name, RTLD_NOW | RTLD_LOCAL);
     if (!libvulkan) {
         ERROR("I couldn't open libvulkan.so, error: %s", dlerror());
     }
