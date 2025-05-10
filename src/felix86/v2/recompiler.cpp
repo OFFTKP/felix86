@@ -1577,8 +1577,7 @@ void Recompiler::scanAhead(u64 rip) {
             }
         }
 
-        if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG && operands[0].mem.base == ZYDIS_REGISTER_RAX) {
-            // Super hack! After invlpg comes a string which the recompiler skips and we also need to skip here.
+        if (instruction.mnemonic == ZYDIS_MNEMONIC_INVLPG) {
             // Don't calculate any flags
             if (!g_config.paranoid) {
                 flag_access_cpazso[0].push_back({true, rip});
@@ -1589,11 +1588,21 @@ void Recompiler::scanAhead(u64 rip) {
                 flag_access_cpazso[5].push_back({true, rip});
             }
             ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
-            const char* string = (const char*)(rip + instruction.length);
-            size_t size = strlen(string);
-            ASSERT(size > 0);
-            rip += instruction.length + size + 1; // don't forget null terminator
-            continue;
+            if (operands[0].mem.base == ZYDIS_REGISTER_RAX) {
+                // Super hack! After invlpg [rax] comes a string which the recompiler skips and we also need to skip here.
+                const char* string = (const char*)(rip + instruction.length);
+                size_t size = strlen(string);
+                ASSERT(size > 0);
+                rip += instruction.length + size + 1; // don't forget null terminator
+                continue;
+            } else if (operands[0].mem.base == ZYDIS_REGISTER_RCX) {
+                // Super hack! After invlpg [rcx] comes an address and a string which the recompiler skips and we also need to skip here.
+                const char* string = (const char*)(rip + instruction.length + 8);
+                size_t size = strlen(string);
+                ASSERT(size > 0);
+                rip += instruction.length + 8 + size + 1; // don't forget null terminator
+                continue;
+            }
         }
 
         if (instruction.attributes & ZYDIS_ATTRIB_CPUFLAG_ACCESS) {
