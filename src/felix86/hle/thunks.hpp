@@ -11,7 +11,7 @@ struct GuestPointers {
 struct Thunks {
     static void initialize();
 
-    static void* generateTrampoline(Recompiler& rec, Assembler& as, const char* name);
+    static void* generateTrampoline(Recompiler& rec, const char* name);
 
     static void runConstructor(const char* libname, GuestPointers* pointers);
 };

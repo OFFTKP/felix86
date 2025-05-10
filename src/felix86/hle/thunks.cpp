@@ -4,11 +4,11 @@
 #ifndef BUILD_THUNKING
 void Thunks::initialize() {}
 
-void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* name) {
+void* Thunks::generateTrampoline(Recompiler&, const char*) {
     return nullptr;
 }
 
-void Thunks::runConstructor(const char* libname, GuestPointers* pointers) {}
+void Thunks::runConstructor(const char*, GuestPointers*) {}
 
 #else
 #include <cmath>
@@ -154,6 +154,15 @@ static Thunk thunk_metadata[] = {
 
 #undef X
 
+// We don't care about the internals
+using GLXContext = void*;
+using GLXDrawable = void*;
+using GLXPixmap = void*;
+using GLXFBConfig = void*;
+using GLXWindow = void*;
+using GLXPbuffer = void*;
+using VkInstance = void*;
+
 constexpr unsigned long hashstr(const char* str, int h = 0) {
     return !str[h] ? 55 : (hashstr(str, h + 1) * 33) + (unsigned char)(str[h]);
 }
@@ -161,6 +170,7 @@ constexpr unsigned long hashstr(const char* str, int h = 0) {
 void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* name), const char* name) {
     // Get the host pointer, return a pointer from libgl_guest_ptrs.hpp for the recompiler to generate a trampoline
     // when it is actually called.
+    // TODO: bad idea, return the pointer to a trampoline directly instead
     switch (hashstr(name)) {
 #define X(libname, function, ...)                                                                                                                    \
     case hashstr(#function):                                                                                                                         \
@@ -189,13 +199,19 @@ void* felix86_thunk_eglGetProcAddress(const char* name) {
     return felix86_thunk_GetProcAddressCommon(actual, name);
 }
 
-// We don't care about the internals
-using GLXContext = void*;
-using GLXDrawable = void*;
-using GLXPixmap = void*;
-using GLXFBConfig = void*;
-using GLXWindow = void*;
-using GLXPbuffer = void*;
+void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
+    PLAIN("vkGetInstanceProcAddr: %s", name);
+    static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetInstanceProcAddr");
+    void* ptr = actual(instance, name);
+    if (ptr) {
+        ThreadState* state = ThreadState::Get();
+        // TODO: Kinda wasteful to code cache if this gets called more than once per name
+        void* trampoline = Thunks::generateTrampoline(*state->recompiler, name);
+        return trampoline;
+    } else {
+        return nullptr;
+    }
+}
 
 #define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
 
@@ -486,7 +502,8 @@ void Thunks::initialize() {
     // gl_thunks are loaded from the getprocaddress functions
 }
 
-void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* name) {
+// TODO: cache these trampolines based on signature? call them with address on t5 or something
+void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
     if (!name) {
         return nullptr;
     }
@@ -504,6 +521,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, Assembler& as, const char* nam
         return nullptr;
     }
 
+    Assembler& as = rec.getAssembler();
     const std::string& signature = thunk->signature;
     const u64 target = *thunk->host_function;
 
