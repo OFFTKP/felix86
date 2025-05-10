@@ -73,6 +73,8 @@ x86_ref_e x86arg(int i) {
 
 int get_size(char c) {
     switch (c) {
+    case 'x':
+        return 0;
     case 'q':
         return 8;
     case 'd':
@@ -132,8 +134,11 @@ ABIMarshaller::ABIMarshaller(const std::string& signature) : signature(signature
     float, double -> F, D
     add others here when we need them (will we?)
 
+    `x` means zero this argument, useful for zeroing specific arguments
+    For example zeroing the allocation callbacks in Vulkan
+
     example:
-    v_iif -> void my_func(int a, short b, float c)
+    v_dwF -> void my_func(int a, short b, float c)
 
     We only thunk simple functions so this should be fine.
 
@@ -162,6 +167,7 @@ void ABIMarshaller::emitPrologue(biscuit::Assembler& as) {
     for (size_t i = 2; i < signature.size(); i++) {
         char type = signature[i];
         switch (type) {
+        case 'x':
         case 'q':
         case 'd':
         case 'w':
@@ -294,6 +300,14 @@ void ABIMarshaller::emitPrologue(biscuit::Assembler& as) {
                 as.LB(dest_reg, offset, address_reg);
                 break;
             }
+            case 0: { // size 0 means zero out this register, see justification in comments in emitPrologue func
+                as.MV(dest_reg, x0);
+                break;
+            }
+            default: {
+                UNREACHABLE();
+                break;
+            }
             }
 
             if (is_stack) {
@@ -312,6 +326,14 @@ void ABIMarshaller::emitPrologue(biscuit::Assembler& as) {
                 }
                 case 1: {
                     as.SB(dest_reg, marshalling.riscv.value.stack_position, sp);
+                    break;
+                }
+                case 0: {
+                    as.SD(x0, marshalling.riscv.value.stack_position, sp);
+                    break;
+                }
+                default: {
+                    UNREACHABLE();
                     break;
                 }
                 }

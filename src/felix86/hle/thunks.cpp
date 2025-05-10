@@ -14,6 +14,7 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #include <cmath>
 #include <dlfcn.h>
 #include <sys/mman.h>
+#include <vulkan/vulkan.h>
 #include "felix86/common/state.hpp"
 #include "felix86/hle/abi.hpp"
 #include "felix86/hle/libgl_guest_ptrs.hpp"
@@ -162,7 +163,6 @@ using GLXPixmap = void*;
 using GLXFBConfig = void*;
 using GLXWindow = void*;
 using GLXPbuffer = void*;
-using VkInstance = void*;
 
 constexpr unsigned long hashstr(const char* str, int h = 0) {
     return !str[h] ? 55 : (hashstr(str, h + 1) * 33) + (unsigned char)(str[h]);
@@ -263,6 +263,16 @@ void* felix86_thunk_vkGetDeviceProcAddr(VkInstance instance, const char* name) {
         WARN("Host vkGetDeviceProcAddr returned null for %s", name);
         return nullptr;
     }
+}
+
+VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+                                                      const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
+    // We don't wanna deal with callbacks and it wouldn't benefit us much to do so
+    return VK_SUCCESS;
+}
+
+void vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
+    // See vkCreateDebugReportCallbackEXT above
 }
 
 #define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
