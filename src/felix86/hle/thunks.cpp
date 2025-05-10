@@ -228,7 +228,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     memory[2] = 0x39;
     memcpy(&memory[3], &host_ptr, sizeof(u64));
     memcpy(&memory[3 + 8], signature, sigsize);
-    memory[3 + 8 + sigsize + 1] = 0xc1;
+    memory[3 + 8 + sigsize + 1] = 0xc3;
     printf("mem: %p\n", memory);
     return memory;
 }
