@@ -199,6 +199,37 @@ void* felix86_thunk_eglGetProcAddress(const char* name) {
     return felix86_thunk_GetProcAddressCommon(actual, name);
 }
 
+void* generate_guest_pointer(const char* name, u64 host_ptr) {
+    // We can't put this code in code cache, because it needs to outlive potential code cache clears
+    // So, we are going to leak memory! In the future we should cache these...
+    // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
+    // 00 00 00 00 00 00 00 00 ; pointer we jump to
+    // ... 00 ; signature const char*
+    const Thunk* thunk = nullptr;
+    std::string sname = name;
+    for (auto& meta : thunk_metadata) { // TODO: speed it up? only search vulkan
+        if (meta.function_name == sname) {
+            thunk = &meta;
+            break;
+        }
+    }
+
+    if (!thunk) {
+        WARN("Couldn't find signature for %s", name);
+        return nullptr;
+    }
+
+    const char* signature = thunk->signature;
+    size_t sigsize = strlen(signature);
+    u8* memory = new u8[3 + 8 + sigsize + 1](); // zeroed out for null byte
+    memory[0] = 0x0f;
+    memory[1] = 0x01;
+    memory[2] = 0x39;
+    memcpy(&memory[3], &host_ptr, sizeof(u64));
+    memcpy(&memory[3 + 8], signature, sigsize);
+    return memory;
+}
+
 // TODO: Kinda wasteful to code cache if this gets called more than once per name
 void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
     PLAIN("vkGetInstanceProcAddr: %s", name);
@@ -208,34 +239,7 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
         // We can't return `ptr` here because it's a host pointer
         // But we also can't return our own thunked pointers, we need to return the one
         // getprocaddr returned. So we generate an invlpg [rcx] to create a proper guest pointer that will jump to our pointer
-        // We can't put this code in code cache, because it needs to outlive potential code cache clears
-        // So, we are going to leak memory! In the future we should cache these...
-        // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
-        // 00 00 00 00 00 00 00 00 ; pointer we jump to
-        // ... 00 ; signature const char*
-        const Thunk* thunk = nullptr;
-        std::string sname = name;
-        for (auto& meta : thunk_metadata) { // TODO: speed it up? only search vulkan
-            if (meta.function_name == sname) {
-                thunk = &meta;
-                break;
-            }
-        }
-
-        if (!thunk) {
-            WARN("Couldn't find signature for %s", name);
-            return nullptr;
-        }
-
-        const char* signature = thunk->signature;
-        size_t sigsize = strlen(signature);
-        u8* memory = new u8[3 + 8 + sigsize + 1](); // zeroed out for null byte
-        memory[0] = 0x0f;
-        memory[1] = 0x01;
-        memory[2] = 0x39;
-        memcpy(&memory[3], ptr, sizeof(u64));
-        memcpy(&memory[3 + 8], signature, sigsize);
-        return memory;
+        return generate_guest_pointer(name, (u64)ptr);
     } else {
         WARN("Host vkGetInstanceProcAddr returned null for %s", name);
         return nullptr;
@@ -247,11 +251,9 @@ void* felix86_thunk_vkGetDeviceProcAddr(VkInstance instance, const char* name) {
     static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetDeviceProcAddr");
     void* ptr = actual(instance, name);
     if (ptr) {
-        ThreadState* state = ThreadState::Get();
-        // TODO: Kinda wasteful to code cache if this gets called more than once per name
-        void* trampoline = Thunks::generateTrampoline(*state->recompiler, name);
-        return trampoline;
+        return generate_guest_pointer(name, (u64)ptr);
     } else {
+        WARN("Host vkGetDeviceProcAddr returned null for %s", name);
         return nullptr;
     }
 }
