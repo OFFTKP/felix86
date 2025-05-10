@@ -149,6 +149,7 @@ static Thunk thunk_metadata[] = {
 #include "egl_thunks.inc"
 #include "gl_thunks.inc"
 #include "glx_thunks.inc"
+#include "vulkan_thunks.inc"
 };
 
 #undef X
