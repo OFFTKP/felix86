@@ -213,6 +213,20 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
     }
 }
 
+void* felix86_thunk_vkGetDeviceProcAddr(VkInstance instance, const char* name) {
+    PLAIN("vkGetDeviceProcAddr: %s", name);
+    static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetDeviceProcAddr");
+    void* ptr = actual(instance, name);
+    if (ptr) {
+        ThreadState* state = ThreadState::Get();
+        // TODO: Kinda wasteful to code cache if this gets called more than once per name
+        void* trampoline = Thunks::generateTrampoline(*state->recompiler, name);
+        return trampoline;
+    } else {
+        return nullptr;
+    }
+}
+
 #define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
 
 XVisualInfo* felix86_thunk_glXChooseVisual(Display* dpy, int screen, int* attribList) {
@@ -443,6 +457,9 @@ void Thunks::initialize() {
     thunkptr::glXQueryContext = (u64)felix86_thunk_glXQueryContext;
     thunkptr::glXSelectEvent = (u64)felix86_thunk_glXSelectEvent;
     thunkptr::glXGetSelectedEvent = (u64)felix86_thunk_glXGetSelectedEvent;
+
+    thunkptr::vkGetInstanceProcAddr = (u64)felix86_thunk_vkGetInstanceProcAddr;
+    thunkptr::vkGetDeviceProcAddr = (u64)felix86_thunk_vkGetDeviceProcAddr;
 
 #if 0
     constexpr const char* glx_name = "libGLX.so";
