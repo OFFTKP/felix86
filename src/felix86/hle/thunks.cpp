@@ -13,6 +13,7 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #else
 #include <cmath>
 #include <dlfcn.h>
+#include <xbyak/xbyak.h>
 #include "felix86/common/state.hpp"
 #include "felix86/hle/abi.hpp"
 #include "felix86/hle/libgl_guest_ptrs.hpp"
@@ -170,7 +171,7 @@ constexpr unsigned long hashstr(const char* str, int h = 0) {
 void* felix86_thunk_GetProcAddressCommon(void* (*getProcAddress)(const char* name), const char* name) {
     // Get the host pointer, return a pointer from libgl_guest_ptrs.hpp for the recompiler to generate a trampoline
     // when it is actually called.
-    // TODO: bad idea, return the pointer to a trampoline directly instead
+    // TODO: bad, do what we do for vulkan proc address, remove libgl_guest_ptrs
     switch (hashstr(name)) {
 #define X(libname, function, ...)                                                                                                                    \
     case hashstr(#function):                                                                                                                         \
@@ -199,16 +200,45 @@ void* felix86_thunk_eglGetProcAddress(const char* name) {
     return felix86_thunk_GetProcAddressCommon(actual, name);
 }
 
+// TODO: Kinda wasteful to code cache if this gets called more than once per name
 void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
     PLAIN("vkGetInstanceProcAddr: %s", name);
     static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetInstanceProcAddr");
     void* ptr = actual(instance, name);
     if (ptr) {
-        ThreadState* state = ThreadState::Get();
-        // TODO: Kinda wasteful to code cache if this gets called more than once per name
-        void* trampoline = Thunks::generateTrampoline(*state->recompiler, name);
-        return trampoline;
+        // We can't return `ptr` here because it's a host pointer
+        // But we also can't return our own thunked pointers, we need to return the one
+        // getprocaddr returned. So we generate an invlpg [rcx] to create a proper guest pointer that will jump to our pointer
+        // We can't put this code in code cache, because it needs to outlive potential code cache clears
+        // So, we are going to leak memory! In the future we should cache these...
+        // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
+        // 00 00 00 00 00 00 00 00 ; pointer we jump to
+        // ... 00 ; signature const char*
+        const Thunk* thunk = nullptr;
+        std::string sname = name;
+        for (auto& meta : thunk_metadata) { // TODO: speed it up? only search vulkan
+            if (meta.function_name == sname) {
+                thunk = &meta;
+                break;
+            }
+        }
+
+        if (!thunk) {
+            WARN("Couldn't find signature for %s", name);
+            return nullptr;
+        }
+
+        const char* signature = thunk->signature;
+        size_t sigsize = strlen(signature);
+        u8* memory = new u8[3 + 8 + sigsize + 1](); // zeroed out for null byte
+        memory[0] = 0x0f;
+        memory[1] = 0x01;
+        memory[2] = 0x39;
+        memcpy(&memory[3], ptr, sizeof(u64));
+        memcpy(&memory[3 + 8], signature, sigsize);
+        return memory;
     } else {
+        WARN("Host vkGetInstanceProcAddr returned null for %s", name);
         return nullptr;
     }
 }
@@ -519,7 +549,6 @@ void Thunks::initialize() {
     // gl_thunks are loaded from the getprocaddress functions
 }
 
-// TODO: cache these trampolines based on signature? call them with address on t5 or something
 void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
     if (!name) {
         return nullptr;
@@ -550,6 +579,20 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
     ABIMarshaller marshaller(signature);
     marshaller.emitPrologue(as);
     Recompiler::call(as, target);
+    marshaller.emitEpilogue(as);
+
+    return trampoline;
+}
+
+void* Thunks::generateTrampoline(Recompiler& rec, const char* signature, u64 host_ptr) {
+    ASSERT(signature);
+    ASSERT(host_ptr);
+    Assembler& as = rec.getAssembler();
+    void* trampoline = as.GetCursorPointer();
+
+    ABIMarshaller marshaller(signature);
+    marshaller.emitPrologue(as);
+    Recompiler::call(as, host_ptr);
     marshaller.emitEpilogue(as);
 
     return trampoline;

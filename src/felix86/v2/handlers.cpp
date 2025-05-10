@@ -7670,6 +7670,7 @@ FAST_HANDLE(INVLPG) {
     enum {
         INVLPG_GENERATE_TRAMPOLINE = ZYDIS_REGISTER_RAX,
         INVLPG_THUNK_CONSTRUCTOR = ZYDIS_REGISTER_RBX,
+        INVLPG_GENERATE_TRAMPOLINE_PTR = ZYDIS_REGISTER_RCX,
     };
 
     ASSERT_MSG(instruction.length == 3, "Hit INVLPG instruction but it's not 3 bytes?");
@@ -7677,15 +7678,31 @@ FAST_HANDLE(INVLPG) {
 
     switch (operands[0].mem.base) {
     case INVLPG_GENERATE_TRAMPOLINE: {
-        const char* name = (const char*)(rip + instruction.length); // also skip a RET -> 1 byte
+        const char* name = (const char*)(rip + instruction.length);
         size_t name_size = strlen(name);
         ASSERT(name_size > 0);
         VERBOSE("Generating trampoline for %s", name);
         rec.writebackState();
         void* trampoline = Thunks::generateTrampoline(rec, name);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", name, (u64)name);
-        rip += name_size + 1; // also skip null byte
         rec.restoreState();
+        rip += name_size + 1; // also skip null byte
+        break;
+    }
+    case INVLPG_GENERATE_TRAMPOLINE_PTR: {
+        // Instead of generating a trampoline using a name, generate one using a ptr
+        // This is good when we want to generate a trampoline when we have a host ptr ie. from getprocaddr functions
+        // and we know its signature but we need a way to make the guest switch to host code when it tries to jump to that host ptr
+        u64* address_ptr = (u64*)(rip + instruction.length);
+        u64 address = *address_ptr;
+        const char* signature = (const char*)(rip + instruction.length + 8);
+        size_t signature_size = strlen(signature);
+        VERBOSE("Generating trampoline for %lx", address);
+        rec.writebackState();
+        void* trampoline = Thunks::generateTrampoline(rec, signature, address);
+        ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for %lx", address);
+        rec.restoreState();
+        rip += 8 + signature_size + 1; // also skip null byte
         break;
     }
     case INVLPG_THUNK_CONSTRUCTOR: {
