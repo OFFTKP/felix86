@@ -7682,7 +7682,7 @@ FAST_HANDLE(INVLPG) {
         ASSERT(name_size > 0);
         VERBOSE("Generating trampoline for %s", name);
         rec.writebackState();
-        void* trampoline = Thunks::generateTrampoline(rec, as, name);
+        void* trampoline = Thunks::generateTrampoline(rec, name);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for \"%s\" (%lx)", name, (u64)name);
         rip += name_size + 1; // also skip null byte
         rec.restoreState();
