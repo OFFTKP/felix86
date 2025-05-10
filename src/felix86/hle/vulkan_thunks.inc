@@ -1,5 +1,7 @@
 // Read abi.cpp -> signature format
 // X(lib name, func name, signature)
+X("libvulkan.so", vkGetInstanceProcAddr, q_qq)
+X("libvulkan.so", vkGetDeviceProcAddr, q_qq)
 X("libvulkan.so", vkCreateInstance, d_qqq)
 X("libvulkan.so", vkDestroyInstance, v_qq)
 X("libvulkan.so", vkEnumeratePhysicalDevices, d_qqq)

@@ -2,6 +2,20 @@ bits 64
 
 section .text
 
+global vkGetInstanceProcAddr
+align 16
+vkGetInstanceProcAddr:
+invlpg [rax]
+db "vkGetInstanceProcAddr", 0
+ret
+
+global vkGetDeviceProcAddr
+align 16
+vkGetDeviceProcAddr:
+invlpg [rax]
+db "vkGetDeviceProcAddr", 0
+ret
+
 global vkCreateInstance
 align 16
 vkCreateInstance:
