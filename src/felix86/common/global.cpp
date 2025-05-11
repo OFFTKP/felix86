@@ -347,6 +347,7 @@ void initialize_globals() {
             WARN("I couldn't find libvulkan.so in %s", thunks.c_str());
         }
 
+#if 0
         std::filesystem::path wayland_thunk;
         bool found_wayland = false;
 
@@ -367,6 +368,7 @@ void initialize_globals() {
         } else {
             WARN("I couldn't find libwayland-client.so in %s", thunks.c_str());
         }
+#endif
     }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");

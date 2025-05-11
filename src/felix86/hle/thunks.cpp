@@ -243,6 +243,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
 VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks*, VkInstance* pInstance) {
     // Remove debug callbacks from VkInstanceCreateInfo
     VkBaseInStructure* base = (VkBaseInStructure*)pCreateInfo;
+    printf("createinstance\n");
     while (base->pNext) {
         VkBaseInStructure* next = (VkBaseInStructure*)base->pNext;
         if (next->sType == VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT) {
@@ -252,6 +253,7 @@ VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
                 break;
             }
         }
+        printf("next type: %d\n", next->sType);
 
         base = (VkBaseInStructure*)base->pNext;
     }
