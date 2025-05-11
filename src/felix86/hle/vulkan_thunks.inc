@@ -141,6 +141,36 @@ X("libvulkan.so", vkGetPhysicalDeviceFeatures, v_qq)
 X("libvulkan.so", vkGetPhysicalDeviceFormatProperties, v_qdq)
 X("libvulkan.so", vkGetPhysicalDeviceImageFormatProperties, d_qdddddq)
 
+// Vulkan 1.1
+X("libvulkan.so", vkBindBufferMemory2, d_qdq)
+X("libvulkan.so", vkBindImageMemory2, d_qdq)
+X("libvulkan.so", vkCmdDispatchBase, v_qdddddd)
+X("libvulkan.so", vkCmdSetDeviceMask, v_qd)
+X("libvulkan.so", vkCreateDescriptorUpdateTemplate, d_qqxq)
+X("libvulkan.so", vkCreateSamplerYcbcrConversion, d_qqxq)
+X("libvulkan.so", vkDestroyDescriptorUpdateTemplate, v_qqx)
+X("libvulkan.so", vkDestroySamplerYcbcrConversion, v_qqx)
+X("libvulkan.so", vkEnumerateInstanceVersion, d_q)
+X("libvulkan.so", vkEnumeratePhysicalDeviceGroups, d_qqq)
+X("libvulkan.so", vkGetBufferMemoryRequirements2, v_qqq)
+X("libvulkan.so", vkGetDescriptorSetLayoutSupport, v_qqq)
+X("libvulkan.so", vkGetDeviceGroupPeerMemoryFeatures, v_qdddq)
+X("libvulkan.so", vkGetDeviceQueue2, v_qqq)
+X("libvulkan.so", vkGetImageMemoryRequirements2, v_qqq)
+X("libvulkan.so", vkGetImageSparseMemoryRequirements2, v_qqqq)
+X("libvulkan.so", vkGetPhysicalDeviceExternalBufferProperties, v_qqq)
+X("libvulkan.so", vkGetPhysicalDeviceExternalFenceProperties, v_qqq)
+X("libvulkan.so", vkGetPhysicalDeviceExternalSemaphoreProperties, v_qqq)
+X("libvulkan.so", vkGetPhysicalDeviceFeatures2, v_qq)
+X("libvulkan.so", vkGetPhysicalDeviceFormatProperties2, v_qqq)
+X("libvulkan.so", vkGetPhysicalDeviceImageFormatProperties2, d_qqq)
+X("libvulkan.so", vkGetPhysicalDeviceMemoryProperties2, v_qq)
+X("libvulkan.so", vkGetPhysicalDeviceProperties2, v_qq)
+X("libvulkan.so", vkGetPhysicalDeviceQueueFamilyProperties2, v_qqq)
+X("libvulkan.so", vkGetPhysicalDeviceSparseImageFormatProperties2, v_qqqq)
+X("libvulkan.so", vkTrimCommandPool, v_qqq)
+X("libvulkan.so", vkUpdateDescriptorSetWithTemplate, v_qqqq)
+
 // EXT
 X("libvulkan.so", vkCreateDebugReportCallbackEXT, d_qqxq)
 X("libvulkan.so", vkDebugReportMessageEXT, v_qddqqdqq)
@@ -162,3 +192,11 @@ X("libvulkan.so", vkQueuePresentKHR, d_qq)
 // KHR Wayland
 X("libvulkan.so", vkCreateWaylandSurfaceKHR, d_qqxq)
 X("libvulkan.so", vkGetPhysicalDeviceWaylandPresentationSupportKHR, d_qdq)
+
+// KHR Xcb
+X("libvulkan.so", vkCreateXcbSurfaceKHR, d_qqxq)
+X("libvulkan.so", vkGetPhysicalDeviceXcbPresentationSupportKHR, d_qdqq)
+
+// KHR Xlib
+X("libvulkan.so", vkCreateXlibSurfaceKHR, d_qqxq)
+X("libvulkan.so", vkGetPhysicalDeviceXlibPresentationSupportKHR, d_qdqq)
