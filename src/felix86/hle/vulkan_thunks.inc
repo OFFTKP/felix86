@@ -178,18 +178,28 @@ X("libvulkan.so", vkCreateDebugReportCallbackEXT, d_qqxq)
 X("libvulkan.so", vkDebugReportMessageEXT, v_qddqqdqq)
 X("libvulkan.so", vkDestroyDebugReportCallbackEXT, v_qqx)
 
-// KHR
+// VK_KHR_surface
 X("libvulkan.so", vkDestroySurfaceKHR, v_qqx)
 X("libvulkan.so", vkGetPhysicalDeviceSurfaceCapabilitiesKHR, d_qqq)
 X("libvulkan.so", vkGetPhysicalDeviceSurfaceFormatsKHR, d_qqqq)
 X("libvulkan.so", vkGetPhysicalDeviceSurfacePresentModesKHR, d_qqqq)
 X("libvulkan.so", vkGetPhysicalDeviceSurfaceSupportKHR, d_qdqq)
+
+// VK_KHR_swapchain
+X("libvulkan.so", vkAcquireNextImageKHR, d_qqqqqq)
 X("libvulkan.so", vkCreateSwapchainKHR, d_qqxq)
 X("libvulkan.so", vkDestroySwapchainKHR, v_qqx)
-X("libvulkan.so", vkCreateSharedSwapchainsKHR, d_qdqqq)
 X("libvulkan.so", vkGetSwapchainImagesKHR, d_qqqq)
-X("libvulkan.so", vkAcquireNextImageKHR, d_qqqqqq)
 X("libvulkan.so", vkQueuePresentKHR, d_qq)
+
+// VK_KHR_swapchain 1.1
+X("libvulkan.so", vkAcquireNextImage2KHR, d_qqq)
+X("libvulkan.so", vkGetDeviceGroupPresentCapabilitiesKHR, d_qq)
+X("libvulkan.so", vkGetDeviceGroupSurfacePresentModesKHR, d_qqq)
+X("libvulkan.so", vkGetPhysicalDevicePresentRectanglesKHR, d_qqqq)
+
+// VK_KHR_display_swapchain
+X("libvulkan.so", vkCreateSharedSwapchainsKHR, d_qdqqq)
 
 // VK_KHR_get_surface_capabilities2
 X("libvulkan.so", vkGetPhysicalDeviceSurfaceFormats2KHR, d_qqqq)
