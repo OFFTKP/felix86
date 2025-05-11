@@ -308,7 +308,9 @@ int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void* implementa
         const char* signature = interface->events[i].signature;
         printf("%s\n", signature);
     }
-    return wl_proxy_add_listener(proxy, (void (**)())implementation, data);
+
+    static auto host_wl_proxy_add_listener = (int (*)(struct wl_proxy*, void*, void*))dlsym(libwayland, "wl_proxy_add_listener");
+    return host_wl_proxy_add_listener(proxy, implementation, data);
 }
 
 #define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
