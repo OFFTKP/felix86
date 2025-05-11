@@ -357,15 +357,15 @@ void initialize_globals() {
             }
         };
 
-        check_wayland("libwayland.so.0");
-        check_wayland("libwayland.so");
-        check_wayland("libwayland-thunked.so");
+        check_wayland("libwayland-client.so.0");
+        check_wayland("libwayland-client.so");
+        check_wayland("libwayland-client-thunked.so");
 
         if (!wayland_thunk.empty()) {
-            Overlays::addOverlay("libwayland.so.0", wayland_thunk);
-            Overlays::addOverlay("libwayland.so", wayland_thunk);
+            Overlays::addOverlay("libwayland-client.so.0", wayland_thunk);
+            Overlays::addOverlay("libwayland-client.so", wayland_thunk);
         } else {
-            WARN("I couldn't find libwayland.so in %s", thunks.c_str());
+            WARN("I couldn't find libwayland-client.so in %s", thunks.c_str());
         }
     }
 
