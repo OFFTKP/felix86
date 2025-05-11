@@ -311,15 +311,15 @@ void* host_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
     return ptr;
 }
 
-void* host_vkGetDeviceProcAddr(VkInstance instance, const char* name) {
+void* host_vkGetDeviceProcAddr(VkDevice device, const char* name) {
     VERBOSE("vkGetDeviceProcAddr: %s", name);
     void* custom_ptr = get_custom_vk_thunk(name);
     if (custom_ptr) {
         return custom_ptr;
     }
 
-    static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetDeviceProcAddr");
-    void* ptr = actual(instance, name);
+    static auto actual = (void* (*)(VkDevice, const char*))dlsym(libvulkan, "vkGetDeviceProcAddr");
+    void* ptr = actual(device, name);
     return ptr;
 }
 
