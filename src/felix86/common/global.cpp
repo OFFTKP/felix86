@@ -346,6 +346,27 @@ void initialize_globals() {
         } else {
             WARN("I couldn't find libvulkan.so in %s", thunks.c_str());
         }
+
+        std::filesystem::path wayland_thunk;
+        bool found_wayland = false;
+
+        auto check_wayland = [&](const char* path) {
+            if (!found_wayland && std::filesystem::exists(thunks / path)) {
+                wayland_thunk = thunks / path;
+                found_wayland = true;
+            }
+        };
+
+        check_wayland("libwayland.so.0");
+        check_wayland("libwayland.so");
+        check_wayland("libwayland-thunked.so");
+
+        if (!wayland_thunk.empty()) {
+            Overlays::addOverlay("libwayland.so.0", wayland_thunk);
+            Overlays::addOverlay("libwayland.so", wayland_thunk);
+        } else {
+            WARN("I couldn't find libwayland.so in %s", thunks.c_str());
+        }
     }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");
