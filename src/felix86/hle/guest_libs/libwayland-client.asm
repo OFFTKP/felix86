@@ -3,48 +3,68 @@ bits 64
 section .data
 
 align 16
-global wl_output_interface:function
+global wl_output_interface:object
 wl_output_interface:
 dq 0
 
-global wl_shm_pool_interface:function
+global wl_shm_pool_interface:object
 wl_shm_pool_interface:
 dq 0
 
-global wl_pointer_interface:function
+global wl_pointer_interface:object
 wl_pointer_interface:
 dq 0
 
-global wl_compositor_interface:function
+global wl_compositor_interface:object
 wl_compositor_interface:
 dq 0
 
-global wl_shm_interface:function
+global wl_shm_interface:object
 wl_shm_interface:
 dq 0
 
-global wl_registry_interface:function
+global wl_registry_interface:object
 wl_registry_interface:
 dq 0
 
-global wl_buffer_interface:function
+global wl_buffer_interface:object
 wl_buffer_interface:
 dq 0
 
-global wl_seat_interface:function
+global wl_seat_interface:object
 wl_seat_interface:
 dq 0
 
-global wl_surface_interface:function
+global wl_surface_interface:object
 wl_surface_interface:
 dq 0
 
-global wl_keyboard_interface:function
+global wl_keyboard_interface:object
 wl_keyboard_interface:
 dq 0
 
-global wl_callback_interface:function
+global wl_callback_interface:object
 wl_callback_interface:
+dq 0
+
+global wl_region_interface:object
+wl_region_interface:
+dq 0
+
+global wl_data_device_interface:object
+wl_data_device_interface:
+dq 0
+
+global wl_data_source_interface:object
+wl_data_source_interface:
+dq 0
+
+global wl_data_offer_interface:object
+wl_data_offer_interface:
+dq 0
+
+global wl_data_device_manager_interface:object
+wl_data_device_manager_interface:
 dq 0
 
 wl_output_interface_name:
@@ -69,6 +89,16 @@ wl_keyboard_interface_name:
 db "wl_keyboard_interface", 0
 wl_callback_interface_name:
 db "wl_callback_interface", 0
+wl_region_interface_name:
+db "wl_region_interface", 0
+wl_data_device_interface_name:
+db "wl_data_device_interface", 0
+wl_data_source_interface_name:
+db "wl_data_source_interface", 0
+wl_data_offer_interface_name:
+db "wl_data_offer_interface", 0
+wl_data_device_manager_interface_name:
+db "wl_data_device_manager_interface", 0
 
 libname:
 db "libwayland-client.so", 0
@@ -105,6 +135,16 @@ dq wl_keyboard_interface_name
 dq wl_keyboard_interface
 dq wl_callback_interface_name
 dq wl_callback_interface
+dq wl_region_interface_name
+dq wl_region_interface
+dq wl_data_device_interface_name
+dq wl_data_device_interface
+dq wl_data_source_interface_name
+dq wl_data_source_interface
+dq wl_data_offer_interface_name
+dq wl_data_offer_interface
+dq wl_data_device_manager_interface_name
+dq wl_data_device_manager_interface
 dq 0
 dq 0
 
