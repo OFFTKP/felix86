@@ -237,7 +237,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     memcpy(&memory[3], &host_ptr, sizeof(u64));
     memcpy(&memory[3 + 8], signature, sigsize);
     memory[3 + 8 + sigsize + 1] = 0xc3;
-    VERBOSE("Created guest-callable host pointer for %s: %p", name, memory);
+    VERBOSE("Created guest-callable host pointer for %s: %p", name, host_ptr);
     return memory;
 }
 
