@@ -748,6 +748,7 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
             u64 host_ptr = (u64)dlsym(libwayland, name);
             ASSERT_MSG(host_ptr != 0, "Could not find host libwayland-client pointer for %s", host_ptr);
             memcpy(ptr, &host_ptr, sizeof(u64));
+            VERBOSE("libwayland-client thunk: %s set to %p (guest ptr: %p)", name, host_ptr, ptr);
 
             pointers++;
         }
