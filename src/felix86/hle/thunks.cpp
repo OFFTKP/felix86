@@ -243,7 +243,6 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
 VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks*, VkInstance* pInstance) {
     // Remove debug callbacks from VkInstanceCreateInfo
     VkBaseInStructure* base = (VkBaseInStructure*)pCreateInfo;
-    printf("createinstance\n");
     while (base->pNext) {
         VkBaseInStructure* next = (VkBaseInStructure*)base->pNext;
         if (next->sType == VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT) {
@@ -253,7 +252,6 @@ VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
                 break;
             }
         }
-        printf("next type: %d\n", next->sType);
 
         base = (VkBaseInStructure*)base->pNext;
     }
@@ -262,11 +260,12 @@ VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
     return actual(pCreateInfo, nullptr, pInstance);
 }
 
+void* host_vkGetInstanceProcAddr(VkInstance instance, const char* name);
+void* host_vkGetDeviceProcAddr(VkDevice device, const char* name);
+
 // TODO: Kinda wasteful to code cache if this gets called more than once per name
 void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
-    VERBOSE("vkGetInstanceProcAddr: %s", name);
-    static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetInstanceProcAddr");
-    void* ptr = actual(instance, name);
+    void* ptr = host_vkGetInstanceProcAddr(instance, name);
     if (ptr) {
         // We can't return `ptr` here because it's a host pointer
         // But we also can't return our own thunked pointers, we need to return the one
@@ -278,16 +277,50 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
     }
 }
 
-void* felix86_thunk_vkGetDeviceProcAddr(VkInstance instance, const char* name) {
-    VERBOSE("vkGetDeviceProcAddr: %s", name);
-    static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetDeviceProcAddr");
-    void* ptr = actual(instance, name);
+void* felix86_thunk_vkGetDeviceProcAddr(VkDevice device, const char* name) {
+    void* ptr = host_vkGetDeviceProcAddr(device, name);
     if (ptr) {
         return generate_guest_pointer(name, (u64)ptr);
     } else {
         WARN("Host vkGetDeviceProcAddr returned null for %s", name);
         return nullptr;
     }
+}
+
+void* get_custom_vk_thunk(const std::string& name) {
+    if (name == "vkGetInstanceProcAddr") {
+        return (void*)felix86_thunk_vkGetInstanceProcAddr;
+    } else if (name == "vkGetDeviceProcAddr") {
+        return (void*)felix86_thunk_vkGetDeviceProcAddr;
+    } else if (name == "vkCreateInstance") {
+        return (void*)felix86_thunk_vkCreateInstance;
+    } else {
+        return nullptr;
+    }
+}
+
+void* host_vkGetInstanceProcAddr(VkInstance instance, const char* name) {
+    VERBOSE("vkGetInstanceProcAddr: %s", name);
+    void* custom_ptr = get_custom_vk_thunk(name);
+    if (custom_ptr) {
+        return custom_ptr;
+    }
+
+    static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetInstanceProcAddr");
+    void* ptr = actual(instance, name);
+    return ptr;
+}
+
+void* host_vkGetDeviceProcAddr(VkInstance instance, const char* name) {
+    VERBOSE("vkGetDeviceProcAddr: %s", name);
+    void* custom_ptr = get_custom_vk_thunk(name);
+    if (custom_ptr) {
+        return custom_ptr;
+    }
+
+    static auto actual = (void* (*)(VkInstance, const char*))dlsym(libvulkan, "vkGetDeviceProcAddr");
+    void* ptr = actual(instance, name);
+    return ptr;
 }
 
 VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
