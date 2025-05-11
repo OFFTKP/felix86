@@ -191,6 +191,10 @@ X("libvulkan.so", vkGetSwapchainImagesKHR, d_qqqq)
 X("libvulkan.so", vkAcquireNextImageKHR, d_qqqqqq)
 X("libvulkan.so", vkQueuePresentKHR, d_qq)
 
+// VK_KHR_get_surface_capabilities2
+X("libvulkan.so", vkGetPhysicalDeviceSurfaceFormats2KHR, d_qqqq)
+X("libvulkan.so", vkGetPhysicalDeviceSurfaceCapabilities2KHR, d_qqq)
+
 // KHR Wayland
 X("libvulkan.so", vkCreateWaylandSurfaceKHR, d_qqxq)
 X("libvulkan.so", vkGetPhysicalDeviceWaylandPresentationSupportKHR, d_qdq)
