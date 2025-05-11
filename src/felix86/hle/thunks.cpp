@@ -287,6 +287,16 @@ void* felix86_thunk_vkGetDeviceProcAddr(VkDevice device, const char* name) {
     }
 }
 
+VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+                                                      const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
+    // We don't wanna deal with callbacks and it wouldn't benefit us much to do so
+    return VK_SUCCESS;
+}
+
+void felix86_thunk_vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
+    // See vkCreateDebugReportCallbackEXT above
+}
+
 void* get_custom_vk_thunk(const std::string& name) {
     if (name == "vkGetInstanceProcAddr") {
         return (void*)felix86_thunk_vkGetInstanceProcAddr;
@@ -294,6 +304,10 @@ void* get_custom_vk_thunk(const std::string& name) {
         return (void*)felix86_thunk_vkGetDeviceProcAddr;
     } else if (name == "vkCreateInstance") {
         return (void*)felix86_thunk_vkCreateInstance;
+    } else if (name == "vkCreateDebugReportCallbackEXT") {
+        return (void*)felix86_thunk_vkCreateDebugReportCallbackEXT;
+    } else if (name == "vkDestroyDebugReportCallbackEXT") {
+        return (void*)felix86_thunk_vkDestroyDebugReportCallbackEXT;
     } else {
         return nullptr;
     }
@@ -321,16 +335,6 @@ void* host_vkGetDeviceProcAddr(VkDevice device, const char* name) {
     static auto actual = (void* (*)(VkDevice, const char*))dlsym(libvulkan, "vkGetDeviceProcAddr");
     void* ptr = actual(device, name);
     return ptr;
-}
-
-VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                                      const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
-    // We don't wanna deal with callbacks and it wouldn't benefit us much to do so
-    return VK_SUCCESS;
-}
-
-void vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
-    // See vkCreateDebugReportCallbackEXT above
 }
 
 #define WL_CLOSURE_MAX_ARGS 20
@@ -582,6 +586,8 @@ void Thunks::initialize() {
     thunkptr::vkCreateInstance = (u64)felix86_thunk_vkCreateInstance;
     thunkptr::vkGetInstanceProcAddr = (u64)felix86_thunk_vkGetInstanceProcAddr;
     thunkptr::vkGetDeviceProcAddr = (u64)felix86_thunk_vkGetDeviceProcAddr;
+    thunkptr::vkCreateDebugReportCallbackEXT = (u64)felix86_thunk_vkCreateDebugReportCallbackEXT;
+    thunkptr::vkDestroyDebugReportCallbackEXT = (u64)felix86_thunk_vkDestroyDebugReportCallbackEXT;
 
     thunkptr::wl_proxy_add_listener = (u64)felix86_thunk_wl_proxy_add_listener;
 
