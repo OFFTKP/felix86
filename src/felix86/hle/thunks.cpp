@@ -341,8 +341,8 @@ void* host_vkGetDeviceProcAddr(VkDevice device, const char* name) {
 int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void* implementation, void* data) {
     struct wl_interface* interface = *(wl_interface**)proxy;
 
-    uint64_t* host_callbacks = new uint64_t[WL_CLOSURE_MAX_ARGS];
-    printf("Signatures:\n");
+    // uint64_t* host_callbacks = new uint64_t[WL_CLOSURE_MAX_ARGS];
+    printf("%d Signatures:\n", interface->event_count);
     for (u32 i = 0; i < interface->event_count; i++) {
         const char* signature = interface->events[i].signature;
         printf("%s\n", signature);
