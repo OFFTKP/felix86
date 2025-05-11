@@ -339,7 +339,7 @@ void* host_vkGetDeviceProcAddr(VkDevice device, const char* name) {
 
 #define WL_CLOSURE_MAX_ARGS 20
 int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void* implementation, void* data) {
-    struct wl_interface* interface = *(wl_interface**)proxy;
+    struct wl_interface* interface = *(struct wl_interface**)proxy;
 
     // uint64_t* host_callbacks = new uint64_t[WL_CLOSURE_MAX_ARGS];
     printf("%d Signatures:\n", interface->event_count);
