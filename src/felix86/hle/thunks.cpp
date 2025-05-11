@@ -548,6 +548,8 @@ void Thunks::initialize() {
     thunkptr::vkGetInstanceProcAddr = (u64)felix86_thunk_vkGetInstanceProcAddr;
     thunkptr::vkGetDeviceProcAddr = (u64)felix86_thunk_vkGetDeviceProcAddr;
 
+    thunkptr::wl_proxy_add_listener = (u64)felix86_thunk_wl_proxy_add_listener;
+
 #if 0
     constexpr const char* glx_name = "libGLX.so";
     libGLX = dlopen(glx_name, RTLD_NOW | RTLD_LOCAL);

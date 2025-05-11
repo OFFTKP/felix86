@@ -360,5 +360,11 @@ invlpg [rax]
 db "wl_proxy_marshal_array_flags", 0
 ret
 
+global wl_log_set_handler_client
+align 16
+wl_log_set_handler_client:
+; TODO: callback stuff...
+ret
+
 section .init_array
     dq __felix86_constructor
