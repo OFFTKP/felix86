@@ -14,7 +14,6 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #include <cmath>
 #include <dlfcn.h>
 #include <sys/mman.h>
-#include <vulkan/vulkan.h>
 #include "felix86/common/state.hpp"
 #include "felix86/hle/abi.hpp"
 #include "felix86/hle/libgl_guest_ptrs.hpp"
@@ -22,11 +21,14 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 
 #include <X11/Xlibint.h>
 #include <X11/Xutil.h>
+#include <vulkan/vulkan.h>
+#include <wayland-client.h>
 
 static void* libGLX = nullptr;
 static void* libX11 = nullptr;
 static void* libEGL = nullptr;
 static void* libvulkan = nullptr;
+static void* libwayland = nullptr;
 
 using XGetVisualInfoType = decltype(&XGetVisualInfo);
 using XSyncType = decltype(&XSync);
@@ -131,10 +133,11 @@ XVisualInfo* getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
 // these are just pointers for the assembler to create trampolines
 namespace thunkptr {
 #define X(libname, name, ...) u64 name = 0;
-#include "egl_thunks.inc"    // <- these are loaded on Thunks::Initialize
-#include "gl_thunks.inc"     // <- these are loaded on felix86_thunk_glXGetProcAddress, as they are requested
-#include "glx_thunks.inc"    // <- these are loaded on Thunks::Initialize
-#include "vulkan_thunks.inc" // <- these are loaded on Thunks::Initialize
+#include "egl_thunks.inc"            // <- these are loaded on Thunks::Initialize
+#include "gl_thunks.inc"             // <- these are loaded on felix86_thunk_glXGetProcAddress, as they are requested
+#include "glx_thunks.inc"            // <- these are loaded on Thunks::Initialize
+#include "vulkan_thunks.inc"         // <- these are loaded on Thunks::Initialize
+#include "wayland-client_thunks.inc" // <- these are loaded on Thunks::Initialize
 #undef X
 } // namespace thunkptr
 
@@ -152,6 +155,7 @@ static Thunk thunk_metadata[] = {
 #include "gl_thunks.inc"
 #include "glx_thunks.inc"
 #include "vulkan_thunks.inc"
+#include "wayland-client_thunks.inc"
 };
 
 #undef X
@@ -292,6 +296,19 @@ VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const
 
 void vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
     // See vkCreateDebugReportCallbackEXT above
+}
+
+#define WL_CLOSURE_MAX_ARGS 20
+int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void* implementation, void* data) {
+    struct wl_interface* interface = *(wl_interface**)proxy;
+
+    uint64_t* host_callbacks = new uint64_t[WL_CLOSURE_MAX_ARGS];
+    printf("Signatures:\n");
+    for (u32 i = 0; i < interface->event_count; i++) {
+        const char* signature = interface->events[i].signature;
+        printf("%s\n", signature);
+    }
+    return wl_proxy_add_listener(proxy, (void (**)())implementation, data);
 }
 
 #define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
@@ -555,6 +572,12 @@ void Thunks::initialize() {
         ERROR("I couldn't open libvulkan.so, error: %s", dlerror());
     }
 
+    constexpr const char* wayland_name = "libwayland-client.so.0";
+    libwayland = dlopen(wayland_name, RTLD_NOW | RTLD_LOCAL);
+    if (!libwayland) {
+        ERROR("I couldn't open libwayland-client.so, error: %s", dlerror());
+    }
+
 #if 0
 #define X(libname, name, ...)                                                                                                                        \
     if (thunkptr::name == 0) {                                                                                                                       \
@@ -580,6 +603,12 @@ void Thunks::initialize() {
         thunkptr::name = (u64)dlsym(libvulkan, #name);                                                                                               \
     }
 #include "vulkan_thunks.inc"
+#undef X
+#define X(libname, name, ...)                                                                                                                        \
+    if (thunkptr::name == 0) {                                                                                                                       \
+        thunkptr::name = (u64)dlsym(libwayland, #name);                                                                                              \
+    }
+#include "wayland-client_thunks.inc"
 #undef X
     ASSERT_MSG(thunkptr::vkGetInstanceProcAddr != 0, "Failed to load symbols from overlayed Vulkan library");
     // gl_thunks are loaded from the getprocaddress functions
@@ -660,6 +689,23 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
 
         ASSERT_MSG(felix86__x86_64__XGetVisualInfo, "Failed to find XGetVisualInfo in thunked libGLX");
         ASSERT_MSG(felix86__x86_64__XSync, "Failed to find XSync in thunked libGLX");
+        VERBOSE("Constructor for %s finished!", lib);
+        return; // everything ok!
+    } else if (libname == "libwayland-client.so") {
+        // The job of this constructor is to copy the host pointers to the interface objects like wl_keyboard_interface
+        while (pointers) {
+            u64* ptr = pointers->func;
+            if (!ptr) {
+                break;
+            }
+
+            const char* name = pointers->name;
+            u64 host_ptr = (u64)dlsym(libwayland, name);
+            ASSERT_MSG(host_ptr != 0, "Could not find host libwayland-client pointer for %s", host_ptr);
+            memcpy(ptr, &host_ptr, sizeof(u64));
+
+            pointers++;
+        }
         VERBOSE("Constructor for %s finished!", lib);
         return; // everything ok!
     }
