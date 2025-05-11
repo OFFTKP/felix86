@@ -243,6 +243,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
 VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks*, VkInstance* pInstance) {
     // Remove debug callbacks from VkInstanceCreateInfo
     VkBaseInStructure* base = (VkBaseInStructure*)pCreateInfo;
+    printf("version: %d\n", pCreateInfo->pApplicationInfo->apiVersion);
     while (base->pNext) {
         VkBaseInStructure* next = (VkBaseInStructure*)base->pNext;
         if (next->sType == VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT) {
@@ -255,6 +256,7 @@ VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
 
         base = (VkBaseInStructure*)base->pNext;
     }
+    printf("version: %d\n", pCreateInfo->pApplicationInfo->apiVersion);
 
     static auto actual = (VkResult(*)(const VkInstanceCreateInfo*, const VkAllocationCallbacks*, VkInstance*))dlsym(libvulkan, "vkCreateInstance");
     return actual(pCreateInfo, nullptr, pInstance);
