@@ -3,47 +3,47 @@ bits 64
 section .data
 
 align 16
-global wl_output_interface
+global wl_output_interface:function
 wl_output_interface:
 dq 0
 
-global wl_shm_pool_interface
+global wl_shm_pool_interface:function
 wl_shm_pool_interface:
 dq 0
 
-global wl_pointer_interface
+global wl_pointer_interface:function
 wl_pointer_interface:
 dq 0
 
-global wl_compositor_interface
+global wl_compositor_interface:function
 wl_compositor_interface:
 dq 0
 
-global wl_shm_interface
+global wl_shm_interface:function
 wl_shm_interface:
 dq 0
 
-global wl_registry_interface
+global wl_registry_interface:function
 wl_registry_interface:
 dq 0
 
-global wl_buffer_interface
+global wl_buffer_interface:function
 wl_buffer_interface:
 dq 0
 
-global wl_seat_interface
+global wl_seat_interface:function
 wl_seat_interface:
 dq 0
 
-global wl_surface_interface
+global wl_surface_interface:function
 wl_surface_interface:
 dq 0
 
-global wl_keyboard_interface
+global wl_keyboard_interface:function
 wl_keyboard_interface:
 dq 0
 
-global wl_callback_interface
+global wl_callback_interface:function
 wl_callback_interface:
 dq 0
 
@@ -75,7 +75,7 @@ db "libwayland-client.so", 0
 
 section .text
 
-global __felix86_constructor
+global __felix86_constructor:function
 align 16
 __felix86_constructor:
 invlpg [rbx]
@@ -108,259 +108,259 @@ dq wl_callback_interface
 dq 0
 dq 0
 
-global wl_display_connect
+global wl_display_connect:function
 align 16
 wl_display_connect:
 invlpg [rax]
 db "wl_display_connect", 0
 ret
 
-global wl_display_flush
+global wl_display_flush:function
 align 16
 wl_display_flush:
 invlpg [rax]
 db "wl_display_flush", 0
 ret
 
-global wl_display_cancel_read
+global wl_display_cancel_read:function
 align 16
 wl_display_cancel_read:
 invlpg [rax]
 db "wl_display_cancel_read", 0
 ret
 
-global wl_display_create_queue
+global wl_display_create_queue:function
 align 16
 wl_display_create_queue:
 invlpg [rax]
 db "wl_display_create_queue", 0
 ret
 
-global wl_display_disconnect
+global wl_display_disconnect:function
 align 16
 wl_display_disconnect:
 invlpg [rax]
 db "wl_display_disconnect", 0
 ret
 
-global wl_display_dispatch
+global wl_display_dispatch:function
 align 16
 wl_display_dispatch:
 invlpg [rax]
 db "wl_display_dispatch", 0
 ret
 
-global wl_display_dispatch_pending
+global wl_display_dispatch_pending:function
 align 16
 wl_display_dispatch_pending:
 invlpg [rax]
 db "wl_display_dispatch_pending", 0
 ret
 
-global wl_display_dispatch_queue
+global wl_display_dispatch_queue:function
 align 16
 wl_display_dispatch_queue:
 invlpg [rax]
 db "wl_display_dispatch_queue", 0
 ret
 
-global wl_display_dispatch_queue_pending
+global wl_display_dispatch_queue_pending:function
 align 16
 wl_display_dispatch_queue_pending:
 invlpg [rax]
 db "wl_display_dispatch_queue_pending", 0
 ret
 
-global wl_display_get_error
+global wl_display_get_error:function
 align 16
 wl_display_get_error:
 invlpg [rax]
 db "wl_display_get_error", 0
 ret
 
-global wl_display_prepare_read
+global wl_display_prepare_read:function
 align 16
 wl_display_prepare_read:
 invlpg [rax]
 db "wl_display_prepare_read", 0
 ret
 
-global wl_display_prepare_read_queue
+global wl_display_prepare_read_queue:function
 align 16
 wl_display_prepare_read_queue:
 invlpg [rax]
 db "wl_display_prepare_read_queue", 0
 ret
 
-global wl_display_read_events
+global wl_display_read_events:function
 align 16
 wl_display_read_events:
 invlpg [rax]
 db "wl_display_read_events", 0
 ret
 
-global wl_display_roundtrip
+global wl_display_roundtrip:function
 align 16
 wl_display_roundtrip:
 invlpg [rax]
 db "wl_display_roundtrip", 0
 ret
 
-global wl_display_roundtrip_queue
+global wl_display_roundtrip_queue:function
 align 16
 wl_display_roundtrip_queue:
 invlpg [rax]
 db "wl_display_roundtrip_queue", 0
 ret
 
-global wl_display_connect_to_fd
+global wl_display_connect_to_fd:function
 align 16
 wl_display_connect_to_fd:
 invlpg [rax]
 db "wl_display_connect_to_fd", 0
 ret
 
-global wl_display_get_fd
+global wl_display_get_fd:function
 align 16
 wl_display_get_fd:
 invlpg [rax]
 db "wl_display_get_fd", 0
 ret
 
-global wl_event_queue_destroy
+global wl_event_queue_destroy:function
 align 16
 wl_event_queue_destroy:
 invlpg [rax]
 db "wl_event_queue_destroy", 0
 ret
 
-global wl_proxy_add_listener
+global wl_proxy_add_listener:function
 align 16
 wl_proxy_add_listener:
 invlpg [rax]
 db "wl_proxy_add_listener", 0
 ret
 
-global wl_proxy_create
+global wl_proxy_create:function
 align 16
 wl_proxy_create:
 invlpg [rax]
 db "wl_proxy_create", 0
 ret
 
-global wl_proxy_destroy
+global wl_proxy_destroy:function
 align 16
 wl_proxy_destroy:
 invlpg [rax]
 db "wl_proxy_destroy", 0
 ret
 
-global wl_proxy_create_wrapper
+global wl_proxy_create_wrapper:function
 align 16
 wl_proxy_create_wrapper:
 invlpg [rax]
 db "wl_proxy_create_wrapper", 0
 ret
 
-global wl_proxy_get_class
+global wl_proxy_get_class:function
 align 16
 wl_proxy_get_class:
 invlpg [rax]
 db "wl_proxy_get_class", 0
 ret
 
-global wl_proxy_get_id
+global wl_proxy_get_id:function
 align 16
 wl_proxy_get_id:
 invlpg [rax]
 db "wl_proxy_get_id", 0
 ret
 
-global wl_proxy_get_listener
+global wl_proxy_get_listener:function
 align 16
 wl_proxy_get_listener:
 invlpg [rax]
 db "wl_proxy_get_listener", 0
 ret
 
-global wl_proxy_get_tag
+global wl_proxy_get_tag:function
 align 16
 wl_proxy_get_tag:
 invlpg [rax]
 db "wl_proxy_get_tag", 0
 ret
 
-global wl_proxy_get_user_data
+global wl_proxy_get_user_data:function
 align 16
 wl_proxy_get_user_data:
 invlpg [rax]
 db "wl_proxy_get_user_data", 0
 ret
 
-global wl_proxy_get_version
+global wl_proxy_get_version:function
 align 16
 wl_proxy_get_version:
 invlpg [rax]
 db "wl_proxy_get_version", 0
 ret
 
-global wl_proxy_set_queue
+global wl_proxy_set_queue:function
 align 16
 wl_proxy_set_queue:
 invlpg [rax]
 db "wl_proxy_set_queue", 0
 ret
 
-global wl_proxy_set_tag
+global wl_proxy_set_tag:function
 align 16
 wl_proxy_set_tag:
 invlpg [rax]
 db "wl_proxy_set_tag", 0
 ret
 
-global wl_proxy_set_user_data
+global wl_proxy_set_user_data:function
 align 16
 wl_proxy_set_user_data:
 invlpg [rax]
 db "wl_proxy_set_user_data", 0
 ret
 
-global wl_proxy_wrapper_destroy
+global wl_proxy_wrapper_destroy:function
 align 16
 wl_proxy_wrapper_destroy:
 invlpg [rax]
 db "wl_proxy_wrapper_destroy", 0
 ret
 
-global wl_proxy_marshal_array
+global wl_proxy_marshal_array:function
 align 16
 wl_proxy_marshal_array:
 invlpg [rax]
 db "wl_proxy_marshal_array", 0
 ret
 
-global wl_proxy_marshal_array_constructor
+global wl_proxy_marshal_array_constructor:function
 align 16
 wl_proxy_marshal_array_constructor:
 invlpg [rax]
 db "wl_proxy_marshal_array_constructor", 0
 ret
 
-global wl_proxy_marshal_array_constructor_versioned
+global wl_proxy_marshal_array_constructor_versioned:function
 align 16
 wl_proxy_marshal_array_constructor_versioned:
 invlpg [rax]
 db "wl_proxy_marshal_array_constructor_versioned", 0
 ret
 
-global wl_proxy_marshal_array_flags
+global wl_proxy_marshal_array_flags:function
 align 16
 wl_proxy_marshal_array_flags:
 invlpg [rax]
 db "wl_proxy_marshal_array_flags", 0
 ret
 
-global wl_log_set_handler_client
+global wl_log_set_handler_client:function
 align 16
 wl_log_set_handler_client:
 ; TODO: callback stuff...
