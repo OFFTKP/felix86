@@ -2,70 +2,22 @@ bits 64
 
 section .data
 
-align 16
-global wl_output_interface:object
-wl_output_interface:
-dq 0
-
-global wl_shm_pool_interface:object
-wl_shm_pool_interface:
-dq 0
-
-global wl_pointer_interface:object
-wl_pointer_interface:
-dq 0
-
-global wl_compositor_interface:object
-wl_compositor_interface:
-dq 0
-
-global wl_shm_interface:object
-wl_shm_interface:
-dq 0
-
-global wl_registry_interface:object
-wl_registry_interface:
-dq 0
-
-global wl_buffer_interface:object
-wl_buffer_interface:
-dq 0
-
-global wl_seat_interface:object
-wl_seat_interface:
-dq 0
-
-global wl_surface_interface:object
-wl_surface_interface:
-dq 0
-
-global wl_keyboard_interface:object
-wl_keyboard_interface:
-dq 0
-
-global wl_callback_interface:object
-wl_callback_interface:
-dq 0
-
-global wl_region_interface:object
-wl_region_interface:
-dq 0
-
-global wl_data_device_interface:object
-wl_data_device_interface:
-dq 0
-
-global wl_data_source_interface:object
-wl_data_source_interface:
-dq 0
-
-global wl_data_offer_interface:object
-wl_data_offer_interface:
-dq 0
-
-global wl_data_device_manager_interface:object
-wl_data_device_manager_interface:
-dq 0
+extern wl_output_interface
+extern wl_shm_pool_interface
+extern wl_pointer_interface
+extern wl_compositor_interface
+extern wl_shm_interface
+extern wl_registry_interface
+extern wl_buffer_interface
+extern wl_seat_interface
+extern wl_surface_interface
+extern wl_keyboard_interface
+extern wl_callback_interface
+extern wl_region_interface
+extern wl_data_device_interface
+extern wl_data_source_interface
+extern wl_data_offer_interface
+extern wl_data_device_manager_interface
 
 wl_output_interface_name:
 db "wl_output_interface", 0

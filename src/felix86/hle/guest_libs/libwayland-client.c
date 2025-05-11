@@ -1,6 +1,25 @@
+#define const // problem? :trollface: (we want the wl_interfaces below to not be defined as const)
 #include <wayland-client.h>
+#undef const
 
 #define WL_CLOSURE_MAX_ARGS 20
+
+struct wl_interface wl_pointer_interface;
+struct wl_interface wl_output_interface;
+struct wl_interface wl_shm_interface;
+struct wl_interface wl_shm_pool_interface;
+struct wl_interface wl_compositor_interface;
+struct wl_interface wl_seat_interface;
+struct wl_interface wl_buffer_interface;
+struct wl_interface wl_registry_interface;
+struct wl_interface wl_surface_interface;
+struct wl_interface wl_keyboard_interface;
+struct wl_interface wl_callback_interface;
+struct wl_interface wl_region_interface;
+struct wl_interface wl_data_device_interface;
+struct wl_interface wl_data_source_interface;
+struct wl_interface wl_data_offer_interface;
+struct wl_interface wl_data_device_manager_interface;
 
 static void va_list_to_args(const char* signature, union wl_argument* args, va_list ap) {
     for (int i = 0; i < WL_CLOSURE_MAX_ARGS; i++) {
@@ -16,7 +35,7 @@ static void va_list_to_args(const char* signature, union wl_argument* args, va_l
             args[i].f = va_arg(ap, wl_fixed_t);
             break;
         case 's':
-            args[i].s = va_arg(ap, const char*);
+            args[i].s = va_arg(ap, char*);
             break;
         case 'o':
             args[i].o = va_arg(ap, struct wl_object*);
@@ -51,7 +70,7 @@ void wl_proxy_marshal(struct wl_proxy* proxy, uint32_t opcode, ...) {
     wl_proxy_marshal_array(proxy, opcode, args);
 }
 
-struct wl_proxy* wl_proxy_marshal_constructor(struct wl_proxy* proxy, uint32_t opcode, const struct wl_interface* interface, ...) {
+struct wl_proxy* wl_proxy_marshal_constructor(struct wl_proxy* proxy, uint32_t opcode, struct wl_interface* interface, ...) {
     const char* signature = (*(struct wl_interface**)proxy)->methods[opcode].signature;
 
     union wl_argument args[WL_CLOSURE_MAX_ARGS];
@@ -63,8 +82,8 @@ struct wl_proxy* wl_proxy_marshal_constructor(struct wl_proxy* proxy, uint32_t o
     return wl_proxy_marshal_array_constructor(proxy, opcode, args, interface);
 }
 
-struct wl_proxy* wl_proxy_marshal_constructor_versioned(struct wl_proxy* proxy, uint32_t opcode, const struct wl_interface* interface,
-                                                        uint32_t version, ...) {
+struct wl_proxy* wl_proxy_marshal_constructor_versioned(struct wl_proxy* proxy, uint32_t opcode, struct wl_interface* interface, uint32_t version,
+                                                        ...) {
     const char* signature = (*(struct wl_interface**)proxy)->methods[opcode].signature;
 
     union wl_argument args[WL_CLOSURE_MAX_ARGS];
@@ -76,8 +95,8 @@ struct wl_proxy* wl_proxy_marshal_constructor_versioned(struct wl_proxy* proxy, 
     return wl_proxy_marshal_array_constructor_versioned(proxy, opcode, args, interface, version);
 }
 
-struct wl_proxy* wl_proxy_marshal_flags(struct wl_proxy* proxy, uint32_t opcode, const struct wl_interface* interface, uint32_t version,
-                                        uint32_t flags, ...) {
+struct wl_proxy* wl_proxy_marshal_flags(struct wl_proxy* proxy, uint32_t opcode, struct wl_interface* interface, uint32_t version, uint32_t flags,
+                                        ...) {
     const char* signature = (*(struct wl_interface**)proxy)->methods[opcode].signature;
 
     union wl_argument args[WL_CLOSURE_MAX_ARGS];
