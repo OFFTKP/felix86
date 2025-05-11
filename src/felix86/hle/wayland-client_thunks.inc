@@ -36,6 +36,12 @@ X("libwayland-client.so", wl_proxy_marshal_array, v_qdq)
 X("libwayland-client.so", wl_proxy_marshal_array_constructor, q_qdqq)
 X("libwayland-client.so", wl_proxy_marshal_array_constructor_versioned, q_qdqqd)
 X("libwayland-client.so", wl_proxy_marshal_array_flags, q_qdqddq)
+X("libwayland-client.so", wl_list_init, v_q)
+X("libwayland-client.so", wl_list_insert, v_qq)
+X("libwayland-client.so", wl_list_remove, v_q)
+X("libwayland-client.so", wl_list_length, d_q)
+X("libwayland-client.so", wl_list_empty, d_q)
+X("libwayland-client.so", wl_list_insert_list, v_qq)
 
 // These have variadic arguments so we don't thunk them
 // X("libwayland-client.so", wl_proxy_marshal, )

@@ -360,6 +360,49 @@ invlpg [rax]
 db "wl_proxy_marshal_array_flags", 0
 ret
 
+global wl_list_init:function
+align 16
+wl_list_init:
+invlpg [rax]
+db "wl_list_init", 0
+ret
+
+global wl_list_insert:function
+align 16
+wl_list_insert:
+invlpg [rax]
+db "wl_list_insert", 0
+ret
+
+global wl_list_remove:function
+align 16
+wl_list_remove:
+invlpg [rax]
+db "wl_list_remove", 0
+ret
+
+global wl_list_length:function
+align 16
+wl_list_length:
+invlpg [rax]
+db "wl_list_length", 0
+ret
+
+global wl_list_empty:function
+align 16
+wl_list_empty:
+invlpg [rax]
+db "wl_list_empty", 0
+ret
+
+global wl_list_insert_list:function
+align 16
+wl_list_insert_list:
+invlpg [rax]
+db "wl_list_insert_list", 0
+ret
+
+
 global wl_log_set_handler_client:function
 align 16
 wl_log_set_handler_client:

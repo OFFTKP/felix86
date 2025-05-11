@@ -633,7 +633,7 @@ void print_address(u64 address) {
 void push_calltrace(ThreadState* state, u64 address) {
     state->recompiler->getCalltrace().push_back(address);
 
-    if (state->recompiler->getCalltrace().size() > 20) {
+    if (state->recompiler->getCalltrace().size() > 30) {
         state->recompiler->getCalltrace().pop_front();
     }
 
