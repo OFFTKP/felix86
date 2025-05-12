@@ -3,6 +3,7 @@ bits 64
 section .data
 
 extern wl_output_interface
+extern wl_touch_interface
 extern wl_shm_pool_interface
 extern wl_pointer_interface
 extern wl_compositor_interface
@@ -21,6 +22,8 @@ extern wl_data_device_manager_interface
 
 wl_output_interface_name:
 db "wl_output_interface", 0
+wl_touch_interface_name:
+db "wl_touch_interface", 0
 wl_shm_pool_interface_name:
 db "wl_shm_pool_interface", 0
 wl_pointer_interface_name:
@@ -67,6 +70,8 @@ dq libname
 ; the constructor will set these to the host libwayland-client pointers
 dq wl_output_interface_name
 dq wl_output_interface
+dq wl_touch_interface_name
+dq wl_touch_interface
 dq wl_shm_pool_interface_name
 dq wl_shm_pool_interface
 dq wl_pointer_interface_name
