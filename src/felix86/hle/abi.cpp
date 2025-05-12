@@ -387,7 +387,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     // TODO: Just like with guest-callable host functions, we need memory to store our pointers that will outlive the code cache
     // This is wasteful, so we should use a global separate trampoline cache that will never realistically overflow
     // Because there's way fewer trampolines than recompiled code
-    u8* memory = (u8*)mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    u8* memory = (u8*)mmap(nullptr, 8192, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     u8* curr = memory;
 
     // We need custom guest code and custom host code
@@ -413,11 +413,10 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     curr[0] = 0xf4;
     curr += 1;
 
-    ASSERT(curr < memory + 1024);
-
-    // Now create our RISC-V portion later in memory
+    // Now create our RISC-V portion later in a separate page because the
+    // x86 code is going to become read-only when it gets recompiled
     ThreadState* state = ThreadState::Get();
-    biscuit::Assembler as(memory + 1024, 1024);
+    biscuit::Assembler as(memory + 4096, 4096);
     void* trampoline = as.GetCursorPointer();
     as.ADDI(sp, sp, -32);
     as.SD(ra, 24, sp);
