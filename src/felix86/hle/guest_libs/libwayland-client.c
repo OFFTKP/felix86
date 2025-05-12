@@ -25,9 +25,32 @@ struct wl_interface wl_data_source_interface;
 struct wl_interface wl_data_offer_interface;
 struct wl_interface wl_data_device_manager_interface;
 
+static const char* get_next_argument_type(const char* signature, char* type) {
+    for (; *signature; ++signature) {
+        switch (*signature) {
+        case 'i':
+        case 'u':
+        case 'f':
+        case 's':
+        case 'o':
+        case 'n':
+        case 'a':
+        case 'h':
+            *type = *signature;
+            return signature + 1;
+        case '?':
+            break;
+        }
+    }
+    *type = 0;
+    return signature;
+}
+
 static void va_list_to_args(const char* signature, union wl_argument* args, va_list list) {
+    const char* iterator = signature;
     for (int i = 0; i < WL_CLOSURE_MAX_ARGS; i++) {
-        char arg_type = signature[i];
+        char arg_type;
+        iterator = get_next_argument_type(iterator, &arg_type);
         switch (arg_type) {
         case 'i':
             args[i].i = va_arg(list, int32_t);
