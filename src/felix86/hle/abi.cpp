@@ -126,7 +126,16 @@ struct Marshalling {
 };
 
 void my_printer(ThreadState* state, const char* name) {
-    printf("Calling function %s\n", name);
+    int len = strlen(name);
+    const char* signature = name + len + 1;
+    int sig_len = strlen(signature);
+    printf("Calling function %s (%s) {", name, signature);
+    for (int i = 2; i < sig_len; i++) {
+        x86_ref_e ref = x86arg(i);
+        u64 gpr = state->gprs[ref];
+        printf("arg%d = %lx, ", i - 2, gpr);
+    }
+    printf("}\n");
 }
 
 GuestToHostMarshaller::GuestToHostMarshaller(const std::string& name, const std::string& signature) : name(name), signature(signature) {}
@@ -145,6 +154,11 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     as.J(&after);
     for (int i = 0; i < name.size(); i++) {
         u8 c = name[i];
+        as.GetCodeBuffer().Emit(c);
+    }
+    as.GetCodeBuffer().Emit((u8)0);
+    for (int i = 0; i < signature.size(); i++) {
+        u8 c = signature[i];
         as.GetCodeBuffer().Emit(c);
     }
     as.GetCodeBuffer().Emit((u8)0);
