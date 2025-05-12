@@ -1,3 +1,4 @@
+#include <stdio.h>
 #define const // problem? :trollface: (we want the wl_interfaces below to not be defined as const)
 #include <wayland-client.h>
 #undef const
@@ -108,5 +109,6 @@ struct wl_proxy* wl_proxy_marshal_flags(struct wl_proxy* proxy, uint32_t opcode,
     va_list_to_args(signature, args, list);
     va_end(list);
 
+    printf("wl_proxy_marshal_flags signature: %s\n", signature);
     return wl_proxy_marshal_array_flags(proxy, opcode, interface, version, flags, args);
 }
