@@ -427,7 +427,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     biscuit::GPR thread_state_pointer = s11;
     biscuit::GPR guest_stack_pointer = t1;
 
-    // ThreadState* in t0, RSP in t1
+    // ThreadState* in s11, RSP in t1
     as.LI(thread_state_pointer, (u64)state);
     as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
 
@@ -438,30 +438,36 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
 
     int gpr_count = 0;
     int stack_offset = 0;
+    int riscv_stack_offset = 0;
     bool update_stack = false;
     for (size_t i = 2; i < size; i++) {
-        // Only up to 8 host arguments which is fine for now
         switch (signature[i]) {
-        case 'q': {
-            biscuit::GPR riscv_reg = gprarg(gpr_count);
-            if (gpr_count >= 6) {
-                stack_offset += 8;
-                as.SD(riscv_reg, -stack_offset, guest_stack_pointer);
-            } else {
-                x86_ref_e arg = x86arg(gpr_count);
-                as.SD(riscv_reg, offsetof(ThreadState, gprs) + (arg - X86_REF_RAX) * 8, thread_state_pointer);
-            }
-            gpr_count++;
-            break;
-        }
+        case 'q':
         case 'd': {
-            biscuit::GPR riscv_reg = gprarg(gpr_count);
-            as.SLLI(riscv_reg, riscv_reg, 32);
-            as.SRLI(riscv_reg, riscv_reg, 32);
-            if (gpr_count >= 6) {
+            if (gpr_count >= 8) {
+                biscuit::GPR temp = t0;
+                if (signature[i] == 'd') {
+                    as.LWU(temp, riscv_stack_offset, sp);
+                } else {
+                    as.LD(temp, riscv_stack_offset, sp);
+                }
+                as.SD(temp, -stack_offset, guest_stack_pointer);
+                riscv_stack_offset += 8;
+                stack_offset += 8;
+            } else if (gpr_count >= 6) {
+                biscuit::GPR riscv_reg = gprarg(gpr_count);
+                if (signature[i] == 'd') {
+                    as.SLLI(riscv_reg, riscv_reg, 32);
+                    as.SRLI(riscv_reg, riscv_reg, 32);
+                }
                 stack_offset += 8;
                 as.SD(riscv_reg, -stack_offset, guest_stack_pointer);
             } else {
+                biscuit::GPR riscv_reg = gprarg(gpr_count);
+                if (signature[i] == 'd') {
+                    as.SLLI(riscv_reg, riscv_reg, 32);
+                    as.SRLI(riscv_reg, riscv_reg, 32);
+                }
                 x86_ref_e arg = x86arg(gpr_count);
                 as.SD(riscv_reg, offsetof(ThreadState, gprs) + (arg - X86_REF_RAX) * 8, thread_state_pointer);
             }
