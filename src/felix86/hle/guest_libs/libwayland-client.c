@@ -7,6 +7,8 @@
 struct wl_interface wl_pointer_interface;
 struct wl_interface wl_output_interface;
 struct wl_interface wl_touch_interface;
+struct wl_interface wl_subsurface_interface;
+struct wl_interface wl_subcompositor_interface;
 struct wl_interface wl_shm_interface;
 struct wl_interface wl_shm_pool_interface;
 struct wl_interface wl_compositor_interface;
