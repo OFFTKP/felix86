@@ -374,17 +374,27 @@ std::string wl_to_felix86_signature(const std::string& wayland_signature) {
     return ret;
 }
 
-int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void* implementation, void* data) {
-    struct wl_interface* interface = *(struct wl_interface**)proxy;
+void* host_wl_proxy_get_listener(struct wl_proxy* proxy) {
+    static auto host_wl_proxy_get_listener = (void* (*)(struct wl_proxy*))dlsym(libwayland, "wl_proxy_get_listener");
+    return host_wl_proxy_get_listener(proxy);
+}
 
-    // uint64_t* host_callbacks = new uint64_t[WL_CLOSURE_MAX_ARGS];
+int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** callbacks, void* data) {
+    void* old_listener = host_wl_proxy_get_listener(proxy);
+    delete[] (u64*)old_listener;
+
+    struct wl_interface* interface = *(struct wl_interface**)proxy;
+    u64* host_callable = new u64[WL_CLOSURE_MAX_ARGS];
     for (u32 i = 0; i < interface->event_count; i++) {
         const char* signature = interface->events[i].signature;
         std::string f86_signature = wl_to_felix86_signature(signature);
+        void* callback = callbacks[i];
+        void* host_callback = ABIMadness::hostToGuestTrampoline(signature, callback);
+        host_callable[i] = (u64)host_callback;
     }
 
     static auto host_wl_proxy_add_listener = (int (*)(struct wl_proxy*, void*, void*))dlsym(libwayland, "wl_proxy_add_listener");
-    return host_wl_proxy_add_listener(proxy, implementation, data);
+    return host_wl_proxy_add_listener(proxy, host_callable, data);
 }
 
 #define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
