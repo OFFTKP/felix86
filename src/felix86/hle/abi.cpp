@@ -140,7 +140,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     as.MV(a0, s11);
     as.LI(t0, (u64)my_printer);
     as.AUIPC(a1, 0);
-    as.ADDI(a1, a1, 12);
+    as.ADDI(a1, a1, 16);
     as.JALR(t0);
     as.J(&after);
     for (int i = 0; i < signature.size(); i++) {
@@ -148,6 +148,9 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
         as.GetCodeBuffer().Emit(c);
     }
     as.GetCodeBuffer().Emit((u8)0);
+    while ((u64)as.GetCursorPointer() & 0b11) {
+        as.GetCodeBuffer().Emit((u8)0);
+    }
     as.Bind(&after);
 #endif
 
