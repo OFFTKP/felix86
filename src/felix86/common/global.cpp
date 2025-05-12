@@ -285,6 +285,11 @@ void initialize_globals() {
         ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunks.c_str());
         std::string srootfs = g_config.rootfs_path.string();
 
+#ifndef BUILD_THUNKING
+        ERROR("FELIX86_THUNKS is set, but this build of felix86 was not built with thunking support, enable BUILD_THUNKING in cmake configuration");
+        return;
+#endif
+
         // TODO: should probably not be done here?
         // std::filesystem::path glx_thunk;
         // bool found_glx = false;
