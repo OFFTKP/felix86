@@ -792,6 +792,9 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
             const char* name = pointers->name;
             u64 host_ptr = (u64)dlsym(libwayland, name);
             ASSERT_MSG(host_ptr != 0, "Could not find host libwayland-client pointer for %s", host_ptr);
+            // Interfaces are placed in RO memory but we need to change their values to match our host library
+            // So hack away the protection
+            mprotect((void*)((u64)ptr & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
             memcpy((void*)ptr, (void*)host_ptr, sizeof(wl_interface));
             VERBOSE("libwayland-client thunk: %s set to %p (guest ptr: %p)", name, host_ptr, ptr);
 
