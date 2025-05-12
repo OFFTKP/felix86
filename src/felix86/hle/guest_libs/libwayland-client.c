@@ -7,6 +7,7 @@
 
 struct wl_interface wl_pointer_interface;
 struct wl_interface wl_output_interface;
+struct wl_interface wl_display_interface;
 struct wl_interface wl_shell_interface;
 struct wl_interface wl_shell_surface_interface;
 struct wl_interface wl_touch_interface;

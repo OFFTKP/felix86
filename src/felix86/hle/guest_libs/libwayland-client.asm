@@ -5,6 +5,7 @@ section .data
 extern wl_output_interface
 extern wl_shell_interface
 extern wl_shell_surface_interface
+extern wl_display_interface
 extern wl_touch_interface
 extern wl_subsurface_interface
 extern wl_subcompositor_interface
@@ -24,6 +25,8 @@ extern wl_data_source_interface
 extern wl_data_offer_interface
 extern wl_data_device_manager_interface
 
+wl_display_interface_name:
+db "wl_display_interface", 0
 wl_output_interface_name:
 db "wl_output_interface", 0
 wl_shell_interface_name:
@@ -82,6 +85,8 @@ dq libname
 ; the constructor will set these to the host libwayland-client pointers
 dq wl_output_interface_name
 dq wl_output_interface
+dq wl_display_interface_name
+dq wl_display_interface
 dq wl_shell_interface_name
 dq wl_shell_interface
 dq wl_shell_surface_interface_name
