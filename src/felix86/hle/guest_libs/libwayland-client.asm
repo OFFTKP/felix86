@@ -4,6 +4,7 @@ section .data
 
 extern wl_output_interface
 extern wl_shell_interface
+extern wl_shell_surface_interface
 extern wl_touch_interface
 extern wl_subsurface_interface
 extern wl_subcompositor_interface
@@ -27,6 +28,8 @@ wl_output_interface_name:
 db "wl_output_interface", 0
 wl_shell_interface_name:
 db "wl_shell_interface", 0
+wl_shell_surface_interface_name:
+db "wl_shell_surface_interface", 0
 wl_touch_interface_name:
 db "wl_touch_interface", 0
 wl_subsurface_interface_name:
@@ -81,6 +84,8 @@ dq wl_output_interface_name
 dq wl_output_interface
 dq wl_shell_interface_name
 dq wl_shell_interface
+dq wl_shell_surface_interface_name
+dq wl_shell_surface_interface
 dq wl_touch_interface_name
 dq wl_touch_interface
 dq wl_subsurface_interface_name
