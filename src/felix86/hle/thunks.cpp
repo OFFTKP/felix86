@@ -389,7 +389,7 @@ int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** callbacks
         const char* signature = interface->events[i].signature;
         std::string f86_signature = wl_to_felix86_signature(signature);
         void* callback = callbacks[i];
-        void* host_callback = ABIMadness::hostToGuestTrampoline(signature, callback);
+        void* host_callback = ABIMadness::hostToGuestTrampoline(f86_signature.c_str(), callback);
         host_callable[i] = (u64)host_callback;
     }
 
