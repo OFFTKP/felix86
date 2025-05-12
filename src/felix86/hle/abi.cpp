@@ -144,7 +144,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     ASSERT(signature.size() >= 2);
     ASSERT(signature[1] == '_');
 
-#if 1
+#if 0
     biscuit::Label after;
     as.MV(a0, s11);
     as.LI(t0, (u64)my_printer);
@@ -460,8 +460,6 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     as.SD(ra, 24, sp);
     as.SD(s11, 0, sp);
     as.SD(s10, 8, sp);
-
-    printf("Signature %s at %lx (riscv: %lx)\n", signature, memory, memory + 4096);
 
     biscuit::GPR thread_state_pointer = s11;
     biscuit::GPR guest_stack_pointer = t1;
