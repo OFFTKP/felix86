@@ -1944,7 +1944,7 @@ FAST_HANDLE(XCHG_lock) {
             as.XOR(scratch, scratch, dst);
             as.SC_W(Ordering::AQRL, scratch, scratch, address_masked);
             as.BNEZ(scratch, &loop);
-            as.SRLW(dst, dst, address_masked);
+            as.SRLW(dst, dst, address);
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();
@@ -1974,7 +1974,7 @@ FAST_HANDLE(XCHG_lock) {
             as.XOR(scratch, scratch, dst);
             as.SC_W(Ordering::AQRL, scratch, scratch, address_masked);
             as.BNEZ(scratch, &loop);
-            as.SRLW(dst, dst, address_masked);
+            as.SRLW(dst, dst, address);
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();
