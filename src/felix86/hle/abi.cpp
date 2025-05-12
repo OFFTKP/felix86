@@ -509,5 +509,8 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     as.ADDI(sp, sp, 32);
     as.RET();
 
+    mprotect(memory, 4096, PROT_READ | PROT_EXEC);
+    flush_icache();
+
     return trampoline;
 }
