@@ -344,7 +344,7 @@ void* host_vkGetDeviceProcAddr(VkDevice device, const char* name) {
 
 // Convert the wayland callback signature to a felix86 thunk signature to generate a host->guest trampoline
 std::string wl_to_felix86_signature(const std::string& wayland_signature) {
-    std::string ret = "v_"; // wayland callbacks return void
+    std::string ret = "v_qq"; // wayland callbacks return void and take void*, wl_proxy* as the first two args
     for (auto c : wayland_signature) {
         switch (c) {
         case 's': // const char*
