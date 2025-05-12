@@ -2,7 +2,6 @@
 
 #include <string>
 #include <biscuit/assembler.hpp>
-#include <xbyak/xbyak.h>
 
 /*
     We use a custom signature format to describe the function.

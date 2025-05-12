@@ -388,14 +388,22 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     // This is wasteful, so we should use a global separate trampoline cache that will never realistically overflow
     // Because there's way fewer trampolines than recompiled code
     u8* memory = (u8*)mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    u8* curr = memory;
 
     // We need custom guest code and custom host code
-    Xbyak::CodeGenerator cg(1024, memory);
-    cg.mov(Xbyak::util::rax, (u64)guest_function);
-    cg.call(Xbyak::util::rax);
+
+    // mov rax, u64
+    curr[0] = 0x48;
+    curr[1] = 0xb8;
+    memcpy(&curr[2], &guest_function, sizeof(u64));
+    curr += 10;
+
+    // call rax
+    curr[0] = 0xff;
+    curr[1] = 0xd0;
+    curr += 2;
 
     // invlpg [rdx], exit dispatcher
-    u8* curr = cg.getCurr<u8*>();
     curr[0] = 0x0f;
     curr[1] = 0x01;
     curr[2] = 0x3a;
