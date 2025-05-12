@@ -144,7 +144,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     ASSERT(signature.size() >= 2);
     ASSERT(signature[1] == '_');
 
-#if 0
+#if 1
     biscuit::Label after;
     as.MV(a0, s11);
     as.LI(t0, (u64)my_printer);
