@@ -131,6 +131,10 @@ void my_printer(ThreadState* state, const char* name) {
     int sig_len = strlen(signature);
     printf("Calling function %s (%s) {", name, signature);
     for (int i = 2; i < sig_len; i++) {
+        if (i >= 8) {
+            printf("too big...");
+            break;
+        }
         x86_ref_e ref = x86arg(i - 2);
         u64 gpr = state->gprs[ref];
         printf("arg%d = %lx, ", i - 2, gpr);
