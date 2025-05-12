@@ -1,5 +1,7 @@
+#include <sys/mman.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
+#include "felix86/emulator.hpp"
 #include "felix86/hle/abi.hpp"
 #include "felix86/v2/recompiler.hpp"
 
@@ -123,39 +125,9 @@ struct Marshalling {
     int size;
 };
 
-ABIMarshaller::ABIMarshaller(const std::string& signature) : signature(signature) {}
+GuestToHostMarshaller::GuestToHostMarshaller(const std::string& signature) : signature(signature) {}
 
-/*
-    We use a custom signature format to describe the function.
-    return type, _, arguments.
-
-    void -> v
-    integer -> q, d, w, b with x86 naming convention (qword, dword, word, byte)
-    float, double -> F, D
-    add others here when we need them (will we?)
-
-    `x` means zero this argument, useful for zeroing specific arguments
-    For example zeroing the allocation callbacks in Vulkan
-
-    example:
-    v_dwF -> void my_func(int a, short b, float c)
-
-    We only thunk simple functions so this should be fine.
-
-    x86-64 ABI:
-    If the class is INTEGER, the next available register of the sequence %rdi, %rsi, %rdx,
-    %rcx, %r8 and %r9 is used. Return value goes in %rax.
-
-    If the class is SSE, the next available vector register is used, the registers are taken
-    in the order from %xmm0 to %xmm7. Return value goes in %xmm0.
-
-    Note: When x86-64 functions return they zero the upper 96 or 64 bits of xmm0.
-
-    RISC-V ABI:
-    Uses a0-a7, fa0-fa7. This is enough for our purposes.
-    Return value goes in a0 or fa0.
-*/
-void ABIMarshaller::emitPrologue(biscuit::Assembler& as) {
+void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     ASSERT(signature.size() >= 2);
     ASSERT(signature[1] == '_');
 
@@ -358,7 +330,7 @@ void ABIMarshaller::emitPrologue(biscuit::Assembler& as) {
     }
 }
 
-void ABIMarshaller::emitEpilogue(biscuit::Assembler& as) {
+void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
     char return_type = signature[0];
 
     if (return_type != 'v') {
@@ -404,4 +376,130 @@ void ABIMarshaller::emitEpilogue(biscuit::Assembler& as) {
     if (stack_size != 0) {
         as.ADDI(sp, sp, stack_size);
     }
+}
+
+void enter_dispatcher_for_callback(ThreadState* state) {
+    state->recompiler->enterDispatcher(state);
+    ASSERT(state->exit_reason == EXIT_REASON_GUEST_CODE_FINISHED);
+}
+
+void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_function) {
+    // TODO: Just like with guest-callable host functions, we need memory to store our pointers that will outlive the code cache
+    // This is wasteful, so we should use a global separate trampoline cache that will never realistically overflow
+    // Because there's way fewer trampolines than recompiled code
+    u8* memory = (u8*)mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    // We need custom guest code and custom host code
+    Xbyak::CodeGenerator cg(1024, memory);
+    cg.mov(Xbyak::util::rax, (u64)guest_function);
+    cg.call(Xbyak::util::rax);
+
+    // invlpg [rdx], exit dispatcher
+    u8* curr = cg.getCurr<u8*>();
+    curr[0] = 0x0f;
+    curr[1] = 0x01;
+    curr[2] = 0x3a;
+
+    ASSERT(curr + 3 < memory + 1024);
+
+    // Now create our RISC-V portion later in memory
+    ThreadState* state = ThreadState::Get();
+    biscuit::Assembler as(memory + 1024, 1024);
+    void* trampoline = as.GetCursorPointer();
+    as.ADDI(sp, sp, -32);
+    as.SD(ra, 24, sp);
+    as.SD(s11, 0, sp);
+    as.SD(s10, 8, sp);
+
+    biscuit::GPR thread_state_pointer = s11;
+    biscuit::GPR guest_stack_pointer = t1;
+
+    // ThreadState* in t0, RSP in t1
+    as.LI(thread_state_pointer, (u64)state);
+    as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+
+    // Marshal host arguments to guest arguments
+    size_t size = strlen(signature);
+    ASSERT(size >= 2);
+    ASSERT(signature[1] == '_');
+
+    int gpr_count = 0;
+    int stack_offset = 0;
+    bool update_stack = false;
+    for (size_t i = 2; i < size; i++) {
+        // Only up to 8 host arguments which is fine for now
+        switch (signature[i]) {
+        case 'q': {
+            biscuit::GPR riscv_reg = gprarg(gpr_count);
+            if (gpr_count >= 6) {
+                stack_offset += 8;
+                as.SD(riscv_reg, -stack_offset, guest_stack_pointer);
+            } else {
+                x86_ref_e arg = x86arg(gpr_count);
+                as.SD(riscv_reg, offsetof(ThreadState, gprs) + (arg - X86_REF_RAX) * 8, thread_state_pointer);
+            }
+            gpr_count++;
+            break;
+        }
+        case 'd': {
+            biscuit::GPR riscv_reg = gprarg(gpr_count);
+            as.SLLI(riscv_reg, riscv_reg, 32);
+            as.SRLI(riscv_reg, riscv_reg, 32);
+            if (gpr_count >= 6) {
+                stack_offset += 8;
+                as.SD(riscv_reg, -stack_offset, guest_stack_pointer);
+            } else {
+                x86_ref_e arg = x86arg(gpr_count);
+                as.SD(riscv_reg, offsetof(ThreadState, gprs) + (arg - X86_REF_RAX) * 8, thread_state_pointer);
+            }
+            gpr_count++;
+            break;
+        }
+        default: {
+            // Currently we only have `q` or `d` in callback arguments
+            // TODO: Support all characters in the future
+            ERROR("Unknown signature argument: %c", signature[i]);
+            break;
+        }
+        }
+    }
+
+    if (update_stack) {
+        as.ADDI(guest_stack_pointer, guest_stack_pointer, -stack_offset);
+        as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+    }
+
+    // Save old RIP, set new RIP
+    as.LD(s10, offsetof(ThreadState, rip), thread_state_pointer);
+    as.LI(t0, (u64)memory);
+    as.SD(t0, offsetof(ThreadState, rip), thread_state_pointer);
+
+    as.MV(a0, s11);
+    as.LI(t2, (u64)enter_dispatcher_for_callback);
+
+    // Finally we "jump" to the guest code
+    // In reality we enter the dispatcher and it's gonna compile it and yada yada
+    as.JALR(t2);
+
+    // Eventually we will return here when ExitDispatcher is called due to invlpg [rdx]
+    // Restore old RIP (is this saving/restoring even necessary?)
+    as.SD(s10, offsetof(ThreadState, rip), thread_state_pointer);
+
+    if (update_stack) {
+        // Restore the old stack
+        as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+        as.ADDI(guest_stack_pointer, guest_stack_pointer, stack_offset);
+        as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+    }
+
+    // Return values not supported yet, but we can just load a0 from RAX
+    ASSERT(signature[0] == 'v');
+
+    as.LD(s11, 0, sp);
+    as.LD(s10, 8, sp);
+    as.LD(ra, 24, sp);
+    as.ADDI(sp, sp, 32);
+    as.RET();
+
+    return trampoline;
 }

@@ -1,5 +1,7 @@
 #include "felix86/hle/thunks.hpp"
 
+// TODO: this file is messy. Split it up to separate files per library once our thunking implementation is more concrete
+
 // Thunks need libX11
 #ifndef BUILD_THUNKING
 void Thunks::initialize() {}
@@ -339,14 +341,46 @@ void* host_vkGetDeviceProcAddr(VkDevice device, const char* name) {
 }
 
 #define WL_CLOSURE_MAX_ARGS 20
+
+// Convert the wayland callback signature to a felix86 thunk signature to generate a host->guest trampoline
+std::string wl_to_felix86_signature(const std::string& wayland_signature) {
+    std::string ret = "v_"; // wayland callbacks return void
+    for (auto c : wayland_signature) {
+        switch (c) {
+        case 's': // const char*
+        case 'o': // wl_proxy*
+        case 'n': // wl_proxy*
+        case 'a': // wl_array*
+        {
+            ret += 'q';
+            break;
+        }
+        case 'u': // u32
+        case 'i': // i32
+        case 'f': // wl_fixed_t ie. i32
+        case 'h': {
+            ret += 'd';
+            break;
+        }
+        case '?': {
+            continue;
+        }
+        default: {
+            ERROR("Unknown wayland signature character: %c", c);
+            break;
+        }
+        }
+    }
+    return ret;
+}
+
 int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void* implementation, void* data) {
     struct wl_interface* interface = *(struct wl_interface**)proxy;
 
     // uint64_t* host_callbacks = new uint64_t[WL_CLOSURE_MAX_ARGS];
-    printf("%d Signatures:\n", interface->event_count);
     for (u32 i = 0; i < interface->event_count; i++) {
         const char* signature = interface->events[i].signature;
-        printf("%s\n", signature);
+        std::string f86_signature = wl_to_felix86_signature(signature);
     }
 
     static auto host_wl_proxy_add_listener = (int (*)(struct wl_proxy*, void*, void*))dlsym(libwayland, "wl_proxy_add_listener");
@@ -687,7 +721,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
 
     void* trampoline = as.GetCursorPointer();
 
-    ABIMarshaller marshaller(signature);
+    GuestToHostMarshaller marshaller(signature);
     marshaller.emitPrologue(as);
     Recompiler::call(as, target);
     marshaller.emitEpilogue(as);
@@ -701,7 +735,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* signature, u64 hos
     Assembler& as = rec.getAssembler();
     void* trampoline = as.GetCursorPointer();
 
-    ABIMarshaller marshaller(signature);
+    GuestToHostMarshaller marshaller(signature);
     marshaller.emitPrologue(as);
     Recompiler::call(as, host_ptr);
     marshaller.emitEpilogue(as);

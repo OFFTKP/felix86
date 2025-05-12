@@ -608,8 +608,6 @@ private:
 
     void emitInvalidateCallerThunk();
 
-    void emitExitDispatcherThunk();
-
     // Get the register and load the value into it if needed
     biscuit::GPR gpr(ZydisRegister reg);
 

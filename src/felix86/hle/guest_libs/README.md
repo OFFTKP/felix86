@@ -39,3 +39,11 @@ invlpg [rcx]
 ```
 Similar to invlpg [rax], but instead of a name, a pointer and signature is provided. This is useful for GetProcAddress functions
 that want to return a guest-callable pointer to a host function.
+```
+invlpg [rdx]
+```
+Special "ret" that returns to host code. Essentially calls ExitDispatcher with EXIT_REASON_GUEST_CODE_FINISHED. This is useful
+for when returning from recompiled guest code that is called from a host (thunked) function. A trampoline is generated for guest
+callbacks that basically enters the dispatcher and when the guest function returns it calls invlpg [rdx], which will call
+ExitDispatcher. Due to how ExitDispatcher works, it will pop the frame and return to whatever called EnterDispatcher, which
+was our trampoline.

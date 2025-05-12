@@ -7655,13 +7655,10 @@ FAST_HANDLE(PAUSE) {
     }
 }
 
-// This is a pseudo-instruction that we generate in our thunked guest libraries to basically
-// notify the recompiler that whatever follows here is thunked code and it should call the equivalent
-// host function.
-// After this instruction (which must be 3 bytes as it always is INVLPG[RAX], see generator.cpp) follows
-// a null terminated string with the name of the host function we want to call. We pass this name to
-// Thunks::generateTrampoline to generate us a trampoline to go boing.
-// After this INVLPG there will always be a RET, to simulate what a normal function would do
+// INVLPG is used during thunking to do various special stuff based on the operand
+// It is an instruction that no userspace program should ever use which is why it was picked
+// ----------------------------------------------------------------------------------------------------
+// <!> <!> See src/felix86/hle/guest_libs/README.md for more info on these functions <!> <!>
 FAST_HANDLE(INVLPG) {
     if (g_config.thunks_path.empty()) {
         ERROR("INVLPG while thunking path not set?");
@@ -7671,6 +7668,7 @@ FAST_HANDLE(INVLPG) {
         INVLPG_GENERATE_TRAMPOLINE = ZYDIS_REGISTER_RAX,
         INVLPG_THUNK_CONSTRUCTOR = ZYDIS_REGISTER_RBX,
         INVLPG_GENERATE_TRAMPOLINE_PTR = ZYDIS_REGISTER_RCX,
+        INVLPG_GUEST_CODE_FINISHED = ZYDIS_REGISTER_RDX,
     };
 
     ASSERT_MSG(instruction.length == 3, "Hit INVLPG instruction but it's not 3 bytes?");
@@ -7718,6 +7716,15 @@ FAST_HANDLE(INVLPG) {
         VERBOSE("Running constructor for thunked library %s", name);
 
         Thunks::runConstructor(name, guest_pointers);
+        break;
+    }
+    case INVLPG_GUEST_CODE_FINISHED: {
+        rec.setExitReason(ExitReason::EXIT_REASON_GUEST_CODE_FINISHED);
+        rec.writebackState();
+        as.LI(t5, (u64)Emulator::ExitDispatcher);
+        as.MV(a0, sp);
+        as.JR(t5);
+        rec.stopCompiling();
         break;
     }
     default: {
