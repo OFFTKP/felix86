@@ -371,6 +371,7 @@ std::string wl_to_felix86_signature(const std::string& wayland_signature) {
         }
         }
     }
+    PLAIN("%s -> %s", wayland_signature.c_str(), ret.c_str());
     return ret;
 }
 
