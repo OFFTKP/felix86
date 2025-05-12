@@ -275,7 +275,6 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
         // getprocaddr returned. So we generate an invlpg [rcx] to create a proper guest pointer that will jump to our pointer
         return generate_guest_pointer(name, (u64)ptr);
     } else {
-        WARN("Host vkGetInstanceProcAddr returned null for %s", name);
         return nullptr;
     }
 }
@@ -285,7 +284,6 @@ void* felix86_thunk_vkGetDeviceProcAddr(VkDevice device, const char* name) {
     if (ptr) {
         return generate_guest_pointer(name, (u64)ptr);
     } else {
-        WARN("Host vkGetDeviceProcAddr returned null for %s", name);
         return nullptr;
     }
 }
@@ -374,7 +372,6 @@ std::string wl_to_felix86_signature(const std::string& wayland_signature) {
         }
         }
     }
-    PLAIN("%s -> %s", wayland_signature.c_str(), ret.c_str());
     return ret;
 }
 
