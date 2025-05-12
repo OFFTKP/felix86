@@ -460,6 +460,8 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     as.SD(s11, 0, sp);
     as.SD(s10, 8, sp);
 
+    printf("Signature %s at %lx (riscv: %lx)\n", signature, memory, memory + 4096);
+
     biscuit::GPR thread_state_pointer = s11;
     biscuit::GPR guest_stack_pointer = t1;
 
