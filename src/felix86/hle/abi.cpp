@@ -407,8 +407,13 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     curr[0] = 0x0f;
     curr[1] = 0x01;
     curr[2] = 0x3a;
+    curr += 3;
 
-    ASSERT(curr + 3 < memory + 1024);
+    // hlt to stop scanAhead and make sure it doesn't get here
+    curr[0] = 0xf4;
+    curr += 1;
+
+    ASSERT(curr < memory + 1024);
 
     // Now create our RISC-V portion later in memory
     ThreadState* state = ThreadState::Get();
