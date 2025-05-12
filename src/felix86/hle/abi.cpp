@@ -143,8 +143,8 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     as.ADDI(a1, a1, 16);
     as.JALR(t0);
     as.J(&after);
-    for (int i = 0; i < signature.size(); i++) {
-        u8 c = signature[i];
+    for (int i = 0; i < name.size(); i++) {
+        u8 c = name[i];
         as.GetCodeBuffer().Emit(c);
     }
     as.GetCodeBuffer().Emit((u8)0);
