@@ -389,6 +389,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     // Because there's way fewer trampolines than recompiled code
     u8* memory = (u8*)mmap(nullptr, 8192, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     u8* curr = memory;
+    PLAIN("Trampoline signature: %s", signature);
 
     // We need custom guest code and custom host code
 
