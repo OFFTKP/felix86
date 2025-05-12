@@ -365,6 +365,9 @@ std::string wl_to_felix86_signature(const std::string& wayland_signature) {
         case '?': {
             continue;
         }
+        case '0' ... '9': {
+            continue;
+        }
         default: {
             ERROR("Unknown wayland signature character: %c", c);
             break;
