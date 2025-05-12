@@ -2,6 +2,9 @@
 // X(lib name, func name, signature)
 
 #define KHR(lib, func, sig) X(lib, func, sig) X(lib, func##KHR, sig)
+#define EXT(lib, func, sig) X(lib, func, sig) X(lib, func##EXT, sig)
+#define KHR_EXT(lib, func, sig) X(lib, func, sig) X(lib, func##KHR, sig) X(lib, func##EXT, sig)
+#define KHR_AMD(lib, func, sig) X(lib, func, sig) X(lib, func##KHR, sig) X(lib, func##AMD, sig)
 
 // Vulkan 1.0
 X("libvulkan.so", vkGetInstanceProcAddr, q_qq)
@@ -173,6 +176,21 @@ KHR("libvulkan.so", vkGetPhysicalDeviceSparseImageFormatProperties2, v_qqqq)
 KHR("libvulkan.so", vkTrimCommandPool, v_qqq)
 KHR("libvulkan.so", vkUpdateDescriptorSetWithTemplate, v_qqqq)
 
+// Vulkan 1.2
+KHR("libvulkan.so", vkCmdBeginRenderPass2, v_qqq)
+KHR("libvulkan.so", vkCmdEndRenderPass2, v_qq)
+KHR("libvulkan.so", vkCmdNextSubpass2, v_qqq)
+KHR("libvulkan.so", vkCreateRenderPass2, d_qqxq)
+KHR("libvulkan.so", vkGetBufferOpaqueCaptureAddress, q_qq)
+KHR("libvulkan.so", vkGetDeviceMemoryOpaqueCaptureAddress, q_qq)
+KHR("libvulkan.so", vkGetSemaphoreCounterValue, q_qqq)
+KHR("libvulkan.so", vkWaitSemaphores, d_qqq)
+KHR("libvulkan.so", vkSignalSemaphore, d_qq)
+EXT("libvulkan.so", vkResetQueryPool, v_qqdd)
+KHR_AMD("libvulkan.so", vkCmdDrawIndexedIndirectCount, v_qqqqqdd)
+KHR_AMD("libvulkan.so", vkCmdDrawIndirectCount, v_qqqqqdd)
+KHR_EXT("libvulkan.so", vkGetBufferDeviceAddress, q_qq)
+
 // EXT
 X("libvulkan.so", vkCreateDebugReportCallbackEXT, d_qqxq)
 X("libvulkan.so", vkDebugReportMessageEXT, v_qddqqdqq)
@@ -218,3 +236,4 @@ X("libvulkan.so", vkCreateXlibSurfaceKHR, d_qqxq)
 X("libvulkan.so", vkGetPhysicalDeviceXlibPresentationSupportKHR, d_qdqq)
 
 #undef KHR
+#undef EXT

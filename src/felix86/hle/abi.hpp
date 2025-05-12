@@ -36,13 +36,13 @@
 
 // For when guest recompiled code calls a host function and we need to do argument marshalling
 struct GuestToHostMarshaller {
-    explicit GuestToHostMarshaller(const std::string& signature);
+    explicit GuestToHostMarshaller(const std::string& name, const std::string& signature);
 
     void emitPrologue(biscuit::Assembler& as);
     void emitEpilogue(biscuit::Assembler& as);
 
 private:
-    std::string signature;
+    std::string name, signature;
     int stack_size;
 };
 

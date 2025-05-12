@@ -125,11 +125,31 @@ struct Marshalling {
     int size;
 };
 
-GuestToHostMarshaller::GuestToHostMarshaller(const std::string& signature) : signature(signature) {}
+void my_printer(ThreadState* state, const char* name) {
+    printf("Calling function %s\n", name);
+}
+
+GuestToHostMarshaller::GuestToHostMarshaller(const std::string& name, const std::string& signature) : name(name), signature(signature) {}
 
 void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     ASSERT(signature.size() >= 2);
     ASSERT(signature[1] == '_');
+
+#if 1
+    biscuit::Label after;
+    as.MV(a0, s11);
+    as.LI(t0, (u64)my_printer);
+    as.AUIPC(a1, 0);
+    as.ADDI(a1, a1, 12);
+    as.JALR(t0);
+    as.J(&after);
+    for (int i = 0; i < signature.size(); i++) {
+        u8 c = signature[i];
+        as.GetCodeBuffer().Emit(c);
+    }
+    as.GetCodeBuffer().Emit((u8)0);
+    as.Bind(&after);
+#endif
 
     int gprcount = 0;
     int fprcount = 0;

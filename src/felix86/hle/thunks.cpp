@@ -732,7 +732,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
 
     void* trampoline = as.GetCursorPointer();
 
-    GuestToHostMarshaller marshaller(signature);
+    GuestToHostMarshaller marshaller(name, signature);
     marshaller.emitPrologue(as);
     Recompiler::call(as, target);
     marshaller.emitEpilogue(as);
@@ -746,7 +746,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* signature, u64 hos
     Assembler& as = rec.getAssembler();
     void* trampoline = as.GetCursorPointer();
 
-    GuestToHostMarshaller marshaller(signature);
+    GuestToHostMarshaller marshaller(std::string("ptr_") + signature, signature);
     marshaller.emitPrologue(as);
     Recompiler::call(as, host_ptr);
     marshaller.emitEpilogue(as);
