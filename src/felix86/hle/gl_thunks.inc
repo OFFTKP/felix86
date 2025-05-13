@@ -2,16 +2,6 @@
 // These are the functions that can be loaded by glXGetProcAddress or eglGetProcAddress
 // X(lib name, func name, signature)
 
-// Here lies EGL functions that are actually loaded from glXGetProcAddress or eglGetProcAddress
-X("libEGL.so", eglGetPlatformDisplayEXT, q_dqq)
-X("libEGL.so", eglQueryDevicesEXT, d_dqq)
-X("libEGL.so", eglCreateSyncKHR, q_qdq)
-X("libEGL.so", eglDestroySyncKHR, d_qq)
-X("libEGL.so", eglClientWaitSyncKHR, d_qqdq)
-X("libEGL.so", eglGetSyncAttribKHR, d_qqdq)
-X("libEGL.so", eglWaitSyncKHR, d_qqd)
-X("libEGL.so", eglDupNativeFenceFDANDROID, d_qq)
-
 X("libGL.so", glAccum, v_dF)
 X("libGL.so", glAlphaFunc, v_dF)
 X("libGL.so", glBegin, v_d)

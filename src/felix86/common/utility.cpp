@@ -393,7 +393,6 @@ void dump_states() {
     int i = 0;
     for (auto& state : states) {
         dprintf(g_output_fd, ANSI_COLOR_RED "State %d (%ld):" ANSI_COLOR_RESET "\n", i, state->tid);
-        print_address(state->rip);
 
         if (g_config.calltrace) {
             auto it = state->recompiler->getCalltrace().rbegin();
