@@ -485,6 +485,8 @@ u64 Recompiler::compileSequence(u64 rip) {
         index += 1;
     }
 
+    resetScratch();
+
     current_block_metadata->guest_address_end = rip;
     current_block_metadata->address_end = (u64)as.GetCursorPointer();
 
