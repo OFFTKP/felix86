@@ -536,6 +536,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
                     as.LD(temp, riscv_stack_offset + 32, sp);
                 }
                 as.SD(temp, x86_stack_offset, guest_stack_pointer);
+                PLAIN("stack! %s", signature);
                 riscv_stack_offset += 8;
                 x86_stack_offset += 8;
             } else if (gpr_count >= 6) {
