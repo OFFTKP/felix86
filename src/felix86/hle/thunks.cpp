@@ -690,23 +690,23 @@ void Thunks::initialize() {
         thunk_vk = true;
         thunk_egl = true;
         thunk_wayland = true;
-    }
+    } else {
+        std::vector<std::string> list = split_string(enabled_thunks, ',');
+        for (const auto& t : list) {
+            std::string n = t;
+            for (auto& c : n) {
+                c = tolower(c);
+            }
 
-    std::vector<std::string> list = split_string(enabled_thunks, ',');
-    for (const auto& t : list) {
-        std::string n = t;
-        for (auto& c : n) {
-            c = tolower(c);
-        }
-
-        if (n == "libvulkan" || n == "vulkan" || n == "vk") {
-            thunk_vk = true;
-        } else if (n == "libegl" || n == "egl") {
-            thunk_egl = true;
-        } else if (n == "libwayland-client" || n == "libwayland" || n == "wayland-client" || n == "wayland" || n == "wl") {
-            thunk_wayland = true;
-        } else {
-            ERROR("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
+            if (n == "libvulkan" || n == "vulkan" || n == "vk") {
+                thunk_vk = true;
+            } else if (n == "libegl" || n == "egl") {
+                thunk_egl = true;
+            } else if (n == "libwayland-client" || n == "libwayland" || n == "wayland-client" || n == "wayland" || n == "wl") {
+                thunk_wayland = true;
+            } else {
+                ERROR("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
+            }
         }
     }
 
