@@ -279,7 +279,7 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
             if (marshalling.x86.value.reg >= X86_REF_RAX && marshalling.x86.value.reg <= X86_REF_R15) {
                 offset = offsetof(ThreadState, gprs) + (marshalling.x86.value.reg - X86_REF_RAX) * 8;
             } else if (marshalling.x86.value.reg >= X86_REF_XMM0 && marshalling.x86.value.reg <= X86_REF_XMM15) {
-                offset = offsetof(ThreadState, xmm) + (marshalling.x86.value.reg - X86_REF_XMM0) * 16;
+                offset = offsetof(ThreadState, xmm) + (marshalling.x86.value.reg - X86_REF_XMM0) * sizeof(XmmReg);
             } else {
                 UNREACHABLE();
             }
