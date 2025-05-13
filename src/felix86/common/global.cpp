@@ -12,13 +12,11 @@
 #include "felix86/common/global.hpp"
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/overlay.hpp"
 #include "felix86/common/perf.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 
-bool g_testing = false;
 bool g_extensions_manually_specified = false;
 bool g_print_all_calls = false;
 bool g_mode32 = false;
@@ -279,114 +277,6 @@ void initialize_globals() {
     ASSERT(std::filesystem::exists(g_config.rootfs_path));
     ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_DIRECTORY);
-
-    if (!g_config.thunks_path.empty() && !g_testing) {
-        std::filesystem::path thunks = g_config.thunks_path;
-        ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunks.c_str());
-        std::string srootfs = g_config.rootfs_path.string();
-
-#ifndef BUILD_THUNKING
-        ERROR("FELIX86_THUNKS is set, but this build of felix86 was not built with thunking support, enable BUILD_THUNKING in cmake configuration");
-        return;
-#endif
-
-        bool thunk_vk = false;
-        bool thunk_egl = false;
-        bool thunk_wayland = false;
-        std::string enabled_thunks = g_config.enabled_thunks;
-        if (enabled_thunks == "all") {
-            thunk_vk = true;
-            thunk_egl = true;
-            thunk_wayland = true;
-        }
-
-        std::vector<std::string> list = split_string(enabled_thunks, ',');
-        for (const auto& t : list) {
-            std::string n = t;
-            for (auto& c : n) {
-                c = tolower(c);
-            }
-
-            if (n == "libvulkan" || n == "vulkan" || n == "vk") {
-                thunk_vk = true;
-            } else if (n == "libegl" || n == "egl") {
-                thunk_egl = true;
-            } else if (n == "libwayland-client" || n == "libwayland" || n == "wayland-client" || n == "wayland" || n == "wl") {
-                thunk_wayland = true;
-            } else {
-                ERROR("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
-            }
-        }
-
-        if (thunk_egl) {
-            std::filesystem::path egl_thunk;
-            bool found_egl = false;
-
-            auto check_egl = [&](const char* path) {
-                if (!found_egl && std::filesystem::exists(thunks / path)) {
-                    egl_thunk = thunks / path;
-                    found_egl = true;
-                }
-            };
-
-            check_egl("libEGL.so.1");
-            check_egl("libEGL.so");
-            check_egl("libEGL-thunked.so");
-
-            if (!egl_thunk.empty()) {
-                Overlays::addOverlay("libEGL.so.1", egl_thunk);
-                Overlays::addOverlay("libEGL.so", egl_thunk);
-            } else {
-                WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
-            }
-        }
-
-        if (thunk_vk) {
-            std::filesystem::path vulkan_thunk;
-            bool found_vulkan = false;
-
-            auto check_vulkan = [&](const char* path) {
-                if (!found_vulkan && std::filesystem::exists(thunks / path)) {
-                    vulkan_thunk = thunks / path;
-                    found_vulkan = true;
-                }
-            };
-
-            check_vulkan("libvulkan.so.1");
-            check_vulkan("libvulkan.so");
-            check_vulkan("libvulkan-thunked.so");
-
-            if (!vulkan_thunk.empty()) {
-                Overlays::addOverlay("libvulkan.so.1", vulkan_thunk);
-                Overlays::addOverlay("libvulkan.so", vulkan_thunk);
-            } else {
-                WARN("I couldn't find libvulkan.so in %s", thunks.c_str());
-            }
-        }
-
-        if (thunk_wayland) {
-            std::filesystem::path wayland_thunk;
-            bool found_wayland = false;
-
-            auto check_wayland = [&](const char* path) {
-                if (!found_wayland && std::filesystem::exists(thunks / path)) {
-                    wayland_thunk = thunks / path;
-                    found_wayland = true;
-                }
-            };
-
-            check_wayland("libwayland-client.so.0");
-            check_wayland("libwayland-client.so");
-            check_wayland("libwayland-client-thunked.so");
-
-            if (!wayland_thunk.empty()) {
-                Overlays::addOverlay("libwayland-client.so.0", wayland_thunk);
-                Overlays::addOverlay("libwayland-client.so", wayland_thunk);
-            } else {
-                WARN("I couldn't find libwayland-client.so in %s", thunks.c_str());
-            }
-        }
-    }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");
     if (env_file) {

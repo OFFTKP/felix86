@@ -57,7 +57,6 @@ struct Mapper;
 extern ProcessGlobals g_process_globals;
 extern std::unique_ptr<Mapper> g_mapper;
 
-extern bool g_testing;
 extern bool g_extensions_manually_specified;
 extern bool g_print_all_calls;
 extern bool g_mode32;

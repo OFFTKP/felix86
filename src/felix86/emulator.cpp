@@ -341,10 +341,6 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
         VERBOSE("Interpreter: %016lx - %016lx", g_interpreter_start, g_interpreter_end);
     }
 
-    if (!g_testing) {
-        VERBOSE("Entrypoint: %016lx", g_fs->GetEntrypoint());
-    }
-
     VERBOSE("Entering main thread :)");
 
     Threads::StartThread(main_state);
