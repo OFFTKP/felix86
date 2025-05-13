@@ -555,7 +555,7 @@ void* get_custom_vk_thunk(const std::string& name) {
 }
 
 void* get_custom_egl_thunk(const std::string& name) {
-    if (name == "eglGetProcAddr") {
+    if (name == "eglGetProcAddress") {
         return (void*)felix86_thunk_eglGetProcAddress;
     } else {
         return nullptr;
