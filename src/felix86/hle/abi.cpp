@@ -426,14 +426,13 @@ void enter_dispatcher_for_callback(ThreadState* state) {
 }
 
 void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_function) {
-    // TODO: Just like with guest-callable host functions, we need memory to store our pointers that will outlive the code cache
-    // This is wasteful, so we should use a global separate trampoline cache that will never realistically overflow
-    // Because there's way fewer trampolines than recompiled code
-    u8* memory = (u8*)mmap(nullptr, 8192, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    u8* curr = memory;
-
     // We need custom guest code and custom host code
-
+    ThreadState* state = ThreadState::Get();
+    state->signals_disabled = true;
+    u8* const x86_code = state->x86_trampoline_storage;
+    u8* curr = x86_code;
+    // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
+    mprotect((u8*)((u64)x86_code & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
     // mov rax, u64
     curr[0] = 0x48;
     curr[1] = 0xb8;
@@ -455,10 +454,13 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     curr[0] = 0xf4;
     curr += 1;
 
+    state->x86_trampoline_storage = curr;
+
+    u8* riscv_code = state->riscv_trampoline_storage;
+
     // Now create our RISC-V portion later in a separate page because the
     // x86 code is going to become read-only when it gets recompiled
-    ThreadState* state = ThreadState::Get();
-    biscuit::Assembler as(memory + 4096, 4096);
+    biscuit::Assembler as(riscv_code, 4096);
     void* trampoline = as.GetCursorPointer();
     as.ADDI(sp, sp, -32);
     as.SD(ra, 24, sp);
@@ -531,7 +533,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
 
     // Save old RIP, set new RIP
     as.LD(s10, offsetof(ThreadState, rip), thread_state_pointer);
-    as.LI(t0, (u64)memory);
+    as.LI(t0, (u64)x86_code);
     as.SD(t0, offsetof(ThreadState, rip), thread_state_pointer);
 
     as.MV(a0, s11);
@@ -561,8 +563,10 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     as.ADDI(sp, sp, 32);
     as.RET();
 
-    mprotect(memory + 4096, 4096, PROT_READ | PROT_EXEC);
+    state->riscv_trampoline_storage = as.GetCursorPointer();
+
     flush_icache();
 
+    state->signals_disabled = false;
     return trampoline;
 }

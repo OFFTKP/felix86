@@ -211,12 +211,6 @@ void* felix86_thunk_eglGetProcAddress(const char* name) {
 }
 
 void* generate_guest_pointer(const char* name, u64 host_ptr) {
-    // We can't put this code in code cache, because it needs to outlive potential code cache clears
-    // So, we are going to leak memory! In the future we should cache these...
-    // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
-    // 00 00 00 00 00 00 00 00 ; pointer we jump to
-    // ... 00 ; signature const char*
-    // c3 ; ret
     const Thunk* thunk = nullptr;
     std::string sname = name;
     for (auto& meta : thunk_metadata) { // TODO: speed it up? only search vulkan
@@ -233,16 +227,25 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
 
     const char* signature = thunk->signature;
     size_t sigsize = strlen(signature);
-    // TODO: wasteful to create a new page every time
-    // We need a whole page because mprotect would otherwise ruin nearby malloced data
-    u8* memory = (u8*)mmap(nullptr, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    ASSERT(memory != MAP_FAILED);
+    ThreadState* state = ThreadState::Get();
+    state->signals_disabled = true;
+    // We can't put this code in code cache, because it needs to outlive potential code cache clears
+    u8* memory = state->x86_trampoline_storage;
+    // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
+    mprotect((u8*)((u64)memory & ~0xFFFull), 4096, PROT_READ | PROT_WRITE);
+
+    // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
+    // 00 00 00 00 00 00 00 00 ; pointer we jump to
+    // ... 00 ; signature const char*
+    // c3 ; ret
     memory[0] = 0x0f;
     memory[1] = 0x01;
     memory[2] = 0x39;
     memcpy(&memory[3], &host_ptr, sizeof(u64));
     memcpy(&memory[3 + 8], signature, sigsize);
     memory[3 + 8 + sigsize + 1] = 0xc3;
+    state->x86_trampoline_storage += 3 + 8 + sigsize + 2;
+    state->signals_disabled = false;
     VERBOSE("Created guest-callable host pointer for %s: %p", name, host_ptr);
     return memory;
 }

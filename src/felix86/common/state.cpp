@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <sys/mman.h>
 #include "felix86/common/state.hpp"
 #include "felix86/v2/recompiler.hpp"
 
@@ -41,6 +42,11 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
 
         state->alt_stack = copy_state->alt_stack;
     }
+
+    state->riscv_trampoline_storage = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    state->x86_trampoline_storage = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ASSERT(state->riscv_trampoline_storage != MAP_FAILED);
+    ASSERT(state->x86_trampoline_storage != MAP_FAILED);
 
     auto lock = g_process_globals.states_lock.lock();
     g_process_globals.states.push_back(state);
