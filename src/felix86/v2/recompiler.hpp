@@ -685,7 +685,9 @@ private:
 
     FlagMode flag_mode = FlagMode::Default;
 
-    constexpr static std::array scratch_gprs = {x1, x6, x28, x29, x30, x31, x7};
+    constexpr static std::array scratch_gprs = {
+        x1, x6, x28, x29, x7, x30, x31,
+    };
 
     // TODO: For better or for worst (definitely for worst) we rely on the fact that we start with an even
     // register and go sequentially like this

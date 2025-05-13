@@ -1913,9 +1913,26 @@ FAST_HANDLE(SAHF) {
     as.ANDI(sf, sf, 1);
 }
 
+void validate_address_u16(u64 address) {
+    if ((address & 0b11) == 0b11) {
+        WARN("Address %p in 16-bit xchg is badly aligned, it won't be an atomic access");
+    }
+}
+
 FAST_HANDLE(XCHG_lock) {
-    x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR address = rec.lea(&operands[0]);
+    x86_size_e size = rec.getOperandSize(&operands[0]);
+
+    if (g_config.paranoid && size == X86_SIZE_WORD) {
+        rec.writebackState();
+        as.MV(a0, address);
+        rec.call((u64)validate_address_u16);
+        rec.restoreState();
+
+        // Restore address
+        address = rec.lea(&operands[0]);
+    }
+
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR scratch = rec.scratch();
     biscuit::GPR dst = rec.scratch();
@@ -1956,10 +1973,26 @@ FAST_HANDLE(XCHG_lock) {
             WARN("Zabha is untested");
             as.AMOSWAP_H(Ordering::AQRL, dst, src, address);
         } else {
-            Label loop;
+            Label loop, end, normal;
             biscuit::GPR address_masked = rec.scratch();
             biscuit::GPR mask = rec.scratch();
             biscuit::GPR mask_shifted = rec.scratch();
+
+            as.ANDI(mask, address, 0b11);
+            as.ADDI(mask, mask, -0b11);
+            as.BNEZ(mask, &normal);
+
+            // (Address & 0b11) == 0b11
+            // This won't be properly emulated with lr.w/sc.w
+            // We could use lr.d/sc.d, but then it wouldn't work for
+            // (Address & 0b111) == 0b111
+            // So whatever, let's handle both cases here
+            as.LHU(scratch, 0, address);
+            as.SH(src, 0, address);
+            as.MV(dst, scratch);
+            as.J(&end);
+
+            as.Bind(&normal);
             as.ANDI(address_masked, address, -4ll);
             as.SLLI(address, address, 3);
             as.LI(mask, 0xFFFF);
@@ -1975,6 +2008,9 @@ FAST_HANDLE(XCHG_lock) {
             as.SC_W(Ordering::AQRL, scratch, scratch, address_masked);
             as.BNEZ(scratch, &loop);
             as.SRLW(dst, dst, address);
+
+            as.Bind(&end);
+
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();

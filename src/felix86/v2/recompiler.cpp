@@ -1467,6 +1467,7 @@ void Recompiler::writebackState() {
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
+    cached_lea_operand = nullptr;
 }
 
 void Recompiler::restoreState() {
@@ -1528,6 +1529,7 @@ void Recompiler::restoreState() {
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
+    cached_lea_operand = nullptr;
 }
 
 void Recompiler::backToDispatcher() {
