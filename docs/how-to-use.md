@@ -38,6 +38,16 @@ cmake --build build -j$(nproc)
 
 Make sure to [grab a RootFS](#rootfs), set the `FELIX86_ROOTFS` environment variable, and then felix86 is ready to run!
 
+## Thunking
+
+On systems with a GPU that has no x86-64 drivers (for example any board with a PowerVR iGPU) you may be unable to use your GPU without thunking. Thunking enables using some RISC-V libraries instead of x86-64 libraries.
+
+To enable thunking, set the environment variable `FELIX86_THUNKS=/path/to/felix86/src/felix86/hle/guest_libs`
+
+Or the respective variable in `$HOME/.config/felix86/config.toml`
+
+Note that unsetting this variable disables thunking. Some games may only work without thunking. Make sure to test both cases.
+
 ## QEMU
 
 This works fine for me: (change the cores/RAM to your liking)

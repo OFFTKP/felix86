@@ -479,10 +479,50 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     ASSERT(size >= 2);
     ASSERT(signature[1] == '_');
 
+    int x86_stack_size = 0;
+    {
+        int x86_gpr_count = 0;
+        int x86_fpr_count = 0;
+        for (int i = 2; i < size; i++) {
+            switch (signature[i]) {
+            case 'b':
+            case 'w':
+            case 'd':
+            case 'q':
+            case 'x': {
+                if (x86_gpr_count >= 6) {
+                    x86_stack_size += 8;
+                } else {
+                    x86_gpr_count++;
+                }
+                break;
+            }
+            case 'F':
+            case 'D': {
+                if (x86_fpr_count >= 8) {
+                    x86_stack_size += 8;
+                } else {
+                    x86_fpr_count++;
+                }
+                break;
+            }
+            default: {
+                UNREACHABLE();
+                break;
+            }
+            }
+        }
+    }
+
+    int x86_stack_offset = 0;
     int gpr_count = 0;
-    int stack_offset = 0;
     int riscv_stack_offset = 0;
-    bool update_stack = false;
+
+    if (x86_stack_size > 0) {
+        as.ADDI(guest_stack_pointer, guest_stack_pointer, -x86_stack_size);
+        as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
+    }
+
     for (size_t i = 2; i < size; i++) {
         switch (signature[i]) {
         case 'q':
@@ -494,17 +534,17 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
                 } else {
                     as.LD(temp, riscv_stack_offset, sp);
                 }
-                as.SD(temp, -stack_offset, guest_stack_pointer);
+                as.SD(temp, x86_stack_offset, guest_stack_pointer);
                 riscv_stack_offset += 8;
-                stack_offset += 8;
+                x86_stack_offset += 8;
             } else if (gpr_count >= 6) {
                 biscuit::GPR riscv_reg = gprarg(gpr_count);
                 if (signature[i] == 'd') {
                     as.SLLI(riscv_reg, riscv_reg, 32);
                     as.SRLI(riscv_reg, riscv_reg, 32);
                 }
-                stack_offset += 8;
-                as.SD(riscv_reg, -stack_offset, guest_stack_pointer);
+                as.SD(riscv_reg, x86_stack_offset, guest_stack_pointer);
+                x86_stack_offset += 8;
             } else {
                 biscuit::GPR riscv_reg = gprarg(gpr_count);
                 if (signature[i] == 'd') {
@@ -526,10 +566,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
         }
     }
 
-    if (update_stack) {
-        as.ADDI(guest_stack_pointer, guest_stack_pointer, -stack_offset);
-        as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
-    }
+    ASSERT(x86_stack_size == x86_stack_offset);
 
     // Save old RIP, set new RIP
     as.LD(s10, offsetof(ThreadState, rip), thread_state_pointer);
@@ -547,10 +584,10 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
     // Restore old RIP (is this saving/restoring even necessary?)
     as.SD(s10, offsetof(ThreadState, rip), thread_state_pointer);
 
-    if (update_stack) {
+    if (x86_stack_size > 0) {
         // Restore the old stack
         as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
-        as.ADDI(guest_stack_pointer, guest_stack_pointer, stack_offset);
+        as.ADDI(guest_stack_pointer, guest_stack_pointer, x86_stack_size);
         as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
     }
 
