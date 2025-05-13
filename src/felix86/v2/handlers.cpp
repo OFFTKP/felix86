@@ -1915,7 +1915,7 @@ FAST_HANDLE(SAHF) {
 
 void validate_address_u16(u64 address) {
     if ((address & 0b11) == 0b11) {
-        WARN("Address %p in 16-bit xchg is badly aligned, it won't be an atomic access");
+        WARN("Address %p in 16-bit xchg is badly aligned, it won't be an atomic access", address);
     }
 }
 
