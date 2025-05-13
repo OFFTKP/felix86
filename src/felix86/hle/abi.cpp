@@ -516,8 +516,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
 
     int x86_stack_offset = 0;
     int gpr_count = 0;
-    int riscv_stack_offset = 0;
-
+    int riscv_stack_offset = 32; // we decremented sp to push arguments, add it back here when pulling stack args
     if (x86_stack_size > 0) {
         as.ADDI(guest_stack_pointer, guest_stack_pointer, -x86_stack_size);
         as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
@@ -531,12 +530,12 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
                 biscuit::GPR temp = t0;
                 // We decremented sp by 32 previously, we need to add it again here when loading stack arguments
                 if (signature[i] == 'd') {
-                    as.LWU(temp, riscv_stack_offset + 32, sp);
+                    as.LWU(temp, riscv_stack_offset, sp);
                 } else {
-                    as.LD(temp, riscv_stack_offset + 32, sp);
+                    as.LD(temp, riscv_stack_offset, sp);
                 }
                 as.SD(temp, x86_stack_offset, guest_stack_pointer);
-                PLAIN("stack! %s", signature);
+                PLAIN("stack! %s %p", signature, trampoline);
                 riscv_stack_offset += 8;
                 x86_stack_offset += 8;
             } else if (gpr_count >= 6) {
@@ -561,7 +560,6 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
         }
         case 'F':
         case 'D': {
-            // TODO: when you implement these, don't forget to properly add 32 to stack if its used like we do above
             UNREACHABLE();
             break;
         }
