@@ -14,11 +14,11 @@ public:
         g_process_globals.initialize();
         initialize_extensions();
         Signals::initialize();
-        g_config.protect_pages = false;
 
         // Set most configs to default except for rootfs path
         Config new_config{};
         new_config.rootfs_path = g_config.rootfs_path;
+        new_config.protect_pages = false;
         g_config = new_config;
     }
 };
