@@ -46,7 +46,13 @@ To enable thunking, set the environment variable `FELIX86_THUNKS=/path/to/felix8
 
 Or the respective variable in `$HOME/.config/felix86/config.toml`
 
-Note that unsetting this variable disables thunking. Some games may only work without thunking. Make sure to test both cases.
+Want to disable thunking? `export FELIX86_ENABLED_THUNKS=` will do the trick -- or you can unset the `FELIX86_THUNKS` path.
+
+Want to thunk Vulkan but not EGL? You can do so with `FELIX86_ENABLED_THUNKS=vulkan,wayland`
+
+
+> [!WARN]
+> Thunking support is not great yet. Some games may not work with thunking enabled.
 
 ## QEMU
 
