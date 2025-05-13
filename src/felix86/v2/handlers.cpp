@@ -1930,6 +1930,7 @@ FAST_HANDLE(XCHG_lock) {
         rec.restoreState();
 
         // Restore address
+        rec.resetScratch();
         address = rec.lea(&operands[0]);
     }
 

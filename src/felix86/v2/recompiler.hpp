@@ -78,6 +78,8 @@ struct Recompiler {
 
     void popScratchFPR();
 
+    void resetScratch();
+
     biscuit::GPR getTOP();
 
     void setTOP(biscuit::GPR top);
@@ -612,8 +614,6 @@ private:
     biscuit::GPR gpr(ZydisRegister reg);
 
     biscuit::Vec vec(ZydisRegister reg);
-
-    void resetScratch();
 
     void scanAhead(u64 rip);
 
