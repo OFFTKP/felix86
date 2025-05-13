@@ -138,6 +138,11 @@ std::string namify(const std::filesystem::path& val) {
     return val;
 }
 
+template <>
+std::string namify(const std::string& val) {
+    return val;
+}
+
 template <typename Type>
 bool loadFromEnv(Config& config, Type& value, const char* env_name, const char* env) {
     if constexpr (std::is_same_v<Type, bool>) {
