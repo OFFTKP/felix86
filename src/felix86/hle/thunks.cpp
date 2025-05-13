@@ -710,10 +710,12 @@ void Thunks::initialize() {
             if (!ptr) {
                 ptr = dlsym(libwayland, metadata.function_name);
             }
+        } else {
+            continue;
         }
 
         if (ptr == nullptr) {
-            WARN("Failed to find %s in thunked library %s", metadata.function_name, metadata.lib_name);
+            VERBOSE("Failed to find %s in thunked library %s", metadata.function_name, metadata.lib_name);
         }
         metadata.pointer = (u64)ptr;
     }
