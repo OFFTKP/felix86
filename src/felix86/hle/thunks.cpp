@@ -690,7 +690,7 @@ void Thunks::initialize() {
         thunk_vk = true;
         thunk_egl = true;
         thunk_wayland = true;
-    } else {
+    } else if (!enabled_thunks.empty()) {
         std::vector<std::string> list = split_string(enabled_thunks, ',');
         for (const auto& t : list) {
             std::string n = t;
