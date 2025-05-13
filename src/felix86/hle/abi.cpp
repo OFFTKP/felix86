@@ -420,9 +420,12 @@ void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
 }
 
 void enter_dispatcher_for_callback(ThreadState* state) {
+    u64 rip = state->rip;
+    VERBOSE("Entering dispatcher for callback at %p", rip);
     state->recompiler->enterDispatcher(state);
     ASSERT(state->exit_reason == EXIT_REASON_GUEST_CODE_FINISHED);
     state->exit_reason = EXIT_REASON_UNKNOWN;
+    VERBOSE("Finished callback %p", rip);
 }
 
 void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_function) {
