@@ -102,6 +102,9 @@ bool loadFromToml(const toml::value& toml, const char* group, const char* name, 
             } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {
                 value = value_toml.as_string();
                 return true;
+            } else if constexpr (std::is_same_v<Type, std::string>) {
+                value = value_toml.as_string();
+                return true;
             } else {
                 static_assert(false);
             }
@@ -146,6 +149,11 @@ bool loadFromEnv(Config& config, Type& value, const char* env_name, const char* 
     } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {
         value = env;
         return true;
+    } else if constexpr (std::is_same_v<Type, std::string>) {
+        value = env;
+        return true;
+    } else {
+        static_assert(false);
     }
 
     return false;

@@ -1,6 +1,7 @@
 // GROUP --- TYPE --- NAME --- DEFAULT VALUE --- ENVIRONMENT VARIABLE NAME --- DESCRIPTION -- REQUIRED
 X(General, std::filesystem::path, rootfs_path, "", FELIX86_ROOTFS, "Set the rootfs path, required for the emulator to work", true)
 X(General, std::filesystem::path, thunks_path, "", FELIX86_THUNKS, "Set the thunk libraries path", false)
+X(General, std::string, enabled_thunks, "all", FELIX86_ENABLED_THUNKS, "Set the enabled thunks, possible choices: \"vk, wayland, egl\" or \"all\"", false)
 
 X(Logging, bool, verbose, false, FELIX86_VERBOSE, "Enable verbose logging", false)
 X(Logging, bool, quiet, false, FELIX86_QUIET, "Disable all logging", false)

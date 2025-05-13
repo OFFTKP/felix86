@@ -290,88 +290,101 @@ void initialize_globals() {
         return;
 #endif
 
-        // TODO: should probably not be done here?
-        // std::filesystem::path glx_thunk;
-        // bool found_glx = false;
-
-        // auto check_glx = [&](const char* path) {
-        //     if (!found_glx && std::filesystem::exists(thunks / path)) {
-        //         glx_thunk = thunks / path;
-        //         found_glx = true;
-        //     }
-        // };
-
-        // check_glx("libGLX.so.0");
-        // check_glx("libGLX.so");
-        // check_glx("libGLX-thunked.so");
-
-        // if (!glx_thunk.empty()) {
-        //     Overlays::addOverlay("libGLX.so.0", glx_thunk);
-        // } else {
-        //     WARN("I couldn't find libGLX-thunked.so in %s", thunks.c_str());
-        // }
-
-        std::filesystem::path egl_thunk;
-        bool found_egl = false;
-
-        auto check_egl = [&](const char* path) {
-            if (!found_egl && std::filesystem::exists(thunks / path)) {
-                egl_thunk = thunks / path;
-                found_egl = true;
-            }
-        };
-
-        check_egl("libEGL.so.1");
-        check_egl("libEGL.so");
-        check_egl("libEGL-thunked.so");
-
-        if (!egl_thunk.empty()) {
-            Overlays::addOverlay("libEGL.so.1", egl_thunk);
-            Overlays::addOverlay("libEGL.so", egl_thunk);
-        } else {
-            WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
+        bool thunk_vk = false;
+        bool thunk_egl = false;
+        bool thunk_wayland = false;
+        std::string enabled_thunks = g_config.enabled_thunks;
+        if (enabled_thunks == "all") {
+            thunk_vk = true;
+            thunk_egl = true;
+            thunk_wayland = true;
         }
 
-        std::filesystem::path vulkan_thunk;
-        bool found_vulkan = false;
-
-        auto check_vulkan = [&](const char* path) {
-            if (!found_vulkan && std::filesystem::exists(thunks / path)) {
-                vulkan_thunk = thunks / path;
-                found_vulkan = true;
+        std::vector<std::string> list = split_string(enabled_thunks, ',');
+        for (const auto& t : list) {
+            std::string n = t;
+            for (auto& c : n) {
+                c = tolower(c);
             }
-        };
 
-        check_vulkan("libvulkan.so.1");
-        check_vulkan("libvulkan.so");
-        check_vulkan("libvulkan-thunked.so");
-
-        if (!vulkan_thunk.empty()) {
-            Overlays::addOverlay("libvulkan.so.1", vulkan_thunk);
-            Overlays::addOverlay("libvulkan.so", vulkan_thunk);
-        } else {
-            WARN("I couldn't find libvulkan.so in %s", thunks.c_str());
+            if (n == "libvulkan" || n == "vulkan" || n == "vk") {
+                thunk_vk = true;
+            } else if (n == "libegl" || n == "egl") {
+                thunk_egl = true;
+            } else if (n == "libwayland-client" || n == "libwayland" || n == "wayland-client" || n == "wayland" || n == "wl") {
+                thunk_wayland = true;
+            } else {
+                ERROR("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
+            }
         }
 
-        std::filesystem::path wayland_thunk;
-        bool found_wayland = false;
+        if (thunk_egl) {
+            std::filesystem::path egl_thunk;
+            bool found_egl = false;
 
-        auto check_wayland = [&](const char* path) {
-            if (!found_wayland && std::filesystem::exists(thunks / path)) {
-                wayland_thunk = thunks / path;
-                found_wayland = true;
+            auto check_egl = [&](const char* path) {
+                if (!found_egl && std::filesystem::exists(thunks / path)) {
+                    egl_thunk = thunks / path;
+                    found_egl = true;
+                }
+            };
+
+            check_egl("libEGL.so.1");
+            check_egl("libEGL.so");
+            check_egl("libEGL-thunked.so");
+
+            if (!egl_thunk.empty()) {
+                Overlays::addOverlay("libEGL.so.1", egl_thunk);
+                Overlays::addOverlay("libEGL.so", egl_thunk);
+            } else {
+                WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
             }
-        };
+        }
 
-        check_wayland("libwayland-client.so.0");
-        check_wayland("libwayland-client.so");
-        check_wayland("libwayland-client-thunked.so");
+        if (thunk_vk) {
+            std::filesystem::path vulkan_thunk;
+            bool found_vulkan = false;
 
-        if (!wayland_thunk.empty()) {
-            Overlays::addOverlay("libwayland-client.so.0", wayland_thunk);
-            Overlays::addOverlay("libwayland-client.so", wayland_thunk);
-        } else {
-            WARN("I couldn't find libwayland-client.so in %s", thunks.c_str());
+            auto check_vulkan = [&](const char* path) {
+                if (!found_vulkan && std::filesystem::exists(thunks / path)) {
+                    vulkan_thunk = thunks / path;
+                    found_vulkan = true;
+                }
+            };
+
+            check_vulkan("libvulkan.so.1");
+            check_vulkan("libvulkan.so");
+            check_vulkan("libvulkan-thunked.so");
+
+            if (!vulkan_thunk.empty()) {
+                Overlays::addOverlay("libvulkan.so.1", vulkan_thunk);
+                Overlays::addOverlay("libvulkan.so", vulkan_thunk);
+            } else {
+                WARN("I couldn't find libvulkan.so in %s", thunks.c_str());
+            }
+        }
+
+        if (thunk_wayland) {
+            std::filesystem::path wayland_thunk;
+            bool found_wayland = false;
+
+            auto check_wayland = [&](const char* path) {
+                if (!found_wayland && std::filesystem::exists(thunks / path)) {
+                    wayland_thunk = thunks / path;
+                    found_wayland = true;
+                }
+            };
+
+            check_wayland("libwayland-client.so.0");
+            check_wayland("libwayland-client.so");
+            check_wayland("libwayland-client-thunked.so");
+
+            if (!wayland_thunk.empty()) {
+                Overlays::addOverlay("libwayland-client.so.0", wayland_thunk);
+                Overlays::addOverlay("libwayland-client.so", wayland_thunk);
+            } else {
+                WARN("I couldn't find libwayland-client.so in %s", thunks.c_str());
+            }
         }
     }
 
