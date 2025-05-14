@@ -258,6 +258,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(shmdt, arg1);
         break;
     }
+    case felix86_riscv64_getsid: {
+        result = SYSCALL(getsid, arg1);
+        break;
+    }
     case felix86_riscv64_bind: {
         result = SYSCALL(bind, arg1, arg2, arg3);
         break;
