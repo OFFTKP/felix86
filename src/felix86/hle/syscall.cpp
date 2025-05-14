@@ -929,6 +929,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     case felix86_riscv64_rt_sigaction: {
         RegisteredSignal old = Signals::getSignalHandler(state, arg1);
         x64_sigaction* act = (x64_sigaction*)arg2;
+        printf("Restorer: %p\n", act->restorer);
         if (act) {
             auto handler = act->handler;
             Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags);
