@@ -944,6 +944,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             old_act->handler = (decltype(old_act->handler))old.func;
             old_act->sa_flags = old.flags;
             old_act->sa_mask = old.mask;
+            old_act->restorer = (void (*)())old.restorer;
         }
 
         result = 0;
