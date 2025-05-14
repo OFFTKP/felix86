@@ -117,7 +117,7 @@ typedef enum : u8 {
 } x86_size_e;
 
 struct XmmReg {
-    u64 data[2];
+    u64 data[2] = {0, 0};
 };
 static_assert(sizeof(XmmReg) == 16);
 

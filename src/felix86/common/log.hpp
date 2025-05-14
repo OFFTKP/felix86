@@ -80,7 +80,11 @@ struct Logger {
         }                                                                                                                                            \
     } while (0)
 
-#define UNREACHABLE() ERROR("Unreachable code hit")
+#define UNREACHABLE()                                                                                                                                \
+    do {                                                                                                                                             \
+        ERROR("Unreachable code hit");                                                                                                               \
+        __builtin_unreachable();                                                                                                                     \
+    } while (false)
 #define UNIMPLEMENTED() ERROR("Unimplemented code hit")
 
 #define ASSERT(condition)                                                                                                                            \

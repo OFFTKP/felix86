@@ -93,7 +93,6 @@ Recompiler::~Recompiler() {
 
 void Recompiler::emitNecessaryStuff() {
     emitDispatcher();
-    emitSigreturnThunk();
     emitInvalidateCallerThunk();
 
     start_of_code_cache = as.GetCursorPointer();
@@ -287,21 +286,6 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
     } else {
         // The dispatcher makes sure the third argument is set to 0 before we get here
     }
-}
-
-void Recompiler::emitSigreturnThunk() {
-    // This piece of code is responsible for moving the thread state pointer to the right place (so we don't have to find it using tid)
-    // calling sigreturn, returning and going back to the dispatcher.
-    // It sets exit reason as sigreturn so the dispatcher will then jump to exit dispatcher, and return to the signal handler
-    // that the dispatcher was entered from. The signal handler will then return and peace will be restored or something.
-    u64 here = (u64)as.GetCursorPointer();
-    getBlockMetadata(Signals::magicSigreturnAddress()).address = here;
-
-    writebackState();
-    as.MV(a0, threadStatePointer());
-    call((u64)Signals::sigreturn);
-    as.MV(a0, sp);
-    call((u64)Emulator::ExitDispatcher);
 }
 
 void Recompiler::clearCodeCache(ThreadState* state) {

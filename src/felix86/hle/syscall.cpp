@@ -1261,6 +1261,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = Signals::sigsuspend(state, (sigset_t*)arg1);
         break;
     }
+    case felix86_riscv64_rt_sigreturn: {
+        Signals::sigreturn(frame->state);
+        Emulator::ExitDispatcher(frame);
+        UNREACHABLE();
+        break;
+    }
     case felix86_riscv64_epoll_create1: {
         result = SYSCALL(epoll_create1, arg1);
         break;

@@ -23,6 +23,22 @@ struct x64_fpxreg {
     unsigned short int reserved[3];
 };
 
+struct Xmm128 {
+    u64 val[2];
+
+    Xmm128(const XmmReg& other) {
+        val[0] = other.data[0];
+        val[1] = other.data[1];
+    }
+
+    operator XmmReg() const {
+        XmmReg ret{};
+        ret.data[0] = val[0];
+        ret.data[1] = val[1];
+        return ret;
+    }
+};
+
 struct x64_libc_fpstate {
     /* 64-bit fxsave format. Also the legacy part of xsave, which is the one we use as we don't support AVX  */
     u16 cwd;
@@ -34,7 +50,7 @@ struct x64_libc_fpstate {
     u32 mxcsr;
     u32 mxcr_mask;
     x64_fpxreg _st[8];
-    XmmReg xmm[16];
+    Xmm128 xmm[16];
     u32 reserved[24]; // Bytes 464...511 are for the implementation to do whatever it wants.
                       // Linux kernel uses them in _fpx_sw_bytes for magic numbers and xsave size and other stuff
 };
@@ -161,8 +177,9 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
 }
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
-                         bool use_altstack, bool in_jit_code, siginfo_t* host_siginfo) {
+[[nodiscard]] x64_rt_sigframe* setupFrame(RegisteredSignal& signal, uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
+                                          const u64* host_fprs, const XmmReg* host_vecs, bool use_altstack, bool in_jit_code,
+                                          siginfo_t* host_siginfo) {
     if (in_jit_code) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
         BlockMetadata* current_block = get_block_metadata(state, pc);
@@ -185,7 +202,8 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
     rsp = rsp - sizeof(x64_rt_sigframe);
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
 
-    frame->pretcode = (char*)Signals::magicSigreturnAddress();
+    ASSERT(signal.restorer);
+    frame->pretcode = (char*)signal.restorer;
 
     frame->uc.uc_mcontext.fpregs = &frame->uc.fpregs_mem;
 
@@ -257,9 +275,7 @@ void Signals::setupFrame(uint64_t pc, ThreadState* state, sigset_t new_mask, con
         }
     }
 
-    state->SetGpr(X86_REF_RSP, rsp);               // set the new stack pointer
-    state->SetGpr(X86_REF_RSI, (u64)&frame->info); // set the siginfo pointer
-    state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
+    return frame;
 }
 
 void Signals::sigreturn(ThreadState* state) {
@@ -589,12 +605,13 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    Signals::setupFrame(pc, state, mask_during_signal, gprs, fprs, xmms, use_altstack, in_jit_code, &guest_info);
+    x64_rt_sigframe* frame = setupFrame(*handler, pc, state, mask_during_signal, gprs, fprs, xmms, use_altstack, in_jit_code, &guest_info);
 
-    // RSI and RDX are set by setupFrame
-    state->SetGpr(X86_REF_RDI, sig);
-
-    // Now we just need to set RIP to the handler function
+    state->SetGpr(X86_REF_RSP, (u64)frame);        // set the new stack pointer
+    state->SetGpr(X86_REF_RDI, sig);               // set the signal
+    state->SetGpr(X86_REF_RSI, (u64)&frame->info); // set the siginfo pointer
+    state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
+    state->SetGpr(X86_REF_RAX, 0);
     state->SetRip(handler->func);
 
     // Block the signals specified in the sa_mask until the signal handler returns

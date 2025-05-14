@@ -602,8 +602,6 @@ private:
 
     void emitDispatcher();
 
-    void emitSigreturnThunk();
-
     void emitInvalidateCallerThunk();
 
     // Get the register and load the value into it if needed
