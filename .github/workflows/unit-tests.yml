@@ -19,5 +19,6 @@ jobs:
           cmake --build build -j8
       - name: Test
         run: |
-          ./build/felix86_test
+          FELIX86_ALL_EXTENSIONS=g,v,b ./build/felix86_test
+          FELIX86_ALL_EXTENSIONS=g,v ./build/felix86_test
           ./build/felix86 -k

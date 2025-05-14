@@ -222,6 +222,15 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     }
     case felix86_riscv64_mprotect: {
         result = SYSCALL(mprotect, arg1, arg2, arg3, arg4, arg5, arg6);
+        u64 start = arg1;
+        u64 size = arg2;
+        int prot = arg3;
+        if ((prot & PROT_WRITE) && result == 0) {
+            // We mark pages as read-only when we recompile their code. But if the guest program
+            // decides to override that by marking them as PROT_WRITE then we can no longer keep track
+            // of them. So in that case, we will invalidate everything in that region to be safe.
+            Recompiler::invalidateRangeGlobal(start, start + size);
+        }
         break;
     }
     case felix86_riscv64_close: {
