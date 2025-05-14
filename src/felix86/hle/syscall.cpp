@@ -929,10 +929,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     case felix86_riscv64_rt_sigaction: {
         RegisteredSignal old = Signals::getSignalHandler(state, arg1);
         x64_sigaction* act = (x64_sigaction*)arg2;
-        printf("Restorer: %p\n", act->restorer);
         if (act) {
             auto handler = act->handler;
-            Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags);
+            Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags, act->restorer);
             if (g_config.verbose) {
                 PLAIN("Installed signal handler %s at:", strsignal(arg1));
                 print_address((u64)handler);
@@ -942,10 +941,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
         x64_sigaction* old_act = (x64_sigaction*)arg3;
         if (old_act) {
-            old_act->handler = (decltype(old_act->handler))old.func;
+            old_act->handler = old.func;
             old_act->sa_flags = old.flags;
             old_act->sa_mask = old.mask;
-            old_act->restorer = (void (*)())old.restorer;
+            old_act->restorer = old.restorer;
         }
 
         result = 0;

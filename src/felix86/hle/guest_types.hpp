@@ -32,9 +32,9 @@ struct x86_sigset_argpack {
 };
 
 struct x64_sigaction {
-    void (*handler)(int, siginfo_t*, void*);
+    u64 handler;
     u64 sa_flags;
-    void (*restorer)(void);
+    u64 restorer;
     u64 sa_mask;
 };
 
