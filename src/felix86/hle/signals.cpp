@@ -176,12 +176,17 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
     return ret_value;
 }
 
+#ifndef REG_PC
+#define REG_PC 0 // risc-v stores it in gpr 0
+#endif
+
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-[[nodiscard]] x64_rt_sigframe* setupFrame(RegisteredSignal& signal, uint64_t pc, ThreadState* state, sigset_t new_mask, const u64* host_gprs,
-                                          const u64* host_fprs, const XmmReg* host_vecs, bool use_altstack, bool in_jit_code,
-                                          siginfo_t* host_siginfo) {
+void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
+                bool in_jit_code, siginfo_t* host_siginfo) {
+    bool use_altstack = signal.flags & SA_ONSTACK;
     if (in_jit_code) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
+        u64 pc = host_gprs[REG_PC];
         BlockMetadata* current_block = get_block_metadata(state, pc);
         u64 actual_rip = get_actual_rip(*current_block, pc);
         reconstruct_state(state, host_gprs, host_fprs, host_vecs);
@@ -275,7 +280,12 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
         }
     }
 
-    return frame;
+    state->SetGpr(X86_REF_RSP, (u64)frame);        // set the new stack pointer
+    state->SetGpr(X86_REF_RDI, sig);               // set the signal
+    state->SetGpr(X86_REF_RSI, (u64)&frame->info); // set the siginfo pointer
+    state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
+    state->SetGpr(X86_REF_RAX, 0);
+    state->SetRip(signal.func);
 }
 
 void Signals::sigreturn(ThreadState* state) {
@@ -589,15 +599,14 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         use_altstack = false;
     }
 
-    sigset_t mask_during_signal;
-    mask_during_signal = *(sigset_t*)&handler->mask;
-
     siginfo_t guest_info;
     if (info->si_code == SI_QUEUE && state->incoming_signal) {
         // One of our queued signals, retrieve the siginfo_t from the pointer
         FiredSignal* signal = (FiredSignal*)info->si_value.sival_ptr;
-        if (signal) {
+        if (signal && signal->magic == FiredSignal::expected_magic) {
             guest_info = signal->guest_info;
+        } else {
+            guest_info = *info;
         }
     } else {
         guest_info = *info;
@@ -605,17 +614,12 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    x64_rt_sigframe* frame = setupFrame(*handler, pc, state, mask_during_signal, gprs, fprs, xmms, use_altstack, in_jit_code, &guest_info);
-
-    state->SetGpr(X86_REF_RSP, (u64)frame);        // set the new stack pointer
-    state->SetGpr(X86_REF_RDI, sig);               // set the signal
-    state->SetGpr(X86_REF_RSI, (u64)&frame->info); // set the siginfo pointer
-    state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
-    state->SetGpr(X86_REF_RAX, 0);
-    state->SetRip(handler->func);
+    setupFrame(*handler, sig, state, gprs, fprs, xmms, in_jit_code, &guest_info);
 
     // Block the signals specified in the sa_mask until the signal handler returns
     sigset_t new_mask;
+    sigset_t mask_during_signal;
+    mask_during_signal = *(sigset_t*)&handler->mask;
     sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());
 
     // Combine with the current signal mask
