@@ -4240,10 +4240,7 @@ FAST_HANDLE(PMOVMSKB) {
     rec.setVectorState(SEW::E64, 2);
     as.VMV_XS(scratch, temp);
 
-    if (rec.maxVlen() == 128)
-        rec.zext(scratch, scratch, X86_SIZE_WORD);
-    else if (rec.maxVlen() == 256)
-        rec.zext(scratch, scratch, X86_SIZE_DWORD);
+    rec.zext(scratch, scratch, X86_SIZE_WORD);
 
     rec.setOperandGPR(&operands[0], scratch);
 }

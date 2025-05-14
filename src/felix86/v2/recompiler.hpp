@@ -346,10 +346,6 @@ struct Recompiler {
 
     bool setVectorState(SEW sew, int elem_count, LMUL grouping = LMUL::M1);
 
-    static constexpr u16 maxVlen() {
-        return sizeof(XmmReg) * 8;
-    }
-
     void sextb(biscuit::GPR dest, biscuit::GPR src);
 
     void sexth(biscuit::GPR dest, biscuit::GPR src);
