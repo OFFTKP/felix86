@@ -5442,6 +5442,7 @@ FAST_HANDLE(ROL) {
     as.Bind(&zero_count);
 }
 
+// TODO: optimize me for immediates and no flags like ROL
 FAST_HANDLE(ROR) {
     x86_size_e size = rec.getOperandSize(&operands[0]);
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
