@@ -7696,7 +7696,6 @@ FAST_HANDLE(CMPXCHG16B) {
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rax_t);
         rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, rdx_t);
     } else {
-        // TODO: using a lock would at least make this atomic with respect to other cmpxchg16b instructions
         WARN_ONCE("This program uses CMPXCHG16B and your chip doesn't have the Zacas extension, execution may be unstable");
         biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
         biscuit::GPR rdx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
@@ -7705,7 +7704,20 @@ FAST_HANDLE(CMPXCHG16B) {
         biscuit::GPR mem0 = rec.scratch();
         biscuit::GPR mem1 = rec.scratch();
 
-        rec.readMemory(mem0, address, 0, X86_SIZE_QWORD);
+        // Definitely not actually atomic, but better than nothing ...
+        biscuit::Label spinloop, writeloop;
+        biscuit::GPR lock_address = rec.scratch();
+        biscuit::GPR lock = rec.scratch();
+        as.LI(lock_address, (u64)&g_process_globals.cas128_lock);
+
+        as.Bind(&spinloop);
+        as.LI(lock, 1);
+        as.AMOSWAP_W(Ordering::AQRL, lock, lock, lock_address);
+        as.BNEZ(lock, &spinloop);
+
+        // Again, not atomic, but at least checking if one of the two qwords checking is better than nothing
+        as.Bind(&writeloop);
+        as.LR_D(Ordering::AQRL, mem0, address);
         rec.readMemory(mem1, address, 8, X86_SIZE_QWORD);
 
         Label not_equal;
@@ -7715,7 +7727,8 @@ FAST_HANDLE(CMPXCHG16B) {
         as.BNE(mem1, rdx, &not_equal);
 
         as.LI(zf, 1);
-        rec.writeMemory(rbx, address, 0, X86_SIZE_QWORD);
+        as.SC_D(Ordering::AQRL, lock, rbx, address);
+        as.BNEZ(lock, &writeloop);
         rec.writeMemory(rcx, address, 8, X86_SIZE_QWORD);
 
         as.Bind(&not_equal);
@@ -7725,6 +7738,8 @@ FAST_HANDLE(CMPXCHG16B) {
 
         rec.setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, rax);
         rec.setRefGPR(X86_REF_RDX, X86_SIZE_QWORD, rdx);
+
+        as.AMOSWAP_W(Ordering::AQRL, x0, x0, lock_address);
     }
 }
 

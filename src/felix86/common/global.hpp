@@ -48,6 +48,9 @@ struct ProcessGlobals {
     std::map<u64, Symbol> symbols{};
     std::unique_ptr<Perf> perf;
 
+    // For cmpxchg16b
+    u32 cas128_lock = 0;
+
 private:
     constexpr static size_t shared_memory_size = 0x10000;
 };

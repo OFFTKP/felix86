@@ -91,6 +91,8 @@ void ProcessGlobals::initialize() {
 
     perf = std::make_unique<Perf>();
 
+    cas128_lock = 0;
+
     // Don't reset the /proc/self/maps mapped regions, we can reuse the ones from parent process
 }
 
