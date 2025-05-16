@@ -1,3 +1,4 @@
+#include <span>
 #include "felix86/hle/thunks.hpp"
 
 // TODO: this file is messy. Split it up to separate files per library once our thunking implementation is more concrete
@@ -52,6 +53,7 @@ void* libX11 = nullptr;
 void* libEGL = nullptr;
 void* libvulkan = nullptr;
 void* libwayland = nullptr;
+void* libluajit = nullptr;
 
 using XGetVisualInfoType = decltype(&XGetVisualInfo);
 using XSyncType = decltype(&XSync);
@@ -229,6 +231,7 @@ static Thunk thunk_metadata[] = {
 #include "egl_thunks.inc"
 #include "gl_thunks.inc"
 #include "glx_thunks.inc"
+#include "luajit_thunks.inc"
 #include "vulkan_thunks.inc"
 #include "wayland-client_thunks.inc"
 };
@@ -304,6 +307,7 @@ void* get_custom_vk_thunk(const std::string& name);
 void* get_custom_egl_thunk(const std::string& name);
 void* get_custom_glx_thunk(const std::string& name);
 void* get_custom_gl_thunk(const std::string& name);
+void* get_custom_luajit_thunk(const std::string& name);
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
     void* ptr = get_custom_glx_thunk(name);
@@ -798,6 +802,7 @@ void Thunks::initialize() {
     bool thunk_glx = false;
     bool thunk_gl = false;
     bool thunk_wayland = false;
+    bool thunk_luajit = false;
     std::string enabled_thunks = g_config.enabled_thunks;
     if (enabled_thunks != "none") {
         if (enabled_thunks == "all") {
@@ -806,6 +811,7 @@ void Thunks::initialize() {
             thunk_glx = true;
             thunk_gl = true;
             thunk_wayland = true;
+            thunk_luajit = true;
         } else if (!enabled_thunks.empty()) {
             std::vector<std::string> list = split_string(enabled_thunks, ',');
             for (const auto& t : list) {
@@ -824,6 +830,8 @@ void Thunks::initialize() {
                 } else if (n == "libglx" || n == "glx") {
                     thunk_glx = true;
                     thunk_gl = true;
+                } else if (n == "lua" || n == "luajit") {
+                    thunk_luajit = true;
                 } else {
                     WARN("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
                 }
@@ -858,7 +866,7 @@ void Thunks::initialize() {
         } else {
             add_overlays({"libEGL.so", "libEGL.so.1"});
         }
-    }
+    };
 
     if (thunk_vk) {
         constexpr const char* vulkan_name = "libvulkan.so.1";
@@ -911,6 +919,16 @@ void Thunks::initialize() {
         }
     }
 
+    if (thunk_luajit) {
+        constexpr const char* luajit_name = "libluajit-5.1.so";
+        libluajit = dlopen(luajit_name, RTLD_NOW | RTLD_LOCAL);
+        if (!libluajit) {
+            WARN("I couldn't open libluajit-5.1.so for thunking, error: %s", dlerror());
+        } else {
+            add_overlays({"libluajit-5.1.so", "libluajit-5.1.so.2"});
+        }
+    }
+
     for (int i = 0; i < sizeof(thunk_metadata) / sizeof(Thunk); i++) {
         Thunk& metadata = thunk_metadata[i];
         void* ptr = nullptr;
@@ -940,6 +958,11 @@ void Thunks::initialize() {
             if (!ptr) {
                 ptr = dlsym(libGL, metadata.function_name);
             }
+        } else if (lib_name == "libluajit-5.1.so" && thunk_luajit && libluajit) {
+            ptr = get_custom_luajit_thunk(metadata.function_name);
+            if (!ptr) {
+                ptr = dlsym(libluajit, metadata.function_name);
+            }
         } else {
             continue;
         }
@@ -956,6 +979,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
         return nullptr;
     }
 
+    // TODO: unordered_map
     const Thunk* thunk = nullptr;
     std::string sname = name;
     for (auto& meta : thunk_metadata) {

@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# TODO: fixup output names here
 set -e
 
 mkdir -p build
@@ -24,3 +24,9 @@ nasm -felf64 -shared ./libGL.asm -o ./build/glasm.o
 # Yeah for some reason we need all the libGLX symbols in libGL too
 gcc -shared -s -o ./libGL.so.1 ./build/glxc.o ./build/glasm.o -lX11 # pull in X11 too for XSync and XGetVisualInfo
 patchelf --set-soname libGL.so.1 ./libGL.so.1
+
+# Build libluajit-5.1 thunk
+nasm -felf64 -shared ./libluajit-5.1.asm -o ./build/jasm.o
+gcc -c -O3 ./libluajit-5.1.c -o ./build/lua.o
+gcc -shared -s -o ./libluajit-5.1.so ./build/lua.o ./build/jasm.o
+patchelf --set-soname libluajit-5.1.so ./libluajit-5.1.so
