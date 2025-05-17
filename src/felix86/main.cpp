@@ -396,33 +396,6 @@ int main(int argc, char* argv[]) {
     }
     VERBOSE("%s", args.c_str());
 
-    bool purposefully_empty = false;
-    const char* env_file = getenv("FELIX86_ENV_FILE");
-    if (env_file) {
-        std::string env_path = env_file;
-        if (std::filesystem::exists(env_path)) {
-            std::ifstream env_stream(env_path);
-            std::string line;
-            while (std::getline(env_stream, line)) {
-                params.envp.push_back(line);
-            }
-
-            if (params.envp.empty()) {
-                purposefully_empty = true;
-            }
-        } else {
-            WARN("Environment variable file %s does not exist. Using host environment variables.", env_file);
-        }
-    }
-
-    if (params.envp.empty() && !purposefully_empty) {
-        char** envp = environ;
-        while (*envp) {
-            params.envp.push_back(*envp);
-            envp++;
-        }
-    }
-
     if (g_execve_process) {
         const char* guest_envs = getenv("__FELIX86_GUEST_ENVS");
         if (guest_envs) {
@@ -430,6 +403,33 @@ int main(int argc, char* argv[]) {
             for (auto& env : envs) {
                 params.envp.push_back(env);
                 printf("Added %s\n", env.c_str());
+            }
+        }
+    } else {
+        bool purposefully_empty = false;
+        const char* env_file = getenv("FELIX86_ENV_FILE");
+        if (env_file) {
+            std::string env_path = env_file;
+            if (std::filesystem::exists(env_path)) {
+                std::ifstream env_stream(env_path);
+                std::string line;
+                while (std::getline(env_stream, line)) {
+                    params.envp.push_back(line);
+                }
+
+                if (params.envp.empty()) {
+                    purposefully_empty = true;
+                }
+            } else {
+                WARN("Environment variable file %s does not exist. Using host environment variables.", env_file);
+            }
+        }
+
+        if (params.envp.empty() && !purposefully_empty) {
+            char** envp = environ;
+            while (*envp) {
+                params.envp.push_back(*envp);
+                envp++;
             }
         }
     }
