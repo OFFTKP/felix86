@@ -1200,7 +1200,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         char** host_environ = environ;
         while (*host_environ) {
             std::string env = *host_environ;
-            envp.push_back(*host_environ);
+            if (env.find("__FELIX86") == std::string::npos) {
+                envp.push_back(*host_environ);
+            }
             host_environ++;
         }
 
