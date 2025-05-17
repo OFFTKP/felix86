@@ -75,6 +75,56 @@
         ],
         "disassembly": "addsubpd xmm1, [rdi]"
     },
+    "f20f7cdc": {
+        "instruction_count": 10,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v26, v5, 0x1(1), none",
+            "VSLIDEDOWN.VI   v27, v6, 0x1(1), none",
+            "VFADD.VV        v28, v5, v26, none",
+            "VFADD.VV        v29, v6, v27, none",
+            "VMV.V.I         v0, 0x5(5)",
+            "VCOMPRESS.VM    v30, v28, v0",
+            "VCOMPRESS.VM    v31, v29, v0",
+            "VSLIDEUP.VI     v30, v31, 0x2(2), none",
+            "VMV.V.V         v5, v30"
+        ],
+        "disassembly": "haddps xmm3, xmm4"
+    },
+    "f20f7cd2": {
+        "instruction_count": 10,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v26, v4, 0x1(1), none",
+            "VSLIDEDOWN.VI   v27, v4, 0x1(1), none",
+            "VFADD.VV        v28, v4, v26, none",
+            "VFADD.VV        v29, v4, v27, none",
+            "VMV.V.I         v0, 0x5(5)",
+            "VCOMPRESS.VM    v30, v28, v0",
+            "VCOMPRESS.VM    v31, v29, v0",
+            "VSLIDEUP.VI     v30, v31, 0x2(2), none",
+            "VMV.V.V         v4, v30"
+        ],
+        "disassembly": "haddps xmm2, xmm2"
+    },
+    "f20f7c0f": {
+        "instruction_count": 12,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v26, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v27, v3, 0x1(1), none",
+            "VSLIDEDOWN.VI   v28, v26, 0x1(1), none",
+            "VFADD.VV        v29, v3, v27, none",
+            "VFADD.VV        v30, v26, v28, none",
+            "VMV.V.I         v0, 0x5(5)",
+            "VCOMPRESS.VM    v31, v29, v0",
+            "VCOMPRESS.VM    v1, v30, v0",
+            "VSLIDEUP.VI     v31, v1, 0x2(2), none",
+            "VMV.V.V         v3, v31"
+        ],
+        "disassembly": "haddps xmm1, [rdi]"
+    },
     "660f7cdc": {
         "instruction_count": 7,
         "expected_asm": [
@@ -115,6 +165,56 @@
             "VMV.V.V         v3, v27"
         ],
         "disassembly": "haddpd xmm1, [rdi]"
+    },
+    "f20f7ddc": {
+        "instruction_count": 10,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v26, v5, 0x1(1), none",
+            "VSLIDEDOWN.VI   v27, v6, 0x1(1), none",
+            "VFSUB.VV        v28, v5, v26, none",
+            "VFSUB.VV        v29, v6, v27, none",
+            "VMV.V.I         v0, 0x5(5)",
+            "VCOMPRESS.VM    v30, v28, v0",
+            "VCOMPRESS.VM    v31, v29, v0",
+            "VSLIDEUP.VI     v30, v31, 0x2(2), none",
+            "VMV.V.V         v5, v30"
+        ],
+        "disassembly": "hsubps xmm3, xmm4"
+    },
+    "f20f7dd2": {
+        "instruction_count": 10,
+        "expected_asm": [
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v26, v4, 0x1(1), none",
+            "VSLIDEDOWN.VI   v27, v4, 0x1(1), none",
+            "VFSUB.VV        v28, v4, v26, none",
+            "VFSUB.VV        v29, v4, v27, none",
+            "VMV.V.I         v0, 0x5(5)",
+            "VCOMPRESS.VM    v30, v28, v0",
+            "VCOMPRESS.VM    v31, v29, v0",
+            "VSLIDEUP.VI     v30, v31, 0x2(2), none",
+            "VMV.V.V         v4, v30"
+        ],
+        "disassembly": "hsubps xmm2, xmm2"
+    },
+    "f20f7d0f": {
+        "instruction_count": 12,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v26, a0, none, 1",
+            "VSETIVLI        zero, 4, e32, m1, tu, mu",
+            "VSLIDEDOWN.VI   v27, v3, 0x1(1), none",
+            "VSLIDEDOWN.VI   v28, v26, 0x1(1), none",
+            "VFSUB.VV        v29, v3, v27, none",
+            "VFSUB.VV        v30, v26, v28, none",
+            "VMV.V.I         v0, 0x5(5)",
+            "VCOMPRESS.VM    v31, v29, v0",
+            "VCOMPRESS.VM    v1, v30, v0",
+            "VSLIDEUP.VI     v31, v1, 0x2(2), none",
+            "VMV.V.V         v3, v31"
+        ],
+        "disassembly": "hsubps xmm1, [rdi]"
     },
     "660f7ddc": {
         "instruction_count": 12,
@@ -273,5 +373,14 @@
             "VMV.V.V         v3, v26"
         ],
         "disassembly": "movddup xmm1, qword ptr [rdi]"
+    },
+    "f20ff01f": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v26, a0, none, 1",
+            "VMV.V.V         v5, v26"
+        ],
+        "disassembly": "lddqu xmm3, [rdi]"
     }
 }

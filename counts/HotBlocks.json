@@ -233,12 +233,12 @@
             "BNE             zero, s7, 0x10(16)",
             "ADDI            gp, gp, 0x13a(314)",
             "AUIPC           t6, 0xffffffea(-22)",
-            "JALR            zero, t6, 0x22c(556)",
+            "JALR            zero, t6, 0xfffffde0(-544)",
             "LUI             ra, 0xd(13)",
             "ADDIW           ra, ra, 0xfffffc32(-974)",
             "ADD             gp, gp, ra",
             "AUIPC           t6, 0xffffffea(-22)",
-            "JALR            zero, t6, 0x218(536)"
+            "JALR            zero, t6, 0xfffffdcc(-564)"
         ]
     },
     "dotnet rotate": {
@@ -4195,12 +4195,12 @@
             "ADDIW           t1, t1, 0xfffffc34(-972)",
             "ADD             gp, gp, t1",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x454(1108)",
+            "JALR            zero, t6, 0x8(8)",
             "LUI             t1, 0xfffb09a1(-325215)",
             "ADDIW           t1, t1, 0xffffffb3(-77)",
             "ADD             gp, gp, t1",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x440(1088)"
+            "JALR            zero, t6, 0xfffffff4(-12)"
         ]
     },
     "7z block": {
@@ -4323,10 +4323,10 @@
             "BNE             zero, ra, 0x10(16)",
             "ADDI            gp, gp, 0x74(116)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x264(612)",
+            "JALR            zero, t6, 0xfffffe18(-488)",
             "ADDI            gp, gp, 0x8b(139)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x258(600)"
+            "JALR            zero, t6, 0xfffffe0c(-500)"
         ]
     }
 }

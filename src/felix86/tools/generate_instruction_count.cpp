@@ -375,7 +375,6 @@ int main() {
         GEN_Group1(or_);
         GEN_Group1(and_);
         GEN_Group1(xor_);
-        GEN_Group1(cmp);
         GEN_Group1(mov);
         GEN_Shift(shl);
         GEN_Shift(shr);
@@ -394,7 +393,7 @@ int main() {
         GEN(cmpxchg(ptr[rdi], bx));
         GEN(cmpxchg(ptr[rdi], ebx));
         GEN(cmpxchg(ptr[rdi], rbx));
-        if (i != 0) {
+        if (flags) {
             GEN(div(dl));
             GEN(div(dh));
             GEN(div(dx));
@@ -529,6 +528,27 @@ int main() {
                 GEN(repnz(); x.scasw());
                 GEN(repnz(); x.scasd());
                 GEN(repnz(); x.scasq());
+                GEN_Group1(cmp);
+                GEN(test(al, bl));
+                GEN(test(al, bh));
+                GEN(test(ah, bl));
+                GEN(test(ah, bh));
+                GEN(test(ax, bx));
+                GEN(test(eax, ebx));
+                GEN(test(rax, rbx));
+                GEN(test(ptr[rdi], bl));
+                GEN(test(ptr[rdi], bh));
+                GEN(test(ptr[rdi], bx));
+                GEN(test(ptr[rdi], ebx));
+                GEN(test(ptr[rdi], rbx));
+                GEN(test(byte[rdi], -1));
+                GEN(test(word[rdi], -1));
+                GEN(test(dword[rdi], -1));
+                GEN(test(qword[rdi], -1));
+                GEN(test(byte[rdi], 0));
+                GEN(test(word[rdi], 0));
+                GEN(test(dword[rdi], 0));
+                GEN(test(qword[rdi], 0));
             }
             GEN(xchg(al, bl));
             GEN(xchg(al, bh));
@@ -825,13 +845,14 @@ int main() {
 
     GEN_SSE(addsubps);
     GEN_SSE(addsubpd);
-    // GEN_SSE(haddps);
+    GEN_SSE(haddps);
     GEN_SSE(haddpd);
-    // GEN_SSE(hsubps);
+    GEN_SSE(hsubps);
     GEN_SSE(hsubpd);
     GEN_SSE(movshdup);
     GEN_SSE(movsldup);
     GEN_SSE(movddup);
+    GEN(lddqu(xmm3, ptr[rdi]));
 
     std::ofstream sse3("counts/SSE3.json");
     sse3 << json.dump(4);

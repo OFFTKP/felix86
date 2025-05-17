@@ -604,6 +604,18 @@ FAST_HANDLE(ADC) {
 }
 
 FAST_HANDLE(CMP) {
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
+    if (!needs_any_flag) {
+        WARN("CMP with no flags used?");
+        return;
+    }
+
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
@@ -1820,12 +1832,25 @@ FAST_HANDLE(IDIV) {
 }
 
 FAST_HANDLE(TEST) {
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_any_flag = needs_pf || needs_sf || needs_zf;
+    if (!needs_any_flag) {
+        WARN("TEST with no flags used?");
+        return;
+    }
+
     biscuit::GPR result = rec.scratch();
 
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
 
-    as.AND(result, dst, src); // TODO: optimize case of dst == src
+    if (dst == src) {
+        result = dst;
+    } else {
+        as.AND(result, dst, src);
+    }
 
     x86_size_e size = rec.getSize(&operands[0]);
 
@@ -4498,6 +4523,14 @@ FAST_HANDLE(MOVSLDUP) {
     rec.setVec(&operands[0], dst);
 }
 
+FAST_HANDLE(MONITOR) {
+    WARN_ONCE("This program uses MONITOR which is a NOP for us");
+}
+
+FAST_HANDLE(MWAIT) {
+    WARN_ONCE("This program uses MWAIT which is a NOP for us");
+}
+
 FAST_HANDLE(PTEST) {
     biscuit::Vec zmask = rec.scratchVec();
     biscuit::Vec cmask = rec.scratchVec();
@@ -6854,6 +6887,61 @@ FAST_HANDLE(HSUBPD) {
     as.VSLIDEUP(result2, result1, 1);
 
     rec.setVec(&operands[0], result2);
+}
+
+FAST_HANDLE(HADDPS) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+
+    biscuit::Vec dst_down = rec.scratchVec();
+    biscuit::Vec src_down = rec.scratchVec();
+    biscuit::Vec result1 = rec.scratchVec();
+    biscuit::Vec result2 = rec.scratchVec();
+    biscuit::Vec compress1 = rec.scratchVec();
+    biscuit::Vec compress2 = rec.scratchVec();
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VSLIDEDOWN(dst_down, dst, 1);
+    as.VSLIDEDOWN(src_down, src, 1);
+    as.VFADD(result1, dst, dst_down);
+    as.VFADD(result2, src, src_down);
+    // result1 and result2 have the elements we need in the 0th and 2nd position
+    as.VMV(v0, 0b0101);
+    as.VCOMPRESS(compress1, result1, v0);
+    as.VCOMPRESS(compress2, result2, v0);
+    as.VSLIDEUP(compress1, compress2, 2);
+
+    rec.setVec(&operands[0], compress1);
+}
+
+FAST_HANDLE(HSUBPS) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+
+    biscuit::Vec dst_down = rec.scratchVec();
+    biscuit::Vec src_down = rec.scratchVec();
+    biscuit::Vec result1 = rec.scratchVec();
+    biscuit::Vec result2 = rec.scratchVec();
+    biscuit::Vec compress1 = rec.scratchVec();
+    biscuit::Vec compress2 = rec.scratchVec();
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VSLIDEDOWN(dst_down, dst, 1);
+    as.VSLIDEDOWN(src_down, src, 1);
+    as.VFSUB(result1, dst, dst_down);
+    as.VFSUB(result2, src, src_down);
+    // result1 and result2 have the elements we need in the 0th and 2nd position
+    as.VMV(v0, 0b0101);
+    as.VCOMPRESS(compress1, result1, v0);
+    as.VCOMPRESS(compress2, result2, v0);
+    as.VSLIDEUP(compress1, compress2, 2);
+
+    rec.setVec(&operands[0], compress1);
+}
+
+FAST_HANDLE(LDDQU) {
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVec(&operands[0], src);
 }
 
 void PSIGN(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vl) {
