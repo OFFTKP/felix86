@@ -1197,16 +1197,14 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         }
         argv.push_back(nullptr);
 
-        // Pass the host arguments first because they may need to be overwritten by the ones the guest specifies
         char** host_environ = environ;
         while (*host_environ) {
             std::string env = *host_environ;
-            if (env.find("FELIX86") != std::string::npos) {
-                envp.push_back(*host_environ);
-            }
+            envp.push_back(*host_environ);
             host_environ++;
         }
 
+        std::string guest_envs = "__FELIX86_GUEST_ENVS=";
         if (arg3) {
             u8* guest_envp = (u8*)arg3;
             while (true) {
@@ -1216,9 +1214,17 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                     break;
                 }
 
-                envp.push_back((const char*)ptr);
+                guest_envs += (const char*)ptr;
+                guest_envs += ",";
+
                 guest_envp += g_mode32 ? 4 : 8;
             }
+
+            if (!guest_envs.empty()) {
+                guest_envs.pop_back();
+            }
+
+            envp.push_back(guest_envs.c_str());
         } else {
             WARN("envp null during execve...?");
         }

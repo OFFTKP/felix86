@@ -423,6 +423,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (g_execve_process) {
+        const char* guest_envs = getenv("__FELIX86_GUEST_ENVS");
+        if (guest_envs) {
+            std::vector<std::string> envs = split_string(guest_envs, ',');
+            for (auto& env : envs) {
+                params.envp.push_back(env);
+            }
+        }
+    }
+
     // TODO: These "hacky" environment variables are bandaid solutions to problems that we need to eventually fix
     // They are enabled by default
     if (g_config.hacky_envs) {
