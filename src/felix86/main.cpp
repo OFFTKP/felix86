@@ -402,7 +402,6 @@ int main(int argc, char* argv[]) {
             std::vector<std::string> envs = split_string(guest_envs, ',');
             for (auto& env : envs) {
                 params.envp.push_back(env);
-                printf("Added %s\n", env.c_str());
             }
         }
     } else {
