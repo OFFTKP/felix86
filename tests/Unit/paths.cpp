@@ -2,37 +2,45 @@
 #include "felix86/hle/filesystem.hpp"
 
 CATCH_TEST_CASE("InsideRootfs", "[paths]") {
+    Config config = g_config;
     g_config.rootfs_path = "/home/someuser/myrootfs";
 
     std::string my_path = "/home/someuser/myrootfs/somedir";
     Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/somedir");
+    g_config = config;
 }
 
 CATCH_TEST_CASE("IsRootfs", "[paths]") {
+    Config config = g_config;
     g_config.rootfs_path = "/home/someuser/myrootfs";
 
     std::string my_path = "/home/someuser/myrootfs";
     Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/");
+    g_config = config;
 }
 
 CATCH_TEST_CASE("IsRootfs2", "[paths]") {
+    Config config = g_config;
     g_config.rootfs_path = "/home/someuser/myrootfs";
 
     std::string my_path = "/home/someuser/myrootfs/";
     Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/");
+    g_config = config;
 }
 
 CATCH_TEST_CASE("OutsideRootfs", "[paths]") {
+    Config config = g_config;
     g_config.rootfs_path = "/home/someuser/myrootfs";
 
     std::string my_path = "/home";
     Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/home");
+    g_config = config;
 }

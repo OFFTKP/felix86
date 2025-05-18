@@ -25,7 +25,14 @@ echo "Which rootfs would you like to use?"
 echo "(1) Ubuntu 24.04"
 echo "(2) I have my own rootfs"
 
-read -p "Your choice: " choice
+while true; do
+    read -p "Your choice: " choice
+    if [[ "$choice" == "1" || "$choice" == "2" ]]; then
+        break
+    else
+        echo "Invalid input. Please enter 1 or 2."
+    fi
+done
 
 
 if [ "$choice" -eq 1 ]; then
@@ -33,9 +40,11 @@ if [ "$choice" -eq 1 ]; then
     mkdir -p $HOME/felix86_rootfs
     curl -L https://drive.usercontent.google.com/download?id=$UBUNTU_2404_ID&confirm=yep | tar -xz -C $HOME/felix86_rootfs
     felix86 --set-rootfs $HOME/felix86_rootfs
-    echo "felix86 installed successfully"
 elif [ "$choice" -eq 2 ]; then
     echo "You selected to use your own rootfs."
-else
-    echo "Invalid selection. Please run the script again and choose either 1 or 2."
+    echo "Please specify the absolute path to your rootfs"
+    read line
+    felix86 --set-rootfs line
 fi
+
+echo "felix86 installed successfully"
