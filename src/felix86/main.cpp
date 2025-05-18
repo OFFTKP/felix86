@@ -36,6 +36,7 @@ static struct argp_option options[] = {
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
+    {"set-rootfs", 's', "DIR", 0, "Set the rootfs path in config.toml"},
     {"binfmt-misc", 'b', 0, 0, "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path"},
     {0}};
 
@@ -260,6 +261,19 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
     case 'b': {
         binfmt_misc();
+        exit(0);
+        break;
+    }
+    case 's': {
+        Config::initialize();
+        char* real_path = realpath(arg, nullptr);
+        if (!real_path) {
+            printf("Could not resolve %s to an absolute path", arg);
+            exit(1);
+        }
+        printf("Setting rootfs to %s\n", real_path);
+        g_config.rootfs_path = real_path;
+        Config::save(g_config.path(), g_config);
         exit(0);
         break;
     }

@@ -23,10 +23,10 @@ struct Config {
         return config_path;
     }
 
-private:
     [[nodiscard]] static Config load(const std::filesystem::path& path);
     static void save(const std::filesystem::path& path, const Config& config);
 
+private:
     std::string __environment;
     std::filesystem::path config_path;
 
