@@ -7670,15 +7670,18 @@ FAST_HANDLE(CMPXCHG16B) {
         WARN_ONCE("cmpxchg16b with zacas, untested, please report results");
         // We are the luckiest emulator alive!
         // AMOCAS.Q needs a register group (meaning, 2 registers side by side like t0, t1) to work
-        (void)rec.scratch(); // waste a scratch so we pick 28-29 and 30-31
         biscuit::GPR rax = rec.getRefGPR(X86_REF_RAX, X86_SIZE_QWORD);
         biscuit::GPR rdx = rec.getRefGPR(X86_REF_RDX, X86_SIZE_QWORD);
         biscuit::GPR rbx = rec.getRefGPR(X86_REF_RBX, X86_SIZE_QWORD);
         biscuit::GPR rcx = rec.getRefGPR(X86_REF_RCX, X86_SIZE_QWORD);
-        biscuit::GPR rax_t = rec.scratch();
-        biscuit::GPR rdx_t = rec.scratch();
-        biscuit::GPR rbx_t = rec.scratch();
-        biscuit::GPR rcx_t = rec.scratch();
+        biscuit::GPR rax_t = x28;
+        biscuit::GPR rdx_t = x29;
+        biscuit::GPR rbx_t = x30;
+        biscuit::GPR rcx_t = x31;
+        static_assert(Recompiler::isScratch(x28));
+        static_assert(Recompiler::isScratch(x29));
+        static_assert(Recompiler::isScratch(x30));
+        static_assert(Recompiler::isScratch(x31));
         ASSERT(rax_t == x28 && rdx_t == x29 && rbx_t == x30 && rcx_t == x31); // in case we change the order
         as.MV(rax_t, rax);
         as.MV(rdx_t, rdx);

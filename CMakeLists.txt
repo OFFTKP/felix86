@@ -12,6 +12,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
+# Set the "SOURCE_PATH_SIZE" variable to the size of the source directory
+# We can then abuse this to truncate the __FILE__ macro to only show the filename
+string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_SIZE)
+add_definitions("-DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE}")
+
 CheckGitSetup()
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")

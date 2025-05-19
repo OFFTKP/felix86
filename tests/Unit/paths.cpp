@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include "felix86/hle/filesystem.hpp"
 
+#define SUCCESS_MESSAGE() SUCCESS("Test passed: %s", Catch::getResultCapture().getCurrentTestName().c_str())
+
 CATCH_TEST_CASE("InsideRootfs", "[paths]") {
     Config config = g_config;
     g_config.rootfs_path = "/home/someuser/myrootfs";
@@ -10,6 +12,7 @@ CATCH_TEST_CASE("InsideRootfs", "[paths]") {
 
     CATCH_REQUIRE(my_path == "/somedir");
     g_config = config;
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("IsRootfs", "[paths]") {
@@ -21,6 +24,7 @@ CATCH_TEST_CASE("IsRootfs", "[paths]") {
 
     CATCH_REQUIRE(my_path == "/");
     g_config = config;
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("IsRootfs2", "[paths]") {
@@ -32,6 +36,7 @@ CATCH_TEST_CASE("IsRootfs2", "[paths]") {
 
     CATCH_REQUIRE(my_path == "/");
     g_config = config;
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("OutsideRootfs", "[paths]") {
@@ -43,4 +48,5 @@ CATCH_TEST_CASE("OutsideRootfs", "[paths]") {
 
     CATCH_REQUIRE(my_path == "/home");
     g_config = config;
+    SUCCESS_MESSAGE();
 }

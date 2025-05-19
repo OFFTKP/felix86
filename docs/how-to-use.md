@@ -106,10 +106,15 @@ Want to thunk Vulkan but not EGL? You can do so with `FELIX86_ENABLED_THUNKS=vul
 The game you want to run **must** be inside the rootfs directory, so place it anywhere in there.
 
 Example:
-`./felix86 /home/myuser/myrootfs/MyDir/MyApplication arg1 arg2 arg3`
+`felix86 /home/myuser/myrootfs/MyDir/MyApplication arg1 arg2 arg3`
 
 Or, don't prepend the executable path with the rootfs path:
-`./felix86 /MyDir/MyApplication arg1 arg2 arg3`
+`felix86 /MyDir/MyApplication arg1 arg2 arg3`
+
+You can also run scripts:
+`felix86 /MyDir/myscript.sh`
+
+In this case, felix86 will detect the script interpter (first line of the script, following a `#!`) and run it using the script interpreter. This means that you don't have to install felix86 in binfmt_misc for scripts to work.
 
 By default, the host environment variables are passed to the executable.
 

@@ -1579,6 +1579,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = ::alarm(arg1);
             break;
         }
+        case felix86_x86_32_symlink: {
+            auto guard = state->GuardSignals();
+            result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
+            break;
+        }
         case felix86_x86_32_clone: {
             u64 child_tid = arg5;
             u64 parent_tid = arg3;

@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <sys/mman.h>
 #include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
 #include "felix86/hle/mmap.hpp"
 
 namespace Catch {
@@ -16,6 +17,8 @@ namespace Catch {
         }
     };
 }
+
+#define SUCCESS_MESSAGE() SUCCESS("Test passed: %s", Catch::getResultCapture().getCurrentTestName().c_str())
 
 #define MMAP_AT(addr, size) \
     do { \
@@ -70,6 +73,7 @@ CATCH_TEST_CASE("Simple1", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("Simple2", "[mmap32]") {
@@ -86,6 +90,7 @@ CATCH_TEST_CASE("Simple2", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("Simple3", "[mmap32]") {
@@ -103,6 +108,7 @@ CATCH_TEST_CASE("Simple3", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("FirstPages", "[mmap32]") {
@@ -117,6 +123,7 @@ CATCH_TEST_CASE("FirstPages", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 
@@ -138,6 +145,7 @@ CATCH_TEST_CASE("FirstPagesUnmap", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("LastPages", "[mmap32]") {
@@ -154,6 +162,7 @@ CATCH_TEST_CASE("LastPages", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("Split2", "[mmap32]") {
@@ -171,6 +180,7 @@ CATCH_TEST_CASE("Split2", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("Split2Pick1", "[mmap32]") {
@@ -190,6 +200,7 @@ CATCH_TEST_CASE("Split2Pick1", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("Overlapping1", "[mmap32]") {
@@ -206,6 +217,7 @@ CATCH_TEST_CASE("Overlapping1", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("Overlapping2", "[mmap32]") {
@@ -223,6 +235,7 @@ CATCH_TEST_CASE("Overlapping2", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("Overlapping2ConsumeLast", "[mmap32]") {
@@ -249,6 +262,7 @@ CATCH_TEST_CASE("Overlapping2ConsumeLast", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("UnmapPerfect", "[mmap32]") {
@@ -270,6 +284,7 @@ CATCH_TEST_CASE("UnmapPerfect", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("UnmapPerfect2", "[mmap32]") {
@@ -295,6 +310,7 @@ CATCH_TEST_CASE("UnmapPerfect2", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("UnmapMiddle", "[mmap32]") {
@@ -320,6 +336,7 @@ CATCH_TEST_CASE("UnmapMiddle", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("UnmapGreedyMin", "[mmap32]") {
@@ -343,6 +360,7 @@ CATCH_TEST_CASE("UnmapGreedyMin", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("UnmapGreedyMax", "[mmap32]") {
@@ -366,6 +384,7 @@ CATCH_TEST_CASE("UnmapGreedyMax", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("MapRandom", "[mmap32]") {
@@ -381,6 +400,7 @@ CATCH_TEST_CASE("MapRandom", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("OverwriteFixed", "[mmap32]") {
@@ -397,6 +417,7 @@ CATCH_TEST_CASE("OverwriteFixed", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("OverwriteFixed2", "[mmap32]") {
@@ -413,6 +434,7 @@ CATCH_TEST_CASE("OverwriteFixed2", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }
 
 CATCH_TEST_CASE("Mremap", "[mmap32]") {
@@ -429,4 +451,5 @@ CATCH_TEST_CASE("Mremap", "[mmap32]") {
     });
 
     MUNMAP_ALL();
+    SUCCESS_MESSAGE();
 }

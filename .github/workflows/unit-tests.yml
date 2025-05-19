@@ -20,6 +20,7 @@ jobs:
       - name: Test
         run: |
           FELIX86_ALL_EXTENSIONS=g,v,b ./build/felix86_test
+          ./build/felix86 -k
           FELIX86_ALL_EXTENSIONS=g,v ./build/felix86_test
           ./build/felix86 -k
       - name: Upload

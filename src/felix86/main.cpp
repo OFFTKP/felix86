@@ -344,7 +344,7 @@ int main(int argc, char* argv[]) {
         // and copy some stuff inside the rootfs
         auto copy = [](const char* src, const std::filesystem::path& dst) {
             if (!std::filesystem::exists(src)) {
-                printf("I couldn't find %s to copy to the rootfs, may cause problems with some games", src);
+                printf("I couldn't find %s to copy to the rootfs, may cause problems with some games\n", src);
                 return;
             }
 

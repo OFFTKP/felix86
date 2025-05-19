@@ -16,6 +16,11 @@ if ! command -v tar >/dev/null 2>&1; then
     exit 1
 fi
 
+if ! command -v unzip >/dev/null 2>&1; then
+    echo "Error: unzip is not installed. Please install it and try again."
+    exit 1
+fi
+
 if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
     echo "Error: \$HOME is not set or not a valid directory."
     exit 1
@@ -53,7 +58,7 @@ fi
 
 echo "Downloading latest felix86 artifact..."
 mkdir -p /tmp/felix86_artifact
-curl -sL $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
+curl -L $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
 echo "Downloaded"
@@ -87,10 +92,11 @@ if [ "$choice" -eq 1 ]; then
         echo "$NEW_ROOTFS already exists, I couldn't unpack the rootfs there"
         exit
     fi
+    echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
     UBUNTU_2404_LINK=$(curl -s https://felix86.com/rootfs/ubuntu.txt)
     echo "Downloading Ubuntu 24.04 rootfs..."
     mkdir -p $NEW_ROOTFS
-    curl -sL $UBUNTU_2404_LINK | tar -xmz -C $NEW_ROOTFS
+    curl -L $UBUNTU_2404_LINK | tar -xmz -C $NEW_ROOTFS
     echo "Rootfs was downloaded and extracted in $NEW_ROOTFS"
     felix86 --set-rootfs $NEW_ROOTFS
 elif [ "$choice" -eq 2 ]; then

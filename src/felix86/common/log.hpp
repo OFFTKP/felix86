@@ -16,6 +16,13 @@
 #define ANSI_BOLD "\x1b[1m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
+#ifndef SOURCE_PATH_SIZE
+#pragma message("SOURCE_PATH_SIZE was not defined correctly")
+#define __FILENAME__ __FILE__
+#else
+#define __FILENAME__ (__FILE__ + SOURCE_PATH_SIZE)
+#endif
+
 struct Logger {
     static void log(const char* format, ...);
 
@@ -34,7 +41,7 @@ struct Logger {
     } while (0)
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
-        Logger::log(ANSI_COLOR_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, getpid(), ##__VA_ARGS__);                 \
+        Logger::log(ANSI_COLOR_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILENAME__, __LINE__, getpid(), ##__VA_ARGS__);             \
         felix86_exit(1);                                                                                                                             \
     } while (0)
 #define WARN(format, ...)                                                                                                                            \
@@ -46,7 +53,7 @@ struct Logger {
 #define VERBOSE(format, ...)                                                                                                                         \
     do {                                                                                                                                             \
         if (g_config.verbose && !g_config.quiet) {                                                                                                   \
-            Logger::log(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILE__, __LINE__, ##__VA_ARGS__);                                \
+            Logger::log(ANSI_COLOR_MAGENTA "%s:%d " format ANSI_COLOR_RESET "\n", __FILENAME__, __LINE__, ##__VA_ARGS__);                            \
         }                                                                                                                                            \
     } while (0)
 

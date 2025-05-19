@@ -31,9 +31,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
 
     argv.push_back(felix_path.c_str());
     if (extension == ".exe") {
-        // TODO: when 32-bit wine is more stable run it through that
-        CATCH_REQUIRE(std::filesystem::exists(g_config.rootfs_path / "usr" / "lib" / "wine" / "wine64"));
-        argv.push_back("/usr/lib/wine/wine64");
+        argv.push_back("/usr/bin/wine");
         envp.push_back("WINEDEBUG=-all");
     }
     argv.push_back(spath.c_str());
