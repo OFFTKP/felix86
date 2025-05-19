@@ -4,11 +4,19 @@
 
 felix86 is a Linux userspace emulator that allows you to run x86-64 Linux programs on RISC-V processors
 
-> [!NOTE]
-> felix86 has not fully released yet. There are no compiled binaries available for download.
->
-> If you'd like to aid with development, please check the [compilation and usage guide](./docs/how-to-use.md)
-> as well as the [developer tips](./docs/contributing.md).
+## Getting started
+
+### Ubuntu/Debian/Bianbu and maybe others
+Running the following command:
+
+```bash
+curl -s https://raw.githubusercontent.com/OFFTKP/felix86/master/src/felix86/tools/install.sh -o /tmp/felix86_install.sh && bash /tmp/felix86_install.sh && rm /tmp/felix86_install.sh
+```
+
+This command will download and run the installer script which will download the latest felix86 artifact and allow you to download a rootfs or use your own.
+
+### Compilation guide
+[Read the compilation guide](./docs/how-to-use.md) to build felix86 yourself
 
 ## Features
 - Just-in-Time (JIT) recompiler
