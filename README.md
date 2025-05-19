@@ -7,13 +7,13 @@ felix86 is a Linux userspace emulator that allows you to run x86-64 Linux progra
 ## Getting started
 
 ### Ubuntu/Debian/Bianbu and maybe others
-Running the following command:
+Run the following command:
 
 ```bash
 curl -s https://raw.githubusercontent.com/OFFTKP/felix86/master/src/felix86/tools/install.sh -o /tmp/felix86_install.sh && bash /tmp/felix86_install.sh && rm /tmp/felix86_install.sh
 ```
 
-This command will download and run the installer script which will download the latest felix86 artifact and allow you to download a rootfs or use your own.
+This command downloads and runs the installer script, which fetches the latest felix86 artifact and lets you either download a rootfs or use your own.
 
 ### Compilation guide
 [Read the compilation guide](./docs/how-to-use.md) to build felix86 yourself

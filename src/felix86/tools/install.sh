@@ -28,25 +28,25 @@ set -e
 
 echo "Welcome to the felix86 installer"
 
-if [ -f "$FILE" ]; then
-    while true; do
-        ok=0
-        read -p "Another felix86 installation exists. Do you want to reinstall? (yes/no): " answer
-        case "$answer" in
-            [Yy][Ee][Ss]|[Yy])
-                ok=1
-                break
-                ;;
-            [Nn][Oo]|[Nn])
-                exit
-                ;;
-            *)
-                echo "Invalid input. Please enter yes or no."
-                ;;
-        esac
+exit_after_install=0
 
-        if [ "$ok" -eq 1 ]; then
+if [ -f "$FILE" ]; then
+    echo "There's already an installation at $FILE. What would you like to do?"
+    echo "(1) Update with latest artifact"
+    echo "(2) Full reinstall"
+    echo "(3) Exit"
+
+    while true; do
+        read -p "Your choice: " choice
+        if [[ "$choice" == "1" ]]; then
+            exit_after_install=1
             break
+        elif [[ "$choice" == "2" ]]; then
+            break
+        elif [[ "$choice" == "3" ]]; then
+            exit
+        else
+            echo "Invalid input. Please enter 1, 2 or 3"
         fi
     done
 fi
@@ -57,10 +57,15 @@ curl -sL $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
 echo "Downloaded"
-echo "Moving felix86 artifact to /usr/bin/, requesting permission..."
-sudo mv /tmp/felix86_artifact/felix86 /usr/bin/
-echo ""
+echo "Moving felix86 artifact to $FILE, requesting permission..."
+sudo mv /tmp/felix86_artifact/felix86 $FILE
+echo "Successfully installed felix86 at $FILE"
 
+if [[ "$exit_after_install" == "1" ]]; then
+    exit
+fi
+
+echo ""
 echo "Which rootfs would you like to use?"
 echo "(1) Ubuntu 24.04"
 echo "(2) I have my own rootfs"
@@ -85,7 +90,7 @@ if [ "$choice" -eq 1 ]; then
     UBUNTU_2404_LINK=$(curl -s https://felix86.com/rootfs/ubuntu.txt)
     echo "Downloading Ubuntu 24.04 rootfs..."
     mkdir -p $NEW_ROOTFS
-    curl -sL $UBUNTU_2404_LINK | tar -xz -C $NEW_ROOTFS
+    curl -sL $UBUNTU_2404_LINK | tar -xmz -C $NEW_ROOTFS
     echo "Rootfs was downloaded and extracted in $NEW_ROOTFS"
     felix86 --set-rootfs $NEW_ROOTFS
 elif [ "$choice" -eq 2 ]; then
