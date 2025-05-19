@@ -67,6 +67,8 @@ felix86 requires an x86-64 "rootfs" which is the filesystem at the root director
 
 Ready-made rootfs images are uploaded to Google Drive. Currently there's only one image, you can obtain the link from [https://felix86.com/rootfs/ubuntu.txt]. Download the image and decompress it to a folder. That folder is now your rootfs.
 
+The images are built using the scripts in [https://github.com/felix86-emu/rootfs] and manually uploaded to Google Drive for distribution.
+
 ### Building your own rootfs
 
 Clone [https://github.com/felix86-emu/rootfs] and run the `BuildAll.sh` script.
