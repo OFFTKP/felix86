@@ -1117,31 +1117,37 @@ void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment) {
     case ZYDIS_REGISTER_CS: {
         state->cs = value;
         state->csbase = base;
+        LOG("Setting cs to %d (%lx)", index, base);
         break;
     }
     case ZYDIS_REGISTER_DS: {
         state->ds = value;
         state->dsbase = base;
+        LOG("Setting ds to %d (%lx)", index, base);
         break;
     }
     case ZYDIS_REGISTER_SS: {
         state->ss = value;
         state->ssbase = base;
+        LOG("Setting ss to %d (%lx)", index, base);
         break;
     }
     case ZYDIS_REGISTER_ES: {
         state->es = value;
         state->esbase = base;
+        LOG("Setting es to %d (%lx)", index, base);
         break;
     }
     case ZYDIS_REGISTER_FS: {
         state->fs = value;
         state->fsbase = base;
+        LOG("Setting fs to %d (%lx)", index, base);
         break;
     }
     case ZYDIS_REGISTER_GS: {
         state->gs = value;
         state->gsbase = base;
+        LOG("Setting gs to %d (%lx)", index, base);
         break;
     }
     default: {

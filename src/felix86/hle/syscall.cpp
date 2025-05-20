@@ -1760,6 +1760,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 udesc->seg_not_present = 1;
             }
 
+            LOG("Getting thread area %d which is %lx", index, udesc->base_addr);
+
             result = 0;
             break;
         }

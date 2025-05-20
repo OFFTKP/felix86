@@ -352,10 +352,12 @@ struct ThreadState {
         gdt[index] = udesc->base_addr;
         udesc->entry_number = 12 + index;
 
+        LOG("Setting %d to %lx", index, udesc->base_addr);
+
 #define CHECK_SEG(name)                                                                                                                              \
     if ((name >> 3) == index) {                                                                                                                      \
         name##base = udesc->base_addr;                                                                                                               \
-        VERBOSE("Set " #name " to %p", udesc->base_addr);                                                                                            \
+        LOG("Set " #name " to %lx", (u64)udesc->base_addr);                                                                                          \
     }
         CHECK_SEG(fs);
         CHECK_SEG(gs);
