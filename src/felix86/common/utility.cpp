@@ -308,6 +308,96 @@ void felix86_iret(struct ThreadState* state) {
     }
 }
 
+struct fenv_data_16 {
+    u16 cw;
+    u16 sw;
+    u16 tw;
+    u16 fip;
+    u16 fcs;
+    u16 fdp;
+    u16 fds;
+};
+
+static_assert(sizeof(fenv_data_16) == 14);
+
+struct fenv_data_32 {
+    u16 cw = 0;
+    alignas(u32) u16 sw = 0;
+    alignas(u32) u16 tw = 0;
+    u32 fip = 0;
+    u32 unused = 0;
+    u32 fdp = 0;
+    u32 fds = 0;
+};
+
+static_assert(sizeof(fenv_data_32) == 28);
+
+struct fsave_data_16 {
+    fenv_data_16 env;
+    Float80 st[8];
+};
+
+static_assert(sizeof(fsave_data_16) == 94);
+
+struct fsave_data_32 {
+    fenv_data_32 env;
+    Float80 st[8];
+};
+
+static_assert(sizeof(fsave_data_32) == 108);
+
+void felix86_fsave_16(struct ThreadState* state, u64 address) {
+    fsave_data_16* data = (fsave_data_16*)address;
+    for (int i = 0; i < 8; i++) {
+        Float80 f80 = f64_to_80(state->fp[i]);
+        memcpy(&data->st[i], &f80, sizeof(Float80));
+    }
+
+    data->env.cw = state->fpu_cw;
+    data->env.tw = state->fpu_tw;
+    data->env.sw = state->fpu_top << 11;
+}
+
+void felix86_fsave_32(struct ThreadState* state, u64 address) {
+    fsave_data_32* data = (fsave_data_32*)address;
+    for (int i = 0; i < 8; i++) {
+        Float80 f80 = f64_to_80(state->fp[i]);
+        memcpy(&data->st[i], &f80, sizeof(Float80));
+    }
+
+    data->env.cw = state->fpu_cw;
+    data->env.tw = state->fpu_tw;
+    data->env.sw = state->fpu_top << 11;
+}
+
+void felix86_frstor_16(struct ThreadState* state, u64 address) {
+    fsave_data_16* data = (fsave_data_16*)address;
+
+    state->fpu_top = (data->env.sw >> 11) & 0b111;
+    state->fpu_cw = data->env.cw;
+    state->fpu_tw = data->env.tw;
+    state->fpu_sw = data->env.sw;
+
+    for (int i = 0; i < 8; i++) {
+        double f64 = f80_to_64(&data->st[i]);
+        memcpy(&state->fp[i], &f64, sizeof(double));
+    }
+}
+
+void felix86_frstor_32(struct ThreadState* state, u64 address) {
+    fsave_data_32* data = (fsave_data_32*)address;
+
+    state->fpu_top = (data->env.sw >> 11) & 0b111;
+    state->fpu_cw = data->env.cw;
+    state->fpu_tw = data->env.tw;
+    state->fpu_sw = data->env.sw;
+
+    for (int i = 0; i < 8; i++) {
+        double f64 = f80_to_64(&data->st[i]);
+        memcpy(&state->fp[i], &f64, sizeof(double));
+    }
+}
+
 void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
     fxsave_data* data = (fxsave_data*)address;
 
@@ -315,12 +405,9 @@ void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
         data->xmms[i] = state->xmm[i];
     }
 
-    // ThreadState::fp and fxsave memory is different -- ThreadState::fp[0] is always TOP[0]
-    // while fxsave::st[0] is the first st register, so we adjust for that
-    int top = state->fpu_top;
     for (int i = 0; i < 8; i++) {
-        int index_offset = (i + top) & 0b111;
-        memcpy(&data->st[index_offset].st[0], &state->fp[i], sizeof(u64));
+        Float80 f80 = f64_to_80(state->fp[i]);
+        memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
     }
 
     data->fcw = state->fpu_cw;
@@ -341,9 +428,9 @@ void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
     state->fpu_sw = data->fsw;
     state->fpu_top = (data->fsw >> 11) & 7;
 
-    int top = state->fpu_top;
     for (int i = 0; i < 8; i++) {
-        memcpy(&state->fp[i], &data->st[(top + i) & 0b111].st[0], sizeof(u64));
+        double f64 = f80_to_64((Float80*)&data->st[i].st[0]);
+        memcpy(&state->fp[i], &f64, sizeof(double));
     }
 
     state->mxcsr = data->mxcsr;

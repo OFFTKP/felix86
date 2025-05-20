@@ -650,3 +650,29 @@ FAST_HANDLE(FCMOVNU) {
     as.XORI(cond, pf, 1);
     FCMOV(rec, as, operands, cond);
 }
+
+FAST_HANDLE(FNSAVE) {
+    biscuit::GPR address = rec.lea(&operands[0]);
+    rec.writebackState();
+    as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
+    if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
+        rec.call((u64)&felix86_fsave_16);
+    } else {
+        rec.call((u64)&felix86_fsave_32);
+    }
+    rec.restoreState();
+}
+
+FAST_HANDLE(FRSTOR) {
+    biscuit::GPR address = rec.lea(&operands[0]);
+    rec.writebackState();
+    as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
+    if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
+        rec.call((u64)&felix86_frstor_16);
+    } else {
+        rec.call((u64)&felix86_frstor_32);
+    }
+    rec.restoreState();
+}

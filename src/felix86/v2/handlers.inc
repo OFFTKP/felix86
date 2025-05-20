@@ -477,5 +477,7 @@ X(FCMOVNBE)
 X(FCMOVNU)
 X(FNINIT)
 X(FXAM)
+X(FNSAVE)
+X(FRSTOR)
 
 X(INVLPG) /* thunking dummy instruction */
