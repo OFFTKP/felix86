@@ -5,7 +5,8 @@
 #define SIMPLE_CASE(ioctl_name)                                                                                                                      \
     case _IOC_NR(ioctl_name): {                                                                                                                      \
         VERBOSE("Running " #ioctl_name "(%d, %x, %x)", fd, cmd, args);                                                                               \
-        int result = ::ioctl(fd, cmd, (u64)args);                                                                                                    \
+        int result =                                                                                                                                 \
+            ::ioctl(fd, cmd, (u64)args); /* the (u64) is important because otherwise it gets sign extended which is no good with pointers */         \
         if (result == -1) {                                                                                                                          \
             result = -errno;                                                                                                                         \
             VERBOSE("%s failed with %d", #ioctl_name, result);                                                                                       \

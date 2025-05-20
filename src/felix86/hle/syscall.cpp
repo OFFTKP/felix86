@@ -1740,15 +1740,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             x86_user_desc* udesc = (x86_user_desc*)arg1;
             int index = udesc->entry_number;
 
-            // These are the only valid entries in x86 64-bit kernel
-            if (index < 12 || index > 12 + 3) {
-                result = -EINVAL;
-                break;
-            }
-
             *udesc = {};
-
-            udesc->base_addr = state->gdt[index - 12];
+            udesc->base_addr = state->gdt[index];
 
             if (udesc->base_addr != 0) {
                 udesc->limit = 0xFFFFF;

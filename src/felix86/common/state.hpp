@@ -195,7 +195,7 @@ struct ThreadState {
 
     bool mode32 = false; // 32-bit execution mode, changes the behavior of some instructions and the decoder
 
-    u32 gdt[3]{};
+    u32 gdt[32]{};
 
     u64 persona = 0;
 
@@ -333,24 +333,21 @@ struct ThreadState {
         ASSERT(udesc);
         int index = udesc->entry_number;
         if (index == -1) {
-            for (int i = 0; i < 3; i++) {
+            for (int i = 12; i < 15; i++) {
                 if (gdt[i] == 0) {
                     index = i;
                     break;
                 }
             }
-        } else {
-            ASSERT_MSG(index >= 12 && index <= 14, "SetUserDesc index out of range: %d", index);
-            index -= 12;
+
+            if (index == -1) {
+                WARN("Failed search for empty gdt slot");
+                return -ESRCH;
+            }
         }
 
-        if (index == -1) {
-            return -ESRCH;
-        }
-
-        ASSERT_MSG(index >= 0 && index <= 2, "SetUserDesc index out of range: %d", index);
         gdt[index] = udesc->base_addr;
-        udesc->entry_number = 12 + index;
+        udesc->entry_number = index;
 
         LOG("Setting %d to %lx", index, udesc->base_addr);
 

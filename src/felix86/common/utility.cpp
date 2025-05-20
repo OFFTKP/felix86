@@ -1103,15 +1103,7 @@ u64 mmap_min_addr() {
 
 void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment) {
     int index = value >> 3;
-
-    u32 base = 0;
-    if (index >= 12 && index <= 14) {
-        index -= 12;
-        base = state->gdt[index];
-    } else {
-        WARN("Segment register index is not 12, 13, 14");
-        base = 0;
-    }
+    u32 base = state->gdt[index];
 
     switch (segment) {
     case ZYDIS_REGISTER_CS: {
