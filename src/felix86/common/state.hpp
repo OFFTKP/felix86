@@ -364,6 +364,8 @@ struct ThreadState {
         CHECK_SEG(ds);
 #undef CHECK_SEG
 
+        LOG("gs value: %x", gs);
+
         return 0;
     }
 
