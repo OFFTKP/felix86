@@ -346,28 +346,54 @@ struct fsave_data_32 {
 
 static_assert(sizeof(fsave_data_32) == 108);
 
-void felix86_fsave_16(struct ThreadState* state, u64 address) {
+void felix86_fsave_16(struct ThreadState* state, u64 address, int x87_state) {
+    bool is_mmx = (x87State)x87_state == x87State::MMX;
     fsave_data_16* data = (fsave_data_16*)address;
     for (int i = 0; i < 8; i++) {
-        Float80 f80 = f64_to_80(state->fp[i]);
-        memcpy(&data->st[i], &f80, sizeof(Float80));
+        if (is_mmx) {
+            u16 ones = 0xFFFF;
+            memcpy(&data->st[i], &state->fp[i], sizeof(double));
+            memcpy(&data->st[i].signExp, &ones, sizeof(u16));
+        } else {
+            Float80 f80 = f64_to_80(state->fp[i]);
+            memcpy(&data->st[i], &f80, sizeof(Float80));
+        }
     }
 
     data->env.cw = state->fpu_cw;
     data->env.tw = state->fpu_tw;
     data->env.sw = state->fpu_top << 11;
+
+    // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
+    // will not need f80->f64 conversion if loaded with frstor
+    if (is_mmx) {
+        state->fpu_cw |= 0x8000;
+    }
 }
 
-void felix86_fsave_32(struct ThreadState* state, u64 address) {
+void felix86_fsave_32(struct ThreadState* state, u64 address, int x87_state) {
+    bool is_mmx = (x87State)x87_state == x87State::MMX;
     fsave_data_32* data = (fsave_data_32*)address;
     for (int i = 0; i < 8; i++) {
-        Float80 f80 = f64_to_80(state->fp[i]);
-        memcpy(&data->st[i], &f80, sizeof(Float80));
+        if (is_mmx) {
+            u16 ones = 0xFFFF;
+            memcpy(&data->st[i], &state->fp[i], sizeof(double));
+            memcpy(&data->st[i].signExp, &ones, sizeof(u16));
+        } else {
+            Float80 f80 = f64_to_80(state->fp[i]);
+            memcpy(&data->st[i], &f80, sizeof(Float80));
+        }
     }
 
     data->env.cw = state->fpu_cw;
     data->env.tw = state->fpu_tw;
     data->env.sw = state->fpu_top << 11;
+
+    // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
+    // will not need f80->f64 conversion if loaded with frstor
+    if (is_mmx) {
+        state->fpu_cw |= 0x8000;
+    }
 }
 
 void felix86_frstor_16(struct ThreadState* state, u64 address) {
@@ -398,7 +424,8 @@ void felix86_frstor_32(struct ThreadState* state, u64 address) {
     }
 }
 
-void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
+void felix86_fxsave(struct ThreadState* state, u64 address, int x87_state) {
+    bool is_mmx = (x87State)x87_state == x87State::MMX;
     fxsave_data* data = (fxsave_data*)address;
 
     for (int i = 0; i < 16; i++) {
@@ -406,14 +433,26 @@ void felix86_fxsave(struct ThreadState* state, u64 address, bool fxsave64) {
     }
 
     for (int i = 0; i < 8; i++) {
-        Float80 f80 = f64_to_80(state->fp[i]);
-        memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
+        if (is_mmx) {
+            u16 ones = 0xFFFF;
+            memcpy(&data->st[i].st[0], &state->fp[i], sizeof(double));
+            memcpy(&data->st[i].st[8], &ones, sizeof(u16));
+        } else {
+            Float80 f80 = f64_to_80(state->fp[i]);
+            memcpy(&data->st[i].st[0], &f80, sizeof(Float80));
+        }
     }
 
     data->fcw = state->fpu_cw;
     data->ftw = state->fpu_tw;
     data->fsw = state->fpu_top << 11;
     data->mxcsr = state->mxcsr;
+
+    // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
+    // will not need f80->f64 conversion if loaded with fxrstor
+    if (is_mmx) {
+        state->fpu_cw |= 0x8000;
+    }
 }
 
 void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {

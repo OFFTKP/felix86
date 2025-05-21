@@ -652,10 +652,13 @@ FAST_HANDLE(FCMOVNU) {
 }
 
 FAST_HANDLE(FNSAVE) {
+    biscuit::GPR x87_state = rec.scratch();
+    as.LBU(x87_state, offsetof(ThreadState, x87_state), rec.threadStatePointer());
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
+    as.MV(a2, x87_state);
     if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
         rec.call((u64)&felix86_fsave_16);
     } else {

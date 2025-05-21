@@ -6738,21 +6738,25 @@ FAST_HANDLE(PSIGNB) {
 }
 
 FAST_HANDLE(FXSAVE) {
+    biscuit::GPR x87_state = rec.scratch();
+    as.LBU(x87_state, offsetof(ThreadState, x87_state), rec.threadStatePointer());
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a2, 0);
+    as.MV(a2, x87_state);
     rec.call((u64)&felix86_fxsave);
     rec.restoreState();
 }
 
 FAST_HANDLE(FXSAVE64) {
+    biscuit::GPR x87_state = rec.scratch();
+    as.LBU(x87_state, offsetof(ThreadState, x87_state), rec.threadStatePointer());
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    as.LI(a2, 1);
+    as.MV(a2, x87_state);
     rec.call((u64)&felix86_fxsave);
     rec.restoreState();
 }
