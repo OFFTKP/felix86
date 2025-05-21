@@ -306,6 +306,11 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         clearCodeCache(state);
     }
 
+    if (state->test && (state->gs >> 3) == 0) {
+        LOG("WHOOPS %lx", rip);
+        raise(SIGTRAP);
+    }
+
     u64 start = (u64)as.GetCursorPointer();
 
     // Map it immediately so we can optimize conditional branch to self

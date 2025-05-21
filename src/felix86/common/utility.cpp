@@ -1226,6 +1226,7 @@ void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment) {
     case ZYDIS_REGISTER_GS: {
         state->gs = value;
         state->gsbase = base;
+        state->test = true;
         LOG("Setting gs to %d (%lx)", index, base);
         break;
     }
