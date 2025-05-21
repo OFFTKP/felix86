@@ -405,8 +405,12 @@ void felix86_frstor_16(struct ThreadState* state, u64 address) {
     state->fpu_sw = data->env.sw;
 
     for (int i = 0; i < 8; i++) {
-        double f64 = f80_to_64(&data->st[i]);
-        memcpy(&state->fp[i], &f64, sizeof(double));
+        if (state->fpu_cw & 0x8000) {
+            memcpy(&state->fp[i], &data->st[i], sizeof(double));
+        } else {
+            double f64 = f80_to_64(&data->st[i]);
+            memcpy(&state->fp[i], &f64, sizeof(double));
+        }
     }
 }
 
@@ -419,8 +423,12 @@ void felix86_frstor_32(struct ThreadState* state, u64 address) {
     state->fpu_sw = data->env.sw;
 
     for (int i = 0; i < 8; i++) {
-        double f64 = f80_to_64(&data->st[i]);
-        memcpy(&state->fp[i], &f64, sizeof(double));
+        if (state->fpu_cw & 0x8000) {
+            memcpy(&state->fp[i], &data->st[i], sizeof(double));
+        } else {
+            double f64 = f80_to_64(&data->st[i]);
+            memcpy(&state->fp[i], &f64, sizeof(double));
+        }
     }
 }
 
@@ -468,8 +476,12 @@ void felix86_fxrstor(struct ThreadState* state, u64 address) {
     state->fpu_top = (data->fsw >> 11) & 7;
 
     for (int i = 0; i < 8; i++) {
-        double f64 = f80_to_64((Float80*)&data->st[i].st[0]);
-        memcpy(&state->fp[i], &f64, sizeof(double));
+        if (state->fpu_cw & 0x8000) {
+            memcpy(&state->fp[i], &data->st[i].st[0], sizeof(double));
+        } else {
+            double f64 = f80_to_64((Float80*)&data->st[i].st[0]);
+            memcpy(&state->fp[i], &f64, sizeof(double));
+        }
     }
 
     state->mxcsr = data->mxcsr;
