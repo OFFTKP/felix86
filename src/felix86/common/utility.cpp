@@ -367,7 +367,7 @@ void felix86_fsave_16(struct ThreadState* state, u64 address, int x87_state) {
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with frstor
     if (is_mmx) {
-        state->fpu_cw |= 0x8000;
+        data->env.cw |= 0x8000;
     }
 }
 
@@ -392,7 +392,7 @@ void felix86_fsave_32(struct ThreadState* state, u64 address, int x87_state) {
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with frstor
     if (is_mmx) {
-        state->fpu_cw |= 0x8000;
+        data->env.cw |= 0x8000;
     }
 }
 
@@ -459,7 +459,7 @@ void felix86_fxsave(struct ThreadState* state, u64 address, int x87_state) {
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with fxrstor
     if (is_mmx) {
-        state->fpu_cw |= 0x8000;
+        data->fcw |= 0x8000;
     }
 }
 
