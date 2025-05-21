@@ -60,7 +60,7 @@ void felix86_frstor_32(struct ThreadState* state, u64 address);
 
 void felix86_fxsave(struct ThreadState* state, u64 address, int x87_state);
 
-void felix86_fxrstor(struct ThreadState* state, u64 address, int x87_state);
+void felix86_fxrstor(struct ThreadState* state, u64 address);
 
 void felix86_pmaddwd(i16* dst, i16* src);
 

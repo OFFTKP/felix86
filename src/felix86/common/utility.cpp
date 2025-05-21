@@ -455,7 +455,7 @@ void felix86_fxsave(struct ThreadState* state, u64 address, int x87_state) {
     }
 }
 
-void felix86_fxrstor(struct ThreadState* state, u64 address, bool fxrstor64) {
+void felix86_fxrstor(struct ThreadState* state, u64 address) {
     fxsave_data* data = (fxsave_data*)address;
 
     for (int i = 0; i < 16; i++) {
