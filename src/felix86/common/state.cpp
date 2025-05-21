@@ -39,6 +39,17 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
 
         state->fsbase = copy_state->fsbase;
         state->gsbase = copy_state->gsbase;
+        state->dsbase = copy_state->dsbase;
+        state->csbase = copy_state->csbase;
+        state->ssbase = copy_state->ssbase;
+        state->esbase = copy_state->esbase;
+
+        state->fs = copy_state->fs;
+        state->gs = copy_state->gs;
+        state->ds = copy_state->ds;
+        state->cs = copy_state->cs;
+        state->ss = copy_state->ss;
+        state->es = copy_state->es;
 
         state->alt_stack = copy_state->alt_stack;
     }

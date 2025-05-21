@@ -204,7 +204,6 @@ struct ThreadState {
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
     u8* riscv_trampoline_storage = nullptr;
     u8* x86_trampoline_storage = nullptr;
-    bool test = false;
 
     biscuit::RMode GetRMode() {
         u8 rc = (mxcsr >> 13) & 3;
@@ -350,12 +349,9 @@ struct ThreadState {
         gdt[index] = udesc->base_addr;
         udesc->entry_number = index;
 
-        LOG("Setting %d to %lx", index, udesc->base_addr);
-
 #define CHECK_SEG(name)                                                                                                                              \
     if ((name >> 3) == index) {                                                                                                                      \
         name##base = udesc->base_addr;                                                                                                               \
-        LOG("Set " #name " to %lx", (u64)udesc->base_addr);                                                                                          \
     }
         CHECK_SEG(fs);
         CHECK_SEG(gs);
@@ -364,8 +360,6 @@ struct ThreadState {
         CHECK_SEG(cs);
         CHECK_SEG(ds);
 #undef CHECK_SEG
-
-        LOG("gs value: %x", gs);
 
         return 0;
     }

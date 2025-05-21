@@ -306,9 +306,13 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         clearCodeCache(state);
     }
 
-    if (state->test && (state->gs >> 3) == 0) {
-        LOG("WHOOPS %lx", rip);
-        raise(SIGTRAP);
+    // This should never happen, but we have this here to catch it if it does and report it
+    if (g_mode32 && (rip & 0xFFFF'FFFF'0000'0000)) {
+        if (rip >= 0x1'0000'0000 && rip <= 0x1'FFFF'FFFF) {
+            u64 old = rip;
+            rip &= 0xFFFF'FFFF;
+            WARN("RIP wrapped around... %lx -> %lx", old, rip);
+        }
     }
 
     u64 start = (u64)as.GetCursorPointer();
@@ -1975,12 +1979,22 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
     u64 rip_false_offset = rip_false - getCurrentMetadata().guest_address;
     addi(rip, rip, rip_false_offset);
-    jumpAndLink(rip_false);
+    if (g_mode32) {
+        zext(rip, rip, X86_SIZE_DWORD);
+        jumpAndLink((u32)rip_false);
+    } else {
+        jumpAndLink(rip_false);
+    }
 
     as.Bind(&true_label);
     u64 rip_true_offset = rip_true - getCurrentMetadata().guest_address;
     addi(rip, rip, rip_true_offset);
-    jumpAndLink(rip_true);
+    if (g_mode32) {
+        zext(rip, rip, X86_SIZE_DWORD);
+        jumpAndLink((u32)rip_true);
+    } else {
+        jumpAndLink(rip_true);
+    }
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {

@@ -1364,6 +1364,10 @@ void felix86_syscall(felix86_frame* frame) {
             result = ::time((time_t*)arg1);
             break;
         }
+        case felix86_x86_64_inotify_init: {
+            result = SYSCALL(inotify_init1, 0);
+            break;
+        }
         case felix86_x86_64_link: {
             auto guard = state->GuardSignals();
             result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
@@ -1646,6 +1650,26 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
             result = SYSCALL(writev, arg1, iovecs.data(), arg3);
+            break;
+        }
+        case felix86_x86_32_epoll_create: {
+            // epoll_create has obsolete and ignored argument size, acts the same as epoll_create1 with flags=0
+            result = SYSCALL(epoll_create1, 0);
+            break;
+        }
+        case felix86_x86_32_epoll_wait: {
+            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3));
+            result = epoll_wait((int)arg1, host_events, (int)arg3, (int)arg4);
+            if (result >= 0) {
+                x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
+                for (int i = 0; i < result; i++) {
+                    guest_event[i] = host_events[i];
+                }
+            }
+            break;
+        }
+        case felix86_x86_32_inotify_init: {
+            result = SYSCALL(inotify_init1, 0);
             break;
         }
         case felix86_x86_32_clock_gettime32: {
@@ -2133,6 +2157,18 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = ::wait4(arg1, (int*)arg2, arg3, host_rusage_ptr);
 
             if (guest_rusage) {
+                *guest_rusage = host_rusage;
+            }
+            break;
+        }
+        case felix86_x86_32_getrusage: {
+            if (!arg2) {
+                WARN("getrusage with nullptr argument?");
+                result = -EINVAL;
+            } else {
+                x86_rusage* guest_rusage = (x86_rusage*)arg2;
+                rusage host_rusage = *guest_rusage;
+                result = getrusage(arg1, &host_rusage);
                 *guest_rusage = host_rusage;
             }
             break;
