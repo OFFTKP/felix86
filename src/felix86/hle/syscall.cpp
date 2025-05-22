@@ -985,6 +985,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_mknodat: {
+        auto guard = state->GuardSignals();
         result = Filesystem::MknodAt(arg1, (const char*)arg2, arg3, arg4);
         break;
     }
@@ -1462,6 +1463,11 @@ void felix86_syscall(felix86_frame* frame) {
             result = ::pipe((int*)arg1);
             break;
         }
+        case felix86_x86_64_mknod: {
+            auto guard = state->GuardSignals();
+            result = Filesystem::MknodAt(AT_FDCWD, (char*)arg1, arg2, arg3);
+            break;
+        }
         case felix86_x86_64_mkdir: {
             auto guard = state->GuardSignals();
             result = Filesystem::MkdirAt(AT_FDCWD, (char*)arg1, arg2);
@@ -1614,6 +1620,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         case felix86_x86_32_mkdir: {
             auto guard = state->GuardSignals();
             result = Filesystem::MkdirAt(AT_FDCWD, (char*)arg1, arg2);
+            break;
+        }
+        case felix86_x86_32_mknod: {
+            auto guard = state->GuardSignals();
+            result = Filesystem::MknodAt(AT_FDCWD, (char*)arg1, arg2, arg3);
             break;
         }
         case felix86_x86_32_pipe: {
