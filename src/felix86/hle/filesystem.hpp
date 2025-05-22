@@ -104,6 +104,8 @@ struct Filesystem {
 
     static int MkdirAt(int fd, const char* filename, u64 mode);
 
+    static int MknodAt(int fd, const char* filename, u64 mode, u64 dev);
+
     static int Getcwd(char* buf, size_t size);
 
     static int GetXAttr(const char* filename, const char* name, void* value, size_t size);

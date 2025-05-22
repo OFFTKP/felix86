@@ -282,6 +282,15 @@ int Filesystem::MkdirAt(int fd, const char* filename, u64 mode) {
     return result;
 }
 
+int Filesystem::MknodAt(int fd, const char* filename, u64 mode, u64 dev) {
+    auto [new_fd, new_path] = resolve(fd, filename);
+    int result = ::mknodat(new_fd, new_path, mode, dev);
+    if (result == -1) {
+        result = -errno;
+    }
+    return result;
+}
+
 int Filesystem::FChmodAt(int fd, const char* filename, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename);
     return fchmodatInternal(new_fd, new_filename, mode);
