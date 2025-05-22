@@ -453,6 +453,10 @@ int main(int argc, char* argv[]) {
         // Go uses a bunch of signals for preemption and this breaks our current signal handling
         // Apps like `snap` use go, and those are used sometimes by `apt`, and this async preemption is useless in a lot of programs
         params.envp.push_back("GODEBUG=asyncpreemptoff=1");
+
+        // DOTNET tries to allocate too much heap memory, and many RISC-V boards currently come with 39-bit address space
+        // To counteract this by default, we'll limit the heap memory dotnet allocates
+        params.envp.push_back("DOTNET_GCHeapHardLimit=1C0000000");
     }
 
     auto it = params.envp.begin();
