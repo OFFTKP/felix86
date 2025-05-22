@@ -229,6 +229,9 @@ long ForkMe(CloneArgs& host_clone_args) {
         LOG("fork process %ld started", syscall(SYS_getpid));
         ThreadState* state = ThreadState::Get();
         state->tid = gettid();
+
+        // Fork only copies the calling thread, so we clear the states array but add back the current thread
+        g_process_globals.states.push_back(state);
     } else {
         if (ret < 0) {
             ERROR("clone (probably fork) failed with %d", errno);
