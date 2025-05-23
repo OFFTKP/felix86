@@ -199,6 +199,17 @@ void kill_all() {
         perror("opendir /proc");
     }
 
+    std::string our_name;
+    char self[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", self, PATH_MAX - 1);
+    if (len == -1) {
+        printf("Failed to read /proc/self/exe? Using `felix86` as search name");
+        our_name = "felix86";
+    } else {
+        self[len] = 0;
+        our_name = self;
+    }
+
     while ((entry = readdir(proc_dir)) != NULL) {
         pid_t pid = atoi(entry->d_name);
         if (pid == self_pid)
@@ -211,7 +222,7 @@ void kill_all() {
         snprintf(exe_path, sizeof(exe_path), "/proc/%d/exe", pid);
 
         char exe_target[PATH_MAX];
-        ssize_t len = readlink(exe_path, exe_target, sizeof(exe_target) - 1);
+        ssize_t len = readlink(exe_path, exe_target, PATH_MAX - 1);
         if (len == -1)
             continue;
 
@@ -220,12 +231,15 @@ void kill_all() {
         std::string path = exe_target;
         if (path.find(' ') != std::string::npos) {
             // Sometimes paths come up as "/path/to/felix86 (deleted)"
+            // This happens when the executable... was deleted
+            // Helpful when I eg. recompile but also wanna kill old running instances
+            // ie. wine leftovers and stuff like that
             path = path.substr(0, path.find(' '));
         }
 
         char* base = basename(path.data());
 
-        if (strcmp(base, "felix86") == 0) {
+        if (strcmp(base, our_name.c_str()) == 0) {
             if (kill(pid, SIGKILL) == 0) {
                 printf("Killed process %d\n", pid);
             } else {
@@ -233,6 +247,8 @@ void kill_all() {
             }
         }
     }
+
+    closedir(proc_dir);
 }
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
