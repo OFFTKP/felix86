@@ -1878,47 +1878,25 @@ u64 Recompiler::getSignMask(x86_size_e size_e) {
 }
 
 void Recompiler::updateParity(biscuit::GPR result) {
+    biscuit::GPR pf = scratch();
     if (Extensions::B) {
-        biscuit::GPR pf = scratch();
         as.ANDI(pf, result, 0xFF);
         as.CPOPW(pf, pf);
-        as.ANDI(pf, pf, 1);
-        as.XORI(pf, pf, 1);
-        as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
-        popScratch();
     } else {
-        static bool bitcount[] = {
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0,
-            1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1,
-            1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0,
-            1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0,
-            1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0,
-            1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-        };
-        static_assert(sizeof(bitcount) == 256, "Invalid bitcount table size");
-
-        bool* addy = bitcount;
-        Literal address((u64)addy);
-        Label end;
-        biscuit::GPR pf = scratch();
-
-        // We need another scratch but on many instructions there isn't one available at this point :(
-        // TODO: fix me...
-        ASSERT(pf != t0);
-        as.LD(pf, &address);
-        as.ADDI(sp, sp, -8);
-        as.SD(t0, 0, sp);
-        as.ANDI(t0, result, 0xFF);
-        as.ADD(pf, pf, t0);
-        as.LD(t0, 0, sp);
-        as.ADDI(sp, sp, 8);
-        as.LBU(pf, 0, pf);
-        as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
-        as.J(&end);
-        as.Place(&address);
-        as.Bind(&end);
+        biscuit::GPR temp = scratch();
+        as.SRLI(pf, result, 4);
+        as.XOR(pf, pf, result);
+        as.SRLI(temp, pf, 2);
+        as.XOR(temp, pf, temp);
+        as.SRLI(pf, temp, 1);
+        as.XOR(pf, pf, temp);
         popScratch();
     }
+
+    as.ANDI(pf, pf, 1);
+    as.XORI(pf, pf, 1);
+    as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
+    popScratch();
 }
 
 void Recompiler::updateZero(biscuit::GPR result, x86_size_e size) {
