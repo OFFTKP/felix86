@@ -207,7 +207,7 @@ void kill_all() {
         our_name = "felix86";
     } else {
         self[len] = 0;
-        our_name = self;
+        our_name = basename(self);
     }
 
     while ((entry = readdir(proc_dir)) != NULL) {
