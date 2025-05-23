@@ -381,6 +381,7 @@ int main() {
         GEN_SingleRM(dec);
         GEN_SingleRM(imul);
         GEN_SingleRM(mul);
+        GEN_SingleRM(neg);
         GEN(cmpxchg(ptr[rdi], bl));
         GEN(cmpxchg(ptr[rdi], bh));
         GEN(cmpxchg(ptr[rdi], bx));
@@ -516,6 +517,30 @@ int main() {
             GEN(xchg(ptr[rdi], bx));
             GEN(xchg(ptr[rdi], ebx));
             GEN(xchg(ptr[rdi], rbx));
+            GEN(movzx(ax, bl));
+            GEN(movzx(ax, bh));
+            GEN(movzx(eax, bl));
+            GEN(movzx(eax, bh));
+            GEN(movzx(eax, bx));
+            GEN(movzx(rax, bl));
+            GEN(movzx(rax, bx));
+            GEN(movzx(ax, byte[rdi]));
+            GEN(movzx(eax, byte[rdi]));
+            GEN(movzx(eax, word[rdi]));
+            GEN(movzx(rax, byte[rdi]));
+            GEN(movzx(rax, word[rdi]));
+            GEN(movsx(ax, bl));
+            GEN(movsx(ax, bh));
+            GEN(movsx(eax, bl));
+            GEN(movsx(eax, bh));
+            GEN(movsx(eax, bx));
+            GEN(movsx(rax, bl));
+            GEN(movsx(rax, bx));
+            GEN(movsx(ax, byte[rdi]));
+            GEN(movsx(eax, byte[rdi]));
+            GEN(movsx(eax, word[rdi]));
+            GEN(movsx(rax, byte[rdi]));
+            GEN(movsx(rax, word[rdi]));
         }
 
         std::ofstream base("counts/" + name);

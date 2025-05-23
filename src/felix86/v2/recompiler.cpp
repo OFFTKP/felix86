@@ -2131,6 +2131,7 @@ biscuit::GPR Recompiler::getCond(int cond) {
 }
 
 void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size) {
+    // Warning: Don't change the LBU->LB etc. here, they must zero extend
     switch (size) {
     case X86_SIZE_BYTE: {
         as.LBU(dest, offset, address);

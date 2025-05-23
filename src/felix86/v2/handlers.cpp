@@ -1052,7 +1052,7 @@ FAST_HANDLE(SHL_imm) {
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF) && shift == 1;
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
-    if (!needs_any_flag && operands[0].size == X86_SIZE_QWORD && g_config.noflag_opts) {
+    if (!needs_any_flag && operands[0].size == 64 && g_config.noflag_opts) {
         result = dst; // shift the allocated register directly
     }
 
@@ -2977,11 +2977,46 @@ FAST_HANDLE(INT) {
 }
 
 FAST_HANDLE(MOVZX) {
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getOperandGPR(&operands[1]);
-    x86_size_e size = rec.getOperandSize(&operands[1]);
-    rec.zext(result, src, size);
-    rec.setOperandGPR(&operands[0], result);
+    x86_size_e size_dst = rec.getOperandSize(&operands[0]);
+    x86_size_e size_src = rec.getOperandSize(&operands[1]);
+    biscuit::GPR dst = rec.getRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        biscuit::GPR src = rec.getRefGPR(rec.zydisToRef(operands[1].reg.value), X86_SIZE_QWORD);
+        if (size_dst == X86_SIZE_WORD) {
+            // Need to preserve top bits
+            biscuit::GPR result = rec.scratch();
+            if (size_src == X86_SIZE_BYTE_HIGH) {
+                as.SRLI(result, src, 8);
+                as.ANDI(result, result, 0xFF);
+            } else if (size_src == X86_SIZE_BYTE) {
+                as.ANDI(result, src, 0xFF);
+            } else {
+                UNREACHABLE();
+            }
+            as.SRLI(dst, dst, 16);
+            as.SLLI(dst, dst, 16);
+            as.OR(dst, dst, result);
+        } else {
+            if (size_src == X86_SIZE_BYTE_HIGH) {
+                as.SRLI(dst, src, 8);
+                as.ANDI(dst, dst, 0xFF);
+            } else {
+                rec.zext(dst, src, size_src);
+            }
+            rec.setRefGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
+        }
+    } else {
+        biscuit::GPR address = rec.lea(&operands[1], false);
+        if (size_dst == X86_SIZE_WORD) {
+            biscuit::GPR result = rec.scratch();
+            rec.readMemory(result, address, 0, size_src);
+            as.SRLI(dst, dst, 16);
+            as.SLLI(dst, dst, 16);
+            as.OR(dst, dst, result);
+        } else {
+            rec.readMemory(dst, address, 0, size_src);
+        }
+    }
 }
 
 FAST_HANDLE(PXOR) {
