@@ -464,8 +464,6 @@ u64 Recompiler::compileSequence(u64 rip) {
             setFsrmSSE(true);
         }
 
-        as.FSRM(x0);
-
         if (g_breakpoints.find(rip) != g_breakpoints.end()) {
             u64 current_address = (u64)as.GetCursorPointer();
             g_breakpoints[rip].push_back(current_address);
