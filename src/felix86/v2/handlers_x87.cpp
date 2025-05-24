@@ -24,7 +24,24 @@ FAST_HANDLE(FLD) {
 FAST_HANDLE(FILD) {
     biscuit::FPR ftemp = rec.scratchFPR();
     biscuit::GPR value = rec.getOperandGPR(&operands[0]);
-    as.FCVT_D_L(ftemp, value);
+    switch (operands[0].size) {
+    case 16: {
+        rec.sext(value, value, X86_SIZE_WORD);
+        as.FCVT_D_W(ftemp, value);
+        break;
+    }
+    case 32: {
+        as.FCVT_D_W(ftemp, value);
+        break;
+    }
+    case 64: {
+        as.FCVT_D_L(ftemp, value);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+    }
+    }
     rec.pushX87(ftemp);
 }
 
