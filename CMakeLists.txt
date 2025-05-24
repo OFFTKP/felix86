@@ -17,6 +17,10 @@ endif()
 string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_SIZE)
 add_definitions("-DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE}")
 
+# The SOURCE_PATH_SIZE trick also loves warning us that "string" + num doesn't actually concat the string
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-string-plus-int")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-string-plus-int")
+
 CheckGitSetup()
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
