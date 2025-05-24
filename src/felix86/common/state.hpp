@@ -159,7 +159,8 @@ struct ThreadState {
     u64 ssbase{};
     u64 esbase{};
     u32 mxcsr{0x1F80}; // default value
-    RMode rmode{RMode::RNE};
+    RMode rmode_sse{RMode::RNE};
+    RMode rmode_x87{RMode::RNE};
     u16 fpu_cw{};
     u16 fpu_tw{};
     u16 fpu_sw{};
@@ -204,11 +205,6 @@ struct ThreadState {
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
     u8* riscv_trampoline_storage = nullptr;
     u8* x86_trampoline_storage = nullptr;
-
-    biscuit::RMode GetRMode() {
-        u8 rc = (mxcsr >> 13) & 3;
-        return rounding_mode(x86RoundingMode(rc));
-    }
 
     u64 GetGpr(x86_ref_e ref) const {
         if (ref < X86_REF_RAX || ref > X86_REF_R15) {

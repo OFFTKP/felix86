@@ -403,6 +403,7 @@ void felix86_frstor_16(struct ThreadState* state, u64 address) {
     state->fpu_cw = data->env.cw;
     state->fpu_tw = data->env.tw;
     state->fpu_sw = data->env.sw;
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
         if (state->fpu_cw & 0x8000) {
@@ -421,6 +422,7 @@ void felix86_frstor_32(struct ThreadState* state, u64 address) {
     state->fpu_cw = data->env.cw;
     state->fpu_tw = data->env.tw;
     state->fpu_sw = data->env.sw;
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
 
     for (int i = 0; i < 8; i++) {
         if (state->fpu_cw & 0x8000) {
@@ -474,6 +476,7 @@ void felix86_fxrstor(struct ThreadState* state, u64 address) {
     state->fpu_tw = data->ftw;
     state->fpu_sw = data->fsw;
     state->fpu_top = (data->fsw >> 11) & 7;
+    state->mxcsr = data->mxcsr;
 
     for (int i = 0; i < 8; i++) {
         if (state->fpu_cw & 0x8000) {
@@ -484,8 +487,40 @@ void felix86_fxrstor(struct ThreadState* state, u64 address) {
         }
     }
 
-    state->mxcsr = data->mxcsr;
-    state->rmode = rounding_mode((x86RoundingMode)((state->mxcsr >> 13) & 3));
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
+    state->rmode_sse = rounding_mode((x86RoundingMode)((state->mxcsr >> 13) & 0b11));
+}
+
+void felix86_fstenv_16(ThreadState* state, u64 address) {
+    fenv_data_16* env = (fenv_data_16*)address;
+    env->cw = state->fpu_cw;
+    env->tw = state->fpu_tw;
+    env->sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
+}
+
+void felix86_fstenv_32(ThreadState* state, u64 address) {
+    fenv_data_32* env = (fenv_data_32*)address;
+    env->cw = state->fpu_cw;
+    env->tw = state->fpu_tw;
+    env->sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
+}
+
+void felix86_fldenv_16(struct ThreadState* state, u64 address) {
+    fenv_data_16* env = (fenv_data_16*)address;
+    state->fpu_cw = env->cw;
+    state->fpu_tw = env->tw;
+    state->fpu_sw = env->sw;
+    state->fpu_top = (env->sw >> 11) & 0b111;
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
+}
+
+void felix86_fldenv_32(struct ThreadState* state, u64 address) {
+    fenv_data_32* env = (fenv_data_32*)address;
+    state->fpu_cw = env->cw;
+    state->fpu_tw = env->tw;
+    state->fpu_sw = env->sw;
+    state->fpu_top = (env->sw >> 11) & 0b111;
+    state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
 }
 
 void felix86_pmaddwd(i16* dst, i16* src) {

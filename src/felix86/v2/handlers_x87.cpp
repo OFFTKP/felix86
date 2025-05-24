@@ -312,7 +312,16 @@ FAST_HANDLE(FXAM) {
 }
 
 FAST_HANDLE(FNSTENV) {
-    WARN("Unhandled instruction FNSTENV, no operation");
+    biscuit::GPR address = rec.lea(&operands[0]);
+    rec.writebackState();
+    as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
+    if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
+        rec.call((u64)felix86_fstenv_16);
+    } else {
+        rec.call((u64)felix86_fstenv_32);
+    }
+    rec.restoreState();
 }
 
 FAST_HANDLE(FNSTSW) {
@@ -322,7 +331,16 @@ FAST_HANDLE(FNSTSW) {
 }
 
 FAST_HANDLE(FLDENV) {
-    WARN("Unhandled instruction FLDENV, no operation");
+    biscuit::GPR address = rec.lea(&operands[0]);
+    rec.writebackState();
+    as.MV(a1, address);
+    as.MV(a0, rec.threadStatePointer());
+    if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
+        rec.call((u64)felix86_fldenv_16);
+    } else {
+        rec.call((u64)felix86_fldenv_32);
+    }
+    rec.restoreState();
 }
 
 void FIST(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands, bool pop, RMode mode = RMode::DYN) {
@@ -593,12 +611,24 @@ FAST_HANDLE(FABS) {
     rec.setST(0, st0);
 }
 
-FAST_HANDLE(FNSTCW) {}
+FAST_HANDLE(FNSTCW) {
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR temp = rec.scratch();
+    as.LHU(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
+    as.SH(temp, 0, address);
+}
 
-FAST_HANDLE(FLDCW) {}
+FAST_HANDLE(FLDCW) {
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR temp = rec.scratch();
+    as.LHU(temp, 0, address);
+    as.SH(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
+}
 
 FAST_HANDLE(FNINIT) {
-    WARN("Unhandled instruction FNINIT, no operation");
+    biscuit::GPR temp = rec.scratch();
+    as.LI(temp, 0x037F);
+    as.SH(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
 }
 
 void FCMOV(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, biscuit::GPR cond) {
