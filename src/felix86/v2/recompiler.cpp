@@ -455,13 +455,13 @@ u64 Recompiler::compileSequence(u64 rip) {
             as.LBU(rm, offsetof(ThreadState, rmode_x87), threadStatePointer());
             as.FSRM(x0, rm);
             popScratch();
-            fsrm_sse = false;
+            setFsrmSSE(false);
         } else if (is_sse && !fsrm_sse) {
             biscuit::GPR rm = scratch();
             as.LBU(rm, offsetof(ThreadState, rmode_sse), threadStatePointer());
             as.FSRM(x0, rm);
             popScratch();
-            fsrm_sse = true;
+            setFsrmSSE(true);
         }
 
         if (g_breakpoints.find(rip) != g_breakpoints.end()) {

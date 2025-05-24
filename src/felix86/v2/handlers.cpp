@@ -7518,7 +7518,6 @@ FAST_HANDLE(LDMXCSR) {
     biscuit::GPR src = rec.getOperandGPR(&operands[0]);
     biscuit::GPR rc = rec.scratch(); // rounding control
     biscuit::GPR temp = rec.scratch();
-    biscuit::GPR address = rec.scratch();
 
     // Extract rounding mode from MXCSR
     as.SRLI(rc, src, 13);
@@ -7538,11 +7537,10 @@ FAST_HANDLE(LDMXCSR) {
     as.FSRM(x0, temp); // load the equivalent RISC-V rounding mode
 
     // Also save the converted rounding mode for quick access
-    as.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, rmode));
-    as.SB(temp, 0, address);
+    as.SW(src, offsetof(ThreadState, mxcsr), rec.threadStatePointer());
+    as.SB(temp, offsetof(ThreadState, rmode_sse), rec.threadStatePointer());
 
-    as.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, mxcsr));
-    as.SW(src, 0, address);
+    rec.setFsrmSSE(true);
 }
 
 FAST_HANDLE(CVTDQ2PD) {

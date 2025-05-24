@@ -616,6 +616,28 @@ FAST_HANDLE(FNSTCW) {
     biscuit::GPR temp = rec.scratch();
     as.LHU(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
     as.SH(temp, 0, address);
+
+    biscuit::GPR rc = rec.scratch();
+    // Extract rounding mode from FPU control word
+    as.SRLI(rc, temp, 10);
+    as.ANDI(rc, rc, 0b11);
+
+    // Here's how the rounding modes match up
+    // 00 - Round to nearest (even) x86 -> 00 RISC-V
+    // 01 - Round down (towards -inf) x86 -> 10 RISC-V
+    // 10 - Round up (towards +inf) x86 -> 11 RISC-V
+    // 11 - Round towards zero x86 -> 01 RISC-V
+    // So we can shift the following bit sequence to the right and mask it
+    // 01111000, shift by the rc * 2 and we get the RISC-V rounding mode
+    as.SLLI(rc, rc, 1);
+    as.LI(temp, 0b01111000);
+    as.SRL(temp, temp, rc);
+    as.ANDI(temp, temp, 0b11);
+    as.FSRM(x0, temp);
+
+    as.SB(temp, offsetof(ThreadState, rmode_x87), rec.threadStatePointer());
+
+    rec.setFsrmSSE(false);
 }
 
 FAST_HANDLE(FLDCW) {

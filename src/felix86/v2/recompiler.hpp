@@ -592,6 +592,10 @@ struct Recompiler {
         return *current_block_metadata;
     }
 
+    void setFsrmSSE(bool is_sse) {
+        fsrm_sse = is_sse;
+    }
+
 private:
     struct FlagAccess {
         bool modification; // true if modified, false if used
