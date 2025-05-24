@@ -68,6 +68,7 @@ FAST_HANDLE(FDIVP) {
 FAST_HANDLE(FIDIV) {
     biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
 
@@ -92,6 +93,7 @@ FAST_HANDLE(FDIVRP) {
 FAST_HANDLE(FIDIVR) {
     biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
 
@@ -116,6 +118,7 @@ FAST_HANDLE(FMULP) {
 FAST_HANDLE(FIMUL) {
     biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
 
@@ -162,6 +165,7 @@ FAST_HANDLE(FADDP) {
 FAST_HANDLE(FIADD) {
     biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
 
@@ -186,6 +190,7 @@ FAST_HANDLE(FSUBP) {
 FAST_HANDLE(FISUB) {
     biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
 
@@ -210,6 +215,7 @@ FAST_HANDLE(FSUBRP) {
 FAST_HANDLE(FISUBR) {
     biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
 
@@ -355,11 +361,10 @@ FAST_HANDLE(FISTTP) {
 }
 
 void FCOMI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
-    u8 index = operands[1].reg.value - ZYDIS_REGISTER_ST0;
     biscuit::GPR cond = rec.scratch();
     biscuit::GPR cond2 = rec.scratch();
-    biscuit::FPR st0 = rec.getST(0);
-    biscuit::FPR sti = rec.getST(index);
+    biscuit::FPR st0 = rec.getST(&operands[0]);
+    biscuit::FPR sti = rec.getST(&operands[1]);
 
     biscuit::GPR zf = rec.flag(X86_REF_ZF);
     biscuit::GPR cf = rec.flag(X86_REF_CF);
@@ -425,8 +430,14 @@ FAST_HANDLE(FUCOMIP) {
 }
 
 void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop_count) {
-    biscuit::FPR st0 = rec.getST(&operands[0]);
-    biscuit::FPR src = rec.getST(&operands[1]);
+    biscuit::FPR st0, src;
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value == ZYDIS_REGISTER_ST0) {
+        st0 = rec.getST(&operands[0]);
+        src = rec.getST(&operands[1]);
+    } else {
+        st0 = rec.getST(&operands[1]);
+        src = rec.getST(&operands[0]);
+    }
 
     biscuit::GPR c0 = rec.scratch();
     biscuit::GPR c2 = rec.scratch();
