@@ -444,13 +444,6 @@ u64 Recompiler::compileSequence(u64 rip) {
             ERROR("MMX and x87 instructions mixed in a block?");
         }
 
-        if (is_x87) {
-            ZydisDisassembledInstruction inst;
-            ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (void*)rip, 15, &inst);
-            print_address(rip);
-            PLAIN("X87: %s", inst.text);
-        }
-
         if (g_breakpoints.find(rip) != g_breakpoints.end()) {
             u64 current_address = (u64)as.GetCursorPointer();
             g_breakpoints[rip].push_back(current_address);
