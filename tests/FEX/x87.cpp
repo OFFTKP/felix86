@@ -82,6 +82,8 @@ X87(DE_C8)
 X87(DE_E0)
 X87(DE_F0)
 X87(DE_F8)
+X87(DF_00)
+X87(DF_05)
 X87(DF_E8)
 X87(DF_F0)
 
@@ -91,4 +93,12 @@ CATCH_TEST_CASE("FCOM_F64", "[X87]") {
 
 CATCH_TEST_CASE("FScale-Zero_F64", "[X87]") {
     FEXTestLoader::RunTest("ASM/X87_F64/FScale-Zero_F64.asm");
+}
+
+CATCH_TEST_CASE("FILD_NEG_F64", "[X87]") {
+    FEXTestLoader::RunTest("ASM/X87_F64/FILD_NEG_F64.asm");
+}
+
+CATCH_TEST_CASE("FLDCW_F64", "[X87]") {
+    FEXTestLoader::RunTest("ASM/X87_F64/FLDCW_F64.asm");
 }
