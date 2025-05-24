@@ -1509,6 +1509,7 @@ void felix86_syscall(felix86_frame* frame) {
             CloneArgs args = {};
             u64 guest_flags = SIGCHLD;
             args.guest_flags = guest_flags;
+            args.parent_state = state;
             result = Threads::Clone(state, &args);
             break;
         }
