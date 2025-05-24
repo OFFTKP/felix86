@@ -425,8 +425,8 @@ FAST_HANDLE(FUCOMIP) {
 }
 
 void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop_count) {
-    biscuit::FPR st0 = rec.getST(0);
-    biscuit::FPR src = rec.getST(&operands[0]);
+    biscuit::FPR st0 = rec.getST(&operands[0]);
+    biscuit::FPR src = rec.getST(&operands[1]);
 
     biscuit::GPR c0 = rec.scratch();
     biscuit::GPR c2 = rec.scratch();
@@ -444,12 +444,12 @@ void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop
     as.XORI(nan2, nan2, 1);
     as.OR(nan1, nan1, nan2);
 
+    as.FLT_D(c0, st0, src);
+    as.FEQ_D(c3, st0, src);
     // If either is NaN set all to 1s
     as.OR(c0, c0, nan1);
     as.OR(c3, c3, nan1);
     as.OR(c2, c2, nan1);
-    as.FLT_D(c0, st0, src);
-    as.FEQ_D(c3, st0, src);
     as.SLLI(c2, c2, 10);
     as.SLLI(c0, c0, 8);
     as.SLLI(c3, c3, 14);
