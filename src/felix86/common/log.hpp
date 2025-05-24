@@ -20,7 +20,7 @@
 #pragma message("SOURCE_PATH_SIZE was not defined correctly")
 #define __FILENAME__ __FILE__
 #else
-#define __FILENAME__ (__FILE__ + SOURCE_PATH_SIZE)
+#define __FILENAME__ (&__FILE__[SOURCE_PATH_SIZE])
 #endif
 
 struct Logger {
