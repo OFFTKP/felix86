@@ -88,3 +88,7 @@ X87(DF_F0)
 CATCH_TEST_CASE("FCOM_F64", "[X87]") {
     FEXTestLoader::RunTest("ASM/X87_F64/FCOM_F64.asm");
 }
+
+CATCH_TEST_CASE("FScale-Zero_F64", "[X87]") {
+    FEXTestLoader::RunTest("ASM/X87_F64/FScale-Zero_F64.asm");
+}

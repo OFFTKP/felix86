@@ -362,7 +362,7 @@ void felix86_fsave_16(struct ThreadState* state, u64 address, int x87_state) {
 
     data->env.cw = state->fpu_cw;
     data->env.tw = state->fpu_tw;
-    data->env.sw = state->fpu_top << 11;
+    data->env.sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with frstor
@@ -387,7 +387,7 @@ void felix86_fsave_32(struct ThreadState* state, u64 address, int x87_state) {
 
     data->env.cw = state->fpu_cw;
     data->env.tw = state->fpu_tw;
-    data->env.sw = state->fpu_top << 11;
+    data->env.sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
     // will not need f80->f64 conversion if loaded with frstor
@@ -453,7 +453,7 @@ void felix86_fxsave(struct ThreadState* state, u64 address, int x87_state) {
 
     data->fcw = state->fpu_cw;
     data->ftw = state->fpu_tw;
-    data->fsw = state->fpu_top << 11;
+    data->fsw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
     data->mxcsr = state->mxcsr;
 
     // We use this reserved bit in FCW to signify we stored the registers as MMX and thus
@@ -902,6 +902,7 @@ void felix86_fsin(ThreadState* state) {
     memcpy(&boop, &state->fp[0], sizeof(double));
     double result = ::sin(boop);
     memcpy(&state->fp[0], &result, sizeof(double));
+    state->fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fcos(ThreadState* state) {
@@ -909,6 +910,7 @@ void felix86_fcos(ThreadState* state) {
     memcpy(&boop, &state->fp[0], sizeof(double));
     double result = ::cos(boop);
     memcpy(&state->fp[0], &result, sizeof(double));
+    state->fpu_sw &= ~C2_BIT;
 }
 
 void felix86_fpatan(ThreadState* state) {
