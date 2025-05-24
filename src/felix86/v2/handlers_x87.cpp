@@ -616,6 +616,13 @@ FAST_HANDLE(FNSTCW) {
     biscuit::GPR temp = rec.scratch();
     as.LHU(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
     as.SH(temp, 0, address);
+}
+
+FAST_HANDLE(FLDCW) {
+    biscuit::GPR address = rec.lea(&operands[0]);
+    biscuit::GPR temp = rec.scratch();
+    as.LHU(temp, 0, address);
+    as.SH(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
 
     biscuit::GPR rc = rec.scratch();
     // Extract rounding mode from FPU control word
@@ -638,13 +645,6 @@ FAST_HANDLE(FNSTCW) {
     as.SB(temp, offsetof(ThreadState, rmode_x87), rec.threadStatePointer());
 
     rec.setFsrmSSE(false);
-}
-
-FAST_HANDLE(FLDCW) {
-    biscuit::GPR address = rec.lea(&operands[0]);
-    biscuit::GPR temp = rec.scratch();
-    as.LHU(temp, 0, address);
-    as.SH(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
 }
 
 FAST_HANDLE(FNINIT) {
