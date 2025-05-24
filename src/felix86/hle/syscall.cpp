@@ -186,6 +186,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = BRK::set(arg1);
         break;
     }
+    case felix86_riscv64_readv: {
+        result = SYSCALL(readv, arg1, arg2, arg3);
+        break;
+    }
     case felix86_riscv64_getrlimit: {
         result = SYSCALL(getrlimit, arg1, arg2);
         break;
