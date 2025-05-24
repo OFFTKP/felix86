@@ -1505,6 +1505,13 @@ void felix86_syscall(felix86_frame* frame) {
             result = Filesystem::Rmdir((char*)arg1);
             break;
         }
+        case felix86_x86_64_fork: {
+            CloneArgs args = {};
+            u64 guest_flags = SIGCHLD;
+            args.guest_flags = guest_flags;
+            result = Threads::Clone(state, &args);
+            break;
+        }
         case felix86_x86_64_vfork: {
             CloneArgs args = {};
             u64 guest_flags = CLONE_VM | CLONE_VFORK | SIGCLD;
