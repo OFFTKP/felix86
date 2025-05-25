@@ -271,14 +271,24 @@ void initialize_globals() {
         exit(1);
     }
 
-    if (g_config.rootfs_path.string().back() == '/') {
+    if (!std::filesystem::exists(g_config.rootfs_path)) {
+        ERROR("Rootfs path does not exist");
+    }
+
+    std::string srootfs_path = g_config.rootfs_path.string();
+    if (srootfs_path.size() == 1 && srootfs_path[0] == '/') {
+        ERROR("You selected the system root as the rootfs path, whiqch is wrong");
+    }
+
+    if (srootfs_path.back() == '/') {
         // User ended the path with '/', we need to remove it to make sure some of our comparisons
         // on whether a path is inside the rootfs continue to work
-        g_config.rootfs_path = g_config.rootfs_path.string().substr(0, g_config.rootfs_path.string().size() - 1);
+        g_config.rootfs_path = srootfs_path.substr(0, srootfs_path.size() - 1);
     }
     ASSERT(std::filesystem::exists(g_config.rootfs_path));
     ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_DIRECTORY);
+    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
 
     const char* env_file = getenv("FELIX86_ENV_FILE");
     if (env_file) {

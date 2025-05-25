@@ -237,13 +237,16 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
 
             std::string path = g_params.executable_path;
             ASSERT(path.find(g_config.rootfs_path.string()) == 0);
-
-            // We need to remove the rootfs prefix in the arguments, because the interpreter is going to see it
-            path = path.substr(g_config.rootfs_path.string().size());
-            ASSERT(!path.empty());
-            ASSERT(path[0] == '/');
-
             g_params.argv[0] = path;
+
+            for (auto& p : g_params.argv) {
+                // We need to remove any rootfs prefix from the arguments
+                if (p.find(g_config.rootfs_path) == 0) {
+                    p = p.substr(g_config.rootfs_path.string().size());
+                    ASSERT(!p.empty());
+                    ASSERT(p[0] == '/');
+                }
+            }
 
             // Scripts start with a line that goes #! (usually) and that means
             // use the interpreter after #!. This can be bash, zsh, python, whatever.
