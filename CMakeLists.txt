@@ -87,8 +87,9 @@ set(FELIX86_HLE_SOURCES
     src/felix86/hle/thread.cpp
     src/felix86/hle/thunks.cpp
 
-    src/felix86/hle/drm/drm.cpp
-    src/felix86/hle/drm/radeon.cpp
+    src/felix86/hle/ioctl/drm.cpp
+    src/felix86/hle/ioctl/fat.cpp
+    src/felix86/hle/ioctl/radeon.cpp
 )
 
 set(FELIX86_V2_SOURCES

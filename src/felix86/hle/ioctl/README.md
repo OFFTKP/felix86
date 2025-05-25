@@ -1,5 +1,5 @@
-# DRM marshalling
-DRM structs in ioctls have different packing/sizes. This is due to two facts:
+# IOCTL marshalling
+IOCTL structs in ioctls have different packing/sizes. This is due to two facts:
 - 4 byte vs 8 byte pointers in 32-bit and 64-bit mode
 - different packing alignments in x86
 

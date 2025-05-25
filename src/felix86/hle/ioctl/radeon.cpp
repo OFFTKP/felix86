@@ -1,8 +1,8 @@
 #include <asm/ioctl.h>
 #include <sys/ioctl.h>
 #include "felix86/common/log.hpp"
-#include "felix86/hle/drm/common.hpp"
-#include "felix86/hle/drm/radeon.hpp"
+#include "felix86/hle/ioctl/common.hpp"
+#include "felix86/hle/ioctl/radeon.hpp"
 
 int ioctl32_radeon(int fd, u32 cmd, u32 args) {
     switch (_IOC_NR(cmd)) {

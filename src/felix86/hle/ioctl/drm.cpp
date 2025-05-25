@@ -1,7 +1,7 @@
 #include <sys/ioctl.h>
 #include "felix86/common/log.hpp"
-#include "felix86/hle/drm/common.hpp"
-#include "felix86/hle/drm/drm.hpp"
+#include "felix86/hle/ioctl/common.hpp"
+#include "felix86/hle/ioctl/drm.hpp"
 #include "felix86/hle/ioctl32.hpp"
 
 int ioctl32_drm(int fd, u32 cmd, u32 args) {
@@ -40,7 +40,6 @@ int ioctl32_drm(int fd, u32 cmd, u32 args) {
         MARSHAL_CASE(DRM_IOCTL_ADD_BUFS, drm_buf_desc);
         MARSHAL_CASE(DRM_IOCTL_MARK_BUFS, drm_buf_desc);
         MARSHAL_CASE(DRM_IOCTL_INFO_BUFS, drm_buf_info);
-        MARSHAL_CASE(DRM_IOCTL_MAP_BUFS, drm_buf_map);
         MARSHAL_CASE(DRM_IOCTL_FREE_BUFS, drm_buf_free);
         MARSHAL_CASE(DRM_IOCTL_RM_MAP, drm_map);
         MARSHAL_CASE(DRM_IOCTL_SET_SAREA_CTX, drm_ctx_priv_map);
@@ -52,6 +51,20 @@ int ioctl32_drm(int fd, u32 cmd, u32 args) {
         MARSHAL_CASE(DRM_IOCTL_UPDATE_DRAW, drm_update_draw);
         MARSHAL_CASE(DRM_IOCTL_MODE_ADDFB2, drm_mode_fb_cmd2);
         MARSHAL_CASE(DRM_IOCTL_MODE_GETFB2, drm_mode_fb_cmd2);
+
+    case DRM_IOCTL_MAP_BUFS: {
+        WARN_ONCE("Running DRM_IOCTL_MAP_BUFS in 32-bit mode, this may allocate memory in high bits");
+        x86_drm_buf_map* guest = (x86_drm_buf_map*)(u64)args;
+        drm_buf_map host = *guest;
+        int result = ::ioctl(fd, DRM_IOCTL_MAP_BUFS, &host);
+        if (result != -1) {
+            *guest = host;
+        } else {
+            result = -errno;
+            VERBOSE("%s failed with %d", "DRM_IOCTL_MAP_BUFS", result);
+        }
+        break;
+    }
 
         SIMPLE_CASE(DRM_IOCTL_GET_MAGIC);
         SIMPLE_CASE(DRM_IOCTL_IRQ_BUSID);
