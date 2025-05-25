@@ -223,6 +223,19 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     prctl(PR_RISCV_SET_ICACHE_FLUSH_CTX, PR_RISCV_CTX_SW_FENCEI_ON, PR_RISCV_SCOPE_PER_PROCESS);
 #endif
 
+    std::string path = g_params.executable_path;
+    ASSERT(path.find(g_config.rootfs_path.string()) == 0);
+    g_params.argv[0] = path;
+
+    for (auto& p : g_params.argv) {
+        // We need to remove any rootfs prefix from the arguments
+        if (p.find(g_config.rootfs_path) == 0) {
+            p = p.substr(g_config.rootfs_path.string().size());
+            ASSERT(!p.empty());
+            ASSERT(p[0] == '/');
+        }
+    }
+
     Elf::PeekResult peek = Elf::Peek(g_params.executable_path);
     std::filesystem::path script_path;
     bool is_script = false;
@@ -234,19 +247,6 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
             script_path = g_params.executable_path;
             const std::filesystem::path& interpreter = script.GetInterpreter();
             const std::string& args = script.GetArgs();
-
-            std::string path = g_params.executable_path;
-            ASSERT(path.find(g_config.rootfs_path.string()) == 0);
-            g_params.argv[0] = path;
-
-            for (auto& p : g_params.argv) {
-                // We need to remove any rootfs prefix from the arguments
-                if (p.find(g_config.rootfs_path) == 0) {
-                    p = p.substr(g_config.rootfs_path.string().size());
-                    ASSERT(!p.empty());
-                    ASSERT(p[0] == '/');
-                }
-            }
 
             // Scripts start with a line that goes #! (usually) and that means
             // use the interpreter after #!. This can be bash, zsh, python, whatever.
