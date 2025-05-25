@@ -63,7 +63,7 @@ int ioctl32_drm(int fd, u32 cmd, u32 args) {
             result = -errno;
             VERBOSE("%s failed with %d", "DRM_IOCTL_MAP_BUFS", result);
         }
-        break;
+        return result;
     }
 
         SIMPLE_CASE(DRM_IOCTL_GET_MAGIC);
