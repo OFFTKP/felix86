@@ -433,23 +433,6 @@ riscv_v_state* get_riscv_vector_state(void* ctx) {
 #endif
 }
 
-// Gets the vector state from the frame, only for recentish Linux kernels
-std::optional<std::array<XmmReg, 32>> get_vector_state(void* ctx) {
-    riscv_v_state* v_state = get_riscv_vector_state(ctx);
-    if (!v_state) {
-        return std::nullopt;
-    }
-
-    u8* datap = (u8*)v_state->datap;
-    std::array<XmmReg, 32> xmm_regs;
-    for (int i = 0; i < 32; i++) {
-        xmm_regs[i] = *(XmmReg*)datap;
-        datap += v_state->vlenb;
-    }
-
-    return xmm_regs;
-}
-
 bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
     if (!is_in_jit_code(current_state, (u8*)pc)) {
         WARN("We hit a SIGSEGV ACCERR but PC is not in JIT code...");
@@ -606,15 +589,32 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     u64* gprs = get_regs(ctx);
     u64* fprs = get_fprs(ctx);
-    auto host_vecs = get_vector_state(ctx);
-    if (host_vecs) {
-        // Xmms start at the first allocated register, xmm0-xmm15 are allocated to sequential host registers so we are fine
-        xmms = &(*host_vecs)[Recompiler::allocatedVec(X86_REF_XMM0).Index()];
+    std::array<XmmReg, 32> xmm_regs;
+
+    riscv_v_state* v_state = get_riscv_vector_state(ctx);
+    if (v_state) {
+        u8* datap = (u8*)v_state->datap;
+        for (int i = 0; i < 32; i++) {
+            xmm_regs[i] = *(XmmReg*)datap;
+            datap += v_state->vlenb;
+        }
     } else {
         // In the chance that this is an old kernel and we couldn't get the vector state in the signal handler, let's at least
-        // get the most recent state we are aware of, from before entering the block
-        xmms = state->xmm;
+        // get the most recent state we are aware of, from before entering the block and pray
+        // This is even worse if we have block linking (which we do) -- we hope the user has a recent kernel
+        for (int i = 0; i < 16; i++) {
+            x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
+            xmm_regs[Recompiler::allocatedVec(ref).Index()] = state->GetXmm(ref);
+        }
+
+        for (int i = 0; i < 8; i++) {
+            x86_ref_e ref = (x86_ref_e)(X86_REF_MM0 + i);
+            xmm_regs[Recompiler::allocatedVec(ref).Index()].data[0] = state->GetMm(ref);
+            xmm_regs[Recompiler::allocatedVec(ref).Index()].data[1] = 0xdeadbeefdeadbeef;
+        }
     }
+
+    xmms = xmm_regs.data();
 
     bool use_altstack = handler->flags & SA_ONSTACK;
     if (use_altstack && state->alt_stack.ss_sp == 0) {
