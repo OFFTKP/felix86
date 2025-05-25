@@ -121,8 +121,9 @@ void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, con
             biscuit::GPR allocated_gpr = Recompiler::allocatedGPR((x86_ref_e)(X86_REF_RAX + i));
             state->gprs[i] = gprs[allocated_gpr.Index()];
 
-            biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
-            state->xmm[i] = xmms[allocated_vec.Index()];
+            // The xmms array is just a list of the 16 xmms, unlike GPRs and FPRs which is the actual 32 registers
+            // This is because the XMM magic can be missing in older kernels and we return the state->xmms
+            state->xmm[i] = xmms[i];
         }
 
         if (state->x87_state == x87State::MMX) {
@@ -267,10 +268,11 @@ void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64
     frame->uc.uc_mcontext.fpregs->xmm[14] = state->GetXmm(X86_REF_XMM14);
     frame->uc.uc_mcontext.fpregs->xmm[15] = state->GetXmm(X86_REF_XMM15);
 
-    int top = state->fpu_top;
+    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
     for (int i = 0; i < 8; i++) {
-        x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[(top + i) & 0b111];
-        if (state->x87_state == x87State::MMX) {
+        // TODO: verify that these aren't saved relative to TOP when using x87
+        x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
+        if (is_mmx) {
             memcpy(reg, &state->fp[i], sizeof(u64));
             reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
         } else {
@@ -352,7 +354,15 @@ void Signals::sigreturn(ThreadState* state) {
     state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
     state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
 
-    // TODO: restore x87 state (needs storing/restoring fsw)
+    for (int i = 0; i < 8; i++) {
+        x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
+        if (reg->exponent == 0xFFFF) {
+            memcpy(&state->fp[i], reg->significand, sizeof(u64));
+        } else {
+            double f64 = f80_to_64((Float80*)reg);
+            memcpy(&state->fp[i], &f64, sizeof(u64));
+        }
+    }
 
     // Restore signal mask to what it was supposed to be outside of signal handler
     sigset_t host_mask;
@@ -486,6 +496,19 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
     PLAIN("I have been hit by a wild SIGSEGV! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you think this "
           "SIGSEGV was intended, disabled this mode by unsetting the `capture_sigsegv` option.",
           pid, pid);
+
+    LOG("Current RIP:");
+    if (is_in_jit_code(current_state, (u8*)pc)) {
+        BlockMetadata* current_block = get_block_metadata(current_state, pc);
+        u64 actual_rip = get_actual_rip(*current_block, pc);
+        print_address(actual_rip);
+    } else {
+        print_address(current_state->rip);
+    }
+
+    if (g_config.calltrace) {
+        dump_states();
+    }
     ::sleep(40);
     return true;
 }
@@ -637,6 +660,8 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         handler->func = (u64)SIG_DFL;
     }
 
+    u64 old_rip = state->GetRip();
+
     // Eventually, this should return right after this call and have the correct state.
     // When entering the dispatcher, the host state is saved in the host stack
     // sigreturn will call exitDispatcher, which will load the old frame and return back here after this call.
@@ -648,6 +673,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     if (in_jit_code) {
         // We are returning to JIT code. We need to set the host registers from the ucontext accordingly,
         // as they may have been changed in the signal handler.
+        // TODO: we also need to set xmms, sts, flags too...
         u64* regs = get_regs(ctx);
         for (int i = 0; i < 16; i++) {
             x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
@@ -655,8 +681,18 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
             regs[Recompiler::allocatedGPR(ref).Index()] = new_value;
         }
 
-        // TODO: If signal handler changes REG_RIP, we are screwed with this implementation
-        // We need to jump back to the dispatcher if this is the case
+        // If the signal handler changed our RIP we need to go back to the dispatcher to compile a new block
+        // Otherwise we will continue where we left off when the signal happened
+        u64 new_rip = state->GetRip();
+        if (new_rip != old_rip) {
+#ifdef __riscv
+            regs[3] = new_rip;
+            static_assert(Recompiler::allocatedGPR(X86_REF_RIP) == biscuit::gp);
+            static_assert(biscuit::gp.Index() == 3);
+            WARN("Signal handler changed RIP from %lx to %lx", old_rip, new_rip);
+#endif
+            set_pc(ctx, state->recompiler->getCompileNext());
+        }
     }
 
     return true;

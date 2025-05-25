@@ -1,6 +1,7 @@
 X(MOV)
 X(ADD)
 X(HLT)
+X(UD2)
 X(OR)
 X(XOR)
 X(AND)

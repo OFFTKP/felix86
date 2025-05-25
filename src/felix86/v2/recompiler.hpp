@@ -390,6 +390,10 @@ struct Recompiler {
         return host_pc_map;
     }
 
+    u64 getCompileNext() {
+        return compile_next_handler;
+    }
+
     u64 getCompiledBlock(ThreadState* state, u64 rip) {
         if (g_config.address_cache) {
             AddressCacheEntry& entry = address_cache[rip & ((1 << address_cache_bits) - 1)];

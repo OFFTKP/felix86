@@ -837,6 +837,14 @@ FAST_HANDLE(HLT) {
     rec.stopCompiling();
 }
 
+FAST_HANDLE(UD2) {
+    WARN_ONCE("UD2 instruction being compiled?");
+
+    // UD2 will trigger SIGILL, so we need to do the same
+    as.C_UNDEF();
+    rec.stopCompiling();
+}
+
 FAST_HANDLE(CALL) {
     rec.pushCalltrace();
 
