@@ -19,7 +19,7 @@ void BRK::allocate32() {
     u64 max_brk_size = g_config.max_brk_size;
     u64 initial_brk_size = BRK::size32;
     if (max_brk_size == 0) {
-        max_brk_size = 512 * 1024 * 1024;
+        max_brk_size = 1 * 1024 * 1024 * 1024;
     }
 
     // Make our initial brk size always be <= max, if the user specified their own max
