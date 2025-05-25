@@ -1389,19 +1389,47 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
         zext(address, address, zydisToSize(current_instruction->address_width));
     }
 
-    // Whether or not there's a displacement, at this point it's guaranteed that there's something in `address`
-    if (operand->mem.segment == ZYDIS_REGISTER_FS) {
-        biscuit::GPR fs = scratch();
-        as.LD(fs, offsetof(ThreadState, fsbase), threadStatePointer());
-        as.ADD(address, address, fs);
+    if (has_segment) {
+        int offset;
+        switch (operand->mem.segment) {
+        case ZYDIS_REGISTER_FS: {
+            offset = offsetof(ThreadState, fsbase);
+            break;
+        }
+        case ZYDIS_REGISTER_GS: {
+            offset = offsetof(ThreadState, gsbase);
+            break;
+        }
+        case ZYDIS_REGISTER_SS: {
+            ASSERT(g_mode32);
+            offset = offsetof(ThreadState, ssbase);
+            break;
+        }
+        case ZYDIS_REGISTER_ES: {
+            ASSERT(g_mode32);
+            offset = offsetof(ThreadState, esbase);
+            break;
+        }
+        case ZYDIS_REGISTER_DS: {
+            ASSERT(g_mode32);
+            offset = offsetof(ThreadState, dsbase);
+            break;
+        }
+        case ZYDIS_REGISTER_CS: {
+            ASSERT(g_mode32);
+            offset = offsetof(ThreadState, csbase);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+
+        // Whether or not there's a displacement, at this point it's guaranteed that there's something in `address`
+        biscuit::GPR seg = scratch();
+        as.LD(seg, offset, threadStatePointer());
+        as.ADD(address, address, seg);
         popScratch();
-    } else if (operand->mem.segment == ZYDIS_REGISTER_GS) {
-        biscuit::GPR gs = scratch();
-        as.LD(gs, offsetof(ThreadState, gsbase), threadStatePointer());
-        as.ADD(address, address, gs);
-        popScratch();
-    } else if (has_segment) {
-        UNREACHABLE();
     }
 
     if (g_mode32) {
