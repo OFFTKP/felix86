@@ -121,9 +121,8 @@ void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, con
             biscuit::GPR allocated_gpr = Recompiler::allocatedGPR((x86_ref_e)(X86_REF_RAX + i));
             state->gprs[i] = gprs[allocated_gpr.Index()];
 
-            // The xmms array is just a list of the 16 xmms, unlike GPRs and FPRs which is the actual 32 registers
-            // This is because the XMM magic can be missing in older kernels and we return the state->xmms
-            state->xmm[i] = xmms[i];
+            biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
+            state->xmm[i] = xmms[allocated_vec.Index()];
         }
 
         if (state->x87_state == x87State::MMX) {
@@ -337,31 +336,37 @@ void Signals::sigreturn(ThreadState* state) {
     state->SetFlag(X86_REF_SF, sf);
     state->SetFlag(X86_REF_OF, of);
 
-    state->SetXmm(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
-    state->SetXmm(X86_REF_XMM1, frame->uc.uc_mcontext.fpregs->xmm[1]);
-    state->SetXmm(X86_REF_XMM2, frame->uc.uc_mcontext.fpregs->xmm[2]);
-    state->SetXmm(X86_REF_XMM3, frame->uc.uc_mcontext.fpregs->xmm[3]);
-    state->SetXmm(X86_REF_XMM4, frame->uc.uc_mcontext.fpregs->xmm[4]);
-    state->SetXmm(X86_REF_XMM5, frame->uc.uc_mcontext.fpregs->xmm[5]);
-    state->SetXmm(X86_REF_XMM6, frame->uc.uc_mcontext.fpregs->xmm[6]);
-    state->SetXmm(X86_REF_XMM7, frame->uc.uc_mcontext.fpregs->xmm[7]);
-    state->SetXmm(X86_REF_XMM8, frame->uc.uc_mcontext.fpregs->xmm[8]);
-    state->SetXmm(X86_REF_XMM9, frame->uc.uc_mcontext.fpregs->xmm[9]);
-    state->SetXmm(X86_REF_XMM10, frame->uc.uc_mcontext.fpregs->xmm[10]);
-    state->SetXmm(X86_REF_XMM11, frame->uc.uc_mcontext.fpregs->xmm[11]);
-    state->SetXmm(X86_REF_XMM12, frame->uc.uc_mcontext.fpregs->xmm[12]);
-    state->SetXmm(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
-    state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
-    state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
+    if (!g_no_riscv_v_state) {
+        state->SetXmm(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
+        state->SetXmm(X86_REF_XMM1, frame->uc.uc_mcontext.fpregs->xmm[1]);
+        state->SetXmm(X86_REF_XMM2, frame->uc.uc_mcontext.fpregs->xmm[2]);
+        state->SetXmm(X86_REF_XMM3, frame->uc.uc_mcontext.fpregs->xmm[3]);
+        state->SetXmm(X86_REF_XMM4, frame->uc.uc_mcontext.fpregs->xmm[4]);
+        state->SetXmm(X86_REF_XMM5, frame->uc.uc_mcontext.fpregs->xmm[5]);
+        state->SetXmm(X86_REF_XMM6, frame->uc.uc_mcontext.fpregs->xmm[6]);
+        state->SetXmm(X86_REF_XMM7, frame->uc.uc_mcontext.fpregs->xmm[7]);
+        state->SetXmm(X86_REF_XMM8, frame->uc.uc_mcontext.fpregs->xmm[8]);
+        state->SetXmm(X86_REF_XMM9, frame->uc.uc_mcontext.fpregs->xmm[9]);
+        state->SetXmm(X86_REF_XMM10, frame->uc.uc_mcontext.fpregs->xmm[10]);
+        state->SetXmm(X86_REF_XMM11, frame->uc.uc_mcontext.fpregs->xmm[11]);
+        state->SetXmm(X86_REF_XMM12, frame->uc.uc_mcontext.fpregs->xmm[12]);
+        state->SetXmm(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
+        state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
+        state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
 
-    for (int i = 0; i < 8; i++) {
-        x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
-        if (reg->exponent == 0xFFFF) {
-            memcpy(&state->fp[i], reg->significand, sizeof(u64));
-        } else {
-            double f64 = f80_to_64((Float80*)reg);
-            memcpy(&state->fp[i], &f64, sizeof(u64));
+        for (int i = 0; i < 8; i++) {
+            x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
+            if (reg->exponent == 0xFFFF) {
+                memcpy(&state->fp[i], reg->significand, sizeof(u64));
+            } else {
+                double f64 = f80_to_64((Float80*)reg);
+                memcpy(&state->fp[i], &f64, sizeof(u64));
+            }
         }
+    } else {
+        // Don't set the state, because the frame isn't going to have correct
+        // values. Most things shouldn't modify the values of registers in signal handlers.
+        // But if they do, and you need support for that, update your kernel.
     }
 
     // Restore signal mask to what it was supposed to be outside of signal handler
@@ -599,19 +604,11 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
             datap += v_state->vlenb;
         }
     } else {
-        // In the chance that this is an old kernel and we couldn't get the vector state in the signal handler, let's at least
-        // get the most recent state we are aware of, from before entering the block and pray
-        // This is even worse if we have block linking (which we do) -- we hope the user has a recent kernel
-        for (int i = 0; i < 16; i++) {
-            x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
-            xmm_regs[Recompiler::allocatedVec(ref).Index()] = state->GetXmm(ref);
-        }
-
-        for (int i = 0; i < 8; i++) {
-            x86_ref_e ref = (x86_ref_e)(X86_REF_MM0 + i);
-            xmm_regs[Recompiler::allocatedVec(ref).Index()].data[0] = state->GetMm(ref);
-            xmm_regs[Recompiler::allocatedVec(ref).Index()].data[1] = 0xdeadbeefdeadbeef;
-        }
+        // In the chance that this is an old kernel and we couldn't get the vector state in the signal handler,
+        // the xmm values in the signal handler are going to be wrong. Most thing shouldn't care about this
+        // so we aren't going to do anything here
+        g_no_riscv_v_state = true;
+        WARN_ONCE("You have an old kernel with no vector state in signal handlers, this may cause problems in some programs");
     }
 
     xmms = xmm_regs.data();

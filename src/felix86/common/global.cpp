@@ -41,6 +41,7 @@ StartParameters g_params{};
 int g_linux_major = 0;
 int g_linux_minor = 0;
 std::filesystem::path g_xauthority_path{};
+bool g_no_riscv_v_state{};
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;
