@@ -227,10 +227,13 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     ASSERT(path.find(g_config.rootfs_path.string()) == 0);
     g_params.argv[0] = path;
 
-    for (auto& p : g_params.argv) {
+    for (int i = 0; i < g_params.argv.size(); i++) {
         // We need to remove any rootfs prefix from the arguments
+        auto& p = g_params.argv[i];
         if (p.find(g_config.rootfs_path) == 0) {
-            p = p.substr(g_config.rootfs_path.string().size());
+            auto new_p = p.substr(g_config.rootfs_path.string().size());
+            LOG("Renamed arg[%d] %s -> %s", i, p.c_str(), new_p.c_str());
+            p = new_p;
             ASSERT(!p.empty());
             ASSERT(p[0] == '/');
         }
