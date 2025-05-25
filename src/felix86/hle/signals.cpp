@@ -129,6 +129,7 @@ void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, con
             for (int i = 0; i < 8; i++) {
                 biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
                 state->fp[i] = xmms[allocated_vec.Index()].data[0];
+                printf("%d: %lx\n", i, state->fp[i]);
             }
         } else {
             for (int i = 0; i < 8; i++) {
