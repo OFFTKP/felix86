@@ -553,6 +553,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_faccessat:
+        arg4 = 0; // faccessat doesn't take flags while faccessat2 does
+        [[fallthrough]];
     case felix86_riscv64_faccessat2: {
         auto guard = state->GuardSignals();
         result = Filesystem::FAccessAt((int)arg1, (char*)arg2, (int)arg3, (int)arg4);

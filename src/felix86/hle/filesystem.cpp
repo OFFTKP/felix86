@@ -23,16 +23,22 @@ enum class OurSymlink {
     Run,
     Sys,
     Dev,
+    Xauthority,
 };
 
 OurSymlink isOurSymlinks(int fd, const char* path) {
-    static struct statx proc_statx, run_statx, sys_statx, dev_statx;
+    static struct statx proc_statx, run_statx, sys_statx, dev_statx, xauthority_statx;
     static std::once_flag flag;
     std::call_once(flag, [&]() {
         ASSERT(statx(g_rootfs_fd, "proc", 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &proc_statx) == 0);
         ASSERT(statx(g_rootfs_fd, "run", 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &run_statx) == 0);
         ASSERT(statx(g_rootfs_fd, "sys", 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &sys_statx) == 0);
         ASSERT(statx(g_rootfs_fd, "dev", 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &dev_statx) == 0);
+        if (!g_xauthority_path.empty()) {
+            ASSERT(statx(g_rootfs_fd, g_xauthority_path.relative_path().c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &xauthority_statx) == 0);
+        } else {
+            xauthority_statx = {};
+        }
     });
 
     struct statx new_statx;
@@ -46,6 +52,8 @@ OurSymlink isOurSymlinks(int fd, const char* path) {
             return OurSymlink::Sys;
         if (statx_inode_same(&dev_statx, &new_statx))
             return OurSymlink::Dev;
+        if (statx_inode_same(&xauthority_statx, &new_statx))
+            return OurSymlink::Xauthority;
     }
 
     return OurSymlink::No;
@@ -70,6 +78,7 @@ Filesystem::Filesystem() {
         .open_func = [](const char* path, int flags) {
             const std::string& cpuinfo = felix86_cpuinfo();
             int fd = generate_memfd("/proc/cpuinfo", flags);
+            // TODO: asserts for the write
             write(fd, cpuinfo.data(), cpuinfo.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
@@ -497,6 +506,9 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
         case OurSymlink::Dev: {
             return {AT_FDCWD, "/dev"};
         }
+        case OurSymlink::Xauthority: {
+            return {AT_FDCWD, g_xauthority_path.c_str()};
+        }
         default: {
             UNREACHABLE();
         }
@@ -528,6 +540,9 @@ std::filesystem::path Filesystem::resolve(const char* path) {
             }
             case OurSymlink::Dev: {
                 return "/dev";
+            }
+            case OurSymlink::Xauthority: {
+                return g_xauthority_path.c_str();
             }
             default: {
                 UNREACHABLE();

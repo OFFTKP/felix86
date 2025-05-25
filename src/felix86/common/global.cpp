@@ -40,6 +40,7 @@ std::string g_emulator_path;
 StartParameters g_params{};
 int g_linux_major = 0;
 int g_linux_minor = 0;
+std::filesystem::path g_xauthority_path{};
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;
@@ -277,7 +278,7 @@ void initialize_globals() {
 
     std::string srootfs_path = g_config.rootfs_path.string();
     if (srootfs_path.size() == 1 && srootfs_path[0] == '/') {
-        ERROR("You selected the system root as the rootfs path, whiqch is wrong");
+        ERROR("You selected the system root as the rootfs path, which is wrong");
     }
 
     if (srootfs_path.back() == '/') {
