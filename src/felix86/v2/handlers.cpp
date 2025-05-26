@@ -6246,7 +6246,6 @@ void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& in
 }
 
 FAST_HANDLE(EMMS) {
-    rec.moveMMXToX87();
     rec.switchToX87();
 }
 
