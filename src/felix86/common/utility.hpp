@@ -53,17 +53,15 @@ bool has_region(u64 address);
 
 void update_symbols();
 
-void felix86_fsave_16(struct ThreadState* state, u64 address, int x87_state);
-void felix86_fsave_32(struct ThreadState* state, u64 address, int x87_state);
+void felix86_fsave_16(struct ThreadState* state, u64 address);
+void felix86_fsave_32(struct ThreadState* state, u64 address);
 void felix86_frstor_16(struct ThreadState* state, u64 address);
 void felix86_frstor_32(struct ThreadState* state, u64 address);
 void felix86_fstenv_16(struct ThreadState* state, u64 address);
 void felix86_fstenv_32(struct ThreadState* state, u64 address);
 void felix86_fldenv_16(struct ThreadState* state, u64 address);
 void felix86_fldenv_32(struct ThreadState* state, u64 address);
-
-void felix86_fxsave(struct ThreadState* state, u64 address, int x87_state);
-
+void felix86_fxsave(struct ThreadState* state, u64 address);
 void felix86_fxrstor(struct ThreadState* state, u64 address);
 
 void felix86_pmaddwd(i16* dst, i16* src);
