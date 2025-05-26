@@ -2328,15 +2328,17 @@ void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& inst
     biscuit::GPR dst = rec.getOperandGPR(&operands[0]);
     biscuit::GPR src = rec.getOperandGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
+    if (instruction.operand_width == 64) {
+        // Write directly to dst to save a move
+        result = dst;
+    }
 
-    as.MV(result, dst);
-    if (Extensions::Xtheadcondmov) {
-        as.TH_MVNEZ(result, src, cond);
-    } else if (Extensions::Zicond) {
-        biscuit::GPR tmp = rec.scratch();
-        as.CZERO_NEZ(tmp, result, cond);
-        as.CZERO_EQZ(result, src, cond);
-        as.OR(result, result, tmp);
+    if (Extensions::Zicond) {
+        biscuit::GPR tmp1 = rec.scratch();
+        biscuit::GPR tmp2 = rec.scratch();
+        as.CZERO_NEZ(tmp1, dst, cond);
+        as.CZERO_EQZ(tmp2, src, cond);
+        as.OR(result, tmp1, tmp2);
     } else {
         Label false_label;
         as.BEQZ(cond, &false_label);

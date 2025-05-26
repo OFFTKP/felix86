@@ -11389,7 +11389,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x7(7)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11398,7 +11398,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11419,7 +11419,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x7(7)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11428,7 +11428,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11450,7 +11450,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0xf(15)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11459,7 +11459,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0xf(15)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11478,7 +11478,7 @@
             "ANDI            ra, t4, 0x1f(31)",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x1f(31)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11487,7 +11487,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x1f(31)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11502,7 +11502,7 @@
             "ANDI            ra, t3, 0x3f(63)",
             "ADDI            t1, a2, 0x0(0)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t4, t1, 0x3f(63)",
             "ANDI            t4, t4, 0x1(1)",
@@ -11511,7 +11511,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t1, 0x3f(63)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11529,7 +11529,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x7(7)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11538,7 +11538,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11559,7 +11559,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x7(7)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11568,7 +11568,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11590,7 +11590,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0xf(15)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11599,7 +11599,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0xf(15)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11618,7 +11618,7 @@
             "ANDI            ra, t4, 0x1f(31)",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x1f(31)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11627,7 +11627,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x1f(31)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11642,7 +11642,7 @@
             "ANDI            ra, t3, 0x3f(63)",
             "ADDI            t1, a2, 0x0(0)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t4, t1, 0x3f(63)",
             "ANDI            t4, t4, 0x1(1)",
@@ -11651,7 +11651,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t1, 0x3f(63)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11669,7 +11669,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x7(7)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11678,7 +11678,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11699,7 +11699,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x7(7)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11708,7 +11708,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11730,7 +11730,7 @@
             "REMUW           ra, ra, t2",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0xf(15)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11739,7 +11739,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0xf(15)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11758,7 +11758,7 @@
             "ANDI            ra, t4, 0x1f(31)",
             "ADDI            t3, t1, 0x0(0)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t2, t3, 0x1f(31)",
             "ANDI            t2, t2, 0x1(1)",
@@ -11767,7 +11767,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t3, 0x1f(31)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11782,7 +11782,7 @@
             "ANDI            ra, t3, 0x3f(63)",
             "ADDI            t1, a2, 0x0(0)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t4, t1, 0x3f(63)",
             "ANDI            t4, t4, 0x1(1)",
@@ -11791,7 +11791,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t1, 0x3f(63)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11809,7 +11809,7 @@
             "REMUW           ra, ra, t5",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x7(7)",
             "ANDI            t5, t5, 0x1(1)",
@@ -11818,7 +11818,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11836,7 +11836,7 @@
             "REMUW           ra, ra, t5",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0xf(15)",
             "ANDI            t5, t5, 0x1(1)",
@@ -11845,7 +11845,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0xf(15)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11861,7 +11861,7 @@
             "ANDI            ra, t2, 0x1f(31)",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x1f(31)",
             "ANDI            t5, t5, 0x1(1)",
@@ -11870,7 +11870,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x1f(31)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11886,7 +11886,7 @@
             "ANDI            ra, t2, 0x3f(63)",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x3f(63)",
             "ANDI            t5, t5, 0x1(1)",
@@ -11895,7 +11895,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x3f(63)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11913,7 +11913,7 @@
             "REMUW           ra, ra, t5",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x7(7)",
             "ANDI            t5, t5, 0x1(1)",
@@ -11922,7 +11922,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11940,7 +11940,7 @@
             "REMUW           ra, ra, t5",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0xf(15)",
             "ANDI            t5, t5, 0x1(1)",
@@ -11949,7 +11949,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0xf(15)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11965,7 +11965,7 @@
             "ANDI            ra, t2, 0x1f(31)",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x1f(31)",
             "ANDI            t5, t5, 0x1(1)",
@@ -11974,7 +11974,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x1f(31)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -11990,7 +11990,7 @@
             "ANDI            ra, t2, 0x3f(63)",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x3f(63)",
             "ANDI            t5, t5, 0x1(1)",
@@ -11999,7 +11999,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x3f(63)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -12017,7 +12017,7 @@
             "REMUW           ra, ra, t5",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x7(7)",
             "ANDI            t5, t5, 0x1(1)",
@@ -12026,7 +12026,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x7(7)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -12044,7 +12044,7 @@
             "REMUW           ra, ra, t5",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0xf(15)",
             "ANDI            t5, t5, 0x1(1)",
@@ -12053,7 +12053,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0xf(15)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -12069,7 +12069,7 @@
             "ANDI            ra, t2, 0x1f(31)",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x1f(31)",
             "ANDI            t5, t5, 0x1(1)",
@@ -12078,7 +12078,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x1f(31)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -12094,7 +12094,7 @@
             "ANDI            ra, t2, 0x3f(63)",
             "ADDI            t4, t1, 0x0(0)",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             ra, zero, 0x20(32)",
             "SRLI            t5, t4, 0x3f(63)",
             "ANDI            t5, t5, 0x1(1)",
@@ -12103,7 +12103,7 @@
             "ADDI            s5, t5, 0x0(0)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SRLI            s9, t4, 0x3f(63)",
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
@@ -12124,7 +12124,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12133,7 +12133,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ANDI            t5, t1, 0xff(255)",
             "ANDI            a2, a2, 0xffffff00(-256)",
             "OR              a2, a2, t5"
@@ -12154,7 +12154,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12163,7 +12163,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ANDI            t5, t1, 0xff(255)",
             "RORI            a2, a2, 0x8(8)",
             "ANDI            a2, a2, 0xffffff00(-256)",
@@ -12185,7 +12185,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12194,7 +12194,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ZEXT.H          t5, t1",
             "SRLI            a2, a2, 0x10(16)",
             "SLLI            a2, a2, 0x10(16)",
@@ -12213,7 +12213,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12222,7 +12222,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ADD.UW          a2, t1, zero"
         ],
         "disassembly": "rcr edx, 0x01"
@@ -12237,7 +12237,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             t1, zero, 0x20(32)",
             "ANDI            t3, ra, 0x1(1)",
             "SRLI            ra, ra, 0x1(1)",
@@ -12246,7 +12246,7 @@
             "ADDI            s5, t3, 0x0(0)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ADDI            a2, ra, 0x0(0)"
         ],
         "disassembly": "rcr rdx, 0x01"
@@ -12264,7 +12264,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12273,7 +12273,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ANDI            t5, t1, 0xff(255)",
             "ANDI            a2, a2, 0xffffff00(-256)",
             "OR              a2, a2, t5"
@@ -12294,7 +12294,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12303,7 +12303,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ANDI            t5, t1, 0xff(255)",
             "RORI            a2, a2, 0x8(8)",
             "ANDI            a2, a2, 0xffffff00(-256)",
@@ -12325,7 +12325,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12334,7 +12334,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ZEXT.H          t5, t1",
             "SRLI            a2, a2, 0x10(16)",
             "SLLI            a2, a2, 0x10(16)",
@@ -12353,7 +12353,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12362,7 +12362,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ADD.UW          a2, t1, zero"
         ],
         "disassembly": "rcr edx, 0x3F"
@@ -12377,7 +12377,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             t1, zero, 0x20(32)",
             "ANDI            t3, ra, 0x1(1)",
             "SRLI            ra, ra, 0x1(1)",
@@ -12386,7 +12386,7 @@
             "ADDI            s5, t3, 0x0(0)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ADDI            a2, ra, 0x0(0)"
         ],
         "disassembly": "rcr rdx, 0x3F"
@@ -12404,7 +12404,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12413,7 +12413,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ANDI            t5, t1, 0xff(255)",
             "ANDI            a2, a2, 0xffffff00(-256)",
             "OR              a2, a2, t5"
@@ -12434,7 +12434,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12443,7 +12443,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ANDI            t5, t1, 0xff(255)",
             "RORI            a2, a2, 0x8(8)",
             "ANDI            a2, a2, 0xffffff00(-256)",
@@ -12465,7 +12465,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12474,7 +12474,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ZEXT.H          t5, t1",
             "SRLI            a2, a2, 0x10(16)",
             "SLLI            a2, a2, 0x10(16)",
@@ -12493,7 +12493,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             t3, zero, 0x20(32)",
             "ANDI            t4, t1, 0x1(1)",
             "SRLI            t1, t1, 0x1(1)",
@@ -12502,7 +12502,7 @@
             "ADDI            s5, t4, 0x0(0)",
             "ADDI            t3, t3, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ADD.UW          a2, t1, zero"
         ],
         "disassembly": "rcr edx, cl"
@@ -12517,7 +12517,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             t1, zero, 0x20(32)",
             "ANDI            t3, ra, 0x1(1)",
             "SRLI            ra, ra, 0x1(1)",
@@ -12526,7 +12526,7 @@
             "ADDI            s5, t3, 0x0(0)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "ADDI            a2, ra, 0x0(0)"
         ],
         "disassembly": "rcr rdx, cl"
@@ -12544,7 +12544,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12553,7 +12553,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SB              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr byte ptr [rdi], 0x01"
@@ -12571,7 +12571,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12580,7 +12580,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SH              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr word ptr [rdi], 0x01"
@@ -12596,7 +12596,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12605,7 +12605,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SW              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr dword ptr [rdi], 0x01"
@@ -12621,7 +12621,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12630,7 +12630,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SD              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr qword ptr [rdi], 0x01"
@@ -12648,7 +12648,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12657,7 +12657,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SB              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr byte ptr [rdi], 0x3F"
@@ -12675,7 +12675,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12684,7 +12684,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SH              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr word ptr [rdi], 0x3F"
@@ -12700,7 +12700,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12709,7 +12709,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SW              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr dword ptr [rdi], 0x3F"
@@ -12725,7 +12725,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12734,7 +12734,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SD              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr qword ptr [rdi], 0x3F"
@@ -12752,7 +12752,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12761,7 +12761,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SB              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr byte ptr [rdi], cl"
@@ -12779,7 +12779,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12788,7 +12788,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SH              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr word ptr [rdi], cl"
@@ -12804,7 +12804,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12813,7 +12813,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SW              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr dword ptr [rdi], cl"
@@ -12829,7 +12829,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "XOR             s9, s9, s5",
             "ADDIW           t6, zero, 0x1(1)",
-            "SB              t6, s11, 0x258(600)",
+            "SB              t6, s11, 0x260(608)",
             "BEQ             t4, zero, 0x20(32)",
             "ANDI            t2, t3, 0x1(1)",
             "SRLI            t3, t3, 0x1(1)",
@@ -12838,7 +12838,7 @@
             "ADDI            s5, t2, 0x0(0)",
             "ADDI            t4, t4, 0xffffffff(-1)",
             "JAL             zero, 0xffffffe4(-28)",
-            "SB              zero, s11, 0x258(600)",
+            "SB              zero, s11, 0x260(608)",
             "SD              t3, a0, 0x0(0)"
         ],
         "disassembly": "rcr qword ptr [rdi], cl"
@@ -14847,196 +14847,164 @@
         "disassembly": "lea rax, [rdi+rsi*4+0x12345678]"
     },
     "480f40cb": {
-        "instruction_count": 5,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDI            ra, s10, 0x0(0)",
-            "CZERO.NEZ       t1, ra, s9",
-            "CZERO.EQZ       ra, s0, s9",
-            "OR              ra, ra, t1",
-            "ADDI            s10, ra, 0x0(0)"
+            "CZERO.NEZ       t1, s10, s9",
+            "CZERO.EQZ       t3, s0, s9",
+            "OR              s10, t1, t3"
         ],
         "disassembly": "cmovo rcx, rbx"
     },
     "480f41cb": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "XORI            ra, s9, 0x1(1)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovno rcx, rbx"
     },
     "480f42cb": {
-        "instruction_count": 5,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDI            ra, s10, 0x0(0)",
-            "CZERO.NEZ       t1, ra, s5",
-            "CZERO.EQZ       ra, s0, s5",
-            "OR              ra, ra, t1",
-            "ADDI            s10, ra, 0x0(0)"
+            "CZERO.NEZ       t1, s10, s5",
+            "CZERO.EQZ       t3, s0, s5",
+            "OR              s10, t1, t3"
         ],
         "disassembly": "cmovb rcx, rbx"
     },
     "480f43cb": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "XORI            ra, s5, 0x1(1)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnb rcx, rbx"
     },
     "480f44cb": {
-        "instruction_count": 5,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDI            ra, s10, 0x0(0)",
-            "CZERO.NEZ       t1, ra, s7",
-            "CZERO.EQZ       ra, s0, s7",
-            "OR              ra, ra, t1",
-            "ADDI            s10, ra, 0x0(0)"
+            "CZERO.NEZ       t1, s10, s7",
+            "CZERO.EQZ       t3, s0, s7",
+            "OR              s10, t1, t3"
         ],
         "disassembly": "cmovz rcx, rbx"
     },
     "480f45cb": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "XORI            ra, s7, 0x1(1)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnz rcx, rbx"
     },
     "480f46cb": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "OR              ra, s5, s7",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovbe rcx, rbx"
     },
     "480f47cb": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
             "OR              ra, s5, s7",
             "XORI            ra, ra, 0x1(1)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnbe rcx, rbx"
     },
     "480f4acb": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "LBU             ra, s11, 0x1c9(457)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovp rcx, rbx"
     },
     "480f4bcb": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
             "LBU             ra, s11, 0x1c9(457)",
             "XORI            ra, ra, 0x1(1)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnp rcx, rbx"
     },
     "480f48cb": {
-        "instruction_count": 5,
+        "instruction_count": 3,
         "expected_asm": [
-            "ADDI            ra, s10, 0x0(0)",
-            "CZERO.NEZ       t1, ra, s8",
-            "CZERO.EQZ       ra, s0, s8",
-            "OR              ra, ra, t1",
-            "ADDI            s10, ra, 0x0(0)"
+            "CZERO.NEZ       t1, s10, s8",
+            "CZERO.EQZ       t3, s0, s8",
+            "OR              s10, t1, t3"
         ],
         "disassembly": "cmovs rcx, rbx"
     },
     "480f49cb": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "XORI            ra, s8, 0x1(1)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovns rcx, rbx"
     },
     "480f4ccb": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "XOR             ra, s8, s9",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovl rcx, rbx"
     },
     "480f4dcb": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
             "XOR             ra, s8, s9",
             "XORI            ra, ra, 0x1(1)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnl rcx, rbx"
     },
     "480f4ecb": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
             "XOR             ra, s8, s9",
             "OR              ra, ra, s7",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovle rcx, rbx"
     },
     "480f4fcb": {
-        "instruction_count": 8,
+        "instruction_count": 6,
         "expected_asm": [
             "XOR             ra, s8, s9",
             "OR              ra, ra, s7",
             "XORI            ra, ra, 0x1(1)",
-            "ADDI            t1, s10, 0x0(0)",
-            "CZERO.NEZ       t3, t1, ra",
-            "CZERO.EQZ       t1, s0, ra",
-            "OR              t1, t1, t3",
-            "ADDI            s10, t1, 0x0(0)"
+            "CZERO.NEZ       t3, s10, ra",
+            "CZERO.EQZ       t4, s0, ra",
+            "OR              s10, t3, t4"
         ],
         "disassembly": "cmovnle rcx, rbx"
     },
@@ -15184,7 +15152,7 @@
             "OR              ra, ra, s5",
             "ORI             ra, ra, 0x2(2)",
             "ORI             ra, ra, 0x200(512)",
-            "LB              t1, s11, 0x259(601)",
+            "LB              t1, s11, 0x261(609)",
             "SLLI            t1, t1, 0x15(21)",
             "OR              ra, ra, t1",
             "ADDI            s1, s1, 0xfffffff8(-8)",
@@ -15215,7 +15183,7 @@
             "ANDI            s9, s9, 0x1(1)",
             "SRLI            t1, ra, 0x15(21)",
             "ANDI            t1, t1, 0x1(1)",
-            "SB              t1, s11, 0x259(601)"
+            "SB              t1, s11, 0x261(609)"
         ],
         "disassembly": "popfq"
     },
@@ -15690,7 +15658,7 @@
             "BNE             zero, t3, 0x8(8)",
             "ADDIW           ra, zero, 0x1(1)",
             "ADDIW           t4, zero, 0x1(1)",
-            "SB              t4, s11, 0x258(600)",
+            "SB              t4, s11, 0x260(608)",
             "BEQ             s10, zero, 0x20(32)",
             "LBU             t1, a1, 0x0(0)",
             "SB              t1, a0, 0x0(0)",
@@ -15698,7 +15666,7 @@
             "ADD             a1, a1, ra",
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BNE             zero, s10, 0xffffffec(-20)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "rep movsb"
     },
@@ -15710,7 +15678,7 @@
             "BNE             zero, t3, 0x8(8)",
             "ADDIW           ra, zero, 0x2(2)",
             "ADDIW           t4, zero, 0x1(1)",
-            "SB              t4, s11, 0x258(600)",
+            "SB              t4, s11, 0x260(608)",
             "BEQ             s10, zero, 0x20(32)",
             "LHU             t1, a1, 0x0(0)",
             "SH              t1, a0, 0x0(0)",
@@ -15718,7 +15686,7 @@
             "ADD             a1, a1, ra",
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BNE             zero, s10, 0xffffffec(-20)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "rep movsw"
     },
@@ -15730,7 +15698,7 @@
             "BNE             zero, t3, 0x8(8)",
             "ADDIW           ra, zero, 0x4(4)",
             "ADDIW           t4, zero, 0x1(1)",
-            "SB              t4, s11, 0x258(600)",
+            "SB              t4, s11, 0x260(608)",
             "BEQ             s10, zero, 0x20(32)",
             "LWU             t1, a1, 0x0(0)",
             "SW              t1, a0, 0x0(0)",
@@ -15738,7 +15706,7 @@
             "ADD             a1, a1, ra",
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BNE             zero, s10, 0xffffffec(-20)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "rep movsd"
     },
@@ -15750,7 +15718,7 @@
             "BNE             zero, t3, 0x8(8)",
             "ADDIW           ra, zero, 0x8(8)",
             "ADDIW           t4, zero, 0x1(1)",
-            "SB              t4, s11, 0x258(600)",
+            "SB              t4, s11, 0x260(608)",
             "BEQ             s10, zero, 0x20(32)",
             "LD              t1, a1, 0x0(0)",
             "SD              t1, a0, 0x0(0)",
@@ -15758,7 +15726,7 @@
             "ADD             a1, a1, ra",
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BNE             zero, s10, 0xffffffec(-20)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "rep movsq"
     },
@@ -15771,13 +15739,13 @@
             "BNE             zero, t3, 0x8(8)",
             "ADDIW           t1, zero, 0x1(1)",
             "ADDIW           t4, zero, 0x1(1)",
-            "SB              t4, s11, 0x258(600)",
+            "SB              t4, s11, 0x260(608)",
             "BEQ             s10, zero, 0x18(24)",
             "SB              ra, a0, 0x0(0)",
             "ADD             a0, a0, t1",
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BNE             zero, s10, 0xfffffff4(-12)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "rep stosb"
     },
@@ -15790,13 +15758,13 @@
             "BNE             zero, t3, 0x8(8)",
             "ADDIW           t1, zero, 0x2(2)",
             "ADDIW           t4, zero, 0x1(1)",
-            "SB              t4, s11, 0x258(600)",
+            "SB              t4, s11, 0x260(608)",
             "BEQ             s10, zero, 0x18(24)",
             "SH              ra, a0, 0x0(0)",
             "ADD             a0, a0, t1",
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BNE             zero, s10, 0xfffffff4(-12)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "rep stosw"
     },
@@ -15809,13 +15777,13 @@
             "BNE             zero, t3, 0x8(8)",
             "ADDIW           t1, zero, 0x4(4)",
             "ADDIW           t4, zero, 0x1(1)",
-            "SB              t4, s11, 0x258(600)",
+            "SB              t4, s11, 0x260(608)",
             "BEQ             s10, zero, 0x18(24)",
             "SW              ra, a0, 0x0(0)",
             "ADD             a0, a0, t1",
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BNE             zero, s10, 0xfffffff4(-12)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "rep stosd"
     },
@@ -15827,13 +15795,13 @@
             "BNE             zero, t1, 0x8(8)",
             "ADDIW           ra, zero, 0x8(8)",
             "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x258(600)",
+            "SB              t3, s11, 0x260(608)",
             "BEQ             s10, zero, 0x18(24)",
             "SD              t0, a0, 0x0(0)",
             "ADD             a0, a0, ra",
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BNE             zero, s10, 0xfffffff4(-12)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "rep stosq"
     },
@@ -15845,7 +15813,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           ra, zero, 0x1(1)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x84(132)",
             "LBU             t1, a1, 0x0(0)",
             "LBU             t3, a0, 0x0(0)",
@@ -15878,7 +15846,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BNE             zero, s7, 0xffffff88(-120)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repe cmpsb"
     },
@@ -15890,7 +15858,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           ra, zero, 0x2(2)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x84(132)",
             "LHU             t1, a1, 0x0(0)",
             "LHU             t3, a0, 0x0(0)",
@@ -15923,7 +15891,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BNE             zero, s7, 0xffffff88(-120)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repe cmpsw"
     },
@@ -15935,7 +15903,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           ra, zero, 0x4(4)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x84(132)",
             "LWU             t1, a1, 0x0(0)",
             "LWU             t3, a0, 0x0(0)",
@@ -15968,7 +15936,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BNE             zero, s7, 0xffffff88(-120)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repe cmpsd"
     },
@@ -15980,7 +15948,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           ra, zero, 0x8(8)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x84(132)",
             "LD              t1, a1, 0x0(0)",
             "LD              t3, a0, 0x0(0)",
@@ -16013,7 +15981,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BNE             zero, s7, 0xffffff88(-120)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repe cmpsq"
     },
@@ -16026,7 +15994,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           t1, zero, 0x1(1)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             s10, zero, 0x7c(124)",
             "LBU             t3, a0, 0x0(0)",
             "SUB             t4, ra, t3",
@@ -16057,7 +16025,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BNE             zero, s7, 0xffffff90(-112)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repe scasb"
     },
@@ -16070,7 +16038,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           t1, zero, 0x2(2)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             s10, zero, 0x7c(124)",
             "LHU             t3, a0, 0x0(0)",
             "SUB             t4, ra, t3",
@@ -16101,7 +16069,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BNE             zero, s7, 0xffffff90(-112)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repe scasw"
     },
@@ -16114,7 +16082,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           t1, zero, 0x4(4)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             s10, zero, 0x7c(124)",
             "LWU             t3, a0, 0x0(0)",
             "SUB             t4, ra, t3",
@@ -16145,7 +16113,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BNE             zero, s7, 0xffffff90(-112)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repe scasd"
     },
@@ -16157,7 +16125,7 @@
             "BNE             zero, t4, 0x8(8)",
             "ADDIW           ra, zero, 0x8(8)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x7c(124)",
             "LD              t1, a0, 0x0(0)",
             "SUB             t3, t0, t1",
@@ -16188,7 +16156,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BNE             zero, s7, 0xffffff90(-112)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repe scasq"
     },
@@ -16200,7 +16168,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           ra, zero, 0x1(1)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x84(132)",
             "LBU             t1, a1, 0x0(0)",
             "LBU             t3, a0, 0x0(0)",
@@ -16233,7 +16201,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BEQ             s7, zero, 0xffffff88(-120)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repne cmpsb"
     },
@@ -16245,7 +16213,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           ra, zero, 0x2(2)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x84(132)",
             "LHU             t1, a1, 0x0(0)",
             "LHU             t3, a0, 0x0(0)",
@@ -16278,7 +16246,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BEQ             s7, zero, 0xffffff88(-120)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repne cmpsw"
     },
@@ -16290,7 +16258,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           ra, zero, 0x4(4)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x84(132)",
             "LWU             t1, a1, 0x0(0)",
             "LWU             t3, a0, 0x0(0)",
@@ -16323,7 +16291,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BEQ             s7, zero, 0xffffff88(-120)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repne cmpsd"
     },
@@ -16335,7 +16303,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           ra, zero, 0x8(8)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x84(132)",
             "LD              t1, a1, 0x0(0)",
             "LD              t3, a0, 0x0(0)",
@@ -16368,7 +16336,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BEQ             s7, zero, 0xffffff88(-120)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repne cmpsq"
     },
@@ -16381,7 +16349,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           t1, zero, 0x1(1)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             s10, zero, 0x7c(124)",
             "LBU             t3, a0, 0x0(0)",
             "SUB             t4, ra, t3",
@@ -16412,7 +16380,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BEQ             s7, zero, 0xffffff90(-112)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repne scasb"
     },
@@ -16425,7 +16393,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           t1, zero, 0x2(2)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             s10, zero, 0x7c(124)",
             "LHU             t3, a0, 0x0(0)",
             "SUB             t4, ra, t3",
@@ -16456,7 +16424,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BEQ             s7, zero, 0xffffff90(-112)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repne scasw"
     },
@@ -16469,7 +16437,7 @@
             "BNE             zero, t2, 0x8(8)",
             "ADDIW           t1, zero, 0x4(4)",
             "ADDIW           t5, zero, 0x1(1)",
-            "SB              t5, s11, 0x258(600)",
+            "SB              t5, s11, 0x260(608)",
             "BEQ             s10, zero, 0x7c(124)",
             "LWU             t3, a0, 0x0(0)",
             "SUB             t4, ra, t3",
@@ -16500,7 +16468,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BEQ             s7, zero, 0xffffff90(-112)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repne scasd"
     },
@@ -16512,7 +16480,7 @@
             "BNE             zero, t4, 0x8(8)",
             "ADDIW           ra, zero, 0x8(8)",
             "ADDIW           t2, zero, 0x1(1)",
-            "SB              t2, s11, 0x258(600)",
+            "SB              t2, s11, 0x260(608)",
             "BEQ             s10, zero, 0x7c(124)",
             "LD              t1, a0, 0x0(0)",
             "SUB             t3, t0, t1",
@@ -16543,7 +16511,7 @@
             "ADDI            s10, s10, 0xffffffff(-1)",
             "BEQ             s10, zero, 0xc(12)",
             "BEQ             s7, zero, 0xffffff90(-112)",
-            "SB              zero, s11, 0x258(600)"
+            "SB              zero, s11, 0x260(608)"
         ],
         "disassembly": "repne scasq"
     },

@@ -269,6 +269,9 @@ u8 dotnet_block[] = {
     0xF3, 0x0F, 0x7F, 0x5F, 0x44, 0x44, 0x01, 0x4F, 0x54, 0x64, 0x48, 0x8B, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00, 0x48, 0x3B, 0x45, 0xD8, 0x0F, 0x85,
     0x7F, 0x03, 0x9A, 0xB0};
 
+u8 z7_block[] = {0x48, 0xf7, 0xdf, 0x4c, 0x89, 0xd6, 0x4d, 0x39, 0xd3, 0x49, 0x0f, 0x42, 0xf3, 0x48, 0x01, 0xcf, 0x41, 0x8b, 0x04,
+                 0xd9, 0x0f, 0xb6, 0x04, 0x37, 0x49, 0x8d, 0x1c, 0xd9, 0x38, 0x04, 0x31, 0x0f, 0x84, 0xbb, 0x00, 0x00, 0x00};
+
 int main() {
     g_config.inline_syscalls = false;
     Extensions::G = true;
@@ -973,6 +976,7 @@ int main() {
     x87 << json.dump(4);
     json.clear();
 
+    rec.setFlagMode(FlagMode::Default);
     gen_many(rec, "llvmpipe_shader", json, [](Xbyak::CodeGenerator& x) {
         x.mov(r14, ptr[rsi]);
         x.mov(r14d, ptr[r14 + 0x04]);
@@ -1053,7 +1057,8 @@ int main() {
         x.jz((void*)(curr + 0xcafe));
     });
 
-    gen_many(rec, "dotnet_rotate", json, [](Xbyak::CodeGenerator& x) { std::memcpy((u8*)x.getCurr(), dotnet_block, sizeof(dotnet_block)); });
+    gen_many(rec, "dotnet rotate", json, [](Xbyak::CodeGenerator& x) { std::memcpy((u8*)x.getCurr(), dotnet_block, sizeof(dotnet_block)); });
+    gen_many(rec, "7z block", json, [](Xbyak::CodeGenerator& x) { std::memcpy((u8*)x.getCurr(), z7_block, sizeof(z7_block)); });
 
     std::ofstream many("counts/HotBlocks.json");
     many << json.dump(4);
