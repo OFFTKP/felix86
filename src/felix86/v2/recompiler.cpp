@@ -1257,11 +1257,15 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
 
     if (has_disp) {
         // Load the displacement first
-        as.LI(address, operand->mem.disp.value);
-
-        if (has_base) {
+        if (has_base && IsValidSigned12BitImm(operand->mem.disp.value)) {
             base = gpr(operand->mem.base);
-            as.ADD(address, address, base);
+            as.ADDI(address, base, operand->mem.disp.value);
+        } else {
+            as.LI(address, operand->mem.disp.value);
+            if (has_base) {
+                base = gpr(operand->mem.base);
+                as.ADD(address, address, base);
+            }
         }
 
         if (has_index) {

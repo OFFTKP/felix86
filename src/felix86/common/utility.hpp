@@ -28,6 +28,10 @@ using i8 = int8_t;
     return (i64)value >= (i64)INT_MIN && (i64)value <= (i64)INT_MAX;
 }
 
+[[nodiscard]] constexpr bool IsValidSigned12BitImm(ptrdiff_t value) {
+    return value >= -2048 && value <= 2047;
+}
+
 void felix86_div128(struct ThreadState* state, u64 divisor);
 void felix86_divu128(struct ThreadState* state, u64 divisor);
 

@@ -14768,6 +14768,15 @@
         ],
         "disassembly": "lea rax, [rdi+rsi*8]"
     },
+    "64488d44f740": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "ADDI            ra, a0, 0x40(64)",
+            "SH3ADD          ra, a1, ra",
+            "ADDI            t0, ra, 0x0(0)"
+        ],
+        "disassembly": "lea rax, [rdi+rsi*8+0x40]"
+    },
     "64488d84f778563412": {
         "instruction_count": 5,
         "expected_asm": [
@@ -14832,6 +14841,15 @@
             "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "lea rax, [rdi+rsi*4]"
+    },
+    "488d44b740": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "ADDI            ra, a0, 0x40(64)",
+            "SH2ADD          ra, a1, ra",
+            "ADDI            t0, ra, 0x0(0)"
+        ],
+        "disassembly": "lea rax, [rdi+rsi*4+0x40]"
     },
     "488d84b778563412": {
         "instruction_count": 5,
@@ -16940,5 +16958,14 @@
             "ADDI            t0, ra, 0x0(0)"
         ],
         "disassembly": "movsx rax, word ptr [rdi]"
+    },
+    "c9": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "ADDI            s2, s2, 0x8(8)",
+            "ADDI            s1, s2, 0x0(0)",
+            "LD              s2, s2, 0xfffffff8(-8)"
+        ],
+        "disassembly": "leave"
     }
 }
