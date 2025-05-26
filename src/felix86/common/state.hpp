@@ -161,7 +161,7 @@ struct ThreadState {
     u16 fpu_tw{};
     u16 fpu_sw{};
     u8 fpu_top{};
-    x87State x87_state = x87State::x87;
+    x87State x87_state = x87State::MMX;
 
     // Whenever we writeback the state we set this bool so that the signal handler knows not to pull registers from ucontext
     // and instead pull them from ThreadState. If this is false then we haven't done a writeback so pull from ucontext.
