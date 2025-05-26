@@ -2459,8 +2459,9 @@ biscuit::Vec Recompiler::getST(ZydisDecodedOperand* operand) {
         case 32: {
             biscuit::Vec st = scratchVec();
             biscuit::Vec mem = scratchVec();
+            setVectorState(SEW::E8, 8);
+            as.VLE8(mem, lea(operand, false));
             setVectorState(SEW::E32, 1, LMUL::MF2);
-            as.VLE32(mem, lea(operand, false));
             as.VFWCVT_F_F(st, mem);
             popScratch();    // the gpr address scratch
             popScratchVec(); // mem
@@ -2468,8 +2469,8 @@ biscuit::Vec Recompiler::getST(ZydisDecodedOperand* operand) {
         }
         case 64: {
             biscuit::Vec st = scratchVec();
-            setVectorState(SEW::E64, 1);
-            as.VLE64(st, lea(operand, false));
+            setVectorState(SEW::E8, 8);
+            as.VLE8(st, lea(operand, false));
             popScratch(); // the gpr address scratch
             return st;
         }
@@ -2505,13 +2506,14 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::Vec value) {
             biscuit::Vec temp = scratchVec();
             setVectorState(SEW::E32, 1, LMUL::MF2);
             as.VFNCVT_F_F(temp, value);
-            as.VSE32(temp, lea(operand, false));
+            setVectorState(SEW::E8, 8);
+            as.VSE8(temp, lea(operand, false));
             popScratch(); // the gpr address scratch
             break;
         }
         case 64: {
-            setVectorState(SEW::E64, 1);
-            as.VSE64(value, lea(operand, false));
+            setVectorState(SEW::E8, 8);
+            as.VSE8(value, lea(operand, false));
             popScratch(); // the gpr address scratch
             break;
         }
