@@ -601,8 +601,8 @@ FAST_HANDLE(FRNDINT) {
     biscuit::Vec st0 = rec.getST(0);
     biscuit::Vec temp = rec.scratchVec();
     rec.setVectorState(SEW::E64, 1);
-    as.VFCVT_F_X(temp, st0);
-    as.VFCVT_X_F(st0, temp);
+    as.VFCVT_X_F(temp, st0);
+    as.VFCVT_F_X(st0, temp);
     rec.setST(0, st0);
 }
 
