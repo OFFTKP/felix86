@@ -1631,6 +1631,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = Filesystem::Rename((char*)arg1, (char*)arg2);
             break;
         }
+        case felix86_x86_32_rmdir: {
+            auto guard = state->GuardSignals();
+            result = Filesystem::Rmdir((char*)arg1);
+            break;
+        }
         case felix86_x86_32_mkdir: {
             auto guard = state->GuardSignals();
             result = Filesystem::MkdirAt(AT_FDCWD, (char*)arg1, arg2);
