@@ -591,10 +591,6 @@ struct Recompiler {
 
     void switchToX87();
 
-    void moveMMXToX87();
-
-    void moveX87ToMMX();
-
     BlockMetadata& getCurrentMetadata() {
         ASSERT(current_block_metadata);
         return *current_block_metadata;
@@ -662,9 +658,6 @@ private:
     std::map<u64, BlockMetadata*> host_pc_map{};
 
     bool compiling{};
-
-    // Whether the FPRs or the Vecs (for STs and MMX regs) are holding the values currently
-    x87State allocated_registers = x87State::x87;
 
     // Whether we already set ThreadState::x87_state to a value or not
     x87State local_x87_state = x87State::Unknown;
