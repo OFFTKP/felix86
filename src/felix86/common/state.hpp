@@ -11,8 +11,9 @@
 // For this reason we need to have a way to communicate to signal handlers which registers hold the correct values.
 // For now, the dispatcher will always assume FPRs hold the correct values so blocks must restore state to x87 when finished.
 enum class x87State {
-    x87 = 0,
-    MMX = 1,
+    Unknown = 0,
+    x87 = 1,
+    MMX = 2,
 };
 
 #define C0_BIT (1 << 8)
@@ -165,7 +166,10 @@ struct ThreadState {
     u16 fpu_tw{};
     u16 fpu_sw{};
     u8 fpu_top{};
-    x87State x87_state = x87State::x87;
+
+    // This is important so that we know whether the current values in the fp array are MMX registers or x87 registers
+    // Because if they are x87 registers we need to f64_to_f80 them when saving using fsave or when reading from signal handlers
+    x87State x87_state = x87State::MMX;
 
     // Whenever we writeback the state we set this bool so that the signal handler knows not to pull registers from ucontext
     // and instead pull them from ThreadState. If this is false then we haven't done a writeback so pull from ucontext.

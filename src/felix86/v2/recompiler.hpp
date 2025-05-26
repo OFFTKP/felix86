@@ -587,6 +587,10 @@ struct Recompiler {
 
     void switchToX87();
 
+    void moveMMXToX87();
+
+    void moveX87ToMMX();
+
     BlockMetadata& getCurrentMetadata() {
         ASSERT(current_block_metadata);
         return *current_block_metadata;
@@ -655,8 +659,11 @@ private:
 
     bool compiling{};
 
-    // Whether the currently compiling block uses MMX instructions that need to be written back at the end
-    bool using_mmx = false;
+    // Whether the FPRs or the Vecs (for STs and MMX regs) are holding the values currently
+    x87State allocated_registers = x87State::x87;
+
+    // Whether we already set ThreadState::x87_state to a value or not
+    x87State local_x87_state = x87State::Unknown;
 
     int scratch_index = 0;
 

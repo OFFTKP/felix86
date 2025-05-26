@@ -421,8 +421,9 @@ u64 Recompiler::compileSequence(u64 rip) {
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
-    using_mmx = false;
-    fsrm_sse = true; // dispatcher loads SSE rounding mode as a default
+    allocated_registers = x87State::x87; // the default from the dispatcher
+    local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
+    fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
 
     current_block_metadata->guest_address = rip;
 
@@ -442,11 +443,26 @@ u64 Recompiler::compileSequence(u64 rip) {
                        operands[0].reg.value <= ZYDIS_REGISTER_XMM15) ||
                       (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_XMM0 &&
                        operands[1].reg.value <= ZYDIS_REGISTER_XMM15);
-        if (is_mmx && !using_mmx) {
+        if (is_mmx) {
             WARN_ONCE("This program makes use of MMX");
-            switchToMMX();
-        } else if (is_x87 && using_mmx) {
-            ERROR("MMX and x87 instructions mixed in a block?");
+            if (allocated_registers != x87State::MMX) {
+                moveX87ToMMX();
+            }
+
+            if (local_x87_state != x87State::MMX) {
+                switchToMMX();
+            }
+        }
+
+        if (is_x87) {
+            if (allocated_registers != x87State::x87) {
+                WARN("x87 and MMX mixed in a block?");
+                moveMMXToX87();
+            }
+
+            if (local_x87_state != x87State::x87) {
+                switchToX87();
+            }
         }
 
         if (is_x87 && fsrm_sse) {
@@ -470,10 +486,9 @@ u64 Recompiler::compileSequence(u64 rip) {
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
 
-        if (using_mmx && index == instructions.size() - 1) {
+        if (allocated_registers == x87State::MMX && index == instructions.size() - 1) {
             // Block is over but we didn't run an EMMS, switch to x87 state so it gets written back properly in the dispatcher
-            ASSERT(!is_mmx);
-            switchToX87();
+            moveMMXToX87();
         }
 
         compileInstruction(instruction, operands, rip);
@@ -486,8 +501,8 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         if (g_config.single_step && compiling) {
             resetScratch();
-            if (using_mmx) {
-                switchToX87();
+            if (allocated_registers == x87State::MMX) {
+                moveMMXToX87();
             }
             biscuit::GPR rip_after = allocatedGPR(X86_REF_RIP);
             as.LI(rip_after, rip);
@@ -1458,7 +1473,9 @@ void Recompiler::writebackState() {
     current_vlen = 0;
     current_grouping = LMUL::M1;
 
-    switchToX87();
+    if (allocated_registers == x87State::MMX) {
+        moveMMXToX87();
+    }
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
     as.SD(rip, offsetof(ThreadState, rip), threadStatePointer());
@@ -1543,6 +1560,7 @@ void Recompiler::restoreState() {
         biscuit::FPR fpr = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
         as.FLD(fpr, offsetof(ThreadState, fp) + i * 8, threadStatePointer());
     }
+    allocated_registers = x87State::x87;
 
     biscuit::GPR cf = allocatedGPR(X86_REF_CF);
     biscuit::GPR zf = allocatedGPR(X86_REF_ZF);
@@ -1566,10 +1584,6 @@ void Recompiler::restoreState() {
         as.FSRM(x0, rm);
         popScratch();
     }
-
-    // TODO: merge the following two writes to a SH
-    static_assert((int)x87State::x87 == 0);
-    as.SB(x0, offsetof(ThreadState, x87_state), threadStatePointer());
 
     // Mark state as invalid again as we will be modifying the host registers
     as.SB(x0, offsetof(ThreadState, state_is_correct), threadStatePointer());
@@ -2853,38 +2867,44 @@ void Recompiler::popX87() {
 
 // Move from x87 registers to MMX registers and switch the x87_state flag
 void Recompiler::switchToMMX() {
-    if (!using_mmx) {
-        setVectorState(SEW::E64, 1);
-        // Per the manual, MMX instructions set the TOP to 0
-        setTOP(x0);
+    // Per the manual, MMX instructions set the TOP to 0
+    setTOP(x0);
 
-        // TODO: In the case that x87 TOP was not 0 this transition could be wrong?
-        // IDK whats supposed to happen if there's x87 code, say TOP is 5, and then an MMX instruction
-        // Does MM0 get ST5 (aka ST[0] when top is 5) or does it get ST0? Investigate
-        for (int i = 0; i < 8; i++) {
-            biscuit::Vec mm = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
-            biscuit::FPR st = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
-            as.VFMV_SF(mm, st);
-        }
-
-        biscuit::GPR one = scratch();
-        as.LI(one, (int)x87State::MMX);
-        as.SB(one, offsetof(ThreadState, x87_state), threadStatePointer());
-        popScratch();
-        using_mmx = true;
-    }
+    biscuit::GPR val = scratch();
+    as.LI(val, (int)x87State::MMX);
+    as.SB(val, offsetof(ThreadState, x87_state), threadStatePointer());
+    popScratch();
+    local_x87_state = x87State::MMX;
 }
 
 void Recompiler::switchToX87() {
-    if (using_mmx) {
-        setVectorState(SEW::E64, 1);
-        for (int i = 0; i < 8; i++) {
-            biscuit::Vec mm = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
-            biscuit::FPR st = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
-            as.VFMV_FS(st, mm);
-        }
-        static_assert((int)x87State::x87 == 0);
-        as.SB(x0, offsetof(ThreadState, x87_state), threadStatePointer());
-        using_mmx = false;
+    biscuit::GPR val = scratch();
+    as.LI(val, (int)x87State::x87);
+    as.SB(val, offsetof(ThreadState, x87_state), threadStatePointer());
+    popScratch();
+    local_x87_state = x87State::x87;
+}
+
+void Recompiler::moveMMXToX87() {
+    setVectorState(SEW::E64, 1);
+    for (int i = 0; i < 8; i++) {
+        biscuit::Vec mm = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
+        biscuit::FPR st = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
+        as.VFMV_FS(st, mm);
     }
+    allocated_registers = x87State::x87;
+}
+
+void Recompiler::moveX87ToMMX() {
+    setVectorState(SEW::E64, 1);
+
+    // TODO: In the case that x87 TOP was not 0 this transition could be wrong?
+    // IDK whats supposed to happen if there's x87 code, say TOP is 5, and then an MMX instruction
+    // Does MM0 get ST5 (aka ST[0] when top is 5) or does it get ST0? Investigate
+    for (int i = 0; i < 8; i++) {
+        biscuit::Vec mm = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
+        biscuit::FPR st = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
+        as.VFMV_SF(mm, st);
+    }
+    allocated_registers = x87State::MMX;
 }
