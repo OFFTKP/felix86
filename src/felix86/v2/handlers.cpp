@@ -2455,6 +2455,77 @@ FAST_HANDLE(MOVSXD) {
     }
 }
 
+FAST_HANDLE(IMUL_2_noflags) {
+    x86_size_e size = rec.getSize(&operands[0]);
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER)
+        src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    else
+        src = rec.getGPR(&operands[1]);
+
+    switch (size) {
+    case X86_SIZE_WORD: {
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR dst_sext = rec.scratch();
+        biscuit::GPR src_sext = rec.scratch();
+        rec.sexth(dst_sext, dst);
+        rec.sexth(src_sext, src);
+        as.MULW(result, dst_sext, src_sext);
+        rec.setGPR(&operands[0], result);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.MULW(dst, dst, src);
+        rec.setGPR(&operands[0], dst);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        as.MUL(dst, dst, src);
+        rec.setGPR(&operands[0], dst);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+    }
+    }
+}
+
+FAST_HANDLE(IMUL_3_noflags) {
+    x86_size_e size = rec.getSize(&operands[0]);
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src1;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER)
+        src1 = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    else
+        src1 = rec.getGPR(&operands[1]);
+    biscuit::GPR src2 = rec.getGPR(&operands[2]);
+
+    switch (size) {
+    case X86_SIZE_WORD: {
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR src1_sext = rec.scratch();
+        rec.sexth(src1_sext, src1);
+        as.MULW(result, src1_sext, src2);
+        rec.setGPR(&operands[0], result);
+        break;
+    }
+    case X86_SIZE_DWORD: {
+        as.MULW(dst, src1, src2);
+        rec.setGPR(&operands[0], dst);
+        break;
+    }
+    case X86_SIZE_QWORD: {
+        as.MUL(dst, dst, src2);
+        rec.setGPR(&operands[0], dst);
+        break;
+    }
+    default: {
+        UNREACHABLE();
+    }
+    }
+}
+
 FAST_HANDLE(IMUL) {
     x86_size_e size = rec.getSize(&operands[0]);
     u8 opcount = instruction.operand_count_visible;
@@ -2552,6 +2623,14 @@ FAST_HANDLE(IMUL) {
         }
         }
     } else if (opcount == 2 || opcount == 3) {
+        if (g_config.noflag_opts && !rec.shouldEmitFlag(rip, X86_REF_CF) && !rec.shouldEmitFlag(rip, X86_REF_OF)) {
+            if (opcount == 2) {
+                return fast_IMUL_2_noflags(rec, rip, as, instruction, operands);
+            } else if (opcount == 3) {
+                return fast_IMUL_3_noflags(rec, rip, as, instruction, operands);
+            }
+        }
+
         biscuit::GPR dst, src1, src2;
         if (opcount == 2) {
             dst = rec.getGPR(&operands[0]);
@@ -2571,14 +2650,12 @@ FAST_HANDLE(IMUL) {
             as.MULW(result, result, dst_sext);
             rec.setGPR(&operands[0], result);
 
-            if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
-                biscuit::GPR cf = rec.flag(X86_REF_CF);
-                biscuit::GPR of = rec.flag(X86_REF_OF);
-                rec.sexth(cf, result);
-                as.XOR(of, cf, result);
-                as.SNEZ(of, of);
-                as.MV(cf, of);
-            }
+            biscuit::GPR cf = rec.flag(X86_REF_CF);
+            biscuit::GPR of = rec.flag(X86_REF_OF);
+            rec.sexth(cf, result);
+            as.XOR(of, cf, result);
+            as.SNEZ(of, of);
+            as.MV(cf, of);
             break;
         }
         case X86_SIZE_DWORD: {
@@ -2589,14 +2666,12 @@ FAST_HANDLE(IMUL) {
             as.MUL(result, result, dst_sext);
             rec.setGPR(&operands[0], result);
 
-            if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
-                biscuit::GPR cf = rec.flag(X86_REF_CF);
-                biscuit::GPR of = rec.flag(X86_REF_OF);
-                as.ADDIW(cf, result, 0);
-                as.XOR(of, cf, result);
-                as.SNEZ(of, of);
-                as.MV(cf, of);
-            }
+            biscuit::GPR cf = rec.flag(X86_REF_CF);
+            biscuit::GPR of = rec.flag(X86_REF_OF);
+            as.ADDIW(cf, result, 0);
+            as.XOR(of, cf, result);
+            as.SNEZ(of, of);
+            as.MV(cf, of);
             break;
         }
         case X86_SIZE_QWORD: {
@@ -2606,14 +2681,12 @@ FAST_HANDLE(IMUL) {
             as.MUL(result_low, src1, src2);
             rec.setGPR(&operands[0], result_low);
 
-            if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
-                biscuit::GPR cf = rec.flag(X86_REF_CF);
-                biscuit::GPR of = rec.flag(X86_REF_OF);
-                as.SRAI(cf, result_low, 63);
-                as.XOR(of, cf, result);
-                as.SNEZ(of, of);
-                as.MV(cf, of);
-            }
+            biscuit::GPR cf = rec.flag(X86_REF_CF);
+            biscuit::GPR of = rec.flag(X86_REF_OF);
+            as.SRAI(cf, result_low, 63);
+            as.XOR(of, cf, result);
+            as.SNEZ(of, of);
+            as.MV(cf, of);
             break;
         }
         default: {
