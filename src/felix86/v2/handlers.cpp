@@ -308,7 +308,8 @@ FAST_HANDLE(MOV) {
     } else {
         bool reg_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
         bool not_same = rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].reg.value);
-        bool reg_mem = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
+        bool mem_reg = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
+        bool reg_mem = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY;
         if (not_same && reg_reg) {
             // Save a mask by doing it this way
             biscuit::GPR src = rec.getRefGPR(rec.zydisToRef(operands[1].reg.value), X86_SIZE_QWORD);
@@ -318,7 +319,7 @@ FAST_HANDLE(MOV) {
                 src = temp;
             }
             rec.setOperandGPR(&operands[0], src);
-        } else if (reg_mem) {
+        } else if (mem_reg) {
             // Save a mask by doing it this way
             biscuit::GPR src = rec.getRefGPR(rec.zydisToRef(operands[1].reg.value), X86_SIZE_QWORD);
             if (rec.zydisToSize(operands[1].reg.value) == X86_SIZE_BYTE_HIGH) {
@@ -327,6 +328,30 @@ FAST_HANDLE(MOV) {
                 src = temp;
             }
             rec.setOperandGPR(&operands[0], src);
+        } else if (reg_mem) {
+            switch (operands[0].size) {
+            case 8:
+            case 16: {
+                biscuit::GPR src = rec.getOperandGPR(&operands[1]);
+                rec.setOperandGPR(&operands[0], src);
+                break;
+            }
+            case 32: {
+                biscuit::GPR address = rec.lea(&operands[1], false);
+                biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+                rec.readMemory(dst, address, 0, X86_SIZE_DWORD);
+                break;
+            }
+            case 64: {
+                biscuit::GPR address = rec.lea(&operands[1], false);
+                biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+                rec.readMemory(dst, address, 0, X86_SIZE_QWORD);
+                break;
+            }
+            default: {
+                UNREACHABLE();
+            }
+            }
         } else {
             biscuit::GPR src = rec.getOperandGPR(&operands[1]);
             rec.setOperandGPR(&operands[0], src);

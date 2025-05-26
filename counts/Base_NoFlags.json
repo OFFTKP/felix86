@@ -2732,18 +2732,16 @@
         "disassembly": "mov dx, [rdi]"
     },
     "8b17": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "LWU             ra, a0, 0x0(0)",
-            "ADD.UW          a2, ra, zero"
+            "LWU             a2, a0, 0x0(0)"
         ],
         "disassembly": "mov edx, [rdi]"
     },
     "488b17": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "LD              ra, a0, 0x0(0)",
-            "ADDI            a2, ra, 0x0(0)"
+            "LD              a2, a0, 0x0(0)"
         ],
         "disassembly": "mov rdx, [rdi]"
     },
