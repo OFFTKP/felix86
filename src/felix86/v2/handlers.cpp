@@ -2602,13 +2602,13 @@ FAST_HANDLE(IMUL) {
         case X86_SIZE_QWORD: {
             biscuit::GPR result = rec.scratch();
             biscuit::GPR result_low = rec.scratch();
+            as.MULH(result, src1, src2);
             as.MUL(result_low, src1, src2);
             rec.setGPR(&operands[0], result_low);
 
             if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
                 biscuit::GPR cf = rec.flag(X86_REF_CF);
                 biscuit::GPR of = rec.flag(X86_REF_OF);
-                as.MULH(result, src1, src2);
                 as.SRAI(cf, result_low, 63);
                 as.XOR(of, cf, result);
                 as.SNEZ(of, of);
