@@ -2350,8 +2350,12 @@ FAST_HANDLE(LOOPNE) {
 }
 
 void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
-    biscuit::GPR dst = rec.getGPR(&operands[0]);
-    biscuit::GPR src = rec.getGPR(&operands[1]);
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER)
+        src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    else
+        src = rec.getGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
     if (instruction.operand_width == 64) {
         // Write directly to dst to save a move

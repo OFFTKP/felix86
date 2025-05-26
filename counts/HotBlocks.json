@@ -233,12 +233,12 @@
             "BNE             zero, s7, 0x10(16)",
             "ADDI            gp, gp, 0x13a(314)",
             "AUIPC           t6, 0xffffffea(-22)",
-            "JALR            zero, t6, 0x374(884)",
+            "JALR            zero, t6, 0x22c(556)",
             "LUI             ra, 0xd(13)",
             "ADDIW           ra, ra, 0xfffffc32(-974)",
             "ADD             gp, gp, ra",
             "AUIPC           t6, 0xffffffea(-22)",
-            "JALR            zero, t6, 0x360(864)"
+            "JALR            zero, t6, 0x218(536)"
         ]
     },
     "dotnet rotate": {
@@ -4195,16 +4195,16 @@
             "ADDIW           t1, t1, 0xfffffc34(-972)",
             "ADD             gp, gp, t1",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x59c(1436)",
+            "JALR            zero, t6, 0x454(1108)",
             "LUI             t1, 0xfffb09a1(-325215)",
             "ADDIW           t1, t1, 0xffffffb3(-77)",
             "ADD             gp, gp, t1",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x588(1416)"
+            "JALR            zero, t6, 0x440(1088)"
         ]
     },
     "7z block": {
-        "instruction_count": 123,
+        "instruction_count": 121,
         "expected_asm": [
             "LD              s0, a0, 0x0(0)",
             "ADDI            ra, a0, 0x28(40)",
@@ -4289,12 +4289,10 @@
             "SLTIU           s7, s7, 0x1(1)",
             "OR              ra, s5, s7",
             "XORI            ra, ra, 0x1(1)",
-            "ADD.UW          t1, a2, zero",
-            "ADD.UW          t3, t0, zero",
-            "CZERO.NEZ       t2, t1, ra",
-            "CZERO.EQZ       t5, t3, ra",
-            "OR              t4, t2, t5",
-            "ADD.UW          a2, t4, zero",
+            "CZERO.NEZ       t3, a2, ra",
+            "CZERO.EQZ       t4, t0, ra",
+            "OR              t1, t3, t4",
+            "ADD.UW          a2, t1, zero",
             "ADD.UW          t1, a2, zero",
             "ADD.UW          t3, a0, zero",
             "SUB             ra, t3, t1",
@@ -4325,10 +4323,10 @@
             "BNE             zero, ra, 0x10(16)",
             "ADDI            gp, gp, 0x74(116)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x3a4(932)",
+            "JALR            zero, t6, 0x264(612)",
             "ADDI            gp, gp, 0x8b(139)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x398(920)"
+            "JALR            zero, t6, 0x258(600)"
         ]
     }
 }
