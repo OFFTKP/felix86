@@ -346,8 +346,8 @@ struct fsave_data_32 {
 
 static_assert(sizeof(fsave_data_32) == 108);
 
-void felix86_fsave_16(struct ThreadState* state, u64 address, int x87_state) {
-    bool is_mmx = (x87State)x87_state == x87State::MMX;
+void felix86_fsave_16(struct ThreadState* state, u64 address) {
+    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
     fsave_data_16* data = (fsave_data_16*)address;
     for (int i = 0; i < 8; i++) {
         if (is_mmx) {
@@ -371,8 +371,8 @@ void felix86_fsave_16(struct ThreadState* state, u64 address, int x87_state) {
     }
 }
 
-void felix86_fsave_32(struct ThreadState* state, u64 address, int x87_state) {
-    bool is_mmx = (x87State)x87_state == x87State::MMX;
+void felix86_fsave_32(struct ThreadState* state, u64 address) {
+    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
     fsave_data_32* data = (fsave_data_32*)address;
     for (int i = 0; i < 8; i++) {
         if (is_mmx) {
@@ -434,8 +434,8 @@ void felix86_frstor_32(struct ThreadState* state, u64 address) {
     }
 }
 
-void felix86_fxsave(struct ThreadState* state, u64 address, int x87_state) {
-    bool is_mmx = (x87State)x87_state == x87State::MMX;
+void felix86_fxsave(struct ThreadState* state, u64 address) {
+    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
     fxsave_data* data = (fxsave_data*)address;
 
     for (int i = 0; i < 16; i++) {

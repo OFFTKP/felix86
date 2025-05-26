@@ -2,6 +2,8 @@
 #include <Zydis/Zydis.h>
 #include "felix86/v2/recompiler.hpp"
 
+// TODO: optimize all mentions of VFMV + FCVT into VFCVT if possible
+
 #define FAST_HANDLE(name)                                                                                                                            \
     void fast_##name(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands)
 
@@ -12,30 +14,43 @@ FAST_HANDLE(FLD) {
         as.MV(a0, address);
         rec.call((u64)f80_to_64);
         rec.restoreState();
-        rec.pushX87(fa0); // push return value
+        rec.setVectorState(SEW::E64, 1);
+        biscuit::Vec temp = rec.scratchVec();
+        as.VFMV_SF(temp, fa0); // push return value
+        rec.pushX87(temp);
     } else {
-        biscuit::FPR st = rec.getST(&operands[0]);
-        biscuit::FPR temp = rec.scratchFPR();
-        as.FMV_D(temp, st); // move to temp because getST could return allocated FPR
+        biscuit::Vec st = rec.getST(&operands[0]);
+        biscuit::Vec temp = rec.scratchVec();
+        rec.setVectorState(SEW::E64, 1);
+        as.VMV1R(temp, st); // move to temp because getST could return allocated Vec
         rec.pushX87(temp);
     }
 }
 
 FAST_HANDLE(FILD) {
-    biscuit::FPR ftemp = rec.scratchFPR();
+    biscuit::Vec ftemp = rec.scratchVec();
     biscuit::GPR value = rec.getOperandGPR(&operands[0]);
     switch (operands[0].size) {
     case 16: {
         rec.sext(value, value, X86_SIZE_WORD);
-        as.FCVT_D_W(ftemp, value);
+        biscuit::FPR fpr = rec.scratchFPR();
+        rec.setVectorState(SEW::E64, 1);
+        as.FCVT_D_W(fpr, value);
+        as.VFMV_SF(ftemp, fpr);
         break;
     }
     case 32: {
-        as.FCVT_D_W(ftemp, value);
+        biscuit::FPR fpr = rec.scratchFPR();
+        rec.setVectorState(SEW::E64, 1);
+        as.FCVT_D_W(fpr, value);
+        as.VFMV_SF(ftemp, fpr);
         break;
     }
     case 64: {
-        as.FCVT_D_L(ftemp, value);
+        biscuit::FPR fpr = rec.scratchFPR();
+        rec.setVectorState(SEW::E64, 1);
+        as.FCVT_D_L(fpr, value);
+        as.VFMV_SF(ftemp, fpr);
         break;
     }
     default: {
@@ -45,10 +60,10 @@ FAST_HANDLE(FILD) {
     rec.pushX87(ftemp);
 }
 
-void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
+void OP(void (Assembler::*func)(Vec, Vec, Vec, VecMask), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
         ZydisDecodedOperand* operands, bool pop, bool reverse = false) {
-    biscuit::FPR lhs = rec.getST(&operands[0]);
-    biscuit::FPR rhs = rec.getST(&operands[1]);
+    biscuit::Vec lhs = rec.getST(&operands[0]);
+    biscuit::Vec rhs = rec.getST(&operands[1]);
 
     ZydisDecodedOperand* result_operand = &operands[0];
 
@@ -58,13 +73,14 @@ void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assemble
         result_operand = &operands[1];
     }
 
-    // TODO: don't use a separate FPR here
-    biscuit::FPR result;
+    // TODO: don't use a separate Vec here
+    biscuit::Vec result;
+    rec.setVectorState(SEW::E64, 1);
     if (!reverse) {
-        (as.*func)(lhs, lhs, rhs, RMode::DYN);
+        (as.*func)(lhs, lhs, rhs, VecMask::No);
         result = lhs;
     } else {
-        (as.*func)(lhs, rhs, lhs, RMode::DYN);
+        (as.*func)(lhs, rhs, lhs, VecMask::No);
         result = lhs;
     }
     rec.setST(result_operand, result);
@@ -75,180 +91,200 @@ void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assemble
 }
 
 FAST_HANDLE(FDIV) {
-    OP(&Assembler::FDIV_D, rec, as, instruction, operands, false);
+    OP(&Assembler::VFDIV, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FDIVP) {
-    OP(&Assembler::FDIV_D, rec, as, instruction, operands, true);
+    OP(&Assembler::VFDIV, rec, as, instruction, operands, true);
 }
 
 FAST_HANDLE(FIDIV) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
-    biscuit::FPR scratch = rec.scratchFPR();
-    biscuit::FPR result = rec.scratchFPR();
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::FPR fpr = rec.scratchFPR();
 
     if (operands[0].size == 16) {
         rec.sext(integer, integer, X86_SIZE_WORD);
     }
 
-    as.FCVT_D_W(scratch, integer);
-    as.FDIV_D(result, st0, scratch);
+    rec.setVectorState(SEW::E64, 1);
+    as.FCVT_D_W(fpr, integer);
+    as.VFMV_SF(scratch, fpr);
+    as.VFDIV(result, st0, scratch);
 
     rec.setST(0, result);
 }
 
 FAST_HANDLE(FDIVR) {
-    OP(&Assembler::FDIV_D, rec, as, instruction, operands, false, true);
+    OP(&Assembler::VFDIV, rec, as, instruction, operands, false, true);
 }
 
 FAST_HANDLE(FDIVRP) {
-    OP(&Assembler::FDIV_D, rec, as, instruction, operands, true, true);
+    OP(&Assembler::VFDIV, rec, as, instruction, operands, true, true);
 }
 
 FAST_HANDLE(FIDIVR) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
-    biscuit::FPR scratch = rec.scratchFPR();
-    biscuit::FPR result = rec.scratchFPR();
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
+    biscuit::FPR fpr = rec.scratchFPR();
 
     if (operands[0].size == 16) {
         rec.sext(integer, integer, X86_SIZE_WORD);
     }
 
-    as.FCVT_D_W(scratch, integer);
-    as.FDIV_D(result, scratch, st0);
+    rec.setVectorState(SEW::E64, 1);
+    as.FCVT_D_W(fpr, integer);
+    as.VFMV_SF(scratch, fpr);
+    as.VFDIV(result, scratch, st0);
 
     rec.setST(0, result);
 }
 
 FAST_HANDLE(FMUL) {
-    OP(&Assembler::FMUL_D, rec, as, instruction, operands, false);
+    OP(&Assembler::VFMUL, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FMULP) {
-    OP(&Assembler::FMUL_D, rec, as, instruction, operands, true);
+    OP(&Assembler::VFMUL, rec, as, instruction, operands, true);
 }
 
 FAST_HANDLE(FIMUL) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
-    biscuit::FPR scratch = rec.scratchFPR();
-    biscuit::FPR result = rec.scratchFPR();
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
 
     if (operands[0].size == 16) {
         rec.sext(integer, integer, X86_SIZE_WORD);
     }
 
-    as.FCVT_D_W(scratch, integer);
-    as.FMUL_D(result, st0, scratch);
+    biscuit::FPR fpr = rec.scratchFPR();
+    rec.setVectorState(SEW::E64, 1);
+    as.FCVT_D_W(fpr, integer);
+    as.VFMV_SF(scratch, fpr);
+    as.VFMUL(result, st0, scratch);
 
     rec.setST(0, result);
 }
 
 FAST_HANDLE(FST) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     rec.setST(&operands[0], st0);
 }
 
 FAST_HANDLE(FXCH) {
     u8 index = operands[0].reg.value - ZYDIS_REGISTER_ST0;
     ASSERT(index >= 1 && index <= 7);
-    biscuit::FPR st0 = rec.getST(0);
-    biscuit::FPR sti = rec.getST(index);
-    biscuit::FPR temp = rec.scratchFPR();
-    as.FMV_D(temp, st0);
+    biscuit::Vec st0 = rec.getST(0);
+    biscuit::Vec sti = rec.getST(index);
+    biscuit::Vec temp = rec.scratchVec();
+    rec.setVectorState(SEW::E64, 1);
+    as.VMV1R(temp, st0);
     rec.setST(0, sti);
     rec.setST(index, temp);
 }
 
 FAST_HANDLE(FSTP) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     rec.setST(&operands[0], st0);
     rec.popX87();
 }
 
 FAST_HANDLE(FADD) {
-    OP(&Assembler::FADD_D, rec, as, instruction, operands, false);
+    OP(&Assembler::VFADD, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FADDP) {
-    OP(&Assembler::FADD_D, rec, as, instruction, operands, true);
+    OP(&Assembler::VFADD, rec, as, instruction, operands, true);
 }
 
 FAST_HANDLE(FIADD) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
-    biscuit::FPR scratch = rec.scratchFPR();
-    biscuit::FPR result = rec.scratchFPR();
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
 
     if (operands[0].size == 16) {
         rec.sext(integer, integer, X86_SIZE_WORD);
     }
 
-    as.FCVT_D_W(scratch, integer);
-    as.FADD_D(result, st0, scratch);
+    biscuit::FPR fpr = rec.scratchFPR();
+    rec.setVectorState(SEW::E64, 1);
+    as.FCVT_D_W(fpr, integer);
+    as.VFMV_SF(scratch, fpr);
+    as.VFADD(result, st0, scratch);
 
     rec.setST(0, result);
 }
 
 FAST_HANDLE(FSUB) {
-    OP(&Assembler::FSUB_D, rec, as, instruction, operands, false);
+    OP(&Assembler::VFSUB, rec, as, instruction, operands, false);
 }
 
 FAST_HANDLE(FSUBP) {
-    OP(&Assembler::FSUB_D, rec, as, instruction, operands, true);
+    OP(&Assembler::VFSUB, rec, as, instruction, operands, true);
 }
 
 FAST_HANDLE(FISUB) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
-    biscuit::FPR scratch = rec.scratchFPR();
-    biscuit::FPR result = rec.scratchFPR();
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
 
     if (operands[0].size == 16) {
         rec.sext(integer, integer, X86_SIZE_WORD);
     }
 
-    as.FCVT_D_W(scratch, integer);
-    as.FSUB_D(result, st0, scratch);
+    biscuit::FPR fpr = rec.scratchFPR();
+    rec.setVectorState(SEW::E64, 1);
+    as.FCVT_D_W(fpr, integer);
+    as.VFMV_SF(scratch, fpr);
+    as.VFSUB(result, st0, scratch);
 
     rec.setST(0, result);
 }
 
 FAST_HANDLE(FSUBR) {
-    OP(&Assembler::FSUB_D, rec, as, instruction, operands, false, true);
+    OP(&Assembler::VFSUB, rec, as, instruction, operands, false, true);
 }
 
 FAST_HANDLE(FSUBRP) {
-    OP(&Assembler::FSUB_D, rec, as, instruction, operands, true, true);
+    OP(&Assembler::VFSUB, rec, as, instruction, operands, true, true);
 }
 
 FAST_HANDLE(FISUBR) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
-    biscuit::FPR scratch = rec.scratchFPR();
-    biscuit::FPR result = rec.scratchFPR();
+    biscuit::Vec scratch = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
 
     if (operands[0].size == 16) {
         rec.sext(integer, integer, X86_SIZE_WORD);
     }
 
-    as.FCVT_D_W(scratch, integer);
-    as.FSUB_D(result, scratch, st0);
+    biscuit::FPR fpr = rec.scratchFPR();
+    rec.setVectorState(SEW::E64, 1);
+    as.FCVT_D_W(fpr, integer);
+    as.VFMV_SF(scratch, fpr);
+    as.VFSUB(result, scratch, st0);
 
     rec.setST(0, result);
 }
 
 FAST_HANDLE(FSQRT) {
-    biscuit::FPR st0 = rec.getST(0);
-    as.FSQRT_D(st0, st0);
+    biscuit::Vec st0 = rec.getST(0);
+    rec.setVectorState(SEW::E64, 1);
+    as.VFSQRT(st0, st0);
     rec.setST(0, st0);
 }
 
@@ -361,18 +397,27 @@ FAST_HANDLE(FLDENV) {
 }
 
 void FIST(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedOperand* operands, bool pop, RMode mode = RMode::DYN) {
-    biscuit::FPR st0 = rec.getST(0);
+    biscuit::Vec st0 = rec.getST(0);
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR integer = rec.scratch();
 
     if (operands[0].size == 16) {
-        as.FCVT_W_D(integer, st0, mode);
+        biscuit::FPR fpr = rec.scratchFPR();
+        rec.setVectorState(SEW::E64, 1);
+        as.VFMV_FS(fpr, st0);
+        as.FCVT_W_D(integer, fpr, mode);
         rec.writeMemory(integer, address, 0, X86_SIZE_WORD);
     } else if (operands[0].size == 32) {
-        as.FCVT_W_D(integer, st0, mode);
+        biscuit::FPR fpr = rec.scratchFPR();
+        rec.setVectorState(SEW::E64, 1);
+        as.VFMV_FS(fpr, st0);
+        as.FCVT_W_D(integer, fpr, mode);
         rec.writeMemory(integer, address, 0, X86_SIZE_DWORD);
     } else if (operands[0].size == 64) {
-        as.FCVT_L_D(integer, st0, mode);
+        biscuit::FPR fpr = rec.scratchFPR();
+        rec.setVectorState(SEW::E64, 1);
+        as.VFMV_FS(fpr, st0);
+        as.FCVT_L_D(integer, fpr, mode);
         rec.writeMemory(integer, address, 0, X86_SIZE_QWORD);
     } else {
         UNREACHABLE();
@@ -396,29 +441,39 @@ FAST_HANDLE(FISTTP) {
 }
 
 void FCOMI(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, bool pop) {
-    biscuit::GPR cond = rec.scratch();
-    biscuit::GPR cond2 = rec.scratch();
-    biscuit::FPR st0 = rec.getST(&operands[0]);
-    biscuit::FPR sti = rec.getST(&operands[1]);
+    biscuit::Vec cond = rec.scratchVec();
+    biscuit::Vec cond2 = rec.scratchVec();
+    biscuit::GPR cond_reg = rec.scratch();
+    biscuit::Vec st0 = rec.getST(&operands[0]);
+    biscuit::Vec sti = rec.getST(&operands[1]);
 
     biscuit::GPR zf = rec.flag(X86_REF_ZF);
     biscuit::GPR cf = rec.flag(X86_REF_CF);
 
     Label less_than, equal, greater_than, unordered, end;
 
+    rec.setVectorState(SEW::E64, 1);
+
     // Most likely result - not unordered
     as.SB(x0, offsetof(ThreadState, pf), rec.threadStatePointer());
 
-    as.FEQ_D(cond, st0, st0);
-    as.FEQ_D(cond2, sti, sti);
-    as.AND(cond, cond, cond2);
-    as.BEQZ(cond, &unordered);
+    // TODO: can we do this branchless too? and not move to gprs all the time
+    as.VMFEQ(cond, st0, st0);
+    as.VMFEQ(cond2, sti, sti);
+    as.VAND(cond, cond, cond2);
+    as.VMV_XS(cond_reg, cond);
+    as.ANDI(cond_reg, cond_reg, 1);
+    as.BEQZ(cond_reg, &unordered);
 
-    as.FLT_D(cond, st0, sti);
-    as.BNEZ(cond, &less_than);
+    as.VMFLT(cond, st0, sti);
+    as.VMV_XS(cond_reg, cond);
+    as.ANDI(cond_reg, cond_reg, 1);
+    as.BNEZ(cond_reg, &less_than);
 
-    as.FLT_D(cond, sti, st0);
-    as.BNEZ(cond, &greater_than);
+    as.VMFLT(cond, sti, st0);
+    as.VMV_XS(cond_reg, cond);
+    as.ANDI(cond_reg, cond_reg, 1);
+    as.BNEZ(cond_reg, &greater_than);
 
     // Implicit fallthrough for when comparison is equal (not less than, not greater than, not unordered)
     as.LI(zf, 1);
@@ -465,7 +520,7 @@ FAST_HANDLE(FUCOMIP) {
 }
 
 void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop_count) {
-    biscuit::FPR st0, src;
+    biscuit::Vec st0, src;
     if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value == ZYDIS_REGISTER_ST0) {
         st0 = rec.getST(&operands[0]);
         src = rec.getST(&operands[1]);
@@ -474,35 +529,40 @@ void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop
         src = rec.getST(&operands[0]);
     }
 
-    biscuit::GPR c0 = rec.scratch();
-    biscuit::GPR c2 = rec.scratch();
-    biscuit::GPR c3 = rec.scratch();
-    biscuit::GPR nan1 = rec.scratch();
-    biscuit::GPR nan2 = rec.scratch();
+    biscuit::Vec c0 = rec.scratchVec();
+    biscuit::Vec c2 = rec.scratchVec();
+    biscuit::Vec c3 = rec.scratchVec();
+    biscuit::Vec nan1 = rec.scratchVec();
+    biscuit::Vec nan2 = rec.scratchVec();
 
     // Branchless way of doing this
-    as.LI(c0, 0);
-    as.LI(c2, 0);
-    as.LI(c3, 0);
-    as.FEQ_D(nan1, st0, st0);
-    as.XORI(nan1, nan1, 1);
-    as.FEQ_D(nan2, src, src);
-    as.XORI(nan2, nan2, 1);
-    as.OR(nan1, nan1, nan2);
+    rec.setVectorState(SEW::E64, 1);
+    as.VMV(c0, 0);
+    as.VMV(c2, 0);
+    as.VMV(c3, 0);
+    as.VMFNE(nan1, st0, st0);
+    as.VMFNE(nan2, src, src);
+    as.VOR(nan1, nan1, nan2);
 
-    as.FLT_D(c0, st0, src);
-    as.FEQ_D(c3, st0, src);
+    as.VMFLT(c0, st0, src);
+    as.VMFEQ(c3, st0, src);
     // If either is NaN set all to 1s
-    as.OR(c0, c0, nan1);
-    as.OR(c3, c3, nan1);
-    as.OR(c2, c2, nan1);
-    as.SLLI(c2, c2, 10);
-    as.SLLI(c0, c0, 8);
-    as.SLLI(c3, c3, 14);
-    as.OR(c0, c0, c2);
-    as.OR(c0, c0, c3);
+    as.VOR(c2, c2, nan1);
+    as.VOR(c0, c0, nan1);
+    as.VOR(c3, c3, nan1);
+    as.VAND(c2, c2, 1);
+    as.VAND(c0, c0, 1);
+    as.VAND(c3, c3, 1);
+    as.VSLL(c2, c2, 10);
+    as.VSLL(c0, c0, 8);
+    as.VSLL(c3, c3, 14);
+    as.VOR(c0, c0, c2);
+    as.VOR(c0, c0, c3);
 
-    as.SW(c0, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    rec.setVectorState(SEW::E32, 1);
+    biscuit::GPR address = rec.scratch();
+    as.ADDI(address, rec.threadStatePointer(), offsetof(ThreadState, fpu_sw));
+    as.VSE32(c0, address);
 
     if (pop_count == 1) {
         rec.popX87();
@@ -538,93 +598,91 @@ FAST_HANDLE(FUCOMPP) {
 }
 
 FAST_HANDLE(FRNDINT) {
-    biscuit::FPR st0 = rec.getST(0);
-
-    if (Extensions::Zfa) {
-        as.FROUND_D(st0, st0);
-    } else {
-        biscuit::GPR temp = rec.scratch();
-        as.FCVT_L_D(temp, st0);
-        as.FCVT_D_L(st0, temp);
-    }
-
+    biscuit::Vec st0 = rec.getST(0);
+    biscuit::Vec temp = rec.scratchVec();
+    rec.setVectorState(SEW::E64, 1);
+    as.VFCVT_F_X(temp, st0);
+    as.VFCVT_X_F(st0, temp);
     rec.setST(0, st0);
 }
 
 FAST_HANDLE(FCHS) {
-    biscuit::FPR st0 = rec.getST(0);
-    as.FNEG_D(st0, st0);
+    biscuit::Vec st0 = rec.getST(0);
+    rec.setVectorState(SEW::E64, 1);
+    as.VFNEG(st0, st0);
     rec.setST(0, st0);
 }
 
 FAST_HANDLE(FLD1) {
-    biscuit::FPR st = rec.scratchFPR();
-
-    if (Extensions::Zfa) {
-        as.FLI_D(st, 1.0);
-    } else {
-        biscuit::GPR temp = rec.scratch();
-        as.LI(temp, 0x3FF0000000000000ull);
-        as.FMV_D_X(st, temp);
-    }
-
+    biscuit::Vec st = rec.scratchVec();
+    biscuit::GPR temp = rec.scratch();
+    rec.setVectorState(SEW::E64, 1);
+    as.LI(temp, 0x3FF0000000000000ull);
+    as.VMV_SX(st, temp);
     rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDL2T) {
     constexpr u64 value = 0x400A'934F'0979'A371ull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::Vec st = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
+    rec.setVectorState(SEW::E64, 1);
     as.LI(temp, value);
-    as.FMV_D_X(st, temp);
+    as.VMV_SX(st, temp);
     rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDL2E) {
     constexpr u64 value = 0x3FF7'1547'652B'82FEull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::Vec st = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
+    rec.setVectorState(SEW::E64, 1);
     as.LI(temp, value);
-    as.FMV_D_X(st, temp);
+    as.VMV_SX(st, temp);
     rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDPI) {
     constexpr u64 value = 0x4009'21FB'5444'2D18ull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::Vec st = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
+    rec.setVectorState(SEW::E64, 1);
     as.LI(temp, value);
-    as.FMV_D_X(st, temp);
+    as.VMV_SX(st, temp);
     rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDLG2) {
     constexpr u64 value = 0x3FD3'4413'509F'79FFull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::Vec st = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
+    rec.setVectorState(SEW::E64, 1);
     as.LI(temp, value);
-    as.FMV_D_X(st, temp);
+    as.VMV_SX(st, temp);
     rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDLN2) {
     constexpr u64 value = 0x3FE6'2E42'FEFA'39EFull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::Vec st = rec.scratchVec();
     biscuit::GPR temp = rec.scratch();
+    rec.setVectorState(SEW::E64, 1);
     as.LI(temp, value);
-    as.FMV_D_X(st, temp);
+    as.VMV_SX(st, temp);
     rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDZ) {
-    biscuit::FPR st = rec.scratchFPR();
-    as.FMV_D_X(st, x0);
+    biscuit::Vec st = rec.scratchVec();
+    rec.setVectorState(SEW::E64, 1);
+    as.VMV_SX(st, x0);
     rec.pushX87(st);
 }
 
 FAST_HANDLE(FABS) {
-    biscuit::FPR st0 = rec.getST(0);
-    as.FABS_D(st0, st0);
+    biscuit::Vec st0 = rec.getST(0);
+    rec.setVectorState(SEW::E64, 1);
+    as.VFABS(st0, st0);
     rec.setST(0, st0);
 }
 
@@ -677,7 +735,7 @@ FAST_HANDLE(FNINIT) {
 void FCMOV(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, biscuit::GPR cond) {
     biscuit::Label not_true;
     as.BEQZ(cond, &not_true);
-    biscuit::FPR sti = rec.getST(&operands[1]);
+    biscuit::Vec sti = rec.getST(&operands[1]);
     rec.setST(0, sti);
     as.Bind(&not_true);
 }
@@ -736,13 +794,10 @@ FAST_HANDLE(FCMOVNU) {
 }
 
 FAST_HANDLE(FNSAVE) {
-    biscuit::GPR x87_state = rec.scratch();
-    as.LBU(x87_state, offsetof(ThreadState, x87_state), rec.threadStatePointer());
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    as.MV(a2, x87_state);
     if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
         rec.call((u64)&felix86_fsave_16);
     } else {

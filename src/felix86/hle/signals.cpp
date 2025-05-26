@@ -125,16 +125,9 @@ void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, con
             state->xmm[i] = xmms[allocated_vec.Index()];
         }
 
-        if (state->x87_state == x87State::MMX) {
-            for (int i = 0; i < 8; i++) {
-                biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
-                state->fp[i] = xmms[allocated_vec.Index()].data[0];
-            }
-        } else {
-            for (int i = 0; i < 8; i++) {
-                biscuit::FPR allocated_fpr = Recompiler::allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
-                state->fp[i] = fprs[allocated_fpr.Index()];
-            }
+        for (int i = 0; i < 8; i++) {
+            biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
+            state->fp[i] = xmms[allocated_vec.Index()].data[0];
         }
 
         state->cf = gprs[Recompiler::allocatedGPR(X86_REF_CF).Index()];
@@ -273,10 +266,12 @@ void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64
         if (state->x87_state == x87State::MMX) {
             memcpy(reg, &state->fp[i], sizeof(u64));
             reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
-        } else {
+        } else if (state->x87_state == x87State::x87) {
             Float80 f80 = f64_to_80(state->fp[i]);
             memcpy(reg, &f80, sizeof(Float80));
             static_assert(sizeof(Float80) == 10);
+        } else {
+            WARN("Unknown x87 state during signal??");
         }
     }
 

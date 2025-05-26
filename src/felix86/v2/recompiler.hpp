@@ -84,13 +84,13 @@ struct Recompiler {
 
     void setTOP(biscuit::GPR top);
 
-    biscuit::FPR getST(int index);
+    biscuit::Vec getST(int index);
 
-    biscuit::FPR getST(ZydisDecodedOperand* operand);
+    biscuit::Vec getST(ZydisDecodedOperand* operand);
 
-    void setST(int index, biscuit::FPR value);
+    void setST(int index, biscuit::Vec value);
 
-    void setST(ZydisDecodedOperand* operand, biscuit::FPR value);
+    void setST(ZydisDecodedOperand* operand, biscuit::Vec value);
 
     biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
 
@@ -249,18 +249,6 @@ struct Recompiler {
         }
     }
 
-    static constexpr biscuit::FPR allocatedFPR(x86_ref_e reg) {
-        switch (reg) {
-        case X86_REF_ST0 ... X86_REF_ST7: {
-            return biscuit::FPR(ft0.Index() + (reg - X86_REF_ST0));
-        }
-        default: {
-            UNREACHABLE();
-            return f0;
-        }
-        }
-    }
-
     static constexpr biscuit::Vec allocatedVec(x86_ref_e reg) {
         switch (reg) {
         case X86_REF_XMM0: {
@@ -313,28 +301,36 @@ struct Recompiler {
         case X86_REF_XMM15: {
             return biscuit::v17;
         }
-        case X86_REF_MM0: {
+        case X86_REF_MM0:
+        case X86_REF_ST0: {
             return biscuit::v18;
         }
-        case X86_REF_MM1: {
+        case X86_REF_MM1:
+        case X86_REF_ST1: {
             return biscuit::v19;
         }
-        case X86_REF_MM2: {
+        case X86_REF_MM2:
+        case X86_REF_ST2: {
             return biscuit::v20;
         }
-        case X86_REF_MM3: {
+        case X86_REF_MM3:
+        case X86_REF_ST3: {
             return biscuit::v21;
         }
-        case X86_REF_MM4: {
+        case X86_REF_MM4:
+        case X86_REF_ST4: {
             return biscuit::v22;
         }
-        case X86_REF_MM5: {
+        case X86_REF_MM5:
+        case X86_REF_ST5: {
             return biscuit::v23;
         }
-        case X86_REF_MM6: {
+        case X86_REF_MM6:
+        case X86_REF_ST6: {
             return biscuit::v24;
         }
-        case X86_REF_MM7: {
+        case X86_REF_MM7:
+        case X86_REF_ST7: {
             return biscuit::v25;
         }
         default: {
@@ -579,7 +575,7 @@ struct Recompiler {
 
     void decrementTOP();
 
-    void pushX87(biscuit::FPR val);
+    void pushX87(biscuit::Vec val);
 
     void popX87();
 
@@ -656,7 +652,7 @@ private:
     bool compiling{};
 
     // Whether the currently compiling block uses MMX instructions that need to be written back at the end
-    bool using_mmx = false;
+    x87State local_x87_state = x87State::Unknown;
 
     int scratch_index = 0;
 

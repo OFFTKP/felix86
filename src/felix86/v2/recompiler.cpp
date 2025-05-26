@@ -421,7 +421,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     current_sew = SEW::E1024;
     current_vlen = 0;
     current_grouping = LMUL::M1;
-    using_mmx = false;
+    local_x87_state = x87State::Unknown;
     fsrm_sse = true; // dispatcher loads SSE rounding mode as a default
 
     current_block_metadata->guest_address = rip;
@@ -442,11 +442,13 @@ u64 Recompiler::compileSequence(u64 rip) {
                        operands[0].reg.value <= ZYDIS_REGISTER_XMM15) ||
                       (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_XMM0 &&
                        operands[1].reg.value <= ZYDIS_REGISTER_XMM15);
-        if (is_mmx && !using_mmx) {
-            WARN_ONCE("This program makes use of MMX");
+        if (is_mmx) {
             switchToMMX();
-        } else if (is_x87 && using_mmx) {
-            ERROR("MMX and x87 instructions mixed in a block?");
+        } else if (is_x87) {
+            if (local_x87_state == x87State::MMX) {
+                WARN_ONCE("MMX and x87 mixed in a block??");
+            }
+            switchToX87();
         }
 
         if (is_x87 && fsrm_sse) {
@@ -470,12 +472,6 @@ u64 Recompiler::compileSequence(u64 rip) {
             as.GetCodeBuffer().Emit32(0); // UNIMP instruction
         }
 
-        if (using_mmx && index == instructions.size() - 1) {
-            // Block is over but we didn't run an EMMS, switch to x87 state so it gets written back properly in the dispatcher
-            ASSERT(!is_mmx);
-            switchToX87();
-        }
-
         compileInstruction(instruction, operands, rip);
 
         if (g_config.inline_syscalls) {
@@ -486,9 +482,6 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         if (g_config.single_step && compiling) {
             resetScratch();
-            if (using_mmx) {
-                switchToX87();
-            }
             biscuit::GPR rip_after = allocatedGPR(X86_REF_RIP);
             as.LI(rip_after, rip);
             backToDispatcher();
@@ -1458,8 +1451,6 @@ void Recompiler::writebackState() {
     current_vlen = 0;
     current_grouping = LMUL::M1;
 
-    switchToX87();
-
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
     as.SD(rip, offsetof(ThreadState, rip), threadStatePointer());
 
@@ -1481,12 +1472,15 @@ void Recompiler::writebackState() {
         as.VSE64(vec, address);
     }
 
-    popScratch();
-
+    setVectorState(SEW::E64, 1);
+    // TODO: can we optimize using special stores
     for (int i = 0; i < 8; i++) {
-        biscuit::FPR fpr = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
-        as.FSD(fpr, offsetof(ThreadState, fp) + i * 8, threadStatePointer());
+        biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_ST0 + i));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + i * sizeof(decltype(ThreadState::fp[0])));
+        as.VSE64(vec, address);
     }
+
+    popScratch();
 
     biscuit::GPR cf = allocatedGPR(X86_REF_CF);
     biscuit::GPR zf = allocatedGPR(X86_REF_ZF);
@@ -1537,12 +1531,14 @@ void Recompiler::restoreState() {
         as.VLE64(vec, address);
     }
 
-    popScratch();
-
+    // TODO: can we optimize these using special loads
     for (int i = 0; i < 8; i++) {
-        biscuit::FPR fpr = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
-        as.FLD(fpr, offsetof(ThreadState, fp) + i * 8, threadStatePointer());
+        biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_ST0 + i));
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + sizeof(decltype(ThreadState::fp[0])) * i);
+        as.VLE64(vec, address);
     }
+
+    popScratch();
 
     biscuit::GPR cf = allocatedGPR(X86_REF_CF);
     biscuit::GPR zf = allocatedGPR(X86_REF_ZF);
@@ -1566,10 +1562,6 @@ void Recompiler::restoreState() {
         as.FSRM(x0, rm);
         popScratch();
     }
-
-    // TODO: merge the following two writes to a SH
-    static_assert((int)x87State::x87 == 0);
-    as.SB(x0, offsetof(ThreadState, x87_state), threadStatePointer());
 
     // Mark state as invalid again as we will be modifying the host registers
     as.SB(x0, offsetof(ThreadState, state_is_correct), threadStatePointer());
@@ -2453,66 +2445,70 @@ biscuit::GPR Recompiler::getTOP() {
     return top;
 }
 
-biscuit::FPR Recompiler::getST(int index) {
-    return allocatedFPR((x86_ref_e)(X86_REF_ST0 + index));
+biscuit::Vec Recompiler::getST(int index) {
+    return allocatedVec((x86_ref_e)(X86_REF_ST0 + index));
 }
 
-biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand) {
+biscuit::Vec Recompiler::getST(ZydisDecodedOperand* operand) {
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_ST0 && operand->reg.value <= ZYDIS_REGISTER_ST7);
         return getST(operand->reg.value - ZYDIS_REGISTER_ST0);
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         switch (operand->size) {
         case 32: {
-            biscuit::FPR st = scratchFPR();
-            as.FLW(st, 0, lea(operand, false));
-            as.FCVT_D_S(st, st);
+            biscuit::Vec st = scratchVec();
+            setVectorState(SEW::E32, 1, LMUL::MF2);
+            as.VLE32(st, lea(operand, false));
+            as.VFWCVT_F_F(st, st);
             popScratch(); // the gpr address scratch
             return st;
         }
         case 64: {
-            biscuit::FPR st = scratchFPR();
-            as.FLD(st, 0, lea(operand, false));
+            biscuit::Vec st = scratchVec();
+            setVectorState(SEW::E64, 1);
+            as.VLE64(st, lea(operand, false));
             popScratch(); // the gpr address scratch
             return st;
         }
         case 80: {
             UNREACHABLE();
-            return ft0;
+            return v0;
         }
         default: {
             UNREACHABLE();
-            return f0;
+            return v0;
         }
         }
     } else {
         UNREACHABLE();
-        return f0;
+        return v0;
     }
 }
 
-void Recompiler::setST(int index, biscuit::FPR st) {
-    biscuit::FPR stN = getST(index);
+void Recompiler::setST(int index, biscuit::Vec st) {
+    biscuit::Vec stN = getST(index);
     if (stN != st) {
-        as.FMV_D(stN, st);
+        as.VMV1R(stN, st);
     }
 }
 
-void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value) {
+void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::Vec value) {
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
         ASSERT(operand->reg.value >= ZYDIS_REGISTER_ST0 && operand->reg.value <= ZYDIS_REGISTER_ST7);
         return setST(operand->reg.value - ZYDIS_REGISTER_ST0, value);
     } else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY) {
         switch (operand->size) {
         case 32: {
-            biscuit::FPR temp = scratchFPR();
-            as.FCVT_S_D(temp, value);
-            as.FSW(temp, 0, lea(operand, false));
+            biscuit::Vec temp = scratchVec();
+            setVectorState(SEW::E32, 1, LMUL::MF2);
+            as.VFNCVT_F_F(temp, value);
+            as.VSE32(temp, lea(operand, false));
             popScratch(); // the gpr address scratch
             break;
         }
         case 64: {
-            as.FSD(value, 0, lea(operand, false));
+            setVectorState(SEW::E64, 1);
+            as.VSE64(value, lea(operand, false));
             popScratch(); // the gpr address scratch
             break;
         }
@@ -2759,27 +2755,27 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
 void Recompiler::decrementTOP() {
     disableSignals();
 
-    biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
-    biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
-    biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
-    biscuit::FPR st3 = allocatedFPR(X86_REF_ST3);
-    biscuit::FPR st4 = allocatedFPR(X86_REF_ST4);
-    biscuit::FPR st5 = allocatedFPR(X86_REF_ST5);
-    biscuit::FPR st6 = allocatedFPR(X86_REF_ST6);
-    biscuit::FPR st7 = allocatedFPR(X86_REF_ST7);
-    biscuit::FPR temp = scratchFPR();
+    biscuit::Vec st0 = allocatedVec(X86_REF_ST0);
+    biscuit::Vec st1 = allocatedVec(X86_REF_ST1);
+    biscuit::Vec st2 = allocatedVec(X86_REF_ST2);
+    biscuit::Vec st3 = allocatedVec(X86_REF_ST3);
+    biscuit::Vec st4 = allocatedVec(X86_REF_ST4);
+    biscuit::Vec st5 = allocatedVec(X86_REF_ST5);
+    biscuit::Vec st6 = allocatedVec(X86_REF_ST6);
+    biscuit::Vec st7 = allocatedVec(X86_REF_ST7);
+    biscuit::Vec temp = scratchVec();
 
-    as.FMV_D(temp, st0);
-    as.FMV_D(st0, st7);
-    as.FMV_D(st7, st6);
-    as.FMV_D(st6, st5);
-    as.FMV_D(st5, st4);
-    as.FMV_D(st4, st3);
-    as.FMV_D(st3, st2);
-    as.FMV_D(st2, st1);
-    as.FMV_D(st1, temp);
+    as.VMV1R(temp, st0);
+    as.VMV1R(st0, st7);
+    as.VMV1R(st7, st6);
+    as.VMV1R(st6, st5);
+    as.VMV1R(st5, st4);
+    as.VMV1R(st4, st3);
+    as.VMV1R(st3, st2);
+    as.VMV1R(st2, st1);
+    as.VMV1R(st1, temp);
 
-    popScratchFPR();
+    popScratchVec();
 
     biscuit::GPR top = getTOP();
     as.ADDI(top, top, -1);
@@ -2789,26 +2785,26 @@ void Recompiler::decrementTOP() {
     enableSignals();
 }
 
-void Recompiler::pushX87(biscuit::FPR val) {
+void Recompiler::pushX87(biscuit::Vec val) {
     disableSignals();
 
-    biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
-    biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
-    biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
-    biscuit::FPR st3 = allocatedFPR(X86_REF_ST3);
-    biscuit::FPR st4 = allocatedFPR(X86_REF_ST4);
-    biscuit::FPR st5 = allocatedFPR(X86_REF_ST5);
-    biscuit::FPR st6 = allocatedFPR(X86_REF_ST6);
-    biscuit::FPR st7 = allocatedFPR(X86_REF_ST7);
+    biscuit::Vec st0 = allocatedVec(X86_REF_ST0);
+    biscuit::Vec st1 = allocatedVec(X86_REF_ST1);
+    biscuit::Vec st2 = allocatedVec(X86_REF_ST2);
+    biscuit::Vec st3 = allocatedVec(X86_REF_ST3);
+    biscuit::Vec st4 = allocatedVec(X86_REF_ST4);
+    biscuit::Vec st5 = allocatedVec(X86_REF_ST5);
+    biscuit::Vec st6 = allocatedVec(X86_REF_ST6);
+    biscuit::Vec st7 = allocatedVec(X86_REF_ST7);
 
-    as.FMV_D(st7, st6);
-    as.FMV_D(st6, st5);
-    as.FMV_D(st5, st4);
-    as.FMV_D(st4, st3);
-    as.FMV_D(st3, st2);
-    as.FMV_D(st2, st1);
-    as.FMV_D(st1, st0);
-    as.FMV_D(st0, val);
+    as.VMV1R(st7, st6);
+    as.VMV1R(st6, st5);
+    as.VMV1R(st5, st4);
+    as.VMV1R(st4, st3);
+    as.VMV1R(st3, st2);
+    as.VMV1R(st2, st1);
+    as.VMV1R(st1, st0);
+    as.VMV1R(st0, val);
 
     biscuit::GPR top = getTOP();
     as.ADDI(top, top, -1);
@@ -2821,27 +2817,27 @@ void Recompiler::pushX87(biscuit::FPR val) {
 void Recompiler::popX87() {
     disableSignals();
 
-    biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
-    biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
-    biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
-    biscuit::FPR st3 = allocatedFPR(X86_REF_ST3);
-    biscuit::FPR st4 = allocatedFPR(X86_REF_ST4);
-    biscuit::FPR st5 = allocatedFPR(X86_REF_ST5);
-    biscuit::FPR st6 = allocatedFPR(X86_REF_ST6);
-    biscuit::FPR st7 = allocatedFPR(X86_REF_ST7);
-    biscuit::FPR temp = scratchFPR();
+    biscuit::Vec st0 = allocatedVec(X86_REF_ST0);
+    biscuit::Vec st1 = allocatedVec(X86_REF_ST1);
+    biscuit::Vec st2 = allocatedVec(X86_REF_ST2);
+    biscuit::Vec st3 = allocatedVec(X86_REF_ST3);
+    biscuit::Vec st4 = allocatedVec(X86_REF_ST4);
+    biscuit::Vec st5 = allocatedVec(X86_REF_ST5);
+    biscuit::Vec st6 = allocatedVec(X86_REF_ST6);
+    biscuit::Vec st7 = allocatedVec(X86_REF_ST7);
+    biscuit::Vec temp = scratchVec();
 
-    as.FMV_D(temp, st0);
-    as.FMV_D(st0, st1);
-    as.FMV_D(st1, st2);
-    as.FMV_D(st2, st3);
-    as.FMV_D(st3, st4);
-    as.FMV_D(st4, st5);
-    as.FMV_D(st5, st6);
-    as.FMV_D(st6, st7);
-    as.FMV_D(st7, temp);
+    as.VMV1R(temp, st0);
+    as.VMV1R(st0, st1);
+    as.VMV1R(st1, st2);
+    as.VMV1R(st2, st3);
+    as.VMV1R(st3, st4);
+    as.VMV1R(st4, st5);
+    as.VMV1R(st5, st6);
+    as.VMV1R(st6, st7);
+    as.VMV1R(st7, temp);
 
-    popScratchFPR();
+    popScratchVec();
 
     biscuit::GPR top = getTOP();
     as.ADDI(top, top, 1);
@@ -2853,38 +2849,22 @@ void Recompiler::popX87() {
 
 // Move from x87 registers to MMX registers and switch the x87_state flag
 void Recompiler::switchToMMX() {
-    if (!using_mmx) {
-        setVectorState(SEW::E64, 1);
-        // Per the manual, MMX instructions set the TOP to 0
+    if (local_x87_state != x87State::MMX) {
         setTOP(x0);
-
-        // TODO: In the case that x87 TOP was not 0 this transition could be wrong?
-        // IDK whats supposed to happen if there's x87 code, say TOP is 5, and then an MMX instruction
-        // Does MM0 get ST5 (aka ST[0] when top is 5) or does it get ST0? Investigate
-        for (int i = 0; i < 8; i++) {
-            biscuit::Vec mm = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
-            biscuit::FPR st = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
-            as.VFMV_SF(mm, st);
-        }
-
-        biscuit::GPR one = scratch();
-        as.LI(one, (int)x87State::MMX);
-        as.SB(one, offsetof(ThreadState, x87_state), threadStatePointer());
+        biscuit::GPR val = scratch();
+        as.LI(val, (int)x87State::MMX);
+        as.SB(val, offsetof(ThreadState, x87_state), threadStatePointer());
         popScratch();
-        using_mmx = true;
+        local_x87_state = x87State::MMX;
     }
 }
 
 void Recompiler::switchToX87() {
-    if (using_mmx) {
-        setVectorState(SEW::E64, 1);
-        for (int i = 0; i < 8; i++) {
-            biscuit::Vec mm = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
-            biscuit::FPR st = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
-            as.VFMV_FS(st, mm);
-        }
-        static_assert((int)x87State::x87 == 0);
+    if (local_x87_state != x87State::x87) {
+        biscuit::GPR val = scratch();
+        as.LI(val, (int)x87State::x87);
         as.SB(x0, offsetof(ThreadState, x87_state), threadStatePointer());
-        using_mmx = false;
+        popScratch();
+        local_x87_state = x87State::x87;
     }
 }

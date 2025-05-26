@@ -7,13 +7,9 @@
 #include "felix86/hle/guest_types.hpp"
 #include "felix86/hle/signals.hpp"
 
-// We statically allocate 8 FPRs and 8 Vecs for x87 and MMX. But in x86 they share the same registers.
-// For this reason we need to have a way to communicate to signal handlers which registers hold the correct values.
-// For now, the dispatcher will always assume FPRs hold the correct values so blocks must restore state to x87 when finished.
-enum class x87State {
-    x87 = 0,
-    MMX = 1,
-};
+// We need to have a way to communicate to signal handlers and fxsave & co. whether the registers hold x87 values or MMX values
+// This is so we know whether we have to convert f64 to f80 or not
+enum class x87State { Unknown = 0, MMX = 1, x87 = 2 };
 
 #define C0_BIT (1 << 8)
 #define C1_BIT (1 << 9)
