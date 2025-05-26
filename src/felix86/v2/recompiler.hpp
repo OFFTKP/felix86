@@ -92,29 +92,31 @@ struct Recompiler {
 
     void setST(ZydisDecodedOperand* operand, biscuit::FPR value);
 
-    biscuit::GPR getOperandGPR(ZydisDecodedOperand* operand);
+    biscuit::GPR getGPR(const ZydisDecodedOperand* operand);
 
-    x86_size_e getOperandSize(ZydisDecodedOperand* operand);
+    x86_size_e getSize(const ZydisDecodedOperand* operand);
 
-    biscuit::Vec getOperandVec(ZydisDecodedOperand* operand);
+    biscuit::Vec getVec(const ZydisDecodedOperand* operand);
 
-    biscuit::GPR getRefGPR(x86_ref_e ref, x86_size_e size);
+    biscuit::GPR getGPR(const ZydisDecodedOperand* operand, x86_size_e size);
 
-    biscuit::Vec getRefVec(x86_ref_e ref);
+    biscuit::GPR getGPR(x86_ref_e ref, x86_size_e size);
 
-    void setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg);
+    biscuit::Vec getVec(x86_ref_e ref);
 
-    void setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec reg);
+    void setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg);
 
-    void setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg);
+    void setVec(const ZydisDecodedOperand* operand, biscuit::Vec reg);
 
-    void setRefGPR(ZydisRegister ref, x86_size_e size, biscuit::GPR reg) {
-        return setRefGPR(zydisToRef(ref), size, reg);
+    void setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg);
+
+    void setGPR(ZydisRegister ref, x86_size_e size, biscuit::GPR reg) {
+        return setGPR(zydisToRef(ref), size, reg);
     }
 
-    void setRefVec(x86_ref_e ref, biscuit::Vec vec);
+    void setVec(x86_ref_e ref, biscuit::Vec vec);
 
-    biscuit::GPR lea(ZydisDecodedOperand* operand, bool use_temp = true);
+    biscuit::GPR lea(const ZydisDecodedOperand* operand, bool use_temp = true);
 
     void stopCompiling();
 
@@ -612,10 +614,9 @@ private:
 
     void emitInvalidateCallerThunk();
 
-    // Get the register and load the value into it if needed
-    biscuit::GPR gpr(ZydisRegister reg);
+    biscuit::GPR getGPR(ZydisRegister reg);
 
-    biscuit::Vec vec(ZydisRegister reg);
+    biscuit::Vec getVec(ZydisRegister reg);
 
     void scanAhead(u64 rip);
 
@@ -679,7 +680,7 @@ private:
     int perf_fd = -1;
 
     biscuit::GPR cached_lea = x0;
-    ZydisDecodedOperand* cached_lea_operand;
+    const ZydisDecodedOperand* cached_lea_operand;
 
     bool fsrm_sse = true;
 

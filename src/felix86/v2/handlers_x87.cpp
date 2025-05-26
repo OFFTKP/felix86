@@ -23,7 +23,7 @@ FAST_HANDLE(FLD) {
 
 FAST_HANDLE(FILD) {
     biscuit::FPR ftemp = rec.scratchFPR();
-    biscuit::GPR value = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR value = rec.getGPR(&operands[0]);
     switch (operands[0].size) {
     case 16: {
         rec.sext(value, value, X86_SIZE_WORD);
@@ -84,7 +84,7 @@ FAST_HANDLE(FDIVP) {
 
 FAST_HANDLE(FIDIV) {
     biscuit::FPR st0 = rec.getST(0);
-    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR integer = rec.getGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -109,7 +109,7 @@ FAST_HANDLE(FDIVRP) {
 
 FAST_HANDLE(FIDIVR) {
     biscuit::FPR st0 = rec.getST(0);
-    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR integer = rec.getGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -134,7 +134,7 @@ FAST_HANDLE(FMULP) {
 
 FAST_HANDLE(FIMUL) {
     biscuit::FPR st0 = rec.getST(0);
-    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR integer = rec.getGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -181,7 +181,7 @@ FAST_HANDLE(FADDP) {
 
 FAST_HANDLE(FIADD) {
     biscuit::FPR st0 = rec.getST(0);
-    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR integer = rec.getGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -206,7 +206,7 @@ FAST_HANDLE(FSUBP) {
 
 FAST_HANDLE(FISUB) {
     biscuit::FPR st0 = rec.getST(0);
-    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR integer = rec.getGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -231,7 +231,7 @@ FAST_HANDLE(FSUBRP) {
 
 FAST_HANDLE(FISUBR) {
     biscuit::FPR st0 = rec.getST(0);
-    biscuit::GPR integer = rec.getOperandGPR(&operands[0]);
+    biscuit::GPR integer = rec.getGPR(&operands[0]);
     ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
     biscuit::FPR scratch = rec.scratchFPR();
     biscuit::FPR result = rec.scratchFPR();
@@ -344,7 +344,7 @@ FAST_HANDLE(FNSTENV) {
 FAST_HANDLE(FNSTSW) {
     biscuit::GPR temp = rec.scratch();
     as.LWU(temp, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
-    rec.setOperandGPR(&operands[0], temp);
+    rec.setGPR(&operands[0], temp);
 }
 
 FAST_HANDLE(FLDENV) {

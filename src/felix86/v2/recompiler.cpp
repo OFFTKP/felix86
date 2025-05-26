@@ -826,16 +826,16 @@ x86_size_e Recompiler::zydisToSize(ZydisRegister reg) {
     }
 }
 
-biscuit::GPR Recompiler::gpr(ZydisRegister reg) {
+biscuit::GPR Recompiler::getGPR(ZydisRegister reg) {
     x86_ref_e ref = zydisToRef(reg);
     x86_size_e size = zydisToSize(reg);
-    return getRefGPR(ref, size);
+    return getGPR(ref, size);
 }
 
-biscuit::Vec Recompiler::vec(ZydisRegister reg) {
+biscuit::Vec Recompiler::getVec(ZydisRegister reg) {
     ASSERT((reg >= ZYDIS_REGISTER_XMM0 && reg <= ZYDIS_REGISTER_XMM15) || (reg >= ZYDIS_REGISTER_MM0 && reg <= ZYDIS_REGISTER_MM7));
     x86_ref_e ref = zydisToRef(reg);
-    return getRefVec(ref);
+    return getVec(ref);
 }
 
 ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
@@ -846,7 +846,7 @@ ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, 
     return instruction.mnemonic;
 }
 
-x86_size_e Recompiler::getOperandSize(ZydisDecodedOperand* operand) {
+x86_size_e Recompiler::getSize(const ZydisDecodedOperand* operand) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         return zydisToSize(operand->reg.value);
@@ -890,10 +890,10 @@ x86_size_e Recompiler::getOperandSize(ZydisDecodedOperand* operand) {
     }
 }
 
-biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
+biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
-        biscuit::GPR reg = gpr(operand->reg.value);
+        biscuit::GPR reg = getGPR(operand->reg.value);
         return reg;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -915,10 +915,10 @@ biscuit::GPR Recompiler::getOperandGPR(ZydisDecodedOperand* operand) {
     }
 }
 
-biscuit::Vec Recompiler::getOperandVec(ZydisDecodedOperand* operand) {
+biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
-        biscuit::Vec reg = vec(operand->reg.value);
+        biscuit::Vec reg = getVec(operand->reg.value);
         return reg;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -958,7 +958,12 @@ biscuit::GPR Recompiler::flag(x86_ref_e ref) {
     return reg;
 }
 
-biscuit::GPR Recompiler::getRefGPR(x86_ref_e ref, x86_size_e size) {
+biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand, x86_size_e size) {
+    ASSERT(operand->type == ZYDIS_OPERAND_TYPE_REGISTER);
+    return getGPR(zydisToRef(operand->reg.value), size);
+}
+
+biscuit::GPR Recompiler::getGPR(x86_ref_e ref, x86_size_e size) {
     biscuit::GPR gpr = allocatedGPR(ref);
 
     switch (size) {
@@ -1003,16 +1008,16 @@ bool Recompiler::isGPR(ZydisRegister reg) {
     return zydisToRef(reg) >= X86_REF_RAX && zydisToRef(reg) <= X86_REF_R15;
 }
 
-biscuit::Vec Recompiler::getRefVec(x86_ref_e ref) {
+biscuit::Vec Recompiler::getVec(x86_ref_e ref) {
     biscuit::Vec vec = allocatedVec(ref);
     return vec;
 }
 
-void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
+void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     switch (size) {
     case X86_SIZE_BYTE: {
         ASSERT(reg != allocatedGPR(ref));
-        biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
+        biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr8 = scratch();
         as.ANDI(gpr8, reg, 0xff);
         as.ANDI(dest, dest, ~0xff);
@@ -1023,7 +1028,7 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     case X86_SIZE_BYTE_HIGH: {
         ASSERT(reg != allocatedGPR(ref));
         if (!Extensions::B) {
-            biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
+            biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
             biscuit::GPR gpr8 = scratch();
             biscuit::GPR mask = scratch();
             as.LI(mask, 0xff00);
@@ -1035,7 +1040,7 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
             popScratch();
             popScratch();
         } else {
-            biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
+            biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
             biscuit::GPR gpr8 = scratch();
             as.ANDI(gpr8, reg, 0xFF);
             as.RORI(dest, dest, 8);
@@ -1048,7 +1053,7 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     }
     case X86_SIZE_WORD: {
         ASSERT(reg != allocatedGPR(ref));
-        biscuit::GPR dest = getRefGPR(ref, X86_SIZE_QWORD);
+        biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr16 = scratch();
         if (Extensions::B) {
             as.ZEXTH(gpr16, reg);
@@ -1085,12 +1090,12 @@ void Recompiler::setRefGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     }
 }
 
-void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
+void Recompiler::setVec(x86_ref_e ref, biscuit::Vec vec) {
     biscuit::Vec dest = allocatedVec(ref);
 
     if (dest != vec) {
         if (Extensions::VLEN == 128) {
-            ASSERT_MSG(isXMMOrMM(ref), "setRefVec dealing with YMM registers but your VLEN is 128");
+            ASSERT_MSG(isXMMOrMM(ref), "setVec dealing with YMM registers but your VLEN is 128");
             as.VMV1R(dest, vec);
         } else if (Extensions::VLEN >= 256) {
             if (isXMMOrMM(ref)) {
@@ -1118,12 +1123,12 @@ void Recompiler::setRefVec(x86_ref_e ref, biscuit::Vec vec) {
     }
 }
 
-void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
+void Recompiler::setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         x86_ref_e ref = zydisToRef(operand->reg.value);
         x86_size_e size = zydisToSize(operand->reg.value);
-        setRefGPR(ref, size, reg);
+        setGPR(ref, size, reg);
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -1137,11 +1142,11 @@ void Recompiler::setOperandGPR(ZydisDecodedOperand* operand, biscuit::GPR reg) {
     }
 }
 
-void Recompiler::setOperandVec(ZydisDecodedOperand* operand, biscuit::Vec vec) {
+void Recompiler::setVec(const ZydisDecodedOperand* operand, biscuit::Vec vec) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         x86_ref_e ref = zydisToRef(operand->reg.value);
-        setRefVec(ref, vec);
+        setVec(ref, vec);
         break;
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
@@ -1201,7 +1206,7 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     return true;
 }
 
-biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
+biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) {
     if (cached_lea_operand == operand) {
         ASSERT(cached_lea_operand->mem.base == operand->mem.base);
         ASSERT(cached_lea_operand->mem.index == operand->mem.index);
@@ -1244,13 +1249,13 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
     if (!use_temp) {
         if (!has_segment && has_base && !has_index && !has_disp) {
             cached_lea_operand = nullptr;
-            biscuit::GPR base = gpr(operand->mem.base);
+            biscuit::GPR base = getGPR(operand->mem.base);
             return base;
         }
 
         if (!has_segment && !has_base && has_index && !has_disp && operand->mem.scale == 1) {
             cached_lea_operand = nullptr;
-            biscuit::GPR index = gpr(operand->mem.index);
+            biscuit::GPR index = getGPR(operand->mem.index);
             return index;
         }
     }
@@ -1258,18 +1263,18 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
     if (has_disp) {
         // Load the displacement first
         if (has_base && IsValidSigned12BitImm(operand->mem.disp.value)) {
-            base = gpr(operand->mem.base);
+            base = getGPR(operand->mem.base);
             as.ADDI(address, base, operand->mem.disp.value);
         } else {
             as.LI(address, operand->mem.disp.value);
             if (has_base) {
-                base = gpr(operand->mem.base);
+                base = getGPR(operand->mem.base);
                 as.ADD(address, address, base);
             }
         }
 
         if (has_index) {
-            index = gpr(operand->mem.index);
+            index = getGPR(operand->mem.index);
             u8 scale = operand->mem.scale;
             if (scale != 1) {
                 if (Extensions::B) {
@@ -1315,7 +1320,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
         }
     } else {
         if (has_index) {
-            index = gpr(operand->mem.index);
+            index = getGPR(operand->mem.index);
             u8 scale = operand->mem.scale;
             if (!has_base) {
                 // No base, shift directly into address
@@ -1340,7 +1345,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
                 }
             } else {
                 // Add index to the base
-                base = gpr(operand->mem.base);
+                base = getGPR(operand->mem.base);
                 if (scale != 1) {
                     if (Extensions::B) {
                         switch (scale) {
@@ -1385,7 +1390,7 @@ biscuit::GPR Recompiler::lea(ZydisDecodedOperand* operand, bool use_temp) {
             }
         } else {
             ASSERT(has_base);
-            base = gpr(operand->mem.base);
+            base = getGPR(operand->mem.base);
             as.MV(address, base);
         }
     }
@@ -2739,7 +2744,7 @@ void Recompiler::inlineSyscall(int sysno, int argcount) {
     // as.MV(old_a7, a7);
     // as.LI(a7, sysno);
     // as.ECALL();
-    // setRefGPR(X86_REF_RAX, X86_SIZE_QWORD, a0);
+    // setGPR(X86_REF_RAX, X86_SIZE_QWORD, a0);
     // as.MV(a0, old_a0);
     // as.MV(a1, old_a1);
     // as.MV(a7, old_a7);

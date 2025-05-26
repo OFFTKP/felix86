@@ -14532,16 +14532,12 @@
         "disassembly": "imul dx, bx"
     },
     "0fafd3": {
-        "instruction_count": 10,
+        "instruction_count": 6,
         "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "ADD.UW          t1, s0, zero",
-            "ADDIW           t4, ra, 0x0(0)",
-            "ADDIW           t3, t1, 0x0(0)",
-            "MUL             t3, t3, t4",
-            "ADD.UW          a2, t3, zero",
-            "ADDIW           s5, t3, 0x0(0)",
-            "XOR             s9, s5, t3",
+            "MULW            ra, a2, s0",
+            "ADD.UW          a2, ra, zero",
+            "ADDIW           s5, ra, 0x0(0)",
+            "XOR             s9, s5, ra",
             "SLTU            s9, zero, s9",
             "ADDI            s5, s9, 0x0(0)"
         ],
@@ -14550,9 +14546,9 @@
     "480fafd3": {
         "instruction_count": 7,
         "expected_asm": [
-            "MULH            ra, a2, s0",
             "MUL             t1, a2, s0",
             "ADDI            a2, t1, 0x0(0)",
+            "MULH            ra, a2, s0",
             "SRAI            s5, t1, 0x3f(63)",
             "XOR             s9, s5, ra",
             "SLTU            s9, zero, s9",
@@ -14580,16 +14576,13 @@
         "disassembly": "imul dx, [rdi]"
     },
     "0faf17": {
-        "instruction_count": 10,
+        "instruction_count": 7,
         "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "LWU             t1, a0, 0x0(0)",
-            "ADDIW           t2, ra, 0x0(0)",
-            "ADDIW           t4, t1, 0x0(0)",
-            "MUL             t4, t4, t2",
-            "ADD.UW          a2, t4, zero",
-            "ADDIW           s5, t4, 0x0(0)",
-            "XOR             s9, s5, t4",
+            "LWU             ra, a0, 0x0(0)",
+            "MULW            t3, a2, ra",
+            "ADD.UW          a2, t3, zero",
+            "ADDIW           s5, t3, 0x0(0)",
+            "XOR             s9, s5, t3",
             "SLTU            s9, zero, s9",
             "ADDI            s5, s9, 0x0(0)"
         ],
@@ -14599,9 +14592,9 @@
         "instruction_count": 8,
         "expected_asm": [
             "LD              ra, a0, 0x0(0)",
-            "MULH            t3, a2, ra",
             "MUL             t4, a2, ra",
             "ADDI            a2, t4, 0x0(0)",
+            "MULH            t3, a2, ra",
             "SRAI            s5, t4, 0x3f(63)",
             "XOR             s9, s5, t3",
             "SLTU            s9, zero, s9",
@@ -14630,17 +14623,13 @@
         "disassembly": "imul dx, bx, 0xFFFF"
     },
     "6bd3ff": {
-        "instruction_count": 11,
+        "instruction_count": 7,
         "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "ADD.UW          t1, s0, zero",
-            "ADDIW           t3, zero, 0xffffffff(-1)",
-            "ADDIW           t2, t1, 0x0(0)",
-            "ADDIW           t4, t3, 0x0(0)",
-            "MUL             t4, t4, t2",
-            "ADD.UW          a2, t4, zero",
-            "ADDIW           s5, t4, 0x0(0)",
-            "XOR             s9, s5, t4",
+            "ADDIW           ra, zero, 0xffffffff(-1)",
+            "MULW            t1, s0, ra",
+            "ADD.UW          a2, t1, zero",
+            "ADDIW           s5, t1, 0x0(0)",
+            "XOR             s9, s5, t1",
             "SLTU            s9, zero, s9",
             "ADDI            s5, s9, 0x0(0)"
         ],
@@ -14650,9 +14639,9 @@
         "instruction_count": 8,
         "expected_asm": [
             "ADDIW           ra, zero, 0xffffffff(-1)",
-            "MULH            t1, s0, ra",
             "MUL             t3, s0, ra",
             "ADDI            a2, t3, 0x0(0)",
+            "MULH            t1, s0, ra",
             "SRAI            s5, t3, 0x3f(63)",
             "XOR             s9, s5, t1",
             "SLTU            s9, zero, s9",
@@ -14681,17 +14670,14 @@
         "disassembly": "imul dx, [rdi], 0xFFFF"
     },
     "6b17ff": {
-        "instruction_count": 11,
+        "instruction_count": 8,
         "expected_asm": [
-            "ADD.UW          ra, a2, zero",
-            "LWU             t1, a0, 0x0(0)",
-            "ADDIW           t4, zero, 0xffffffff(-1)",
-            "ADDIW           t5, t1, 0x0(0)",
-            "ADDIW           t2, t4, 0x0(0)",
-            "MUL             t2, t2, t5",
-            "ADD.UW          a2, t2, zero",
-            "ADDIW           s5, t2, 0x0(0)",
-            "XOR             s9, s5, t2",
+            "LWU             ra, a0, 0x0(0)",
+            "ADDIW           t3, zero, 0xffffffff(-1)",
+            "MULW            t4, ra, t3",
+            "ADD.UW          a2, t4, zero",
+            "ADDIW           s5, t4, 0x0(0)",
+            "XOR             s9, s5, t4",
             "SLTU            s9, zero, s9",
             "ADDI            s5, s9, 0x0(0)"
         ],
@@ -14702,9 +14688,9 @@
         "expected_asm": [
             "LD              ra, a0, 0x0(0)",
             "ADDIW           t3, zero, 0xffffffff(-1)",
-            "MULH            t4, ra, t3",
             "MUL             t2, ra, t3",
             "ADDI            a2, t2, 0x0(0)",
+            "MULH            t4, ra, t3",
             "SRAI            s5, t2, 0x3f(63)",
             "XOR             s9, s5, t4",
             "SLTU            s9, zero, s9",
