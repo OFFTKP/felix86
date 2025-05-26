@@ -2553,18 +2553,17 @@ FAST_HANDLE(IMUL) {
         }
     } else if (opcount == 2 || opcount == 3) {
         biscuit::GPR dst, src1, src2;
+        if (opcount == 2) {
+            dst = rec.getGPR(&operands[0]);
+            src1 = dst;
+            src2 = rec.getGPR(&operands[1]);
+        } else {
+            dst = rec.getGPR(&operands[0]);
+            src1 = rec.getGPR(&operands[1]);
+            src2 = rec.getGPR(&operands[2]);
+        }
         switch (size) {
         case X86_SIZE_WORD: {
-            if (opcount == 2) {
-                dst = rec.getGPR(&operands[0]);
-                src1 = dst;
-                src2 = rec.getGPR(&operands[1]);
-            } else {
-                dst = rec.getGPR(&operands[0]);
-                src1 = rec.getGPR(&operands[1]);
-                src2 = rec.getGPR(&operands[2]);
-            }
-
             biscuit::GPR result = rec.scratch();
             biscuit::GPR dst_sext = rec.scratch();
             rec.sexth(dst_sext, src1);
@@ -2583,24 +2582,11 @@ FAST_HANDLE(IMUL) {
             break;
         }
         case X86_SIZE_DWORD: {
-            if (opcount == 2) {
-                dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-                src1 = dst;
-                if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER)
-                    src2 = rec.getGPR(&operands[1], X86_SIZE_QWORD);
-                else
-                    src2 = rec.getGPR(&operands[1]);
-            } else {
-                dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-                if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER)
-                    src1 = rec.getGPR(&operands[1], X86_SIZE_QWORD);
-                else
-                    src1 = rec.getGPR(&operands[1]);
-                src2 = rec.getGPR(&operands[2]);
-            }
-
             biscuit::GPR result = rec.scratch();
-            as.MULW(result, src1, src2);
+            biscuit::GPR dst_sext = rec.scratch();
+            as.ADDIW(dst_sext, src1, 0);
+            as.ADDIW(result, src2, 0);
+            as.MUL(result, result, dst_sext);
             rec.setGPR(&operands[0], result);
 
             if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
@@ -2614,16 +2600,6 @@ FAST_HANDLE(IMUL) {
             break;
         }
         case X86_SIZE_QWORD: {
-            if (opcount == 2) {
-                dst = rec.getGPR(&operands[0]);
-                src1 = dst;
-                src2 = rec.getGPR(&operands[1]);
-            } else {
-                dst = rec.getGPR(&operands[0]);
-                src1 = rec.getGPR(&operands[1]);
-                src2 = rec.getGPR(&operands[2]);
-            }
-
             biscuit::GPR result = rec.scratch();
             biscuit::GPR result_low = rec.scratch();
             as.MUL(result_low, src1, src2);
