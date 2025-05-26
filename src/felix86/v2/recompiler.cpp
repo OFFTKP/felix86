@@ -459,6 +459,12 @@ u64 Recompiler::compileSequence(u64 rip) {
             }
         }
 
+        if (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) {
+            ZydisDisassembledInstruction inst;
+            ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (void*)rip, 15, &inst);
+            PLAIN("%s", inst.text);
+        }
+
         if (is_x87 && fsrm_sse) {
             // An x87 instruction, load the x87 rounding mode
             biscuit::GPR rm = scratch();
