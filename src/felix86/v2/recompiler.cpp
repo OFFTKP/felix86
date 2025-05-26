@@ -1532,6 +1532,7 @@ void Recompiler::restoreState() {
     }
 
     // TODO: can we optimize these using special loads
+    setVectorState(SEW::E64, 1);
     for (int i = 0; i < 8; i++) {
         biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_ST0 + i));
         as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + sizeof(decltype(ThreadState::fp[0])) * i);
@@ -2457,10 +2458,12 @@ biscuit::Vec Recompiler::getST(ZydisDecodedOperand* operand) {
         switch (operand->size) {
         case 32: {
             biscuit::Vec st = scratchVec();
+            biscuit::Vec mem = scratchVec();
             setVectorState(SEW::E32, 1, LMUL::MF2);
-            as.VLE32(st, lea(operand, false));
-            as.VFWCVT_F_F(st, st);
-            popScratch(); // the gpr address scratch
+            as.VLE32(mem, lea(operand, false));
+            as.VFWCVT_F_F(st, mem);
+            popScratch();    // the gpr address scratch
+            popScratchVec(); // mem
             return st;
         }
         case 64: {
