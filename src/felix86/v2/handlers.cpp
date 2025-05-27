@@ -2626,9 +2626,9 @@ FAST_HANDLE(IMUL) {
     } else if (opcount == 2 || opcount == 3) {
         if (g_config.noflag_opts && !rec.shouldEmitFlag(rip, X86_REF_CF) && !rec.shouldEmitFlag(rip, X86_REF_OF)) {
             if (opcount == 2) {
-                return fast_IMUL_2_noflags(rec, rip, as, instruction, operands);
+                // return fast_IMUL_2_noflags(rec, rip, as, instruction, operands);
             } else if (opcount == 3) {
-                // return fast_IMUL_3_noflags(rec, rip, as, instruction, operands);
+                return fast_IMUL_3_noflags(rec, rip, as, instruction, operands);
             }
         }
 
