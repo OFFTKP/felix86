@@ -1835,12 +1835,12 @@ FAST_HANDLE(TEST) {
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
     bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
-    bool needs_any_flag = needs_pf || needs_sf || needs_zf;
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_any_flag = needs_pf || needs_sf || needs_zf || needs_cf || needs_of;
     if (!needs_any_flag) {
-        rec.clearFlag(X86_REF_CF);
-        rec.clearFlag(X86_REF_OF);
-        WARN("TEST with no flags used?");
-        print_address(rip);
+        // Weirdly enough some x86 programs run test al, al and use no flags and overwrite them right after
+        // Unsure if this is some sort of special nop or something, but in any case we don't warn about this
         return;
     }
 
@@ -1853,23 +1853,23 @@ FAST_HANDLE(TEST) {
 
     x86_size_e size = rec.getSize(&operands[0]);
 
-    if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+    if (needs_cf) {
         rec.clearFlag(X86_REF_CF);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+    if (needs_pf) {
         rec.updateParity(result);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+    if (needs_zf) {
         rec.updateZero(result, size);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
+    if (needs_sf) {
         rec.updateSign(result, size);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+    if (needs_of) {
         rec.clearFlag(X86_REF_OF);
     }
 }
