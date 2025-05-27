@@ -917,6 +917,8 @@ int main() {
     GEN_SSE(pmovzxwq);
     GEN_SSE(pmovzxdq);
 
+    GEN_SSE(phminposuw);
+
     GEN_SSE(pcmpeqq);
     GEN_SSE(ptest);
 

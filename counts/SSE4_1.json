@@ -625,6 +625,68 @@
         ],
         "disassembly": "pmovzxdq xmm1, qword ptr [rdi]"
     },
+    "660f3841dc": {
+        "instruction_count": 14,
+        "expected_asm": [
+            "VSETIVLI        zero, 8, e16, m1, tu, mu",
+            "VMV.V.I         v27, 0xffffffff(-1)",
+            "VREDMINU.VS     v26, v6, v27, none",
+            "VMV.V.V         v28, v6",
+            "VMV.X.S         ra, v26",
+            "ADDIW           t3, zero, 0xffffffff(-1)",
+            "ADDI            t3, t3, 0x1(1)",
+            "VMV.X.S         t1, v28",
+            "VSLIDE1DOWN.VX  v28, v28, zero, none",
+            "BNE             t1, ra, 0xfffffff4(-12)",
+            "VMV.V.I         v29, 0x0(0)",
+            "VMV.S.X         v29, t3",
+            "VSLIDE1UP.VX    v30, v29, ra, none",
+            "VMV.V.V         v5, v30"
+        ],
+        "disassembly": "phminposuw xmm3, xmm4"
+    },
+    "660f3841d2": {
+        "instruction_count": 14,
+        "expected_asm": [
+            "VSETIVLI        zero, 8, e16, m1, tu, mu",
+            "VMV.V.I         v27, 0xffffffff(-1)",
+            "VREDMINU.VS     v26, v4, v27, none",
+            "VMV.V.V         v28, v4",
+            "VMV.X.S         ra, v26",
+            "ADDIW           t3, zero, 0xffffffff(-1)",
+            "ADDI            t3, t3, 0x1(1)",
+            "VMV.X.S         t1, v28",
+            "VSLIDE1DOWN.VX  v28, v28, zero, none",
+            "BNE             t1, ra, 0xfffffff4(-12)",
+            "VMV.V.I         v29, 0x0(0)",
+            "VMV.S.X         v29, t3",
+            "VSLIDE1UP.VX    v30, v29, ra, none",
+            "VMV.V.V         v4, v30"
+        ],
+        "disassembly": "phminposuw xmm2, xmm2"
+    },
+    "660f38410f": {
+        "instruction_count": 16,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v28, a0, none, 1",
+            "VSETIVLI        zero, 8, e16, m1, tu, mu",
+            "VMV.V.I         v27, 0xffffffff(-1)",
+            "VREDMINU.VS     v26, v28, v27, none",
+            "VMV.V.V         v29, v28",
+            "VMV.X.S         ra, v26",
+            "ADDIW           t3, zero, 0xffffffff(-1)",
+            "ADDI            t3, t3, 0x1(1)",
+            "VMV.X.S         t1, v29",
+            "VSLIDE1DOWN.VX  v29, v29, zero, none",
+            "BNE             t1, ra, 0xfffffff4(-12)",
+            "VMV.V.I         v30, 0x0(0)",
+            "VMV.S.X         v30, t3",
+            "VSLIDE1UP.VX    v31, v30, ra, none",
+            "VMV.V.V         v3, v31"
+        ],
+        "disassembly": "phminposuw xmm1, [rdi]"
+    },
     "660f3829dc": {
         "instruction_count": 4,
         "expected_asm": [

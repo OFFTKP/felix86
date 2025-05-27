@@ -7909,6 +7909,39 @@ FAST_HANDLE(PAVGW) {
     rec.setVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PHMINPOSUW) {
+    biscuit::Vec min = rec.scratchVec();
+    biscuit::Vec vs1 = rec.scratchVec();
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E16, 8);
+    as.VMV(vs1, -1); // vd[0] = minu( vs1[0] , vs2[*] ), set vs1 to max so we get min element of vs2
+    as.VREDMINU(min, src, vs1);
+
+    // We found the min but we also need to find the index
+    biscuit::Label loop;
+    biscuit::Vec src_copy = rec.scratchVec();
+    biscuit::GPR min_gpr = rec.scratch();
+    biscuit::GPR current = rec.scratch();
+    biscuit::GPR index = rec.scratch();
+    as.VMV(src_copy, src);
+    as.VMV_XS(min_gpr, min);
+    as.LI(index, -1);
+
+    as.Bind(&loop);
+    as.ADDI(index, index, 1);
+    as.VMV_XS(current, src_copy);
+    as.VSLIDE1DOWN(src_copy, src_copy, x0);
+    as.BNE(current, min_gpr, &loop);
+
+    biscuit::Vec dst = rec.scratchVec();
+    biscuit::Vec dst_final = rec.scratchVec();
+    as.VMV(dst, 0);
+    as.VMV_SX(dst, index);
+    as.VSLIDE1UP(dst_final, dst, min_gpr);
+
+    rec.setVec(&operands[0], dst_final);
+}
+
 FAST_HANDLE(AESENC) {
     if (Extensions::Zvkned) {
         biscuit::Vec dst = rec.getVec(&operands[0]);
