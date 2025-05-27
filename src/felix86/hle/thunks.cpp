@@ -791,6 +791,11 @@ void Thunks::initialize() {
             if (!ptr) {
                 ptr = dlsym(libwayland, metadata.function_name);
             }
+        } else if (lib_name == "libGLX.so" && thunk_glx && libGLX) {
+            ptr = get_custom_glx_thunk(metadata.function_name);
+            if (!ptr) {
+                ptr = dlsym(libGLX, metadata.function_name);
+            }
         } else {
             continue;
         }
