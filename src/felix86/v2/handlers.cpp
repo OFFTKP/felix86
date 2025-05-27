@@ -2370,6 +2370,7 @@ void CMOV(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& inst
         as.OR(result, tmp1, tmp2);
     } else {
         Label false_label;
+        as.MV(result, dst);
         as.BEQZ(cond, &false_label);
         as.MV(result, src);
         as.Bind(&false_label);
