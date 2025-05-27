@@ -1837,7 +1837,10 @@ FAST_HANDLE(TEST) {
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_any_flag = needs_pf || needs_sf || needs_zf;
     if (!needs_any_flag) {
+        rec.clearFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_OF);
         WARN("TEST with no flags used?");
+        print_address(rip);
         return;
     }
 
@@ -1846,11 +1849,7 @@ FAST_HANDLE(TEST) {
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
 
-    if (dst == src) {
-        result = dst;
-    } else {
-        as.AND(result, dst, src);
-    }
+    as.AND(result, dst, src);
 
     x86_size_e size = rec.getSize(&operands[0]);
 
