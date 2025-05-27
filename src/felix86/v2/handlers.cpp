@@ -2465,6 +2465,10 @@ FAST_HANDLE(IMUL_2_noflags) {
     else
         src = rec.getGPR(&operands[1]);
 
+    ZydisDisassembledInstruction i;
+    ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (void*)rip, 15, &i);
+    printf("%s\n", i.text);
+
     switch (size) {
     case X86_SIZE_WORD: {
         biscuit::GPR result = rec.scratch();
@@ -2625,7 +2629,7 @@ FAST_HANDLE(IMUL) {
         }
     } else if (opcount == 2 || opcount == 3) {
         if (g_config.noflag_opts && !rec.shouldEmitFlag(rip, X86_REF_CF) && !rec.shouldEmitFlag(rip, X86_REF_OF)) {
-            if (opcount == 2 && size != X86_SIZE_WORD) {
+            if (opcount == 2) {
                 return fast_IMUL_2_noflags(rec, rip, as, instruction, operands);
             } else if (opcount == 3) {
                 return fast_IMUL_3_noflags(rec, rip, as, instruction, operands);
