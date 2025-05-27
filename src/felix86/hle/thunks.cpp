@@ -46,13 +46,13 @@ static std::mutex display_map_mutex;
 static std::unordered_map<void*, void*> host_to_guest;
 static std::unordered_map<void*, void*> guest_to_host;
 
-Display* felix86_XOpenDisplay(const char* name) {
+Display* host_XOpenDisplay(const char* name) {
     ASSERT(name);
     static Display* (*xopendisplay_ptr)(const char*) = (decltype(xopendisplay_ptr))dlsym(libX11, "XOpenDisplay");
     return xopendisplay_ptr(name);
 }
 
-int felix86_XFlush(Display* display) {
+int host_XFlush(Display* display) {
     if (display == nullptr) {
         WARN("XFlush(nil) called?");
         return 0;
@@ -64,7 +64,7 @@ int felix86_XFlush(Display* display) {
 
 using XVisualInfoPtr = XVisualInfo* (*)(Display*, long, XVisualInfo*, int*);
 
-XVisualInfo* felix86_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return) {
+XVisualInfo* host_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return) {
     static XVisualInfoPtr xvisualinfo_ptr = (XVisualInfoPtr)dlsym(libX11, "XGetVisualInfo");
     ASSERT(xvisualinfo_ptr);
     return xvisualinfo_ptr(display, vinfo_mask, vinfo_template, nitems_return);
@@ -84,7 +84,7 @@ Display* guestToHostDisplay(Display* guest) {
 
     _XDisplay* guest_display = (_XDisplay*)guest;
     const char* display_name = guest_display->display_name;
-    Display* host_display = felix86_XOpenDisplay(display_name);
+    Display* host_display = host_XOpenDisplay(display_name);
     if (host_display) {
         guest_to_host[guest_display] = host_display;
         host_to_guest[host_display] = guest_display;
@@ -123,7 +123,7 @@ XVisualInfo* getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
     v.visualid = guest->visualid;
 
     int c;
-    XVisualInfo* info = felix86_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
+    XVisualInfo* info = host_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
 
     if (c >= 1 && info != nullptr) {
         PLAIN("getHostVisualInfo(%p, %p) has created an XVisualInfo: %p", host_display, guest, info);
@@ -660,19 +660,6 @@ void* host_eglGetProcAddress(const char* name) {
 
 // Load the host function pointers in the thunkptr namespace with pointers using dlopen + dlsym
 void Thunks::initialize() {
-#if 0
-    constexpr const char* glx_name = "libGLX.so";
-    libGLX = dlopen(glx_name, RTLD_NOW | RTLD_LOCAL);
-    if (!libGLX) {
-        ERROR("I couldn't open libGLX.so, error: %s", dlerror());
-    }
-
-    constexpr const char* x11_name = "libX11.so";
-    libX11 = dlopen(x11_name, RTLD_NOW | RTLD_LOCAL);
-    if (!libX11) {
-        ERROR("I couldn't open libX11.so, error: %s", dlerror());
-    }
-#endif
     std::filesystem::path thunks = g_config.thunks_path;
     ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunks.c_str());
     std::string srootfs = g_config.rootfs_path.string();
@@ -737,6 +724,7 @@ void Thunks::initialize() {
         libEGL = dlopen(egl_name, RTLD_NOW | RTLD_LOCAL);
         if (!libEGL) {
             WARN("I couldn't open libEGL.so for thunking, error: %s", dlerror());
+            thunk_egl = false;
         } else {
             add_overlays({"libEGL.so", "libEGL.so.1"});
         }
@@ -747,18 +735,27 @@ void Thunks::initialize() {
         libvulkan = dlopen(vulkan_name, RTLD_NOW | RTLD_LOCAL);
         if (!libvulkan) {
             WARN("I couldn't open libvulkan.so for thunking, error: %s", dlerror());
+            thunk_vk = false;
         } else {
             add_overlays({"libvulkan.so", "libvulkan.so.1"});
         }
     }
 
-    if (thunk_egl) {
+    if (thunk_glx) {
         constexpr const char* glx_name = "libGLX.so.0";
         libGLX = dlopen(glx_name, RTLD_NOW | RTLD_LOCAL);
         if (!libGLX) {
             WARN("I couldn't open libGLX.so for thunking, error: %s", dlerror());
+            thunk_glx = false;
         } else {
             add_overlays({"libGLX.so", "libGLX.so.0"});
+        }
+
+        constexpr const char* x11_name = "libX11.so";
+        libX11 = dlopen(x11_name, RTLD_NOW | RTLD_LOCAL);
+        if (!libX11) {
+            WARN("I couldn't open libX11.so, error: %s", dlerror());
+            thunk_glx = false;
         }
     }
 
@@ -767,6 +764,7 @@ void Thunks::initialize() {
         libwayland = dlopen(wayland_name, RTLD_NOW | RTLD_LOCAL);
         if (!libwayland) {
             WARN("I couldn't open libwayland-client.so for thunking, error: %s", dlerror());
+            thunk_wayland = false;
         } else {
             add_overlays({"libwayland-client.so", "libwayland-client.so.0"});
         }
