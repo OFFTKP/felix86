@@ -561,6 +561,11 @@ void felix86_psadbw(u8* dst, u8* src) {
 }
 
 void dump_states() {
+    if (!g_config.calltrace) {
+        printf("Enable FELIX86_CALLTRACE to see the calltrace\n");
+        return;
+    }
+
     auto lock = g_process_globals.states_lock.lock();
     auto& states = g_process_globals.states;
     int i = 0;

@@ -30,11 +30,11 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #include <vulkan/vulkan.h>
 #include <wayland-client.h>
 
-static void* libGLX = nullptr;
-static void* libX11 = nullptr;
-static void* libEGL = nullptr;
-static void* libvulkan = nullptr;
-static void* libwayland = nullptr;
+void* libGLX = nullptr;
+void* libX11 = nullptr;
+void* libEGL = nullptr;
+void* libvulkan = nullptr;
+void* libwayland = nullptr;
 
 using XGetVisualInfoType = decltype(&XGetVisualInfo);
 using XSyncType = decltype(&XSync);
@@ -684,11 +684,13 @@ void Thunks::initialize() {
 
     bool thunk_vk = false;
     bool thunk_egl = false;
+    bool thunk_glx = false;
     bool thunk_wayland = false;
     std::string enabled_thunks = g_config.enabled_thunks;
     if (enabled_thunks == "all") {
         thunk_vk = true;
         thunk_egl = true;
+        thunk_glx = true;
         thunk_wayland = true;
     } else if (!enabled_thunks.empty()) {
         std::vector<std::string> list = split_string(enabled_thunks, ',');
@@ -704,114 +706,87 @@ void Thunks::initialize() {
                 thunk_egl = true;
             } else if (n == "libwayland-client" || n == "libwayland" || n == "wayland-client" || n == "wayland" || n == "wl") {
                 thunk_wayland = true;
+            } else if (n == "libglx" || n == "glx") {
+                thunk_glx = true;
             } else {
                 ERROR("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
             }
         }
     }
 
-    if (thunk_egl) {
-        std::filesystem::path egl_thunk;
-        bool found_egl = false;
-
-        auto check_egl = [&](const char* path) {
-            if (!found_egl && std::filesystem::exists(thunks / path)) {
-                egl_thunk = thunks / path;
-                found_egl = true;
+    auto add_overlays = [&thunks](std::initializer_list<const char*> names) {
+        std::filesystem::path thunk_path;
+        for (const char* name : names) {
+            if (std::filesystem::exists(thunks / name)) {
+                thunk_path = thunks / name;
+                break;
             }
-        };
+        }
 
-        check_egl("libEGL.so.1");
-        check_egl("libEGL.so");
-        check_egl("libEGL-thunked.so");
-
-        if (!egl_thunk.empty()) {
-            Overlays::addOverlay("libEGL.so.1", egl_thunk);
-            Overlays::addOverlay("libEGL.so", egl_thunk);
+        if (!thunk_path.empty()) {
+            for (const char* name : names) {
+                Overlays::addOverlay(name, thunk_path);
+            }
         } else {
             WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
+        }
+    };
+
+    if (thunk_egl) {
+        constexpr const char* egl_name = "libEGL.so.1";
+        libEGL = dlopen(egl_name, RTLD_NOW | RTLD_LOCAL);
+        if (!libEGL) {
+            WARN("I couldn't open libEGL.so for thunking, error: %s", dlerror());
+        } else {
+            add_overlays({"libEGL.so", "libEGL.so.1"});
         }
     }
 
     if (thunk_vk) {
-        std::filesystem::path vulkan_thunk;
-        bool found_vulkan = false;
-
-        auto check_vulkan = [&](const char* path) {
-            if (!found_vulkan && std::filesystem::exists(thunks / path)) {
-                vulkan_thunk = thunks / path;
-                found_vulkan = true;
-            }
-        };
-
-        check_vulkan("libvulkan.so.1");
-        check_vulkan("libvulkan.so");
-        check_vulkan("libvulkan-thunked.so");
-
-        if (!vulkan_thunk.empty()) {
-            Overlays::addOverlay("libvulkan.so.1", vulkan_thunk);
-            Overlays::addOverlay("libvulkan.so", vulkan_thunk);
+        constexpr const char* vulkan_name = "libvulkan.so.1";
+        libvulkan = dlopen(vulkan_name, RTLD_NOW | RTLD_LOCAL);
+        if (!libvulkan) {
+            WARN("I couldn't open libvulkan.so for thunking, error: %s", dlerror());
         } else {
-            WARN("I couldn't find libvulkan.so in %s", thunks.c_str());
+            add_overlays({"libvulkan.so", "libvulkan.so.1"});
+        }
+    }
+
+    if (thunk_egl) {
+        constexpr const char* glx_name = "libGLX.so.0";
+        libGLX = dlopen(glx_name, RTLD_NOW | RTLD_LOCAL);
+        if (!libGLX) {
+            WARN("I couldn't open libGLX.so for thunking, error: %s", dlerror());
+        } else {
+            add_overlays({"libGLX.so", "libGLX.so.0"});
         }
     }
 
     if (thunk_wayland) {
-        std::filesystem::path wayland_thunk;
-        bool found_wayland = false;
-
-        auto check_wayland = [&](const char* path) {
-            if (!found_wayland && std::filesystem::exists(thunks / path)) {
-                wayland_thunk = thunks / path;
-                found_wayland = true;
-            }
-        };
-
-        check_wayland("libwayland-client.so.0");
-        check_wayland("libwayland-client.so");
-        check_wayland("libwayland-client-thunked.so");
-
-        if (!wayland_thunk.empty()) {
-            Overlays::addOverlay("libwayland-client.so.0", wayland_thunk);
-            Overlays::addOverlay("libwayland-client.so", wayland_thunk);
+        constexpr const char* wayland_name = "libwayland-client.so.0";
+        libwayland = dlopen(wayland_name, RTLD_NOW | RTLD_LOCAL);
+        if (!libwayland) {
+            WARN("I couldn't open libwayland-client.so for thunking, error: %s", dlerror());
         } else {
-            WARN("I couldn't find libwayland-client.so in %s", thunks.c_str());
+            add_overlays({"libwayland-client.so", "libwayland-client.so.0"});
         }
-    }
-
-    constexpr const char* egl_name = "libEGL.so.1";
-    libEGL = dlopen(egl_name, RTLD_NOW | RTLD_LOCAL);
-    if (!libEGL) {
-        ERROR("I couldn't open libEGL.so, error: %s", dlerror());
-    }
-
-    constexpr const char* vulkan_name = "libvulkan.so.1";
-    libvulkan = dlopen(vulkan_name, RTLD_NOW | RTLD_LOCAL);
-    if (!libvulkan) {
-        ERROR("I couldn't open libvulkan.so, error: %s", dlerror());
-    }
-
-    constexpr const char* wayland_name = "libwayland-client.so.0";
-    libwayland = dlopen(wayland_name, RTLD_NOW | RTLD_LOCAL);
-    if (!libwayland) {
-        ERROR("I couldn't open libwayland-client.so, error: %s", dlerror());
     }
 
     for (int i = 0; i < sizeof(thunk_metadata) / sizeof(Thunk); i++) {
         Thunk& metadata = thunk_metadata[i];
         void* ptr = nullptr;
         std::string lib_name = metadata.lib_name;
-        if (lib_name == "libEGL.so") {
+        if (lib_name == "libEGL.so" && thunk_egl && libEGL) {
             ptr = get_custom_egl_thunk(metadata.function_name);
             if (!ptr) {
                 ptr = dlsym(libEGL, metadata.function_name);
             }
-        } else if (lib_name == "libvulkan.so") {
+        } else if (lib_name == "libvulkan.so" && thunk_vk && libvulkan) {
             ptr = get_custom_vk_thunk(metadata.function_name);
             if (!ptr) {
                 ptr = dlsym(libvulkan, metadata.function_name);
             }
-        } else if (lib_name == "libwayland-client.so") {
+        } else if (lib_name == "libwayland-client.so" && thunk_wayland && libwayland) {
             ptr = get_custom_wl_thunk(metadata.function_name);
             if (!ptr) {
                 ptr = dlsym(libwayland, metadata.function_name);
