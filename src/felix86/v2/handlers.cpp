@@ -2632,7 +2632,7 @@ FAST_HANDLE(IMUL) {
             if (opcount == 2) {
                 // return fast_IMUL_2_noflags(rec, rip, as, instruction, operands);
             } else if (opcount == 3) {
-                return fast_IMUL_3_noflags(rec, rip, as, instruction, operands);
+                // return fast_IMUL_3_noflags(rec, rip, as, instruction, operands);
             }
         }
 
