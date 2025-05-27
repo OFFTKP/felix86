@@ -2465,10 +2465,6 @@ FAST_HANDLE(IMUL_2_noflags) {
     else
         src = rec.getGPR(&operands[1]);
 
-    ZydisDisassembledInstruction i;
-    ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (void*)rip, 15, &i);
-    printf("%s\n", i.text);
-
     switch (size) {
     case X86_SIZE_WORD: {
         biscuit::GPR result = rec.scratch();
