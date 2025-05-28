@@ -41,3 +41,8 @@ X("libGLX.so", glXQueryExtensionsString, q_qd)
 X("libGLX.so", glXQueryServerString, q_qdd)
 X("libGLX.so", glXSelectEvent, v_qqq)
 X("libGLX.so", __glXGLLoadGLXFunction, q_qqq)
+
+X("libGLX.so", glXQueryRendererIntegerMESA, d_qdddq)
+X("libGLX.so", glXQueryCurrentRendererIntegerMESA, d_dq)
+X("libGLX.so", glXQueryRendererStringMESA, q_qddd)
+X("libGLX.so", glXQueryCurrentRendererStringMESA, q_d)

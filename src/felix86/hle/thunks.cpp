@@ -234,7 +234,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     }
 
     if (!thunk) {
-        WARN("Couldn't find signature for %s", name);
+        VERBOSE("Couldn't find signature for %s", name);
         return nullptr;
     }
 
