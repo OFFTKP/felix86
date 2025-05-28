@@ -25,6 +25,7 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #include "felix86/hle/abi.hpp"
 #include "felix86/v2/recompiler.hpp"
 
+#include <GL/glx.h>
 #include <X11/Xlibint.h>
 #include <X11/Xutil.h>
 #include <vulkan/vulkan.h>
@@ -39,9 +40,11 @@ void* libwayland = nullptr;
 using XGetVisualInfoType = decltype(&XGetVisualInfo);
 using XSyncType = decltype(&XSync);
 using XFreeType = decltype(&XFree);
+using mallocType = decltype(&malloc);
 
 XGetVisualInfoType felix86_guest_XGetVisualInfo = nullptr;
 XSyncType felix86_guest_XSync = nullptr;
+mallocType felix86_guest_malloc = nullptr;
 
 static std::mutex display_map_mutex;
 static std::unordered_map<void*, void*> host_to_guest;
@@ -86,6 +89,7 @@ XVisualInfo* guest_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo
     ASSERT(xvisualinfo_ptr);
     return xvisualinfo_ptr(display, vinfo_mask, vinfo_template, nitems_return);
 }
+static_assert(std::is_same_v<decltype(guest_XGetVisualInfo), decltype(XGetVisualInfo)>);
 
 int guest_XSync(Display* display, int discard) {
     ASSERT(felix86_guest_XSync);
@@ -93,6 +97,15 @@ int guest_XSync(Display* display, int discard) {
     ASSERT(xsync_ptr);
     return xsync_ptr(display, discard);
 }
+static_assert(std::is_same_v<decltype(guest_XSync), decltype(XSync)>);
+
+void* guest_malloc(size_t size) noexcept {
+    ASSERT(felix86_guest_malloc);
+    static mallocType malloc_ptr = (mallocType)ABIMadness::hostToGuestTrampoline("q_q", (void*)felix86_guest_malloc);
+    ASSERT(malloc_ptr);
+    return malloc_ptr(size);
+}
+static_assert(std::is_same_v<decltype(guest_malloc), decltype(malloc)>);
 
 Display* guestToHostDisplay(Display* guest) {
     if (guest == 0) {
@@ -146,12 +159,13 @@ XVisualInfo* hostToGuestVisualInfo(Display* guest_display, XVisualInfo* host_inf
     guest_info.visualid = host_info->visualid;
     host_XFree(host_info);
 
-    int nitems_return;
+    int nitems_return = 0;
     XVisualInfo* info = guest_XGetVisualInfo(guest_display, VisualScreenMask | VisualIDMask, &guest_info, &nitems_return);
     if (nitems_return != 1) {
         ERROR("Failed to find matching XVisualInfo");
     }
 
+    ASSERT(info);
     return info;
 }
 
@@ -177,6 +191,18 @@ XVisualInfo* getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
     }
 }
 
+template <class T, size_t size = sizeof(T)>
+T* relocateArrayToGuest(T* host_ptr, size_t count) {
+    void* guest_ptr = guest_malloc(size * count);
+    ASSERT(guest_ptr);
+    for (size_t i = 0; i < count; i++) {
+        T* guest_data = (T*)((u8*)guest_ptr + i * size);
+        T* host_data = (T*)((u8*)host_ptr + i * size);
+        *guest_data = *host_data;
+    }
+    return (T*)guest_ptr;
+}
+
 struct Thunk {
     const char* lib_name;
     const char* function_name;
@@ -195,14 +221,6 @@ static Thunk thunk_metadata[] = {
 };
 
 #undef X
-
-// We don't care about the internals
-using GLXContext = void*;
-using GLXDrawable = void*;
-using GLXPixmap = void*;
-using GLXFBConfig = void*;
-using GLXWindow = void*;
-using GLXPbuffer = void*;
 
 void* generate_guest_pointer(const char* name, u64 host_ptr) {
     const Thunk* thunk = nullptr;
@@ -499,7 +517,7 @@ const char* felix86_thunk_glXGetClientString(Display* dpy, int name) {
 GLXFBConfig* felix86_thunk_glXChooseFBConfig(Display* guest_display, int screen, const int* attribList, int* nitems) {
     PRINTME;
     static auto host_glXChooseFBConfig = (decltype(&felix86_thunk_glXChooseFBConfig))dlsym(libGLX, "glXChooseFBConfig");
-    return host_glXChooseFBConfig(guestToHostDisplay(guest_display), screen, attribList, nitems);
+    return relocateArrayToGuest(host_glXChooseFBConfig(guestToHostDisplay(guest_display), screen, attribList, nitems), *nitems);
 }
 
 int felix86_thunk_glXGetFBConfigAttrib(Display* dpy, GLXFBConfig config, int attribute, int* value) {
@@ -511,7 +529,7 @@ int felix86_thunk_glXGetFBConfigAttrib(Display* dpy, GLXFBConfig config, int att
 GLXFBConfig* felix86_thunk_glXGetFBConfigs(Display* dpy, int screen, int* nelements) {
     PRINTME;
     static auto host_glXGetFBConfigs = (decltype(&felix86_thunk_glXGetFBConfigs))dlsym(libGLX, "glXGetFBConfigs");
-    return host_glXGetFBConfigs(guestToHostDisplay(dpy), screen, nelements);
+    return relocateArrayToGuest(host_glXGetFBConfigs(guestToHostDisplay(dpy), screen, nelements), *nelements);
 }
 
 XVisualInfo* felix86_thunk_glXGetVisualFromFBConfig(Display* guest_display, GLXFBConfig config) {
@@ -924,6 +942,8 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
                 felix86_guest_XGetVisualInfo = (XGetVisualInfoType)func;
             } else if (name == "XSync") {
                 felix86_guest_XSync = (XSyncType)func;
+            } else if (name == "malloc") {
+                felix86_guest_malloc = (mallocType)func;
             } else {
                 ERROR("Unknown function name when trying to run constructor: %s", pointers->name);
             }

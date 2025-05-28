@@ -16,13 +16,16 @@ db "XGetVisualInfo", 0
 XSync_name:
 db "XSync", 0
 
+malloc_name:
+db "malloc", 0
+
 
 section .text
 
-extern __felix86_XGetVisualInfo
-extern __felix86_XSync
-extern __felix86_ConvertVisualInfo
 extern __felix86_glXGetProcAddressSelf
+extern XGetVisualInfo
+extern XSync
+extern malloc
 
 global __felix86_constructor
 align 16
@@ -33,9 +36,11 @@ dd 0x12345678 ; invlpg + ret are 4 bytes, four more here to align to pointer
 dq libname
 ; Here follows the null terminated list of {const char*, void*} (names, functions)
 dq XGetVisualInfo_name
-dq __felix86_XGetVisualInfo
+dq XGetVisualInfo
 dq XSync_name
-dq __felix86_XSync
+dq XSync
+dq malloc_name
+dq malloc
 dq 0
 dq 0
 
