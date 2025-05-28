@@ -50,7 +50,6 @@ extern const __glXGLCoreFunctions __GLXGL_CORE_FUNCTIONS;
 __attribute__((noinline)) void* __felix86_glXGetProcAddressSelf(const char* name) {
 #define CASE(func)                                                                                                                                   \
     if (strcmp(name, #func) == 0) {                                                                                                                  \
-        printf("Resolved %s to %p\n", name, __GLXGL_CORE_FUNCTIONS.ptr_##func);                                                                      \
         return __GLXGL_CORE_FUNCTIONS.ptr_##func;                                                                                                    \
     }
 

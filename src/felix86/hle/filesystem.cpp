@@ -96,13 +96,15 @@ Filesystem::Filesystem() {
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename);
 
-    if (fd == AT_FDCWD && filename && filename[0] == '/') {
-        // TODO: use our emulated node stuff instead of this
-        // We may be opening a library, check if it's one of our overlays
-        const char* overlay = Overlays::isOverlay(filename);
-        if (overlay) {
-            // Open the overlayed path instead of filename
-            return openatInternal(AT_FDCWD, overlay, flags, mode);
+    if (!g_mode32) {
+        if (fd == AT_FDCWD && filename && filename[0] == '/') {
+            // TODO: use our emulated node stuff instead of this
+            // We may be opening a library, check if it's one of our overlays
+            const char* overlay = Overlays::isOverlay(filename);
+            if (overlay) {
+                // Open the overlayed path instead of filename
+                return openatInternal(AT_FDCWD, overlay, flags, mode);
+            }
         }
     }
 
