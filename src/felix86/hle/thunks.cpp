@@ -83,6 +83,11 @@ void* host_glXGetProcAddress(const char* name) {
     return glXGetProcAddress(name);
 }
 
+void host_glDebugMessageCallback(GLDEBUGPROC callback, void* userParam) {
+    static auto gldebugmessagecallback_ptr = (decltype(&host_glDebugMessageCallback))host_glXGetProcAddress("glDebugMessageCallback");
+    return gldebugmessagecallback_ptr(callback, userParam);
+}
+
 XVisualInfo* guest_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return) {
     ASSERT(felix86_guest_XGetVisualInfo);
     static XGetVisualInfoType xvisualinfo_ptr = (XGetVisualInfoType)ABIMadness::hostToGuestTrampoline("q_qqqq", (void*)felix86_guest_XGetVisualInfo);
@@ -289,12 +294,16 @@ void* host_eglGetProcAddress(const char* name);
 void* get_custom_vk_thunk(const std::string& name);
 void* get_custom_egl_thunk(const std::string& name);
 void* get_custom_glx_thunk(const std::string& name);
+void* get_custom_gl_thunk(const std::string& name);
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
     VERBOSE("glXGetProcAddress: %s", name);
     void* ptr = get_custom_glx_thunk(name);
     if (ptr == nullptr) {
-        ptr = host_glXGetProcAddress(name);
+        ptr = get_custom_gl_thunk(name);
+        if (ptr == nullptr) {
+            ptr = host_glXGetProcAddress(name);
+        }
     }
 
     if (ptr) {
@@ -628,6 +637,12 @@ void felix86_thunk_glXGetSelectedEvent(Display* dpy, GLXDrawable drawable, unsig
     return host_glXGetSelectedEvent(guestToHostDisplay(dpy), drawable, mask);
 }
 
+void felix86_thunk_glDebugMessageCallback(GLDEBUGPROC callback, void* userParam) {
+    GLDEBUGPROC host_callback = (GLDEBUGPROC)ABIMadness::hostToGuestTrampoline("v_ddddqqq", (void*)callback);
+    LOG("Registered host callback with glDebugMessageCallback");
+    host_glDebugMessageCallback(host_callback, userParam);
+}
+
 void* get_custom_vk_thunk(const std::string& name) {
     if (name == "vkGetInstanceProcAddr") {
         return (void*)felix86_thunk_vkGetInstanceProcAddr;
@@ -729,6 +744,14 @@ void* get_custom_glx_thunk(const std::string& name) {
         return (void*)felix86_thunk_glXGetSelectedEvent;
     } else if (name == "glXGetCurrentDisplay") {
         return (void*)felix86_thunk_glXGetCurrentDisplay;
+    }
+
+    return nullptr;
+}
+
+void* get_custom_gl_thunk(const std::string& name) {
+    if (name == "glDebugMessageCallback" || name == "glDebugMessageCallbackAMD" || name == "glDebugMessageCallbackARB") {
+        return (void*)felix86_thunk_glDebugMessageCallback;
     }
 
     return nullptr;
