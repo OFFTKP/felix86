@@ -1,6 +1,7 @@
 bits 64
 
 ; For some reason libGL also exposes GLX symbols so we need them here
+; This means if this gets loaded first it will also run the GLX constructor which we are fine with
 %include "libGLX.asm"
 
 section .text
