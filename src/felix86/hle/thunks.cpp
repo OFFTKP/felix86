@@ -877,7 +877,7 @@ void Thunks::initialize() {
     }
 
     if (thunk_gl) {
-        constexpr const char* gl_name = "libGLX.so.1";
+        constexpr const char* gl_name = "libGL.so.1";
         libGL = dlopen(gl_name, RTLD_NOW | RTLD_LOCAL);
         if (!libGL) {
             WARN("I couldn't open libGL.so for thunking, error: %s", dlerror());
