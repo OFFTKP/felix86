@@ -207,6 +207,8 @@ struct ThreadState {
     Recompiler* recompiler;
 
     // For storing generated risc-v or x86 code that needs to outlive code cache clears
+    u8* riscv_trampoline_storage_start = nullptr;
+    u8* x86_trampoline_storage_start = nullptr;
     u8* riscv_trampoline_storage = nullptr;
     u8* x86_trampoline_storage = nullptr;
 

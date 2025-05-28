@@ -3,6 +3,8 @@
 #include "felix86/common/state.hpp"
 #include "felix86/v2/recompiler.hpp"
 
+constexpr size_t trampoline_storage_size = 1024 * 1024;
+
 void ThreadState::InitializeKey() {
     int result = pthread_key_create(&g_thread_state_key, [](void*) {});
     if (result != 0) {
@@ -54,8 +56,11 @@ ThreadState* ThreadState::Create(ThreadState* copy_state) {
         state->alt_stack = copy_state->alt_stack;
     }
 
-    state->riscv_trampoline_storage = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    state->x86_trampoline_storage = (u8*)mmap(nullptr, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    state->riscv_trampoline_storage =
+        (u8*)mmap(nullptr, trampoline_storage_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    state->x86_trampoline_storage = (u8*)mmap(nullptr, trampoline_storage_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    state->riscv_trampoline_storage_start = state->riscv_trampoline_storage;
+    state->x86_trampoline_storage_start = state->x86_trampoline_storage;
     ASSERT(state->riscv_trampoline_storage != MAP_FAILED);
     ASSERT(state->x86_trampoline_storage != MAP_FAILED);
 
@@ -81,6 +86,8 @@ void ThreadState::Destroy(ThreadState* state) {
     } else {
         WARN("Thread state %ld not found in global list", state->tid);
     }
+    munmap(state->riscv_trampoline_storage_start, trampoline_storage_size);
+    munmap(state->x86_trampoline_storage_start, trampoline_storage_size);
     delete state->recompiler;
     delete state;
 }

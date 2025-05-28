@@ -1014,6 +1014,7 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
 
         ASSERT_MSG(felix86_guest_XGetVisualInfo, "Failed to find XGetVisualInfo in thunked libGLX");
         ASSERT_MSG(felix86_guest_XSync, "Failed to find XSync in thunked libGLX");
+        ASSERT_MSG(felix86_guest_malloc, "Failed to find guest malloc");
         VERBOSE("Constructor for %s finished!", lib);
         return; // everything ok!
     } else if (libname == "libwayland-client.so") {
