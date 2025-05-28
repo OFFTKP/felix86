@@ -479,9 +479,62 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     biscuit::GPR guest_stack_pointer = t1;
 
     // ThreadState* in s11, RSP in t1
+    // This is yucky... we need to store all of our saved registers to get the ThreadState at runtime
+    // We can't just call ThreadState::Get because it will ruin our arguments.
+    as.ADDI(sp, sp, -24 * 8);
+    as.SD(s0, 0 * 8, sp);
+    as.SD(s1, 1 * 8, sp);
+    as.SD(s2, 2 * 8, sp);
+    as.SD(s3, 3 * 8, sp);
+    as.SD(s4, 4 * 8, sp);
+    as.SD(s5, 5 * 8, sp);
+    as.SD(s6, 6 * 8, sp);
+    as.SD(s7, 7 * 8, sp);
+    as.SD(s8, 8 * 8, sp);
+    as.SD(s9, 9 * 8, sp);
+    as.SD(s10, 10 * 8, sp);
+    as.SD(s11, 11 * 8, sp);
+    as.FSD(fs0, 12 * 8, sp);
+    as.FSD(fs1, 13 * 8, sp);
+    as.FSD(fs2, 14 * 8, sp);
+    as.FSD(fs3, 15 * 8, sp);
+    as.FSD(fs4, 16 * 8, sp);
+    as.FSD(fs5, 17 * 8, sp);
+    as.FSD(fs6, 18 * 8, sp);
+    as.FSD(fs7, 19 * 8, sp);
+    as.FSD(fs8, 20 * 8, sp);
+    as.FSD(fs9, 21 * 8, sp);
+    as.FSD(fs10, 22 * 8, sp);
+    as.FSD(fs11, 23 * 8, sp);
     as.LI(t1, (u64)ThreadState::Get);
     as.JALR(t1);
     as.MV(thread_state_pointer, a0);
+    as.LD(s0, 0 * 8, sp);
+    as.LD(s1, 1 * 8, sp);
+    as.LD(s2, 2 * 8, sp);
+    as.LD(s3, 3 * 8, sp);
+    as.LD(s4, 4 * 8, sp);
+    as.LD(s5, 5 * 8, sp);
+    as.LD(s6, 6 * 8, sp);
+    as.LD(s7, 7 * 8, sp);
+    as.LD(s8, 8 * 8, sp);
+    as.LD(s9, 9 * 8, sp);
+    as.LD(s10, 10 * 8, sp);
+    as.LD(s11, 11 * 8, sp);
+    as.FLD(fs0, 12 * 8, sp);
+    as.FLD(fs1, 13 * 8, sp);
+    as.FLD(fs2, 14 * 8, sp);
+    as.FLD(fs3, 15 * 8, sp);
+    as.FLD(fs4, 16 * 8, sp);
+    as.FLD(fs5, 17 * 8, sp);
+    as.FLD(fs6, 18 * 8, sp);
+    as.FLD(fs7, 19 * 8, sp);
+    as.FLD(fs8, 20 * 8, sp);
+    as.FLD(fs9, 21 * 8, sp);
+    as.FLD(fs10, 22 * 8, sp);
+    as.FLD(fs11, 23 * 8, sp);
+    as.ADDI(sp, sp, 24 * 8);
+
     as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
 
     // Marshal host arguments to guest arguments
