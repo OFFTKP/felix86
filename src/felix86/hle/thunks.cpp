@@ -776,11 +776,6 @@ void* host_eglGetProcAddress(const char* name) {
 
 // Load the host function pointers in the thunkptr namespace with pointers using dlopen + dlsym
 void Thunks::initialize() {
-    if (g_mode32) {
-        WARN_ONCE("Thunking not available for 32-bit apps");
-        return;
-    }
-
     std::filesystem::path thunks = g_config.thunks_path;
     ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunks.c_str());
     std::string srootfs = g_config.rootfs_path.string();
