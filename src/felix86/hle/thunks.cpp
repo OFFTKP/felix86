@@ -172,10 +172,7 @@ XVisualInfo* guestToHostVisualInfo(Display* host_display, XVisualInfo* guest) {
         return nullptr;
     }
 
-    XVisualInfo v;
-    v.screen = guest->screen;
-    v.visualid = guest->visualid;
-
+    XVisualInfo v = *guest;
     int c;
     XVisualInfo* info = host_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
 
