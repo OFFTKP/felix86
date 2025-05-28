@@ -113,6 +113,8 @@ Display* guestToHostDisplay(Display* guest) {
         return nullptr;
     }
 
+    guest_XSync(guest, 0);
+
     std::lock_guard<std::mutex> lock(display_map_mutex);
 
     if (guest_to_host.find(guest) != guest_to_host.end()) {
@@ -445,7 +447,7 @@ void felix86_thunk_glXDestroyContext(Display* dpy, GLXContext ctx) {
 Bool felix86_thunk_glXMakeCurrent(Display* dpy, GLXDrawable drawable, GLXContext ctx) {
     PRINTME;
     static auto host_glXMakeCurrent = (decltype(&felix86_thunk_glXMakeCurrent))dlsym(libGLX, "glXMakeCurrent");
-    return host_glXMakeCurrent(dpy, drawable, ctx);
+    return host_glXMakeCurrent(guestToHostDisplay(dpy), drawable, ctx);
 }
 
 void felix86_thunk_glXCopyContext(Display* dpy, GLXContext src, GLXContext dst, unsigned long mask) {
