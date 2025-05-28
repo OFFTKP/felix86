@@ -991,7 +991,7 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
     VERBOSE("Constructor for %s with pointers at %p", lib, (void*)pointers);
     std::string libname = lib;
 
-    if (libname == "libGLX.so") {
+    if (libname == "libGLX.so" || libname == "libGL.so") {
         while (pointers) {
             const void* func = pointers->func;
             if (!func) {
