@@ -599,8 +599,31 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_funct
         as.SD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
     }
 
-    // Return values not supported yet, but we can just load a0 from RAX
-    ASSERT(signature[0] == 'v');
+    // Load the return value from the state struct to a RISC-V register
+    char return_type = signature[0];
+    switch (return_type) {
+    case 'd': {
+        // RAX
+        as.LW(a0, offsetof(ThreadState, gprs), thread_state_pointer);
+        break;
+    }
+    case 'q': {
+        // RAX
+        as.LD(a0, offsetof(ThreadState, gprs), thread_state_pointer);
+        break;
+    }
+    case 'D': {
+        // XMM0
+        as.FLD(fa0, offsetof(ThreadState, xmm), thread_state_pointer);
+        break;
+    }
+    case 'v': {
+        break;
+    }
+    default: {
+        UNIMPLEMENTED();
+    }
+    }
 
     as.LD(s11, 0, sp);
     as.LD(s10, 8, sp);

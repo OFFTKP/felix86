@@ -38,9 +38,10 @@ void* libwayland = nullptr;
 
 using XGetVisualInfoType = decltype(&XGetVisualInfo);
 using XSyncType = decltype(&XSync);
+using XFreeType = decltype(&XFree);
 
-static XGetVisualInfoType felix86__x86_64__XGetVisualInfo = nullptr;
-static XSyncType felix86__x86_64__XSync = nullptr;
+XGetVisualInfoType felix86_guest_XGetVisualInfo = nullptr;
+XSyncType felix86_guest_XSync = nullptr;
 
 static std::mutex display_map_mutex;
 static std::unordered_map<void*, void*> host_to_guest;
@@ -62,12 +63,30 @@ int host_XFlush(Display* display) {
     return xflush_ptr(display);
 }
 
-using XVisualInfoPtr = XVisualInfo* (*)(Display*, long, XVisualInfo*, int*);
-
 XVisualInfo* host_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return) {
-    static XVisualInfoPtr xvisualinfo_ptr = (XVisualInfoPtr)dlsym(libX11, "XGetVisualInfo");
+    static XGetVisualInfoType xvisualinfo_ptr = (XGetVisualInfoType)dlsym(libX11, "XGetVisualInfo");
     ASSERT(xvisualinfo_ptr);
     return xvisualinfo_ptr(display, vinfo_mask, vinfo_template, nitems_return);
+}
+
+int host_XFree(void* ptr) {
+    static XFreeType xfree_ptr = (XFreeType)dlsym(libX11, "XFree");
+    ASSERT(xfree_ptr);
+    return xfree_ptr(ptr);
+}
+
+XVisualInfo* guest_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return) {
+    ASSERT(felix86_guest_XGetVisualInfo);
+    static XGetVisualInfoType xvisualinfo_ptr = (XGetVisualInfoType)ABIMadness::hostToGuestTrampoline("q_qqqq", (void*)felix86_guest_XGetVisualInfo);
+    ASSERT(xvisualinfo_ptr);
+    return xvisualinfo_ptr(display, vinfo_mask, vinfo_template, nitems_return);
+}
+
+int guest_XSync(Display* display, int discard) {
+    ASSERT(felix86_guest_XSync);
+    static XSyncType xsync_ptr = (XSyncType)ABIMadness::hostToGuestTrampoline("d_qd", (void*)felix86_guest_XSync);
+    ASSERT(xsync_ptr);
+    return xsync_ptr(display, discard);
 }
 
 Display* guestToHostDisplay(Display* guest) {
@@ -88,7 +107,7 @@ Display* guestToHostDisplay(Display* guest) {
     if (host_display) {
         guest_to_host[guest_display] = host_display;
         host_to_guest[host_display] = guest_display;
-        LOG("XOpenDisplay creating new mapping %p (guest) -> %p (host)", guest_display, host_display);
+        LOG("XCreated new XDisplay mapping %p (guest) -> %p (host)", guest_display, host_display);
         return host_display;
     } else {
         WARN("Failed to XOpenDisplay: %s", display_name);
@@ -110,6 +129,25 @@ void* hostToGuestDisplay(void* host) {
         WARN("hostToGuestDisplay couldn't find guest display matching %p?", host);
         return nullptr;
     }
+}
+
+XVisualInfo* hostToGuestVisualInfo(Display* guest_display, XVisualInfo* host_info) {
+    if (!host_info) {
+        return nullptr;
+    }
+
+    XVisualInfo guest_info;
+    guest_info.screen = host_info->screen;
+    guest_info.visualid = host_info->visualid;
+    host_XFree(host_info);
+
+    int nitems_return;
+    XVisualInfo* info = guest_XGetVisualInfo(guest_display, VisualScreenMask | VisualIDMask, &guest_info, &nitems_return);
+    if (nitems_return != 1) {
+        ERROR("Failed to find matching XVisualInfo");
+    }
+
+    return info;
 }
 
 XVisualInfo* getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
@@ -350,10 +388,10 @@ int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** callbacks
 
 #define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
 
-XVisualInfo* felix86_thunk_glXChooseVisual(Display* dpy, int screen, int* attribList) {
+XVisualInfo* felix86_thunk_glXChooseVisual(Display* guest_display, int screen, int* attribList) {
     PRINTME;
     static auto host_glXChooseVisual = (decltype(&felix86_thunk_glXChooseVisual))dlsym(libGLX, "glXChooseVisual");
-    return host_glXChooseVisual(guestToHostDisplay(dpy), screen, attribList);
+    return hostToGuestVisualInfo(guest_display, host_glXChooseVisual(guestToHostDisplay(guest_display), screen, attribList));
 }
 
 GLXContext felix86_thunk_glXCreateContext(Display* dpy, XVisualInfo* visual, GLXContext shareList, Bool direct) {
@@ -443,10 +481,10 @@ const char* felix86_thunk_glXGetClientString(Display* dpy, int name) {
     return host_glXGetClientString(guestToHostDisplay(dpy), name);
 }
 
-GLXFBConfig* felix86_thunk_glXChooseFBConfig(Display* dpy, int screen, const int* attribList, int* nitems) {
+GLXFBConfig* felix86_thunk_glXChooseFBConfig(Display* guest_display, int screen, const int* attribList, int* nitems) {
     PRINTME;
     static auto host_glXChooseFBConfig = (decltype(&felix86_thunk_glXChooseFBConfig))dlsym(libGLX, "glXChooseFBConfig");
-    return host_glXChooseFBConfig(guestToHostDisplay(dpy), screen, attribList, nitems);
+    return host_glXChooseFBConfig(guestToHostDisplay(guest_display), screen, attribList, nitems);
 }
 
 int felix86_thunk_glXGetFBConfigAttrib(Display* dpy, GLXFBConfig config, int attribute, int* value) {
@@ -461,10 +499,10 @@ GLXFBConfig* felix86_thunk_glXGetFBConfigs(Display* dpy, int screen, int* neleme
     return host_glXGetFBConfigs(guestToHostDisplay(dpy), screen, nelements);
 }
 
-XVisualInfo* felix86_thunk_glXGetVisualFromFBConfig(Display* dpy, GLXFBConfig config) {
+XVisualInfo* felix86_thunk_glXGetVisualFromFBConfig(Display* guest_display, GLXFBConfig config) {
     PRINTME;
     static auto host_glXGetVisualFromFBConfig = (decltype(&felix86_thunk_glXGetVisualFromFBConfig))dlsym(libGLX, "glXGetVisualFromFBConfig");
-    return host_glXGetVisualFromFBConfig(guestToHostDisplay(dpy), config);
+    return hostToGuestVisualInfo(guest_display, host_glXGetVisualFromFBConfig(guestToHostDisplay(guest_display), config));
 }
 
 GLXWindow felix86_thunk_glXCreateWindow(Display* dpy, GLXFBConfig config, Window win, const int* attribList) {
@@ -868,9 +906,9 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
             const std::string name = pointers->name;
 
             if (name == "XGetVisualInfo") {
-                felix86__x86_64__XGetVisualInfo = (XGetVisualInfoType)func;
+                felix86_guest_XGetVisualInfo = (XGetVisualInfoType)func;
             } else if (name == "XSync") {
-                felix86__x86_64__XSync = (XSyncType)func;
+                felix86_guest_XSync = (XSyncType)func;
             } else {
                 ERROR("Unknown function name when trying to run constructor: %s", pointers->name);
             }
@@ -878,8 +916,8 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
             pointers++;
         }
 
-        ASSERT_MSG(felix86__x86_64__XGetVisualInfo, "Failed to find XGetVisualInfo in thunked libGLX");
-        ASSERT_MSG(felix86__x86_64__XSync, "Failed to find XSync in thunked libGLX");
+        ASSERT_MSG(felix86_guest_XGetVisualInfo, "Failed to find XGetVisualInfo in thunked libGLX");
+        ASSERT_MSG(felix86_guest_XSync, "Failed to find XSync in thunked libGLX");
         VERBOSE("Constructor for %s finished!", lib);
         return; // everything ok!
     } else if (libname == "libwayland-client.so") {

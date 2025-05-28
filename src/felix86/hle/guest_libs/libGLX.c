@@ -9,8 +9,8 @@ __attribute__((noinline)) XVisualInfo* __felix86_XGetVisualInfo(Display* display
     return XGetVisualInfo(display, vinfo_mask, vinfo_template, nitems_return);
 }
 
-__attribute__((noinline)) void __felix86_XSync(Display* display, Bool discard) {
-    XSync(display, discard);
+__attribute__((noinline)) int __felix86_XSync(Display* display, Bool discard) {
+    return XSync(display, discard);
 }
 
 __attribute__((noinline)) XVisualInfo* __felix86_ConvertVisualInfo(Display* guest_display, XVisualInfo* host_info) {

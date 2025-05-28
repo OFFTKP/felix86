@@ -42,12 +42,9 @@ dq 0
 global glXChooseVisual
 align 16
 glXChooseVisual:
-push rdi  ; push guest Display*
-invlpg [rax] ; calls host glXChooseVisual
+invlpg [rax]
 db "glXChooseVisual", 0
-pop rdi
-mov rsi, rax ; move the return value from the host function to arg2 (host visual info)
-jmp __felix86_ConvertVisualInfo wrt ..plt ; converts host to guest visual info, replaces return value in doing so
+ret
 
 global glXCreateContext
 align 16
@@ -281,12 +278,9 @@ ret
 global glXGetVisualFromFBConfig
 align 16
 glXGetVisualFromFBConfig:
-push rdi ; push guest Display*
 invlpg [rax]
 db "glXGetVisualFromFBConfig", 0
-pop rdi
-mov rsi, rax
-jmp __felix86_ConvertVisualInfo wrt ..plt
+ret
 
 global glXMakeContextCurrent
 align 16
