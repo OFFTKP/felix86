@@ -154,7 +154,9 @@ XVisualInfo* hostToGuestVisualInfo(Display* guest_display, XVisualInfo* host_inf
         return nullptr;
     }
 
-    XVisualInfo guest_info = *host_info;
+    XVisualInfo guest_info;
+    guest_info.screen = host_info->screen;
+    guest_info.visualid = host_info->visualid;
     host_XFree(host_info);
 
     int nitems_return = 0;
@@ -172,7 +174,10 @@ XVisualInfo* guestToHostVisualInfo(Display* host_display, XVisualInfo* guest) {
         return nullptr;
     }
 
-    XVisualInfo v = *guest;
+    XVisualInfo v;
+    v.screen = guest->screen;
+    v.visualid = guest->visualid;
+
     int c;
     XVisualInfo* info = host_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
 
@@ -425,7 +430,10 @@ GLXContext felix86_thunk_glXCreateContext(Display* dpy, XVisualInfo* visual, GLX
     PRINTME;
     static auto host_glXCreateContext = (decltype(&felix86_thunk_glXCreateContext))dlsym(libGLX, "glXCreateContext");
     Display* host_dpy = guestToHostDisplay(dpy);
-    return host_glXCreateContext(host_dpy, guestToHostVisualInfo(host_dpy, visual), shareList, direct);
+    XVisualInfo* host_visual = guestToHostVisualInfo(host_dpy, visual);
+    GLXContext ret = host_glXCreateContext(host_dpy, host_visual, shareList, direct);
+    host_XFree(host_visual);
+    return ret;
 }
 
 void felix86_thunk_glXDestroyContext(Display* dpy, GLXContext ctx) {
@@ -437,7 +445,7 @@ void felix86_thunk_glXDestroyContext(Display* dpy, GLXContext ctx) {
 Bool felix86_thunk_glXMakeCurrent(Display* dpy, GLXDrawable drawable, GLXContext ctx) {
     PRINTME;
     static auto host_glXMakeCurrent = (decltype(&felix86_thunk_glXMakeCurrent))dlsym(libGLX, "glXMakeCurrent");
-    return host_glXMakeCurrent(guestToHostDisplay(dpy), drawable, ctx);
+    return host_glXMakeCurrent(dpy, drawable, ctx);
 }
 
 void felix86_thunk_glXCopyContext(Display* dpy, GLXContext src, GLXContext dst, unsigned long mask) {
