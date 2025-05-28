@@ -75,6 +75,11 @@ int host_XFree(void* ptr) {
     return xfree_ptr(ptr);
 }
 
+void* host_glXGetProcAddress(const char* name) {
+    static auto glXGetProcAddress = (void* (*)(const char*))dlsym(libGLX, "glXGetProcAddress");
+    return glXGetProcAddress(name);
+}
+
 XVisualInfo* guest_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return) {
     ASSERT(felix86_guest_XGetVisualInfo);
     static XGetVisualInfoType xvisualinfo_ptr = (XGetVisualInfoType)ABIMadness::hostToGuestTrampoline("q_qqqq", (void*)felix86_guest_XGetVisualInfo);
@@ -264,10 +269,20 @@ void* host_vkGetDeviceProcAddr(VkDevice device, const char* name);
 void* host_eglGetProcAddress(const char* name);
 void* get_custom_vk_thunk(const std::string& name);
 void* get_custom_egl_thunk(const std::string& name);
+void* get_custom_glx_thunk(const std::string& name);
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
-    UNIMPLEMENTED();
-    return nullptr;
+    VERBOSE("glXGetProcAddress: %s", name);
+    void* ptr = get_custom_glx_thunk(name);
+    if (ptr == nullptr) {
+        ptr = host_glXGetProcAddress(name);
+    }
+
+    if (ptr) {
+        return generate_guest_pointer(name, (u64)ptr);
+    } else {
+        return nullptr;
+    }
 }
 
 // TODO: Kinda wasteful to code cache if this gets called more than once per name
