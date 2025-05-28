@@ -299,7 +299,6 @@ void* get_custom_glx_thunk(const std::string& name);
 void* get_custom_gl_thunk(const std::string& name);
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
-    PLAIN("glXGetProcAddress: %s", name);
     void* ptr = get_custom_glx_thunk(name);
     if (ptr == nullptr) {
         ptr = get_custom_gl_thunk(name);
@@ -777,6 +776,11 @@ void* host_eglGetProcAddress(const char* name) {
 
 // Load the host function pointers in the thunkptr namespace with pointers using dlopen + dlsym
 void Thunks::initialize() {
+    if (g_mode32) {
+        WARN_ONCE("Thunking not available for 32-bit apps");
+        return;
+    }
+
     std::filesystem::path thunks = g_config.thunks_path;
     ASSERT_MSG(std::filesystem::exists(thunks), "The thunks path set with FELIX86_THUNKS %s does not exist", thunks.c_str());
     std::string srootfs = g_config.rootfs_path.string();

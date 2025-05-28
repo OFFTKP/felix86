@@ -27,7 +27,7 @@ extern XGetVisualInfo
 extern XSync
 extern malloc
 
-global __felix86_constructor
+global __felix86_constructor:function
 align 16
 __felix86_constructor:
 invlpg [rbx]
@@ -44,218 +44,218 @@ dq malloc
 dq 0
 dq 0
 
-global glXChooseVisual
+global glXChooseVisual:function
 align 16
 glXChooseVisual:
 invlpg [rax]
 db "glXChooseVisual", 0
 ret
 
-global glXCreateContext
+global glXCreateContext:function
 align 16
 glXCreateContext:
 invlpg [rax]
 db "glXCreateContext", 0
 ret
 
-global glXDestroyContext
+global glXDestroyContext:function
 align 16
 glXDestroyContext:
 invlpg [rax]
 db "glXDestroyContext", 0
 ret
 
-global glXMakeCurrent
+global glXMakeCurrent:function
 align 16
 glXMakeCurrent:
 invlpg [rax]
 db "glXMakeCurrent", 0
 ret
 
-global glXCopyContext
+global glXCopyContext:function
 align 16
 glXCopyContext:
 invlpg [rax]
 db "glXCopyContext", 0
 ret
 
-global glXSwapBuffers
+global glXSwapBuffers:function
 align 16
 glXSwapBuffers:
 invlpg [rax]
 db "glXSwapBuffers", 0
 ret
 
-global glXCreateGLXPixmap
+global glXCreateGLXPixmap:function
 align 16
 glXCreateGLXPixmap:
 invlpg [rax]
 db "glXCreateGLXPixmap", 0
 ret
 
-global glXDestroyGLXPixmap
+global glXDestroyGLXPixmap:function
 align 16
 glXDestroyGLXPixmap:
 invlpg [rax]
 db "glXDestroyGLXPixmap", 0
 ret
 
-global glXQueryExtension
+global glXQueryExtension:function
 align 16
 glXQueryExtension:
 invlpg [rax]
 db "glXQueryExtension", 0
 ret
 
-global glXQueryVersion
+global glXQueryVersion:function
 align 16
 glXQueryVersion:
 invlpg [rax]
 db "glXQueryVersion", 0
 ret
 
-global glXIsDirect
+global glXIsDirect:function
 align 16
 glXIsDirect:
 invlpg [rax]
 db "glXIsDirect", 0
 ret
 
-global glXGetConfig
+global glXGetConfig:function
 align 16
 glXGetConfig:
 invlpg [rax]
 db "glXGetConfig", 0
 ret
 
-global glXGetCurrentContext
+global glXGetCurrentContext:function
 align 16
 glXGetCurrentContext:
 invlpg [rax]
 db "glXGetCurrentContext", 0
 ret
 
-global glXGetCurrentDrawable
+global glXGetCurrentDrawable:function
 align 16
 glXGetCurrentDrawable:
 invlpg [rax]
 db "glXGetCurrentDrawable", 0
 ret
 
-global glXWaitGL
+global glXWaitGL:function
 align 16
 glXWaitGL:
 invlpg [rax]
 db "glXWaitGL", 0
 ret
 
-global glXWaitX
+global glXWaitX:function
 align 16
 glXWaitX:
 invlpg [rax]
 db "glXWaitX", 0
 ret
 
-global glXUseXFont
+global glXUseXFont:function
 align 16
 glXUseXFont:
 invlpg [rax]
 db "glXUseXFont", 0
 ret
 
-global glXChooseFBConfig
+global glXChooseFBConfig:function
 align 16
 glXChooseFBConfig:
 invlpg [rax]
 db "glXChooseFBConfig", 0
 ret
 
-global glXCreateNewContext
+global glXCreateNewContext:function
 align 16
 glXCreateNewContext:
 invlpg [rax]
 db "glXCreateNewContext", 0
 ret
 
-global glXCreatePbuffer
+global glXCreatePbuffer:function
 align 16
 glXCreatePbuffer:
 invlpg [rax]
 db "glXCreatePbuffer", 0
 ret
 
-global glXCreatePixmap
+global glXCreatePixmap:function
 align 16
 glXCreatePixmap:
 invlpg [rax]
 db "glXCreatePixmap", 0
 ret
 
-global glXCreateWindow
+global glXCreateWindow:function
 align 16
 glXCreateWindow:
 invlpg [rax]
 db "glXCreateWindow", 0
 ret
 
-global glXDestroyPbuffer
+global glXDestroyPbuffer:function
 align 16
 glXDestroyPbuffer:
 invlpg [rax]
 db "glXDestroyPbuffer", 0
 ret
 
-global glXDestroyPixmap
+global glXDestroyPixmap:function
 align 16
 glXDestroyPixmap:
 invlpg [rax]
 db "glXDestroyPixmap", 0
 ret
 
-global glXDestroyWindow
+global glXDestroyWindow:function
 align 16
 glXDestroyWindow:
 invlpg [rax]
 db "glXDestroyWindow", 0
 ret
 
-global glXGetClientString
+global glXGetClientString:function
 align 16
 glXGetClientString:
 invlpg [rax]
 db "glXGetClientString", 0
 ret
 
-global glXGetCurrentDisplay
+global glXGetCurrentDisplay:function
 align 16
 glXGetCurrentDisplay:
 invlpg [rax]
 db "glXGetCurrentDisplay", 0
 ret
 
-global glXGetCurrentReadDrawable
+global glXGetCurrentReadDrawable:function
 align 16
 glXGetCurrentReadDrawable:
 invlpg [rax]
 db "glXGetCurrentReadDrawable", 0
 ret
 
-global glXGetFBConfigAttrib
+global glXGetFBConfigAttrib:function
 align 16
 glXGetFBConfigAttrib:
 invlpg [rax]
 db "glXGetFBConfigAttrib", 0
 ret
 
-global glXGetFBConfigs
+global glXGetFBConfigs:function
 align 16
 glXGetFBConfigs:
 invlpg [rax]
 db "glXGetFBConfigs", 0
 ret
 
-global glXGetProcAddress
-global glXGetProcAddressARB
+global glXGetProcAddress:function
+global glXGetProcAddressARB:function
 align 16
 glXGetProcAddress:
 glXGetProcAddressARB:
@@ -272,63 +272,63 @@ db "glXGetProcAddress", 0
 ptr_ok:
 ret
 
-global glXGetSelectedEvent
+global glXGetSelectedEvent:function
 align 16
 glXGetSelectedEvent:
 invlpg [rax]
 db "glXGetSelectedEvent", 0
 ret
 
-global glXGetVisualFromFBConfig
+global glXGetVisualFromFBConfig:function
 align 16
 glXGetVisualFromFBConfig:
 invlpg [rax]
 db "glXGetVisualFromFBConfig", 0
 ret
 
-global glXMakeContextCurrent
+global glXMakeContextCurrent:function
 align 16
 glXMakeContextCurrent:
 invlpg [rax]
 db "glXMakeContextCurrent", 0
 ret
 
-global glXQueryContext
+global glXQueryContext:function
 align 16
 glXQueryContext:
 invlpg [rax]
 db "glXQueryContext", 0
 ret
 
-global glXQueryDrawable
+global glXQueryDrawable:function
 align 16
 glXQueryDrawable:
 invlpg [rax]
 db "glXQueryDrawable", 0
 ret
 
-global glXQueryExtensionsString
+global glXQueryExtensionsString:function
 align 16
 glXQueryExtensionsString:
 invlpg [rax]
 db "glXQueryExtensionsString", 0
 ret
 
-global glXQueryServerString
+global glXQueryServerString:function
 align 16
 glXQueryServerString:
 invlpg [rax]
 db "glXQueryServerString", 0
 ret
 
-global glXSelectEvent
+global glXSelectEvent:function
 align 16
 glXSelectEvent:
 invlpg [rax]
 db "glXSelectEvent", 0
 ret
 
-global __glXGLLoadGLXFunction
+global __glXGLLoadGLXFunction:function
 align 16
 __glXGLLoadGLXFunction:
 invlpg [rax]
