@@ -238,7 +238,9 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     }
 
     if (!thunk) {
-        static int garbage = 0;
+        // This way we can turn on VERBOSE and see which bad pointer was used
+        // TODO: instead of this hack, return a trampoline to a function that will print the bad name and exit
+        static u64 garbage = 0xf000'0000'0000'0000;
         VERBOSE("Couldn't find signature for %s, returning %d", name, garbage);
         return (void*)garbage++;
     }

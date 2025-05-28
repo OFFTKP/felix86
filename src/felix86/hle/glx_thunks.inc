@@ -46,3 +46,5 @@ X("libGLX.so", glXQueryRendererIntegerMESA, d_qdddq)
 X("libGLX.so", glXQueryCurrentRendererIntegerMESA, d_dq)
 X("libGLX.so", glXQueryRendererStringMESA, q_qddd)
 X("libGLX.so", glXQueryCurrentRendererStringMESA, q_d)
+
+X("libGLX.so", glXCreateContextAttribsARB, q_qqqdq)
