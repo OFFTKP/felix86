@@ -21,5 +21,6 @@ gcc -shared -s -o ./libGLX.so.0 ./build/glxc.o ./build/glxasm.o
 patchelf --set-soname libGLX.so.0 ./libGLX.so.0
 
 nasm -felf64 -shared ./libGL.asm -o ./build/glasm.o
-gcc -shared -s -o ./libGL.so.1 ./build/glasm.o
+# Yeah for some reason we need all the libGLX symbols in libGL too
+gcc -shared -s -o ./libGL.so.1 ./build/glxc.o ./build/glasm.o
 patchelf --set-soname libGL.so.1 ./libGL.so.1
