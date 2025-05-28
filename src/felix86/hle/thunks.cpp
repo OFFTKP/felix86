@@ -31,6 +31,7 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 #include <vulkan/vulkan.h>
 #include <wayland-client.h>
 
+void* libGL = nullptr;
 void* libGLX = nullptr;
 void* libX11 = nullptr;
 void* libEGL = nullptr;
@@ -784,12 +785,14 @@ void Thunks::initialize() {
     bool thunk_vk = false;
     bool thunk_egl = false;
     bool thunk_glx = false;
+    bool thunk_gl = false;
     bool thunk_wayland = false;
     std::string enabled_thunks = g_config.enabled_thunks;
     if (enabled_thunks == "all") {
         thunk_vk = true;
         thunk_egl = true;
         thunk_glx = true;
+        thunk_gl = true;
         thunk_wayland = true;
     } else if (!enabled_thunks.empty()) {
         std::vector<std::string> list = split_string(enabled_thunks, ',');
@@ -803,10 +806,12 @@ void Thunks::initialize() {
                 thunk_vk = true;
             } else if (n == "libegl" || n == "egl") {
                 thunk_egl = true;
+                thunk_gl = true;
             } else if (n == "libwayland-client" || n == "libwayland" || n == "wayland-client" || n == "wayland" || n == "wl") {
                 thunk_wayland = true;
             } else if (n == "libglx" || n == "glx") {
                 thunk_glx = true;
+                thunk_gl = true;
             } else {
                 ERROR("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
             }
@@ -871,6 +876,17 @@ void Thunks::initialize() {
         }
     }
 
+    if (thunk_gl) {
+        constexpr const char* gl_name = "libGLX.so.1";
+        libGL = dlopen(gl_name, RTLD_NOW | RTLD_LOCAL);
+        if (!libGL) {
+            WARN("I couldn't open libGL.so for thunking, error: %s", dlerror());
+            thunk_gl = false;
+        } else {
+            add_overlays({"libGL.so", "libGL.so.1"});
+        }
+    }
+
     if (thunk_wayland) {
         constexpr const char* wayland_name = "libwayland-client.so.0";
         libwayland = dlopen(wayland_name, RTLD_NOW | RTLD_LOCAL);
@@ -905,6 +921,11 @@ void Thunks::initialize() {
             ptr = get_custom_glx_thunk(metadata.function_name);
             if (!ptr) {
                 ptr = dlsym(libGLX, metadata.function_name);
+            }
+        } else if (lib_name == "libGL.so" && thunk_gl && libGL) {
+            ptr = get_custom_gl_thunk(metadata.function_name);
+            if (!ptr) {
+                ptr = dlsym(libGL, metadata.function_name);
             }
         } else {
             continue;
