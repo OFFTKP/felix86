@@ -42,9 +42,21 @@ X("libGLX.so", glXQueryServerString, q_qdd)
 X("libGLX.so", glXSelectEvent, v_qqq)
 X("libGLX.so", __glXGLLoadGLXFunction, q_qqq)
 
+// GLX_MESA_query_renderer
 X("libGLX.so", glXQueryRendererIntegerMESA, d_qdddq)
 X("libGLX.so", glXQueryCurrentRendererIntegerMESA, d_dq)
 X("libGLX.so", glXQueryRendererStringMESA, q_qddd)
 X("libGLX.so", glXQueryCurrentRendererStringMESA, q_d)
 
+// GLX_ARB_create_context
 X("libGLX.so", glXCreateContextAttribsARB, q_qqqdq)
+
+// EXT_swap_control
+X("libGLX.so", glXSwapIntervalEXT, v_qqd)
+
+// GLX_MESA_swap_control
+X("libGLX.so", glXSwapIntervalMESA, d_d)
+X("libGLX.so", glXGetSwapIntervalMESA, d_)
+
+// GLX_SGI_swap_control
+X("libGLX.so", glXSwapIntervalSGI, d_d)

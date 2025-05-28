@@ -241,7 +241,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
         // This way we can turn on VERBOSE and see which bad pointer was used
         // TODO: instead of this hack, return a trampoline to a function that will print the bad name and exit
         static u64 garbage = 0xf000'0000'0000'0000;
-        VERBOSE("Couldn't find signature for %s, returning %d", name, garbage);
+        VERBOSE("Couldn't find signature for %s, returning %lx", name, garbage);
         return (void*)garbage++;
     }
 
@@ -661,6 +661,12 @@ void felix86_thunk_glXGetSelectedEvent(Display* dpy, GLXDrawable drawable, unsig
     return host_glXGetSelectedEvent(guestToHostDisplay(dpy), drawable, mask);
 }
 
+void felix86_thunk_glXSwapIntervalEXT(Display* guest_display, GLXDrawable drawable, int interval) {
+    PRINTME;
+    static auto host_glXSwapIntervalEXT = (decltype(&felix86_thunk_glXSwapIntervalEXT))host_glXGetProcAddress("glXSwapIntervalEXT");
+    return host_glXSwapIntervalEXT(guestToHostDisplay(guest_display), drawable, interval);
+}
+
 void felix86_thunk_glDebugMessageCallback(GLDEBUGPROC callback, void* userParam) {
     GLDEBUGPROC host_callback = (GLDEBUGPROC)ABIMadness::hostToGuestTrampoline("v_ddddqqq", (void*)callback);
     LOG("Registered host callback with glDebugMessageCallback");
@@ -741,6 +747,7 @@ void* get_custom_glx_thunk(const std::string& name) {
     MAP(glXCreateContextAttribsARB);
     MAP(glXQueryRendererIntegerMESA);
     MAP(glXQueryRendererStringMESA);
+    MAP(glXSwapIntervalEXT);
 
     return nullptr;
 }
