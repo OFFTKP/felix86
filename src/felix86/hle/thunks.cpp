@@ -291,7 +291,7 @@ void* get_custom_egl_thunk(const std::string& name);
 void* get_custom_glx_thunk(const std::string& name);
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
-    WARN("glXGetProcAddress: %s", name);
+    VERBOSE("glXGetProcAddress: %s", name);
     void* ptr = get_custom_glx_thunk(name);
     if (ptr == nullptr) {
         ptr = host_glXGetProcAddress(name);
@@ -420,7 +420,7 @@ int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** callbacks
     return host_wl_proxy_add_listener(proxy, host_callable, data);
 }
 
-#define PRINTME PLAIN("Calling thunked %s", __PRETTY_FUNCTION__)
+#define PRINTME VERBOSE("Calling thunked %s", __PRETTY_FUNCTION__)
 
 XVisualInfo* felix86_thunk_glXChooseVisual(Display* guest_display, int screen, int* attribList) {
     PRINTME;
