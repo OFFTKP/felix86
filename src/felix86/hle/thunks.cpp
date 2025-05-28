@@ -132,7 +132,6 @@ Display* guestToHostDisplay(Display* guest) {
     if (host_display) {
         guest_to_host[guest_display] = host_display;
         host_to_guest[host_display] = guest_display;
-        LOG("XCreated new XDisplay mapping %p (guest) -> %p (host)", guest_display, host_display);
         return host_display;
     } else {
         WARN("Failed to XOpenDisplay: %s", display_name);
@@ -189,7 +188,6 @@ XVisualInfo* guestToHostVisualInfo(Display* host_display, XVisualInfo* guest) {
     XVisualInfo* info = host_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
 
     if (c >= 1 && info != nullptr) {
-        PLAIN("guestToHostVisualInfo(%p, %p) has created an XVisualInfo: %p", host_display, guest, info);
         return info;
     } else {
         WARN("guestToHostVisualInfo returned null");
@@ -297,7 +295,7 @@ void* get_custom_glx_thunk(const std::string& name);
 void* get_custom_gl_thunk(const std::string& name);
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
-    VERBOSE("glXGetProcAddress: %s", name);
+    PLAIN("glXGetProcAddress: %s", name);
     void* ptr = get_custom_glx_thunk(name);
     if (ptr == nullptr) {
         ptr = get_custom_gl_thunk(name);

@@ -56,6 +56,8 @@ __attribute__((noinline)) void* __felix86_glXGetProcAddressSelf(const char* name
         return __GLXGL_CORE_FUNCTIONS.ptr_##func;                                                                                                    \
     }
 
+    printf("Guest: getting %s\n", name);
+
     CASE(glXChooseVisual);
     CASE(glXCreateContext);
     CASE(glXDestroyContext);
