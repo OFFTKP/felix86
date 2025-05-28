@@ -47,5 +47,5 @@ private:
 };
 
 struct ABIMadness {
-    static void* hostToGuestTrampoline(const char* signature, void* guest_function);
+    static void* hostToGuestTrampoline(const char* signature, const void* guest_function);
 };

@@ -148,6 +148,9 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     ASSERT(signature.size() >= 2);
     ASSERT(signature[1] == '_');
 
+    as.LI(t5, 1);
+    as.SB(t5, offsetof(ThreadState, signals_disabled), Recompiler::threadStatePointer());
+
 #if 0
     biscuit::Label after;
     as.MV(a0, s11);
@@ -417,6 +420,8 @@ void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
     if (stack_size != 0) {
         as.ADDI(sp, sp, stack_size);
     }
+
+    as.SB(x0, offsetof(ThreadState, signals_disabled), Recompiler::threadStatePointer());
 }
 
 void enter_dispatcher_for_callback(ThreadState* state) {
@@ -428,7 +433,7 @@ void enter_dispatcher_for_callback(ThreadState* state) {
     VERBOSE("Finished callback %p", rip);
 }
 
-void* ABIMadness::hostToGuestTrampoline(const char* signature, void* guest_function) {
+void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest_function) {
     // We need custom guest code and custom host code
     ThreadState* state = ThreadState::Get();
     state->signals_disabled = true;

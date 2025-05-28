@@ -91,43 +91,36 @@ void host_glDebugMessageCallback(GLDEBUGPROC callback, void* userParam) {
 
 XVisualInfo* guest_XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return) {
     ASSERT(felix86_guest_XGetVisualInfo);
-    static XGetVisualInfoType xvisualinfo_ptr = (XGetVisualInfoType)ABIMadness::hostToGuestTrampoline("q_qqqq", (void*)felix86_guest_XGetVisualInfo);
-    ASSERT(xvisualinfo_ptr);
-    return xvisualinfo_ptr(display, vinfo_mask, vinfo_template, nitems_return);
+    return felix86_guest_XGetVisualInfo(display, vinfo_mask, vinfo_template, nitems_return);
 }
 static_assert(std::is_same_v<decltype(guest_XGetVisualInfo), decltype(XGetVisualInfo)>);
 
 int guest_XSync(Display* display, int discard) {
     ASSERT(felix86_guest_XSync);
-    static XSyncType xsync_ptr = (XSyncType)ABIMadness::hostToGuestTrampoline("d_qd", (void*)felix86_guest_XSync);
-    ASSERT(xsync_ptr);
-    return xsync_ptr(display, discard);
+    return felix86_guest_XSync(display, discard);
 }
 static_assert(std::is_same_v<decltype(guest_XSync), decltype(XSync)>);
 
 void* guest_malloc(size_t size) noexcept {
     ASSERT(felix86_guest_malloc);
-    static mallocType malloc_ptr = (mallocType)ABIMadness::hostToGuestTrampoline("q_q", (void*)felix86_guest_malloc);
-    ASSERT(malloc_ptr);
-    return malloc_ptr(size);
+    return felix86_guest_malloc(size);
 }
 static_assert(std::is_same_v<decltype(guest_malloc), decltype(malloc)>);
 
-Display* guestToHostDisplay(Display* guest) {
-    if (guest == 0) {
+Display* guestToHostDisplay(Display* guest_display) {
+    if (guest_display == 0) {
         WARN("guestToHostDisplay(nil) called?");
         return nullptr;
     }
 
-    guest_XSync(guest, 0);
+    guest_XSync(guest_display, 0);
 
     std::lock_guard<std::mutex> lock(display_map_mutex);
 
-    if (guest_to_host.find(guest) != guest_to_host.end()) {
-        return (Display*)guest_to_host[guest];
+    if (guest_to_host.find(guest_display) != guest_to_host.end()) {
+        return (Display*)guest_to_host[guest_display];
     }
 
-    _XDisplay* guest_display = (_XDisplay*)guest;
     const char* display_name = guest_display->display_name;
     Display* host_display = host_XOpenDisplay(display_name);
     if (host_display) {
@@ -749,6 +742,7 @@ void* get_custom_glx_thunk(const std::string& name) {
     MAP(glXSwapIntervalEXT);
 
     return nullptr;
+#undef MAP
 }
 
 void* get_custom_gl_thunk(const std::string& name) {
@@ -1003,12 +997,14 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
 
             const std::string name = pointers->name;
 
+            // The constructor may be called multiple times as GLX gets unloaded and reloaded so we need
+            // to always make new trampolines (obligatory TODO: only generate trampolines per signature vs per pointer)
             if (name == "XGetVisualInfo") {
-                felix86_guest_XGetVisualInfo = (XGetVisualInfoType)func;
+                felix86_guest_XGetVisualInfo = (XGetVisualInfoType)ABIMadness::hostToGuestTrampoline("q_qqqq", func);
             } else if (name == "XSync") {
-                felix86_guest_XSync = (XSyncType)func;
+                felix86_guest_XSync = (XSyncType)ABIMadness::hostToGuestTrampoline("d_qd", func);
             } else if (name == "malloc") {
-                felix86_guest_malloc = (mallocType)func;
+                felix86_guest_malloc = (mallocType)ABIMadness::hostToGuestTrampoline("q_q", func);
             } else {
                 ERROR("Unknown function name when trying to run constructor: %s", pointers->name);
             }
