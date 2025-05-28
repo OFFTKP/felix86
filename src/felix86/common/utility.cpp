@@ -620,7 +620,6 @@ void update_symbols() {
             }
 
             if (it == regions.end()) {
-                VERBOSE("Adding new mapping: %s", buffer);
                 regions[buffer] = {UINT64_MAX, 0};
             }
 
@@ -629,7 +628,6 @@ void update_symbols() {
             u64 new_end = std::max(region.second, end);
             region.first = new_start;
             region.second = new_end;
-            VERBOSE("Mapping %s extended: %lx-%lx", buffer, new_start, new_end);
         } else {
             // Failed to parse, is not a map line with a path, skip
             VERBOSE("While reading mappings, failed to parse line: %s", line.c_str());
