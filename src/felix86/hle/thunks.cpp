@@ -154,9 +154,7 @@ XVisualInfo* hostToGuestVisualInfo(Display* guest_display, XVisualInfo* host_inf
         return nullptr;
     }
 
-    XVisualInfo guest_info;
-    guest_info.screen = host_info->screen;
-    guest_info.visualid = host_info->visualid;
+    XVisualInfo guest_info = *host_info;
     host_XFree(host_info);
 
     int nitems_return = 0;
@@ -169,9 +167,8 @@ XVisualInfo* hostToGuestVisualInfo(Display* guest_display, XVisualInfo* host_inf
     return info;
 }
 
-XVisualInfo* getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
+XVisualInfo* guestToHostVisualInfo(Display* host_display, XVisualInfo* guest) {
     if (!host_display) {
-        WARN("getHostVisualInfo with nil display?");
         return nullptr;
     }
 
@@ -183,10 +180,10 @@ XVisualInfo* getHostVisualInfo(Display* host_display, XVisualInfo* guest) {
     XVisualInfo* info = host_XGetVisualInfo(host_display, VisualScreenMask | VisualIDMask, &v, &c);
 
     if (c >= 1 && info != nullptr) {
-        PLAIN("getHostVisualInfo(%p, %p) has created an XVisualInfo: %p", host_display, guest, info);
+        PLAIN("guestToHostVisualInfo(%p, %p) has created an XVisualInfo: %p", host_display, guest, info);
         return info;
     } else {
-        WARN("getHostVisualInfo returned null?");
+        WARN("guestToHostVisualInfo returned null");
         return nullptr;
     }
 }
@@ -431,7 +428,7 @@ GLXContext felix86_thunk_glXCreateContext(Display* dpy, XVisualInfo* visual, GLX
     PRINTME;
     static auto host_glXCreateContext = (decltype(&felix86_thunk_glXCreateContext))dlsym(libGLX, "glXCreateContext");
     Display* host_dpy = guestToHostDisplay(dpy);
-    return host_glXCreateContext(host_dpy, getHostVisualInfo(host_dpy, visual), shareList, direct);
+    return host_glXCreateContext(host_dpy, guestToHostVisualInfo(host_dpy, visual), shareList, direct);
 }
 
 void felix86_thunk_glXDestroyContext(Display* dpy, GLXContext ctx) {
@@ -462,7 +459,7 @@ GLXPixmap felix86_thunk_glXCreateGLXPixmap(Display* dpy, XVisualInfo* visual, Pi
     PRINTME;
     static auto host_glXCreateGLXPixmap = (decltype(&felix86_thunk_glXCreateGLXPixmap))dlsym(libGLX, "glXCreateGLXPixmap");
     Display* host_dpy = guestToHostDisplay(dpy);
-    return host_glXCreateGLXPixmap(host_dpy, getHostVisualInfo(host_dpy, visual), pixmap);
+    return host_glXCreateGLXPixmap(host_dpy, guestToHostVisualInfo(host_dpy, visual), pixmap);
 }
 
 void felix86_thunk_glXDestroyGLXPixmap(Display* dpy, GLXPixmap pixmap) {
@@ -493,7 +490,7 @@ int felix86_thunk_glXGetConfig(Display* dpy, XVisualInfo* visual, int attrib, in
     PRINTME;
     static auto host_glXGetConfig = (decltype(&felix86_thunk_glXGetConfig))dlsym(libGLX, "glXGetConfig");
     Display* host_dpy = guestToHostDisplay(dpy);
-    return host_glXGetConfig(host_dpy, getHostVisualInfo(host_dpy, visual), attrib, value);
+    return host_glXGetConfig(host_dpy, guestToHostVisualInfo(host_dpy, visual), attrib, value);
 }
 
 const char* felix86_thunk_glXQueryExtensionsString(Display* dpy, int screen) {
