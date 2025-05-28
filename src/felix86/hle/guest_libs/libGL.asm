@@ -5319,6 +5319,13 @@ invlpg [rax]
 db "glCopyImageSubData", 0
 ret
 
+global glDebugMessageCallback:function
+align 16
+glDebugMessageCallback:
+invlpg [rax]
+db "glDebugMessageCallback", 0
+ret
+
 global glDebugMessageCallbackARB:function
 align 16
 glDebugMessageCallbackARB:

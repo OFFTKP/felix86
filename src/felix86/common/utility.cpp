@@ -604,7 +604,6 @@ void update_symbols() {
         if (result == 3) {
             if (!std::filesystem::is_regular_file(buffer)) {
                 // Not a regular file, perhaps something like /dev/zero, so we don't add it
-                VERBOSE("Buffer: %s is not regular file", buffer);
                 continue;
             }
 
@@ -630,7 +629,6 @@ void update_symbols() {
             region.second = new_end;
         } else {
             // Failed to parse, is not a map line with a path, skip
-            VERBOSE("While reading mappings, failed to parse line: %s", line.c_str());
         }
     }
 
