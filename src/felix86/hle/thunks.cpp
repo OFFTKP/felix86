@@ -439,6 +439,28 @@ XVisualInfo* felix86_thunk_glXChooseVisual(Display* guest_display, int screen, i
     return hostToGuestVisualInfo(guest_display, host_glXChooseVisual(guestToHostDisplay(guest_display), screen, attribList));
 }
 
+GLXContext felix86_thunk_glXCreateContextAttribsARB(Display* guest_display, GLXFBConfig config, GLXContext share_context, Bool direct,
+                                                    const int* attrib_list) {
+    PRINTME;
+    static auto host_glXCreateContextAttribsARB =
+        (decltype(&felix86_thunk_glXCreateContextAttribsARB))host_glXGetProcAddress("glXCreateContextAttribsARB");
+    return host_glXCreateContextAttribsARB(guestToHostDisplay(guest_display), config, share_context, direct, attrib_list);
+}
+
+Bool felix86_thunk_glXQueryRendererIntegerMESA(Display* guest_display, int screen, int renderer, int attribute, unsigned int* value) {
+    PRINTME;
+    static auto host_glXQueryRendererIntegerMESA =
+        (decltype(&felix86_thunk_glXQueryRendererIntegerMESA))host_glXGetProcAddress("glXQueryRendererIntegerMESA");
+    return host_glXQueryRendererIntegerMESA(guestToHostDisplay(guest_display), screen, renderer, attribute, value);
+}
+
+const char* felix86_thunk_glXQueryRendererStringMESA(Display* guest_display, int screen, int renderer, int attribute) {
+    PRINTME;
+    static auto host_glXQueryRendererStringMESA =
+        (decltype(&felix86_thunk_glXQueryRendererStringMESA))host_glXGetProcAddress("glXQueryRendererStringMESA");
+    return host_glXQueryRendererStringMESA(guestToHostDisplay(guest_display), screen, renderer, attribute);
+}
+
 GLXContext felix86_thunk_glXCreateContext(Display* dpy, XVisualInfo* visual, GLXContext shareList, Bool direct) {
     PRINTME;
     static auto host_glXCreateContext = (decltype(&glXCreateContext))dlsym(libGLX, "glXCreateContext");
@@ -678,75 +700,47 @@ void* get_custom_wl_thunk(const std::string& name) {
 }
 
 void* get_custom_glx_thunk(const std::string& name) {
-    if (name == "glXGetProcAddress") {
-        return (void*)felix86_thunk_glXGetProcAddress;
-    } else if (name == "glXGetProcAddressARB") {
-        return (void*)felix86_thunk_glXGetProcAddress;
-    } else if (name == "glXChooseVisual") {
-        return (void*)felix86_thunk_glXChooseVisual;
-    } else if (name == "glXCreateContext") {
-        return (void*)felix86_thunk_glXCreateContext;
-    } else if (name == "glXDestroyContext") {
-        return (void*)felix86_thunk_glXDestroyContext;
-    } else if (name == "glXMakeCurrent") {
-        return (void*)felix86_thunk_glXMakeCurrent;
-    } else if (name == "glXCopyContext") {
-        return (void*)felix86_thunk_glXCopyContext;
-    } else if (name == "glXSwapBuffers") {
-        return (void*)felix86_thunk_glXSwapBuffers;
-    } else if (name == "glXCreateGLXPixmap") {
-        return (void*)felix86_thunk_glXCreateGLXPixmap;
-    } else if (name == "glXDestroyGLXPixmap") {
-        return (void*)felix86_thunk_glXDestroyGLXPixmap;
-    } else if (name == "glXQueryExtension") {
-        return (void*)felix86_thunk_glXQueryExtension;
-    } else if (name == "glXQueryVersion") {
-        return (void*)felix86_thunk_glXQueryVersion;
-    } else if (name == "glXIsDirect") {
-        return (void*)felix86_thunk_glXIsDirect;
-    } else if (name == "glXGetConfig") {
-        return (void*)felix86_thunk_glXGetConfig;
-    } else if (name == "glXQueryExtensionsString") {
-        return (void*)felix86_thunk_glXQueryExtensionsString;
-    } else if (name == "glXQueryServerString") {
-        return (void*)felix86_thunk_glXQueryServerString;
-    } else if (name == "glXGetClientString") {
-        return (void*)felix86_thunk_glXGetClientString;
-    } else if (name == "glXChooseFBConfig") {
-        return (void*)felix86_thunk_glXChooseFBConfig;
-    } else if (name == "glXGetFBConfigAttrib") {
-        return (void*)felix86_thunk_glXGetFBConfigAttrib;
-    } else if (name == "glXGetFBConfigs") {
-        return (void*)felix86_thunk_glXGetFBConfigs;
-    } else if (name == "glXGetVisualFromFBConfig") {
-        return (void*)felix86_thunk_glXGetVisualFromFBConfig;
-    } else if (name == "glXCreateWindow") {
-        return (void*)felix86_thunk_glXCreateWindow;
-    } else if (name == "glXDestroyWindow") {
-        return (void*)felix86_thunk_glXDestroyWindow;
-    } else if (name == "glXCreatePixmap") {
-        return (void*)felix86_thunk_glXCreatePixmap;
-    } else if (name == "glXDestroyPixmap") {
-        return (void*)felix86_thunk_glXDestroyPixmap;
-    } else if (name == "glXCreatePbuffer") {
-        return (void*)felix86_thunk_glXCreatePbuffer;
-    } else if (name == "glXDestroyPbuffer") {
-        return (void*)felix86_thunk_glXDestroyPbuffer;
-    } else if (name == "glXQueryDrawable") {
-        return (void*)felix86_thunk_glXQueryDrawable;
-    } else if (name == "glXCreateNewContext") {
-        return (void*)felix86_thunk_glXCreateNewContext;
-    } else if (name == "glXMakeContextCurrent") {
-        return (void*)felix86_thunk_glXMakeContextCurrent;
-    } else if (name == "glXQueryContext") {
-        return (void*)felix86_thunk_glXQueryContext;
-    } else if (name == "glXSelectEvent") {
-        return (void*)felix86_thunk_glXSelectEvent;
-    } else if (name == "glXGetSelectedEvent") {
-        return (void*)felix86_thunk_glXGetSelectedEvent;
-    } else if (name == "glXGetCurrentDisplay") {
-        return (void*)felix86_thunk_glXGetCurrentDisplay;
-    }
+#define MAP(n)                                                                                                                                       \
+    if (name == #n)                                                                                                                                  \
+    return (void*)felix86_thunk_##n
+
+    MAP(glXGetProcAddress);
+    MAP(glXGetProcAddress);
+    MAP(glXChooseVisual);
+    MAP(glXCreateContext);
+    MAP(glXDestroyContext);
+    MAP(glXMakeCurrent);
+    MAP(glXCopyContext);
+    MAP(glXSwapBuffers);
+    MAP(glXCreateGLXPixmap);
+    MAP(glXDestroyGLXPixmap);
+    MAP(glXQueryExtension);
+    MAP(glXQueryVersion);
+    MAP(glXIsDirect);
+    MAP(glXGetConfig);
+    MAP(glXQueryExtensionsString);
+    MAP(glXQueryServerString);
+    MAP(glXGetClientString);
+    MAP(glXChooseFBConfig);
+    MAP(glXGetFBConfigAttrib);
+    MAP(glXGetFBConfigs);
+    MAP(glXGetVisualFromFBConfig);
+    MAP(glXCreateWindow);
+    MAP(glXDestroyWindow);
+    MAP(glXCreatePixmap);
+    MAP(glXDestroyPixmap);
+    MAP(glXCreatePbuffer);
+    MAP(glXDestroyPbuffer);
+    MAP(glXQueryDrawable);
+    MAP(glXCreateNewContext);
+    MAP(glXMakeContextCurrent);
+    MAP(glXQueryContext);
+    MAP(glXSelectEvent);
+    MAP(glXGetSelectedEvent);
+    MAP(glXGetCurrentDisplay);
+    MAP(glXCreateContextAttribsARB);
+    MAP(glXQueryRendererIntegerMESA);
+    MAP(glXQueryRendererStringMESA);
 
     return nullptr;
 }
