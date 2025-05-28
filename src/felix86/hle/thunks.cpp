@@ -290,7 +290,7 @@ void* get_custom_egl_thunk(const std::string& name);
 void* get_custom_glx_thunk(const std::string& name);
 
 void* felix86_thunk_glXGetProcAddress(const char* name) {
-    VERBOSE("glXGetProcAddress: %s", name);
+    WARN("glXGetProcAddress: %s", name);
     void* ptr = get_custom_glx_thunk(name);
     if (ptr == nullptr) {
         ptr = host_glXGetProcAddress(name);
