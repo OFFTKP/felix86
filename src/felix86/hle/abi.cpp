@@ -479,7 +479,9 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     biscuit::GPR guest_stack_pointer = t1;
 
     // ThreadState* in s11, RSP in t1
-    as.LI(thread_state_pointer, (u64)state);
+    as.LI(t1, (u64)ThreadState::Get);
+    as.JALR(t1);
+    as.MV(thread_state_pointer, a0);
     as.LD(guest_stack_pointer, offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * 8, thread_state_pointer);
 
     // Marshal host arguments to guest arguments
@@ -581,7 +583,7 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
 
     ASSERT(x86_stack_size == x86_stack_offset);
 
-    // Save old RIP, set new RIP
+    // Save old RIP, set new RIP -- TODO: why do we even save the old rip? delete this
     as.LD(s10, offsetof(ThreadState, rip), thread_state_pointer);
     as.LI(t0, (u64)x86_code);
     as.SD(t0, offsetof(ThreadState, rip), thread_state_pointer);
