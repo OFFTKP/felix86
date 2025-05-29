@@ -13248,17 +13248,19 @@
         "disassembly": "mov qword ptr [rdi], 0x01"
     },
     "488b8780000000": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "LD              t0, a0, 0x80(128)"
+            "ADDI            ra, a0, 0x80(128)",
+            "LD              t0, ra, 0x0(0)"
         ],
         "disassembly": "mov rax, [rdi+0x80]"
     },
     "48c7878000000001000000": {
-        "instruction_count": 2,
+        "instruction_count": 3,
         "expected_asm": [
             "ADDIW           ra, zero, 0x1(1)",
-            "SD              ra, a0, 0x80(128)"
+            "ADDI            t1, a0, 0x80(128)",
+            "SD              ra, t1, 0x0(0)"
         ],
         "disassembly": "mov qword ptr [rdi+0x80], 0x01"
     },
