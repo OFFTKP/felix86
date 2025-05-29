@@ -15,8 +15,7 @@ curl -s https://raw.githubusercontent.com/OFFTKP/felix86/master/src/felix86/tool
 
 This command downloads and runs the installer script, which fetches the latest felix86 artifact and lets you either download a rootfs or use your own.
 
-### Compilation guide
-[Read the compilation guide](./docs/how-to-use.md) to build felix86 yourself
+[Read the usage guide](./docs/how-to-use.md) for more information or if you want to compile felix86 yourself.
 
 ## Features
 - Just-in-Time (JIT) recompiler

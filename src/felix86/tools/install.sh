@@ -67,15 +67,23 @@ echo "Moving felix86 artifact to $FILE, requesting permission..."
 sudo mkdir -p $INSTALLATION_DIR
 
 # Save the old installation in /tmp/felix86_artifact/old.<random> in case the user wants it back
-TEMP_OLD=$(mktemp /tmp/felix86_artifact/old.XXXXXX)
+TEMP_OLD=$(mktemp -d /tmp/felix86_artifact/old.XXXXXX)
+moved_old=0
 if [ -f "/usr/bin/felix86" ]; then
-    sudo mv /usr/bin/felix86 $TEMP_OLD/
+    sudo mv /usr/bin/felix86 $TEMP_OLD/felix86.link
+    moved_old=1
 fi
 if [ -f "$FILE" ]; then
     sudo mv $FILE $TEMP_OLD/
+    moved_old=1
 fi
-if [ -d "$INSTALLATION_DIR/lib" ]
+if [ -d "$INSTALLATION_DIR/lib" ]; then
     sudo mv $INSTALLATION_DIR/lib $TEMP_OLD/
+    moved_old=1
+fi
+
+if [[ "$moved_old" == "1" ]]; then
+    echo "Moved old felix86 installation to $TEMP_OLD"
 fi
 
 sudo mv /tmp/felix86_artifact/felix86 $FILE

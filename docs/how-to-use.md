@@ -5,6 +5,15 @@
 >
 > Currently the emulator is only tested on boards with **VLEN=256**
 
+## Quick start
+Simply run the quick installation script:
+
+```bash
+curl -s https://raw.githubusercontent.com/OFFTKP/felix86/master/src/felix86/tools/install.sh -o /tmp/felix86_install.sh && bash /tmp/felix86_install.sh && rm /tmp/felix86_install.sh
+```
+
+This will guide you through the process of installing felix86 and downloading a rootfs.
+
 ## Required architecture
 
 You need a RISC-V board with `rv64gv` extensions. **RVV 1.0** is necessary.
@@ -85,22 +94,6 @@ felix86 default configurations are relatively conservative, but some adjustments
 > View [https://github.com/felix86-emu/compatibility-list/issues/] to see if the game you want to run is supported
 > and if there's an special configuration necessary.
 
-### Thunking
-
-> [!WARNING]
-> Thunking support is not great yet. Some games may not work with thunking enabled.
-
-On systems with a GPU that has no x86-64 drivers (for example any board with a PowerVR iGPU) you may be unable to use your GPU without thunking. Thunking enables using some RISC-V libraries instead of x86-64 libraries.
-
-To enable thunking, set the environment variable `FELIX86_THUNKS=/path/to/felix86/src/felix86/hle/guest_libs`
-
-Or the respective variable in `$HOME/.config/felix86/config.toml`
-
-Want to disable thunking? `export FELIX86_ENABLED_THUNKS=` will do the trick -- or you can unset the `FELIX86_THUNKS` path.
-
-Want to thunk Vulkan but not EGL? You can do so with `FELIX86_ENABLED_THUNKS=vulkan,wayland`
-
-
 ## Running a game
 
 The game you want to run **must** be inside the rootfs directory, so place it anywhere in there.
@@ -121,6 +114,28 @@ By default, the host environment variables are passed to the executable.
 You can find log files from runs of the emulator in `/tmp/felix86-XXXXXX.log`
 
 Use `--help` to view all the options.
+
+
+### Thunking
+
+> [!WARNING]
+> Thunking support is not great yet. Some games may not work with thunking enabled.
+>
+> Please test a game without thunking first to see if it works, and then you can enable thunking
+
+On systems with a GPU that has no x86-64 drivers (for example any board with a PowerVR iGPU) you may be unable to use your GPU without thunking. Thunking enables using some RISC-V libraries instead of x86-64 libraries.
+Additionally, thunking improves performance by using natively compiled code instead of recompiled code, while also improving compilation stutter and load times.
+
+To enable thunking you need to set the path to the thunk directory. The **installer script** will do it for you, but you can set it like so:
+- `felix86 -S /path/to/felix86_source_code/src/felix86/hle/guest_libs`
+
+After the thunks directory is set, you can use the `FELIX86_ENABLED_THUNKS` environment variable
+
+Want to disable thunking? `export FELIX86_ENABLED_THUNKS=` will do the trick.
+
+Want to thunk GLX? Run `export FELIX86_ENABLED_THUNKS=glx`
+
+Want to thunk Vulkan on Wayland? You can do so with `export FELIX86_ENABLED_THUNKS=vulkan,wayland`
 
 ## Compiling tests
 
