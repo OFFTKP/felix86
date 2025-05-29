@@ -69,17 +69,17 @@ sudo mkdir -p $INSTALLATION_DIR
 # Save the old installation in /tmp/felix86_artifact/old.<random> in case the user wants it back
 TEMP_OLD=$(mktemp /tmp/felix86_artifact/old.XXXXXX)
 if [ -f "/usr/bin/felix86" ]; then
-    sudo mv /usr/bin/felix86 $TEMP_OLD/felix86.ln.bak
+    sudo mv /usr/bin/felix86 $TEMP_OLD/
 fi
 if [ -f "$FILE" ]; then
-    sudo mv $FILE $TEMP_OLD/felix86.opt.bak
+    sudo mv $FILE $TEMP_OLD/
 fi
 if [ -d "$INSTALLATION_DIR/lib" ]
     sudo mv $INSTALLATION_DIR/lib $TEMP_OLD/
 fi
 
 sudo mv /tmp/felix86_artifact/felix86 $FILE
-sudo mv /tmp/felix86_artifact/lib $INSTALLATION_DIR
+sudo mv /tmp/felix86_artifact/lib $INSTALLATION_DIR/
 sudo ln -s $FILE /usr/bin/felix86
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
 felix86 --set-thunks $INSTALLATION_DIR/lib
