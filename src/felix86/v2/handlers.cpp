@@ -340,7 +340,8 @@ FAST_HANDLE(MOV) {
             case 64: {
                 u64 immediate = operands[1].mem.disp.value;
                 biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
-                if (IsValidSigned12BitImm(immediate) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT)) { // can't do this with seg+a32
+                if (IsValidSigned12BitImm(immediate) && !(instruction.attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
+                    !g_config.paranoid) { // can't do this with seg+a32
                     // Remove the immediate from the operand and use it in the write memory instruction
                     // This can turn an ADDI+load into just a load if the LEA is just a register
                     ZydisDecodedOperand op = operands[1];

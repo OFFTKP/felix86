@@ -899,7 +899,8 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
         u64 immediate = operand->mem.disp.value;
-        if (IsValidSigned12BitImm(immediate) && !(operand->mem.segment & ZYDIS_ATTRIB_HAS_SEGMENT)) { // can't do this with seg+a32
+        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
+            !g_config.paranoid) { // can't do this with seg+a32
             // Remove the immediate from the operand and use it in the write memory instruction
             // This can turn an ADDI+load into just a load if the LEA is just a register
             ZydisDecodedOperand op = *operand;
@@ -1153,7 +1154,8 @@ void Recompiler::setGPR(const ZydisDecodedOperand* operand, biscuit::GPR reg) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         u64 immediate = operand->mem.disp.value;
-        if (IsValidSigned12BitImm(immediate) && !(operand->mem.segment & ZYDIS_ATTRIB_HAS_SEGMENT)) { // can't do this with seg+a32
+        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
+            !g_config.paranoid) { // can't do this with seg+a32
             // Remove the immediate from the operand and use it in the write memory instruction
             // This can turn an ADDI+store into just a store if the LEA is just a register
             ZydisDecodedOperand op = *operand;
