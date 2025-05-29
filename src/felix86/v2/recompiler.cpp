@@ -2866,6 +2866,7 @@ void Recompiler::decrementTOP() {
     as.ADDI(top, top, -1);
     as.ANDI(top, top, 0b111);
     setTOP(top);
+    popScratch();
 
     enableSignals();
 }
@@ -2895,6 +2896,7 @@ void Recompiler::pushX87(biscuit::FPR val) {
     as.ADDI(top, top, -1);
     as.ANDI(top, top, 0b111);
     setTOP(top);
+    popScratch();
 
     enableSignals();
 }
@@ -2928,6 +2930,7 @@ void Recompiler::popX87() {
     as.ADDI(top, top, 1);
     as.ANDI(top, top, 0b111);
     setTOP(top);
+    popScratch();
 
     enableSignals();
 }
