@@ -103,8 +103,9 @@ void Recompiler::emitNecessaryStuff() {
 void Recompiler::emitDispatcher() {
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
-    as.LI(t3, 1);
-    as.SB(t3, offsetof(ThreadState, signals_disabled), a0);
+    as.LD(t3, offsetof(ThreadState, signals_disabled), a0);
+    as.ADDI(t3, t3, 1);
+    as.SD(t3, offsetof(ThreadState, signals_disabled), a0);
 
     // Save the current frame in the stack
     // The size of felix86_frame is bigger than the red zone, so we need to decrement the stack instead of using a temporary
@@ -127,7 +128,9 @@ void Recompiler::emitDispatcher() {
     as.LI(t1, felix86_frame::expected_magic);
     as.SD(t1, offsetof(felix86_frame, magic), sp);
 
-    as.SB(x0, offsetof(ThreadState, signals_disabled), a0);
+    as.LD(t3, offsetof(ThreadState, signals_disabled), a0);
+    as.ADDI(t3, t3, -1);
+    as.SD(t3, offsetof(ThreadState, signals_disabled), a0);
 
     as.MV(threadStatePointer(), a0);
 
@@ -179,8 +182,9 @@ void Recompiler::emitDispatcher() {
     // Load ThreadState* into t4
     as.LD(t4, offsetof(felix86_frame, state), a0);
 
-    as.LI(t3, 1);
-    as.SB(t3, offsetof(ThreadState, signals_disabled), t4);
+    as.LD(t3, offsetof(ThreadState, signals_disabled), a0);
+    as.ADDI(t3, t3, 1);
+    as.SD(t3, offsetof(ThreadState, signals_disabled), a0);
 
     // Load the frame we had before entering the dispatcher
     // First make sure our magic is correct
@@ -221,7 +225,9 @@ void Recompiler::emitDispatcher() {
     as.Bind(&stack_correct);
     as.MV(sp, t0);
 
-    as.SB(x0, offsetof(ThreadState, signals_disabled), t4);
+    as.LD(t3, offsetof(ThreadState, signals_disabled), a0);
+    as.ADDI(t3, t3, -1);
+    as.SD(t3, offsetof(ThreadState, signals_disabled), a0);
 
     // Return to wherever the dispatcher was originally entered from using enter_dispatcher
     as.JR(ra);
@@ -2507,14 +2513,19 @@ void Recompiler::setFlags(biscuit::GPR flags) {
 }
 
 void Recompiler::disableSignals() {
-    biscuit::GPR i_love_risc_architecture = scratch();
-    as.LI(i_love_risc_architecture, 1);
-    as.SB(i_love_risc_architecture, offsetof(ThreadState, signals_disabled), threadStatePointer());
+    biscuit::GPR temp = scratch();
+    as.LD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
+    as.ADDI(temp, temp, 1);
+    as.SD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
     popScratch();
 }
 
 void Recompiler::enableSignals() {
-    as.SB(x0, offsetof(ThreadState, signals_disabled), threadStatePointer());
+    biscuit::GPR temp = scratch();
+    as.LD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
+    as.ADDI(temp, temp, -1);
+    as.SD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
+    popScratch();
 }
 
 biscuit::GPR Recompiler::getTOP() {

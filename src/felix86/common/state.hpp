@@ -183,7 +183,7 @@ struct ThreadState {
     stack_t alt_stack{};
     // some instructions would make it annoying to allow for signals to occur, be it because they have loops like rep, or use
     // lr/sc instructions. So, this flag is set to true when we absolutely don't want a signal to be handled here.
-    volatile bool signals_disabled{}; // volatile to prevent reordering
+    volatile u64 signals_disabled{}; // volatile to prevent reordering
     bool cpuid_bit{}; // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
                       // check presence of cpuid... on x86-64 processors... lol...
 

@@ -196,14 +196,9 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
 
     g_dispatcher_exit_count++;
 
-    thread_state->signals_disabled = true;
-
+    SignalGuard guard = thread_state->GuardSignals();
     u64 next_block = thread_state->recompiler->getCompiledBlock(thread_state, thread_state->GetRip());
-
-    thread_state->signals_disabled = false;
-
     ASSERT_MSG(next_block != 0, "getCompiledBlock returned null?");
-
     return (void*)next_block;
 }
 

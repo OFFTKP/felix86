@@ -765,6 +765,11 @@ int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
 }
 
 void Signals::checkPending(ThreadState* state) {
+    if (state->signals_disabled) {
+        VERBOSE("Signals disabled in checkPending...");
+        return;
+    }
+
     // Check if there's any pending signals. If there are, raise them.
     while (state->pending_signals) {
         int sig_bit = __builtin_ctz(state->pending_signals);

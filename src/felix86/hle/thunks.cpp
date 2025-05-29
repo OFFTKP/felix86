@@ -241,7 +241,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     const char* signature = thunk->signature;
     size_t sigsize = strlen(signature);
     ThreadState* state = ThreadState::Get();
-    state->signals_disabled = true;
+    SignalGuard guard = state->GuardSignals();
     // We can't put this code in code cache, because it needs to outlive potential code cache clears
     u8* memory = state->x86_trampoline_storage;
     // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
@@ -258,7 +258,6 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     memcpy(&memory[3 + 8], signature, sigsize);
     memory[3 + 8 + sigsize + 1] = 0xc3;
     state->x86_trampoline_storage += 3 + 8 + sigsize + 2;
-    state->signals_disabled = false;
     VERBOSE("Created guest-callable host pointer for %s: %p", name, host_ptr);
     return memory;
 }

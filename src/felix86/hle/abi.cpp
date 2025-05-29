@@ -148,8 +148,9 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     ASSERT(signature.size() >= 2);
     ASSERT(signature[1] == '_');
 
-    as.LI(t5, 1);
-    as.SB(t5, offsetof(ThreadState, signals_disabled), Recompiler::threadStatePointer());
+    as.LD(t3, offsetof(ThreadState, signals_disabled), Recompiler::threadStatePointer());
+    as.ADDI(t3, t3, 1);
+    as.SD(t3, offsetof(ThreadState, signals_disabled), Recompiler::threadStatePointer());
 
 #if 0
     biscuit::Label after;
@@ -421,7 +422,9 @@ void GuestToHostMarshaller::emitEpilogue(biscuit::Assembler& as) {
         as.ADDI(sp, sp, stack_size);
     }
 
-    as.SB(x0, offsetof(ThreadState, signals_disabled), Recompiler::threadStatePointer());
+    as.LD(t3, offsetof(ThreadState, signals_disabled), Recompiler::threadStatePointer());
+    as.ADDI(t3, t3, -1);
+    as.SD(t3, offsetof(ThreadState, signals_disabled), Recompiler::threadStatePointer());
 }
 
 void enter_dispatcher_for_callback(ThreadState* state) {
@@ -436,7 +439,7 @@ void enter_dispatcher_for_callback(ThreadState* state) {
 void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest_function) {
     // We need custom guest code and custom host code
     ThreadState* state = ThreadState::Get();
-    state->signals_disabled = true;
+    SignalGuard guard = state->GuardSignals();
     u8* const x86_code = state->x86_trampoline_storage;
     u8* curr = x86_code;
     // Our recompiler marks guest code as PROT_READ, we need to undo this as it may have marked previous trampolines
@@ -678,7 +681,5 @@ void* ABIMadness::hostToGuestTrampoline(const char* signature, const void* guest
     state->riscv_trampoline_storage = as.GetCursorPointer();
 
     flush_icache();
-
-    state->signals_disabled = false;
     return trampoline;
 }
