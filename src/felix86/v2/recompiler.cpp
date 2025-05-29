@@ -898,8 +898,18 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     }
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
-        biscuit::GPR address = lea(operand, false);
-        readMemory(dest, address, 0, zydisToSize(operand->size));
+        u64 immediate = operand->mem.disp.value;
+        if (IsValidSigned12BitImm(immediate)) {
+            // Remove the immediate from the operand and use it in the write memory instruction
+            // This can turn an ADDI+load into just a load if the LEA is just a register
+            ZydisDecodedOperand op = *operand;
+            op.mem.disp.value = 0;
+            biscuit::GPR address = lea(&op, false);
+            readMemory(dest, address, immediate, zydisToSize(operand->size));
+        } else {
+            biscuit::GPR address = lea(operand, false);
+            readMemory(dest, address, 0, zydisToSize(operand->size));
+        }
         return dest;
     }
     case ZYDIS_OPERAND_TYPE_IMMEDIATE: {

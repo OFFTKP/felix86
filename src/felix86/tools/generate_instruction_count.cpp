@@ -429,6 +429,7 @@ int main() {
         GEN(cmpxchg(ptr[rdi], rbx));
         if (flags) {
             GEN_Group1(mov);
+            GEN(mov(rax, qword[rdi + 128]));
             GEN(mov(qword[rdi + 128], 1));
             GEN(div(dl));
             GEN(div(dh));
