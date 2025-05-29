@@ -612,7 +612,7 @@ FAST_HANDLE(CMP) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     if (!needs_any_flag) {
-        WARN("CMP with no flags used?");
+        // Same as TEST, don't warn here
         return;
     }
 

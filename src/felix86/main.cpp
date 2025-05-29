@@ -436,10 +436,6 @@ int main(int argc, char* argv[]) {
 
     Signals::initialize();
 
-    if (!g_config.thunks_path.empty()) {
-        Thunks::initialize();
-    }
-
     if (is_subpath(params.argv[0], g_config.rootfs_path)) {
         params.argv[0] = params.argv[0].substr(g_config.rootfs_path.string().size());
         ASSERT(!params.argv[0].empty());

@@ -13,6 +13,7 @@
 #include "felix86/emulator.hpp"
 #include "felix86/hle/brk.hpp"
 #include "felix86/hle/thread.hpp"
+#include "felix86/hle/thunks.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 extern char** environ;
@@ -303,6 +304,10 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
         prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "guard");
     } else {
         g_mode32 = false;
+    }
+
+    if (!g_mode32 && !g_config.thunks_path.empty()) {
+        Thunks::initialize();
     }
 
     g_fs->LoadExecutable(g_params.executable_path);
