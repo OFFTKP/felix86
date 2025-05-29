@@ -1382,6 +1382,26 @@ void felix86_fxam(ThreadState* state) {
     state->fpu_sw |= c3 ? C3_BIT : 0;
 }
 
+std::string felix86_maps() {
+    std::string ret;
+    std::ifstream ifs("/proc/self/maps");
+    std::string line;
+    char buffer[PATH_MAX];
+    std::string srootfs_path = g_config.rootfs_path;
+    while (std::getline(ifs, line)) {
+        int result = sscanf(line.c_str(), "%*lx-%*lx %*s %*s %*s %*s %s", buffer);
+        if (result == 1) {
+            // Remove rootfs path from the line, if it exists
+            replace_all(line, srootfs_path, "");
+            ret += line + "\n";
+        } else {
+            // Failed to parse somehow... add it to the map anyway
+            VERBOSE("Failed to parse buffer %s during /proc/self/maps", line.c_str());
+        }
+    }
+    return ret;
+}
+
 const std::string& felix86_cpuinfo() {
 #define ADD_FLAG(cond, name)                                                                                                                         \
     do {                                                                                                                                             \

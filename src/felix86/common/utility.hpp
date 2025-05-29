@@ -127,6 +127,17 @@ inline std::vector<std::string> split_string(const std::string& txt, char ch) {
     return strs;
 }
 
+inline void replace_all(std::string& str, const std::string& from, const std::string& to) {
+    if (from.empty())
+        return;
+
+    size_t start_pos = 0;
+    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length();
+    }
+}
+
 enum class pcmpxstrx { ImplicitIndex = 0b00, ImplicitMask = 0b01, ExplicitIndex = 0b10, ExplicitMask = 0b11 };
 
 void felix86_pcmpxstrx(ThreadState* state, pcmpxstrx type, u8* dst, u8* src, u8 control);
@@ -144,4 +155,5 @@ void felix86_fprem(ThreadState* state);
 
 void felix86_fxam(ThreadState* state);
 
+std::string felix86_maps();
 const std::string& felix86_cpuinfo();

@@ -9,7 +9,7 @@
 #include "felix86/common/types.hpp"
 
 struct Filesystem {
-    Filesystem();
+    void initializeEmulatedNodes();
 
     bool LoadExecutable(const std::filesystem::path& path) {
         if (!executable_path.empty()) {
@@ -192,6 +192,7 @@ private:
 
     enum {
         PROC_CPUINFO,
+        PROC_SELF_MAPS,
         EMULATED_NODE_COUNT,
     };
 

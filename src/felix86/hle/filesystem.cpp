@@ -65,15 +65,26 @@ void seal_memfd(int fd) {
     ASSERT(fcntl(fd, F_ADD_SEALS, F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_FUTURE_WRITE) == 0);
 }
 
-Filesystem::Filesystem() {
+void Filesystem::initializeEmulatedNodes() {
     // clang-format off
     emulated_nodes[PROC_CPUINFO] = EmulatedNode {
         .path = "/proc/cpuinfo",
         .open_func = [](const char* path, int flags) {
             const std::string& cpuinfo = felix86_cpuinfo();
             int fd = generate_memfd("/proc/cpuinfo", flags);
-            // TODO: asserts for the write
-            write(fd, cpuinfo.data(), cpuinfo.size());
+            ASSERT(write(fd, cpuinfo.data(), cpuinfo.size()) == cpuinfo.size());
+            lseek(fd, 0, SEEK_SET);
+            seal_memfd(fd);
+            return fd;
+        },
+    };
+
+    emulated_nodes[PROC_SELF_MAPS] = EmulatedNode{
+        .path = "/proc/self/maps",
+        .open_func = [](const char* path, int flags) {
+            std::string maps = felix86_maps();
+            int fd = generate_memfd("/proc/self/maps", flags);
+            ASSERT(write(fd, maps.data(), maps.size()) == maps.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
             return fd;

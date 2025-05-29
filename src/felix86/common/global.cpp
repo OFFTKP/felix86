@@ -96,6 +96,8 @@ void ProcessGlobals::initialize() {
 
     cas128_lock = 0;
 
+    g_fs->initializeEmulatedNodes();
+
     // Don't reset the /proc/self/maps mapped regions, we can reuse the ones from parent process
 }
 
