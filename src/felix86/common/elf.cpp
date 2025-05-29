@@ -524,7 +524,7 @@ void Elf::Load(const std::filesystem::path& path) {
                         ERROR("Failed to allocate memory for BSS in file %s", path.c_str());
                     }
 
-                    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, bss_page_start, bss_page_end - bss_page_start, "bss");
+                    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, bss_page_start, bss_page_end - bss_page_start, "felix86-bss");
                     memset((void*)bss_page_start, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
                 }

@@ -1391,12 +1391,29 @@ std::string felix86_maps() {
     while (std::getline(ifs, line)) {
         int result = sscanf(line.c_str(), "%*lx-%*lx %*s %*s %*s %*s %s", buffer);
         if (result == 1) {
-            // Remove rootfs path from the line, if it exists
-            replace_all(line, srootfs_path, "");
-            ret += line + "\n";
+            if (line.find(srootfs_path) != std::string::npos) {
+                // Remove rootfs path from the line, if it exists
+                replace_all(line, srootfs_path, "");
+                ret += line + "\n";
+            } else {
+                // If this is a file, it's not inside the rootfs so we don't let the guest know
+                // If it's not a file, then it might be something like [heap] so we report that
+                std::error_code ec;
+                if (std::filesystem::exists(buffer, ec)) {
+                    // Ignore this line
+                } else {
+                    std::string anon = buffer;
+                    // Hide our own mappings
+                    // TODO: this leaks the host heap, stack, vdso, ... to the guest
+                    if (anon != "[felix86-brk]" && anon != "[felix86-guard]" && anon != "[felix86-bss]") {
+                        ret += line + "\n";
+                    }
+                }
+            }
         } else {
-            // Failed to parse somehow... add it to the map anyway
-            VERBOSE("Failed to parse buffer %s during /proc/self/maps", line.c_str());
+            // Failed to parse, probably not a file mapped line
+            // Just add it to the ret
+            ret += line + "\n";
         }
     }
     return ret;

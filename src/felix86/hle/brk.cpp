@@ -53,8 +53,7 @@ void BRK::allocate32() {
 
     g_initial_brk = g_current_brk;
     g_current_brk_size = initial_brk_size;
-    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, max_brk_size, "max-brk");
-    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, initial_brk_size, "current-brk");
+    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, max_brk_size, "felix86-brk");
     VERBOSE("BRK base at %p", (void*)g_current_brk);
     g_max_brk_size = max_brk_size;
 }
@@ -114,8 +113,7 @@ void BRK::allocate64() {
 
     g_initial_brk = g_current_brk;
     g_current_brk_size = initial_brk_size;
-    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, initial_brk_size, "current-brk");
-    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_current_brk, max_brk_size, "max-brk");
+    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, max_brk_size, "felix86-brk");
     VERBOSE("BRK base at %p", (void*)g_current_brk);
     g_max_brk_size = max_brk_size;
 }
@@ -148,7 +146,6 @@ u64 BRK::set(u64 new_brk) {
             ERROR("Failed to remap brk with new size: %lx", new_size);
         }
 
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, g_initial_brk, new_size, "current-brk");
         WARN("Resized BRK (new size: %lx, from %lx-%lx to %lx-%lx)", new_size, g_initial_brk, end_brk, g_initial_brk, end_brk + size_past_end);
         g_current_brk_size = new_size;
     }

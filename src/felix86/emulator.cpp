@@ -297,7 +297,7 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
             ERROR("I failed to allocate the 32-bit guard");
         }
 
-        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "guard");
+        prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, 4 * GB, 2 * GB, "felix86-guard");
     } else {
         g_mode32 = false;
     }
