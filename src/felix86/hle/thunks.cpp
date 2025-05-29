@@ -785,32 +785,34 @@ void Thunks::initialize() {
     bool thunk_gl = false;
     bool thunk_wayland = false;
     std::string enabled_thunks = g_config.enabled_thunks;
-    if (enabled_thunks == "all") {
-        thunk_vk = true;
-        thunk_egl = true;
-        thunk_glx = true;
-        thunk_gl = true;
-        thunk_wayland = true;
-    } else if (!enabled_thunks.empty()) {
-        std::vector<std::string> list = split_string(enabled_thunks, ',');
-        for (const auto& t : list) {
-            std::string n = t;
-            for (auto& c : n) {
-                c = tolower(c);
-            }
+    if (enabled_thunks != "none") {
+        if (enabled_thunks == "all") {
+            thunk_vk = true;
+            thunk_egl = true;
+            thunk_glx = true;
+            thunk_gl = true;
+            thunk_wayland = true;
+        } else if (!enabled_thunks.empty()) {
+            std::vector<std::string> list = split_string(enabled_thunks, ',');
+            for (const auto& t : list) {
+                std::string n = t;
+                for (auto& c : n) {
+                    c = tolower(c);
+                }
 
-            if (n == "libvulkan" || n == "vulkan" || n == "vk") {
-                thunk_vk = true;
-            } else if (n == "libegl" || n == "egl") {
-                thunk_egl = true;
-                thunk_gl = true;
-            } else if (n == "libwayland-client" || n == "libwayland" || n == "wayland-client" || n == "wayland" || n == "wl") {
-                thunk_wayland = true;
-            } else if (n == "libglx" || n == "glx") {
-                thunk_glx = true;
-                thunk_gl = true;
-            } else {
-                ERROR("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
+                if (n == "libvulkan" || n == "vulkan" || n == "vk") {
+                    thunk_vk = true;
+                } else if (n == "libegl" || n == "egl") {
+                    thunk_egl = true;
+                    thunk_gl = true;
+                } else if (n == "libwayland-client" || n == "libwayland" || n == "wayland-client" || n == "wayland" || n == "wl") {
+                    thunk_wayland = true;
+                } else if (n == "libglx" || n == "glx") {
+                    thunk_glx = true;
+                    thunk_gl = true;
+                } else {
+                    WARN("Unknown option: %s in FELIX86_ENABLED_THUNKS", t.c_str());
+                }
             }
         }
     }
