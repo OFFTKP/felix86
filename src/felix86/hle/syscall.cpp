@@ -951,8 +951,18 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_rt_sigaction: {
-        RegisteredSignal old = Signals::getSignalHandler(state, arg1);
+        if (arg1 > 64) {
+            result = -EINVAL;
+            break;
+        }
+
         x64_sigaction* act = (x64_sigaction*)arg2;
+        if (act && (arg1 == SIGKILL || arg1 == SIGSTOP)) {
+            result = -EINVAL;
+            break;
+        }
+
+        RegisteredSignal old = Signals::getSignalHandler(state, arg1);
         if (act) {
             auto handler = act->handler;
             Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags, act->restorer);
@@ -1751,8 +1761,18 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_rt_sigaction: {
-            RegisteredSignal old = Signals::getSignalHandler(state, arg1);
+            if (arg1 > 64) {
+                result = -EINVAL;
+                break;
+            }
+
             x86_sigaction* act = (x86_sigaction*)arg2;
+            if (act && (arg1 == SIGKILL || arg1 == SIGSTOP)) {
+                result = -EINVAL;
+                break;
+            }
+
+            RegisteredSignal old = Signals::getSignalHandler(state, arg1);
             if (act) {
                 auto handler = act->handler;
                 Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags, act->restorer);
