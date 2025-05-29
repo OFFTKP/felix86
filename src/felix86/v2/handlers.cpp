@@ -3976,6 +3976,8 @@ FAST_HANDLE(SCASB) {
     as.LI(temp, width / 8);
     as.Bind(&end);
 
+    rec.popScratch();
+
     Label loop_end, loop_body;
     if (HAS_REP) {
         rec.repPrologue(&loop_end, rcx);
@@ -4066,6 +4068,7 @@ FAST_HANDLE(STOSB) {
     as.BNEZ(df, &end);
     as.LI(temp, width / 8);
     as.Bind(&end);
+    rec.popScratch();
 
     if (HAS_REP) {
         rec.repPrologue(&loop_end, rcx);
