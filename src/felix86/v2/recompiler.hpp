@@ -370,6 +370,8 @@ struct Recompiler {
 
     bool isGPR(ZydisRegister reg);
 
+    void vsplat(biscuit::Vec vec, u64 imm);
+
     BlockMetadata& getBlockMetadata(u64 rip) {
         return block_metadata[rip];
     }

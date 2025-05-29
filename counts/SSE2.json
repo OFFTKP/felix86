@@ -2725,11 +2725,10 @@
         "disassembly": "movapd [rdi], xmm1"
     },
     "660f280f": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDI            ra, a0, 0x0(0)",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, ra, none, 1"
+            "VLE8.V          v3, a0, none, 1"
         ],
         "disassembly": "movapd xmm1, [rdi]"
     },
@@ -2755,11 +2754,10 @@
         "disassembly": "movupd [rdi], xmm1"
     },
     "660f100f": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDI            ra, a0, 0x0(0)",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, ra, none, 1"
+            "VLE8.V          v3, a0, none, 1"
         ],
         "disassembly": "movupd xmm1, [rdi]"
     },
@@ -2785,11 +2783,10 @@
         "disassembly": "movdqa [rdi], xmm1"
     },
     "660f6f0f": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDI            ra, a0, 0x0(0)",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, ra, none, 1"
+            "VLE8.V          v3, a0, none, 1"
         ],
         "disassembly": "movdqa xmm1, [rdi]"
     },
@@ -2815,11 +2812,10 @@
         "disassembly": "movdqu [rdi], xmm1"
     },
     "f30f6f0f": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADDI            ra, a0, 0x0(0)",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v3, ra, none, 1"
+            "VLE8.V          v3, a0, none, 1"
         ],
         "disassembly": "movdqu xmm1, [rdi]"
     },

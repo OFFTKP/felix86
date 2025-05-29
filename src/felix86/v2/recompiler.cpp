@@ -1008,6 +1008,16 @@ bool Recompiler::isGPR(ZydisRegister reg) {
     return zydisToRef(reg) >= X86_REF_RAX && zydisToRef(reg) <= X86_REF_R15;
 }
 
+void Recompiler::vsplat(biscuit::Vec vec, u64 imm) {
+    if (imm <= 0xF) {
+        as.VMV(vec, imm);
+    } else {
+        biscuit::GPR temp = scratch();
+        as.LI(temp, imm);
+        as.VMV(vec, temp);
+    }
+}
+
 biscuit::Vec Recompiler::getVec(x86_ref_e ref) {
     biscuit::Vec vec = allocatedVec(ref);
     return vec;

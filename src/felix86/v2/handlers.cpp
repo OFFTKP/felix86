@@ -3036,7 +3036,7 @@ FAST_HANDLE(VECTOR_MOV) {
         int size = operands[0].size;
         ASSERT(operands[0].size == operands[1].size);
         ASSERT(operands[0].size > 64);
-        biscuit::GPR address = rec.lea(&operands[1]);
+        biscuit::GPR address = rec.lea(&operands[1], false);
         rec.readMemory(dst, address, size);
         rec.setVec(&operands[0], dst);
     }
@@ -5001,30 +5001,25 @@ FAST_HANDLE(SHUFPS) {
     u64 el1 = (imm >> 2) & 0b11;
     u64 el2 = (imm >> 4) & 0b11;
     u64 el3 = (imm >> 6) & 0b11;
-    bool all_same = el0 == el1 && el0 == el2 && el0 == el3;
 
     biscuit::Vec iota = rec.scratchVec();
-    biscuit::GPR temp = rec.scratch();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    biscuit::Vec result = rec.scratchVec();
+    biscuit::Vec result1 = rec.scratchVec();
+    biscuit::Vec result2 = rec.scratchVec();
 
-    if (!all_same) {
-        rec.setVectorState(SEW::E64, 1);
-        u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
-        as.LI(temp, mask);
-        as.VMV_SX(iota, temp);
-    } else {
-        rec.setVectorState(SEW::E16, 4);
-        as.VMV(iota, el0);
-    }
-
+    u32 imm1 = el1 << 16 | el0;
+    u32 imm2 = el3 << 16 | el2;
     rec.setVectorState(SEW::E32, 4);
-    as.VRGATHEREI16(result, dst, iota);
-    as.VMV(v0, 0b1100);
-    as.VRGATHEREI16(result, src, iota, VecMask::Yes);
+    rec.vsplat(iota, imm1);
+    as.VRGATHEREI16(result1, dst, iota);
+    if (imm1 != imm2) {
+        rec.vsplat(iota, imm2);
+    }
+    as.VRGATHEREI16(result2, src, iota);
+    as.VSLIDEUP(result1, result2, 2);
 
-    rec.setVec(&operands[0], result);
+    rec.setVec(&operands[0], result1);
 }
 
 FAST_HANDLE(PSHUFB) {
