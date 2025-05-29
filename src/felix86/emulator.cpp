@@ -212,8 +212,8 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     int exit_code;
     g_params = config;
 
-    g_process_globals.initialize();
     g_fs = std::make_unique<Filesystem>();
+    g_process_globals.initialize();
 
 #ifdef PR_RISCV_SET_ICACHE_FLUSH_CTX
     prctl(PR_RISCV_SET_ICACHE_FLUSH_CTX, PR_RISCV_CTX_SW_FENCEI_ON, PR_RISCV_SCOPE_PER_PROCESS);
