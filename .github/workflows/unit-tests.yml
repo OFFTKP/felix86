@@ -29,8 +29,17 @@ jobs:
           ./build/felix86 -k
           FELIX86_ALL_EXTENSIONS=g,v ./build/felix86_test
           ./build/felix86 -k
+      - name: Prepare artifact
+        run: |
+          mkdir -p ./artifact
+          mkdir -p ./artifact/lib
+          cp ./build/felix86 ./artifact/
+          cp ./src/felix86/hle/guest_libs/libGL.so.1 ./artifact/lib/
+          cp ./src/felix86/hle/guest_libs/libGLX.so.0 ./artifact/lib/
+          cp ./src/felix86/hle/guest_libs/libvulkan.so.1 ./artifact/lib/
+          cp ./src/felix86/hle/guest_libs/libwayland-client.so ./artifact/lib/
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: Linux executable
-          path: './build/felix86'
+          path: ./artifact/
