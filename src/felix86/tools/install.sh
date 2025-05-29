@@ -26,7 +26,8 @@ if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
     exit 1
 fi
 
-FILE="/usr/bin/felix86"
+INSTALLATION_DIR="/opt/felix86"
+FILE="$INSTALLATION_DIR/felix86"
 FELIX86_LINK="https://nightly.link/OFFTKP/felix86/workflows/unit-tests/master/Linux%20executable.zip"
 
 set -e
@@ -63,6 +64,7 @@ unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
 echo "Downloaded"
 echo "Moving felix86 artifact to $FILE, requesting permission..."
+sudo mkdir -p $INSTALLATION_DIR
 sudo mv /tmp/felix86_artifact/felix86 $FILE
 echo "Successfully installed felix86 at $FILE"
 
