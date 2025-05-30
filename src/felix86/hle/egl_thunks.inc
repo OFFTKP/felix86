@@ -39,10 +39,21 @@ X("libEGL.so", eglGetPlatformDisplay, q_dqq)
 X("libEGL.so", eglGetPlatformDisplayEXT, q_dqq)
 X("libEGL.so", eglCreatePlatformWindowSurfaceEXT, q_qqqq)
 X("libEGL.so", eglCreatePlatformPixmapSurfaceEXT, q_qqqq)
-X("libEGL.so", eglQueryDevicesEXT, d_dqq)
 X("libEGL.so", eglCreateSyncKHR, q_qdq)
 X("libEGL.so", eglDestroySyncKHR, d_qq)
 X("libEGL.so", eglClientWaitSyncKHR, d_qqdq)
 X("libEGL.so", eglGetSyncAttribKHR, d_qqdq)
 X("libEGL.so", eglWaitSyncKHR, d_qqd)
 X("libEGL.so", eglDupNativeFenceFDANDROID, d_qq)
+
+// MESA_query_driver
+X("libEGL.so", eglGetDisplayDriverConfig, q_q)
+X("libEGL.so", eglGetDisplayDriverName, q_q)
+
+// EXT_device_query
+X("libEGL.so", eglQueryDeviceAttribEXT, d_qdq)
+X("libEGL.so", eglQueryDeviceStringEXT, q_qd)
+X("libEGL.so", eglQueryDisplayAttribEXT, d_qdq)
+
+// EXT_device_enumeration
+X("libEGL.so", eglQueryDevicesEXT, d_dqq)

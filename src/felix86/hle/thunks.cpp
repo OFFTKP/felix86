@@ -451,7 +451,7 @@ int felix86_thunk_wl_proxy_add_listener(struct wl_proxy* proxy, void** callbacks
 
     struct wl_interface* interface = *(struct wl_interface**)proxy;
     u64* host_callable = new u64[WL_CLOSURE_MAX_ARGS];
-    for (u32 i = 0; i < interface->event_count; i++) {
+    for (int i = 0; i < interface->event_count; i++) {
         const char* signature = interface->events[i].signature;
         std::string f86_signature = wl_to_felix86_signature(signature);
         void* callback = callbacks[i];
