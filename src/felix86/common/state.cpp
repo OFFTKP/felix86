@@ -93,8 +93,10 @@ void ThreadState::Destroy(ThreadState* state) {
 
 SignalGuard::SignalGuard(ThreadState* state) : state(state) {
     state->signals_disabled += 1;
+    printf("signals disabled: %d\n", state->signals_disabled);
 }
 
 SignalGuard::~SignalGuard() {
     state->signals_disabled -= 1;
+    printf("signals enabled: %d\n", state->signals_disabled);
 }
