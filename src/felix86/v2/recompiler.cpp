@@ -2510,7 +2510,6 @@ void Recompiler::setFlags(biscuit::GPR flags) {
 }
 
 void Recompiler::disableSignals() {
-    WARN("Disable signals called");
     biscuit::GPR temp = scratch();
     as.LD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
     as.ADDI(temp, temp, 1);
