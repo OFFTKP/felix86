@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(felix86)
 include(CheckGit.cmake)
+include(CheckIncludeFile)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -41,6 +42,26 @@ option(BUILD_THUNKING "Build with thunking support" ON)
 
 if (BUILD_THUNKING)
     message("Building with thunking support")
+    check_include_file("GL/glx.h" HAVE_GLX_H)
+    check_include_file("GL/gl.h" HAVE_GL_H)
+    check_include_file("vulkan/vulkan.h" HAVE_VK_H)
+    check_include_file("X11/Xlibint.h" HAVE_X11_H)
+
+    if(NOT HAVE_GLX_H)
+        message(FATAL_ERROR "GLX header <GL/glx.h> not found, install libglx-dev on Debian or the package that installs it on your distro")
+    endif()
+
+    if(NOT HAVE_GL_H)
+        message(FATAL_ERROR "GL header <GL/gl.h> not found, install libgl-dev on Debian or the package that installs it on your distro")
+    endif()
+
+    if(NOT HAVE_VK_H)
+        message(FATAL_ERROR "Vulkan header <vulkan/vulkan.h> not found, install libvulkan-dev on Debian or the package that installs it on your distro")
+    endif()
+
+    if(NOT HAVE_X11_H)
+        message(FATAL_ERROR "X11 headers not found, install libvulkan-dev on Debian or the package that installs it on your distro")
+    endif()
 else()
     message("Building without thunking support")
 endif()

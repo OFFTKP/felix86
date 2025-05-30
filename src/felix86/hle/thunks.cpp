@@ -42,9 +42,7 @@ void Thunks::runConstructor(const char*, GuestPointers*) {}
 
 #include <GL/glx.h>
 #include <X11/Xlibint.h>
-#include <X11/Xutil.h>
 #include <vulkan/vulkan.h>
-#include <wayland-client.h>
 
 void* libGL = nullptr;
 void* libGLX = nullptr;
@@ -61,6 +59,32 @@ using mallocType = decltype(&malloc);
 XGetVisualInfoType felix86_guest_XGetVisualInfo = nullptr;
 XSyncType felix86_guest_XSync = nullptr;
 mallocType felix86_guest_malloc = nullptr;
+
+// Since we only need these from wayland-client.h, instead of including the file and requiring
+// a dependency we just define them here
+struct wl_interface {
+    /** Interface name */
+    const char* name;
+    /** Interface version */
+    int version;
+    /** Number of methods (requests) */
+    int method_count;
+    /** Method (request) signatures */
+    const struct wl_message* methods;
+    /** Number of events */
+    int event_count;
+    /** Event signatures */
+    const struct wl_message* events;
+};
+
+struct wl_message {
+    /** Message name */
+    const char* name;
+    /** Message signature */
+    const char* signature;
+    /** Object argument interfaces */
+    const struct wl_interface** types;
+};
 
 static std::mutex display_map_mutex;
 static std::unordered_map<Display*, Display*> host_to_guest;
