@@ -214,6 +214,7 @@ long ForkMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK));
     int parent_tid = host_clone_args.parent_state->tid;
 
+    int parent_pid = getpid();
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
                        nullptr); // args are flipped in syscall
 
@@ -226,7 +227,7 @@ long ForkMe(CloneArgs& host_clone_args) {
         // in this new process. Just give it a new name to make debugging easier
         std::string name = "ForkedFrom" + std::to_string(parent_tid); // forked from parent tid
         prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
-        LOG("fork process %ld started", syscall(SYS_getpid));
+        SIGLOG("%d forked to %d", parent_pid, getpid());
         ThreadState* state = ThreadState::Get();
         state->tid = gettid();
 
@@ -257,7 +258,7 @@ long VForkMe(CloneArgs& args) {
         close(pipes[0]);
         std::string name = "VForkedFrom" + std::to_string(parent_pid);
         prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
-        LOG("vfork process %ld started", syscall(SYS_getpid));
+        SIGLOG("%d vforked to %d", parent_pid, getpid());
         ThreadState* state = ThreadState::Get();
         if (args.new_rsp) {
             state->gprs[X86_REF_RSP] = args.new_rsp;

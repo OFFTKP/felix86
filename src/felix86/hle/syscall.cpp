@@ -636,10 +636,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_tgkill: {
+        SIGLOG("Calling tgkill with sig: %d for TGID: %d and TID: %d", arg3, arg1, arg2);
         result = SYSCALL(tgkill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_kill: {
+        SIGLOG("Calling kill with sig: %d and PID: %d", arg2, arg1);
         result = SYSCALL(kill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
@@ -1262,7 +1264,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_ptrace: {
-        result = SYSCALL(ptrace, arg1, arg2, arg3, arg4);
+        LOG("Tried to run ptrace, returning -EPERM");
+        result = -EPERM;
         break;
     }
     case felix86_riscv64_ppoll: {

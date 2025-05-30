@@ -15,6 +15,7 @@
 #define ANSI_COLOR_CYAN "\x1b[36m"
 #define ANSI_BOLD "\x1b[1m"
 #define ANSI_COLOR_RESET "\x1b[0m"
+#define ANSI_COLOR_BLACK_ON_CYAN "\x1b[30;106m"
 
 #ifndef SOURCE_PATH_SIZE
 #pragma message("SOURCE_PATH_SIZE was not defined correctly")
@@ -39,6 +40,14 @@ struct Logger {
             Logger::log(ANSI_COLOR_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                                \
         }                                                                                                                                            \
     } while (0)
+
+#define SIGLOG(format, ...)                                                                                                                          \
+    do {                                                                                                                                             \
+        if (!g_config.quiet && g_config.print_signals) {                                                                                             \
+            Logger::log(ANSI_COLOR_BLACK_ON_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
+        }                                                                                                                                            \
+    } while (0)
+
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
         Logger::log(ANSI_COLOR_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILENAME__, __LINE__, getpid(), ##__VA_ARGS__);             \

@@ -3,6 +3,7 @@
 #include "felix86/common/state.hpp"
 #include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
+#undef si_pid
 
 struct RegisteredHostSignal {
     int sig;                                                                            // ie SIGILL etc
@@ -181,8 +182,8 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
 #endif
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
-                bool in_jit_code, siginfo_t* host_siginfo) {
+x64_rt_sigframe* setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs,
+                            const XmmReg* host_vecs, bool in_jit_code, siginfo_t* guest_info) {
     bool use_altstack = signal.flags & SA_ONSTACK;
     if (in_jit_code) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
@@ -214,7 +215,7 @@ void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64
 
     frame->uc.uc_flags = 0;
     frame->uc.uc_link = 0;
-    frame->info = *host_siginfo;
+    frame->info = *guest_info;
 
     // After some testing, this is set to the altstack if it exists and is valid (which we don't check here, but on sigaltstack)
     // Otherwise it is zero, it's not set to the actual stack
@@ -287,10 +288,14 @@ void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64
     state->SetGpr(X86_REF_RDX, (u64)&frame->uc);   // set the ucontext pointer
     state->SetGpr(X86_REF_RAX, 0);
     state->SetRip(signal.func);
+
+    state->SetFlag(X86_REF_DF, 0);
+
+    return frame;
 }
 
 void Signals::sigreturn(ThreadState* state) {
-    VERBOSE("------- sigreturn -------");
+    auto guard = state->GuardSignals();
 
     u64 rsp = state->GetGpr(X86_REF_RSP);
 
@@ -302,6 +307,8 @@ void Signals::sigreturn(ThreadState* state) {
 
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
     rsp += sizeof(x64_rt_sigframe);
+
+    SIGLOG("------- sigreturn -------");
 
     // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
     state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.gregs[REG_RAX]);
@@ -329,12 +336,14 @@ void Signals::sigreturn(ThreadState* state) {
     bool zf = (flags >> 6) & 1;
     bool sf = (flags >> 7) & 1;
     bool of = (flags >> 11) & 1;
+    bool df = (flags >> 10) & 1;
     state->SetFlag(X86_REF_CF, cf);
     state->SetFlag(X86_REF_PF, pf);
     state->SetFlag(X86_REF_AF, af);
     state->SetFlag(X86_REF_ZF, zf);
     state->SetFlag(X86_REF_SF, sf);
     state->SetFlag(X86_REF_OF, of);
+    state->SetFlag(X86_REF_DF, df);
 
     if (!g_no_riscv_v_state) {
         state->SetXmm(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
@@ -476,29 +485,31 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
     // In many cases it's annoying to attach a debugger at the start of a program, because it may be spawning many processes which
     // can trip up gdb and it won't know which fork to follow. The "don't detach forks" mode is also kind of jittery as far as I can see.
     // The capture_sigsegv mode can help us sleep the process for a while to attach gdb and get a proper backtrace.
-    if (!g_config.capture_sigsegv) {
+    bool in_jit_code = is_in_jit_code(current_state, (u8*)pc);
+    bool capture_it = g_config.capture_sigsegv;
+    if (capture_it) {
+        int pid = gettid();
+        PLAIN("I have been hit by a wild SIGSEGV%s! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you think "
+              "this SIGSEGV was intended, disabled this mode by unsetting the `capture_sigsegv` option.",
+              !in_jit_code ? ANSI_BOLD " in emulator code" ANSI_COLOR_RESET : "", pid, pid);
+
+        LOG("Current RIP:");
+        if (in_jit_code) {
+            BlockMetadata* current_block = get_block_metadata(current_state, pc);
+            u64 actual_rip = get_actual_rip(*current_block, pc);
+            print_address(actual_rip);
+        } else {
+            print_address(current_state->rip);
+        }
+
+        if (g_config.calltrace) {
+            dump_states();
+        }
+        ::sleep(40);
+        return true;
+    } else {
         return false;
     }
-
-    int pid = gettid();
-    PLAIN("I have been hit by a wild SIGSEGV! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you think this "
-          "SIGSEGV was intended, disabled this mode by unsetting the `capture_sigsegv` option.",
-          pid, pid);
-
-    LOG("Current RIP:");
-    if (is_in_jit_code(current_state, (u8*)pc)) {
-        BlockMetadata* current_block = get_block_metadata(current_state, pc);
-        u64 actual_rip = get_actual_rip(*current_block, pc);
-        print_address(actual_rip);
-    } else {
-        print_address(current_state->rip);
-    }
-
-    if (g_config.calltrace) {
-        dump_states();
-    }
-    ::sleep(40);
-    return true;
 }
 
 constexpr std::array<RegisteredHostSignal, 3> host_signals = {{
@@ -576,17 +587,31 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         if (sig < __SIGRTMIN) {
             const int sig_bit = sig - 1;
             state->pending_signals |= 1 << sig_bit;
+            state->nonrt_siginfos[sig_bit] = *info;
+            if (sig == SIGSEGV) {
+                SIGLOG("SIGSEGV with signals_disabled, dumping states and exiting...");
+                if (g_config.calltrace) {
+                    dump_states();
+                } else {
+                    print_address(state->GetRip());
+                }
+                PLAIN("My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to "
+                      "find out why!",
+                      gettid(), gettid());
+                sleep(40);
+                UNREACHABLE();
+            }
+            SIGLOG("Deferring signal %d from %lx", sig, state->GetRip());
         } else {
             // Unlike signals 1-31, signals 32 and up (realtime signals) can be queued and you can have multiple
             // pending of each signal
             state->queued_signals.push({sig, *info});
+            SIGLOG("Deferring realtime signal %d from %lx", sig, state->GetRip());
         }
         return true;
     }
 
-    if (g_config.print_signals || g_config.verbose) {
-        PLAIN("------- Guest signal %s (%d) %s -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code");
-    }
+    SIGLOG("------- Guest signal %s (%d) %s PID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", getpid());
 
     ASSERT(!g_mode32);
 
@@ -627,6 +652,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
             guest_info = signal->guest_info;
         } else {
             guest_info = *info;
+            SIGLOG("state->incoming_signal is set but magic is not what we expected");
         }
     } else {
         guest_info = *info;
@@ -634,7 +660,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    setupFrame(*handler, sig, state, gprs, fprs, xmms, in_jit_code, &guest_info);
+    x64_rt_sigframe* frame = setupFrame(*handler, sig, state, gprs, fprs, xmms, in_jit_code, &guest_info);
 
     // Block the signals specified in the sa_mask until the signal handler returns
     sigset_t new_mask;
@@ -657,7 +683,11 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         handler->func = (u64)SIG_DFL;
     }
 
-    u64 old_rip = state->GetRip();
+    u64 old_rip = frame->uc.uc_mcontext.gregs[REG_RIP];
+#if 0
+    print_address(old_rip);
+    print_address(handler->func);
+#endif
 
     // Eventually, this should return right after this call and have the correct state.
     // When entering the dispatcher, the host state is saved in the host stack
@@ -667,6 +697,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     // In that case the frames would eventually overflow and at least we'd gave an appropriate message.
     state->recompiler->enterDispatcher(state);
 
+    u64 new_rip = state->GetRip();
     if (in_jit_code) {
         // We are returning to JIT code. We need to set the host registers from the ucontext accordingly,
         // as they may have been changed in the signal handler.
@@ -680,7 +711,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
         // If the signal handler changed our RIP we need to go back to the dispatcher to compile a new block
         // Otherwise we will continue where we left off when the signal happened
-        u64 new_rip = state->GetRip();
         if (new_rip != old_rip) {
 #ifdef __riscv
             regs[3] = new_rip;
@@ -764,29 +794,28 @@ int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
 
 void Signals::checkPending(ThreadState* state) {
     if (state->signals_disabled) {
-        VERBOSE("Signals disabled in checkPending...");
         return;
     }
 
     // Check if there's any pending signals. If there are, raise them.
     while (state->pending_signals) {
-        int sig_bit = __builtin_ctz(state->pending_signals);
-        int sig = sig_bit + 1;
+        const int sig_bit = __builtin_ctz(state->pending_signals);
+        const int sig = sig_bit + 1;
 
-        WARN("Handling deferred signal %d", sig);
-
-        sigset_t mask, old;
-        sigemptyset(&mask);
-        sigaddset(&mask, sig);
-
-        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
-
-        // Raise the signal...
-        ASSERT(kill(getpid(), sig) == 0);
+        SIGLOG("Handling deferred signal %d (PID: %d, TID: %d)", sig, getpid(), gettid());
 
         state->pending_signals &= ~(1 << sig_bit);
 
-        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
+        FiredSignal fired_signal{.guest_info = state->nonrt_siginfos[sig_bit]};
+
+        sigval val{.sival_ptr = &fired_signal};
+
+        state->incoming_signal = true;
+
+        // Raise the signal...
+        ASSERT(sigqueue(getpid(), sig, val) == 0);
+
+        state->incoming_signal = false;
     }
 
     while (!state->queued_signals.empty()) {
@@ -797,20 +826,12 @@ void Signals::checkPending(ThreadState* state) {
 
         PendingSignal signal = state->queued_signals.pop();
 
+        pthread_sigmask(SIG_SETMASK, &old, nullptr);
+
         int sig = signal.sig;
         siginfo_t info = signal.info;
 
-        pthread_sigmask(SIG_SETMASK, &old, nullptr);
-
-        WARN("Handling deferred realtime signal %d", sig);
-
-        // Block the current signal that we are currently serving
-        // It may be unblocked from inside the handler if SA_NODEFER is set
-        sigset_t mask;
-        sigemptyset(&mask);
-        sigaddset(&mask, sig);
-
-        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
+        SIGLOG("Handling deferred realtime signal %d (PID: %d, TID: %d)", sig, getpid(), gettid());
 
         FiredSignal fired_signal{.guest_info = info};
         sigval val{.sival_ptr = &fired_signal};
@@ -821,7 +842,5 @@ void Signals::checkPending(ThreadState* state) {
         ASSERT(sigqueue(getpid(), sig, val) == 0);
 
         state->incoming_signal = false;
-
-        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }
 }

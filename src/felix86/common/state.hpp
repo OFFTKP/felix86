@@ -188,6 +188,7 @@ struct ThreadState {
                       // check presence of cpuid... on x86-64 processors... lol...
 
     u32 pending_signals{}; // non-realtime signals can't be queued, if multiple are signaled they are simply merged, this bitset represents them
+    std::array<siginfo_t, 32> nonrt_siginfos{};
     SignalQueue queued_signals{}; // realtime signals that were raised during an unsafe time, queued for later
     bool incoming_signal{};
 

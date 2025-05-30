@@ -542,6 +542,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    SIGLOG("New felix86 instance with PID %d and executable path %s", getpid(), params.executable_path.c_str());
+
     if (g_execve_process) {
         pthread_setname_np(pthread_self(), "ExecveProcess");
     } else {
