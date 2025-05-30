@@ -754,9 +754,7 @@ RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
 }
 
 int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
-    WARN("About to run sigsuspend");
     int result = ::sigsuspend(mask);
-    WARN("Sigsuspend finished");
     if (result == -1) {
         return -errno;
     } else {
