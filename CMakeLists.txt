@@ -37,7 +37,7 @@ add_subdirectory(external/biscuit)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
 
-option(BUILD_THUNKING "Build with thunking support" OFF)
+option(BUILD_THUNKING "Build with thunking support" ON)
 
 if (BUILD_THUNKING)
     message("Building with thunking support")

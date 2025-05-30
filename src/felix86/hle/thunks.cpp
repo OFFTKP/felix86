@@ -4,7 +4,22 @@
 
 // Thunks need libX11
 #ifndef BUILD_THUNKING
-void Thunks::initialize() {}
+#include <cstdlib>
+#include <string>
+#include "felix86/common/config.hpp"
+#include "felix86/common/log.hpp"
+
+void Thunks::initialize() {
+    const char* env = getenv("FELIX86_ENABLED_THUNKS");
+    if (env) {
+        // Check if not the default and warn
+        Config c;
+        std::string def = c.enabled_thunks;
+        if (std::string(env) != def) {
+            WARN("You've set FELIX86_ENABLED_THUNKS but this felix86 was built without -DBUILD_THUNKING=ON");
+        }
+    }
+}
 
 void* Thunks::generateTrampoline(Recompiler&, const char*) {
     return nullptr;
@@ -830,7 +845,7 @@ void Thunks::initialize() {
                 Overlays::addOverlay(name, thunk_path);
             }
         } else {
-            WARN("I couldn't find libEGL-thunked.so in %s", thunks.c_str());
+            WARN("I couldn't find library %s", thunks.c_str());
         }
     };
 
