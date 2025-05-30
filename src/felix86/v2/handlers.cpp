@@ -3839,6 +3839,7 @@ FAST_HANDLE(MOVSB) {
 
     Label loop_end, loop_body;
     if (HAS_REP) {
+        rec.disableSignals();
         rec.repPrologue(&loop_end, rcx);
         as.Bind(&loop_body);
     }
@@ -3852,6 +3853,7 @@ FAST_HANDLE(MOVSB) {
     if (HAS_REP) {
         rec.repEpilogue(&loop_body, rcx);
         as.Bind(&loop_end);
+        rec.enableSignals();
     }
 
     rec.setGPR(X86_REF_RDI, address_width, rdi);
@@ -3920,6 +3922,7 @@ FAST_HANDLE(CMPSB) {
 
     Label loop_end, loop_body;
     if (HAS_REP) {
+        rec.disableSignals();
         rec.repPrologue(&loop_end, rcx);
         as.Bind(&loop_body);
     }
@@ -3937,6 +3940,7 @@ FAST_HANDLE(CMPSB) {
     if (HAS_REP) {
         rec.repzEpilogue(&loop_body, &loop_end, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
         as.Bind(&loop_end);
+        rec.enableSignals();
     }
 
     rec.setGPR(X86_REF_RDI, address_width, rdi);
@@ -3980,6 +3984,7 @@ FAST_HANDLE(SCASB) {
 
     Label loop_end, loop_body;
     if (HAS_REP) {
+        rec.disableSignals();
         rec.repPrologue(&loop_end, rcx);
         as.Bind(&loop_body);
     }
@@ -3995,6 +4000,7 @@ FAST_HANDLE(SCASB) {
     if (HAS_REP) {
         rec.repzEpilogue(&loop_body, &loop_end, rcx, instruction.attributes & ZYDIS_ATTRIB_HAS_REPZ);
         as.Bind(&loop_end);
+        rec.enableSignals();
     }
 
     rec.setGPR(X86_REF_RDI, address_width, rdi);
@@ -4071,6 +4077,7 @@ FAST_HANDLE(STOSB) {
     rec.popScratch();
 
     if (HAS_REP) {
+        rec.disableSignals();
         rec.repPrologue(&loop_end, rcx);
         as.Bind(&loop_body);
     }
@@ -4081,6 +4088,7 @@ FAST_HANDLE(STOSB) {
     if (HAS_REP) {
         rec.repEpilogue(&loop_body, rcx);
         as.Bind(&loop_end);
+        rec.enableSignals();
     }
 
     rec.setGPR(X86_REF_RDI, address_width, rdi);
