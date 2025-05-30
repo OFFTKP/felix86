@@ -367,24 +367,17 @@ int main(int argc, char* argv[]) {
     Config::initialize();
     initialize_globals();
 
+    std::filesystem::path xauthority_path;
     const char* xauth_env = getenv("XAUTHORITY");
     if (xauth_env) {
-        g_xauthority_path = xauth_env;
+        xauthority_path = xauth_env;
     } else {
         // Also check $HOME
         const char* home_env = getenv("HOME");
         if (home_env) {
-            g_xauthority_path = std::filesystem::path(home_env) / ".Xauthority";
+            xauthority_path = std::filesystem::path(home_env) / ".Xauthority";
         } else {
             WARN("Couldn't find $HOME");
-        }
-    }
-
-    if (!g_execve_process) {
-        if (g_xauthority_path.empty()) {
-            WARN("Couldn't find the .Xauthority file, this may cause problems");
-        } else if (!std::filesystem::exists(g_xauthority_path)) {
-            WARN(".Xauthority file does not exist, this may cause problems");
         }
     }
 
@@ -438,14 +431,13 @@ int main(int argc, char* argv[]) {
         ASSERT_MSG(Symlinker::link("/sys", g_config.rootfs_path / "sys"), "Failed to symlink /sys: %s", strerror(errno));
         ASSERT_MSG(Symlinker::link("/dev", g_config.rootfs_path / "dev"), "Failed to symlink /dev: %s", strerror(errno));
 
-        // Also symlink the Xauthority file
-        // Some distros put it in /var/run/... some put it in /tmp some put it in $HOME
-        if (!g_xauthority_path.empty() && std::filesystem::exists(g_xauthority_path)) {
-            ASSERT_MSG(Symlinker::link(g_xauthority_path, g_config.rootfs_path / g_xauthority_path.relative_path()),
-                       "Failed to symlink .Xauthority: %s", strerror(errno));
-        }
-
         mkdirat(g_rootfs_fd, "tmp", 0777);
+
+        // Check if we can find the .Xauthority file inside the rootfs, otherwise warn
+        // Since many distros put it in /run we should be able to
+        if (!std::filesystem::exists(g_config.rootfs_path / xauthority_path.relative_path())) {
+            WARN("I couldn't find the .Xauthority file inside the rootfs");
+        }
     }
 
     Signals::initialize();
