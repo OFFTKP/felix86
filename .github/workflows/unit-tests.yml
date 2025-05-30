@@ -35,6 +35,7 @@ jobs:
           mkdir -p ./artifact/lib
           cp ./build/felix86 ./artifact/
           cp ./src/felix86/hle/guest_libs/libGL.so.1 ./artifact/lib/
+          cp ./src/felix86/hle/guest_libs/libEGL.so.1 ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libGLX.so.0 ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libvulkan.so.1 ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libwayland-client.so ./artifact/lib/

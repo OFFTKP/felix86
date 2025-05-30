@@ -354,10 +354,12 @@ void* felix86_thunk_vkGetDeviceProcAddr(VkDevice device, const char* name) {
 }
 
 void* felix86_thunk_eglGetProcAddress(const char* name) {
-    VERBOSE("eglGetProcAddress: %s", name);
     void* ptr = get_custom_egl_thunk(name);
     if (ptr == nullptr) {
-        ptr = host_eglGetProcAddress(name);
+        ptr = get_custom_gl_thunk(name);
+        if (ptr == nullptr) {
+            ptr = host_eglGetProcAddress(name);
+        }
     }
 
     if (ptr) {
