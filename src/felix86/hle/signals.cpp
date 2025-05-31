@@ -455,7 +455,7 @@ bool handle_smc(ThreadState* current_state, siginfo_t* info, ucontext_t* context
 
     u64 write_address = (u64)info->si_addr & ~0xFFFull;
     Recompiler::invalidateRangeGlobal(write_address, write_address + 0x1000);
-    ASSERT(::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE) == 0);
+    ASSERT_MSG(::mprotect((void*)write_address, 0x1000, PROT_READ | PROT_WRITE) == 0, "mprotect failed on address %lx", write_address);
     return true;
 }
 
