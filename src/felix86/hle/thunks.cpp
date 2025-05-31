@@ -866,7 +866,7 @@ void Thunks::initialize() {
         } else {
             add_overlays({"libEGL.so", "libEGL.so.1"});
         }
-    };
+    }
 
     if (thunk_vk) {
         constexpr const char* vulkan_name = "libvulkan.so.1";
