@@ -853,7 +853,7 @@ void Thunks::initialize() {
                 Overlays::addOverlay(name, thunk_path);
             }
         } else {
-            WARN("I couldn't find library %s", thunks.c_str());
+            WARN("I couldn't find the thunked library for %s", names.begin());
         }
     };
 
@@ -923,9 +923,14 @@ void Thunks::initialize() {
         constexpr const char* luajit_name = "libluajit-5.1.so";
         libluajit = dlopen(luajit_name, RTLD_NOW | RTLD_LOCAL);
         if (!libluajit) {
+            // Also try libluajit.so just in case
+            libluajit = dlopen("lubluajit.so", RTLD_NOW | RTLD_LOCAL);
+        }
+
+        if (!libluajit) {
             WARN("I couldn't open libluajit-5.1.so for thunking, error: %s", dlerror());
         } else {
-            add_overlays({"libluajit-5.1.so", "libluajit-5.1.so.2"});
+            add_overlays({"libluajit-5.1.so", "libluajit-5.1.so.2", "libluajit.so"});
         }
     }
 

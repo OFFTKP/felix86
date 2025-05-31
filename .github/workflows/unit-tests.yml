@@ -38,6 +38,7 @@ jobs:
           cp ./src/felix86/hle/guest_libs/libGLX.so.0 ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libvulkan.so.1 ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libwayland-client.so ./artifact/lib/
+          cp ./src/felix86/hle/guest_libs/libluajit-5.1.so ./artifact/lib/
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
