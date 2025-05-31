@@ -5622,7 +5622,7 @@ FAST_HANDLE(ROL) {
                 dst = rec.getGPR(&operands[0]);
             }
             u8 immediate = rec.getImmediate(&operands[1]) & 31;
-            u8 rotate_amount = 32 - immediate;
+            u8 rotate_amount = (32 - immediate) & 31;
             if (Extensions::B) {
                 as.RORIW(dst, dst, rotate_amount);
             } else {
@@ -5637,7 +5637,7 @@ FAST_HANDLE(ROL) {
         case X86_SIZE_QWORD: {
             biscuit::GPR dst = rec.getGPR(&operands[0]);
             u8 immediate = rec.getImmediate(&operands[1]) & 63;
-            u8 rotate_amount = 64 - immediate;
+            u8 rotate_amount = (64 - immediate) & 63;
             if (Extensions::B) {
                 as.RORI(dst, dst, rotate_amount);
             } else {

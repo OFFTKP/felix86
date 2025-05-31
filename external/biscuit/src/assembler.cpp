@@ -1147,7 +1147,7 @@ void Assembler::RORI(GPR rd, GPR rs, uint32_t rotate_amount) noexcept {
 
 void Assembler::RORIW(GPR rd, GPR rs, uint32_t rotate_amount) noexcept {
     BISCUIT_ASSERT(IsRV64(m_features));
-    BISCUIT_ASSERT(rotate_amount <= 63);
+    BISCUIT_ASSERT(rotate_amount <= 31);
     const auto imm = (0b011000U << 6) | rotate_amount;
     EmitIType(m_buffer, imm, rs, 0b101, rd, 0b0011011);
 }
