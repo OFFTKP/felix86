@@ -276,6 +276,20 @@ FAST_HANDLE(FPATAN) {
     rec.popX87();
 }
 
+FAST_HANDLE(FPTAN) {
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.call((u64)felix86_fptan);
+    rec.restoreState();
+
+    // FPTAN also pushes 1.0 for compatibility reasons
+    biscuit::GPR temp = rec.scratch();
+    biscuit::FPR one = rec.scratchFPR();
+    as.LI(temp, 0x3FF0000000000000ull);
+    as.FMV_D_X(one, temp);
+    rec.pushX87(one);
+}
+
 FAST_HANDLE(FWAIT) {
     WARN("FWAIT encountered, treating as NOP");
 }

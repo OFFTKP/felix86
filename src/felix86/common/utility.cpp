@@ -949,6 +949,14 @@ void felix86_fcos(ThreadState* state) {
     state->fpu_sw &= ~C2_BIT;
 }
 
+void felix86_fptan(ThreadState* state) {
+    double st0;
+    memcpy(&st0, &state->fp[0], sizeof(double));
+    double result = ::tan(st0);
+    memcpy(&state->fp[0], &result, sizeof(double));
+    state->fpu_sw &= ~C2_BIT;
+}
+
 void felix86_fpatan(ThreadState* state) {
     double st0, st1;
     memcpy(&st0, &state->fp[0], sizeof(double));
