@@ -1,3 +1,5 @@
+#ifdef BUILD_THUNKING
+
 #include <unordered_map>
 #include <dlfcn.h>
 #include "felix86/common/global.hpp"
@@ -236,3 +238,5 @@ void* get_custom_luajit_thunk(const std::string& name) {
         return nullptr;
     }
 }
+
+#endif
