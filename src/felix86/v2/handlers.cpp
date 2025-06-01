@@ -409,13 +409,9 @@ FAST_HANDLE(ADD) {
                 sc.w.rl a4, a4, (a2)
                 bnez    a4, .LBB0_1
                 */
-                biscuit::Label loop, bad_alignment, end;
+                biscuit::Label loop;
                 biscuit::GPR masked_address = rec.scratch();
                 biscuit::GPR mask = rec.scratch();
-                as.LI(mask, 0b11);
-                as.ANDI(masked_address, address, 0b11);
-                as.BEQ(masked_address, mask, &bad_alignment);
-
                 as.ANDI(masked_address, address, -4);
                 as.SLLI(address, address, 3);
                 as.LI(mask, 0xFF);
@@ -434,11 +430,6 @@ FAST_HANDLE(ADD) {
                 as.SRLW(dst, dst, address);
                 as.ANDI(dst, dst, 0xFF);
 
-                as.J(&end);
-                as.Bind(&bad_alignment);
-                as.EBREAK();
-
-                as.Bind(&end);
                 rec.popScratch();
                 rec.popScratch();
             }
