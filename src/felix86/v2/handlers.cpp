@@ -385,11 +385,121 @@ FAST_HANDLE(ADD) {
 
     bool writeback = true;
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
-    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
-    if (needs_atomic && !too_small_for_atomic) {
+    if (needs_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         dst = rec.scratch();
         switch (operands[0].size) {
+        case 8: {
+            if (Extensions::Zabha) {
+                WARN("Atomic 8-bit ADD with Zabha, untested");
+                as.AMOADD_B(Ordering::AQRL, dst, src, address);
+            } else {
+                /*
+                andi    a2, a0, -4
+                slli    a0, a0, 3
+                li      a3, 255
+                sllw    a3, a3, a0
+                sllw    a0, a1, a0
+            .LBB0_1:
+                lr.w.aqrl       a1, (a2)
+                add     a4, a1, a0
+                xor     a4, a4, a1
+                and     a4, a4, a3
+                xor     a4, a4, a1
+                sc.w.rl a4, a4, (a2)
+                bnez    a4, .LBB0_1
+                */
+                biscuit::Label loop, bad_alignment, end;
+                biscuit::GPR masked_address = rec.scratch();
+                biscuit::GPR mask = rec.scratch();
+                as.LI(mask, 0b11);
+                as.ANDI(masked_address, address, 0b11);
+                as.BEQ(masked_address, mask, &bad_alignment);
+
+                as.ANDI(masked_address, address, -4);
+                as.SLLI(address, address, 3);
+                as.LI(mask, 0xFF);
+                as.SLLW(mask, mask, address);
+                as.SLLW(address, src, address);
+
+                as.Bind(&loop);
+                as.LR_W(Ordering::AQRL, dst, masked_address);
+                as.ADD(result, dst, address);
+                as.XOR(result, result, dst);
+                as.AND(result, result, mask);
+                as.XOR(result, result, dst);
+                as.SC_W(Ordering::AQRL, result, result, masked_address);
+                as.BNEZ(result, &loop);
+
+                as.SRLW(dst, dst, address);
+                as.ANDI(dst, dst, 0xFF);
+
+                as.J(&end);
+                as.Bind(&bad_alignment);
+                as.EBREAK();
+
+                as.Bind(&end);
+                rec.popScratch();
+                rec.popScratch();
+            }
+            break;
+        }
+        case 16: {
+            if (Extensions::Zabha) {
+                WARN("Atomic 16-bit ADD with Zabha, untested");
+                as.AMOADD_H(Ordering::AQRL, dst, src, address);
+            } else {
+                /*
+                andi    a2, a0, -4
+                slli    a0, a0, 3
+                lui     a3, 16
+                addi    a3, a3, -1
+                sllw    a3, a3, a0
+                sllw    a0, a1, a0
+            .LBB0_1:
+                lr.w.aqrl       a1, (a2)
+                add     a4, a1, a0
+                xor     a4, a4, a1
+                and     a4, a4, a3
+                xor     a4, a4, a1
+                sc.w.rl a4, a4, (a2)
+                bnez    a4, .LBB0_1
+                */
+                biscuit::Label loop, bad_alignment, end;
+                biscuit::GPR masked_address = rec.scratch();
+                biscuit::GPR mask = rec.scratch();
+                as.LI(mask, 0b11);
+                as.ANDI(masked_address, address, 0b11);
+                as.BEQ(masked_address, mask, &bad_alignment);
+
+                as.ANDI(masked_address, address, -4);
+                as.SLLI(address, address, 3);
+                as.LI(mask, 0xFFFF);
+                as.SLLW(mask, mask, address);
+                as.SLLW(address, src, address);
+
+                as.Bind(&loop);
+                as.LR_W(Ordering::AQRL, dst, masked_address);
+                as.ADD(result, dst, address);
+                as.XOR(result, result, dst);
+                as.AND(result, result, mask);
+                as.XOR(result, result, dst);
+                as.SC_W(Ordering::AQRL, result, result, masked_address);
+                as.BNEZ(result, &loop);
+
+                as.SRLW(dst, dst, address);
+                rec.sexth(dst, dst);
+
+                as.J(&end);
+                as.Bind(&bad_alignment);
+                as.EBREAK();
+
+                as.Bind(&end);
+                rec.popScratch();
+                rec.popScratch();
+            }
+            break;
+        }
         case 32: {
             as.AMOADD_W(Ordering::AQRL, dst, src, address);
             break;
@@ -407,7 +517,7 @@ FAST_HANDLE(ADD) {
         writeback = false;
     } else {
         if (needs_atomic) {
-            WARN("Atomic ADD with 8 or 16 bit operands encountered");
+            WARN("Atomic ADD with 8-bit operands encountered");
         }
 
         dst = rec.getGPR(&operands[0]);
