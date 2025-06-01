@@ -7,7 +7,6 @@ add_library(biscuit
     assembler_crypto.cpp
     assembler_floating_point.cpp
     assembler_vector.cpp
-    decoder.cpp
     code_buffer.cpp
     cpuinfo.cpp
 

@@ -27,7 +27,6 @@ add_executable(${PROJECT_NAME}
     src/assembler_zicond_tests.cpp
     src/assembler_zicsr_tests.cpp
     src/assembler_zihintntl_tests.cpp
-    src/decoder_rv32i_tests.cpp
     src/main.cpp
 
     src/assembler_test_utils.hpp

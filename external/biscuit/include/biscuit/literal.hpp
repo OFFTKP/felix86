@@ -35,8 +35,8 @@ namespace biscuit {
  * as.JR(x2);               // Execution continues elsewhere
  * as.Place(&literal);      // Place the literal at this location in the buffer
  * @endcode
- */
-template <class T>
+*/
+template<class T>
 class Literal {
 public:
     using Location = std::optional<ptrdiff_t>;

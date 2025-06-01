@@ -1,4 +1,3 @@
-#include <array>
 #include <biscuit/assert.hpp>
 #include <biscuit/assembler.hpp>
 
