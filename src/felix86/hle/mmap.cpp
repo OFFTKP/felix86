@@ -5,6 +5,7 @@
 #include "felix86/hle/mmap.hpp"
 
 void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
+    size = (size + 0xFFFull) & ~0xFFFull;
     auto guard = freelist.lock();
     if ((flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE)) {
         // Fixed mapping, make sure it's inside 32-bit address space
@@ -55,6 +56,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
 }
 
 int Mapper::unmap32(void* addr, u64 size) {
+    size = (size + 0xFFFull) & ~0xFFFull;
     ASSERT((u64)addr < UINT32_MAX);
     int result = munmap(addr, size);
     if (result != -1) {
@@ -71,7 +73,8 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
     ASSERT(old_size);
     ASSERT(new_size);
 
-    VERBOSE("Calling remap32 old: [%p, %zu] -> [%p, %zu]", old_address, old_size, new_address, new_size);
+    old_size = (old_size + 0xFFFull) & ~0xFFFull;
+    new_size = (new_size + 0xFFFull) & ~0xFFFull;
 
     auto guard = freelist.lock();
 
@@ -123,7 +126,6 @@ void* Mapper::remap32(void* old_address, u64 old_size, u64 new_size, int flags, 
 }
 
 void* Mapper::map(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
-    size = (size + 0xFFFull) & ~0xFFFull;
     if (g_mode32) {
         return map32(addr, size, prot, flags, fd, offset);
     } else {
@@ -134,7 +136,6 @@ void* Mapper::map(void* addr, u64 size, int prot, int flags, int fd, u64 offset)
 }
 
 int Mapper::unmap(void* addr, u64 size) {
-    size = (size + 0xFFFull) & ~0xFFFull;
     if (g_mode32) {
         return unmap32(addr, size);
     } else {
@@ -143,8 +144,6 @@ int Mapper::unmap(void* addr, u64 size) {
 }
 
 void* Mapper::remap(void* old_address, u64 old_size, u64 new_size, int flags, void* new_address) {
-    old_size = (old_size + 0xFFFull) & ~0xFFFull;
-    new_size = (new_size + 0xFFFull) & ~0xFFFull;
     if (g_mode32) {
         return remap32(old_address, old_size, new_size, flags, new_address);
     } else {
