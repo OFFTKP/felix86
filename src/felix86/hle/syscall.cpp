@@ -657,6 +657,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
             // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
             // We need to also track fixed mappings in the 32-bit address space
+            arg2 = (arg2 + 0xFFFull) & ~0xFFFull; // align up the size
             result = (ssize_t)g_mapper->map32((void*)arg1, arg2, arg3, (int)arg4, (int)arg5, arg6);
         } else {
             // No need to use mapper
@@ -679,6 +680,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         if (arg1 < UINT32_MAX || g_mode32) {
             // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
             auto guard = state->GuardSignals();
+            arg2 = (arg2 + 0xFFFull) & ~0xFFFull; // align up the size
             result = g_mapper->unmap32((void*)arg1, arg2);
         } else {
             result = SYSCALL(munmap, arg1, arg2, arg3, arg4, arg5, arg6);
@@ -1741,6 +1743,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_mremap: {
             auto guard = state->GuardSignals();
+            arg2 = (arg2 + 0xFFFull) & ~0xFFFull; // align up the sizes
+            arg3 = (arg3 + 0xFFFull) & ~0xFFFull;
             result = (ssize_t)g_mapper->remap32((void*)arg1, arg2, arg3, arg4, (void*)arg5);
             if (result > 0) {
                 Recompiler::invalidateRangeGlobal(result, result + arg3);

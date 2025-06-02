@@ -4,8 +4,6 @@
 #include "felix86/common/log.hpp"
 #include "felix86/hle/mmap.hpp"
 
-#define PAGE_SIZE 4096
-
 void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offset) {
     auto guard = freelist.lock();
     if ((flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE)) {
@@ -177,7 +175,7 @@ int Mapper::shmat32(int shmid, void* address, int flags, u32* result_address) {
     size_t size = ds.shm_segsz;
 
     if (size & 0xFFF) {
-        size_t new_size = (size + PAGE_SIZE) & ~0xFFF;
+        size_t new_size = (size + 0xFFFull) & ~0xFFFull;
         WARN("shmctl returned size not aligned to a page: %lx, setting to new size: %lx", size, new_size);
         size = new_size;
     }
@@ -227,14 +225,14 @@ int Mapper::shmat32(int shmid, void* address, int flags, u32* result_address) {
     u64 top_bits = (u64)shm_mem >> 32;
     ASSERT_MSG(top_bits == 0 || top_bits == 0xFFFF'FFFF, "shmat returned address in 64-bit address space?");
     *result_address = (u32)(u64)shm_mem;
-    page_to_shmid[(u32)(u64)shm_mem & ~0xFFF] = shmid;
+    page_to_shmid[(u32)(u64)shm_mem & ~0xFFFull] = shmid;
     return 0;
 }
 
 int Mapper::shmdt32(void* address) {
-    auto it = page_to_shmid.find((u32)(u64)address & ~0xFFF);
+    auto it = page_to_shmid.find((u32)(u64)address & ~0xFFFull);
     if (it == page_to_shmid.end()) {
-        WARN("Could not find page during shmdt: %lx", (u64)address & ~0xFFF);
+        WARN("Could not find page during shmdt: %lx", (u64)address & ~0xFFFull);
         return -EINVAL;
     }
 
@@ -244,7 +242,7 @@ int Mapper::shmdt32(void* address) {
     if (shmctl(shmid, IPC_STAT, &ds) == 0) {
         size_t size = ds.shm_segsz;
         if (size & 0xFFF) {
-            size_t new_size = (size + PAGE_SIZE) & ~0xFFF;
+            size_t new_size = (size + 0xFFFull) & ~0xFFFull;
             WARN("shmctl returned size not aligned to a page: %lx, setting to new size: %lx", size, new_size);
             size = new_size;
         }
