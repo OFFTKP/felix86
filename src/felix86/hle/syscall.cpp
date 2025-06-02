@@ -255,7 +255,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     }
     case felix86_riscv64_shmat: {
         result = SYSCALL(shmat, arg1, arg2, arg3);
-        if (result > mmap_min_addr() && result < Mapper::addressSpaceEnd32) {
+        if (result > mmap_min_addr() && result < UINT32_MAX) {
             WARN("shmat in 32-bit address space, this could cause problems with MAP_32BIT");
         }
         break;
@@ -265,7 +265,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_shmdt: {
-        if (arg1 > mmap_min_addr() && arg1 < Mapper::addressSpaceEnd32) {
+        if (arg1 > mmap_min_addr() && arg1 < UINT32_MAX) {
             WARN("shmdt in 32-bit address space, this could cause problems with MAP_32BIT");
         }
         result = SYSCALL(shmdt, arg1);
@@ -652,7 +652,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         auto guard = state->GuardSignals();
         u64 flags = arg4;
         bool is_fixed = (flags & MAP_FIXED) || (flags & MAP_FIXED_NOREPLACE);
-        if ((flags & MAP_32BIT) || (is_fixed && arg1 < Mapper::addressSpaceEnd32) || g_mode32) {
+        if ((flags & MAP_32BIT) || (is_fixed && arg1 < UINT32_MAX) || g_mode32) {
             // The MAP_32BIT flag is x86 only so we need to emulate it
             // For example, Mono tries to use it to allocate code cache pages near the executable so that it can use
             // +-2GiB jumps. If it doesn't get them near enough it will eventually crash and die.
@@ -676,7 +676,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_munmap: {
-        if (arg1 < Mapper::addressSpaceEnd32 || g_mode32) {
+        if (arg1 < UINT32_MAX || g_mode32) {
             // Track unmaps in the 32-bit address space for MAP_32BIT in 64-bit mode
             auto guard = state->GuardSignals();
             result = g_mapper->unmap32((void*)arg1, arg2);

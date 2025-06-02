@@ -377,7 +377,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     }
 
     if (mode32) {
-        ASSERT((u64)stack_pointer < Mapper::addressSpaceEnd32);
+        ASSERT((u64)stack_pointer < UINT32_MAX);
     }
 
     VERBOSE("Allocated stack at %p", base);

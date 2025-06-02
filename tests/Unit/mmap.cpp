@@ -69,7 +69,7 @@ CATCH_TEST_CASE("Simple1", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x20000 + 0x10000, Mapper::addressSpaceEnd32},
+        {0x20000 + 0x10000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -86,7 +86,7 @@ CATCH_TEST_CASE("Simple2", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x20000 + 0x10000 + 0x10000, Mapper::addressSpaceEnd32},
+        {0x20000 + 0x10000 + 0x10000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -104,7 +104,7 @@ CATCH_TEST_CASE("Simple3", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x20000 + 0x10000 + 0x10000 + 0x10000, Mapper::addressSpaceEnd32},
+        {0x20000 + 0x10000 + 0x10000 + 0x10000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -119,7 +119,7 @@ CATCH_TEST_CASE("FirstPages", "[mmap32]") {
     MMAP_AT(mmap_min_addr(), 0x10000);
 
     verifyRegions(mapper, {
-        {mmap_min_addr() + 0x10000, Mapper::addressSpaceEnd32},
+        {mmap_min_addr() + 0x10000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -134,14 +134,16 @@ CATCH_TEST_CASE("FirstPagesUnmap", "[mmap32]") {
 
     MMAP_AT(mmap_min_addr(), 0x10000);
 
+    printf("AAA\n");
     verifyRegions(mapper, {
-        {mmap_min_addr() + 0x10000, Mapper::addressSpaceEnd32},
+        {mmap_min_addr() + 0x10000, (u64)UINT32_MAX},
     });
+    printf("AABA\n");
 
     UNMAP_AT(mmap_min_addr(), 0x10000);
 
     verifyRegions(mapper, {
-        {mmap_min_addr(), Mapper::addressSpaceEnd32},
+        {mmap_min_addr(), (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -153,7 +155,7 @@ CATCH_TEST_CASE("LastPages", "[mmap32]") {
     Mapper mapper;
     g_mode32 = true;
 
-    u64 end = Mapper::addressSpaceEnd32 + 1;
+    u64 end = (u64)UINT32_MAX + 1;
 
     MMAP_AT(end - 0x10000, 0x10000);
 
@@ -176,7 +178,7 @@ CATCH_TEST_CASE("Split2", "[mmap32]") {
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x30000 - 1},
         {0x30000 + 0x10000, 0x50000 - 1},
-        {0x50000 + 0x10000, Mapper::addressSpaceEnd32},
+        {0x50000 + 0x10000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -196,7 +198,7 @@ CATCH_TEST_CASE("Split2Pick1", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x30000 - 1},
-        {0x50000 + 0x10000, Mapper::addressSpaceEnd32},
+        {0x50000 + 0x10000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -213,7 +215,7 @@ CATCH_TEST_CASE("Overlapping1", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x20000 + 0x100000, Mapper::addressSpaceEnd32},
+        {0x20000 + 0x100000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -231,7 +233,7 @@ CATCH_TEST_CASE("Overlapping2", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x20000 + 0x100000, Mapper::addressSpaceEnd32},
+        {0x20000 + 0x100000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -251,14 +253,14 @@ CATCH_TEST_CASE("Overlapping2ConsumeLast", "[mmap32]") {
         {mmap_min_addr(), 0x30000 - 1},
         {0x40000, 0x50000 - 1},
         {0x60000, 0x100000 - 1}, // this test ensures this block is properly deleted
-        {0x101000, Mapper::addressSpaceEnd32},
+        {0x101000, (u64)UINT32_MAX},
     });
 
     MMAP_AT(0x20000, 0x100000 - 0x20000); // this mapping consumes the first two
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x101000, Mapper::addressSpaceEnd32},
+        {0x101000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -274,13 +276,13 @@ CATCH_TEST_CASE("UnmapPerfect", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x30000 - 1},
-        {0x40000, Mapper::addressSpaceEnd32},
+        {0x40000, (u64)UINT32_MAX},
     });
 
     UNMAP_AT(0x30000, 0x10000);
 
     verifyRegions(mapper, {
-        {mmap_min_addr(), Mapper::addressSpaceEnd32},
+        {mmap_min_addr(), (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -298,7 +300,7 @@ CATCH_TEST_CASE("UnmapPerfect2", "[mmap32]") {
     
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x50000, Mapper::addressSpaceEnd32},
+        {0x50000, (u64)UINT32_MAX},
     });
 
     UNMAP_AT(0x30000, 0x10000);
@@ -306,7 +308,7 @@ CATCH_TEST_CASE("UnmapPerfect2", "[mmap32]") {
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
         {0x30000, 0x40000 - 1},
-        {0x50000, Mapper::addressSpaceEnd32},
+        {0x50000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -324,7 +326,7 @@ CATCH_TEST_CASE("UnmapMiddle", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x50000, Mapper::addressSpaceEnd32},
+        {0x50000, (u64)UINT32_MAX},
     });
 
     UNMAP_AT(0x30000, 0x10000);
@@ -332,7 +334,7 @@ CATCH_TEST_CASE("UnmapMiddle", "[mmap32]") {
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
         {0x30000, 0x40000 - 1},
-        {0x50000, Mapper::addressSpaceEnd32},
+        {0x50000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -348,7 +350,7 @@ CATCH_TEST_CASE("UnmapGreedyMin", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x120000, Mapper::addressSpaceEnd32},
+        {0x120000, (u64)UINT32_MAX},
     });
 
     // Unmap more pages than we mapped, this is allowed
@@ -356,7 +358,7 @@ CATCH_TEST_CASE("UnmapGreedyMin", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x2F000 - 1},
-        {0x120000, Mapper::addressSpaceEnd32},
+        {0x120000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -372,7 +374,7 @@ CATCH_TEST_CASE("UnmapGreedyMax", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x120000, Mapper::addressSpaceEnd32},
+        {0x120000, (u64)UINT32_MAX},
     });
 
     // Unmap more pages than we mapped, this is allowed
@@ -380,7 +382,7 @@ CATCH_TEST_CASE("UnmapGreedyMax", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x20000 - 1},
-        {0x115000, Mapper::addressSpaceEnd32},
+        {0x115000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -396,7 +398,7 @@ CATCH_TEST_CASE("MapRandom", "[mmap32]") {
 
     // Random mmaps always pick from first page if possible
     verifyRegions(mapper, {
-        {mmap_min_addr() + 0x100000, Mapper::addressSpaceEnd32},
+        {mmap_min_addr() + 0x100000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -413,7 +415,7 @@ CATCH_TEST_CASE("OverwriteFixed", "[mmap32]") {
     MMAP_AT(0x13000, 0x60000);
 
     verifyRegions(mapper, {
-        {mmap_min_addr() + 0x63000, Mapper::addressSpaceEnd32},
+        {mmap_min_addr() + 0x63000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -430,7 +432,7 @@ CATCH_TEST_CASE("OverwriteFixed2", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x11fff},
-        {mmap_min_addr() + 0x62000, Mapper::addressSpaceEnd32},
+        {mmap_min_addr() + 0x62000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();
@@ -447,7 +449,7 @@ CATCH_TEST_CASE("Mremap", "[mmap32]") {
 
     verifyRegions(mapper, {
         {mmap_min_addr(), 0x3ffff},
-        {0x60000, Mapper::addressSpaceEnd32},
+        {0x60000, (u64)UINT32_MAX},
     });
 
     MUNMAP_ALL();

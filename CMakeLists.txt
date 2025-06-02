@@ -58,6 +58,7 @@ set(FELIX86_COMMON_SOURCES
     src/felix86/common/config.cpp
     src/felix86/common/elf.cpp
     src/felix86/common/exit.cpp
+    src/felix86/common/freelist.cpp
     src/felix86/common/gdbjit.cpp
     src/felix86/common/global.cpp
     src/felix86/common/info.cpp
