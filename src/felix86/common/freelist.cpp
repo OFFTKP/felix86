@@ -5,6 +5,7 @@ Freelist::Freelist() {
     list = new Node;
     list->start = mmap_min_addr();
     list->end = UINT32_MAX;
+    list->next = nullptr;
 }
 
 Freelist::~Freelist() {
