@@ -1,7 +1,7 @@
 #include <Zydis/Zydis.h>
-#include "felix86/emulator.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/emulator.hpp"
 #include "felix86/hle/thunks.hpp"
 #include "felix86/v2/recompiler.hpp"
 
@@ -6281,8 +6281,6 @@ FAST_HANDLE(PEXTRQ) {
 }
 
 FAST_HANDLE(CMPXCHG_lock) {
-    ASSERT(operands[0].size != 8 && operands[0].size != 16);
-
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
     biscuit::GPR address = rec.lea(&operands[0]);
     biscuit::GPR src = rec.getGPR(&operands[1]);
@@ -6290,59 +6288,140 @@ FAST_HANDLE(CMPXCHG_lock) {
     biscuit::GPR dst = rec.scratch();
 
     switch (size) {
-    case X86_SIZE_WORD: {
+    case X86_SIZE_BYTE: {
         if (Extensions::Zacas && Extensions::Zabha) {
-            WARN_ONCE("You have Zacas and Zabha, CMPXCHG is untested with this combo");
-            dst = rax; // write to the AX scratch to save a move instruction
-            as.FENCE();
-            as.AMOCAS_H(biscuit::Ordering::AQRL, dst, src, address);
+            // TODO: use AMOCAS here when we get to that point
+            UNREACHABLE();
         } else {
-            // TODO: runs out of scratch space, also untested
-            ASSERT(false);
+            /*
+                andi    a6, a0, -4
+                slli    a0, a0, 3
+                li      a4, 255
+                sllw    a4, a4, a0
+                sllw    a1, a1, a0
+                sllw    a2, a2, a0
+        .LBB0_1:
+                lr.w.aqrl       a5, (a6)
+                and     a3, a5, a4
+                bne     a3, a1, .LBB0_3
+                xor     a3, a5, a2
+                and     a3, a3, a4
+                xor     a3, a3, a5
+                sc.w.rl a3, a3, (a6)
+                bnez    a3, .LBB0_1
+        .LBB0_3:
+                srlw    a0, a5, a0
+                zext.b  a0, a0
+            */
 
-            // This sequence of instructions was taken from clang RISC-V compiler when using
-            // __atomic_compare_exchange with 16-bit operands.
-            biscuit::Label not_equal;
-            biscuit::Label start;
-            biscuit::GPR address_aligned = rec.scratch();
+            rec.disableSignals();
+            biscuit::GPR masked = rec.scratch();
             biscuit::GPR mask = rec.scratch();
-            // Save AX we need it for flag calculation later
-            as.SH(rax, -2, sp);
+            biscuit::GPR temp = rec.scratch();
 
-            // Align the address so that we can use LR_W/SC_W
-            as.ANDI(address_aligned, address, -4);
-            // Create a shift amount by shifting the original address left by 3
-            // This multiplies it by 8, and the resulting shift count is (based on the low 2 bits of orig address)
-            // either 0, 8, 16, 24 (0b00000, 0b01000, 0b10000, 0b11000). We need to shift our operands and a mask
-            // to that position, because that position is where the word is inside the dword (the word may also be
-            // misaligned inside the dword, however if it is between two dwords then this isn't possible, so this would
-            // fail. We assume that this isn't the case)
+            biscuit::GPR rax_shifted = rec.flag(X86_REF_CF);
+            biscuit::GPR src_shifted = rec.flag(X86_REF_ZF);
+
+            as.ANDI(masked, address, -4);
+            as.SLLI(address, address, 3);
+            as.LI(mask, 0xFF);
+            as.SLLW(mask, mask, address);
+            as.SLLW(src_shifted, src, address);
+            as.SLLW(rax_shifted, rax, address);
+
+            biscuit::Label loop, not_equal;
+            as.Bind(&loop);
+            as.LR_W(Ordering::AQRL, dst, masked);
+            as.AND(temp, dst, mask);
+            as.BNE(temp, rax_shifted, &not_equal);
+            as.XOR(temp, dst, src_shifted);
+            as.AND(temp, temp, mask);
+            as.XOR(temp, temp, dst);
+            as.SC_W(Ordering::AQRL, temp, temp, masked);
+            as.BNEZ(temp, &loop);
+            as.Bind(&not_equal);
+            as.SRLW(dst, dst, address);
+            as.ANDI(dst, dst, 0xFF);
+
+            rec.popScratch();
+            rec.popScratch();
+            rec.popScratch();
+            rec.enableSignals();
+        }
+        break;
+    }
+    case X86_SIZE_WORD: {
+        if (Extensions::Zacas && Extensions::Zabha && false) {
+            // TODO: use AMOCAS here when we get to that point
+            UNREACHABLE();
+        } else {
+            rec.disableSignals();
+            biscuit::Label aligned, end, not_equal;
+            biscuit::GPR masked = rec.scratch();
+            biscuit::GPR temp = rec.scratch();
+            biscuit::GPR mask = rec.scratch();
+            // If it's at end of dword we can't handle it
+            as.ANDI(masked, address, 0b11);
+            as.LI(temp, 0b11);
+            as.BNE(masked, temp, &aligned);
+
+            // Just crash
+            as.EBREAK();
+
+            /*
+                andi    a6, a0, -4
+                slli    a0, a0, 3
+                lui     a4, 16
+                addi    a4, a4, -1
+                sllw    a7, a1, a0
+                sllw    a5, a4, a0
+                sllw    a2, a2, a0
+        .LBB0_1:
+                lr.w.aqrl       a3, (a6)
+                and     a1, a3, a5
+                bne     a1, a7, .LBB0_3
+                xor     a1, a3, a2
+                and     a1, a1, a5
+                xor     a1, a1, a3
+                sc.w.rl a1, a1, (a6)
+                bnez    a1, .LBB0_1
+        .LBB0_3:
+                srlw    a0, a3, a0
+                and     a0, a0, a4
+                ret
+            */
+            as.Bind(&aligned);
+            biscuit::Label loop;
+
+            // We run out of scratch space but it's fine to use these as we disable signals
+            biscuit::GPR mask_shifted = rec.flag(X86_REF_SF);
+            biscuit::GPR rax_shifted = rec.flag(X86_REF_CF);
+            biscuit::GPR src_shifted = rec.flag(X86_REF_ZF);
+
+            as.ANDI(masked, address, -4);
             as.SLLI(address, address, 3);
             as.LI(mask, 0xFFFF);
-            // SLLW ignores the top bits of "address" and it only takes into account the bottom 5 bits
-            as.SLLW(rax, rax, address);
-            as.SLLW(mask, mask, address);
-            as.SLLW(src, src, address);
+            as.SLLW(rax_shifted, rax, address);
+            as.SLLW(mask_shifted, mask, address);
+            as.SLLW(src_shifted, src, address);
 
-            biscuit::GPR tmp = rec.scratch();
-            as.Bind(&start);
-            as.LR_W(Ordering::AQRL, dst, address_aligned);
-            as.AND(tmp, dst, mask);
-            as.BNE(tmp, rax, &not_equal);
-            as.XOR(tmp, dst, src);
-            as.AND(tmp, tmp, mask);
-            as.XOR(tmp, tmp, dst);
-            as.SC_W(Ordering::AQRL, tmp, tmp, address_aligned);
-            as.BNEZ(tmp, &start);
+            as.Bind(&loop);
+            as.LR_W(Ordering::AQRL, dst, masked);
+            as.AND(temp, dst, mask_shifted);
+            as.BNE(temp, rax_shifted, &not_equal);
+            as.XOR(temp, dst, src_shifted);
+            as.AND(temp, temp, mask_shifted);
+            as.XOR(temp, temp, dst);
+            as.SC_W(Ordering::AQRL, temp, temp, masked);
+            as.BNEZ(temp, &loop);
             as.Bind(&not_equal);
-            rec.popScratch();
-            rec.popScratch();
-            rec.popScratch();
-
-            // Load back the unshifted value of AX
-            as.LHU(rax, -2, sp);
-            // Shift it back down for the flag calculation
             as.SRLW(dst, dst, address);
+            as.AND(dst, dst, mask);
+
+            rec.popScratch();
+            rec.popScratch();
+            rec.popScratch();
+            rec.enableSignals();
         }
         break;
     }
@@ -6437,11 +6516,7 @@ FAST_HANDLE(CMPXCHG_lock) {
 
 FAST_HANDLE(CMPXCHG) {
     if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        if (operands[0].size == 8 || operands[0].size == 16) {
-            WARN("Atomic CMPXCHG with 8 or 16 bit operands encountered");
-        } else {
-            return fast_CMPXCHG_lock(rec, rip, as, instruction, operands);
-        }
+        return fast_CMPXCHG_lock(rec, rip, as, instruction, operands);
     }
 
     x86_size_e size = rec.zydisToSize(instruction.operand_width);

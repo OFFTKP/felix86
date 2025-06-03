@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 #include <stdbool.h>
-#include "felix86/common/types.hpp"
 #include "Zydis/Register.h"
 #include "biscuit/isa.hpp"
+#include "felix86/common/types.hpp"
 
 [[nodiscard]] constexpr bool IsValidJTypeImm(ptrdiff_t value) {
     return value >= -0x80000 && value <= 0x7FFFF;
@@ -98,6 +98,9 @@ bool felix86_btr(u64 address, i64 offset);
 bool felix86_btc(u64 address, i64 offset);
 bool felix86_bt(u64 address, i64 offset);
 void felix86_psadbw(u8* dst, u8* src);
+
+u8 felix86_cmpxchg8(u8* address, u8 src);
+u16 felix86_cmpxchg16(u16* address, u16 src);
 
 void felix86_fsin(ThreadState* state);
 void felix86_fcos(ThreadState* state);
