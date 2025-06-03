@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "felix86/common/types.hpp"
