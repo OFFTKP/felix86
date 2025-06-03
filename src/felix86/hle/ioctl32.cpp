@@ -1,5 +1,7 @@
 #include <asm/ioctl.h>
 #include <sys/ioctl.h>
+#include <filesystem>
+#include <fmt/format.h>
 #include <unordered_map>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
@@ -14,7 +16,14 @@ int ioctl32_default(int fd, u32 cmd, u32 args) {
 }
 
 int ioctl32_unknown(int fd, u32 cmd, u32 args) {
-    WARN("Unknown ioctl command: %x", cmd);
+    std::string fd_path = fmt::format("/proc/self/fd/{}", fd);
+    std::error_code ec;
+    std::string filepath = std::string(std::filesystem::read_symlink(fd_path, ec));
+    if(!ec) {
+        WARN("Unknown ioctl command: %x on file: %s", cmd, filepath.c_str());
+    } else {
+        WARN("Unknown ioctl command: %x", cmd);
+    }
     return ioctl32_default(fd, cmd, args);
 }
 
