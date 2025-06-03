@@ -561,18 +561,6 @@ void felix86_psadbw(u8* dst, u8* src) {
     dst64[1] = (u16)result2;
 }
 
-u8 felix86_cmpxchg8(u8* address, u8 src) {
-    u8 ret = src;
-    __atomic_compare_exchange(address, &ret, &src, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-    return ret;
-}
-
-u16 felix86_cmpxchg16(u16* address, u16 src) {
-    u16 ret = src;
-    __atomic_compare_exchange(address, &ret, &src, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-    return ret;
-}
-
 void dump_states() {
     if (!g_config.calltrace) {
         printf("Enable FELIX86_CALLTRACE to see the calltrace\n");
