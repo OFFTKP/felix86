@@ -2466,8 +2466,11 @@ biscuit::GPR Recompiler::getFlags() {
     as.OR(reg, reg, cf);
     as.ORI(reg, reg, 0b10);  // bit 1 always set in flags
     as.ORI(reg, reg, 0x200); // IE bit
-    as.LB(temp, offsetof(ThreadState, cpuid_bit), threadStatePointer());
+    as.LBU(temp, offsetof(ThreadState, cpuid_bit), threadStatePointer());
     as.SLLI(temp, temp, 21);
+    as.OR(reg, reg, temp);
+    as.LBU(temp, offsetof(ThreadState, ac_bit), threadStatePointer());
+    as.SLLI(temp, temp, 18);
     as.OR(reg, reg, temp);
     popScratch();
     return reg;
@@ -2507,6 +2510,10 @@ void Recompiler::setFlags(biscuit::GPR flags) {
     as.SRLI(temp, flags, 21);
     as.ANDI(temp, temp, 1);
     as.SB(temp, offsetof(ThreadState, cpuid_bit), threadStatePointer());
+
+    as.SRLI(temp, flags, 18);
+    as.ANDI(temp, temp, 1);
+    as.SB(temp, offsetof(ThreadState, ac_bit), threadStatePointer());
 }
 
 void Recompiler::disableSignals() {
