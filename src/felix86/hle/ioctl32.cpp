@@ -9,6 +9,7 @@
 
 #include "felix86/hle/ioctl/drm.hpp"
 #include "felix86/hle/ioctl/fat.hpp"
+#include "felix86/hle/ioctl/fs.hpp"
 #include "felix86/hle/ioctl/radeon.hpp"
 
 int ioctl32_default(int fd, u32 cmd, u32 args) {
@@ -31,6 +32,9 @@ int ioctl32(int fd, u32 cmd, u32 args) {
     switch (_IOC_TYPE(cmd)) {
     case DRM_IOCTL_BASE: {
         return ioctl32_drm(fd, cmd, args);
+    }
+    case 'f': {
+        return ioctl32_fs(fd, cmd, args);
     }
     case 'r': {
         return ioctl32_fat(fd, cmd, args);
