@@ -134,11 +134,9 @@ CATCH_TEST_CASE("FirstPagesUnmap", "[mmap32]") {
 
     MMAP_AT(mmap_min_addr(), 0x10000);
 
-    printf("AAA\n");
     verifyRegions(mapper, {
         {mmap_min_addr() + 0x10000, (u64)UINT32_MAX},
     });
-    printf("AABA\n");
 
     UNMAP_AT(mmap_min_addr(), 0x10000);
 
