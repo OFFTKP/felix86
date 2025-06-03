@@ -1,5 +1,6 @@
 #include <array>
 #include <span>
+#include "felix86/common/config.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/cpuid.hpp"
@@ -91,6 +92,24 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
             result = cpuid;
             found = true;
             break;
+        }
+    }
+
+    if (found && leaf == 0x00000001) {
+        if (g_config.no_sse2) {
+            result.edx &= ~(1 << 26);
+        }
+        if (g_config.no_sse3) {
+            result.ecx &= ~(1 << 0);
+        }
+        if (g_config.no_ssse3) {
+            result.ecx &= ~(1 << 9);
+        }
+        if (g_config.no_sse4_1) {
+            result.ecx &= ~(1 << 19);
+        }
+        if (g_config.no_sse4_2) {
+            result.ecx &= ~(1 << 20);
         }
     }
 
