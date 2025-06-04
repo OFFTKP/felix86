@@ -613,7 +613,8 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         return true;
     }
 
-    SIGLOG("------- Guest signal %s (%d) %s PID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", getpid());
+    SIGLOG("------- Guest signal %s (%d) %s PID: %d TID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code",
+           getpid(), gettid());
 
     ASSERT(!g_mode32);
 
