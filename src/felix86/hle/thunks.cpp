@@ -706,9 +706,9 @@ void felix86_thunk_glXSwapIntervalEXT(Display* guest_display, GLXDrawable drawab
 }
 
 void felix86_thunk_glDebugMessageCallback(GLDEBUGPROC callback, void* userParam) {
-    GLDEBUGPROC host_callback = (GLDEBUGPROC)ABIMadness::hostToGuestTrampoline("v_ddddqqq", (void*)callback);
-    LOG("Registered host callback with glDebugMessageCallback");
-    host_glDebugMessageCallback(host_callback, userParam);
+    LOG("Registered host callback with glDebugMessageCallback, ignoring");
+    // GLDEBUGPROC host_callback = (GLDEBUGPROC)ABIMadness::hostToGuestTrampoline("v_ddddqqq", (void*)callback);
+    // host_glDebugMessageCallback(host_callback, userParam);
 }
 
 void* get_custom_vk_thunk(const std::string& name) {
