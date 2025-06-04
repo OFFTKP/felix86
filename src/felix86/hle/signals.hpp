@@ -113,3 +113,13 @@ struct Signals {
 
     static void checkPending(ThreadState* state);
 };
+
+struct SignalGuard {
+    SignalGuard();
+    ~SignalGuard();
+    SignalGuard(const SignalGuard&) = delete;
+    SignalGuard& operator=(const SignalGuard&) = delete;
+
+private:
+    sigset_t old_mask;
+};

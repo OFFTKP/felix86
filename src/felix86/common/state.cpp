@@ -78,7 +78,6 @@ ThreadState* ThreadState::Get() {
 
 void ThreadState::Destroy(ThreadState* state) {
     auto lock = g_process_globals.states_lock.lock();
-    state->signals_disabled = true;
     auto it = std::find(g_process_globals.states.begin(), g_process_globals.states.end(), state);
     if (it != g_process_globals.states.end()) {
         g_process_globals.states.erase(it);
@@ -89,12 +88,4 @@ void ThreadState::Destroy(ThreadState* state) {
     munmap(state->x86_trampoline_storage_start, trampoline_storage_size);
     delete state->recompiler;
     delete state;
-}
-
-SignalGuard::SignalGuard(ThreadState* state) : state(state) {
-    state->signals_disabled += 1;
-}
-
-SignalGuard::~SignalGuard() {
-    state->signals_disabled -= 1;
 }

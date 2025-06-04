@@ -124,16 +124,6 @@ struct XmmReg {
 };
 static_assert(sizeof(XmmReg) == 16);
 
-struct SignalGuard {
-    SignalGuard(ThreadState* state);
-    ~SignalGuard();
-    SignalGuard(const SignalGuard&) = delete;
-    SignalGuard& operator=(const SignalGuard&) = delete;
-
-private:
-    ThreadState* state;
-};
-
 // TODO: Please make me standard layout type? offsetof warnings...
 struct ThreadState {
     u64 gprs[16]{};
@@ -183,17 +173,9 @@ struct ThreadState {
     pthread_t thread{}; // The pthread this state belongs to
     u64 tid{};
     stack_t alt_stack{};
-    // some instructions would make it annoying to allow for signals to occur, be it because they have loops like rep, or use
-    // lr/sc instructions. So, this flag is set to true when we absolutely don't want a signal to be handled here.
-    volatile u64 signals_disabled{}; // volatile to prevent reordering
     bool cpuid_bit{}; // stupid rflags bit that is modifiable when cpuid is present, so we need to store its state here. SDL2 modifies it to
                       // check presence of cpuid... on x86-64 processors... lol...
     bool ac_bit{};    // this is checked by Java to see if it's i386 or not
-
-    u32 pending_signals{}; // non-realtime signals can't be queued, if multiple are signaled they are simply merged, this bitset represents them
-    std::array<siginfo_t, 32> nonrt_siginfos{};
-    SignalQueue queued_signals{}; // realtime signals that were raised during an unsafe time, queued for later
-    bool incoming_signal{};
 
     // Two processes can share the same signal handler table
     SignalHandlerTable* signal_table{};
@@ -380,10 +362,6 @@ struct ThreadState {
         flags |= df << 10;
         flags |= of << 11;
         return flags;
-    }
-
-    SignalGuard GuardSignals() {
-        return SignalGuard(this);
     }
 
     static void InitializeKey();

@@ -6314,7 +6314,6 @@ FAST_HANDLE(CMPXCHG_lock) {
                 zext.b  a0, a0
             */
 
-            rec.disableSignals();
             biscuit::GPR masked = rec.scratch();
             biscuit::GPR mask = rec.scratch();
             biscuit::GPR temp = rec.scratch();
@@ -6346,7 +6345,6 @@ FAST_HANDLE(CMPXCHG_lock) {
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();
-            rec.enableSignals();
         }
         break;
     }
@@ -6355,7 +6353,6 @@ FAST_HANDLE(CMPXCHG_lock) {
             // TODO: use AMOCAS here when we get to that point
             UNREACHABLE();
         } else {
-            rec.disableSignals();
             biscuit::Label aligned, end, not_equal;
             biscuit::GPR masked = rec.scratch();
             biscuit::GPR temp = rec.scratch();
@@ -6393,7 +6390,6 @@ FAST_HANDLE(CMPXCHG_lock) {
             as.Bind(&aligned);
             biscuit::Label loop;
 
-            // We run out of scratch space but it's fine to use these as we disable signals
             biscuit::GPR mask_shifted = rec.flag(X86_REF_SF);
             biscuit::GPR rax_shifted = rec.flag(X86_REF_CF);
             biscuit::GPR src_shifted = rec.flag(X86_REF_ZF);
@@ -6421,7 +6417,6 @@ FAST_HANDLE(CMPXCHG_lock) {
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();
-            rec.enableSignals();
         }
         break;
     }
@@ -7644,8 +7639,6 @@ FAST_HANDLE(RCL) {
 
     as.MV(dst_temp, dst);
 
-    rec.disableSignals();
-
     Label loop, end;
     as.Bind(&loop);
     as.BEQZ(temp_count, &end);
@@ -7659,8 +7652,6 @@ FAST_HANDLE(RCL) {
     as.J(&loop);
 
     as.Bind(&end);
-
-    rec.enableSignals();
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
         biscuit::GPR of = rec.flag(X86_REF_OF);
@@ -7698,8 +7689,6 @@ FAST_HANDLE(RCR) {
         as.XOR(of, of, cf);
     }
 
-    rec.disableSignals();
-
     Label loop, end;
     as.Bind(&loop);
     as.BEQZ(shift, &end);
@@ -7713,8 +7702,6 @@ FAST_HANDLE(RCR) {
     as.J(&loop);
 
     as.Bind(&end);
-
-    rec.enableSignals();
 
     rec.setGPR(&operands[0], dst_temp);
 }

@@ -297,8 +297,6 @@ x64_rt_sigframe* setupFrame(RegisteredSignal& signal, int sig, ThreadState* stat
 }
 
 void Signals::sigreturn(ThreadState* state) {
-    auto guard = state->GuardSignals();
-
     u64 rsp = state->GetGpr(X86_REF_RSP);
 
     // When the signal handler returned, it popped the return address, which is the 8 bytes "pretcode" field in the sigframe
@@ -585,34 +583,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     ASSERT(sig > 0);
 
-    if (state->signals_disabled) {
-        if (sig < __SIGRTMIN) {
-            const int sig_bit = sig - 1;
-            state->pending_signals |= 1 << sig_bit;
-            state->nonrt_siginfos[sig_bit] = *info;
-            if (sig == SIGSEGV) {
-                SIGLOG("SIGSEGV with signals_disabled, dumping states and exiting...");
-                if (g_config.calltrace) {
-                    dump_states();
-                } else {
-                    print_address(state->GetRip());
-                }
-                PLAIN("My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to "
-                      "find out why!",
-                      gettid(), gettid());
-                sleep(40);
-                UNREACHABLE();
-            }
-            SIGLOG("Deferring signal %d from %lx", sig, state->GetRip());
-        } else {
-            // Unlike signals 1-31, signals 32 and up (realtime signals) can be queued and you can have multiple
-            // pending of each signal
-            state->queued_signals.push({sig, *info});
-            SIGLOG("Deferring realtime signal %d from %lx", sig, state->GetRip());
-        }
-        return true;
-    }
-
     SIGLOG("------- Guest signal %s (%d) %s TID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", gettid());
 
     ASSERT(!g_mode32);
@@ -798,61 +768,17 @@ int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
     }
 }
 
-void Signals::checkPending(ThreadState* state) {
-    if (state->signals_disabled) {
-        return;
-    }
+SignalGuard::SignalGuard() {
+    static sigset_t full_mask = []() {
+        sigset_t t;
+        sigfillset(&t);
+        sigandset(&t, &t, Signals::hostSignalMask());
+        return t;
+    }();
 
-    // Check if there's any pending signals. If there are, raise them.
-    while (state->pending_signals) {
-        const int sig_bit = __builtin_ctz(state->pending_signals);
-        const int sig = sig_bit + 1;
+    pthread_sigmask(SIG_SETMASK, &full_mask, &old_mask);
+}
 
-        SIGLOG("Handling deferred signal %d TID: %d", sig, gettid());
-
-        FiredSignal fired_signal{.guest_info = state->nonrt_siginfos[sig_bit]};
-
-        sigval val{.sival_ptr = &fired_signal};
-
-        // Raise the signal...
-        ASSERT(sigqueue(gettid(), sig, val) == 0);
-
-        state->pending_signals &= ~(1 << sig_bit);
-    }
-
-    while (!state->queued_signals.empty()) {
-        ASSERT(!state->signals_disabled);
-        sigset_t full, old;
-        sigfillset(&full);
-        pthread_sigmask(SIG_BLOCK, &full, &old); // block signals to make changing queued_signals safe
-
-        PendingSignal signal = state->queued_signals.pop();
-
-        int sig = signal.sig;
-        siginfo_t info = signal.info;
-
-        pthread_sigmask(SIG_SETMASK, &old, nullptr);
-
-        WARN("Handling deferred realtime signal %d", sig);
-
-        // Block the current signal that we are currently serving
-        // It may be unblocked from inside the handler if SA_NODEFER is set
-        sigset_t mask;
-        sigemptyset(&mask);
-        sigaddset(&mask, sig);
-
-        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
-
-        FiredSignal fired_signal{.guest_info = info};
-        sigval val{.sival_ptr = &fired_signal};
-
-        state->incoming_signal = true;
-
-        // Raise the signal...
-        ASSERT(sigqueue(gettid(), sig, val) == 0);
-
-        state->incoming_signal = false;
-
-        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
-    }
+SignalGuard::~SignalGuard() {
+    pthread_sigmask(SIG_SETMASK, &old_mask, nullptr);
 }

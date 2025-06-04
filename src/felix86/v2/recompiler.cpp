@@ -105,10 +105,6 @@ void Recompiler::emitNecessaryStuff() {
 void Recompiler::emitDispatcher() {
     enter_dispatcher = (decltype(enter_dispatcher))as.GetCursorPointer();
 
-    as.LD(t3, offsetof(ThreadState, signals_disabled), a0);
-    as.ADDI(t3, t3, 1);
-    as.SD(t3, offsetof(ThreadState, signals_disabled), a0);
-
     // Save the current frame in the stack
     // The size of felix86_frame is bigger than the red zone, so we need to decrement the stack instead of using a temporary
     // This is because a signal could technically thrash values outside the red zone if we don't decrement the stack pointer here
@@ -129,10 +125,6 @@ void Recompiler::emitDispatcher() {
     // Also save the magic number
     as.LI(t1, felix86_frame::expected_magic);
     as.SD(t1, offsetof(felix86_frame, magic), sp);
-
-    as.LD(t3, offsetof(ThreadState, signals_disabled), a0);
-    as.ADDI(t3, t3, -1);
-    as.SD(t3, offsetof(ThreadState, signals_disabled), a0);
 
     as.MV(threadStatePointer(), a0);
 
@@ -184,10 +176,6 @@ void Recompiler::emitDispatcher() {
     // Load ThreadState* into t4
     as.LD(t4, offsetof(felix86_frame, state), a0);
 
-    as.LD(t3, offsetof(ThreadState, signals_disabled), a0);
-    as.ADDI(t3, t3, 1);
-    as.SD(t3, offsetof(ThreadState, signals_disabled), a0);
-
     // Load the frame we had before entering the dispatcher
     // First make sure our magic is correct
     Label magic_correct;
@@ -226,10 +214,6 @@ void Recompiler::emitDispatcher() {
 
     as.Bind(&stack_correct);
     as.MV(sp, t0);
-
-    as.LD(t3, offsetof(ThreadState, signals_disabled), a0);
-    as.ADDI(t3, t3, -1);
-    as.SD(t3, offsetof(ThreadState, signals_disabled), a0);
 
     // Return to wherever the dispatcher was originally entered from using enter_dispatcher
     as.JR(ra);
@@ -2518,22 +2502,6 @@ void Recompiler::setFlags(biscuit::GPR flags) {
     as.SB(temp, offsetof(ThreadState, ac_bit), threadStatePointer());
 }
 
-void Recompiler::disableSignals() {
-    biscuit::GPR temp = scratch();
-    as.LD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
-    as.ADDI(temp, temp, 1);
-    as.SD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
-    popScratch();
-}
-
-void Recompiler::enableSignals() {
-    biscuit::GPR temp = scratch();
-    as.LD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
-    as.ADDI(temp, temp, -1);
-    as.SD(temp, offsetof(ThreadState, signals_disabled), threadStatePointer());
-    popScratch();
-}
-
 biscuit::GPR Recompiler::getTOP() {
     biscuit::GPR top = scratch();
     as.LB(top, offsetof(ThreadState, fpu_top), threadStatePointer());
@@ -2844,8 +2812,6 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
 // We statically allocate the x87 stack for speed
 // Because it's a stack model we need to rotate our allocated registers on push/pop
 void Recompiler::decrementTOP() {
-    disableSignals();
-
     biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
     biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
     biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
@@ -2873,13 +2839,9 @@ void Recompiler::decrementTOP() {
     as.ANDI(top, top, 0b111);
     setTOP(top);
     popScratch();
-
-    enableSignals();
 }
 
 void Recompiler::pushX87(biscuit::FPR val) {
-    disableSignals();
-
     biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
     biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
     biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
@@ -2903,13 +2865,9 @@ void Recompiler::pushX87(biscuit::FPR val) {
     as.ANDI(top, top, 0b111);
     setTOP(top);
     popScratch();
-
-    enableSignals();
 }
 
 void Recompiler::popX87() {
-    disableSignals();
-
     biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
     biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
     biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
@@ -2937,8 +2895,6 @@ void Recompiler::popX87() {
     as.ANDI(top, top, 0b111);
     setTOP(top);
     popScratch();
-
-    enableSignals();
 }
 
 // Move from x87 registers to MMX registers and switch the x87_state flag

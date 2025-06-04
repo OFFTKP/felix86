@@ -133,10 +133,6 @@ struct Recompiler {
 
     [[noreturn]] void exitDispatcher(felix86_frame* state);
 
-    void disableSignals();
-
-    void enableSignals();
-
     bool shouldEmitFlag(u64 current_rip, x86_ref_e ref);
 
     void zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size);
