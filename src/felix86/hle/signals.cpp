@@ -384,6 +384,7 @@ void Signals::sigreturn(ThreadState* state) {
     // sigset_t host_mask;
     // sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
     // pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
+    PLAIN("would get: %lx", state->signal_mask.__val[0]);
 }
 
 struct riscv_v_state {
