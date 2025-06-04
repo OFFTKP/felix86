@@ -113,6 +113,7 @@ set(FELIX86_HLE_SOURCES
     src/felix86/hle/ioctl/drm.cpp
     src/felix86/hle/ioctl/fat.cpp
     src/felix86/hle/ioctl/fs.cpp
+    src/felix86/hle/ioctl/tty.cpp
     src/felix86/hle/ioctl/radeon.cpp
 )
 

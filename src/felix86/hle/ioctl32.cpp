@@ -10,6 +10,7 @@
 #include "felix86/hle/ioctl/drm.hpp"
 #include "felix86/hle/ioctl/fat.hpp"
 #include "felix86/hle/ioctl/fs.hpp"
+#include "felix86/hle/ioctl/tty.hpp"
 #include "felix86/hle/ioctl/radeon.hpp"
 
 int ioctl32_default(int fd, u32 cmd, u32 args) {
@@ -38,6 +39,9 @@ int ioctl32(int fd, u32 cmd, u32 args) {
     }
     case 'r': {
         return ioctl32_fat(fd, cmd, args);
+    }
+    case 'T': {
+        return ioctl32_tty(fd, cmd, args);
     }
     default: {
         return ioctl32_unknown(fd, cmd, args);
