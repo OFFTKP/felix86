@@ -381,10 +381,9 @@ void Signals::sigreturn(ThreadState* state) {
     }
 
     // Restore signal mask to what it was supposed to be outside of signal handler
-    // sigset_t host_mask;
-    // sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
-    // pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
-    PLAIN("would get: %lx", state->signal_mask.__val[0]);
+    sigset_t host_mask;
+    sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
+    pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
 }
 
 struct riscv_v_state {
@@ -823,7 +822,7 @@ void Signals::checkPending(ThreadState* state) {
 
         state->pending_signals &= ~(1 << sig_bit);
 
-        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
+        // ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
 
         sigset_t current;
         pthread_sigmask(SIG_SETMASK, nullptr, &current);
