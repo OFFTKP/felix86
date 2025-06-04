@@ -21,13 +21,6 @@ struct RegisteredSignal {
     u64 restorer = {}; // for 32-bit apps
 };
 
-struct FiredSignal {
-    // To make sure the signal was sigqueue'd by us
-    constexpr static u64 expected_magic = 0xbeef1234abcdef0;
-    u64 magic = expected_magic;
-    siginfo_t guest_info;
-};
-
 struct riscv_sigaction {
     union {
         void (*handler)(int);

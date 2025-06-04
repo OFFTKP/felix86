@@ -616,19 +616,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         use_altstack = false;
     }
 
-    siginfo_t guest_info;
-    if (info->si_code == SI_QUEUE && state->incoming_signal) {
-        // One of our queued signals, retrieve the siginfo_t from the pointer
-        FiredSignal* signal = (FiredSignal*)info->si_value.sival_ptr;
-        if (signal && signal->magic == FiredSignal::expected_magic) {
-            guest_info = signal->guest_info;
-        } else {
-            guest_info = *info;
-            SIGLOG("state->incoming_signal is set but magic is not what we expected");
-        }
-    } else {
-        guest_info = *info;
-    }
+    siginfo_t guest_info = *info;
 
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
