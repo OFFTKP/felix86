@@ -815,22 +815,14 @@ void Signals::checkPending(ThreadState* state) {
 
         SIGLOG("Handling deferred signal %d (PID: %d, TID: %d)", sig, getpid(), gettid());
 
-        sigset_t mask, old;
-        sigemptyset(&mask);
-        sigaddset(&mask, sig);
-
         FiredSignal fired_signal{.guest_info = state->nonrt_siginfos[sig_bit]};
 
         sigval val{.sival_ptr = &fired_signal};
-
-        // ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
 
         // Raise the signal...
         ASSERT(sigqueue(gettid(), sig, val) == 0);
 
         state->pending_signals &= ~(1 << sig_bit);
-
-        // ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }
 
     while (!state->queued_signals.empty()) {
