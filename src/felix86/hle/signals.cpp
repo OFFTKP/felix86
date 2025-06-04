@@ -310,7 +310,7 @@ void Signals::sigreturn(ThreadState* state) {
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
     rsp += sizeof(x64_rt_sigframe);
 
-    SIGLOG("------- sigreturn PID: %d -------", getpid());
+    SIGLOG("------- sigreturn TID: %d -------", gettid());
 
     // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
     state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.gregs[REG_RAX]);
@@ -613,8 +613,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         return true;
     }
 
-    SIGLOG("------- Guest signal %s (%d) %s PID: %d TID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code",
-           getpid(), gettid());
+    SIGLOG("------- Guest signal %s (%d) %s TID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", gettid());
 
     ASSERT(!g_mode32);
 
@@ -699,9 +698,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     // This way we can support signals inside signal handlers too.
     // The only problem would be longjmps out of signal handlers. This is evil but possible that a game or something does it
     // In that case the frames would eventually overflow and at least we'd gave an appropriate message.
-    SIGLOG("Entering dispatcher");
     state->recompiler->enterDispatcher(state);
-    SIGLOG("Exiting dispatcher");
 
     u64 new_rip = state->GetRip();
     if (in_jit_code) {
@@ -813,7 +810,7 @@ void Signals::checkPending(ThreadState* state) {
         const int sig_bit = __builtin_ctz(state->pending_signals);
         const int sig = sig_bit + 1;
 
-        SIGLOG("Handling deferred signal %d (PID: %d, TID: %d)", sig, getpid(), gettid());
+        SIGLOG("Handling deferred signal %d TID: %d", sig, gettid());
 
         FiredSignal fired_signal{.guest_info = state->nonrt_siginfos[sig_bit]};
 
