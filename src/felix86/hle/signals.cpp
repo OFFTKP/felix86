@@ -668,16 +668,17 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     sigset_t new_mask;
     sigset_t mask_during_signal;
     mask_during_signal = *(sigset_t*)&handler->mask;
-    sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());
 
     // Combine with the current signal mask
-    sigorset(&new_mask, &new_mask, &state->signal_mask);
+    sigorset(&new_mask, &mask_during_signal, &state->signal_mask);
 
     if (handler->flags & SA_NODEFER) {
         sigdelset(&new_mask, sig);
     } else {
         sigaddset(&new_mask, sig);
     }
+
+    sigandset(&new_mask, &new_mask, Signals::hostSignalMask());
 
     pthread_sigmask(SIG_SETMASK, &new_mask, nullptr);
 
@@ -806,18 +807,22 @@ void Signals::checkPending(ThreadState* state) {
 
         SIGLOG("Handling deferred signal %d (PID: %d, TID: %d)", sig, getpid(), gettid());
 
-        state->pending_signals &= ~(1 << sig_bit);
+        sigset_t mask, old;
+        sigemptyset(&mask);
+        sigaddset(&mask, sig);
 
         FiredSignal fired_signal{.guest_info = state->nonrt_siginfos[sig_bit]};
 
         sigval val{.sival_ptr = &fired_signal};
 
-        state->incoming_signal = true;
+        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
 
         // Raise the signal...
         ASSERT(sigqueue(getpid(), sig, val) == 0);
 
-        state->incoming_signal = false;
+        state->pending_signals &= ~(1 << sig_bit);
+
+        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }
 
     while (!state->queued_signals.empty()) {
@@ -828,12 +833,20 @@ void Signals::checkPending(ThreadState* state) {
 
         PendingSignal signal = state->queued_signals.pop();
 
-        pthread_sigmask(SIG_SETMASK, &old, nullptr);
-
         int sig = signal.sig;
         siginfo_t info = signal.info;
 
-        SIGLOG("Handling deferred realtime signal %d (PID: %d, TID: %d)", sig, getpid(), gettid());
+        pthread_sigmask(SIG_SETMASK, &old, nullptr);
+
+        WARN("Handling deferred realtime signal %d", sig);
+
+        // Block the current signal that we are currently serving
+        // It may be unblocked from inside the handler if SA_NODEFER is set
+        sigset_t mask;
+        sigemptyset(&mask);
+        sigaddset(&mask, sig);
+
+        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
 
         FiredSignal fired_signal{.guest_info = info};
         sigval val{.sival_ptr = &fired_signal};
@@ -844,5 +857,7 @@ void Signals::checkPending(ThreadState* state) {
         ASSERT(sigqueue(getpid(), sig, val) == 0);
 
         state->incoming_signal = false;
+
+        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }
 }
