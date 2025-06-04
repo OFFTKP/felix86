@@ -1648,6 +1648,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = Threads::Clone(state, &args);
             break;
         }
+        case felix86_x86_32_chmod: {
+            SignalGuard guard;
+            result = Filesystem::Chmod((char*)arg1, arg2);
+            break;
+        }
         case felix86_x86_32_rename: {
             SignalGuard guard;
             result = Filesystem::Rename((char*)arg1, (char*)arg2);
