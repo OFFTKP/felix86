@@ -1337,6 +1337,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
             int result = pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
             ASSERT(result == 0);
+            SIGLOG("New host mask for TID %d: %lx", gettid(), host_mask.__val[0]);
         }
 
         if (oldset) {
