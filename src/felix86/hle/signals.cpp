@@ -787,12 +787,10 @@ RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
 }
 
 int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
-    SIGLOG("Sigsuspend TID: %d with mask %lx", gettid(), mask->__val[0]);
     sigset_t old_mask = state->signal_mask;
     memcpy(&state->signal_mask, mask, sizeof(u64));
     int result = ::sigsuspend(mask);
     memcpy(&state->signal_mask, &old_mask, sizeof(u64));
-    SIGLOG("Sigsuspend TID: %d done", gettid());
     if (result == -1) {
         return -errno;
     } else {
