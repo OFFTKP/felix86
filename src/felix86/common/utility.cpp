@@ -1382,6 +1382,11 @@ void felix86_fxam(ThreadState* state) {
     state->fpu_sw |= c3 ? C3_BIT : 0;
 }
 
+// TODO: One day we need to make this better. It serves to hide some felix86 related files from /proc/self/maps
+// because some things try to scan /proc/self/maps and open them. It also hides the rootfs path from the paths.
+// However it also will leak some mappings not owned by the guest, for example anything we mmap
+// A better solution would be to track every mmap/munmap/mremap/mprotect/... we do and generate a maps using them, if possible
+// However since it's not trivial we won't do it until it's proven necessary
 std::string felix86_maps() {
     std::string ret;
     std::ifstream ifs("/proc/self/maps");
