@@ -310,7 +310,7 @@ void Signals::sigreturn(ThreadState* state) {
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
     rsp += sizeof(x64_rt_sigframe);
 
-    SIGLOG("------- sigreturn -------");
+    SIGLOG("------- sigreturn TID: %d -------", gettid());
 
     // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
     state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.gregs[REG_RAX]);
@@ -613,7 +613,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         return true;
     }
 
-    SIGLOG("------- Guest signal %s (%d) %s PID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", getpid());
+    SIGLOG("------- Guest signal %s (%d) %s TID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", gettid());
 
     ASSERT(!g_mode32);
 
@@ -668,16 +668,17 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     sigset_t new_mask;
     sigset_t mask_during_signal;
     mask_during_signal = *(sigset_t*)&handler->mask;
-    sigandset(&new_mask, &mask_during_signal, Signals::hostSignalMask());
 
     // Combine with the current signal mask
-    sigorset(&new_mask, &new_mask, &state->signal_mask);
+    sigorset(&new_mask, &mask_during_signal, &state->signal_mask);
 
     if (handler->flags & SA_NODEFER) {
         sigdelset(&new_mask, sig);
     } else {
         sigaddset(&new_mask, sig);
     }
+
+    sigandset(&new_mask, &new_mask, Signals::hostSignalMask());
 
     pthread_sigmask(SIG_SETMASK, &new_mask, nullptr);
 
@@ -786,7 +787,10 @@ RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
 }
 
 int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
+    sigset_t old_mask = state->signal_mask;
+    memcpy(&state->signal_mask, mask, sizeof(u64));
     int result = ::sigsuspend(mask);
+    memcpy(&state->signal_mask, &old_mask, sizeof(u64));
     if (result == -1) {
         return -errno;
     } else {
@@ -804,20 +808,16 @@ void Signals::checkPending(ThreadState* state) {
         const int sig_bit = __builtin_ctz(state->pending_signals);
         const int sig = sig_bit + 1;
 
-        SIGLOG("Handling deferred signal %d (PID: %d, TID: %d)", sig, getpid(), gettid());
-
-        state->pending_signals &= ~(1 << sig_bit);
+        SIGLOG("Handling deferred signal %d TID: %d", sig, gettid());
 
         FiredSignal fired_signal{.guest_info = state->nonrt_siginfos[sig_bit]};
 
         sigval val{.sival_ptr = &fired_signal};
 
-        state->incoming_signal = true;
-
         // Raise the signal...
-        ASSERT(sigqueue(getpid(), sig, val) == 0);
+        ASSERT(sigqueue(gettid(), sig, val) == 0);
 
-        state->incoming_signal = false;
+        state->pending_signals &= ~(1 << sig_bit);
     }
 
     while (!state->queued_signals.empty()) {
@@ -828,12 +828,12 @@ void Signals::checkPending(ThreadState* state) {
 
         PendingSignal signal = state->queued_signals.pop();
 
-        pthread_sigmask(SIG_SETMASK, &old, nullptr);
-
         int sig = signal.sig;
         siginfo_t info = signal.info;
 
-        SIGLOG("Handling deferred realtime signal %d (PID: %d, TID: %d)", sig, getpid(), gettid());
+        pthread_sigmask(SIG_SETMASK, &old, nullptr);
+
+        WARN("Handling deferred realtime signal %d TID:", sig, gettid());
 
         FiredSignal fired_signal{.guest_info = info};
         sigval val{.sival_ptr = &fired_signal};
@@ -841,7 +841,7 @@ void Signals::checkPending(ThreadState* state) {
         state->incoming_signal = true;
 
         // Raise the signal...
-        ASSERT(sigqueue(getpid(), sig, val) == 0);
+        ASSERT(sigqueue(gettid(), sig, val) == 0);
 
         state->incoming_signal = false;
     }
