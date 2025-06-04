@@ -790,7 +790,9 @@ RegisteredSignal Signals::getSignalHandler(ThreadState* state, int sig) {
 }
 
 int Signals::sigsuspend(ThreadState* state, sigset_t* mask) {
+    SIGLOG("Sigsuspend TID: %d with mask %lx", gettid(), mask->__val[0]);
     int result = ::sigsuspend(mask);
+    SIGLOG("Sigsuspend TID: %d done", gettid());
     if (result == -1) {
         return -errno;
     } else {
@@ -818,14 +820,14 @@ void Signals::checkPending(ThreadState* state) {
 
         sigval val{.sival_ptr = &fired_signal};
 
-        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
+        // ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
 
         // Raise the signal...
         ASSERT(sigqueue(gettid(), sig, val) == 0);
 
         state->pending_signals &= ~(1 << sig_bit);
 
-        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
+        // ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }
 
     while (!state->queued_signals.empty()) {
