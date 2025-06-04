@@ -13,8 +13,8 @@ int ioctl32_fat(int fd, u32 cmd, u32 args) {
         SIMPLE_CASE(FAT_IOCTL_SET_ATTRIBUTES);
         SIMPLE_CASE(FAT_IOCTL_GET_VOLUME_ID);
     default: {
-        ERROR("Unknown FAT ioctl cmd: %x", cmd);
-        return -1;
+        WARN("Unknown FAT ioctl cmd: %x", cmd);
+        return ::ioctl(fd, cmd, args);
     }
     }
 }

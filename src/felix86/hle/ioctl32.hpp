@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include "felix86/common/types.hpp"
 
 using ioctl_handler_type = int (*)(int, u32, u32);

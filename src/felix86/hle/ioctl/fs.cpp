@@ -11,8 +11,8 @@ int ioctl32_fs(int fd, u32 cmd, u32 args) {
         // take an int* so we don't need to do marshalling
         SIMPLE_CASE(FS_IOC_GETFLAGS);
     default: {
-        ERROR("Unknown FS ioctl cmd: %x", cmd);
-        return -1;
+        WARN("Unknown FS ioctl cmd: %x", cmd);
+        return ::ioctl(fd, cmd, args);
     }
     }
 }
