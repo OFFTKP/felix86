@@ -34,6 +34,64 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
     case felix86_SEMGET: {
         return ::syscall(SYS_semget, first, second, third);
     }
+    case felix86_SEMCTL: {
+        u32 semid = first;
+        u32 semnum = second;
+        u32 semcmd = third & 0xFF;
+        bool ipc64 = third & 0x100;
+        x86_semid_ds_64* ptr64 = (x86_semid_ds_64*)ptr;
+        x86_semid_ds_32* ptr32 = (x86_semid_ds_32*)ptr;
+        switch (semcmd) {
+        case IPC_SET: {
+            riscv64_semid64_ds host_semid{};
+            if (ipc64) {
+                host_semid = *ptr64;
+            } else {
+                host_semid = *ptr32;
+            }
+            int result = ::syscall(SYS_semctl, semid, semnum, semcmd, &host_semid);
+            if (result != -1) {
+                if (ipc64) {
+                    *ptr64 = host_semid;
+                } else {
+                    *ptr32 = host_semid;
+                }
+            }
+            return result;
+        }
+        case SEM_STAT:
+        case SEM_STAT_ANY:
+        case IPC_STAT: {
+            riscv64_semid64_ds host_semid{};
+            int result = ::syscall(SYS_semctl, semid, semnum, semcmd, &host_semid);
+            if (result != -1) {
+                if (ipc64) {
+                    *ptr64 = host_semid;
+                } else {
+                    *ptr32 = host_semid;
+                }
+            }
+            return result;
+        }
+        case SEM_INFO:
+        case IPC_INFO:
+        case GETALL:
+        case SETALL:
+        case SETVAL:
+        case IPC_RMID:
+        case GETPID:
+        case GETNCNT:
+        case GETZCNT:
+        case GETVAL: {
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, ptr);
+        }
+        default: {
+            ERROR("Unknown SEMCTL operation: %d", semcmd);
+            return -ENOSYS;
+        }
+        }
+        break;
+    }
     case felix86_SHMGET: {
         return ::syscall(SYS_shmget, first, second, third);
     }

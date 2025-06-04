@@ -720,6 +720,15 @@ struct riscv64_shmid64_ds {
     u64 __glibc_reserved6;
 };
 
+struct riscv64_semid64_ds {
+    struct ipc64_perm sem_perm; /* permissions .. see ipc.h */
+    u64 sem_otime;              /* last semop time */
+    u64 sem_ctime;              /* last change time */
+    u64 sem_nsems;              /* no. of semaphores in array */
+    u64 __unused3 = 0;
+    u64 __unused4 = 0;
+};
+
 struct riscv64_shminfo {
     u64 shmmax;
     u64 shmmin;
@@ -835,6 +844,77 @@ struct x86_shmid_ds_32 {
 
 static_assert(std::is_trivially_copyable_v<x86_shmid_ds_32>);
 static_assert(sizeof(x86_shmid_ds_32) == 48);
+
+struct x86_semid_ds_32 {
+    x86_ipc_perm_32 sem_perm;
+    u32 sem_otime;
+    u32 sem_ctime;
+    u32 sem_base;
+    u32 sem_pending;
+    u32 sem_pending_last;
+    u32 undo;
+    u16 sem_nsems;
+    u16 _pad;
+
+    x86_semid_ds_32() = delete;
+
+    operator riscv64_semid64_ds() const {
+        riscv64_semid64_ds host_semid{};
+        host_semid.sem_perm = sem_perm;
+        host_semid.sem_otime = sem_otime;
+        host_semid.sem_ctime = sem_ctime;
+        host_semid.sem_nsems = sem_nsems;
+        return host_semid;
+    }
+
+    x86_semid_ds_32(const riscv64_semid64_ds& host_semid) : sem_perm{host_semid.sem_perm} {
+        sem_otime = host_semid.sem_otime;
+        sem_ctime = host_semid.sem_ctime;
+        sem_nsems = host_semid.sem_nsems;
+        sem_base = 0;
+        sem_pending = 0;
+        sem_pending_last = 0;
+        undo = 0;
+        _pad = 0;
+    }
+};
+
+static_assert(std::is_trivial_v<x86_semid_ds_32>);
+static_assert(sizeof(x86_semid_ds_32) == 44);
+
+struct x86_semid_ds_64 {
+    x86_ipc_perm_64 sem_perm;
+
+    // It'd be great to not have to use *_high but if you make these u64 the compiler adds padding
+    u32 sem_otime;
+    u32 sem_otime_high;
+    u32 sem_ctime;
+    u32 sem_ctime_high;
+    u32 sem_nsems;
+    u32 _pad[2];
+
+    x86_semid_ds_64() = delete;
+
+    operator riscv64_semid64_ds() const {
+        riscv64_semid64_ds host_semid;
+        host_semid.sem_perm = sem_perm;
+        host_semid.sem_otime = (u64)sem_otime | ((u64)sem_otime_high << 32);
+        host_semid.sem_ctime = (u64)sem_ctime | ((u64)sem_ctime_high << 32);
+        host_semid.sem_nsems = sem_nsems;
+        return host_semid;
+    }
+
+    x86_semid_ds_64(const riscv64_semid64_ds& host_semid) : sem_perm(host_semid.sem_perm) {
+        sem_otime = host_semid.sem_otime;
+        sem_otime_high = host_semid.sem_otime >> 32;
+        sem_ctime = host_semid.sem_ctime;
+        sem_ctime_high = host_semid.sem_ctime >> 32;
+        sem_nsems = host_semid.sem_nsems;
+    }
+};
+
+static_assert(std::is_trivial_v<x86_semid_ds_64>);
+static_assert(sizeof(x86_semid_ds_64) == 64);
 
 struct x86_shminfo_32 {
     u32 shmmax;
