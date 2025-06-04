@@ -757,6 +757,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(gettid);
         break;
     }
+    case felix86_riscv64_seccomp: {
+        WARN("This app uses seccomp");
+        // We don't implement this... yet
+        result = -EINVAL;
+        break;
+    }
     case felix86_riscv64_socket: {
         result = SYSCALL(socket, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
