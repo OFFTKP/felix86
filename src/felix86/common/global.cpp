@@ -364,6 +364,8 @@ void initialize_globals() {
     }
 
     ThreadState::InitializeKey();
+
+    g_fs = std::make_unique<Filesystem>();
 }
 
 bool parse_extensions(const char* arg) {
