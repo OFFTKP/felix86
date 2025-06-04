@@ -310,7 +310,7 @@ void Signals::sigreturn(ThreadState* state) {
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
     rsp += sizeof(x64_rt_sigframe);
 
-    SIGLOG("------- sigreturn -------");
+    SIGLOG("------- sigreturn PID: %d -------", getpid());
 
     // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
     state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.gregs[REG_RAX]);
@@ -381,9 +381,9 @@ void Signals::sigreturn(ThreadState* state) {
     }
 
     // Restore signal mask to what it was supposed to be outside of signal handler
-    sigset_t host_mask;
-    sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
-    pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
+    // sigset_t host_mask;
+    // sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
+    // pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
 }
 
 struct riscv_v_state {
@@ -826,7 +826,7 @@ void Signals::checkPending(ThreadState* state) {
 
         sigset_t current;
         pthread_sigmask(SIG_SETMASK, nullptr, &current);
-        SIGLOG("Mask now: %lx", current);
+        SIGLOG("Mask now: %lx", current.__val[0]);
     }
 
     while (!state->queued_signals.empty()) {
