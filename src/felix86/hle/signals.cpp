@@ -820,10 +820,10 @@ void Signals::checkPending(ThreadState* state) {
 
         ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
 
-        state->pending_signals &= ~(1 << sig_bit);
-
         // Raise the signal...
         ASSERT(sigqueue(gettid(), sig, val) == 0);
+
+        state->pending_signals &= ~(1 << sig_bit);
 
         ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }
