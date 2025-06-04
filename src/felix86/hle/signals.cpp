@@ -698,7 +698,9 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     // This way we can support signals inside signal handlers too.
     // The only problem would be longjmps out of signal handlers. This is evil but possible that a game or something does it
     // In that case the frames would eventually overflow and at least we'd gave an appropriate message.
+    SIGLOG("Entering dispatcher");
     state->recompiler->enterDispatcher(state);
+    SIGLOG("Exiting dispatcher");
 
     u64 new_rip = state->GetRip();
     if (in_jit_code) {
