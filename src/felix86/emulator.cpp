@@ -195,8 +195,6 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 }
 
 void* Emulator::CompileNext(ThreadState* thread_state) {
-    Signals::checkPending(thread_state);
-
     g_dispatcher_exit_count++;
 
     SignalGuard guard;

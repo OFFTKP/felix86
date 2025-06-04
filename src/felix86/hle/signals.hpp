@@ -103,8 +103,6 @@ struct Signals {
     static void sigreturn(ThreadState* state);
 
     static int sigsuspend(ThreadState* state, sigset_t* mask);
-
-    static void checkPending(ThreadState* state);
 };
 
 struct SignalGuard {
