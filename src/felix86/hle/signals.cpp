@@ -823,6 +823,10 @@ void Signals::checkPending(ThreadState* state) {
         state->pending_signals &= ~(1 << sig_bit);
 
         ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
+
+        sigset_t current;
+        pthread_sigmask(SIG_SETMASK, nullptr, &current);
+        SIGLOG("Mask now: %lx", current);
     }
 
     while (!state->queued_signals.empty()) {
