@@ -818,18 +818,14 @@ void Signals::checkPending(ThreadState* state) {
 
         sigval val{.sival_ptr = &fired_signal};
 
-        // ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
+        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
+
+        state->pending_signals &= ~(1 << sig_bit);
 
         // Raise the signal...
         ASSERT(sigqueue(gettid(), sig, val) == 0);
 
-        state->pending_signals &= ~(1 << sig_bit);
-
-        // ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
-
-        sigset_t current;
-        pthread_sigmask(SIG_SETMASK, nullptr, &current);
-        SIGLOG("Mask now: %lx", current.__val[0]);
+        ASSERT(pthread_sigmask(SIG_SETMASK, &old, nullptr) == 0);
     }
 
     while (!state->queued_signals.empty()) {
