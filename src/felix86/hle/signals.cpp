@@ -821,7 +821,7 @@ void Signals::checkPending(ThreadState* state) {
         ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
 
         // Raise the signal...
-        ASSERT(sigqueue(getpid(), sig, val) == 0);
+        ASSERT(sigqueue(gettid(), sig, val) == 0);
 
         state->pending_signals &= ~(1 << sig_bit);
 
@@ -861,7 +861,7 @@ void Signals::checkPending(ThreadState* state) {
         state->incoming_signal = true;
 
         // Raise the signal...
-        ASSERT(sigqueue(getpid(), sig, val) == 0);
+        ASSERT(sigqueue(gettid(), sig, val) == 0);
 
         state->incoming_signal = false;
 
