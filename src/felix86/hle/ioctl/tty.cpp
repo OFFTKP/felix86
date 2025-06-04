@@ -9,6 +9,7 @@ int ioctl32_tty(int fd, u32 cmd, u32 args) {
     switch (_IOC_NR(cmd)) {
         SIMPLE_CASE(TCGETS);
         SIMPLE_CASE(TIOCGWINSZ);
+        SIMPLE_CASE(FIONBIO);
     default: {
         WARN("Unknown TTY ioctl cmd: %x", cmd);
         return ::ioctl(fd, cmd, args);
