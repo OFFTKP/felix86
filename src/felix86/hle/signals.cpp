@@ -818,7 +818,7 @@ void Signals::checkPending(ThreadState* state) {
 
         sigval val{.sival_ptr = &fired_signal};
 
-        ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
+        // ASSERT(pthread_sigmask(SIG_BLOCK, &mask, &old) == 0);
 
         // Raise the signal...
         ASSERT(sigqueue(gettid(), sig, val) == 0);
