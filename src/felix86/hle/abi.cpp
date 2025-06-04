@@ -3,8 +3,8 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/emulator.hpp"
 #include "felix86/hle/abi.hpp"
+#include "felix86/hle/signals.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 biscuit::GPR gprarg(int i) {
