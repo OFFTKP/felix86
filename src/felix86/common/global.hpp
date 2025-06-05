@@ -86,7 +86,6 @@ extern std::unique_ptr<GDBJIT> g_gdbjit;
 extern int g_linux_major;
 extern int g_linux_minor;
 extern bool g_no_riscv_v_state;
-extern bool g_binfmt_misc;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();
