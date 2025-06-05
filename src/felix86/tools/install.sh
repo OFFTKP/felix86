@@ -141,7 +141,6 @@ elif [ "$choice" -eq 2 ]; then
     echo "Please specify the absolute path to your rootfs"
     read line
     felix86 --set-rootfs $line
-    NEW_ROOTFS=$line
 fi
 
 # Finally register felix86 in binfmt_misc
