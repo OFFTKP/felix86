@@ -457,6 +457,7 @@ u64 Recompiler::compileSequence(u64 rip) {
             ZydisDisassembledInstruction i;
             ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (void*)rip, 15, &i);
             LOG("%s %f %f", i.text, state->fp[0], state->fp[1]);
+            print_address(rip);
         }
 
         if (is_x87 && fsrm_sse) {
