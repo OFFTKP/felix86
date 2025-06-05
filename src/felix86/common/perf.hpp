@@ -8,9 +8,17 @@ struct Perf {
     Perf() {
         std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
         f = fopen(path.c_str(), "a");
-        ASSERT_MSG(f, "Failed to open perf file: %d", errno);
-        fd = fileno(f);
-        ASSERT(fd > 0);
+        if (f) {
+            fd = fileno(f);
+            ASSERT(fd > 0);
+        } else if (g_config.perf_blocks || g_config.perf_libs || g_config.perf_global) {
+            WARN("Failed to open perf map file for process %d", getpid());
+            g_config.perf_blocks = false;
+            g_config.perf_libs = false;
+            g_config.perf_global = false;
+        } else {
+            WARN("File: %s", path.c_str());
+        }
     }
 
     ~Perf() {
