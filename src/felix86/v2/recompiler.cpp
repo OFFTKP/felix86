@@ -72,12 +72,6 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
     }
 
     if (g_config.perf_blocks || g_config.perf_global || g_config.perf_libs) {
-        std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
-        FILE* file = fopen(path.c_str(), "a");
-        ASSERT(file);
-        perf_fd = fileno(file);
-        ASSERT(perf_fd > 0);
-
         u64 end = (u64)as.GetCursorPointer();
         u64 size = end - (u64)enter_dispatcher;
         g_process_globals.perf->addToFile((u64)enter_dispatcher, size, "felix86 dispatcher");
