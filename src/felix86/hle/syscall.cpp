@@ -1295,8 +1295,6 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         envp.push_back(log_env.c_str());
         envp.push_back(nullptr);
 
-        VERBOSE("Passing %s", guest_envs.c_str());
-
         std::string args = "";
         for (auto arg : argv) {
             args += " ";
