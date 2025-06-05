@@ -2571,6 +2571,18 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value) {
             popScratch(); // the gpr address scratch
             break;
         }
+        case 80: {
+            biscuit::GPR address = lea(operand, false);
+            writebackState();
+            as.MV(a0, address);
+            as.FMV_D(fa0, value);
+            call((u64)f64_to_80_mem);
+            restoreState();
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
         }
     } else {
         UNREACHABLE();

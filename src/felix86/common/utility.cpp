@@ -861,6 +861,12 @@ Float80 f64_to_80(double x) {
     return result;
 }
 
+void f64_to_80_mem(double value, u64 address) {
+    Float80 f80 = f64_to_80(value);
+    memcpy((void*)address, &f80, sizeof(Float80));
+    static_assert(sizeof(Float80) == 10);
+}
+
 double f80_to_64(Float80* f80) {
     union {
         double d;

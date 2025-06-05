@@ -92,6 +92,7 @@ typedef struct __attribute__((packed)) {
 
 Float80 f64_to_80(double);
 double f80_to_64(Float80*);
+void f64_to_80_mem(double value, u64 address);
 
 bool felix86_bts(u64 address, i64 offset);
 bool felix86_btr(u64 address, i64 offset);
