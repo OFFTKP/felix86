@@ -449,6 +449,11 @@ u64 Recompiler::compileSequence(u64 rip) {
             if (local_x87_state != x87State::x87) {
                 switchToX87();
             }
+
+            ZydisDisassembledInstruction i;
+            ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (void*)rip, 15, &i);
+            ThreadState* state = ThreadState::Get();
+            LOG("%s %f %f", i.text, state->fp[0], state->fp[1]);
         }
 
         if (is_x87 && fsrm_sse) {
