@@ -146,12 +146,7 @@ bool detect_binfmt_misc() {
         }
 
         envs.push_back("__FELIX86_TEST_BINFMT_MISC=1");
-        envs.push_back("ASDASDASD=1");
         envs.push_back(nullptr);
-
-        for (auto e : envs) {
-            printf("PUSHING: %s\n", e);
-        }
 
         std::vector<const char*> args = {
             path.c_str(),
@@ -165,8 +160,8 @@ bool detect_binfmt_misc() {
 
         posix_spawn_file_actions_t actions;
         posix_spawn_file_actions_init(&actions);
-        // posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
-        // posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
 
         if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
             return false;
@@ -222,17 +217,21 @@ void binfmt_misc(bool is_register) {
 
     if (!is_register) {
         if (unregister_binfmt_misc("/proc/sys/fs/binfmt_misc/felix86-x86_64")) {
-            printf("Unregistered felix86 from binfmt_misc for x86-64 apps");
+            printf("Unregistered felix86 from binfmt_misc for x86-64 apps\n");
         }
 
         if (unregister_binfmt_misc("/proc/sys/fs/binfmt_misc/felix86-i386")) {
-            printf("Unregistered felix86 from binfmt_misc for i386 apps");
+            printf("Unregistered felix86 from binfmt_misc for i386 apps\n");
         }
 
         g_config.binfmt_misc_installed = false;
         Config::save(g_config.path(), g_config);
         printf("felix86 successfully unregistered from binfmt_misc\n");
     } else {
+        // Unregister if already registered
+        unregister_binfmt_misc("/proc/sys/fs/binfmt_misc/felix86-x86_64");
+        unregister_binfmt_misc("/proc/sys/fs/binfmt_misc/felix86-i386");
+
         FILE* fp = fopen("/proc/sys/fs/binfmt_misc/register", "w");
 
         if (!fp) {
@@ -425,11 +424,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
-    char** e = environ;
-    while (*e) {
-        printf("GOT: %s\n", *e);
-        e++;
-    }
     if (getenv("__FELIX86_TEST_BINFMT_MISC")) {
         // This shouldn't be printed as when we run /bin/env in detect_binfmt_misc we mute stdout and stderr
         WARN("__FELIX86_TEST_BINFMT_MISC was detected, if you see this then something is wrong");
