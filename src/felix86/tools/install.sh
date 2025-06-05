@@ -26,6 +26,11 @@ if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
     exit 1
 fi
 
+if [ -z "$USER" ]; then
+    echo "\$USER is not set"
+    exit 1
+fi
+
 INSTALLATION_DIR="/opt/felix86"
 FILE="$INSTALLATION_DIR/felix86"
 FELIX86_LINK="https://nightly.link/OFFTKP/felix86/workflows/unit-tests/master/Linux%20executable.zip"
@@ -125,6 +130,8 @@ if [ "$choice" -eq 1 ]; then
 
     # Important we untar with --same-owner so that sudo/mount/fusermount keep their setuid bits
     curl -L $UBUNTU_2404_LINK | sudo tar --same-owner -xz -C $NEW_ROOTFS
+    echo "Changing 
+    sudo chown -R "$USER":"$USER" "$NEW_ROOTFS"
     echo "Rootfs was downloaded and extracted in $NEW_ROOTFS"
     felix86 --set-rootfs $NEW_ROOTFS
 elif [ "$choice" -eq 2 ]; then
@@ -140,7 +147,7 @@ sudo -E felix86 --binfmt-misc
 
 # Check that $ROOTFS/usr/bin/mount has setuid bit set, warn otherwise
 perm=$(stat -c "%f" "$NEW_ROOTFS/usr/bin/mount")
-if [ $(( (0x$perm & 0x800) )) -e 0 ]; then
+if [ $(( (0x$perm & 0x800) ) -e 0 ]; then
     echo "/usr/bin/mount doesn't have setuid bit set, some things like AppImages may not work correctly"
 fi
 
