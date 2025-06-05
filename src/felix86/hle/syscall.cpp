@@ -1220,7 +1220,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                 WARN("About to run privileged executable %s, but there's no binfmt_misc support, so things may go wrong. Please enable "
                      "binfmt_misc support by running `felix86 -b` and disabling it for any other x86/x86-64 emulators");
             }
+            printf("BBBBBBBBBBBBBB\n");
         } else {
+            printf("AAAAAAAAAAAAAA\n");
             executable = path;
             // Don't push the emulator, push just the executable and binfmt_misc will figure it out
             argv.push_back(path.c_str());
