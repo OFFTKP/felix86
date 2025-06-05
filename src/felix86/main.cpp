@@ -161,12 +161,11 @@ bool detect_binfmt_misc() {
 
         posix_spawn_file_actions_t actions;
         posix_spawn_file_actions_init(&actions);
-        // posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
-        // posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
 
-        printf("Path: %s\n", path.c_str());
         if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
-            WARN("posix_spawn failed %d", errno);
+            WARN("posix_spawn failed: %d", errno);
             return false;
         }
 
@@ -183,8 +182,6 @@ bool detect_binfmt_misc() {
 
         close(devnull);
         posix_spawn_file_actions_destroy(&actions);
-
-        printf("exit: %d\n", exit_status);
 
         // $ROOTFS/bin/env was run through felix86, thus binfmt_misc is installed
         return exit_status == 0x42;
