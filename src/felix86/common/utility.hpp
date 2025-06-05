@@ -161,4 +161,4 @@ const std::string& felix86_cpuinfo();
 
 bool check_if_privileged_executable(const std::filesystem::path& path);
 
-bool unregister_binfmt_misc(const std::filesystem::path& path);
+bool unregister_binfmt_misc(const std::string& path);
