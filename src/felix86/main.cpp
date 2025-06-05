@@ -127,10 +127,9 @@ error:
 }
 
 bool detect_binfmt_misc() {
-    // Run `echo -n ""` which will print nothing. We also set __FELIX86_TEST_BINFMT_MISC which will
-    // make felix86 immediately return 0x42. If the return value is 0x42 that means felix86 was invoked
-    // and thus binfmt_misc is correctly installed. If anything else is returned it means we didn't run it
-    // through binfmt_misc thus it's not installed.
+    // Run an x86-64 program and set __FELIX86_TEST_BINFMT_MISC which will make felix86 immediately return 0x42.
+    // If the return value is 0x42 that means felix86 was invoked and thus binfmt_misc is correctly installed.
+    // If anything else is returned it means we didn't run it through binfmt_misc thus it's not installed.
     std::error_code ec;
     std::filesystem::path path = g_config.rootfs_path / "bin/env";
     if (std::filesystem::exists(path, ec) && std::filesystem::is_regular_file(path, ec)) {

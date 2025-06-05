@@ -1587,7 +1587,7 @@ const std::string& felix86_cpuinfo() {
 
 bool check_if_privileged_executable(const std::filesystem::path& path) {
     struct stat st;
-    if (stat(path.c_str(), &st) == -1) {
+    if (stat(path.c_str(), &st) == 0) {
         if (st.st_mode & S_ISUID) {
             return true;
         }
