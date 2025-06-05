@@ -1212,18 +1212,13 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             argv.push_back(executable.c_str());
             argv.push_back(path.c_str());
 
-            struct stat st;
-            if (stat(path.c_str(), &st) == -1) {
-                if (st.st_mode & S_ISUID) {
-                    // If this bit is detected, it won't work out if we don't have binfmt_misc support
-                    // Because binfmt_misc would see that the binary has extra permissions and give the executable
-                    // those permissions as well. When we run it through the emulator manually however, we can't
-                    // do the same. So warn that this might end badly.
-                    WARN("About to run privileged executable %s, but there's no binfmt_misc support, so things may go wrong. Please enable "
-                         "binfmt_misc support by running `felix86 -b` and disabling it for any other x86/x86-64 emulators");
-                }
-            } else {
-                WARN("Couldn't stat %s?", path.c_str());
+            if (check_if_privileged_executable(path)) {
+                // If this is a privileged executable, it won't work out if we don't have binfmt_misc support
+                // Because binfmt_misc would see that the binary has extra permissions and give the emulator
+                // those permissions as well. When we run it through the emulator manually however, we can't
+                // do the same. So warn that this might end badly.
+                WARN("About to run privileged executable %s, but there's no binfmt_misc support, so things may go wrong. Please enable "
+                     "binfmt_misc support by running `felix86 -b` and disabling it for any other x86/x86-64 emulators");
             }
         } else {
             executable = path;

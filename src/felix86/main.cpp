@@ -41,6 +41,7 @@ static struct argp_option options[] = {
     {"set-rootfs", 's', "DIR", 0, "Set the rootfs path in config.toml"},
     {"set-thunks", 'S', "DIR", 0, "Set the thunks path in config.toml"},
     {"binfmt-misc", 'b', 0, 0, "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path"},
+    {"unregister-binfmt-misc", 'u', 0, 0, "Unregister the emulator from binfmt_misc"},
     {0}};
 
 int guest_arg_start_index = -1;
@@ -125,7 +126,7 @@ error:
     return ok;
 }
 
-void binfmt_misc() {
+void binfmt_misc(bool is_register) {
     if (!Sudo::hasPermissions()) {
         PLAIN("I need root permissions to register/unregister felix86 in binfmt_misc, please re-run with root permissions");
         exit(1);
@@ -145,28 +146,14 @@ void binfmt_misc() {
         R"!(:felix86-i386:M:0:\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x03\x00:\xff\xff\xff\xff\xff\xfe\xfe\x00\x00\x00\x00\xff\xff\xff\xff\xff\xfe\xff\xff\xff:{}:OCF)!",
         exe_path);
 
-    // Running felix86 -b either registers or unregisters if they already exist
-    if (std::filesystem::exists("/proc/sys/fs/binfmt_misc/felix86-x86_64") || std::filesystem::exists("/proc/sys/fs/binfmt_misc/felix86-i386")) {
-        auto unregister = [](const char* path) {
-            if (!std::filesystem::exists(path)) {
-                return;
-            }
+    if (!is_register) {
+        if (unregister_binfmt_misc("/proc/sys/fs/binfmt_misc/felix86-x86_64")) {
+            printf("Unregistered felix86 from binfmt_misc for x86-64 apps");
+        }
 
-            FILE* fp = fopen(path, "w");
-            if (!fp) {
-                ERROR("Failed to fopen %s", path);
-            }
-
-            if (fwrite("-1", 1, 2, fp) != 2) {
-                fclose(fp);
-                ERROR("Failed to write -1 to %s", path);
-            }
-
-            fclose(fp);
-        };
-
-        unregister("/proc/sys/fs/binfmt_misc/felix86-x86_64");
-        unregister("/proc/sys/fs/binfmt_misc/felix86-i386");
+        if (unregister_binfmt_misc("/proc/sys/fs/binfmt_misc/felix86-i386")) {
+            printf("Unregistered felix86 from binfmt_misc for i386 apps");
+        }
 
         printf("felix86 successfully unregistered from binfmt_misc\n");
     } else {
@@ -188,7 +175,10 @@ void binfmt_misc() {
             ERROR("Failed to register for i386");
         }
 
-        printf("felix86 successfully registered to binfmt_misc\nTo unregister run `felix86 -b`\n");
+        printf("felix86 successfully registered to binfmt_misc\nTo unregister run `felix86 -u`\n");
+
+        unregister_binfmt_misc("qemu-x86_64");
+        unregister_binfmt_misc("qemu-i386");
     }
 }
 
@@ -342,7 +332,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'b': {
-        binfmt_misc();
+        binfmt_misc(true);
+        exit(0);
+        break;
+    }
+    case 'u': {
+        binfmt_misc(false);
         exit(0);
         break;
     }
@@ -614,6 +609,12 @@ int main(int argc, char* argv[]) {
             ERROR("Executable path is not a regular file");
             return 1;
         }
+    }
+
+    if (!g_binfmt_misc && !g_execve_process && check_if_privileged_executable(params.executable_path)) {
+        // Privileged executable but no binfmt_misc support, warn the user
+        WARN("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to install "
+             "it, make sure to remove other x86/x86-64 emulators from binfmt_misc");
     }
 
     SIGLOG("New felix86 instance with PID %d and executable path %s", getpid(), params.executable_path.c_str());

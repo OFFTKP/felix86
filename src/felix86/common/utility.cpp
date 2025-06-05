@@ -2,6 +2,7 @@
 #include <cstring>
 #include <fstream>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
 #include "felix86/common/elf.hpp"
@@ -1582,4 +1583,33 @@ const std::string& felix86_cpuinfo() {
     }();
     return cpuinfo;
 #undef ADD_FLAG
+}
+
+bool check_if_privileged_executable(const std::filesystem::path& path) {
+    struct stat st;
+    if (stat(path.c_str(), &st) == -1) {
+        if (st.st_mode & S_ISUID) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool unregister_binfmt_misc(const std::filesystem::path& path) {
+    if (!std::filesystem::exists(path)) {
+        return false;
+    }
+
+    FILE* fp = fopen(path.c_str(), "w");
+    if (!fp) {
+        return false;
+    }
+
+    if (fwrite("-1", 1, 2, fp) != 2) {
+        fclose(fp);
+        return false;
+    }
+
+    fclose(fp);
+    return true;
 }
