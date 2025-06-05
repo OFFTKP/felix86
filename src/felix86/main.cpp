@@ -132,7 +132,7 @@ bool detect_binfmt_misc() {
     // and thus binfmt_misc is correctly installed. If anything else is returned it means we didn't run it
     // through binfmt_misc thus it's not installed.
     std::error_code ec;
-    std::filesystem::path path = g_config.rootfs_path / "/bin/echo";
+    std::filesystem::path path = g_config.rootfs_path / "bin/echo";
     if (std::filesystem::exists(path, ec) && std::filesystem::is_regular_file(path, ec)) {
         pid_t pid;
         int status;
