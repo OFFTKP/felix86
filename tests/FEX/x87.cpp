@@ -102,3 +102,7 @@ CATCH_TEST_CASE("FILD_NEG_F64", "[X87]") {
 CATCH_TEST_CASE("FLDCW_F64", "[X87]") {
     FEXTestLoader::RunTest("ASM/X87_F64/FLDCW_F64.asm");
 }
+
+CATCH_TEST_CASE("FIST_F64", "[X87]") {
+    FEXTestLoader::RunTest("ASM/X87_F64/FIST_F64.asm");
+}
