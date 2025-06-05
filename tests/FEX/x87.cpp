@@ -83,7 +83,10 @@ X87(DE_E0)
 X87(DE_F0)
 X87(DE_F8)
 X87(DF_00)
+X87(DF_01)
+X87(DF_03)
 X87(DF_05)
+X87(DF_07)
 X87(DF_E8)
 X87(DF_F0)
 
@@ -105,4 +108,8 @@ CATCH_TEST_CASE("FLDCW_F64", "[X87]") {
 
 CATCH_TEST_CASE("FIST_F64", "[X87]") {
     FEXTestLoader::RunTest("ASM/X87_F64/FIST_F64.asm");
+}
+
+CATCH_TEST_CASE("Rounding_F64", "[X87]") {
+    FEXTestLoader::RunTest("ASM/X87_F64/Rounding_F64.asm");
 }
