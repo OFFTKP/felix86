@@ -1281,10 +1281,6 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // We need to tell the new process where the server is
         std::string log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
         envp.push_back("__FELIX86_EXECVE=1");
-        if (g_binfmt_misc) {
-            // Tell the execve process that we already detected binfmt_misc support
-            envp.push_back("__FELIX86_BINFMT_MISC=1");
-        }
         envp.push_back(log_env.c_str());
         envp.push_back(nullptr);
 

@@ -126,6 +126,64 @@ error:
     return ok;
 }
 
+bool detect_binfmt_misc() {
+    // Run `echo -n ""` which will print nothing. We also set __FELIX86_TEST_BINFMT_MISC which will
+    // make felix86 immediately return 0x42. If the return value is 0x42 that means felix86 was invoked
+    // and thus binfmt_misc is correctly installed. If anything else is returned it means we didn't run it
+    // through binfmt_misc thus it's not installed.
+    std::error_code ec;
+    std::filesystem::path path = g_config.rootfs_path / "/bin/echo";
+    if (std::filesystem::exists(path, ec) && std::filesystem::is_regular_file(path, ec)) {
+        pid_t pid;
+        int status;
+
+        std::vector<const char*> envs = {
+            "__FELIX86_TEST_BINFMT_MISC=1",
+            nullptr,
+        };
+
+        std::vector<const char*> args = {
+            path.c_str(),
+            "-n",
+            "\"\"",
+            nullptr,
+        };
+
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull == -1) {
+            return false;
+        }
+
+        posix_spawn_file_actions_t actions;
+        posix_spawn_file_actions_init(&actions);
+        posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
+
+        if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
+            return false;
+        }
+
+        int exit_status = 0;
+        if (waitpid(pid, &status, 0) == -1) {
+            exit_status = -1;
+        } else {
+            if (WIFEXITED(status)) {
+                exit_status = WEXITSTATUS(status);
+            } else {
+                exit_status = -1;
+            }
+        }
+
+        close(devnull);
+        posix_spawn_file_actions_destroy(&actions);
+
+        // $ROOTFS/bin/echo was run through felix86, thus binfmt_misc is installed
+        return exit_status == 0x42;
+    } else {
+        return false;
+    }
+}
+
 void binfmt_misc(bool is_register) {
     if (!Sudo::hasPermissions()) {
         PLAIN("I need root permissions to register/unregister felix86 in binfmt_misc, please re-run with root permissions");
@@ -155,6 +213,9 @@ void binfmt_misc(bool is_register) {
             printf("Unregistered felix86 from binfmt_misc for i386 apps");
         }
 
+        Config::initialize();
+        g_config.binfmt_misc_installed = false;
+        Config::save(g_config.path(), g_config);
         printf("felix86 successfully unregistered from binfmt_misc\n");
     } else {
         FILE* fp = fopen("/proc/sys/fs/binfmt_misc/register", "w");
@@ -175,73 +236,20 @@ void binfmt_misc(bool is_register) {
             ERROR("Failed to register for i386");
         }
 
-        printf("felix86 successfully registered to binfmt_misc\nTo unregister run `felix86 -u`\n");
-
         unregister_binfmt_misc("qemu-x86_64");
         unregister_binfmt_misc("qemu-i386");
-    }
-}
 
-bool detect_binfmt_misc() {
-    // This is set during execve if we previously detected binfmt_misc support
-    if (getenv("__FELIX86_BINFMT_MISC")) {
-        return true;
-    } else {
-        // Run `echo -n ""` which will print nothing. We also set __FELIX86_TEST_BINFMT_MISC which will
-        // make felix86 immediately return 0x42. If the return value is 0x42 that means felix86 was invoked
-        // and thus binfmt_misc is correctly installed. If anything else is returned it means we didn't run it
-        // through binfmt_misc thus it's not installed.
-        std::error_code ec;
-        std::filesystem::path path = g_config.rootfs_path / "usr/bin/echo";
-        if (std::filesystem::exists(path, ec) && std::filesystem::is_regular_file(path, ec)) {
-            pid_t pid;
-            int status;
+        Config::initialize();
+        g_config.binfmt_misc_installed = true;
+        Config::save(g_config.path(), g_config);
 
-            std::vector<const char*> envs = {
-                "__FELIX86_TEST_BINFMT_MISC=1",
-                nullptr,
-            };
-
-            std::vector<const char*> args = {
-                path.c_str(),
-                "-n",
-                "\"\"",
-                nullptr,
-            };
-
-            int devnull = open("/dev/null", O_WRONLY);
-            if (devnull == -1) {
-                return false;
-            }
-
-            posix_spawn_file_actions_t actions;
-            posix_spawn_file_actions_init(&actions);
-            posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
-            posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
-
-            if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
-                return false;
-            }
-
-            int exit_status = 0;
-            if (waitpid(pid, &status, 0) == -1) {
-                exit_status = -1;
-            } else {
-                if (WIFEXITED(status)) {
-                    exit_status = WEXITSTATUS(status);
-                } else {
-                    exit_status = -1;
-                }
-            }
-
-            close(devnull);
-            posix_spawn_file_actions_destroy(&actions);
-
-            // $ROOTFS/usr/bin/echo was run through felix86, thus binfmt_misc is installed
-            return exit_status == 0x42;
-        } else {
-            return false;
+        if (!detect_binfmt_misc()) {
+            printf(ANSI_COLOR_YELLOW
+                   "Even though I installed felix86 in binfmt_misc, I couldn't run a simple binary with it. Either /bin/echo is missing in rootfs or "
+                   "there's conflicting emulators in binfmt_misc which may make felix86 not work correctly" ANSI_COLOR_RESET "\n");
         }
+
+        printf("felix86 successfully registered to binfmt_misc\n");
     }
 }
 
