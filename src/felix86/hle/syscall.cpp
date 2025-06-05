@@ -1207,7 +1207,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // Resolving this symlink helps gdb find the path
         std::filesystem::path executable;
 
-        if (!g_binfmt_misc) {
+        if (!g_config.binfmt_misc_installed) {
             executable = g_emulator_path;
             argv.push_back(executable.c_str());
             argv.push_back(path.c_str());

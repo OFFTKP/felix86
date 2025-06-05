@@ -137,7 +137,7 @@ bool detect_binfmt_misc() {
         pid_t pid;
         int status;
 
-        std::vector<const char*> envs;
+        std::vector<char*> envs;
 
         char** env = environ;
         while (*env) {
@@ -145,7 +145,8 @@ bool detect_binfmt_misc() {
             env++;
         }
 
-        envs.push_back("__FELIX86_TEST_BINFMT_MISC=1");
+        char buf[256] = "__FELIX86_TEST_BINFMT_MISC=1";
+        envs.push_back(buf);
         envs.push_back(nullptr);
 
         std::vector<const char*> args = {
@@ -165,7 +166,7 @@ bool detect_binfmt_misc() {
 
         printf("Path: %s\n", path.c_str());
         if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
-            WARN("posix_spawn failed");
+            WARN("posix_spawn failed %d", errno);
             return false;
         }
 
@@ -460,7 +461,6 @@ int main(int argc, char* argv[]) {
 
     Config::initialize();
     initialize_globals();
-    g_binfmt_misc = detect_binfmt_misc();
 
     std::filesystem::path xauthority_path;
     const char* xauth_env = getenv("XAUTHORITY");
@@ -637,7 +637,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (!g_binfmt_misc && !g_execve_process && check_if_privileged_executable(params.executable_path)) {
+    if (!g_config.binfmt_misc_installed && !g_execve_process && check_if_privileged_executable(params.executable_path)) {
         // Privileged executable but no binfmt_misc support, warn the user
         WARN("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to install "
              "it, make sure to remove other x86/x86-64 emulators from binfmt_misc");
