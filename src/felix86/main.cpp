@@ -164,6 +164,7 @@ bool detect_binfmt_misc() {
         // posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
 
         if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
+            WARN("posix_spawn failed");
             return false;
         }
 
@@ -181,9 +182,12 @@ bool detect_binfmt_misc() {
         close(devnull);
         posix_spawn_file_actions_destroy(&actions);
 
+        printf("exit: %d\n", exit_status);
+
         // $ROOTFS/bin/env was run through felix86, thus binfmt_misc is installed
         return exit_status == 0x42;
     } else {
+        WARN("rootfs/bin/env not found?");
         return false;
     }
 }
