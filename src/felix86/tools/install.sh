@@ -130,8 +130,10 @@ if [ "$choice" -eq 1 ]; then
 
     # Important we untar with --same-owner so that sudo/mount/fusermount keep their setuid bits
     curl -L $UBUNTU_2404_LINK | sudo tar --same-owner -xz -C $NEW_ROOTFS
-    echo "Changing 
-    sudo chown -R "$USER":"$USER" "$NEW_ROOTFS"
+    echo "Changing permissions for $NEW_ROOTFS to $USER"
+
+    # Chown the directory so we can add stuff inside, but not recursively as to not ruin setuid stuff
+    sudo chown "$USER":"$USER" "$NEW_ROOTFS"
     echo "Rootfs was downloaded and extracted in $NEW_ROOTFS"
     felix86 --set-rootfs $NEW_ROOTFS
 elif [ "$choice" -eq 2 ]; then
@@ -144,11 +146,5 @@ fi
 
 # Finally register felix86 in binfmt_misc
 sudo -E felix86 --binfmt-misc
-
-# Check that $ROOTFS/usr/bin/mount has setuid bit set, warn otherwise
-perm=$(stat -c "%f" "$NEW_ROOTFS/usr/bin/mount")
-if [ $(( (0x$perm & 0x800) ) -e 0 ]; then
-    echo "/usr/bin/mount doesn't have setuid bit set, some things like AppImages may not work correctly"
-fi
 
 echo "felix86 installed successfully"

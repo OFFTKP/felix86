@@ -8,7 +8,7 @@ struct Perf {
     Perf() {
         std::string path = "/tmp/perf-" + std::to_string(getpid()) + ".map";
         f = fopen(path.c_str(), "a");
-        ASSERT(f);
+        ASSERT_MSG(f, "Failed to open perf file: %d", errno);
         fd = fileno(f);
         ASSERT(fd > 0);
     }
