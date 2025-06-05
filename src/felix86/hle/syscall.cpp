@@ -1259,12 +1259,6 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
         std::string guest_envs = "__FELIX86_GUEST_ENVS=";
         if (arg3) {
-            // Add our own environment
-            for (const std::string& env : g_params.envp) {
-                guest_envs += env;
-                guest_envs += ",";
-            }
-
             u8* guest_envp = (u8*)arg3;
             while (true) {
                 u64 ptr = 0;
@@ -1293,6 +1287,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         envp.push_back("__FELIX86_EXECVE=1");
         envp.push_back(log_env.c_str());
         envp.push_back(nullptr);
+
+        VERBOSE("Passing %s", guest_envs.c_str());
 
         std::string args = "";
         for (auto arg : argv) {
