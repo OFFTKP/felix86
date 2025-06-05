@@ -161,4 +161,5 @@ const std::string& felix86_cpuinfo();
 
 bool check_if_privileged_executable(const std::filesystem::path& path);
 
+// TODO: move me to new binfmt.hpp file along with binfmt_misc function
 bool unregister_binfmt_misc(const std::string& path);

@@ -190,6 +190,7 @@ bool detect_binfmt_misc() {
     }
 }
 
+// TODO: Move me to binfmt.hpp file along with unregister_binfmt_misc
 void binfmt_misc(bool is_register) {
     if (!Sudo::hasPermissions()) {
         printf("I need root permissions to register/unregister felix86 in binfmt_misc, please re-run with root permissions\n");

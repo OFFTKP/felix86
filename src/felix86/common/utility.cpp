@@ -1608,7 +1608,7 @@ bool unregister_binfmt_misc(const std::string& name) {
 
     for (auto& dir : dirs) {
         std::error_code ec;
-        std::filesystem::path path = dir / name;
+        std::filesystem::path path = dir / (name + ".conf");
         if (std::filesystem::exists(path, ec)) {
             std::filesystem::remove(path);
         }
