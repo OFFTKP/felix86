@@ -160,8 +160,8 @@ bool detect_binfmt_misc() {
 
         posix_spawn_file_actions_t actions;
         posix_spawn_file_actions_init(&actions);
-        posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
-        posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
+        // posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
+        // posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
 
         if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
             return false;
