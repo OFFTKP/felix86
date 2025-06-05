@@ -132,9 +132,16 @@ elif [ "$choice" -eq 2 ]; then
     echo "Please specify the absolute path to your rootfs"
     read line
     felix86 --set-rootfs $line
+    NEW_ROOTFS=$line
 fi
 
 # Finally register felix86 in binfmt_misc
 sudo -E felix86 --binfmt-misc
+
+# Check that $ROOTFS/usr/bin/mount has setuid bit set, warn otherwise
+perm=$(stat -c "%f" "$NEW_ROOTFS/usr/bin/mount")
+if [ $(( (0x$perm & 0x800) )) -e 0 ]; then
+    echo "/usr/bin/mount doesn't have setuid bit set, some things like AppImages may not work correctly"
+fi
 
 echo "felix86 installed successfully"

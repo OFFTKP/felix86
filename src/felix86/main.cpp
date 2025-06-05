@@ -150,8 +150,6 @@ bool detect_binfmt_misc() {
 
         std::vector<const char*> args = {
             path.c_str(),
-            "-n",
-            "\"\"",
             nullptr,
         };
 
