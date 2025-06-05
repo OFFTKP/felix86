@@ -132,7 +132,7 @@ bool detect_binfmt_misc() {
     // and thus binfmt_misc is correctly installed. If anything else is returned it means we didn't run it
     // through binfmt_misc thus it's not installed.
     std::error_code ec;
-    std::filesystem::path path = g_config.rootfs_path / "bin/echo";
+    std::filesystem::path path = g_config.rootfs_path / "bin/env";
     if (std::filesystem::exists(path, ec) && std::filesystem::is_regular_file(path, ec)) {
         pid_t pid;
         int status;
@@ -183,7 +183,7 @@ bool detect_binfmt_misc() {
         close(devnull);
         posix_spawn_file_actions_destroy(&actions);
 
-        // $ROOTFS/bin/echo was run through felix86, thus binfmt_misc is installed
+        // $ROOTFS/bin/env was run through felix86, thus binfmt_misc is installed
         return exit_status == 0x42;
     } else {
         return false;
@@ -256,7 +256,7 @@ void binfmt_misc(bool is_register) {
 
         if (!detect_binfmt_misc()) {
             printf(ANSI_COLOR_YELLOW
-                   "Even though I installed felix86 in binfmt_misc, I couldn't run a simple binary with it. Either /bin/echo is missing in rootfs or "
+                   "Even though I installed felix86 in binfmt_misc, I couldn't run a simple binary with it. Either /bin/env is missing in rootfs or "
                    "there's conflicting emulators in binfmt_misc which may make felix86 not work correctly" ANSI_COLOR_RESET "\n");
         }
 
@@ -423,7 +423,7 @@ static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
     if (getenv("__FELIX86_TEST_BINFMT_MISC")) {
-        // This shouldn't be printed as when we run /usr/bin/echo in detect_binfmt_misc we mute stdout and stderr
+        // This shouldn't be printed as when we run /bin/env in detect_binfmt_misc we mute stdout and stderr
         WARN("__FELIX86_TEST_BINFMT_MISC was detected, if you see this then something is wrong");
 
         // Magic value expected by detect_binfmt_misc
