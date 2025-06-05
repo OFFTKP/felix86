@@ -2,7 +2,7 @@
 X(General, std::filesystem::path, rootfs_path, "", FELIX86_ROOTFS, "Set the rootfs path, required for the emulator to work", true)
 X(General, std::filesystem::path, thunks_path, "", FELIX86_THUNKS, "Set the thunk libraries path", false)
 X(General, std::string, enabled_thunks, "none", FELIX86_ENABLED_THUNKS, "Set the enabled thunks, possible choices: \"vk, glx, wayland, egl\" or \"all\"", false)
-X(General, bool, binfmt_misc_installed, false, __FELIX86_DONT_SET_ME__, "Whether binfmt_misc is installed, do NOT change this manually unless if you know what you're doing -- install with `felix86 --binfmt-misc` instead", false)
+X(General, bool, binfmt_misc_installed, false, FELIX86_BINFMT_MISC_INSTALLED, "Whether binfmt_misc is installed, do NOT change this manually unless if you know what you're doing -- install with `felix86 --binfmt-misc` instead", false)
 
 X(Logging, bool, verbose, false, FELIX86_VERBOSE, "Enable verbose logging", false)
 X(Logging, bool, quiet, false, FELIX86_QUIET, "Disable all logging", false)

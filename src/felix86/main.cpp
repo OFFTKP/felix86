@@ -163,6 +163,7 @@ bool detect_binfmt_misc() {
         // posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
         // posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
 
+        printf("Path: %s\n", path.c_str());
         if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
             WARN("posix_spawn failed");
             return false;
