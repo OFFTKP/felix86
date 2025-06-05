@@ -414,6 +414,7 @@ void felix86_frstor_16(struct ThreadState* state, u64 address) {
             memcpy(&state->fp[i], &f64, sizeof(double));
         }
     }
+    printf("st0: %f\n", state->fp[0]);
 }
 
 void felix86_frstor_32(struct ThreadState* state, u64 address) {
@@ -433,6 +434,7 @@ void felix86_frstor_32(struct ThreadState* state, u64 address) {
             memcpy(&state->fp[i], &f64, sizeof(double));
         }
     }
+    printf("st0: %f\n", state->fp[0]);
 }
 
 void felix86_fxsave(struct ThreadState* state, u64 address) {
@@ -490,6 +492,8 @@ void felix86_fxrstor(struct ThreadState* state, u64 address) {
 
     state->rmode_x87 = rounding_mode(x86RoundingMode((state->fpu_cw >> 10) & 0b11));
     state->rmode_sse = rounding_mode((x86RoundingMode)((state->mxcsr >> 13) & 0b11));
+
+    printf("st0: %f\n", state->fp[0]);
 }
 
 void felix86_fstenv_16(ThreadState* state, u64 address) {
