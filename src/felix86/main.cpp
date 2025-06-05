@@ -145,6 +145,7 @@ bool detect_binfmt_misc() {
             env++;
         }
 
+        envs.push_back("ASDASDASD=1");
         envs.push_back("__FELIX86_TEST_BINFMT_MISC=1");
         envs.push_back(nullptr);
 
