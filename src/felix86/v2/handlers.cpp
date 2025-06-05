@@ -3275,6 +3275,11 @@ FAST_HANDLE(MOVNTDQ) {
     fast_VECTOR_MOV(rec, rip, as, instruction, operands);
 }
 
+FAST_HANDLE(MOVNTQ) {
+    biscuit::Vec mm = rec.getVec(&operands[1]);
+    rec.setVec(&operands[0], mm);
+}
+
 FAST_HANDLE(MOVNTDQA) {
     fast_VECTOR_MOV(rec, rip, as, instruction, operands);
 }
