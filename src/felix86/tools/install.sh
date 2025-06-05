@@ -134,7 +134,7 @@ elif [ "$choice" -eq 2 ]; then
     felix86 --set-rootfs $line
 fi
 
-# Finally register felix86 to binfmt_misc
-sudo felix86 --binfmt-misc
+# Finally register felix86 in binfmt_misc
+sudo -E felix86 --binfmt-misc
 
 echo "felix86 installed successfully"

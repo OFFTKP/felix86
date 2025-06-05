@@ -137,10 +137,16 @@ bool detect_binfmt_misc() {
         pid_t pid;
         int status;
 
-        std::vector<const char*> envs = {
-            "__FELIX86_TEST_BINFMT_MISC=1",
-            nullptr,
-        };
+        std::vector<const char*> envs;
+
+        char** env = environ;
+        while (*env) {
+            envs.push_back(*env);
+            env++;
+        }
+
+        envs.push_back("__FELIX86_TEST_BINFMT_MISC=1");
+        envs.push_back(nullptr);
 
         std::vector<const char*> args = {
             path.c_str(),
@@ -156,8 +162,8 @@ bool detect_binfmt_misc() {
 
         posix_spawn_file_actions_t actions;
         posix_spawn_file_actions_init(&actions);
-        // posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
-        // posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
 
         if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
             return false;
