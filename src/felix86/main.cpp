@@ -192,6 +192,69 @@ void binfmt_misc() {
     }
 }
 
+bool detect_binfmt_misc() {
+    // This is set during execve if we previously detected binfmt_misc support
+    if (getenv("__FELIX86_BINFMT_MISC")) {
+        return true;
+    } else {
+        // Run `echo -n ""` which will print nothing. We also set __FELIX86_TEST_BINFMT_MISC which will
+        // make felix86 immediately return 0x42. If the return value is 0x42 that means felix86 was invoked
+        // and thus binfmt_misc is correctly installed. If anything else is returned it means we didn't run it
+        // through binfmt_misc thus it's not installed.
+        std::error_code ec;
+        std::filesystem::path path = g_config.rootfs_path / "usr/bin/echo";
+        if (std::filesystem::exists(path, ec) && std::filesystem::is_regular_file(path, ec)) {
+            pid_t pid;
+            int status;
+
+            std::vector<const char*> envs = {
+                "__FELIX86_TEST_BINFMT_MISC=1",
+                nullptr,
+            };
+
+            std::vector<const char*> args = {
+                path.c_str(),
+                "-n",
+                "\"\"",
+                nullptr,
+            };
+
+            int devnull = open("/dev/null", O_WRONLY);
+            if (devnull == -1) {
+                return false;
+            }
+
+            posix_spawn_file_actions_t actions;
+            posix_spawn_file_actions_init(&actions);
+            posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
+            posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
+
+            if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
+                return false;
+            }
+
+            int exit_status = 0;
+            if (waitpid(pid, &status, 0) == -1) {
+                exit_status = -1;
+            } else {
+                if (WIFEXITED(status)) {
+                    exit_status = WEXITSTATUS(status);
+                } else {
+                    exit_status = -1;
+                }
+            }
+
+            close(devnull);
+            posix_spawn_file_actions_destroy(&actions);
+
+            // $ROOTFS/usr/bin/echo was run through felix86, thus binfmt_misc is installed
+            return exit_status == 0x42;
+        } else {
+            return false;
+        }
+    }
+}
+
 void kill_all() {
     DIR* proc_dir;
     struct dirent* entry;
@@ -345,6 +408,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 static struct argp argp = {options, parse_opt, args_doc, doc};
 
 int main(int argc, char* argv[]) {
+    if (getenv("__FELIX86_TEST_BINFMT_MISC")) {
+        // This shouldn't be printed as when we run /usr/bin/echo in detect_binfmt_misc we mute stdout and stderr
+        WARN("__FELIX86_TEST_BINFMT_MISC was detected, if you see this then something is wrong");
+
+        // Magic value expected by detect_binfmt_misc
+        return 0x42;
+    }
+
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
@@ -368,6 +439,7 @@ int main(int argc, char* argv[]) {
 
     Config::initialize();
     initialize_globals();
+    g_binfmt_misc = detect_binfmt_misc();
 
     std::filesystem::path xauthority_path;
     const char* xauth_env = getenv("XAUTHORITY");
