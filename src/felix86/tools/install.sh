@@ -55,7 +55,7 @@ if [ -f "$FILE" ]; then
         elif [[ "$choice" == "2" ]]; then
             break
         elif [[ "$choice" == "3" ]]; then
-            exit
+            exit 0
         else
             echo "Invalid input. Please enter 1, 2 or 3"
         fi
@@ -98,7 +98,7 @@ echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR
 felix86 --set-thunks $INSTALLATION_DIR/lib
 
 if [[ "$exit_after_install" == "1" ]]; then
-    exit
+    exit 0
 fi
 
 echo ""
@@ -119,23 +119,24 @@ done
 if [ "$choice" -eq 1 ]; then
     echo "Where do you want to extract the downloaded rootfs?"
     read NEW_ROOTFS
-    if [ -e "$NEW_ROOTFS" ]; then
-        echo "$NEW_ROOTFS already exists, I couldn't unpack the rootfs there"
-        exit
+    if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS")" ]; then
+        echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
+        UBUNTU_2404_LINK=$(curl -s https://felix86.com/rootfs/ubuntu.txt)
+        echo "Downloading Ubuntu 24.04 rootfs..."
+        mkdir -p $NEW_ROOTFS
+
+        # Important we untar with --same-owner so that sudo/mount/fusermount keep their setuid bits
+        curl -L $UBUNTU_2404_LINK | sudo tar --same-owner -xz -C $NEW_ROOTFS
+        echo "Changing permissions for $NEW_ROOTFS to $USER"
+
+        # Chown the directory so we can add stuff inside, but not recursively as to not ruin setuid stuff
+        sudo chown "$USER":"$USER" "$NEW_ROOTFS"
+        echo "Rootfs was downloaded and extracted in $NEW_ROOTFS"
+        felix86 --set-rootfs $NEW_ROOTFS
+    else
+        echo "$NEW_ROOTFS already exists and is not empty, I won't unpack the rootfs there"
+        exit 1
     fi
-    echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
-    UBUNTU_2404_LINK=$(curl -s https://felix86.com/rootfs/ubuntu.txt)
-    echo "Downloading Ubuntu 24.04 rootfs..."
-    mkdir -p $NEW_ROOTFS
-
-    # Important we untar with --same-owner so that sudo/mount/fusermount keep their setuid bits
-    curl -L $UBUNTU_2404_LINK | sudo tar --same-owner -xz -C $NEW_ROOTFS
-    echo "Changing permissions for $NEW_ROOTFS to $USER"
-
-    # Chown the directory so we can add stuff inside, but not recursively as to not ruin setuid stuff
-    sudo chown "$USER":"$USER" "$NEW_ROOTFS"
-    echo "Rootfs was downloaded and extracted in $NEW_ROOTFS"
-    felix86 --set-rootfs $NEW_ROOTFS
 elif [ "$choice" -eq 2 ]; then
     echo "You selected to use your own rootfs."
     echo "Please specify the absolute path to your rootfs"
