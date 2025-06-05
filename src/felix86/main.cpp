@@ -249,12 +249,16 @@ void binfmt_misc(bool is_register) {
             ERROR("Failed to register for x86-64");
         }
 
+        fclose(fp);
+
         fp = fopen("/proc/sys/fs/binfmt_misc/register", "w");
 
         if (fwrite(registration_string_i386.c_str(), 1, registration_string_i386.size(), fp) != registration_string_i386.size()) {
             fclose(fp);
             ERROR("Failed to register for i386");
         }
+
+        fclose(fp);
 
         unregister_binfmt_misc("qemu-x86_64");
         unregister_binfmt_misc("qemu-i386");
