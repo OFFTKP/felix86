@@ -20,7 +20,7 @@
 #include <unistd.h>
 #undef VMIN
 #include "felix86/common/log.hpp"
-#include "felix86/common/perf.hpp"
+#include "felix86/common/script.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/strace.hpp"
 #include "felix86/common/symlink.hpp"
@@ -1211,12 +1211,19 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // Resolving this symlink helps gdb find the path
         std::filesystem::path executable;
 
-        if (!g_config.binfmt_misc_installed) {
+        // If it is a script, we'll run it through the emulator even if we have binfmt_misc
+        // Because we want to pass the guest environment variables
+        // TODO: Maybe in the future consider reworking how we pass guest envs and running scripts natively
+        bool is_script = Script::Peek(path) == Script::PeekResult::Script;
+
+        if (!g_config.binfmt_misc_installed || is_script) {
             executable = g_emulator_path;
             argv.push_back(executable.c_str());
             argv.push_back(path.c_str());
 
             if (check_if_privileged_executable(path)) {
+                ASSERT_MSG(!is_script, "Script with setuid...?");
+
                 // If this is a privileged executable, it won't work out if we don't have binfmt_misc support
                 // Because binfmt_misc would see that the binary has extra permissions and give the emulator
                 // those permissions as well. When we run it through the emulator manually however, we can't
