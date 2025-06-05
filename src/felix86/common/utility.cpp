@@ -888,7 +888,6 @@ double f80_to_64(Float80* f80) {
         conv.u = ((uint64_t)sign << 63) | ((uint64_t)exponent << 52) | (significand & 0xFFFFFFFFFFFFF);
     }
 
-    printf("Returning %f (block: %lx)\n", conv.d, ThreadState::Get()->rip);
     return conv.d;
 }
 
