@@ -241,6 +241,7 @@ void binfmt_misc(bool is_register) {
 
         Config::initialize();
         g_config.binfmt_misc_installed = true;
+        printf("Path: %s\n", g_config.path().c_str());
         Config::save(g_config.path(), g_config);
 
         if (!detect_binfmt_misc()) {
