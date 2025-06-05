@@ -156,8 +156,8 @@ bool detect_binfmt_misc() {
 
         posix_spawn_file_actions_t actions;
         posix_spawn_file_actions_init(&actions);
-        posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
-        posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
+        // posix_spawn_file_actions_adddup2(&actions, devnull, STDOUT_FILENO);
+        // posix_spawn_file_actions_adddup2(&actions, devnull, STDERR_FILENO);
 
         if (posix_spawn(&pid, path.c_str(), &actions, NULL, (char**)args.data(), (char**)envs.data()) != 0) {
             return false;
@@ -186,7 +186,14 @@ bool detect_binfmt_misc() {
 
 void binfmt_misc(bool is_register) {
     if (!Sudo::hasPermissions()) {
-        PLAIN("I need root permissions to register/unregister felix86 in binfmt_misc, please re-run with root permissions");
+        printf("I need root permissions to register/unregister felix86 in binfmt_misc, please re-run with root permissions\n");
+        exit(1);
+    }
+
+    Config::initialize();
+    if (g_config.rootfs_path.empty()) {
+        printf("Rootfs path is not set, did you not pass the environment variables when running with sudo? Try `sudo -E felix86 --binfmt-misc` or "
+               "set the rootfs path\n");
         exit(1);
     }
 
@@ -213,7 +220,6 @@ void binfmt_misc(bool is_register) {
             printf("Unregistered felix86 from binfmt_misc for i386 apps");
         }
 
-        Config::initialize();
         g_config.binfmt_misc_installed = false;
         Config::save(g_config.path(), g_config);
         printf("felix86 successfully unregistered from binfmt_misc\n");
@@ -239,9 +245,7 @@ void binfmt_misc(bool is_register) {
         unregister_binfmt_misc("qemu-x86_64");
         unregister_binfmt_misc("qemu-i386");
 
-        Config::initialize();
         g_config.binfmt_misc_installed = true;
-        printf("Path: %s\n", g_config.path().c_str());
         Config::save(g_config.path(), g_config);
 
         if (!detect_binfmt_misc()) {
