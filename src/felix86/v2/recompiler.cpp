@@ -451,14 +451,6 @@ u64 Recompiler::compileSequence(u64 rip) {
             }
         }
 
-        ThreadState* state = ThreadState::Get();
-        if (state->esbase != *(u64*)&state->fp[0]) {
-            state->esbase = *(u64*)&state->fp[0];
-            ZydisDisassembledInstruction i;
-            ZydisDisassembleIntel(ZYDIS_MACHINE_MODE_LONG_64, rip, (void*)rip, 15, &i);
-            LOG("%s %lx %f %f", i.text, rip, state->fp[0], state->fp[1]);
-        }
-
         if (is_x87 && fsrm_sse) {
             // An x87 instruction, load the x87 rounding mode
             biscuit::GPR rm = scratch();
