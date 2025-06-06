@@ -155,7 +155,6 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
 
     auto [new_fd, new_filename] = resolve(fd, filename);
 
-    printf("%d, %s\n", new_fd, new_filename);
     int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
 
     if (result > 0) {
