@@ -1642,9 +1642,6 @@ void felix86_syscall(felix86_frame* frame) {
     state->SetGpr(X86_REF_RAX, result);
 
     if (g_config.strace || (g_config.strace_errors && (i64)result < 0)) {
-        if (syscall_number == felix86_x86_64_mmap) {
-            return;
-        }
         std::string trace = trace64(syscall_number, arg1, arg2, arg3, arg4, arg5, arg6);
         trace += " = ";
         if (result < 0) {

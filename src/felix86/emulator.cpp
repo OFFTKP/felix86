@@ -316,7 +316,7 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     if (!g_execve_process) {
         // Go inside the rootfs
         ASSERT(g_rootfs_fd > 0);
-        fchdir(g_rootfs_fd);
+        ASSERT(fchdir(g_rootfs_fd) == 0);
     }
 
     ThreadState* main_state = ThreadState::Create(nullptr);
