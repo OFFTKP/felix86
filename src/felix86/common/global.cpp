@@ -276,7 +276,7 @@ void initialize_globals() {
     }
 
     if (!std::filesystem::exists(g_config.rootfs_path)) {
-        ERROR("Rootfs path does not exist");
+        ERROR("Rootfs path does <%s> not exist", g_config.rootfs_path.c_str());
     }
 
     std::string srootfs_path = g_config.rootfs_path.string();
