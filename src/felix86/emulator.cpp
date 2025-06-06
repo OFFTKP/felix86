@@ -236,7 +236,6 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
 
     Elf::PeekResult peek = Elf::Peek(g_params.executable_path);
     std::filesystem::path script_path;
-    bool is_script = false;
     if (peek == Elf::PeekResult::NotElf) {
         Script::PeekResult peek = Script::Peek(g_params.executable_path);
         if (peek == Script::PeekResult::Script) {
@@ -247,7 +246,6 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
             }
             g_params.argv[0] = path;
 
-            is_script = true;
             Script script(g_params.executable_path);
             script_path = g_params.executable_path;
             const std::filesystem::path& interpreter = script.GetInterpreter();
@@ -314,6 +312,12 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     g_fs->LoadExecutable(g_params.executable_path);
 
     BRK::allocate();
+
+    if (!g_execve_process) {
+        // Go inside the rootfs
+        ASSERT(g_rootfs_fd > 0);
+        fchdir(g_rootfs_fd);
+    }
 
     ThreadState* main_state = ThreadState::Create(nullptr);
     main_state->signal_table = SignalHandlerTable::Create(nullptr);
