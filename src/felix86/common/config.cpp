@@ -25,7 +25,7 @@ struct into<toml::value> {
 };
 } // namespace toml
 
-bool Config::initialize() {
+bool Config::initialize(bool ignore_envs) {
     const char* homedir;
     if ((homedir = getenv("HOME")) == NULL) {
         homedir = getpwuid(getuid())->pw_dir;
@@ -58,7 +58,7 @@ bool Config::initialize() {
         save(config_path, g_config);
     }
 
-    g_config = load(config_path);
+    g_config = load(config_path, ignore_envs);
     g_config.config_path = config_path;
 
     return true;
@@ -165,7 +165,7 @@ bool loadFromEnv(Config& config, Type& value, const char* env_name, const char* 
     return false;
 }
 
-Config Config::load(const std::filesystem::path& path) {
+Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
     Config config = {};
 
     auto attempt = toml::try_parse(path);
@@ -179,7 +179,7 @@ Config Config::load(const std::filesystem::path& path) {
     {                                                                                                                                                \
         bool loaded = false;                                                                                                                         \
         const char* env = getenv(#env_name);                                                                                                         \
-        if (env) {                                                                                                                                   \
+        if (env && !ignore_envs) {                                                                                                                   \
             loaded = loadFromEnv<type>(config, config.name, #env_name, env);                                                                         \
         } else {                                                                                                                                     \
             loaded = loadFromToml<type>(toml, #group, #name, config.name);                                                                           \

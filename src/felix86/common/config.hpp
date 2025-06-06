@@ -13,7 +13,7 @@ struct Config {
 #include "config.inc"
 #undef X
 
-    static bool initialize();
+    static bool initialize(bool ignore_envs = false);
     static const char* getDescription(const char* name);
     const char* getEnvironment() {
         return __environment.c_str();
@@ -23,7 +23,7 @@ struct Config {
         return config_path;
     }
 
-    [[nodiscard]] static Config load(const std::filesystem::path& path);
+    [[nodiscard]] static Config load(const std::filesystem::path& path, bool ignore_envs = false);
     static void save(const std::filesystem::path& path, const Config& config);
 
 private:

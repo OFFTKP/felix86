@@ -194,7 +194,7 @@ void binfmt_misc(bool is_register) {
         exit(1);
     }
 
-    Config::initialize();
+    Config::initialize(true /* ignore envs, because we save the config later */);
     if (g_config.rootfs_path.empty()) {
         printf("Rootfs path is not set, did you not pass the environment variables when running with sudo? Try `sudo -E felix86 --binfmt-misc` or "
                "set the rootfs path\n");
@@ -413,7 +413,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 's': {
-        Config::initialize();
+        Config::initialize(true /* ignore envs, because we save the config later */);
         char* real_path = realpath(arg, nullptr);
         if (!real_path) {
             printf("Could not resolve %s to an absolute path", arg);
@@ -426,7 +426,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case 'S': {
-        Config::initialize();
+        Config::initialize(true /* ignore envs, because we save the config later */);
         char* real_path = realpath(arg, nullptr);
         if (!real_path) {
             printf("Could not resolve %s to an absolute path", arg);
