@@ -1307,7 +1307,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
         syscall(SYS_execve, executable.c_str(), argv.data(), envp.data());
 
-        UNREACHABLE();
+        ASSERT_MSG(false, "Error during execve: %d", strerror(errno));
         break;
     }
     case felix86_riscv64_umask: {
