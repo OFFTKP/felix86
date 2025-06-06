@@ -155,12 +155,7 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
 
     auto [new_fd, new_filename] = resolve(fd, filename);
 
-    if (isOurSymlinks(new_fd, new_filename) != OurSymlink::No) {
-        // Don't report our own symlinks as symlinks, they are supposed to be directories
-        // as far as the guest is concerned
-        return -EINVAL;
-    }
-
+    printf("%d, %s\n", new_fd, new_filename);
     int result = readlinkatInternal(new_fd, new_filename, buf, bufsiz);
 
     if (result > 0) {
