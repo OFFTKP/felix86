@@ -38,6 +38,7 @@ static struct argp_option options[] = {
     {"set-rootfs", 's', "DIR", 0, "Set the rootfs path in config.toml"},
     {"set-thunks", 'S', "DIR", 0, "Set the thunks path in config.toml"},
     {"binfmt-misc", 'b', 0, 0, "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path"},
+    {"detect-binfmt-misc", 'd', 0, 0, "Check if we are correctly registered in binfmt_misc, returns 0 if ok"},
     {"unregister-binfmt-misc", 'u', 0, 0, "Unregister the emulator from binfmt_misc"},
     {0}};
 
@@ -195,11 +196,6 @@ void binfmt_misc(bool is_register) {
     }
 
     Config::initialize(true /* ignore envs, because we save the config later */);
-    if (g_config.rootfs_path.empty()) {
-        printf("Rootfs path is not set, did you not pass the environment variables when running with sudo? Try `sudo -E felix86 --binfmt-misc` or "
-               "set the rootfs path\n");
-        exit(1);
-    }
 
     char exe_path[4096];
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
@@ -306,12 +302,6 @@ void binfmt_misc(bool is_register) {
         g_config.binfmt_misc_installed = true;
         Config::save(g_config.path(), g_config);
 
-        if (!detect_binfmt_misc()) {
-            printf(ANSI_COLOR_YELLOW
-                   "Even though I installed felix86 in binfmt_misc, I couldn't run a simple binary with it. Either /bin/env is missing in rootfs or "
-                   "there's conflicting emulators in binfmt_misc which may make felix86 not work correctly" ANSI_COLOR_RESET "\n");
-        }
-
         printf("felix86 successfully registered to binfmt_misc\n");
     }
 }
@@ -405,6 +395,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     case 'b': {
         binfmt_misc(true);
         exit(0);
+        break;
+    }
+    case 'd': {
+        Config::initialize();
+        bool ok = detect_binfmt_misc();
+        exit(!ok);
         break;
     }
     case 'u': {
