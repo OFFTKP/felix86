@@ -240,6 +240,7 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     if (peek == Elf::PeekResult::NotElf) {
         Script::PeekResult peek = Script::Peek(g_params.executable_path);
         if (peek == Script::PeekResult::Script) {
+            g_params.argv[0] = path;
             is_script = true;
             Script script(g_params.executable_path);
             script_path = g_params.executable_path;
@@ -261,9 +262,7 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
             g_params.argv.push_front(interpreter.string());
 
             std::string final;
-            final += g_params.executable_path.string() + " ";
-            for (size_t i = 1; i < g_params.argv.size(); i++) {
-                const std::string& arg = g_params.argv[i];
+            for (auto& arg : g_params.argv) {
                 final += arg + " ";
             }
 
