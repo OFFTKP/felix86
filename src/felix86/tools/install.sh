@@ -119,7 +119,7 @@ done
 if [ "$choice" -eq 1 ]; then
     echo "Where do you want to extract the downloaded rootfs?"
     read NEW_ROOTFS
-    if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS")" ]; then
+    if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
         echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
         UBUNTU_2404_LINK=$(curl -s https://felix86.com/rootfs/ubuntu.txt)
         echo "Downloading Ubuntu 24.04 rootfs..."
@@ -146,5 +146,9 @@ fi
 
 # Finally register felix86 in binfmt_misc
 sudo -E felix86 --binfmt-misc
+
+if ! felix86 -d; then
+  echo "Failed binfmt_misc installation check"
+fi
 
 echo "felix86 installed successfully"
