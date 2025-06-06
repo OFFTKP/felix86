@@ -315,32 +315,6 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
 
     BRK::allocate();
 
-    // Only set the CWD for the initial process, don't change it around when new ones come by with execve
-    if (!g_execve_process) {
-        const char* cwd = getenv("FELIX86_CWD");
-
-        if (cwd) {
-            std::string scwd = cwd;
-            ASSERT_MSG(scwd.find(g_config.rootfs_path.string()) == 0, "FELIX86_CWD is not inside FELIX86_ROOTFS!");
-            int res = chdir(cwd);
-            if (res == -1) {
-                WARN("Failed to chdir to %s", cwd);
-            }
-        } else {
-            int res;
-            if (is_script) {
-                // executable_path here is the shell itself, parent path would be /usr/bin, we wanna be where the script is
-                res = chdir(script_path.parent_path().c_str());
-            } else {
-                res = chdir(g_params.executable_path.parent_path().c_str());
-            }
-
-            if (res == -1) {
-                WARN("Failed to chdir to %s", g_params.executable_path.parent_path().c_str());
-            }
-        }
-    }
-
     ThreadState* main_state = ThreadState::Create(nullptr);
     main_state->signal_table = SignalHandlerTable::Create(nullptr);
     main_state->SetRip(g_fs->GetEntrypoint());
