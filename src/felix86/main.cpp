@@ -412,7 +412,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         Config::initialize(true /* ignore envs, because we save the config later */);
         char* real_path = realpath(arg, nullptr);
         if (!real_path) {
-            printf("Could not resolve %s to an absolute path", arg);
+            printf("Could not resolve %s to an absolute path\n", arg);
             exit(1);
         }
         printf("Setting rootfs to %s\n", real_path);
@@ -425,7 +425,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         Config::initialize(true /* ignore envs, because we save the config later */);
         char* real_path = realpath(arg, nullptr);
         if (!real_path) {
-            printf("Could not resolve %s to an absolute path", arg);
+            printf("Could not resolve %s to an absolute path\n", arg);
             exit(1);
         }
         printf("Setting thunks path to %s\n", real_path);
