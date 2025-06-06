@@ -567,13 +567,33 @@ int main(int argc, char* argv[]) {
         copy("/etc/machine-id", g_config.rootfs_path / "etc" / "machine-id");
         copy("/etc/resolv.conf", g_config.rootfs_path / "etc" / "resolv.conf");
 
-        // Symlink some directories to make our lives easier and not have to overlay them
-        ASSERT_MSG(Symlinker::link("/run", g_config.rootfs_path / "run"), "Failed to symlink /run: %s", strerror(errno));
-        ASSERT_MSG(Symlinker::link("/proc", g_config.rootfs_path / "proc"), "Failed to symlink /proc: %s", strerror(errno));
-        ASSERT_MSG(Symlinker::link("/sys", g_config.rootfs_path / "sys"), "Failed to symlink /sys: %s", strerror(errno));
-        ASSERT_MSG(Symlinker::link("/dev", g_config.rootfs_path / "dev"), "Failed to symlink /dev: %s", strerror(errno));
+        auto link = [](const std::string& dir) {
+            std::string src_path = "/" + dir;
+            auto dst_path = g_config.rootfs_path / dir;
+            if (std::filesystem::exists(dst_path)) {
+                // Confirm that it's a symlink
+                char buffer[PATH_MAX];
+                size_t result = readlink(dst_path.c_str(), buffer, PATH_MAX);
+                ASSERT(result > 0);
+                buffer[result] = 0;
 
-        mkdirat(g_rootfs_fd, "tmp", 0777);
+                if (std::string(buffer) != src_path) {
+                    ERROR("%s is detected but it's not linked to %s. Remove %s and run felix86 again to let it symlink correctly", dst_path.c_str(),
+                          src_path.c_str(), dst_path.c_str());
+                } else {
+                    // Directory is linked, we are fine
+                }
+            } else {
+                ASSERT_MSG(Symlinker::link(src_path, dst_path), "Failed to symlink %s to %s: %s", src_path.c_str(), dst_path.c_str(),
+                           strerror(errno));
+            }
+        };
+
+        link("run");
+        link("proc");
+        link("sys");
+        link("dev");
+        link("tmp");
 
         // Check if we can find the .Xauthority file inside the rootfs, otherwise warn
         // Since many distros put it in /run we should be able to
