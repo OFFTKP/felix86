@@ -6697,6 +6697,7 @@ FAST_HANDLE(CVTTSD2SI) {
 
     rec.setGPR(&operands[0], dst);
 }
+
 FAST_HANDLE(CVTPD2PS) {
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src = rec.getVec(&operands[1]);
@@ -6823,6 +6824,60 @@ FAST_HANDLE(CVTTPS2PI) {
     as.VFCVT_RTZ_X_F(dst, src);
 
     rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(XLAT) {
+    if (!g_mode32) {
+        biscuit::GPR rbx = rec.getGPR(X86_REF_RBX, X86_SIZE_QWORD);
+        biscuit::GPR al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
+        biscuit::GPR address = rec.scratch();
+        biscuit::GPR dest = rec.scratch();
+        as.ADD(address, rbx, al);
+        rec.readMemory(dest, address, 0, X86_SIZE_BYTE);
+        rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, dest);
+    } else {
+        ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY);
+        ZydisRegister seg = operands[0].mem.segment;
+        biscuit::GPR segment = rec.scratch();
+        switch (seg) {
+        case ZYDIS_REGISTER_FS: {
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, fsbase), X86_SIZE_QWORD);
+            break;
+        }
+        case ZYDIS_REGISTER_GS: {
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, gsbase), X86_SIZE_QWORD);
+            break;
+        }
+        case ZYDIS_REGISTER_DS: {
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, dsbase), X86_SIZE_QWORD);
+            break;
+        }
+        case ZYDIS_REGISTER_ES: {
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, esbase), X86_SIZE_QWORD);
+            break;
+        }
+        case ZYDIS_REGISTER_SS: {
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, ssbase), X86_SIZE_QWORD);
+            break;
+        }
+        case ZYDIS_REGISTER_CS: {
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, csbase), X86_SIZE_QWORD);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+
+        biscuit::GPR ebx = rec.getGPR(operands[0].mem.base);
+        biscuit::GPR al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
+        biscuit::GPR address = rec.scratch();
+        biscuit::GPR dest = rec.scratch();
+        as.ADD(address, ebx, al);
+        as.ADD(address, address, segment);
+        rec.readMemory(dest, address, 0, X86_SIZE_BYTE);
+        rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, dest);
+    }
 }
 
 FAST_HANDLE(MOVQ2DQ) {

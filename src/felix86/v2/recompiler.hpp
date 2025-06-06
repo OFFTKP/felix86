@@ -93,15 +93,19 @@ struct Recompiler {
 
     void setST(ZydisDecodedOperand* operand, biscuit::FPR value);
 
-    biscuit::GPR getGPR(const ZydisDecodedOperand* operand);
-
     x86_size_e getSize(const ZydisDecodedOperand* operand);
 
-    biscuit::Vec getVec(const ZydisDecodedOperand* operand);
+    biscuit::GPR getGPR(const ZydisDecodedOperand* operand);
 
     biscuit::GPR getGPR(const ZydisDecodedOperand* operand, x86_size_e size);
 
     biscuit::GPR getGPR(x86_ref_e ref, x86_size_e size);
+
+    biscuit::GPR getGPR(ZydisRegister reg);
+
+    biscuit::Vec getVec(const ZydisDecodedOperand* operand);
+
+    biscuit::Vec getVec(ZydisRegister reg);
 
     biscuit::Vec getVec(x86_ref_e ref);
 
@@ -612,10 +616,6 @@ private:
     void emitDispatcher();
 
     void emitInvalidateCallerThunk();
-
-    biscuit::GPR getGPR(ZydisRegister reg);
-
-    biscuit::Vec getVec(ZydisRegister reg);
 
     void scanAhead(u64 rip);
 
