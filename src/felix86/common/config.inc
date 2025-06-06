@@ -7,6 +7,7 @@ X(General, bool, binfmt_misc_installed, false, FELIX86_BINFMT_MISC_INSTALLED, "W
 X(Logging, bool, verbose, false, FELIX86_VERBOSE, "Enable verbose logging", false)
 X(Logging, bool, quiet, false, FELIX86_QUIET, "Disable all logging", false)
 X(Logging, bool, strace, false, FELIX86_STRACE, "Enable logging of syscalls", false)
+X(Logging, bool, strace_errors, false, FELIX86_STRACE_ERRORS, "Enable logging of syscalls only when they error", false)
 X(Logging, bool, print_signals, false, FELIX86_PRINT_SIGNALS, "Print on every guest signal handler", false);
 
 X(Debugging, bool, dump_regs, false, FELIX86_DUMP_REGS, "Dump register values on exit", false)
