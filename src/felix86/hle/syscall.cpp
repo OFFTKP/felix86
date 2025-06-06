@@ -1240,7 +1240,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             if (is_script) {
                 Script script(executable);
                 const std::string& args = script.GetArgs();
-                script_interpreter = g_config.rootfs_path / script.GetInterpreter().relative_path();
+                script_interpreter = script.GetInterpreter();
                 script_args = split_string(args, ' ');
                 argv.push_back(script_interpreter.c_str());
                 for (auto it = script_args.begin(); it < script_args.end(); it++) {
