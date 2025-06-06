@@ -261,7 +261,9 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
             g_params.argv.push_front(interpreter.string());
 
             std::string final;
-            for (auto& arg : g_params.argv) {
+            final += g_params.executable_path.string() + " ";
+            for (size_t i = 1; i < g_params.argv.size(); i++) {
+                const std::string& arg = g_params.argv[i];
                 final += arg + " ";
             }
 
