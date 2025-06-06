@@ -485,6 +485,10 @@ int main(int argc, char* argv[]) {
         return 0x42;
     }
 
+    for (int i = 0; i < argc; i++) {
+        printf("%s\n", argv[i]);
+    }
+
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
