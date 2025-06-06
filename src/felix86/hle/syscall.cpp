@@ -1207,6 +1207,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
         std::vector<const char*> argv;
         std::vector<const char*> envp;
+        std::string script_interpreter;
+        std::vector<std::string> script_args;
 
         // Resolving this symlink helps gdb find the path
         std::filesystem::path executable;
@@ -1216,7 +1218,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // TODO: Maybe in the future consider reworking how we pass guest envs and running scripts natively
         bool is_script = Script::Peek(path) == Script::PeekResult::Script;
 
-        if (!g_config.binfmt_misc_installed || is_script) {
+        if (!g_config.binfmt_misc_installed) {
             executable = g_emulator_path;
             argv.push_back(executable.c_str());
             argv.push_back(path.c_str());
@@ -1234,6 +1236,21 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         } else {
             executable = path;
             // Don't push the emulator, push just the executable and binfmt_misc will figure it out
+            // If it's a script we need to push the interpreter too
+            if (is_script) {
+                Script script(executable);
+                const std::string& args = script.GetArgs();
+                script_interpreter = script.GetInterpreter();
+                script_args = split_string(args, ' ');
+                argv.push_back(script_interpreter.c_str());
+                for (auto it = script_args.begin(); it < script_args.end(); it++) {
+                    if (it->empty())
+                        continue;
+
+                    argv.push_back(it->c_str());
+                }
+            }
+
             argv.push_back(path.c_str());
         }
 
@@ -1305,7 +1322,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
         LOG("Running execve, wish me luck:%s", args.c_str());
 
-        syscall(SYS_execve, executable.c_str(), argv.data(), envp.data());
+        syscall(SYS_execve, executable.c_str(), &argv[0], envp.data());
 
         ASSERT_MSG(false, "Error during execve: %s", strerror(errno));
         break;
