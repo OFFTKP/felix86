@@ -240,7 +240,13 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
     if (peek == Elf::PeekResult::NotElf) {
         Script::PeekResult peek = Script::Peek(g_params.executable_path);
         if (peek == Script::PeekResult::Script) {
+            if (path.find(g_config.rootfs_path) == 0) {
+                path = path.substr(g_config.rootfs_path.string().size());
+                ASSERT(!path.empty());
+                ASSERT(path[0] == '/');
+            }
             g_params.argv[0] = path;
+
             is_script = true;
             Script script(g_params.executable_path);
             script_path = g_params.executable_path;
