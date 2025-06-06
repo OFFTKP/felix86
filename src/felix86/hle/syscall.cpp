@@ -1344,6 +1344,11 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = Signals::sigsuspend(state, (sigset_t*)arg1);
         break;
     }
+    case felix86_riscv64_rt_sigpending: {
+        WARN("rt_sigpending");
+        result = SYSCALL(rt_sigpending, arg1, arg2);
+        break;
+    }
     case felix86_riscv64_rt_sigreturn: {
         Signals::sigreturn(frame->state);
         Emulator::ExitDispatcher(frame);
