@@ -6832,7 +6832,28 @@ FAST_HANDLE(XLAT) {
         biscuit::GPR al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
         biscuit::GPR address = rec.scratch();
         biscuit::GPR dest = rec.scratch();
+        ZydisRegister seg = operands[0].mem.segment;
+        biscuit::GPR segment = rec.scratch();
+        WARN("XLAT in 64-bit mode?");
+        switch (seg) {
+        case ZYDIS_REGISTER_FS: {
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, fsbase), X86_SIZE_QWORD);
+            break;
+        }
+        case ZYDIS_REGISTER_GS: {
+            rec.readMemory(segment, Recompiler::threadStatePointer(), offsetof(ThreadState, gsbase), X86_SIZE_QWORD);
+            break;
+        }
+        case ZYDIS_REGISTER_DS: {
+            // Do nothing
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
         as.ADD(address, rbx, al);
+        as.ADD(address, address, segment);
         rec.readMemory(dest, address, 0, X86_SIZE_BYTE);
         rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, dest);
     } else {
