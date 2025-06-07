@@ -95,7 +95,7 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
     }
     case felix86_SEMTIMEDOP: {
         x86_timespec* guest_timespec = (x86_timespec*)fifth;
-        timespec host_timespec = {0xdeadbeef, 0xdeadbeef};
+        timespec host_timespec = {};
         timespec* host_timespec_ptr = nullptr;
         if (guest_timespec) {
             PLAIN("Sec: %d, nanosec: %d", guest_timespec->tv_sec, guest_timespec->tv_nsec);
@@ -105,6 +105,7 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
             WARN("Null guest_timespec during semtimedop");
         }
 
+        PLAIN("%lx %lx %lx %lx", first, ptr, second, host_timespec_ptr);
         PLAIN("sec: %d, nanosec: %d\n", host_timespec.tv_sec, host_timespec.tv_nsec);
         return ::syscall(SYS_semtimedop, first, ptr, second, host_timespec_ptr);
     }
