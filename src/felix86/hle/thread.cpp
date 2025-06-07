@@ -225,7 +225,6 @@ long ForkMe(CloneArgs& host_clone_args) {
         g_process_globals.states.push_back(state);
 
         if (host_clone_args.new_rsp) {
-            WARN("Clone w/o CLONE_VM, hope it goes alright");
             state->gprs[X86_REF_RSP] = host_clone_args.new_rsp;
         }
 
