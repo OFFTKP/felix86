@@ -87,9 +87,6 @@ void ProcessGlobals::initialize() {
     // Reset the states stored here
     states = {};
 
-    // Also reset our allocator
-    g_mapper = std::make_unique<Mapper>();
-
     // And the GDB mappings
     g_gdbjit = std::make_unique<GDBJIT>();
 
@@ -366,6 +363,7 @@ void initialize_globals() {
     ThreadState::InitializeKey();
 
     g_fs = std::make_unique<Filesystem>();
+    g_mapper = std::make_unique<Mapper>();
 
     std::filesystem::path xauthority_path;
     const char* xauth_env = getenv("XAUTHORITY");
