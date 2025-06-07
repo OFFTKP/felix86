@@ -17,7 +17,7 @@ This command downloads and runs the installer script, which fetches the latest f
 
 [Read the usage guide](./docs/how-to-use.md) for more information.
 
-If you are a developer, [read the contributing guide](./docs/contributing.md)
+If you are a developer, [read the contributing guide](./docs/contributing.md).
 
 ## Features
 - Just-in-Time (JIT) recompiler
