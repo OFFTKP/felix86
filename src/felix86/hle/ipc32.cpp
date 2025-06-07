@@ -92,6 +92,17 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         }
         break;
     }
+    case felix86_SEMTIMEDOP: {
+        x86_timespec* guest_timespec = (x86_timespec*)fifth;
+        timespec host_timespec;
+        timespec* host_timespec_ptr = nullptr;
+        if (guest_timespec) {
+            host_timespec = *guest_timespec;
+            host_timespec_ptr = &host_timespec;
+        }
+
+        return ::syscall(SYS_semtimedop, first, ptr, second, host_timespec_ptr);
+    }
     case felix86_SHMGET: {
         return ::syscall(SYS_shmget, first, second, third);
     }
