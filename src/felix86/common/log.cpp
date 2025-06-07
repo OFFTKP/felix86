@@ -6,10 +6,12 @@
 #include <sys/stat.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/hle/signals.hpp"
 
 std::string pipe_name;
 
 void Logger::log(const char* format, ...) {
+    SignalGuard guard;
     va_list args;
     va_start(args, format);
     vdprintf(g_output_fd, format, args);
@@ -45,6 +47,11 @@ void Logger::startServer() {
         // This is going to be the logging "server". Basically we don't want to print anything to stdout
         // as applications may read it. So we start a separate process with its own stdout to handle
         // the displaying of messages.
+        sigset_t mask;
+        sigfillset(&mask);
+        sigdelset(&mask, SIGTERM);
+        sigprocmask(SIG_SETMASK, &mask, nullptr);
+
         // When the parent dies (main emulator thread), make sure the logging "server" also dies
         prctl(PR_SET_PDEATHSIG, SIGTERM);
         int read_pipe = open(pipe_name.c_str(), O_RDONLY, 0666);
