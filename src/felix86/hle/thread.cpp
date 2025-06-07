@@ -81,6 +81,7 @@ void* pthread_handler(void* args) {
         state->alt_stack = {};
     }
 
+    // Once we are finished with initialization we can signal to the parent thread that we are done
     std::atomic_signal_fence(std::memory_order_seq_cst); // Don't let the compiler reorder the copy after this fence
     __atomic_store_n(finished, state->tid, __ATOMIC_SEQ_CST);
 
