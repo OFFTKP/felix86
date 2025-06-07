@@ -6473,9 +6473,9 @@ FAST_HANDLE(CMPXCHG_lock) {
             // Which means we also can't be technically correct atomically
             // Use LR.D/SC.D on the aligned address anyway to at least have a little bit of guarantee
             biscuit::Label not_equal_unaligned;
-            biscuit::Label start_unaligned;
+            biscuit::Label loop_unaligned;
             as.ANDI(masked, address, ~0b111);
-            as.Bind(&start_unaligned);
+            as.Bind(&loop_unaligned);
             as.LD(dst, 0, address);
             as.LR_D(Ordering::AQRL, scratch, masked);
             // We do the comparison on the load from the unaligned address, obviously
@@ -6484,7 +6484,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             // Of course this isn't actually atomic (we'd need hardware unaligned atomics support for that)
             // but it's better than nothing
             as.SC_D(Ordering::AQRL, scratch, scratch, masked); // Write the same thing we just loaded in scratch
-            as.BNEZ(scratch, &start_unaligned);
+            as.BNEZ(scratch, &loop_unaligned);
             as.SD(src, 0, address);
 
             as.Bind(&not_equal_unaligned);
@@ -8314,16 +8314,17 @@ FAST_HANDLE(CMPXCHG16B) {
 
 FAST_HANDLE(CMPXCHG8B) {
     // TODO: also implement using Zacas if available
-    biscuit::Label loop, not_equal, end;
+    biscuit::Label unaligned;
     biscuit::GPR address = rec.lea(&operands[0]);
-    biscuit::GPR edx_eax = rec.scratch();
-    biscuit::GPR ecx_ebx = rec.scratch();
-    biscuit::GPR temp = rec.scratch();
-    biscuit::GPR bit = rec.scratch();
     biscuit::GPR eax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
     biscuit::GPR edx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
     biscuit::GPR ebx = rec.getGPR(X86_REF_RBX, X86_SIZE_QWORD);
     biscuit::GPR ecx = rec.getGPR(X86_REF_RCX, X86_SIZE_QWORD);
+    biscuit::GPR masked = rec.scratch();
+    biscuit::GPR dst = rec.scratch();
+    biscuit::GPR edx_eax = rec.scratch();
+    biscuit::GPR ecx_ebx = rec.scratch();
+    biscuit::GPR bit = rec.scratch();
 
     as.SLLI(edx_eax, edx, 32);
     as.OR(edx_eax, edx_eax, eax);
@@ -8331,9 +8332,13 @@ FAST_HANDLE(CMPXCHG8B) {
     as.SLLI(ecx_ebx, ecx, 32);
     as.OR(ecx_ebx, ecx_ebx, ebx);
 
+    as.ANDI(masked, address, 0b111);
+    as.BNEZ(masked, &unaligned);
+
+    biscuit::Label not_equal, loop, end;
     as.Bind(&loop);
-    as.LR_D(Ordering::AQRL, temp, address);
-    as.BNE(temp, edx_eax, &not_equal);
+    as.LR_D(Ordering::AQRL, dst, address);
+    as.BNE(dst, edx_eax, &not_equal);
     as.SC_D(Ordering::AQRL, bit, ecx_ebx, address);
     as.BNEZ(bit, &loop);
 
@@ -8343,8 +8348,38 @@ FAST_HANDLE(CMPXCHG8B) {
 
     as.Bind(&not_equal);
     rec.clearFlag(X86_REF_ZF);
-    as.SRLI(edx, temp, 32);
-    rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, temp); // will be zexted
+    as.SRLI(edx, dst, 32);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, dst); // will be zexted
+    rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
+
+    as.J(&end);
+
+    as.Bind(&unaligned);
+    // If the address is not aligned, we can't use LR.D
+    // Which means we also can't be technically correct atomically
+    // Use LR.D/SC.D on the aligned address anyway to at least have a little bit of guarantee
+    biscuit::Label not_equal_unaligned, loop_unaligned;
+    as.ANDI(masked, address, ~0b111);
+    as.Bind(&loop_unaligned);
+    as.LD(dst, 0, address);
+    as.LR_D(Ordering::AQRL, bit, masked);
+    // We do the comparison on the load from the unaligned address, obviously
+    as.BNE(bit, ecx_ebx, &not_equal_unaligned);
+    // If any of the bytes we can see with the aligned address are changed we retry
+    // Of course this isn't actually atomic (we'd need hardware unaligned atomics support for that)
+    // but it's better than nothing
+    as.SC_D(Ordering::AQRL, bit, bit, masked); // Write the same thing we just loaded in scratch
+    as.BNEZ(bit, &loop_unaligned);
+    as.SD(ecx_ebx, 0, address);
+
+    // If here EDX:EAX == m64, and ECX:EBX was loaded to m64, need to set ZF
+    rec.setFlag(X86_REF_ZF);
+    as.J(&end);
+
+    as.Bind(&not_equal_unaligned);
+    rec.clearFlag(X86_REF_ZF);
+    as.SRLI(edx, dst, 32);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, dst); // will be zexted
     rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
 
     as.Bind(&end);
