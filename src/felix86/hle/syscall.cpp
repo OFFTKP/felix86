@@ -1386,42 +1386,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_rt_sigprocmask: {
-        int how = arg1;
-        sigset_t* set = (sigset_t*)arg2;
-        sigset_t* oldset = (sigset_t*)arg3;
-
-        sigset_t old_host_set = state->signal_mask;
-        result = 0;
-        if (set) {
-            if (how == SIG_BLOCK) {
-                sigorset(&state->signal_mask, &state->signal_mask, set);
-            } else if (how == SIG_UNBLOCK) {
-                sigset_t not_set;
-                sigfillset(&not_set);
-                u16 bit_size = sizeof(sigset_t) * 8;
-                for (u16 i = 0; i < bit_size; i++) {
-                    if (sigismember(set, i)) {
-                        sigdelset(&state->signal_mask, i);
-                    }
-                }
-                sigandset(&state->signal_mask, &state->signal_mask, &not_set);
-            } else if (how == SIG_SETMASK) {
-                memcpy(&state->signal_mask, set, sizeof(u64)); // copying the entire struct segfaults sometimes
-            } else {
-                result = -EINVAL;
-                break;
-            }
-
-            sigset_t host_mask;
-            sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
-            int result = pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
-            ASSERT(result == 0);
-        }
-
-        if (oldset) {
-            memcpy(oldset, &old_host_set, sizeof(u64));
-        }
-
+        result = Signals::sigprocmask(state, arg1, (sigset_t*)arg2, (sigset_t*)arg3);
         break;
     }
     default: {
@@ -1811,6 +1776,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             } else {
                 result = -EFAULT;
             }
+            break;
+        }
+        case felix86_x86_32_sigprocmask: {
+            result = Signals::sigprocmask(state, arg1, (sigset_t*)arg2, (sigset_t*)arg3);
             break;
         }
         case felix86_x86_32_mmap_pgoff: {

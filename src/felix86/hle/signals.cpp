@@ -770,3 +770,38 @@ SignalGuard::SignalGuard() {
 SignalGuard::~SignalGuard() {
     pthread_sigmask(SIG_SETMASK, &old_mask, nullptr);
 }
+
+int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* oldset) {
+    sigset_t old_host_set = state->signal_mask;
+    int result = 0;
+    if (set) {
+        if (how == SIG_BLOCK) {
+            sigorset(&state->signal_mask, &state->signal_mask, set);
+        } else if (how == SIG_UNBLOCK) {
+            sigset_t not_set;
+            sigfillset(&not_set);
+            u16 bit_size = sizeof(sigset_t) * 8;
+            for (u16 i = 0; i < bit_size; i++) {
+                if (sigismember(set, i)) {
+                    sigdelset(&state->signal_mask, i);
+                }
+            }
+            sigandset(&state->signal_mask, &state->signal_mask, &not_set);
+        } else if (how == SIG_SETMASK) {
+            memcpy(&state->signal_mask, set, sizeof(u64)); // copying the entire struct segfaults sometimes
+        } else {
+            return -EINVAL;
+        }
+
+        sigset_t host_mask;
+        sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
+        result = pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
+        ASSERT(result == 0);
+    }
+
+    if (oldset) {
+        memcpy(oldset, &old_host_set, sizeof(u64));
+    }
+
+    return result;
+}
