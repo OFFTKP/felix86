@@ -15,16 +15,19 @@ curl -s https://raw.githubusercontent.com/OFFTKP/felix86/master/src/felix86/tool
 
 This command downloads and runs the installer script, which fetches the latest felix86 artifact and lets you either download a rootfs or use your own.
 
-[Read the usage guide](./docs/how-to-use.md) for more information or if you want to compile felix86 yourself.
+[Read the usage guide](./docs/how-to-use.md) for more information.
+
+If you are a developer, [read the contributing guide](./docs/contributing.md)
 
 ## Features
 - Just-in-Time (JIT) recompiler
 - Uses the RISC-V Vector Extension for SSE instructions
 - Utilizes the B extension, if available, for bit manipulation instructions like `bsr`
 - Supports a variety of optional extensions, such as XThead custom extensions
+- Can use the host libraries in some cases for improved performance
 
 ## Compatibility
-felix86 is in the very early stages of development.
+felix86 is in the early stages of development.
 
 A compatibility list can be found here: https://felix86.com/compat
 
