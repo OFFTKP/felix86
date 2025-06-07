@@ -101,6 +101,7 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
             host_timespec_ptr = &host_timespec;
         }
 
+        printf("sec: %d, nanosec: %d\n", host_timespec.tv_sec, host_timespec.tv_nsec);
         return ::syscall(SYS_semtimedop, first, ptr, second, host_timespec_ptr);
     }
     case felix86_SHMGET: {
