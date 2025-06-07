@@ -220,10 +220,15 @@ long ForkMe(CloneArgs& host_clone_args) {
         result = 0;
         ThreadState* state = ThreadState::Get();
         // Destroy all states except the current state
-        int erased = std::erase(g_process_globals.states, state);
-        PLAIN("Erased: %d\n", erased);
+        ASSERT(std::erase(g_process_globals.states, state) == 1);
         g_process_globals.initialize(); // New memory space, reinitialize the process globals
         g_process_globals.states.push_back(state);
+
+        if (host_clone_args.new_rsp) {
+            WARN("Here");
+            state->gprs[X86_REF_RSP] = host_clone_args.new_rsp;
+        }
+
         // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
         // in this new process. Just give it a new name to make debugging easier
         std::string name = "ForkedFrom" + std::to_string(parent_tid); // forked from parent tid
