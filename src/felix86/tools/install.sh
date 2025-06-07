@@ -21,6 +21,11 @@ if ! command -v unzip >/dev/null 2>&1; then
     exit 1
 fi
 
+if ! command -v sudo >/dev/null 2>&1; then
+    echo "Error: sudo is not installed. Please install it and try again."
+    exit 1
+fi
+
 if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
     echo "Error: \$HOME is not set or not a valid directory."
     exit 1

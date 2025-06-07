@@ -1,11 +1,22 @@
 # How to use
 
+felix86 runs x86 and x86-64 apps and games on RISC-V. These apps and games need their respective x86 libraries and tools that we package inside a directory (this is called **a rootfs**). This installation guide will help you install felix86 and a rootfs.
+
 > [!IMPORTANT]
 > felix86 is early in development. It can run some games, see https://felix86.com/compat/.
 >
 > Currently the emulator is only tested on boards with **VLEN=256**
 
-## Quick start
+## Step 0 - Requirements
+You need a RISC-V board with `rv64gv` extensions. **RVV 1.0** is necessary.
+
+To run the installation script, you'll need the following programs:
+```
+curl tar unzip sudo bash
+```
+They are installed by default in most distributions.
+
+## Step 1 - Installation
 Simply run the quick installation script:
 
 ```bash
@@ -14,142 +25,41 @@ curl -s https://raw.githubusercontent.com/OFFTKP/felix86/master/src/felix86/tool
 
 This will guide you through the process of installing felix86 and downloading a rootfs.
 
-## Required architecture
+## Step 2 - Usage
+After running the installation script you should be ready to run x86 and x86-64 applications.
 
-You need a RISC-V board with `rv64gv` extensions. **RVV 1.0** is necessary.
+You can run them as if they are RISC-V applications. **Make sure they are inside the rootfs.**
 
-Furthermore, **you need a recent version of Linux like `6.6`**, so that there is vector extension support in signal handlers.
-If you don't have a recent version of Linux, things may go wrong.
-
-Any extra extensions might be utilized, but `G` and `V` are mandatory.
-
-felix86 is going to tell you which extensions it detects on your system.
-If you have an extension but it's unable to detect it, you can use the environment variable:
+It is recommended you "enter" the rootfs by running the x86-64 bash inside the rootfs:    
 ```
-FELIX86_ALL_EXTENSIONS=g,c,v,b
-```
-to specify all available extensions.
-
-## Using on RISC-V hardware
-
-Simply compile felix86 with CMake
-
-Run these from the base directory of felix86:
-```bash
-cmake -B build
-cmake --build build -j$(nproc)
+FELIX86_QUIET=1 /path/to/rootfs/usr/bin/bash
 ```
 
-You can also cross-compile, since compiling on RISC-V might be slow:
+You should now be inside the rootfs.    
+Here you can run your x86 and x86-64 applications, such as games:
+![My rootfs is named /rootfs](./example.png)
 
-```bash
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=riscv.cmake
-cmake --build build -j$(nproc)
-```
 
-Make sure to [grab a RootFS](#rootfs), set the `FELIX86_ROOTFS` environment variable, and then felix86 is ready to run!
-
-## QEMU
-
-This works fine for me: (change the cores/RAM to your liking)
-
-Make sure the disk image has enough space to compile.
-```bash
-qemu-system-riscv64 \
--machine virt -m 8192 -smp 10 \
--cpu rv64,v=true,vlen=128,vext_spec=v1.0,zacas=true,zabha=true,zba=true,zbb=true,zbc=true,zbs=true \
--bios /usr/share/qemu/opensbi-riscv64-generic-fw_dynamic.bin \
--kernel /usr/share/u-boot-qemu-bin/qemu-riscv64_smode/uboot.elf \
--device virtio-net-device,netdev=eth0 -netdev user,id=eth0 \
--device virtio-rng-pci \
--drive file=ubuntu-24.04.1-preinstalled-server-riscv64.img,format=raw,if=virtio
-```
-
-## RootFS
-
-felix86 requires an x86-64 "rootfs" which is the filesystem at the root directory on Linux, this is needed for x86-64 libraries and tools used by the games you are going to run
+The rootfs you downloaded should have enough libraries to support most games, but if any are missing use your **x86-64 package manager** to install them while inside the rootfs.    
 
 > [!TIP]
-> You can use `felix86 --set-rootfs /path/to/rootfs` to easily set the rootfs directory in the config.toml
-
-### Downloading a rootfs
-
-Ready-made rootfs images are uploaded to Google Drive. Currently there's only one image, you can obtain the link from [https://felix86.com/rootfs/ubuntu.txt]. Download the image and decompress it to a folder. That folder is now your rootfs.
-
-The images are built using the scripts in [https://github.com/felix86-emu/rootfs] and manually uploaded to Google Drive for distribution.
-
-### Building your own rootfs
-
-Clone [https://github.com/felix86-emu/rootfs] and run the `BuildAll.sh` script.
-
-After acquiring the rootfs, you need to supply felix86 with the path to the rootfs directory using the `FELIX86_ROOTFS` environment variable.
-
-
-## Configuration
-
-View `$HOME/.config/felix86/config.toml` for configurable options and their descriptions.
-felix86 default configurations are relatively conservative, but some adjustments may be needed for certain games.
-
-> [!TIP]
-> View [https://github.com/felix86-emu/compatibility-list/issues/] to see if the game you want to run is supported
-> and if there's an special configuration necessary.
-
-## Running a game
-
-The game you want to run **must** be inside the rootfs directory, so place it anywhere in there.
-
-Example:
-`felix86 /home/myuser/myrootfs/MyDir/MyApplication arg1 arg2 arg3`
-
-Or, don't prepend the executable path with the rootfs path:
-`felix86 /MyDir/MyApplication arg1 arg2 arg3`
-
-You can also run scripts:
-`felix86 /MyDir/myscript.sh`
-
-In this case, felix86 will detect the script interpter (first line of the script, following a `#!`) and run it using the script interpreter. This means that you don't have to install felix86 in binfmt_misc for scripts to work.
-
-By default, the host environment variables are passed to the executable.
-
-You can find log files from runs of the emulator in `/tmp/felix86-XXXXXX.log`
-
-Use `--help` to view all the options.
-
-
-### Thunking
-
-> [!WARNING]
-> Thunking support is not great yet. Some games may not work with thunking enabled.
+> felix86 is quite verbose by default. The `FELIX86_QUIET` environment variable silences it.
 >
-> Please test a game without thunking first to see if it works, and then you can enable thunking
+> Alternatively, set the `quiet` variable to `true` in `$HOME/.config/felix86/config.toml`
 
-On systems with a GPU that has no x86-64 drivers (for example any board with a PowerVR iGPU) you may be unable to use your GPU without thunking. Thunking enables using some RISC-V libraries instead of x86-64 libraries.
-Additionally, thunking improves performance by using natively compiled code instead of recompiled code, while also improving compilation stutter and load times.
+## Step 3 - Tips
+- There's multiple ways to run programs using felix86:
+  - `felix86 /path/to/rootfs/program`
+  - `felix86 /program`                   (will search inside rootfs only)
+  - `/path/to/rootfs/program`            (make sure it's not a script, otherwise run it with felix86 prepended)
+- If your GPU has x86/x86-64 drivers then they will be automatically used. Many RISC-V boards come with iGPUs that don't have x86 drivers and felix86 is not able to use them currently.
+- The environment variable `FELIX86_ALWAYS_TSO=1` may be necessary for Unity games, random crashes may occur without it
+- Not all games are going to work. If something doesn't work, open an issue on github!
+- If your GPU has x86/x86-64 drivers, setting `FELIX86_ENABLED_THUNKS=glx` may make 64-bit games faster
+- felix86 is **NOT a sandbox**, nor does it aim to be one, always run **trusted executables**
+- felix86 logs are stored in /tmp
 
-To enable thunking you need to set the path to the thunk directory. The **installer script** will do it for you, but you can set it like so:
-- `felix86 -S /path/to/felix86_source_code/src/felix86/hle/guest_libs`
+---
 
-After the thunks directory is set, you can use the `FELIX86_ENABLED_THUNKS` environment variable
-
-Want to disable thunking? `export FELIX86_ENABLED_THUNKS=` will do the trick.
-
-Want to thunk GLX? Run `export FELIX86_ENABLED_THUNKS=glx`
-
-Want to thunk Vulkan on Wayland? You can do so with `export FELIX86_ENABLED_THUNKS=vulkan,wayland`
-
-## Compiling tests
-
-Set `BUILD_TESTS` to 1/ON/whatever CMake recognizes as truthy.
-
-Run `felix86_test` to run every test, or `felix86_test "the test name"` to run a specific test.
-
-Also try `felix86_test --help`, it uses Catch2.
-
-## Specifying available extensions
-felix86 will use Linux's riscv_hwprobe syscall to try to find the available RISC-V extensions.
-
-There are cases where you might want to override which extensions are available entirely. For example, if your board has `g,c,v,zicond` you might want felix86 to only use the `g,c,v` extensions. Or you might want to specify that you have `XTheadCondMov`, which is undetectable via that syscall. This can be achieved with either the command line option `--all-extensions` or the environment variable `FELIX86_ALL_EXTENSIONS`.
-
-If you want to only add new extensions instead of overriding them, use the environment variable `FELIX86_EXTENSIONS`
-
-felix86 requires `g` and `v` with vlen of at least 128.
+Join us on Discord for support and questions:    
+https://discord.gg/TgBxgFwByU
