@@ -225,8 +225,13 @@ long ForkMe(CloneArgs& host_clone_args) {
         g_process_globals.states.push_back(state);
 
         if (host_clone_args.new_rsp) {
-            WARN("Here");
+            WARN("Clone w/o CLONE_VM, hope it goes alright");
             state->gprs[X86_REF_RSP] = host_clone_args.new_rsp;
+        }
+
+        if (host_clone_args.new_tls) {
+            ASSERT(host_clone_args.guest_flags & CLONE_SETTLS);
+            state->SetTLS(host_clone_args.new_tls);
         }
 
         // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
