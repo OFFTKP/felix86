@@ -1005,7 +1005,7 @@ struct x86_shminfo_64 {
 static_assert(std::is_trivially_copyable_v<x86_shminfo_64>);
 static_assert(sizeof(x86_shminfo_64) == 36);
 
-union semun_32 {
-    i32 i32;
-    u32 u32;
+union x86_semun {
+    i32 _i32;
+    u32 _u32;
 };

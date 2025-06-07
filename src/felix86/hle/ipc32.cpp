@@ -39,21 +39,21 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         u32 semnum = second;
         u32 semcmd = third & 0xFF;
         bool ipc64 = third & 0x100;
-        semun_32* semun = (semun_32*)ptr;
+        x86_semun* semun = (x86_semun*)ptr;
         switch (semcmd) {
         case IPC_SET: {
             riscv64_semid64_ds host_semid{};
             if (ipc64) {
-                host_semid = *(x86_semid_ds_64*)(u64)semun->u32;
+                host_semid = *(x86_semid_ds_64*)(u64)semun->_u32;
             } else {
-                host_semid = *(x86_semid_ds_32*)(u64)semun->u32;
+                host_semid = *(x86_semid_ds_32*)(u64)semun->_u32;
             }
             int result = ::syscall(SYS_semctl, semid, semnum, semcmd, &host_semid);
             if (result != -1) {
                 if (ipc64) {
-                    *(x86_semid_ds_64*)(u64)semun->u32 = host_semid;
+                    *(x86_semid_ds_64*)(u64)semun->_u32 = host_semid;
                 } else {
-                    *(x86_semid_ds_32*)(u64)semun->u32 = host_semid;
+                    *(x86_semid_ds_32*)(u64)semun->_u32 = host_semid;
                 }
             }
             return result;
@@ -65,23 +65,23 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
             int result = ::syscall(SYS_semctl, semid, semnum, semcmd, &host_semid);
             if (result != -1) {
                 if (ipc64) {
-                    *(x86_semid_ds_64*)(u64)semun->u32 = host_semid;
+                    *(x86_semid_ds_64*)(u64)semun->_u32 = host_semid;
                 } else {
-                    *(x86_semid_ds_32*)(u64)semun->u32 = host_semid;
+                    *(x86_semid_ds_32*)(u64)semun->_u32 = host_semid;
                 }
             }
             return result;
         }
         case SEM_INFO:
         case IPC_INFO: {
-            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->u32);
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->_u32);
         }
         case GETALL:
         case SETALL: {
-            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->u32);
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->_u32);
         }
         case SETVAL: {
-            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->i32);
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->_i32);
         }
         case IPC_RMID:
         case GETPID:
