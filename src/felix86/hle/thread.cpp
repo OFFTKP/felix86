@@ -81,13 +81,10 @@ void* pthread_handler(void* args) {
         state->alt_stack = {};
     }
 
-    // Once we are finished with initialization we can signal to the parent thread that we are done
     std::atomic_signal_fence(std::memory_order_seq_cst); // Don't let the compiler reorder the copy after this fence
-    __atomic_thread_fence(__ATOMIC_SEQ_CST);             // Don't reorder the store at runtime (probably unnecessary since store is seq_cst)
     __atomic_store_n(finished, state->tid, __ATOMIC_SEQ_CST);
 
     LOG("Thread %ld started", state->tid);
-    pthread_setname_np(state->thread, "ChildProcess");
     Threads::StartThread(state);
     LOG("Thread %ld exited with reason: %s", state->tid, print_exit_reason(state->exit_reason));
 
@@ -108,10 +105,7 @@ int clone_handler(void* args) {
         ERROR("prctl failed with %d", errno);
     }
 
-    if (!(clone_args->guest_flags & CLONE_VM)) {
-        // New memory space, reinitialize the process globals
-        g_process_globals.initialize();
-    }
+    ASSERT(!(clone_args->guest_flags & CLONE_VM));
 
     // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
     // both due to differences in TLS and because the guest needs it, and creating a host TLS is not possible sans some hacky ways.
@@ -178,7 +172,7 @@ static std::string flags_to_string(u64 f) {
 }
 
 long CloneMe(CloneArgs& host_clone_args) {
-    ASSERT(host_clone_args.guest_flags & CLONE_VM);       // we'll handle this when the time comes
+    ASSERT(host_clone_args.guest_flags & CLONE_VM);
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK)); // should be handled in a vfork handler
     void* host_stack = malloc(1024 * 1024);
 
@@ -216,7 +210,6 @@ long ForkMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.guest_flags & CLONE_VM));
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK));
     int parent_tid = host_clone_args.parent_state->tid;
-
     int parent_pid = getpid();
     long ret = syscall(SYS_clone, host_clone_args.guest_flags, nullptr, host_clone_args.parent_tid, host_clone_args.child_tid,
                        nullptr); // args are flipped in syscall
@@ -225,17 +218,16 @@ long ForkMe(CloneArgs& host_clone_args) {
     if (ret == 0) {
         // Start the child at the instruction after the syscall
         result = 0;
+        ThreadState* state = ThreadState::Get();
+        // Destroy all states except the current state
+        ASSERT(std::erase(g_process_globals.states, state) == 1);
         g_process_globals.initialize(); // New memory space, reinitialize the process globals
         // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
         // in this new process. Just give it a new name to make debugging easier
         std::string name = "ForkedFrom" + std::to_string(parent_tid); // forked from parent tid
         prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
         SIGLOG("%d forked to %d", parent_pid, getpid());
-        ThreadState* state = ThreadState::Get();
         state->tid = gettid();
-
-        // Fork only copies the calling thread, so we clear the states array but add back the current thread
-        g_process_globals.states.push_back(state);
     } else {
         if (ret < 0) {
             ERROR("clone (probably fork) failed with %d", errno);
@@ -263,6 +255,7 @@ long VForkMe(CloneArgs& args) {
         prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
         SIGLOG("%d vforked to %d", parent_pid, getpid());
         ThreadState* state = ThreadState::Get();
+        // TODO: probably clean up states here, but it doesn't matter cus it gets execve'd anyway
         if (args.new_rsp) {
             state->gprs[X86_REF_RSP] = args.new_rsp;
         }
@@ -308,7 +301,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
            args->new_tls);
 
     u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_SYSVSEM | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND | CLONE_FILES | CLONE_FS |
-                        CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_VFORK;
+                        CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_VFORK | CLONE_UNTRACED;
     if ((args->guest_flags & ~CSIGNAL) & ~allowed_flags) {
         ERROR("Unsupported flags %016llx", (args->guest_flags & ~CSIGNAL) & ~allowed_flags);
         return -ENOSYS;
@@ -318,7 +311,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
 
     if (args->guest_flags == (CLONE_VM | CLONE_VFORK | SIGCLD)) {
         result = VForkMe(*args);
-    } else if (args->new_rsp == 0) {
+    } else if (args->new_rsp == 0 || !(args->guest_flags & CLONE_VM)) {
         result = ForkMe(*args);
     } else {
         result = CloneMe(*args);
