@@ -1,3 +1,4 @@
+#include <sys/sem.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/hle/guest_types.hpp"
@@ -27,6 +28,7 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
     };
 
     u32 operation = call & 0xFFFF;
+    PLAIN("IPC: %d\n", operation);
     switch (operation) {
     case felix86_SEMOP: {
         return ::syscall(SYS_semop, first, (sembuf*)ptr, second);
@@ -101,8 +103,8 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
             host_timespec_ptr = &host_timespec;
         }
 
-        printf("sec: %d, nanosec: %d\n", host_timespec.tv_sec, host_timespec.tv_nsec);
-        return ::syscall(SYS_semtimedop, first, ptr, second, host_timespec_ptr);
+        PLAIN("sec: %d, nanosec: %d\n", host_timespec_ptr->tv_sec, host_timespec_ptr->tv_nsec);
+        return ::semtimedop(first, (sembuf*)ptr, second, host_timespec_ptr);
     }
     case felix86_SHMGET: {
         return ::syscall(SYS_shmget, first, second, third);
