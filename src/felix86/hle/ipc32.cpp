@@ -33,6 +33,7 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         return ::syscall(SYS_semop, first, (sembuf*)ptr, second);
     }
     case felix86_SEMGET: {
+        PLAIN("semget %lx %lx %lx", first, ptr, second);
         return ::syscall(SYS_semget, first, second, third);
     }
     case felix86_SEMCTL: {
@@ -42,6 +43,7 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         bool ipc64 = third & 0x100;
         x86_semid_ds_64* ptr64 = (x86_semid_ds_64*)ptr;
         x86_semid_ds_32* ptr32 = (x86_semid_ds_32*)ptr;
+        PLAIN("semget %lx %lx %lx %lx", first, second, third, ptr);
         switch (semcmd) {
         case IPC_SET: {
             riscv64_semid64_ds host_semid{};
