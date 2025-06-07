@@ -8327,10 +8327,12 @@ FAST_HANDLE(CMPXCHG8B) {
     biscuit::GPR bit = rec.scratch();
 
     as.SLLI(edx_eax, edx, 32);
-    as.OR(edx_eax, edx_eax, eax);
+    rec.zext(dst, eax, X86_SIZE_DWORD);
+    as.OR(edx_eax, edx_eax, dst);
 
     as.SLLI(ecx_ebx, ecx, 32);
-    as.OR(ecx_ebx, ecx_ebx, ebx);
+    rec.zext(dst, ebx, X86_SIZE_DWORD);
+    as.OR(ecx_ebx, ecx_ebx, dst);
 
     as.ANDI(masked, address, 0b111);
     as.BNEZ(masked, &unaligned);
@@ -8350,7 +8352,7 @@ FAST_HANDLE(CMPXCHG8B) {
     rec.clearFlag(X86_REF_ZF);
     as.SRLI(edx, dst, 32);
     rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, dst); // will be zexted
-    rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
+    rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, edx); // don't zext
 
     as.J(&end);
 
@@ -8380,7 +8382,7 @@ FAST_HANDLE(CMPXCHG8B) {
     rec.clearFlag(X86_REF_ZF);
     as.SRLI(edx, dst, 32);
     rec.setGPR(X86_REF_RAX, X86_SIZE_DWORD, dst); // will be zexted
-    rec.setGPR(X86_REF_RDX, X86_SIZE_DWORD, edx);
+    rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, edx);
 
     as.Bind(&end);
 }
