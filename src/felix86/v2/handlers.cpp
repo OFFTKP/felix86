@@ -8366,7 +8366,7 @@ FAST_HANDLE(CMPXCHG8B) {
     as.LD(dst, 0, address);
     as.LR_D(Ordering::AQRL, bit, masked);
     // We do the comparison on the load from the unaligned address, obviously
-    as.BNE(dst, ecx_ebx, &not_equal_unaligned);
+    as.BNE(dst, edx_eax, &not_equal_unaligned);
     // If any of the bytes we can see with the aligned address are changed we retry
     // Of course this isn't actually atomic (we'd need hardware unaligned atomics support for that)
     // but it's better than nothing
