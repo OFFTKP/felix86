@@ -27,13 +27,11 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
     };
 
     u32 operation = call & 0xFFFF;
-    PLAIN("IPC: %d\n", operation);
     switch (operation) {
     case felix86_SEMOP: {
         return ::syscall(SYS_semop, first, (sembuf*)ptr, second);
     }
     case felix86_SEMGET: {
-        PLAIN("semget %lx %lx %lx", first, second, third);
         return ::syscall(SYS_semget, first, second, third);
     }
     case felix86_SEMCTL: {
@@ -41,23 +39,21 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         u32 semnum = second;
         u32 semcmd = third & 0xFF;
         bool ipc64 = third & 0x100;
-        x86_semid_ds_64* ptr64 = (x86_semid_ds_64*)ptr;
-        x86_semid_ds_32* ptr32 = (x86_semid_ds_32*)ptr;
-        PLAIN("semctl %lx %lx %lx %lx", first, second, third, ptr);
+        semun_32* semun = (semun_32*)ptr;
         switch (semcmd) {
         case IPC_SET: {
             riscv64_semid64_ds host_semid{};
             if (ipc64) {
-                host_semid = *ptr64;
+                host_semid = *(x86_semid_ds_64*)(u64)semun->u32;
             } else {
-                host_semid = *ptr32;
+                host_semid = *(x86_semid_ds_32*)(u64)semun->u32;
             }
             int result = ::syscall(SYS_semctl, semid, semnum, semcmd, &host_semid);
             if (result != -1) {
                 if (ipc64) {
-                    *ptr64 = host_semid;
+                    *(x86_semid_ds_64*)(u64)semun->u32 = host_semid;
                 } else {
-                    *ptr32 = host_semid;
+                    *(x86_semid_ds_32*)(u64)semun->u32 = host_semid;
                 }
             }
             return result;
@@ -69,24 +65,30 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
             int result = ::syscall(SYS_semctl, semid, semnum, semcmd, &host_semid);
             if (result != -1) {
                 if (ipc64) {
-                    *ptr64 = host_semid;
+                    *(x86_semid_ds_64*)(u64)semun->u32 = host_semid;
                 } else {
-                    *ptr32 = host_semid;
+                    *(x86_semid_ds_32*)(u64)semun->u32 = host_semid;
                 }
             }
             return result;
         }
         case SEM_INFO:
-        case IPC_INFO:
+        case IPC_INFO: {
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->u32);
+        }
         case GETALL:
-        case SETALL:
-        case SETVAL:
+        case SETALL: {
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->u32);
+        }
+        case SETVAL: {
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->i32);
+        }
         case IPC_RMID:
         case GETPID:
         case GETNCNT:
         case GETZCNT:
         case GETVAL: {
-            return ::syscall(SYS_semctl, semid, semnum, semcmd, ptr);
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, nullptr);
         }
         default: {
             ERROR("Unknown SEMCTL operation: %d", semcmd);
@@ -107,8 +109,6 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
             WARN("Null guest_timespec during semtimedop");
         }
 
-        PLAIN("%lx %lx %lx %lx", first, ptr, second, host_timespec_ptr);
-        PLAIN("sec: %d, nanosec: %d\n", host_timespec.tv_sec, host_timespec.tv_nsec);
         return ::syscall(SYS_semtimedop, first, ptr, second, host_timespec_ptr);
     }
     case felix86_SHMGET: {
