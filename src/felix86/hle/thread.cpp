@@ -221,7 +221,7 @@ long ForkMe(CloneArgs& host_clone_args) {
         ThreadState* state = ThreadState::Get();
         // Destroy all states except the current state
         int erased = std::erase(g_process_globals.states, state);
-        printf("Erased: %d\n", erased);
+        PLAIN("Erased: %d\n", erased);
         g_process_globals.initialize(); // New memory space, reinitialize the process globals
         g_process_globals.states.push_back(state);
         // it's fine to just return to felix86_syscall, which will set the result to 0 and continue execution
