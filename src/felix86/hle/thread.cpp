@@ -105,7 +105,7 @@ int clone_handler(void* args) {
         ERROR("prctl failed with %d", errno);
     }
 
-    ASSERT(!(clone_args->guest_flags & CLONE_VM));
+    ASSERT(clone_args->guest_flags & CLONE_VM);
 
     // We can't use this cloned process, because when the guest created it, it passed a guest TLS which we can't use,
     // both due to differences in TLS and because the guest needs it, and creating a host TLS is not possible sans some hacky ways.
