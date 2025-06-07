@@ -308,7 +308,7 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
            args->new_tls);
 
     u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_SYSVSEM | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND | CLONE_FILES | CLONE_FS |
-                        CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_VFORK;
+                        CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_VFORK | CLONE_UNTRACED;
     if ((args->guest_flags & ~CSIGNAL) & ~allowed_flags) {
         ERROR("Unsupported flags %016llx", (args->guest_flags & ~CSIGNAL) & ~allowed_flags);
         return -ENOSYS;
