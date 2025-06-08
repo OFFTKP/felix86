@@ -312,10 +312,16 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid,
            args->new_tls);
 
+    // Not very well tested flags, most programs don't use them, so print them every time for now
+    u64 sus_flags = CLONE_UNTRACED | CLONE_NEWCGROUP | CLONE_NEWNS | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWUSER | CLONE_NEWUTS | CLONE_IO;
+    if (args->guest_flags & sus_flags) {
+        WARN("Clone with rare flags!!\nSP: %lx, TLS: %lx, Flags: %s", args->new_rsp, args->new_tls, sflags.c_str());
+    }
+
     u64 allowed_flags = CLONE_VM | CLONE_THREAD | CLONE_SYSVSEM | CLONE_CHILD_CLEARTID | CLONE_CHILD_SETTID | CLONE_SIGHAND | CLONE_FILES | CLONE_FS |
                         CLONE_IO | CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_VFORK | CLONE_UNTRACED;
     if ((args->guest_flags & ~CSIGNAL) & ~allowed_flags) {
-        ERROR("Unsupported flags %016llx", (args->guest_flags & ~CSIGNAL) & ~allowed_flags);
+        ERROR("Unsupported flags %s", sflags.c_str());
         return -ENOSYS;
     }
 
