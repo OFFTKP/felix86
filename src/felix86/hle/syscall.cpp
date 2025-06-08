@@ -840,7 +840,16 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     }
     case felix86_riscv64_listxattr: {
         SignalGuard guard;
-        result = Filesystem::Listxattr((char*)arg1, (char*)arg2, arg3);
+        result = Filesystem::Listxattr((char*)arg1, (char*)arg2, arg3, false);
+        break;
+    }
+    case felix86_riscv64_llistxattr: {
+        SignalGuard guard;
+        result = Filesystem::Listxattr((char*)arg1, (char*)arg2, arg3, true);
+        break;
+    }
+    case felix86_riscv64_flistxattr: {
+        result = SYSCALL(flistxattr, arg1, arg2, arg3);
         break;
     }
     case felix86_riscv64_timerfd_create: {

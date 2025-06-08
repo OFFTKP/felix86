@@ -321,9 +321,13 @@ int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, s
     return lgetxattrInternal(path.c_str(), name, value, size);
 }
 
-ssize_t Filesystem::Listxattr(const char* filename, char* list, size_t size) {
+ssize_t Filesystem::Listxattr(const char* filename, char* list, size_t size, bool dont_resolve_links) {
     std::filesystem::path path = resolve(filename);
-    return ::listxattr(path.c_str(), list, size);
+    if (dont_resolve_links) {
+        return ::listxattr(path.c_str(), list, size);
+    } else {
+        return ::llistxattr(path.c_str(), list, size);
+    }
 }
 
 int Filesystem::GetXAttr(const char* filename, const char* name, void* value, size_t size) {
