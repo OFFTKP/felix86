@@ -1009,3 +1009,85 @@ union x86_semun {
     i32 _i32;
     u32 _u32;
 };
+
+union __attribute__((packed)) x86_sifields {
+    u32 pad[29];
+
+    /* kill() */
+    struct {
+        u32 _pid; /* sender's pid */
+        u32 _uid; /* sender's uid */
+    } _kill;
+
+    /* POSIX.1b timers */
+    struct {
+        u32 _tid;         /* timer id */
+        u32 _overrun;     /* overrun count */
+        u32 _sigval;      /* same as below */
+        u32 _sys_private; /* Not used by the kernel. Historic leftover. Always 0. */
+    } _timer;
+
+    /* POSIX.1b signals */
+    struct {
+        u32 _pid; /* sender's pid */
+        u32 _uid; /* sender's uid */
+        u32 _sigval;
+    } _rt;
+
+    /* SIGCHLD */
+    struct {
+        u32 _pid;    /* which child */
+        u32 _uid;    /* sender's uid */
+        u32 _status; /* exit code */
+        u32 _utime;
+        u32 _stime;
+    } _sigchld;
+
+    /* SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGTRAP, SIGEMT */
+    struct {
+        u32 _addr; /* faulting insn/memory ref. */
+    } _sigfault;
+
+    /* SIGPOLL */
+    struct {
+        u32 _band; /* POLL_IN, POLL_OUT, POLL_MSG */
+        u32 _fd;
+    } _sigpoll;
+
+    /* SIGSYS */
+    struct {
+        u32 _call_addr; /* calling user insn */
+        u32 _syscall;   /* triggering system call number */
+        u32 _arch;      /* AUDIT_ARCH_* of syscall */
+    } _sigsys;
+};
+
+struct x86_siginfo_t {
+    u32 si_signo;
+    u32 si_errno;
+    u32 si_code;
+    x86_sifields fields;
+
+    operator siginfo_t() const {
+        siginfo_t host_siginfo;
+        host_siginfo.si_code = si_code;
+        host_siginfo.si_errno = si_errno;
+        host_siginfo.si_signo = si_signo;
+        host_siginfo.__pad0 = 0;
+        memcpy(&host_siginfo._sifields, &fields, sizeof(host_siginfo._sifields));
+        return host_siginfo;
+    }
+
+    x86_siginfo_t(const siginfo_t& host_siginfo) {
+        si_signo = host_siginfo.si_signo;
+        si_errno = host_siginfo.si_errno;
+        si_code = host_siginfo.si_code;
+
+        memcpy(&fields, &host_siginfo._sifields, sizeof(host_siginfo._sifields));
+    }
+};
+
+static_assert(sizeof(x86_siginfo_t) == 128);
+
+#undef __ADDR_BND_PKEY_PAD
+#undef __SIGINFO

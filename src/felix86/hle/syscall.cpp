@@ -1864,6 +1864,32 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = g_mapper->shmdt32((void*)arg1);
             break;
         }
+        case felix86_x86_32_waitid: {
+            siginfo_t host_siginfo;
+            rusage host_rusage;
+            siginfo_t* host_siginfo_ptr = nullptr;
+            rusage* host_rusage_ptr = nullptr;
+
+            if (arg3) {
+                host_siginfo_ptr = &host_siginfo;
+            }
+
+            if (arg5) {
+                host_rusage = *(x86_rusage*)arg5;
+                host_rusage_ptr = &host_rusage;
+            }
+
+            result = SYSCALL(waitid, arg1, arg2, host_siginfo_ptr, arg4, host_rusage_ptr);
+
+            if (arg3) {
+                *(x86_siginfo_t*)arg3 = host_siginfo;
+            }
+
+            if (arg5) {
+                *(x86_rusage*)arg5 = host_rusage;
+            }
+            break;
+        }
         case felix86_x86_32_set_thread_area: {
             x86_user_desc* udesc = (x86_user_desc*)arg1;
             result = state->SetUserDesc(udesc);
