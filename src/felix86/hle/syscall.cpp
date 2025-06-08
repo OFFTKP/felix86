@@ -1183,6 +1183,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(wait4, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_waitid: {
+        result = SYSCALL(waitid, arg1, arg2, arg3, arg4, arg5);
+        break;
+    }
     case felix86_riscv64_fchownat: {
         result = SYSCALL(fchownat, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
