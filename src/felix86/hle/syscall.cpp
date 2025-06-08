@@ -2161,6 +2161,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_getdents: {
+            WARN("This program uses getdents");
+            result = -ENOSYS;
+            break;
+        }
         case felix86_x86_32_getdents64: {
             u32 fd = arg1;
             u64 dirp = arg2;
