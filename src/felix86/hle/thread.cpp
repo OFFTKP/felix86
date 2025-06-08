@@ -229,8 +229,7 @@ long ForkMe(CloneArgs& host_clone_args) {
             state->gprs[X86_REF_RSP] = host_clone_args.new_rsp;
         }
 
-        if (host_clone_args.new_tls) {
-            ASSERT(host_clone_args.guest_flags & CLONE_SETTLS);
+        if (host_clone_args.guest_flags & CLONE_SETTLS) {
             state->SetTLS(host_clone_args.new_tls);
         }
 
@@ -274,7 +273,7 @@ long VForkMe(CloneArgs& args) {
 
         state->tid = gettid();
 
-        if (args.new_tls) {
+        if (args.guest_flags & CLONE_SETTLS) {
             WARN("vfork giving us new TLS?");
             state->SetTLS(args.new_tls);
         }
