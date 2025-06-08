@@ -543,7 +543,10 @@ std::pair<int, const char*> Filesystem::resolve(int fd, const char* path) {
 }
 
 std::filesystem::path Filesystem::resolve(const char* path) {
-    ASSERT(path);
+    if (!path) {
+        WARN("Filesystem::resolve with null path");
+        return "";
+    }
 
     if (isProcSelfExe(path)) {
         return g_fs->GetExecutablePath();
