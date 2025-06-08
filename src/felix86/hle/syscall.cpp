@@ -1133,6 +1133,14 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(sched_getaffinity, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_sched_getattr: {
+        result = SYSCALL(sched_getattr, arg1, arg2, arg3, arg4);
+        break;
+    }
+    case felix86_riscv64_sched_setattr: {
+        result = SYSCALL(sched_getattr, arg1, arg2, arg3);
+        break;
+    }
     case felix86_riscv64_sched_setaffinity: {
         result = SYSCALL(sched_setaffinity, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
