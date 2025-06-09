@@ -27,6 +27,12 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
 endif()
 
+option(BUILD_THUNKING "Build with thunking support" ON)
+option(BUILD_STATIC "Build static felix86" OFF) # off by default... rcrt1.o not found by default on debian... needs manual copy...
+
+if (BUILD_STATIC)
+    add_link_options(-static-pie)
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 cmake_policy(SET CMP0083 NEW)
@@ -37,9 +43,6 @@ set(BUILD_TESTING OFF)
 add_subdirectory(external/biscuit)
 add_subdirectory(external/zydis)
 add_subdirectory(external/fmt)
-
-option(BUILD_THUNKING "Build with thunking support" ON)
-option(BUILD_STATIC "Build static felix86" OFF) # off by default... rcrt1.o not found by default on debian... needs manual copy...
 
 if (BUILD_THUNKING)
     message("Building with thunking support")
@@ -152,13 +155,6 @@ endif()
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
-
-if (BUILD_STATIC)
-    add_executable(felix86-static)
-    target_sources(felix86-static PRIVATE src/felix86/main.cpp)
-    target_link_libraries(felix86-static PRIVATE felix86_core)
-    target_link_options(felix86-static PRIVATE -static-pie)
-endif()
 
 if (BUILD_THUNKGEN)
     add_executable(felix86_thunkgen src/felix86/hle/guest_libs/generator.cpp)
