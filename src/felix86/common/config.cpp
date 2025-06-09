@@ -28,7 +28,7 @@ struct into<toml::value> {
 bool Config::initialize(bool ignore_envs) {
     const char* homedir;
     if ((homedir = getenv("HOME")) == NULL) {
-        homedir = getpwuid(getuid())->pw_dir;
+        ERROR("$HOME is not set, don't know where to save config file");
     }
 
     std::filesystem::path config_path = homedir;

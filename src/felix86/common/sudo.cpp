@@ -1,5 +1,5 @@
-#include <sys/mount.h>
 #include <vector>
+#include <sys/mount.h>
 #include "felix86/common/sudo.hpp"
 
 // When the system is rebooted, files in /run are deleted -- and mounts are also unmounted
@@ -33,11 +33,6 @@ bool Sudo::dropPermissions() {
     std::string user = getenv("SUDO_USER");
     gid_t gid = std::stoul(gid_env);
     uid_t uid = std::stoul(uid_env);
-
-    if (initgroups(user.c_str(), gid) != 0) {
-        WARN("initgroups failed when trying to drop root privileges");
-        return false;
-    }
 
     if (setgid(gid) != 0) {
         WARN("setgid failed when trying to drop root privileges");
