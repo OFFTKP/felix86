@@ -31,6 +31,7 @@ option(BUILD_THUNKING "Build with thunking support" ON)
 option(BUILD_STATIC "Build static felix86" OFF) # off by default... rcrt1.o not found by default on debian... needs manual copy...
 
 if (BUILD_STATIC)
+    add_compile_options(-static-pie)
     add_link_options(-static-pie)
 endif()
 
