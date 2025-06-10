@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
+option(BUILD_THUNKING "Build with thunking support" ON)
+
 project(felix86)
 include(CheckGit.cmake)
 include(CheckIncludeFile)
@@ -25,15 +27,6 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     # Also use --no-relax so that the `gp` register is free to do as we please
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
-endif()
-
-option(BUILD_THUNKING "Build with thunking support" ON)
-option(BUILD_STATIC "Build static felix86" OFF) # off by default... rcrt1.o not found by default on debian... needs manual copy...
-
-if (BUILD_STATIC)
-    # TODO: This works in GCC, might not work on clang? clang has -static-pie, gcc produces a dynamically linked exe with -static-pie (...why...) at the time of trying
-    add_compile_options(-static -pie)
-    add_link_options(-static -pie)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
