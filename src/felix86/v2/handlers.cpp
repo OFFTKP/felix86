@@ -2154,25 +2154,23 @@ FAST_HANDLE(SAHF) {
     as.ANDI(sf, sf, 1);
 }
 
-void validate_address_u16(u64 address) {
-    if ((address & 0b11) == 0b11) {
-        WARN("Address %p in 16-bit xchg is badly aligned, it won't be an atomic access", address);
-    }
-}
-
 FAST_HANDLE(XCHG_lock) {
     biscuit::GPR address = rec.lea(&operands[0]);
     x86_size_e size = rec.getSize(&operands[0]);
 
     if (g_config.paranoid && size == X86_SIZE_WORD) {
-        rec.writebackState();
-        as.MV(a0, address);
-        rec.call((u64)validate_address_u16);
-        rec.restoreState();
+        biscuit::Label ok;
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR temp2 = rec.scratch();
 
-        // Restore address
-        rec.resetScratch();
-        address = rec.lea(&operands[0]);
+        as.ANDI(temp, address, 0b11);
+        as.LI(temp2, 0b11);
+        as.BNE(temp, temp2, &ok);
+        as.C_UNDEF();
+        as.Bind(&ok);
+
+        rec.popScratch();
+        rec.popScratch();
     }
 
     biscuit::GPR src = rec.getGPR(&operands[1]);
