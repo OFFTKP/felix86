@@ -31,11 +31,9 @@
         "disassembly": "fadd [rdi]"
     },
     "dec3": {
-        "instruction_count": 17,
+        "instruction_count": 14,
         "expected_asm": [
             "FADD.D          f3, f3, f0, dyn",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -48,8 +46,7 @@
             "LB              ra, s11, 0x222(546)",
             "ADDI            ra, ra, 0x1(1)",
             "ANDI            ra, ra, 0x7(7)",
-            "SB              ra, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              ra, s11, 0x222(546)"
         ],
         "disassembly": "faddp st3, st0"
     },
@@ -106,11 +103,9 @@
         "disassembly": "fsub [rdi]"
     },
     "deeb": {
-        "instruction_count": 17,
+        "instruction_count": 14,
         "expected_asm": [
             "FSUB.D          f3, f3, f0, dyn",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -123,8 +118,7 @@
             "LB              ra, s11, 0x222(546)",
             "ADDI            ra, ra, 0x1(1)",
             "ANDI            ra, ra, 0x7(7)",
-            "SB              ra, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              ra, s11, 0x222(546)"
         ],
         "disassembly": "fsubp st3, st0"
     },
@@ -181,11 +175,9 @@
         "disassembly": "fsubr [rdi]"
     },
     "dee3": {
-        "instruction_count": 17,
+        "instruction_count": 14,
         "expected_asm": [
             "FSUB.D          f3, f0, f3, dyn",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -198,8 +190,7 @@
             "LB              ra, s11, 0x222(546)",
             "ADDI            ra, ra, 0x1(1)",
             "ANDI            ra, ra, 0x7(7)",
-            "SB              ra, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              ra, s11, 0x222(546)"
         ],
         "disassembly": "fsubrp st3, st0"
     },
@@ -256,11 +247,9 @@
         "disassembly": "fmul [rdi]"
     },
     "decb": {
-        "instruction_count": 17,
+        "instruction_count": 14,
         "expected_asm": [
             "FMUL.D          f3, f3, f0, dyn",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -273,8 +262,7 @@
             "LB              ra, s11, 0x222(546)",
             "ADDI            ra, ra, 0x1(1)",
             "ANDI            ra, ra, 0x7(7)",
-            "SB              ra, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              ra, s11, 0x222(546)"
         ],
         "disassembly": "fmulp st3, st0"
     },
@@ -331,11 +319,9 @@
         "disassembly": "fdiv [rdi]"
     },
     "defb": {
-        "instruction_count": 17,
+        "instruction_count": 14,
         "expected_asm": [
             "FDIV.D          f3, f3, f0, dyn",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -348,8 +334,7 @@
             "LB              ra, s11, 0x222(546)",
             "ADDI            ra, ra, 0x1(1)",
             "ANDI            ra, ra, 0x7(7)",
-            "SB              ra, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              ra, s11, 0x222(546)"
         ],
         "disassembly": "fdivp st3, st0"
     },
@@ -406,11 +391,9 @@
         "disassembly": "fdivr [rdi]"
     },
     "def3": {
-        "instruction_count": 17,
+        "instruction_count": 14,
         "expected_asm": [
             "FDIV.D          f3, f0, f3, dyn",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -423,8 +406,7 @@
             "LB              ra, s11, 0x222(546)",
             "ADDI            ra, ra, 0x1(1)",
             "ANDI            ra, ra, 0x7(7)",
-            "SB              ra, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              ra, s11, 0x222(546)"
         ],
         "disassembly": "fdivrp st3, st0"
     },
@@ -477,7 +459,7 @@
         "disassembly": "fcomi st0, st3"
     },
     "dff3": {
-        "instruction_count": 37,
+        "instruction_count": 34,
         "expected_asm": [
             "SB              zero, s11, 0x1c9(457)",
             "FEQ.D           ra, f0, f0",
@@ -500,8 +482,6 @@
             "JAL             zero, 0xc(12)",
             "ADDIW           s7, zero, 0x0(0)",
             "ADDIW           s5, zero, 0x1(1)",
-            "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -514,8 +494,7 @@
             "LB              t3, s11, 0x222(546)",
             "ADDI            t3, t3, 0x1(1)",
             "ANDI            t3, t3, 0x7(7)",
-            "SB              t3, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t3, s11, 0x222(546)"
         ],
         "disassembly": "fcomip st0, st3"
     },
@@ -547,7 +526,7 @@
         "disassembly": "fucomi st0, st3"
     },
     "dfeb": {
-        "instruction_count": 37,
+        "instruction_count": 34,
         "expected_asm": [
             "SB              zero, s11, 0x1c9(457)",
             "FEQ.D           ra, f0, f0",
@@ -570,8 +549,6 @@
             "JAL             zero, 0xc(12)",
             "ADDIW           s7, zero, 0x0(0)",
             "ADDIW           s5, zero, 0x1(1)",
-            "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -584,8 +561,7 @@
             "LB              t3, s11, 0x222(546)",
             "ADDI            t3, t3, 0x1(1)",
             "ANDI            t3, t3, 0x7(7)",
-            "SB              t3, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t3, s11, 0x222(546)"
         ],
         "disassembly": "fucomip st0, st3"
     },
@@ -608,13 +584,11 @@
         "disassembly": "fist [rdi]"
     },
     "df1f": {
-        "instruction_count": 19,
+        "instruction_count": 16,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "FCVT.W.D        t1, f0, dyn",
             "SH              t1, ra, 0x0(0)",
-            "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -627,19 +601,16 @@
             "LB              t3, s11, 0x222(546)",
             "ADDI            t3, t3, 0x1(1)",
             "ANDI            t3, t3, 0x7(7)",
-            "SB              t3, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t3, s11, 0x222(546)"
         ],
         "disassembly": "fistp [rdi]"
     },
     "db1f": {
-        "instruction_count": 19,
+        "instruction_count": 16,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "FCVT.W.D        t1, f0, dyn",
             "SW              t1, ra, 0x0(0)",
-            "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -652,19 +623,16 @@
             "LB              t3, s11, 0x222(546)",
             "ADDI            t3, t3, 0x1(1)",
             "ANDI            t3, t3, 0x7(7)",
-            "SB              t3, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t3, s11, 0x222(546)"
         ],
         "disassembly": "fistp [rdi]"
     },
     "df3f": {
-        "instruction_count": 19,
+        "instruction_count": 16,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "FCVT.L.D        t1, f0, dyn",
             "SD              t1, ra, 0x0(0)",
-            "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -677,19 +645,16 @@
             "LB              t3, s11, 0x222(546)",
             "ADDI            t3, t3, 0x1(1)",
             "ANDI            t3, t3, 0x7(7)",
-            "SB              t3, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t3, s11, 0x222(546)"
         ],
         "disassembly": "fistp [rdi]"
     },
     "df0f": {
-        "instruction_count": 19,
+        "instruction_count": 16,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "FCVT.W.D        t1, f0, rtz",
             "SH              t1, ra, 0x0(0)",
-            "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -702,19 +667,16 @@
             "LB              t3, s11, 0x222(546)",
             "ADDI            t3, t3, 0x1(1)",
             "ANDI            t3, t3, 0x7(7)",
-            "SB              t3, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t3, s11, 0x222(546)"
         ],
         "disassembly": "fisttp [rdi]"
     },
     "db0f": {
-        "instruction_count": 19,
+        "instruction_count": 16,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "FCVT.W.D        t1, f0, rtz",
             "SW              t1, ra, 0x0(0)",
-            "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -727,19 +689,16 @@
             "LB              t3, s11, 0x222(546)",
             "ADDI            t3, t3, 0x1(1)",
             "ANDI            t3, t3, 0x7(7)",
-            "SB              t3, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t3, s11, 0x222(546)"
         ],
         "disassembly": "fisttp [rdi]"
     },
     "dd0f": {
-        "instruction_count": 19,
+        "instruction_count": 16,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "FCVT.L.D        t1, f0, rtz",
             "SD              t1, ra, 0x0(0)",
-            "ADDIW           t3, zero, 0x1(1)",
-            "SB              t3, s11, 0x260(608)",
             "FSGNJ.D         f28, f0, f0",
             "FSGNJ.D         f0, f1, f1",
             "FSGNJ.D         f1, f2, f2",
@@ -752,8 +711,7 @@
             "LB              t3, s11, 0x222(546)",
             "ADDI            t3, t3, 0x1(1)",
             "ANDI            t3, t3, 0x7(7)",
-            "SB              t3, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t3, s11, 0x222(546)"
         ],
         "disassembly": "fisttp [rdi]"
     },
@@ -765,7 +723,7 @@
         "disassembly": "fabs"
     },
     "d9fe": {
-        "instruction_count": 179,
+        "instruction_count": 174,
         "expected_asm": [
             "SD              gp, s11, 0x80(128)",
             "SD              t0, s11, 0x0(0)",
@@ -853,12 +811,7 @@
             "ADDIW           t1, zero, 0x1(1)",
             "SB              t1, s11, 0x228(552)",
             "ADDI            a0, s11, 0x0(0)",
-            "LUI             t4, 0x2df(735)",
-            "ADDIW           t4, t4, 0x72b(1835)",
-            "SLLI            t4, t4, 0xc(12)",
-            "ADDI            t4, t4, 0xfffffa47(-1465)",
-            "SLLI            t4, t4, 0xd(13)",
-            "ADDI            t4, t4, 0x1d0(464)",
+            "LD              t4, s11, 0x388(904)",
             "JALR            ra, t4, 0x0(0)",
             "LD              gp, s11, 0x80(128)",
             "LD              t0, s11, 0x0(0)",
@@ -950,7 +903,7 @@
         "disassembly": "fsin"
     },
     "d9ff": {
-        "instruction_count": 179,
+        "instruction_count": 174,
         "expected_asm": [
             "SD              gp, s11, 0x80(128)",
             "SD              t0, s11, 0x0(0)",
@@ -1038,12 +991,7 @@
             "ADDIW           t1, zero, 0x1(1)",
             "SB              t1, s11, 0x228(552)",
             "ADDI            a0, s11, 0x0(0)",
-            "LUI             t4, 0x2df(735)",
-            "ADDIW           t4, t4, 0x72b(1835)",
-            "SLLI            t4, t4, 0xc(12)",
-            "ADDI            t4, t4, 0xfffffa47(-1465)",
-            "SLLI            t4, t4, 0xd(13)",
-            "ADDI            t4, t4, 0x200(512)",
+            "LD              t4, s11, 0x390(912)",
             "JALR            ra, t4, 0x0(0)",
             "LD              gp, s11, 0x80(128)",
             "LD              t0, s11, 0x0(0)",
@@ -1135,13 +1083,11 @@
         "disassembly": "fcos"
     },
     "d9e8": {
-        "instruction_count": 18,
+        "instruction_count": 15,
         "expected_asm": [
             "ADDIW           ra, zero, 0x3ff(1023)",
             "SLLI            ra, ra, 0x34(52)",
             "FMV.D.X         f28, ra",
-            "ADDIW           t1, zero, 0x1(1)",
-            "SB              t1, s11, 0x260(608)",
             "FSGNJ.D         f7, f6, f6",
             "FSGNJ.D         f6, f5, f5",
             "FSGNJ.D         f5, f4, f4",
@@ -1153,13 +1099,12 @@
             "LB              t1, s11, 0x222(546)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "ANDI            t1, t1, 0x7(7)",
-            "SB              t1, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t1, s11, 0x222(546)"
         ],
         "disassembly": "fld1"
     },
     "d9e9": {
-        "instruction_count": 24,
+        "instruction_count": 21,
         "expected_asm": [
             "LUI             ra, 0x1003(4099)",
             "ADDIW           ra, ra, 0xfffffa4d(-1459)",
@@ -1170,8 +1115,6 @@
             "SLLI            ra, ra, 0xd(13)",
             "ADDI            ra, ra, 0x371(881)",
             "FMV.D.X         f28, ra",
-            "ADDIW           t1, zero, 0x1(1)",
-            "SB              t1, s11, 0x260(608)",
             "FSGNJ.D         f7, f6, f6",
             "FSGNJ.D         f6, f5, f5",
             "FSGNJ.D         f5, f4, f4",
@@ -1183,13 +1126,12 @@
             "LB              t1, s11, 0x222(546)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "ANDI            t1, t1, 0x7(7)",
-            "SB              t1, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t1, s11, 0x222(546)"
         ],
         "disassembly": "fldl2t"
     },
     "d9ea": {
-        "instruction_count": 24,
+        "instruction_count": 21,
         "expected_asm": [
             "LUI             ra, 0x7ff(2047)",
             "ADDIW           ra, ra, 0xfffffe2b(-469)",
@@ -1200,8 +1142,6 @@
             "SLLI            ra, ra, 0xf(15)",
             "ADDI            ra, ra, 0x2fe(766)",
             "FMV.D.X         f28, ra",
-            "ADDIW           t1, zero, 0x1(1)",
-            "SB              t1, s11, 0x260(608)",
             "FSGNJ.D         f7, f6, f6",
             "FSGNJ.D         f6, f5, f5",
             "FSGNJ.D         f5, f4, f4",
@@ -1213,13 +1153,12 @@
             "LB              t1, s11, 0x222(546)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "ANDI            t1, t1, 0x7(7)",
-            "SB              t1, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t1, s11, 0x222(546)"
         ],
         "disassembly": "fldl2e"
     },
     "d9eb": {
-        "instruction_count": 24,
+        "instruction_count": 21,
         "expected_asm": [
             "LUI             ra, 0x200(512)",
             "ADDIW           ra, ra, 0x491(1169)",
@@ -1230,8 +1169,6 @@
             "SLLI            ra, ra, 0xc(12)",
             "ADDI            ra, ra, 0xfffffd18(-744)",
             "FMV.D.X         f28, ra",
-            "ADDIW           t1, zero, 0x1(1)",
-            "SB              t1, s11, 0x260(608)",
             "FSGNJ.D         f7, f6, f6",
             "FSGNJ.D         f6, f5, f5",
             "FSGNJ.D         f5, f4, f4",
@@ -1243,13 +1180,12 @@
             "LB              t1, s11, 0x222(546)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "ANDI            t1, t1, 0x7(7)",
-            "SB              t1, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t1, s11, 0x222(546)"
         ],
         "disassembly": "fldpi"
     },
     "d9ec": {
-        "instruction_count": 24,
+        "instruction_count": 21,
         "expected_asm": [
             "LUI             ra, 0xff(255)",
             "ADDIW           ra, ra, 0x4d1(1233)",
@@ -1260,8 +1196,6 @@
             "SLLI            ra, ra, 0xf(15)",
             "ADDI            ra, ra, 0xfffff9ff(-1537)",
             "FMV.D.X         f28, ra",
-            "ADDIW           t1, zero, 0x1(1)",
-            "SB              t1, s11, 0x260(608)",
             "FSGNJ.D         f7, f6, f6",
             "FSGNJ.D         f6, f5, f5",
             "FSGNJ.D         f5, f4, f4",
@@ -1273,13 +1207,12 @@
             "LB              t1, s11, 0x222(546)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "ANDI            t1, t1, 0x7(7)",
-            "SB              t1, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t1, s11, 0x222(546)"
         ],
         "disassembly": "fldlg2"
     },
     "d9ed": {
-        "instruction_count": 22,
+        "instruction_count": 19,
         "expected_asm": [
             "LUI             ra, 0x3fe63(261731)",
             "ADDIW           ra, ra, 0xfffffe43(-445)",
@@ -1288,8 +1221,6 @@
             "SLLI            ra, ra, 0xe(14)",
             "ADDI            ra, ra, 0xfffff9ef(-1553)",
             "FMV.D.X         f28, ra",
-            "ADDIW           t1, zero, 0x1(1)",
-            "SB              t1, s11, 0x260(608)",
             "FSGNJ.D         f7, f6, f6",
             "FSGNJ.D         f6, f5, f5",
             "FSGNJ.D         f5, f4, f4",
@@ -1301,17 +1232,14 @@
             "LB              t1, s11, 0x222(546)",
             "ADDI            t1, t1, 0xffffffff(-1)",
             "ANDI            t1, t1, 0x7(7)",
-            "SB              t1, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              t1, s11, 0x222(546)"
         ],
         "disassembly": "fldln2"
     },
     "d9ee": {
-        "instruction_count": 16,
+        "instruction_count": 13,
         "expected_asm": [
             "FMV.D.X         f28, zero",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SB              ra, s11, 0x260(608)",
             "FSGNJ.D         f7, f6, f6",
             "FSGNJ.D         f6, f5, f5",
             "FSGNJ.D         f5, f4, f4",
@@ -1323,8 +1251,7 @@
             "LB              ra, s11, 0x222(546)",
             "ADDI            ra, ra, 0xffffffff(-1)",
             "ANDI            ra, ra, 0x7(7)",
-            "SB              ra, s11, 0x222(546)",
-            "SB              zero, s11, 0x260(608)"
+            "SB              ra, s11, 0x222(546)"
         ],
         "disassembly": "fldz"
     },
@@ -1344,7 +1271,7 @@
         "disassembly": "frndint"
     },
     "d9f8": {
-        "instruction_count": 179,
+        "instruction_count": 174,
         "expected_asm": [
             "SD              gp, s11, 0x80(128)",
             "SD              t0, s11, 0x0(0)",
@@ -1432,12 +1359,7 @@
             "ADDIW           t1, zero, 0x1(1)",
             "SB              t1, s11, 0x228(552)",
             "ADDI            a0, s11, 0x0(0)",
-            "LUI             t4, 0x2df(735)",
-            "ADDIW           t4, t4, 0x72b(1835)",
-            "SLLI            t4, t4, 0xc(12)",
-            "ADDI            t4, t4, 0xfffffa47(-1465)",
-            "SLLI            t4, t4, 0xd(13)",
-            "ADDI            t4, t4, 0x4c0(1216)",
+            "LD              t4, s11, 0x3a8(936)",
             "JALR            ra, t4, 0x0(0)",
             "LD              gp, s11, 0x80(128)",
             "LD              t0, s11, 0x0(0)",
@@ -1553,7 +1475,7 @@
         "disassembly": "fnstsw [rdi]"
     },
     "d927": {
-        "instruction_count": 181,
+        "instruction_count": 176,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "SD              gp, s11, 0x80(128)",
@@ -1643,12 +1565,7 @@
             "SB              t3, s11, 0x228(552)",
             "ADDI            a1, ra, 0x0(0)",
             "ADDI            a0, s11, 0x0(0)",
-            "LUI             t4, 0x5bf(1471)",
-            "ADDIW           t4, t4, 0xfffffe55(-427)",
-            "SLLI            t4, t4, 0xc(12)",
-            "ADDI            t4, t4, 0x48b(1163)",
-            "SLLI            t4, t4, 0xc(12)",
-            "ADDI            t4, t4, 0x250(592)",
+            "LD              t4, s11, 0x3f0(1008)",
             "JALR            ra, t4, 0x0(0)",
             "LD              gp, s11, 0x80(128)",
             "LD              t0, s11, 0x0(0)",
@@ -1740,7 +1657,7 @@
         "disassembly": "fldenv [rdi]"
     },
     "d937": {
-        "instruction_count": 181,
+        "instruction_count": 176,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "SD              gp, s11, 0x80(128)",
@@ -1830,12 +1747,7 @@
             "SB              t3, s11, 0x228(552)",
             "ADDI            a1, ra, 0x0(0)",
             "ADDI            a0, s11, 0x0(0)",
-            "LUI             t4, 0x5bf(1471)",
-            "ADDIW           t4, t4, 0xfffffe55(-427)",
-            "SLLI            t4, t4, 0xc(12)",
-            "ADDI            t4, t4, 0x48b(1163)",
-            "SLLI            t4, t4, 0xc(12)",
-            "ADDI            t4, t4, 0x1c0(448)",
+            "LD              t4, s11, 0x3e0(992)",
             "JALR            ra, t4, 0x0(0)",
             "LD              gp, s11, 0x80(128)",
             "LD              t0, s11, 0x0(0)",

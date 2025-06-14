@@ -263,7 +263,7 @@ FAST_HANDLE(MOV) {
             as.MV(a0, rec.threadStatePointer());
             as.MV(a1, src);
             as.LI(a2, operands[0].reg.value);
-            rec.call((u64)felix86_set_segment);
+            rec.callPointer(offsetof(ThreadState, felix86_set_segment));
             rec.restoreState();
         } else {
             WARN("Setting segment register in 64-bit mode, ignoring");
@@ -1068,7 +1068,7 @@ FAST_HANDLE(IRETD) {
     ASSERT(g_mode32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)&felix86_iret);
+    rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
     rec.backToDispatcher();
     rec.stopCompiling();
@@ -1078,7 +1078,7 @@ FAST_HANDLE(IRETQ) {
     ASSERT(!g_mode32);
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)&felix86_iret);
+    rec.callPointer(offsetof(ThreadState, felix86_iret));
     rec.restoreState();
     rec.backToDispatcher();
     rec.stopCompiling();
@@ -1144,7 +1144,7 @@ FAST_HANDLE(POP) {
         as.MV(a0, rec.threadStatePointer());
         as.MV(a1, src);
         as.LI(a2, operands[0].reg.value);
-        rec.call((u64)felix86_set_segment);
+        rec.callPointer(offsetof(ThreadState, felix86_set_segment));
         rec.restoreState();
         as.ADDI(rsp, rsp, imm);
         rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
@@ -1825,7 +1825,7 @@ FAST_HANDLE(DIV) {
         rec.writebackState();
         as.MV(a1, src);
         as.MV(a0, rec.threadStatePointer());
-        rec.call((u64)&felix86_divu128);
+        rec.callPointer(offsetof(ThreadState, felix86_divu128));
         rec.restoreState();
 
         as.Bind(&end);
@@ -1927,7 +1927,7 @@ FAST_HANDLE(IDIV) {
         rec.writebackState();
         as.MV(a1, src);
         as.MV(a0, rec.threadStatePointer());
-        rec.call((u64)&felix86_div128);
+        rec.callPointer(offsetof(ThreadState, felix86_div128));
         rec.restoreState();
 
         as.Bind(&end);
@@ -3186,7 +3186,7 @@ FAST_HANDLE(RDTSC) {
 FAST_HANDLE(CPUID) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)&felix86_cpuid);
+    rec.callPointer(offsetof(ThreadState, felix86_cpuid));
     rec.restoreState();
 }
 
@@ -3205,7 +3205,7 @@ FAST_HANDLE(SYSCALL) {
     // Normally the syscall instruction also writes the flags to R11 but we don't need them in our syscall handler
     rec.writebackState();
     as.MV(a0, sp);
-    rec.call((u64)&felix86_syscall);
+    rec.callPointer(offsetof(ThreadState, felix86_syscall));
     rec.restoreState();
 }
 
@@ -3216,7 +3216,7 @@ FAST_HANDLE(INT) {
     rec.writebackState();
     as.MV(a0, sp);
     as.LI(a1, rip + instruction.length);
-    rec.call((u64)&felix86_syscall32);
+    rec.callPointer(offsetof(ThreadState, felix86_syscall32));
     rec.restoreState();
 }
 
@@ -7234,7 +7234,7 @@ FAST_HANDLE(FXSAVE) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)&felix86_fxsave);
+    rec.callPointer(offsetof(ThreadState, felix86_fxsave));
     rec.restoreState();
 }
 
@@ -7243,7 +7243,7 @@ FAST_HANDLE(FXSAVE64) {
     rec.writebackState();
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)&felix86_fxsave);
+    rec.callPointer(offsetof(ThreadState, felix86_fxsave));
     rec.restoreState();
 }
 
@@ -7253,7 +7253,7 @@ FAST_HANDLE(FXRSTOR) {
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
     as.LI(a2, 0);
-    rec.call((u64)&felix86_fxrstor);
+    rec.callPointer(offsetof(ThreadState, felix86_fxrstor));
     rec.restoreState();
 }
 
@@ -7263,7 +7263,7 @@ FAST_HANDLE(FXRSTOR64) {
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
     as.LI(a2, 1);
-    rec.call((u64)&felix86_fxrstor);
+    rec.callPointer(offsetof(ThreadState, felix86_fxrstor));
     rec.restoreState();
 }
 
@@ -7928,7 +7928,7 @@ void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction&
 
     as.LI(a4, operands[2].imm.value.u);
 
-    rec.call((u64)felix86_pcmpxstrx);
+    rec.callPointer(offsetof(ThreadState, felix86_pcmpxstrx));
     rec.restoreState();
 }
 

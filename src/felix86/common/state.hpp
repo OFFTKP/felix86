@@ -5,7 +5,10 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/signal_queue.hpp"
 #include "felix86/common/types.hpp"
+#include "felix86/common/utility.hpp"
+#include "felix86/hle/cpuid.hpp"
 #include "felix86/hle/guest_types.hpp"
+#include "felix86/hle/syscall.hpp"
 
 // We statically allocate 8 FPRs and 8 Vecs for x87 and MMX. But in x86 they share the same registers.
 // For this reason we need to have a way to communicate to signal handlers which registers hold the correct values.
@@ -124,6 +127,37 @@ struct XmmReg {
 };
 static_assert(sizeof(XmmReg) == 16);
 
+#define FUNCTION_POINTERS                                                                                                                            \
+    X(f80_to_64)                                                                                                                                     \
+    X(felix86_fsin)                                                                                                                                  \
+    X(felix86_fcos)                                                                                                                                  \
+    X(felix86_fpatan)                                                                                                                                \
+    X(felix86_fptan)                                                                                                                                 \
+    X(felix86_fprem)                                                                                                                                 \
+    X(felix86_f2xm1)                                                                                                                                 \
+    X(felix86_fscale)                                                                                                                                \
+    X(felix86_fyl2x)                                                                                                                                 \
+    X(felix86_fyl2xp1)                                                                                                                               \
+    X(felix86_fxam)                                                                                                                                  \
+    X(felix86_fstenv_16)                                                                                                                             \
+    X(felix86_fstenv_32)                                                                                                                             \
+    X(felix86_fldenv_16)                                                                                                                             \
+    X(felix86_fldenv_32)                                                                                                                             \
+    X(felix86_fsave_16)                                                                                                                              \
+    X(felix86_fsave_32)                                                                                                                              \
+    X(felix86_frstor_16)                                                                                                                             \
+    X(felix86_frstor_32)                                                                                                                             \
+    X(felix86_set_segment)                                                                                                                           \
+    X(felix86_iret)                                                                                                                                  \
+    X(felix86_divu128)                                                                                                                               \
+    X(felix86_div128)                                                                                                                                \
+    X(felix86_cpuid)                                                                                                                                 \
+    X(felix86_syscall)                                                                                                                               \
+    X(felix86_syscall32)                                                                                                                             \
+    X(felix86_fxsave)                                                                                                                                \
+    X(felix86_fxrstor)                                                                                                                               \
+    X(felix86_pcmpxstrx)
+
 // TODO: Please make me standard layout type? offsetof warnings...
 struct ThreadState {
     u64 gprs[16]{};
@@ -189,6 +223,11 @@ struct ThreadState {
     u32 gdt[32]{};
 
     u64 persona = 0;
+
+#define X(name) u64 name = (u64)::name;
+    // We don't want our code to hardcode pointers in order to be reusable (cached)
+    FUNCTION_POINTERS;
+#undef X
 
     Recompiler* recompiler;
 

@@ -221,12 +221,12 @@
             "BNE             zero, s7, 0x10(16)",
             "ADDI            gp, gp, 0x13a(314)",
             "AUIPC           t6, 0xffffffea(-22)",
-            "JALR            zero, t6, 0xffffff20(-224)",
+            "JALR            zero, t6, 0x508(1288)",
             "LUI             ra, 0xd(13)",
             "ADDIW           ra, ra, 0xfffffc32(-974)",
             "ADD             gp, gp, ra",
             "AUIPC           t6, 0xffffffea(-22)",
-            "JALR            zero, t6, 0xffffff0c(-244)"
+            "JALR            zero, t6, 0x4f4(1268)"
         ]
     },
     "dotnet rotate": {
@@ -4100,13 +4100,13 @@
             "LUI             t1, 0x1(1)",
             "ADDIW           t1, t1, 0xfffffc34(-972)",
             "ADD             gp, gp, t1",
-            "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x290(656)",
+            "AUIPC           t6, 0xffffffe7(-25)",
+            "JALR            zero, t6, 0xfffff878(-1928)",
             "LUI             t1, 0xfffb09a1(-325215)",
             "ADDIW           t1, t1, 0xffffffb3(-77)",
             "ADD             gp, gp, t1",
-            "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0x27c(636)"
+            "AUIPC           t6, 0xffffffe7(-25)",
+            "JALR            zero, t6, 0xfffff864(-1948)"
         ]
     },
     "7z block": {
@@ -4223,10 +4223,10 @@
             "BNE             zero, ra, 0x10(16)",
             "ADDI            gp, gp, 0x74(116)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0xb8(184)",
+            "JALR            zero, t6, 0x6a0(1696)",
             "ADDI            gp, gp, 0x8b(139)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0xac(172)"
+            "JALR            zero, t6, 0x694(1684)"
         ]
     },
     "Outlast camera": {
@@ -4473,9 +4473,9 @@
             "BNE             zero, ra, 0x10(16)",
             "ADDI            gp, gp, 0x16f(367)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0xfffffce4(-796)",
+            "JALR            zero, t6, 0x2cc(716)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0xfffffcdc(-804)"
+            "JALR            zero, t6, 0x2c4(708)"
         ]
     },
     "Outlast camera 2": {
@@ -4727,9 +4727,9 @@
             "BNE             zero, ra, 0x10(16)",
             "ADDI            gp, gp, 0x160(352)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0xfffff8fc(-1796)",
+            "JALR            zero, t6, 0xfffffee4(-284)",
             "AUIPC           t6, 0xffffffe6(-26)",
-            "JALR            zero, t6, 0xfffff8f4(-1804)"
+            "JALR            zero, t6, 0xfffffedc(-292)"
         ]
     }
 }

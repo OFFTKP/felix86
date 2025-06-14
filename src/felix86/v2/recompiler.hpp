@@ -465,6 +465,12 @@ struct Recompiler {
         call(as, target);
     }
 
+    void callPointer(u64 offset) {
+        ASSERT(isScratch(t4));
+        as.LD(t4, offset, threadStatePointer());
+        as.JALR(t4);
+    }
+
     static void call(Assembler& as, u64 target) {
         ASSERT(isScratch(t4));
         i64 offset = target - (u64)as.GetCursorPointer();

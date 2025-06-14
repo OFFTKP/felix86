@@ -12,7 +12,7 @@ FAST_HANDLE(FLD) {
         biscuit::GPR address = rec.lea(&operands[0]);
         rec.writebackState();
         as.MV(a0, address);
-        rec.call((u64)f80_to_64);
+        rec.callPointer(offsetof(ThreadState, f80_to_64));
         rec.restoreState();
         rec.pushX87(fa0); // push return value
     } else {
@@ -257,21 +257,21 @@ FAST_HANDLE(FSQRT) {
 FAST_HANDLE(FSIN) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fsin);
+    rec.callPointer(offsetof(ThreadState, felix86_fsin));
     rec.restoreState();
 }
 
 FAST_HANDLE(FCOS) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fcos);
+    rec.callPointer(offsetof(ThreadState, felix86_fcos));
     rec.restoreState();
 }
 
 FAST_HANDLE(FPATAN) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fpatan);
+    rec.callPointer(offsetof(ThreadState, felix86_fpatan));
     rec.restoreState();
 
     // FPATAN also pops the stack
@@ -281,7 +281,7 @@ FAST_HANDLE(FPATAN) {
 FAST_HANDLE(FPTAN) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fptan);
+    rec.callPointer(offsetof(ThreadState, felix86_fptan));
     rec.restoreState();
 
     // FPTAN also pushes 1.0 for compatibility reasons
@@ -299,28 +299,28 @@ FAST_HANDLE(FWAIT) {
 FAST_HANDLE(FPREM) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fprem);
+    rec.callPointer(offsetof(ThreadState, felix86_fprem));
     rec.restoreState();
 }
 
 FAST_HANDLE(F2XM1) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_f2xm1);
+    rec.callPointer(offsetof(ThreadState, felix86_f2xm1));
     rec.restoreState();
 }
 
 FAST_HANDLE(FSCALE) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fscale);
+    rec.callPointer(offsetof(ThreadState, felix86_fscale));
     rec.restoreState();
 }
 
 FAST_HANDLE(FYL2X) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fyl2x);
+    rec.callPointer(offsetof(ThreadState, felix86_fyl2x));
     rec.restoreState();
 
     // FYL2X also pops the stack
@@ -330,7 +330,7 @@ FAST_HANDLE(FYL2X) {
 FAST_HANDLE(FYL2XP1) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fyl2xp1);
+    rec.callPointer(offsetof(ThreadState, felix86_fyl2xp1));
     rec.restoreState();
 
     // FYL2XP1 also pops the stack
@@ -340,7 +340,7 @@ FAST_HANDLE(FYL2XP1) {
 FAST_HANDLE(FXAM) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
-    rec.call((u64)felix86_fxam);
+    rec.callPointer(offsetof(ThreadState, felix86_fxam));
     rec.restoreState();
 }
 
@@ -350,9 +350,9 @@ FAST_HANDLE(FNSTENV) {
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
     if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
-        rec.call((u64)felix86_fstenv_16);
+        rec.callPointer(offsetof(ThreadState, felix86_fstenv_16));
     } else {
-        rec.call((u64)felix86_fstenv_32);
+        rec.callPointer(offsetof(ThreadState, felix86_fstenv_32));
     }
     rec.restoreState();
 }
@@ -369,9 +369,9 @@ FAST_HANDLE(FLDENV) {
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
     if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
-        rec.call((u64)felix86_fldenv_16);
+        rec.callPointer(offsetof(ThreadState, felix86_fldenv_16));
     } else {
-        rec.call((u64)felix86_fldenv_32);
+        rec.callPointer(offsetof(ThreadState, felix86_fldenv_32));
     }
     rec.restoreState();
 }
@@ -757,9 +757,9 @@ FAST_HANDLE(FNSAVE) {
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
     if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
-        rec.call((u64)&felix86_fsave_16);
+        rec.callPointer(offsetof(ThreadState, felix86_fsave_16));
     } else {
-        rec.call((u64)&felix86_fsave_32);
+        rec.callPointer(offsetof(ThreadState, felix86_fsave_32));
     }
     rec.restoreState();
 }
@@ -770,9 +770,9 @@ FAST_HANDLE(FRSTOR) {
     as.MV(a1, address);
     as.MV(a0, rec.threadStatePointer());
     if (instruction.attributes & ZYDIS_ATTRIB_HAS_OPERANDSIZE) {
-        rec.call((u64)&felix86_frstor_16);
+        rec.callPointer(offsetof(ThreadState, felix86_frstor_16));
     } else {
-        rec.call((u64)&felix86_frstor_32);
+        rec.callPointer(offsetof(ThreadState, felix86_frstor_32));
     }
     rec.restoreState();
 }
