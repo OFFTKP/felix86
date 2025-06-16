@@ -6,14 +6,6 @@ project(felix86)
 include(CheckGit.cmake)
 include(CheckIncludeFile)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    string(REGEX MATCH "^([0-9]+)" GCC_VERSION_MAJOR "${CMAKE_CXX_COMPILER_VERSION}")
-
-    if (GCC_VERSION_MAJOR STREQUAL "14")
-        message(WARNING "GCC 14 has a bug that causes unaligned vector load/stores which may cause bus errors in some of our packed structs. It is suggested you use a different compiler. More info: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115789")
-    endif()
-endif()
-
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
@@ -36,6 +28,23 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
 endif()
+
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    string(REGEX MATCH "^([0-9]+)" GCC_VERSION_MAJOR "${CMAKE_CXX_COMPILER_VERSION}")
+
+    # It seems that gcc-14 has a bug where it compiles a badly aligned vector load from one of our packed structs,
+    # namely the conversion of x86_flock64 in Portal. This bug seems to be fixed in later gcc versions, but isn't
+    # backported so we need to warn and disable the V extension from static compilation.
+    if (GCC_VERSION_MAJOR STREQUAL "14")
+        message(WARNING "GCC 14 has a bug that causes unaligned vector load/stores which may cause bus errors in some of our packed structs. It is suggested you use a different compiler. More info: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115789")
+
+        # Don't use vector extension to avoid this bug
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
+    endif()
+endif()
+
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 cmake_policy(SET CMP0083 NEW)
