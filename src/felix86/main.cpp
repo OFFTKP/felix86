@@ -57,7 +57,7 @@ int print_system_info() {
 
     using namespace biscuit;
     biscuit::CPUInfo info;
-    bool V = info.Has(Extension::V);
+    bool V = info.Has(RISCVExtension::V);
     int len = 0;
     if (V) {
         len = info.GetVlenb();
