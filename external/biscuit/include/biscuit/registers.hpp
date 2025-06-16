@@ -280,7 +280,7 @@ public:
     // Deliberately non-explicit to allow for convenient instantiation at usage sites.
     // e.g. Rather than CM.POP(PushPopList{ra, {s0, s2}}, 16), we can just have the
     //      usage be transparent like CM.POP({ra, {s0, s2}}, 16). Nice and compact!
-    constexpr PushPopList(GPR ra_reg, const Range& range = {}) noexcept
+    constexpr PushPopList([[maybe_unused]] GPR ra_reg, const Range& range = {}) noexcept
         : m_bitmask{BuildBitmask(range)} {
         BISCUIT_ASSERT(ra_reg == ra);
     }

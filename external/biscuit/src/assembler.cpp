@@ -1150,7 +1150,7 @@ void Assembler::RORI(GPR rd, GPR rs, uint32_t rotate_amount) noexcept {
 
 void Assembler::RORIW(GPR rd, GPR rs, uint32_t rotate_amount) noexcept {
     BISCUIT_ASSERT(IsRV64(m_features));
-    BISCUIT_ASSERT(rotate_amount <= 63);
+    BISCUIT_ASSERT(rotate_amount <= 31);
     const auto imm = (0b011000U << 6) | rotate_amount;
     EmitIType(m_buffer, imm, rs, 0b101, rd, 0b0011011);
 }
@@ -1512,7 +1512,7 @@ void Assembler::ResolveLabelOffsets(Label* label) {
 }
 
 void Assembler::ResolveLiteralOffsetsRaw(ptrdiff_t location, const std::set<ptrdiff_t>& offsets) {
-    const auto is_auipc_type = [](uint32_t instruction) {
+    [[maybe_unused]] const auto is_auipc_type = [](uint32_t instruction) {
         return (instruction & 0x7F) == 0b0010111;
     };
 

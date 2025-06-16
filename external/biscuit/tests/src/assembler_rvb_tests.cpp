@@ -452,8 +452,8 @@ TEST_CASE("RORIW", "[rvb]") {
 
     as.RewindBuffer();
 
-    as.RORIW(x31, x7, 63);
-    REQUIRE(value == 0x63F3DF9B);
+    as.RORIW(x31, x7, 31);
+    REQUIRE(value == 0x61F3DF9B);
 }
 
 TEST_CASE("SEXT.B", "[rvb]") {

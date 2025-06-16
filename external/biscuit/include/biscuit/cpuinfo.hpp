@@ -66,7 +66,16 @@ enum class RISCVExtension : uint64_t {
     Zcd,
     Zcf,
     Zcmop,
-    Zawrs
+    Zawrs,
+    Supm,
+    Zicntr,
+    Zihpm,
+    Zfbfmin,
+    Zvfbfmin,
+    Zvfbfwma,
+    Zicbom,
+    Zaamo,
+    Zalrsc
 };
 
 template <CSR csr>

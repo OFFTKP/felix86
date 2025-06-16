@@ -131,7 +131,7 @@ void EmitCMJTType(CodeBuffer& buffer, uint32_t funct6, uint32_t index, uint32_t 
 }
 
 void EmitCMMVType(CodeBuffer& buffer, uint32_t funct6, GPR r1s, uint32_t funct2, GPR r2s, uint32_t op) {
-    const auto is_valid_s_register = [](GPR reg) {
+    [[maybe_unused]] const auto is_valid_s_register = [](GPR reg) {
         return reg == s0 || reg == s1 || (reg >= s2 && reg <= s7);
     };
 
@@ -164,7 +164,7 @@ void EmitCMPPType(CodeBuffer& buffer, uint32_t funct6, uint32_t funct2, PushPopL
     const auto stack_adj_u = static_cast<uint32_t>(std::abs(stack_adj));
     const auto spimm = (stack_adj_u - stack_adj_base) / 16U;
 
-    // We can only encode up to three differenct values as the upper spimm bits.
+    // We can only encode up to three different values as the upper spimm bits.
     // Ensure we catch any cases where we end up going outside of them.
     BISCUIT_ASSERT(stack_adj_u == stack_adj_base ||
                    stack_adj_u == stack_adj_base + 16 ||

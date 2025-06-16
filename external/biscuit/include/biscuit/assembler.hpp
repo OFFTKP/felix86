@@ -1236,6 +1236,7 @@ public:
     void VFREDMIN(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
 
     void VFREDSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
+    void VFREDUSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VFREDOSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
 
     void VFMACC(Vec vd, Vec vs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
@@ -1320,6 +1321,7 @@ public:
     void VFWNMSAC(Vec vd, FPR rs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
 
     void VFWREDSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
+    void VFWREDUSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VFWREDOSUM(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
 
     void VFWMSAC(Vec vd, Vec vs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
