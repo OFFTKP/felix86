@@ -6,6 +6,14 @@ project(felix86)
 include(CheckGit.cmake)
 include(CheckIncludeFile)
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    string(REGEX MATCH "^([0-9]+)" GCC_VERSION_MAJOR "${CMAKE_CXX_COMPILER_VERSION}")
+
+    if (GCC_VERSION_MAJOR STREQUAL "14")
+        message(WARNING "GCC 14 has a bug that causes unaligned vector load/stores which may cause bus errors in some of our packed structs. It is suggested you use a different compiler. More info: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115789")
+    endif()
+endif()
+
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
