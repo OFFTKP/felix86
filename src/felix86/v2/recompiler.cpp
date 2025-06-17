@@ -936,6 +936,7 @@ biscuit::GPR Recompiler::getElementGPR(ZydisDecodedOperand* operand, x86_size_e 
     biscuit::GPR address;
     int offset;
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
         x86_ref_e ref = zydisToRef(operand->reg.value);
         offset = offsetof(ThreadState, xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
         address = threadStatePointer();
@@ -975,6 +976,7 @@ biscuit::FPR Recompiler::getElementFPR(ZydisDecodedOperand* operand, x86_size_e 
     biscuit::GPR address;
     int offset;
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
         x86_ref_e ref = zydisToRef(operand->reg.value);
         offset = offsetof(ThreadState, xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
         address = threadStatePointer();
@@ -1006,6 +1008,7 @@ void Recompiler::setElementGPR(ZydisDecodedOperand* operand, x86_size_e size, in
     biscuit::GPR address;
     int offset;
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
         x86_ref_e ref = zydisToRef(operand->reg.value);
         offset = offsetof(ThreadState, xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
         address = threadStatePointer();
@@ -1043,6 +1046,7 @@ void Recompiler::setElementFPR(ZydisDecodedOperand* operand, x86_size_e size, in
     biscuit::GPR address;
     int offset;
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        ASSERT(operand->reg.value >= ZYDIS_REGISTER_XMM0 && operand->reg.value <= ZYDIS_REGISTER_XMM15);
         x86_ref_e ref = zydisToRef(operand->reg.value);
         offset = offsetof(ThreadState, xmm) + (ref - X86_REF_XMM0) * sizeof(XmmReg) + (getBitSize(size) / 8) * element;
         address = threadStatePointer();
