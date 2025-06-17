@@ -395,14 +395,51 @@ void EmitInstruction(biscuit::Assembler& as, biscuit::RISCVExtension extension) 
     }
     case RISCVExtension::Zba: {
         as.ADDUW(t1, t2, t3);
+        as.SH1ADD(t1, t2, t3);
+        as.SH2ADD(t1, t2, t3);
+        as.SH3ADD(t1, t2, t3);
+        as.SH1ADDUW(t1, t2, t3);
+        as.SH2ADDUW(t1, t2, t3);
+        as.SH3ADDUW(t1, t2, t3);
+        as.SLLIUW(t1, t2, 1);
         break;
     }
     case RISCVExtension::Zbb: {
         as.ANDN(t1, t2, t3);
+        as.ORN(t1, t2, t3);
+        as.XNOR(t1, t2, t3);
+        as.CLZ(t1, t2);
+        as.CLZW(t1, t2);
+        as.CTZ(t1, t2);
+        as.CTZW(t1, t2);
+        as.CPOP(t1, t2);
+        as.CPOPW(t1, t2);
+        as.MAX(t1, t2, t3);
+        as.MAXU(t1, t2, t3);
+        as.MIN(t1, t2, t3);
+        as.MINU(t1, t2, t3);
+        as.SEXTB(t1, t2);
+        as.SEXTH(t1, t2);
+        as.ZEXTH(t1, t2);
+        as.ROL(t1, t2, t3);
+        as.ROLW(t1, t2, t3);
+        as.ROR(t1, t2, t3);
+        as.RORI(t1, t2, 1);
+        as.RORIW(t1, t2, 1);
+        as.RORW(t1, t2, t3);
+        as.ORCB(t1, t2);
+        as.REV8(t1, t2);
         break;
     }
     case RISCVExtension::Zbs: {
-        as.BCLRI(t1, t2, 0);
+        as.BCLR(t1, t2, t3);
+        as.BCLRI(t1, t2, 1);
+        as.BEXT(t1, t2, t3);
+        as.BEXTI(t1, t2, 1);
+        as.BINV(t1, t2, t3);
+        as.BINVI(t1, t2, 1);
+        as.BSET(t1, t2, t3);
+        as.BSETI(t1, t2, 1);
         break;
     }
     case RISCVExtension::Zicboz: {
@@ -411,10 +448,13 @@ void EmitInstruction(biscuit::Assembler& as, biscuit::RISCVExtension extension) 
     }
     case RISCVExtension::Zbc: {
         as.CLMUL(t1, t2, t3);
+        as.CLMULH(t1, t2, t3);
+        as.CLMULR(t1, t2, t3);
         break;
     }
     case RISCVExtension::Zbkx: {
         as.XPERM4(t1, t2, t3);
+        as.XPERM8(t1, t2, t3);
         break;
     }
     case RISCVExtension::Zknd: {
@@ -439,17 +479,31 @@ void EmitInstruction(biscuit::Assembler& as, biscuit::RISCVExtension extension) 
     }
     case RISCVExtension::Zvbb: {
         as.VSETIVLI(x0, 1, SEW::E32);
+        as.VANDN(v1, v2, v3);
+        as.VBREV(v1, v2);
+        as.VBREV8(v1, v2);
+        as.VREV8(v1, v2);
         as.VCLZ(v1, v2);
+        as.VCTZ(v1, v2);
+        as.VCPOP(v1, v2);
+        as.VROL(v1, v2, v3);
+        as.VROR(v1, v2, v3);
+        as.VWSLL(v2, v4, v6);
         break;
     }
     case RISCVExtension::Zvbc: {
         SetEGW(as, SEW::E64, 1);
         as.VCLMUL(v8, v16, v24);
+        as.VCLMULH(v8, v16, v24);
         break;
     }
     case RISCVExtension::Zvkb: {
         as.VSETIVLI(x0, 1, SEW::E32);
         as.VANDN(v1, v2, v3);
+        as.VBREV8(v1, v2);
+        as.VREV8(v1, v2);
+        as.VROL(v1, v2, v3);
+        as.VROR(v1, v2, v3);
         break;
     }
     case RISCVExtension::Zvkg: {
