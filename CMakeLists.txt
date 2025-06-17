@@ -135,7 +135,6 @@ set(FELIX86_HLE_SOURCES
 set(FELIX86_V2_SOURCES
     src/felix86/v2/recompiler.cpp
     src/felix86/v2/handlers.cpp
-    src/felix86/v2/handlers_x87.cpp
 )
 
 set(FELIX86_CORE_SOURCES

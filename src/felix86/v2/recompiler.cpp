@@ -10,12 +10,9 @@
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
 #include "felix86/hle/syscall.hpp"
+#include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
-
-#define X(name) void fast_##name(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
-#include "felix86/v2/handlers.inc"
-#undef X
 
 constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
@@ -41,6 +38,7 @@ static void incorrect_stack(void* sp_expected, void* sp_actual) {
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
 // and previous instructions need to know that.
+// TODO: actually this might be unnecessary if Zydis doesn't mark these flags as modified, test it
 static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     switch (mnemonic) {
     case ZYDIS_MNEMONIC_SHL:
@@ -555,17 +553,16 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
     switch (mnemonic) {
 #define X(name)                                                                                                                                      \
     case ZYDIS_MNEMONIC_##name:                                                                                                                      \
-        fast_##name(*this, rip, as, instruction, operands);                                                                                          \
+        Handlers::ptr_##name(*this, rip, as, instruction, operands);                                                                                 \
         break;
+#define SIMD(name) X(name)
+#define X87(name) X(name)
 #include "felix86/v2/handlers.inc"
 #undef X
+#undef SIMD
+#undef X87
     default: {
-        ZydisDisassembledInstruction disassembled;
-        if (ZYAN_SUCCESS(ZydisDisassembleIntel(decoder.machine_mode, rip, (u8*)rip, 15, &disassembled))) {
-            ERROR("Unhandled instruction %s (%02x)", disassembled.text, (int)instruction.opcode);
-        } else {
-            ERROR("Unhandled instruction %s (%02x)", ZydisMnemonicGetString(mnemonic), (int)instruction.opcode);
-        }
+        ASSERT_MSG(false, "Bad mnemonic? Shouldn't get here");
         break;
     }
     }
