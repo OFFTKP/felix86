@@ -12,7 +12,6 @@ public:
         Config::initialize();
         initialize_globals();
         g_process_globals.initialize();
-        initialize_extensions();
         Signals::initialize();
 
         // Set most configs to default except for rootfs path
