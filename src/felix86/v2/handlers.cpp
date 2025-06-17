@@ -9256,6 +9256,309 @@ FAST_HANDLE(INVLPG) {
     }
 }
 
+FAST_HANDLE(MOVSS_no_rvv) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 0);
+        rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, src);
+    } else if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 0);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, x0);
+            rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, x0);
+        }
+        rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, src);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+FAST_HANDLE(MOVAPS_no_rvv) {
+    biscuit::GPR src0 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
+    biscuit::GPR src1 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src0);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, src1);
+}
+
+FAST_HANDLE(MOVUPS_no_rvv) {
+    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(MOVLPS_no_rvv) {
+    biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src);
+}
+
+FAST_HANDLE(MOVHPS_no_rvv) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
+        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src);
+    } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
+        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, src);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+FAST_HANDLE(MOVLHPS_no_rvv) {
+    biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, src);
+}
+
+FAST_HANDLE(MOVHLPS_no_rvv) {
+    biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src);
+}
+
+FAST_HANDLE(MOVMSKPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(ADDSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
+    as.FADD_S(result, dst, src);
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(SUBSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
+    as.FSUB_S(result, dst, src);
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(MULSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
+    as.FMUL_S(result, dst, src);
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(DIVSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
+    as.FDIV_S(result, dst, src);
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(RCPSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+
+    // TODO: Use Zfa if available
+    biscuit::GPR ones = rec.scratch();
+    biscuit::FPR fones = rec.scratchFPR();
+    as.LI(ones, 0x3F800000);
+    as.FMV_W_X(fones, ones);
+    as.FDIV_S(result, fones, dst);
+
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(SQRTSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+    as.FSQRT_S(result, dst);
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(MAXSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
+    as.FMAX_S(result, dst, src);
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(MINSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
+    as.FMIN_S(result, dst, src);
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(RSQRTSS_no_rvv) {
+    biscuit::FPR result = rec.scratchFPR();
+    biscuit::FPR sqrted = rec.scratchFPR();
+    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
+
+    // TODO: Use Zfa if available
+    biscuit::GPR ones = rec.scratch();
+    biscuit::FPR fones = rec.scratchFPR();
+    as.FSQRT_S(sqrted, dst);
+    as.LI(ones, 0x3F800000);
+    as.FMV_W_X(fones, ones);
+    as.FDIV_S(result, fones, sqrted);
+
+    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
+}
+
+FAST_HANDLE(ADDPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(SUBPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(MULPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(DIVPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(RCPPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(SQRTPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(MAXPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(MINPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(RSQRTPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(CMPSS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(COMISS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(UCOMISS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(CMPPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(SHUFPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(UNPCKHPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(UNPCKLPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(CVTSI2SS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(CVTSS2SI_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(CVTTSS2SI_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(CVTPI2PS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(CVTPS2PI_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(CVTTPS2PI_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(ANDPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(ORPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(XORPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(ANDNPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PMULHUW_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PSADBW_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PAVGB_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PAVGW_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PMAXUB_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PMINUB_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PMAXSW_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PMINSW_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PEXTRW_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PINSRW_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PMOVMSKB_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(PSHUFW_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(MOVNTQ_no_rvv) {
+    UNIMPLEMENTED();
+}
+
+FAST_HANDLE(MOVNTPS_no_rvv) {
+    UNIMPLEMENTED();
+}
+
 void Handlers::initialize() {
 #define X(name) Handlers::ptr_##name = fast_##name;
 #define SIMD(name)
@@ -9274,7 +9577,65 @@ void Handlers::initialize() {
 #undef SIMD
 #undef X87
     } else {
-        ERROR("felix86 needs RVV as of this moment");
+#define MAP(name) Handlers::ptr_##name = fast_##name##_no_rvv
+        MAP(MOVSS);
+        MAP(MOVAPS);
+        MAP(MOVUPS);
+        MAP(MOVLPS);
+        MAP(MOVHPS);
+        MAP(MOVLHPS);
+        MAP(MOVHLPS);
+        MAP(MOVMSKPS);
+        MAP(ADDSS);
+        MAP(SUBSS);
+        MAP(MULSS);
+        MAP(DIVSS);
+        MAP(RCPSS);
+        MAP(SQRTSS);
+        MAP(MAXSS);
+        MAP(MINSS);
+        MAP(RSQRTSS);
+        MAP(ADDPS);
+        MAP(SUBPS);
+        MAP(MULPS);
+        MAP(DIVPS);
+        MAP(RCPPS);
+        MAP(SQRTPS);
+        MAP(MAXPS);
+        MAP(MINPS);
+        MAP(RSQRTPS);
+        MAP(CMPSS);
+        MAP(COMISS);
+        MAP(UCOMISS);
+        MAP(CMPPS);
+        MAP(SHUFPS);
+        MAP(UNPCKHPS);
+        MAP(UNPCKLPS);
+        MAP(CVTSI2SS);
+        MAP(CVTSS2SI);
+        MAP(CVTTSS2SI);
+        MAP(CVTPI2PS);
+        MAP(CVTPS2PI);
+        MAP(CVTTPS2PI);
+        MAP(ANDPS);
+        MAP(ORPS);
+        MAP(XORPS);
+        MAP(ANDNPS);
+        MAP(PMULHUW);
+        MAP(PSADBW);
+        MAP(PAVGB);
+        MAP(PAVGW);
+        MAP(PMAXUB);
+        MAP(PMINUB);
+        MAP(PMAXSW);
+        MAP(PMINSW);
+        MAP(PEXTRW);
+        MAP(PINSRW);
+        MAP(PMOVMSKB);
+        MAP(PSHUFW);
+        MAP(MOVNTQ);
+        MAP(MOVNTPS);
+#undef MAP
     }
 
 // When we support 80-bit mode, this will be changed
