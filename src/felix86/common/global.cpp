@@ -17,6 +17,7 @@
 #include "felix86/common/symlink.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
+#include "felix86/v2/handlers.hpp"
 
 using namespace biscuit;
 
@@ -205,6 +206,8 @@ void initialize_extensions() {
     Extensions::V = true;
     Extensions::VLEN = 128;
 #endif
+
+    Handlers::initialize();
 }
 
 void initialize_globals() {
