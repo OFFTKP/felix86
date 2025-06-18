@@ -10027,6 +10027,9 @@ void Handlers::initialize() {
         MAP(PSHUFW);
         MAP(MOVNTQ);
         MAP(MOVNTPS);
+        MAP(PUNPCKLWD);
+        MAP(PUNPCKLDQ);
+        MAP(PUNPCKLQDQ);
 #undef MAP
     }
 
