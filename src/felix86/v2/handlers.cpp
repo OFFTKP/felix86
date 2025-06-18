@@ -9818,15 +9818,52 @@ FAST_HANDLE(PMINSW_no_rvv) {
 }
 
 FAST_HANDLE(PEXTRW_no_rvv) {
-    UNIMPLEMENTED();
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::GPR extracted = rec.getElementGPR(&operands[1], X86_SIZE_WORD, imm & 0b11);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, extracted);
+    } else {
+        rec.setGPR(&operands[0], extracted);
+    }
 }
 
 FAST_HANDLE(PINSRW_no_rvv) {
-    UNIMPLEMENTED();
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::GPR reg = rec.getGPR(&operands[1]);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        rec.zext(reg, reg, X86_SIZE_WORD);
+    }
+    rec.setElementGPR(&operands[0], X86_SIZE_WORD, imm & 0b11, reg);
 }
 
 FAST_HANDLE(PMOVMSKB_no_rvv) {
-    UNIMPLEMENTED();
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR bit = rec.scratch();
+    as.MV(result, x0);
+
+    biscuit::GPR el0 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
+    for (int i = 0; i < 8; i++) {
+        if (Extensions::B) {
+            as.BEXTI(bit, el0, (8 * i) - 1);
+        } else {
+            as.SRLI(bit, el0, (8 * i) - 1);
+            as.ANDI(bit, bit, 1);
+        }
+        as.SLLI(bit, bit, i);
+        as.OR(result, result, bit);
+    }
+
+    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
+    for (int i = 0; i < 8; i++) {
+        if (Extensions::B) {
+            as.BEXTI(bit, el1, (8 * i) - 1);
+        } else {
+            as.SRLI(bit, el1, (8 * i) - 1);
+            as.ANDI(bit, bit, 1);
+        }
+        as.SLLI(bit, bit, i);
+        as.OR(result, result, bit);
+    }
 }
 
 FAST_HANDLE(PSHUFW_no_rvv) {
