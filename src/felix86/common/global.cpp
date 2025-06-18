@@ -327,10 +327,6 @@ void initialize_globals() {
         Extensions::G = true;
     }
 
-    if (!Extensions::V) {
-        ERROR("V extension is required for SSE instructions");
-    }
-
     struct sigaction old_act;
     struct sigaction new_act;
     new_act.sa_sigaction = set_xtheadvector;
