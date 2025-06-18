@@ -932,7 +932,7 @@ biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
     }
 }
 
-biscuit::GPR Recompiler::getElementGPR(ZydisDecodedOperand* operand, x86_size_e size, int element) {
+biscuit::GPR Recompiler::getElementGPR(ZydisDecodedOperand* operand, x86_size_e size, int element, bool sext) {
     biscuit::GPR address;
     int offset;
     if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER) {
@@ -950,15 +950,27 @@ biscuit::GPR Recompiler::getElementGPR(ZydisDecodedOperand* operand, x86_size_e 
     biscuit::GPR temp = scratch();
     switch (size) {
     case X86_SIZE_BYTE: {
-        as.LBU(temp, offset, address);
+        if (!sext) {
+            as.LBU(temp, offset, address);
+        } else {
+            as.LB(temp, offset, address);
+        }
         break;
     }
     case X86_SIZE_WORD: {
-        as.LHU(temp, offset, address);
+        if (!sext) {
+            as.LHU(temp, offset, address);
+        } else {
+            as.LH(temp, offset, address);
+        }
         break;
     }
     case X86_SIZE_DWORD: {
-        as.LWU(temp, offset, address);
+        if (!sext) {
+            as.LWU(temp, offset, address);
+        } else {
+            as.LW(temp, offset, address);
+        }
         break;
     }
     case X86_SIZE_QWORD: {

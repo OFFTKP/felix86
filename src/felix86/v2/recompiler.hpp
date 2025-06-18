@@ -109,7 +109,7 @@ struct Recompiler {
 
     biscuit::Vec getVec(x86_ref_e ref);
 
-    biscuit::GPR getElementGPR(ZydisDecodedOperand* operand, x86_size_e size, int element);
+    biscuit::GPR getElementGPR(ZydisDecodedOperand* operand, x86_size_e size, int element, bool sext = false);
 
     biscuit::FPR getElementFPR(ZydisDecodedOperand* operand, x86_size_e size, int element);
 

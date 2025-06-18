@@ -93,6 +93,7 @@ void initialize_extensions();
 std::string get_extensions();
 
 struct Extensions {
+// TODO: replace B with Zbb, Zba, etc
 #define FELIX86_EXTENSIONS_TOTAL                                                                                                                     \
     X(G)                                                                                                                                             \
     X(C)                                                                                                                                             \

@@ -9311,7 +9311,36 @@ FAST_HANDLE(MOVHLPS_no_rvv) {
 }
 
 FAST_HANDLE(MOVMSKPS_no_rvv) {
-    UNIMPLEMENTED();
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR val0 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
+    biscuit::GPR val1 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
+    biscuit::GPR temp0 = rec.scratch();
+    biscuit::GPR temp1 = rec.scratch();
+
+    as.MV(result, x0);
+
+    if (Extensions::B) {
+        as.BEXTI(temp1, val0, 31);
+    } else {
+        as.SRLI(temp0, val0, 31);
+        as.ANDI(temp1, temp0, 1);
+    }
+
+    as.OR(result, result, temp1);
+
+    as.SRLI(temp0, val0, 63 - 1);
+    as.ANDI(temp1, temp0, 0b10);
+    as.OR(result, result, temp1);
+
+    as.SRLI(temp0, val1, 31 - 2);
+    as.ANDI(temp1, temp0, 0b100);
+    as.OR(result, result, temp1);
+
+    as.SRLI(temp0, val1, 63 - 3);
+    as.ANDI(temp1, temp0, 0b1000);
+    as.OR(result, result, temp1);
+
+    rec.setGPR(&operands[0], result);
 }
 
 FAST_HANDLE(ADDSS_no_rvv) {
@@ -9400,39 +9429,153 @@ FAST_HANDLE(RSQRTSS_no_rvv) {
 }
 
 FAST_HANDLE(ADDPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
+
+        as.FADD_S(temp, lhs, rhs);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(SUBPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
+
+        as.FSUB_S(temp, lhs, rhs);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(MULPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
+
+        as.FMUL_S(temp, lhs, rhs);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(DIVPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
+
+        as.FDIV_S(temp, lhs, rhs);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(RCPPS_no_rvv) {
-    UNIMPLEMENTED();
+    // TODO: Zfa
+    biscuit::FPR fones = rec.scratchFPR();
+    biscuit::GPR ones = rec.scratch();
+    as.LI(ones, 0x3f800000);
+    as.FMV_W_X(fones, ones);
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+
+        as.FDIV_S(temp, fones, lhs);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(SQRTPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+
+        as.FSQRT_S(temp, lhs);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(MAXPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
+
+        as.FMAX_S(temp, lhs, rhs);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(MINPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
+
+        as.FMIN_S(temp, lhs, rhs);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(RSQRTPS_no_rvv) {
-    UNIMPLEMENTED();
+    // TODO: Zfa
+    biscuit::FPR fones = rec.scratchFPR();
+    biscuit::GPR ones = rec.scratch();
+    as.LI(ones, 0x3f800000);
+    as.FMV_W_X(fones, ones);
+    for (int i = 0; i < 4; i++) {
+        biscuit::FPR sqrted = rec.scratchFPR();
+        biscuit::FPR temp = rec.scratchFPR();
+        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
+
+        as.FSQRT_S(sqrted, lhs);
+        as.FDIV_S(temp, fones, sqrted);
+
+        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
+
+        rec.popScratchFPR();
+        rec.popScratchFPR();
+    }
 }
 
 FAST_HANDLE(CMPSS_no_rvv) {
@@ -9452,15 +9595,37 @@ FAST_HANDLE(CMPPS_no_rvv) {
 }
 
 FAST_HANDLE(SHUFPS_no_rvv) {
-    UNIMPLEMENTED();
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, imm & 0b11);
+    biscuit::GPR el1 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, (imm >> 2) & 0b11);
+    biscuit::GPR el2 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, (imm >> 4) & 0b11);
+    biscuit::GPR el3 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, (imm >> 6) & 0b11);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, el0);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 1, el1);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 2, el2);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
 }
 
 FAST_HANDLE(UNPCKHPS_no_rvv) {
-    UNIMPLEMENTED();
+    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 2);
+    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 2);
+    biscuit::GPR el2 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 3);
+    biscuit::GPR el3 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 3);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, el0);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 1, el1);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 2, el2);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
 }
 
 FAST_HANDLE(UNPCKLPS_no_rvv) {
-    UNIMPLEMENTED();
+    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 0);
+    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 0);
+    biscuit::GPR el2 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 1);
+    biscuit::GPR el3 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 1);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, el0);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 1, el1);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 2, el2);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
 }
 
 FAST_HANDLE(CVTSI2SS_no_rvv) {
@@ -9488,19 +9653,56 @@ FAST_HANDLE(CVTTPS2PI_no_rvv) {
 }
 
 FAST_HANDLE(ANDPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 2; i++) {
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, i);
+        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, i);
+
+        as.AND(temp, lhs, rhs);
+
+        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, i, temp);
+    }
 }
 
 FAST_HANDLE(ORPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 2; i++) {
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, i);
+        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, i);
+
+        as.OR(temp, lhs, rhs);
+
+        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, i, temp);
+    }
 }
 
 FAST_HANDLE(XORPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 2; i++) {
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, i);
+        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, i);
+
+        as.XOR(temp, lhs, rhs);
+
+        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, i, temp);
+    }
 }
 
 FAST_HANDLE(ANDNPS_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 2; i++) {
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, i);
+        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, i);
+
+        if (Extensions::B) {
+            as.ANDN(temp, rhs, lhs);
+        } else {
+            as.NOT(temp, lhs);
+            as.AND(temp, temp, rhs);
+        }
+
+        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, i, temp);
+    }
 }
 
 FAST_HANDLE(PMULHUW_no_rvv) {
@@ -9520,19 +9722,99 @@ FAST_HANDLE(PAVGW_no_rvv) {
 }
 
 FAST_HANDLE(PMAXUB_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 16; i++) {
+        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_BYTE, i);
+        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_BYTE, i);
+        biscuit::GPR result = rec.scratch();
+
+        if (Extensions::B) {
+            as.MAXU(result, lhs, rhs);
+        } else {
+            biscuit::Label skip;
+            as.MV(result, lhs);
+            as.BGTU(lhs, rhs, &skip);
+            as.MV(result, rhs);
+            as.Bind(&skip);
+        }
+
+        rec.setElementGPR(&operands[0], X86_SIZE_BYTE, i, result);
+
+        rec.popScratch();
+        rec.popScratch();
+        rec.popScratch();
+    }
 }
 
 FAST_HANDLE(PMINUB_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 16; i++) {
+        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_BYTE, i);
+        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_BYTE, i);
+        biscuit::GPR result = rec.scratch();
+
+        if (Extensions::B) {
+            as.MINU(result, lhs, rhs);
+        } else {
+            biscuit::Label skip;
+            as.MV(result, lhs);
+            as.BLTU(lhs, rhs, &skip);
+            as.MV(result, rhs);
+            as.Bind(&skip);
+        }
+
+        rec.setElementGPR(&operands[0], X86_SIZE_BYTE, i, result);
+
+        rec.popScratch();
+        rec.popScratch();
+        rec.popScratch();
+    }
 }
 
 FAST_HANDLE(PMAXSW_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 8; i++) {
+        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_WORD, i, true);
+        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_WORD, i, true);
+        biscuit::GPR result = rec.scratch();
+
+        if (Extensions::B) {
+            as.MAX(result, lhs, rhs);
+        } else {
+            biscuit::Label skip;
+            as.MV(result, lhs);
+            as.BGT(lhs, rhs, &skip);
+            as.MV(result, rhs);
+            as.Bind(&skip);
+        }
+
+        rec.setElementGPR(&operands[0], X86_SIZE_WORD, i, result);
+
+        rec.popScratch();
+        rec.popScratch();
+        rec.popScratch();
+    }
 }
 
 FAST_HANDLE(PMINSW_no_rvv) {
-    UNIMPLEMENTED();
+    for (int i = 0; i < 8; i++) {
+        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_WORD, i, true);
+        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_WORD, i, true);
+        biscuit::GPR result = rec.scratch();
+
+        if (Extensions::B) {
+            as.MIN(result, lhs, rhs);
+        } else {
+            biscuit::Label skip;
+            as.MV(result, lhs);
+            as.BLT(lhs, rhs, &skip);
+            as.MV(result, rhs);
+            as.Bind(&skip);
+        }
+
+        rec.setElementGPR(&operands[0], X86_SIZE_WORD, i, result);
+
+        rec.popScratch();
+        rec.popScratch();
+        rec.popScratch();
+    }
 }
 
 FAST_HANDLE(PEXTRW_no_rvv) {
