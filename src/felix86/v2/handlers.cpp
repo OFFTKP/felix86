@@ -9878,6 +9878,80 @@ FAST_HANDLE(MOVNTPS_no_rvv) {
     UNIMPLEMENTED();
 }
 
+FAST_HANDLE(PUNPCKLWD_no_rvv) {
+    biscuit::GPR r0 = rec.scratch();
+
+    as.MV(r0, x0);
+    {
+        biscuit::GPR temp = rec.getElementGPR(&operands[0], X86_SIZE_WORD, 0);
+        as.OR(r0, r0, temp);
+        rec.popScratch();
+    }
+    {
+        biscuit::GPR temp = rec.getElementGPR(&operands[1], X86_SIZE_WORD, 0);
+        as.SLLI(temp, temp, 16);
+        as.OR(r0, r0, temp);
+        rec.popScratch();
+    }
+    {
+        biscuit::GPR temp = rec.getElementGPR(&operands[0], X86_SIZE_WORD, 1);
+        as.SLLI(temp, temp, 32);
+        as.OR(r0, r0, temp);
+        rec.popScratch();
+    }
+    {
+        biscuit::GPR temp = rec.getElementGPR(&operands[1], X86_SIZE_WORD, 1);
+        as.SLLI(temp, temp, 48);
+        as.OR(r0, r0, temp);
+        rec.popScratch();
+    }
+
+    biscuit::GPR r1 = rec.scratch();
+    as.MV(r1, x0);
+    {
+        biscuit::GPR temp = rec.getElementGPR(&operands[0], X86_SIZE_WORD, 2);
+        as.OR(r1, r1, temp);
+        rec.popScratch();
+    }
+    {
+        biscuit::GPR temp = rec.getElementGPR(&operands[1], X86_SIZE_WORD, 2);
+        as.SLLI(temp, temp, 16);
+        as.OR(r1, r1, temp);
+        rec.popScratch();
+    }
+    {
+        biscuit::GPR temp = rec.getElementGPR(&operands[0], X86_SIZE_WORD, 3);
+        as.SLLI(temp, temp, 32);
+        as.OR(r1, r1, temp);
+        rec.popScratch();
+    }
+    {
+        biscuit::GPR temp = rec.getElementGPR(&operands[1], X86_SIZE_WORD, 3);
+        as.SLLI(temp, temp, 48);
+        as.OR(r1, r1, temp);
+        rec.popScratch();
+    }
+
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, r0);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, r1);
+}
+
+FAST_HANDLE(PUNPCKLDQ_no_rvv) {
+    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 0);
+    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 0);
+    biscuit::GPR el2 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 1);
+    biscuit::GPR el3 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 1);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, el0);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 1, el1);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 2, el2);
+    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
+}
+
+FAST_HANDLE(PUNPCKLQDQ_no_rvv) {
+    biscuit::GPR el0 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, el0);
+}
+
 void Handlers::initialize() {
 #define X(name) Handlers::ptr_##name = fast_##name;
 #define SIMD(name)
@@ -9886,7 +9960,6 @@ void Handlers::initialize() {
 #undef X
 #undef SIMD
 #undef X87
-
     if (Extensions::V) {
 #define X(name)
 #define SIMD(name) Handlers::ptr_##name = fast_##name;

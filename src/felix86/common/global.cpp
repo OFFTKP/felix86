@@ -327,23 +327,25 @@ void initialize_globals() {
         Extensions::G = true;
     }
 
-    struct sigaction old_act;
-    struct sigaction new_act;
-    new_act.sa_sigaction = set_xtheadvector;
-    new_act.sa_flags = SA_SIGINFO;
-    sigemptyset(&new_act.sa_mask);
+    if (Extensions::V) {
+        struct sigaction old_act;
+        struct sigaction new_act;
+        new_act.sa_sigaction = set_xtheadvector;
+        new_act.sa_flags = SA_SIGINFO;
+        sigemptyset(&new_act.sa_mask);
 
-    sigaction(SIGILL, &new_act, &old_act);
+        sigaction(SIGILL, &new_act, &old_act);
 
-    // VCSR doesn't exist in Xtheadvector, so this will hit an illegal instruction
-    // So we can detect Xtheadvector in a cross platform way that works in older kernels too
-    biscuit::CSRReader<CSR::VCSR> vcsr_reader;
-    (vcsr_reader.GetCode<u32 (*)()>())();
+        // VCSR doesn't exist in Xtheadvector, so this will hit an illegal instruction
+        // So we can detect Xtheadvector in a cross platform way that works in older kernels too
+        biscuit::CSRReader<CSR::VCSR> vcsr_reader;
+        (vcsr_reader.GetCode<u32 (*)()>())();
 
-    sigaction(SIGILL, &old_act, nullptr);
+        sigaction(SIGILL, &old_act, nullptr);
 
-    if (Extensions::Xtheadvector) {
-        ERROR("This board has xtheadvector, but felix86 only works with RVV 1.0 currently");
+        if (Extensions::Xtheadvector) {
+            ERROR("This board has xtheadvector, but felix86 only works with RVV 1.0 currently");
+        }
     }
 #endif
 
