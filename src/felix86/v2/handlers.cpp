@@ -9622,6 +9622,14 @@ FAST_HANDLE(SHUFPS_no_rvv) {
     rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
 }
 
+FAST_HANDLE(SHUFPD_no_rvv) {
+    u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, imm & 0b1);
+    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, (imm >> 2) & 0b1);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, el0);
+    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, el1);
+}
+
 FAST_HANDLE(UNPCKHPS_no_rvv) {
     biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 2);
     biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 2);
@@ -10037,6 +10045,7 @@ void Handlers::initialize() {
         MAP(UCOMISS);
         MAP(CMPPS);
         MAP(SHUFPS);
+        MAP(SHUFPD);
         MAP(UNPCKHPS);
         MAP(UNPCKLPS);
         MAP(CVTSI2SS);
