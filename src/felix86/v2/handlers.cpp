@@ -9952,6 +9952,22 @@ FAST_HANDLE(PUNPCKLQDQ_no_rvv) {
     rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, el0);
 }
 
+FAST_HANDLE(PXOR_no_rvv) {
+    fast_XORPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(POR_no_rvv) {
+    fast_ORPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(PAND_no_rvv) {
+    fast_ANDPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(PANDN_no_rvv) {
+    fast_ANDNPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
 void Handlers::initialize() {
 #define X(name) Handlers::ptr_##name = fast_##name;
 #define SIMD(name)
@@ -10030,6 +10046,10 @@ void Handlers::initialize() {
         MAP(PUNPCKLWD);
         MAP(PUNPCKLDQ);
         MAP(PUNPCKLQDQ);
+        MAP(PXOR);
+        MAP(POR);
+        MAP(PAND);
+        MAP(PANDN);
 #undef MAP
     }
 
