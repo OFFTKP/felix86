@@ -10005,6 +10005,10 @@ void Handlers::initialize() {
         MAP(MOVSS);
         MAP(MOVAPS);
         MAP(MOVUPS);
+        MAP(MOVAPD);
+        MAP(MOVUPD);
+        MAP(MOVDQA);
+        MAP(MOVDQU);
         MAP(MOVLPS);
         MAP(MOVHPS);
         MAP(MOVLHPS);
