@@ -9283,6 +9283,22 @@ FAST_HANDLE(MOVUPS_no_rvv) {
     fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
 }
 
+FAST_HANDLE(MOVDQU_no_rvv) {
+    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(MOVAPD_no_rvv) {
+    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(MOVUPD_no_rvv) {
+    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(MOVDQA_no_rvv) {
+    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
+}
+
 FAST_HANDLE(MOVLPS_no_rvv) {
     biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
     rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src);
