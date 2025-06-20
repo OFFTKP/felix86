@@ -196,7 +196,7 @@ void binfmt_misc(bool is_register) {
     } else if (getenv("HOME")) {
         std::string home = getenv("HOME");
         if (home == "/root") {
-            WARN("$HOME is /root, did you forget to pass the environment variables to felix86? Rerun as `sudo -E felix86 -b` if this was not "
+            WARN("$HOME is /root, did you forget to pass the environment variables to felix86? Re-run as `sudo -E felix86 -b` if this was not "
                  "intended");
         }
     }
