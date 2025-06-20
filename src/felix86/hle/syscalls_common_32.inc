@@ -121,6 +121,7 @@ X(fdatasync)
 X(listxattr)
 X(flistxattr)
 X(llistxattr)
+X(close_range)
 
 // X(acct)
 // X(add_key)
