@@ -585,7 +585,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     SIGLOG("------- Guest signal %s (%d) %s TID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", gettid());
 
-    ASSERT(!g_mode32);
+    ASSERT_MSG(!g_mode32, "Got signal %d", sig);
 
     XmmReg* xmms;
 
