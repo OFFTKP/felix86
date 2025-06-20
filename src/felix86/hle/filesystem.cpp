@@ -385,6 +385,11 @@ int Filesystem::INotifyAddWatch(int fd, const char* path, u32 mask) {
     return inotify_add_watch(fd, file.c_str(), mask);
 }
 
+int Filesystem::Truncate(const char* path, u64 length) {
+    std::filesystem::path file = resolve(path);
+    return truncate(file.c_str(), length);
+}
+
 int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode) {
     int opened_fd = ::syscall(SYS_openat, fd, filename, flags, mode);
     if (opened_fd != -1) {

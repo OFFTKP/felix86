@@ -130,6 +130,8 @@ struct Filesystem {
 
     static int INotifyAddWatch(int fd, const char* path, u32 mask);
 
+    static int Truncate(const char* path, u64 length);
+
     static ssize_t Listxattr(const char* path, char* list, size_t size, bool llist);
 
     static std::filesystem::path resolve(const char* path);

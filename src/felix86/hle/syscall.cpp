@@ -2493,6 +2493,13 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_ia32_truncate64: {
+            u64 offset_low = arg2;
+            u64 offset_high = arg3;
+            u64 offset = offset_low | offset_high << 32;
+            result = Filesystem::Truncate((char*)arg1, offset);
+            break;
+        }
         case felix86_x86_32_ia32_ftruncate64: {
             int fd = arg1;
             u64 offset_low = arg2;
