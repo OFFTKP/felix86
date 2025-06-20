@@ -507,14 +507,15 @@ void Elf::Load(const std::filesystem::path& path) {
             unmap_me.push_back({(void*)segment_base, segment_size});
 
             if (phdr.memsz() > phdr.filesz()) {
-                // This is probably a segment that contains a .data and a .bss right after, so after
-                // the file size starts the bss, the part that should be zeroed
                 u64 bss_start = (u64)base_ptr + phdr.vaddr() + phdr.filesz();
                 u64 bss_page_start = PAGE_ALIGN(bss_start);
                 u64 bss_page_end = PAGE_ALIGN((u64)base_ptr + phdr.vaddr() + phdr.memsz());
-
-                if (phdr.flags() & PF_W) {
-                    memset((void*)bss_start, 0, bss_page_start - bss_start);
+                if (phdr.filesz() != 0) {
+                    // This is probably a segment that contains a .data and a .bss right after, so after
+                    // the file size starts the bss, the part that should be zeroed
+                    if (phdr.flags() & PF_W) {
+                        memset((void*)bss_start, 0, bss_page_start - bss_start);
+                    }
                 }
 
                 if (bss_page_start != bss_page_end) {
@@ -525,7 +526,6 @@ void Elf::Load(const std::filesystem::path& path) {
                     }
 
                     prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, bss_page_start, bss_page_end - bss_page_start, "felix86-bss");
-                    memset((void*)bss_page_start, 0, bss_page_end - bss_page_start);
                     VERBOSE("BSS segment at %p-%p", (void*)bss_page_start, (void*)bss_page_end);
                 }
             }
