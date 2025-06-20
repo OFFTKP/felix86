@@ -193,6 +193,9 @@ void binfmt_misc(bool is_register) {
     if (!Sudo::hasPermissions()) {
         printf("I need root permissions to register/unregister felix86 in binfmt_misc, please re-run with root permissions\n");
         exit(1);
+    } else if (!getenv("HOME")) {
+        printf("$HOME environment variable not found. Did you run as `sudo -E felix86 -b` to pass the environment variables to felix86?");
+        exit(1);
     }
 
     Config::initialize(true /* ignore envs, because we save the config later */);
