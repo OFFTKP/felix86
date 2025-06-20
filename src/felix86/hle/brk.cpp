@@ -19,7 +19,17 @@ void BRK::allocate32() {
     u64 max_brk_size = g_config.max_brk_size;
     u64 initial_brk_size = BRK::size32;
     if (max_brk_size == 0) {
-        max_brk_size = 1 * 1024 * 1024 * 1024;
+        // Try to get max ram size from sysinfo and use that
+        struct sysinfo info;
+        int res = sysinfo(&info);
+        if (res == 0) {
+            max_brk_size = info.totalram >> 1;
+        }
+    }
+
+    if (max_brk_size == 0) {
+        // Somehow still 0, set to 2GiB
+        max_brk_size = 2ull * 1024 * 1024 * 1024;
     }
 
     // Make our initial brk size always be <= max, if the user specified their own max
@@ -71,8 +81,8 @@ void BRK::allocate64() {
     }
 
     if (max_brk_size == 0) {
-        // Somehow still 0, set to 1GiB
-        max_brk_size = 1ull * 1024 * 1024 * 1024;
+        // Somehow still 0, set to 2GiB
+        max_brk_size = 2ull * 1024 * 1024 * 1024;
     }
 
     // Make our initial brk size always be <= max, if the user specified their own max
