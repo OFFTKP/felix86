@@ -84,7 +84,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     rsp = stack_push_string(rsp, g_mode32 ? x86_string : x86_64_string);
     const char* platform_name = (const char*)rsp;
 
-    for (ssize_t i = 0; i < argc; i++) {
+    // wine-preloader actually relies on us pushing these in this order
+    for (ssize_t i = argc - 1; i >= 0; i--) {
         rsp = stack_push_string(rsp, g_params.argv[i].c_str());
         argv_addresses[i] = rsp;
     }
