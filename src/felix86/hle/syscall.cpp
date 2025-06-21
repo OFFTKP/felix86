@@ -1945,7 +1945,6 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         case felix86_x86_32_set_thread_area: {
             x86_user_desc* udesc = (x86_user_desc*)arg1;
             result = state->SetUserDesc(udesc);
-            PLAIN("HACK: %lx %d", state->GetGpr(X86_REF_RSP), *(int*)state->GetGpr(X86_REF_RSP));
             break;
         }
         case felix86_x86_32_get_thread_area: {

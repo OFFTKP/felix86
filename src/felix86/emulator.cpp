@@ -175,6 +175,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
     // End of arguments
     rsp = stack_push(rsp, 0);
+    PLAIN("argv null: %x", rsp);
     for (ssize_t i = argc - 1; i >= 0; i--) {
         rsp = stack_push(rsp, argv_addresses[i]);
     }
