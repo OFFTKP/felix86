@@ -195,6 +195,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     PLAIN("Setting RSP to %lx", rsp_guest);
     PLAIN("ARGV at %lx (%s)", argv_rsp, (char*)argv_rsp);
 
+    PLAIN("DEREF: %d\n", *(int*)rsp);
+
     return pair;
 }
 
