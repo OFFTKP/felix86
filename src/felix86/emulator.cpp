@@ -182,6 +182,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
     // Argument count
     rsp = stack_push(rsp, argc);
+    PLAIN("Push argc: %d", argc);
 
     ASSERT_MSG(rsp == final_rsp, "%lx == %lx", rsp, final_rsp);
     if (rsp & 0xF) {
