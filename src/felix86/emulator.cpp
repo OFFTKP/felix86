@@ -178,6 +178,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
     for (ssize_t i = argc - 1; i >= 0; i--) {
         rsp = stack_push(rsp, argv_addresses[i]);
     }
+    u64 argv_rsp = rsp;
 
     // Argument count
     rsp = stack_push(rsp, argc);
@@ -190,6 +191,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
     u64 rsp_guest = rsp;
     state->SetGpr(X86_REF_RSP, rsp_guest);
+    PLAIN("Setting RSP to %lx", rsp_guest);
+    PLAIN("ARGV at %lx (%s)", argv_rsp, (char*)argv_rsp);
 
     return pair;
 }
