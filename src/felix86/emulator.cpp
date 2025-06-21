@@ -176,15 +176,12 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
     // End of arguments
     rsp = stack_push(rsp, 0);
-    PLAIN("argv null: %x", rsp);
     for (ssize_t i = argc - 1; i >= 0; i--) {
         rsp = stack_push(rsp, argv_addresses[i]);
     }
-    u64 argv_rsp = rsp;
 
     // Argument count
     rsp = stack_push(rsp, argc);
-    PLAIN("Push argc: %d", argc);
 
     ASSERT_MSG(rsp == final_rsp, "%lx == %lx", rsp, final_rsp);
     if (rsp & 0xF) {
@@ -194,10 +191,6 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
     u64 rsp_guest = rsp;
     state->SetGpr(X86_REF_RSP, rsp_guest);
-    PLAIN("Setting RSP to %lx", rsp_guest);
-    PLAIN("ARGV at %lx (%s)", argv_rsp, (char*)argv_rsp);
-
-    PLAIN("DEREF: %d\n", *(int*)rsp);
 
     return pair;
 }
