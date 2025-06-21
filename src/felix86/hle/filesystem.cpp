@@ -130,6 +130,11 @@ int Filesystem::FStatAt(int fd, const char* filename, struct stat* host_stat, in
     return fstatatInternal(new_fd, new_filename, host_stat, flags);
 }
 
+int Filesystem::FStatAt64(int fd, const char* filename, struct stat64* host_stat, int flags) {
+    auto [new_fd, new_filename] = resolve(fd, filename);
+    return ::fstatat64(new_fd, new_filename, host_stat, flags);
+}
+
 int Filesystem::StatFs(const char* filename, struct statfs* buf) {
     if (!filename) {
         WARN("statfs with null filename?");

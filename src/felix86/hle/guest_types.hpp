@@ -229,7 +229,27 @@ struct __attribute__((packed)) x86_stat64 {
     u32 st_ctime_nsec;
     u64 st_ino;
 
-    x86_stat64(struct stat host_stat) {
+    x86_stat64(const struct stat& host_stat) {
+        st_dev = host_stat.st_dev;
+        st_ino = host_stat.st_ino;
+        st_nlink = host_stat.st_nlink;
+        st_mode = host_stat.st_mode;
+        st_uid = host_stat.st_uid;
+        st_gid = host_stat.st_gid;
+        st_rdev = host_stat.st_rdev;
+        st_size = host_stat.st_size;
+        st_blksize = host_stat.st_blksize;
+        st_blocks = host_stat.st_blocks;
+        st_atime_ = host_stat.st_atim.tv_sec;
+        st_atime_nsec = host_stat.st_atim.tv_nsec;
+        st_mtime_ = host_stat.st_mtime;
+        st_mtime_nsec = host_stat.st_mtim.tv_nsec;
+        st_ctime_ = host_stat.st_ctime;
+        st_ctime_nsec = host_stat.st_ctim.tv_nsec;
+        __st_ino = host_stat.st_ino;
+    }
+
+    x86_stat64(const struct stat64& host_stat) {
         st_dev = host_stat.st_dev;
         st_ino = host_stat.st_ino;
         st_nlink = host_stat.st_nlink;

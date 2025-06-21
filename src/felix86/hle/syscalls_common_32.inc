@@ -128,6 +128,8 @@ X(timerfd_settime)
 X(mlock)
 X(mlock2)
 X(munlock)
+X(pidfd_open)
+X(pidfd_getfd)
 
 // X(acct)
 // X(add_key)

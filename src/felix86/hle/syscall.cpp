@@ -197,6 +197,14 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(getrlimit, arg1, arg2);
         break;
     }
+    case felix86_riscv64_pidfd_open: {
+        result = SYSCALL(pidfd_open, arg1, arg2);
+        break;
+    }
+    case felix86_riscv64_pidfd_getfd: {
+        result = SYSCALL(pidfd_getfd, arg1, arg2, arg3);
+        break;
+    }
     case felix86_riscv64_setrlimit: {
         result = SYSCALL(setrlimit, arg1, arg2);
         break;
@@ -2474,6 +2482,15 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_dup2: {
             result = ::dup2(arg1, arg2);
+            break;
+        }
+        case felix86_x86_32_fstatat64: {
+            x86_stat64* stat = (x86_stat64*)arg3;
+            struct stat64 host_stat;
+            result = Filesystem::FStatAt64(arg1, (char*)arg2, &host_stat, arg4);
+            if (result == 0) {
+                *stat = host_stat;
+            }
             break;
         }
         case felix86_x86_32_utimensat_time32: {

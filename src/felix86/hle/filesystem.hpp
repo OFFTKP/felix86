@@ -74,7 +74,9 @@ struct Filesystem {
 
     static int FAccessAt(int fd, const char* filename, int mode, int flags);
 
-    static int FStatAt(int fd, const char* filename, struct stat* guest_stat, int flags);
+    static int FStatAt(int fd, const char* filename, struct stat* host_stat, int flags);
+
+    static int FStatAt64(int fd, const char* filename, struct stat64* host_stat, int flags);
 
     static int StatFs(const char* path, struct statfs* buf);
 
