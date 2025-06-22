@@ -79,8 +79,8 @@ constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
     (Cpuid){0x80000008, NO_SUBLEAF, 0x00003026, 0x00000000, 0x00000000, 0x00000000},
 };
 
-std::span<const Cpuid> selected_mappings = nehalem_mappings;
-std::span<const Cpuid> selected_mappings_32 = p4_mappings_32;
+std::span<const Cpuid> selected_mappings = p4_mappings_sse3;
+std::span<const Cpuid> selected_mappings_32 = p4_mappings_sse3;
 
 Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
     Cpuid result{};
