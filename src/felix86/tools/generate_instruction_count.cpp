@@ -5,7 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <xbyak/xbyak.h>
 #include "Zydis/Disassembler.h"
-#include "biscuit/decoder.hpp"
+#include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 #include "rv64_printer.h"
@@ -35,7 +35,6 @@ void from_json(const ordered_json& j, Instruction& p) {
 }
 
 void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&)) {
-    static Decoder decoder{};
     static bool init = false;
     static ZydisDecoder zydis;
     if (!init) {
@@ -45,8 +44,6 @@ void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& 
     }
 
     rec.setVectorState(SEW::E1024, 0);
-    DecodedInstruction instruction;
-    DecodedOperand operands[4];
     Xbyak::CodeGenerator x;
     auto x86_start = x.getCurr();
     func(x);
@@ -58,14 +55,7 @@ void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& 
     Instruction inst;
     for (int i = 0; i < after - bisc;) {
         void* address = bisc + i;
-        auto status = decoder.Decode(bisc, 4, instruction, operands);
-        if (status == biscuit::DecoderStatus::Ok) {
-            i += instruction.length;
-        } else if (status == biscuit::DecoderStatus::UnknownInstructionCompressed) {
-            i += 2;
-        } else {
-            i += 4;
-        }
+        i += 4;
         u32 data = 0;
         memcpy(&data, address, 4);
         const char* out = rv64_print(data, (u64)address);
@@ -78,7 +68,6 @@ void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& 
 }
 
 void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&), bool flags = false) {
-    static Decoder decoder{};
     static bool init = false;
     static ZydisDecoder zydis;
     if (!init) {
@@ -91,8 +80,6 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
     rec.setVectorState(SEW::E1024, 0);
     rec.setFlagMode(flags ? FlagMode::AlwaysEmit : FlagMode::NeverEmit);
 
-    DecodedInstruction instruction;
-    DecodedOperand operands[4];
     Xbyak::CodeGenerator x(8192);
     auto x86_start = x.getCurr();
     func(x);
@@ -113,14 +100,7 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
 
     for (int i = 0; i < after - bisc;) {
         void* address = bisc + i;
-        auto status = decoder.Decode(bisc, 4, instruction, operands);
-        if (status == biscuit::DecoderStatus::Ok) {
-            i += instruction.length;
-        } else if (status == biscuit::DecoderStatus::UnknownInstructionCompressed) {
-            i += 2;
-        } else {
-            i += 4;
-        }
+        i += 4;
         u32 data = 0;
         memcpy(&data, address, 4);
         const char* out = rv64_print(data, (u64)address);
@@ -319,6 +299,7 @@ int main() {
     Extensions::V = true;
     Extensions::VLEN = 256;
     Extensions::Zicond = true;
+    Handlers::initialize();
 
     std::unique_ptr<Recompiler> rec_storage = std::make_unique<Recompiler>();
     Recompiler& rec = *rec_storage;
@@ -630,6 +611,41 @@ int main() {
         base << json.dump(4);
         json.clear();
     }
+
+    {
+        bool flags = false;
+        GEN(lock(); x.add(ptr[rdi], ah));
+        GEN(lock(); x.add(ptr[rdi], ax));
+        GEN(lock(); x.add(ptr[rdi], eax));
+        GEN(lock(); x.add(ptr[rdi], rax));
+        GEN(lock(); x.xadd(ptr[rdi], eax));
+        GEN(lock(); x.xadd(ptr[rdi], rax));
+        GEN(lock(); x.or_(ptr[rdi], ah));
+        GEN(lock(); x.or_(ptr[rdi], ax));
+        GEN(lock(); x.or_(ptr[rdi], eax));
+        GEN(lock(); x.or_(ptr[rdi], rax));
+        GEN(lock(); x.and_(ptr[rdi], ah));
+        GEN(lock(); x.and_(ptr[rdi], ax));
+        GEN(lock(); x.and_(ptr[rdi], eax));
+        GEN(lock(); x.and_(ptr[rdi], rax));
+        GEN(lock(); x.xor_(ptr[rdi], ah));
+        GEN(lock(); x.xor_(ptr[rdi], ax));
+        GEN(lock(); x.xor_(ptr[rdi], eax));
+        GEN(lock(); x.xor_(ptr[rdi], rax));
+        GEN(lock(); x.xchg(ptr[rdi], ah));
+        GEN(lock(); x.xchg(ptr[rdi], ax));
+        GEN(lock(); x.xchg(ptr[rdi], eax));
+        GEN(lock(); x.xchg(ptr[rdi], rax));
+        GEN(lock(); x.cmpxchg(ptr[rdi], ah));
+        GEN(lock(); x.cmpxchg(ptr[rdi], ax));
+        GEN(lock(); x.cmpxchg(ptr[rdi], eax));
+        GEN(lock(); x.cmpxchg(ptr[rdi], rax));
+
+        std::ofstream base("counts/Lock.json");
+        base << json.dump(4);
+        json.clear();
+    }
+
 #undef GEN
 
 #define GEN(inst) gen(rec, json, [](Xbyak::CodeGenerator& x) { x.inst; })
