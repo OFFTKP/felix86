@@ -253,7 +253,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
     // We also need to remove it from the address cache
     if (g_config.address_cache) {
         AddressCacheEntry& entry = state->recompiler->address_cache[it->second->guest_address & ((1 << address_cache_bits) - 1)];
-        entry.guest = -1ull;
+        entry.guest = ~(it->second->guest_address & ((1 << address_cache_bits) - 1));
         entry.host = 0;
     }
 
@@ -2757,7 +2757,7 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
 
     if (g_config.address_cache) {
         AddressCacheEntry& entry = address_cache[block->guest_address & ((1 << address_cache_bits) - 1)];
-        entry.guest = -1ull;
+        entry.guest = ~(block->guest_address & ((1 << address_cache_bits) - 1));
         entry.host = 0;
     }
 }
