@@ -808,6 +808,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         SignalGuard guard;
         result = (u64)g_mapper->remap((void*)arg1, arg2, arg3, arg4, (void*)arg5);
         if (result > 0) {
+            Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2);
             Recompiler::invalidateRangeGlobal(result, result + arg3);
         }
         break;
@@ -1870,6 +1871,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             SignalGuard guard;
             result = (ssize_t)g_mapper->remap32((void*)arg1, arg2, arg3, arg4, (void*)arg5);
             if (result > 0) {
+                Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2);
                 Recompiler::invalidateRangeGlobal(result, result + arg3);
             }
             break;
