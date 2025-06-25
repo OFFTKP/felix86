@@ -79,6 +79,11 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_
         g_process_globals.perf->addToFile((u64)start_of_code_cache, code_cache_size - ((u64)start_of_code_cache - (u64)code_cache),
                                           "felix86 code cache");
     }
+
+    if (g_config.address_cache) {
+        // Ensure nullptr doesn't match
+        address_cache[0].guest = -1ull;
+    }
 }
 
 Recompiler::~Recompiler() {
@@ -248,7 +253,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
     // We also need to remove it from the address cache
     if (g_config.address_cache) {
         AddressCacheEntry& entry = state->recompiler->address_cache[it->second->guest_address & ((1 << address_cache_bits) - 1)];
-        entry.guest = 0;
+        entry.guest = -1ull;
         entry.host = 0;
     }
 
@@ -2749,6 +2754,12 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     tas.AUIPC(t4, hi20);
     tas.JALR(t6, lo12, t4);
     __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
+
+    if (g_config.address_cache) {
+        AddressCacheEntry& entry = address_cache[block->guest_address & ((1 << address_cache_bits) - 1)];
+        entry.guest = -1ull;
+        entry.host = 0;
+    }
 }
 
 void Recompiler::invalidateRange(u64 start, u64 end) {
