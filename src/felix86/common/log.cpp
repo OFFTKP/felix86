@@ -38,7 +38,7 @@ void Logger::startServer(bool detach) {
         message += "` to join to this log server from future felix86 instances.\n";
         printf("%s", message.c_str());
 
-        if (setsid() != 0) {
+        if (setsid() < 0) {
             printf("Failed to detach log server!\n");
         }
     }
@@ -46,6 +46,8 @@ void Logger::startServer(bool detach) {
     if (!detach) {
         int pid = fork();
         if (pid == 0) {
+            // When the parent dies (main emulator thread), make sure the logging "server" also dies
+            prctl(PR_SET_PDEATHSIG, SIGTERM);
             serverLoop(fd);
         } else {
             // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
@@ -99,8 +101,6 @@ void Logger::serverLoop(int fd) {
     sigdelset(&mask, SIGTERM);
     sigprocmask(SIG_SETMASK, &mask, nullptr);
 
-    // When the parent dies (main emulator thread), make sure the logging "server" also dies
-    prctl(PR_SET_PDEATHSIG, SIGTERM);
     int read_pipe = open(pipe_name.c_str(), O_RDONLY, 0666);
     ASSERT(read_pipe > 0);
     FILE* f = fdopen(fd, "w"); // create the log file to store the log if we need it later
