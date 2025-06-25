@@ -37,10 +37,7 @@ void Logger::startServer(bool detach) {
         message += Logger::getPipeName();
         message += "` to join to this log server from future felix86 instances.\n";
         printf("%s", message.c_str());
-
-        if (setsid() < 0) {
-            printf("Failed to detach log server!\n");
-        }
+        setsid();
     }
 
     if (!detach) {
