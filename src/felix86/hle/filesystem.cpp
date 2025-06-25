@@ -562,40 +562,43 @@ std::filesystem::path Filesystem::resolve(const char* path) {
         return g_fs->GetExecutablePath();
     }
 
+    std::filesystem::path resolved_path;
     if (path[0] == '/') {
-        OurSymlink symlink = isOurSymlinks(AT_FDCWD, path);
-        if (symlink != OurSymlink::No) {
-            // TODO: reduce code duplication here and in other resolve
-            switch (symlink) {
-            case OurSymlink::Proc: {
-                return "/proc";
-            }
-            case OurSymlink::Run: {
-                return "/run";
-            }
-            case OurSymlink::Sys: {
-                return "/sys";
-            }
-            case OurSymlink::Dev: {
-                return "/dev";
-            }
-            case OurSymlink::Tmp: {
-                return "/tmp";
-            }
-            default: {
-                UNREACHABLE();
-            }
-            }
-        }
-
         if (path[1] == '\0') {
-            return g_config.rootfs_path;
+            resolved_path = g_config.rootfs_path;
+        } else {
+            resolved_path = g_config.rootfs_path / &path[1];
         }
-
-        return g_config.rootfs_path / &path[1];
+    } else {
+        resolved_path = path;
     }
 
-    return path;
+    OurSymlink symlink = isOurSymlinks(AT_FDCWD, resolved_path.c_str());
+    if (symlink != OurSymlink::No) {
+        // TODO: reduce code duplication here and in other resolve
+        switch (symlink) {
+        case OurSymlink::Proc: {
+            return "/proc";
+        }
+        case OurSymlink::Run: {
+            return "/run";
+        }
+        case OurSymlink::Sys: {
+            return "/sys";
+        }
+        case OurSymlink::Dev: {
+            return "/dev";
+        }
+        case OurSymlink::Tmp: {
+            return "/tmp";
+        }
+        default: {
+            UNREACHABLE();
+        }
+        }
+    }
+
+    return resolved_path;
 }
 
 void Filesystem::removeRootfsPrefix(std::string& path) {
