@@ -53,8 +53,12 @@ void Logger::startServer(bool detach) {
             ASSERT(g_output_fd > 0);
         }
     } else {
-        // Just run the server loop now, don't fork
-        serverLoop(fd);
+        int pid = fork();
+        if (pid == 0) {
+            serverLoop(fd);
+        } else {
+            exit(0);
+        }
     }
 }
 
