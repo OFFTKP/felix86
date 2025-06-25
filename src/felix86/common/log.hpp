@@ -29,9 +29,12 @@ struct Logger {
 
     static const char* getPipeName();
 
-    static void startServer();
+    static void startServer(bool detach = false);
 
     static void joinServer();
+
+private:
+    static void serverLoop(int fd);
 };
 
 #define LOG(format, ...)                                                                                                                             \

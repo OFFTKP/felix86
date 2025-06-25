@@ -40,6 +40,7 @@ static struct argp_option options[] = {
     {"binfmt-misc", 'b', 0, 0, "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path"},
     {"detect-binfmt-misc", 'd', 0, 0, "Check if we are correctly registered in binfmt_misc, returns 0 if ok"},
     {"unregister-binfmt-misc", 'u', 0, 0, "Unregister the emulator from binfmt_misc"},
+    {"log-server", 'l', 0, 0, "Start just the log server in the background"},
     {0}};
 
 int guest_arg_start_index = -1;
@@ -414,6 +415,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         exit(0);
         break;
     }
+    case 'l': {
+        Logger::startServer(true);
+        exit(0);
+        break;
+    }
     case 's': {
         Config::initialize(true /* ignore envs, because we save the config later */);
         char* real_path = realpath(arg, nullptr);
@@ -499,7 +505,9 @@ int main(int argc, char* argv[]) {
     }
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
-    if (!g_execve_process) {
+
+    const char* pipe = getenv("__FELIX86_PIPE");
+    if (!pipe) {
         Logger::startServer();
     } else {
         Logger::joinServer();
