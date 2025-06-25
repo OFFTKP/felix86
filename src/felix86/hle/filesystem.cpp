@@ -385,6 +385,11 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
     return ::mount(sptr, tptr, fstype, flags, data);
 }
 
+int Filesystem::Umount(const char* path, int flags) {
+    std::filesystem::path target = resolve(path);
+    return ::umount2(target.c_str(), flags);
+}
+
 int Filesystem::INotifyAddWatch(int fd, const char* path, u32 mask) {
     std::filesystem::path file = resolve(path);
     return inotify_add_watch(fd, file.c_str(), mask);

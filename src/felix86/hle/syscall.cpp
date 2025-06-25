@@ -425,7 +425,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_umount2: {
-        result = SYSCALL(umount2, arg1, arg2, arg3, arg4, arg5, arg6);
+        SignalGuard guard;
+        result = Filesystem::Umount((char*)arg1, arg2);
         break;
     }
     case felix86_riscv64_sched_getscheduler: {

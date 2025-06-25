@@ -130,6 +130,8 @@ struct Filesystem {
 
     static int Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data);
 
+    static int Umount(const char* path, int flags);
+
     static int INotifyAddWatch(int fd, const char* path, u32 mask);
 
     static int Truncate(const char* path, u64 length);
