@@ -174,13 +174,14 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
                 ASSERT(segment_base + segment_size < mem + 0x20000);
                 mprotect(segment_base, segment_size, PROT_READ | PROT_WRITE);
                 memcpy(segment_base, vdso_object.data() + offset, segment_size);
-                PLAIN("Val: %lx\n", *(u64*)(segment_base + 0x3e08));
                 mprotect(segment_base, segment_size, prot);
                 PLAIN("Loading from %lx to %lx", offset, segment_base);
             } else {
                 PLAIN("TYPE: %d", phdr->p_type);
             }
         }
+
+        PLAIN("val: %lx\n", *(u64*)(mem + 0x00003e18));
 
         auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)mem}});
     }
