@@ -174,6 +174,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
                 mprotect(segment_base, segment_size, PROT_READ | PROT_WRITE);
                 memcpy(segment_base, vdso_object.data() + offset, segment_size);
                 mprotect(segment_base, segment_size, prot);
+                PLAIN("Loading from %lx to %lx", offset, segment_base);
             }
         }
 
