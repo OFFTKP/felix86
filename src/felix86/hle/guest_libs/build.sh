@@ -30,3 +30,7 @@ nasm -felf64 -shared ./libluajit-5.1.asm -o ./build/jasm.o
 gcc -c -O3 ./libluajit-5.1.c -o ./build/lua.o
 gcc -shared -s -o ./libluajit-5.1.so ./build/lua.o ./build/jasm.o
 patchelf --set-soname libluajit-5.1.so ./libluajit-5.1.so
+
+# Build libvdso for x86-64
+nasm -felf64 -shared ./x64-linux-vdso.asm -o ./build/vdso64.o
+gcc -shared -s -fdata-sections -ffunction-sections -Wl,--gc-sections -o ./x64-linux-vdso.so.1 ./build/vdso64.o

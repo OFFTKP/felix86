@@ -128,6 +128,7 @@ set(FELIX86_HLE_SOURCES
     src/felix86/hle/thread.cpp
     src/felix86/hle/thunks.cpp
     src/felix86/hle/thunks_luajit.cpp
+    src/felix86/hle/vdso.cpp
 
     src/felix86/hle/ioctl/drm.cpp
     src/felix86/hle/ioctl/fat.cpp
