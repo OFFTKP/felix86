@@ -141,7 +141,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         // Since we include it as part of the felix86 binary we can just
         // point there directly in 64-bit mode
         std::span<u8> vdso_object = VDSO::getObject64();
-        auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)vdso_object.data()}});
+        // auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)vdso_object.data()}});
     }
 
     auxv_entries.push_back({AT_NULL, {0}}); // null terminator
