@@ -33,4 +33,4 @@ patchelf --set-soname libluajit-5.1.so ./libluajit-5.1.so
 
 # Build libvdso for x86-64
 nasm -felf64 -shared ./x64-linux-vdso.asm -o ./build/vdso64.o
-gcc -shared -s -fdata-sections -ffunction-sections -Wl,--gc-sections -o ./x64-linux-vdso.so.1 ./build/vdso64.o
+gcc -shared -s -Wl,--version-script=vdso-version.map,-soname,linux-vdso.so.1 -o ./x64-linux-vdso.so.1 ./build/vdso64.o

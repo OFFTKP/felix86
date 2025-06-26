@@ -169,6 +169,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
                     prot |= PROT_EXEC;
                 }
 
+                // TODO: remove hardcoded 0x20000 size hack
+                ASSERT(segment_base + segment_size < mem + 0x20000);
                 mprotect(segment_base, segment_size, PROT_READ | PROT_WRITE);
                 memcpy(segment_base, vdso_object.data() + offset, segment_size);
                 mprotect(segment_base, segment_size, prot);
