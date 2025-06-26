@@ -25,10 +25,6 @@ extern char** environ;
 static char x86_string[] = "i686";
 static char x86_64_string[] = "x86_64";
 
-#define PAGE_START(x) ((x) & ~(uintptr_t)(4095))
-#define PAGE_OFFSET(x) ((x) & 4095)
-#define PAGE_ALIGN(x) (((x) + 4095) & ~(uintptr_t)(4095))
-
 u64 stack_push64(u64 stack, u64 value) {
     stack -= 8;
     *(u64*)stack = value;
@@ -145,8 +141,10 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         // Since we include it as part of the felix86 binary we can just
         // point there directly in 64-bit mode
         std::span<u8> vdso_object = VDSO::getObject64();
-        void* mem = malloc(0x20000);
+        void* mem = mmap(nullptr, vdso_object.size(), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        ASSERT(mem != MAP_FAILED);
         memcpy(mem, vdso_object.data(), vdso_object.size());
+        mprotect(mem, vdso_object.size(), PROT_READ | PROT_EXEC);
         auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)mem}});
     }
 
