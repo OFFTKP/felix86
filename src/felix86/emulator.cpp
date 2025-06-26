@@ -149,6 +149,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
 
         Elf64_Ehdr* ehdr = (Elf64_Ehdr*)vdso_object.data();
         u8* phdrbase = vdso_object.data() + ehdr->e_phoff;
+        PLAIN("num: %d", ehdr->e_phnum);
         for (Elf64_Half i = 0; i < ehdr->e_phnum; i++) {
             Elf64_Phdr* phdr = (Elf64_Phdr*)(phdrbase + i * sizeof(Elf64_Phdr));
             if (phdr->p_type == PT_LOAD) {
@@ -175,6 +176,8 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
                 memcpy(segment_base, vdso_object.data() + offset, segment_size);
                 mprotect(segment_base, segment_size, prot);
                 PLAIN("Loading from %lx to %lx", offset, segment_base);
+            } else {
+                PLAIN("TYPE: %d", phdr->p_type);
             }
         }
 
