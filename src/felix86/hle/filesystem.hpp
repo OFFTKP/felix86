@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <span>
 #include <linux/limits.h>
 #include <linux/stat.h>
 #include "felix86/common/elf.hpp"

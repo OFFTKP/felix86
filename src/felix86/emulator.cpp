@@ -25,6 +25,10 @@ extern char** environ;
 static char x86_string[] = "i686";
 static char x86_64_string[] = "x86_64";
 
+#define PAGE_START(x) ((x) & ~(uintptr_t)(4095))
+#define PAGE_OFFSET(x) ((x) & 4095)
+#define PAGE_ALIGN(x) (((x) + 4095) & ~(uintptr_t)(4095))
+
 u64 stack_push64(u64 stack, u64 value) {
     stack -= 8;
     *(u64*)stack = value;
@@ -141,7 +145,37 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         // Since we include it as part of the felix86 binary we can just
         // point there directly in 64-bit mode
         std::span<u8> vdso_object = VDSO::getObject64();
-        // auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)vdso_object.data()}});
+        u8* mem = (u8*)mmap(nullptr, 0x20000, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
+        Elf64_Ehdr* ehdr = (Elf64_Ehdr*)vdso_object.data();
+        Elf64_Phdr** phdrtable = (Elf64_Phdr**)(vdso_object.data() + ehdr->e_phoff);
+        for (Elf64_Half i = 0; i < ehdr->e_phnum; i++) {
+            Elf64_Phdr* phdr = phdrtable[i];
+            if (phdr->p_type == PT_LOAD) {
+                u8* segment_base = mem + PAGE_START(phdr->p_vaddr);
+                u64 segment_size = phdr->p_filesz + PAGE_OFFSET(phdr->p_vaddr);
+                u64 offset = phdr->p_offset - PAGE_OFFSET(phdr->p_vaddr);
+
+                u8 prot = 0;
+                if (phdr->p_flags & PF_R) {
+                    prot |= PROT_READ;
+                }
+
+                if (phdr->p_flags & PF_W) {
+                    prot |= PROT_WRITE;
+                }
+
+                if (phdr->p_flags & PF_X) {
+                    prot |= PROT_EXEC;
+                }
+
+                mprotect(segment_base, segment_size, PROT_READ | PROT_WRITE);
+                memcpy(segment_base, vdso_object.data() + offset, segment_size);
+                mprotect(segment_base, segment_size, prot);
+            }
+        }
+
+        auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)mem}});
     }
 
     auxv_entries.push_back({AT_NULL, {0}}); // null terminator
