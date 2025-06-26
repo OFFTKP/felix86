@@ -113,6 +113,12 @@ struct SignalGuard {
     SignalGuard(const SignalGuard&) = delete;
     SignalGuard& operator=(const SignalGuard&) = delete;
 
+    void kill() {
+        pthread_sigmask(SIG_SETMASK, &old_mask, nullptr);
+        killed = true;
+    }
+
 private:
     sigset_t old_mask;
+    bool killed = false;
 };

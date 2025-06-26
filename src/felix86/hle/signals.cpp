@@ -768,7 +768,9 @@ SignalGuard::SignalGuard() {
 }
 
 SignalGuard::~SignalGuard() {
-    pthread_sigmask(SIG_SETMASK, &old_mask, nullptr);
+    if (!killed) {
+        pthread_sigmask(SIG_SETMASK, &old_mask, nullptr);
+    }
 }
 
 int Signals::sigprocmask(ThreadState* state, int how, sigset_t* set, sigset_t* oldset) {

@@ -1395,6 +1395,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
         LOG("Running execve, wish me luck:%s", args.c_str());
 
+        // Undo signal guard so the child doesn't inherit the bad mask
+        guard.kill();
+
         syscall(SYS_execve, executable.c_str(), &argv[0], envp.data());
 
         ASSERT_MSG(false, "Error during execve: %s", strerror(errno));
