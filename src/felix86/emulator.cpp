@@ -148,9 +148,9 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         u8* mem = (u8*)mmap(nullptr, 0x20000, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
         Elf64_Ehdr* ehdr = (Elf64_Ehdr*)vdso_object.data();
-        Elf64_Phdr** phdrtable = (Elf64_Phdr**)(vdso_object.data() + ehdr->e_phoff);
+        u8* phdrbase = vdso_object.data() + ehdr->e_phoff;
         for (Elf64_Half i = 0; i < ehdr->e_phnum; i++) {
-            Elf64_Phdr* phdr = phdrtable[i];
+            Elf64_Phdr* phdr = (Elf64_Phdr*)(phdrbase + i * sizeof(Elf64_Phdr));
             if (phdr->p_type == PT_LOAD) {
                 u8* segment_base = mem + PAGE_START(phdr->p_vaddr);
                 u64 segment_size = phdr->p_filesz + PAGE_OFFSET(phdr->p_vaddr);
