@@ -181,7 +181,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
             }
         }
 
-        PLAIN("val: %lx\n", *(u64*)(mem + 0x00003e18));
+        PLAIN("val: %lx %lx\n", mem + 0x00003e18, *(u64*)(mem + 0x00003e18));
 
         auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)mem}});
     }
