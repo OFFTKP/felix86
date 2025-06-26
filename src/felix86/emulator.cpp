@@ -145,45 +145,7 @@ std::pair<void*, size_t> Emulator::setupMainStack(ThreadState* state) {
         // Since we include it as part of the felix86 binary we can just
         // point there directly in 64-bit mode
         std::span<u8> vdso_object = VDSO::getObject64();
-        u8* mem = (u8*)mmap(nullptr, 0x20000, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-
-        Elf64_Ehdr* ehdr = (Elf64_Ehdr*)vdso_object.data();
-        u8* phdrbase = vdso_object.data() + ehdr->e_phoff;
-        PLAIN("num: %d", ehdr->e_phnum);
-        for (Elf64_Half i = 0; i < ehdr->e_phnum; i++) {
-            Elf64_Phdr* phdr = (Elf64_Phdr*)(phdrbase + i * sizeof(Elf64_Phdr));
-            if (phdr->p_type == PT_LOAD) {
-                u8* segment_base = mem + PAGE_START(phdr->p_vaddr);
-                u64 segment_size = phdr->p_filesz + PAGE_OFFSET(phdr->p_vaddr);
-                u64 offset = phdr->p_offset - PAGE_OFFSET(phdr->p_vaddr);
-
-                u8 prot = 0;
-                if (phdr->p_flags & PF_R) {
-                    prot |= PROT_READ;
-                }
-
-                if (phdr->p_flags & PF_W) {
-                    prot |= PROT_WRITE;
-                }
-
-                if (phdr->p_flags & PF_X) {
-                    prot |= PROT_EXEC;
-                }
-
-                // TODO: remove hardcoded 0x20000 size hack
-                ASSERT(segment_base + segment_size < mem + 0x20000);
-                mprotect(segment_base, segment_size, PROT_READ | PROT_WRITE);
-                memcpy(segment_base, vdso_object.data() + offset, segment_size);
-                mprotect(segment_base, segment_size, prot);
-                PLAIN("Loading from %lx to %lx", offset, segment_base);
-            } else {
-                PLAIN("TYPE: %d", phdr->p_type);
-            }
-        }
-
-        PLAIN("val: %lx %lx\n", mem + 0x00003e18, *(u64*)(mem + 0x00003e18));
-
-        auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)mem}});
+        auxv_entries.push_back({AT_SYSINFO_EHDR, {(u64)vdso_object.data()}});
     }
 
     auxv_entries.push_back({AT_NULL, {0}}); // null terminator
