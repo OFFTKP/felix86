@@ -222,11 +222,9 @@ void Emulator::ExitDispatcher(felix86_frame* frame) {
     frame->state->recompiler->exitDispatcher(frame);
 }
 
-std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
-    g_params = config;
+std::pair<ExitReason, int> Emulator::Start() {
     ExitReason exit_reason;
     int exit_code;
-    g_params = config;
 
     g_process_globals.initialize();
 

@@ -376,14 +376,12 @@ void kill_all() {
 }
 
 static error_t parse_opt(int key, char* arg, struct argp_state* state) {
-    StartParameters* params = (StartParameters*)state->input;
-
     if (key == ARGP_KEY_ARG) {
-        if (params->argv.empty()) {
-            params->executable_path = arg;
+        if (g_params.argv.empty()) {
+            g_params.executable_path = arg;
         }
 
-        params->argv.push_back(arg);
+        g_params.argv.push_back(arg);
         guest_arg_start_index = state->next;
         state->next = state->argc; // tell argp to stop
         return 0;
@@ -466,7 +464,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         break;
     }
     case ARGP_KEY_END: {
-        if (params->argv.empty()) {
+        if (g_params.argv.empty()) {
             argp_usage(state);
         }
         break;
@@ -493,13 +491,11 @@ int main(int argc, char* argv[]) {
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
-    StartParameters params = {};
-
-    argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &params);
+    argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &g_params);
     if (guest_arg_start_index != -1) {
         char** argv_next = &argv[guest_arg_start_index];
         while (*argv_next) {
-            params.argv.push_back(*argv_next);
+            g_params.argv.push_back(*argv_next);
             argv_next++;
         }
     }
@@ -519,13 +515,13 @@ int main(int argc, char* argv[]) {
 
     const char* argv0_original = getenv("__FELIX86_ARGV0");
     if (argv0_original) {
-        params.argv[0] = argv0_original;
+        g_params.argv[0] = argv0_original;
     } else {
         ASSERT(!g_execve_process);
     }
 
     std::string args = "Arguments: ";
-    for (const auto& arg : params.argv) {
+    for (const auto& arg : g_params.argv) {
         args += arg;
         args += " ";
     }
@@ -536,7 +532,7 @@ int main(int argc, char* argv[]) {
         if (guest_envs) {
             std::vector<std::string> envs = split_string(guest_envs, ',');
             for (auto& env : envs) {
-                params.envp.push_back(env);
+                g_params.envp.push_back(env);
             }
         }
     } else {
@@ -548,10 +544,10 @@ int main(int argc, char* argv[]) {
                 std::ifstream env_stream(env_path);
                 std::string line;
                 while (std::getline(env_stream, line)) {
-                    params.envp.push_back(line);
+                    g_params.envp.push_back(line);
                 }
 
-                if (params.envp.empty()) {
+                if (g_params.envp.empty()) {
                     purposefully_empty = true;
                 }
             } else {
@@ -559,10 +555,10 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        if (params.envp.empty() && !purposefully_empty) {
+        if (g_params.envp.empty() && !purposefully_empty) {
             char** envp = environ;
             while (*envp) {
-                params.envp.push_back(*envp);
+                g_params.envp.push_back(*envp);
                 envp++;
             }
         }
@@ -573,47 +569,47 @@ int main(int argc, char* argv[]) {
     if (g_config.hacky_envs) {
         // Go uses a bunch of signals for preemption and this breaks our current signal handling
         // Apps like `snap` use go, and those are used sometimes by `apt`, and this async preemption is useless in a lot of programs
-        params.envp.push_back("GODEBUG=asyncpreemptoff=1");
+        g_params.envp.push_back("GODEBUG=asyncpreemptoff=1");
 
         // DOTNET tries to allocate too much heap memory, and many RISC-V boards currently come with 39-bit address space
         // To counteract this by default, we'll limit the heap memory dotnet allocates
-        params.envp.push_back("DOTNET_GCHeapHardLimit=1C0000000");
+        g_params.envp.push_back("DOTNET_GCHeapHardLimit=1C0000000");
     }
 
-    auto it = params.envp.begin();
-    while (it != params.envp.end()) {
+    auto it = g_params.envp.begin();
+    while (it != g_params.envp.end()) {
         std::string env = *it;
 
         // Dont pass these to the executable itself
         if (env.find("FELIX86_") != std::string::npos) {
-            it = params.envp.erase(it);
+            it = g_params.envp.erase(it);
         } else {
             it++;
         }
     }
 
-    if (params.executable_path.empty()) {
+    if (g_params.executable_path.empty()) {
         ERROR("Executable path not specified");
         return 1;
     } else {
-        if (!std::filesystem::exists(params.executable_path)) {
-            ERROR("Executable path does not exist: %s", params.executable_path.c_str());
+        if (!std::filesystem::exists(g_params.executable_path)) {
+            ERROR("Executable path does not exist: %s", g_params.executable_path.c_str());
             return 1;
         }
 
-        if (!std::filesystem::is_regular_file(params.executable_path)) {
+        if (!std::filesystem::is_regular_file(g_params.executable_path)) {
             ERROR("Executable path is not a regular file");
             return 1;
         }
     }
 
-    if (!g_config.binfmt_misc_installed && !g_execve_process && check_if_privileged_executable(params.executable_path)) {
+    if (!g_config.binfmt_misc_installed && !g_execve_process && check_if_privileged_executable(g_params.executable_path)) {
         // Privileged executable but no binfmt_misc support, warn the user
         WARN("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to install "
              "it, make sure to remove other x86/x86-64 emulators from binfmt_misc");
     }
 
-    SIGLOG("New felix86 instance with PID %d and executable path %s", getpid(), params.executable_path.c_str());
+    SIGLOG("New felix86 instance with PID %d and executable path %s", getpid(), g_params.executable_path.c_str());
 
     if (g_execve_process) {
         pthread_setname_np(pthread_self(), "ExecveProcess");
@@ -621,7 +617,7 @@ int main(int argc, char* argv[]) {
         pthread_setname_np(pthread_self(), "MainProcess");
     }
 
-    auto [exit_reason, exit_code] = Emulator::Start(params);
+    auto [exit_reason, exit_code] = Emulator::Start();
 
     if (!g_execve_process) {
         LOG("Main process %d exited with reason: %s. Exit code: %d", getpid(), print_exit_reason(exit_reason), exit_code);

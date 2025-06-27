@@ -18,7 +18,7 @@ struct Emulator {
 
     static void* CompileNext(ThreadState* state);
 
-    [[nodiscard]] static std::pair<ExitReason, int> Start(const StartParameters& config);
+    [[nodiscard]] static std::pair<ExitReason, int> Start();
 
     static void StartTest(const TestConfig& config, u64 stack);
 

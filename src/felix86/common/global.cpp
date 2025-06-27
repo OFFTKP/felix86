@@ -322,6 +322,11 @@ void initialize_globals() {
             if (code == 0) {
                 std::filesystem::path path = buffer;
                 if (std::filesystem::exists(path)) {
+                    // Relocate executable path
+                    std::string new_executable_path = g_params.executable_path;
+                    Filesystem::removeRootfsPrefix(new_executable_path);
+                    new_executable_path = path / std::filesystem::path(new_executable_path).relative_path();
+                    g_params.executable_path = new_executable_path;
                     g_config.rootfs_path = path;
                 } else {
                     ERROR("Path returned by felix86-mounter does not exist: %s", path.c_str());
@@ -354,11 +359,6 @@ void initialize_globals() {
         ERROR("You selected the system root as the rootfs path, which is wrong");
     }
 
-    if (srootfs_path.back() == '/') {
-        // User ended the path with '/', we need to remove it to make sure some of our comparisons
-        // on whether a path is inside the rootfs continue to work
-        g_config.rootfs_path = srootfs_path.substr(0, srootfs_path.size() - 1);
-    }
     ASSERT(std::filesystem::exists(g_config.rootfs_path));
     ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_DIRECTORY);

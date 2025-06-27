@@ -119,5 +119,5 @@ private:
 #define ASSERT_MSG(condition, format, ...)                                                                                                           \
     do {                                                                                                                                             \
         if (!(condition))                                                                                                                            \
-            ERROR(format, ##__VA_ARGS__);                                                                                                            \
+            ERROR("Assertion failed: %s -- " format, #condition, ##__VA_ARGS__);                                                                     \
     } while (false)

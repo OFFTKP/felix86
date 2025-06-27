@@ -1512,7 +1512,7 @@ void felix86_syscall(felix86_frame* frame) {
         }
         case felix86_x86_64_link: {
             SignalGuard guard;
-            result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
+            result = Filesystem::LinkAt(AT_FDCWD, (char*)arg1, AT_FDCWD, (char*)arg2, 0);
             break;
         }
         case felix86_x86_64_readlink: {
@@ -1529,7 +1529,7 @@ void felix86_syscall(felix86_frame* frame) {
         }
         case felix86_x86_64_rename: {
             SignalGuard guard;
-            result = Filesystem::Rename((char*)arg1, (char*)arg2);
+            result = Filesystem::RenameAt2(AT_FDCWD, (char*)arg1, AT_FDCWD, (char*)arg2, 0);
             break;
         }
         case felix86_x86_64_epoll_create: {
@@ -1769,7 +1769,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_rename: {
             SignalGuard guard;
-            result = Filesystem::Rename((char*)arg1, (char*)arg2);
+            result = Filesystem::RenameAt2(AT_FDCWD, (char*)arg1, AT_FDCWD, (char*)arg2, 0);
             break;
         }
         case felix86_x86_32_rmdir: {
@@ -2182,7 +2182,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_link: {
             SignalGuard guard;
-            result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
+            result = Filesystem::LinkAt(AT_FDCWD, (char*)arg1, AT_FDCWD, (char*)arg2, 0);
             break;
         }
         case felix86_x86_32_time32: {
