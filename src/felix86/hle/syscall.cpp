@@ -368,6 +368,15 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = Filesystem::Mount((char*)arg1, (char*)arg2, (char*)arg3, arg4, (void*)arg5);
         break;
     }
+    case felix86_riscv64_chroot: {
+        SignalGuard guard;
+        result = Filesystem::Chroot((char*)arg1);
+        break;
+    }
+    case felix86_riscv64_unshare: {
+        result = SYSCALL(unshare, arg1);
+        break;
+    }
     case felix86_riscv64_accept: {
         result = SYSCALL(accept, arg1, arg2, arg3);
         break;
@@ -1278,18 +1287,16 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         std::string script_interpreter;
         std::vector<std::string> script_args;
 
-        // Resolving this symlink helps gdb find the path
+        // This is going to be the first argument in execve
+        // Depending on if binfmt_misc is installed or not, it will be either the guest
+        // executable or the emulator
         std::filesystem::path executable;
 
-        // If it is a script, we'll run it through the emulator even if we have binfmt_misc
-        // Because we want to pass the guest environment variables
-        // TODO: Maybe in the future consider reworking how we pass guest envs and running scripts natively
         bool is_script = Script::Peek(path) == Script::PeekResult::Script;
-
         if (!g_config.binfmt_misc_installed) {
+            // If binfmt_misc is not installed, push the emulator at the start of the arguments
             executable = g_emulator_path;
             argv.push_back(executable.c_str());
-            argv.push_back(path.c_str());
 
             if (check_if_privileged_executable(path)) {
                 ASSERT_MSG(!is_script, "Script with setuid...?");
@@ -1303,29 +1310,38 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             }
         } else {
             executable = path;
-            // Don't push the emulator, push just the executable and binfmt_misc will figure it out
-            // If it's a script we need to push the interpreter too
-            if (is_script) {
-                Script script(executable);
-                const std::string& args = script.GetArgs();
-                script_interpreter = script.GetInterpreter();
-                script_args = split_string(args, ' ');
-                argv.push_back(script_interpreter.c_str());
-                for (auto it = script_args.begin(); it < script_args.end(); it++) {
-                    if (it->empty())
-                        continue;
+        }
 
-                    argv.push_back(it->c_str());
-                }
+        // Don't push the emulator, push just the executable and binfmt_misc will figure it out
+        // If it's a script we need to push the interpreter too
+        if (is_script) {
+            Script script(path);
+            const std::string& args = script.GetArgs();
+            script_interpreter = script.GetInterpreter();
+            script_args = split_string(args, ' ');
+            argv.push_back(script_interpreter.c_str());
+            for (auto it = script_args.begin(); it < script_args.end(); it++) {
+                if (it->empty())
+                    continue;
 
-                executable = script_interpreter;
-
-                // Technically Linux allows up to 4x recursion here but we'll deal with it when we get there
-                ASSERT_MSG(Script::Peek(executable) != Script::PeekResult::Script, "Recursive script?");
+                argv.push_back(it->c_str());
             }
 
-            argv.push_back(path.c_str());
+            if (g_config.binfmt_misc_installed) {
+                executable = script_interpreter;
+            } else {
+                // Retain emulator path
+            }
+
+            // Technically Linux allows up to 4x recursion here but we'll deal with it when we get there
+            ASSERT_MSG(Script::Peek(executable) != Script::PeekResult::Script, "Recursive script?");
+            ASSERT_MSG(path.string().find(g_config.rootfs_path.string()) == 0, "Script path is not inside rootfs? %s", path.c_str());
+
+            // We are running it through emulated bash, so the script itself needs to be a regular path
+            path = path.string().substr(g_config.rootfs_path.string().size());
         }
+
+        argv.push_back(path.c_str());
 
         if (arg2) {
             u8* guest_argv = (u8*)arg2;
@@ -1385,6 +1401,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         envp.push_back("__FELIX86_EXECVE=1");
         envp.push_back(argv0_original.c_str());
         envp.push_back(log_env.c_str());
+        std::string rootfs_env = std::string("__FELIX86_ROOTFS=") + g_config.rootfs_path.string();
+        envp.push_back(rootfs_env.c_str());
         envp.push_back(nullptr);
 
         std::string args = "";

@@ -235,59 +235,11 @@ std::pair<ExitReason, int> Emulator::Start(const StartParameters& config) {
 #endif
 
     std::string path = g_params.executable_path;
-    ASSERT(path.find(g_config.rootfs_path.string()) == 0);
-
-    for (size_t i = 0; i < g_params.argv.size(); i++) {
-        // We need to remove any rootfs prefix from the arguments
-        auto& p = g_params.argv[i];
-        if (p.find(g_config.rootfs_path) == 0) {
-            auto new_p = p.substr(g_config.rootfs_path.string().size());
-            LOG("Renamed arg[%d] %s -> %s", i, p.c_str(), new_p.c_str());
-            p = new_p;
-            ASSERT(!p.empty());
-            ASSERT(p[0] == '/');
-        }
-    }
-
     Elf::PeekResult peek = Elf::Peek(g_params.executable_path);
-    std::filesystem::path script_path;
     if (peek == Elf::PeekResult::NotElf) {
         Script::PeekResult peek = Script::Peek(g_params.executable_path);
         if (peek == Script::PeekResult::Script) {
-            if (path.find(g_config.rootfs_path) == 0) {
-                path = path.substr(g_config.rootfs_path.string().size());
-                ASSERT(!path.empty());
-                ASSERT(path[0] == '/');
-            }
-            g_params.argv[0] = path;
-
-            Script script(g_params.executable_path);
-            script_path = g_params.executable_path;
-            const std::filesystem::path& interpreter = script.GetInterpreter();
-            const std::string& args = script.GetArgs();
-
-            // Scripts start with a line that goes #! (usually) and that means
-            // use the interpreter after #!. This can be bash, zsh, python, whatever.
-            // So, set executable path to be the interpreter itself and push it to the front of argv.
-            // In that #! line args can follow and if they exist we need to push them to the front in opposite order
-            auto args_array = split_string(args, ' ');
-            for (auto it = args_array.rbegin(); it < args_array.rend(); it++) {
-                if (it->empty())
-                    continue;
-
-                g_params.argv.push_front(*it);
-            }
-
-            g_params.argv.push_front(interpreter.string());
-
-            std::string final;
-            for (auto& arg : g_params.argv) {
-                final += arg + " ";
-            }
-
-            LOG("I built the script arguments: %s", final.c_str());
-
-            g_params.executable_path = interpreter;
+            ERROR("You are trying to run a script file\nPlease start emulated bash and use it to run the script instead");
         } else {
             if (std::filesystem::exists(g_params.executable_path)) {
                 FILE* f = fopen(g_params.executable_path.c_str(), "r");

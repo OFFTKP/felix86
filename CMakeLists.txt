@@ -171,6 +171,8 @@ add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
 
+add_executable(felix86-mounter src/felix86/mounter.cpp)
+
 if (BUILD_THUNKGEN)
     add_executable(felix86_thunkgen src/felix86/hle/guest_libs/generator.cpp)
     target_include_directories(felix86_thunkgen PRIVATE src/felix86/hle)

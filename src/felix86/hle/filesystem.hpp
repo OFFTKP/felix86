@@ -128,6 +128,8 @@ struct Filesystem {
 
     static int Rmdir(const char* path);
 
+    static int Chroot(const char* path);
+
     static int Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data);
 
     static int Umount(const char* path, int flags);
@@ -188,7 +190,7 @@ private:
     std::shared_ptr<Elf> interpreter;
 
     struct EmulatedNode {
-        std::string path;
+        std::filesystem::path path;
 
         // The statx of the actual file for comparison
         struct statx stat{};

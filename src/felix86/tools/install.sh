@@ -87,6 +87,14 @@ if [ -f "$FILE" ]; then
     sudo mv $FILE $TEMP_OLD/
     moved_old=1
 fi
+if [ -f "/usr/bin/felix86-mounter" ]; then
+    sudo mv /usr/bin/felix86-mounter $TEMP_OLD/felix86-mounter.link
+    moved_old=1
+fi
+if [ -f "$INSTALLATION_DIR/felix86-mounter" ]; then
+    sudo mv $INSTALLATION_DIR/felix86-mounter $TEMP_OLD/
+    moved_old=1
+fi
 if [ -d "$INSTALLATION_DIR/lib" ]; then
     sudo mv $INSTALLATION_DIR/lib $TEMP_OLD/
     moved_old=1
@@ -97,8 +105,12 @@ if [[ "$moved_old" == "1" ]]; then
 fi
 
 sudo mv /tmp/felix86_artifact/felix86 $FILE
+sudo mv /tmp/felix86_artifact/felix86-mounter $INSTALLATION_DIR/felix86-mounter
+sudo chown root:root $INSTALLATION_DIR/felix86-mounter
+sudo chmod u+s $INSTALLATION_DIR/felix86-mounter
 sudo mv /tmp/felix86_artifact/lib $INSTALLATION_DIR/
 sudo ln -s $FILE /usr/bin/felix86
+sudo ln -s $INSTALLATION_DIR/felix86-mounter /usr/bin/felix86-mounter
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
 felix86 --set-thunks $INSTALLATION_DIR/lib
 

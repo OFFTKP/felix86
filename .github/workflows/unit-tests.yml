@@ -34,6 +34,7 @@ jobs:
           mkdir -p ./artifact
           mkdir -p ./artifact/lib
           cp ./build/felix86 ./artifact/
+          cp ./build/felix86-mounter ./artifact/
           cp ./src/felix86/hle/guest_libs/libGL.so.1 ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libEGL.so.1 ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libGLX.so.0 ./artifact/lib/

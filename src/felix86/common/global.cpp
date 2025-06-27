@@ -3,9 +3,11 @@
 #include <string>
 #include <fcntl.h>
 #include <linux/perf_event.h>
+#include <spawn.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/utsname.h>
+#include <sys/wait.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/gdbjit.hpp"
@@ -17,6 +19,7 @@
 #include "felix86/common/symlink.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
+#include "felix86/mounter.h"
 #include "felix86/v2/handlers.hpp"
 
 using namespace biscuit;
@@ -233,8 +236,8 @@ void initialize_globals() {
     std::string environment = g_config.getEnvironment();
 
     g_emulator_path.resize(PATH_MAX);
-    int read = readlink("/proc/self/exe", g_emulator_path.data(), PATH_MAX);
-    ASSERT(read != -1);
+    int count = readlink("/proc/self/exe", g_emulator_path.data(), PATH_MAX);
+    ASSERT(count != -1);
 
     // Check for FELIX86_EXTENSIONS environment variable
     const char* all_extensions_env = getenv("FELIX86_ALL_EXTENSIONS");
@@ -263,6 +266,74 @@ void initialize_globals() {
                 environment += "\nFELIX86_EXTENSIONS=" + std::string(extensions_env);
             }
         }
+    }
+
+    const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
+    if (guest_rootfs) {
+        g_config.rootfs_path = guest_rootfs;
+    } else {
+        ASSERT(!g_execve_process);
+
+        // Running for the first time, and we don't have a __FELIX86_ROOTFS set
+        // This means we need to mount everything and set it as the rootfs path
+        // Problem is, we don't have root permissions. For this reason, we use a separate
+        // executable that's been given higher privileges during installation called felix86-mounter
+        // It will mount stuff in /run/felix86/mounts/mount-XXXXXX/rootfs and give us the path
+        // or fail and return non-zero.
+        int pipefd[2];
+        if (pipe(pipefd) != 0) {
+            UNREACHABLE();
+        }
+
+        posix_spawn_file_actions_t actions;
+        posix_spawn_file_actions_init(&actions);
+        posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDOUT_FILENO);
+        posix_spawn_file_actions_addclose(&actions, pipefd[0]);
+
+        pid_t pid;
+        char* argv[] = {(char*)"felix86-mounter", (char*)g_config.rootfs_path.c_str(), (char*)FELIX86_MOUNTER_VERSION, nullptr};
+        char* envp[] = {(char*)"__FELIX86_I_KNOW_WHAT_IM_DOING=1", nullptr};
+
+        if (posix_spawnp(&pid, "felix86-mounter", &actions, nullptr, argv, envp) != 0) {
+            PLAIN("felix86 needs to use felix86-mounter to function. Normally this is installed by the installation script, but if you are compiling "
+                  "yourself, you need to install it once manually");
+            PLAIN("Please run:");
+            PLAIN("    sudo mv ./build/felix86-mounter /usr/bin/felix86-mounter");
+            PLAIN("    sudo chown root:root /usr/bin/felix86-mounter");
+            PLAIN("    sudo chmod u+s /usr/bin/felix86-mounter");
+            ERROR("posix_spawnp failed. Is felix86-mounter in /usr/bin/felix86-mounter?");
+        }
+
+        posix_spawn_file_actions_destroy(&actions);
+
+        int status;
+        waitpid(pid, &status, 0);
+        close(pipefd[1]);
+
+        char buffer[4096];
+        memset(buffer, 0, sizeof(buffer));
+        ssize_t bytes_read = read(pipefd[0], buffer, sizeof(buffer));
+        if (bytes_read <= 0) {
+            ERROR("Couldn't read felix86-mounter output??");
+        }
+
+        if (WIFEXITED(status)) {
+            int code = WEXITSTATUS(status);
+            if (code == 0) {
+                std::filesystem::path path = buffer;
+                if (std::filesystem::exists(path)) {
+                    g_config.rootfs_path = path;
+                } else {
+                    ERROR("Path returned by felix86-mounter does not exist: %s", path.c_str());
+                }
+            } else {
+                ERROR("felix86-mounter failed!!!\nError message:\n\n%s", buffer);
+            }
+        } else {
+            ERROR("felix86-mounter didn't exit normally?");
+        }
+
+        close(pipefd[0]);
     }
 
     if (g_config.rootfs_path.empty()) {
@@ -423,34 +494,6 @@ void initialize_globals() {
         copy("/etc/subgid", g_config.rootfs_path / "etc" / "subgid");
         copy("/etc/machine-id", g_config.rootfs_path / "etc" / "machine-id");
         copy("/etc/resolv.conf", g_config.rootfs_path / "etc" / "resolv.conf");
-
-        auto link = [](const std::string& dir) {
-            std::string src_path = "/" + dir;
-            auto dst_path = g_config.rootfs_path / dir;
-            if (std::filesystem::exists(dst_path)) {
-                // Confirm that it's a symlink
-                char buffer[PATH_MAX];
-                size_t result = readlink(dst_path.c_str(), buffer, PATH_MAX);
-                ASSERT(result > 0);
-                buffer[result] = 0;
-
-                if (std::string(buffer) != src_path) {
-                    ERROR("%s is detected but it's not linked to %s. Remove %s and run felix86 again to let it symlink correctly", dst_path.c_str(),
-                          src_path.c_str(), dst_path.c_str());
-                } else {
-                    // Directory is linked, we are fine
-                }
-            } else {
-                ASSERT_MSG(Symlinker::link(src_path, dst_path), "Failed to symlink %s to %s: %s", src_path.c_str(), dst_path.c_str(),
-                           strerror(errno));
-            }
-        };
-
-        link("run");
-        link("proc");
-        link("sys");
-        link("dev");
-        link("tmp");
 
         // Check if we can find the .Xauthority file inside the rootfs, otherwise warn
         // Since many distros put it in /run we should be able to

@@ -98,7 +98,8 @@ void Filesystem::initializeEmulatedNodes() {
 
     // Populate the stat field in each node
     for (int i = 0; i < EMULATED_NODE_COUNT; i++) {
-        ASSERT(statx(AT_FDCWD, emulated_nodes[i].path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &emulated_nodes[i].stat) == 0);
+        ASSERT(statx(AT_FDCWD, (g_config.rootfs_path / emulated_nodes[i].path.relative_path()).c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID,
+                     &emulated_nodes[i].stat) == 0);
     }
 }
 
@@ -291,7 +292,8 @@ int Filesystem::LChown(const char* filename, u64 owner, u64 group) {
 
 int Filesystem::Chdir(const char* filename) {
     std::filesystem::path path = resolve(filename);
-    int result = ::chdir(path.c_str());
+    WARN("Chdir: %s", path.c_str());
+    int result = ::syscall(SYS_chdir, path.c_str());
     if (result == -1) {
         result = -errno;
     }
@@ -368,6 +370,20 @@ int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, i
 int Filesystem::Rmdir(const char* dir) {
     std::filesystem::path path = resolve(dir);
     return rmdirInternal(path.c_str());
+}
+
+int Filesystem::Chroot(const char* path) {
+    // First, do a no-op chroot to check if we have permissions at all
+    int result = ::chroot("/");
+    if (result != 0) {
+        return -errno;
+    }
+
+    std::filesystem::path target = resolve(path);
+    g_config.rootfs_path = target;
+    close(g_rootfs_fd);
+    g_rootfs_fd = open(target.c_str(), O_DIRECTORY);
+    return 0;
 }
 
 int Filesystem::Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data) {
