@@ -8,7 +8,19 @@
 #include "felix86/common/log.hpp"
 #include "felix86/hle/signals.hpp"
 
+#undef ASSERT_MSG
+// Use printf if we die so it's more obvious than writing to the file
+#define ASSERT_MSG(condition, format, ...)                                                                                                           \
+    do {                                                                                                                                             \
+        if (!(condition)) {                                                                                                                          \
+            printf("Log server assertion failed: " format "\n", ##__VA_ARGS__);                                                                      \
+            exit(1);                                                                                                                                 \
+        }                                                                                                                                            \
+    } while (false)
+
 std::string pipe_name;
+int read_pipe = -1;
+FILE* f = nullptr;
 
 void Logger::log(const char* format, ...) {
     SignalGuard guard;
@@ -79,16 +91,50 @@ void Logger::joinServer() {
     pipe_name = file;
 }
 
+int set_nonblocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("fcntl(F_GETFL)");
+        return -1;
+    }
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl(F_SETFL)");
+        return -1;
+    }
+
+    return 0;
+}
+
+// If terminated, try to flush whatever was in the pipe before dying
+void terminate_server(int sig) {
+    if (sig != SIGTERM) {
+        printf("Logging server got unexpected signal: %d\n", sig);
+        _exit(0);
+    }
+
+    char buffer[4096];
+
+    set_nonblocking(read_pipe);
+    int size = read(read_pipe, buffer, 4096);
+    if (size == -1) {
+        ASSERT_MSG(false, "Logging server got error %d during read?", errno);
+    }
+
+    // There's new logs to output!
+    // Print the message to our stdout
+    std::string message(buffer, size);
+    printf("%s", message.c_str());
+
+    // Also write it to the file
+    size_t written = fwrite(message.c_str(), 1, message.size(), f);
+    ASSERT_MSG(message.size() == written, "Failed to write %zu bytes to file", written);
+    fflush(f);
+    exit(0);
+}
+
 void Logger::serverLoop(int fd) {
-#undef ASSERT_MSG
-    // Use printf if we die so it's more obvious than writing to the file
-#define ASSERT_MSG(condition, format, ...)                                                                                                           \
-    do {                                                                                                                                             \
-        if (!(condition)) {                                                                                                                          \
-            printf("Log server assertion failed: " format "\n", ##__VA_ARGS__);                                                                      \
-            exit(1);                                                                                                                                 \
-        }                                                                                                                                            \
-    } while (false)
+    signal(SIGTERM, terminate_server);
 
     // This is going to be the logging "server". Basically we don't want to print anything to stdout
     // as applications may read it. So we start a separate process with its own stdout to handle
@@ -98,9 +144,9 @@ void Logger::serverLoop(int fd) {
     sigdelset(&mask, SIGTERM);
     sigprocmask(SIG_SETMASK, &mask, nullptr);
 
-    int read_pipe = open(pipe_name.c_str(), O_RDONLY, 0666);
+    read_pipe = open(pipe_name.c_str(), O_RDONLY, 0666);
     ASSERT(read_pipe > 0);
-    FILE* f = fdopen(fd, "w"); // create the log file to store the log if we need it later
+    f = fdopen(fd, "w"); // create the log file to store the log if we need it later
     constexpr size_t buffer_size = 0x10000;
     char buffer[buffer_size];
     while (true) {
