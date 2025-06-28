@@ -108,6 +108,7 @@ int set_nonblocking(int fd) {
 
 // If terminated, try to flush whatever was in the pipe before dying
 void terminate_server(int sig) {
+    printf("Signal got!\n");
     if (sig != SIGSTOP) {
         printf("Logging server got unexpected signal: %d\n", sig);
         _exit(0);
