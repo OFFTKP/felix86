@@ -163,6 +163,8 @@ struct Filesystem {
 
     static ssize_t Listxattr(const char* path, char* list, size_t size, bool llist);
 
+    static std::pair<int, NullablePath> resolveOLD(int fd, const char* path);
+
     static NullablePath resolve(const char* path, bool resolve_symlinks);
 
     static std::pair<int, NullablePath> resolve(int fd, const char* path, bool resolve_symlinks);

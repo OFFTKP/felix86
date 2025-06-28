@@ -470,6 +470,8 @@ int Filesystem::rmdirInternal(const char* path) {
 }
 
 std::pair<int, NullablePath> Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
+    return resolveOLD(fd, path);
+
     auto [new_fd, new_path] = resolveImpl(fd, path, resolve_symlinks);
     return {new_fd, new_path};
 }
@@ -607,4 +609,43 @@ std::pair<int, NullablePath> Filesystem::resolveImpl(int fd, const char* path, b
     // `path` is guaranteed to be absolute here
     ASSERT(fspath.is_absolute());
     return {g_rootfs_fd, fspath.relative_path()};
+}
+
+std::pair<int, NullablePath> Filesystem::resolveOLD(int fd, const char* path) {
+    if (path == nullptr) {
+        return {fd, nullptr};
+    }
+
+    if (isProcSelfExe(path)) {
+        return {AT_FDCWD, g_fs->GetExecutablePath().c_str()};
+    }
+
+    if (path[0] == '/') {
+        if (path[1] == '\0') {
+            return {g_rootfs_fd, "."};
+        }
+
+        return {g_rootfs_fd, &path[1]}; // return rootfs fd, skip the '/'
+    } else {
+        if (std::string(path) == "..") {
+            static struct statx rootfs_statx;
+            static std::once_flag flag;
+            std::call_once(flag, [&]() { ASSERT(statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &rootfs_statx) == 0); });
+
+            bool is_same = false;
+            struct statx new_fd_statx;
+            if (statx(fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &new_fd_statx) == 0) {
+                is_same = statx_inode_same(&rootfs_statx, &new_fd_statx);
+            }
+
+            if (is_same) {
+                // HACK: some programs like `systemd-tmpfiles --create` do some sort of root checking
+                // via `fd = open("/")` and `fd2 = openat(fd, "..")` and comparing if the two fd's have same inode ids
+                // among other things. We don't want this to happen, but a better solution might be possible.
+                return {fd, "."};
+            }
+        }
+
+        return {fd, path};
+    }
 }
