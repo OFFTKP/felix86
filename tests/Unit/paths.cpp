@@ -4,68 +4,82 @@
 
 #define SUCCESS_MESSAGE() SUCCESS("Test passed: %s", Catch::getResultCapture().getCurrentTestName().c_str())
 
+#define PROLOGUE()                                                                                                                                   \
+    Config config = g_config;                                                                                                                        \
+    int fd = g_rootfs_fd;                                                                                                                            \
+    g_config.rootfs_path = "/home/someuser/myrootfs";                                                                                                \
+    g_rootfs_fd = 50
+
+#define EPILOGUE()                                                                                                                                   \
+    g_config = config;                                                                                                                               \
+    g_rootfs_fd = fd;                                                                                                                                \
+    SUCCESS_MESSAGE()
+
 CATCH_TEST_CASE("InsideRootfs", "[paths]") {
-    Config config = g_config;
-    g_config.rootfs_path = "/home/someuser/myrootfs";
+    PROLOGUE();
 
     std::string my_path = "/home/someuser/myrootfs/somedir";
     Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/somedir");
-    g_config = config;
-    SUCCESS_MESSAGE();
+
+    EPILOGUE();
 }
 
 CATCH_TEST_CASE("IsRootfs", "[paths]") {
-    Config config = g_config;
-    g_config.rootfs_path = "/home/someuser/myrootfs";
+    PROLOGUE();
 
     std::string my_path = "/home/someuser/myrootfs";
     Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/");
-    g_config = config;
-    SUCCESS_MESSAGE();
+
+    EPILOGUE();
 }
 
 CATCH_TEST_CASE("IsRootfs2", "[paths]") {
-    Config config = g_config;
-    g_config.rootfs_path = "/home/someuser/myrootfs";
+    PROLOGUE();
 
     std::string my_path = "/home/someuser/myrootfs/";
     Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/");
-    g_config = config;
-    SUCCESS_MESSAGE();
+
+    EPILOGUE();
 }
 
 CATCH_TEST_CASE("OutsideRootfs", "[paths]") {
-    Config config = g_config;
-    g_config.rootfs_path = "/home/someuser/myrootfs";
+    PROLOGUE();
 
     std::string my_path = "/home";
     Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/home");
-    g_config = config;
-    SUCCESS_MESSAGE();
+
+    EPILOGUE();
 }
 
 CATCH_TEST_CASE("Resolve", "[paths]") {
-    Config config = g_config;
-    int fd = g_rootfs_fd;
-    g_config.rootfs_path = "/home/someuser/myrootfs";
-    g_rootfs_fd = 50;
+    PROLOGUE();
 
     auto path = Filesystem::resolve("/etc/drirc", true);
-    CATCH_REQUIRE(path == "/home/someuser/myrootfs/etc/drirc");
+    CATCH_REQUIRE(path.get_str());
+    CATCH_REQUIRE(std::string(path.get_str()) == "/home/someuser/myrootfs/etc/drirc");
 
     auto [new_fd, new_path] = Filesystem::resolve(AT_FDCWD, "/etc/drirc", true);
     CATCH_REQUIRE(new_fd == 50);
-    CATCH_REQUIRE(new_path == "etc/drirc");
+    CATCH_REQUIRE(new_path.get_str());
+    CATCH_REQUIRE(std::string(new_path.get_str()) == "etc/drirc");
 
-    g_config = config;
-    g_rootfs_fd = fd;
-    SUCCESS_MESSAGE();
+    EPILOGUE();
+}
+
+CATCH_TEST_CASE("ResolveNull", "[paths]") {
+    PROLOGUE();
+
+    auto [new_fd, new_path] = Filesystem::resolve(AT_FDCWD, nullptr, false);
+    CATCH_REQUIRE(new_fd == AT_FDCWD);
+    CATCH_REQUIRE(new_path.get_str() == nullptr);
+
+    EPILOGUE();
 }
