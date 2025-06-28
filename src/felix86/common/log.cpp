@@ -56,7 +56,7 @@ void Logger::startServer(bool detach) {
         int pid = fork();
         if (pid == 0) {
             // When the parent dies (main emulator thread), make sure the logging "server" also dies
-            prctl(PR_SET_PDEATHSIG, SIGTERM);
+            prctl(PR_SET_PDEATHSIG, SIGSTOP);
             serverLoop(fd);
         } else {
             // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
@@ -108,7 +108,7 @@ int set_nonblocking(int fd) {
 
 // If terminated, try to flush whatever was in the pipe before dying
 void terminate_server(int sig) {
-    if (sig != SIGTERM) {
+    if (sig != SIGSTOP) {
         printf("Logging server got unexpected signal: %d\n", sig);
         _exit(0);
     }
@@ -134,14 +134,14 @@ void terminate_server(int sig) {
 }
 
 void Logger::serverLoop(int fd) {
-    signal(SIGTERM, terminate_server);
+    signal(SIGSTOP, terminate_server);
 
     // This is going to be the logging "server". Basically we don't want to print anything to stdout
     // as applications may read it. So we start a separate process with its own stdout to handle
     // the displaying of messages.
     sigset_t mask;
     sigfillset(&mask);
-    sigdelset(&mask, SIGTERM);
+    sigdelset(&mask, SIGSTOP);
     sigprocmask(SIG_SETMASK, &mask, nullptr);
 
     read_pipe = open(pipe_name.c_str(), O_RDONLY, 0666);
