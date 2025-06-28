@@ -96,6 +96,7 @@ int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
 int Filesystem::FStatAt(int fd, const char* filename, struct stat* host_stat, int flags) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
     auto [new_fd, new_filename] = resolve(fd, filename, follow);
+    PLAIN("New fstat at {%d %s} -> {%d %s}", fd, filename, new_fd, new_filename.get_str());
     return fstatatInternal(new_fd, new_filename.get_str(), host_stat, flags);
 }
 
