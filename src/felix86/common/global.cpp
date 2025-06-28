@@ -332,8 +332,8 @@ void initialize_globals() {
                     ERROR("Path returned by felix86-mounter does not exist: %s", path.c_str());
                 }
             } else {
-                printf("The error is hit\n");
-                ERROR("felix86-mounter failed!!!\nError message:\n\n%s", buffer);
+                printf("felix86-mounter failed!!!\nError message:\n\n%s", buffer);
+                exit(1);
             }
         } else {
             ERROR("felix86-mounter didn't exit normally?");
