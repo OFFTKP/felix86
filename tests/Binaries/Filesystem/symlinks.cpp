@@ -19,17 +19,22 @@ int main() {
     }
 
     if (chroot(cpath) != 0) {
-        printf("No root permission?\n");
+        printf("No root permission: %d?\n", errno);
         return 1;
     }
 
+    chdir("/");
+
     char buffer[PATH_MAX];
-    ssize_t size = readlink(linked.c_str(), buffer, PATH_MAX);
+    ssize_t size = readlink("./linked", buffer, PATH_MAX);
+    if (size < 0) {
+        printf("Error: %d\n", errno);
+        return 1;
+    }
+
     buffer[size] = 0;
 
-    printf("Buffer: %s\n", buffer);
-
-    if (std::string(buffer) != linked) {
+    if (std::string(buffer) != original) {
         printf("Comparison failed\n");
         return 1;
     }
