@@ -113,6 +113,16 @@ void fs_mount(const std::string& type, const std::string& source, const std::str
     }
 }
 
+void own(const std::filesystem::path& path) {
+    if (chown(path.c_str(), uid, gid) != 0) {
+        DIE("Failed to chown %s", path.c_str());
+    }
+
+    if (chmod(path.c_str(), 0777)) {
+        DIE("Failed to chmod %s", path.c_str());
+    }
+}
+
 /**
     We have a special felix86 directory:
     /run/felix86
@@ -219,9 +229,7 @@ int main(int argc, char* argv[]) {
             DIE("Failed to create /run/felix86");
         }
 
-        if (chown("/run/felix86", uid, gid) != 0) {
-            DIE("Failed to give perms to /run/felix86");
-        }
+        own("/run/felix86");
     }
 
     int fd = open("/run/felix86/mounter.lock", O_CREAT | O_RDWR, 0666);
@@ -264,9 +272,7 @@ int main(int argc, char* argv[]) {
             DIE("Failed to create /run/felix86/mounts");
         }
 
-        if (chown("/run/felix86/mounts", uid, gid) != 0) {
-            DIE("Failed to give perms to /run/felix86/mounts");
-        }
+        own("/run/felix86/mounts");
     }
 
     auto it = std::filesystem::directory_iterator("/run/felix86/mounts", ec);
@@ -314,9 +320,7 @@ int main(int argc, char* argv[]) {
         DIE("What?");
     }
 
-    if (chown(tmp, uid, gid) != 0) {
-        DIE("Failed to give perms to %s", tmp);
-    }
+    own(tmp);
 
     std::filesystem::path mount_base = tmp;
     std::filesystem::path mount_target = mount_base / "rootfs";
@@ -327,9 +331,7 @@ int main(int argc, char* argv[]) {
         DIE("Error while creating %s", mount_target.c_str());
     }
 
-    if (chown(mount_target.c_str(), uid, gid) != 0) {
-        DIE("Failed to give perms to the mount target");
-    }
+    own(mount_target);
 
     // Create the place where we can store auxiliary mountings for pivot_root
     ok = std::filesystem::create_directory(mount_base / "mounts", ec);
@@ -337,9 +339,7 @@ int main(int argc, char* argv[]) {
         DIE("Error while creating /mounts");
     }
 
-    if (chown((mount_base / "mounts").c_str(), uid, gid) != 0) {
-        DIE("Failed to give perms to the mounts dir");
-    }
+    own(mount_base / "mounts");
 
     bind_mount(rootfs_path.c_str(), mount_target);
 
