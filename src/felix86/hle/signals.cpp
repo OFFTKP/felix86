@@ -512,10 +512,11 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
     }
 }
 
-constexpr std::array<RegisteredHostSignal, 3> host_signals = {{
+constexpr std::array<RegisteredHostSignal, 4> host_signals = {{
     {SIGSEGV, SEGV_ACCERR, handle_smc},
     {SIGILL, 0, handle_breakpoint},
     {SIGSEGV, 0, handle_wild_sigsegv}, // order matters, relevant sigsegvs are handled before this handler
+    {SIGPIPE, 0, handle_wild_sigsegv},
 }};
 
 bool dispatch_host(int sig, siginfo_t* info, void* ctx) {
