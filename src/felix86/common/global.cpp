@@ -455,47 +455,6 @@ void initialize_globals() {
     if (!g_execve_process) {
         ASSERT(!g_config.rootfs_path.empty());
 
-        // First time running the emulator (ie. the emulator is not running itself with execve) we need to link some stuff
-        // and copy some stuff inside the rootfs
-        auto copy = [](const char* src, const std::filesystem::path& dst) {
-            if (!std::filesystem::exists(src)) {
-                printf("I couldn't find %s to copy to the rootfs, may cause problems with some games\n", src);
-                return;
-            }
-
-            using co = std::filesystem::copy_options;
-
-            std::error_code ec;
-            std::filesystem::copy(src, dst, co::overwrite_existing | co::recursive, ec);
-            if (ec) {
-                VERBOSE("Error while copying %s: %s", src, ec.message().c_str());
-            }
-        };
-
-        std::filesystem::create_directories(g_config.rootfs_path / "var" / "lib");
-        std::filesystem::create_directories(g_config.rootfs_path / "etc");
-
-        // Copy some stuff to the g_config.rootfs_path
-        copy("/var/lib/dbus", g_config.rootfs_path / "var" / "lib" / "dbus");
-        copy("/etc/mtab", g_config.rootfs_path / "etc" / "mtab");
-        copy("/etc/passwd", g_config.rootfs_path / "etc" / "passwd");
-        copy("/etc/passwd-", g_config.rootfs_path / "etc" / "passwd-");
-        copy("/etc/group", g_config.rootfs_path / "etc" / "group");
-        copy("/etc/group-", g_config.rootfs_path / "etc" / "group-");
-        copy("/etc/shadow", g_config.rootfs_path / "etc" / "shadow");
-        copy("/etc/shadow-", g_config.rootfs_path / "etc" / "shadow-");
-        copy("/etc/gshadow", g_config.rootfs_path / "etc" / "gshadow");
-        copy("/etc/gshadow-", g_config.rootfs_path / "etc" / "gshadow-");
-        copy("/etc/hosts", g_config.rootfs_path / "etc" / "hosts");
-        copy("/etc/hostname", g_config.rootfs_path / "etc" / "hostname");
-        copy("/etc/timezone", g_config.rootfs_path / "etc" / "timezone");
-        copy("/etc/localtime", g_config.rootfs_path / "etc" / "localtime");
-        copy("/etc/fstab", g_config.rootfs_path / "etc" / "fstab");
-        copy("/etc/subuid", g_config.rootfs_path / "etc" / "subuid");
-        copy("/etc/subgid", g_config.rootfs_path / "etc" / "subgid");
-        copy("/etc/machine-id", g_config.rootfs_path / "etc" / "machine-id");
-        copy("/etc/resolv.conf", g_config.rootfs_path / "etc" / "resolv.conf");
-
         // Check if we can find the .Xauthority file inside the rootfs, otherwise warn
         // Since many distros put it in /run we should be able to
         if (!std::filesystem::exists(g_config.rootfs_path / xauthority_path.relative_path())) {

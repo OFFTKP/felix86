@@ -354,6 +354,44 @@ int main(int argc, char* argv[]) {
     bind_mount("/run", mount_target / "run");
     bind_mount("/tmp", mount_target / "tmp");
 
+    auto copy = [](const char* src, const std::filesystem::path& dst) {
+        if (!std::filesystem::exists(src)) {
+            return;
+        }
+
+        using co = std::filesystem::copy_options;
+
+        std::error_code ec;
+        std::filesystem::copy(src, dst, co::overwrite_existing, ec);
+        if (ec) {
+            DIE("Error while copying %s: %s", src, ec.message().c_str());
+        }
+    };
+
+    std::filesystem::create_directories(mount_target / "etc", ec);
+    std::filesystem::create_directories(mount_target / "var" / "lib", ec);
+
+    // Copy some stuff to the rootfs_path
+    copy("/var/lib/dbus", mount_target / "var" / "lib" / "dbus");
+    copy("/etc/mtab", mount_target / "etc" / "mtab");
+    copy("/etc/passwd", mount_target / "etc" / "passwd");
+    copy("/etc/passwd-", mount_target / "etc" / "passwd-");
+    copy("/etc/group", mount_target / "etc" / "group");
+    copy("/etc/group-", mount_target / "etc" / "group-");
+    copy("/etc/shadow", mount_target / "etc" / "shadow");
+    copy("/etc/shadow-", mount_target / "etc" / "shadow-");
+    copy("/etc/gshadow", mount_target / "etc" / "gshadow");
+    copy("/etc/gshadow-", mount_target / "etc" / "gshadow-");
+    copy("/etc/hosts", mount_target / "etc" / "hosts");
+    copy("/etc/hostname", mount_target / "etc" / "hostname");
+    copy("/etc/timezone", mount_target / "etc" / "timezone");
+    copy("/etc/localtime", mount_target / "etc" / "localtime");
+    copy("/etc/fstab", mount_target / "etc" / "fstab");
+    copy("/etc/subuid", mount_target / "etc" / "subuid");
+    copy("/etc/subgid", mount_target / "etc" / "subgid");
+    copy("/etc/machine-id", mount_target / "etc" / "machine-id");
+    copy("/etc/resolv.conf", mount_target / "etc" / "resolv.conf");
+
     // Only now that everything was mounted, write to the path.txt for future invocations
     {
         std::ofstream ofs(mount_base / "path.txt");

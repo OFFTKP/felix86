@@ -169,3 +169,24 @@ if ! felix86 -d; then
 fi
 
 echo "felix86 installed successfully"
+echo
+echo
+
+echo ┌───────────────────────────────────────┐
+echo │       felix86 is now installed!       │
+echo ├───────────────────────────────────────┤
+echo │                                       │
+echo │ To enter an emulated bash, use:       │
+echo │                                       │
+echo │ felix86 /usr/bin/bash                 │
+echo │                                       │
+echo │   OR                                  │
+echo │                                       │
+echo │ /path/to/rootfs/usr/bin/bash          │
+echo │                                       │
+echo ├───────────────────────────────────────┤
+echo │ Alternatively, run programs directly: │
+echo │                                       │
+echo │ /path/to/rootfs/MyGame.out            │
+echo │                                       │
+echo └───────────────────────────────────────┘
