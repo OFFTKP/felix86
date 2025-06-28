@@ -96,7 +96,6 @@ int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
 int Filesystem::FStatAt(int fd, const char* filename, struct stat* host_stat, int flags) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
     auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    PLAIN("New fstat at {%d %s} -> {%d %s}", fd, filename, new_fd, new_filename.get_str());
     return fstatatInternal(new_fd, new_filename.get_str(), host_stat, flags);
 }
 
@@ -153,6 +152,7 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
 
 int Filesystem::Getcwd(char* buf, size_t size) {
     int result = syscall(SYS_getcwd, buf, size);
+    WARN("CWD: %s", buf);
 
     if (result > 0) {
         std::string str = buf;
@@ -252,6 +252,7 @@ int Filesystem::LChown(const char* filename, u64 owner, u64 group) {
 }
 
 int Filesystem::Chdir(const char* filename) {
+    WARN("Chdir: %s", filename);
     NullablePath path = resolve(filename, true);
     int result = ::syscall(SYS_chdir, path.get_str());
     if (result == -1) {
