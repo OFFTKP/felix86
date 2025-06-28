@@ -1268,7 +1268,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         }
 
         SignalGuard guard;
-        std::filesystem::path path = Symlinker::resolve((char*)arg1);
+        NullablePath npath = Filesystem::resolve((char*)arg1, true);
+        ASSERT(npath.get_str());
+        std::filesystem::path path = npath.get_str();
 
         if (!std::filesystem::exists(path)) {
             WARN("Execve couldn't find path: %s", path.c_str());
