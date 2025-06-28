@@ -508,7 +508,7 @@ bool Filesystem::isProcSelfExe(const char* path) {
 
 std::pair<int, std::filesystem::path> Filesystem::resolveImpl(int fd, const char* path, bool resolve_symlinks) {
     if (path == nullptr || path[0] == 0) {
-        return {fd, path};
+        return {fd, "."};
     }
 
     if (isProcSelfExe(path)) {
