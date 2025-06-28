@@ -97,7 +97,9 @@ void fs_mount(const std::string& type, const std::string& source, const std::str
     pid_t pid = fork();
 
     if (pid == 0) {
-        setuid(geteuid());
+        if (setuid(geteuid()) != 0) {
+            DIE("Couldn't setuid, do I not have permissions?");
+        }
         execve("/usr/bin/mount", const_cast<char* const*>(argv), environ);
         DIE("execve(mount) failed");
     } else {
@@ -362,9 +364,9 @@ int main(int argc, char* argv[]) {
         using co = std::filesystem::copy_options;
 
         std::error_code ec;
-        std::filesystem::copy(src, dst, co::overwrite_existing, ec);
+        std::filesystem::copy(src, dst, co::overwrite_existing | co::recursive, ec);
         if (ec) {
-            DIE("Error while copying %s: %s", src, ec.message().c_str());
+            printf("Error while copying %s: %s", src, ec.message().c_str());
         }
     };
 
