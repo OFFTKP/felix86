@@ -84,25 +84,25 @@ int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
         }
     }
 
-    return openatInternal(new_fd, new_filename.c_str(), flags, mode);
+    return openatInternal(new_fd, new_filename.get_str(), flags, mode);
 }
 
 int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
     auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    return faccessatInternal(new_fd, new_filename.c_str(), mode, flags);
+    return faccessatInternal(new_fd, new_filename.get_str(), mode, flags);
 }
 
 int Filesystem::FStatAt(int fd, const char* filename, struct stat* host_stat, int flags) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
     auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    return fstatatInternal(new_fd, new_filename.c_str(), host_stat, flags);
+    return fstatatInternal(new_fd, new_filename.get_str(), host_stat, flags);
 }
 
 int Filesystem::FStatAt64(int fd, const char* filename, struct stat64* host_stat, int flags) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
     auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    return ::fstatat64(new_fd, new_filename.c_str(), host_stat, flags);
+    return ::fstatat64(new_fd, new_filename.get_str(), host_stat, flags);
 }
 
 int Filesystem::StatFs(const char* filename, struct statfs* buf) {
@@ -115,15 +115,17 @@ int Filesystem::StatFs(const char* filename, struct statfs* buf) {
 #define ST_NOSYMFOLLOW 0x2000
 #endif
     bool follow = !(buf->f_flags & ST_NOSYMFOLLOW);
-    std::filesystem::path path = resolve(filename, follow);
-    return statfsInternal(path.c_str(), buf);
+    NullablePath path = resolve(filename, follow);
+    return statfsInternal(path.get_str(), buf);
 }
 
 int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) {
     if (isProcSelfExe(filename)) {
         // If it's /proc/self/exe or similar, we don't want to resolve the path then readlink,
         // because readlink will fail as the resolved path would not be a link
-        std::string path = resolve(filename, false);
+        NullablePath npath = resolve(filename, false);
+        ASSERT(npath.get_str());
+        std::string path = npath.get_str();
         const size_t rootfs_size = g_config.rootfs_path.string().size();
         const size_t stem_size = path.size() - rootfs_size;
         // TODO!!!: g_fs->ExecutablePath() gets the path that's not inside the *mounted* rootfs but the original rootfs
@@ -136,7 +138,7 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
 
     auto [new_fd, new_filename] = resolve(fd, filename, false);
 
-    int result = readlinkatInternal(new_fd, new_filename.c_str(), buf, bufsiz);
+    int result = readlinkatInternal(new_fd, new_filename.get_str(), buf, bufsiz);
 
     if (result > 0) {
         std::string str(buf, result);
@@ -167,7 +169,7 @@ int Filesystem::SymlinkAt(const char* oldname, int newfd, const char* newname) {
     }
 
     auto [newfd2, newpath] = resolve(newfd, newname, false);
-    int result = ::symlinkat(oldname, newfd2, newpath.c_str());
+    int result = ::symlinkat(oldname, newfd2, newpath.get_str());
     if (result == -1) {
         result = -errno;
     }
@@ -181,7 +183,7 @@ int Filesystem::RenameAt2(int oldfd, const char* oldname, int newfd, const char*
 
     auto [oldfd2, oldpath] = resolve(oldfd, oldname, false);
     auto [newfd2, newpath] = resolve(newfd, newname, false);
-    int result = ::renameat2(oldfd2, oldpath.c_str(), newfd2, newpath.c_str(), flags);
+    int result = ::renameat2(oldfd2, oldpath.get_str(), newfd2, newpath.get_str(), flags);
     if (result == -1) {
         result = -errno;
     }
@@ -193,8 +195,8 @@ int Filesystem::Chmod(const char* filename, u64 mode) {
         return -EINVAL;
     }
 
-    std::filesystem::path path = resolve(filename, true);
-    int result = ::chmod(path.c_str(), mode);
+    NullablePath path = resolve(filename, true);
+    int result = ::chmod(path.get_str(), mode);
     if (result == -1) {
         result = -errno;
     }
@@ -202,14 +204,14 @@ int Filesystem::Chmod(const char* filename, u64 mode) {
 }
 
 int Filesystem::Creat(const char* filename, u64 mode) {
-    std::filesystem::path path = resolve(filename, false);
-    return ::creat(path.c_str(), mode);
+    NullablePath path = resolve(filename, false);
+    return ::creat(path.get_str(), mode);
 }
 
 int Filesystem::Statx(int fd, const char* filename, int flags, u32 mask, struct statx* statxbuf) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
     auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    return statxInternal(new_fd, new_filename.c_str(), flags, mask, statxbuf);
+    return statxInternal(new_fd, new_filename.get_str(), flags, mask, statxbuf);
 }
 
 int Filesystem::UnlinkAt(int fd, const char* filename, int flags) {
@@ -219,7 +221,7 @@ int Filesystem::UnlinkAt(int fd, const char* filename, int flags) {
     }
 
     auto [new_fd, new_filename] = resolve(fd, filename, true);
-    return unlinkatInternal(new_fd, new_filename.c_str(), flags);
+    return unlinkatInternal(new_fd, new_filename.get_str(), flags);
 }
 
 int Filesystem::LinkAt(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags) {
@@ -227,12 +229,12 @@ int Filesystem::LinkAt(int oldfd, const char* oldpath, int newfd, const char* ne
     auto [roldfd, roldpath] = resolve(oldfd, oldpath, follow);
     auto [rnewfd, rnewpath] = resolve(newfd, newpath, follow);
 
-    return linkatInternal(roldfd, roldpath.c_str(), rnewfd, rnewpath.c_str(), flags);
+    return linkatInternal(roldfd, roldpath.get_str(), rnewfd, rnewpath.get_str(), flags);
 }
 
 int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
-    std::filesystem::path path = resolve(filename, true);
-    int result = ::chown(path.c_str(), owner, group);
+    NullablePath path = resolve(filename, true);
+    int result = ::chown(path.get_str(), owner, group);
     if (result == -1) {
         result = -errno;
     }
@@ -240,8 +242,8 @@ int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
 }
 
 int Filesystem::LChown(const char* filename, u64 owner, u64 group) {
-    std::filesystem::path path = resolve(filename, false);
-    int result = ::lchown(path.c_str(), owner, group);
+    NullablePath path = resolve(filename, false);
+    int result = ::lchown(path.get_str(), owner, group);
     if (result == -1) {
         result = -errno;
     }
@@ -249,8 +251,8 @@ int Filesystem::LChown(const char* filename, u64 owner, u64 group) {
 }
 
 int Filesystem::Chdir(const char* filename) {
-    std::filesystem::path path = resolve(filename, true);
-    int result = ::syscall(SYS_chdir, path.c_str());
+    NullablePath path = resolve(filename, true);
+    int result = ::syscall(SYS_chdir, path.get_str());
     if (result == -1) {
         result = -errno;
     }
@@ -259,7 +261,7 @@ int Filesystem::Chdir(const char* filename) {
 
 int Filesystem::MkdirAt(int fd, const char* filename, u64 mode) {
     auto [new_fd, new_path] = resolve(fd, filename, true);
-    int result = ::mkdirat(new_fd, new_path.c_str(), mode);
+    int result = ::mkdirat(new_fd, new_path.get_str(), mode);
     if (result == -1) {
         result = -errno;
     }
@@ -268,7 +270,7 @@ int Filesystem::MkdirAt(int fd, const char* filename, u64 mode) {
 
 int Filesystem::MknodAt(int fd, const char* filename, u64 mode, u64 dev) {
     auto [new_fd, new_path] = resolve(fd, filename, true);
-    int result = ::mknodat(new_fd, new_path.c_str(), mode, dev);
+    int result = ::mknodat(new_fd, new_path.get_str(), mode, dev);
     if (result == -1) {
         result = -errno;
     }
@@ -277,56 +279,57 @@ int Filesystem::MknodAt(int fd, const char* filename, u64 mode, u64 dev) {
 
 int Filesystem::FChmodAt(int fd, const char* filename, u64 mode) {
     auto [new_fd, new_filename] = resolve(fd, filename, true);
-    return fchmodatInternal(new_fd, new_filename.c_str(), mode);
+    return fchmodatInternal(new_fd, new_filename.get_str(), mode);
 }
 
 int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, size_t size) {
-    std::filesystem::path path = resolve(filename, false);
-    return lgetxattrInternal(path.c_str(), name, value, size);
+    NullablePath path = resolve(filename, false);
+    return lgetxattrInternal(path.get_str(), name, value, size);
 }
 
 ssize_t Filesystem::Listxattr(const char* filename, char* list, size_t size, bool llist) {
-    std::filesystem::path path = resolve(filename, true);
-    if (llist) {
-        return ::listxattr(path.c_str(), list, size);
+    if (!llist) {
+        NullablePath path = resolve(filename, true);
+        return ::listxattr(path.get_str(), list, size);
     } else {
-        return ::llistxattr(path.c_str(), list, size);
+        NullablePath path = resolve(filename, false);
+        return ::llistxattr(path.get_str(), list, size);
     }
 }
 
 int Filesystem::GetXAttr(const char* filename, const char* name, void* value, size_t size) {
-    std::filesystem::path path = resolve(filename, true);
-    return getxattrInternal(path.c_str(), name, value, size);
+    NullablePath path = resolve(filename, true);
+    return getxattrInternal(path.get_str(), name, value, size);
 }
 
 int Filesystem::LSetXAttr(const char* filename, const char* name, void* value, size_t size, int flags) {
-    std::filesystem::path path = resolve(filename, false);
-    return lsetxattrInternal(path.c_str(), name, value, size, flags);
+    NullablePath path = resolve(filename, false);
+    return lsetxattrInternal(path.get_str(), name, value, size, flags);
 }
 
 int Filesystem::SetXAttr(const char* filename, const char* name, void* value, size_t size, int flags) {
-    std::filesystem::path path = resolve(filename, true);
-    return setxattrInternal(path.c_str(), name, value, size, flags);
+    NullablePath path = resolve(filename, true);
+    return setxattrInternal(path.get_str(), name, value, size, flags);
 }
 
 int Filesystem::RemoveXAttr(const char* filename, const char* name) {
-    std::filesystem::path path = resolve(filename, true);
-    return removexattrInternal(path.c_str(), name);
+    NullablePath path = resolve(filename, true);
+    return removexattrInternal(path.get_str(), name);
 }
 
 int Filesystem::LRemoveXAttr(const char* filename, const char* name) {
-    std::filesystem::path path = resolve(filename, false);
-    return lremovexattrInternal(path.c_str(), name);
+    NullablePath path = resolve(filename, false);
+    return lremovexattrInternal(path.get_str(), name);
 }
 
 int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, int flags) {
     auto [new_fd, new_filename] = resolve(fd, filename, true);
-    return utimensatInternal(new_fd, new_filename.c_str(), spec, flags);
+    return utimensatInternal(new_fd, new_filename.get_str(), spec, flags);
 }
 
 int Filesystem::Rmdir(const char* dir) {
-    std::filesystem::path path = resolve(dir, true);
-    return rmdirInternal(path.c_str());
+    NullablePath path = resolve(dir, true);
+    return rmdirInternal(path.get_str());
 }
 
 int Filesystem::Chroot(const char* path) {
@@ -336,10 +339,14 @@ int Filesystem::Chroot(const char* path) {
         return -errno;
     }
 
-    std::filesystem::path target = resolve(path, true);
-    g_config.rootfs_path = target;
+    if (!path) {
+        return -EINVAL;
+    }
+
+    NullablePath target = resolve(path, true);
+    g_config.rootfs_path = target.get_str();
     close(g_rootfs_fd);
-    g_rootfs_fd = open(target.c_str(), O_DIRECTORY);
+    g_rootfs_fd = open(target.get_str(), O_DIRECTORY);
     return 0;
 }
 
@@ -349,32 +356,32 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
 
     bool follow = !(flags & MS_NOSYMFOLLOW);
 
-    std::filesystem::path rsource, rtarget;
+    NullablePath rsource, rtarget;
     if (source) {
         rsource = resolve(source, follow);
-        sptr = rsource.c_str();
+        sptr = rsource.get_str();
     }
     if (target) {
         rtarget = resolve(target, follow);
-        tptr = rtarget.c_str();
+        tptr = rtarget.get_str();
     }
     return ::mount(sptr, tptr, fstype, flags, data);
 }
 
 int Filesystem::Umount(const char* path, int flags) {
     bool follow = !(flags & UMOUNT_NOFOLLOW);
-    std::filesystem::path target = resolve(path, follow);
-    return ::umount2(target.c_str(), flags);
+    NullablePath target = resolve(path, follow);
+    return ::umount2(target.get_str(), flags);
 }
 
 int Filesystem::INotifyAddWatch(int fd, const char* path, u32 mask) {
-    std::filesystem::path file = resolve(path, true);
-    return inotify_add_watch(fd, file.c_str(), mask);
+    NullablePath file = resolve(path, true);
+    return inotify_add_watch(fd, file.get_str(), mask);
 }
 
 int Filesystem::Truncate(const char* path, u64 length) {
-    std::filesystem::path file = resolve(path, true);
-    return truncate(file.c_str(), length);
+    NullablePath file = resolve(path, true);
+    return truncate(file.get_str(), length);
 }
 
 int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode) {
@@ -460,18 +467,20 @@ int Filesystem::rmdirInternal(const char* path) {
     return ::rmdir(path);
 }
 
-std::pair<int, std::filesystem::path> Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
+std::pair<int, NullablePath> Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
     auto [new_fd, new_path] = resolveImpl(fd, path, resolve_symlinks);
     return {new_fd, new_path};
 }
 
-std::filesystem::path Filesystem::resolve(const char* path, bool resolve_symlinks) {
+NullablePath Filesystem::resolve(const char* path, bool resolve_symlinks) {
     if (!path) {
-        ERROR("Resolve with null path?");
+        return nullptr;
     }
 
     if (path[0] == '/') {
-        return g_config.rootfs_path / resolve(AT_FDCWD, path, resolve_symlinks).second;
+        NullablePath npath = resolve(AT_FDCWD, path, resolve_symlinks).second;
+        ASSERT(npath.get_str());
+        return g_config.rootfs_path / npath.get_str();
     } else {
         return path;
     }
@@ -498,6 +507,10 @@ void Filesystem::removeRootfsPrefix(std::string& path) {
 }
 
 bool Filesystem::isProcSelfExe(const char* path) {
+    if (!path) {
+        return false;
+    }
+
     std::string spath = path;
     std::string pidpath = "/proc/" + std::to_string(getpid()) + "/exe";
     if (spath == "/proc/self/exe" || spath == "/proc/thread-self/exe" || spath == pidpath) {
@@ -506,9 +519,9 @@ bool Filesystem::isProcSelfExe(const char* path) {
     return false;
 }
 
-std::pair<int, std::filesystem::path> Filesystem::resolveImpl(int fd, const char* path, bool resolve_symlinks) {
-    if (path == nullptr || path[0] == 0) {
-        return {fd, ""};
+std::pair<int, NullablePath> Filesystem::resolveImpl(int fd, const char* path, bool resolve_symlinks) {
+    if (path == nullptr) {
+        return {fd, nullptr};
     }
 
     if (isProcSelfExe(path)) {

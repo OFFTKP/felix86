@@ -8,6 +8,31 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/types.hpp"
 
+// Like path but can also be null
+struct NullablePath {
+    NullablePath() : is_null(true) {}
+    NullablePath(const char* path) {
+        if (!path) {
+            is_null = true;
+        } else {
+            this->path = path;
+        }
+    }
+    NullablePath(const std::filesystem::path& path) : path(path) {}
+
+    const char* get_str() {
+        if (is_null) {
+            return nullptr;
+        } else {
+            return path.c_str();
+        }
+    }
+
+private:
+    std::filesystem::path path{};
+    bool is_null = false;
+};
+
 struct Filesystem {
     void initializeEmulatedNodes();
 
@@ -138,11 +163,11 @@ struct Filesystem {
 
     static ssize_t Listxattr(const char* path, char* list, size_t size, bool llist);
 
-    static std::filesystem::path resolve(const char* path, bool resolve_symlinks);
+    static NullablePath resolve(const char* path, bool resolve_symlinks);
 
-    static std::pair<int, std::filesystem::path> resolve(int fd, const char* path, bool resolve_symlinks);
+    static std::pair<int, NullablePath> resolve(int fd, const char* path, bool resolve_symlinks);
 
-    static std::pair<int, std::filesystem::path> resolveImpl(int fd, const char* path, bool resolve_symlinks);
+    static std::pair<int, NullablePath> resolveImpl(int fd, const char* path, bool resolve_symlinks);
 
     static void removeRootfsPrefix(std::string& path);
 
