@@ -273,6 +273,7 @@ void initialize_globals() {
         g_config.rootfs_path = guest_rootfs;
     } else {
         ASSERT(!g_execve_process);
+        ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
 
         // Running for the first time, and we don't have a __FELIX86_ROOTFS set
         // This means we need to mount everything and set it as the rootfs path
