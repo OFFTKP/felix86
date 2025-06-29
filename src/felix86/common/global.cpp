@@ -16,7 +16,6 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/perf.hpp"
 #include "felix86/common/state.hpp"
-#include "felix86/common/symlink.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/mounter.h"

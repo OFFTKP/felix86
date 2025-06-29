@@ -23,7 +23,6 @@
 #include "felix86/common/script.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/strace.hpp"
-#include "felix86/common/symlink.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
