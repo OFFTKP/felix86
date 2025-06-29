@@ -563,7 +563,7 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
         break;
 #define SIMD(name) X(name)
 #define X87(name) X(name)
-#include "felix86/v2/handlers.inc"
+#include "felix86/v2/mnemonics.inc"
 #undef X
 #undef SIMD
 #undef X87
