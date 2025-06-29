@@ -53,7 +53,7 @@ private:
 
 #define ERROR(format, ...)                                                                                                                           \
     do {                                                                                                                                             \
-        Logger::log(ANSI_COLOR_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILENAME__, __LINE__, getpid(), ##__VA_ARGS__);             \
+        Logger::log(ANSI_COLOR_RED "%s:%d (Thread: %d) " format ANSI_COLOR_RESET "\n", __FILENAME__, __LINE__, gettid(), ##__VA_ARGS__);             \
         felix86_exit(1);                                                                                                                             \
     } while (0)
 
