@@ -31,7 +31,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
 
     argv.push_back(felix_path.c_str());
     if (extension == ".exe") {
-        argv.push_back("/usr/lib/wine/wine64");
+        argv.push_back("/usr/bin/wine");
         envp.push_back("WINEDEBUG=-all");
     }
     argv.push_back(spath.c_str());
