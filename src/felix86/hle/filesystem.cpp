@@ -1,5 +1,6 @@
 #include <cstring>
 #include <fcntl.h>
+#include <linux/openat2.h>
 #include <sys/inotify.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
@@ -479,7 +480,8 @@ NullablePath Filesystem::resolve(const char* path, bool resolve_symlinks) {
     if (path[0] == '/') {
         NullablePath npath = resolve(AT_FDCWD, path, resolve_symlinks).second;
         ASSERT(npath.get_str());
-        return g_config.rootfs_path / npath.get_str();
+        ASSERT(npath.get_str()[0] == '/');
+        return npath.get_str();
     } else {
         return path;
     }
@@ -523,85 +525,85 @@ std::pair<int, NullablePath> Filesystem::resolveImpl(int fd, const char* path, b
         return {fd, nullptr};
     }
 
+    if (path[0] == 0) {
+        return {fd, path};
+    }
+
+    if (path[0] == '/' && path[1] == 0) {
+        return {AT_FDCWD, g_config.rootfs_path};
+    }
+
     if (isProcSelfExe(path)) {
         return {AT_FDCWD, g_fs->GetExecutablePath().c_str()};
     }
 
-    // HACK: some programs like `systemd-tmpfiles --create` do some sort of root checking
-    // via `fd = open("/")` and `fd2 = openat(fd, "..")` and comparing if the two fd's have same inode ids
-    // among other things. We don't want this to happen, but a better solution might be possible.
-    if (std::string(path) == "..") {
-        struct statx rootfs_statx;
-        ASSERT(statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &rootfs_statx) == 0);
-        bool is_same = false;
-        struct statx new_fd_statx;
-        if (statx(fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &new_fd_statx) == 0) {
-            is_same = statx_inode_same(&rootfs_statx, &new_fd_statx);
-        }
-        if (is_same) {
-            return {fd, "."};
-        }
-    }
-
+    // Convert the fd + path combo to an absolute path;
+    std::filesystem::path resolve_me;
     if (path[0] == '/') {
-        fd = AT_FDCWD;
-
-        if (path[1] == 0) {
-            return {g_rootfs_fd, "."};
-        }
-    }
-
-    if (path[0] != '/' || fd != AT_FDCWD) {
-        // If path is relative, or is '/', or we have an fd, no need to do anything else
-        return {fd, path};
-    }
-
-    std::filesystem::path fspath;
-    if (resolve_symlinks) {
-        // We need to do symlink resolving manually because rootfs can change due to chroot and pivot_root
-        bool exists = false;
-        std::string bufs[2];
-        bufs[0].resize(PATH_MAX);
-        bufs[1].resize(PATH_MAX);
-        const char* path_ptr = path;
-        int index = 0;
-        while (true) {
-            char* buffer = bufs[index].data();
-            struct stat stat;
-            int result = fstatat(g_rootfs_fd, &path_ptr[1], &stat, AT_SYMLINK_NOFOLLOW);
-            if (result != 0 && errno == ENOENT && !exists) {
-                return {g_rootfs_fd, &path_ptr[1]};
-            }
-
-            bool is_link = result == 0 && S_ISLNK(stat.st_mode);
-            exists = true;
-
-            if (is_link) {
-                ssize_t size = readlinkat(g_rootfs_fd, &path_ptr[1], buffer, PATH_MAX - 1);
-                buffer[size] = 0;
-
-                std::string str = buffer;
-                removeRootfsPrefix(str);
-                strncpy(buffer, str.c_str(), PATH_MAX);
-
-                size_t len = strlen(buffer);
-                if (buffer[0] == '/' && len > 1) {
-                    path_ptr = buffer;
-                    index ^= 1;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-
-        fspath = path_ptr;
+        resolve_me = path;
     } else {
-        fspath = path;
+        char buffer[PATH_MAX];
+        if (fd == AT_FDCWD) {
+            char* cwd = getcwd(buffer, PATH_MAX);
+            std::string file = std::filesystem::path(cwd) / path;
+            removeRootfsPrefix(file);
+            resolve_me = file;
+        } else {
+            std::string self_fd = "/proc/self/fd/" + std::to_string(fd);
+            ssize_t size = readlink(self_fd.c_str(), buffer, PATH_MAX);
+            if (size < 0) {
+                WARN("Failed to read path for fd: %d and pathname %s", fd, path);
+                return {fd, path};
+            }
+            buffer[size] = 0;
+            std::string file = std::filesystem::path(buffer) / path;
+            removeRootfsPrefix(file);
+            resolve_me = file;
+        }
     }
 
-    // `path` is guaranteed to be absolute here
-    ASSERT(fspath.is_absolute());
-    return {g_rootfs_fd, fspath.relative_path()};
+    ASSERT(resolve_me.is_absolute());
+
+    if (resolve_symlinks) {
+        // If we want to resolve symlinks anyway, then just resolve the entire thing in openat2
+        struct open_how open_how;
+        open_how.flags = O_PATH;
+        open_how.resolve = RESOLVE_IN_ROOT | RESOLVE_NO_MAGICLINKS;
+        open_how.mode = 0;
+        int path_fd = syscall(SYS_openat2, g_rootfs_fd, resolve_me.c_str(), &open_how, sizeof(struct open_how));
+        if (path_fd > 0) {
+            char buffer[PATH_MAX];
+            std::string self_fd = "/proc/self/fd/" + std::to_string(path_fd);
+            ssize_t size = readlink(self_fd.c_str(), buffer, PATH_MAX - 1);
+            ASSERT(size > 0);
+            buffer[size] = 0;
+            close(path_fd);
+            return {AT_FDCWD, std::filesystem::path{buffer}};
+        } else {
+            return {AT_FDCWD, g_config.rootfs_path / resolve_me.relative_path()};
+        }
+    } else {
+        // If we don't want to resolve symlinks on the last component, resolve just the basepath then add the final component
+        const std::filesystem::path final_component = resolve_me.filename();
+        const std::filesystem::path base_path = resolve_me.parent_path();
+        struct open_how open_how;
+        open_how.flags = O_PATH;
+        open_how.resolve = RESOLVE_IN_ROOT | RESOLVE_NO_MAGICLINKS;
+        open_how.mode = 0;
+        int path_fd = syscall(SYS_openat2, g_rootfs_fd, base_path.c_str(), &open_how, sizeof(struct open_how));
+        if (path_fd > 0) {
+            char buffer[PATH_MAX];
+            std::string self_fd = "/proc/self/fd/" + std::to_string(path_fd);
+            ssize_t size = readlink(self_fd.c_str(), buffer, PATH_MAX - 1);
+            ASSERT(size > 0);
+            buffer[size] = 0;
+            close(path_fd);
+
+            std::filesystem::path final = buffer;
+            final /= final_component;
+            return {AT_FDCWD, final};
+        } else {
+            return {AT_FDCWD, g_config.rootfs_path / resolve_me.relative_path()};
+        }
+    }
 }

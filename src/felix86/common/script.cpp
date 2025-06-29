@@ -105,7 +105,7 @@ Script::Script(const std::filesystem::path& script) {
     ASSERT(first_slash != std::string::npos);
     ASSERT(interpreter.size() > first_slash + 1);
 
-    this->interpreter = g_config.rootfs_path / &interpreter[first_slash + 1];
+    this->interpreter = &interpreter[first_slash];
 
     LOG("Running a script file: %s, interpreter: %s, args: %s", script.c_str(), this->interpreter.c_str(), args.c_str());
     ASSERT(std::filesystem::exists(this->interpreter));

@@ -415,7 +415,7 @@ void Elf::Load(const std::filesystem::path& path) {
             }
 
             ASSERT(!interpreter_str.empty() && interpreter_str[0] == '/');
-            interpreter = g_config.rootfs_path / (&interpreter_str[1]);
+            interpreter = interpreter_str;
             break;
         }
         case PT_GNU_STACK: {

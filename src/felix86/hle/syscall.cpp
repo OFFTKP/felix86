@@ -1320,6 +1320,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             Script script(path);
             const std::string& args = script.GetArgs();
             script_interpreter = script.GetInterpreter();
+            NullablePath npath = Filesystem::resolve(script_interpreter.c_str(), true);
+            ASSERT(npath.get_str());
+            ASSERT(npath.get_str()[0] == '/');
+            script_interpreter = npath.get_str();
             script_args = split_string(args, ' ');
             argv.push_back(script_interpreter.c_str());
             for (auto it = script_args.begin(); it < script_args.end(); it++) {
@@ -1418,6 +1422,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // Undo signal guard so the child doesn't inherit the bad mask
         guard.kill();
 
+        WARN("Exec: %s %s", executable.c_str(), argv[0]);
         syscall(SYS_execve, executable.c_str(), &argv[0], envp.data());
 
         ASSERT_MSG(false, "Error during execve: %s", strerror(errno));

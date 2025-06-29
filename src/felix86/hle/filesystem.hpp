@@ -52,7 +52,9 @@ struct Filesystem {
             return false;
         }
 
-        std::filesystem::path interpreter_path = elf->GetInterpreterPath();
+        NullablePath npath = Filesystem::resolve(elf->GetInterpreterPath().c_str(), true);
+        ASSERT(npath.get_str());
+        std::filesystem::path interpreter_path = npath.get_str();
         if (!interpreter_path.empty()) {
             if (!interpreter_path.is_absolute()) {
                 ERROR("Interpreter path %s is not absolute", interpreter_path.c_str());
