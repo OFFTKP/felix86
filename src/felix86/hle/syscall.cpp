@@ -1422,7 +1422,6 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // Undo signal guard so the child doesn't inherit the bad mask
         guard.kill();
 
-        WARN("Exec: %s %s", executable.c_str(), argv[0]);
         syscall(SYS_execve, executable.c_str(), &argv[0], envp.data());
 
         ASSERT_MSG(false, "Error during execve: %s", strerror(errno));
