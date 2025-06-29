@@ -1540,7 +1540,7 @@ void felix86_syscall(felix86_frame* frame) {
             break;
         }
         case felix86_x86_64_epoll_wait: {
-            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3));
+            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
             result = epoll_wait((int)arg1, host_events, (int)arg3, (int)arg4);
             if (result >= 0) {
                 x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
@@ -1831,7 +1831,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             break;
         }
         case felix86_x86_32_epoll_wait: {
-            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3));
+            epoll_event* host_events = (epoll_event*)alloca(std::max(0, (int)arg3) * sizeof(epoll_event));
             result = epoll_wait((int)arg1, host_events, (int)arg3, (int)arg4);
             if (result >= 0) {
                 x86_epoll_event* guest_event = (x86_epoll_event*)arg2;
