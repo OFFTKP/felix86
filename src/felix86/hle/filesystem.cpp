@@ -219,7 +219,7 @@ int Filesystem::UnlinkAt(int fd, const char* filename, int flags) {
         return -EINVAL;
     }
 
-    auto [new_fd, new_filename] = resolve(fd, filename, true);
+    auto [new_fd, new_filename] = resolve(fd, filename, false);
     return unlinkatInternal(new_fd, new_filename.get_str(), flags);
 }
 
