@@ -361,6 +361,7 @@ void initialize_globals() {
         ERROR("You selected the system root as the rootfs path, which is wrong");
     }
 
+    ASSERT_MSG(g_config.rootfs_path.string().back() != '/', "Rootfs path should not end in '/'");
     ASSERT(std::filesystem::exists(g_config.rootfs_path));
     ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_DIRECTORY);

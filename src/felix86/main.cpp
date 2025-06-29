@@ -588,6 +588,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    NullablePath npath = Filesystem::resolve(g_params.executable_path.c_str(), true);
+    ASSERT_MSG(npath.get_str(), "Resolved executable path is null?");
+    g_params.executable_path = npath.get_str();
+
     if (g_params.executable_path.empty()) {
         ERROR("Executable path not specified");
         return 1;

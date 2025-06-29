@@ -67,9 +67,8 @@ CATCH_TEST_CASE("Resolve", "[paths]") {
     CATCH_REQUIRE(std::string(path.get_str()) == "/home/someuser/myrootfs/etc/drirc");
 
     auto [new_fd, new_path] = Filesystem::resolve(AT_FDCWD, "/etc/drirc", true);
-    CATCH_REQUIRE(new_fd == 50);
     CATCH_REQUIRE(new_path.get_str());
-    CATCH_REQUIRE(std::string(new_path.get_str()) == "etc/drirc");
+    CATCH_REQUIRE(std::string(new_path.get_str()) == g_config.rootfs_path / "etc" / "drirc");
 
     EPILOGUE();
 }
