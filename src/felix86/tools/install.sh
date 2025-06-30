@@ -38,7 +38,6 @@ fi
 
 INSTALLATION_DIR="/opt/felix86"
 FILE="$INSTALLATION_DIR/felix86"
-FELIX86_NIGHTLY_LINK="https://nightly.link/OFFTKP/felix86/workflows/build/master/linux_artifact.zip"
 
 check_url() {
   local url="$1"
@@ -114,7 +113,7 @@ select_release_url() {
 
   # Handle selection
   if (( choice == latest_index )); then
-    FELIX86_LINK="$FELIX86_NIGHTLY_LINK"
+    FELIX86_LINK=$(curl -s "https://felix86.com/latest.txt")
   else
     selected="${entries[$((choice-1))]}"
     FELIX86_LINK="${selected#* }"
