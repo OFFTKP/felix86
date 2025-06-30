@@ -4605,6 +4605,7 @@ FAST_HANDLE(ROUNDSD) {
 }
 
 FAST_HANDLE(PMOVMSKB) {
+    bool is_mmx = operands[1].reg.value >= ZYDIS_REGISTER_MM0 && operands[1].reg.value <= ZYDIS_REGISTER_MM7;
     biscuit::GPR scratch = rec.scratch();
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec temp = rec.scratchVec();
@@ -4615,7 +4616,7 @@ FAST_HANDLE(PMOVMSKB) {
     rec.setVectorState(SEW::E64, 2);
     as.VMV_XS(scratch, temp);
 
-    rec.zext(scratch, scratch, X86_SIZE_WORD);
+    rec.zext(scratch, scratch, is_mmx ? X86_SIZE_BYTE : X86_SIZE_WORD);
 
     rec.setGPR(&operands[0], scratch);
 }
