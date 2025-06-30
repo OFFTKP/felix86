@@ -3,7 +3,7 @@ arch=$(uname -m)
 
 if [ "$arch" != "riscv64" ]; then
     echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
-    exit 1
+    # exit 1
 fi
 
 if ! command -v curl >/dev/null 2>&1; then
@@ -36,52 +36,99 @@ if [ -z "$USER" ]; then
     exit 1
 fi
 
+INSTALLATION_DIR="/opt/felix86"
+FILE="$INSTALLATION_DIR/felix86"
+FELIX86_NIGHTLY_LINK="https://nightly.link/OFFTKP/felix86/workflows/build/master/linux_artifact.zip"
+
 check_url() {
   local url="$1"
 
   if ! curl --output /dev/null --silent --head --fail "$url"; then
     echo "URL is invalid or unreachable: $url"
-    return 1
+    exit 1
   else
-    echo "URL exists and is reachable: $url"
     return 0
   fi
 }
 
-INSTALLATION_DIR="/opt/felix86"
-FILE="$INSTALLATION_DIR/felix86"
-FELIX86_LINK="https://nightly.link/OFFTKP/felix86/workflows/build/master/linux_artifact.zip"
+select_release_url() {
+  local url_list
+  echo "Checking if https://felix86.com/releases.txt is live..."
+  check_url "https://felix86.com/releases.txt"
+  echo "Downloading release list..."
+  url_list=$(curl -s https://felix86.com/releases.txt)
+  echo "Downloaded"
+
+  if [[ -z "$url_list" ]]; then
+    echo "Failed to fetch the releases list or it's empty."
+    return 1
+  fi
+
+  local total_lines
+  total_lines=$(echo "$url_list" | wc -l)
+  if (( total_lines > 5 )); then
+    echo "Failed to parse https://felix86.com/releases.txt"
+    return 1
+  fi
+
+  local entries=()
+  while IFS= read -r line && [[ ${#entries[@]} -lt 5 ]]; do
+    [[ "$line" =~ ^[0-9]+\.[0-9]+[[:space:]]+https?://.*$ ]] && entries+=("$line")
+  done <<< "$url_list"
+
+  if [[ ${#entries[@]} -eq 0 ]]; then
+    echo "No valid entries found."
+    return 1
+  fi
+
+  echo "┌───────────────────────────────────────┐"
+  echo "│   Welcome to the felix86 installer!   │"
+  echo "├───────────────────────────────────────┤"
+  echo "│                                       │"
+  echo "│  Please select the version you'd      │"
+  echo "│  like to install                      │"
+  echo "│                                       │"
+  echo "└───────────────────────────────────────┘"
+
+  for i in "${!entries[@]}"; do
+    local version="${entries[$i]%% *}"
+    local display="felix86 $version"
+    if [[ $i -eq 0 ]]; then
+        display="$display (Recommended)"
+    fi
+    printf "%d) %s\n" $((i+1)) "$display"
+  done
+
+  local latest_index=$(( ${#entries[@]} + 1 ))
+  echo "$latest_index) Nightly version (Unstable)"
+
+  local choice
+  while true; do
+    read -p "Select a release (1-$latest_index): " choice
+    if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && (( choice >= 1 && choice <= latest_index )); then
+      break
+    else
+      echo "Invalid selection. Please choose a number between 1 and $latest_index."
+    fi
+  done
+
+  # Handle selection
+  if (( choice == latest_index )); then
+    FELIX86_LINK="$FELIX86_NIGHTLY_LINK"
+  else
+    selected="${entries[$((choice-1))]}"
+    FELIX86_LINK="${selected#* }"
+  fi
+}
 
 set -e
 
 echo "Welcome to the felix86 installer"
 
-exit_after_install=0
-
-if [ -f "$FILE" ]; then
-    echo "There's already an installation at $FILE. What would you like to do?"
-    echo "(1) Update with latest artifact"
-    echo "(2) Full reinstall"
-    echo "(3) Exit"
-
-    while true; do
-        read -p "Your choice: " choice
-        if [[ "$choice" == "1" ]]; then
-            exit_after_install=1
-            break
-        elif [[ "$choice" == "2" ]]; then
-            break
-        elif [[ "$choice" == "3" ]]; then
-            exit 0
-        else
-            echo "Invalid input. Please enter 1, 2 or 3"
-        fi
-    done
-fi
+select_release_url
 
 echo "Downloading latest felix86 artifact..."
 mkdir -p /tmp/felix86_artifact
-check_url "$FELIX86_LINK"
 curl -L $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
@@ -127,18 +174,15 @@ sudo ln -s $INSTALLATION_DIR/felix86-mounter /usr/bin/felix86-mounter
 echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR/lib"
 felix86 --set-thunks $INSTALLATION_DIR/lib
 
-if [[ "$exit_after_install" == "1" ]]; then
-    exit 0
-fi
-
 echo ""
-echo "Which rootfs would you like to use?"
-echo "(1) Ubuntu 24.04"
-echo "(2) I have my own rootfs"
+echo "Would you like to download and set a rootfs?"
+echo "1) Ubuntu 24.04 (Recommended)"
+echo "2) Let me set a custom path"
+echo "3) Nope"
 
 while true; do
     read -p "Your choice: " choice
-    if [[ "$choice" == "1" || "$choice" == "2" ]]; then
+    if [[ "$choice" == "1" || "$choice" == "2" || "$choice" == "3" ]]; then
         break
     else
         echo "Invalid input. Please enter 1 or 2."
@@ -149,6 +193,7 @@ done
 if [ "$choice" -eq 1 ]; then
     echo "Where do you want to extract the downloaded rootfs?"
     read NEW_ROOTFS
+    NEW_ROOTFS=$(eval echo "$NEW_ROOTFS")
     if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
         echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
         check_url "https://felix86.com/rootfs/ubuntu.txt"
@@ -173,7 +218,7 @@ if [ "$choice" -eq 1 ]; then
 elif [ "$choice" -eq 2 ]; then
     echo "You selected to use your own rootfs."
     echo "Please specify the absolute path to your rootfs"
-    read line
+    read -p "Path to rootfs: " line
     felix86 --set-rootfs $line
 fi
 
@@ -184,26 +229,39 @@ if ! felix86 -d; then
   echo "Failed binfmt_misc installation check"
 fi
 
+# Let's try to run a test program
+set +e
+FELIX86_QUIET=1 felix86 /bin/bash -c "exit 42"
+exit_code=$?
+
+# If everything went fine, felix86 should return 42
+if [ "$exit_code" -ne 42 ]; then
+    echo "felix86 failed to run a simple program -- may not have installed correctly?"
+    echo "Running again with logging enabled:"
+    felix86 /bin/bash -c "exit 42"
+    exit 1
+fi
+
 echo "felix86 installed successfully"
 echo
 echo
 
-echo ┌───────────────────────────────────────┐
-echo │       felix86 is now installed!       │
-echo ├───────────────────────────────────────┤
-echo │                                       │
-echo │ To enter an emulated bash, use:       │
-echo │                                       │
-echo │ felix86 /usr/bin/bash                 │
-echo │                                       │
-echo │   OR                                  │
-echo │                                       │
-echo │ /path/to/rootfs/usr/bin/bash          │
-echo │                                       │
-echo ├───────────────────────────────────────┤
-echo │                                       │
-echo │ Alternatively, run programs directly: │
-echo │                                       │
-echo │ /path/to/rootfs/MyGame.out            │
-echo │                                       │
-echo └───────────────────────────────────────┘
+echo "┌───────────────────────────────────────┐"
+echo "│       felix86 is now installed!       │"
+echo "├───────────────────────────────────────┤"
+echo "│                                       │"
+echo "│ To enter an emulated bash, use:       │"
+echo "│                                       │"
+echo "│ felix86 /bin/bash                     │"
+echo "│                                       │"
+echo "│   OR                                  │"
+echo "│                                       │"
+echo "│ /path/to/rootfs/bin/bash              │"
+echo "│                                       │"
+echo "├───────────────────────────────────────┤"
+echo "│                                       │"
+echo "│ Alternatively, run programs directly: │"
+echo "│                                       │"
+echo "│ /path/to/rootfs/MyGame.AppImage       │"
+echo "│                                       │"
+echo "└───────────────────────────────────────┘"
