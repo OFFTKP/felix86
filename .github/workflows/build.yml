@@ -57,6 +57,8 @@ jobs:
           path: ./artifact
       - name: Test
         run: |
+          stat ./artifact
+          find ./artifact
           FELIX86_ALL_EXTENSIONS=g,v,b ./artifact/felix86_test
           ./artifact/felix86 -k
           FELIX86_ALL_EXTENSIONS=g,v ./artifact/felix86_test
