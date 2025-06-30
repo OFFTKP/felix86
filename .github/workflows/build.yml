@@ -65,12 +65,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: test_artifact
-          path: ./artifact
+          path: ./felix86_test/
       - name: Test
         run: |
           stat ./artifact
           find ./artifact
-          FELIX86_ALL_EXTENSIONS=g,v,b ./artifact/felix86_test
+          FELIX86_ALL_EXTENSIONS=g,v,b ./felix86_test/felix86_test
           ./artifact/felix86 -k
-          FELIX86_ALL_EXTENSIONS=g,v ./artifact/felix86_test
+          FELIX86_ALL_EXTENSIONS=g,v ./felix86_test/felix86_test
           ./artifact/felix86 -k
