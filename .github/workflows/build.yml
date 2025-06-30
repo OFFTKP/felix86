@@ -41,6 +41,12 @@ jobs:
           cp ./src/felix86/hle/guest_libs/libvulkan.so.1 ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libwayland-client.so ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libluajit-5.1.so ./artifact/lib/
+          mkdir -p ./test
+          cp ./build/felix86_test ./test/
+          cp ./build/felix86 ./test/
+          cp -r ./build/ASM ./test/
+          cp -r ./build/32Bit_ASM ./test/
+          cp -r ./build/Binaries ./test/
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
@@ -50,14 +56,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test_artifact
-          path: ./build/felix86_test
+          path: ./test
           retention-days: 1
   test:
     needs: build
     runs-on: bpi-f3
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
       - name: Download main artifact
         uses: actions/download-artifact@v4
         with:
@@ -67,18 +71,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: test_artifact
-          path: ./felix86_test/
+          path: ./test/
       - name: Test
         run: |
-          cmake -B build 
-          chmod +x ./felix86_test/felix86_test
-          chmod +x ./artifact/felix86
-          cp ./artifact/felix86 ./felix86_test/
-          cp -r ./build/ASM ./felix86_test/
-          cp -r ./build/32Bit_ASM ./felix86_test/
-          cp -r ./build/Binaries ./felix86_test/
-          find .
-          FELIX86_ALL_EXTENSIONS=g,v,b ./felix86_test/felix86_test
-          ./artifact/felix86 -k
-          FELIX86_ALL_EXTENSIONS=g,v ./felix86_test/felix86_test
-          ./artifact/felix86 -k
+          chmod +x ./test/felix86_test
+          chmod +x ./test/felix86
+          FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
+          ./test/felix86 -k
+          FELIX86_ALL_EXTENSIONS=g,v ./test/felix86_test
+          ./test/felix86 -k
