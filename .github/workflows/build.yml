@@ -47,6 +47,7 @@ jobs:
           name: linux_artifact
           path: ./artifact/
   test:
+    needs: build
     runs-on: bpi-f3
     steps:
       - name: Download artifact
