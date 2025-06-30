@@ -323,7 +323,7 @@ VkResult felix86_thunk_vkCreateInstance(const VkInstanceCreateInfo* pCreateInfo,
         base = (VkBaseInStructure*)base->pNext;
     }
 
-    static auto actual = (VkResult(*)(const VkInstanceCreateInfo*, const VkAllocationCallbacks*, VkInstance*))dlsym(libvulkan, "vkCreateInstance");
+    static auto actual = (VkResult (*)(const VkInstanceCreateInfo*, const VkAllocationCallbacks*, VkInstance*))dlsym(libvulkan, "vkCreateInstance");
     return actual(pCreateInfo, nullptr, pInstance);
 }
 
