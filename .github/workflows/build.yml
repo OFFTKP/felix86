@@ -46,19 +46,31 @@ jobs:
         with:
           name: linux_artifact
           path: ./artifact/
+      - name: Upload test binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_artifact
+          path: ./build/felix86_test
+          retention-days: 1
   test:
     needs: build
     runs-on: bpi-f3
     steps:
-      - name: Download artifact
+      - name: Download main artifact
         uses: actions/download-artifact@v4
         with:
           name: linux_artifact
           path: ./artifact
+      - name: Download test artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: test_artifact
+          path: ./artifact/felix86_test
       - name: Test
         run: |
           stat ./artifact
           find ./artifact
+          find .
           FELIX86_ALL_EXTENSIONS=g,v,b ./artifact/felix86_test
           ./artifact/felix86 -k
           FELIX86_ALL_EXTENSIONS=g,v ./artifact/felix86_test
