@@ -22,7 +22,7 @@ jobs:
       - name: Download Foo binary
         uses: actions/download-artifact@v4
         with:
-          name: Linux executable
+          name: linux_artifact
           path: ./artifact
       - name: Test
         run: |
