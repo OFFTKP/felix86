@@ -13,13 +13,18 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: Install RISC-V GCC
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
+          sudo apt install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libglx-dev libgl-dev libvulkan-dev libx11-dev
+          mkdir our_include
+          cp /usr/include/GL/glx.h our_include/
+          cp /usr/include/GL/gl.h our_include/
+          cp /usr/include/vulkan/vulkan.h our_include/
+          cp /usr/include/X11/Xlibint.h our_include/
       - name: Configure
         run: |
-          cmake -B build -DBUILD_TESTS=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DBUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DBUILD_TESTS=1 -DCMAKE_CXX_FLAGS="./our_include" -DCMAKE_C_FLAGS="./our_include"  -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DBUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: |
           cmake --build build -j$(nproc)
