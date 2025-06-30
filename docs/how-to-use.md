@@ -32,7 +32,7 @@ You can run them as if they are RISC-V applications. **Make sure they are inside
 
 It is recommended you "enter" the rootfs by running the x86-64 bash inside the rootfs:    
 ```
-FELIX86_QUIET=1 /path/to/rootfs/usr/bin/bash
+FELIX86_QUIET=1 felix86 /bin/bash
 ```
 
 You should now be inside the rootfs.    

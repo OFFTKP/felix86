@@ -3,7 +3,7 @@ arch=$(uname -m)
 
 if [ "$arch" != "riscv64" ]; then
     echo "You are not on 64-bit RISC-V. felix86 only works on 64-bit RISC-V."
-    # exit 1
+    exit 1
 fi
 
 if ! command -v curl >/dev/null 2>&1; then
