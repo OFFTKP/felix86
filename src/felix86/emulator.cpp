@@ -305,13 +305,6 @@ std::pair<ExitReason, int> Emulator::Start() {
     exit_reason = main_state->exit_reason;
     exit_code = main_state->exit_code;
 
-    munmap(stack, size);
-    munmap((void*)g_initial_brk, g_current_brk_size);
-    g_fs.reset();
-    g_breakpoints.clear();
-    ThreadState::Destroy(main_state);
-    pthread_setspecific(g_thread_state_key, nullptr);
-
     return {exit_reason, exit_code};
 }
 

@@ -634,5 +634,12 @@ int main(int argc, char* argv[]) {
         LOG("Execve process %d exited with reason: %s. Exit code: %d", getpid(), print_exit_reason(exit_reason), exit_code);
     }
 
-    return exit_code;
+    if (exit_reason == EXIT_REASON_EXIT_SYSCALL) {
+        syscall(SYS_exit, exit_code);
+    } else if (exit_reason == EXIT_REASON_EXIT_GROUP_SYSCALL) {
+        syscall(SYS_exit_group, exit_code);
+    } else {
+        WARN("Exiting with bad exit reason: %s", print_exit_reason(exit_reason));
+        syscall(SYS_exit, exit_code);
+    }
 }
