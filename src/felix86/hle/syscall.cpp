@@ -1338,8 +1338,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                 // Retain emulator path
             }
 
-            // Technically Linux allows up to 4x recursion here but we'll deal with it when we get there
-            ASSERT_MSG(Script::Peek(executable) != Script::PeekResult::Script, "Recursive script?");
+            path = std::filesystem::absolute(path);
             ASSERT_MSG(path.string().find(g_config.rootfs_path.string()) == 0, "Script path is not inside rootfs? %s", path.c_str());
 
             // We are running it through emulated bash, so the script itself needs to be a regular path
