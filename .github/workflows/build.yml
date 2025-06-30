@@ -68,8 +68,8 @@ jobs:
           path: ./felix86_test/
       - name: Test
         run: |
-          sudo chmod +x ./felix86_test/felix86_test
-          sudo chmod +x ./artifact/felix86
+          chmod +x ./felix86_test/felix86_test
+          chmod +x ./artifact/felix86
           FELIX86_ALL_EXTENSIONS=g,v,b ./felix86_test/felix86_test
           ./artifact/felix86 -k
           FELIX86_ALL_EXTENSIONS=g,v ./felix86_test/felix86_test

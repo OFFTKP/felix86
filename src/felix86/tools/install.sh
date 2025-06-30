@@ -38,7 +38,7 @@ fi
 
 INSTALLATION_DIR="/opt/felix86"
 FILE="$INSTALLATION_DIR/felix86"
-FELIX86_LINK="https://nightly.link/OFFTKP/felix86/workflows/unit-tests/master/Linux%20executable.zip"
+FELIX86_LINK="https://nightly.link/OFFTKP/felix86/workflows/build/master/linux_artifact.zip"
 
 set -e
 
@@ -185,6 +185,7 @@ echo │                                       │
 echo │ /path/to/rootfs/usr/bin/bash          │
 echo │                                       │
 echo ├───────────────────────────────────────┤
+echo │                                       │
 echo │ Alternatively, run programs directly: │
 echo │                                       │
 echo │ /path/to/rootfs/MyGame.out            │
