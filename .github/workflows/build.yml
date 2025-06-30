@@ -13,6 +13,10 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+      - name: Install RISC-V GCC
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-riscv64-linux-gnu
       - name: Configure
         run: |
           cmake -B build -DBUILD_TESTS=1 -DCMAKE_TOOLCHAIN_FILE=riscv.cmake -DBUILD_THUNKING=1 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE=Release
