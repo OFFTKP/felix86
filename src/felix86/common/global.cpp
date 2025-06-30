@@ -324,7 +324,7 @@ void initialize_globals() {
                 std::filesystem::path path = buffer;
                 if (std::filesystem::exists(path)) {
                     // Relocate executable path
-                    std::string new_executable_path = g_params.executable_path;
+                    std::string new_executable_path = std::filesystem::absolute(g_params.executable_path);
                     Filesystem::removeRootfsPrefix(new_executable_path);
                     new_executable_path = path / std::filesystem::path(new_executable_path).relative_path();
                     g_params.executable_path = new_executable_path;
