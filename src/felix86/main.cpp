@@ -602,6 +602,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (g_params.executable_path.is_absolute()) {
+        g_executable_path_absolute = g_params.executable_path;
+    } else {
+        NullablePath npath = Filesystem::resolve(AT_FDCWD, g_params.executable_path.c_str(), true).second;
+        ASSERT_MSG(npath.get_str(), "Failed to resolve %s", g_params.executable_path.c_str());
+        ASSERT_MSG(npath.get_str()[0] == '/', "Resolved path is not absolute? %s", npath.get_str());
+        g_executable_path_absolute = npath.get_str();
+    }
+
     if (!g_config.binfmt_misc_installed && !g_execve_process && check_if_privileged_executable(g_params.executable_path)) {
         // Privileged executable but no binfmt_misc support, warn the user
         WARN("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to install "

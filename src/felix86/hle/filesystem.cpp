@@ -534,7 +534,7 @@ std::pair<int, NullablePath> Filesystem::resolveImpl(int fd, const char* path, b
     }
 
     if (isProcSelfExe(path)) {
-        return {AT_FDCWD, g_fs->GetExecutablePath().c_str()};
+        return {AT_FDCWD, g_executable_path_absolute};
     }
 
     // Convert the fd + path combo to an absolute path;
