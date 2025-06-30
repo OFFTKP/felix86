@@ -499,6 +499,10 @@ int main() {
             GEN(stc());
             GEN(sahf());
             GEN(lahf());
+            GEN(push(rsp));
+            GEN(push(qword[rsp + 32]));
+            GEN(pop(qword[rsp + 32]));
+            GEN(pop(rsp));
             GEN(pushfq());
             GEN(popfq());
             GEN(cmpsb());

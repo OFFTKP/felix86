@@ -1168,14 +1168,14 @@ FAST_HANDLE(POP) {
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
         int imm = size_to_bytes(instruction.operand_width);
         rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
-        rec.setGPR(&operands[0], result);
-        x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
-        if (ref == X86_REF_RSP) {
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && rec.zydisToRef(operands[0].reg.value) == X86_REF_RSP) {
             // pop rsp special case
-            rec.setGPR(X86_REF_RSP, rec.stackWidth(), result);
+            WARN("pop rsp with width: %d", operands[0].size);
+            rec.setGPR(&operands[0], result);
         } else {
             as.ADDI(rsp, rsp, imm);
             rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
+            rec.setGPR(&operands[0], result);
         }
     }
 }

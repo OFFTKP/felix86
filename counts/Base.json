@@ -14221,6 +14221,40 @@
         ],
         "disassembly": "lahf"
     },
+    "54": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "SD              s1, s1, 0xfffffff8(-8)",
+            "ADDI            s1, s1, 0xfffffff8(-8)"
+        ],
+        "disassembly": "push rsp"
+    },
+    "ff742420": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "LD              ra, s1, 0x20(32)",
+            "SD              ra, s1, 0xfffffff8(-8)",
+            "ADDI            s1, s1, 0xfffffff8(-8)"
+        ],
+        "disassembly": "push [rsp+0x20]"
+    },
+    "8f442420": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "LD              ra, s1, 0x0(0)",
+            "ADDI            s1, s1, 0x8(8)",
+            "SD              ra, s1, 0x20(32)"
+        ],
+        "disassembly": "pop [rsp+0x20]"
+    },
+    "5c": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "LD              ra, s1, 0x0(0)",
+            "ADDI            s1, ra, 0x0(0)"
+        ],
+        "disassembly": "pop rsp"
+    },
     "9c": {
         "instruction_count": 25,
         "expected_asm": [
