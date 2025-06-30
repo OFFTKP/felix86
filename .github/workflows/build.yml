@@ -57,7 +57,7 @@ jobs:
     runs-on: bpi-f3
     steps:
       - name: Download main artifact
-        uses: actions2/download-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: linux_artifact
           path: ./artifact
