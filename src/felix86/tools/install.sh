@@ -36,6 +36,18 @@ if [ -z "$USER" ]; then
     exit 1
 fi
 
+check_url() {
+  local url="$1"
+
+  if ! curl --output /dev/null --silent --head --fail "$url"; then
+    echo "URL is invalid or unreachable: $url"
+    return 1
+  else
+    echo "URL exists and is reachable: $url"
+    return 0
+  fi
+}
+
 INSTALLATION_DIR="/opt/felix86"
 FILE="$INSTALLATION_DIR/felix86"
 FELIX86_LINK="https://nightly.link/OFFTKP/felix86/workflows/build/master/linux_artifact.zip"
@@ -69,6 +81,7 @@ fi
 
 echo "Downloading latest felix86 artifact..."
 mkdir -p /tmp/felix86_artifact
+check_url "$FELIX86_LINK"
 curl -L $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
@@ -138,9 +151,12 @@ if [ "$choice" -eq 1 ]; then
     read NEW_ROOTFS
     if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
         echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
+        check_url "https://felix86.com/rootfs/ubuntu.txt"
         UBUNTU_2404_LINK=$(curl -s https://felix86.com/rootfs/ubuntu.txt)
-        echo "Downloading Ubuntu 24.04 rootfs..."
+        echo "Creating rootfs directory..."
         mkdir -p $NEW_ROOTFS
+        echo "Downloading Ubuntu 24.04 rootfs..."
+        check_url "$UBUNTU_2404_LINK"
 
         # Important we untar with --same-owner so that sudo/mount/fusermount keep their setuid bits
         curl -L $UBUNTU_2404_LINK | sudo tar --same-owner -xz -C $NEW_ROOTFS
