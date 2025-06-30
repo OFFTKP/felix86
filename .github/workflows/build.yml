@@ -46,3 +46,17 @@ jobs:
         with:
           name: linux_artifact
           path: ./artifact/
+  test:
+    runs-on: bpi-f3
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux_artifact
+          path: ./artifact
+      - name: Test
+        run: |
+          FELIX86_ALL_EXTENSIONS=g,v,b ./artifact/felix86_test
+          ./artifact/felix86 -k
+          FELIX86_ALL_EXTENSIONS=g,v ./artifact/felix86_test
+          ./artifact/felix86 -k
