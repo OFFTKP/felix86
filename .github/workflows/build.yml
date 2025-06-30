@@ -57,7 +57,7 @@ jobs:
     runs-on: bpi-f3
     steps:
       - name: Download main artifact
-        uses: actions/download-artifact@v4
+        uses: actions2/download-artifact@v4
         with:
           name: linux_artifact
           path: ./artifact
@@ -68,8 +68,8 @@ jobs:
           path: ./felix86_test/
       - name: Test
         run: |
-          stat ./artifact
-          find ./artifact
+          sudo chmod +x ./felix86_test/felix86_test
+          sudo chmod +x ./artifact/felix86
           FELIX86_ALL_EXTENSIONS=g,v,b ./felix86_test/felix86_test
           ./artifact/felix86 -k
           FELIX86_ALL_EXTENSIONS=g,v ./felix86_test/felix86_test
