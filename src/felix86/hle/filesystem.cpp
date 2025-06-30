@@ -480,7 +480,7 @@ NullablePath Filesystem::resolve(const char* path, bool resolve_symlinks) {
     if (path[0] == '/') {
         NullablePath npath = resolve(AT_FDCWD, path, resolve_symlinks).second;
         ASSERT(npath.get_str());
-        ASSERT_MSG(npath.get_str()[0] == '/', "Bad path: %s", npath.get_str());
+        ASSERT_MSG(npath.get_str()[0] == '/', "Bad path: %s -> %s", path, npath.get_str());
         return npath.get_str();
     } else {
         return path;
