@@ -111,8 +111,8 @@ select_release_url() {
     fi
   done
 
-  # Handle selection
   if (( choice == latest_index )); then
+    echo "Fetching latest artifact link..."
     FELIX86_LINK=$(curl -s "https://felix86.com/latest.txt")
   else
     selected="${entries[$((choice-1))]}"
