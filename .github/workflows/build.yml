@@ -16,7 +16,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libglx-dev libgl-dev libvulkan-dev libx11-dev
+          sudo apt install -y ccache gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libglx-dev libgl-dev libvulkan-dev libx11-dev
+          # Please somebody fix riscv.cmake and make it include /usr/include thanks
           sudo cp -r /usr/include/GL /usr/local/include/GL
           sudo cp -r /usr/include/vulkan /usr/local/include/vulkan
           sudo cp -r /usr/include/X11 /usr/local/include/X11
