@@ -66,7 +66,6 @@ bool run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         close(pipefd[0]);
 
         CATCH_INFO(fmt::format("Output: {}", buffer.substr(0, bytes_read)));
-        SUCCESS("Test passed: %s", path.filename().c_str());
         return WIFEXITED(status) && WEXITSTATUS(status) == expected_exit_status;
     }
 }
@@ -93,6 +92,8 @@ void common_loader(const std::filesystem::path& path) {
             if (!passed) {
                 all_passed = false;
                 failures += entry.path().string() + "\n";
+            } else {
+                SUCCESS("Test passed: %s", entry.path().filename().c_str());
             }
         }
     }
@@ -146,6 +147,8 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
         if (!passed) {
             all_passed = false;
             failures += entry.path().string() + "\n";
+        } else {
+            SUCCESS("Test passed: %s", entry.path().filename().c_str());
         }
     }
 
@@ -160,6 +163,8 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
         if (!passed) {
             all_passed = false;
             failures += entry.path().string() + "\n";
+        } else {
+            SUCCESS("Test passed: %s", entry.path().filename().c_str());
         }
     }
 
