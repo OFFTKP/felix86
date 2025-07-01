@@ -66,7 +66,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         close(pipefd[0]);
 
         CATCH_INFO(fmt::format("Output: {}", buffer.substr(0, bytes_read)));
-        CATCH_REQUIRE(WEXITSTATUS(status) == FELIX86_BTEST_SUCCESS);
+        CATCH_REQUIRE(WEXITSTATUS(status) == expected_exit_status);
     }
 
     SUCCESS("Test passed: %s", path.filename().c_str());
@@ -131,6 +131,16 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
 
     std::filesystem::directory_iterator it_i386(dir_i386);
     for (const auto& entry : it_i386) {
+        run_test(exe_path, entry, 0);
+    }
+
+    std::filesystem::path dir_x64 = dir / "Binaries" / "binary_tests" / "fex-gcc-target-tests-bins" / "64";
+    if (!std::filesystem::is_directory(dir_x64)) {
+        ERROR("64-bit dir not found?");
+    }
+
+    std::filesystem::directory_iterator it_x64(dir_x64);
+    for (const auto& entry : it_x64) {
         run_test(exe_path, entry, 0);
     }
 }
