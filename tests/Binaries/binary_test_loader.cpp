@@ -183,7 +183,7 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
     }
 
     for (auto& thread_data : threads) {
-        thread_data.thread = std::thread([&dir, &thread_data]() {
+        thread_data.thread = std::thread([dir, &thread_data]() {
             for (const auto& entry : thread_data.tests) {
                 bool passed = run_test(dir / "felix86", entry, 0);
                 if (!passed) {
