@@ -67,7 +67,7 @@ bool run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
 
         CATCH_INFO(fmt::format("Output: {}", buffer.substr(0, bytes_read)));
         SUCCESS("Test passed: %s", path.filename().c_str());
-        return WEXITSTATUS(status) == expected_exit_status;
+        return WIFEXITED(status) && WEXITSTATUS(status) == expected_exit_status;
     }
 }
 
