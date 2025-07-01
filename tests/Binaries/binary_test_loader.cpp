@@ -9,7 +9,7 @@
 #include "felix86/common/log.hpp"
 #include "fmt/format.h"
 
-void run_test(const std::filesystem::path& felix_path, const std::filesystem::path& path, bool is_exe) {
+void run_test(const std::filesystem::path& felix_path, const std::filesystem::path& path, int expected_exit_status) {
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         perror("pipe");
@@ -76,7 +76,7 @@ void common_loader(const std::filesystem::path& path) {
     std::filesystem::path exe_path = std::filesystem::canonical("/proc/self/exe");
     std::filesystem::path dir = exe_path.parent_path();
     if (!std::filesystem::exists(dir / "felix86")) {
-        ERROR("felix86 executable not found");
+        ERROR("felix86 executable not found in the current directory");
     }
 
     if (g_config.rootfs_path.empty() || !std::filesystem::exists(g_config.rootfs_path)) {
@@ -88,27 +88,49 @@ void common_loader(const std::filesystem::path& path) {
     for (const auto& entry : it) {
         std::string extension = entry.path().extension().string();
         if (extension == ".out" || extension == ".exe") {
-            run_test(dir / "felix86", entry.path().string(), extension == ".exe");
+            run_test(dir / "felix86", entry.path().string(), FELIX86_BTEST_SUCCESS);
         }
     }
 }
 
-CATCH_TEST_CASE("Signals", "[Signals]") {
+CATCH_TEST_CASE("Signals", "[Binaries]") {
     common_loader("Signals");
 }
 
-CATCH_TEST_CASE("Simple", "[Simple]") {
+CATCH_TEST_CASE("Simple", "[Binaries]") {
     common_loader("Simple");
 }
 
-CATCH_TEST_CASE("Clone", "[Clone]") {
+CATCH_TEST_CASE("Clone", "[Binaries]") {
     common_loader("Clone");
 }
 
-CATCH_TEST_CASE("SMC", "[SMC]") {
+CATCH_TEST_CASE("SMC", "[Binaries]") {
     // common_loader("SMC"); -- we don't handle smc rn
 }
 
-CATCH_TEST_CASE("Filesystem", "[Filesystem]") {
+CATCH_TEST_CASE("Filesystem", "[Binaries]") {
     common_loader("Filesystem");
+}
+
+CATCH_TEST_CASE("GCC tests", "[Binaries]") {
+    std::filesystem::path exe_path = std::filesystem::canonical("/proc/self/exe");
+    std::filesystem::path dir = exe_path.parent_path();
+    if (!std::filesystem::exists(dir / "felix86")) {
+        ERROR("felix86 executable not found in the current directory");
+    }
+
+    if (g_config.rootfs_path.empty() || !std::filesystem::exists(g_config.rootfs_path)) {
+        ERROR("This test requires a rootfs directory, set via FELIX86_ROOTFS");
+    }
+
+    std::filesystem::path dir_i386 = dir / "Binaries" / "fex-gcc-target-tests-bins" / "32";
+    if (!std::filesystem::is_directory(dir_i386)) {
+        ERROR("These tests need you to clone the submodules: `git submodule update --init`");
+    }
+
+    std::filesystem::directory_iterator it_i386(dir_i386);
+    for (const auto& entry : it_i386) {
+        run_test(exe_path, entry, 0);
+    }
 }

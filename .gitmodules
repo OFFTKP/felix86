@@ -1,0 +1,3 @@
+[submodule "tests/Binaries/binary_tests"]
+	path = tests/Binaries/binary_tests
+	url = https://github.com/felix86-emu/binary_tests/
