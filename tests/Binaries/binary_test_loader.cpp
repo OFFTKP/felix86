@@ -75,11 +75,11 @@ void common_loader(const std::filesystem::path& path) {
     std::filesystem::path exe_path = std::filesystem::canonical("/proc/self/exe");
     std::filesystem::path dir = exe_path.parent_path();
     if (!std::filesystem::exists(dir / "felix86")) {
-        ERROR("felix86 executable not found in the current directory");
+        CATCH_FAIL("felix86 executable not found in the current directory");
     }
 
     if (g_config.rootfs_path.empty() || !std::filesystem::exists(g_config.rootfs_path)) {
-        ERROR("This test requires a rootfs directory, set via FELIX86_ROOTFS");
+        CATCH_FAIL("This test requires a rootfs directory, set via FELIX86_ROOTFS");
     }
 
     CATCH_REQUIRE(std::filesystem::is_directory(dir / "Binaries" / path));
@@ -98,7 +98,7 @@ void common_loader(const std::filesystem::path& path) {
     }
 
     if (!all_passed) {
-        CATCH_ERROR((std::string("Failed some tests:\n") + failures).c_str());
+        CATCH_FAIL((std::string("Failed some tests:\n") + failures).c_str());
     }
 }
 
@@ -126,16 +126,16 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
     std::filesystem::path exe_path = std::filesystem::canonical("/proc/self/exe");
     std::filesystem::path dir = exe_path.parent_path();
     if (!std::filesystem::exists(dir / "felix86")) {
-        ERROR("felix86 executable not found in the current directory");
+        CATCH_FAIL("felix86 executable not found in the current directory");
     }
 
     if (g_config.rootfs_path.empty() || !std::filesystem::exists(g_config.rootfs_path)) {
-        ERROR("This test requires a rootfs directory, set via FELIX86_ROOTFS");
+        CATCH_FAIL("This test requires a rootfs directory, set via FELIX86_ROOTFS");
     }
 
     std::filesystem::path dir_i386 = dir / "Binaries" / "binary_tests" / "fex-gcc-target-tests-bins" / "32";
     if (!std::filesystem::is_directory(dir_i386)) {
-        ERROR("These tests need you to clone the submodules: `git submodule update --init`");
+        CATCH_FAIL("These tests need you to clone the submodules: `git submodule update --init`");
     }
 
     std::string failures;
@@ -151,12 +151,12 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
 
     std::filesystem::path dir_x64 = dir / "Binaries" / "binary_tests" / "fex-gcc-target-tests-bins" / "64";
     if (!std::filesystem::is_directory(dir_x64)) {
-        ERROR("64-bit dir not found?");
+        CATCH_FAIL("64-bit dir not found?");
     }
 
     std::filesystem::directory_iterator it_x64(dir_x64);
     for (const auto& entry : it_x64) {
-        run_test(dir / "felix86", entry, 0);
+        bool passed = run_test(dir / "felix86", entry, 0);
         if (!passed) {
             all_passed = false;
             failures += entry.path().string() + "\n";
@@ -164,6 +164,6 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
     }
 
     if (!all_passed) {
-        CATCH_ERROR((std::string("Failed some tests:\n") + failures).c_str());
+        CATCH_FAIL((std::string("Failed some tests:\n") + failures).c_str());
     }
 }
