@@ -124,7 +124,7 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
         ERROR("This test requires a rootfs directory, set via FELIX86_ROOTFS");
     }
 
-    std::filesystem::path dir_i386 = dir / "Binaries" / "fex-gcc-target-tests-bins" / "32";
+    std::filesystem::path dir_i386 = dir / "Binaries" / "binary_tests" / "fex-gcc-target-tests-bins" / "32";
     if (!std::filesystem::is_directory(dir_i386)) {
         ERROR("These tests need you to clone the submodules: `git submodule update --init`");
     }
