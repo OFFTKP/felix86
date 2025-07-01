@@ -187,7 +187,7 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
                     if (!thread_data.failures) {
                         thread_data.failures = "";
                     }
-                    *thread_data.failures += entry.string() + "\n";
+                    *thread_data.failures += entry.filename().string() + "\n";
                 } else {
                     SUCCESS("Test passed: %s", entry.filename().c_str());
                 }
