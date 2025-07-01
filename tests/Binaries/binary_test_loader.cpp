@@ -1,5 +1,7 @@
 
 #include <filesystem>
+#include <optional>
+#include <thread>
 #include <vector>
 #include <catch2/catch_test_macros.hpp>
 #include <fcntl.h>
@@ -8,6 +10,12 @@
 #include "common.h"
 #include "felix86/common/log.hpp"
 #include "fmt/format.h"
+
+struct JobThreadData {
+    std::optional<std::string> failures;
+    std::vector<std::filesystem::path> tests;
+    std::thread thread;
+};
 
 bool run_test(const std::filesystem::path& felix_path, const std::filesystem::path& path, int expected_exit_status) {
     int pipefd[2];
@@ -65,7 +73,6 @@ bool run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         size_t bytes_read = read(pipefd[0], buffer.data(), buffer.size());
         close(pipefd[0]);
 
-        printf("Status: %x\n", status);
         CATCH_INFO(fmt::format("Output: {}", buffer.substr(0, bytes_read)));
         return WIFEXITED(status) && WEXITSTATUS(status) == expected_exit_status;
     }
@@ -140,17 +147,19 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
         CATCH_FAIL("These tests need you to clone the submodules: `git submodule update --init`");
     }
 
-    std::string failures;
-    bool all_passed = true;
+    int thread_count = std::thread::hardware_concurrency();
+    if (thread_count <= 0) {
+        thread_count = 2;
+    }
+
+    std::vector<JobThreadData> threads;
+    threads.resize(thread_count);
+
+    size_t index = 0;
+    std::vector<std::filesystem::path> tests;
     std::filesystem::directory_iterator it_i386(dir_i386);
     for (const auto& entry : it_i386) {
-        bool passed = run_test(dir / "felix86", entry, 0);
-        if (!passed) {
-            all_passed = false;
-            failures += entry.path().string() + "\n";
-        } else {
-            SUCCESS("Test passed: %s", entry.path().filename().c_str());
-        }
+        tests.push_back(entry.path());
     }
 
     std::filesystem::path dir_x64 = dir / "Binaries" / "binary_tests" / "fex-gcc-target-tests-bins" / "64";
@@ -160,16 +169,46 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
 
     std::filesystem::directory_iterator it_x64(dir_x64);
     for (const auto& entry : it_x64) {
-        bool passed = run_test(dir / "felix86", entry, 0);
-        if (!passed) {
-            all_passed = false;
-            failures += entry.path().string() + "\n";
-        } else {
-            SUCCESS("Test passed: %s", entry.path().filename().c_str());
+        tests.push_back(entry.path());
+    }
+
+    size_t tests_per_thread = tests.size() / thread_count;
+    for (const auto& test : tests) {
+        auto& data = threads[index];
+        data.tests.push_back(test);
+
+        if (index != threads.size() - 1 && threads[index].tests.size() > tests_per_thread) {
+            index++;
         }
     }
 
-    if (!all_passed) {
+    for (auto& thread_data : threads) {
+        thread_data.thread = std::thread([&dir, &thread_data]() {
+            for (const auto& entry : thread_data.tests) {
+                bool passed = run_test(dir / "felix86", entry, 0);
+                if (!passed) {
+                    if (!thread_data.failures) {
+                        thread_data.failures = "";
+                    }
+                    *thread_data.failures += entry.string() + "\n";
+                } else {
+                    SUCCESS("Test passed: %s", entry.filename().c_str());
+                }
+            }
+        });
+    }
+
+    for (auto& thread_data : threads) {
+        thread_data.thread.join();
+    }
+
+    std::string failures;
+    for (const auto& thread_data : threads) {
+        if (thread_data.failures) {
+            failures += *thread_data.failures;
+        }
+    }
+    if (!failures.empty()) {
         CATCH_FAIL((std::string("Failed some tests:\n") + failures).c_str());
     }
 }
