@@ -49,6 +49,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
 
     // Copy our test binary to the temp path
     std::filesystem::copy(path, g_config.rootfs_path / exec_path.relative_path(), std::filesystem::copy_options::overwrite_existing);
+    printf("Copying %s to %s\n", path.c_str(), (g_config.rootfs_path / exec_path.relative_path()).c_str());
 
     pid_t fork_result = fork();
     if (fork_result == 0) {
