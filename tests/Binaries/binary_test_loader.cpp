@@ -57,7 +57,7 @@ bool run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         close(pipefd[1]);
         execvpe(argv[0], (char* const*)argv.data(), (char* const*)envp.data());
         perror("execvpe");
-        return false;
+        exit(1);
     } else {
         close(pipefd[1]);
         int status;
@@ -65,6 +65,7 @@ bool run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         size_t bytes_read = read(pipefd[0], buffer.data(), buffer.size());
         close(pipefd[0]);
 
+        printf("Status: %x\n", status);
         CATCH_INFO(fmt::format("Output: {}", buffer.substr(0, bytes_read)));
         return WIFEXITED(status) && WEXITSTATUS(status) == expected_exit_status;
     }
