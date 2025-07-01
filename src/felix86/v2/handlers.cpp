@@ -6386,7 +6386,7 @@ FAST_HANDLE(PEXTRW) {
     rec.setVectorState(SEW::E16, 8);
     as.VSLIDEDOWN(temp, src, imm);
     as.VMV_XS(result, temp);
-    rec.zext(result, result, X86_SIZE_WORD);
+    rec.zext(result, result, is_mmx ? X86_SIZE_BYTE : X86_SIZE_WORD);
 
     rec.setGPR(&operands[0], result);
 }
