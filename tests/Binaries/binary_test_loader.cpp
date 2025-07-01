@@ -9,7 +9,7 @@
 #include "felix86/common/log.hpp"
 #include "fmt/format.h"
 
-void run_test(const std::filesystem::path& felix_path, const std::filesystem::path& path, int expected_exit_status) {
+bool run_test(const std::filesystem::path& felix_path, const std::filesystem::path& path, int expected_exit_status) {
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         perror("pipe");
@@ -49,7 +49,6 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
 
     // Copy our test binary to the temp path
     std::filesystem::copy(path, g_config.rootfs_path / exec_path.relative_path(), std::filesystem::copy_options::overwrite_existing);
-    printf("Copying %s to %s\n", path.c_str(), (g_config.rootfs_path / exec_path.relative_path()).c_str());
 
     pid_t fork_result = fork();
     if (fork_result == 0) {
@@ -58,7 +57,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         close(pipefd[1]);
         execvpe(argv[0], (char* const*)argv.data(), (char* const*)envp.data());
         perror("execvpe");
-        exit(1);
+        return false;
     } else {
         close(pipefd[1]);
         int status;
@@ -67,10 +66,9 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         close(pipefd[0]);
 
         CATCH_INFO(fmt::format("Output: {}", buffer.substr(0, bytes_read)));
-        CATCH_REQUIRE(WEXITSTATUS(status) == expected_exit_status);
+        SUCCESS("Test passed: %s", path.filename().c_str());
+        return WEXITSTATUS(status) == expected_exit_status;
     }
-
-    SUCCESS("Test passed: %s", path.filename().c_str());
 }
 
 void common_loader(const std::filesystem::path& path) {
@@ -86,11 +84,21 @@ void common_loader(const std::filesystem::path& path) {
 
     CATCH_REQUIRE(std::filesystem::is_directory(dir / "Binaries" / path));
     std::filesystem::directory_iterator it(dir / "Binaries" / path);
+    bool all_passed = true;
+    std::string failures;
     for (const auto& entry : it) {
         std::string extension = entry.path().extension().string();
         if (extension == ".out" || extension == ".exe") {
-            run_test(dir / "felix86", entry.path().string(), FELIX86_BTEST_SUCCESS);
+            bool passed = run_test(dir / "felix86", entry.path().string(), FELIX86_BTEST_SUCCESS);
+            if (!passed) {
+                all_passed = false;
+                failures += entry.path().string() + "\n";
+            }
         }
+    }
+
+    if (!all_passed) {
+        CATCH_ERROR((std::string("Failed some tests:\n") + failures).c_str());
     }
 }
 
@@ -130,9 +138,15 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
         ERROR("These tests need you to clone the submodules: `git submodule update --init`");
     }
 
+    std::string failures;
+    bool all_passed = true;
     std::filesystem::directory_iterator it_i386(dir_i386);
     for (const auto& entry : it_i386) {
-        run_test(exe_path, entry, 0);
+        bool passed = run_test(dir / "felix86", entry, 0);
+        if (!passed) {
+            all_passed = false;
+            failures += entry.path().string() + "\n";
+        }
     }
 
     std::filesystem::path dir_x64 = dir / "Binaries" / "binary_tests" / "fex-gcc-target-tests-bins" / "64";
@@ -142,6 +156,14 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
 
     std::filesystem::directory_iterator it_x64(dir_x64);
     for (const auto& entry : it_x64) {
-        run_test(exe_path, entry, 0);
+        run_test(dir / "felix86", entry, 0);
+        if (!passed) {
+            all_passed = false;
+            failures += entry.path().string() + "\n";
+        }
+    }
+
+    if (!all_passed) {
+        CATCH_ERROR((std::string("Failed some tests:\n") + failures).c_str());
     }
 }
