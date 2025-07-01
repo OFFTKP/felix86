@@ -28,8 +28,6 @@ bool run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     const std::filesystem::path exec_path = tmp_path / path.filename();
     const std::string extension = path.extension();
 
-    CATCH_INFO(fmt::format("Running test: {}", path.filename().string()));
-
     std::string buffer(1024 * 1024, 0);
     std::string srootfs = "FELIX86_ROOTFS=" + g_config.rootfs_path.string();
     std::string spath = exec_path;
@@ -72,8 +70,6 @@ bool run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         waitpid(fork_result, &status, 0);
         size_t bytes_read = read(pipefd[0], buffer.data(), buffer.size());
         close(pipefd[0]);
-
-        CATCH_INFO(fmt::format("Output: {}", buffer.substr(0, bytes_read)));
         return WIFEXITED(status) && WEXITSTATUS(status) == expected_exit_status;
     }
 }
@@ -96,6 +92,7 @@ void common_loader(const std::filesystem::path& path) {
     for (const auto& entry : it) {
         std::string extension = entry.path().extension().string();
         if (extension == ".out" || extension == ".exe") {
+            CATCH_INFO(fmt::format("Running test: {}", entry.path().filename().string()));
             bool passed = run_test(dir / "felix86", entry.path().string(), FELIX86_BTEST_SUCCESS);
             if (!passed) {
                 all_passed = false;
