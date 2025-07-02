@@ -458,20 +458,23 @@ FAST_HANDLE(ADD) {
                 as.AMOADD_H(Ordering::AQRL, dst, src, address);
             } else {
                 /*
-                andi    a2, a0, -4
-                slli    a0, a0, 3
-                lui     a3, 16
-                addi    a3, a3, -1
-                sllw    a3, a3, a0
-                sllw    a0, a1, a0
-            .LBB0_1:
-                lr.w.aqrl       a1, (a2)
-                add     a4, a1, a0
-                xor     a4, a4, a1
-                and     a4, a4, a3
-                xor     a4, a4, a1
-                sc.w.rl a4, a4, (a2)
-                bnez    a4, .LBB0_1
+                aadd(unsigned short*, unsigned short)
+                    andi    a6, a0, -4
+                    slli    a0, a0, 3
+                    lui     a3, 16
+                    addi    a3, a3, -1
+                    sllw    a4, a3, a0
+                    sllw    a1, a1, a0
+                .LBB0_3:
+                    lr.w.aqrl       a5, (a6)
+                    add     a2, a5, a1
+                    xor     a2, a2, a5
+                    and     a2, a2, a4
+                    xor     a2, a2, a5
+                    sc.w.rl a2, a2, (a6)
+                    bnez    a2, .LBB0_3
+                    srlw    a0, a5, a0
+                    and     a0, a0, a3
                 */
                 biscuit::Label loop, bad_alignment, end;
                 biscuit::GPR masked_address = rec.scratch();
@@ -480,29 +483,36 @@ FAST_HANDLE(ADD) {
                 as.ANDI(masked_address, address, 0b11);
                 as.BEQ(masked_address, mask, &bad_alignment);
 
-                as.ANDI(masked_address, address, -4);
+                biscuit::GPR s_a1 = rec.scratch();
+                biscuit::GPR s_a2 = rec.scratch();
+                biscuit::GPR s_a3 = mask;
+                biscuit::GPR s_a4 = rec.scratch();
+                biscuit::GPR s_a5 = rec.flag(X86_REF_ZF); // ran out of scratch and this gets modified later
+                biscuit::GPR s_a6 = masked_address;
+                as.ANDI(s_a6, address, -4);
                 as.SLLI(address, address, 3);
-                as.LI(mask, 0xFFFF);
-                as.SLLW(mask, mask, address);
-                as.SLLW(address, src, address);
-
+                as.LI(s_a3, 0xFFFF);
+                as.SLLW(s_a4, s_a3, address);
+                as.SLLW(s_a1, src, address);
                 as.Bind(&loop);
-                as.LR_W(Ordering::AQRL, dst, masked_address);
-                as.ADD(result, dst, address);
-                as.XOR(result, result, dst);
-                as.AND(result, result, mask);
-                as.XOR(result, result, dst);
-                as.SC_W(Ordering::AQRL, result, result, masked_address);
-                as.BNEZ(result, &loop);
-
-                as.SRLW(dst, dst, address);
-                rec.sexth(dst, dst);
+                as.LR_W(Ordering::AQRL, s_a5, s_a6);
+                as.ADD(s_a2, s_a5, s_a1);
+                as.XOR(s_a2, s_a2, s_a5);
+                as.AND(s_a2, s_a2, s_a4);
+                as.XOR(s_a2, s_a2, s_a5);
+                as.SC_W(Ordering::AQRL, s_a2, s_a2, s_a6);
+                as.BNEZ(s_a2, &loop);
+                as.SRLW(dst, s_a5, address);
+                as.AND(dst, dst, s_a3);
 
                 as.J(&end);
                 as.Bind(&bad_alignment);
                 as.EBREAK();
 
                 as.Bind(&end);
+                rec.popScratch();
+                rec.popScratch();
+                rec.popScratch();
                 rec.popScratch();
                 rec.popScratch();
             }
