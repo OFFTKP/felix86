@@ -11,8 +11,4 @@ private:
     constexpr static u64 size32 = 32 * 1024 * 1024;
 
     constexpr static u64 size64 = 128 * 1024 * 1024;
-
-    static void allocate64();
-
-    static void allocate32();
 };
