@@ -520,6 +520,7 @@ FAST_HANDLE(ADD) {
         }
         case 32: {
             as.AMOADD_W(Ordering::AQRL, dst, src, address);
+            rec.zext(dst, dst, X86_SIZE_DWORD); // AMOADD_W sign extends
             break;
         }
         case 64: {
@@ -704,6 +705,7 @@ FAST_HANDLE(SUB) {
             as.NEG(src_neg, src);
             as.AMOADD_W(Ordering::AQRL, dst, src_neg, address);
             rec.popScratch();
+            rec.zext(dst, dst, X86_SIZE_DWORD); // AMOADD_W sign extends
             break;
         }
         case 64: {
@@ -757,24 +759,7 @@ FAST_HANDLE(SBB) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        biscuit::GPR scratch = rec.scratch();
-        biscuit::GPR scratch2 = rec.scratch();
-        biscuit::GPR of = rec.flag(X86_REF_OF);
-        as.LI(scratch2, sign_mask);
-        as.XOR(scratch, dst, src);
-        as.XOR(of, dst, result);
-        as.AND(of, of, scratch);
-        as.AND(of, of, scratch2);
-        as.SNEZ(of, of);
-        as.XOR(scratch, result, cf);
-        as.XOR(scratch2, result, result_2);
-        as.AND(scratch, scratch, scratch2);
-        as.LI(scratch2, sign_mask);
-        as.AND(scratch, scratch, scratch2);
-        as.SNEZ(scratch, scratch);
-        as.OR(of, of, scratch);
-        rec.popScratch();
-        rec.popScratch();
+        rec.updateOverflowSub(dst, src, result_2, size);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
@@ -935,6 +920,9 @@ FAST_HANDLE(OR) {
         rec.clearFlag(X86_REF_OF);
     }
 
+    // this is needed for valgrind tests to pass but it is actually "undefined"
+    // as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+
     if (writeback) {
         rec.setGPR(&operands[0], result);
     }
@@ -1038,6 +1026,9 @@ FAST_HANDLE(XOR) {
         rec.clearFlag(X86_REF_OF);
     }
 
+    // this is needed for valgrind tests to pass but it is actually "undefined"
+    // as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+
     if (writeback) {
         rec.setGPR(&operands[0], result);
     }
@@ -1097,6 +1088,9 @@ FAST_HANDLE(AND) {
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
         rec.clearFlag(X86_REF_OF);
     }
+
+    // this is needed for valgrind tests to pass but it is actually "undefined"
+    // as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
 
     if (writeback) {
         rec.setGPR(&operands[0], result);
