@@ -8,6 +8,7 @@
 #include <spawn.h>
 #include <sys/wait.h>
 #include "common.h"
+#include "felix86/common/elf.hpp"
 #include "felix86/common/log.hpp"
 #include "fmt/format.h"
 
@@ -108,27 +109,7 @@ void common_loader(const std::filesystem::path& path) {
     }
 }
 
-CATCH_TEST_CASE("Signals", "[Binaries]") {
-    common_loader("Signals");
-}
-
-CATCH_TEST_CASE("Simple", "[Binaries]") {
-    common_loader("Simple");
-}
-
-CATCH_TEST_CASE("Clone", "[Binaries]") {
-    common_loader("Clone");
-}
-
-CATCH_TEST_CASE("SMC", "[Binaries]") {
-    // common_loader("SMC"); -- we don't handle smc rn
-}
-
-CATCH_TEST_CASE("Filesystem", "[Binaries]") {
-    common_loader("Filesystem");
-}
-
-CATCH_TEST_CASE("GCC tests", "[Binaries]") {
+void common_loader_concurrent(const std::filesystem::path& path) {
     std::filesystem::path exe_path = std::filesystem::canonical("/proc/self/exe");
     std::filesystem::path dir = exe_path.parent_path();
     if (!std::filesystem::exists(dir / "felix86")) {
@@ -139,9 +120,11 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
         CATCH_FAIL("This test requires a rootfs directory, set via FELIX86_ROOTFS");
     }
 
-    std::filesystem::path dir_i386 = dir / "Binaries" / "binary_tests" / "fex-gcc-target-tests-bins" / "32";
-    if (!std::filesystem::is_directory(dir_i386)) {
-        CATCH_FAIL("These tests need you to clone the submodules: `git submodule update --init`");
+    ASSERT(path.is_relative());
+    std::filesystem::path dir_tests = dir / path;
+    if (!std::filesystem::is_directory(dir_tests)) {
+        CATCH_FAIL(
+            fmt::format("Missing directory: {}\nThese tests need you to clone the submodules: `git submodule update --init`", dir_tests.c_str()));
     }
 
     int thread_count = std::thread::hardware_concurrency();
@@ -154,19 +137,11 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
 
     size_t index = 0;
     std::vector<std::filesystem::path> tests;
-    std::filesystem::directory_iterator it_i386(dir_i386);
-    for (const auto& entry : it_i386) {
-        tests.push_back(entry.path());
-    }
-
-    std::filesystem::path dir_x64 = dir / "Binaries" / "binary_tests" / "fex-gcc-target-tests-bins" / "64";
-    if (!std::filesystem::is_directory(dir_x64)) {
-        CATCH_FAIL("64-bit dir not found?");
-    }
-
-    std::filesystem::directory_iterator it_x64(dir_x64);
-    for (const auto& entry : it_x64) {
-        tests.push_back(entry.path());
+    std::filesystem::recursive_directory_iterator it(dir_tests);
+    for (const auto& entry : it) {
+        if (Elf::Peek(entry) != Elf::PeekResult::NotElf) {
+            tests.push_back(entry.path());
+        }
     }
 
     size_t tests_per_thread = tests.size() / thread_count;
@@ -205,7 +180,50 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
             failures += *thread_data.failures;
         }
     }
+
     if (!failures.empty()) {
         CATCH_FAIL((std::string("Failed some tests:\n") + failures).c_str());
     }
+}
+
+CATCH_TEST_CASE("Signals", "[Binaries]") {
+    common_loader("Signals");
+}
+
+CATCH_TEST_CASE("Simple", "[Binaries]") {
+    common_loader("Simple");
+}
+
+CATCH_TEST_CASE("Clone", "[Binaries]") {
+    common_loader("Clone");
+}
+
+CATCH_TEST_CASE("SMC", "[Binaries]") {
+    // common_loader("SMC"); -- we don't handle smc rn
+}
+
+CATCH_TEST_CASE("Filesystem", "[Binaries]") {
+    common_loader("Filesystem");
+}
+
+CATCH_TEST_CASE("GCC tests", "[Binaries]") {
+    std::filesystem::path dir_i386 = std::filesystem::path("Binaries") / "binary_tests" / "fex-gcc-target-tests-bins" / "32";
+    std::filesystem::path dir_x64 = std::filesystem::path("Binaries") / "binary_tests" / "fex-gcc-target-tests-bins" / "64";
+    common_loader_concurrent(dir_i386);
+    common_loader_concurrent(dir_x64);
+}
+
+CATCH_TEST_CASE("Posix tests", "[Binaries]") {
+    std::filesystem::path dir = std::filesystem::path("Binaries") / "binary_tests" / "fex-posixtest-bins";
+    common_loader_concurrent(dir);
+}
+
+CATCH_TEST_CASE("Gvisor tests", "[Binaries]") {
+    std::filesystem::path dir = std::filesystem::path("Binaries") / "binary_tests" / "fex-gvisor-tests-bins";
+    common_loader_concurrent(dir);
+}
+
+CATCH_TEST_CASE("Valgrind tests", "[Binaries]") {
+    std::filesystem::path dir = std::filesystem::path("Binaries") / "binary_tests" / "valgrind-tests-bins";
+    common_loader_concurrent(dir);
 }
