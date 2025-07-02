@@ -401,7 +401,7 @@ FAST_HANDLE(ADD) {
     biscuit::GPR dst;
 
     bool writeback = true;
-    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY; // && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     if (needs_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         dst = rec.scratch();
@@ -412,19 +412,19 @@ FAST_HANDLE(ADD) {
                 as.AMOADD_B(Ordering::AQRL, dst, src, address);
             } else {
                 /*
-                andi    a2, a0, -4
-                slli    a0, a0, 3
-                li      a3, 255
-                sllw    a3, a3, a0
-                sllw    a0, a1, a0
-            .LBB0_1:
-                lr.w.aqrl       a1, (a2)
-                add     a4, a1, a0
-                xor     a4, a4, a1
-                and     a4, a4, a3
-                xor     a4, a4, a1
-                sc.w.rl a4, a4, (a2)
-                bnez    a4, .LBB0_1
+                    andi    a2, a0, -4
+                    slli    a0, a0, 3
+                    li      a3, 255
+                    sllw    a3, a3, a0
+                    sllw    a0, a1, a0
+                .LBB0_1:
+                    lr.w.aqrl       a1, (a2)
+                    add     a4, a1, a0
+                    xor     a4, a4, a1
+                    and     a4, a4, a3
+                    xor     a4, a4, a1
+                    sc.w.rl a4, a4, (a2)
+                    bnez    a4, .LBB0_1
                 */
                 biscuit::Label loop;
                 biscuit::GPR masked_address = rec.scratch();
@@ -592,7 +592,7 @@ FAST_HANDLE(SUB) {
     biscuit::GPR dst;
 
     bool writeback = true;
-    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY; // && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     if (needs_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         dst = rec.scratch();
