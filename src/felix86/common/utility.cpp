@@ -895,8 +895,7 @@ double f80_to_64(Float80* f80) {
 bool felix86_bt(u64 address, i64 offset) {
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
-    bool needs_correction = (offset < 0) && (bit_offset != 0);
-    u8* ptr = (u8*)address + byte_offset - needs_correction;
+    u8* ptr = (u8*)address + byte_offset;
     u8 value = __atomic_load_n(ptr, __ATOMIC_SEQ_CST);
     return (value >> bit_offset) & 1;
 }
@@ -904,8 +903,7 @@ bool felix86_bt(u64 address, i64 offset) {
 bool felix86_bts(u64 address, i64 offset) {
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
-    bool needs_correction = (offset < 0) && (bit_offset != 0);
-    u8* ptr = (u8*)address + byte_offset - needs_correction;
+    u8* ptr = (u8*)address + byte_offset;
     u8 old = __atomic_fetch_or(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
     return (old >> bit_offset) & 1;
 }
@@ -913,8 +911,7 @@ bool felix86_bts(u64 address, i64 offset) {
 bool felix86_btr(u64 address, i64 offset) {
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
-    bool needs_correction = (offset < 0) && (bit_offset != 0);
-    u8* ptr = (u8*)address + byte_offset - needs_correction;
+    u8* ptr = (u8*)address + byte_offset;
     u8 old = __atomic_fetch_and(ptr, ~(1 << bit_offset), __ATOMIC_SEQ_CST);
     return (old >> bit_offset) & 1;
 }
@@ -922,8 +919,7 @@ bool felix86_btr(u64 address, i64 offset) {
 bool felix86_btc(u64 address, i64 offset) {
     u64 byte_offset = offset >> 3;
     u64 bit_offset = offset & 7;
-    bool needs_correction = (offset < 0) && (bit_offset != 0);
-    u8* ptr = (u8*)address + byte_offset - needs_correction;
+    u8* ptr = (u8*)address + byte_offset;
     u8 old = __atomic_fetch_xor(ptr, 1 << bit_offset, __ATOMIC_SEQ_CST);
     return (old >> bit_offset) & 1;
 }
