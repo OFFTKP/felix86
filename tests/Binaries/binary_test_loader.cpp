@@ -214,7 +214,7 @@ CATCH_TEST_CASE("GCC tests", "[Binaries]") {
 }
 
 CATCH_TEST_CASE("Posix tests", "[Binaries]") {
-    std::filesystem::path dir = std::filesystem::path("Binaries") / "binary_tests" / "fex-posixtest-bins";
+    std::filesystem::path dir = std::filesystem::path("Binaries") / "binary_tests" / "fex-posixtest-bins" / "native";
     common_loader_concurrent(dir);
 }
 
