@@ -401,7 +401,7 @@ FAST_HANDLE(ADD) {
     biscuit::GPR dst;
 
     bool writeback = true;
-    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY; // && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     if (needs_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         dst = rec.scratch();
@@ -590,7 +590,7 @@ FAST_HANDLE(SUB) {
     biscuit::GPR dst;
 
     bool writeback = true;
-    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY; // && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     if (needs_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         dst = rec.scratch();
