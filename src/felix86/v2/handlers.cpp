@@ -1746,6 +1746,11 @@ FAST_HANDLE(JMP) {
 }
 
 FAST_HANDLE(LEA) {
+    // The LEA instruction doesn't take into account segment override, but our lea function does
+    // So hack the segment away
+    ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
+    operands[1].mem.segment = ZYDIS_REGISTER_NONE;
+    operands[1].attributes &= ~ZYDIS_ATTRIB_HAS_SEGMENT;
     biscuit::GPR address = rec.lea(&operands[1]);
     rec.setGPR(&operands[0], address);
 }
