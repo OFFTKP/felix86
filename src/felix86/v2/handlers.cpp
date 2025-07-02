@@ -703,16 +703,17 @@ FAST_HANDLE(SUB) {
             biscuit::GPR src_neg = rec.scratch();
             as.NEG(src_neg, src);
             as.AMOADD_W(Ordering::AQRL, dst, src_neg, address);
+            rec.popScratch();
             break;
         }
         case 64: {
             biscuit::GPR src_neg = rec.scratch();
             as.NEG(src_neg, src);
             as.AMOADD_D(Ordering::AQRL, dst, src_neg, address);
+            rec.popScratch();
             break;
         }
         }
-        rec.popScratch(); // pop src_neg
 
         // Still calculate result for flags
         as.SUB(result, dst, src);
