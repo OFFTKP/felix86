@@ -429,15 +429,16 @@ FAST_HANDLE(ADD) {
                 biscuit::Label loop;
                 biscuit::GPR masked_address = rec.scratch();
                 biscuit::GPR mask = rec.scratch();
+                biscuit::GPR src_shifted = rec.scratch();
                 as.ANDI(masked_address, address, -4);
                 as.SLLI(address, address, 3);
                 as.LI(mask, 0xFF);
                 as.SLLW(mask, mask, address);
-                as.SLLW(address, src, address);
+                as.SLLW(src_shifted, src, address);
 
                 as.Bind(&loop);
                 as.LR_W(Ordering::AQRL, dst, masked_address);
-                as.ADD(result, dst, address);
+                as.ADD(result, dst, src_shifted);
                 as.XOR(result, result, dst);
                 as.AND(result, result, mask);
                 as.XOR(result, result, dst);
@@ -447,6 +448,7 @@ FAST_HANDLE(ADD) {
                 as.SRLW(dst, dst, address);
                 as.ANDI(dst, dst, 0xFF);
 
+                rec.popScratch();
                 rec.popScratch();
                 rec.popScratch();
             }
@@ -614,15 +616,16 @@ FAST_HANDLE(SUB) {
             biscuit::Label loop;
             biscuit::GPR masked_address = rec.scratch();
             biscuit::GPR mask = rec.scratch();
+            biscuit::GPR src_shifted = rec.scratch();
             as.ANDI(masked_address, address, -4);
             as.SLLI(address, address, 3);
             as.LI(mask, 0xFF);
             as.SLLW(mask, mask, address);
-            as.SLLW(address, src, address);
+            as.SLLW(src_shifted, src, address);
 
             as.Bind(&loop);
             as.LR_W(Ordering::AQRL, dst, masked_address);
-            as.SUB(result, dst, address);
+            as.SUB(result, dst, src_shifted);
             as.XOR(result, result, dst);
             as.AND(result, result, mask);
             as.XOR(result, result, dst);
@@ -632,6 +635,7 @@ FAST_HANDLE(SUB) {
             as.SRLW(dst, dst, address);
             as.ANDI(dst, dst, 0xFF);
 
+            rec.popScratch();
             rec.popScratch();
             rec.popScratch();
             break;
