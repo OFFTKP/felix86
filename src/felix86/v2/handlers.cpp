@@ -2698,8 +2698,8 @@ FAST_HANDLE(IMUL) {
             biscuit::GPR sext = rec.scratch();
             biscuit::GPR al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
             rec.sextb(sext, al);
-            rec.sextb(result, al);
-            as.MULW(result, sext, src);
+            rec.sextb(result, src);
+            as.MULW(result, sext, result);
             rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, result);
 
             if (rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF)) {
