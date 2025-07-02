@@ -484,10 +484,10 @@ FAST_HANDLE(ADD) {
                 as.BEQ(masked_address, mask, &bad_alignment);
 
                 biscuit::GPR s_a1 = rec.scratch();
-                biscuit::GPR s_a2 = rec.scratch();
                 biscuit::GPR s_a3 = mask;
-                biscuit::GPR s_a4 = rec.scratch();
-                biscuit::GPR s_a5 = rec.flag(X86_REF_ZF); // ran out of scratch and this gets modified later
+                biscuit::GPR s_a2 = rec.flag(X86_REF_CF); // ran out of scratch and these get modified later
+                biscuit::GPR s_a4 = rec.flag(X86_REF_SF);
+                biscuit::GPR s_a5 = rec.flag(X86_REF_ZF);
                 biscuit::GPR s_a6 = masked_address;
                 as.ANDI(s_a6, address, -4);
                 as.SLLI(address, address, 3);
@@ -510,8 +510,6 @@ FAST_HANDLE(ADD) {
                 as.EBREAK();
 
                 as.Bind(&end);
-                rec.popScratch();
-                rec.popScratch();
                 rec.popScratch();
                 rec.popScratch();
                 rec.popScratch();
