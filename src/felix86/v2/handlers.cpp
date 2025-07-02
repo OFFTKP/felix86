@@ -920,8 +920,9 @@ FAST_HANDLE(OR) {
         rec.clearFlag(X86_REF_OF);
     }
 
-    // this is needed for valgrind tests to pass but it is actually "undefined"
-    // as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+    if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
+        rec.clearFlag(X86_REF_AF);
+    }
 
     if (writeback) {
         rec.setGPR(&operands[0], result);
@@ -1026,8 +1027,9 @@ FAST_HANDLE(XOR) {
         rec.clearFlag(X86_REF_OF);
     }
 
-    // this is needed for valgrind tests to pass but it is actually "undefined"
-    // as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+    if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
+        rec.clearFlag(X86_REF_AF);
+    }
 
     if (writeback) {
         rec.setGPR(&operands[0], result);
@@ -1089,8 +1091,10 @@ FAST_HANDLE(AND) {
         rec.clearFlag(X86_REF_OF);
     }
 
-    // this is needed for valgrind tests to pass but it is actually "undefined"
-    // as.SB(x0, offsetof(ThreadState, af), rec.threadStatePointer());
+    // Technically undefined, but some software relies on them being AF==0
+    if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
+        rec.clearFlag(X86_REF_AF);
+    }
 
     if (writeback) {
         rec.setGPR(&operands[0], result);
