@@ -144,6 +144,8 @@ void common_loader_concurrent(const std::filesystem::path& path) {
         }
     }
 
+    CATCH_REQUIRE(!tests.empty());
+
     size_t tests_per_thread = tests.size() / thread_count;
     for (const auto& test : tests) {
         auto& data = threads[index];
