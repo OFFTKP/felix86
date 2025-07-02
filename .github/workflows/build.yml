@@ -44,11 +44,11 @@ jobs:
           cp ./src/felix86/hle/guest_libs/libwayland-client.so ./artifact/lib/
           cp ./src/felix86/hle/guest_libs/libluajit-5.1.so ./artifact/lib/
           mkdir -p ./test
-          cp ./build/felix86_test ./test/
-          cp ./build/felix86 ./test/
-          cp -r ./build/ASM ./test/
-          cp -r ./build/32Bit_ASM ./test/
-          cp -r ./build/Binaries ./test/
+          mv ./build/felix86_test ./test/
+          mv ./build/felix86 ./test/
+          mv ./build/ASM ./test/
+          mv ./build/32Bit_ASM ./test/
+          mv ./build/Binaries ./test/
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
