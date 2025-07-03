@@ -868,8 +868,7 @@ FAST_HANDLE(OR) {
 
     bool writeback = true;
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
-    bool too_small_for_atomic = operands[0].size == 8 || operands[0].size == 16;
-    if (needs_atomic && !too_small_for_atomic) {
+    if (needs_atomic) {
         biscuit::GPR address = rec.lea(&operands[0]);
         dst = rec.scratch();
         switch (operands[0].size) {
