@@ -42,7 +42,7 @@ FILE="$INSTALLATION_DIR/felix86"
 check_url() {
   local url="$1"
 
-  if ! curl --output /dev/null --silent --head --fail "$url"; then
+  if ! curl -k --output /dev/null --silent --head --fail "$url"; then
     echo "URL is invalid or unreachable: $url"
     exit 1
   else
@@ -55,7 +55,7 @@ select_release_url() {
   echo "Checking if https://felix86.com/releases.txt is live..."
   check_url "https://felix86.com/releases.txt"
   echo "Downloading release list..."
-  url_list=$(curl -s https://felix86.com/releases.txt)
+  url_list=$(curl -k -s https://felix86.com/releases.txt)
   echo "Downloaded"
 
   if [[ -z "$url_list" ]]; then
@@ -113,7 +113,7 @@ select_release_url() {
 
   if (( choice == latest_index )); then
     echo "Fetching latest artifact link..."
-    FELIX86_LINK=$(curl -s "https://felix86.com/latest.txt")
+    FELIX86_LINK=$(curl -k -s "https://felix86.com/latest.txt")
   else
     selected="${entries[$((choice-1))]}"
     FELIX86_LINK="${selected#* }"
@@ -128,7 +128,7 @@ select_release_url
 
 echo "Downloading latest felix86 artifact..."
 mkdir -p /tmp/felix86_artifact
-curl -L $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
+curl -k -L $FELIX86_LINK -o /tmp/felix86_artifact/archive.zip
 unzip -o -d /tmp/felix86_artifact /tmp/felix86_artifact/archive.zip
 rm /tmp/felix86_artifact/archive.zip
 echo "Downloaded"
@@ -196,14 +196,14 @@ if [ "$choice" -eq 1 ]; then
     if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
         echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
         check_url "https://felix86.com/rootfs/ubuntu.txt"
-        UBUNTU_2404_LINK=$(curl -s https://felix86.com/rootfs/ubuntu.txt)
+        UBUNTU_2404_LINK=$(curl -k -s https://felix86.com/rootfs/ubuntu.txt)
         echo "Creating rootfs directory..."
         mkdir -p $NEW_ROOTFS
         echo "Downloading Ubuntu 24.04 rootfs..."
         check_url "$UBUNTU_2404_LINK"
 
         # Important we untar with --same-owner so that sudo/mount/fusermount keep their setuid bits
-        curl -L $UBUNTU_2404_LINK | sudo tar --same-owner -xz -C $NEW_ROOTFS
+        curl -k -L $UBUNTU_2404_LINK | sudo tar --same-owner -xz -C $NEW_ROOTFS
         echo "Changing permissions for $NEW_ROOTFS to $USER"
 
         # Chown the directory so we can add stuff inside, but not recursively as to not ruin setuid stuff
