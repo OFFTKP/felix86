@@ -92,6 +92,7 @@ struct Signals {
             sigfillset(&mask);
             sigdelset(&mask, SIGILL);
             sigdelset(&mask, SIGSEGV);
+            sigdelset(&mask, SIGABRT);
             initialized = true;
         }
         return &mask;

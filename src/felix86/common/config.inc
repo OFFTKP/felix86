@@ -27,6 +27,7 @@ X(Debugging, u64, interpreter_base, 0, FELIX86_INTERPRETER_BASE, "Make the inter
 X(Debugging, u64, executable_base, 0, FELIX86_EXECUTABLE_BASE, "Make the executable be loaded at this address -- 0 to let the emulator choose", false)
 X(Debugging, bool, sleep_on_error, false, FELIX86_SLEEP_ERROR, "Sleep for 40 seconds on error to give enough time to attach gdb", false)
 X(Debugging, bool, capture_sigsegv, false, FELIX86_CAPTURE_SIGSEGV, "Sleep for 40 seconds on any SIGSEGV that is unrelated to self-modifying code", false)
+X(Debugging, bool, capture_sigabrt, false, FELIX86_CAPTURE_SIGABRT, "Sleep for 40 seconds on any SIGABRT", false)
 X(Debugging, bool, hacky_envs, true, FELIX86_HACKY_ENVS, "Enable some hacky environment variable solutions to allow some apps to work under felix86", false)
 X(Debugging, bool, always_flags, false, FELIX86_ALWAYS_FLAGS, "Emit flag calculations for every instruction even if they are unused", false)
 X(Debugging, bool, paranoid, false, FELIX86_PARANOID, "Disables multiple optimizations in hopes to catch bugs", false)
