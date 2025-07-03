@@ -478,12 +478,17 @@ FAST_HANDLE(ADD) {
                     srlw    a0, a5, a0
                     and     a0, a0, a3
                 */
-                biscuit::Label loop, bad_alignment, end;
+                biscuit::Label loop, good_alignment;
                 biscuit::GPR masked_address = rec.scratch();
                 biscuit::GPR mask = rec.scratch();
                 as.LI(mask, 0b11);
                 as.ANDI(masked_address, address, 0b11);
-                as.BEQ(masked_address, mask, &bad_alignment);
+                as.BNE(masked_address, mask, &good_alignment);
+                as.EBREAK();
+                as.C_UNDEF();
+                as.C_UNDEF();
+
+                as.Bind(&good_alignment);
 
                 biscuit::GPR s_a1 = rec.scratch();
                 biscuit::GPR s_a3 = mask;
@@ -507,11 +512,6 @@ FAST_HANDLE(ADD) {
                 as.SRLW(dst, s_a5, address);
                 as.AND(dst, dst, s_a3);
 
-                as.J(&end);
-                as.Bind(&bad_alignment);
-                as.EBREAK();
-
-                as.Bind(&end);
                 rec.popScratch();
                 rec.popScratch();
                 rec.popScratch();
@@ -661,12 +661,17 @@ FAST_HANDLE(SUB) {
                 srlw    a0, a5, a0
                 and     a0, a0, a3
             */
-            biscuit::Label loop, bad_alignment, end;
+            biscuit::Label loop, good_alignment;
             biscuit::GPR masked_address = rec.scratch();
             biscuit::GPR mask = rec.scratch();
             as.LI(mask, 0b11);
             as.ANDI(masked_address, address, 0b11);
-            as.BEQ(masked_address, mask, &bad_alignment);
+            as.BNE(masked_address, mask, &good_alignment);
+            as.EBREAK();
+            as.C_UNDEF();
+            as.C_UNDEF();
+
+            as.Bind(&good_alignment);
 
             biscuit::GPR s_a1 = rec.scratch();
             biscuit::GPR s_a3 = mask;
@@ -690,11 +695,6 @@ FAST_HANDLE(SUB) {
             as.SRLW(dst, s_a5, address);
             as.AND(dst, dst, s_a3);
 
-            as.J(&end);
-            as.Bind(&bad_alignment);
-            as.EBREAK();
-
-            as.Bind(&end);
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();
@@ -745,7 +745,6 @@ FAST_HANDLE(SBB) {
     biscuit::GPR dst = rec.getGPR(&operands[0]);
     biscuit::GPR cf = rec.flag(X86_REF_CF);
     x86_size_e size = rec.getSize(&operands[0]);
-    u64 sign_mask = rec.getSignMask(size);
 
     as.SUB(result, dst, src);
     as.SUB(result_2, result, cf);
@@ -4497,15 +4496,88 @@ FAST_HANDLE(SETNLE) {
 
 FAST_HANDLE(NOT) {
     biscuit::GPR result = rec.scratch();
-    biscuit::GPR dst = rec.getGPR(&operands[0]);
-    as.NOT(result, dst);
-    rec.setGPR(&operands[0], result);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    if (needs_atomic) {
+        biscuit::GPR address = rec.lea(&operands[0]);
+        switch (operands[0].size) {
+        case 8: {
+            if (Extensions::Zabha) {
+                biscuit::GPR minus_one = rec.scratch();
+                as.LI(minus_one, -1);
+                as.AMOXOR_B(Ordering::AQRL, x0, minus_one, address);
+            } else {
+                biscuit::GPR masked_address = rec.scratch();
+                biscuit::GPR mask = rec.scratch();
+                as.ANDI(masked_address, address, -4);
+                as.SLLI(address, address, 3);
+                as.LI(mask, 0xFF);
+                as.SLLW(mask, mask, address);
+                as.AMOXOR_W(Ordering::AQRL, x0, mask, masked_address);
+            }
+            break;
+        }
+        case 16: {
+            if (Extensions::Zabha) {
+                biscuit::GPR minus_one = rec.scratch();
+                as.LI(minus_one, -1);
+                as.AMOXOR_H(Ordering::AQRL, x0, minus_one, address);
+            } else {
+                biscuit::Label good_alignment;
+                biscuit::GPR masked_address = rec.scratch();
+                biscuit::GPR mask = rec.scratch();
+                as.LI(mask, 0b11);
+                as.ANDI(masked_address, address, 0b11);
+                as.BNE(masked_address, mask, &good_alignment);
+                as.EBREAK();
+                as.C_UNDEF();
+                as.C_UNDEF();
+
+                as.Bind(&good_alignment);
+
+                /*
+                    andi    a1, a0, -4
+                    slli    a0, a0, 3
+                    lui     a2, 16
+                    addi    a2, a2, -1
+                    sllw    a0, a2, a0
+                    amoxor.w.aqrl   zero, a0, (a1)
+                */
+                as.ANDI(masked_address, address, -4);
+                as.SLLI(address, address, 3);
+                as.LI(mask, 0xFFFF);
+                as.SLLW(mask, mask, address);
+                as.AMOXOR_W(Ordering::AQRL, x0, mask, masked_address);
+            }
+            break;
+        }
+        case 32: {
+            biscuit::GPR minus_one = rec.scratch();
+            as.LI(minus_one, -1);
+            as.AMOXOR_W(Ordering::AQRL, x0, minus_one, address);
+            break;
+        }
+        case 64: {
+            biscuit::GPR minus_one = rec.scratch();
+            as.LI(minus_one, -1);
+            as.AMOXOR_D(Ordering::AQRL, x0, minus_one, address);
+            break;
+        }
+        }
+    } else {
+        biscuit::GPR dst = rec.getGPR(&operands[0]);
+        as.NOT(result, dst);
+        rec.setGPR(&operands[0], result);
+    }
 }
 
 FAST_HANDLE(NEG) {
     x86_size_e size = rec.getSize(&operands[0]);
     biscuit::GPR result = rec.scratch();
     biscuit::GPR dst = rec.getGPR(&operands[0]);
+    bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    if (needs_atomic) {
+        WARN_ONCE("Atomic NEG encountered");
+    }
     if (size == X86_SIZE_BYTE || size == X86_SIZE_BYTE_HIGH) {
         rec.sextb(result, dst);
         as.NEG(result, result);
