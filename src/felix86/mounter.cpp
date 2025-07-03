@@ -356,6 +356,16 @@ int main(int argc, char* argv[]) {
     bind_mount("/run", mount_target / "run");
     bind_mount("/tmp", mount_target / "tmp");
 
+    // Fix permissions in /run/user to match the id they belong to
+    std::filesystem::path run_user = mount_target / "run" / "user";
+    for (auto& entry : run_user) {
+        std::string number = entry.string();
+        long id = std::atol(number.c_str());
+        if (id) {
+            chown(entry.c_str(), id, id);
+        }
+    }
+
     auto copy = [](const char* src, const std::filesystem::path& dst) {
         if (!std::filesystem::exists(src)) {
             return;
