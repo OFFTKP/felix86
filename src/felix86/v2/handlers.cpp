@@ -4522,15 +4522,24 @@ FAST_HANDLE(NOT) {
                 as.LI(minus_one, -1);
                 as.AMOXOR_H(Ordering::AQRL, x0, minus_one, address);
             } else {
-                biscuit::Label good_alignment;
+                biscuit::Label good_alignment, end;
                 biscuit::GPR masked_address = rec.scratch();
                 biscuit::GPR mask = rec.scratch();
                 as.LI(mask, 0b11);
                 as.ANDI(masked_address, address, 0b11);
                 as.BNE(masked_address, mask, &good_alignment);
-                as.EBREAK();
-                as.C_UNDEF();
-                as.C_UNDEF();
+
+                biscuit::GPR temp = masked_address;
+                biscuit::GPR data = mask;
+                as.ADDI(temp, rec.threadStatePointer(), offsetof(ThreadState, unaligned_atomics_counter));
+                as.LI(data, 1);
+                as.AMOADD_D(Ordering::AQRL, x0, data, temp);
+                as.FENCETSO();
+                as.LHU(data, 0, address);
+                as.NOT(data, data);
+                as.SH(data, 0, address);
+                as.FENCETSO();
+                as.J(&end);
 
                 as.Bind(&good_alignment);
 
@@ -4547,6 +4556,8 @@ FAST_HANDLE(NOT) {
                 as.LI(mask, 0xFFFF);
                 as.SLLW(mask, mask, address);
                 as.AMOXOR_W(Ordering::AQRL, x0, mask, masked_address);
+
+                as.Bind(&end);
             }
             break;
         }

@@ -304,6 +304,10 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
         }
     }
 
+    if (state->unaligned_atomics_counter) {
+        WARN_ONCE("This program has unaligned atomics that we can't emulate atomically");
+    }
+
     u64 start = (u64)as.GetCursorPointer();
 
     // Map it immediately so we can optimize conditional branch to self
