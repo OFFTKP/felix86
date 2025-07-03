@@ -604,9 +604,14 @@ void update_symbols() {
         u64 start, end;
         int result = sscanf(line.c_str(), "%lx-%lx %*s %*s %*s %*s %s", &start, &end, buffer);
         if (result == 3) {
-            if (!std::filesystem::is_regular_file(buffer)) {
+            std::error_code ec;
+            if (!std::filesystem::is_regular_file(buffer, ec)) {
                 // Not a regular file, perhaps something like /dev/zero, so we don't add it
                 continue;
+            }
+
+            if (ec) {
+                continue; // Probably a permission error, ie. when felix86 is sudo
             }
 
             auto it = regions.find(buffer);
