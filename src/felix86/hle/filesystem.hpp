@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <fcntl.h>
 #include <linux/limits.h>
 #include <linux/stat.h>
 #include "felix86/common/elf.hpp"
@@ -33,6 +34,84 @@ private:
     bool is_null = false;
 };
 
+struct FdPath {
+    static FdPath create(int fd, const NullablePath& path) {
+        ASSERT(fd == AT_FDCWD || fd > 0);
+        FdPath ret;
+        ret.fd_path = std::make_pair(fd, path);
+        return ret;
+    }
+
+    static FdPath error(int error) {
+        ASSERT(error > 0);
+        FdPath ret;
+        ret.inner_errno = error;
+        return ret;
+    }
+
+    int fd() {
+        return fd_path.first;
+    }
+
+    const char* path() {
+        return fd_path.second.get_str();
+    }
+
+    const char* full_path() {
+        bool is_absolute = fd_path.second.get_str() && fd_path.second.get_str()[0] == '/';
+        if (is_absolute) {
+            return path();
+        } else {
+            // We may need to query /proc/self/fd to get a full path
+            if (fd() == AT_FDCWD) {
+                char buffer[4096];
+                char* cwd = getcwd(buffer, PATH_MAX);
+                ASSERT(cwd == buffer);
+                std::filesystem::path new_path = cwd;
+                if (fd_path.second.get_str()) {
+                    new_path /= fd_path.second.get_str();
+                }
+                fd_path.second = new_path;
+                ASSERT_MSG(new_path.is_absolute(), "Path: %s / %s", buffer, fd_path.second.get_str());
+                fd_path.second = new_path;
+                return path();
+            } else {
+                int fd = fd_path.first;
+                fd_path.first = AT_FDCWD;
+                std::filesystem::path proc_fd = "/proc/self/fd";
+                proc_fd /= std::to_string(fd);
+                char buffer[4096];
+                int result = readlink(proc_fd.c_str(), buffer, PATH_MAX - 1);
+                ASSERT(result > 0);
+                buffer[result] = 0;
+                std::filesystem::path new_path = buffer;
+                if (fd_path.second.get_str()) {
+                    new_path /= fd_path.second.get_str();
+                }
+                if (!new_path.is_absolute()) {
+                    printf("ATTACH ME: %d\n", gettid());
+                    sleep(500);
+                }
+                ASSERT_MSG(new_path.is_absolute(), "Path: %s / %s", buffer, fd_path.second.get_str());
+                fd_path.second = new_path;
+                return path();
+            }
+        }
+    }
+
+    bool is_error() {
+        return inner_errno != 0;
+    }
+
+    int get_errno() {
+        return inner_errno;
+    }
+
+private:
+    std::pair<int, NullablePath> fd_path;
+    int inner_errno = 0;
+};
+
 struct Filesystem {
     void initializeEmulatedNodes();
 
@@ -52,10 +131,10 @@ struct Filesystem {
             return false;
         }
 
-        NullablePath npath = Filesystem::resolve(elf->GetInterpreterPath().c_str(), true);
-        ASSERT(npath.get_str());
-        std::filesystem::path interpreter_path = npath.get_str();
-        if (!interpreter_path.empty()) {
+        if (!elf->GetInterpreterPath().empty()) {
+            FdPath fd_path = Filesystem::resolve(elf->GetInterpreterPath().c_str(), true);
+            ASSERT(fd_path.full_path());
+            std::filesystem::path interpreter_path = fd_path.full_path();
             if (!interpreter_path.is_absolute()) {
                 ERROR("Interpreter path %s is not absolute", interpreter_path.c_str());
                 return false;
@@ -165,11 +244,9 @@ struct Filesystem {
 
     static ssize_t Listxattr(const char* path, char* list, size_t size, bool llist);
 
-    static NullablePath resolve(const char* path, bool resolve_symlinks);
+    static FdPath resolve(const char* path, bool resolve_symlinks);
 
-    static std::pair<int, NullablePath> resolve(int fd, const char* path, bool resolve_symlinks);
-
-    static std::pair<int, NullablePath> resolveImpl(int fd, const char* path, bool resolve_symlinks);
+    static FdPath resolve(int fd, const char* path, bool resolve_symlinks);
 
     static void removeRootfsPrefix(std::string& path);
 
@@ -209,6 +286,10 @@ private:
     static int rmdirInternal(const char* path);
 
     static bool isProcSelfExe(const char* path);
+
+    static FdPath resolveImpl(int fd, const char* path, bool resolve_final);
+
+    static std::pair<int, NullablePath> resolveImplOld(int fd, const char* path, bool resolve_symlinks);
 
     std::filesystem::path executable_path;
     std::shared_ptr<Elf> elf;

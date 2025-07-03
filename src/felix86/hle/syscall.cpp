@@ -1267,16 +1267,15 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         }
 
         SignalGuard guard;
-        NullablePath npath = Filesystem::resolve((char*)arg1, true);
-        ASSERT(npath.get_str());
-        std::filesystem::path path = npath.get_str();
+        FdPath fd_path = Filesystem::resolve((char*)arg1, true);
 
-        if (!std::filesystem::exists(path)) {
-            WARN("Execve couldn't find path: %s", path.c_str());
+        if (!fd_path.path() || !std::filesystem::exists(fd_path.full_path())) {
+            WARN("Execve couldn't find path: %s", arg1);
             result = -ENOENT;
             break;
         }
 
+        std::filesystem::path path = fd_path.full_path();
         if (!std::filesystem::is_regular_file(path)) {
             WARN("Not regular file during execve: %s", path.c_str());
             result = -ENOENT;
@@ -1319,10 +1318,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             Script script(path);
             const std::string& args = script.GetArgs();
             script_interpreter = script.GetInterpreter();
-            NullablePath npath = Filesystem::resolve(script_interpreter.c_str(), true);
-            ASSERT(npath.get_str());
-            ASSERT(npath.get_str()[0] == '/');
-            script_interpreter = npath.get_str();
+            FdPath interpreter_fd_path = Filesystem::resolve(script_interpreter.c_str(), true);
+            ASSERT(interpreter_fd_path.full_path());
+            ASSERT(interpreter_fd_path.full_path()[0] == '/');
+            script_interpreter = interpreter_fd_path.full_path();
             script_args = split_string(args, ' ');
             argv.push_back(script_interpreter.c_str());
             for (auto it = script_args.begin(); it < script_args.end(); it++) {
@@ -1698,6 +1697,10 @@ void felix86_syscall(felix86_frame* frame) {
     }
 
     state->SetGpr(X86_REF_RAX, result);
+
+    if (syscall_number == felix86_x86_64_mmap) {
+        return;
+    }
 
     if (g_config.strace || (g_config.strace_errors && (i64)result < 0)) {
         std::string trace = trace64(syscall_number, arg1, arg2, arg3, arg4, arg5, arg6);
@@ -2677,6 +2680,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
     }
 
     state->SetGpr(X86_REF_RAX, result);
+
+    if (syscall_number == felix86_x86_32_mmap || syscall_number == felix86_x86_32_mmap_pgoff) {
+        return;
+    }
 
     if (g_config.strace || (g_config.strace_errors && (i64)result < 0)) {
         std::string trace = trace32(syscall_number, arg1, arg2, arg3, arg4, arg5, arg6);

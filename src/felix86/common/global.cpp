@@ -364,7 +364,7 @@ void initialize_globals() {
     ASSERT_MSG(g_config.rootfs_path.string().back() != '/', "Rootfs path should not end in '/'");
     ASSERT(std::filesystem::exists(g_config.rootfs_path));
     ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
-    g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_DIRECTORY);
+    g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
 
     const char* env_file = getenv("FELIX86_ENV_FILE");

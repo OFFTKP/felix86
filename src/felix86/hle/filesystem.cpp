@@ -70,7 +70,11 @@ void Filesystem::initializeEmulatedNodes() {
 
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     bool follow = !(flags & O_NOFOLLOW);
-    auto [new_fd, new_filename] = resolve(fd, filename, follow);
+    FdPath fd_path = resolve(fd, filename, follow);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during openat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
 
     if (!g_mode32) {
         if (fd == AT_FDCWD && filename && filename[0] == '/') {
@@ -84,25 +88,37 @@ int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
         }
     }
 
-    return openatInternal(new_fd, new_filename.get_str(), flags, mode);
+    return openatInternal(fd_path.fd(), fd_path.path(), flags, mode);
 }
 
 int Filesystem::FAccessAt(int fd, const char* filename, int mode, int flags) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
-    auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    return faccessatInternal(new_fd, new_filename.get_str(), mode, flags);
+    FdPath fd_path = resolve(fd, filename, follow);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during faccessat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return faccessatInternal(fd_path.fd(), fd_path.path(), mode, flags);
 }
 
 int Filesystem::FStatAt(int fd, const char* filename, struct stat* host_stat, int flags) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
-    auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    return fstatatInternal(new_fd, new_filename.get_str(), host_stat, flags);
+    FdPath fd_path = resolve(fd, filename, follow);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during fstatat(%d, %s. follow: %d), error: %s", fd, filename, follow, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return fstatatInternal(fd_path.fd(), fd_path.path(), host_stat, flags);
 }
 
 int Filesystem::FStatAt64(int fd, const char* filename, struct stat64* host_stat, int flags) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
-    auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    return ::fstatat64(new_fd, new_filename.get_str(), host_stat, flags);
+    FdPath fd_path = resolve(fd, filename, follow);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during fstatat64(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return ::fstatat64(fd_path.fd(), fd_path.path(), host_stat, flags);
 }
 
 int Filesystem::StatFs(const char* filename, struct statfs* buf) {
@@ -111,34 +127,37 @@ int Filesystem::StatFs(const char* filename, struct statfs* buf) {
         return -EINVAL;
     }
 
-#ifndef ST_NOSYMFOLLOW
-#define ST_NOSYMFOLLOW 0x2000
-#endif
-    bool follow = !(buf->f_flags & ST_NOSYMFOLLOW);
-    NullablePath path = resolve(filename, follow);
-    return statfsInternal(path.get_str(), buf);
+    FdPath fd_path = resolve(filename, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during statfs(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return statfsInternal(fd_path.full_path(), buf);
 }
 
 int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) {
     if (isProcSelfExe(filename)) {
         // If it's /proc/self/exe or similar, we don't want to resolve the path then readlink,
         // because readlink will fail as the resolved path would not be a link
-        NullablePath npath = resolve(filename, false);
-        ASSERT(npath.get_str());
-        std::string path = npath.get_str();
+        FdPath npath = resolve(filename, false);
+        ASSERT(!npath.is_error());
+        ASSERT(npath.full_path());
+        std::string path = npath.full_path();
         const size_t rootfs_size = g_config.rootfs_path.string().size();
         const size_t stem_size = path.size() - rootfs_size;
-        // TODO!!!: g_fs->ExecutablePath() gets the path that's not inside the *mounted* rootfs but the original rootfs
-        // Example: run felix86 /rootfs/usr/bin/readlink /proc/self/exe (bug doesn't happen inside emulated bash for obvious reasons)
         ASSERT_MSG(path.find(g_config.rootfs_path.string()) == 0, "Path: %s", path.c_str()); // it should be in rootfs but lets make sure
         int bytes = std::min((int)stem_size, bufsiz);
         memcpy(buf, path.c_str() + rootfs_size, bytes);
         return bytes;
     }
 
-    auto [new_fd, new_filename] = resolve(fd, filename, false);
+    FdPath fd_path = resolve(fd, filename, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during readlinkat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
 
-    int result = readlinkatInternal(new_fd, new_filename.get_str(), buf, bufsiz);
+    int result = readlinkatInternal(fd_path.fd(), fd_path.path(), buf, bufsiz);
 
     if (result > 0) {
         std::string str(buf, result);
@@ -168,8 +187,12 @@ int Filesystem::SymlinkAt(const char* oldname, int newfd, const char* newname) {
         return -EINVAL;
     }
 
-    auto [newfd2, newpath] = resolve(newfd, newname, false);
-    int result = ::symlinkat(oldname, newfd2, newpath.get_str());
+    FdPath fd_path = resolve(newfd, newname, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during symlinkat(%d, %s), error: %s", newfd, newname, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    int result = ::symlinkat(oldname, fd_path.fd(), fd_path.path());
     if (result == -1) {
         result = -errno;
     }
@@ -181,9 +204,17 @@ int Filesystem::RenameAt2(int oldfd, const char* oldname, int newfd, const char*
         return -EINVAL;
     }
 
-    auto [oldfd2, oldpath] = resolve(oldfd, oldname, false);
-    auto [newfd2, newpath] = resolve(newfd, newname, false);
-    int result = ::renameat2(oldfd2, oldpath.get_str(), newfd2, newpath.get_str(), flags);
+    FdPath old_fd_path = resolve(oldfd, oldname, false);
+    if (old_fd_path.is_error()) {
+        VERBOSE("Error while resolving old path during renameat2(%d, %s), error: %s", oldfd, oldname, strerror(old_fd_path.get_errno()));
+        return -old_fd_path.get_errno();
+    }
+    FdPath new_fd_path = resolve(newfd, newname, false);
+    if (new_fd_path.is_error()) {
+        VERBOSE("Error while resolving old path during renameat2(%d, %s), error: %s", newfd, newname, strerror(new_fd_path.get_errno()));
+        return -new_fd_path.get_errno();
+    }
+    int result = ::renameat2(old_fd_path.fd(), old_fd_path.path(), new_fd_path.fd(), new_fd_path.path(), flags);
     if (result == -1) {
         result = -errno;
     }
@@ -195,8 +226,12 @@ int Filesystem::Chmod(const char* filename, u64 mode) {
         return -EINVAL;
     }
 
-    NullablePath path = resolve(filename, true);
-    int result = ::chmod(path.get_str(), mode);
+    FdPath fd_path = resolve(filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during chmod(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    int result = ::chmod(fd_path.full_path(), mode);
     if (result == -1) {
         result = -errno;
     }
@@ -204,14 +239,22 @@ int Filesystem::Chmod(const char* filename, u64 mode) {
 }
 
 int Filesystem::Creat(const char* filename, u64 mode) {
-    NullablePath path = resolve(filename, false);
-    return ::creat(path.get_str(), mode);
+    FdPath fd_path = resolve(filename, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during creat(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return ::creat(fd_path.full_path(), mode);
 }
 
 int Filesystem::Statx(int fd, const char* filename, int flags, u32 mask, struct statx* statxbuf) {
     bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
-    auto [new_fd, new_filename] = resolve(fd, filename, follow);
-    return statxInternal(new_fd, new_filename.get_str(), flags, mask, statxbuf);
+    FdPath fd_path = resolve(fd, filename, follow);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving old path during statx(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return statxInternal(fd_path.fd(), fd_path.path(), flags, mask, statxbuf);
 }
 
 int Filesystem::UnlinkAt(int fd, const char* filename, int flags) {
@@ -220,21 +263,37 @@ int Filesystem::UnlinkAt(int fd, const char* filename, int flags) {
         return -EINVAL;
     }
 
-    auto [new_fd, new_filename] = resolve(fd, filename, false);
-    return unlinkatInternal(new_fd, new_filename.get_str(), flags);
+    FdPath fd_path = resolve(fd, filename, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving old path during unlinkat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return unlinkatInternal(fd_path.fd(), fd_path.path(), flags);
 }
 
 int Filesystem::LinkAt(int oldfd, const char* oldpath, int newfd, const char* newpath, int flags) {
     bool follow = flags & AT_SYMLINK_FOLLOW;
-    auto [roldfd, roldpath] = resolve(oldfd, oldpath, follow);
-    auto [rnewfd, rnewpath] = resolve(newfd, newpath, follow);
+    FdPath old_fd_path = resolve(oldfd, oldpath, follow);
+    if (old_fd_path.is_error()) {
+        VERBOSE("Error while resolving old path during linkat(%d, %s), error: %s", oldfd, oldpath, strerror(old_fd_path.get_errno()));
+        return -old_fd_path.get_errno();
+    }
+    FdPath new_fd_path = resolve(newfd, newpath, follow);
+    if (new_fd_path.is_error()) {
+        VERBOSE("Error while resolving old path during linkat(%d, %s), error: %s", newfd, newpath, strerror(new_fd_path.get_errno()));
+        return -new_fd_path.get_errno();
+    }
 
-    return linkatInternal(roldfd, roldpath.get_str(), rnewfd, rnewpath.get_str(), flags);
+    return linkatInternal(old_fd_path.fd(), old_fd_path.path(), new_fd_path.fd(), new_fd_path.path(), flags);
 }
 
 int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
-    NullablePath path = resolve(filename, true);
-    int result = ::chown(path.get_str(), owner, group);
+    FdPath fd_path = resolve(filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during chown(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    int result = ::chown(fd_path.full_path(), owner, group);
     if (result == -1) {
         result = -errno;
     }
@@ -242,8 +301,12 @@ int Filesystem::Chown(const char* filename, u64 owner, u64 group) {
 }
 
 int Filesystem::LChown(const char* filename, u64 owner, u64 group) {
-    NullablePath path = resolve(filename, false);
-    int result = ::lchown(path.get_str(), owner, group);
+    FdPath fd_path = resolve(filename, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during lchown(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    int result = ::lchown(fd_path.full_path(), owner, group);
     if (result == -1) {
         result = -errno;
     }
@@ -251,8 +314,12 @@ int Filesystem::LChown(const char* filename, u64 owner, u64 group) {
 }
 
 int Filesystem::Chdir(const char* filename) {
-    NullablePath path = resolve(filename, true);
-    int result = ::syscall(SYS_chdir, path.get_str());
+    FdPath fd_path = resolve(filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during chdir(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    int result = ::syscall(SYS_chdir, fd_path.full_path());
     if (result == -1) {
         result = -errno;
     }
@@ -260,8 +327,12 @@ int Filesystem::Chdir(const char* filename) {
 }
 
 int Filesystem::MkdirAt(int fd, const char* filename, u64 mode) {
-    auto [new_fd, new_path] = resolve(fd, filename, true);
-    int result = ::mkdirat(new_fd, new_path.get_str(), mode);
+    FdPath fd_path = resolve(fd, filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving old path during mkdirat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    int result = ::mkdirat(fd_path.fd(), fd_path.path(), mode);
     if (result == -1) {
         result = -errno;
     }
@@ -269,8 +340,12 @@ int Filesystem::MkdirAt(int fd, const char* filename, u64 mode) {
 }
 
 int Filesystem::MknodAt(int fd, const char* filename, u64 mode, u64 dev) {
-    auto [new_fd, new_path] = resolve(fd, filename, true);
-    int result = ::mknodat(new_fd, new_path.get_str(), mode, dev);
+    FdPath fd_path = resolve(fd, filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving old path during mknodat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    int result = ::mknodat(fd_path.fd(), fd_path.path(), mode, dev);
     if (result == -1) {
         result = -errno;
     }
@@ -278,58 +353,103 @@ int Filesystem::MknodAt(int fd, const char* filename, u64 mode, u64 dev) {
 }
 
 int Filesystem::FChmodAt(int fd, const char* filename, u64 mode) {
-    auto [new_fd, new_filename] = resolve(fd, filename, true);
-    return fchmodatInternal(new_fd, new_filename.get_str(), mode);
+    FdPath fd_path = resolve(fd, filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during fchmodat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return fchmodatInternal(fd_path.fd(), fd_path.path(), mode);
 }
 
 int Filesystem::LGetXAttr(const char* filename, const char* name, void* value, size_t size) {
-    NullablePath path = resolve(filename, false);
-    return lgetxattrInternal(path.get_str(), name, value, size);
+    FdPath fd_path = resolve(filename, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during lgetxattr(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return lgetxattrInternal(fd_path.full_path(), name, value, size);
 }
 
 ssize_t Filesystem::Listxattr(const char* filename, char* list, size_t size, bool llist) {
+    // TODO: make two functions
     if (!llist) {
-        NullablePath path = resolve(filename, true);
-        return ::listxattr(path.get_str(), list, size);
+        FdPath fd_path = resolve(filename, true);
+        if (fd_path.is_error()) {
+            VERBOSE("Error while resolving path during listxattr(%s), error: %s", filename, strerror(fd_path.get_errno()));
+            return -fd_path.get_errno();
+        }
+        return ::listxattr(fd_path.full_path(), list, size);
     } else {
-        NullablePath path = resolve(filename, false);
-        return ::llistxattr(path.get_str(), list, size);
+        FdPath fd_path = resolve(filename, false);
+        if (fd_path.is_error()) {
+            VERBOSE("Error while resolving path during llistxattr(%s), error: %s", filename, strerror(fd_path.get_errno()));
+            return -fd_path.get_errno();
+        }
+        return ::llistxattr(fd_path.full_path(), list, size);
     }
 }
 
 int Filesystem::GetXAttr(const char* filename, const char* name, void* value, size_t size) {
-    NullablePath path = resolve(filename, true);
-    return getxattrInternal(path.get_str(), name, value, size);
+    FdPath fd_path = resolve(filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during getxattr(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return getxattrInternal(fd_path.full_path(), name, value, size);
 }
 
 int Filesystem::LSetXAttr(const char* filename, const char* name, void* value, size_t size, int flags) {
-    NullablePath path = resolve(filename, false);
-    return lsetxattrInternal(path.get_str(), name, value, size, flags);
+    FdPath fd_path = resolve(filename, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during lsetxattr(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return lsetxattrInternal(fd_path.full_path(), name, value, size, flags);
 }
 
 int Filesystem::SetXAttr(const char* filename, const char* name, void* value, size_t size, int flags) {
-    NullablePath path = resolve(filename, true);
-    return setxattrInternal(path.get_str(), name, value, size, flags);
+    FdPath fd_path = resolve(filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during setxattr(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return setxattrInternal(fd_path.full_path(), name, value, size, flags);
 }
 
 int Filesystem::RemoveXAttr(const char* filename, const char* name) {
-    NullablePath path = resolve(filename, true);
-    return removexattrInternal(path.get_str(), name);
+    FdPath fd_path = resolve(filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during removexattr(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return removexattrInternal(fd_path.full_path(), name);
 }
 
 int Filesystem::LRemoveXAttr(const char* filename, const char* name) {
-    NullablePath path = resolve(filename, false);
-    return lremovexattrInternal(path.get_str(), name);
+    FdPath fd_path = resolve(filename, false);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during lremovexattr(%s), error: %s", filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return lremovexattrInternal(fd_path.full_path(), name);
 }
 
 int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, int flags) {
-    auto [new_fd, new_filename] = resolve(fd, filename, true);
-    return utimensatInternal(new_fd, new_filename.get_str(), spec, flags);
+    FdPath fd_path = resolve(fd, filename, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during utimensat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return utimensatInternal(fd_path.fd(), fd_path.path(), spec, flags);
 }
 
 int Filesystem::Rmdir(const char* dir) {
-    NullablePath path = resolve(dir, true);
-    return rmdirInternal(path.get_str());
+    FdPath fd_path = resolve(dir, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during rmdir(%s), error: %s", dir, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return rmdirInternal(fd_path.full_path());
 }
 
 int Filesystem::Chroot(const char* path) {
@@ -343,10 +463,15 @@ int Filesystem::Chroot(const char* path) {
         return -EINVAL;
     }
 
-    NullablePath target = resolve(path, true);
-    g_config.rootfs_path = target.get_str();
+    FdPath fd_path = resolve(path, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during chroot(%s), error: %s", path, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    g_config.rootfs_path = fd_path.full_path();
     close(g_rootfs_fd);
-    g_rootfs_fd = open(target.get_str(), O_DIRECTORY);
+    g_rootfs_fd = open(fd_path.full_path(), O_PATH | O_DIRECTORY);
+    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", fd_path.full_path());
     return 0;
 }
 
@@ -356,32 +481,52 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
 
     bool follow = !(flags & MS_NOSYMFOLLOW);
 
-    NullablePath rsource, rtarget;
+    FdPath rsource, rtarget;
     if (source) {
         rsource = resolve(source, follow);
-        sptr = rsource.get_str();
+        if (rsource.is_error()) {
+            VERBOSE("Error while resolving path during mount(src=%s), error: %s", source, strerror(rsource.get_errno()));
+            return -rsource.get_errno();
+        }
+        sptr = rsource.full_path();
     }
     if (target) {
         rtarget = resolve(target, follow);
-        tptr = rtarget.get_str();
+        if (rtarget.is_error()) {
+            VERBOSE("Error while resolving path during mount(dst=%s), error: %s", target, strerror(rtarget.get_errno()));
+            return -rtarget.get_errno();
+        }
+        tptr = rtarget.full_path();
     }
     return ::mount(sptr, tptr, fstype, flags, data);
 }
 
 int Filesystem::Umount(const char* path, int flags) {
     bool follow = !(flags & UMOUNT_NOFOLLOW);
-    NullablePath target = resolve(path, follow);
-    return ::umount2(target.get_str(), flags);
+    FdPath fd_path = resolve(path, follow);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during umount(%s), error: %s", path, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return ::umount2(fd_path.full_path(), flags);
 }
 
 int Filesystem::INotifyAddWatch(int fd, const char* path, u32 mask) {
-    NullablePath file = resolve(path, true);
-    return inotify_add_watch(fd, file.get_str(), mask);
+    FdPath fd_path = resolve(path, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during inotifyaddwatch(%s), error: %s", path, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return inotify_add_watch(fd, fd_path.full_path(), mask);
 }
 
 int Filesystem::Truncate(const char* path, u64 length) {
-    NullablePath file = resolve(path, true);
-    return truncate(file.get_str(), length);
+    FdPath fd_path = resolve(path, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during truncate(%s), error: %s", path, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+    return truncate(fd_path.full_path(), length);
 }
 
 int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode) {
@@ -467,24 +612,18 @@ int Filesystem::rmdirInternal(const char* path) {
     return ::rmdir(path);
 }
 
-std::pair<int, NullablePath> Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
-    auto [new_fd, new_path] = resolveImpl(fd, path, resolve_symlinks);
-    return {new_fd, new_path};
+FdPath Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
+    FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
+    return fd_path;
 }
 
-NullablePath Filesystem::resolve(const char* path, bool resolve_symlinks) {
+FdPath Filesystem::resolve(const char* path, bool resolve_symlinks) {
     if (!path) {
-        return nullptr;
+        WARN("Tried to resolve a nullptr path, returning EFAULT");
+        return FdPath::error(EFAULT);
     }
 
-    if (path[0] == '/') {
-        NullablePath npath = resolve(AT_FDCWD, path, resolve_symlinks).second;
-        ASSERT(npath.get_str());
-        ASSERT_MSG(npath.get_str()[0] == '/', "Bad path: %s -> %s", path, npath.get_str());
-        return npath.get_str();
-    } else {
-        return path;
-    }
+    return resolve(AT_FDCWD, path, resolve_symlinks);
 }
 
 void Filesystem::removeRootfsPrefix(std::string& path) {
@@ -520,7 +659,159 @@ bool Filesystem::isProcSelfExe(const char* path) {
     return false;
 }
 
-std::pair<int, NullablePath> Filesystem::resolveImpl(int fd, const char* path, bool resolve_symlinks) {
+FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
+    if (path == nullptr) {
+        return FdPath::create(fd, nullptr);
+    }
+
+    if (path[0] == 0) {
+        return FdPath::create(fd, path);
+    }
+
+    if (path[0] == '/' && path[1] == 0) {
+        return FdPath::create(AT_FDCWD, g_config.rootfs_path);
+    }
+
+    if (isProcSelfExe(path)) {
+        return FdPath::create(AT_FDCWD, g_executable_path_absolute);
+    }
+
+    int current_fd;
+    if (path[0] == '/') {
+        current_fd = g_rootfs_fd;
+    } else {
+        current_fd = fd;
+    }
+
+    std::filesystem::path current_relative_path;
+
+    std::filesystem::path resolve_me = std::filesystem::path(path).relative_path();
+    std::deque<std::string> components;
+    for (auto& entry : resolve_me) {
+        components.push_back(entry);
+    }
+
+    struct statx root_statx;
+    int result = statx(g_rootfs_fd, "", AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &root_statx);
+    ASSERT(result == 0);
+
+    int total_symlinks_resolved = 0; // goes up to 40 as per the kernel
+    while (!components.empty()) {
+        std::string current_component = components.front();
+        components.pop_front();
+        bool final_component = components.empty();
+
+        struct statx current_statx;
+        result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
+        if (result != 0) {
+            VERBOSE("Error while resolving statx %d %s, error: %s", current_fd, current_relative_path.c_str());
+            return FdPath::error(errno);
+        }
+
+        if (current_component == ".." && statx_inode_same(&root_statx, &current_statx)) {
+            // Warn about attempted container escapes as they could be a bug in our implementation
+            // This way we still allow programs to use fd's outside the rootfs, as long as they
+            // don't go inside and try to escape again
+            // For example fd + a component with an absolute symlink shouldn't be able to then escape the rootfs
+            VERBOSE("Tried to escape rootfs: %d %s", current_fd, current_relative_path.c_str());
+
+            // Skip this component and point to rootfs
+            current_fd = g_rootfs_fd;
+            // Also clear this since we are starting resolution from rootfs now
+            current_relative_path.clear();
+            continue;
+        }
+
+        std::filesystem::path current = current_relative_path / current_component;
+        struct stat current_stat;
+        result = fstatat(current_fd, current.c_str(), &current_stat, AT_SYMLINK_NOFOLLOW);
+        if (result != 0) {
+            switch (errno) {
+            case ENOENT: {
+                if (final_component) {
+                    // it is not necessarily an error if the final component is not found, maybe we are just creating it
+                    break;
+                } else {
+                    return FdPath::error(ENOENT);
+                }
+            }
+            case EACCES: {
+                return FdPath::error(EACCES);
+            }
+            default: {
+                WARN("Unknown error during path resolution: %s", strerror(errno));
+                return FdPath::error(errno);
+            }
+            }
+        }
+
+        if (S_ISLNK(current_stat.st_mode)) {
+            if (final_component && !resolve_final) {
+                current_relative_path = current_relative_path / current_component;
+                break;
+            }
+
+            total_symlinks_resolved++;
+            if (total_symlinks_resolved > 40) {
+                WARN("Symlink resolution hit limit for %d %s", fd, path);
+                return FdPath::error(ELOOP);
+            }
+
+            // If it's a symlink, don't add to current_relative_path. Instead, readlink it and
+            // add the components to the component buffer
+            char buffer[PATH_MAX];
+            result = readlinkat(current_fd, current.c_str(), buffer, PATH_MAX);
+            if (result <= 0) {
+                WARN("Failed during readlinkat: %d %s (original: %d %s), error: %s", current_fd, current.c_str(), fd, path, strerror(errno));
+                PLAIN("ATTACH ME: %d", gettid());
+                sleep(400);
+                return FdPath::error(errno);
+            }
+            buffer[result] = 0;
+
+            std::filesystem::path resolved = buffer;
+
+            if (resolved.is_absolute()) {
+                // If a component is a symlink to an absolute path, set start_fd to g_rootfs_fd
+                current_fd = g_rootfs_fd;
+                // Also clear this since we are starting resolution from rootfs now
+                current_relative_path.clear();
+            }
+
+            resolved = resolved.relative_path();
+            // Push the components to the front in reversed order
+            for (auto it = resolved.end(); it != resolved.begin();) {
+                --it;
+                components.push_front(*it);
+            }
+        } else if (S_ISDIR(current_stat.st_mode)) {
+            // If it's a dir, just add to current_relative_path and go to the next component
+            current_relative_path = current_relative_path / current_component;
+        } else {
+            if (final_component) {
+                // See path_resolution(7) -> info about final entry
+                current_relative_path = current_relative_path / current_component;
+            } else {
+                return FdPath::error(ENOTDIR);
+            }
+        }
+    }
+
+    current_relative_path = current_relative_path.lexically_normal();
+    ASSERT(current_relative_path.is_relative());
+
+    if (current_relative_path.empty()) {
+        // We can't use an empty path in many syscalls and we can't convert it to null either
+        // So in this case we will convert it to a full path and return that instead
+        FdPath ret = FdPath::create(current_fd, current_relative_path);
+        ret.full_path();
+        return ret;
+    }
+
+    return FdPath::create(current_fd, current_relative_path);
+}
+
+std::pair<int, NullablePath> Filesystem::resolveImplOld(int fd, const char* path, bool resolve_symlinks) {
     if (path == nullptr) {
         return {fd, nullptr};
     }
@@ -562,8 +853,6 @@ std::pair<int, NullablePath> Filesystem::resolveImpl(int fd, const char* path, b
         }
     }
 
-    ASSERT(resolve_me.is_absolute());
-
     if (resolve_symlinks) {
         // If we want to resolve symlinks anyway, then just resolve the entire thing in openat2
         struct open_how open_how;
@@ -580,7 +869,11 @@ std::pair<int, NullablePath> Filesystem::resolveImpl(int fd, const char* path, b
             close(path_fd);
             return {AT_FDCWD, std::filesystem::path{buffer}};
         } else {
-            return {AT_FDCWD, g_config.rootfs_path / resolve_me.relative_path()};
+            if (resolve_me.is_absolute()) {
+                return {AT_FDCWD, g_config.rootfs_path / resolve_me.relative_path()};
+            } else {
+                return {fd, resolve_me};
+            }
         }
     } else {
         // If we don't want to resolve symlinks on the last component, resolve just the basepath then add the final component
@@ -603,7 +896,11 @@ std::pair<int, NullablePath> Filesystem::resolveImpl(int fd, const char* path, b
             final /= final_component;
             return {AT_FDCWD, final};
         } else {
-            return {AT_FDCWD, g_config.rootfs_path / resolve_me.relative_path()};
+            if (resolve_me.is_absolute()) {
+                return {AT_FDCWD, g_config.rootfs_path / resolve_me.relative_path()};
+            } else {
+                return {fd, resolve_me};
+            }
         }
     }
 }
