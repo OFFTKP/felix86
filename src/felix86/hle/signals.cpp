@@ -489,8 +489,7 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
     bool capture_it = g_config.capture_sigsegv;
     if (capture_it) {
         int pid = gettid();
-        PLAIN("I have been hit by a wild SIGSEGV%s! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you "
-              "think "
+        PLAIN("I have been hit by a wild SIGSEGV%s! My TID is %d, you have 40 seconds to attach gdb using `gdb -p %d` to find out why! If you think "
               "this SIGSEGV was intended, disabled this mode by unsetting the `capture_sigsegv` option.",
               !in_jit_code ? ANSI_BOLD " in emulator code" ANSI_COLOR_RESET : "", pid, pid);
 
