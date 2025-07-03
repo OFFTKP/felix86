@@ -13,10 +13,11 @@ void BRK::allocate() {
     u64 base = g_program_end;
     base &= ~0xFFF;
 
-    u64 base_brk = (u64)g_mapper->map((void*)base, initial_brk_size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
+    u64 base_brk =
+        (u64)g_mapper->map((void*)base, initial_brk_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED_NOREPLACE, -1, 0);
     if ((i64)base_brk < 0) {
         // We couldn't allocate it there for whatever reason
-        base_brk = (u64)g_mapper->map(nullptr, initial_brk_size, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        base_brk = (u64)g_mapper->map(nullptr, initial_brk_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         ASSERT_MSG((i64)base_brk > 0, "Failed to allocate BRK");
         WARN("Failed to allocate BRK at %p, chose %p instead", (void*)base, (void*)base_brk);
         base = base_brk;
@@ -51,8 +52,6 @@ u64 BRK::set(u64 new_brk) {
             if ((u64)new_map != end_brk) {
                 result = g_current_brk;
             } else {
-                WARN("Resized BRK (new size: %lx, from %lx-%lx to %lx-%lx)", new_size, g_initial_brk, end_brk, g_initial_brk,
-                     end_brk + size_past_end);
                 g_current_brk = new_brk;
                 result = new_brk;
                 g_current_brk_size = new_size;
