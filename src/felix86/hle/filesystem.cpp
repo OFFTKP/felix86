@@ -718,7 +718,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
             // Skip this component and point to rootfs
             current_fd = g_rootfs_fd;
             // Also clear this since we are starting resolution from rootfs now
-            current_relative_path.clear();
+            current_relative_path = ".";
             continue;
         }
 
@@ -763,8 +763,6 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
             result = readlinkat(current_fd, current.c_str(), buffer, PATH_MAX);
             if (result <= 0) {
                 WARN("Failed during readlinkat: %d %s (original: %d %s), error: %s", current_fd, current.c_str(), fd, path, strerror(errno));
-                PLAIN("ATTACH ME: %d", gettid());
-                sleep(400);
                 return FdPath::error(errno);
             }
             buffer[result] = 0;
@@ -775,7 +773,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 // If a component is a symlink to an absolute path, set start_fd to g_rootfs_fd
                 current_fd = g_rootfs_fd;
                 // Also clear this since we are starting resolution from rootfs now
-                current_relative_path.clear();
+                current_relative_path = ".";
             }
 
             resolved = resolved.relative_path();
