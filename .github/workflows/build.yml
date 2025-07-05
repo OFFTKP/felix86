@@ -60,7 +60,7 @@ jobs:
           retention-days: 1
   test:
     needs: build
-    runs-on: bpi-f3
+    runs-on: Milk-V-M1--Jupiter
     steps:
       - name: Download main artifact
         uses: actions/download-artifact@v4
