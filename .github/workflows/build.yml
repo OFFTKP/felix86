@@ -70,12 +70,12 @@ jobs:
           path: ./test/
       - name: Test
         run: |
+          ls /
           chmod +x ./test/felix86_test
           chmod +x ./test/felix86
-          find /
-          sudo cp ./test/felix86-mounter /usr/bin/
-          sudo chown root:root /usr/bin/felix86-mounter
-          sudo chmod u+s /usr/bin/felix86-mounter
+          cp ./test/felix86-mounter /usr/bin/
+          chown root:root /usr/bin/felix86-mounter
+          chmod u+s /usr/bin/felix86-mounter
           TINY_LINK=$(curl -k -s https://felix86.com/rootfs/tiny.txt)
           mkdir -p $HOME/rootfs
           curl -k -L $TINY_LINK | tar -xz -C $HOME/rootfs
