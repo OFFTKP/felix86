@@ -613,8 +613,10 @@ int Filesystem::rmdirInternal(const char* path) {
 }
 
 FdPath Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
-    FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
-    return fd_path;
+    // FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
+    // return fd_path;
+    auto [new_fd, new_path] = resolveImplOld(fd, path, resolve_symlinks);
+    return FdPath::create(new_fd, new_path);
 }
 
 FdPath Filesystem::resolve(const char* path, bool resolve_symlinks) {
