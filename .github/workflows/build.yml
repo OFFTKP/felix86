@@ -70,7 +70,6 @@ jobs:
           path: ./test/
       - name: Test
         run: |
-          ls /
           chmod +x ./test/felix86_test
           chmod +x ./test/felix86
           cp ./test/felix86-mounter /usr/bin/
