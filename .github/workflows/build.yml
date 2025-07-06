@@ -78,7 +78,7 @@ jobs:
           chmod +x ./test/felix86
           TINY_LINK=$(curl -k -s https://felix86.com/rootfs/tiny.txt)
           mkdir -p $HOME/rootfs
-          curl -k -L $TINY_LINK | tar --same-owner -xz -C $HOME/rootfs
+          curl -k -L $TINY_LINK | tar -xz -C $HOME/rootfs
           ./test/felix86 -s $HOME/rootfs
           FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
           ./test/felix86 -k
