@@ -16,7 +16,9 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
         exit(1);
     }
 
-    const std::filesystem::path tmp_path = "/tmp/felix86_binary_tests";
+    char tmp_path[] = "/tmp/felix86-Binary-XXXXXX";
+    char* t = mkdtemp(tmp_path);
+    ASSERT(t == tmp_path);
     const std::filesystem::path exec_path = tmp_path / path.filename();
     const std::string extension = path.extension();
 
@@ -45,7 +47,7 @@ void run_test(const std::filesystem::path& felix_path, const std::filesystem::pa
     envp.push_back(srootfs.c_str());
     envp.push_back(nullptr);
 
-    std::filesystem::create_directories(g_config.rootfs_path / tmp_path.relative_path());
+    std::filesystem::create_directories(g_config.rootfs_path / &tmp_path[1]);
 
     // Copy our test binary to the temp path
     std::filesystem::copy(path, g_config.rootfs_path / exec_path.relative_path(), std::filesystem::copy_options::overwrite_existing);
