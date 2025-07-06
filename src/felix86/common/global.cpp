@@ -388,6 +388,14 @@ void initialize_globals() {
         LOG("Emitting symbols for " ANSI_BOLD "gdb" ANSI_COLOR_RESET "!");
     }
 
+    if (g_config.calltrace_on_exit) {
+        g_config.calltrace = true;
+    }
+
+    if (g_config.single_step) {
+        g_config.link = false;
+    }
+
     std::string extensions = get_extensions();
     if (extensions.empty()) {
         initialize_extensions();

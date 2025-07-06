@@ -252,10 +252,22 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_close: {
+        if (arg1 == g_rootfs_fd) {
+            WARN("Program is closing our rootfs file descriptor with close");
+        }
+        if (arg1 == g_output_fd) {
+            WARN("Program is closing our output file descriptor with close");
+        }
         result = SYSCALL(close, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_close_range: {
+        if (g_rootfs_fd >= arg1 && g_rootfs_fd <= arg2) {
+            WARN("Program is closing our rootfs file descriptor with close_range");
+        }
+        if (g_output_fd >= arg1 && g_output_fd <= arg2) {
+            WARN("Program is closing our output file descriptor with close_range");
+        }
         result = SYSCALL(close_range, arg1, arg2, arg3);
         break;
     }
@@ -584,6 +596,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     case felix86_riscv64_exit_group: {
         state->exit_reason = EXIT_REASON_EXIT_GROUP_SYSCALL;
         state->exit_code = arg1;
+        if (g_config.calltrace_on_exit) {
+            dump_states();
+        }
         Emulator::ExitDispatcher(frame);
         UNREACHABLE();
         break;
@@ -915,6 +930,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     case felix86_riscv64_exit: {
         state->exit_reason = ExitReason::EXIT_REASON_EXIT_SYSCALL;
         state->exit_code = arg1;
+        if (g_config.calltrace_on_exit) {
+            dump_states();
+        }
         Emulator::ExitDispatcher(frame);
         UNREACHABLE();
         break;
