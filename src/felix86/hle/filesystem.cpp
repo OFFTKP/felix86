@@ -614,7 +614,7 @@ int Filesystem::rmdirInternal(const char* path) {
 
 FdPath Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
     static std::atomic_int counter = 0;
-    if (counter++ > 500) {
+    if (counter++ > 750) {
         WARN_ONCE("Switching to new resolve!");
         WARN("Resolving %d %s", fd, path);
         FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
