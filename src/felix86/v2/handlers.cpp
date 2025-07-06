@@ -5795,7 +5795,7 @@ FAST_HANDLE(LZCNT) {
     }
 }
 
-void PopCnt(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, int size) {
+void POPCNT(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, int size) {
     if (Extensions::B) {
         // hardware CPOP (population count)
         if (size == 64) {
@@ -5828,7 +5828,7 @@ FAST_HANDLE(POPCNT) {
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
 
-    PopCnt(rec, as, result, src, instruction.operand_width);
+    POPCNT(rec, as, result, src, instruction.operand_width);
 
     rec.setGPR(&operands[0], result);
 
