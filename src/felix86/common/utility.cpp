@@ -890,7 +890,7 @@ double f80_to_64(Float80* f80) {
         if (exponent <= 0) {
             exponent = 1;
             significand = 0;
-        } if (exponent >= 0x7FF ) {
+        } else if (exponent >= 0x7FF) {
             exponent = 0x7FE;
             significand = 0xFFFFFFFFFFFFF;
         }

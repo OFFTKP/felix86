@@ -5743,48 +5743,37 @@ FAST_HANDLE(BSR) {
 
 void LZCNT(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, int size) {
     if (Extensions::B) {
-        // hardware CLZ
         if (size == 64) {
-            as.CLZ   (result, src);
-        } 
-        else if (size == 32) {
-            as.CLZW  (result, src);
-        } 
-        else if (size == 16) {
+            as.CLZ(result, src);
+        } else if (size == 32) {
+            as.CLZW(result, src);
+        } else if (size == 16) {
             as.CLZW(result, src);
             as.ADDI(result, result, -16);
-        } 
-        else if (size == 8) {
-            as.CLZW  (result, src);
-            as.ADDI(result, result, -24);
-        } 
-        else {
+        } else {
             UNREACHABLE();
         }
     } else {
-        // software fallback: scan down from MSB until we see a 1
-        // we’ll keep a 'count' in result, and a temporary in 'scratch'
-        biscuit::GPR scratch = rec.scratch();
-        as.LI   (result, 0);                     // count = 0
-        Label loop, done;
-        as.Bind (&loop);
-          // compute shift = (size-1) - count
-          as.LI   (scratch, size - 1);
-          as.SUB  (scratch, scratch, result);
-          // test bit: (src >> shift) & 1
-          as.SRL  (scratch, src, scratch);
-          as.ANDI (scratch, scratch, 1);
-          as.BNEZ (scratch, &done);
-          // still zero, bump count and retry
-          as.ADDI (result, result, 1);
-          as.J    (&loop);
-        as.Bind (&done);
-        rec.popScratch();
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR bit = rec.scratch();
+        as.LI(result, 0);
+        as.LI(temp, size - 1);
+
+        biscuit::Label loop, end;
+        as.Bind(&loop);
+        as.BLT(temp, x0, &end);
+        as.SRL(bit, src, temp);
+        as.ANDI(bit, bit, 1);
+        as.BNE(bit, x0, &end);
+        as.ADDI(temp, temp, -1);
+        as.ADDI(result, result, 1);
+        as.J(&loop);
+        as.Bind(&end);
     }
 }
 
 FAST_HANDLE(LZCNT) {
-    biscuit::GPR src    = rec.getGPR(&operands[1]);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
 
     // perform the count (stub above handles both hw and sw paths)
@@ -5793,18 +5782,16 @@ FAST_HANDLE(LZCNT) {
     // write back the destination register
     rec.setGPR(&operands[0], result);
 
-    // ZF ← (result == size)  <=>  src was zero
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
-      biscuit::GPR zf     = rec.flag(X86_REF_ZF);
-      as.SEQZ  (zf,  result);            // ZF = (tmp == 0)
+        biscuit::GPR zf = rec.flag(X86_REF_ZF);
+        as.SEQZ(zf, result);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
-      biscuit::GPR cf     = rec.flag(X86_REF_CF);
-      biscuit::GPR tmp = rec.scratch();
-      as.LI    (tmp, instruction.operand_width);
-      as.SUB   (tmp, tmp, result);    // tmp = size - result
-      as.SEQZ  (cf,  tmp);            // ZF = (tmp == 0)
+        biscuit::GPR cf = rec.flag(X86_REF_CF);
+        biscuit::GPR tmp = rec.scratch();
+        as.ADDI(tmp, result, -instruction.operand_width);
+        as.SEQZ(cf, tmp);
     }
 }
 
@@ -5816,42 +5803,29 @@ void PopCnt(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR sr
         } else if (size == 32) {
             as.CPOPW(result, src);
         } else if (size == 16) {
-            // is masking needed here?
-            as.ANDI(result, src, 0xFFFF);
-            as.CPOPW(result, result);
-        } else if (size == 8) {
-            // is masking needed here?
-            as.ANDI(result, src, 0xFF);
-            as.CPOPW(result, result);
+            as.CPOPW(result, src);
         } else {
             UNREACHABLE();
         }
     } else {
         biscuit::GPR tmp = rec.scratch();
-        as.MV(tmp, src);
-        if (size < 64) {
-            // mask off high bits
-            uint64_t mask = (size == 32 ? 0xFFFFFFFFULL :
-                             size == 16 ? 0xFFFFULL :
-                             size == 8  ? 0xFFULL  : 0x0ULL);
-            as.LI(result, mask);
-            as.AND(tmp, tmp, result);
-        }
-        as.LI(result, 0);                      // count = 0
+        biscuit::GPR tmp2 = rec.scratch();
+        as.MV(tmp, src);  // high bits are already masked from getGPR
+        as.LI(result, 0); // count = 0
         Label loop, done;
         as.Bind(&loop);
-          as.BEQZ(tmp, &done);                // if tmp == 0 break
-          as.ADDI(result, result, 1);         // count++
-          as.ADDI(tmp, tmp, -1);              // tmp - 1
-          as.AND(tmp, tmp, src);              // tmp &= src
-          as.J(&loop);
+        as.BEQZ(tmp, &done);        // if tmp == 0 break
+        as.ADDI(result, result, 1); // count++
+        as.ADDI(tmp2, tmp, -1);
+        as.AND(tmp, tmp, tmp2); // tmp &= (tmp - 1) (clears lsb)
+        as.J(&loop);
         as.Bind(&done);
         rec.popScratch();
     }
 }
 
 FAST_HANDLE(POPCNT) {
-    biscuit::GPR src    = rec.getGPR(&operands[1]);
+    biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR result = rec.scratch();
 
     PopCnt(rec, as, result, src, instruction.operand_width);
@@ -5859,24 +5833,24 @@ FAST_HANDLE(POPCNT) {
     rec.setGPR(&operands[0], result);
 
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
-        biscuit::GPR zf     = rec.flag(X86_REF_ZF);
+        biscuit::GPR zf = rec.flag(X86_REF_ZF);
         as.SEQZ(zf, result);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.clearFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_OF);
     }
     if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
-        rec.clearFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_SF);
     }
     if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
-        rec.clearFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_AF);
     }
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         rec.clearFlag(X86_REF_CF);
     }
     if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
-        rec.clearFlag(X86_REF_CF);
+        rec.clearFlag(X86_REF_PF);
     }
 }
 
