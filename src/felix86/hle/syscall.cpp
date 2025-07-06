@@ -254,9 +254,13 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     case felix86_riscv64_close: {
         if (arg1 == g_rootfs_fd) {
             WARN("Program is closing our rootfs file descriptor with close");
+            result = 0;
+            break;
         }
         if (arg1 == g_output_fd) {
             WARN("Program is closing our output file descriptor with close");
+            result = 0;
+            break;
         }
         result = SYSCALL(close, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
@@ -264,9 +268,13 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     case felix86_riscv64_close_range: {
         if (g_rootfs_fd >= arg1 && g_rootfs_fd <= arg2) {
             WARN("Program is closing our rootfs file descriptor with close_range");
+            result = 0;
+            break;
         }
         if (g_output_fd >= arg1 && g_output_fd <= arg2) {
             WARN("Program is closing our output file descriptor with close_range");
+            result = 0;
+            break;
         }
         result = SYSCALL(close_range, arg1, arg2, arg3);
         break;
