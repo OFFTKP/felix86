@@ -113,6 +113,10 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         }
     }
 
+    if (found && leaf == 0x8000'0001) {
+        result.ecx |= (1 << 5); // lzcnt/popcnt support
+    }
+
     if (!found) {
         WARN("Unknown CPUID(%08x, %08x)", leaf, subleaf);
     }
