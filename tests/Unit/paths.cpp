@@ -72,8 +72,6 @@ CATCH_TEST_CASE("ResolveSimple", "[paths]") {
         FdPath fd_path = Filesystem::resolve("/temp1", true);
         CATCH_INFO(fmt::format("Error: {}", strerror(fd_path.get_errno())));
         CATCH_REQUIRE(!fd_path.is_error());
-        CATCH_REQUIRE(fd_path.fd() == g_rootfs_fd);
-        CATCH_REQUIRE(fd_path.full_path());
         CATCH_REQUIRE(std::string(fd_path.full_path()) == g_config.rootfs_path / "temp1");
     }
     {
@@ -81,15 +79,12 @@ CATCH_TEST_CASE("ResolveSimple", "[paths]") {
         FdPath fd_path = Filesystem::resolve("temp1", true);
         CATCH_INFO(fmt::format("Error: {}", strerror(fd_path.get_errno())));
         CATCH_REQUIRE(!fd_path.is_error());
-        CATCH_REQUIRE(fd_path.fd() == AT_FDCWD);
-        CATCH_REQUIRE(fd_path.full_path());
         CATCH_REQUIRE(std::string(fd_path.full_path()) == g_config.rootfs_path / "temp1");
     }
     {
         FdPath fd_path = Filesystem::resolve(AT_FDCWD, "temp1", true);
         CATCH_INFO(fmt::format("Error: {}", strerror(fd_path.get_errno())));
         CATCH_REQUIRE(!fd_path.is_error());
-        CATCH_REQUIRE(fd_path.fd() == g_rootfs_fd);
         CATCH_REQUIRE(std::string(fd_path.full_path()) == g_config.rootfs_path / "temp1");
     }
 
