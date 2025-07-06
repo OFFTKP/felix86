@@ -43,6 +43,7 @@ jobs:
           cp ./src/felix86/hle/guest_libs/libluajit-5.1.so ./artifact/lib/
           mkdir -p ./test
           cp ./build/felix86_test ./test/
+          cp ./build/felix86-mounter ./test/
           cp ./build/felix86 ./test/
           cp -r ./build/ASM ./test/
           cp -r ./build/32Bit_ASM ./test/
@@ -76,6 +77,9 @@ jobs:
         run: |
           chmod +x ./test/felix86_test
           chmod +x ./test/felix86
+          sudo cp ./test/felix86-mounter /usr/bin/
+          sudo chown root:root /usr/bin/felix86-mounter
+          sudo chmod u+s /usr/bin/felix86-mounter
           TINY_LINK=$(curl -k -s https://felix86.com/rootfs/tiny.txt)
           mkdir -p $HOME/rootfs
           curl -k -L $TINY_LINK | tar -xz -C $HOME/rootfs
