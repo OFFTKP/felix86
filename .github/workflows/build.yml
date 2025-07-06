@@ -60,7 +60,7 @@ jobs:
           retention-days: 1
   test:
     needs: build
-    runs-on: Milk-V-M1--Jupiter
+    runs-on: self-hosted
     steps:
       - name: Download main artifact
         uses: actions/download-artifact@v4
