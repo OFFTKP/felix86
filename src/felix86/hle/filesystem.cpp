@@ -613,8 +613,13 @@ int Filesystem::rmdirInternal(const char* path) {
 }
 
 FdPath Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
-    // FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
-    // return fd_path;
+    static const char* boop = getenv("__FELIX86_BISECT");
+    static int boop2 = std::atoi(boop);
+    static std::atomic_int counter = 0;
+    if (counter++ > boop2) {
+        FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
+        return fd_path;
+    }
     auto [new_fd, new_path] = resolveImplOld(fd, path, resolve_symlinks);
     return FdPath::create(new_fd, new_path);
 }
