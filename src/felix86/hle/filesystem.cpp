@@ -10,6 +10,7 @@
 #include "felix86/common/overlay.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/hle/fd.hpp"
 #include "felix86/hle/filesystem.hpp"
 
 #define FLAGS_SET(v, flags) ((~(v) & (flags)) == 0)
@@ -469,9 +470,10 @@ int Filesystem::Chroot(const char* path) {
         return -fd_path.get_errno();
     }
     g_config.rootfs_path = fd_path.full_path();
-    close(g_rootfs_fd);
+    FD::unprotectAndClose(g_rootfs_fd);
     g_rootfs_fd = open(fd_path.full_path(), O_PATH | O_DIRECTORY);
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", fd_path.full_path());
+    FD::protect(g_rootfs_fd);
     return 0;
 }
 
@@ -613,18 +615,8 @@ int Filesystem::rmdirInternal(const char* path) {
 }
 
 FdPath Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
-    static const char* boop = getenv("__BISECT");
-    static int boop2 = std::atoi(boop);
-    static std::atomic_int counter = 0;
-    if (counter++ > boop2) {
-        WARN_ONCE("Switching to new resolve!");
-        FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
-        WARN("Resolving %d %s -> %d %s", fd, path, fd_path.fd(), fd_path.path());
-        return fd_path;
-    }
-    auto [new_fd, new_path] = resolveImplOld(fd, path, resolve_symlinks);
-    WARN("Resolving %d %s -> %d %s", fd, path, new_fd, new_path.get_str());
-    return FdPath::create(new_fd, new_path);
+    FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
+    return fd_path;
 }
 
 FdPath Filesystem::resolve(const char* path, bool resolve_symlinks) {

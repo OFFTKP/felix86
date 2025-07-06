@@ -690,7 +690,6 @@ private:
     SEW current_sew = SEW::E1024;
     u8 current_vlen = 0;
     LMUL current_grouping = LMUL::M1;
-    int perf_fd = -1;
 
     biscuit::GPR cached_lea = x0;
     const ZydisDecodedOperand* cached_lea_operand;

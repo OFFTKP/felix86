@@ -16,6 +16,7 @@
 #include "felix86/common/log.hpp"
 #include "felix86/common/perf.hpp"
 #include "felix86/common/state.hpp"
+#include "felix86/hle/fd.hpp"
 #include "felix86/hle/filesystem.hpp"
 #include "felix86/hle/mmap.hpp"
 #include "felix86/mounter.h"
@@ -366,6 +367,7 @@ void initialize_globals() {
     ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
+    FD::protect(g_rootfs_fd);
 
     const char* env_file = getenv("FELIX86_ENV_FILE");
     if (env_file) {

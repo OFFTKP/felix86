@@ -6,9 +6,10 @@
 #include <sys/stat.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
+#include "felix86/hle/fd.hpp"
 #include "felix86/hle/signals.hpp"
 
-std::string pipe_name;
+std::string g_pipe_name;
 
 void Logger::log(const char* format, ...) {
     SignalGuard guard;
@@ -19,17 +20,17 @@ void Logger::log(const char* format, ...) {
 }
 
 const char* Logger::getPipeName() {
-    return pipe_name.c_str();
+    return g_pipe_name.c_str();
 }
 
 void Logger::startServer(bool detach) {
     std::string log_path = "/tmp/felix86-" + std::to_string(getpid());
-    pipe_name = log_path + ".pipe";
+    g_pipe_name = log_path + ".pipe";
     log_path += "-XXXXXX.log";
     int fd = mkstemps(log_path.data(), 4);
     ASSERT(fd != -1);
 
-    int ok = mkfifo(pipe_name.c_str(), 0666);
+    int ok = mkfifo(g_pipe_name.c_str(), 0666);
     ASSERT(ok == 0);
 
     if (detach) {
@@ -48,8 +49,9 @@ void Logger::startServer(bool detach) {
             serverLoop(fd);
         } else {
             // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
-            g_output_fd = open(pipe_name.c_str(), O_WRONLY, 0644);
+            g_output_fd = open(g_pipe_name.c_str(), O_WRONLY, 0644);
             ASSERT(g_output_fd > 0);
+            FD::protect(g_output_fd);
         }
     } else {
         int pid = fork();
@@ -74,9 +76,10 @@ void Logger::joinServer() {
     if (g_output_fd == -1) {
         ERROR("Bad g_output_fd -- errno: %d -- pipe: %s", errno, file);
     }
+    FD::protect(g_output_fd);
 
     // Also set this for when this process runs execve...
-    pipe_name = file;
+    g_pipe_name = file;
 }
 
 void Logger::serverLoop(int fd) {
@@ -98,7 +101,7 @@ void Logger::serverLoop(int fd) {
     sigdelset(&mask, SIGTERM);
     sigprocmask(SIG_SETMASK, &mask, nullptr);
 
-    int read_pipe = open(pipe_name.c_str(), O_RDONLY, 0666);
+    int read_pipe = open(g_pipe_name.c_str(), O_RDONLY, 0666);
     ASSERT(read_pipe > 0);
     FILE* f = fdopen(fd, "w"); // create the log file to store the log if we need it later
     constexpr size_t buffer_size = 0x10000;

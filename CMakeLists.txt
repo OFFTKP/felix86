@@ -120,6 +120,7 @@ set(FELIX86_HLE_SOURCES
     src/felix86/hle/abi.cpp
     src/felix86/hle/brk.cpp
     src/felix86/hle/cpuid.cpp
+    src/felix86/hle/fd.cpp
     src/felix86/hle/filesystem.cpp
     src/felix86/hle/ioctl32.cpp
     src/felix86/hle/ipc32.cpp
