@@ -174,7 +174,7 @@ echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR
 felix86 --set-thunks $INSTALLATION_DIR/lib
 
 echo ""
-echo "Would you like to download and set a rootfs?"
+echo "Would you like to download a rootfs?"
 echo "1) Ubuntu 24.04 (Recommended)"
 echo "2) Let me set a custom path"
 echo "3) Nope"
