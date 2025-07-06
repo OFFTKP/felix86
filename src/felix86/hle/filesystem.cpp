@@ -469,9 +469,12 @@ int Filesystem::Chroot(const char* path) {
         VERBOSE("Error while resolving path during chroot(%s), error: %s", path, strerror(fd_path.get_errno()));
         return -fd_path.get_errno();
     }
+
+    // TODO: setting rootfs_path is most likely thread unsafe?
     g_config.rootfs_path = fd_path.full_path();
-    FD::unprotectAndClose(g_rootfs_fd);
+    int old_rootfs_fd = g_rootfs_fd;
     g_rootfs_fd = open(fd_path.full_path(), O_PATH | O_DIRECTORY);
+    FD::unprotectAndClose(old_rootfs_fd);
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", fd_path.full_path());
     FD::protect(g_rootfs_fd);
     return 0;
