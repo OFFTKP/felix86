@@ -613,8 +613,10 @@ int Filesystem::rmdirInternal(const char* path) {
 }
 
 FdPath Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
+    static const char* boop = getenv("__BISECT");
+    static int boop2 = std::atoi(boop);
     static std::atomic_int counter = 0;
-    if (counter++ > 750) {
+    if (counter++ > boop2) {
         WARN_ONCE("Switching to new resolve!");
         WARN("Resolving %d %s", fd, path);
         FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
