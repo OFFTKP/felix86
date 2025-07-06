@@ -63,11 +63,6 @@ jobs:
     needs: build
     runs-on: self-hosted
     steps:
-      - name: Download main artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: linux_artifact
-          path: ./artifact
       - name: Download test artifact
         uses: actions/download-artifact@v4
         with:
@@ -77,6 +72,7 @@ jobs:
         run: |
           chmod +x ./test/felix86_test
           chmod +x ./test/felix86
+          find /
           sudo cp ./test/felix86-mounter /usr/bin/
           sudo chown root:root /usr/bin/felix86-mounter
           sudo chmod u+s /usr/bin/felix86-mounter
