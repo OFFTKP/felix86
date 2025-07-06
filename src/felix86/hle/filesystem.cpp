@@ -618,12 +618,12 @@ FdPath Filesystem::resolve(int fd, const char* path, bool resolve_symlinks) {
     static std::atomic_int counter = 0;
     if (counter++ > boop2) {
         WARN_ONCE("Switching to new resolve!");
-        WARN("Resolving %d %s", fd, path);
         FdPath fd_path = resolveImpl(fd, path, resolve_symlinks);
+        WARN("Resolving %d %s -> %d %s", fd, path, fd_path.fd(), fd_path.path());
         return fd_path;
     }
-    WARN("Resolving %d %s", fd, path);
     auto [new_fd, new_path] = resolveImplOld(fd, path, resolve_symlinks);
+    WARN("Resolving %d %s -> %d %s", fd, path, new_fd, new_path.get_str());
     return FdPath::create(new_fd, new_path);
 }
 
