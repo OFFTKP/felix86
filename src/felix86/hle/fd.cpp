@@ -23,7 +23,7 @@ void FD::unprotectAndClose(int fd) {
     auto guard = g_process_globals.states_lock.lock();
     ASSERT(g_protected_fds.contains(fd));
     g_protected_fds.erase(fd);
-    ASSERT_MSG(::close(fd), "Failed to close our protected fd: %d", fd);
+    ASSERT_MSG(::close(fd) == 0, "Failed to close our protected fd: %d", fd);
 }
 
 int FD::close(int fd) {
@@ -43,7 +43,7 @@ int FD::close(int fd) {
 int FD::close_range(u32 start, u32 end, int flags) {
     u32 current_start = start;
     auto guard = g_process_globals.states_lock.lock();
-    for (auto protected_fd : g_protected_fds) {
+    for (u32 protected_fd : g_protected_fds) {
         if (protected_fd == current_start) {
             // Skip this fd
             WARN("Program tried to close one of our fds: %d", protected_fd);
