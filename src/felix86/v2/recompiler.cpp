@@ -560,6 +560,7 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
         ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), rip);
     }
 
+    lock_handled = false;
     switch (mnemonic) {
 #define X(name)                                                                                                                                      \
     case ZYDIS_MNEMONIC_##name:                                                                                                                      \
@@ -575,6 +576,10 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
         ASSERT_MSG(false, "Bad mnemonic? Shouldn't get here");
         break;
     }
+    }
+
+    if ((instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) && !lock_handled) {
+        WARN("Didn't properly handle lock instruction: %s", disassemble_one(rip).c_str());
     }
 }
 

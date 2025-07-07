@@ -452,6 +452,7 @@ FAST_HANDLE(ADD) {
                 rec.popScratch();
                 rec.popScratch();
             }
+            rec.setLockHandled();
             break;
         }
         case 16: {
@@ -516,15 +517,22 @@ FAST_HANDLE(ADD) {
                 rec.popScratch();
                 rec.popScratch();
             }
+            rec.setLockHandled();
             break;
         }
         case 32: {
             as.AMOADD_W(Ordering::AQRL, dst, src, address);
             rec.zext(dst, dst, X86_SIZE_DWORD); // AMOADD_W sign extends
+            rec.setLockHandled();
             break;
         }
         case 64: {
             as.AMOADD_D(Ordering::AQRL, dst, src, address);
+            rec.setLockHandled();
+            break;
+        }
+        default: {
+            UNREACHABLE();
             break;
         }
         }
@@ -639,6 +647,7 @@ FAST_HANDLE(SUB) {
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();
+            rec.setLockHandled();
             break;
         }
         case 16: {
@@ -698,6 +707,7 @@ FAST_HANDLE(SUB) {
             rec.popScratch();
             rec.popScratch();
             rec.popScratch();
+            rec.setLockHandled();
             break;
         }
         case 32: {
@@ -706,6 +716,7 @@ FAST_HANDLE(SUB) {
             as.AMOADD_W(Ordering::AQRL, dst, src_neg, address);
             rec.popScratch();
             rec.zext(dst, dst, X86_SIZE_DWORD); // AMOADD_W sign extends
+            rec.setLockHandled();
             break;
         }
         case 64: {
@@ -713,6 +724,7 @@ FAST_HANDLE(SUB) {
             as.NEG(src_neg, src);
             as.AMOADD_D(Ordering::AQRL, dst, src_neg, address);
             rec.popScratch();
+            rec.setLockHandled();
             break;
         }
         }
@@ -891,6 +903,7 @@ FAST_HANDLE(OR) {
                 rec.popScratch();
                 rec.popScratch();
             }
+            rec.setLockHandled();
             break;
         }
         case 16: {
@@ -912,14 +925,17 @@ FAST_HANDLE(OR) {
                 rec.popScratch();
                 rec.popScratch();
             }
+            rec.setLockHandled();
             break;
         }
         case 32: {
             as.AMOOR_W(Ordering::AQRL, dst, src, address);
+            rec.setLockHandled();
             break;
         }
         case 64: {
             as.AMOOR_D(Ordering::AQRL, dst, src, address);
+            rec.setLockHandled();
             break;
         }
         }
@@ -1027,8 +1043,10 @@ FAST_HANDLE(XOR) {
         biscuit::GPR address = rec.lea(&operands[0]);
         if (size == X86_SIZE_DWORD) {
             as.AMOXOR_W(Ordering::AQRL, dst, src, address);
+            rec.setLockHandled();
         } else if (size == X86_SIZE_QWORD) {
             as.AMOXOR_D(Ordering::AQRL, dst, src, address);
+            rec.setLockHandled();
         } else {
             UNREACHABLE();
         }
@@ -1090,10 +1108,12 @@ FAST_HANDLE(AND) {
         switch (operands[0].size) {
         case 32: {
             as.AMOAND_W(Ordering::AQRL, dst, src, address);
+            rec.setLockHandled();
             break;
         }
         case 64: {
             as.AMOAND_D(Ordering::AQRL, dst, src, address);
+            rec.setLockHandled();
             break;
         }
         }
@@ -2170,8 +2190,10 @@ FAST_HANDLE(INC) {
         as.LI(one, 1);
         if (operands[0].size == 32) {
             as.AMOADD_W(Ordering::AQRL, dst, one, address);
+            rec.setLockHandled();
         } else if (operands[0].size == 64) {
             as.AMOADD_D(Ordering::AQRL, dst, one, address);
+            rec.setLockHandled();
         } else {
             UNREACHABLE();
         }
@@ -2229,8 +2251,10 @@ FAST_HANDLE(DEC) {
         as.LI(one, -1);
         if (operands[0].size == 32) {
             as.AMOADD_W(Ordering::AQRL, dst, one, address);
+            rec.setLockHandled();
         } else if (operands[0].size == 64) {
             as.AMOADD_D(Ordering::AQRL, dst, one, address);
+            rec.setLockHandled();
         } else {
             UNREACHABLE();
         }
@@ -2378,6 +2402,7 @@ FAST_HANDLE(XCHG_lock) {
             rec.popScratch();
             rec.popScratch();
         }
+        rec.setLockHandled();
         break;
     }
     case X86_SIZE_WORD: {
@@ -2427,16 +2452,19 @@ FAST_HANDLE(XCHG_lock) {
             rec.popScratch();
             rec.popScratch();
         }
+        rec.setLockHandled();
         break;
     }
     case X86_SIZE_DWORD: {
         as.MV(scratch, src);
         as.AMOSWAP_W(Ordering::AQRL, dst, scratch, address);
+        rec.setLockHandled();
         break;
     }
     case X86_SIZE_QWORD: {
         as.MV(scratch, src);
         as.AMOSWAP_D(Ordering::AQRL, dst, scratch, address);
+        rec.setLockHandled();
         break;
     }
     default: {
@@ -4555,6 +4583,7 @@ FAST_HANDLE(NOT) {
                 as.SLLW(mask, mask, address);
                 as.AMOXOR_W(Ordering::AQRL, x0, mask, masked_address);
             }
+            rec.setLockHandled();
             break;
         }
         case 16: {
@@ -4600,18 +4629,21 @@ FAST_HANDLE(NOT) {
 
                 as.Bind(&end);
             }
+            rec.setLockHandled();
             break;
         }
         case 32: {
             biscuit::GPR minus_one = rec.scratch();
             as.LI(minus_one, -1);
             as.AMOXOR_W(Ordering::AQRL, x0, minus_one, address);
+            rec.setLockHandled();
             break;
         }
         case 64: {
             biscuit::GPR minus_one = rec.scratch();
             as.LI(minus_one, -1);
             as.AMOXOR_D(Ordering::AQRL, x0, minus_one, address);
+            rec.setLockHandled();
             break;
         }
         }
@@ -6720,6 +6752,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             rec.popScratch();
             rec.popScratch();
         }
+        rec.setLockHandled();
         break;
     }
     case X86_SIZE_WORD: {
@@ -6792,6 +6825,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             rec.popScratch();
             rec.popScratch();
         }
+        rec.setLockHandled();
         break;
     }
     case X86_SIZE_DWORD: {
@@ -6813,6 +6847,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             as.Bind(&not_equal);
             rec.popScratch();
         }
+        rec.setLockHandled();
         break;
     }
     case X86_SIZE_QWORD: {
@@ -6862,6 +6897,7 @@ FAST_HANDLE(CMPXCHG_lock) {
             rec.popScratch();
             rec.popScratch();
         }
+        rec.setLockHandled();
         break;
     }
     default: {
@@ -7673,6 +7709,7 @@ FAST_HANDLE(XADD_lock_32) {
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR address = rec.lea(&operands[0]);
     as.AMOADD_W(Ordering::AQRL, dst, src, address);
+    rec.setLockHandled();
     rec.zext(dst, dst, X86_SIZE_DWORD); // amoadd sign extends
 
     if (!g_config.noflag_opts || update_any) {
@@ -7722,6 +7759,7 @@ FAST_HANDLE(XADD_lock_64) {
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR address = rec.lea(&operands[0]);
     as.AMOADD_D(Ordering::AQRL, dst, src, address);
+    rec.setLockHandled();
 
     if (!g_config.noflag_opts || update_any) {
         biscuit::GPR result = rec.scratch();

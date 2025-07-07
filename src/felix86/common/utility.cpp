@@ -239,6 +239,21 @@ __attribute__((visibility("default"))) int guest_breakpoint_abs(u64 address) {
     return g_breakpoints.size();
 }
 
+__attribute__((visibility("default"))) std::string disassemble_one(u64 address) {
+    ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
+    ZydisDisassembledInstruction instruction;
+    auto result = ZydisDisassembleIntel(mode, address, (void*)address, 15, &instruction);
+    if (ZYAN_SUCCESS(result)) {
+        return instruction.text;
+    } else {
+        std::string msg = fmt::format("failed to disassemble at {:x}, bytes: ", address);
+        for (int i = 0; i < 15; i++) {
+            msg += fmt::format("{:02x}", ((u8*)address)[i]);
+        }
+        return msg;
+    }
+}
+
 __attribute__((visibility("default"))) void disassemble(u64 host_address) {
     ZydisDecoder decoder;
     ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;

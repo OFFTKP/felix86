@@ -381,6 +381,10 @@ struct Recompiler {
 
     void vsplat(biscuit::Vec vec, u64 imm);
 
+    void setLockHandled() {
+        lock_handled = true;
+    }
+
     BlockMetadata& getBlockMetadata(u64 rip) {
         return block_metadata[rip];
     }
@@ -695,6 +699,8 @@ private:
     const ZydisDecodedOperand* cached_lea_operand;
 
     bool fsrm_sse = true;
+
+    bool lock_handled = false;
 
     std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
 
