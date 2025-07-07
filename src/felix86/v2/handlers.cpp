@@ -5720,6 +5720,10 @@ void BITSTRING_func(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruc
     biscuit::GPR base = rec.lea(&operands[0]);
     biscuit::GPR bit = rec.getGPR(&operands[1]);
     biscuit::GPR retval = rec.scratch();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        u8 bit_size = operands[0].size;
+        as.ANDI(bit, bit, bit_size - 1);
+    }
     rec.writebackState();
     rec.sext(a1, bit, rec.zydisToSize(operands[1].size));
     as.MV(a0, base);
