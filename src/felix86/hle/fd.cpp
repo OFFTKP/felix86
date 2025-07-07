@@ -23,7 +23,7 @@ void FD::unprotectAndClose(int fd) {
     auto guard = g_process_globals.states_lock.lock();
     ASSERT(g_protected_fds.contains(fd));
     g_protected_fds.erase(fd);
-    ASSERT_MSG(close(fd), "Failed to close our protected fd: %d", fd);
+    ASSERT_MSG(::close(fd), "Failed to close our protected fd: %d", fd);
 }
 
 int FD::close(int fd) {
