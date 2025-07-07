@@ -211,6 +211,8 @@ struct ThreadState {
                       // check presence of cpuid... on x86-64 processors... lol...
     bool ac_bit{};    // this is checked by Java to see if it's i386 or not
 
+    u32 robust_list{};
+
     // Counts the amount of atomic instructions that end up on a non-atomic path due to being unaligned
     // This is a cheap and quick way of checking if a program uses unaligned non-atomic atomics
     // Example: RMW on 16-bit data in the end of a 64-bit address (address & 0b111 == 0b111). Can't be atomically emulated with a lr.d/sc.d combo

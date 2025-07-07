@@ -436,7 +436,8 @@ int Filesystem::LRemoveXAttr(const char* filename, const char* name) {
 }
 
 int Filesystem::UtimensAt(int fd, const char* filename, struct timespec* spec, int flags) {
-    FdPath fd_path = resolve(fd, filename, true);
+    bool follow = !(flags & AT_SYMLINK_NOFOLLOW);
+    FdPath fd_path = resolve(fd, filename, follow);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving path during utimensat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
         return -fd_path.get_errno();

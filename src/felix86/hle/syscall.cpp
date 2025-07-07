@@ -218,6 +218,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(set_robust_list, arg1, arg2);
         break;
     }
+    case felix86_riscv64_get_robust_list: {
+        result = SYSCALL(get_robust_list, arg1, arg2, arg3);
+        break;
+    }
     case felix86_riscv64_rseq: {
         // Couldn't find any solid documentation and FEX doesn't support it either
         result = -ENOSYS;
@@ -1851,6 +1855,19 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_inotify_init: {
             result = SYSCALL(inotify_init1, 0);
+            break;
+        }
+        case felix86_x86_32_set_robust_list: {
+            state->robust_list = arg1;
+            result = 0;
+            break;
+        }
+        case felix86_x86_32_get_robust_list: {
+            u32* head_ptr = (u32*)arg2;
+            u32* size_ptr = (u32*)arg3;
+            *head_ptr = state->robust_list;
+            *size_ptr = 12;
+            result = 0;
             break;
         }
         case felix86_x86_32_clock_gettime32: {
