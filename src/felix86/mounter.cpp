@@ -358,11 +358,12 @@ int main(int argc, char* argv[]) {
 
     // Fix permissions in /run/user to match the id they belong to
     std::filesystem::path run_user = mount_target / "run" / "user";
-    for (auto& entry : run_user) {
-        std::string number = entry.string();
+    std::filesystem::directory_iterator dir_it(run_user);
+    for (auto& entry : dir_it) {
+        std::string number = entry.path().filename();
         long id = std::atol(number.c_str());
         if (id) {
-            chown(entry.c_str(), id, id);
+            chown(entry.path().c_str(), id, id);
         }
     }
 
