@@ -1116,6 +1116,9 @@ FAST_HANDLE(AND) {
             rec.setLockHandled();
             break;
         }
+        default: {
+            UNREACHABLE();
+        }
         }
 
         // TODO: noflags opt
@@ -1123,7 +1126,7 @@ FAST_HANDLE(AND) {
         writeback = false;
     } else {
         if (needs_atomic) {
-            WARN("Atomic OR with 8 or 16 bit operands encountered");
+            WARN("Atomic AND with 8 or 16 bit operands encountered");
         }
 
         dst = rec.getGPR(&operands[0]);
