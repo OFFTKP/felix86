@@ -5733,7 +5733,7 @@ void BITSTRING_func(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruc
 }
 
 FAST_HANDLE(BTC) {
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         BITSTRING_func(rec, rip, as, instruction, operands, (u64)&felix86_btc);
         rec.setLockHandled();
         return;
@@ -5759,7 +5759,7 @@ FAST_HANDLE(BTC) {
 }
 
 FAST_HANDLE(BT) {
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         BITSTRING_func(rec, rip, as, instruction, operands, (u64)&felix86_bt);
         rec.setLockHandled();
         return;
@@ -5778,7 +5778,7 @@ FAST_HANDLE(BT) {
 }
 
 FAST_HANDLE(BTS) {
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         BITSTRING_func(rec, rip, as, instruction, operands, (u64)&felix86_bts);
         rec.setLockHandled();
         return;
@@ -5806,7 +5806,7 @@ FAST_HANDLE(BTS) {
 }
 
 FAST_HANDLE(BTR) {
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
         BITSTRING_func(rec, rip, as, instruction, operands, (u64)&felix86_btr);
         rec.setLockHandled();
         return;
