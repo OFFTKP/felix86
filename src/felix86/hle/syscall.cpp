@@ -222,6 +222,19 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(get_robust_list, arg1, arg2, arg3);
         break;
     }
+    case felix86_riscv64_landlock_create_ruleset: {
+        result = SYSCALL(landlock_create_ruleset, arg1, arg2, arg3);
+        break;
+    }
+
+    case felix86_riscv64_landlock_add_rule: {
+        result = SYSCALL(landlock_add_rule, arg1, arg2, arg3, arg4);
+        break;
+    }
+    case felix86_riscv64_landlock_restrict_self: {
+        result = SYSCALL(landlock_restrict_self, arg1, arg2);
+        break;
+    }
     case felix86_riscv64_rseq: {
         // Couldn't find any solid documentation and FEX doesn't support it either
         result = -ENOSYS;
