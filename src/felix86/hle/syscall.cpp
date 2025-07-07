@@ -345,6 +345,18 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = Filesystem::RenameAt2(arg1, (char*)arg2, arg3, (char*)arg4, arg5);
         break;
     }
+    case felix86_riscv64_io_uring_enter: {
+        result = SYSCALL(io_uring_enter, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
+    case felix86_riscv64_io_uring_register: {
+        result = SYSCALL(io_uring_register, arg1, arg2, arg3, arg4);
+        break;
+    }
+    case felix86_riscv64_io_uring_setup: {
+        result = SYSCALL(io_uring_setup, arg1, arg2);
+        break;
+    }
     case felix86_riscv64_epoll_ctl: {
         if (arg4) {
             epoll_event host_event = *(x86_epoll_event*)arg4;
