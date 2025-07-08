@@ -7182,15 +7182,29 @@ FAST_HANDLE(CVTTSS2SI) {
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
     biscuit::FPR temp = rec.scratchFPR();
+    biscuit::GPR tmp_int = rec.scratch();
 
     if (gpr_size == X86_SIZE_DWORD) {
         rec.setVectorState(SEW::E32, 1);
         as.VFMV_FS(temp, src);
         as.FCVT_W_S(dst, temp, RMode::RTZ);
+        as.FCLASS_S(tmp_int, temp);
+        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
+        Label ok32;
+        as.BEQZ(tmp_int, &ok32);
+        as.LI(dst, 0x80000000);
+        as.Bind(&ok32);
     } else if (gpr_size == X86_SIZE_QWORD) {
         rec.setVectorState(SEW::E32, 1);
         as.VFMV_FS(temp, src);
         as.FCVT_L_S(dst, temp, RMode::RTZ);
+        as.FCLASS_S(tmp_int, temp);
+        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
+        Label ok64;
+        as.BEQZ(tmp_int, &ok64);
+        as.LI(dst, 0x80000000);
+        as.SLLI(dst, dst, 32);
+        as.Bind(&ok64);
     } else {
         UNREACHABLE();
     }
@@ -7202,16 +7216,30 @@ FAST_HANDLE(CVTTSD2SI) {
     x86_size_e gpr_size = rec.getSize(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::GPR dst = rec.getGPR(&operands[0]);
-    biscuit::FPR temp = rec.scratchFPR();
+    biscuit::FPR tmp_fp = rec.scratchFPR();
+    biscuit::GPR tmp_int = rec.scratch();
+
+    rec.setVectorState(SEW::E64, 1);
+    as.VFMV_FS(tmp_fp, src);
 
     if (gpr_size == X86_SIZE_DWORD) {
-        rec.setVectorState(SEW::E64, 1);
-        as.VFMV_FS(temp, src);
-        as.FCVT_W_D(dst, temp, RMode::RTZ);
+        as.FCVT_W_D(dst, tmp_fp, RMode::RTZ);
+        as.FCLASS_D(tmp_int, tmp_fp);
+        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
+        Label ok32;
+        as.BEQZ(tmp_int, &ok32);
+        as.LI(dst, 0x80000000);
+        as.Bind(&ok32);
     } else if (gpr_size == X86_SIZE_QWORD) {
-        rec.setVectorState(SEW::E64, 1);
-        as.VFMV_FS(temp, src);
-        as.FCVT_L_D(dst, temp, RMode::RTZ);
+        as.FCVT_L_D(dst, tmp_fp, RMode::RTZ);
+
+        as.FCLASS_D(tmp_int, tmp_fp);
+        as.ANDI(tmp_int, tmp_int, (1 << 0) | (1 << 7) | (1 << 8) | (1 << 9));
+        Label ok64;
+        as.BEQZ(tmp_int, &ok64);
+        as.LI(dst, 0x80000000);
+        as.SLLI(dst, dst, 32);
+        as.Bind(&ok64);
     } else {
         UNREACHABLE();
     }
@@ -9205,6 +9233,10 @@ FAST_HANDLE(FPTAN) {
 
 FAST_HANDLE(FWAIT) {
     WARN("FWAIT encountered, treating as NOP");
+}
+
+FAST_HANDLE(FFREE) {
+    WARN("FFREE encountered, treating as NOP");
 }
 
 FAST_HANDLE(FPREM) {

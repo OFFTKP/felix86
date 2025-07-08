@@ -167,3 +167,5 @@ bool unregister_binfmt_misc(const std::string& path);
 std::string disassemble_one(u64 address);
 
 void felix86_crash_and_burn();
+
+std::string felix86_mountinfo();

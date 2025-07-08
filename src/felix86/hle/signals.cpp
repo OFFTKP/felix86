@@ -199,7 +199,7 @@ x64_rt_sigframe* setupFrame(RegisteredSignal& signal, int sig, ThreadState* stat
         // State reconstruction isn't necessary, the state should be in some stable form
     }
 
-    u64 rsp = use_altstack ? (u64)state->alt_stack.ss_sp : state->GetGpr(X86_REF_RSP);
+    u64 rsp = use_altstack ? ((u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) : state->GetGpr(X86_REF_RSP);
     if (rsp == 0) {
         ERROR("RSP is null, use_altstack: %d", use_altstack);
     }

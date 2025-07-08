@@ -1,9 +1,9 @@
+#include <cstdlib>
 #include <vector>
 #include <sys/mount.h>
+#include <unistd.h>
+#include "felix86/common/log.hpp"
 #include "felix86/common/sudo.hpp"
-
-// When the system is rebooted, files in /run are deleted -- and mounts are also unmounted
-const static std::filesystem::path mounted_path = "/run/felix86.mounted";
 
 bool Sudo::hasPermissions() {
     return geteuid() == 0;
@@ -47,24 +47,4 @@ bool Sudo::dropPermissions() {
     ASSERT_MSG(geteuid() != 0, "Failed to drop root privileges?");
     ASSERT_MSG(getuid() != 0, "Failed to drop root privileges?");
     return true;
-}
-
-void Sudo::mount(const char* path, const std::filesystem::path& dest, const char* fs_type, u32 flags) {
-    std::filesystem::create_directories(dest);
-
-    int result = ::mount(path, dest.c_str(), fs_type, flags, nullptr);
-    if (result < 0) {
-        ERROR("Failed to mount %s to %s. Error: %d", path, dest.c_str(), errno);
-    }
-
-    LOG("Mounting %s to %s", path, dest.c_str());
-}
-
-bool Sudo::isMounted() {
-    return std::filesystem::exists(mounted_path);
-}
-
-bool Sudo::chroot(const std::filesystem::path& path) {
-    VERBOSE("Chrooting into %s", path.c_str());
-    return ::chroot(path.c_str()) == 0;
 }

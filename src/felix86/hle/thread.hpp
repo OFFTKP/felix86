@@ -21,6 +21,8 @@ struct CloneArgs {
 };
 
 struct Threads {
+    static int Unshare(int flags);
+
     static long Clone(ThreadState* current_state, CloneArgs* args);
 
     static void StartThread(ThreadState* state);

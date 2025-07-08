@@ -16,6 +16,9 @@
 
 constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
+// TODO: move to header file
+BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc);
+
 static u8* allocateCodeCache() {
     u8 prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     u8 flags = MAP_PRIVATE | MAP_ANONYMOUS;
@@ -263,15 +266,20 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
         // So we need to subtract 8
         linked_block -= 8;
 
-        u8* cursor = state->recompiler->as.GetCursorPointer();
-        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
-                   state->recompiler->start_of_code_cache, linked_block, cursor);
+        auto linked_metadata = get_block_metadata(state, (u64)linked_block);
 
-        // And here we need to mark the block for linking again. This will either link if the block is already compiled
-        // or jump back to dispatcher that will link when the block gets compiled.
-        state->recompiler->as.SetCursorPointer(linked_block);
-        state->recompiler->jumpAndLink(it->second->guest_address);
-        state->recompiler->as.SetCursorPointer(cursor);
+        if (linked_metadata->address != 0) {
+            u8* cursor = state->recompiler->as.GetCursorPointer();
+            ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
+                       state->recompiler->start_of_code_cache, linked_block, cursor);
+
+            // And here we need to mark the block for linking again. This will either link if the block is already compiled
+            // or jump back to dispatcher that will link when the block gets compiled.
+            state->recompiler->as.SetCursorPointer(linked_block);
+            state->recompiler->jumpAndLink(it->second->guest_address);
+            state->recompiler->as.SetCursorPointer(cursor);
+            flush_icache();
+        }
     } else {
         // The dispatcher makes sure the third argument is set to 0 before we get here
     }
@@ -577,6 +585,9 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
         break;
     }
     }
+
+    // Remove this
+    as.SD(allocatedGPR(X86_REF_RSP), offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * sizeof(u64), threadStatePointer());
 
     if ((instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) && !lock_handled) {
         WARN("Didn't properly handle lock instruction: %s", disassemble_one(rip).c_str());
@@ -1570,10 +1581,14 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
                     as.ADD(address, base, index);
                 }
             }
-        } else {
-            ASSERT(has_base);
+        } else if (has_base) {
             base = getGPR(operand->mem.base);
             as.MV(address, base);
+        } else {
+            // We only get here if there's no base or index or segment and immediate == 0
+            ASSERT(operand->mem.disp.value == 0);
+            WARN("Compiling null memory access");
+            return x0;
         }
     }
 
@@ -2753,6 +2768,10 @@ void Recompiler::setTOP(biscuit::GPR new_top) {
 }
 
 void Recompiler::invalidateBlock(BlockMetadata* block) {
+    if (block->address == 0) {
+        return;
+    }
+
     u64* address = (u64*)block->address;
     const u64 offset = (u64)invalidate_caller_thunk - (u64)address;
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
@@ -2765,11 +2784,8 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     tas.JALR(t6, lo12, t4);
     __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
 
-    if (g_config.address_cache) {
-        AddressCacheEntry& entry = address_cache[block->guest_address & ((1 << address_cache_bits) - 1)];
-        entry.guest = ~(block->guest_address & ((1 << address_cache_bits) - 1));
-        entry.host = 0;
-    }
+    block->address = 0;
+    std::atomic_thread_fence(std::memory_order_seq_cst);
 }
 
 void Recompiler::invalidateRange(u64 start, u64 end) {

@@ -84,13 +84,16 @@ struct FdPath {
                 int result = readlink(proc_fd.c_str(), buffer, PATH_MAX - 1);
                 ASSERT(result > 0);
                 buffer[result] = 0;
-                std::filesystem::path new_path = buffer;
+                std::filesystem::path new_path;
+                if (buffer[0] == '/') {
+                    new_path = buffer;
+                } else {
+                    // If it doesn't start with a / it's probably a pipe:[...] or some other stuff
+                    // so we return a magic link path and hope for the best
+                    new_path = proc_fd;
+                }
                 if (fd_path.second.get_str()) {
                     new_path /= fd_path.second.get_str();
-                }
-                if (!new_path.is_absolute()) {
-                    printf("ATTACH ME: %d\n", gettid());
-                    sleep(500);
                 }
                 ASSERT_MSG(new_path.is_absolute(), "Path: %s / %s", buffer, fd_path.second.get_str());
                 fd_path.second = new_path;
@@ -234,6 +237,8 @@ struct Filesystem {
 
     static int Chroot(const char* path);
 
+    static int PivotRoot(const char* new_root, const char* put_old);
+
     static int Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data);
 
     static int Umount(const char* path, int flags);
@@ -307,6 +312,7 @@ private:
     enum {
         PROC_CPUINFO,
         PROC_SELF_MAPS,
+        PROC_SELF_MOUNTINFO,
         EMULATED_NODE_COUNT,
     };
 

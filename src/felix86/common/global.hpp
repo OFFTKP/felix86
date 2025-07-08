@@ -50,6 +50,10 @@ struct ProcessGlobals {
     // For cmpxchg16b
     u32 cas128_lock = 0;
 
+    // TODO: this isn't per CLONE_VM but per mount namespace
+    // But we don't care for now
+    std::vector<std::filesystem::path> mount_paths;
+
 private:
     constexpr static size_t shared_memory_size = 0x10000;
 };
@@ -86,6 +90,7 @@ extern int g_linux_major;
 extern int g_linux_minor;
 extern bool g_no_riscv_v_state;
 extern std::filesystem::path g_executable_path_absolute;
+extern std::filesystem::path g_mounts_path;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();

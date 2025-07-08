@@ -8,7 +8,6 @@ std::set<int> g_protected_fds{};
 void FD::protect(int fd) {
     ASSERT(fd > 2);
 
-    auto guard = g_process_globals.states_lock.lock();
     g_protected_fds.insert(fd);
 
     // Important: If a process sharing a file descriptor table calls execve(2), its file descriptor table is duplicated (unshared)
@@ -20,7 +19,6 @@ void FD::protect(int fd) {
 }
 
 void FD::unprotectAndClose(int fd) {
-    auto guard = g_process_globals.states_lock.lock();
     ASSERT(g_protected_fds.contains(fd));
     g_protected_fds.erase(fd);
     ASSERT_MSG(::close(fd) == 0, "Failed to close our protected fd: %d", fd);

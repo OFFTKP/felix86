@@ -1663,3 +1663,64 @@ void felix86_crash_and_burn() {
     ERROR("Reached felix86_crash_and_burn, this shouldn't happen");
     exit(1);
 }
+
+void replaceOne(std::string& s, const std::string& search, const std::string& replace) {
+    for (size_t pos = 0;; pos += replace.length()) {
+        // Locate the substring to replace
+        pos = s.find(search, pos);
+        if (pos == std::string::npos)
+            break;
+        // Replace by erasing and inserting
+        s.erase(pos, search.length());
+        s.insert(pos, replace);
+        break;
+    }
+}
+
+// TODO: HACK: this is mountinfo emulation that only helps to get bwrap working, proper impl. might be needed eventually
+std::string felix86_mountinfo() {
+    std::string line;
+    std::string rv;
+
+    auto lock = g_process_globals.states_lock.lock();
+    std::ifstream t("/proc/self/mountinfo");
+    while (getline(t, line)) {
+        int nid;
+        sscanf(line.c_str(), "%d", &nid);
+
+        {
+            // what happens here is brain dead
+            // do the magic here
+            char path1[512];
+            char path2[512];
+            int nid2;
+            char devid[512];
+
+            std::string ori = line;
+
+            sscanf(line.c_str(), "%d %d %s %s %s", &nid, &nid2, devid, path1, path2);
+
+            char original[4096];
+            sprintf(original, "%d %d %s %s %s", nid, nid2, devid, path1, path2);
+
+            std::string path1s = path1;
+            std::string path2s = path2;
+            // HACK: The biggest hack of the biggest hacks
+            if (strstr(path1s.c_str(), "/home") == path1s.c_str()) {
+                replaceOne(path1s, "/home", "/oldroot/home");
+            }
+
+            for (auto& mount_path : g_process_globals.mount_paths) {
+                replaceOne(path1s, mount_path, "");
+                replaceOne(path2s, mount_path, "");
+            }
+
+            char replacement[4096];
+            sprintf(replacement, "%d %d %s %s %s", nid, nid2, devid, path1s.c_str(), path2s.c_str());
+            replaceOne(line, original, replacement);
+        }
+        rv += line;
+        rv += "\n";
+    }
+    return rv;
+}

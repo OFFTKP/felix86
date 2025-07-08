@@ -48,6 +48,7 @@ int g_linux_major = 0;
 int g_linux_minor = 0;
 bool g_no_riscv_v_state{};
 std::filesystem::path g_executable_path_absolute{};
+std::filesystem::path g_mounts_path{};
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;
@@ -97,6 +98,10 @@ void ProcessGlobals::initialize() {
     perf = std::make_unique<Perf>();
 
     cas128_lock = 0;
+
+    // HACK: Don't clear as they get shared per mount namespace
+    // TODO: proper mount namespacing when we need it
+    // mount_paths.clear();
 
     g_fs->initializeEmulatedNodes();
 
@@ -268,11 +273,25 @@ void initialize_globals() {
         }
     }
 
+    const char* mounts_path = getenv("__FELIX86_MOUNTS");
+    if (mounts_path) {
+        g_mounts_path = mounts_path;
+    }
+
     const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
     if (guest_rootfs) {
         g_config.rootfs_path = guest_rootfs;
+
+        if (g_mounts_path.empty()) {
+            char templ[] = "/tmp/felix86.mounts.XXXXXX";
+            char* path = mkdtemp(templ);
+            ASSERT_MSG(path == templ, "Failed to mkdtemp for mounts directory?");
+            g_mounts_path = path;
+            WARN("Mounts path was empty, created a path at %s", g_mounts_path.c_str());
+        }
     } else {
         ASSERT(!g_execve_process);
+        ASSERT(!mounts_path);
         ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
 
         // Running for the first time, and we don't have a __FELIX86_ROOTFS set
@@ -342,6 +361,11 @@ void initialize_globals() {
         }
 
         close(pipefd[0]);
+
+        ASSERT(!g_config.rootfs_path.empty());
+        ASSERT_MSG(std::filesystem::is_directory(g_config.rootfs_path.parent_path() / "mounts"),
+                   "felix86-mounter didn't create us a 'mounts' directory?");
+        g_mounts_path = g_config.rootfs_path.parent_path() / "mounts";
     }
 
     if (g_config.rootfs_path.empty()) {
@@ -352,6 +376,8 @@ void initialize_globals() {
         }
         exit(1);
     }
+
+    ASSERT_MSG(!g_mounts_path.empty(), "Mounts path is empty?");
 
     if (!std::filesystem::exists(g_config.rootfs_path)) {
         ERROR("Rootfs path does <%s> not exist", g_config.rootfs_path.c_str());
@@ -368,6 +394,20 @@ void initialize_globals() {
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
     FD::protect(g_rootfs_fd);
+
+    if (getenv("__FELIX86_MOUNT_0")) {
+        size_t current_mount = 0;
+        for (;;) {
+            auto mount_path = getenv((std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++)).c_str());
+            if (!mount_path) {
+                break;
+            } else {
+                g_process_globals.mount_paths.push_back(mount_path);
+            }
+        }
+    } else {
+        g_process_globals.mount_paths.push_back(g_config.rootfs_path);
+    }
 
     const char* env_file = getenv("FELIX86_ENV_FILE");
     if (env_file) {

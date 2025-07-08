@@ -421,3 +421,8 @@ void Threads::StartThread(ThreadState* state) {
     state->recompiler->enterDispatcher(state);
     VERBOSE("Thread exited with reason %s", print_exit_reason(state->exit_reason));
 }
+
+int Threads::Unshare(int flags) {
+    WARN("unshare(%s)", flags_to_string(flags).c_str());
+    return ::unshare(flags);
+}

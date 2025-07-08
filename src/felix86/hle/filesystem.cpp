@@ -40,7 +40,7 @@ void Filesystem::initializeEmulatedNodes() {
         .open_func = [](const char* path, int flags) {
             const std::string& cpuinfo = felix86_cpuinfo();
             int fd = generate_memfd("/proc/cpuinfo", flags);
-            ASSERT(write(fd, cpuinfo.data(), cpuinfo.size()) == cpuinfo.size());
+            ASSERT(write(fd, cpuinfo.data(), cpuinfo.size()) == (ssize_t)cpuinfo.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
             return fd;
@@ -52,12 +52,25 @@ void Filesystem::initializeEmulatedNodes() {
         .open_func = [](const char* path, int flags) {
             std::string maps = felix86_maps();
             int fd = generate_memfd("/proc/self/maps", flags);
-            ASSERT(write(fd, maps.data(), maps.size()) == maps.size());
+            ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
             return fd;
         },
     };
+
+    emulated_nodes[PROC_SELF_MOUNTINFO] = EmulatedNode{
+        .path = "/proc/self/mountinfo",
+        .open_func = [](const char* path, int flags) {
+            std::string maps = felix86_mountinfo();
+            int fd = generate_memfd("/proc/self/mountinfo", flags);
+            ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
+            lseek(fd, 0, SEEK_SET);
+            seal_memfd(fd);
+            return fd;
+        }
+    };
+
     // clang-format on
 
     // Populate the stat field in each node
@@ -158,13 +171,15 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
         return -fd_path.get_errno();
     }
 
-    int result = readlinkatInternal(fd_path.fd(), fd_path.path(), buf, bufsiz);
+    // Program may use readlink with a small buffer, so we need to use our own big buffer and copy the result after rootfs path removal
+    char our_buffer[PATH_MAX];
+    int result = readlinkatInternal(fd_path.fd(), fd_path.path(), our_buffer, PATH_MAX);
 
     if (result > 0) {
-        std::string str(buf, result);
+        std::string str(our_buffer, result);
         removeRootfsPrefix(str);
-        strncpy(buf, str.c_str(), result);
-        return str.size();
+        strncpy(buf, str.c_str(), bufsiz);
+        return std::min(bufsiz, (int)str.size());
     }
 
     return result;
@@ -460,6 +475,9 @@ int Filesystem::Chroot(const char* path) {
         return -EINVAL;
     }
 
+    // Note: We'd like to move the new root inside g_mounts_path like in pivot_root, but it's not possible:
+    //    - Unlike pivot_root, chroot's new root doesn't need to be a mount
+    //    - Chroot requires CAP_SYS_CHROOT instead of CAP_SYS_ADMIN, so there may be programs that can chroot but not mount
     FdPath fd_path = resolve(path, true);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving path during chroot(%s), error: %s", path, strerror(fd_path.get_errno()));
@@ -467,12 +485,87 @@ int Filesystem::Chroot(const char* path) {
     }
 
     // TODO: setting rootfs_path is most likely thread unsafe?
+    auto guard = g_process_globals.states_lock.lock();
     g_config.rootfs_path = fd_path.full_path();
     int old_rootfs_fd = g_rootfs_fd;
     g_rootfs_fd = open(fd_path.full_path(), O_PATH | O_DIRECTORY);
     FD::unprotectAndClose(old_rootfs_fd);
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", fd_path.full_path());
     FD::protect(g_rootfs_fd);
+    return 0;
+}
+
+int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
+    WARN("pivot_root(%s, %s)", new_root, put_old);
+    const std::filesystem::path rootfs = g_config.rootfs_path;
+    FdPath new_root_resolved = resolve(new_root, true);
+
+    if (new_root_resolved.is_error()) {
+        WARN("Failed to resolve new_root: %s with error %s", new_root, strerror(new_root_resolved.get_errno()));
+        return -new_root_resolved.get_errno();
+    }
+
+    const char* new_root_full = new_root_resolved.full_path();
+
+    std::filesystem::path path = g_mounts_path / ("mount." + std::to_string(gettid()) + ".XXXXXX");
+    char buffer[PATH_MAX];
+    ASSERT(path.string().size() < PATH_MAX);
+    strncpy(buffer, path.c_str(), PATH_MAX);
+    char* dir = mkdtemp(buffer);
+
+    // Move the new_root mount to the g_mounts_path because we want a unique path when doing removeRootfsPrefix
+    // so as to not accidentally remove parts of the root that we aren't supposed to
+    // Example:
+    //    /rootfs is initial rootfs
+    //    open "/mydir/foo", fd = 3
+    //    chroot to /rootfs/mydir (g_config.rootfs_path == /rootfs/mydir)
+    //    open "/bar", fd = 4
+    //    readlink /proc/self/fd/3, will resolve to /rootfs/mydir/foo, should resolve to /mydir/foo in guest
+    //    readlink /proc/self/fd/4, will resolve to /rootfs/mydir/bar, should resolve to /bar in guest
+    // Here's the problem: How do we know to properly remove the rootfs path?
+    //   - Remove current rootfs path? What if you need to resolve an fd from before chroot like fd==3?
+    // Solution: make a separate dir for each rootfs
+    // Each /proc/self/fd/# will now resolve to a path with the rootfs it had at the time of opening the file
+    // This way we can get the proper guest path after removeRootfsPrefix!
+    int result = ::mount(new_root_full, dir, nullptr, MS_MOVE, nullptr);
+
+    // Unlike chroot, pivot_root is CAP_SYS_ADMIN,
+    if (result != 0) {
+        WARN("Failed to move mount during pivot_root %s -> %s, error: %s", new_root_full, dir, strerror(errno));
+        return -errno;
+    } else {
+        auto lock = g_process_globals.states_lock.lock();
+        int old_rootfs_fd = g_rootfs_fd;
+        g_rootfs_fd = open(dir, O_PATH | O_DIRECTORY);
+        FD::unprotectAndClose(old_rootfs_fd);
+        ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", dir);
+        FD::protect(g_rootfs_fd);
+        g_config.rootfs_path = dir;
+
+        g_process_globals.mount_paths.push_back(g_config.rootfs_path);
+    }
+
+    // TODO: Super HACK: when there's a pivot_root(".", "."), don't mount the old directory
+    // Usually this is "fine" because the program only does this to unmount the old root without having
+    // to create a new root and the programs we care about don't seem to mind
+    if (strcmp(new_root, put_old) == 0) {
+        WARN("new_root and put_old are the same: %s", new_root);
+        return 0;
+    }
+
+    FdPath put_old_resolved = resolve(put_old, true);
+    if (put_old_resolved.is_error()) {
+        WARN("Failed to resolve put_old: %s with error %s", put_old, strerror(put_old_resolved.get_errno()));
+    } else {
+        const char* put_old_full = put_old_resolved.full_path();
+        result = ::mount(rootfs.c_str(), put_old_full, nullptr, MS_BIND | MS_REC, nullptr);
+        if (result != 0) {
+            // At this point we already mounted the rootfs so warn and return 0
+            int error = errno;
+            WARN("Failed to move old rootfs to put_old?? %s -> %s (error: %s)", rootfs.c_str(), put_old_full, strerror(error));
+        }
+    }
+
     return 0;
 }
 
@@ -499,7 +592,15 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
         }
         tptr = rtarget.full_path();
     }
-    return ::mount(sptr, tptr, fstype, flags, data);
+    int result = ::mount(sptr, tptr, fstype, flags, data);
+    if (result != 0) {
+        int error = errno;
+        WARN("Mounting %s -> %s, error: %s", sptr, tptr, strerror(errno));
+        return -error;
+    } else {
+        WARN("Mounting %s -> %s", sptr, tptr);
+        return 0;
+    }
 }
 
 int Filesystem::Umount(const char* path, int flags) {
@@ -629,21 +730,26 @@ FdPath Filesystem::resolve(const char* path, bool resolve_symlinks) {
 
 void Filesystem::removeRootfsPrefix(std::string& path) {
     // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
-    std::string rootfs = g_config.rootfs_path.lexically_normal().string();
+    auto lock = g_process_globals.states_lock.lock();
+    auto remove_if_found = [&path](const std::filesystem::path& rootfs) {
+        if (path.find(rootfs) == 0) {
+            if (path == g_config.rootfs_path) {
+                // Special case, it is the rootfs path
+                path = "/";
+            } else {
+                std::string sub = path.substr(rootfs.string().size());
+                path = sub;
+            }
 
-    if (path.find(rootfs) == 0) {
-        if (path == g_config.rootfs_path) {
-            // Special case, it is the rootfs path
-            path = "/";
-        } else {
-            std::string sub = path.substr(rootfs.size());
-            path = sub;
+            ASSERT(!path.empty());
+            if (path[0] != '/') {
+                path = '/' + path;
+            }
         }
+    };
 
-        ASSERT(!path.empty());
-        if (path[0] != '/') {
-            path = '/' + path;
-        }
+    for (const auto& rootfs : g_process_globals.mount_paths) {
+        remove_if_found(rootfs.lexically_normal());
     }
 }
 
@@ -733,6 +839,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                     // it is not necessarily an error if the final component is not found, maybe we are just creating it
                     break;
                 } else {
+                    VERBOSE("ENOENT during fstatat %d %s", current_fd, current.c_str());
                     return FdPath::error(ENOENT);
                 }
             }
@@ -740,7 +847,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 return FdPath::error(EACCES);
             }
             default: {
-                WARN("Unknown error during path resolution: %s", strerror(errno));
+                WARN("Unknown error during path resolution: %d %s, error: %s", fd, path, strerror(errno));
                 return FdPath::error(errno);
             }
             }

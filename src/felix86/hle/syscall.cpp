@@ -14,6 +14,7 @@
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/un.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <termios.h>
@@ -311,7 +312,21 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_bind: {
-        result = SYSCALL(bind, arg1, arg2, arg3);
+        // TODO: HACK: does this need porting to other socket related syscalls?
+        auto sock = (sockaddr*)arg2;
+
+        if (arg3 <= 2 || sock->sa_family != AF_UNIX || (sock->sa_family == AF_UNIX && sock->sa_data[0] == 0)) {
+            result = SYSCALL(bind, arg1, arg2, arg3);
+        } else {
+            FdPath socket_path = Filesystem::resolve((char*)sock->sa_data, true);
+
+            sockaddr_un addr = {0};
+            addr.sun_family = AF_UNIX;
+            strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
+            size_t addrlen = offsetof(sockaddr_un, sun_path) + strlen(addr.sun_path) + 1;
+
+            result = SYSCALL(bind, arg1, &addr, addrlen);
+        }
         break;
     }
     case felix86_riscv64_setpgid: {
@@ -401,8 +416,13 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = Filesystem::Chroot((char*)arg1);
         break;
     }
+    case felix86_riscv64_pivot_root: {
+        SignalGuard guard;
+        result = Filesystem::PivotRoot((char*)arg1, (char*)arg2);
+        break;
+    }
     case felix86_riscv64_unshare: {
-        result = SYSCALL(unshare, arg1);
+        result = Threads::Unshare(arg1);
         break;
     }
     case felix86_riscv64_accept: {
@@ -708,17 +728,23 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_tgkill: {
-        SIGLOG("Calling tgkill with sig: %d for TGID: %d and TID: %d", arg3, arg1, arg2);
+        if (arg3 != 0) { // sig==0 is used to check if process exists
+            SIGLOG("Calling tgkill with sig: %d for TGID: %d and TID: %d", arg3, arg1, arg2);
+        }
         result = SYSCALL(tgkill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
     case felix86_riscv64_tkill: {
-        SIGLOG("Calling tkill with sig: %d for TID: %d", arg2, arg1);
+        if (arg2 != 0) {
+            SIGLOG("Calling tkill with sig: %d for TID: %d", arg2, arg1);
+        }
         result = SYSCALL(tkill, arg1, arg2);
         break;
     }
     case felix86_riscv64_kill: {
-        SIGLOG("Calling kill with sig: %d and PID: %d", arg2, arg1);
+        if (arg2 != 0) {
+            SIGLOG("Calling kill with sig: %d and PID: %d", arg2, arg1);
+        }
         result = SYSCALL(kill, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
@@ -851,7 +877,23 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_connect: {
-        result = SYSCALL(connect, arg1, arg2, arg3, arg4, arg5, arg6);
+        // TODO: HACK: port this to 32-bit socket syscalls too
+        auto sock = (sockaddr*)arg2;
+
+        if (arg3 <= 2 || sock->sa_family != AF_UNIX || (sock->sa_family == AF_UNIX && sock->sa_data[0] == 0)) {
+            result = SYSCALL(connect, arg1, arg2, arg3, arg4, arg5, arg6);
+        } else {
+            FdPath socket_path = Filesystem::resolve((char*)sock->sa_data, true);
+
+            // fprintf(stderr, "connecting to %s -> %s\n", (char*)sock->sa_data, socket_path.get_str());
+
+            sockaddr_un addr = {0};
+            addr.sun_family = AF_UNIX;
+            strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
+            size_t addrlen = offsetof(sockaddr_un, sun_path) + strlen(addr.sun_path) + 1;
+
+            result = SYSCALL(connect, arg1, &addr, addrlen);
+        }
         break;
     }
     case felix86_riscv64_mremap: {
@@ -1119,7 +1161,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         u64 current_rsp = state->gprs[X86_REF_RSP];
 
         bool on_stack = false;
-        if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp && current_rsp < state->alt_stack.ss_size) {
+        if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
+            current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
             on_stack = true;
         }
 
@@ -1450,6 +1493,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         envp.push_back(log_env.c_str());
         std::string rootfs_env = std::string("__FELIX86_ROOTFS=") + g_config.rootfs_path.string();
         envp.push_back(rootfs_env.c_str());
+        std::string mounts_env = std::string("__FELIX86_MOUNTS=") + g_mounts_path.string();
+        envp.push_back(mounts_env.c_str());
+        size_t current_mount = 0;
+        for (auto& mount_path : g_process_globals.mount_paths) {
+            envp.push_back(strdup((std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++) + "=" + mount_path.string()).c_str()));
+        }
         envp.push_back(nullptr);
 
         std::string args = "";
@@ -2649,11 +2698,37 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 break;
             }
             case SYS_BIND: {
-                result = ::bind(args[0], (sockaddr*)(u64)args[1], args[2]);
+                auto sock = (sockaddr*)(u64)args[1];
+
+                if (args[2] <= 2 || sock->sa_family != AF_UNIX || (sock->sa_family == AF_UNIX && sock->sa_data[0] == 0)) {
+                    result = ::bind(args[0], (sockaddr*)(u64)args[1], args[2]);
+                } else {
+                    FdPath socket_path = Filesystem::resolve((char*)sock->sa_data, true);
+
+                    sockaddr_un addr = {0};
+                    addr.sun_family = AF_UNIX;
+                    strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
+                    size_t addrlen = offsetof(sockaddr_un, sun_path) + strlen(addr.sun_path) + 1;
+
+                    result = ::bind(args[0], (sockaddr*)&addr, addrlen);
+                }
                 break;
             }
             case SYS_CONNECT: {
-                result = ::connect(args[0], (sockaddr*)(u64)args[1], args[2]);
+                auto sock = (sockaddr*)(u64)args[1];
+
+                if (args[2] <= 2 || sock->sa_family != AF_UNIX || (sock->sa_family == AF_UNIX && sock->sa_data[0] == 0)) {
+                    result = ::connect(args[0], (sockaddr*)(u64)args[1], args[2]);
+                } else {
+                    FdPath socket_path = Filesystem::resolve((char*)sock->sa_data, true);
+
+                    sockaddr_un addr = {0};
+                    addr.sun_family = AF_UNIX;
+                    strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
+                    size_t addrlen = offsetof(sockaddr_un, sun_path) + strlen(addr.sun_path) + 1;
+
+                    result = ::connect(args[0], (sockaddr*)&addr, addrlen);
+                }
                 break;
             }
             case SYS_LISTEN: {
