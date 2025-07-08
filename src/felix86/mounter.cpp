@@ -79,10 +79,11 @@ void prepare_mount(const char* path, const std::filesystem::path& target) {
     }
 }
 
-void bind_mount(const char* path, const std::filesystem::path& target) {
+void bind_mount(const char* path, const std::filesystem::path& target, bool recursive) {
     prepare_mount(path, target);
 
-    int result = ::mount(path, target.c_str(), nullptr, MS_BIND, nullptr);
+    int rec = recursive ? MS_REC : 0;
+    int result = ::mount(path, target.c_str(), nullptr, MS_BIND | rec, nullptr);
     if (result != 0) {
         DIE("Failed to mount %s to %s", path, target.c_str());
     }
@@ -341,31 +342,18 @@ int main(int argc, char* argv[]) {
 
     own(mount_base / "mounts");
 
-    bind_mount(rootfs_path.c_str(), mount_target);
+    bind_mount(rootfs_path.c_str(), mount_target, false);
 
     // Rootfs was mounted, mount everything else we need
     prepare_mount("/dev", mount_target / "dev");
-    prepare_mount("/dev/pts", mount_target / "dev" / "pts");
     prepare_mount("/proc", mount_target / "proc");
     prepare_mount("/sys", mount_target / "sys");
     prepare_mount("/run", mount_target / "run");
     fs_mount("proc", "proc", mount_target / "proc");
     fs_mount("sysfs", "sysfs", mount_target / "sys");
-    fs_mount("devtmpfs", "udev", mount_target / "dev");
-    fs_mount("devpts", "devpts", mount_target / "dev" / "pts");
-    bind_mount("/run", mount_target / "run");
-    bind_mount("/tmp", mount_target / "tmp");
-
-    // Fix permissions in /run/user to match the id they belong to
-    std::filesystem::path run_user = mount_target / "run" / "user";
-    std::filesystem::directory_iterator dir_it(run_user);
-    for (auto& entry : dir_it) {
-        std::string number = entry.path().filename();
-        long id = std::atol(number.c_str());
-        if (id) {
-            chown(entry.path().c_str(), id, id);
-        }
-    }
+    bind_mount("/dev", mount_target / "dev", true);
+    bind_mount("/run", mount_target / "run", true);
+    bind_mount("/tmp", mount_target / "tmp", true);
 
     auto copy = [](const char* src, const std::filesystem::path& dst) {
         if (!std::filesystem::exists(src)) {
