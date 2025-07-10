@@ -788,7 +788,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                         WARN("Error during %d %s, %s", current_fd, current_relative_path.c_str(), strerror(errno));
                     }
                 }
-                ASSERT(dirfd == AT_FDCWD || dirfd > 0);
+                ASSERT_MSG(dirfd == AT_FDCWD || dirfd > 0, "Dirfd: %d %s", dirfd, strerror(errno));
 
                 int result1 = openat(dirfd, current_component.c_str(), O_PATH);
 
