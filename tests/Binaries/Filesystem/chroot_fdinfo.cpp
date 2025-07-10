@@ -71,6 +71,7 @@ int main() {
 
     // Chromium then stats /proc and expects it to not be there
     // This is because the clone had CLONE_FS
+    // TODO: uncomment when we implement vfork better
     // struct stat stat;
     // if (access("/proc", F_OK) == F_OK) {
     //     return 5;
