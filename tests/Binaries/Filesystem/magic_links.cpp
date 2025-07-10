@@ -35,7 +35,6 @@ int main() {
 
     result = statx(AT_FDCWD, fdpath.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &stat2);
     if (result != 0) {
-        perror("stat 2");
         return 4;
     }
 
