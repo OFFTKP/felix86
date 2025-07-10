@@ -782,16 +782,16 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 }
                 ASSERT(dirfd > 0);
 
-                int result1 = openat(dirfd, current.c_str(), O_PATH);
+                int result1 = openat(dirfd, current_component.c_str(), O_PATH);
 
                 struct open_how how{
                     .flags = O_PATH,
                     .mode = 0,
                     .resolve = RESOLVE_NO_MAGICLINKS,
                 };
-                int result2 = syscall(SYS_openat2, dirfd, current.c_str(), &how, sizeof(open_how));
+                int result2 = syscall(SYS_openat2, dirfd, current_component.c_str(), &how, sizeof(open_how));
                 int result2_error = errno;
-                WARN("Openat2 %d/%s (result1: %d result2: %d)", dirfd, current.c_str(), result1, result2);
+                WARN("Openat2 %d/%s (result1: %d result2: %d)", dirfd, current_component.c_str(), result1, result2);
 
                 // TODO: maybe optimize some cases using close_range
                 close(dirfd);
