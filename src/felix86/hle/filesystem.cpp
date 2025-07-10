@@ -793,7 +793,6 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 };
                 int result2 = syscall(SYS_openat2, dirfd, current_component.c_str(), &how, sizeof(open_how));
                 int result2_error = errno;
-                WARN("Openat2 %d/%s (result1: %d result2: %d)", dirfd, current_component.c_str(), result1, result2);
 
                 // TODO: maybe optimize some cases using close_range
                 close(dirfd);
@@ -821,7 +820,6 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
                         // Finally do what we need, don't resolve and append it to the path
                         current_relative_path = current_relative_path / current_component;
-                        WARN("Found magic link, new path: %s", current_relative_path.c_str());
                         continue;
                     }
                 }
