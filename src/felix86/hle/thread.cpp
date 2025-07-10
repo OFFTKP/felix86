@@ -332,6 +332,10 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     } else if (args->new_rsp == 0 || !(args->guest_flags & CLONE_VM)) {
         result = ForkMe(*args);
     } else {
+        if (args->guest_flags & CLONE_VFORK) {
+            WARN("CLONE_VFORK with %s", flags_to_string(args->guest_flags).c_str());
+        }
+
         result = CloneMe(*args);
     }
 
