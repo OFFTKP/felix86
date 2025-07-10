@@ -774,7 +774,12 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 // For example if I do /proc/self/root/etc, I don't want the openat2 to fail here because etc
                 // is not a magic-link, but it would fail because /proc/self/root is
                 // We want to just check if the current component is a magic-link
-                int dirfd = openat(current_fd, current_relative_path.c_str(), O_PATH | O_DIRECTORY);
+                int dirfd;
+                if (current_relative_path.empty()) {
+                    dirfd = dup(current_fd);
+                } else {
+                    dirfd = openat(current_fd, current_relative_path.c_str(), O_PATH | O_DIRECTORY);
+                }
                 ASSERT(dirfd > 0);
 
                 int result1 = openat(dirfd, current.c_str(), O_PATH);
