@@ -36,7 +36,7 @@ private:
 
 struct FdPath {
     static FdPath create(int fd, const NullablePath& path) {
-        ASSERT(fd == AT_FDCWD || fd > 0);
+        ASSERT(fd == AT_FDCWD || fd >= 0);
         FdPath ret;
         ret.fd_path = std::make_pair(fd, path);
         return ret;
