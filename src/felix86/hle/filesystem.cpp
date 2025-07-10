@@ -459,6 +459,7 @@ int Filesystem::Chroot(const char* path) {
     // First, do a no-op chroot to check if we have permissions at all
     int result = ::chroot("/");
     if (result != 0) {
+        WARN("Our permission checking chroot failed");
         return -errno;
     }
 
