@@ -779,6 +779,9 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                     dirfd = dup(current_fd);
                 } else {
                     dirfd = openat(current_fd, current_relative_path.c_str(), O_PATH | O_DIRECTORY);
+                    if (dirfd < 0) {
+                        WARN("Error during %d %s, %s", current_fd, current_relative_path.c_str(), strerror(errno));
+                    }
                 }
                 ASSERT(dirfd > 0);
 
