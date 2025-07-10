@@ -1657,3 +1657,9 @@ bool unregister_binfmt_misc(const std::string& name) {
     fclose(fp);
     return true;
 }
+
+void felix86_crash_and_burn() {
+    fprintf(stderr, "Reached felix86_crash_and_burn, this shouldn't happen\n");
+    ERROR("Reached felix86_crash_and_burn, this shouldn't happen");
+    exit(1);
+}

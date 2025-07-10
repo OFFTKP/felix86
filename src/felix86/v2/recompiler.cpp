@@ -1834,6 +1834,7 @@ void Recompiler::scanAhead(u64 rip) {
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
+        bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
 
         if (g_config.unsafe_flags && !g_config.paranoid) {
             if (is_call || is_ret) {
@@ -1919,7 +1920,7 @@ void Recompiler::scanAhead(u64 rip) {
             }
         }
 
-        if (is_jump || is_ret || is_call || is_illegal || is_hlt) {
+        if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
             break;
         }
 

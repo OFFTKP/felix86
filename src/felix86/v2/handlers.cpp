@@ -9688,6 +9688,17 @@ FAST_HANDLE(FRSTOR) {
     rec.restoreState();
 }
 
+FAST_HANDLE(INT3) {
+    WARN("Compiling an INT3");
+    rec.writebackState();
+    as.EBREAK();
+    rec.stopCompiling();
+
+    // Not coming back here
+    // If the guest has installed a handler for the ebreak then it should hit it and change our RIP
+    rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
+}
+
 // INVLPG is used during thunking to do various special stuff based on the operand
 // It is an instruction that no userspace program should ever use which is why it was picked
 // ----------------------------------------------------------------------------------------------------
