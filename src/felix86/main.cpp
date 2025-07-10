@@ -501,16 +501,18 @@ int main(int argc, char* argv[]) {
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
 
-    const char* pipe = getenv("__FELIX86_PIPE");
-    if (!pipe) {
-        Logger::startServer();
-    } else {
-        Logger::joinServer();
-    }
-
     Config::initialize();
     initialize_globals();
     Signals::initialize();
+
+    if (!g_config.quiet) {
+        const char* pipe = getenv("__FELIX86_PIPE");
+        if (!pipe) {
+            Logger::startServer();
+        } else {
+            Logger::joinServer();
+        }
+    }
 
     const char* argv0_original = getenv("__FELIX86_ARGV0");
     if (argv0_original) {
