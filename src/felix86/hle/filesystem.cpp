@@ -791,17 +791,15 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 };
                 int result2 = syscall(SYS_openat2, dirfd, current.c_str(), &how, sizeof(open_how));
                 int result2_error = errno;
+                WARN("Openat2 %d/%s (result1: %d result2: %d)", dirfd, current.c_str(), result1, result2);
 
-                if (result1 > 0 && result2 > 0 && dirfd + 1 == result1 && result1 + 1 == result2) {
-                    close_range(dirfd, result2, 0);
-                } else {
-                    close(dirfd);
-                    if (result1 > 0) {
-                        close(result1);
-                    }
-                    if (result2 > 0) {
-                        close(result2);
-                    }
+                // TODO: maybe optimize some cases using close_range
+                close(dirfd);
+                if (result1 > 0) {
+                    close(result1);
+                }
+                if (result2 > 0) {
+                    close(result2);
                 }
 
                 if (result1 > 0 && result2 > 0) {
