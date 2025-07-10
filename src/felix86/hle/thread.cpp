@@ -312,6 +312,14 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
     STRACE("clone({%s}, stack: %llx, parid: %llx, ctid: %llx, tls: %llx)", sflags.c_str(), args->new_rsp, args->parent_tid, args->child_tid,
            args->new_tls);
 
+    bool clone_fs = args->guest_flags & CLONE_FS;
+    bool clone_vm = args->guest_flags & CLONE_VM;
+    if (clone_fs && !clone_vm) {
+        // This would be quite cursed, because we'd have to use IPC to communicate any FS changes to the processes
+        // that share the FS info. Hopefully we won't reach this ever but add a warning here
+        WARN("CLONE_FS encountered without CLONE_VM");
+    }
+
     // Not very well tested flags, most programs don't use them, so print them every time for now
     u64 sus_flags = CLONE_UNTRACED | CLONE_NEWCGROUP | CLONE_NEWNS | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWUSER | CLONE_NEWUTS | CLONE_IO;
     if (args->guest_flags & sus_flags) {

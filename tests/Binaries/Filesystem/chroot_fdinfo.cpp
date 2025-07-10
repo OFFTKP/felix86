@@ -60,10 +60,21 @@ bool ChrootToSafeEmptyDir() {
 }
 
 int main() {
+    if (unshare(CLONE_NEWNS | CLONE_NEWUSER) != 0) {
+        return 6;
+    }
+
     bool success = ChrootToSafeEmptyDir();
     if (!success) {
         return 1;
     }
+
+    // Chromium then stats /proc and expects it to not be there
+    // This is because the clone had CLONE_FS
+    // struct stat stat;
+    // if (access("/proc", F_OK) == F_OK) {
+    //     return 5;
+    // }
 
     return FELIX86_BTEST_SUCCESS;
 }
