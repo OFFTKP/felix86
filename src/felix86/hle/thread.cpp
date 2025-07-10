@@ -278,6 +278,7 @@ long VForkMe(CloneArgs& args) {
             state->SetTLS(args.new_tls);
         }
 
+        // If this happens we'd need to refactor our fork() call above probably
         if (args.child_tid) {
             WARN("vfork giving us child tid?");
         }
@@ -327,15 +328,17 @@ long Threads::Clone(ThreadState* current_state, CloneArgs* args) {
 
     long result;
 
-    if (args->guest_flags == (CLONE_VM | CLONE_VFORK | SIGCLD)) {
+    if (args->guest_flags & CLONE_VFORK) {
+        // 99% of the time you get these flags because that's what you get when you run the vfork() function
+        // But it's of course possible to run clone() with more flags than that and CLONE_VFORK, but warn if that happens
+        if (args->guest_flags != (CLONE_VM | CLONE_VFORK | SIGCLD)) {
+            WARN("CLONE_VFORK with %s", flags_to_string(args->guest_flags).c_str());
+        }
+
         result = VForkMe(*args);
     } else if (args->new_rsp == 0 || !(args->guest_flags & CLONE_VM)) {
         result = ForkMe(*args);
     } else {
-        if (args->guest_flags & CLONE_VFORK) {
-            WARN("CLONE_VFORK with %s", flags_to_string(args->guest_flags).c_str());
-        }
-
         result = CloneMe(*args);
     }
 
