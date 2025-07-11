@@ -91,6 +91,7 @@ struct FdPath {
                     // If it doesn't start with a / it's probably a pipe:[...] or some other stuff
                     // so we return a magic link path and hope for the best
                     new_path = proc_fd;
+                    WARN("Boop: %s", new_path.c_str());
                 }
                 if (fd_path.second.get_str()) {
                     new_path /= fd_path.second.get_str();
