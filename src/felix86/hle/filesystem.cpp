@@ -919,7 +919,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
                         // So this is a magic-link. Append it to the path without resolving it and continue to the next component
                         ASSERT(result2_error == ELOOP); // this is how openat2 should fail when a component is a magic-link
-                        WARN("Boop");
+
                         // Finally do what we need, don't resolve and append it to the path
                         current_relative_path = current_relative_path / current_component;
                         continue;
