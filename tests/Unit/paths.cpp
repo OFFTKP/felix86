@@ -23,7 +23,7 @@ CATCH_TEST_CASE("InsideRootfs", "[paths]") {
     PROLOGUE();
 
     std::string my_path = "/tmp/felix86_paths/myrootfs/somedir";
-    Filesystem::removeRootfsPrefix(my_path);
+    my_path = Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/somedir");
 
@@ -34,7 +34,7 @@ CATCH_TEST_CASE("IsRootfs", "[paths]") {
     PROLOGUE();
 
     std::string my_path = "/tmp/felix86_paths/myrootfs";
-    Filesystem::removeRootfsPrefix(my_path);
+    my_path = Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/");
 
@@ -45,7 +45,7 @@ CATCH_TEST_CASE("IsRootfs2", "[paths]") {
     PROLOGUE();
 
     std::string my_path = "/tmp/felix86_paths/myrootfs/";
-    Filesystem::removeRootfsPrefix(my_path);
+    my_path = Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/");
 
@@ -56,7 +56,7 @@ CATCH_TEST_CASE("OutsideRootfs", "[paths]") {
     PROLOGUE();
 
     std::string my_path = "/home";
-    Filesystem::removeRootfsPrefix(my_path);
+    my_path = Filesystem::removeRootfsPrefix(my_path);
 
     CATCH_REQUIRE(my_path == "/home");
 
