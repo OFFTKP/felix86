@@ -847,7 +847,8 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 return FdPath::error(EACCES);
             }
             default: {
-                WARN("Unknown error during path resolution: %d %s, error: %s", fd, path, strerror(errno));
+                WARN("Unknown error during path resolution: %d %s (current: %d %s), error: %s", fd, path, current_fd, current.c_str(),
+                     strerror(errno));
                 return FdPath::error(errno);
             }
             }
