@@ -13,6 +13,7 @@ struct Perf {
             if (f) {
                 fd = fileno(f);
                 ASSERT(fd > 0);
+                // fd = FD::moveToHighNumber(fd); -- TODO: doing this isn't safe probably with FILE*, rewrite to use syscalls instead of FILE*
                 FD::protect(fd);
             } else {
                 // TODO: for some reason, running a setuid app through binfmt_misc after being forked

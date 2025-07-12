@@ -491,6 +491,7 @@ int Filesystem::Chroot(const char* path) {
     g_rootfs_fd = open(fd_path.full_path(), O_PATH | O_DIRECTORY);
     FD::unprotectAndClose(old_rootfs_fd);
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", fd_path.full_path());
+    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
     FD::protect(g_rootfs_fd);
     return 0;
 }
@@ -539,6 +540,7 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
         g_rootfs_fd = open(dir, O_PATH | O_DIRECTORY);
         FD::unprotectAndClose(old_rootfs_fd);
         ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", dir);
+        g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
         FD::protect(g_rootfs_fd);
         g_config.rootfs_path = dir;
 
@@ -855,8 +857,9 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                     buffer[result] = 0;
                     resolved = buffer;
                 }
-                WARN("Unknown error during path resolution: %d %s (current: fd=%d which resolved to %s, and path=%s, g_rootfs_fd=%d), error: %s", fd,
-                     path, current_fd, resolved.c_str(), current.c_str(), g_rootfs_fd, strerror(errno));
+                WARN("Unknown error during path resolution: %d %s (current: fd=%d which resolved to %s, and path=%s, g_rootfs_fd=%d, rootfs path: "
+                     "%s), error: %s",
+                     fd, path, current_fd, resolved.c_str(), current.c_str(), g_rootfs_fd, g_config.rootfs_path.c_str(), strerror(errno));
                 return FdPath::error(errno);
             }
             }

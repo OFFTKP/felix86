@@ -51,6 +51,7 @@ void Logger::startServer(bool detach) {
             // Open write end of pipe -- we need to do it here otherwise the thing will hang (both ends need to be opened simultaneously)
             g_output_fd = open(g_pipe_name.c_str(), O_WRONLY, 0644);
             ASSERT(g_output_fd > 0);
+            g_output_fd = FD::moveToHighNumber(g_output_fd);
             FD::protect(g_output_fd);
         }
     } else {
@@ -76,6 +77,7 @@ void Logger::joinServer() {
     if (g_output_fd == -1) {
         ERROR("Bad g_output_fd -- errno: %d -- pipe: %s", errno, file);
     }
+    g_output_fd = FD::moveToHighNumber(g_output_fd);
     FD::protect(g_output_fd);
 
     // Also set this for when this process runs execve...

@@ -392,6 +392,7 @@ void initialize_globals() {
     ASSERT(std::filesystem::is_directory(g_config.rootfs_path));
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
+    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
     FD::protect(g_rootfs_fd);
 
     if (getenv("__FELIX86_MOUNT_0")) {
