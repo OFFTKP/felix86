@@ -586,9 +586,6 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
     }
     }
 
-    // Remove this
-    as.SD(allocatedGPR(X86_REF_RSP), offsetof(ThreadState, gprs) + (X86_REF_RSP - X86_REF_RAX) * sizeof(u64), threadStatePointer());
-
     if ((instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) && !lock_handled) {
         WARN("Didn't properly handle lock instruction: %s", disassemble_one(rip).c_str());
     }
