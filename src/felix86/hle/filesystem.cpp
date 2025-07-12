@@ -597,10 +597,10 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
     int result = ::mount(sptr, tptr, fstype, flags, data);
     if (result != 0) {
         int error = errno;
-        WARN("Mounting %s -> %s, error: %s", sptr, tptr, strerror(errno));
+        VERBOSE("Mounting %s -> %s, error: %s", sptr, tptr, strerror(errno));
         return -error;
     } else {
-        WARN("Mounting %s -> %s", sptr, tptr);
+        VERBOSE("Mounting %s -> %s", sptr, tptr);
         return 0;
     }
 }
@@ -857,9 +857,9 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                     buffer[result] = 0;
                     resolved = buffer;
                 }
-                WARN("Unknown error during path resolution: %d %s (current: fd=%d which resolved to %s, and path=%s, g_rootfs_fd=%d, rootfs path: "
-                     "%s), error: %s",
-                     fd, path, current_fd, resolved.c_str(), current.c_str(), g_rootfs_fd, g_config.rootfs_path.c_str(), strerror(errno));
+                VERBOSE("Unknown error during path resolution: %d %s (current: fd=%d which resolved to %s, and path=%s, g_rootfs_fd=%d, rootfs path: "
+                        "%s), error: %s",
+                        fd, path, current_fd, resolved.c_str(), current.c_str(), g_rootfs_fd, g_config.rootfs_path.c_str(), strerror(errno));
                 return FdPath::error(errno);
             }
             }

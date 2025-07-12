@@ -279,11 +279,10 @@ void initialize_globals() {
     }
 
     if (g_mounts_path.empty()) {
-        char templ[] = "/tmp/felix86.mounts.XXXXXX";
+        char templ[] = "/tmp/.f86.mnt.XXXX";
         char* path = mkdtemp(templ);
         ASSERT_MSG(path == templ, "Failed to mkdtemp for mounts directory?");
         g_mounts_path = path;
-        WARN("Mounts path was empty, created a path at %s", g_mounts_path.c_str());
     }
 
     const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
@@ -362,8 +361,10 @@ void initialize_globals() {
         close(pipefd[0]);
 
         ASSERT(!g_config.rootfs_path.empty());
-        ASSERT_MSG(std::filesystem::is_directory(g_config.rootfs_path.parent_path() / "mounts"),
-                   "felix86-mounter didn't create us a 'mounts' directory?");
+
+        // TODO: these paths are actually way too large for us to use
+        // ASSERT_MSG(std::filesystem::is_directory(g_config.rootfs_path.parent_path() / "mounts"),
+        //            "felix86-mounter didn't create us a 'mounts' directory?");
         // g_mounts_path = g_config.rootfs_path.parent_path() / "mounts";
     }
 

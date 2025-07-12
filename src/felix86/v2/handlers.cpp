@@ -1416,7 +1416,6 @@ FAST_HANDLE(POP) {
         rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
         if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && rec.zydisToRef(operands[0].reg.value) == X86_REF_RSP) {
             // pop rsp special case
-            WARN("pop rsp with width: %d", operands[0].size);
             rec.setGPR(&operands[0], result);
         } else {
             as.ADDI(rsp, rsp, imm);

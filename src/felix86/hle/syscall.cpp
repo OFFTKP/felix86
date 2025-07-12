@@ -319,7 +319,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             result = SYSCALL(bind, arg1, arg2, arg3);
         } else {
             FdPath socket_path = Filesystem::resolve((char*)sock->sa_data, true);
-            WARN("Resolved AF_UNIX path length: %d", strlen(socket_path.full_path()));
+            int len = strlen(socket_path.full_path());
+            if (len >= 108) {
+                WARN("AF_UNIX path overflowed: %s %d", socket_path.full_path(), len);
+            }
             sockaddr_un addr = {0};
             addr.sun_family = AF_UNIX;
             strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
@@ -884,9 +887,10 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             result = SYSCALL(connect, arg1, arg2, arg3, arg4, arg5, arg6);
         } else {
             FdPath socket_path = Filesystem::resolve((char*)sock->sa_data, true);
-
-            WARN("Resolved AF_UNIX path length: %d", strlen(socket_path.full_path()));
-
+            int len = strlen(socket_path.full_path());
+            if (len >= 108) {
+                WARN("AF_UNIX path overflowed: %s %d", socket_path.full_path(), len);
+            }
             sockaddr_un addr = {0};
             addr.sun_family = AF_UNIX;
             strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
@@ -2704,7 +2708,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                     result = ::bind(args[0], (sockaddr*)(u64)args[1], args[2]);
                 } else {
                     FdPath socket_path = Filesystem::resolve((char*)sock->sa_data, true);
-                    WARN("Resolved AF_UNIX path length: %d", strlen(socket_path.full_path()));
+                    int len = strlen(socket_path.full_path());
+                    if (len >= 108) {
+                        WARN("AF_UNIX path overflowed: %s %d", socket_path.full_path(), len);
+                    }
                     sockaddr_un addr = {0};
                     addr.sun_family = AF_UNIX;
                     strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
@@ -2721,7 +2728,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                     result = ::connect(args[0], (sockaddr*)(u64)args[1], args[2]);
                 } else {
                     FdPath socket_path = Filesystem::resolve((char*)sock->sa_data, true);
-                    WARN("Resolved AF_UNIX path length: %d", strlen(socket_path.full_path()));
+                    int len = strlen(socket_path.full_path());
+                    if (len >= 108) {
+                        WARN("AF_UNIX path overflowed: %s %d", socket_path.full_path(), len);
+                    }
                     sockaddr_un addr = {0};
                     addr.sun_family = AF_UNIX;
                     strncpy(addr.sun_path, socket_path.full_path(), sizeof(addr.sun_path));
