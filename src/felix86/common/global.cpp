@@ -279,7 +279,7 @@ void initialize_globals() {
     }
 
     if (g_mounts_path.empty()) {
-        char templ[] = "/tmp/.f86.mnt.XXXX";
+        char templ[] = "/tmp/.f86.mnt.XXXXXX";
         char* path = mkdtemp(templ);
         ASSERT_MSG(path == templ, "Failed to mkdtemp for mounts directory?");
         g_mounts_path = path;
