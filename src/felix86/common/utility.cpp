@@ -1705,11 +1705,6 @@ std::string felix86_mountinfo() {
 
             std::string path1s = path1;
             std::string path2s = path2;
-            // HACK: The biggest hack of the biggest hacks
-            if (strstr(path1s.c_str(), "/home") == path1s.c_str()) {
-                replaceOne(path1s, "/home", "/oldroot/home");
-            }
-
             for (auto& mount_path : g_process_globals.mount_paths) {
                 replaceOne(path1s, mount_path, "");
                 replaceOne(path2s, mount_path, "");
