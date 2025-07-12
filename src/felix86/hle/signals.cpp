@@ -185,9 +185,9 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
 x64_rt_sigframe* setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs,
-                            const XmmReg* host_vecs, bool in_jit_code, siginfo_t* guest_info) {
+                            const XmmReg* host_vecs, siginfo_t* guest_info) {
     bool use_altstack = signal.flags & SA_ONSTACK;
-    if (in_jit_code) {
+    if (!state->state_is_correct) {
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
         u64 pc = host_gprs[REG_PC];
         BlockMetadata* current_block = get_block_metadata(state, pc);
@@ -650,7 +650,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    x64_rt_sigframe* frame = setupFrame(*handler, sig, state, gprs, fprs, xmms, in_jit_code, &guest_info);
+    x64_rt_sigframe* frame = setupFrame(*handler, sig, state, gprs, fprs, xmms, &guest_info);
 
     // Block the signals specified in the sa_mask until the signal handler returns
     sigset_t new_mask;

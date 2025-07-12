@@ -1808,6 +1808,7 @@ void Recompiler::restoreState() {
 
     // Mark state as invalid again as we will be modifying the host registers
     as.SB(x0, offsetof(ThreadState, state_is_correct), threadStatePointer());
+    as.FENCETSO();
 
     current_sew = SEW::E1024;
     current_vlen = 0;
