@@ -1917,6 +1917,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = fallocate(fd, mode, offset, length);
             break;
         }
+        case felix86_x86_32_readv: {
+            x86_iovec* iovecs32 = (x86_iovec*)arg2;
+            std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
+            result = SYSCALL(readv, arg1, iovecs.data(), arg3);
+            break;
+        }
         case felix86_x86_32_writev: {
             x86_iovec* iovecs32 = (x86_iovec*)arg2;
             std::vector<iovec> iovecs(iovecs32, iovecs32 + arg3);
