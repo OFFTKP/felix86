@@ -8338,6 +8338,95 @@ FAST_HANDLE(RCR) {
     rec.setGPR(&operands[0], dst_temp);
 }
 
+FAST_HANDLE(PUSHA) {
+    ASSERT(g_mode32);
+    x86_size_e reg_size;
+    int stack_offset;
+    switch (instruction.operand_width) {
+    case 16: {
+        reg_size = X86_SIZE_WORD;
+        stack_offset = 2;
+        break;
+    }
+    case 32: {
+        reg_size = X86_SIZE_DWORD;
+        stack_offset = 4;
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    biscuit::GPR eax = rec.getGPR(X86_REF_RAX, reg_size);
+    biscuit::GPR ecx = rec.getGPR(X86_REF_RCX, reg_size);
+    biscuit::GPR edx = rec.getGPR(X86_REF_RDX, reg_size);
+    biscuit::GPR ebx = rec.getGPR(X86_REF_RBX, reg_size);
+    biscuit::GPR esp = rec.getGPR(X86_REF_RSP, reg_size);
+    biscuit::GPR ebp = rec.getGPR(X86_REF_RBP, reg_size);
+    biscuit::GPR esi = rec.getGPR(X86_REF_RSI, reg_size);
+    biscuit::GPR edi = rec.getGPR(X86_REF_RDI, reg_size);
+
+    int i = 1;
+    rec.writeMemory(eax, esp, -stack_offset * i++, reg_size);
+    rec.writeMemory(ecx, esp, -stack_offset * i++, reg_size);
+    rec.writeMemory(edx, esp, -stack_offset * i++, reg_size);
+    rec.writeMemory(ebx, esp, -stack_offset * i++, reg_size);
+    rec.writeMemory(esp, esp, -stack_offset * i++, reg_size);
+    rec.writeMemory(ebp, esp, -stack_offset * i++, reg_size);
+    rec.writeMemory(esi, esp, -stack_offset * i++, reg_size);
+    rec.writeMemory(edi, esp, -stack_offset * i++, reg_size);
+
+    as.ADDI(esp, esp, -stack_offset * 8);
+    rec.setGPR(X86_REF_RSP, X86_SIZE_DWORD, esp);
+}
+
+FAST_HANDLE(POPA) {
+    ASSERT(g_mode32);
+    x86_size_e reg_size;
+    int stack_offset;
+    switch (instruction.operand_width) {
+    case 16: {
+        reg_size = X86_SIZE_WORD;
+        stack_offset = 2;
+        break;
+    }
+    case 32: {
+        reg_size = X86_SIZE_DWORD;
+        stack_offset = 4;
+        break;
+    }
+    default: {
+        UNREACHABLE();
+        break;
+    }
+    }
+
+    biscuit::GPR eax = rec.getGPR(X86_REF_RAX, reg_size);
+    biscuit::GPR ecx = rec.getGPR(X86_REF_RCX, reg_size);
+    biscuit::GPR edx = rec.getGPR(X86_REF_RDX, reg_size);
+    biscuit::GPR ebx = rec.getGPR(X86_REF_RBX, reg_size);
+    biscuit::GPR esp = rec.getGPR(X86_REF_RSP, reg_size);
+    biscuit::GPR ebp = rec.getGPR(X86_REF_RBP, reg_size);
+    biscuit::GPR esi = rec.getGPR(X86_REF_RSI, reg_size);
+    biscuit::GPR edi = rec.getGPR(X86_REF_RDI, reg_size);
+
+    int i = 0;
+    rec.readMemory(edi, esp, stack_offset * i++, reg_size);
+    rec.readMemory(esi, esp, stack_offset * i++, reg_size);
+    rec.readMemory(ebp, esp, stack_offset * i++, reg_size);
+    // Skip RSP
+    i++;
+    rec.readMemory(ebx, esp, stack_offset * i++, reg_size);
+    rec.readMemory(edx, esp, stack_offset * i++, reg_size);
+    rec.readMemory(ecx, esp, stack_offset * i++, reg_size);
+    rec.readMemory(eax, esp, stack_offset * i++, reg_size);
+
+    as.ADDI(esp, esp, stack_offset * 8);
+    rec.setGPR(X86_REF_RSP, X86_SIZE_DWORD, esp);
+}
+
 FAST_HANDLE(SHLD) {
     u8 operand_size = instruction.operand_width;
     u8 mask = operand_size == 64 ? 63 : 31;
