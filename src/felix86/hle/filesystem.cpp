@@ -855,8 +855,8 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                     buffer[result] = 0;
                     resolved = buffer;
                 }
-                WARN("Unknown error during path resolution: %d %s (current: fd=%d which resolved to %s, and path=%s), error: %s", fd, path,
-                     current_fd, current.c_str(), resolved.c_str(), strerror(errno));
+                WARN("Unknown error during path resolution: %d %s (current: fd=%d which resolved to %s, and path=%s, g_rootfs_fd=%d), error: %s", fd,
+                     path, current_fd, resolved.c_str(), current.c_str(), g_rootfs_fd, strerror(errno));
                 return FdPath::error(errno);
             }
             }
