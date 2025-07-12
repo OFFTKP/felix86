@@ -110,7 +110,7 @@ int FD::moveToHighNumber(int fd) {
         int result = fcntl(high_fd, F_GETFD);
         if (result != 0) {
             // We can use this FD
-            int new_fd = dup2(fd, high_fd);
+            int new_fd = ::dup2(fd, high_fd);
             ASSERT_MSG(new_fd > 0, "Failed to duplicate fd %d to %d with error %s", fd, high_fd, strerror(errno));
             return new_fd;
         }
