@@ -2784,6 +2784,12 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     tas.JALR(t6, lo12, t4);
     __atomic_store(address, &storage, __ATOMIC_SEQ_CST);
 
+    if (g_config.address_cache) {
+        AddressCacheEntry& entry = address_cache[block->guest_address & ((1 << address_cache_bits) - 1)];
+        entry.guest = ~block->guest_address;
+        entry.host = 0;
+    }
+
     block->address = 0;
     std::atomic_thread_fence(std::memory_order_seq_cst);
 }
