@@ -847,8 +847,16 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 return FdPath::error(EACCES);
             }
             default: {
-                WARN("Unknown error during path resolution: %d %s (current: %d %s), error: %s", fd, path, current_fd, current.c_str(),
-                     strerror(errno));
+                char buffer[PATH_MAX];
+                std::string resolved = "Failed to resolve!";
+                std::string proc_fd = "/proc/self/fd/" + std::to_string(current_fd);
+                int result = readlink(proc_fd.c_str(), buffer, PATH_MAX);
+                if (result > 0) {
+                    buffer[result] = 0;
+                    resolved = buffer;
+                }
+                WARN("Unknown error during path resolution: %d %s (current: fd=%d which resolved to %s, and path=%s), error: %s", fd, path,
+                     current_fd, current.c_str(), resolved.c_str(), strerror(errno));
                 return FdPath::error(errno);
             }
             }
