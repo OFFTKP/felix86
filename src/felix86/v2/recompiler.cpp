@@ -16,9 +16,6 @@
 
 constexpr static u64 code_cache_size = 64 * 1024 * 1024;
 
-// TODO: move to header file
-BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc);
-
 static u8* allocateCodeCache() {
     u8 prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     u8 flags = MAP_PRIVATE | MAP_ANONYMOUS;
@@ -266,20 +263,16 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
         // So we need to subtract 8
         linked_block -= 8;
 
-        auto linked_metadata = get_block_metadata(state, (u64)linked_block);
+        u8* cursor = state->recompiler->as.GetCursorPointer();
+        ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
+                   state->recompiler->start_of_code_cache, linked_block, cursor);
 
-        if (linked_metadata->address != 0) {
-            u8* cursor = state->recompiler->as.GetCursorPointer();
-            ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
-                       state->recompiler->start_of_code_cache, linked_block, cursor);
-
-            // And here we need to mark the block for linking again. This will either link if the block is already compiled
-            // or jump back to dispatcher that will link when the block gets compiled.
-            state->recompiler->as.SetCursorPointer(linked_block);
-            state->recompiler->jumpAndLink(it->second->guest_address);
-            state->recompiler->as.SetCursorPointer(cursor);
-            flush_icache();
-        }
+        // And here we need to mark the block for linking again. This will either link if the block is already compiled
+        // or jump back to dispatcher that will link when the block gets compiled.
+        state->recompiler->as.SetCursorPointer(linked_block);
+        state->recompiler->jumpAndLink(it->second->guest_address);
+        state->recompiler->as.SetCursorPointer(cursor);
+        flush_icache();
     } else {
         // The dispatcher makes sure the third argument is set to 0 before we get here
     }
