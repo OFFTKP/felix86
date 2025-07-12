@@ -8427,6 +8427,14 @@ FAST_HANDLE(POPA) {
     rec.setGPR(X86_REF_RSP, X86_SIZE_DWORD, esp);
 }
 
+FAST_HANDLE(PUSHAD) {
+    fast_PUSHA(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(POPAD) {
+    fast_POPAD(rec, rip, as, instruction, operands);
+}
+
 FAST_HANDLE(SHLD) {
     u8 operand_size = instruction.operand_width;
     u8 mask = operand_size == 64 ? 63 : 31;

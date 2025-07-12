@@ -16,12 +16,12 @@
     }
 
 #define PRIMARY_TEST32(opcode)                                                                                                                       \
-    CATCH_TEST_CASE(#opcode, "[Primary32]") {                                                                                                        \
+    CATCH_TEST_CASE("32Bit_" #opcode, "[Primary32]") {                                                                                               \
         FEXTestLoader::RunTest("32Bit_ASM/Primary/Primary_" #opcode ".asm");                                                                         \
     }
 
 #define PRIMARY_TEST32_BASE(opcode)                                                                                                                  \
-    CATCH_TEST_CASE(#opcode, "[Primary32]") {                                                                                                        \
+    CATCH_TEST_CASE("32Bit_" #opcode, "[Primary32]") {                                                                                               \
         FEXTestLoader::RunTest("32Bit_ASM/Primary/" #opcode ".asm");                                                                                 \
     }
 

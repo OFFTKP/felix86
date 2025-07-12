@@ -184,7 +184,9 @@ X(PREFETCHW)
 X(PREFETCHWT1)
 X(INT3)
 X(PUSHA)
+X(PUSHAD)
 X(POPA)
+X(POPAD)
 X(INVLPG) /* thunking dummy instruction */
 
 SIMD(PUNPCKLBW)
