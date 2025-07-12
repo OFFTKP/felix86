@@ -8472,7 +8472,7 @@ FAST_HANDLE(PUSHAD) {
 }
 
 FAST_HANDLE(POPAD) {
-    fast_POPAD(rec, rip, as, instruction, operands);
+    fast_POPA(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(SHLD) {
