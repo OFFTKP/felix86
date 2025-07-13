@@ -8438,7 +8438,7 @@ FAST_HANDLE(POPA) {
         i++;
         rec.readMemory(temp2, esp, stack_offset * i++, reg_size);
         as.OR(ebp, ebp, temp1);
-        as.OR(edx, edx, temp2);
+        as.OR(ebx, ebx, temp2);
 
         rec.readMemory(temp1, esp, stack_offset * i++, reg_size);
         rec.readMemory(temp2, esp, stack_offset * i++, reg_size);
