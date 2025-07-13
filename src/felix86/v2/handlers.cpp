@@ -8475,6 +8475,42 @@ FAST_HANDLE(POPAD) {
     fast_POPA(rec, rip, as, instruction, operands);
 }
 
+FAST_HANDLE(PABSB) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec neg = rec.scratchVec();
+
+    rec.setVectorState(SEW::E8, 16);
+    as.VNEG(neg, src);
+    as.VMAX(dst, src, neg);
+
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PABSW) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec neg = rec.scratchVec();
+
+    rec.setVectorState(SEW::E16, 8);
+    as.VNEG(neg, src);
+    as.VMAX(dst, src, neg);
+
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PABSD) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec neg = rec.scratchVec();
+
+    rec.setVectorState(SEW::E32, 4);
+    as.VNEG(neg, src);
+    as.VMAX(dst, src, neg);
+
+    rec.setVec(&operands[0], dst);
+}
+
 FAST_HANDLE(SHLD) {
     u8 operand_size = instruction.operand_width;
     u8 mask = operand_size == 64 ? 63 : 31;

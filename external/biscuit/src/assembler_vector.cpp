@@ -805,6 +805,10 @@ void Assembler::VRSUB(Vec vd, Vec vs2, int32_t simm, VecMask mask) noexcept {
     EmitVectorOPIVI(m_buffer, 0b000011, mask, vs2, simm, vd);
 }
 
+void Assembler::VNEG(Vec vd, Vec vs, VecMask mask) noexcept {
+    VRSUB(vd, vs, x0, mask);
+}
+
 void Assembler::VSADD(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
     EmitVectorOPIVV(m_buffer, 0b100001, mask, vs2, vs1, vd);
 }
