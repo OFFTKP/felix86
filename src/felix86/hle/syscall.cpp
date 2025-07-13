@@ -244,6 +244,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = -ENOSYS;
         break;
     }
+    case felix86_riscv64_futex_waitv: {
+        result = SYSCALL(futex_waitv, arg1, arg2, arg3, arg4, arg5);
+    }
     case felix86_riscv64_personality: {
         result = SYSCALL(personality, arg1 & ~PER_LINUX32);
         break;
