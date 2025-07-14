@@ -198,7 +198,7 @@ if [ "$choice" -eq 1 ]; then
         check_url "https://felix86.com/rootfs/ubuntu.txt"
         UBUNTU_2404_LINK=$(curl -k -s https://felix86.com/rootfs/ubuntu.txt)
         echo "Creating rootfs directory..."
-        mkdir -p $NEW_ROOTFS
+        sudo mkdir -p $NEW_ROOTFS
         echo "Downloading Ubuntu 24.04 rootfs..."
         check_url "$UBUNTU_2404_LINK"
 
