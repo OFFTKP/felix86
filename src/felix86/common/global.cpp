@@ -516,6 +516,15 @@ void initialize_globals() {
             WARN("I couldn't find the .Xauthority file inside the rootfs");
         }
     }
+
+    if (!g_execve_process) {
+        // Check if $HOME exists inside the rootfs, and create it if not
+        if (getenv("HOME")) {
+            std::error_code ec;
+            std::filesystem::path home_path = getenv("HOME");
+            std::filesystem::create_directories(home_path, ec);
+        }
+    }
 }
 
 bool parse_extensions(const char* arg) {
