@@ -267,7 +267,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
         linked_block -= 8;
 
         auto linked_metadata = get_block_metadata(state, (u64)linked_block);
-
+        ASSERT_MSG(linked_metadata, "Failed to get block metadata for address %lx", linked_block);
         if (linked_metadata->address != 0) {
             u8* cursor = state->recompiler->as.GetCursorPointer();
             ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",

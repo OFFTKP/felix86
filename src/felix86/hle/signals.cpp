@@ -152,13 +152,8 @@ BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc) {
     auto it = map.lower_bound(host_pc);
     ASSERT(it != map.end());
     if (!(host_pc >= it->second->address && host_pc <= it->second->address_end)) {
-        // Print all the blocks so we can see what is going on
-        if (g_config.verbose) {
-            for (auto& range : map) {
-                printf("Block: %lx-%lx\n", range.second->address, range.second->address_end);
-            }
-        }
-        ERROR("PC: %lx not inside range %lx-%lx?", host_pc, it->second->address, it->second->address_end);
+        WARN("PC: %lx not inside range %lx-%lx?", host_pc, it->second->address, it->second->address_end);
+        return nullptr;
     }
     return it->second;
 }
@@ -191,10 +186,16 @@ x64_rt_sigframe* setupFrame(RegisteredSignal& signal, int sig, ThreadState* stat
         // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
         u64 pc = host_gprs[REG_PC];
         BlockMetadata* current_block = get_block_metadata(state, pc);
-        u64 actual_rip = get_actual_rip(*current_block, pc);
-        reconstruct_state(state, host_gprs, host_fprs, host_vecs);
-        // TODO: this may be wrong in some occasions? like sometimes we shouldn't do it because we already set the rip? needs investigation
-        state->SetRip(actual_rip);
+        if (current_block) {
+            u64 actual_rip = get_actual_rip(*current_block, pc);
+            reconstruct_state(state, host_gprs, host_fprs, host_vecs);
+            state->SetRip(actual_rip);
+        } else {
+            // Assume RIP is correct. This can happen if we are in the address cache code for example, state_is_correct is 0
+            // but we aren't inside a block. In this case the REG_GP holds the correct RIP
+            u64 actual_rip = host_gprs[3]; // <- REG_GP
+            state->SetRip(actual_rip);
+        }
     } else {
         // State reconstruction isn't necessary, the state should be in some stable form
     }
@@ -496,8 +497,12 @@ bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t
         LOG("Current RIP:");
         if (in_jit_code) {
             BlockMetadata* current_block = get_block_metadata(current_state, pc);
-            u64 actual_rip = get_actual_rip(*current_block, pc);
-            print_address(actual_rip);
+            if (current_block) {
+                u64 actual_rip = get_actual_rip(*current_block, pc);
+                print_address(actual_rip);
+            } else {
+                WARN("Failed to get actual RIP"); // <- TODO: get it from REG_GP
+            }
         } else {
             print_address(current_state->rip);
         }
@@ -525,8 +530,12 @@ bool handle_wild_sigabrt(ThreadState* current_state, siginfo_t* info, ucontext_t
         LOG("Current RIP:");
         if (in_jit_code) {
             BlockMetadata* current_block = get_block_metadata(current_state, pc);
-            u64 actual_rip = get_actual_rip(*current_block, pc);
-            print_address(actual_rip);
+            if (current_block) {
+                u64 actual_rip = get_actual_rip(*current_block, pc);
+                print_address(actual_rip);
+            } else {
+                WARN("Failed to get actual RIP"); // <- TODO: get it from REG_GP
+            }
         } else {
             print_address(current_state->rip);
         }
