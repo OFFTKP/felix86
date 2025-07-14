@@ -343,7 +343,7 @@ int Filesystem::Chdir(const char* filename) {
 }
 
 int Filesystem::MkdirAt(int fd, const char* filename, u64 mode) {
-    FdPath fd_path = resolve(fd, filename, true);
+    FdPath fd_path = resolve(fd, filename, false);
     if (fd_path.is_error()) {
         VERBOSE("Error while resolving old path during mkdirat(%d, %s), error: %s", fd, filename, strerror(fd_path.get_errno()));
         return -fd_path.get_errno();
