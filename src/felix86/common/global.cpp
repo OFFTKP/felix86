@@ -522,7 +522,7 @@ void initialize_globals() {
         if (getenv("HOME")) {
             std::error_code ec;
             std::filesystem::path home_path = getenv("HOME");
-            std::filesystem::create_directories(home_path, ec);
+            std::filesystem::create_directories(g_config.rootfs_path / home_path.relative_path(), ec);
         }
     }
 }
