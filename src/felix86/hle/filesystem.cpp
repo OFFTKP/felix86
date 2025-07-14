@@ -794,7 +794,18 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
     std::filesystem::path current_relative_path;
 
+    size_t size = strlen(path);
+    ASSERT_MSG(size > 0 && size < PATH_MAX, "Path exceeds maximum limit?");
+
     std::filesystem::path resolve_me = std::filesystem::path(path).relative_path();
+
+    if (path[size - 1] == '/') {
+        // Trailing slash, pop last component which is empty
+        ASSERT(resolve_me.filename().empty());
+        resolve_me = resolve_me.parent_path();
+        ASSERT_MSG(path[size - 2] != '/', "Multiple trailing slashes while resolving %d %s?", fd, path);
+    }
+
     std::deque<std::string> components;
     for (auto& entry : resolve_me) {
         components.push_back(entry);
@@ -948,6 +959,13 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 return FdPath::error(errno);
             }
             buffer[result] = 0;
+
+            if (result > 1 && buffer[result - 1] == '/') {
+                // Didn't resolve to root, and has trailing slash
+                buffer[result - 1] = 0; // remove the trailing slash to make our life easier
+                ASSERT_MSG(buffer[result - 2] != '/', "Multiple trailing slashes during symlink %d %s (while resolving %d %s)?", current_fd,
+                           current.c_str(), fd, path);
+            }
 
             std::filesystem::path resolved = buffer;
 
