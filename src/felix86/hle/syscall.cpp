@@ -1994,24 +1994,24 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_process_vm_readv: {
             x86_iovec* lvec = (x86_iovec*)arg2;
-            ssize_t liovcnt = arg3;
+            size_t liovcnt = arg3;
             x86_iovec* rvec = (x86_iovec*)arg4;
-            ssize_t riovcnt = arg5;
+            size_t riovcnt = arg5;
 
-            std::vector<iovec> lvec_host(lvec, lvec + std::max(0, liovcnt));
-            std::vector<iovec> rvec_host(rvec, rvec + std::max(0, riovcnt));
+            std::vector<iovec> lvec_host(lvec, lvec + liovcnt);
+            std::vector<iovec> rvec_host(rvec, rvec + riovcnt);
 
             result = SYSCALL(process_vm_readv, arg1, lvec_host.data(), liovcnt, rvec_host.data(), riovcnt, arg6);
             break;
         }
         case felix86_x86_32_process_vm_writev: {
             x86_iovec* lvec = (x86_iovec*)arg2;
-            ssize_t liovcnt = arg3;
+            size_t liovcnt = arg3;
             x86_iovec* rvec = (x86_iovec*)arg4;
-            ssize_t riovcnt = arg5;
+            size_t riovcnt = arg5;
 
-            std::vector<iovec> lvec_host(lvec, lvec + std::max(0, liovcnt));
-            std::vector<iovec> rvec_host(rvec, rvec + std::max(0, riovcnt));
+            std::vector<iovec> lvec_host(lvec, lvec + liovcnt);
+            std::vector<iovec> rvec_host(rvec, rvec + riovcnt);
 
             result = SYSCALL(process_vm_writev, arg1, lvec_host.data(), liovcnt, rvec_host.data(), riovcnt, arg6);
             break;
