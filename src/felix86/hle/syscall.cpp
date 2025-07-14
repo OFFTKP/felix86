@@ -252,6 +252,14 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(personality, arg1 & ~PER_LINUX32);
         break;
     }
+    case felix86_riscv64_process_vm_readv: {
+        result = SYSCALL(process_vm_readv, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
+    case felix86_riscv64_process_vm_writev: {
+        result = SYSCALL(process_vm_writev, arg1, arg2, arg3, arg4, arg5, arg6);
+        break;
+    }
     case felix86_riscv64_prlimit64: {
         result = SYSCALL(prlimit64, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
@@ -1982,6 +1990,30 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_munlockall: {
             result = SYSCALL(munlock, mmap_min_addr(), 0x1'0000'0000 - mmap_min_addr());
+            break;
+        }
+        case felix86_x86_32_process_vm_readv: {
+            x86_iovec* lvec = (x86_iovec*)arg2;
+            ssize_t liovcnt = arg3;
+            x86_iovec* rvec = (x86_iovec*)arg4;
+            ssize_t riovcnt = arg5;
+
+            std::vector<iovec> lvec_host(lvec, lvec + std::max(0, liovcnt));
+            std::vector<iovec> rvec_host(rvec, rvec + std::max(0, riovcnt));
+
+            result = SYSCALL(process_vm_readv, arg1, lvec_host.data(), liovcnt, rvec_host.data(), riovcnt, arg6);
+            break;
+        }
+        case felix86_x86_32_process_vm_writev: {
+            x86_iovec* lvec = (x86_iovec*)arg2;
+            ssize_t liovcnt = arg3;
+            x86_iovec* rvec = (x86_iovec*)arg4;
+            ssize_t riovcnt = arg5;
+
+            std::vector<iovec> lvec_host(lvec, lvec + std::max(0, liovcnt));
+            std::vector<iovec> rvec_host(rvec, rvec + std::max(0, riovcnt));
+
+            result = SYSCALL(process_vm_writev, arg1, lvec_host.data(), liovcnt, rvec_host.data(), riovcnt, arg6);
             break;
         }
         case felix86_x86_32_clock_settime32: {
