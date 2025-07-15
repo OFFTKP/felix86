@@ -308,7 +308,6 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 
         void* address = ::mmap(past_end, size_difference, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
         ASSERT(address == past_end);
-        WARN("Allocated %lx - %lx", past_end, past_end + size_difference);
     } else {
         WARN("Clearing cache on thread %u", gettid());
         auto guard = page_map_lock.lock();
