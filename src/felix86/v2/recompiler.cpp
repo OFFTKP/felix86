@@ -23,7 +23,7 @@ constexpr static u64 code_cache_sizes[] = {
 };
 
 constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
-constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count];
+constexpr static u64 max_code_cache_size = code_cache_sizes[code_cache_sizes_count - 1];
 
 // TODO: move to header file
 BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc);
