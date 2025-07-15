@@ -645,7 +645,6 @@ private:
 
     static void invalidateAt(ThreadState* state, u8* address_of_block, u8* linked_block);
 
-    u8* code_cache{};
     biscuit::Assembler as{};
     ZydisDecoder decoder{};
 

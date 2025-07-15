@@ -66,7 +66,7 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     }
 }
 
-Recompiler::Recompiler() : code_cache(allocateCodeCache(code_cache_sizes[0])), as(code_cache, code_cache_sizes[0]) {
+Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), code_cache_sizes[0]) {
     emitNecessaryStuff();
 
     ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
@@ -86,7 +86,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache(code_cache_sizes[0])), a
     }
 
     if (g_config.perf_global) {
-        g_process_globals.perf->addToFile((u64)start_of_code_cache, code_cache_sizes[0] - ((u64)start_of_code_cache - (u64)code_cache),
+        g_process_globals.perf->addToFile((u64)start_of_code_cache, code_cache_sizes[0] - ((u64)start_of_code_cache - (u64)as.GetBufferPointer(0)),
                                           "felix86 code cache");
     }
 
@@ -97,7 +97,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache(code_cache_sizes[0])), a
 }
 
 Recompiler::~Recompiler() {
-    deallocateCodeCache(code_cache, code_cache_sizes[code_cache_size_index]);
+    deallocateCodeCache(as.GetBufferPointer(0), code_cache_sizes[code_cache_size_index]);
 }
 
 void Recompiler::emitNecessaryStuff() {
@@ -302,7 +302,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 
     if (code_cache_size_index < code_cache_sizes_count) {
         // Replace the CodeBuffer with a bigger one
-        u8* old_mem = code_cache;
+        u8* old_mem = as.GetBufferPointer(0);
         u64 old_size = code_cache_sizes[code_cache_size_index];
         code_cache_size_index++;
         u64 new_size = code_cache_sizes[code_cache_size_index];
@@ -312,7 +312,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
         as.SwapCodeBuffer(std::move(buffer));
         deallocateCodeCache(old_mem, old_size);
         emitNecessaryStuff();
-        g_process_globals.perf->addToFile((u64)start_of_code_cache, new_size - ((u64)start_of_code_cache - (u64)code_cache), "felix86 code cache");
+        g_process_globals.perf->addToFile((u64)start_of_code_cache, new_size - ((u64)start_of_code_cache - (u64)new_mem), "felix86 code cache");
     } else {
         as.RewindBuffer();
         emitNecessaryStuff();
