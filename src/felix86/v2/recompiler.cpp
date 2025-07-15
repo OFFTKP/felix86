@@ -296,13 +296,6 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
 }
 
 void Recompiler::clearCodeCache(ThreadState* state) {
-    WARN("Clearing cache on thread %u", gettid());
-    auto guard = page_map_lock.lock();
-    block_metadata.clear();
-    host_pc_map.clear();
-    page_map.clear();
-    std::fill(std::begin(address_cache), std::end(address_cache), AddressCacheEntry{});
-
     if (code_cache_size_index < code_cache_sizes_count) {
         // Allocate more of our reserved buffer
         u8* old_mem = as.GetBufferPointer(0);
@@ -315,10 +308,17 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 
         void* address = ::mmap(past_end, size_difference, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
         ASSERT(address == past_end);
-    }
+    } else {
+        WARN("Clearing cache on thread %u", gettid());
+        auto guard = page_map_lock.lock();
+        block_metadata.clear();
+        host_pc_map.clear();
+        page_map.clear();
+        std::fill(std::begin(address_cache), std::end(address_cache), AddressCacheEntry{});
 
-    as.RewindBuffer();
-    emitNecessaryStuff();
+        as.RewindBuffer();
+        emitNecessaryStuff();
+    }
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
