@@ -1847,7 +1847,7 @@ void Recompiler::scanAhead(u64 rip) {
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
-        bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
+        bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3 || mnemonic == ZYDIS_MNEMONIC_INT; // can be both int3 and int opcode with imm=3
 
         if (g_config.unsafe_flags && !g_config.paranoid) {
             if (is_call || is_ret) {

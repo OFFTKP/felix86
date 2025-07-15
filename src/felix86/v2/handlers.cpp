@@ -3484,17 +3484,6 @@ FAST_HANDLE(SYSCALL) {
     rec.restoreState();
 }
 
-FAST_HANDLE(INT) {
-    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
-    ASSERT(operands[0].imm.value.u == 0x80);
-
-    rec.writebackState();
-    as.MV(a0, sp);
-    as.LI(a1, rip + instruction.length);
-    rec.callPointer(offsetof(ThreadState, felix86_syscall32));
-    rec.restoreState();
-}
-
 FAST_HANDLE(MOVZX) {
     x86_size_e size_dst = rec.getSize(&operands[0]);
     x86_size_e size_src = rec.getSize(&operands[1]);
@@ -9901,6 +9890,19 @@ FAST_HANDLE(INT3) {
     // Not coming back here
     // If the guest has installed a handler for the ebreak then it should hit it and change our RIP
     rec.callPointer(offsetof(ThreadState, felix86_crash_and_burn));
+}
+
+FAST_HANDLE(INT) {
+    ASSERT(operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE);
+    if (operands[0].imm.value.u == 0x80) {
+        rec.writebackState();
+        as.MV(a0, sp);
+        as.LI(a1, rip + instruction.length);
+        rec.callPointer(offsetof(ThreadState, felix86_syscall32));
+        rec.restoreState();
+    } else if (operands[0].imm.value.u == 3) {
+        fast_INT3(rec, rip, as, instruction, operands);
+    }
 }
 
 // INVLPG is used during thunking to do various special stuff based on the operand

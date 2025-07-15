@@ -184,7 +184,7 @@ while true; do
     if [[ "$choice" == "1" || "$choice" == "2" || "$choice" == "3" ]]; then
         break
     else
-        echo "Invalid input. Please enter 1 or 2."
+        echo "Invalid input. Please enter 1, 2 or 3."
     fi
 done
 
