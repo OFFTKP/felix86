@@ -9902,6 +9902,8 @@ FAST_HANDLE(INT) {
         rec.restoreState();
     } else if (operands[0].imm.value.u == 3) {
         fast_INT3(rec, rip, as, instruction, operands);
+    } else {
+        ERROR("INT encountered with unknown immediate: %d", operands[0].imm.value.u);
     }
 }
 
