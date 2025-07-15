@@ -276,7 +276,8 @@ __attribute__((visibility("default"))) void disassemble(u64 host_address) {
         bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
         bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
         bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
-        bool stop = is_jump || is_ret || is_call || is_illegal || is_hlt;
+        bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
+        bool stop = is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3;
 
         ZydisDisassembledInstruction instr;
         ZydisDisassembleIntel(mode, cur, (void*)cur, 15, &instr);
