@@ -86,7 +86,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache(code_cache_sizes[0])), a
     }
 
     if (g_config.perf_global) {
-        g_process_globals.perf->addToFile((u64)start_of_code_cache, code_cache_size - ((u64)start_of_code_cache - (u64)code_cache),
+        g_process_globals.perf->addToFile((u64)start_of_code_cache, code_cache_sizes[0] - ((u64)start_of_code_cache - (u64)code_cache),
                                           "felix86 code cache");
     }
 
@@ -97,7 +97,7 @@ Recompiler::Recompiler() : code_cache(allocateCodeCache(code_cache_sizes[0])), a
 }
 
 Recompiler::~Recompiler() {
-    deallocateCodeCache(code_cache);
+    deallocateCodeCache(code_cache, code_cache_sizes[code_cache_size_index]);
 }
 
 void Recompiler::emitNecessaryStuff() {
@@ -311,11 +311,12 @@ void Recompiler::clearCodeCache(ThreadState* state) {
         CodeBuffer buffer(new_mem, new_size);
         as.SwapCodeBuffer(std::move(buffer));
         deallocateCodeCache(old_mem, old_size);
+        emitNecessaryStuff();
+        g_process_globals.perf->addToFile((u64)start_of_code_cache, new_size - ((u64)start_of_code_cache - (u64)code_cache), "felix86 code cache");
     } else {
         as.RewindBuffer();
+        emitNecessaryStuff();
     }
-
-    emitNecessaryStuff();
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
