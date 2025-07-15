@@ -48,6 +48,7 @@ The rootfs you downloaded should have enough libraries to support most games, bu
 > Alternatively, set the `quiet` variable to `true` in `$HOME/.config/felix86/config.toml`
 
 ## Step 3 - Tips
+- If you're trying to run Steam, [read this page](./steam.md)
 - There's multiple ways to run programs using felix86:
   - `felix86 /path/to/rootfs/program`
   - `felix86 /program`                   (will search inside rootfs only)
