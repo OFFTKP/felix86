@@ -69,7 +69,7 @@ static void deallocateCodeCache(void* address) {
     munmap(address, max_code_cache_size);
 }
 
-Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), code_cache_sizes[0]) {
+Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), max_code_cache_size) {
     emitNecessaryStuff();
 
     ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
