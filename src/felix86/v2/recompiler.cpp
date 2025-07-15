@@ -14,20 +14,27 @@
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
 
-constexpr static u64 code_cache_size = 64 * 1024 * 1024;
+constexpr static u64 code_cache_sizes[] = {
+    4 * 1024 * 1024,
+    16 * 1024 * 1024,
+    32 * 1024 * 1024,
+    64 * 1042 * 1024,
+};
+
+constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
 
 // TODO: move to header file
 BlockMetadata* get_block_metadata(ThreadState* state, u64 host_pc);
 
-static u8* allocateCodeCache() {
+static u8* allocateCodeCache(u64 size) {
     u8 prot = PROT_READ | PROT_WRITE | PROT_EXEC;
     u8 flags = MAP_PRIVATE | MAP_ANONYMOUS;
 
-    return (u8*)mmap(nullptr, code_cache_size, prot, flags, -1, 0);
+    return (u8*)mmap(nullptr, size, prot, flags, -1, 0);
 }
 
-static void deallocateCodeCache(u8* memory) {
-    munmap(memory, code_cache_size);
+static void deallocateCodeCache(u8* memory, u64 size) {
+    munmap(memory, size);
 }
 
 static void incorrect_magic(void* sp) {
@@ -59,7 +66,7 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
     }
 }
 
-Recompiler::Recompiler() : code_cache(allocateCodeCache()), as(code_cache, code_cache_size) {
+Recompiler::Recompiler() : code_cache(allocateCodeCache(code_cache_sizes[0])), as(code_cache, code_cache_sizes[0]) {
     emitNecessaryStuff();
 
     ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
@@ -287,19 +294,34 @@ void Recompiler::invalidateAt(ThreadState* state, u8* address_of_block, u8* link
 
 void Recompiler::clearCodeCache(ThreadState* state) {
     WARN("Clearing cache on thread %u", gettid());
-    as.RewindBuffer();
     auto guard = page_map_lock.lock();
     block_metadata.clear();
     host_pc_map.clear();
     page_map.clear();
     std::fill(std::begin(address_cache), std::end(address_cache), AddressCacheEntry{});
 
+    if (code_cache_size_index < code_cache_sizes_count) {
+        // Replace the CodeBuffer with a bigger one
+        u8* old_mem = code_cache;
+        u64 old_size = code_cache_sizes[code_cache_size_index];
+        code_cache_size_index++;
+        u64 new_size = code_cache_sizes[code_cache_size_index];
+        u8* new_mem = allocateCodeCache(new_size);
+        ASSERT_MSG((i64)new_mem > 0, "Failed to allocate code cache with new size: %lx", new_size);
+        CodeBuffer buffer(new_mem, new_size);
+        as.SwapCodeBuffer(std::move(buffer));
+        deallocateCodeCache(old_mem, old_size);
+    } else {
+        as.RewindBuffer();
+    }
+
     emitNecessaryStuff();
 }
 
 u64 Recompiler::compile(ThreadState* state, u64 rip) {
-    size_t remaining_size = code_cache_size - as.GetCodeBuffer().GetCursorOffset();
-    if (remaining_size < 100'000) { // less than ~100KB left, clear cache
+    u64 size = code_cache_sizes[code_cache_size_index];
+    size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
+    if (remaining_size < 10'000) { // less than ~10KB left, clear cache
         clearCodeCache(state);
     }
 
