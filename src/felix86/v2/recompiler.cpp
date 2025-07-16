@@ -307,7 +307,16 @@ void Recompiler::clearCodeCache(ThreadState* state) {
         u64 size_difference = new_size - old_size;
 
         void* address = ::mmap(past_end, size_difference, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-        ASSERT(address == past_end);
+        if (address != past_end) {
+            WARN("Couldn't increment code cache because mmap returned %lx (errno: %s), leaking old code cache", address, strerror(errno));
+            // TODO: this is lazy. We leak memory here so that this function can safely return to the old dispatcher
+            // but future code cache usages go to the new code cache
+            address = ::mmap(nullptr, max_code_cache_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+            ASSERT_MSG(address != MAP_FAILED, "Failed a second time? Error: %s", strerror(errno));
+            CodeBuffer buf_new((u8*)address, max_code_cache_size);
+            as.SwapCodeBuffer(std::move(buf_new));
+            emitNecessaryStuff();
+        }
     } else {
         WARN("Clearing cache on thread %u", gettid());
         auto guard = page_map_lock.lock();
