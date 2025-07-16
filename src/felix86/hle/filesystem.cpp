@@ -47,17 +47,17 @@ void Filesystem::initializeEmulatedNodes() {
         },
     };
 
-    emulated_nodes[PROC_SELF_MAPS] = EmulatedNode{
-        .path = "/proc/self/maps",
-        .open_func = [](const char* path, int flags) {
-            std::string maps = felix86_maps();
-            int fd = generate_memfd("/proc/self/maps", flags);
-            ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
-            lseek(fd, 0, SEEK_SET);
-            seal_memfd(fd);
-            return fd;
-        },
-    };
+    // emulated_nodes[PROC_SELF_MAPS] = EmulatedNode{
+    //     .path = "/proc/self/maps",
+    //     .open_func = [](const char* path, int flags) {
+    //         std::string maps = felix86_maps();
+    //         int fd = generate_memfd("/proc/self/maps", flags);
+    //         ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
+    //         lseek(fd, 0, SEEK_SET);
+    //         seal_memfd(fd);
+    //         return fd;
+    //     },
+    // };
 
     emulated_nodes[PROC_SELF_MOUNTINFO] = EmulatedNode{
         .path = "/proc/self/mountinfo",
