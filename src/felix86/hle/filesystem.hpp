@@ -311,7 +311,7 @@ private:
 
     enum {
         PROC_CPUINFO,
-        PROC_SELF_MAPS,
+        // PROC_SELF_MAPS,
         PROC_SELF_MOUNTINFO,
         EMULATED_NODE_COUNT,
     };
