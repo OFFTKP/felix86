@@ -623,6 +623,10 @@ struct Recompiler {
         fsrm_sse = is_sse;
     }
 
+    void skipNext();
+
+    std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*> getNextInstruction();
+
 private:
     struct FlagAccess {
         bool modification; // true if modified, false if used
@@ -654,6 +658,7 @@ private:
     ZydisDecodedInstruction* current_instruction;
     ZydisDecodedOperand* current_operands;
     u64 current_rip;
+    u64 current_instruction_index = 0;
 
     void (*enter_dispatcher)(ThreadState*){};
 
@@ -700,6 +705,8 @@ private:
     bool fsrm_sse = true;
 
     bool lock_handled = false;
+
+    bool skip_next = false;
 
     std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
 

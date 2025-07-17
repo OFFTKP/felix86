@@ -465,10 +465,10 @@ u64 Recompiler::compileSequence(u64 rip) {
 
     current_block_metadata->guest_address = rip;
 
-    size_t index = 0;
+    current_instruction_index = 0;
 
     while (compiling) {
-        auto& [instruction, operands] = instructions[index];
+        auto& [instruction, operands] = instructions[current_instruction_index];
 
         block_meta.instruction_spans.push_back({rip, (u64)as.GetCursorPointer()});
 
@@ -536,7 +536,13 @@ u64 Recompiler::compileSequence(u64 rip) {
             stopCompiling();
         }
 
-        index += 1;
+        current_instruction_index += 1;
+
+        if (skip_next) {
+            rip += instructions[current_instruction_index].first.length;
+            current_instruction_index += 1;
+            skip_next = false;
+        }
     }
 
     resetScratch();
@@ -576,6 +582,12 @@ u64 Recompiler::compileSequence(u64 rip) {
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
 
     return rip;
+}
+
+std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*> Recompiler::getNextInstruction() {
+    ASSERT(instructions.size() > current_instruction_index + 1);
+    auto& [instruction, operands] = instructions[current_instruction_index + 1];
+    return std::make_pair(&instruction, operands);
 }
 
 void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip) {
