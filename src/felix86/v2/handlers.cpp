@@ -135,6 +135,8 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         } else {
             as.SLT(cond, lhs, rhs);
         }
+        rec.resetScratch(); // pop all scratch except cond which was allocated first
+        rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
         return true;
@@ -156,6 +158,8 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
             as.SGT(cond, lhs, rhs);
             as.XORI(cond, cond, 1);
         }
+        rec.resetScratch();
+        rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
         return true;
@@ -175,6 +179,8 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         } else {
             as.SGT(cond, lhs, rhs);
         }
+        rec.resetScratch();
+        rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
         return true;
@@ -196,6 +202,8 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
             as.SLT(cond, lhs, rhs);
             as.XORI(cond, cond, 1);
         }
+        rec.resetScratch();
+        rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
         return true;
@@ -205,6 +213,8 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         biscuit::GPR lhs = rec.getGPR(&operands[0]);
         biscuit::GPR rhs = rec.getGPR(&operands[1]);
         as.SLTU(cond, lhs, rhs);
+        rec.resetScratch();
+        rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
         return true;
@@ -215,6 +225,8 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         biscuit::GPR rhs = rec.getGPR(&operands[1]);
         as.SGTU(cond, lhs, rhs);
         as.XORI(cond, cond, 1);
+        rec.resetScratch();
+        rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
         return true;
@@ -225,6 +237,8 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         biscuit::GPR rhs = rec.getGPR(&operands[1]);
         as.SLTU(cond, lhs, rhs);
         as.XORI(cond, cond, 1);
+        rec.resetScratch();
+        rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
         return true;
@@ -234,6 +248,8 @@ static inline bool AttemptCmpFusing(Recompiler& rec, u64 rip, Assembler& as, Zyd
         biscuit::GPR lhs = rec.getGPR(&operands[0]);
         biscuit::GPR rhs = rec.getGPR(&operands[1]);
         as.SGTU(cond, lhs, rhs);
+        rec.resetScratch();
+        rec.scratch();
         CMOV(rec, rip, as, *next_instruction, next_operands, cond);
         rec.skipNext();
         return true;
