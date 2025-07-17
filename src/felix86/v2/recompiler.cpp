@@ -590,6 +590,10 @@ std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*> Recompiler::getNextIns
     return std::make_pair(&instruction, operands);
 }
 
+void Recompiler::skipNext() {
+    skip_next = true;
+}
+
 void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip) {
     current_instruction = &instruction;
     current_operands = operands;
