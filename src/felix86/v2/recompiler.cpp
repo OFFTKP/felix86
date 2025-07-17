@@ -16,7 +16,7 @@
 
 // TODO: benchmark to find best arrangement?
 constexpr static u64 code_cache_sizes[] = {
-    4 * 1024 * 1024,
+    8 * 1024 * 1024,
     16 * 1024 * 1024,
     32 * 1024 * 1024,
     64 * 1042 * 1024,
@@ -308,9 +308,9 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 
         void* address = ::mmap(past_end, size_difference, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
         if (address != past_end) {
-            WARN("Couldn't increment code cache because mmap returned %lx (errno: %s), clearing code cache", address, strerror(errno));
-            WARN("TID: %d", gettid());
-            sleep(50);
+            // TODO: investigate
+            // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
+            WARN_ONCE("Couldn't increment code cache because mmap returned %lx (errno: %s), clearing code cache", address, strerror(errno));
             auto guard = page_map_lock.lock();
             block_metadata.clear();
             host_pc_map.clear();
