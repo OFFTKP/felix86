@@ -3383,6 +3383,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t2, ra, 0xff(255)",
             "SLTU            t2, t2, s5",
             "SLTU            s5, t4, t3",
@@ -3426,6 +3438,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t2, ra, 0xff(255)",
             "SLTU            t2, t2, s5",
             "SLTU            s5, t4, t3",
@@ -3469,6 +3493,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t2, ra, 0xff(255)",
             "SLTU            t2, t2, s5",
             "SLTU            s5, t4, t3",
@@ -3515,6 +3551,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t2, ra, 0xff(255)",
             "SLTU            t2, t2, s5",
             "SLTU            s5, t4, t3",
@@ -3559,6 +3607,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0xe(14)",
+            "SRLI            s9, s9, 0xf(15)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ZEXT.H          t2, ra",
             "SLTU            t2, t2, s5",
             "SLTU            s5, t4, t3",
@@ -3602,6 +3662,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x1e(30)",
+            "SRLI            s9, s9, 0x1f(31)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADD.UW          t2, ra, zero",
             "SLTU            t2, t2, s5",
             "SLTU            s5, t4, t3",
@@ -3624,7 +3696,11 @@
         "disassembly": "sbb edx, ebx"
     },
     "4819da": {
+<<<<<<< HEAD
         "instruction_count": 25,
+=======
+        "instruction_count": 32,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "SUB             ra, a2, s0",
             "SUB             t1, ra, s5",
@@ -3640,6 +3716,18 @@
             "SLTU            t4, t4, s5",
             "OR              t3, t3, t4",
             "SB              t3, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t3, a2, 0xffffffff(-1)",
+            "OR              s9, t3, s0",
+            "AND             s9, s9, t1",
+            "AND             t3, t3, s0",
+            "OR              s9, s9, t3",
+            "SRLI            t3, s9, 0x3e(62)",
+            "SRLI            s9, s9, 0x3f(63)",
+            "XOR             s9, s9, t3",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADDI            t3, ra, 0x0(0)",
             "SLTU            t3, t3, s5",
             "SLTU            s5, a2, s0",
@@ -3673,6 +3761,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t2, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t5, ra, 0xff(255)",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t2, t3",
@@ -3716,6 +3816,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t2, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t5, ra, 0xff(255)",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t2, t3",
@@ -3760,6 +3872,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t2, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0xe(14)",
+            "SRLI            s9, s9, 0xf(15)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ZEXT.H          t5, ra",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t2, t3",
@@ -3803,6 +3927,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t2, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x1e(30)",
+            "SRLI            s9, s9, 0x1f(31)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADD.UW          t5, ra, zero",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t2, t3",
@@ -3825,7 +3961,11 @@
         "disassembly": "sbb edx, [rdi]"
     },
     "481b17": {
+<<<<<<< HEAD
         "instruction_count": 26,
+=======
+        "instruction_count": 33,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "LD              t3, a0, 0x0(0)",
             "SUB             ra, a2, t3",
@@ -3842,6 +3982,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, a2, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x3e(62)",
+            "SRLI            s9, s9, 0x3f(63)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADDI            t2, ra, 0x0(0)",
             "SLTU            t2, t2, s5",
             "SLTU            s5, a2, t3",
@@ -3875,6 +4027,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t4, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t5, ra, 0xff(255)",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t4, t3",
@@ -3916,6 +4080,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t4, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t5, ra, 0xff(255)",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t4, t3",
@@ -3956,6 +4132,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t4, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0xe(14)",
+            "SRLI            s9, s9, 0xf(15)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ZEXT.H          t5, ra",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t4, t3",
@@ -3996,6 +4184,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t4, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x1e(30)",
+            "SRLI            s9, s9, 0x1f(31)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADD.UW          t5, ra, zero",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t4, t3",
@@ -4018,7 +4218,11 @@
         "disassembly": "sbb [rdi], edx"
     },
     "481917": {
+<<<<<<< HEAD
         "instruction_count": 26,
+=======
+        "instruction_count": 33,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "LD              t3, a0, 0x0(0)",
             "SUB             ra, t3, a2",
@@ -4035,6 +4239,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t3, 0xffffffff(-1)",
+            "OR              s9, t2, a2",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, a2",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x3e(62)",
+            "SRLI            s9, s9, 0x3f(63)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADDI            t2, ra, 0x0(0)",
             "SLTU            t2, t2, s5",
             "SLTU            s5, t3, a2",
@@ -4068,6 +4284,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t2, ra, 0xff(255)",
             "SLTU            t2, t2, s5",
             "ANDI            s5, t3, 0xff(255)",
@@ -4111,6 +4339,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t2, ra, 0xff(255)",
             "SLTU            t2, t2, s5",
             "ANDI            s5, t3, 0xff(255)",
@@ -4155,6 +4395,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t2, ra, 0xff(255)",
             "SLTU            t2, t2, s5",
             "ANDI            s5, t3, 0xff(255)",
@@ -4201,6 +4453,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t2, ra, 0xff(255)",
             "SLTU            t2, t2, s5",
             "ANDI            s5, t3, 0xff(255)",
@@ -4246,6 +4510,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0xe(14)",
+            "SRLI            s9, s9, 0xf(15)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ZEXT.H          t2, ra",
             "SLTU            t2, t2, s5",
             "ZEXT.H          s5, t3",
@@ -4290,6 +4566,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0xe(14)",
+            "SRLI            s9, s9, 0xf(15)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ZEXT.H          t2, ra",
             "SLTU            t2, t2, s5",
             "ZEXT.H          s5, t3",
@@ -4334,6 +4622,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x1e(30)",
+            "SRLI            s9, s9, 0x1f(31)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADD.UW          t2, ra, zero",
             "SLTU            t2, t2, s5",
             "ADD.UW          s5, t3, zero",
@@ -4375,6 +4675,18 @@
             "SLTU            t5, t5, s5",
             "OR              t2, t2, t5",
             "SB              t2, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t2, t4, 0xffffffff(-1)",
+            "OR              s9, t2, t3",
+            "AND             s9, s9, t1",
+            "AND             t2, t2, t3",
+            "OR              s9, s9, t2",
+            "SRLI            t2, s9, 0x1e(30)",
+            "SRLI            s9, s9, 0x1f(31)",
+            "XOR             s9, s9, t2",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADD.UW          t2, ra, zero",
             "SLTU            t2, t2, s5",
             "ADD.UW          s5, t3, zero",
@@ -4398,7 +4710,11 @@
         "disassembly": "sbb edx, 0xFFFFFFFF"
     },
     "4883da01": {
+<<<<<<< HEAD
         "instruction_count": 26,
+=======
+        "instruction_count": 33,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t3, zero, 0x1(1)",
             "SUB             ra, a2, t3",
@@ -4415,6 +4731,18 @@
             "SLTU            t2, t2, s5",
             "OR              t4, t4, t2",
             "SB              t4, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t4, a2, 0xffffffff(-1)",
+            "OR              s9, t4, t3",
+            "AND             s9, s9, t1",
+            "AND             t4, t4, t3",
+            "OR              s9, s9, t4",
+            "SRLI            t4, s9, 0x3e(62)",
+            "SRLI            s9, s9, 0x3f(63)",
+            "XOR             s9, s9, t4",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADDI            t4, ra, 0x0(0)",
             "SLTU            t4, t4, s5",
             "SLTU            s5, a2, t3",
@@ -4430,7 +4758,11 @@
         "disassembly": "sbb rdx, 0x01"
     },
     "4883daff": {
+<<<<<<< HEAD
         "instruction_count": 26,
+=======
+        "instruction_count": 33,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t3, zero, 0xffffffff(-1)",
             "SUB             ra, a2, t3",
@@ -4447,6 +4779,18 @@
             "SLTU            t2, t2, s5",
             "OR              t4, t4, t2",
             "SB              t4, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t4, a2, 0xffffffff(-1)",
+            "OR              s9, t4, t3",
+            "AND             s9, s9, t1",
+            "AND             t4, t4, t3",
+            "OR              s9, s9, t4",
+            "SRLI            t4, s9, 0x3e(62)",
+            "SRLI            s9, s9, 0x3f(63)",
+            "XOR             s9, s9, t4",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADDI            t4, ra, 0x0(0)",
             "SLTU            t4, t4, s5",
             "SLTU            s5, a2, t3",
@@ -4480,6 +4824,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t4, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x6(6)",
+            "SRLI            s9, s9, 0x7(7)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ANDI            t5, ra, 0xff(255)",
             "SLTU            t5, t5, s5",
             "ANDI            s5, t3, 0xff(255)",
@@ -4521,6 +4877,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t4, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0xe(14)",
+            "SRLI            s9, s9, 0xf(15)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ZEXT.H          t5, ra",
             "SLTU            t5, t5, s5",
             "ZEXT.H          s5, t3",
@@ -4562,6 +4930,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t4, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x1e(30)",
+            "SRLI            s9, s9, 0x1f(31)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADD.UW          t5, ra, zero",
             "SLTU            t5, t5, s5",
             "ADD.UW          s5, t3, zero",
@@ -4585,7 +4965,11 @@
         "disassembly": "sbb dword ptr [rdi], 0x01"
     },
     "48831f01": {
+<<<<<<< HEAD
         "instruction_count": 27,
+=======
+        "instruction_count": 34,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t3, zero, 0x1(1)",
             "LD              t4, a0, 0x0(0)",
@@ -4603,6 +4987,18 @@
             "SLTU            t6, t6, s5",
             "OR              t5, t5, t6",
             "SB              t5, s11, 0x1ca(458)",
+<<<<<<< HEAD
+=======
+            "XORI            t5, t4, 0xffffffff(-1)",
+            "OR              s9, t5, t3",
+            "AND             s9, s9, t1",
+            "AND             t5, t5, t3",
+            "OR              s9, s9, t5",
+            "SRLI            t5, s9, 0x3e(62)",
+            "SRLI            s9, s9, 0x3f(63)",
+            "XOR             s9, s9, t5",
+            "ANDI            s9, s9, 0x1(1)",
+>>>>>>> e0fac266 (inc/dec)
             "ADDI            t5, ra, 0x0(0)",
             "SLTU            t5, t5, s5",
             "SLTU            s5, t4, t3",
@@ -4775,7 +5171,11 @@
         "disassembly": "or edx, ebx"
     },
     "4809da": {
+<<<<<<< HEAD
         "instruction_count": 14,
+=======
+        "instruction_count": 15,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "OR              ra, a2, s0",
             "ADDIW           s5, zero, 0x0(0)",
@@ -4897,7 +5297,11 @@
         "disassembly": "or edx, [rdi]"
     },
     "480b17": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "LD              t1, a0, 0x0(0)",
             "OR              ra, a2, t1",
@@ -5011,7 +5415,11 @@
         "disassembly": "or [rdi], edx"
     },
     "480917": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "LD              t1, a0, 0x0(0)",
             "OR              ra, t1, a2",
@@ -5236,7 +5644,11 @@
         "disassembly": "or edx, 0xFFFFFFFF"
     },
     "4883ca01": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "OR              ra, a2, t1",
@@ -5257,7 +5669,11 @@
         "disassembly": "or rdx, 0x01"
     },
     "4883caff": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0xffffffff(-1)",
             "OR              ra, a2, t1",
@@ -5347,7 +5763,11 @@
         "disassembly": "or dword ptr [rdi], 0x01"
     },
     "48830f01": {
+<<<<<<< HEAD
         "instruction_count": 16,
+=======
+        "instruction_count": 17,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "LD              t3, a0, 0x0(0)",
@@ -5526,7 +5946,11 @@
         "disassembly": "and edx, ebx"
     },
     "4821da": {
+<<<<<<< HEAD
         "instruction_count": 14,
+=======
+        "instruction_count": 15,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "AND             ra, a2, s0",
             "ADDIW           s5, zero, 0x0(0)",
@@ -5648,7 +6072,11 @@
         "disassembly": "and edx, [rdi]"
     },
     "482317": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "LD              t1, a0, 0x0(0)",
             "AND             ra, a2, t1",
@@ -5762,7 +6190,11 @@
         "disassembly": "and [rdi], edx"
     },
     "482117": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "LD              t1, a0, 0x0(0)",
             "AND             ra, t1, a2",
@@ -5987,7 +6419,11 @@
         "disassembly": "and edx, 0xFFFFFFFF"
     },
     "4883e201": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "AND             ra, a2, t1",
@@ -6008,7 +6444,11 @@
         "disassembly": "and rdx, 0x01"
     },
     "4883e2ff": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0xffffffff(-1)",
             "AND             ra, a2, t1",
@@ -6098,7 +6538,11 @@
         "disassembly": "and dword ptr [rdi], 0x01"
     },
     "48832701": {
+<<<<<<< HEAD
         "instruction_count": 16,
+=======
+        "instruction_count": 17,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "LD              t3, a0, 0x0(0)",
@@ -6277,7 +6721,11 @@
         "disassembly": "xor edx, ebx"
     },
     "4831da": {
+<<<<<<< HEAD
         "instruction_count": 14,
+=======
+        "instruction_count": 15,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "XOR             ra, a2, s0",
             "ADDIW           s5, zero, 0x0(0)",
@@ -6399,7 +6847,11 @@
         "disassembly": "xor edx, [rdi]"
     },
     "483317": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "LD              t1, a0, 0x0(0)",
             "XOR             ra, a2, t1",
@@ -6513,7 +6965,11 @@
         "disassembly": "xor [rdi], edx"
     },
     "483117": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "LD              t1, a0, 0x0(0)",
             "XOR             ra, t1, a2",
@@ -6738,7 +7194,11 @@
         "disassembly": "xor edx, 0xFFFFFFFF"
     },
     "4883f201": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "XOR             ra, a2, t1",
@@ -6759,7 +7219,11 @@
         "disassembly": "xor rdx, 0x01"
     },
     "4883f2ff": {
+<<<<<<< HEAD
         "instruction_count": 15,
+=======
+        "instruction_count": 16,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0xffffffff(-1)",
             "XOR             ra, a2, t1",
@@ -6849,7 +7313,11 @@
         "disassembly": "xor dword ptr [rdi], 0x01"
     },
     "48833701": {
+<<<<<<< HEAD
         "instruction_count": 16,
+=======
+        "instruction_count": 17,
+>>>>>>> e0fac266 (inc/dec)
         "expected_asm": [
             "ADDIW           t1, zero, 0x1(1)",
             "LD              t3, a0, 0x0(0)",

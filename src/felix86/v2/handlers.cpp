@@ -393,6 +393,55 @@ void OP_noflags_destreg(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedIns
     rec.setGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
 }
 
+void OP_noflags_destreg_srcimm(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
+                               void (Assembler::*func64_i)(biscuit::GPR, biscuit::GPR, int32_t),
+                               void (Assembler::*func32_i)(biscuit::GPR, biscuit::GPR, int32_t),
+                               void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR), int32_t src_imm) {
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    ASSERT(IsValidSigned12BitImm(src_imm));
+    switch (instruction.operand_width) {
+    case 8: {
+        // https://news.ycombinator.com/item?id=41364904 :)
+        bool dst_high = rec.zydisToSize(operands[0].reg.value) == X86_SIZE_BYTE_HIGH;
+        biscuit::GPR temp = rec.scratch();
+        if (!dst_high) {
+            as.LI(temp, src_imm);
+            as.SLLI(temp, temp, 56);
+            as.RORI(dst, dst, 8);
+            (as.*func64)(dst, dst, temp);
+            as.RORI(dst, dst, 56);
+        } else {
+            as.LI(temp, src_imm);
+            as.SLLI(temp, temp, 56);
+            as.RORI(dst, dst, 16);
+            (as.*func64)(dst, dst, temp);
+            as.RORI(dst, dst, 48);
+        }
+        break;
+    }
+    case 16: {
+        biscuit::GPR temp = rec.scratch();
+        as.LI(temp, src_imm);
+        as.SLLI(temp, temp, 48);
+        as.RORI(dst, dst, 16);
+        (as.*func64)(dst, dst, temp);
+        as.RORI(dst, dst, 48);
+        break;
+    }
+    case 32: {
+        (as.*func32_i)(dst, dst, src_imm);
+        rec.zext(dst, dst, X86_SIZE_DWORD);
+        break;
+    }
+    case 64: {
+        (as.*func64_i)(dst, dst, src_imm);
+        break;
+    }
+    }
+
+    rec.setGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, dst);
+}
+
 void SHIFT_noflags(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands,
                    void (Assembler::*func64)(biscuit::GPR, biscuit::GPR, biscuit::GPR),
                    void (Assembler::*func32)(biscuit::GPR, biscuit::GPR, biscuit::GPR)) {
@@ -2451,6 +2500,29 @@ FAST_HANDLE(TEST) {
 
 FAST_HANDLE(INC) {
     x86_size_e size = rec.getSize(&operands[0]);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_any_flag = needs_of || needs_pf || needs_sf || needs_zf || needs_af;
+    if (!needs_any_flag && g_config.noflag_opts && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        if (size == X86_SIZE_BYTE) {
+            // We can do 4 instructions rather than 5 that OP_noflags_destreg_srcimm does
+            biscuit::GPR temp1 = rec.scratch();
+            biscuit::GPR temp2 = rec.scratch();
+            biscuit::GPR temp3 = rec.scratch();
+            biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+            as.ADDI(temp1, dst, 1);
+            as.ANDI(temp2, temp1, 0xFF);
+            as.ANDI(temp3, dst, ~0xFF);
+            as.OR(dst, temp3, temp2);
+        } else {
+            OP_noflags_destreg_srcimm(rec, rip, as, instruction, operands, &Assembler::ADDI, &Assembler::ADDIW, &Assembler::ADD, 1);
+        }
+        return;
+    }
+
     biscuit::GPR dst;
     biscuit::GPR res = rec.scratch();
 
@@ -2513,6 +2585,29 @@ FAST_HANDLE(INC) {
 
 FAST_HANDLE(DEC) {
     x86_size_e size = rec.getSize(&operands[0]);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_any_flag = needs_of || needs_pf || needs_sf || needs_zf || needs_af;
+    if (!needs_any_flag && g_config.noflag_opts && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        if (size == X86_SIZE_BYTE) {
+            // We can do 4 instructions rather than 5 that OP_noflags_destreg_srcimm does
+            biscuit::GPR temp1 = rec.scratch();
+            biscuit::GPR temp2 = rec.scratch();
+            biscuit::GPR temp3 = rec.scratch();
+            biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+            as.ADDI(temp1, dst, -1);
+            as.ANDI(temp2, temp1, 0xFF);
+            as.ANDI(temp3, dst, ~0xFF);
+            as.OR(dst, temp3, temp2);
+        } else {
+            OP_noflags_destreg_srcimm(rec, rip, as, instruction, operands, &Assembler::ADDI, &Assembler::ADDIW, &Assembler::ADD, -1);
+        }
+        return;
+    }
+
     biscuit::GPR dst;
     biscuit::GPR res = rec.scratch();
 
