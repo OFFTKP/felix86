@@ -310,6 +310,7 @@ void Recompiler::clearCodeCache(ThreadState* state) {
         if (address != past_end) {
             // TODO: investigate
             // Unsure what causes this to happen, but it does. In that case, clear code cache and carry on
+            // Perhaps PR_MDWE_REFUSE_EXEC_GAIN
             WARN("Couldn't increment code cache because mmap returned %lx (errno: %s), clearing code cache", address, strerror(errno));
             auto guard = page_map_lock.lock();
             block_metadata.clear();
