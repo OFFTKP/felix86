@@ -2065,7 +2065,7 @@ void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
     }
     as.SLT(temp, result, lhs_e);
     as.SGTZ(of, rhs_e);
-    as.XOR(temp, temp, of);
+    as.XOR(of, temp, of);
     popScratch();
 }
 
@@ -2088,8 +2088,7 @@ void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
     }
     as.SLT(temp, result, lhs_e);
     as.SLTI(of, rhs_e, 0);
-    as.XOR(temp, temp, of);
-    as.SNEZ(of, temp);
+    as.XOR(of, temp, of);
     popScratch();
 }
 
