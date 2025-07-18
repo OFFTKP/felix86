@@ -2043,42 +2043,77 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
 
 // (res & (~d | s)) | (~d & s), xor top 2 bits
 void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
-    int size = getBitSize(size_e);
-    biscuit::GPR of = flag(X86_REF_OF);
-    biscuit::GPR temp = scratch();
-    as.NOT(temp, lhs);
-    as.OR(of, temp, rhs);
-    as.AND(of, of, result);
-    as.AND(temp, temp, rhs);
-    as.OR(of, of, temp);
-    as.SRLI(temp, of, size - 2);
-    as.SRLI(of, of, size - 1);
-    as.XOR(of, of, temp);
-    as.ANDI(of, of, 1);
-    popScratch();
+    if (!g_config.faster_overflow) { // TODO: remove the slow path once enough testing has been done
+        int size = getBitSize(size_e);
+        biscuit::GPR of = flag(X86_REF_OF);
+        biscuit::GPR temp = scratch();
+        as.NOT(temp, lhs);
+        as.OR(of, temp, rhs);
+        as.AND(of, of, result);
+        as.AND(temp, temp, rhs);
+        as.OR(of, of, temp);
+        as.SRLI(temp, of, size - 2);
+        as.SRLI(of, of, size - 1);
+        as.XOR(of, of, temp);
+        as.ANDI(of, of, 1);
+        popScratch();
+    } else {
+        biscuit::GPR of = flag(X86_REF_OF);
+        biscuit::GPR temp = scratch();
+        biscuit::GPR lhs_e, rhs_e;
+        if (size_e != X86_SIZE_QWORD) {
+            sext(of, rhs, size_e);
+            sext(temp, lhs, size_e);
+            sext(result, result, size_e);
+            lhs_e = temp;
+            rhs_e = of;
+        } else {
+            lhs_e = lhs;
+            rhs_e = rhs;
+        }
+        as.SLTI(of, rhs_e, 0);
+        as.SGT(temp, result, lhs_e);
+        as.XOR(temp, temp, of);
+        as.SNEZ(of, temp);
+        popScratch();
+    }
 }
 
 void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::GPR result, x86_size_e size_e) {
-    biscuit::GPR of = flag(X86_REF_OF);
-    biscuit::GPR temp = scratch();
-    biscuit::GPR lhs_e, rhs_e;
-    if (size_e != X86_SIZE_QWORD) {
-        sext(of, rhs, size_e);
-        sext(temp, lhs, size_e);
-        sext(result, result, size_e);
-        lhs_e = temp;
-        rhs_e = of;
+    if (!g_config.faster_overflow) { // TODO: remove the slow path once enough testing has been done
+        int size = getBitSize(size_e);
+        biscuit::GPR of = flag(X86_REF_OF);
+        biscuit::GPR temp = scratch();
+        as.OR(of, lhs, rhs);
+        as.NOT(temp, result);
+        as.AND(of, temp, of);
+        as.AND(temp, lhs, rhs);
+        as.OR(of, of, temp);
+        as.SRLI(temp, of, size - 2);
+        as.SRLI(of, of, size - 1);
+        as.XOR(of, of, temp);
+        as.ANDI(of, of, 1);
+        popScratch();
     } else {
-        lhs_e = lhs;
-        rhs_e = rhs;
+        biscuit::GPR of = flag(X86_REF_OF);
+        biscuit::GPR temp = scratch();
+        biscuit::GPR lhs_e, rhs_e;
+        if (size_e != X86_SIZE_QWORD) {
+            sext(of, rhs, size_e);
+            sext(temp, lhs, size_e);
+            sext(result, result, size_e);
+            lhs_e = temp;
+            rhs_e = of;
+        } else {
+            lhs_e = lhs;
+            rhs_e = rhs;
+        }
+        as.SLTI(of, rhs_e, 0);
+        as.SLT(temp, result, lhs_e);
+        as.XOR(temp, temp, of);
+        as.SNEZ(of, temp);
+        popScratch();
     }
-
-    as.SLTI(of, rhs_e, 0);
-    as.SLT(temp, result, lhs_e);
-    as.XOR(temp, temp, of);
-    as.SNEZ(of, temp);
-
-    popScratch();
 }
 
 void Recompiler::updateAuxiliaryAdd(biscuit::GPR lhs, biscuit::GPR result) {
