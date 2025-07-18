@@ -2108,8 +2108,8 @@ void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
             lhs_e = lhs;
             rhs_e = rhs;
         }
-        as.SLTI(of, rhs_e, 0);
         as.SLT(temp, result, lhs_e);
+        as.SLTI(of, rhs_e, 0);
         as.XOR(temp, temp, of);
         as.SNEZ(of, temp);
         popScratch();
