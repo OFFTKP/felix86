@@ -771,7 +771,7 @@ FAST_HANDLE(ADD) {
     }
 
     if (needs_of) {
-        rec.updateOverflowAdd(dst, src, result, size);
+        rec.updateOverflowAdd(dst, src, result, size); // must be below CF calculation because it sign-extends result
     }
 
     if (writeback) {
@@ -1015,12 +1015,12 @@ FAST_HANDLE(ADC) {
         rec.updateAuxiliaryAdc(dst, result, cf, result_2);
     }
 
-    if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.updateOverflowAdd(dst, src, result_2, size);
-    }
-
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         rec.updateCarryAdc(dst, result, result_2, size);
+    }
+
+    if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+        rec.updateOverflowAdd(dst, src, result_2, size); // must be below CF calculation because it sign-extends result
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
@@ -8042,7 +8042,7 @@ FAST_HANDLE(XADD_lock_32) {
         }
 
         if (update_of) {
-            rec.updateOverflowAdd(dst, src, result, size);
+            rec.updateOverflowAdd(dst, src, result, size); // must be below CF calculation because it sign-extends result
         }
     }
 
@@ -8091,7 +8091,7 @@ FAST_HANDLE(XADD_lock_64) {
         }
 
         if (update_of) {
-            rec.updateOverflowAdd(dst, src, result, size);
+            rec.updateOverflowAdd(dst, src, result, size); // must be below CF calculation because it sign-extends result
         }
     }
 
@@ -8151,7 +8151,7 @@ FAST_HANDLE(XADD) {
     }
 
     if (update_of) {
-        rec.updateOverflowAdd(dst, src, result, size);
+        rec.updateOverflowAdd(dst, src, result, size); // must be below CF calculation because it sign-extends result
     }
 
     // Set operands[1] first, as dst could be an allocated register, if we did it the other way
