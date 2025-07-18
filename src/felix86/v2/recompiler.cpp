@@ -2045,6 +2045,9 @@ void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
     biscuit::GPR of = flag(X86_REF_OF);
     biscuit::GPR temp = scratch();
     biscuit::GPR lhs_e, rhs_e;
+    if (size_e == X86_SIZE_BYTE_HIGH) {
+        size_e = X86_SIZE_BYTE;
+    }
     if (size_e != X86_SIZE_QWORD) {
         sext(of, rhs, size_e);
         sext(temp, lhs, size_e);
@@ -2066,6 +2069,9 @@ void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
     biscuit::GPR of = flag(X86_REF_OF);
     biscuit::GPR temp = scratch();
     biscuit::GPR lhs_e, rhs_e;
+    if (size_e == X86_SIZE_BYTE_HIGH) {
+        size_e = X86_SIZE_BYTE;
+    }
     if (size_e != X86_SIZE_QWORD) {
         sext(of, rhs, size_e);
         sext(temp, lhs, size_e);
