@@ -2049,19 +2049,23 @@ void Recompiler::updateOverflowSub(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
         size_e = X86_SIZE_BYTE;
     }
     if (size_e != X86_SIZE_QWORD) {
-        sext(of, rhs, size_e);
-        sext(temp, lhs, size_e);
-        sext(result, result, size_e);
         lhs_e = temp;
         rhs_e = of;
+        sext(of, rhs, size_e);
+        if (lhs != x0) {
+            sext(temp, lhs, size_e);
+        } else {
+            lhs_e = x0;
+        }
+        sext(result, result, size_e);
+
     } else {
         lhs_e = lhs;
         rhs_e = rhs;
     }
-    as.SGT(temp, result, lhs_e);
-    as.SLTI(of, rhs_e, 0);
+    as.SLT(temp, result, lhs_e);
+    as.SGTZ(of, rhs_e);
     as.XOR(temp, temp, of);
-    as.SNEZ(of, temp);
     popScratch();
 }
 
