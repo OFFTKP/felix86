@@ -2254,8 +2254,12 @@ void Recompiler::updateParity(biscuit::GPR result) {
 
 void Recompiler::updateZero(biscuit::GPR result, x86_size_e size) {
     biscuit::GPR zf = flag(X86_REF_ZF);
-    zext(zf, result, size);
-    as.SEQZ(zf, zf);
+    if (size != X86_SIZE_QWORD) {
+        zext(zf, result, size);
+        as.SEQZ(zf, zf);
+    } else {
+        as.SEQZ(zf, result);
+    }
 }
 
 void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
