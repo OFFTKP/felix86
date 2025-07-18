@@ -802,27 +802,38 @@
         "disassembly": "cvtss2si rax, dword ptr [rdi]"
     },
     "f3480f2cc3": {
-        "instruction_count": 3,
+        "instruction_count": 9,
         "expected_asm": [
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v5",
-            "FCVT.L.S        t0, f28, rtz"
+            "FCVT.L.S        t0, f28, rtz",
+            "FCLASS.S        ra, f28",
+            "ANDI            ra, ra, 0x381(897)",
+            "BEQ             ra, zero, 0x10(16)",
+            "ADDIW           t0, zero, 0x1(1)",
+            "SLLI            t0, t0, 0x1f(31)",
+            "SLLI            t0, t0, 0x20(32)"
         ],
         "disassembly": "cvttss2si rax, xmm3"
     },
     "f30f2cc2": {
-        "instruction_count": 5,
+        "instruction_count": 10,
         "expected_asm": [
             "ADD.UW          ra, t0, zero",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v4",
             "FCVT.W.S        ra, f28, rtz",
+            "FCLASS.S        t1, f28",
+            "ANDI            t1, t1, 0x381(897)",
+            "BEQ             t1, zero, 0xc(12)",
+            "ADDIW           ra, zero, 0x1(1)",
+            "SLLI            ra, ra, 0x1f(31)",
             "ADD.UW          t0, ra, zero"
         ],
         "disassembly": "cvttss2si eax, xmm2"
     },
     "f30f2c07": {
-        "instruction_count": 7,
+        "instruction_count": 12,
         "expected_asm": [
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
             "VLE8.V          v26, a0, none, 1",
@@ -830,18 +841,29 @@
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v26",
             "FCVT.W.S        ra, f28, rtz",
+            "FCLASS.S        t1, f28",
+            "ANDI            t1, t1, 0x381(897)",
+            "BEQ             t1, zero, 0xc(12)",
+            "ADDIW           ra, zero, 0x1(1)",
+            "SLLI            ra, ra, 0x1f(31)",
             "ADD.UW          t0, ra, zero"
         ],
         "disassembly": "cvttss2si eax, [rdi]"
     },
     "f3480f2c07": {
-        "instruction_count": 5,
+        "instruction_count": 11,
         "expected_asm": [
             "VSETIVLI        zero, 4, e8, m1, tu, mu",
             "VLE8.V          v26, a0, none, 1",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v26",
-            "FCVT.L.S        t0, f28, rtz"
+            "FCVT.L.S        t0, f28, rtz",
+            "FCLASS.S        ra, f28",
+            "ANDI            ra, ra, 0x381(897)",
+            "BEQ             ra, zero, 0x10(16)",
+            "ADDIW           t0, zero, 0x1(1)",
+            "SLLI            t0, t0, 0x1f(31)",
+            "SLLI            t0, t0, 0x20(32)"
         ],
         "disassembly": "cvttss2si rax, dword ptr [rdi]"
     },
