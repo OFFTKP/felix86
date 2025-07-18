@@ -63,7 +63,7 @@ void SetCmpFlags(u64 rip, Recompiler& rec, Assembler& as, biscuit::GPR dst, bisc
     }
 
     if (always_emit || rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.updateOverflowSub(dst, src, result, size); // must be below CF calculation because it sign-extends result
+        rec.updateOverflowSub(dst, src, result, size);
     }
 }
 
@@ -771,7 +771,7 @@ FAST_HANDLE(ADD) {
     }
 
     if (needs_of) {
-        rec.updateOverflowAdd(dst, src, result, size); // must be below CF calculation because it sign-extends result
+        rec.updateOverflowAdd(dst, src, result, size);
     }
 
     if (writeback) {
@@ -982,7 +982,7 @@ FAST_HANDLE(SBB) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.updateOverflowSub(dst, src, result_2, size); // must be below CF calculation because it sign-extends result
+        rec.updateOverflowSub(dst, src, result_2, size);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
@@ -1020,7 +1020,7 @@ FAST_HANDLE(ADC) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.updateOverflowAdd(dst, src, result_2, size); // must be below CF calculation because it sign-extends result
+        rec.updateOverflowAdd(dst, src, result_2, size);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
@@ -4923,7 +4923,7 @@ FAST_HANDLE(NEG) {
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
-        rec.updateOverflowSub(x0, dst, result, size); // must be below CF calculation because it sign-extends result
+        rec.updateOverflowSub(x0, dst, result, size);
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
@@ -8042,7 +8042,7 @@ FAST_HANDLE(XADD_lock_32) {
         }
 
         if (update_of) {
-            rec.updateOverflowAdd(dst, src, result, size); // must be below CF calculation because it sign-extends result
+            rec.updateOverflowAdd(dst, src, result, size);
         }
     }
 
@@ -8091,7 +8091,7 @@ FAST_HANDLE(XADD_lock_64) {
         }
 
         if (update_of) {
-            rec.updateOverflowAdd(dst, src, result, size); // must be below CF calculation because it sign-extends result
+            rec.updateOverflowAdd(dst, src, result, size);
         }
     }
 
@@ -8151,7 +8151,7 @@ FAST_HANDLE(XADD) {
     }
 
     if (update_of) {
-        rec.updateOverflowAdd(dst, src, result, size); // must be below CF calculation because it sign-extends result
+        rec.updateOverflowAdd(dst, src, result, size);
     }
 
     // Set operands[1] first, as dst could be an allocated register, if we did it the other way
