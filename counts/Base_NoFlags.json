@@ -5804,78 +5804,68 @@
         "disassembly": "mul [rdi]"
     },
     "f6da": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
-            "ANDI            t1, a2, 0xff(255)",
-            "SEXT.B          ra, t1",
-            "SUB             ra, zero, ra",
-            "ANDI            t3, ra, 0xff(255)",
+            "SUBW            ra, zero, a2",
+            "ANDI            t1, ra, 0xff(255)",
             "ANDI            a2, a2, 0xffffff00(-256)",
-            "OR              a2, a2, t3"
+            "OR              a2, a2, t1"
         ],
         "disassembly": "neg dl"
     },
     "f6de": {
-        "instruction_count": 9,
+        "instruction_count": 7,
         "expected_asm": [
-            "SRLI            t1, a2, 0x8(8)",
-            "ANDI            t1, t1, 0xff(255)",
-            "SEXT.B          ra, t1",
-            "SUB             ra, zero, ra",
-            "ANDI            t3, ra, 0xff(255)",
+            "SRLI            ra, a2, 0x8(8)",
+            "SUBW            ra, zero, ra",
+            "ANDI            t1, ra, 0xff(255)",
             "RORI            a2, a2, 0x8(8)",
             "ANDI            a2, a2, 0xffffff00(-256)",
-            "OR              a2, a2, t3",
+            "OR              a2, a2, t1",
             "RORI            a2, a2, 0x38(56)"
         ],
         "disassembly": "neg dh"
     },
     "66f7da": {
-        "instruction_count": 7,
+        "instruction_count": 5,
         "expected_asm": [
-            "ZEXT.H          t1, a2",
-            "SEXT.H          ra, t1",
-            "SUB             ra, zero, ra",
-            "ZEXT.H          t3, ra",
+            "SUBW            ra, zero, a2",
+            "ZEXT.H          t1, ra",
             "SRLI            a2, a2, 0x10(16)",
             "SLLI            a2, a2, 0x10(16)",
-            "OR              a2, a2, t3"
+            "OR              a2, a2, t1"
         ],
         "disassembly": "neg dx"
     },
     "f7da": {
-        "instruction_count": 3,
+        "instruction_count": 2,
         "expected_asm": [
-            "ADD.UW          t1, a2, zero",
-            "SUBW            ra, zero, t1",
+            "SUBW            ra, zero, a2",
             "ADD.UW          a2, ra, zero"
         ],
         "disassembly": "neg edx"
     },
     "48f7da": {
-        "instruction_count": 2,
+        "instruction_count": 1,
         "expected_asm": [
-            "SUB             ra, zero, a2",
-            "ADDI            a2, ra, 0x0(0)"
+            "SUB             a2, zero, a2"
         ],
         "disassembly": "neg rdx"
     },
     "f61f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "LBU             t1, a0, 0x0(0)",
-            "SEXT.B          ra, t1",
-            "SUB             ra, zero, ra",
+            "SUBW            ra, zero, t1",
             "SB              ra, a0, 0x0(0)"
         ],
         "disassembly": "neg [rdi]"
     },
     "66f71f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "LHU             t1, a0, 0x0(0)",
-            "SEXT.H          ra, t1",
-            "SUB             ra, zero, ra",
+            "SUBW            ra, zero, t1",
             "SH              ra, a0, 0x0(0)"
         ],
         "disassembly": "neg [rdi]"

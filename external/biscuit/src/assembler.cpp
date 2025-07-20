@@ -547,6 +547,10 @@ void Assembler::LWU(GPR rd, int32_t imm, GPR rs) noexcept {
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs, 0b110, rd, 0b0000011);
 }
 
+void Assembler::NEGW(GPR rd, GPR rs) noexcept {
+    SUBW(rd, x0, rs);
+}
+
 void Assembler::SD(GPR rs2, int32_t imm, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsRV32OrRV64(m_features));
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));

@@ -298,6 +298,9 @@ public:
         LD(rd, lo12, rd);
     }
     void LWU(GPR rd, int32_t imm, GPR rs) noexcept;
+
+    void NEGW(GPR rd, GPR rs) noexcept;
+
     void SD(GPR rs2, int32_t imm, GPR rs1) noexcept;
 
     void SLLIW(GPR rd, GPR rs, uint32_t shift) noexcept;

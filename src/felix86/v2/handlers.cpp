@@ -4988,20 +4988,57 @@ FAST_HANDLE(NOT) {
 
 FAST_HANDLE(NEG) {
     x86_size_e size = rec.getSize(&operands[0]);
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR dst = rec.getGPR(&operands[0]);
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
     if (needs_atomic) {
         WARN_ONCE("Atomic NEG encountered");
     }
+
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    bool needs_af = rec.shouldEmitFlag(rip, X86_REF_AF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_any_flag = needs_zf || needs_cf || needs_of || needs_af || needs_pf || needs_sf;
+    if (!needs_any_flag && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && !needs_atomic && g_config.noflag_opts) {
+        biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+        biscuit::GPR temp = rec.scratch();
+        switch (size) {
+        case X86_SIZE_BYTE:
+        case X86_SIZE_WORD:
+        case X86_SIZE_DWORD: {
+            as.NEGW(temp, dst);
+            rec.setGPR(&operands[0], temp);
+            break;
+        }
+        case X86_SIZE_BYTE_HIGH: {
+            as.SRLI(temp, dst, 8);
+            as.NEGW(temp, temp);
+            rec.setGPR(&operands[0], temp);
+            break;
+        }
+        case X86_SIZE_QWORD: {
+            as.NEG(dst, dst);
+            rec.setGPR(&operands[0], dst);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+        return;
+    }
+
+    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.getGPR(&operands[0]);
+
     if (size == X86_SIZE_BYTE || size == X86_SIZE_BYTE_HIGH) {
-        rec.sextb(result, dst);
-        as.NEG(result, result);
+        as.NEGW(result, dst);
     } else if (size == X86_SIZE_WORD) {
-        rec.sexth(result, dst);
-        as.NEG(result, result);
+        as.NEGW(result, dst);
     } else if (size == X86_SIZE_DWORD) {
-        as.SUBW(result, x0, dst);
+        as.NEGW(result, dst);
     } else if (size == X86_SIZE_QWORD) {
         as.NEG(result, dst);
     } else {
@@ -6834,18 +6871,8 @@ void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     // - FLT operates on CF, it will be false if it's greater than
     // - FEQ operates on ZF, it will be false if it's greater than
     // If it's lhs == rhs, ZF gets set to 1 and CF remains 0
-    as.LI(cf, 0);
-    as.LI(zf, 0);
-
-    biscuit::Vec vlhs = rec.getVec(&operands[0]);
-    biscuit::Vec vrhs = rec.getVec(&operands[1]);
-    biscuit::FPR lhs = rec.scratchFPR();
-    biscuit::FPR rhs = rec.scratchFPR();
-
-    rec.setVectorState(sew, 1);
-    as.VFMV_FS(lhs, vlhs);
-    as.VFMV_FS(rhs, vrhs);
-
+    biscuit::FPR lhs = rec.getElementFPR(&operands[0], sew == SEW::E32 ? X86_SIZE_DWORD : X86_SIZE_QWORD, 0);
+    biscuit::FPR rhs = rec.getElementFPR(&operands[1], sew == SEW::E32 ? X86_SIZE_DWORD : X86_SIZE_QWORD, 0);
     biscuit::GPR nan_bit = rec.scratch();
     biscuit::GPR temp = rec.scratch();
 
@@ -6869,7 +6896,9 @@ void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     as.AND(nan_bit, nan_bit, temp);
     as.XORI(nan_bit, nan_bit, 1);
 
-    as.SB(nan_bit, offsetof(ThreadState, pf), rec.threadStatePointer());
+    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+        as.SB(nan_bit, offsetof(ThreadState, pf), rec.threadStatePointer());
+    }
 
     // If the NaN bit is set we also overwrite the value of cf and zf with 1
     as.OR(cf, cf, nan_bit);
