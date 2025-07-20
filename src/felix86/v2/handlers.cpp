@@ -6871,8 +6871,20 @@ void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     // - FLT operates on CF, it will be false if it's greater than
     // - FEQ operates on ZF, it will be false if it's greater than
     // If it's lhs == rhs, ZF gets set to 1 and CF remains 0
-    biscuit::FPR lhs = rec.getElementFPR(&operands[0], sew == SEW::E32 ? X86_SIZE_DWORD : X86_SIZE_QWORD, 0);
-    biscuit::FPR rhs = rec.getElementFPR(&operands[1], sew == SEW::E32 ? X86_SIZE_DWORD : X86_SIZE_QWORD, 0);
+    biscuit::Vec vlhs = rec.getVec(&operands[0]);
+    biscuit::FPR lhs = rec.scratchFPR();
+    biscuit::FPR rhs;
+
+    rec.setVectorState(sew, 1);
+    as.VFMV_FS(lhs, vlhs);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        rhs = rec.getElementFPR(&operands[1], sew == SEW::E32 ? X86_SIZE_DWORD : X86_SIZE_QWORD, 0);
+    } else {
+        biscuit::Vec vrhs = rec.getVec(&operands[1]);
+        rhs = rec.scratchFPR();
+        as.VFMV_FS(rhs, vrhs);
+    }
+
     biscuit::GPR nan_bit = rec.scratch();
     biscuit::GPR temp = rec.scratch();
 
@@ -6896,7 +6908,9 @@ void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     as.AND(nan_bit, nan_bit, temp);
     as.XORI(nan_bit, nan_bit, 1);
 
-    as.SB(nan_bit, offsetof(ThreadState, pf), rec.threadStatePointer());
+    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
+        as.SB(nan_bit, offsetof(ThreadState, pf), rec.threadStatePointer());
+    }
 
     // If the NaN bit is set we also overwrite the value of cf and zf with 1
     as.OR(cf, cf, nan_bit);
