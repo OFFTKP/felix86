@@ -6896,9 +6896,7 @@ void COMIS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     as.AND(nan_bit, nan_bit, temp);
     as.XORI(nan_bit, nan_bit, 1);
 
-    if (rec.shouldEmitFlag(rip, X86_REF_PF)) {
-        as.SB(nan_bit, offsetof(ThreadState, pf), rec.threadStatePointer());
-    }
+    as.SB(nan_bit, offsetof(ThreadState, pf), rec.threadStatePointer());
 
     // If the NaN bit is set we also overwrite the value of cf and zf with 1
     as.OR(cf, cf, nan_bit);
