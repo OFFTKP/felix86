@@ -605,10 +605,11 @@
         "disassembly": "andnps xmm1, [rdi]"
     },
     "0f2fdc": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLW             f28, s11, 0xf8(248)",
-            "FLW             f29, s11, 0x108(264)",
+            "VSETIVLI        zero, 1, e32, m1, tu, mu",
+            "VFMV.F.S        f28, v5",
+            "VFMV.F.S        f29, v6",
             "FEQ.S           s7, f28, f29",
             "FEQ.S           t1, f28, f28",
             "FEQ.S           ra, f29, f29",
@@ -621,10 +622,11 @@
         "disassembly": "comiss xmm3, xmm4"
     },
     "0f2fd2": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLW             f28, s11, 0xe8(232)",
-            "FLW             f29, s11, 0xe8(232)",
+            "VSETIVLI        zero, 1, e32, m1, tu, mu",
+            "VFMV.F.S        f28, v4",
+            "VFMV.F.S        f29, v4",
             "FEQ.S           s7, f28, f29",
             "FEQ.S           t1, f28, f28",
             "FEQ.S           ra, f29, f29",
@@ -637,9 +639,10 @@
         "disassembly": "comiss xmm2, xmm2"
     },
     "0f2f0f": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLW             f28, s11, 0xd8(216)",
+            "VSETIVLI        zero, 1, e32, m1, tu, mu",
+            "VFMV.F.S        f28, v3",
             "FLW             f29, a0, 0x0(0)",
             "FEQ.S           s7, f28, f29",
             "FEQ.S           t3, f28, f28",
@@ -653,10 +656,11 @@
         "disassembly": "comiss xmm1, [rdi]"
     },
     "0f2edc": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLW             f28, s11, 0xf8(248)",
-            "FLW             f29, s11, 0x108(264)",
+            "VSETIVLI        zero, 1, e32, m1, tu, mu",
+            "VFMV.F.S        f28, v5",
+            "VFMV.F.S        f29, v6",
             "FEQ.S           s7, f28, f29",
             "FEQ.S           t1, f28, f28",
             "FEQ.S           ra, f29, f29",
@@ -669,10 +673,11 @@
         "disassembly": "ucomiss xmm3, xmm4"
     },
     "0f2ed2": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLW             f28, s11, 0xe8(232)",
-            "FLW             f29, s11, 0xe8(232)",
+            "VSETIVLI        zero, 1, e32, m1, tu, mu",
+            "VFMV.F.S        f28, v4",
+            "VFMV.F.S        f29, v4",
             "FEQ.S           s7, f28, f29",
             "FEQ.S           t1, f28, f28",
             "FEQ.S           ra, f29, f29",
@@ -685,9 +690,10 @@
         "disassembly": "ucomiss xmm2, xmm2"
     },
     "0f2e0f": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLW             f28, s11, 0xd8(216)",
+            "VSETIVLI        zero, 1, e32, m1, tu, mu",
+            "VFMV.F.S        f28, v3",
             "FLW             f29, a0, 0x0(0)",
             "FEQ.S           s7, f28, f29",
             "FEQ.S           t3, f28, f28",

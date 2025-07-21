@@ -471,10 +471,11 @@
         "disassembly": "andnpd xmm1, [rdi]"
     },
     "660f2fdc": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLD             f28, s11, 0xf8(248)",
-            "FLD             f29, s11, 0x108(264)",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VFMV.F.S        f28, v5",
+            "VFMV.F.S        f29, v6",
             "FEQ.D           s7, f28, f29",
             "FEQ.D           t1, f28, f28",
             "FEQ.D           ra, f29, f29",
@@ -487,10 +488,11 @@
         "disassembly": "comisd xmm3, xmm4"
     },
     "660f2fd2": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLD             f28, s11, 0xe8(232)",
-            "FLD             f29, s11, 0xe8(232)",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VFMV.F.S        f28, v4",
+            "VFMV.F.S        f29, v4",
             "FEQ.D           s7, f28, f29",
             "FEQ.D           t1, f28, f28",
             "FEQ.D           ra, f29, f29",
@@ -503,9 +505,10 @@
         "disassembly": "comisd xmm2, xmm2"
     },
     "660f2f0f": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLD             f28, s11, 0xd8(216)",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VFMV.F.S        f28, v3",
             "FLD             f29, a0, 0x0(0)",
             "FEQ.D           s7, f28, f29",
             "FEQ.D           t3, f28, f28",
@@ -519,10 +522,11 @@
         "disassembly": "comisd xmm1, [rdi]"
     },
     "660f2edc": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLD             f28, s11, 0xf8(248)",
-            "FLD             f29, s11, 0x108(264)",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VFMV.F.S        f28, v5",
+            "VFMV.F.S        f29, v6",
             "FEQ.D           s7, f28, f29",
             "FEQ.D           t1, f28, f28",
             "FEQ.D           ra, f29, f29",
@@ -535,10 +539,11 @@
         "disassembly": "ucomisd xmm3, xmm4"
     },
     "660f2ed2": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLD             f28, s11, 0xe8(232)",
-            "FLD             f29, s11, 0xe8(232)",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VFMV.F.S        f28, v4",
+            "VFMV.F.S        f29, v4",
             "FEQ.D           s7, f28, f29",
             "FEQ.D           t1, f28, f28",
             "FEQ.D           ra, f29, f29",
@@ -551,9 +556,10 @@
         "disassembly": "ucomisd xmm2, xmm2"
     },
     "660f2e0f": {
-        "instruction_count": 10,
+        "instruction_count": 11,
         "expected_asm": [
-            "FLD             f28, s11, 0xd8(216)",
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VFMV.F.S        f28, v3",
             "FLD             f29, a0, 0x0(0)",
             "FEQ.D           s7, f28, f29",
             "FEQ.D           t3, f28, f28",
@@ -1067,37 +1073,28 @@
         "disassembly": "unpckhpd xmm3, [rdi]"
     },
     "660f14dc": {
-        "instruction_count": 5,
+        "instruction_count": 2,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEUP.VI     v26, v6, 0x1(1), none",
-            "VMV.V.I         v0, 0x2(2)",
-            "VMERGE.VVM      v27, v5, v26",
-            "VMV.V.V         v5, v27"
+            "VSLIDEUP.VI     v5, v6, 0x1(1), none"
         ],
         "disassembly": "unpcklpd xmm3, xmm4"
     },
     "660f14d2": {
-        "instruction_count": 5,
+        "instruction_count": 2,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEUP.VI     v26, v4, 0x1(1), none",
-            "VMV.V.I         v0, 0x2(2)",
-            "VMERGE.VVM      v27, v4, v26",
-            "VMV.V.V         v4, v27"
+            "VSLIDEUP.VI     v4, v4, 0x1(1), none"
         ],
         "disassembly": "unpcklpd xmm2, xmm2"
     },
     "660f141f": {
-        "instruction_count": 7,
+        "instruction_count": 4,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v28, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEUP.VI     v26, v28, 0x1(1), none",
             "VMV.V.I         v0, 0x2(2)",
-            "VMERGE.VVM      v27, v5, v26",
-            "VMV.V.V         v5, v27"
+            "VMV.V.X         v26, zero",
+            "VLUXEI64.V      v5, v26, a0, v0.t, 1"
         ],
         "disassembly": "unpcklpd xmm3, [rdi]"
     },
