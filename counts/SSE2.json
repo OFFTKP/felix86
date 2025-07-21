@@ -1060,15 +1060,12 @@
         "disassembly": "unpckhpd xmm2, xmm2"
     },
     "660f151f": {
-        "instruction_count": 7,
+        "instruction_count": 4,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v28, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEDOWN.VI   v26, v5, 0x1(1), none",
             "VMV.V.I         v0, 0x2(2)",
-            "VMERGE.VVM      v27, v26, v28",
-            "VMV.V.V         v5, v27"
+            "VSLIDEDOWN.VI   v5, v5, 0x1(1), none",
+            "VLE64.V         v5, a0, v0.t, 1"
         ],
         "disassembly": "unpckhpd xmm3, [rdi]"
     },
@@ -1081,10 +1078,11 @@
         "disassembly": "unpcklpd xmm3, xmm4"
     },
     "660f14d2": {
-        "instruction_count": 2,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEUP.VI     v4, v4, 0x1(1), none"
+            "VMV.V.V         v26, v4",
+            "VSLIDEUP.VI     v4, v26, 0x1(1), none"
         ],
         "disassembly": "unpcklpd xmm2, xmm2"
     },
@@ -1093,7 +1091,7 @@
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.I         v0, 0x2(2)",
-            "VMV.V.X         v26, zero",
+            "VXOR.VV         v26, v26, v26, none",
             "VLUXEI64.V      v5, v26, a0, v0.t, 1"
         ],
         "disassembly": "unpcklpd xmm3, [rdi]"
