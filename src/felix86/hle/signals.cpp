@@ -623,6 +623,10 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     ASSERT(sig > 0);
 
     SIGLOG("------- Guest signal %s (%d) %s TID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", gettid());
+    if (sig == SIGBUS) {
+        WARN("Sleeping %d %lx", gettid(), pc);
+        sleep(50);
+    }
 
     ASSERT_MSG(!g_mode32, "Got signal %d", sig);
 
