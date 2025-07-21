@@ -5806,7 +5806,10 @@ FAST_HANDLE(SHUFPS) {
         u32 imm2 = el3 << 8 | el2; // use indexed load with 8-bit index
         biscuit::GPR address = rec.lea(&operands[1], false);
         biscuit::Vec index = rec.scratchVec();
-        rec.vsplat(index, imm2);
+        biscuit::GPR val = rec.scratch();
+        as.VXOR(index, index, index);
+        as.LI(val, imm2);
+        as.VMV_SX(index, val);
         as.VLUXEI8(result2, address, index);
     } else {
         biscuit::Vec src = rec.getVec(&operands[1]);
