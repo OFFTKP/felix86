@@ -4256,18 +4256,16 @@ FAST_HANDLE(PMULLD) {
 }
 
 FAST_HANDLE(PMULUDQ) {
-    biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec result_high = rec.scratchVec();
-    ASSERT(result_high.Index() == result.Index() + 1);
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec dst_masked = rec.scratchVec();
+    biscuit::Vec src_masked = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
 
-    rec.setVectorState(SEW::E32, 16);
-    // Will also modify result_high
-    as.VMV(v0, 0b101);
-    as.VWMULU(result, dst, src, VecMask::Yes);
-    // Slide up the high qword by sliding two dwords so as to not vsetivli
-    as.VSLIDEUP(result, result_high, 2);
+    rec.setVectorState(SEW::E64, 2);
+    as.VZEXTVF2(dst_masked, dst);
+    as.VZEXTVF2(src_masked, src);
+    as.VMUL(result, dst_masked, src_masked);
 
     rec.setVec(&operands[0], result);
 }
