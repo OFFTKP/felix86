@@ -4262,7 +4262,7 @@ FAST_HANDLE(PMULUDQ) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 8);
+    rec.setVectorState(SEW::E32, 16);
     // Will also modify result_high
     as.VWMULU(result, dst, src);
     // Slide up the high qword by sliding two dwords so as to not vsetivli
