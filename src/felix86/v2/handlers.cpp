@@ -4265,8 +4265,8 @@ FAST_HANDLE(PMULUDQ) {
     rec.setVectorState(SEW::E32, 4);
     // Will also modify result_high
     as.VWMULU(result, dst, src);
-    rec.setVectorState(SEW::E64, 2);
-    as.VSLIDEUP(result, result_high, 1);
+    // Slide up the high qword by sliding two dwords so as to not vsetivli
+    as.VSLIDEUP(result, result_high, 2);
 
     rec.setVec(&operands[0], result);
 }
