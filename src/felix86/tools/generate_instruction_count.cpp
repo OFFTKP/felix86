@@ -896,6 +896,8 @@ int main() {
     GEN(movmskpd(eax, xmm2));
     GEN(movmskpd(rax, xmm2));
 
+    GEN_SSE(pmuludq);
+
     std::ofstream sse2("counts/SSE2.json");
     sse2 << json.dump(4);
     json.clear();
@@ -1281,6 +1283,45 @@ int main() {
         x.shufps(xmm10, xmm10, 0xe7);
         x.movss(dword[r11 - 0x64], xmm10);
         x.hlt();
+    });
+
+    gen_many(rec, "XXHash", json, [](Xbyak::CodeGenerator& x) {
+        x.prefetcht0(ptr[r9 + r10 * 8 + 0x140]);
+        x.movdqu(xmm11, ptr[r9 + r10 * 8]);
+        x.movdqu(xmm12, ptr[r9 + r10 * 8 + 0x10]);
+        x.movdqu(xmm13, ptr[r9 + r10 * 8 + 0x20]);
+        x.movdqu(xmm9, ptr[r9 + r10 * 8 + 0x30]);
+        x.movdqu(xmm14, ptr[r10 + r8 * 1]);
+        x.movdqu(xmm15, ptr[r10 + r8 * 1 + 0x10]);
+        x.movdqu(xmm4, ptr[r10 + r8 * 1 + 0x20]);
+        x.movdqu(xmm10, ptr[r10 + r8 * 1 + 0x30]);
+        x.pxor(xmm14, xmm11);
+        x.pshufd(xmm6, xmm14, 0xF5);
+        x.pmuludq(xmm6, xmm14);
+        x.pshufd(xmm11, xmm11, 0x4E);
+        x.paddq(xmm3, xmm11);
+        x.paddq(xmm3, xmm6);
+        x.pxor(xmm15, xmm12);
+        x.pshufd(xmm6, xmm15, 0xF5);
+        x.pmuludq(xmm6, xmm15);
+        x.pshufd(xmm11, xmm12, 0x4E);
+        x.paddq(xmm2, xmm11);
+        x.paddq(xmm2, xmm6);
+        x.pxor(xmm4, xmm13);
+        x.pshufd(xmm6, xmm4, 0xF5);
+        x.pmuludq(xmm6, xmm4);
+        x.pshufd(xmm4, xmm13, 0x4E);
+        x.paddq(xmm1, xmm4);
+        x.paddq(xmm1, xmm6);
+        x.pxor(xmm10, xmm9);
+        x.pshufd(xmm4, xmm10, 0xF5);
+        x.pmuludq(xmm4, xmm10);
+        x.pshufd(xmm6, xmm9, 0x4E);
+        x.paddq(xmm0, xmm6);
+        x.paddq(xmm0, xmm4);
+        x.add(r10, 0x08);
+        x.cmp(r10, 0x80);
+        x.jmp(rax);
     });
 
     gen_many(rec, "dotnet rotate", json, [](Xbyak::CodeGenerator& x) { std::memcpy((u8*)x.getCurr(), dotnet_block, sizeof(dotnet_block)); });
