@@ -4261,10 +4261,15 @@ FAST_HANDLE(PMULUDQ) {
     ASSERT(result_high.Index() == result.Index() + 1);
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec even1 = rec.scratchVec();
+    rec.scratchVec();
+    biscuit::Vec even2 = rec.scratchVec();
 
     rec.setVectorState(SEW::E32, 4);
+    as.VMV(even1, dst);
+    as.VMV(even2, src);
     // Will also modify result_high
-    as.VWMULU(result, dst, src);
+    as.VWMULU(result, even1, even2);
     // Slide up the high qword by sliding two dwords so as to not vsetivli
     as.VSLIDEUP(result, result_high, 2);
 
