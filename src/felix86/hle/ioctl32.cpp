@@ -1,17 +1,18 @@
-#include <asm/ioctl.h>
-#include <sys/ioctl.h>
 #include <filesystem>
-#include <fmt/format.h>
 #include <unordered_map>
+#include <asm/ioctl.h>
+#include <fmt/format.h>
+#include <sys/ioctl.h>
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/hle/ioctl32.hpp"
 
+#include "felix86/hle/ioctl/amdgpu.hpp"
 #include "felix86/hle/ioctl/drm.hpp"
 #include "felix86/hle/ioctl/fat.hpp"
 #include "felix86/hle/ioctl/fs.hpp"
-#include "felix86/hle/ioctl/tty.hpp"
 #include "felix86/hle/ioctl/radeon.hpp"
+#include "felix86/hle/ioctl/tty.hpp"
 
 int ioctl32_default(int fd, u32 cmd, u32 args) {
     return ::ioctl(fd, cmd, (u64)args);
@@ -21,7 +22,7 @@ int ioctl32_unknown(int fd, u32 cmd, u32 args) {
     std::string fd_path = fmt::format("/proc/self/fd/{}", fd);
     std::error_code ec;
     std::string filepath = std::string(std::filesystem::read_symlink(fd_path, ec));
-    if(!ec) {
+    if (!ec) {
         WARN("Unknown ioctl command: %x on file: %s", cmd, filepath.c_str());
     } else {
         WARN("Unknown ioctl command: %x", cmd);
@@ -55,8 +56,10 @@ void Ioctl32::registerFd(int fd, const std::string& name) {
     ioctl_handler_type type = ioctl32_default;
     if (name == "radeon") {
         type = ioctl32_radeon;
+    } else if (name == "amdgpu") {
+        type = ioctl32_amdgpu;
     } else {
-        WARN("Unknown ioctl DRM name: %s", name.c_str());
+        WARN("Unknown DRM ioctl name: %s", name.c_str());
     }
 
     auto guard = g_process_globals.states_lock.lock();
