@@ -5764,19 +5764,27 @@ FAST_HANDLE(PSHUFD) {
     u64 el1 = (imm >> 2) & 0b11;
     u64 el2 = (imm >> 4) & 0b11;
     u64 el3 = (imm >> 6) & 0b11;
-
+    bool all_same = (el0 == el1) && (el0 == el2) && (el0 == el3);
     biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec src = rec.getVec(&operands[1]);
 
-    rec.setVectorState(SEW::E64, 1);
-    biscuit::GPR temp = rec.scratch();
-    u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
-    as.LI(temp, mask);
-    as.VMV_SX(iota, temp);
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value != operands[1].reg.value) {
+        result = rec.getVec(&operands[0]); // write directly to dst since we know they are different
+    }
 
-    rec.setVectorState(SEW::E32, 4);
-    as.VRGATHEREI16(result, src, iota);
+    if (all_same) {
+        rec.setVectorState(SEW::E32, 4);
+        as.VRGATHER(result, src, el0);
+    } else {
+        biscuit::GPR temp = rec.scratch();
+        biscuit::Vec iota = rec.scratchVec();
+        rec.setVectorState(SEW::E64, 2);
+        u64 mask = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;
+        as.LI(temp, mask);
+        as.VMV_SX(iota, temp);
+        rec.setVectorState(SEW::E32, 4);
+        as.VRGATHEREI16(result, src, iota);
+    }
 
     rec.setVec(&operands[0], result);
 }
@@ -5789,15 +5797,14 @@ FAST_HANDLE(SHUFPS) {
     u64 el3 = (imm >> 6) & 0b11;
     bool all_same = (el0 == el1) && (el0 == el2) && (el0 == el3);
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value == operands[1].reg.value) {
-        biscuit::Vec iota = rec.scratchVec();
         biscuit::Vec result = rec.scratchVec();
         biscuit::Vec dst = rec.getVec(&operands[0]);
         if (all_same) {
             // We can simplify iota construction by splatting a vector register
             rec.setVectorState(SEW::E32, 4);
-            as.VMV(iota, el0);
-            as.VRGATHER(result, dst, iota);
+            as.VRGATHER(result, dst, el0);
         } else {
+            biscuit::Vec iota = rec.scratchVec();
             rec.setVectorState(SEW::E64, 2);
             biscuit::GPR iota_gpr = rec.scratch();
             u64 full = (el3 << 48) | (el2 << 32) | (el1 << 16) | el0;

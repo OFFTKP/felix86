@@ -1097,47 +1097,37 @@
         "disassembly": "unpcklpd xmm3, [rdi]"
     },
     "660f70dc00": {
-        "instruction_count": 6,
+        "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x0(0)",
-            "VMV.S.X         v27, ra",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VRGATHEREI16.VV v26, v6, v27, none",
-            "VMV.V.V         v5, v26"
+            "VRGATHER.VI     v5, v6, 0x0(0), none"
         ],
         "disassembly": "pshufd xmm3, xmm4, 0x00"
     },
     "660f70d200": {
-        "instruction_count": 6,
+        "instruction_count": 3,
         "expected_asm": [
-            "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x0(0)",
-            "VMV.S.X         v27, ra",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VRGATHEREI16.VV v26, v4, v27, none",
+            "VRGATHER.VI     v26, v4, 0x0(0), none",
             "VMV.V.V         v4, v26"
         ],
         "disassembly": "pshufd xmm2, xmm2, 0x00"
     },
     "660f701f00": {
-        "instruction_count": 8,
+        "instruction_count": 5,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v28, a0, none, 1",
-            "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x0(0)",
-            "VMV.S.X         v27, ra",
+            "VLE8.V          v27, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VRGATHEREI16.VV v26, v28, v27, none",
+            "VRGATHER.VI     v26, v27, 0x0(0), none",
             "VMV.V.V         v5, v26"
         ],
         "disassembly": "pshufd xmm3, [rdi], 0x00"
     },
     "660f70dce4": {
-        "instruction_count": 10,
+        "instruction_count": 9,
         "expected_asm": [
-            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "LUI             ra, 0x18(24)",
             "ADDIW           ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x11(17)",
@@ -1145,15 +1135,14 @@
             "SLLI            ra, ra, 0x10(16)",
             "VMV.S.X         v27, ra",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VRGATHEREI16.VV v26, v6, v27, none",
-            "VMV.V.V         v5, v26"
+            "VRGATHEREI16.VV v5, v6, v27, none"
         ],
         "disassembly": "pshufd xmm3, xmm4, 0xE4"
     },
     "660f70d2e4": {
         "instruction_count": 10,
         "expected_asm": [
-            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "LUI             ra, 0x18(24)",
             "ADDIW           ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x11(17)",
@@ -1170,16 +1159,16 @@
         "instruction_count": 12,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v28, a0, none, 1",
-            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VLE8.V          v27, a0, none, 1",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "LUI             ra, 0x18(24)",
             "ADDIW           ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x11(17)",
             "ADDI            ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x10(16)",
-            "VMV.S.X         v27, ra",
+            "VMV.S.X         v28, ra",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VRGATHEREI16.VV v26, v28, v27, none",
+            "VRGATHEREI16.VV v26, v27, v28, none",
             "VMV.V.V         v5, v26"
         ],
         "disassembly": "pshufd xmm3, [rdi], 0xE4"
