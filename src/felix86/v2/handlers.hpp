@@ -6,7 +6,7 @@
 struct Recompiler;
 
 namespace biscuit {
-struct Assembler;
+class Assembler;
 }
 
 using HandlerPtr = void (*)(Recompiler& rec, u64 rip, biscuit::Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);
