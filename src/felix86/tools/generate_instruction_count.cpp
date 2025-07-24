@@ -884,6 +884,11 @@ int main() {
     GEN_SSE(punpckhqdq);
     GEN_SSE(pmaddwd);
 
+    GEN_SSE(packuswb);
+    GEN_SSE(packusdw);
+    GEN_SSE(packsswb);
+    GEN_SSE(packssdw);
+
     GEN(movlpd(ptr[rdi], xmm3));
     GEN(movlpd(xmm3, ptr[rdi]));
     GEN(movhpd(ptr[rdi], xmm3));
