@@ -6662,11 +6662,19 @@ FAST_HANDLE(PSRLDQ) {
     u8 imm = rec.getImmediate(&operands[1]);
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec temp = rec.scratchVec();
-    rec.setVectorState(SEW::E8, 16);
     if (imm > 15) {
+        rec.setVectorState(SEW::E8, 16);
         as.VXOR(temp, temp, temp);
     } else {
-        as.VXOR(temp, temp, temp);
+        if (Extensions::VLEN >= 256) {
+            biscuit::Vec scratch = rec.scratchVec();
+            rec.setVectorState(SEW::E64, 4);
+            as.VXOR(scratch, scratch, scratch);
+            rec.setVectorState(SEW::E8, 16);
+            as.VMV(scratch, dst);
+            dst = scratch;
+        }
+        rec.setVectorState(SEW::E8, 16);
         as.VSLIDEDOWN(temp, dst, imm);
     }
     rec.setVec(&operands[0], temp);

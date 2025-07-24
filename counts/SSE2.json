@@ -1426,11 +1426,13 @@
         "disassembly": "pslldq xmm2, 0x05"
     },
     "660f73da05": {
-        "instruction_count": 4,
+        "instruction_count": 6,
         "expected_asm": [
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VXOR.VV         v27, v27, v27, none",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VXOR.VV         v26, v26, v26, none",
-            "VSLIDEDOWN.VI   v26, v4, 0x5(5), none",
+            "VMV.V.V         v27, v4",
+            "VSLIDEDOWN.VI   v26, v27, 0x5(5), none",
             "VMV.V.V         v4, v26"
         ],
         "disassembly": "psrldq xmm2, 0x05"
