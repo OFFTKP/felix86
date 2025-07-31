@@ -384,6 +384,14 @@ void Assembler::VMANDNOT(Vec vd, Vec vs2, Vec vs1) noexcept {
     EmitVectorOPMVV(m_buffer, 0b011000, VecMask::No, vs2, vs1, vd);
 }
 
+void Assembler::VMCLR(Vec vd) noexcept {
+    VMXOR(vd, vd, vd);
+}
+
+void Assembler::VMMV(Vec vd, Vec vs) noexcept {
+    VMAND(vd, vs, vs);
+}
+
 void Assembler::VMNAND(Vec vd, Vec vs2, Vec vs1) noexcept {
     EmitVectorOPMVV(m_buffer, 0b011101, VecMask::No, vs2, vs1, vd);
 }
@@ -392,12 +400,20 @@ void Assembler::VMNOR(Vec vd, Vec vs2, Vec vs1) noexcept {
     EmitVectorOPMVV(m_buffer, 0b011110, VecMask::No, vs2, vs1, vd);
 }
 
+void Assembler::VMNOT(Vec vd, Vec vs) noexcept {
+    VMNAND(vd, vs, vs);
+}
+
 void Assembler::VMOR(Vec vd, Vec vs2, Vec vs1) noexcept {
     EmitVectorOPMVV(m_buffer, 0b011010, VecMask::No, vs2, vs1, vd);
 }
 
 void Assembler::VMORNOT(Vec vd, Vec vs2, Vec vs1) noexcept {
     EmitVectorOPMVV(m_buffer, 0b011100, VecMask::No, vs2, vs1, vd);
+}
+
+void Assembler::VMSET(Vec vd) noexcept {
+    VMXNOR(vd, vd, vd);
 }
 
 void Assembler::VMXNOR(Vec vd, Vec vs2, Vec vs1) noexcept {
@@ -484,12 +500,38 @@ void Assembler::VMSEQ(Vec vd, Vec vs2, int32_t simm, VecMask mask) noexcept {
     EmitVectorOPIVI(m_buffer, 0b011000, mask, vs2, simm, vd);
 }
 
+void Assembler::VMSGE(Vec vd, Vec va, Vec vb, VecMask mask) noexcept {
+    VMSLE(vd, vb, va, mask);
+}
+
+void Assembler::VMSGE(Vec vd, Vec vs2, int32_t simm, VecMask mask) noexcept {
+    BISCUIT_ASSERT(simm >= -15 && simm <= 16);
+    VMSGT(vd, vs2, simm - 1, mask);
+}
+
+void Assembler::VMSGEU(Vec vd, Vec va, Vec vb, VecMask mask) noexcept {
+    VMSLEU(vd, vb, va, mask);
+}
+
+void Assembler::VMSGEU(Vec vd, Vec vs2, int32_t simm, VecMask mask) noexcept {
+    BISCUIT_ASSERT(simm >= 1 && simm <= 16);
+    VMSGTU(vd, vs2, simm - 1, mask);
+}
+
+void Assembler::VMSGT(Vec vd, Vec va, Vec vb, VecMask mask) noexcept {
+    VMSLT(vd, vb, va, mask);
+}
+
 void Assembler::VMSGT(Vec vd, Vec vs2, GPR rs1, VecMask mask) noexcept {
     EmitVectorOPIVX(m_buffer, 0b011111, mask, vs2, rs1, vd);
 }
 
 void Assembler::VMSGT(Vec vd, Vec vs2, int32_t simm, VecMask mask) noexcept {
     EmitVectorOPIVI(m_buffer, 0b011111, mask, vs2, simm, vd);
+}
+
+void Assembler::VMSGTU(Vec vd, Vec va, Vec vb, VecMask mask) noexcept {
+    VMSLTU(vd, vb, va, mask);
 }
 
 void Assembler::VMSGTU(Vec vd, Vec vs2, GPR rs1, VecMask mask) noexcept {
@@ -532,12 +574,22 @@ void Assembler::VMSLT(Vec vd, Vec vs2, GPR rs1, VecMask mask) noexcept {
     EmitVectorOPIVX(m_buffer, 0b011011, mask, vs2, rs1, vd);
 }
 
+void Assembler::VMSLT(Vec vd, Vec vs2, int32_t simm, VecMask mask) noexcept {
+    BISCUIT_ASSERT(simm >= -15 && simm <= 16);
+    VMSLE(vd, vs2, simm - 1, mask);
+}
+
 void Assembler::VMSLTU(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
     EmitVectorOPIVV(m_buffer, 0b011010, mask, vs2, vs1, vd);
 }
 
 void Assembler::VMSLTU(Vec vd, Vec vs2, GPR rs1, VecMask mask) noexcept {
     EmitVectorOPIVX(m_buffer, 0b011010, mask, vs2, rs1, vd);
+}
+
+void Assembler::VMSLTU(Vec vd, Vec vs2, int32_t simm, VecMask mask) noexcept {
+    BISCUIT_ASSERT(simm >= 1 && simm <= 16);
+    VMSLEU(vd, vs2, simm - 1, mask);
 }
 
 void Assembler::VMSNE(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
@@ -659,6 +711,14 @@ void Assembler::VNCLIPU(Vec vd, Vec vs2, uint32_t uimm, VecMask mask) noexcept {
     EmitVectorOPIVUI(m_buffer, 0b101110, mask, vs2, uimm, vd);
 }
 
+void Assembler::VNCVT(Vec vd, Vec vs, VecMask mask) noexcept {
+    VNSRL(vd, vs, zero, mask);
+}
+
+void Assembler::VNEG(Vec vd, Vec vs, VecMask mask) noexcept {
+    VRSUB(vd, vs, zero, mask);
+}
+
 void Assembler::VNMSAC(Vec vd, Vec vs1, Vec vs2, VecMask mask) noexcept {
     EmitVectorOPMVV(m_buffer, 0b101111, mask, vs2, vs1, vd);
 }
@@ -673,6 +733,10 @@ void Assembler::VNMSUB(Vec vd, Vec vs1, Vec vs2, VecMask mask) noexcept {
 
 void Assembler::VNMSUB(Vec vd, GPR rs1, Vec vs2, VecMask mask) noexcept {
     EmitVectorOPMVX(m_buffer, 0b101011, mask, vs2, rs1, vd);
+}
+
+void Assembler::VNOT(Vec vd, Vec vs, VecMask mask) noexcept {
+    VXOR(vd, vs, -1, mask);
 }
 
 void Assembler::VNSRA(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
@@ -803,10 +867,6 @@ void Assembler::VRSUB(Vec vd, Vec vs2, GPR rs1, VecMask mask) noexcept {
 
 void Assembler::VRSUB(Vec vd, Vec vs2, int32_t simm, VecMask mask) noexcept {
     EmitVectorOPIVI(m_buffer, 0b000011, mask, vs2, simm, vd);
-}
-
-void Assembler::VNEG(Vec vd, Vec vs, VecMask mask) noexcept {
-    VRSUB(vd, vs, x0, mask);
 }
 
 void Assembler::VSADD(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
@@ -999,6 +1059,14 @@ void Assembler::VWADDUW(Vec vd, Vec vs2, Vec vs1, VecMask mask) noexcept {
 
 void Assembler::VWADDUW(Vec vd, Vec vs2, GPR rs1, VecMask mask) noexcept {
     EmitVectorOPMVX(m_buffer, 0b110100, mask, vs2, rs1, vd);
+}
+
+void Assembler::VWCVT(Vec vd, Vec vs, VecMask mask) noexcept {
+    VWADD(vd, vs, zero, mask);
+}
+
+void Assembler::VWCVTU(Vec vd, Vec vs, VecMask mask) noexcept {
+    VWADDU(vd, vs, zero, mask);
 }
 
 void Assembler::VWMACC(Vec vd, Vec vs1, Vec vs2, VecMask mask) noexcept {

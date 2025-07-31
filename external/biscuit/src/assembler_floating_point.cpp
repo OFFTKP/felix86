@@ -46,6 +46,17 @@ void Assembler::FLT_S(GPR rd, FPR rs1, FPR rs2) noexcept {
 }
 void Assembler::FLW(FPR rd, int32_t offset, GPR rs) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rs == sp && offset >= 0 && offset <= 252 && (offset & 0b11) == 0) {
+            C_FLWSP(rd, static_cast<uint32_t>(offset));
+            return;
+        } else if (offset >= 0 && offset <= 124 && (offset & 0b11) == 0 && IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rs)) {
+            C_FLW(rd, static_cast<uint32_t>(offset), rs);
+            return;
+        }
+    }
+
     EmitIType(m_buffer, static_cast<uint32_t>(offset), rs, 0b010, rd, 0b0000111);
 }
 void Assembler::FMADD_S(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
@@ -92,6 +103,17 @@ void Assembler::FSUB_S(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
 }
 void Assembler::FSW(FPR rs2, int32_t offset, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rs1 == sp && offset >= 0 && offset <= 252 && (offset & 0b11) == 0) {
+            C_FSWSP(rs2, static_cast<uint32_t>(offset));
+            return;
+        } else if (offset >= 0 && offset <= 124 && (offset & 0b11) == 0 && IsValid3BitCompressedReg(rs2) && IsValid3BitCompressedReg(rs1)) {
+            C_FSW(rs2, static_cast<uint32_t>(offset), rs1);
+            return;
+        }
+    }
+
     EmitSType(m_buffer, static_cast<uint32_t>(offset), rs2, rs1, 0b010, 0b0100111);
 }
 
@@ -164,6 +186,17 @@ void Assembler::FLT_D(GPR rd, FPR rs1, FPR rs2) noexcept {
 }
 void Assembler::FLD(FPR rd, int32_t offset, GPR rs) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rs == sp && offset >= 0 && offset <= 504 && (offset & 0b111) == 0) {
+            C_FLDSP(rd, static_cast<uint32_t>(offset));
+            return;
+        } else if (offset >= 0 && offset <= 248 && (offset & 0b111) == 0 && IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rs)) {
+            C_FLD(rd, static_cast<uint32_t>(offset), rs);
+            return;
+        }
+    }
+
     EmitIType(m_buffer, static_cast<uint32_t>(offset), rs, 0b011, rd, 0b0000111);
 }
 void Assembler::FMADD_D(FPR rd, FPR rs1, FPR rs2, FPR rs3, RMode rmode) noexcept {
@@ -204,6 +237,17 @@ void Assembler::FSUB_D(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
 }
 void Assembler::FSD(FPR rs2, int32_t offset, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rs1 == sp && offset >= 0 && offset <= 504 && (offset & 0b111) == 0) {
+            C_FSDSP(rs2, static_cast<uint32_t>(offset));
+            return;
+        } else if (offset >= 0 && offset <= 248 && (offset & 0b111) == 0 && IsValid3BitCompressedReg(rs2) && IsValid3BitCompressedReg(rs1)) {
+            C_FSD(rs2, static_cast<uint32_t>(offset), rs1);
+            return;
+        }
+    }
+
     EmitSType(m_buffer, static_cast<uint32_t>(offset), rs2, rs1, 0b011, 0b0100111);
 }
 

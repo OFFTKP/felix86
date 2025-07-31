@@ -36,6 +36,28 @@ static void incorrect_stack(void* sp_expected, void* sp_actual) {
     ERROR("Incorrect stack in frame, expected %lx, but got %lx", sp_expected, sp_actual);
 }
 
+struct OptimizationGuard {
+    OptimizationGuard(biscuit::Assembler& as, int& counter) : as(as), counter(counter) {
+        if (g_config.auto_compress) {
+            as.DisableOptimization(Optimization::AutoCompress);
+            counter++;
+        }
+    }
+
+    ~OptimizationGuard() {
+        if (g_config.auto_compress) {
+            counter--;
+            if (counter == 0) {
+                as.EnableOptimization(Optimization::AutoCompress);
+            }
+        }
+    }
+
+private:
+    biscuit::Assembler& as;
+    int& counter; // only used so we can guard recursively, doesn't need to be atomic
+};
+
 // Some instructions modify the flags conditionally or sometimes they don't modify them at all.
 // This needs to be marked as a usage of the flag as it can be passed through if they don't modify,
 // and previous instructions need to know that.
@@ -70,6 +92,10 @@ static void deallocateCodeCache(void* address) {
 }
 
 Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), max_code_cache_size) {
+    if (g_config.auto_compress) {
+        as.EnableOptimization(Optimization::AutoCompress);
+    }
+
     emitNecessaryStuff();
 
     ZydisMachineMode mode = g_mode32 ? ZYDIS_MACHINE_MODE_LONG_COMPAT_32 : ZYDIS_MACHINE_MODE_LONG_64;
@@ -104,6 +130,8 @@ Recompiler::~Recompiler() {
 }
 
 void Recompiler::emitNecessaryStuff() {
+    OptimizationGuard guard(as, optimization_guard_counter);
+
     emitDispatcher();
     emitInvalidateCallerThunk();
 
@@ -1869,6 +1897,7 @@ void Recompiler::restoreState() {
 }
 
 void Recompiler::backToDispatcher() {
+    OptimizationGuard guard(as, optimization_guard_counter);
     const u64 offset = compile_next_handler - (u64)as.GetCursorPointer();
     ASSERT(IsValid2GBImm(offset));
     const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
@@ -2270,6 +2299,7 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
 }
 
 void Recompiler::jumpAndLink(u64 rip) {
+    OptimizationGuard guard(as, optimization_guard_counter);
     if (!g_config.link) {
         // Just emit jump to dispatcher
         backToDispatcher();
@@ -2309,6 +2339,7 @@ void Recompiler::jumpAndLink(u64 rip) {
 }
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
+    OptimizationGuard guard(as, optimization_guard_counter);
     Label true_label;
     as.BNEZ(condition, &true_label);
 

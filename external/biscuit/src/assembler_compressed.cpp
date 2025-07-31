@@ -14,6 +14,7 @@ namespace {
 // funct3 | imm[8|4:3] | rs | imm[7:6|2:1|5] | op
 void EmitCompressedBranch(CodeBuffer& buffer, uint32_t funct3, int32_t offset, GPR rs, uint32_t op) {
     BISCUIT_ASSERT(IsValidCBTypeImm(offset));
+    BISCUIT_ASSERT((offset % 2) == 0);
     BISCUIT_ASSERT(IsValid3BitCompressedReg(rs));
 
     const auto transformed_imm = TransformToCBTypeImm(static_cast<uint32_t>(offset));

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
 #include <biscuit/code_buffer.hpp>
 #include <biscuit/csr.hpp>
 #include <biscuit/isa.hpp>
@@ -9,8 +7,81 @@
 #include <biscuit/literal.hpp>
 #include <biscuit/registers.hpp>
 #include <biscuit/vector.hpp>
+#include <cstddef>
+#include <cstdint>
 
 namespace biscuit {
+
+/** 
+ * Biscuit can attempt to optimize emitted assembly. These optimization modes are disabled by default.
+ * To enable an optimization mode, use the EnableOptimization function:
+ *
+ * @code{.cpp}
+ *     biscuit::Assembler as;
+ *     as.EnableOptimization(Optimization::AutoCompress);
+ * @endcode
+ *
+ * In some cases, it may be preferrable to disable an optimization for a short while. This can be done like so:
+ *
+ * @code{.cpp}
+ *     as.DisableOptimization(Optimization::AutoCompress);
+ *     // ...
+ *     as.EnableOptimization(Optimization::AutoCompress);
+ * @endcode
+ *
+ * The Optimization enum can be used as a bitmask, which means it is possible to enable or disable multiple optimizations at once:
+ *
+ * @code{.cpp}
+ *     as.EnableOptimization(Optimization::AutoCompress | Optimization::Placeholder);
+ * @endcode
+ */
+enum class Optimization : uint32_t {
+    None = 0,
+
+    /**
+     * Automatically converts instructions to their compressed 2-byte form whenever possible.
+     * For example, this optimization mode will convert a MV instruction to a C.MV instruction
+     * as long as rd and rs are not the zero register.
+     */
+    AutoCompress = 1,
+};
+
+constexpr Optimization operator|(Optimization lhs, Optimization rhs) {
+    return static_cast<Optimization>(
+        static_cast<std::underlying_type_t<Optimization>>(lhs) | static_cast<std::underlying_type_t<Optimization>>(rhs)
+    );
+}
+
+constexpr Optimization operator&(Optimization lhs, Optimization rhs) {
+    return static_cast<Optimization>(
+        static_cast<std::underlying_type_t<Optimization>>(lhs) & static_cast<std::underlying_type_t<Optimization>>(rhs)
+    );
+}
+
+constexpr Optimization operator^(Optimization lhs, Optimization rhs) {
+    return static_cast<Optimization>(
+        static_cast<std::underlying_type_t<Optimization>>(lhs) ^ static_cast<std::underlying_type_t<Optimization>>(rhs)
+    );
+}
+
+constexpr Optimization operator~(Optimization opt) {
+    return static_cast<Optimization>(~static_cast<std::underlying_type_t<Optimization>>(opt));
+}
+
+constexpr Optimization& operator|=(Optimization& lhs, Optimization rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+constexpr Optimization& operator&=(Optimization& lhs, Optimization rhs) {
+    lhs = lhs & rhs;
+    return lhs;
+}
+
+constexpr Optimization& operator^=(Optimization& lhs, Optimization rhs) {
+    lhs = lhs ^ rhs;
+    return lhs;
+}
 
 /**
  * Defines the set of features that a particular assembler instance
@@ -62,7 +133,8 @@ public:
      * @note The caller is responsible for managing the lifetime of the given memory.
      *       CodeBuffer will *not* free the memory once it goes out of scope.
      */
-    [[nodiscard]] explicit Assembler(uint8_t* buffer, size_t capacity, ArchFeature features = ArchFeature::RV64);
+    [[nodiscard]] explicit Assembler(uint8_t* buffer, size_t capacity,
+                                     ArchFeature features = ArchFeature::RV64);
 
     // Copy constructor and assignment.
     Assembler(const Assembler&) = delete;
@@ -147,6 +219,35 @@ public:
     /// Retrieves the pointer to an arbitrary location within the underlying code buffer.
     [[nodiscard]] const uint8_t* GetBufferPointer(ptrdiff_t offset) const noexcept {
         return m_buffer.GetOffsetPointer(offset);
+    }
+
+    /**
+     * Checks whether the optimizations set in a bitmask are enabled
+     *
+     * @param opt The bitmask to check.
+     *
+     * @returns Whether all of the optimizations in the bitmask were enabled
+     */
+    [[nodiscard]] bool IsOptimizationEnabled(Optimization opt) const noexcept {
+        return (m_optimizations & opt) == opt;
+    }
+
+    /**
+     * Enables the optimizations set in a bitmask
+     *
+     * @param opt The bitmask to enable.
+     */
+    void EnableOptimization(Optimization opt) noexcept {
+        m_optimizations |= opt;
+    }
+
+    /**
+     * Disables the optimizations set in a bitmask
+     *
+     * @param opt The bitmask to disable.
+     */
+    void DisableOptimization(Optimization opt) noexcept {
+        m_optimizations &= ~opt;
     }
 
     /**
@@ -957,10 +1058,14 @@ public:
 
     void VMAND(Vec vd, Vec vs2, Vec vs1) noexcept;
     void VMANDNOT(Vec vd, Vec vs2, Vec vs1) noexcept;
+    void VMCLR(Vec vd) noexcept;
+    void VMMV(Vec vd, Vec vs) noexcept;
     void VMNAND(Vec vd, Vec vs2, Vec vs1) noexcept;
     void VMNOR(Vec vd, Vec vs2, Vec vs1) noexcept;
+    void VMNOT(Vec vd, Vec vs) noexcept;
     void VMOR(Vec vd, Vec vs2, Vec vs1) noexcept;
     void VMORNOT(Vec vd, Vec vs2, Vec vs1) noexcept;
+    void VMSET(Vec vd) noexcept;
     void VMXNOR(Vec vd, Vec vs2, Vec vs1) noexcept;
     void VMXOR(Vec vd, Vec vs2, Vec vs1) noexcept;
 
@@ -991,9 +1096,17 @@ public:
     void VMSEQ(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
     void VMSEQ(Vec vd, Vec vs2, int32_t simm, VecMask mask = VecMask::No) noexcept;
 
+    void VMSGE(Vec vd, Vec va, Vec vb, VecMask mask = VecMask::No) noexcept;
+    void VMSGE(Vec vd, Vec vs2, int32_t simm, VecMask mask = VecMask::No) noexcept;
+
+    void VMSGEU(Vec vd, Vec va, Vec vb, VecMask mask = VecMask::No) noexcept;
+    void VMSGEU(Vec vd, Vec vs2, int32_t simm, VecMask mask = VecMask::No) noexcept;
+
+    void VMSGT(Vec vd, Vec va, Vec vb, VecMask mask = VecMask::No) noexcept;
     void VMSGT(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
     void VMSGT(Vec vd, Vec vs2, int32_t simm, VecMask mask = VecMask::No) noexcept;
 
+    void VMSGTU(Vec vd, Vec va, Vec vb, VecMask mask = VecMask::No) noexcept;
     void VMSGTU(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
     void VMSGTU(Vec vd, Vec vs2, int32_t simm, VecMask mask = VecMask::No) noexcept;
 
@@ -1007,9 +1120,11 @@ public:
 
     void VMSLT(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VMSLT(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
+    void VMSLT(Vec vd, Vec vs2, int32_t simm, VecMask mask = VecMask::No) noexcept;
 
     void VMSLTU(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VMSLTU(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
+    void VMSLTU(Vec vd, Vec vs2, int32_t simm, VecMask mask = VecMask::No) noexcept;
 
     void VMSNE(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VMSNE(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
@@ -1047,11 +1162,17 @@ public:
     void VNCLIPU(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
     void VNCLIPU(Vec vd, Vec vs2, uint32_t uimm, VecMask mask = VecMask::No) noexcept;
 
+    void VNCVT(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
+
+    void VNEG(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
+
     void VNMSAC(Vec vd, Vec vs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
     void VNMSAC(Vec vd, GPR rs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
 
     void VNMSUB(Vec vd, Vec vs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
     void VNMSUB(Vec vd, GPR rs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
+
+    void VNOT(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
 
     void VNSRA(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VNSRA(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
@@ -1090,8 +1211,6 @@ public:
 
     void VRSUB(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
     void VRSUB(Vec vd, Vec vs2, int32_t simm, VecMask mask = VecMask::No) noexcept;
-
-    void VNEG(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
 
     void VSADD(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VSADD(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
@@ -1159,6 +1278,9 @@ public:
 
     void VWADDUW(Vec vd, Vec vs2, Vec vs1, VecMask mask = VecMask::No) noexcept;
     void VWADDUW(Vec vd, Vec vs2, GPR rs1, VecMask mask = VecMask::No) noexcept;
+
+    void VWCVT(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
+    void VWCVTU(Vec vd, Vec vs, VecMask mask = VecMask::No) noexcept;
 
     void VWMACC(Vec vd, Vec vs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
     void VWMACC(Vec vd, GPR rs1, Vec vs2, VecMask mask = VecMask::No) noexcept;
@@ -1600,6 +1722,7 @@ private:
 
     CodeBuffer m_buffer;
     ArchFeature m_features = ArchFeature::RV64;
+    Optimization m_optimizations = Optimization::None;
 };
 
 } // namespace biscuit

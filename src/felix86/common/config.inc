@@ -42,3 +42,4 @@ X(Performance, bool, inaccurate_minmax, true, FELIX86_INACCURATE_MINMAX, "Don't 
 X(Performance, bool, always_tso, false, FELIX86_ALWAYS_TSO, "Use fences to emulate TSO on every memory read/write -- Will cause slowdown but may fix some games", false)
 X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages to catch self-modifying code, disabling may perform better in some games but break others", false)
 X(Performance, bool, noflag_opts, true, FELIX86_NOFLAG_OPTS, "Optimize some instructions when the flag calculations aren't necessary", false)
+X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically compress instructions whenever possible which may slightly improve performance", false)

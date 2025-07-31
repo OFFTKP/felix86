@@ -1,5 +1,5 @@
-#include <biscuit/assembler.hpp>
 #include <biscuit/assert.hpp>
+#include <biscuit/assembler.hpp>
 
 #include <array>
 #include <bit>
@@ -10,9 +10,11 @@
 
 namespace biscuit {
 
-Assembler::Assembler(size_t capacity) : m_buffer(capacity) {}
+Assembler::Assembler(size_t capacity)
+    : m_buffer(capacity) {}
 
-Assembler::Assembler(uint8_t* buffer, size_t capacity, ArchFeature features) : m_buffer(buffer, capacity), m_features{features} {}
+Assembler::Assembler(uint8_t* buffer, size_t capacity, ArchFeature features)
+    : m_buffer(buffer, capacity), m_features{features} {}
 
 Assembler::~Assembler() = default;
 
@@ -33,10 +35,41 @@ void Assembler::ADD(GPR rd, GPR lhs, GPR rhs) noexcept {
 }
 
 void Assembler::ADDI(GPR rd, GPR rs, int32_t imm) noexcept {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (imm == 0 && rd != x0 && rs != x0) {
+            C_MV(rd, rs);
+            return;
+        } else if (rd != x0 && rs == x0 && IsValidSigned6BitImm(imm)) {
+            C_LI(rd, imm);
+            return;
+        } else if (rd == x2 && rd == rs && imm != 0 && (imm & 0b1111) == 0 && imm >= -512 && imm <= 496) {
+            C_ADDI16SP(imm);
+            return;
+        } else if (IsValid3BitCompressedReg(rd) && rs == x2 && (imm & 0b11) == 0 && imm > 0 && imm <= 1020) {
+            C_ADDI4SPN(rd, static_cast<uint32_t>(imm));
+            return;
+        } else if (rd != x0 && rd == rs && imm != 0 && IsValidSigned6BitImm(imm)) {
+            C_ADDI(rd, imm);
+            return;
+        }
+    }
+
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs, 0b000, rd, 0b0010011);
 }
 
 void Assembler::AND(GPR rd, GPR lhs, GPR rhs) noexcept {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(lhs) && IsValid3BitCompressedReg(rhs)) {
+            if (rd == lhs) {
+                C_AND(rd, rhs);
+                return;
+            } else if (rd == rhs) {
+                C_AND(rd, lhs);
+                return;
+            }
+        }
+    }
+
     EmitRType(m_buffer, 0b0000000, rhs, lhs, 0b111, rd, 0b0110011);
 }
 
@@ -130,6 +163,19 @@ void Assembler::BNEZ(GPR rs, Label* label) noexcept {
 
 void Assembler::BEQ(GPR rs1, GPR rs2, int32_t imm) noexcept {
     BISCUIT_ASSERT(IsValidBTypeImm(imm));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValidCBTypeImm(imm) && (imm & 0b1) == 0) {
+            if (rs1 == x0 && IsValid3BitCompressedReg(rs2)) {
+                C_BEQZ(rs2, imm);
+                return;
+            } else if (rs2 == x0 && IsValid3BitCompressedReg(rs1)) {
+                C_BEQZ(rs1, imm);
+                return;
+            }
+        }
+    }
+
     EmitBType(m_buffer, static_cast<uint32_t>(imm), rs2, rs1, 0b000, 0b1100011);
 }
 
@@ -191,6 +237,19 @@ void Assembler::BLTZ(GPR rs, int32_t imm) noexcept {
 
 void Assembler::BNE(GPR rs1, GPR rs2, int32_t imm) noexcept {
     BISCUIT_ASSERT(IsValidBTypeImm(imm));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValidCBTypeImm(imm) && (imm & 0b1) == 0) {
+            if (rs1 == x0 && IsValid3BitCompressedReg(rs2)) {
+                C_BNEZ(rs2, imm);
+                return;
+            } else if (rs2 == x0 && IsValid3BitCompressedReg(rs1)) {
+                C_BNEZ(rs1, imm);
+                return;
+            }
+        }
+    }
+
     EmitBType(m_buffer, static_cast<uint32_t>(imm), rs2, rs1, 0b001, 0b1100011);
 }
 
@@ -205,7 +264,8 @@ void Assembler::CALL(int32_t offset) noexcept {
     const auto needs_increment = (uimm & 0x800) != 0;
 
     // Sign-extend the lower portion if the MSB of it is set.
-    const auto new_lower = needs_increment ? static_cast<int32_t>(lower << 20) >> 20 : static_cast<int32_t>(lower);
+    const auto new_lower = needs_increment ? static_cast<int32_t>(lower << 20) >> 20
+                                           : static_cast<int32_t>(lower);
     const auto new_upper = needs_increment ? upper + 1 : upper;
 
     AUIPC(x1, static_cast<int32_t>(new_upper));
@@ -266,6 +326,19 @@ void Assembler::JAL(int32_t imm) noexcept {
 
 void Assembler::JAL(GPR rd, int32_t imm) noexcept {
     BISCUIT_ASSERT(IsValidJTypeImm(imm));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValidCJTypeImm(imm) && (imm & 1) == 0) {
+            if (rd == x0) {
+                C_J(imm);
+                return;
+            } else if (rd == x1 && IsRV32(m_features)) {
+                C_JAL(imm);
+                return;
+            }
+        }
+    }
+
     EmitJType(m_buffer, static_cast<uint32_t>(imm), rd, 0b1101111);
 }
 
@@ -275,6 +348,19 @@ void Assembler::JALR(GPR rs) noexcept {
 
 void Assembler::JALR(GPR rd, int32_t imm, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (imm == 0 && rs1 != x0) {
+            if (rd == x0) {
+                C_JR(rs1);
+                return;
+            } else if (rd == x1) {
+                C_JALR(rs1);
+                return;
+            }
+        }
+    }
+
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs1, 0b000, rd, 0b1100111);
 }
 
@@ -372,11 +458,29 @@ void Assembler::LI(GPR rd, uint64_t imm) noexcept {
 }
 
 void Assembler::LUI(GPR rd, uint32_t imm) noexcept {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rd != x0 && rd != x2 && imm != 0 && IsValidSigned6BitImm(imm)) {
+            C_LUI(rd, imm);
+            return;
+        }
+    }
+
     EmitUType(m_buffer, imm, rd, 0b0110111);
 }
 
 void Assembler::LW(GPR rd, int32_t imm, GPR rs) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rs == sp && rd != x0 && imm >= 0 && imm <= 252 && (imm & 0b11) == 0) {
+            C_LWSP(rd, static_cast<uint32_t>(imm));
+            return;
+        } else if (imm >= 0 && imm <= 124 && (imm & 0b11) == 0 && IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rs)) {
+            C_LW(rd, static_cast<uint32_t>(imm), rs);
+            return;
+        }
+    }
+
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs, 0b010, rd, 0b0000011);
 }
 
@@ -397,6 +501,18 @@ void Assembler::NOT(GPR rd, GPR rs) noexcept {
 }
 
 void Assembler::OR(GPR rd, GPR lhs, GPR rhs) noexcept {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(lhs) && IsValid3BitCompressedReg(rhs)) {
+            if (rd == lhs) {
+                C_OR(rd, rhs);
+                return;
+            } else if (rd == rhs) {
+                C_OR(rd, lhs);
+                return;
+            }
+        }
+    }
+
     EmitRType(m_buffer, 0b0000000, rhs, lhs, 0b110, rd, 0b0110011);
 }
 
@@ -445,9 +561,25 @@ void Assembler::SLL(GPR rd, GPR lhs, GPR rhs) noexcept {
 void Assembler::SLLI(GPR rd, GPR rs, uint32_t shift) noexcept {
     if (IsRV32(m_features)) {
         BISCUIT_ASSERT(shift <= 31);
+
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+            if (rd != x0 && rd == rs && shift != 0) {
+                C_SLLI(rd, shift);
+                return;
+            }
+        }
+
         EmitIType(m_buffer, shift & 0x1F, rs, 0b001, rd, 0b0010011);
     } else {
         BISCUIT_ASSERT(shift <= 63);
+
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+            if (rd != x0 && rd == rs && shift != 0) {
+                C_SLLI(rd, shift);
+                return;
+            }
+        }
+
         EmitIType(m_buffer, shift & 0x3F, rs, 0b001, rd, 0b0010011);
     }
 }
@@ -485,9 +617,25 @@ void Assembler::SRA(GPR rd, GPR lhs, GPR rhs) noexcept {
 void Assembler::SRAI(GPR rd, GPR rs, uint32_t shift) noexcept {
     if (IsRV32(m_features)) {
         BISCUIT_ASSERT(shift <= 31);
+
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+            if (rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
+                C_SRAI(rd, shift);
+                return;
+            }
+        }
+
         EmitIType(m_buffer, (0b0100000 << 5) | (shift & 0x1F), rs, 0b101, rd, 0b0010011);
     } else {
         BISCUIT_ASSERT(shift <= 63);
+
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+            if (IsRV64(m_features) && rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
+                C_SRAI(rd, shift);
+                return;
+            }
+        }
+
         EmitIType(m_buffer, (0b0100000 << 5) | (shift & 0x3F), rs, 0b101, rd, 0b0010011);
     }
 }
@@ -499,23 +647,71 @@ void Assembler::SRL(GPR rd, GPR lhs, GPR rhs) noexcept {
 void Assembler::SRLI(GPR rd, GPR rs, uint32_t shift) noexcept {
     if (IsRV32(m_features)) {
         BISCUIT_ASSERT(shift <= 31);
+
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+            if (rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
+                C_SRLI(rd, shift);
+                return;
+            }
+        }
+
         EmitIType(m_buffer, shift & 0x1F, rs, 0b101, rd, 0b0010011);
     } else {
         BISCUIT_ASSERT(shift <= 63);
+
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+            if (IsRV64(m_features) && rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
+                C_SRLI(rd, shift);
+                return;
+            }
+        }
+
         EmitIType(m_buffer, shift & 0x3F, rs, 0b101, rd, 0b0010011);
     }
 }
 
 void Assembler::SUB(GPR rd, GPR lhs, GPR rhs) noexcept {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rhs)) {
+            if (rd == lhs) {
+                C_SUB(rd, rhs);
+                return;
+            }
+        }
+    }
+
     EmitRType(m_buffer, 0b0100000, rhs, lhs, 0b000, rd, 0b0110011);
 }
 
 void Assembler::SW(GPR rs2, int32_t imm, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rs1 == sp && imm >= 0 && imm <= 252 && (imm & 0b11) == 0) {
+            C_SWSP(rs2, static_cast<uint32_t>(imm));
+            return;
+        } else if (imm >= 0 && imm <= 124 && (imm & 0b11) == 0 && IsValid3BitCompressedReg(rs2) && IsValid3BitCompressedReg(rs1)) {
+            C_SW(rs2, static_cast<uint32_t>(imm), rs1);
+            return;
+        }
+    }
+
     EmitSType(m_buffer, static_cast<uint32_t>(imm), rs2, rs1, 0b010, 0b0100011);
 }
 
 void Assembler::XOR(GPR rd, GPR lhs, GPR rhs) noexcept {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(lhs) && IsValid3BitCompressedReg(rhs)) {
+            if (rd == lhs) {
+                C_XOR(rd, rhs);
+                return;
+            } else if (rd == rhs) {
+                C_XOR(rd, lhs);
+                return;
+            }
+        }
+    }
+
     EmitRType(m_buffer, 0b0000000, rhs, lhs, 0b100, rd, 0b0110011);
 }
 
@@ -527,17 +723,49 @@ void Assembler::XORI(GPR rd, GPR rs, uint32_t imm) noexcept {
 
 void Assembler::ADDIW(GPR rd, GPR rs, int32_t imm) noexcept {
     BISCUIT_ASSERT(IsRV64(m_features));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rd != x0 && rd == rs && IsValidSigned6BitImm(imm)) {
+            C_ADDIW(rd, imm);
+            return;
+        }
+    }
+
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs, 0b000, rd, 0b0011011);
 }
 
 void Assembler::ADDW(GPR rd, GPR lhs, GPR rhs) noexcept {
     BISCUIT_ASSERT(IsRV64(m_features));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(lhs) && IsValid3BitCompressedReg(rhs)) {
+            if (rd == lhs) {
+                C_ADDW(rd, rhs);
+                return;
+            } else if (rd == rhs) {
+                C_ADDW(rd, lhs);
+                return;
+            }
+        }
+    }
+
     EmitRType(m_buffer, 0b0000000, rhs, lhs, 0b000, rd, 0b0111011);
 }
 
 void Assembler::LD(GPR rd, int32_t imm, GPR rs) noexcept {
     BISCUIT_ASSERT(IsRV32OrRV64(m_features));
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rs == sp && rd != x0 && imm >= 0 && imm <= 504 && (imm & 0b111) == 0) {
+            C_LDSP(rd, static_cast<uint32_t>(imm));
+            return;
+        } else if (imm >= 0 && imm <= 248 && (imm & 0b111) == 0 && IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rs)) {
+            C_LD(rd, static_cast<uint32_t>(imm), rs);
+            return;
+        }
+    }
+
     EmitIType(m_buffer, static_cast<uint32_t>(imm), rs, 0b011, rd, 0b0000011);
 }
 
@@ -554,6 +782,17 @@ void Assembler::NEGW(GPR rd, GPR rs) noexcept {
 void Assembler::SD(GPR rs2, int32_t imm, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsRV32OrRV64(m_features));
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (rs1 == sp && imm >= 0 && imm <= 504 && (imm & 0b111) == 0) {
+            C_SDSP(rs2, static_cast<uint32_t>(imm));
+            return;
+        } else if (imm >= 0 && imm <= 248 && (imm & 0b111) == 0 && IsValid3BitCompressedReg(rs2) && IsValid3BitCompressedReg(rs1)) {
+            C_SD(rs2, static_cast<uint32_t>(imm), rs1);
+            return;
+        }
+    }
+
     EmitSType(m_buffer, static_cast<uint32_t>(imm), rs2, rs1, 0b011, 0b0100011);
 }
 
@@ -588,6 +827,16 @@ void Assembler::SRLW(GPR rd, GPR lhs, GPR rhs) noexcept {
 
 void Assembler::SUBW(GPR rd, GPR lhs, GPR rhs) noexcept {
     BISCUIT_ASSERT(IsRV64(m_features));
+
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(rhs)) {
+            if (rd == lhs) {
+                C_SUBW(rd, rhs);
+                return;
+            }
+        }
+    }
+
     EmitRType(m_buffer, 0b0100000, rhs, lhs, 0b000, rd, 0b0111011);
 }
 
@@ -1451,9 +1700,13 @@ ptrdiff_t Assembler::LinkAndGetOffset(Label* label) {
 
 void Assembler::ResolveLabelOffsets(Label* label) {
     // Conditional branch instructions make use of the B-type immediate encoding for offsets.
-    const auto is_b_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b1100011; };
+    const auto is_b_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b1100011;
+    };
     // JAL makes use of the J-type immediate encoding for offsets.
-    const auto is_j_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b1101111; };
+    const auto is_j_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b1101111;
+    };
     // C.BEQZ and C.BNEZ make use of this encoding type.
     const auto is_cb_type = [](uint32_t instruction) {
         const auto op = instruction & 0b11;
@@ -1517,9 +1770,13 @@ void Assembler::ResolveLabelOffsets(Label* label) {
 }
 
 void Assembler::ResolveLiteralOffsetsRaw(ptrdiff_t location, const std::set<ptrdiff_t>& offsets) {
-    [[maybe_unused]] const auto is_auipc_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b0010111; };
+    [[maybe_unused]] const auto is_auipc_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b0010111;
+    };
 
-    const auto is_gpr_load_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b0000011; };
+    const auto is_gpr_load_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b0000011;
+    };
 
     for (const auto offset : offsets) {
         const auto address = m_buffer.GetOffsetAddress(offset);
