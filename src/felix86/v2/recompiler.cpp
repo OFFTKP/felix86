@@ -2340,6 +2340,7 @@ void Recompiler::jumpAndLink(u64 rip) {
 
 void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u64 rip_false) {
     OptimizationGuard guard(as, optimization_guard_counter);
+    printf("%d\n", as.IsOptimizationEnabled(Optimization::AutoCompress));
     Label true_label;
     as.BNEZ(condition, &true_label);
 
