@@ -1,7 +1,7 @@
 # Running Steam on felix86
 
 > [!IMPORTANT]
-> Make sure to get the felix86 nightly version for now, using the installation script
+> Make sure to get version 25.08 or newer, using the installation script
 >
 > Older versions **won't** be able to run Steam
 
@@ -20,6 +20,7 @@
 ## Step 3 - Running
 - If you're on wayland, run `export SDL_VIDEODRIVER=x11` as it may not work on Wayland currently
 - Run `steam -no-cef-sandbox`
+  - If you have an AMD GPU that uses the `amdgpu` kernel driver, you may need to run `export FELIX86_ALWAYS_TSO=1` (before entering the felix86 bash)
   - If you run into problems, you can also try the flag `-cef-disable-gpu`
 - The download and installation will take about 15 minutes
 
