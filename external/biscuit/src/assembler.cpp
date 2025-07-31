@@ -162,7 +162,7 @@ void Assembler::BNEZ(GPR rs, Label* label) noexcept {
 void Assembler::BEQ(GPR rs1, GPR rs2, int32_t imm) noexcept {
     BISCUIT_ASSERT(IsValidBTypeImm(imm));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (IsValidCBTypeImm(imm) && (imm & 0b1) == 0) {
             if (rs1 == x0 && IsValid3BitCompressedReg(rs2)) {
                 C_BEQZ(rs2, imm);
@@ -236,7 +236,7 @@ void Assembler::BLTZ(GPR rs, int32_t imm) noexcept {
 void Assembler::BNE(GPR rs1, GPR rs2, int32_t imm) noexcept {
     BISCUIT_ASSERT(IsValidBTypeImm(imm));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (IsValidCBTypeImm(imm) && (imm & 0b1) == 0) {
             if (rs1 == x0 && IsValid3BitCompressedReg(rs2)) {
                 C_BNEZ(rs2, imm);
@@ -324,7 +324,7 @@ void Assembler::JAL(int32_t imm) noexcept {
 void Assembler::JAL(GPR rd, int32_t imm) noexcept {
     BISCUIT_ASSERT(IsValidJTypeImm(imm));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (IsValidCJTypeImm(imm) && (imm & 1) == 0) {
             if (rd == x0) {
                 C_J(imm);
@@ -346,7 +346,7 @@ void Assembler::JALR(GPR rs) noexcept {
 void Assembler::JALR(GPR rd, int32_t imm, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (imm == 0 && rs1 != x0) {
             if (rd == x0) {
                 C_JR(rs1);
