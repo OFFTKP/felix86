@@ -324,7 +324,7 @@ void Assembler::JAL(int32_t imm) noexcept {
 void Assembler::JAL(GPR rd, int32_t imm) noexcept {
     BISCUIT_ASSERT(IsValidJTypeImm(imm));
 
-    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (IsValidCJTypeImm(imm) && (imm & 1) == 0) {
             if (rd == x0) {
                 C_J(imm);
@@ -468,7 +468,7 @@ void Assembler::LUI(GPR rd, uint32_t imm) noexcept {
 void Assembler::LW(GPR rd, int32_t imm, GPR rs) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
 
-    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (rs == sp && rd != x0 && imm >= 0 && imm <= 252 && (imm & 0b11) == 0) {
             C_LWSP(rd, static_cast<uint32_t>(imm));
             return;
@@ -753,7 +753,7 @@ void Assembler::LD(GPR rd, int32_t imm, GPR rs) noexcept {
     BISCUIT_ASSERT(IsRV32OrRV64(m_features));
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
 
-    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (rs == sp && rd != x0 && imm >= 0 && imm <= 504 && (imm & 0b111) == 0) {
             C_LDSP(rd, static_cast<uint32_t>(imm));
             return;
