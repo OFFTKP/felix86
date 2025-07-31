@@ -33,7 +33,7 @@ void Assembler::ADD(GPR rd, GPR lhs, GPR rhs) noexcept {
 }
 
 void Assembler::ADDI(GPR rd, GPR rs, int32_t imm) noexcept {
-    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (imm == 0 && rd != x0 && rs != x0) {
             C_MV(rd, rs);
             return;
@@ -455,7 +455,7 @@ void Assembler::LI(GPR rd, uint64_t imm) noexcept {
 }
 
 void Assembler::LUI(GPR rd, uint32_t imm) noexcept {
-    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (rd != x0 && rd != x2 && imm != 0 && IsValidSigned6BitImm(imm)) {
             C_LUI(rd, imm);
             return;
@@ -468,7 +468,7 @@ void Assembler::LUI(GPR rd, uint32_t imm) noexcept {
 void Assembler::LW(GPR rd, int32_t imm, GPR rs) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (rs == sp && rd != x0 && imm >= 0 && imm <= 252 && (imm & 0b11) == 0) {
             C_LWSP(rd, static_cast<uint32_t>(imm));
             return;
@@ -559,7 +559,7 @@ void Assembler::SLLI(GPR rd, GPR rs, uint32_t shift) noexcept {
     if (IsRV32(m_features)) {
         BISCUIT_ASSERT(shift <= 31);
 
-        if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
             if (rd != x0 && rd == rs && shift != 0) {
                 C_SLLI(rd, shift);
                 return;
@@ -570,7 +570,7 @@ void Assembler::SLLI(GPR rd, GPR rs, uint32_t shift) noexcept {
     } else {
         BISCUIT_ASSERT(shift <= 63);
 
-        if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
             if (rd != x0 && rd == rs && shift != 0) {
                 C_SLLI(rd, shift);
                 return;
@@ -615,7 +615,7 @@ void Assembler::SRAI(GPR rd, GPR rs, uint32_t shift) noexcept {
     if (IsRV32(m_features)) {
         BISCUIT_ASSERT(shift <= 31);
 
-        if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
             if (rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
                 C_SRAI(rd, shift);
                 return;
@@ -627,7 +627,7 @@ void Assembler::SRAI(GPR rd, GPR rs, uint32_t shift) noexcept {
         BISCUIT_ASSERT(shift <= 63);
 
         if (IsOptimizationEnabled(Optimization::AutoCompress)) {
-            if (false && IsRV64(m_features) && rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
+            if (IsRV64(m_features) && rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
                 C_SRAI(rd, shift);
                 return;
             }
@@ -645,7 +645,7 @@ void Assembler::SRLI(GPR rd, GPR rs, uint32_t shift) noexcept {
     if (IsRV32(m_features)) {
         BISCUIT_ASSERT(shift <= 31);
 
-        if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
             if (rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
                 C_SRLI(rd, shift);
                 return;
@@ -656,7 +656,7 @@ void Assembler::SRLI(GPR rd, GPR rs, uint32_t shift) noexcept {
     } else {
         BISCUIT_ASSERT(shift <= 63);
 
-        if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsOptimizationEnabled(Optimization::AutoCompress)) {
             if (IsRV64(m_features) && rd != x0 && rd == rs && IsValid3BitCompressedReg(rd) && shift != 0) {
                 C_SRLI(rd, shift);
                 return;
@@ -753,7 +753,7 @@ void Assembler::LD(GPR rd, int32_t imm, GPR rs) noexcept {
     BISCUIT_ASSERT(IsRV32OrRV64(m_features));
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (rs == sp && rd != x0 && imm >= 0 && imm <= 504 && (imm & 0b111) == 0) {
             C_LDSP(rd, static_cast<uint32_t>(imm));
             return;
