@@ -1130,11 +1130,11 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         if (act) {
             auto handler = act->handler;
             Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags, act->restorer);
-            if (g_config.verbose) {
-                PLAIN("Installed signal handler %s at:", strsignal(arg1));
-                print_address((u64)handler);
-                PLAIN("Flags: %lx\n", act->sa_flags);
-            }
+#if 0
+            PLAIN("Installed signal handler %s at:", strsignal(arg1));
+            print_address((u64)handler);
+            PLAIN("Flags: %lx\n", act->sa_flags);
+#endif
         }
 
         x64_sigaction* old_act = (x64_sigaction*)arg3;
@@ -2073,11 +2073,11 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             if (act) {
                 auto handler = act->handler;
                 Signals::registerSignalHandler(state, arg1, (u64)handler, act->sa_mask, act->sa_flags, act->restorer);
-                if (g_config.verbose) {
-                    PLAIN("Installed signal handler %s at:", strsignal(arg1));
-                    print_address((u64)handler);
-                    PLAIN("Flags: %lx\n", act->sa_flags);
-                }
+#if 0
+                PLAIN("Installed signal handler %s at:", strsignal(arg1));
+                print_address((u64)handler);
+                PLAIN("Flags: %lx\n", act->sa_flags);
+#endif
             }
 
             x86_sigaction* old_act = (x86_sigaction*)arg3;
