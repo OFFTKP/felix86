@@ -265,6 +265,10 @@ static Thunk thunk_metadata[] = {
 
 #undef X
 
+void unknown_thunk(const char* name) {
+    ERROR("Unknown thunk with name: %s", name);
+}
+
 void* generate_guest_pointer(const char* name, u64 host_ptr) {
     const Thunk* thunk = nullptr;
     std::string sname = name;
@@ -281,6 +285,37 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
         static u64 garbage = 0xf000'0000'0000'0000;
         VERBOSE("Couldn't find signature for %s, returning %lx", name, garbage);
         return (void*)garbage++;
+
+        u8* a_wasteful_page = (u8*)mmap(nullptr, 4096, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+        ASSERT(a_wasteful_page != MAP_FAILED);
+        // 48 8d 3d 17 00 00 00 ; lea rdi, [rip + 23], load pointer to string
+        // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
+        // 00 00 00 00 00 00 00 00 ; pointer we jump to
+        // ... 00 ; signature const char* = v_q
+        // c3 ; ret
+        // ... 00 ; string to load, a total of 23 bytes after the first instruction
+        a_wasteful_page[0] = 0x48;
+        a_wasteful_page[1] = 0x8d;
+        a_wasteful_page[2] = 0x3d;
+        a_wasteful_page[3] = 0x17;
+        a_wasteful_page[4] = 0x00;
+        a_wasteful_page[5] = 0x00;
+        a_wasteful_page[6] = 0x00;
+        a_wasteful_page[7] = 0x0f;
+        a_wasteful_page[8] = 0x01;
+        a_wasteful_page[9] = 0x39;
+        u64 ptr = (u64)&unknown_thunk;
+        memcpy(a_wasteful_page + 10, &ptr, 8);
+        a_wasteful_page[18] = 'v';
+        a_wasteful_page[19] = '_';
+        a_wasteful_page[20] = 'q';
+        a_wasteful_page[21] = '\0';
+        a_wasteful_page[22] = 0xc3;
+        size_t size = strlen(name);
+        memcpy(a_wasteful_page + 23, name, size);
+        a_wasteful_page[23 + size] = 0;
+        a_wasteful_page[4095] = 0xf4; // hlt at the end of the page just in case
+        return a_wasteful_page;
     }
 
     const char* signature = thunk->signature;
