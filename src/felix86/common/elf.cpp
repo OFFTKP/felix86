@@ -568,7 +568,7 @@ void Elf::Load(const std::filesystem::path& path) {
 Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     FILE* file = fopen(path.c_str(), "rb");
     if (!file) {
-        ERROR("Failed to open file %s", path.c_str());
+        ERROR("Failed to open file %s: %s", path.c_str(), strerror(errno));
     }
 
     u8 e_ident[EI_NIDENT];
