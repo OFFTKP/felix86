@@ -346,7 +346,7 @@ void Assembler::JALR(GPR rs) noexcept {
 void Assembler::JALR(GPR rd, int32_t imm, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(imm));
 
-    if (false && IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
         if (imm == 0 && rs1 != x0) {
             if (rd == x0) {
                 C_JR(rs1);
