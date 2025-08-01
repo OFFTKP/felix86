@@ -91,14 +91,11 @@ int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     }
 
     if (!g_mode32) {
-        if (fd == AT_FDCWD && filename && filename[0] == '/') {
-            // TODO: support fd+path too
-            // We may be opening a library, check if it's one of our overlays
-            const char* overlay = Overlays::isOverlay(filename);
-            if (overlay) {
-                // Open the overlayed path instead of filename
-                return openatInternal(AT_FDCWD, overlay, flags, mode);
-            }
+        // We may be opening a library, check if it's one of our overlays
+        const char* overlay = Overlays::isOverlay(fd, filename);
+        if (overlay) {
+            // Open the overlayed path instead of filename
+            return openatInternal(AT_FDCWD, overlay, flags, mode);
         }
     }
 
