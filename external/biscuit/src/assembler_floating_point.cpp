@@ -47,7 +47,7 @@ void Assembler::FLT_S(GPR rd, FPR rs1, FPR rs2) noexcept {
 void Assembler::FLW(FPR rd, int32_t offset, GPR rs) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress) && IsRV32(m_features)) {
         if (rs == sp && offset >= 0 && offset <= 252 && (offset & 0b11) == 0) {
             C_FLWSP(rd, static_cast<uint32_t>(offset));
             return;
@@ -104,7 +104,7 @@ void Assembler::FSUB_S(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
 void Assembler::FSW(FPR rs2, int32_t offset, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress) && IsRV32(m_features)) {
         if (rs1 == sp && offset >= 0 && offset <= 252 && (offset & 0b11) == 0) {
             C_FSWSP(rs2, static_cast<uint32_t>(offset));
             return;
@@ -187,7 +187,7 @@ void Assembler::FLT_D(GPR rd, FPR rs1, FPR rs2) noexcept {
 void Assembler::FLD(FPR rd, int32_t offset, GPR rs) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress) && IsRV64(m_features)) {
         if (rs == sp && offset >= 0 && offset <= 504 && (offset & 0b111) == 0) {
             C_FLDSP(rd, static_cast<uint32_t>(offset));
             return;
@@ -238,7 +238,7 @@ void Assembler::FSUB_D(FPR rd, FPR rs1, FPR rs2, RMode rmode) noexcept {
 void Assembler::FSD(FPR rs2, int32_t offset, GPR rs1) noexcept {
     BISCUIT_ASSERT(IsValidSigned12BitImm(offset));
 
-    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+    if (IsOptimizationEnabled(Optimization::AutoCompress) && IsRV64(m_features)) {
         if (rs1 == sp && offset >= 0 && offset <= 504 && (offset & 0b111) == 0) {
             C_FSDSP(rs2, static_cast<uint32_t>(offset));
             return;

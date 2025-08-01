@@ -1,6 +1,7 @@
 project(biscuit_tests)
 
 add_executable(${PROJECT_NAME}
+    src/assembler_autocompress_tests.cpp
     src/assembler_bfloat_tests.cpp
     src/assembler_branch_tests.cpp
     src/assembler_cfi_tests.cpp

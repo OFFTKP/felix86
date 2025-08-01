@@ -31,6 +31,18 @@ void Assembler::Bind(Label* label) {
 }
 
 void Assembler::ADD(GPR rd, GPR lhs, GPR rhs) noexcept {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(lhs) && IsValid3BitCompressedReg(rhs)) {
+            if (rd == lhs) {
+                C_ADD(rd, rhs);
+                return;
+            } else if (rd == rhs) {
+                C_ADD(rd, lhs);
+                return;
+            }
+        }
+    }
+
     EmitRType(m_buffer, 0b0000000, rhs, lhs, 0b000, rd, 0b0110011);
 }
 
@@ -74,6 +86,14 @@ void Assembler::AND(GPR rd, GPR lhs, GPR rhs) noexcept {
 }
 
 void Assembler::ANDI(GPR rd, GPR rs, uint32_t imm) noexcept {
+    if (IsOptimizationEnabled(Optimization::AutoCompress)) {
+        uint32_t sign_extended = static_cast<uint32_t>(static_cast<int32_t>(imm << 26) >> 26);
+        if (rd == rs  && IsValid3BitCompressedReg(rd) && (imm & 0xFFF) == (sign_extended & 0xFFF)) {
+            C_ANDI(rd, imm);
+            return;
+        }
+    }
+
     EmitIType(m_buffer, imm, rs, 0b111, rd, 0b0010011);
 }
 
@@ -321,7 +341,7 @@ void Assembler::J(int32_t imm) noexcept {
 
 void Assembler::JAL(int32_t imm) noexcept {
     BISCUIT_ASSERT(IsValidJTypeImm(imm));
-    EmitJType(m_buffer, static_cast<uint32_t>(imm), x1, 0b1101111);
+    JAL(x1, imm);
 }
 
 void Assembler::JAL(GPR rd, int32_t imm) noexcept {
@@ -332,7 +352,7 @@ void Assembler::JAL(GPR rd, int32_t imm) noexcept {
             if (rd == x0) {
                 C_J(imm);
                 return;
-            } else if (rd == x1 && IsRV32(m_features)) {
+            } else if (IsRV32(m_features) && rd == x1) {
                 C_JAL(imm);
                 return;
             }
