@@ -291,7 +291,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
         a_wasteful_page[0] = 0x48;
         a_wasteful_page[1] = 0x8d;
         a_wasteful_page[2] = 0x3d;
-        a_wasteful_page[3] = 0x17;
+        a_wasteful_page[3] = 0x10;
         a_wasteful_page[4] = 0x00;
         a_wasteful_page[5] = 0x00;
         a_wasteful_page[6] = 0x00;
