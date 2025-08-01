@@ -439,7 +439,7 @@ void Assembler::C_LQSP(GPR rd, uint32_t imm) noexcept {
 void Assembler::C_LUI(GPR rd, uint32_t imm) noexcept {
     BISCUIT_ASSERT(imm != 0);
     BISCUIT_ASSERT(rd != x0 && rd != x2);
-    BISCUIT_ASSERT(IsValidSigned6BitImm(imm));
+    BISCUIT_ASSERT(imm <= 0x3F);
 
     EmitCompressedImmediate(m_buffer, 0b011, imm, rd, 0b01);
 }

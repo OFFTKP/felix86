@@ -87,7 +87,7 @@ TEST_CASE("Branch with Instructions Between", "[branch]") {
         as.ADD(x1, x2, x3);
         as.SUB(x2, x4, x3);
         as.C_J(&label);
-        REQUIRE((data[2] & 0xFFFF) == 0xBFC5);
+        REQUIRE((data[2] & 0xFFFF) == 0xBFE5);
     }
 
     as.RewindBuffer();
@@ -100,6 +100,6 @@ TEST_CASE("Branch with Instructions Between", "[branch]") {
         as.ADD(x1, x2, x3);
         as.SUB(x2, x4, x3);
         as.Bind(&label);
-        REQUIRE((data[0] & 0xFFFF) == 0xA0A1);
+        REQUIRE((data[0] & 0xFFFF) == 0xA029);
     }
 }

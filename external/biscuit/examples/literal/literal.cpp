@@ -1,6 +1,7 @@
 #include <biscuit/assert.hpp>
 #include <biscuit/assembler.hpp>
 
+#include <array>
 #include <iostream>
 
 using namespace biscuit;

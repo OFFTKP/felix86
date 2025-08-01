@@ -97,7 +97,7 @@ namespace biscuit {
            ((imm & 0x400) >> 2) |
            ((imm & 0x040) << 1) |
            ((imm & 0x080) >> 1) |
-           ((imm & 0x00E) << 4) |
+           ((imm & 0x00E) << 2) |
            ((imm & 0x020) >> 3);
     // clang-format on
 }
