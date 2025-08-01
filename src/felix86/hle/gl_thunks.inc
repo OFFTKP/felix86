@@ -1,6 +1,7 @@
 // Read abi.cpp -> signature format
 // These are the functions that can be loaded by glXGetProcAddress or eglGetProcAddress
 // X(lib name, func name, signature)
+#define EXT(lib, func, sig) X(lib, func, sig) X(lib, func##EXT, sig)
 
 X("libGL.so", glAccum, v_dF)
 X("libGL.so", glAlphaFunc, v_dF)
@@ -390,7 +391,7 @@ X("libGL.so", glMultiTexCoord4iv, v_dq)
 X("libGL.so", glMultiTexCoord4s, v_dwwww)
 X("libGL.so", glMultiTexCoord4sv, v_dq)
 X("libGL.so", glSampleCoverage, v_Fb)
-X("libGL.so", glBlendFuncSeparate, v_dddd)
+EXT("libGL.so", glBlendFuncSeparate, v_dddd)
 X("libGL.so", glFogCoordPointer, v_ddq)
 X("libGL.so", glFogCoordd, v_D)
 X("libGL.so", glFogCoorddv, v_q)
