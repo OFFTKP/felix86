@@ -945,7 +945,7 @@ void Thunks::initialize() {
             WARN("I couldn't open libGLX.so for thunking, error: %s", dlerror());
             thunk_glx = false;
         } else {
-            add_overlays({"libGLX.so", "libGLX.so.0"});
+            add_overlays({"libGLX.so", "libGLX.so.0", "libGLX.so.0.0.0"});
         }
 
         constexpr const char* x11_name = "libX11.so";
@@ -963,7 +963,7 @@ void Thunks::initialize() {
             WARN("I couldn't open libGL.so for thunking, error: %s", dlerror());
             thunk_gl = false;
         } else {
-            add_overlays({"libGL.so", "libGL.so.1"});
+            add_overlays({"libGL.so", "libGL.so.1", "libGL.so.1.7.0"});
         }
     }
 
