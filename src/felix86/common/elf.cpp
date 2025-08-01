@@ -568,7 +568,7 @@ void Elf::Load(const std::filesystem::path& path) {
 Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
     FILE* file = fopen(path.c_str(), "rb");
     if (!file) {
-        WARN("Failed to open file %s: %s", path.c_str(), strerror(errno));
+        VERBOSE("Failed to open file %s: %s", path.c_str(), strerror(errno));
         return PeekResult::NotElf;
     }
 
