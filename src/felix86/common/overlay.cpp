@@ -17,7 +17,7 @@ void Overlays::addOverlay(const char* lib_name, const std::filesystem::path& des
 }
 
 const char* Overlays::isOverlay(const char* pathname) {
-    std::filesystem::path path = pathname;
+    std::filesystem::path path = g_config.rootfs_path / pathname;
     std::string filename = path.filename();
     for (auto& entry : overlays) {
         if (filename == entry.lib_name) {
