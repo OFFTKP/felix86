@@ -8860,6 +8860,11 @@ FAST_HANDLE(PABSD) {
     rec.setVec(&operands[0], dst);
 }
 
+FAST_HANDLE(CLFLUSH) {
+    WARN("clflush encountered");
+    as.FENCETSO();
+}
+
 FAST_HANDLE(SHLD) {
     u8 operand_size = instruction.operand_width;
     u8 mask = operand_size == 64 ? 63 : 31;
