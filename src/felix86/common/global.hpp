@@ -107,6 +107,7 @@ struct Extensions {
     X(Zacas)                                                                                                                                         \
     X(Zam)                                                                                                                                           \
     X(Zabha)                                                                                                                                         \
+    X(Zicbom)                                                                                                                                        \
     X(Zicond)                                                                                                                                        \
     X(Zihintpause)                                                                                                                                   \
     X(Zba)                                                                                                                                           \
