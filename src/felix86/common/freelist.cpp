@@ -164,7 +164,7 @@ void Freelist::dump() {
     Node* current = list;
     int i = 0;
     while (current) {
-        LOG("Free mapping %d: %lx-%lx", i++, current->start, current->end);
+        LOG("Free mapping %d: %lx-%lx", i++, (u64)current->start, (u64)current->end);
         current = current->next;
     }
 }
