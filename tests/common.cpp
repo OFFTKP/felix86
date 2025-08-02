@@ -8,17 +8,17 @@ public:
     using Catch::EventListenerBase::EventListenerBase;
 
     void testRunStarting(Catch::TestRunInfo const&) override {
-        // g_output_fd = STDOUT_FILENO;
-        // Config::initialize();
-        // initialize_globals();
-        // g_process_globals.initialize();
-        // Signals::initialize();
+        g_output_fd = STDOUT_FILENO;
+        Config::initialize();
+        initialize_globals();
+        g_process_globals.initialize();
+        Signals::initialize();
 
-        // // Set most configs to default except for rootfs path
-        // Config new_config{};
-        // new_config.rootfs_path = g_config.rootfs_path;
-        // new_config.protect_pages = false;
-        // g_config = new_config;
+        // Set most configs to default except for rootfs path
+        Config new_config{};
+        new_config.rootfs_path = g_config.rootfs_path;
+        new_config.protect_pages = false;
+        g_config = new_config;
     }
 };
 
