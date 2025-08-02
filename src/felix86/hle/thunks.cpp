@@ -280,7 +280,7 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     }
 
     if (!thunk) {
-        VERBOSE("Couldn't find signature for %s", name);
+        WARN("Couldn't find signature for %s", name);
         u8* a_wasteful_page = (u8*)mmap(nullptr, 4096, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         ASSERT(a_wasteful_page != MAP_FAILED);
         // 48 8d 3d 17 00 00 00 ; lea rdi, [rip + 23], load pointer to string
