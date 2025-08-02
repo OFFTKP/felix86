@@ -187,6 +187,7 @@ X(PUSHA)
 X(PUSHAD)
 X(POPA)
 X(POPAD)
+X(CLFLUSH)
 X(INVLPG) /* thunking dummy instruction */
 
 SIMD(PUNPCKLBW)
