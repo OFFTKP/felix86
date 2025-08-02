@@ -464,10 +464,11 @@ CATCH_TEST_CASE("MMap bug", "[mmap32]") {
     MMAP_AT(0xFFF00000, 0xFFFFFFFF-0xFFF00000);
 
     void* address = mapper.map((void*)0xfff00000, 0x7d000, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+    ASSERT(address == (void*)0xfff00000);
 
     verifyRegions(mapper, {
-        {mmap_min_addr(), 0x3ffff},
-        {0x60000, (u64)UINT32_MAX},
+        {mmap_min_addr(), 0x00000000857fffff},
+        {0x000000008d400000, (u64)0x00000000ffefffff},
     });
 
     MUNMAP_ALL();
