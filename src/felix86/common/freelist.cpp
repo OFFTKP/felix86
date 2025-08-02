@@ -66,6 +66,7 @@ void* Freelist::allocate(u32 addr, size_t size) {
 
         if (!all_ok) {
             WARN("Couldn't find an available mapping in our freelist");
+            dump();
             return (void*)-ENOMEM;
         }
 
@@ -93,6 +94,7 @@ void* Freelist::allocate(u32 addr, size_t size) {
         } else {
             // Couldn't find...
             WARN("Couldn't find an available mapping in our freelist");
+            dump();
             return (void*)-ENOMEM;
         }
     }
@@ -156,4 +158,13 @@ void Freelist::consolidate() {
             current = current->next;
         }
     } while (changed);
+}
+
+void Freelist::dump() {
+    Node* current = list;
+    int i = 0;
+    while (current) {
+        LOG("Free mapping %d: %lx-%lx", i++, current->start, current->end);
+        current = current->next;
+    }
 }

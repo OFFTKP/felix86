@@ -40,4 +40,6 @@ private:
     Semaphore sem{};
 
     void consolidate();
+
+    void dump();
 };
