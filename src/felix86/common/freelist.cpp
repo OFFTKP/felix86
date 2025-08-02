@@ -101,7 +101,6 @@ void* Freelist::allocate(u32 addr, size_t size) {
 }
 
 void Freelist::deallocate(u32 addr, size_t size) {
-    WARN("Deallocate %lx %lx", addr, size);
     ASSERT(!(addr & 0xFFF));
     ASSERT(!(size & 0xFFF));
     ASSERT((size_t)addr + size <= (u64)UINT32_MAX + 1);
