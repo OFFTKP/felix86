@@ -799,11 +799,9 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
     std::filesystem::path resolve_me = std::filesystem::path(path).relative_path();
 
-    if (path[size - 1] == '/') {
-        // Trailing slash, pop last component which is empty
-        ASSERT(resolve_me.filename().empty());
+    // If there's trailing slashes it will cause empty components which we'll remove
+    while (resolve_me.filename().empty()) {
         resolve_me = resolve_me.parent_path();
-        ASSERT_MSG(path[size - 2] != '/', "Multiple trailing slashes while resolving %d %s?", fd, path);
     }
 
     std::deque<std::string> components;
