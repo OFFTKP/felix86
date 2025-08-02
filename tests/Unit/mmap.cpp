@@ -454,3 +454,22 @@ CATCH_TEST_CASE("Mremap", "[mmap32]") {
     MUNMAP_ALL();
     SUCCESS_MESSAGE();
 }
+
+CATCH_TEST_CASE("MMap bug", "[mmap32]") {
+    std::vector<std::pair<u32, u32>> unmap_me;
+    Mapper mapper;
+    g_mode32 = true;
+
+    MMAP_AT(0x85800000, 0x8d400000-0x85800000);
+    MMAP_AT(0xFFF00000, 0xFFFFFFFF-0xFFF00000);
+
+    void* address = mapper.map((void*)0xfff00000, 0x7d000, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+
+    verifyRegions(mapper, {
+        {mmap_min_addr(), 0x3ffff},
+        {0x60000, (u64)UINT32_MAX},
+    });
+
+    MUNMAP_ALL();
+    SUCCESS_MESSAGE();
+}

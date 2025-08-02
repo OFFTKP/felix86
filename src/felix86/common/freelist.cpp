@@ -101,6 +101,7 @@ void* Freelist::allocate(u32 addr, size_t size) {
 }
 
 void Freelist::deallocate(u32 addr, size_t size) {
+    WARN("Deallocate %lx %lx", addr, size);
     ASSERT(!(addr & 0xFFF));
     ASSERT(!(size & 0xFFF));
     ASSERT((size_t)addr + size <= (u64)UINT32_MAX + 1);
@@ -111,6 +112,7 @@ void Freelist::deallocate(u32 addr, size_t size) {
     // Find where to place the new node
     Node* previous = nullptr;
     Node* current = list;
+    bool placed = false;
     while (current) {
         if (new_start >= current->start && new_end <= current->end) {
             // Entirely contained in an existing node, nothing to do
@@ -127,10 +129,22 @@ void Freelist::deallocate(u32 addr, size_t size) {
             } else {
                 list = new_node;
             }
+            placed = true;
+            break;
         }
 
         previous = current;
         current = current->next;
+    }
+
+    if (!placed) {
+        // We are freeing at the last node
+        Node* new_node = new Node;
+        new_node->start = new_start;
+        new_node->end = new_end;
+        new_node->next = nullptr;
+        ASSERT(current->next == nullptr);
+        current->next = new_node;
     }
 
     consolidate();
