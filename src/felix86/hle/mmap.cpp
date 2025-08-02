@@ -35,7 +35,7 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
         }
 
         void* mapping = freelist.allocate((u64)result, size);
-        ASSERT(mapping == result);
+        ASSERT_MSG(mapping == result, "Failed with mmap(%lx, %lx, %x, %x, %d, %lx)", addr, size, prot, flags, fd, offset);
         return result;
     } else {
         void* address = freelist.allocate(0, size);
