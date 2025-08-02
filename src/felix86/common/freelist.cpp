@@ -143,8 +143,9 @@ void Freelist::deallocate(u32 addr, size_t size) {
         new_node->start = new_start;
         new_node->end = new_end;
         new_node->next = nullptr;
-        ASSERT(current->next == nullptr);
-        current->next = new_node;
+        ASSERT(previous->next == nullptr);
+        ASSERT(current == nullptr);
+        previous->next = new_node;
     }
 
     consolidate();
