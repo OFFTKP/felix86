@@ -6809,7 +6809,13 @@ FAST_HANDLE(PSRLQ) {
         if (val >= 64) {
             as.VXOR(dst, dst, dst);
         } else {
-            as.VSRL(dst, dst, val);
+            if (val >= 32) {
+                biscuit::GPR shift = rec.scratch();
+                as.LI(shift, val);
+                as.VSRL(dst, dst, shift);
+            } else {
+                as.VSRL(dst, dst, val);
+            }
         }
         rec.setVec(&operands[0], dst);
     } else {
