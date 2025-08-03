@@ -1921,6 +1921,18 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_sendfile: {
+            u32* offset = (u32*)arg3;
+            off_t host_offset;
+            off_t* host_offset_ptr = nullptr;
+            if (offset) {
+                host_offset = *offset;
+                host_offset_ptr = &host_offset;
+            } else {
+            }
+            result = SYSCALL(sendfile, arg1, arg2, host_offset_ptr, arg4);
+            break;
+        }
         case felix86_x86_32_ia32_fallocate: {
             int fd = arg1;
             int mode = arg2;
