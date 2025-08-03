@@ -131,6 +131,7 @@ static_assert(sizeof(XmmReg) == 16);
     X(f80_to_64)                                                                                                                                     \
     X(felix86_fsin)                                                                                                                                  \
     X(felix86_fcos)                                                                                                                                  \
+    X(felix86_fsincos)                                                                                                                               \
     X(felix86_fpatan)                                                                                                                                \
     X(felix86_fptan)                                                                                                                                 \
     X(felix86_fprem)                                                                                                                                 \

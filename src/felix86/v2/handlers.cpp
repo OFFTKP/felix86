@@ -9778,6 +9778,13 @@ FAST_HANDLE(FCOS) {
     rec.restoreState();
 }
 
+FAST_HANDLE(FSINCOS) {
+    rec.writebackState();
+    as.MV(a0, rec.threadStatePointer());
+    rec.callPointer(offsetof(ThreadState, felix86_fsincos));
+    rec.restoreState();
+}
+
 FAST_HANDLE(FPATAN) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());

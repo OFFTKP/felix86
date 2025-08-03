@@ -983,6 +983,16 @@ void felix86_fcos(ThreadState* state) {
     state->fpu_sw &= ~C2_BIT;
 }
 
+void felix86_fsincos(ThreadState* state) {
+    double boop;
+    memcpy(&boop, &state->fp[0], sizeof(double));
+    for (int i = 7; i >= 1; i--) {
+        state->fp[i] = state->fp[i - 1];
+    }
+    sincos(boop, (double*)&state->fp[1], (double*)&state->fp[0]);
+    state->fpu_sw &= ~C2_BIT;
+}
+
 void felix86_fptan(ThreadState* state) {
     double st0;
     memcpy(&st0, &state->fp[0], sizeof(double));

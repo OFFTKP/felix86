@@ -102,6 +102,7 @@ void felix86_psadbw(u8* dst, u8* src);
 
 void felix86_fsin(ThreadState* state);
 void felix86_fcos(ThreadState* state);
+void felix86_fsincos(ThreadState* state);
 void felix86_fptan(ThreadState* state);
 void felix86_fpatan(ThreadState* state);
 void felix86_f2xm1(ThreadState* state);
