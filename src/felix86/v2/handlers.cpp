@@ -3541,7 +3541,7 @@ FAST_HANDLE(PUNPCKLWD) {
     as.VWADDU(temp1, dst, x0);
     as.VWADDU(temp2, src, x0);
     as.VSLIDE1UP(temp3, temp2, x0);
-    as.VOR(dst, temp1, temp2);
+    as.VOR(dst, temp1, temp3);
 
     rec.setVec(&operands[0], dst);
 }
