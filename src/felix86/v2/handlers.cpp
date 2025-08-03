@@ -6686,84 +6686,69 @@ FAST_HANDLE(PSRLDQ) {
 }
 
 FAST_HANDLE(PSLLW) {
+    biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        rec.setVectorState(SEW::E16, 8);
         u8 val = rec.getImmediate(&operands[1]);
-        if (val >= 16) {
-            as.VXOR(dst, dst, dst);
-        } else {
-            as.VSLL(dst, dst, val);
-        }
-        rec.setVec(&operands[0], dst);
+        as.LI(shift, val);
     } else {
-        biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
-        rec.setVectorState(SEW::E16, 8);
-        // Make a mask to zero elements if shift is >= 16
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 16);
-        as.NEG(mask, mask);
-        as.VSLL(dst, dst, src);
-        as.VAND(dst, dst, mask);
-        rec.setVec(&operands[0], dst);
+        rec.setVectorState(SEW::E64, 2);
+        as.VMV_XS(shift, src);
     }
+    rec.setVectorState(SEW::E16, 8);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    as.LI(max, 16);
+    as.BLTU(shift, max, &dont_zero);
+    as.VMV(dst, 0);
+    as.Bind(&dont_zero);
+    as.VSLL(dst, dst, shift);
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSLLQ) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::GPR shift = rec.scratch();
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        rec.setVectorState(SEW::E64, 2);
         u8 val = rec.getImmediate(&operands[1]);
-        if (val >= 64) {
-            as.VXOR(dst, dst, dst);
-        } else {
-            if (val >= 32) {
-                biscuit::GPR shift = rec.scratch();
-                as.LI(shift, val);
-                as.VSLL(dst, dst, shift);
-            } else {
-                as.VSLL(dst, dst, val);
-            }
-        }
-        rec.setVec(&operands[0], dst);
+        as.LI(shift, val);
     } else {
-        biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
-        // Make a mask to zero elements if shift is >= 64
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 64);
-        as.NEG(mask, mask);
-        as.VSLL(dst, dst, src);
-        as.VAND(dst, dst, mask);
-        rec.setVec(&operands[0], dst);
+        as.VMV_XS(shift, src);
     }
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    rec.setVectorState(SEW::E64, 2);
+    as.LI(max, 64);
+    as.BLTU(shift, max, &dont_zero);
+    as.VMV(dst, 0);
+    as.Bind(&dont_zero);
+    as.VSLL(dst, dst, shift);
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSLLD) {
+    biscuit::GPR shift = rec.scratch();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
-        rec.setVectorState(SEW::E32, 4);
         u8 val = rec.getImmediate(&operands[1]);
-        if (val >= 32) {
-            as.VXOR(dst, dst, dst);
-        } else {
-            as.VSLL(dst, dst, val);
-        }
-        rec.setVec(&operands[0], dst);
+        as.LI(shift, val);
     } else {
-        biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
-        rec.setVectorState(SEW::E32, 4);
-        // Make a mask to zero elements if shift is >= 32
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 32);
-        as.NEG(mask, mask);
-        as.VSLL(dst, dst, src);
-        as.VAND(dst, dst, mask);
-        rec.setVec(&operands[0], dst);
+        rec.setVectorState(SEW::E64, 2);
+        as.VMV_XS(shift, src);
     }
+    rec.setVectorState(SEW::E32, 4);
+    biscuit::GPR max = rec.scratch();
+    biscuit::Label dont_zero;
+    as.LI(max, 32);
+    as.BLTU(shift, max, &dont_zero);
+    as.VMV(dst, 0);
+    as.Bind(&dont_zero);
+    as.VSLL(dst, dst, shift);
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PSRLD) {
