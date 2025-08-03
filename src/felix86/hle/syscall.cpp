@@ -1928,7 +1928,6 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             if (offset) {
                 host_offset = *offset;
                 host_offset_ptr = &host_offset;
-            } else {
             }
             result = SYSCALL(sendfile, arg1, arg2, host_offset_ptr, arg4);
             break;
