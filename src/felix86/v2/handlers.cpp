@@ -6697,14 +6697,15 @@ FAST_HANDLE(PSLLW) {
         }
         rec.setVec(&operands[0], dst);
     } else {
+        biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E16, 8);
         // Make a mask to zero elements if shift is >= 16
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 16);
+        as.VMV_XS(count, src);
+        as.SLTIU(mask, count, 16);
         as.NEG(mask, mask);
-        as.VSLL(dst, dst, src);
+        as.VSLL(dst, dst, count);
         as.VAND(dst, dst, mask);
         rec.setVec(&operands[0], dst);
     }
@@ -6728,14 +6729,15 @@ FAST_HANDLE(PSLLQ) {
         }
         rec.setVec(&operands[0], dst);
     } else {
+        biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
         // Make a mask to zero elements if shift is >= 64
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 64);
+        as.VMV_XS(count, src);
+        as.SLTIU(mask, count, 64);
         as.NEG(mask, mask);
-        as.VSLL(dst, dst, src);
+        as.VSLL(dst, dst, count);
         as.VAND(dst, dst, mask);
         rec.setVec(&operands[0], dst);
     }
@@ -6753,14 +6755,15 @@ FAST_HANDLE(PSLLD) {
         }
         rec.setVec(&operands[0], dst);
     } else {
+        biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
         // Make a mask to zero elements if shift is >= 32
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 32);
+        as.VMV_XS(count, src);
+        as.SLTIU(mask, count, 32);
         as.NEG(mask, mask);
-        as.VSLL(dst, dst, src);
+        as.VSLL(dst, dst, count);
         as.VAND(dst, dst, mask);
         rec.setVec(&operands[0], dst);
     }
@@ -6778,14 +6781,15 @@ FAST_HANDLE(PSRLD) {
         }
         rec.setVec(&operands[0], dst);
     } else {
+        biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
         // Make a mask to zero elements if shift is >= 32
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 32);
+        as.VMV_XS(count, src);
+        as.SLTIU(mask, count, 32);
         as.NEG(mask, mask);
-        as.VSRL(dst, dst, src);
+        as.VSRL(dst, dst, count);
         as.VAND(dst, dst, mask);
         rec.setVec(&operands[0], dst);
     }
@@ -6803,14 +6807,15 @@ FAST_HANDLE(PSRLW) {
         }
         rec.setVec(&operands[0], dst);
     } else {
+        biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E16, 8);
         // Make a mask to zero elements if shift is >= 16
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 16);
+        as.VMV_XS(count, src);
+        as.SLTIU(mask, count, 16);
         as.NEG(mask, mask);
-        as.VSRL(dst, dst, src);
+        as.VSRL(dst, dst, count);
         as.VAND(dst, dst, mask);
         rec.setVec(&operands[0], dst);
     }
@@ -6834,14 +6839,15 @@ FAST_HANDLE(PSRLQ) {
         }
         rec.setVec(&operands[0], dst);
     } else {
+        biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
         // Make a mask to zero elements if shift is >= 64
-        as.VMV_XS(mask, src);
-        as.SLTIU(mask, mask, 64);
+        as.VMV_XS(count, src);
+        as.SLTIU(mask, count, 64);
         as.NEG(mask, mask);
-        as.VSRL(dst, dst, src);
+        as.VSRL(dst, dst, count);
         as.VAND(dst, dst, mask);
         rec.setVec(&operands[0], dst);
     }
