@@ -418,6 +418,17 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 
 void Threads::StartThread(ThreadState* state) {
     state->tid = gettid();
+
+    RegisteredSignal* signal = state->signal_table->getRegisteredSignal(33);
+
+    // If we have a signal handler for signal 33, re-register it
+    // This is because sig33 is used by glibc to propagate setuid & co to other threads
+    // But host glibc overwrites it when we do pthread_create, so re-register the guest handler
+    // This is important for the games SOMA, Amnesia
+    if (signal->func != (u64)SIG_DFL && signal->func != (u64)SIG_IGN) {
+        state->signal_table->registerSignal(33, signal->func, signal->mask, signal->flags, signal->restorer);
+    }
+
     state->recompiler->enterDispatcher(state);
     VERBOSE("Thread exited with reason %s", print_exit_reason(state->exit_reason));
 }
