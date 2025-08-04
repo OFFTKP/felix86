@@ -202,7 +202,9 @@ x64_rt_sigframe* setupFrame(RegisteredSignal& signal, int sig, ThreadState* stat
 
     u64 rsp = use_altstack ? ((u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) : state->GetGpr(X86_REF_RSP);
     if (rsp == 0) {
-        ERROR("RSP is null, use_altstack: %d", use_altstack);
+        WARN("RSP is null, use_altstack: %d... using original stack", use_altstack);
+        rsp = state->GetGpr(X86_REF_RSP);
+        ASSERT(rsp != 0);
     }
 
     rsp = rsp - 128; // red zone
