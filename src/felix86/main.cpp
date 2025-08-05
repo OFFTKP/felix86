@@ -646,6 +646,7 @@ int main(int argc, char* argv[]) {
     // handler and setuid signals happen on the host. So to prevent that, make a quick thread here
     pthread_t thread;
     pthread_create(&thread, nullptr, &empty_pthread_handler, nullptr);
+    pthread_join(thread, nullptr);
 
     auto [exit_reason, exit_code] = Emulator::Start();
 
