@@ -9786,6 +9786,7 @@ FAST_HANDLE(FSINCOS) {
 }
 
 FAST_HANDLE(FTST) {
+    PLAIN("FTST");
     // TODO: most likely not a perfect implementation, for example when it comes to handling subnormals
     u64 mask = ~(C0_BIT | C2_BIT | C3_BIT);
     biscuit::GPR class_bits = rec.scratch();
