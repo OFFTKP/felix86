@@ -1404,8 +1404,12 @@ void felix86_fxam(ThreadState* state) {
     double st0d;
     memcpy(&st0d, &st0, 8);
 
+    u16 mask = 0b11 << state->fpu_top;
+
     u8 c3c2c0;
-    if (st0d == 0.0) {
+    if ((state->fpu_tw & mask) == mask) {
+        c3c2c0 = 0b101;
+    } else if (st0d == 0.0) {
         c3c2c0 = 0b100;
     } else if (std::isinf(st0d)) {
         c3c2c0 = 0b011;

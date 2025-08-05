@@ -3184,6 +3184,9 @@ void Recompiler::pushX87(biscuit::FPR val) {
     as.NOT(mask, mask);
     as.AND(fpu_tw, fpu_tw, mask);
     as.SH(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+    popScratch();
+    popScratch();
+    popScratch();
 }
 
 void Recompiler::popX87() {
@@ -3223,6 +3226,9 @@ void Recompiler::popX87() {
     as.SLL(mask, mask, top);
     as.OR(fpu_tw, fpu_tw, mask);
     as.SH(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+    popScratch();
+    popScratch();
+    popScratch();
 }
 
 // Move from x87 registers to MMX registers and switch the x87_state flag
