@@ -413,6 +413,7 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
     stack_pointer += stack_size;
     VERBOSE("Stack pointer at %p", stack_pointer);
 
+    SMCLOG("Allocated stack: %lx-%lx", stack_pointer, stack_pointer + max_stack_size);
     return {stack_pointer, max_stack_size};
 }
 
