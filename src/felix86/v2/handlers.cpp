@@ -7473,6 +7473,10 @@ void SCALAR(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& in
 }
 
 FAST_HANDLE(EMMS) {
+    // Set FPU tag word to empty
+    biscuit::GPR ones = rec.scratch();
+    as.LI(ones, -1);
+    as.SH(ones, offsetof(ThreadState, fpu_tw), rec.threadStatePointer());
     rec.switchToX87();
 }
 
@@ -9786,7 +9790,6 @@ FAST_HANDLE(FSINCOS) {
 }
 
 FAST_HANDLE(FTST) {
-    PLAIN("FTST");
     // TODO: most likely not a perfect implementation, for example when it comes to handling subnormals
     u64 mask = ~(C0_BIT | C2_BIT | C3_BIT);
     biscuit::GPR class_bits = rec.scratch();

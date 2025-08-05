@@ -496,6 +496,8 @@ u64 Recompiler::compileSequence(u64 rip) {
 
     current_instruction_index = 0;
 
+    bool ran_mmx_once = false;
+
     while (compiling) {
         auto& [instruction, operands] = instructions[current_instruction_index];
 
@@ -510,7 +512,17 @@ u64 Recompiler::compileSequence(u64 rip) {
                        operands[0].reg.value <= ZYDIS_REGISTER_XMM15) ||
                       (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_XMM0 &&
                        operands[1].reg.value <= ZYDIS_REGISTER_XMM15);
+
+        if (instruction.mnemonic == ZYDIS_MNEMONIC_EMMS) {
+            ran_mmx_once = false; // if we run another mmx instruction, set tag to valid again
+        }
+
         if (is_mmx) {
+            if (!ran_mmx_once) {
+                // Set FPU tag word to valid for the first MMX instruction in this block
+                as.SH(x0, offsetof(ThreadState, fpu_tw), threadStatePointer());
+            }
+            ran_mmx_once = true;
             ASSERT_MSG(Extensions::V, "TODO: Implement MMX for no RVV");
             WARN_ONCE("This program makes use of MMX");
             if (local_x87_state != x87State::MMX) {
@@ -3161,7 +3173,17 @@ void Recompiler::pushX87(biscuit::FPR val) {
     as.ADDI(top, top, -1);
     as.ANDI(top, top, 0b111);
     setTOP(top);
-    popScratch();
+
+    // Mark as valid in the tag word
+    biscuit::GPR mask = scratch();
+    biscuit::GPR fpu_tw = scratch();
+    as.LHU(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+    as.SLLI(top, top, 1);
+    as.LI(mask, 0b11);
+    as.SLL(mask, mask, top);
+    as.NOT(mask, mask);
+    as.AND(fpu_tw, fpu_tw, mask);
+    as.SH(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
 }
 
 void Recompiler::popX87() {
@@ -3191,7 +3213,16 @@ void Recompiler::popX87() {
     as.ADDI(top, top, 1);
     as.ANDI(top, top, 0b111);
     setTOP(top);
-    popScratch();
+
+    // Mark as empty in the tag word
+    biscuit::GPR mask = scratch();
+    biscuit::GPR fpu_tw = scratch();
+    as.LHU(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+    as.SLLI(top, top, 1);
+    as.LI(mask, 0b11);
+    as.SLL(mask, mask, top);
+    as.OR(fpu_tw, fpu_tw, mask);
+    as.SH(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
 }
 
 // Move from x87 registers to MMX registers and switch the x87_state flag
