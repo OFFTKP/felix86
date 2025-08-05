@@ -16,6 +16,7 @@
 #define ANSI_BOLD "\x1b[1m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 #define ANSI_COLOR_BLACK_ON_CYAN "\x1b[30;106m"
+#define ANSI_COLOR_BLACK_ON_GREEN "\x1b[30;42m"
 
 #ifndef SOURCE_PATH_SIZE
 #pragma message("SOURCE_PATH_SIZE was not defined correctly")
@@ -48,6 +49,13 @@ private:
     do {                                                                                                                                             \
         if (!g_config.quiet && g_config.print_signals) {                                                                                             \
             Logger::log(ANSI_COLOR_BLACK_ON_CYAN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                       \
+        }                                                                                                                                            \
+    } while (0)
+
+#define SMCLOG(format, ...)                                                                                                                          \
+    do {                                                                                                                                             \
+        if (!g_config.quiet && g_config.print_smc) {                                                                                                 \
+            Logger::log(ANSI_COLOR_BLACK_ON_GREEN format ANSI_COLOR_RESET "\n", ##__VA_ARGS__);                                                      \
         }                                                                                                                                            \
     } while (0)
 
