@@ -9785,6 +9785,46 @@ FAST_HANDLE(FSINCOS) {
     rec.restoreState();
 }
 
+FAST_HANDLE(FTST) {
+    // TODO: most likely not a perfect implementation, for example when it comes to handling subnormals
+    u64 mask = ~(C0_BIT | C2_BIT | C3_BIT);
+    biscuit::GPR class_bits = rec.scratch();
+    biscuit::GPR rmask = rec.scratch();
+    biscuit::GPR negative_bit = rec.scratch();
+    biscuit::GPR equal_bit = rec.scratch();
+    biscuit::GPR nan_bit = rec.scratch();
+    as.LI(rmask, mask);
+    biscuit::GPR fsw = rec.scratch();
+    as.LD(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    biscuit::FPR st0 = rec.getST(0);
+    as.FCLASS_D(class_bits, st0);
+    as.AND(fsw, fsw, rmask);
+
+    as.ANDI(negative_bit, class_bits, 0b111);
+    as.SNEZ(negative_bit, negative_bit);
+    as.SLLI(negative_bit, negative_bit, 8);
+
+    as.SRLI(equal_bit, class_bits, 3);
+    as.ANDI(equal_bit, equal_bit, 0b11);
+    as.SNEZ(equal_bit, equal_bit);
+    as.SLLI(equal_bit, equal_bit, 14);
+
+    as.SRLI(nan_bit, class_bits, 8);
+    as.ANDI(nan_bit, nan_bit, 0b11);
+    as.SNEZ(nan_bit, nan_bit);
+    as.SLLI(rmask, nan_bit, 8);
+    as.SLLI(nan_bit, nan_bit, 10);
+    as.OR(rmask, rmask, nan_bit);
+    as.SLLI(nan_bit, nan_bit, 4);
+    as.OR(rmask, rmask, nan_bit);
+
+    as.OR(fsw, fsw, rmask);
+    as.OR(fsw, fsw, negative_bit);
+    as.OR(fsw, fsw, equal_bit);
+
+    as.SD(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+}
+
 FAST_HANDLE(FPATAN) {
     rec.writebackState();
     as.MV(a0, rec.threadStatePointer());
