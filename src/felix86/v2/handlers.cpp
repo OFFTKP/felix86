@@ -4832,7 +4832,7 @@ FAST_HANDLE(ENTER) {
     rec.writeMemory(rbp, rsp, -instruction.operand_width, size);
     as.ADDI(rsp_temp, rsp, -instruction.operand_width);
     rec.setGPR(X86_REF_RSP, size, rsp_temp);
-    rec.setGPR(X86_REF_RBP, size, rsp);
+    as.MV(frame_temp, rsp);
 
     if (nesting_level != 0) {
         biscuit::GPR temp = rec.scratch();
@@ -4848,7 +4848,8 @@ FAST_HANDLE(ENTER) {
         rec.setGPR(X86_REF_RBP, size, rsp_temp);
     }
 
-    rec.addi(rsp_temp, rsp, alloc_size);
+    rec.setGPR(X86_REF_RBP, size, frame_temp);
+    rec.addi(rsp_temp, rsp, -alloc_size);
     rec.setGPR(X86_REF_RSP, size, rsp_temp);
 }
 
