@@ -4848,7 +4848,7 @@ FAST_HANDLE(ENTER) {
         rec.setGPR(X86_REF_RBP, size, rsp_temp);
     }
 
-    rec.addi(rsp_temp, rsp, -alloc_size);
+    rec.addi(rsp_temp, rsp, alloc_size);
     rec.setGPR(X86_REF_RSP, size, rsp_temp);
 }
 
