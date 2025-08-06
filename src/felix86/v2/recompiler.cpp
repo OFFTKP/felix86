@@ -538,6 +538,8 @@ u64 Recompiler::compileSequence(u64 rip) {
             if (local_x87_state != x87State::x87) {
                 switchToX87();
             }
+
+            PLAIN("%s", disassemble_one(rip).c_str());
         }
 
         if (is_x87 && fsrm_sse) {
@@ -3116,38 +3118,6 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
             }
         }
     }
-}
-
-// We statically allocate the x87 stack for speed
-// Because it's a stack model we need to rotate our allocated registers on push/pop
-void Recompiler::decrementTOP() {
-    biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
-    biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
-    biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
-    biscuit::FPR st3 = allocatedFPR(X86_REF_ST3);
-    biscuit::FPR st4 = allocatedFPR(X86_REF_ST4);
-    biscuit::FPR st5 = allocatedFPR(X86_REF_ST5);
-    biscuit::FPR st6 = allocatedFPR(X86_REF_ST6);
-    biscuit::FPR st7 = allocatedFPR(X86_REF_ST7);
-    biscuit::FPR temp = scratchFPR();
-
-    as.FMV_D(temp, st0);
-    as.FMV_D(st0, st7);
-    as.FMV_D(st7, st6);
-    as.FMV_D(st6, st5);
-    as.FMV_D(st5, st4);
-    as.FMV_D(st4, st3);
-    as.FMV_D(st3, st2);
-    as.FMV_D(st2, st1);
-    as.FMV_D(st1, temp);
-
-    popScratchFPR();
-
-    biscuit::GPR top = getTOP();
-    as.ADDI(top, top, -1);
-    as.ANDI(top, top, 0b111);
-    setTOP(top);
-    popScratch();
 }
 
 void Recompiler::pushX87(biscuit::FPR val) {

@@ -604,8 +604,6 @@ struct Recompiler {
         return calltrace;
     }
 
-    void decrementTOP();
-
     void pushX87(biscuit::FPR val);
 
     void popX87();
