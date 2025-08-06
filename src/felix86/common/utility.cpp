@@ -471,8 +471,17 @@ void felix86_fxsave(struct ThreadState* state, u64 address) {
         }
     }
 
+    // Construct abridged FTW
+    data->ftw = 0;
+    for (int i = 0; i < 8; i++) {
+        u16 mask = 0b11 << i;
+        bool empty = (mask & state->fpu_tw) == mask;
+        if (!empty) {
+            data->ftw |= 1 << i;
+        }
+    }
+
     data->fcw = state->fpu_cw;
-    data->ftw = state->fpu_tw;
     data->fsw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
     data->mxcsr = state->mxcsr;
 
@@ -490,8 +499,14 @@ void felix86_fxrstor(struct ThreadState* state, u64 address) {
         state->xmm[i] = data->xmms[i];
     }
 
+    state->fpu_tw = 0;
+    for (int i = 0; i < 8; i++) {
+        if (!((data->ftw >> i) & 0b1)) {
+            state->fpu_tw |= 0b11 << i;
+        }
+    }
+
     state->fpu_cw = data->fcw;
-    state->fpu_tw = data->ftw;
     state->fpu_sw = data->fsw;
     state->fpu_top = (data->fsw >> 11) & 7;
     state->mxcsr = data->mxcsr;
