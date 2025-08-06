@@ -538,8 +538,6 @@ u64 Recompiler::compileSequence(u64 rip) {
             if (local_x87_state != x87State::x87) {
                 switchToX87();
             }
-
-            PLAIN("%s %lx", disassemble_one(rip).c_str(), ThreadState::Get()->fpu_tw);
         }
 
         if (is_x87 && fsrm_sse) {
