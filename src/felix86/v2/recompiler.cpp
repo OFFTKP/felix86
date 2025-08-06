@@ -539,7 +539,7 @@ u64 Recompiler::compileSequence(u64 rip) {
                 switchToX87();
             }
 
-            PLAIN("%s", disassemble_one(rip).c_str());
+            PLAIN("%s %lx", disassemble_one(rip).c_str(), ThreadState::Get()->fpu_sw);
         }
 
         if (is_x87 && fsrm_sse) {
