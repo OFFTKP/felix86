@@ -4828,23 +4828,24 @@ FAST_HANDLE(ENTER) {
         frame_temp = rec.getGPR(X86_REF_RBP, size);
     }
 
+    int bytes = instruction.operand_width / 8;
     biscuit::GPR rsp_temp = rec.scratch();
-    rec.writeMemory(rbp, rsp, -instruction.operand_width, size);
-    as.ADDI(rsp_temp, rsp, -instruction.operand_width);
+    rec.writeMemory(rbp, rsp, -bytes, size);
+    as.ADDI(rsp_temp, rsp, -bytes);
     rec.setGPR(X86_REF_RSP, size, rsp_temp);
     as.MV(frame_temp, rsp);
 
     if (nesting_level != 0) {
         biscuit::GPR temp = rec.scratch();
         for (u16 i = 0; i < alloc_size; i++) {
-            as.ADDI(frame_temp, frame_temp, -instruction.operand_width);
+            as.ADDI(frame_temp, frame_temp, -bytes);
             rec.readMemory(temp, frame_temp, 0, size);
-            rec.writeMemory(temp, rsp, -instruction.operand_width, size);
-            as.ADDI(rsp_temp, rsp, -instruction.operand_width);
+            rec.writeMemory(temp, rsp, -bytes, size);
+            as.ADDI(rsp_temp, rsp, -bytes);
             rec.setGPR(X86_REF_RSP, size, rsp_temp);
         }
-        rec.writeMemory(rbp, rsp, -instruction.operand_width, size);
-        as.ADDI(rsp_temp, rsp, -instruction.operand_width);
+        rec.writeMemory(rbp, rsp, -bytes, size);
+        as.ADDI(rsp_temp, rsp, -bytes);
         rec.setGPR(X86_REF_RBP, size, rsp_temp);
     }
 
