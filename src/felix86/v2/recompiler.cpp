@@ -1924,6 +1924,7 @@ void Recompiler::enterDispatcher(ThreadState* state) {
 }
 
 void Recompiler::exitDispatcher(felix86_frame* frame) {
+    printf("Size: %lx\n", as.GetCodeBuffer().GetCursorOffset());
     exit_dispatcher(frame);
     __builtin_unreachable();
 }

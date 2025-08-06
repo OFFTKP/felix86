@@ -4817,31 +4817,39 @@ FAST_HANDLE(LEAVE) {
 }
 
 FAST_HANDLE(ENTER) {
-    ERROR("ENTER instruction is broken");
+    WARN("ENTER instruction encountered"); // it's a rare instruction that hasn't gotten enough testing
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
-    int alloc_size = rec.getImmediate(&operands[0]);
-    u8 nesting_level = rec.getImmediate(&operands[1]) & 0x1F;
-    biscuit::GPR frame_temp = rec.scratch();
-    biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    u16 alloc_size = rec.getImmediate(&operands[1]);
+    u8 nesting_level = rec.getImmediate(&operands[2]) & 0x1F;
+    biscuit::GPR frame_temp;
     biscuit::GPR rbp = rec.getGPR(X86_REF_RBP, X86_SIZE_QWORD);
-    int offset = instruction.operand_width / 8;
-    as.ADDI(frame_temp, rsp, -offset);
-    rec.writeMemory(rbp, rsp, -offset, size);
-
-    if (nesting_level > 1) {
-        biscuit::GPR mem = rec.scratch();
-        for (u8 i = 1; i < nesting_level; i++) {
-            rec.readMemory(mem, rbp, -i * offset, size);
-            rec.writeMemory(mem, frame_temp, -i * offset, size);
-        }
-    } else if (nesting_level == 1) {
-        rec.writeMemory(frame_temp, frame_temp, -offset, size);
+    biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
+    if (nesting_level != 0) {
+        frame_temp = rec.getGPR(X86_REF_RBP, size);
     }
 
-    rec.setGPR(X86_REF_RBP, size, frame_temp);
-    biscuit::GPR new_rsp = rec.scratch();
-    rec.addi(new_rsp, frame_temp, -alloc_size);
-    rec.setGPR(X86_REF_RSP, size, new_rsp);
+    biscuit::GPR rsp_temp = rec.scratch();
+    rec.writeMemory(rbp, rsp, -instruction.operand_width, size);
+    as.ADDI(rsp_temp, rsp, -instruction.operand_width);
+    rec.setGPR(X86_REF_RSP, size, rsp_temp);
+    rec.setGPR(X86_REF_RBP, size, rsp);
+
+    if (nesting_level != 0) {
+        biscuit::GPR temp = rec.scratch();
+        for (u16 i = 0; i < alloc_size; i++) {
+            as.ADDI(frame_temp, frame_temp, -instruction.operand_width);
+            rec.readMemory(temp, frame_temp, 0, size);
+            rec.writeMemory(temp, rsp, -instruction.operand_width, size);
+            as.ADDI(rsp_temp, rsp, -instruction.operand_width);
+            rec.setGPR(X86_REF_RSP, size, rsp_temp);
+        }
+        rec.writeMemory(rbp, rsp, -instruction.operand_width, size);
+        as.ADDI(rsp_temp, rsp, -instruction.operand_width);
+        rec.setGPR(X86_REF_RBP, size, rsp_temp);
+    }
+
+    rec.addi(rsp_temp, rsp, -alloc_size);
+    rec.setGPR(X86_REF_RSP, size, rsp_temp);
 }
 
 void SETCC(Recompiler& rec, u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, biscuit::GPR cond) {
