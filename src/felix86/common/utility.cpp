@@ -474,7 +474,7 @@ void felix86_fxsave(struct ThreadState* state, u64 address) {
     // Construct abridged FTW
     data->ftw = 0;
     for (int i = 0; i < 8; i++) {
-        u16 mask = 0b11 << i;
+        u16 mask = 0b11 << (i * 2);
         bool empty = (mask & state->fpu_tw) == mask;
         if (!empty) {
             data->ftw |= 1 << i;
@@ -502,7 +502,7 @@ void felix86_fxrstor(struct ThreadState* state, u64 address) {
     state->fpu_tw = 0;
     for (int i = 0; i < 8; i++) {
         if (!((data->ftw >> i) & 0b1)) {
-            state->fpu_tw |= 0b11 << i;
+            state->fpu_tw |= 0b11 << (i * 2);
         }
     }
 
