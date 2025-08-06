@@ -4821,12 +4821,9 @@ FAST_HANDLE(ENTER) {
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
     u16 alloc_size = rec.getImmediate(&operands[0]);
     u8 nesting_level = rec.getImmediate(&operands[1]) & 0x1F;
-    biscuit::GPR frame_temp;
+    biscuit::GPR frame_temp = rec.scratch();
     biscuit::GPR rbp = rec.getGPR(X86_REF_RBP, X86_SIZE_QWORD);
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
-    if (nesting_level != 0) {
-        frame_temp = rec.getGPR(X86_REF_RBP, size);
-    }
 
     int bytes = instruction.operand_width / 8;
     biscuit::GPR rsp_temp = rec.scratch();
