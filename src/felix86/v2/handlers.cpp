@@ -4819,8 +4819,8 @@ FAST_HANDLE(LEAVE) {
 FAST_HANDLE(ENTER) {
     WARN("ENTER instruction encountered"); // it's a rare instruction that hasn't gotten enough testing
     x86_size_e size = rec.zydisToSize(instruction.operand_width);
-    u16 alloc_size = rec.getImmediate(&operands[1]);
-    u8 nesting_level = rec.getImmediate(&operands[2]) & 0x1F;
+    u16 alloc_size = rec.getImmediate(&operands[0]);
+    u8 nesting_level = rec.getImmediate(&operands[1]) & 0x1F;
     biscuit::GPR frame_temp;
     biscuit::GPR rbp = rec.getGPR(X86_REF_RBP, X86_SIZE_QWORD);
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, X86_SIZE_QWORD);
