@@ -4834,16 +4834,18 @@ FAST_HANDLE(ENTER) {
 
     if (nesting_level != 0) {
         biscuit::GPR temp = rec.scratch();
-        for (u16 i = 0; i < alloc_size; i++) {
-            as.ADDI(frame_temp, frame_temp, -bytes);
-            rec.readMemory(temp, frame_temp, 0, size);
+        biscuit::GPR rbp_temp = rec.scratch();
+        for (u16 i = 1; i < nesting_level; i++) {
+            as.ADDI(rbp_temp, rbp, -bytes);
+            rec.setGPR(X86_REF_RBP, size, rbp_temp);
+            rec.readMemory(temp, rbp, 0, size);
             rec.writeMemory(temp, rsp, -bytes, size);
             as.ADDI(rsp_temp, rsp, -bytes);
             rec.setGPR(X86_REF_RSP, size, rsp_temp);
         }
-        rec.writeMemory(rbp, rsp, -bytes, size);
+        rec.writeMemory(frame_temp, rsp, -bytes, size);
         as.ADDI(rsp_temp, rsp, -bytes);
-        rec.setGPR(X86_REF_RBP, size, rsp_temp);
+        rec.setGPR(X86_REF_RSP, size, rsp_temp);
     }
 
     rec.setGPR(X86_REF_RBP, size, frame_temp);
