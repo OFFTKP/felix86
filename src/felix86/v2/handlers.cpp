@@ -10261,6 +10261,9 @@ FAST_HANDLE(FNINIT) {
     as.LI(temp, 0x037F);
     as.SH(temp, offsetof(ThreadState, fpu_cw), Recompiler::threadStatePointer());
 
+    as.LI(temp, -1);
+    as.SH(temp, offsetof(ThreadState, fpu_sw), Recompiler::threadStatePointer());
+
     // FINIT sets it to nearest neighbor which happens to be 0 in both x86 and RISC-V
     as.FSRM(x0);
     rec.setFsrmSSE(false);
