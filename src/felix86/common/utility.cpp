@@ -514,7 +514,6 @@ void felix86_fstenv_16(ThreadState* state, u64 address) {
     env->cw = state->fpu_cw;
     env->tw = state->fpu_tw;
     env->sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
-    PLAIN("SW16: %x", state->fpu_tw);
 }
 
 void felix86_fstenv_32(ThreadState* state, u64 address) {
@@ -522,7 +521,6 @@ void felix86_fstenv_32(ThreadState* state, u64 address) {
     env->cw = state->fpu_cw;
     env->tw = state->fpu_tw;
     env->sw = (state->fpu_top << 11) | (state->fpu_sw & ~(0b111 << 11));
-    PLAIN("SW: %x", state->fpu_tw);
 }
 
 void felix86_fldenv_16(struct ThreadState* state, u64 address) {

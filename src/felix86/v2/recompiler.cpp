@@ -36,6 +36,10 @@ static void incorrect_stack(void* sp_expected, void* sp_actual) {
     ERROR("Incorrect stack in frame, expected %lx, but got %lx", sp_expected, sp_actual);
 }
 
+static void print_tw(ThreadState* state) {
+    PLAIN("TW: %x", state->fpu_tw);
+}
+
 struct OptimizationGuard {
     OptimizationGuard(biscuit::Assembler& as, int& counter) : as(as), counter(counter) {
         if (g_config.auto_compress) {
@@ -570,6 +574,14 @@ u64 Recompiler::compileSequence(u64 rip) {
         }
 
         rip += instruction.length;
+
+        if (is_x87) {
+            writebackState();
+            as.LI(t0, (u64)print_tw);
+            as.MV(a0, s11);
+            as.JALR(t0);
+            restoreState();
+        }
 
         if (g_config.single_step && compiling) {
             resetScratch();
