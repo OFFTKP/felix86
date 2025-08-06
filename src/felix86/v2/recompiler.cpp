@@ -3213,9 +3213,6 @@ void Recompiler::popX87() {
     popScratchFPR();
 
     biscuit::GPR top = getTOP();
-    as.ADDI(top, top, 1);
-    as.ANDI(top, top, 0b111);
-    setTOP(top);
 
     // Mark as empty in the tag word
     biscuit::GPR mask = scratch();
@@ -3226,6 +3223,10 @@ void Recompiler::popX87() {
     as.SLL(mask, mask, top);
     as.OR(fpu_tw, fpu_tw, mask);
     as.SH(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+
+    as.ADDI(top, top, 1);
+    as.ANDI(top, top, 0b111);
+    setTOP(top);
     popScratch();
     popScratch();
     popScratch();
