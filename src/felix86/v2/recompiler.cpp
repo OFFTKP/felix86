@@ -348,6 +348,9 @@ void Recompiler::clearCodeCache(ThreadState* state) {
 
             as.RewindBuffer();
             emitNecessaryStuff();
+
+            // Undo the size increment
+            code_cache_size_index--;
         }
     } else {
         WARN("Clearing cache on thread %u", gettid());
