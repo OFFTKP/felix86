@@ -1691,7 +1691,6 @@ FAST_HANDLE(AAA) {
 
     rec.clearFlag(X86_REF_CF);
     rec.clearFlag(X86_REF_AF);
-    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, temp_al);
     as.J(&end);
 
     as.Bind(&true_label);
@@ -1700,11 +1699,11 @@ FAST_HANDLE(AAA) {
     biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
     as.ADDI(ax, ax, 0x106);
     rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
+
+    as.Bind(&end);
     biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
     as.ANDI(rax, rax, 0xFFFF'FF0F);
     rec.setGPR(X86_REF_RAX, X86_SIZE_QWORD, rax);
-
-    as.Bind(&end);
 }
 
 FAST_HANDLE(AAD) {
@@ -1748,7 +1747,6 @@ FAST_HANDLE(AAS) {
 
     rec.clearFlag(X86_REF_CF);
     rec.clearFlag(X86_REF_AF);
-    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, temp_al);
     as.J(&end);
 
     as.Bind(&true_label);
@@ -1760,11 +1758,11 @@ FAST_HANDLE(AAS) {
     biscuit::GPR ah = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH);
     as.ADDI(ah, ah, -1);
     rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, ah);
+
+    as.Bind(&end);
     biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
     as.ANDI(rax, rax, 0xFFFF'FF0F);
     rec.setGPR(X86_REF_RAX, X86_SIZE_QWORD, rax);
-
-    as.Bind(&end);
 }
 
 FAST_HANDLE(NOP) {}

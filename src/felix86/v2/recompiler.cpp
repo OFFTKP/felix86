@@ -2205,11 +2205,31 @@ void Recompiler::updateCarryAdc(biscuit::GPR lhs, biscuit::GPR result, biscuit::
 }
 
 void Recompiler::clearFlag(x86_ref_e ref) {
+    if (ref == X86_REF_PF) {
+        as.SB(x0, offsetof(ThreadState, pf), threadStatePointer());
+        return;
+    } else if (ref == X86_REF_AF) {
+        as.SB(x0, offsetof(ThreadState, af), threadStatePointer());
+        return;
+    }
+
     biscuit::GPR f = flag(ref);
     as.LI(f, 0);
 }
 
 void Recompiler::setFlag(x86_ref_e ref) {
+    if (ref == X86_REF_PF) {
+        biscuit::GPR one = scratch();
+        as.LI(one, 1);
+        as.SB(one, offsetof(ThreadState, pf), threadStatePointer());
+        return;
+    } else if (ref == X86_REF_AF) {
+        biscuit::GPR one = scratch();
+        as.LI(one, 1);
+        as.SB(one, offsetof(ThreadState, af), threadStatePointer());
+        return;
+    }
+
     biscuit::GPR f = flag(ref);
     as.LI(f, 1);
 }
