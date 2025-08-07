@@ -1921,6 +1921,30 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_getuid16: {
+            result = SYSCALL(getuid);
+            break;
+        }
+        case felix86_x86_32_getgid16: {
+            result = SYSCALL(getgid);
+            break;
+        }
+        case felix86_x86_32_getegid16: {
+            result = SYSCALL(geteuid);
+            break;
+        }
+        case felix86_x86_32_geteuid16: {
+            result = SYSCALL(geteuid);
+            break;
+        }
+        case felix86_x86_32_setuid16: {
+            result = SYSCALL(setuid, arg1);
+            break;
+        }
+        case felix86_x86_32_setgid16: {
+            result = SYSCALL(setgid, arg1);
+            break;
+        }
         case felix86_x86_32_sendfile: {
             u32* offset = (u32*)arg3;
             off_t host_offset;
