@@ -20,6 +20,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <unistd.h>
 
 #define BISCUIT_ASSERT(condition)                                                                                                                    \
     do {                                                                                                                                             \
