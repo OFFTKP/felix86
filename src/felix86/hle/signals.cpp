@@ -760,6 +760,14 @@ void Signals::initialize() {
     sigemptyset(&sa.sa_mask);
 
     for (auto& handler : host_signals) {
+        if ((u64)handler.func == (u64)&handle_wild_sigsegv && !g_config.capture_sigsegv) {
+            continue;
+        }
+
+        if ((u64)handler.func == (u64)&handle_wild_sigabrt && !g_config.capture_sigabrt) {
+            continue;
+        }
+
         ASSERT(sigaction(handler.sig, &sa, nullptr) == 0);
     }
 }

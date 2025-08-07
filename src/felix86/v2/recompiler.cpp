@@ -366,7 +366,7 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
     u64 size = code_cache_sizes[code_cache_size_index];
     size_t remaining_size = size - as.GetCodeBuffer().GetCursorOffset();
     // TODO: restrict max x86 instruction count per block
-    if (remaining_size < 200'000) { // less than ~200KB left, clear cache
+    if (remaining_size < 400'000) { // less than ~400KB left, clear cache
         clearCodeCache(state);
     }
 
