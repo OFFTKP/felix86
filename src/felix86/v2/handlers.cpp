@@ -1675,6 +1675,98 @@ FAST_HANDLE(POP) {
     }
 }
 
+FAST_HANDLE(AAA) {
+    biscuit::Label true_label, end;
+    biscuit::GPR temp_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
+    biscuit::GPR af = rec.flag(X86_REF_AF);
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR cond = rec.scratch();
+    as.ANDI(temp_al, temp_al, 0xF);
+    as.LI(temp, 9);
+    as.SGT(cond, temp_al, temp);
+    as.OR(cond, cond, af);
+    as.BNEZ(cond, &true_label);
+    rec.popScratch();
+    rec.popScratch();
+
+    rec.clearFlag(X86_REF_CF);
+    rec.clearFlag(X86_REF_AF);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, temp_al);
+    as.J(&end);
+
+    as.Bind(&true_label);
+    rec.setFlag(X86_REF_CF);
+    rec.setFlag(X86_REF_AF);
+    biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
+    as.ADDI(ax, ax, 0x106);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
+    biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
+    as.ANDI(rax, rax, 0xFFFF'FF0F);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_QWORD, rax);
+
+    as.Bind(&end);
+}
+
+FAST_HANDLE(AAD) {
+    ASSERT(g_mode32);
+    biscuit::GPR temp_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
+    biscuit::GPR temp_ah = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH);
+    biscuit::GPR imm = rec.getGPR(&operands[0]);
+    as.MUL(temp_ah, temp_ah, imm);
+    as.ADD(temp_al, temp_al, temp_ah);
+    as.ANDI(temp_al, temp_al, 0xFF);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, temp_al);
+}
+
+FAST_HANDLE(AAM) {
+    // TODO: optimize the div by constant to mul by recip+shift
+    ASSERT(g_mode32);
+    biscuit::GPR al = rec.scratch();
+    biscuit::GPR ah = rec.scratch();
+    biscuit::GPR temp_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
+    biscuit::GPR imm = rec.getGPR(&operands[0]);
+    as.DIVUW(ah, temp_al, imm);
+    as.REMUW(al, temp_al, imm);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, al);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, ah);
+}
+
+FAST_HANDLE(AAS) {
+    ASSERT(g_mode32);
+    biscuit::Label true_label, end;
+    biscuit::GPR temp_al = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE);
+    biscuit::GPR af = rec.flag(X86_REF_AF);
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR cond = rec.scratch();
+    as.ANDI(temp_al, temp_al, 0xF);
+    as.LI(temp, 9);
+    as.SGT(cond, temp_al, temp);
+    as.OR(cond, cond, af);
+    as.BNEZ(cond, &true_label);
+    rec.popScratch();
+    rec.popScratch();
+
+    rec.clearFlag(X86_REF_CF);
+    rec.clearFlag(X86_REF_AF);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE, temp_al);
+    as.J(&end);
+
+    as.Bind(&true_label);
+    rec.setFlag(X86_REF_CF);
+    rec.setFlag(X86_REF_AF);
+    biscuit::GPR ax = rec.getGPR(X86_REF_RAX, X86_SIZE_WORD);
+    as.ADDI(ax, ax, -6);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_WORD, ax);
+    biscuit::GPR ah = rec.getGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH);
+    as.ADDI(ah, ah, -1);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_BYTE_HIGH, ah);
+    biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
+    as.ANDI(rax, rax, 0xFFFF'FF0F);
+    rec.setGPR(X86_REF_RAX, X86_SIZE_QWORD, rax);
+
+    as.Bind(&end);
+}
+
 FAST_HANDLE(NOP) {}
 
 FAST_HANDLE(ENDBR32) {}

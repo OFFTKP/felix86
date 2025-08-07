@@ -3,6 +3,10 @@
 // For example the SSE instructions may need different handlers for RVV or not
 // The x87 instructions may need different handlers for 80-bit mode or not in the future
 X(MOV)
+X(AAA)
+X(AAD)
+X(AAM)
+X(AAS)
 X(ADD)
 X(HLT)
 X(UD2)
