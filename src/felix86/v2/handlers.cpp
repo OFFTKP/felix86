@@ -5303,6 +5303,8 @@ FAST_HANDLE(PACKSSDW) {
 
 void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
     u8 imm = rec.getImmediate(&operands[2]);
+    biscuit::GPR old_rounding = rec.scratch();
+    biscuit::GPR new_rounding = rec.scratch();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     bool dyn_round = imm & 0b100;
@@ -5311,46 +5313,17 @@ void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
     }
 
     rec.setVectorState(sew, vlen);
+    RMode rmode = rounding_mode(x86RoundingMode(imm & 0b11));
+    as.LI(new_rounding, (int)rmode);
     if (!dyn_round) {
-        // Use floats so we can hardcode a different rounding mode without changing it
-        // TODO: it may be faster to just change the rounding mode
-        biscuit::FPR temp1 = rec.scratchFPR();
-        biscuit::FPR temp2 = rec.scratchFPR();
-        RMode rmode = rounding_mode((x86RoundingMode)(imm & 0b11));
-
-        as.VFMV_FS(temp1, src);
-
-        if (Extensions::Zfa) {
-            WARN_ONCE("Zfa extension code, untested");
-            if (sew == SEW::E64) {
-                as.FROUND_D(temp2, temp1, rmode);
-            } else if (sew == SEW::E32) {
-                as.FROUND_S(temp2, temp1, rmode);
-            } else {
-                UNREACHABLE();
-            }
-        } else {
-            biscuit::GPR temp = rec.scratch();
-            if (sew == SEW::E64) {
-                as.FCVT_L_D(temp, temp1, rmode);
-                as.FCVT_D_L(temp2, temp, rmode);
-            } else if (sew == SEW::E32) {
-                as.FCVT_W_S(temp, temp1, rmode);
-                as.FCVT_S_W(temp2, temp, rmode);
-            } else {
-                UNREACHABLE();
-            }
-        }
-
-        as.VFMV_SF(dst, temp2);
-
-        rec.setVec(&operands[0], dst);
-    } else {
-        // Dynamic rounding mode, use vectors directly
-        biscuit::Vec temp = rec.scratchVec();
-        as.VFCVT_X_F(temp, src);
-        as.VFCVT_F_X(dst, temp);
-        rec.setVec(&operands[0], dst);
+        as.FSRM(old_rounding, new_rounding);
+    }
+    biscuit::Vec temp = rec.scratchVec();
+    as.VFCVT_X_F(temp, src);
+    as.VFCVT_F_X(dst, temp);
+    rec.setVec(&operands[0], dst);
+    if (!dyn_round) {
+        as.FSRM(old_rounding);
     }
 }
 
@@ -5360,6 +5333,14 @@ FAST_HANDLE(ROUNDSS) {
 
 FAST_HANDLE(ROUNDSD) {
     ROUND(rec, rip, as, instruction, operands, SEW::E64, 1);
+}
+
+FAST_HANDLE(ROUNDPS) {
+    ROUND(rec, rip, as, instruction, operands, SEW::E32, 4);
+}
+
+FAST_HANDLE(ROUNDPD) {
+    ROUND(rec, rip, as, instruction, operands, SEW::E64, 2);
 }
 
 FAST_HANDLE(PMOVMSKB) {
