@@ -5320,12 +5320,13 @@ void ROUND(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& ins
         as.FSRM(old_rounding, new_rounding);
     }
     biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec result = rec.scratchVec();
     as.VFCVT_X_F(temp, src);
-    as.VFCVT_F_X(dst, temp);
+    as.VFCVT_F_X(result, temp);
 
     // There's sign differences when rounding towards zero. For example, round(-0.5) becomes -0.0 in x86, 0.0 in RISC-V
     // So we restore the sign bit after rounding
-    as.VFSGNJ(dst, sign_bit, dst);
+    as.VFSGNJ(dst, src, result);
 
     rec.setVec(&operands[0], dst);
     if (!dyn_round) {
