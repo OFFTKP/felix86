@@ -13,6 +13,82 @@ struct RegisteredHostSignal {
     bool (*func)(ThreadState* current_state, siginfo_t* info, ucontext_t* ctx, u64 pc); // the function to call
 };
 
+const char* signal_to_name(int sig) {
+#define CASE(name)                                                                                                                                   \
+    case name:                                                                                                                                       \
+        return #name;
+    switch (sig) {
+        CASE(SIGHUP);
+        CASE(SIGINT);
+        CASE(SIGQUIT);
+        CASE(SIGILL);
+        CASE(SIGTRAP);
+        CASE(SIGABRT);
+        CASE(SIGBUS);
+        CASE(SIGFPE);
+        CASE(SIGKILL);
+        CASE(SIGUSR1);
+        CASE(SIGSEGV);
+        CASE(SIGUSR2);
+        CASE(SIGPIPE);
+        CASE(SIGALRM);
+        CASE(SIGTERM);
+        CASE(SIGSTKFLT);
+        CASE(SIGCHLD);
+        CASE(SIGCONT);
+        CASE(SIGSTOP);
+        CASE(SIGTSTP);
+        CASE(SIGTTIN);
+        CASE(SIGTTOU);
+        CASE(SIGURG);
+        CASE(SIGXCPU);
+        CASE(SIGXFSZ);
+        CASE(SIGVTALRM);
+        CASE(SIGPROF);
+        CASE(SIGWINCH);
+        CASE(SIGIO);
+        CASE(SIGPWR);
+        CASE(SIGSYS);
+        CASE(32);
+        CASE(33);
+        CASE(34);
+        CASE(35);
+        CASE(36);
+        CASE(37);
+        CASE(38);
+        CASE(39);
+        CASE(40);
+        CASE(41);
+        CASE(42);
+        CASE(43);
+        CASE(44);
+        CASE(45);
+        CASE(46);
+        CASE(47);
+        CASE(48);
+        CASE(49);
+        CASE(50);
+        CASE(51);
+        CASE(52);
+        CASE(53);
+        CASE(54);
+        CASE(55);
+        CASE(56);
+        CASE(57);
+        CASE(58);
+        CASE(59);
+        CASE(60);
+        CASE(61);
+        CASE(62);
+        CASE(63);
+        CASE(64);
+    default: {
+        return "Unknown";
+    }
+    }
+#undef CASE
+}
+
 bool is_in_jit_code(ThreadState* state, u8* ptr) {
     CodeBuffer& buffer = state->recompiler->getAssembler().GetCodeBuffer();
     u8* start = state->recompiler->getStartOfCodeCache();
@@ -179,27 +255,9 @@ u64 get_actual_rip(BlockMetadata& metadata, u64 host_pc) {
 #endif
 
 // arch/x86/kernel/signal.c, get_sigframe function prepares the signal frame
-x64_rt_sigframe* setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs,
-                            const XmmReg* host_vecs, siginfo_t* guest_info) {
+void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
+                    siginfo_t* guest_info) {
     bool use_altstack = signal.flags & SA_ONSTACK;
-    if (!state->state_is_correct) {
-        // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
-        u64 pc = host_gprs[REG_PC];
-        BlockMetadata* current_block = get_block_metadata(state, pc);
-        if (current_block) {
-            u64 actual_rip = get_actual_rip(*current_block, pc);
-            reconstruct_state(state, host_gprs, host_fprs, host_vecs);
-            state->SetRip(actual_rip);
-        } else {
-            // Assume RIP is correct. This can happen if we are in the address cache code for example, state_is_correct is 0
-            // but we aren't inside a block. In this case the REG_GP holds the correct RIP
-            u64 actual_rip = host_gprs[3]; // <- REG_GP
-            state->SetRip(actual_rip);
-        }
-    } else {
-        // State reconstruction isn't necessary, the state should be in some stable form
-    }
-
     u64 rsp = use_altstack ? ((u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) : state->GetGpr(X86_REF_RSP);
     if (rsp == 0) {
         WARN("RSP is null, use_altstack: %d... using original stack", use_altstack);
@@ -295,8 +353,14 @@ x64_rt_sigframe* setupFrame(RegisteredSignal& signal, int sig, ThreadState* stat
     state->SetRip(signal.func);
 
     state->SetFlag(X86_REF_DF, 0);
+}
 
-    return frame;
+void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
+                siginfo_t* guest_info) {
+    if (!g_mode32) {
+        return setupFrame_x64(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
+    } else {
+    }
 }
 
 void Signals::sigreturn(ThreadState* state) {
@@ -664,9 +728,29 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     siginfo_t guest_info = *info;
 
+    if (!state->state_is_correct) {
+        // We were in the middle of executing a basic block, the state up to that point needs to be written back to the state struct
+        u64 pc = gprs[REG_PC];
+        BlockMetadata* current_block = get_block_metadata(state, pc);
+        if (current_block) {
+            u64 actual_rip = get_actual_rip(*current_block, pc);
+            reconstruct_state(state, gprs, fprs, xmms);
+            state->SetRip(actual_rip);
+        } else {
+            // Assume RIP is correct. This can happen if we are in the address cache code for example, state_is_correct is 0
+            // but we aren't inside a block. In this case the REG_GP holds the correct RIP
+            u64 actual_rip = gprs[3]; // <- REG_GP
+            state->SetRip(actual_rip);
+        }
+    } else {
+        // State reconstruction isn't necessary, the state should be in some stable form
+    }
+
+    u64 old_rip = state->GetRip();
+
     // Prepares everything necessary to run the signal handler when we return from the host signal handler.
     // The stack is switched if necessary and filled with the frame that the signal handler expects.
-    x64_rt_sigframe* frame = setupFrame(*handler, sig, state, gprs, fprs, xmms, &guest_info);
+    setupFrame(*handler, sig, state, gprs, fprs, xmms, &guest_info);
 
     // Block the signals specified in the sa_mask until the signal handler returns
     sigset_t new_mask;
@@ -690,7 +774,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         handler->func = (u64)SIG_DFL;
     }
 
-    u64 old_rip = frame->uc.uc_mcontext.gregs[REG_RIP];
 #if 0
     print_address(old_rip);
     print_address(handler->func);
