@@ -2209,6 +2209,12 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             VERBOSE("----- sigaltstack was called -----");
             x86_stack_t* new_ss = (x86_stack_t*)arg1;
             x86_stack_t* old_ss = (x86_stack_t*)arg2;
+
+#define SS_AUTODISARM (1U << 31)
+            if (arg3 & SS_AUTODISARM) {
+                WARN("SS_AUTODISARM when establishing alt stack");
+            }
+
             u64 current_rsp = state->gprs[X86_REF_RSP];
 
             bool on_stack = false;

@@ -7,6 +7,9 @@
 #include "felix86/v2/recompiler.hpp"
 #undef si_pid
 
+#define SA_IA32_ABI 0x02000000u
+#define SA_X32_ABI 0x01000000u
+
 struct RegisteredHostSignal {
     int sig;                                                                            // ie SIGILL etc
     int code;                                                                           // stuff like BUS_ADRALN, 0 if all
@@ -135,6 +138,35 @@ struct x64_libc_fpstate {
 };
 static_assert(sizeof(x64_libc_fpstate) == 512);
 
+struct x86_fpstate_32 {
+    /* Legacy FPU environment: */
+    u32 cw;
+    u32 sw;
+    u32 tag;
+    u32 ipoff;
+    u32 cssel;
+    u32 dataoff;
+    u32 datasel;
+    Float80 _st[8];
+    u16 status;
+    u16 magic; /* 0xffff: regular FPU data only */
+    /* 0x0000: FXSR FPU data */
+
+    /* FXSR FPU environment */
+    u32 _fxsr_env[6]; /* FXSR FPU env is ignored */
+    u32 mxcsr;
+    u32 reserved;
+    struct x64_fpxreg _fxsr_st[8]; /* FXSR FPU reg data is ignored */
+    struct Xmm128 _xmm[8];         /* First 8 XMM registers */
+    union {
+        u32 padding1[44]; /* Second 8 XMM registers plus padding */
+        u32 padding[44];  /* Alias name for old user-space */
+    };
+    union {
+        u32 padding2[12];
+    };
+};
+
 #ifndef __x86_64__
 enum {
     REG_R8 = 0,
@@ -190,6 +222,68 @@ struct x64_rt_sigframe {
 };
 static_assert(sizeof(siginfo_t) == 128);
 static_assert(sizeof(x64_rt_sigframe) == 1120);
+
+struct x86_sigcontext_32 {
+    u16 gs, __gsh;
+    u16 fs, __fsh;
+    u16 es, __esh;
+    u16 ds, __dsh;
+    u32 di;
+    u32 si;
+    u32 bp;
+    u32 sp;
+    u32 bx;
+    u32 dx;
+    u32 cx;
+    u32 ax;
+    u32 trapno;
+    u32 err;
+    u32 ip;
+    u16 cs, __csh;
+    u32 flags;
+    u32 sp_at_signal;
+    u16 ss, __ssh;
+
+    /*
+     * fpstate is really (struct _fpstate *) or (struct _xstate *)
+     * depending on the FP_XSTATE_MAGIC1 encoded in the SW reserved
+     * bytes of (struct _fpstate) and FP_XSTATE_MAGIC2 present at the end
+     * of extended memory layout. See comments at the definition of
+     * (struct _fpx_sw_bytes)
+     */
+    u32 fpstate; /* Zero when no FPU/extended context */
+    u32 oldmask;
+    u32 cr2;
+};
+
+struct ucontext_ia32 {
+    unsigned int uc_flags;
+    unsigned int uc_link;
+    x86_stack_t uc_stack;
+    struct x86_sigcontext_32 uc_mcontext;
+    u64 uc_sigmask; /* mask last for extensibility */
+};
+
+struct x86_sigframe {
+    u32 pretcode;
+    int sig;
+    struct x86_sigcontext_32 sc;
+    struct x86_fpstate_32 fpstate_unused; // unused but we need the padding
+    unsigned int extramask[1];
+    char retcode[8];
+    /* fp state follows here */
+};
+
+struct x86_rt_sigframe {
+    u32 pretcode;
+    int sig;
+    u32 pinfo;
+    u32 puc;
+    x86_siginfo_t info;
+    struct ucontext_ia32 uc;
+    char retcode[8];
+    /* fp state follows here */
+};
 
 void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, const XmmReg* xmms) {
     if (state->state_is_correct) {
@@ -263,6 +357,8 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
         WARN("RSP is null, use_altstack: %d... using original stack", use_altstack);
         rsp = state->GetGpr(X86_REF_RSP);
         ASSERT(rsp != 0);
+    } else if (use_altstack) {
+        WARN("Altstack was established");
     }
 
     rsp = rsp - 128; // red zone
@@ -355,11 +451,52 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
     state->SetFlag(X86_REF_DF, 0);
 }
 
+void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
+                       siginfo_t* guest_info) {
+    // sigreturn trampoline as it exists in the kernel
+    // In x86_64 this doesn't exist and instead the user specifies a restorer
+    static const struct {
+        u8 movl;
+        u32 val;
+        u16 int80;
+        u8 pad;
+    } __attribute__((packed)) code = {
+        0xb8,
+        felix86_x86_32_rt_sigreturn,
+        0x80cd,
+        0,
+    };
+
+    if (!(signal.flags & SA_RESTORER) && signal.restorer) {
+        WARN("Legacy altstack switching detected");
+    }
+
+    x86_rt_sigframe* frame = (x86_rt_sigframe*)state->GetGpr(X86_REF_RSP);
+}
+
+void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
+                    siginfo_t* guest_info) {}
+
 void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
                 siginfo_t* guest_info) {
     if (!g_mode32) {
         return setupFrame_x64(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
     } else {
+        // We don't actually support x32 atm and we shouldn't encounter it, warn if we do
+        if (!(signal.flags & SA_IA32_ABI)) {
+            if (!(signal.flags & SA_X32_ABI)) {
+                WARN("32-bit signal doesn't have SA_IA32_ABI or SA_X32_ABI flag?");
+            } else {
+                WARN("32-bit signal doesn't have SA_IA32_ABI flag?");
+            }
+        }
+
+        if (signal.flags & SA_SIGINFO) {
+            return setupFrame_x86_rt(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
+        } else {
+            WARN_ONCE("Legacy IA32 frame");
+            return setupFrame_x86(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
+        }
     }
 }
 
@@ -368,8 +505,6 @@ void Signals::sigreturn(ThreadState* state) {
 
     // When the signal handler returned, it popped the return address, which is the 8 bytes "pretcode" field in the sigframe
     // We need to adjust the rsp back before reading the entire struct.
-    // Now technically a "malicious" sighandler could jump to memory instead of `ret` but that would probably lead to problems in the programs
-    // execution anyway
     rsp -= 8;
 
     x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
@@ -447,8 +582,14 @@ void Signals::sigreturn(ThreadState* state) {
 
     // Restore signal mask to what it was supposed to be outside of signal handler
     sigset_t host_mask;
-    sigandset(&host_mask, &state->signal_mask, Signals::hostSignalMask());
+    sigandset(&host_mask, &frame->uc.uc_sigmask, Signals::hostSignalMask());
     pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
+
+    u64* new_mask = (u64*)&frame->uc.uc_sigmask;
+    u64* old_mask = (u64*)&state->signal_mask;
+    if (*new_mask != *old_mask) {
+        WARN("Signal mask was changed in the signal handler from %lx to %lx", old_mask, new_mask);
+    }
 }
 
 struct riscv_v_state {
@@ -695,8 +836,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
     SIGLOG("------- Guest signal %s (%d) %s TID: %d -------", sigdescr_np(sig), sig, in_jit_code ? "in jit code" : "not in jit code", gettid());
 
-    ASSERT_MSG(!g_mode32, "Got signal %d", sig);
-
     XmmReg* xmms;
 
     u64* gprs = get_regs(ctx);
@@ -719,12 +858,6 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     }
 
     xmms = xmm_regs.data();
-
-    bool use_altstack = handler->flags & SA_ONSTACK;
-    if (use_altstack && state->alt_stack.ss_sp == 0) {
-        // If there's no altstack set up, use the default stack instead
-        use_altstack = false;
-    }
 
     siginfo_t guest_info = *info;
 
