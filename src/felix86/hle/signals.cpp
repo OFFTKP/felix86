@@ -358,7 +358,7 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
         rsp = state->GetGpr(X86_REF_RSP);
         ASSERT(rsp != 0);
     } else if (use_altstack) {
-        WARN("Altstack was established");
+        VERBOSE("Altstack was established");
     }
 
     rsp = rsp - 128; // red zone
