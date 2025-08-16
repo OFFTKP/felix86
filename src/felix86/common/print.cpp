@@ -3,7 +3,7 @@
 #include "felix86/common/print.hpp"
 #include "felix86/common/utility.hpp"
 
-std::string print_guest_register(x86_ref_e guest) {
+const char* print_guest_register(x86_ref_e guest) {
     switch (guest) {
     case X86_REF_RAX:
         return "rax";
@@ -73,6 +73,38 @@ std::string print_guest_register(x86_ref_e guest) {
         return "ymm" + std::to_string(guest - X86_REF_YMM0);
     case X86_REF_ST0 ... X86_REF_ST7:
         return "st" + std::to_string(guest - X86_REF_ST0);
+#define CASE(name)                                                                                                                                   \
+    case X86_REF_XMM##name:                                                                                                                          \
+        return "xmm" #name;                                                                                                                          \
+    case X86_REF_MM##name:                                                                                                                           \
+        return "mm" #name;                                                                                                                           \
+    case X86_REF_YMM##name:                                                                                                                          \
+        return "ymm" #name;                                                                                                                          \
+    case X86_REF_ST##name:                                                                                                                           \
+        return "st" #name;
+        CASE(0)
+        CASE(1)
+        CASE(2)
+        CASE(3)
+        CASE(4)
+        CASE(5)
+        CASE(6)
+        CASE(7)
+#undef CASE
+#define CASE(name)                                                                                                                                   \
+    case X86_REF_XMM##name:                                                                                                                          \
+        return "xmm" #name;                                                                                                                          \
+    case X86_REF_YMM##name:                                                                                                                          \
+        return "ymm" #name;
+        CASE(8)
+        CASE(9)
+        CASE(10)
+        CASE(11)
+        CASE(12)
+        CASE(13)
+        CASE(14)
+        CASE(15)
+#undef CASE
     case X86_REF_COUNT:
         UNREACHABLE();
         break;
@@ -84,8 +116,8 @@ std::string print_guest_register(x86_ref_e guest) {
 
 extern "C" __attribute__((visibility("default"))) void print_gprs(ThreadState* state) {
     for (int i = 0; i < 16; i++) {
-        std::string guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
-        PLAIN("%s = %lx", guest.c_str(), state->gprs[i]);
+        const char* guest = print_guest_register((x86_ref_e)(X86_REF_RAX + i));
+        PLAIN("%s = %lx", guest, state->gprs[i]);
     }
 
     PLAIN("rip = %lx", state->rip);
