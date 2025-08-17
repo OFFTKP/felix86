@@ -1,10 +1,12 @@
+#include <alloca.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 struct lua_State;
 
-const char* lua_pushvfstring(struct lua_State* L, const char* fmt, va_list argp);
+const char* lua_pushstring(struct lua_State* L, const char* str);
 
 void luaL_where(struct lua_State* L, int level);
 
@@ -13,20 +15,33 @@ void lua_concat(struct lua_State* L, int n);
 int lua_error(struct lua_State* L);
 
 const char* lua_pushfstring(struct lua_State* L, const char* fmt, ...) {
-    const char* ret;
+    // va_args is arch-specific. To save us headache, we will use sprintf
+    // to construct the final string, then use lua_pushstring. Lua will then
+    // make a copy of the string, so we don't need to keep it allocated.
+    int size = strlen(fmt);
+    char* buffer = (char*)alloca(size * 2);
     va_list argp;
     va_start(argp, fmt);
-    ret = lua_pushvfstring(L, fmt, argp);
+    int new_size = vsnprintf(buffer, size * 2 - 1, fmt, argp);
     va_end(argp);
-    return ret;
+    if (new_size >= size) {
+        printf("Buffer not big enough during lua_pushfstring?\n");
+    }
+    return lua_pushstring(L, buffer);
 }
 
 int luaL_error(struct lua_State* L, const char* fmt, ...) {
+    int size = strlen(fmt);
+    char* buffer = (char*)alloca(size * 2);
     va_list argp;
     va_start(argp, fmt);
-    luaL_where(L, 1);
-    lua_pushvfstring(L, fmt, argp);
+    int new_size = vsnprintf(buffer, size * 2 - 1, fmt, argp);
     va_end(argp);
+    if (new_size >= size) {
+        printf("Buffer not big enough during luaL_error?\n");
+    }
+    luaL_where(L, 1);
+    lua_pushstring(L, buffer);
     lua_concat(L, 2);
     return lua_error(L);
 }
