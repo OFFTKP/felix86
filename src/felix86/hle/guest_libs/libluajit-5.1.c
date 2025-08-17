@@ -20,11 +20,12 @@ const char* lua_pushfstring(struct lua_State* L, const char* fmt, ...) {
     // make a copy of the string, so we don't need to keep it allocated.
     // If the buffer is small enough, multiplying might not be enough, so
     // add a page of size.
-    int size = strlen(fmt);
-    char* buffer = (char*)alloca(4096 + size * 2);
+    int size = 4096 + strlen(fmt);
+    size *= 2;
+    char* buffer = (char*)alloca(size);
     va_list argp;
     va_start(argp, fmt);
-    int new_size = vsnprintf(buffer, size * 2 - 1, fmt, argp);
+    int new_size = vsnprintf(buffer, size - 1, fmt, argp);
     va_end(argp);
     if (new_size >= size) {
         printf("Buffer not big enough during lua_pushfstring?\n");
@@ -33,11 +34,12 @@ const char* lua_pushfstring(struct lua_State* L, const char* fmt, ...) {
 }
 
 int luaL_error(struct lua_State* L, const char* fmt, ...) {
-    int size = strlen(fmt);
-    char* buffer = (char*)alloca(4096 + size * 2);
+    int size = 4096 + strlen(fmt);
+    size *= 2;
+    char* buffer = (char*)alloca(size);
     va_list argp;
     va_start(argp, fmt);
-    int new_size = vsnprintf(buffer, size * 2 - 1, fmt, argp);
+    int new_size = vsnprintf(buffer, size - 1, fmt, argp);
     va_end(argp);
     if (new_size >= size) {
         printf("Buffer not big enough during luaL_error?\n");
