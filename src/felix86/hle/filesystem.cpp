@@ -40,6 +40,7 @@ void Filesystem::initializeEmulatedNodes() {
         .open_func = [](const char* path, int flags) {
             const std::string& cpuinfo = felix86_cpuinfo();
             int fd = generate_memfd("/proc/cpuinfo", flags);
+            ASSERT_MSG(fd > 0, "/proc/cpuinfo fd is negative: %d %s", fd, strerror(errno));
             ASSERT(write(fd, cpuinfo.data(), cpuinfo.size()) == (ssize_t)cpuinfo.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
@@ -66,6 +67,7 @@ void Filesystem::initializeEmulatedNodes() {
         .open_func = [](const char* path, int flags) {
             std::string maps = felix86_mountinfo();
             int fd = generate_memfd("/proc/self/mountinfo", flags);
+            ASSERT_MSG(fd > 0, "/proc/self/mountinfo fd is negative: %d %s", fd, strerror(errno));
             ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
@@ -644,7 +646,7 @@ int Filesystem::openatInternal(int fd, const char* filename, int flags, u64 mode
                 // This is one of our emulated files, close the opened fd and replace it with our own
                 close(opened_fd);
                 int new_fd = node.open_func(filename, flags);
-                ASSERT(new_fd > 0);
+                ASSERT_MSG(new_fd > 0, "Our emulated fd has a negative number: %d", new_fd);
                 return new_fd;
             }
         }
