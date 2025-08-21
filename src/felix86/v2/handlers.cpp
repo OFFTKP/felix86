@@ -9283,6 +9283,7 @@ FAST_HANDLE(POPFQ) {
     biscuit::GPR flags = rec.scratch();
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
     rec.readMemory(flags, rsp, 0, rec.zydisToSize(size));
+    as.ORI(flags, flags, 0x202);
     as.ADDI(rsp, rsp, size);
     rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
     rec.setFlags(flags);
