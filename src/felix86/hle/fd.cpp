@@ -7,7 +7,7 @@
 std::set<int> g_protected_fds{};
 
 void FD::protect(int fd) {
-    ASSERT(fd > 2);
+    ASSERT(fd >= 2);
 
     g_protected_fds.insert(fd);
 
