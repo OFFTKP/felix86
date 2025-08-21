@@ -9270,24 +9270,34 @@ FAST_HANDLE(INSERTPS) {
 }
 
 FAST_HANDLE(PUSHFQ) {
+    int size = instruction.operand_width;
     biscuit::GPR src = rec.getFlags();
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
-    as.ADDI(rsp, rsp, -rec.stackPointerSize());
+    as.ADDI(rsp, rsp, -size);
     rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
-    rec.writeMemory(src, rsp, 0, rec.stackWidth());
+    rec.writeMemory(src, rsp, 0, rec.zydisToSize(size));
 }
 
 FAST_HANDLE(POPFQ) {
+    int size = instruction.operand_width;
     biscuit::GPR flags = rec.scratch();
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
-    as.LD(flags, 0, rsp);
-    as.ADDI(rsp, rsp, rec.stackPointerSize());
+    rec.readMemory(flags, rsp, 0, rec.zydisToSize(size));
+    as.ADDI(rsp, rsp, size);
     rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
     rec.setFlags(flags);
 }
 
+FAST_HANDLE(PUSHF) {
+    fast_PUSHFQ(rec, rip, as, instruction, operands);
+}
+
 FAST_HANDLE(PUSHFD) {
     fast_PUSHFQ(rec, rip, as, instruction, operands);
+}
+
+FAST_HANDLE(POPF) {
+    fast_POPFQ(rec, rip, as, instruction, operands);
 }
 
 FAST_HANDLE(POPFD) {
