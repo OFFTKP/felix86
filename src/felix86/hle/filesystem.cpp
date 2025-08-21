@@ -43,6 +43,7 @@ void Filesystem::initializeEmulatedNodes() {
             ASSERT(write(fd, cpuinfo.data(), cpuinfo.size()) == (ssize_t)cpuinfo.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
+            FD::protect(fd);
             return fd;
         },
     };
@@ -55,6 +56,7 @@ void Filesystem::initializeEmulatedNodes() {
     //         ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
     //         lseek(fd, 0, SEEK_SET);
     //         seal_memfd(fd);
+    //         FD::protect(fd);
     //         return fd;
     //     },
     // };
@@ -67,6 +69,7 @@ void Filesystem::initializeEmulatedNodes() {
             ASSERT(write(fd, maps.data(), maps.size()) == (ssize_t)maps.size());
             lseek(fd, 0, SEEK_SET);
             seal_memfd(fd);
+            FD::protect(fd);
             return fd;
         }
     };
