@@ -6,7 +6,7 @@
     }
 
 #define SECONDARY_TEST32(opcode)                                                                                                                     \
-    CATCH_TEST_CASE(#opcode, "[Secondary]") {                                                                                                        \
+    CATCH_TEST_CASE(#opcode, "[Secondary32]") {                                                                                                      \
         FEXTestLoader::RunTest("32Bit_ASM/Secondary/" #opcode ".asm");                                                                               \
     }
 
