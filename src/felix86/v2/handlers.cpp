@@ -7930,6 +7930,22 @@ FAST_HANDLE(XLAT) {
     }
 }
 
+FAST_HANDLE(SMSW) {
+    u32 immediate = (1 << 31) | (1 << 18) | (1 << 16) | (1 << 5) | (1 << 4) | (1 << 1) | (1 << 0);
+    biscuit::GPR data = rec.scratch();
+    as.LI(data, immediate);
+    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].size == 32) {
+        // Don't extend top bits
+        biscuit::GPR reg = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+        as.SRLI(reg, reg, 32);
+        as.SLLI(reg, reg, 32);
+        as.OR(reg, reg, data);
+        rec.setGPR(rec.zydisToRef(operands[0].reg.value), X86_SIZE_QWORD, reg);
+    } else {
+        rec.setGPR(&operands[0], data);
+    }
+}
+
 FAST_HANDLE(MOVQ2DQ) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
