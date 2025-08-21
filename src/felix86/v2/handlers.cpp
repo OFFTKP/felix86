@@ -9273,7 +9273,7 @@ FAST_HANDLE(PUSHFQ) {
     int size = instruction.operand_width;
     biscuit::GPR src = rec.getFlags();
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
-    as.ADDI(rsp, rsp, -size);
+    as.ADDI(rsp, rsp, -size / 8);
     rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
     rec.writeMemory(src, rsp, 0, rec.zydisToSize(size));
 }
@@ -9284,7 +9284,7 @@ FAST_HANDLE(POPFQ) {
     biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
     rec.readMemory(flags, rsp, 0, rec.zydisToSize(size));
     as.ORI(flags, flags, 0x202);
-    as.ADDI(rsp, rsp, size);
+    as.ADDI(rsp, rsp, size / 8);
     rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
     rec.setFlags(flags);
 }
