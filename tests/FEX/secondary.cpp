@@ -5,6 +5,12 @@
         FEXTestLoader::RunTest("ASM/Secondary/" #opcode ".asm");                                                                                     \
     }
 
+#define SECONDARY_TEST32(opcode)                                                                                                                     \
+    CATCH_TEST_CASE(#opcode, "[Secondary]") {                                                                                                        \
+        FEXTestLoader::RunTest("32Bit_ASM/Secondary/" #opcode ".asm");                                                                               \
+    }
+
+SECONDARY_TEST(07_XX_04)
 SECONDARY_TEST(08_66_04_2)
 SECONDARY_TEST(08_F2_04_2)
 SECONDARY_TEST(08_F2_07)
@@ -56,3 +62,5 @@ SECONDARY_TEST(15_XX_6)
 SECONDARY_TEST(15_XX_7)
 SECONDARY_TEST(shufps_optimization)
 SECONDARY_TEST(shufps_optimization_2)
+
+SECONDARY_TEST32(07_XX_04)
