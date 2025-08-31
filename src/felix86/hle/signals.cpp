@@ -471,7 +471,48 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
         WARN("Legacy altstack switching detected");
     }
 
+    bool use_altstack = signal.flags & SA_ONSTACK;
+    u64 rsp = use_altstack ? ((u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) : state->GetGpr(X86_REF_RSP);
+    if (rsp == 0) {
+        WARN("RSP is null, use_altstack: %d... using original stack", use_altstack);
+        rsp = state->GetGpr(X86_REF_RSP);
+        ASSERT(rsp != 0);
+    } else if (use_altstack) {
+        VERBOSE("Altstack was established");
+    }
+
+    rsp -= sizeof(x86_rt_sigframe);
+
+    rsp = ((rsp + 4) & -16ul) - 4;
+
     x86_rt_sigframe* frame = (x86_rt_sigframe*)state->GetGpr(X86_REF_RSP);
+    memcpy(frame->retcode, &code, sizeof(code));
+    ASSERT((u64)(char*)frame->retcode < 0xFFFF'FFFFull);
+    frame->pretcode = (u32)(u64)(char*)frame->retcode;
+
+    frame->uc.uc_mcontext.ax = state->GetGpr(X86_REF_RAX);
+    frame->uc.uc_mcontext.cx = state->GetGpr(X86_REF_RCX);
+    frame->uc.uc_mcontext.dx = state->GetGpr(X86_REF_RDX);
+    frame->uc.uc_mcontext.bx = state->GetGpr(X86_REF_RBX);
+    frame->uc.uc_mcontext.sp = state->GetGpr(X86_REF_RSP);
+    frame->uc.uc_mcontext.bp = state->GetGpr(X86_REF_RBP);
+    frame->uc.uc_mcontext.si = state->GetGpr(X86_REF_RSI);
+    frame->uc.uc_mcontext.di = state->GetGpr(X86_REF_RDI);
+    frame->uc.uc_mcontext.ip = state->GetRip();
+    frame->uc.uc_mcontext.flags = state->GetFlags();
+    frame->uc.uc_mcontext.fs = state->fs;
+    frame->uc.uc_mcontext.gs = state->gs;
+    frame->uc.uc_mcontext.cs = state->cs;
+    frame->uc.uc_mcontext.ds = state->ds;
+    frame->uc.uc_mcontext.ss = state->ss;
+    frame->uc.uc_mcontext.es = state->es;
+    frame->uc.uc_mcontext.__fsh = 0;
+    frame->uc.uc_mcontext.__gsh = 0;
+    frame->uc.uc_mcontext.__csh = 0;
+    frame->uc.uc_mcontext.__dsh = 0;
+    frame->uc.uc_mcontext.__ssh = 0;
+    frame->uc.uc_mcontext.__esh = 0;
+    frame->uc.uc_mcontext.fpstate; // = ptr
 }
 
 void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
@@ -482,15 +523,6 @@ void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64
     if (!g_mode32) {
         return setupFrame_x64(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
     } else {
-        // We don't actually support x32 atm and we shouldn't encounter it, warn if we do
-        if (!(signal.flags & SA_IA32_ABI)) {
-            if (!(signal.flags & SA_X32_ABI)) {
-                WARN("32-bit signal doesn't have SA_IA32_ABI or SA_X32_ABI flag?");
-            } else {
-                WARN("32-bit signal doesn't have SA_IA32_ABI flag?");
-            }
-        }
-
         if (signal.flags & SA_SIGINFO) {
             return setupFrame_x86_rt(signal, sig, state, host_gprs, host_fprs, host_vecs, guest_info);
         } else {
