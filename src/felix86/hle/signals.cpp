@@ -513,9 +513,12 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     rsp = ((rsp + 4) & -16ul) - 4;
 
     x86_rt_sigframe* frame = (x86_rt_sigframe*)state->GetGpr(X86_REF_RSP);
+    ASSERT((u64)frame < UINT32_MAX);
     memcpy(frame->retcode, &code, sizeof(code));
-    ASSERT((u64)(char*)frame->retcode < 0xFFFF'FFFFull);
     frame->pretcode = (u32)(u64)(char*)frame->retcode;
+    if (signal.flags & SA_RESTORER) {
+        frame->pretcode = signal.restorer;
+    }
 
     frame->uc.uc_mcontext.ax = state->GetGpr(X86_REF_RAX);
     frame->uc.uc_mcontext.cx = state->GetGpr(X86_REF_RCX);
@@ -541,6 +544,16 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
     frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
+
+    // These are laid out in the frame in the argument order, we don't need to push any arguments
+    frame->sig = sig;
+    frame->pinfo = (u32)(u64)&frame->info;
+    frame->puc = (u32)(u64)&frame->uc;
+
+    state->SetGpr(X86_REF_RSP, (u64)frame); // set the new stack pointer
+    state->SetGpr(X86_REF_RAX, 0);
+    state->SetRip(signal.func);
+    state->SetFlag(X86_REF_DF, 0);
 }
 
 void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
