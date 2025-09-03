@@ -371,7 +371,7 @@ void felix86_fsave_16(struct ThreadState* state, u64 address) {
         if (is_mmx) {
             u16 ones = 0xFFFF;
             memcpy(&data->st[i], &state->fp[i], sizeof(double));
-            memcpy(&data->st[i].signExp, &ones, sizeof(u16));
+            memcpy(&data->st[i].exponent, &ones, sizeof(u16));
         } else {
             Float80 f80 = f64_to_80(state->fp[i]);
             memcpy(&data->st[i], &f80, sizeof(Float80));
@@ -396,7 +396,7 @@ void felix86_fsave_32(struct ThreadState* state, u64 address) {
         if (is_mmx) {
             u16 ones = 0xFFFF;
             memcpy(&data->st[i], &state->fp[i], sizeof(double));
-            memcpy(&data->st[i].signExp, &ones, sizeof(u16));
+            memcpy(&data->st[i].exponent, &ones, sizeof(u16));
         } else {
             Float80 f80 = f64_to_80(state->fp[i]);
             memcpy(&data->st[i], &f80, sizeof(Float80));
@@ -881,17 +881,17 @@ Float80 f64_to_80(double x) {
     Float80 result;
 
     if (exponent == 0) {
-        result.signExp = sign << 15;
+        result.exponent = sign << 15;
         result.significand = significand;
     } else if (exponent == 0x7FF) {
-        result.signExp = (sign << 15) | 0x7FFF;
+        result.exponent = (sign << 15) | 0x7FFF;
         result.significand = significand ? (1ULL << 63) | significand : 0;
     } else {
         exponent = exponent - 1023 + 16383;
         significand |= (1ULL << 52);
         significand <<= 11;
 
-        result.signExp = (sign << 15) | (exponent & 0x7FFF);
+        result.exponent = (sign << 15) | (exponent & 0x7FFF);
         result.significand = significand;
     }
 
@@ -910,8 +910,8 @@ double f80_to_64(Float80* f80) {
         uint64_t u;
     } conv;
 
-    uint16_t sign = (f80->signExp >> 15) & 0x1;
-    int16_t exponent = f80->signExp & 0x7FFF;
+    uint16_t sign = (f80->exponent >> 15) & 0x1;
+    int16_t exponent = f80->exponent & 0x7FFF;
     uint64_t significand = f80->significand;
 
     if (exponent == 0) {

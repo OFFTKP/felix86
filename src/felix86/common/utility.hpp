@@ -86,8 +86,8 @@ inline RMode rounding_mode(x86RoundingMode mode) {
 }
 
 typedef struct __attribute__((packed)) {
-    uint64_t significand;
-    uint16_t signExp;
+    u64 significand;
+    u16 exponent;
 } Float80;
 
 Float80 f64_to_80(double);

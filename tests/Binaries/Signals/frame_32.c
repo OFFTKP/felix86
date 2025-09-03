@@ -1,7 +1,32 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/signal.h>
 #include <unistd.h>
-#include "common.h"
+
+struct x64_fpxreg {
+    unsigned short int significand[4];
+    unsigned short int exponent;
+    unsigned short int reserved[3];
+};
+
+struct Xmm128 {
+    uint64_t val[2];
+};
+
+struct after_fpstate {
+    uint16_t status;
+    uint16_t magic; /* 0xffff: regular FPU data only */
+    /* 0x0000: FXSR FPU data */
+
+    /* FXSR FPU environment */
+    uint32_t _fxsr_env[6]; /* FXSR FPU env is ignored */
+    uint32_t mxcsr;
+    uint32_t reserved;
+    struct x64_fpxreg _fxsr_st[8]; /* FXSR FPU reg data is ignored */
+    struct Xmm128 _xmm[8];         /* First 8 XMM registers */
+    uint32_t padding[44];
+    uint32_t padding2[12];
+};
 
 void signal_handler(int sig, siginfo_t* info, void* data) {
     ucontext_t* context = (ucontext_t*)data;
@@ -66,7 +91,28 @@ void signal_handler(int sig, siginfo_t* info, void* data) {
     ASSERT(*(long*)context->uc_mcontext.fpregs->_st[6].significand == 0x82b1e021);
     ASSERT(*(long*)context->uc_mcontext.fpregs->_st[7].significand == 0x12345678);
 
-    _exit(FELIX86_BTEST_SUCCESS);
+    after_fpstate* after = (after_fpstate*)((uint8_t*)&context->uc_mcontext.fpregs->status);
+    printf("\nmagic: %lx\n", after->magic);
+
+    ASSERT(after->magic == 0);
+    ASSERT(after->_xmm[0].val[0] == 0x7F2C3D19B4A7D622);
+    ASSERT(after->_xmm[0].val[1] == 0x1A93F4ECE15B78A4);
+    ASSERT(after->_xmm[1].val[0] == 0x3C9B0F558D2A6BE1);
+    ASSERT(after->_xmm[1].val[1] == 0x42F8719CAF014DEA);
+    ASSERT(after->_xmm[2].val[0] == 0xD58C1B396BE7A321);
+    ASSERT(after->_xmm[2].val[1] == 0x9F3CDA782B10F5C3);
+    ASSERT(after->_xmm[3].val[0] == 0xF1E6479A03ACD1BE);
+    ASSERT(after->_xmm[3].val[1] == 0x71C5E930D44B8E2F);
+    ASSERT(after->_xmm[4].val[0] == 0xAEBD223F8C6E1499);
+    ASSERT(after->_xmm[4].val[1] == 0xBB31A29E37CF48DA);
+    ASSERT(after->_xmm[5].val[0] == 0xE8421B5F099D73A0);
+    ASSERT(after->_xmm[5].val[1] == 0x16F4A7BB3E9C0842);
+    ASSERT(after->_xmm[6].val[0] == 0x4D2A8F71C5B730AE);
+    ASSERT(after->_xmm[6].val[1] == 0xA0E1DCCFF78E4563);
+    ASSERT(after->_xmm[7].val[0] == 0xCB37824F1129BAD5);
+    ASSERT(after->_xmm[7].val[1] == 0x5B89F03DAE3471BC);
+
+    _exit(0x42);
 }
 
 __attribute__((naked)) void cause_signal() {

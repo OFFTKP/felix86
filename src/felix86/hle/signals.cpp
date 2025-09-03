@@ -158,13 +158,7 @@ struct x86_fpstate_32 {
     u32 reserved;
     struct x64_fpxreg _fxsr_st[8]; /* FXSR FPU reg data is ignored */
     struct Xmm128 _xmm[8];         /* First 8 XMM registers */
-    union {
-        u32 padding1[44]; /* Second 8 XMM registers plus padding */
-        u32 padding[44];  /* Alias name for old user-space */
-    };
-    union {
-        u32 padding2[12];
-    };
+    u32 padding[56];
 };
 
 #ifndef __x86_64__
@@ -481,6 +475,39 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
         VERBOSE("Altstack was established");
     }
 
+    rsp = rsp - (rsp % 8);
+    rsp -= sizeof(x86_fpstate_32);
+    x86_fpstate_32* fpstate = (x86_fpstate_32*)rsp;
+    ASSERT((u64)fpstate < UINT32_MAX);
+
+    fpstate->cw = state->fpu_cw;
+    fpstate->sw = state->fpu_sw;
+    fpstate->tag = state->fpu_tw;
+    fpstate->magic = 0; // extended state
+
+    fpstate->_xmm[0] = state->GetXmm(X86_REF_XMM0);
+    fpstate->_xmm[1] = state->GetXmm(X86_REF_XMM1);
+    fpstate->_xmm[2] = state->GetXmm(X86_REF_XMM2);
+    fpstate->_xmm[3] = state->GetXmm(X86_REF_XMM3);
+    fpstate->_xmm[4] = state->GetXmm(X86_REF_XMM4);
+    fpstate->_xmm[5] = state->GetXmm(X86_REF_XMM5);
+    fpstate->_xmm[6] = state->GetXmm(X86_REF_XMM6);
+    fpstate->_xmm[7] = state->GetXmm(X86_REF_XMM7);
+
+    bool is_mmx = (x87State)state->x87_state == x87State::MMX;
+    for (int i = 0; i < 8; i++) {
+        // TODO: verify that these aren't saved relative to TOP when using x87
+        Float80* reg = &fpstate->_st[i];
+        if (is_mmx) {
+            memcpy(reg, &state->fp[i], sizeof(u64));
+            reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
+        } else {
+            Float80 f80 = f64_to_80(state->fp[i]);
+            memcpy(reg, &f80, sizeof(Float80));
+            static_assert(sizeof(Float80) == 10);
+        }
+    }
+
     rsp -= sizeof(x86_rt_sigframe);
 
     rsp = ((rsp + 4) & -16ul) - 4;
@@ -498,6 +525,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     frame->uc.uc_mcontext.bp = state->GetGpr(X86_REF_RBP);
     frame->uc.uc_mcontext.si = state->GetGpr(X86_REF_RSI);
     frame->uc.uc_mcontext.di = state->GetGpr(X86_REF_RDI);
+    frame->uc.uc_mcontext.sp_at_signal = state->GetGpr(X86_REF_RSP);
     frame->uc.uc_mcontext.ip = state->GetRip();
     frame->uc.uc_mcontext.flags = state->GetFlags();
     frame->uc.uc_mcontext.fs = state->fs;
@@ -512,11 +540,13 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     frame->uc.uc_mcontext.__dsh = 0;
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
-    frame->uc.uc_mcontext.fpstate; // = ptr
+    frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
 }
 
 void setupFrame_x86(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
-                    siginfo_t* guest_info) {}
+                    siginfo_t* guest_info) {
+    UNIMPLEMENTED();
+}
 
 void setupFrame(RegisteredSignal& signal, int sig, ThreadState* state, const u64* host_gprs, const u64* host_fprs, const XmmReg* host_vecs,
                 siginfo_t* guest_info) {
