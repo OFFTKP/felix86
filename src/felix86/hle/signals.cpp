@@ -582,88 +582,132 @@ void Signals::sigreturn(ThreadState* state) {
     // We need to adjust the rsp back before reading the entire struct.
     rsp -= 8;
 
-    x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
-    rsp += sizeof(x64_rt_sigframe);
+    if (g_mode32) {
+        x86_rt_sigframe* frame = (x86_rt_sigframe*)rsp;
+        rsp += sizeof(x86_rt_sigframe);
 
-    SIGLOG("------- sigreturn TID: %d -------", gettid());
+        SIGLOG("------- 32-bit rt_sigreturn TID: %d -------", gettid());
 
-    // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
-    state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.gregs[REG_RAX]);
-    state->SetGpr(X86_REF_RCX, frame->uc.uc_mcontext.gregs[REG_RCX]);
-    state->SetGpr(X86_REF_RDX, frame->uc.uc_mcontext.gregs[REG_RDX]);
-    state->SetGpr(X86_REF_RBX, frame->uc.uc_mcontext.gregs[REG_RBX]);
-    state->SetGpr(X86_REF_RSP, frame->uc.uc_mcontext.gregs[REG_RSP]);
-    state->SetGpr(X86_REF_RBP, frame->uc.uc_mcontext.gregs[REG_RBP]);
-    state->SetGpr(X86_REF_RSI, frame->uc.uc_mcontext.gregs[REG_RSI]);
-    state->SetGpr(X86_REF_RDI, frame->uc.uc_mcontext.gregs[REG_RDI]);
-    state->SetGpr(X86_REF_R8, frame->uc.uc_mcontext.gregs[REG_R8]);
-    state->SetGpr(X86_REF_R9, frame->uc.uc_mcontext.gregs[REG_R9]);
-    state->SetGpr(X86_REF_R10, frame->uc.uc_mcontext.gregs[REG_R10]);
-    state->SetGpr(X86_REF_R11, frame->uc.uc_mcontext.gregs[REG_R11]);
-    state->SetGpr(X86_REF_R12, frame->uc.uc_mcontext.gregs[REG_R12]);
-    state->SetGpr(X86_REF_R13, frame->uc.uc_mcontext.gregs[REG_R13]);
-    state->SetGpr(X86_REF_R14, frame->uc.uc_mcontext.gregs[REG_R14]);
-    state->SetGpr(X86_REF_R15, frame->uc.uc_mcontext.gregs[REG_R15]);
-    state->SetRip(frame->uc.uc_mcontext.gregs[REG_RIP]);
+        state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.ax);
+        state->SetGpr(X86_REF_RCX, frame->uc.uc_mcontext.cx);
+        state->SetGpr(X86_REF_RDX, frame->uc.uc_mcontext.dx);
+        state->SetGpr(X86_REF_RBX, frame->uc.uc_mcontext.bx);
+        state->SetGpr(X86_REF_RSP, frame->uc.uc_mcontext.sp);
+        state->SetGpr(X86_REF_RBP, frame->uc.uc_mcontext.bp);
+        state->SetGpr(X86_REF_RSI, frame->uc.uc_mcontext.si);
+        state->SetGpr(X86_REF_RDI, frame->uc.uc_mcontext.di);
+        state->SetRip(frame->uc.uc_mcontext.ip);
 
-    u64 flags = frame->uc.uc_mcontext.gregs[REG_EFL];
-    bool cf = (flags >> 0) & 1;
-    bool pf = (flags >> 2) & 1;
-    bool af = (flags >> 4) & 1;
-    bool zf = (flags >> 6) & 1;
-    bool sf = (flags >> 7) & 1;
-    bool of = (flags >> 11) & 1;
-    bool df = (flags >> 10) & 1;
-    state->SetFlag(X86_REF_CF, cf);
-    state->SetFlag(X86_REF_PF, pf);
-    state->SetFlag(X86_REF_AF, af);
-    state->SetFlag(X86_REF_ZF, zf);
-    state->SetFlag(X86_REF_SF, sf);
-    state->SetFlag(X86_REF_OF, of);
-    state->SetFlag(X86_REF_DF, df);
+        u64 flags = frame->uc.uc_mcontext.flags;
+        bool cf = (flags >> 0) & 1;
+        bool pf = (flags >> 2) & 1;
+        bool af = (flags >> 4) & 1;
+        bool zf = (flags >> 6) & 1;
+        bool sf = (flags >> 7) & 1;
+        bool of = (flags >> 11) & 1;
+        bool df = (flags >> 10) & 1;
+        state->SetFlag(X86_REF_CF, cf);
+        state->SetFlag(X86_REF_PF, pf);
+        state->SetFlag(X86_REF_AF, af);
+        state->SetFlag(X86_REF_ZF, zf);
+        state->SetFlag(X86_REF_SF, sf);
+        state->SetFlag(X86_REF_OF, of);
+        state->SetFlag(X86_REF_DF, df);
 
-    if (!g_no_riscv_v_state) {
-        state->SetXmm(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
-        state->SetXmm(X86_REF_XMM1, frame->uc.uc_mcontext.fpregs->xmm[1]);
-        state->SetXmm(X86_REF_XMM2, frame->uc.uc_mcontext.fpregs->xmm[2]);
-        state->SetXmm(X86_REF_XMM3, frame->uc.uc_mcontext.fpregs->xmm[3]);
-        state->SetXmm(X86_REF_XMM4, frame->uc.uc_mcontext.fpregs->xmm[4]);
-        state->SetXmm(X86_REF_XMM5, frame->uc.uc_mcontext.fpregs->xmm[5]);
-        state->SetXmm(X86_REF_XMM6, frame->uc.uc_mcontext.fpregs->xmm[6]);
-        state->SetXmm(X86_REF_XMM7, frame->uc.uc_mcontext.fpregs->xmm[7]);
-        state->SetXmm(X86_REF_XMM8, frame->uc.uc_mcontext.fpregs->xmm[8]);
-        state->SetXmm(X86_REF_XMM9, frame->uc.uc_mcontext.fpregs->xmm[9]);
-        state->SetXmm(X86_REF_XMM10, frame->uc.uc_mcontext.fpregs->xmm[10]);
-        state->SetXmm(X86_REF_XMM11, frame->uc.uc_mcontext.fpregs->xmm[11]);
-        state->SetXmm(X86_REF_XMM12, frame->uc.uc_mcontext.fpregs->xmm[12]);
-        state->SetXmm(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
-        state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
-        state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
+        // Restore signal mask to what it was supposed to be outside of signal handler
+        sigset_t host_mask = {};
+        host_mask.__val[0] = frame->uc.uc_sigmask & *(u64*)Signals::hostSignalMask();
+        pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
 
-        for (int i = 0; i < 8; i++) {
-            x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
-            if (reg->exponent == 0xFFFF) {
-                memcpy(&state->fp[i], reg->significand, sizeof(u64));
-            } else {
-                double f64 = f80_to_64((Float80*)reg);
-                memcpy(&state->fp[i], &f64, sizeof(u64));
-            }
+        u64* new_mask = (u64*)&frame->uc.uc_sigmask;
+        u64* old_mask = (u64*)&state->signal_mask;
+        if (*new_mask != *old_mask) {
+            WARN("Signal mask was changed in the signal handler from %lx to %lx", old_mask, new_mask);
         }
     } else {
-        // Don't set the state, because the frame isn't going to have correct
-        // values. Most things shouldn't modify the values of registers in signal handlers.
-        // But if they do, and you need support for that, update your kernel.
-    }
+        x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
+        rsp += sizeof(x64_rt_sigframe);
 
-    // Restore signal mask to what it was supposed to be outside of signal handler
-    sigset_t host_mask;
-    sigandset(&host_mask, &frame->uc.uc_sigmask, Signals::hostSignalMask());
-    pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
+        SIGLOG("------- 64-bit rt_sigreturn TID: %d -------", gettid());
 
-    u64* new_mask = (u64*)&frame->uc.uc_sigmask;
-    u64* old_mask = (u64*)&state->signal_mask;
-    if (*new_mask != *old_mask) {
-        WARN("Signal mask was changed in the signal handler from %lx to %lx", old_mask, new_mask);
+        // The registers need to be restored to what they were before the signal handler was called, or what the signal handler changed them to.
+        state->SetGpr(X86_REF_RAX, frame->uc.uc_mcontext.gregs[REG_RAX]);
+        state->SetGpr(X86_REF_RCX, frame->uc.uc_mcontext.gregs[REG_RCX]);
+        state->SetGpr(X86_REF_RDX, frame->uc.uc_mcontext.gregs[REG_RDX]);
+        state->SetGpr(X86_REF_RBX, frame->uc.uc_mcontext.gregs[REG_RBX]);
+        state->SetGpr(X86_REF_RSP, frame->uc.uc_mcontext.gregs[REG_RSP]);
+        state->SetGpr(X86_REF_RBP, frame->uc.uc_mcontext.gregs[REG_RBP]);
+        state->SetGpr(X86_REF_RSI, frame->uc.uc_mcontext.gregs[REG_RSI]);
+        state->SetGpr(X86_REF_RDI, frame->uc.uc_mcontext.gregs[REG_RDI]);
+        state->SetGpr(X86_REF_R8, frame->uc.uc_mcontext.gregs[REG_R8]);
+        state->SetGpr(X86_REF_R9, frame->uc.uc_mcontext.gregs[REG_R9]);
+        state->SetGpr(X86_REF_R10, frame->uc.uc_mcontext.gregs[REG_R10]);
+        state->SetGpr(X86_REF_R11, frame->uc.uc_mcontext.gregs[REG_R11]);
+        state->SetGpr(X86_REF_R12, frame->uc.uc_mcontext.gregs[REG_R12]);
+        state->SetGpr(X86_REF_R13, frame->uc.uc_mcontext.gregs[REG_R13]);
+        state->SetGpr(X86_REF_R14, frame->uc.uc_mcontext.gregs[REG_R14]);
+        state->SetGpr(X86_REF_R15, frame->uc.uc_mcontext.gregs[REG_R15]);
+        state->SetRip(frame->uc.uc_mcontext.gregs[REG_RIP]);
+
+        u64 flags = frame->uc.uc_mcontext.gregs[REG_EFL];
+        bool cf = (flags >> 0) & 1;
+        bool pf = (flags >> 2) & 1;
+        bool af = (flags >> 4) & 1;
+        bool zf = (flags >> 6) & 1;
+        bool sf = (flags >> 7) & 1;
+        bool of = (flags >> 11) & 1;
+        bool df = (flags >> 10) & 1;
+        state->SetFlag(X86_REF_CF, cf);
+        state->SetFlag(X86_REF_PF, pf);
+        state->SetFlag(X86_REF_AF, af);
+        state->SetFlag(X86_REF_ZF, zf);
+        state->SetFlag(X86_REF_SF, sf);
+        state->SetFlag(X86_REF_OF, of);
+        state->SetFlag(X86_REF_DF, df);
+
+        if (!g_no_riscv_v_state) {
+            state->SetXmm(X86_REF_XMM0, frame->uc.uc_mcontext.fpregs->xmm[0]);
+            state->SetXmm(X86_REF_XMM1, frame->uc.uc_mcontext.fpregs->xmm[1]);
+            state->SetXmm(X86_REF_XMM2, frame->uc.uc_mcontext.fpregs->xmm[2]);
+            state->SetXmm(X86_REF_XMM3, frame->uc.uc_mcontext.fpregs->xmm[3]);
+            state->SetXmm(X86_REF_XMM4, frame->uc.uc_mcontext.fpregs->xmm[4]);
+            state->SetXmm(X86_REF_XMM5, frame->uc.uc_mcontext.fpregs->xmm[5]);
+            state->SetXmm(X86_REF_XMM6, frame->uc.uc_mcontext.fpregs->xmm[6]);
+            state->SetXmm(X86_REF_XMM7, frame->uc.uc_mcontext.fpregs->xmm[7]);
+            state->SetXmm(X86_REF_XMM8, frame->uc.uc_mcontext.fpregs->xmm[8]);
+            state->SetXmm(X86_REF_XMM9, frame->uc.uc_mcontext.fpregs->xmm[9]);
+            state->SetXmm(X86_REF_XMM10, frame->uc.uc_mcontext.fpregs->xmm[10]);
+            state->SetXmm(X86_REF_XMM11, frame->uc.uc_mcontext.fpregs->xmm[11]);
+            state->SetXmm(X86_REF_XMM12, frame->uc.uc_mcontext.fpregs->xmm[12]);
+            state->SetXmm(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
+            state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
+            state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
+
+            for (int i = 0; i < 8; i++) {
+                x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
+                if (reg->exponent == 0xFFFF) {
+                    memcpy(&state->fp[i], reg->significand, sizeof(u64));
+                } else {
+                    double f64 = f80_to_64((Float80*)reg);
+                    memcpy(&state->fp[i], &f64, sizeof(u64));
+                }
+            }
+        } else {
+            // Don't set the state, because the frame isn't going to have correct
+            // values. Most things shouldn't modify the values of registers in signal handlers.
+            // But if they do, and you need support for that, update your kernel.
+        }
+
+        // Restore signal mask to what it was supposed to be outside of signal handler
+        sigset_t host_mask;
+        sigandset(&host_mask, &frame->uc.uc_sigmask, Signals::hostSignalMask());
+        pthread_sigmask(SIG_SETMASK, &host_mask, nullptr);
+
+        u64* new_mask = (u64*)&frame->uc.uc_sigmask;
+        u64* old_mask = (u64*)&state->signal_mask;
+        if (*new_mask != *old_mask) {
+            WARN("Signal mask was changed in the signal handler from %lx to %lx", old_mask, new_mask);
+        }
     }
 }
 
