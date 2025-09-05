@@ -1045,7 +1045,8 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
         // as they may have been changed in the signal handler.
         // TODO: we also need to set xmms, sts, flags too...
         u64* regs = get_regs(ctx);
-        for (int i = 0; i < 16; i++) {
+        int reg_count = g_mode32 ? 8 : 16;
+        for (int i = 0; i < reg_count; i++) {
             x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
             u64 new_value = state->GetGpr(ref);
             if (regs[Recompiler::allocatedGPR(ref).Index()] != new_value) {
