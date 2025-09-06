@@ -1,5 +1,6 @@
 #include <array>
 #include <sys/mman.h>
+#include "felix86/common/print.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -1050,7 +1051,8 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
             x86_ref_e ref = (x86_ref_e)(X86_REF_RAX + i);
             u64 new_value = state->GetGpr(ref);
             if (regs[Recompiler::allocatedGPR(ref).Index()] != new_value) {
-                WARN("Signal handler changed %s from %lx to %lx", ref - X86_REF_RAX, regs[Recompiler::allocatedGPR(ref).Index()], new_value);
+                WARN("Signal handler changed %s from %lx to %lx", print_guest_register((x86_ref_e)(ref - X86_REF_RAX)),
+                     regs[Recompiler::allocatedGPR(ref).Index()], new_value);
             }
             regs[Recompiler::allocatedGPR(ref).Index()] = new_value;
         }
