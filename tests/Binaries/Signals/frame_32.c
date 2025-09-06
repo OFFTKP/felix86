@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/signal.h>
@@ -60,7 +61,8 @@ void signal_handler(int sig, siginfo_t* info, void* data) {
     printf("    tag %lx", context->uc_mcontext.fpregs->tag);
     printf("    cw %lx", context->uc_mcontext.fpregs->cw);
     printf("    sw %lx", context->uc_mcontext.fpregs->sw);
-    printf("    status %lx", context->uc_mcontext.fpregs->status);
+    printf("    status %lx\n", context->uc_mcontext.fpregs->status);
+    printf("    offset %d\n", offsetof(_libc_fpstate, _st));
 
 #define ASSERT(cond)                                                                                                                                 \
     if (!(cond)) {                                                                                                                                   \
