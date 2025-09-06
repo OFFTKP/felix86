@@ -64,6 +64,7 @@ void signal_handler(int sig, siginfo_t* info, void* data) {
 
 #define ASSERT(cond)                                                                                                                                 \
     if (!(cond)) {                                                                                                                                   \
+        printf("Failed %s\n", #cond);                                                                                                                \
         _exit(1);                                                                                                                                    \
         __builtin_unreachable();                                                                                                                     \
     }
