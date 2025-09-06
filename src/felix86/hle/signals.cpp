@@ -521,6 +521,8 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
         frame->pretcode = signal.restorer;
     }
 
+    frame->info = *guest_info;
+
     frame->uc.uc_mcontext.ax = state->GetGpr(X86_REF_RAX);
     frame->uc.uc_mcontext.cx = state->GetGpr(X86_REF_RCX);
     frame->uc.uc_mcontext.dx = state->GetGpr(X86_REF_RDX);
