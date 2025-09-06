@@ -500,9 +500,11 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
         // TODO: verify that these aren't saved relative to TOP when using x87
         x64_fpxreg* reg = &fpstate->_st[i];
         if (is_mmx) {
+            WARN("Saving as MMX regs");
             memcpy(reg, &state->fp[i], sizeof(u64));
             reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
         } else {
+            WARN("Saving as x87 regs");
             Float80 f80 = f64_to_80(state->fp[i]);
             memcpy(reg, &f80, sizeof(Float80));
             static_assert(sizeof(Float80) == 10);
