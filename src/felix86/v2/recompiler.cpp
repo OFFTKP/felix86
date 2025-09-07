@@ -3225,6 +3225,7 @@ void Recompiler::popX87() {
 
 // Move from x87 registers to MMX registers and switch the x87_state flag
 void Recompiler::switchToMMX() {
+    WARN("switchToMMX");
     biscuit::Label after;
     biscuit::GPR val = scratch();
     as.LBU(val, offsetof(ThreadState, x87_state), threadStatePointer());
@@ -3254,6 +3255,7 @@ void Recompiler::switchToMMX() {
 }
 
 void Recompiler::switchToX87() {
+    WARN("switchToX87");
     biscuit::Label after;
     biscuit::GPR val = scratch();
     as.LBU(val, offsetof(ThreadState, x87_state), threadStatePointer());
