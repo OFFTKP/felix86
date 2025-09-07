@@ -423,16 +423,19 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
     frame->uc.uc_mcontext.fpregs->xmm[15] = state->GetXmm(X86_REF_XMM15);
 
     bool is_mmx = (x87State)state->x87_state == x87State::MMX;
+    bool is_x87 = (x87State)state->x87_state == x87State::x87;
     for (int i = 0; i < 8; i++) {
         // TODO: verify that these aren't saved relative to TOP when using x87
         x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
         if (is_mmx) {
             memcpy(reg, &state->fp[i], sizeof(u64));
             reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
-        } else {
+        } else if (is_x87) {
             Float80 f80 = f64_to_80(state->fp[i]);
             memcpy(reg, &f80, sizeof(Float80));
             static_assert(sizeof(Float80) == 10);
+        } else {
+            WARN("Unknown x87 state when creating signal frame");
         }
     }
 
@@ -496,6 +499,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     fpstate->_xmm[7] = state->GetXmm(X86_REF_XMM7);
 
     bool is_mmx = (x87State)state->x87_state == x87State::MMX;
+    bool is_x87 = (x87State)state->x87_state == x87State::x87;
     for (int i = 0; i < 8; i++) {
         // TODO: verify that these aren't saved relative to TOP when using x87
         x64_fpxreg* reg = &fpstate->_st[i];
@@ -503,11 +507,13 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
             WARN("Saving as MMX regs");
             memcpy(reg, &state->fp[i], sizeof(u64));
             reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
-        } else {
+        } else if (is_x87) {
             WARN("Saving as x87 regs");
             Float80 f80 = f64_to_80(state->fp[i]);
             memcpy(reg, &f80, sizeof(Float80));
             static_assert(sizeof(Float80) == 10);
+        } else {
+            WARN("Unknown x87 state when creating signal frame");
         }
     }
 
