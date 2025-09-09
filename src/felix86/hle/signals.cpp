@@ -631,7 +631,7 @@ void Signals::sigreturn(ThreadState* state) {
         u64* new_mask = (u64*)&frame->uc.uc_sigmask;
         u64* old_mask = (u64*)&state->signal_mask;
         if (*new_mask != *old_mask) {
-            WARN("Signal mask was changed in the signal handler from %lx to %lx", old_mask, new_mask);
+            WARN("Signal mask was changed in the signal handler from %lx to %lx", *old_mask, *new_mask);
         }
     } else {
         x64_rt_sigframe* frame = (x64_rt_sigframe*)rsp;
@@ -715,7 +715,7 @@ void Signals::sigreturn(ThreadState* state) {
         u64* new_mask = (u64*)&frame->uc.uc_sigmask;
         u64* old_mask = (u64*)&state->signal_mask;
         if (*new_mask != *old_mask) {
-            WARN("Signal mask was changed in the signal handler from %lx to %lx", old_mask, new_mask);
+            WARN("Signal mask was changed in the signal handler from %lx to %lx", *old_mask, *new_mask);
         }
     }
 }
