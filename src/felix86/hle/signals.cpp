@@ -148,7 +148,7 @@ struct x86_fpstate_32 {
     u32 cssel;
     u32 dataoff;
     u32 datasel;
-    x64_fpxreg _st[8];
+    Float80 _st[8];
     u16 status;
     u16 magic; /* 0xffff: regular FPU data only */
     /* 0x0000: FXSR FPU data */
@@ -502,13 +502,11 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     bool is_x87 = (x87State)state->x87_state == x87State::x87;
     for (int i = 0; i < 8; i++) {
         // TODO: verify that these aren't saved relative to TOP when using x87
-        x64_fpxreg* reg = &fpstate->_st[i];
+        Float80* reg = &fpstate->_st[i];
         if (is_mmx) {
             memcpy(reg, &state->fp[i], sizeof(u64));
             reg->exponent = 0xFFFF; // according to Intel manual MMX instructions set these to 1's
-            WARN("Saving as MMX regs %lx", *(u64*)&fpstate->_st[i]);
         } else if (is_x87) {
-            WARN("Saving as x87 regs");
             Float80 f80 = f64_to_80(state->fp[i]);
             memcpy(reg, &f80, sizeof(Float80));
             static_assert(sizeof(Float80) == 10);
