@@ -552,6 +552,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     frame->uc.uc_mcontext.__dsh = 0;
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
+    frame->uc.uc_sigmask = state->signal_mask.__val[0];
     frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
 
     // These are laid out in the frame in the argument order, we don't need to push any arguments
