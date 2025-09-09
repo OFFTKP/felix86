@@ -3225,7 +3225,7 @@ void Recompiler::popX87() {
 
 // Move from x87 registers to MMX registers and switch the x87_state flag
 void Recompiler::switchToMMX() {
-    WARN("switchToMMX");
+    setVectorState(SEW::E64, 1); // needs to be here so it always runs (TODO: this is bad but we'll rewrite x87 code anyway)
     biscuit::Label after;
     biscuit::GPR val = scratch();
     as.LBU(val, offsetof(ThreadState, x87_state), threadStatePointer());
@@ -3234,8 +3234,6 @@ void Recompiler::switchToMMX() {
 
     // Per the manual, MMX instructions set the TOP to 0
     setTOP(x0);
-
-    setVectorState(SEW::E64, 1);
 
     // TODO: In the case that x87 TOP was not 0 this transition could be wrong?
     // IDK whats supposed to happen if there's x87 code, say TOP is 5, and then an MMX instruction
@@ -3255,14 +3253,13 @@ void Recompiler::switchToMMX() {
 }
 
 void Recompiler::switchToX87() {
-    WARN("switchToX87");
+    setVectorState(SEW::E64, 1);
     biscuit::Label after;
     biscuit::GPR val = scratch();
     as.LBU(val, offsetof(ThreadState, x87_state), threadStatePointer());
     as.XORI(val, val, (int)x87State::x87);
     as.BEQZ(val, &after);
 
-    setVectorState(SEW::E64, 1);
     for (int i = 0; i < 8; i++) {
         biscuit::Vec mm = allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
         biscuit::FPR st = allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
