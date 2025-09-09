@@ -591,7 +591,7 @@ void Signals::sigreturn(ThreadState* state) {
 
     // When the signal handler returned, it popped the return address, which is the 8 bytes "pretcode" field in the sigframe
     // We need to adjust the rsp back before reading the entire struct.
-    rsp -= 8;
+    rsp -= g_mode32 ? 4 : 8;
 
     if (g_mode32) {
         x86_rt_sigframe* frame = (x86_rt_sigframe*)rsp;
