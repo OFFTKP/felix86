@@ -521,7 +521,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
 
     rsp = ((rsp + 4) & -16ul) - 4;
 
-    x86_rt_sigframe* frame = (x86_rt_sigframe*)state->GetGpr(X86_REF_RSP);
+    x86_rt_sigframe* frame = (x86_rt_sigframe*)rsp;
     ASSERT((u64)frame < UINT32_MAX);
     memcpy(frame->retcode, &code, sizeof(code));
     frame->pretcode = (u32)(u64)(char*)frame->retcode;
@@ -555,8 +555,6 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     frame->uc.uc_mcontext.__ssh = 0;
     frame->uc.uc_mcontext.__esh = 0;
     frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
-    WARN("Fpstate at %x", frame->uc.uc_mcontext.fpstate);
-    WARN("st0 %x at %p", fpstate->_st[0], (void*)fpstate->_st);
 
     // These are laid out in the frame in the argument order, we don't need to push any arguments
     frame->sig = sig;
