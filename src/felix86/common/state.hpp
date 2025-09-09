@@ -13,7 +13,7 @@
 // We statically allocate 8 FPRs and 8 Vecs for x87 and MMX. But in x86 they share the same registers.
 // For this reason we need to have a way to communicate to signal handlers which registers hold the correct values.
 // For now, the dispatcher will always assume FPRs hold the correct values so blocks must restore state to x87 when finished.
-enum class x87State {
+enum class x87State : u8 {
     Unknown = 0,
     x87 = 1,
     MMX = 2,
