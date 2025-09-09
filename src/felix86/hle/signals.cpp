@@ -556,7 +556,7 @@ void setupFrame_x86_rt(RegisteredSignal& signal, int sig, ThreadState* state, co
     frame->uc.uc_mcontext.__esh = 0;
     frame->uc.uc_mcontext.fpstate = (u32)(u64)fpstate;
     WARN("Fpstate at %x", frame->uc.uc_mcontext.fpstate);
-    WARN("st0 %x", fpstate->_st[0]);
+    WARN("st0 %x at %x", fpstate->_st[0], &fpstate->_st[0]);
 
     // These are laid out in the frame in the argument order, we don't need to push any arguments
     frame->sig = sig;

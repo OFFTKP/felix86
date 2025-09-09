@@ -57,7 +57,8 @@ void signal_handler(int sig, siginfo_t* info, void* data) {
     printf("    gs: %x\n", context->uc_mcontext.gregs[REG_GS]);
     printf("    ss: %x\n", context->uc_mcontext.gregs[REG_SS]);
     for (int i = 0; i < 8; i++) {
-        printf("    st%d: %lx %x\n", i, *(long*)context->uc_mcontext.fpregs->_st[i].significand, context->uc_mcontext.fpregs->_st[i].exponent);
+        printf("    st%d: %lx %x at %x\n", i, *(long*)context->uc_mcontext.fpregs->_st[i].significand, context->uc_mcontext.fpregs->_st[i].exponent,
+               &context->uc_mcontext.fpregs->_st[i]);
     }
     printf("    tag %lx", context->uc_mcontext.fpregs->tag);
     printf("    cw %lx", context->uc_mcontext.fpregs->cw);
