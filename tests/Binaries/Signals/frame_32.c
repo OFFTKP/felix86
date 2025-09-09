@@ -33,6 +33,7 @@ void signal_handler(int sig, siginfo_t* info, void* data) {
     ucontext_t* context = (ucontext_t*)data;
     printf("Sig: %d\n", sig);
     printf("addr: %x\n", (unsigned)info->si_addr);
+    printf("fpstate: %x\n", (unsigned)context->uc_mcontext.fpregs);
     printf("errno: %x\n", (unsigned)info->si_errno);
     printf("code: %x\n", (unsigned)info->si_code);
     printf("Link: %p\n", context->uc_link);
