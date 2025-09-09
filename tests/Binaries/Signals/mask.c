@@ -22,6 +22,8 @@ int main() {
 
     alarm(1);
 
+    printf("Mask before: %lx", mask_before.__val[0]);
+
     while (!you_can_leave) {
     }
 
