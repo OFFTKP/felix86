@@ -1030,7 +1030,7 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     }
 }
 
-biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
+biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand, bool always_aligned) {
     switch (operand->type) {
     case ZYDIS_OPERAND_TYPE_REGISTER: {
         biscuit::Vec reg = getVec(operand->reg.value);
@@ -1040,7 +1040,7 @@ biscuit::Vec Recompiler::getVec(const ZydisDecodedOperand* operand) {
         biscuit::Vec vec = scratchVec();
         biscuit::GPR address = lea(operand, false);
 
-        readMemory(vec, address, operand->size);
+        readMemory(vec, address, operand->size, always_aligned);
 
         popScratch(); // pop lea scratch
 
@@ -2613,7 +2613,7 @@ void Recompiler::readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset,
     }
 }
 
-void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
+void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size, bool always_aligned) {
     switch (size) {
     case 8: {
         setVectorState(SEW::E8, 1);
@@ -2636,6 +2636,21 @@ void Recompiler::readMemory(biscuit::Vec vec, biscuit::GPR address, int size) {
         break;
     }
     case 128: {
+        if (always_aligned && current_grouping == LMUL::M1) {
+            if (current_vlen == 16 && current_sew == SEW::E8) {
+                as.VLE8(vec, address);
+                break;
+            } else if (current_vlen == 8 && current_sew == SEW::E16) {
+                as.VLE16(vec, address);
+                break;
+            } else if (current_vlen == 4 && current_sew == SEW::E32) {
+                as.VLE32(vec, address);
+                break;
+            } else if (current_vlen == 2 && current_sew == SEW::E64) {
+                as.VLE64(vec, address);
+                break;
+            }
+        }
         setVectorState(SEW::E8, 16);
         as.VLE8(vec, address);
         break;

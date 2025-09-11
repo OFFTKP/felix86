@@ -103,7 +103,7 @@ struct Recompiler {
 
     biscuit::GPR getGPR(ZydisRegister reg);
 
-    biscuit::Vec getVec(const ZydisDecodedOperand* operand);
+    biscuit::Vec getVec(const ZydisDecodedOperand* operand, bool always_aligned = false);
 
     biscuit::Vec getVec(ZydisRegister reg);
 
@@ -367,7 +367,7 @@ struct Recompiler {
 
     void readMemory(biscuit::GPR dest, biscuit::GPR address, i64 offset, x86_size_e size);
 
-    void readMemory(biscuit::Vec dest, biscuit::GPR address, int size);
+    void readMemory(biscuit::Vec dest, biscuit::GPR address, int size, bool always_aligned = false);
 
     void writeMemory(biscuit::GPR src, biscuit::GPR address, i64 offset, x86_size_e size);
 

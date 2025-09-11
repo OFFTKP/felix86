@@ -3904,9 +3904,9 @@ FAST_HANDLE(MOVZX) {
 }
 
 FAST_HANDLE(PXOR) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E64, 2);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VXOR(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
@@ -3938,26 +3938,26 @@ FAST_HANDLE(MOVNTPS) {
 }
 
 FAST_HANDLE(PAND) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E64, 2);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VAND(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(POR) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E64, 2);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VOR(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(PANDN) {
+    rec.setVectorState(SEW::E64, 2);
     biscuit::Vec dst_not = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E64, 2);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     if (Extensions::Zvbb) {
         WARN_ONCE("PANDN + Zvbb is untested, please run tests and report results");
         as.VANDN(dst, src, dst);
@@ -4001,49 +4001,49 @@ FAST_HANDLE(ANDNPD) {
 }
 
 void PADD(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VADD(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 void PADDS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VSADD(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 void PADDSU(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VSADDU(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 void PSUBS(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VSSUB(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 void PSUBSU(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VSSUBU(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 void PSUB(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(sew, vlen);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VSUB(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
@@ -4113,42 +4113,42 @@ FAST_HANDLE(PSUBQ) {
 }
 
 FAST_HANDLE(ADDPS) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E32, 4);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VFADD(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(ADDPD) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E64, 2);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VFADD(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(SUBPS) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E32, 4);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VFSUB(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(SUBPD) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E64, 2);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1], true);
     as.VFSUB(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(MINPS) {
     if (g_config.inaccurate_minmax && !g_config.paranoid) {
-        biscuit::Vec dst = rec.getVec(&operands[0]);
-        biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1], true);
         as.VFMIN(dst, dst, src);
         rec.setVec(&operands[0], dst);
         return;
@@ -4185,9 +4185,9 @@ FAST_HANDLE(MINPS) {
 
 FAST_HANDLE(MINPD) {
     if (g_config.inaccurate_minmax && !g_config.paranoid) {
-        biscuit::Vec dst = rec.getVec(&operands[0]);
-        biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E64, 2);
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1], true);
         as.VFMIN(dst, dst, src);
         rec.setVec(&operands[0], dst);
         return;
