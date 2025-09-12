@@ -2329,8 +2329,37 @@ void Recompiler::updateZero(biscuit::GPR result, x86_size_e size) {
 
 void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
     biscuit::GPR sf = flag(X86_REF_SF);
-    as.SRLI(sf, result, getBitSize(size) - 1);
-    as.ANDI(sf, sf, 1);
+    switch (getBitSize(size)) {
+    case 64: {
+        as.SRLI(sf, result, 63);
+        break;
+    }
+    case 32: {
+        as.SRLIW(sf, result, 31);
+        break;
+    }
+    case 16: {
+        if (Extensions::B) {
+            as.BEXTI(sf, result, 15);
+        } else {
+            as.SRLI(sf, result, 15);
+            as.ANDI(sf, sf, 1);
+        }
+        break;
+    }
+    case 8: {
+        if (Extensions::B) {
+            as.BEXTI(sf, result, 7);
+        } else {
+            as.SRLI(sf, result, 7);
+            as.ANDI(sf, sf, 1);
+        }
+        break;
+    }
+    default: {
+        UNREACHABLE();
+    }
+    }
 }
 
 void Recompiler::jumpAndLink(u64 rip) {

@@ -205,24 +205,28 @@
         "disassembly": "pmaxsd xmm2, xmm3"
     },
     "660f3a0ad303": {
-        "instruction_count": 5,
+        "instruction_count": 7,
         "expected_asm": [
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
-            "VFMV.F.S        f28, v5",
-            "FCVT.W.S        ra, f28, rtz",
-            "FCVT.S.W        f29, ra, rtz",
-            "VFMV.S.F        v4, f29"
+            "ADDIW           t1, zero, 0x1(1)",
+            "CSRRW           ra, t1, 0x2(2)",
+            "VFCVT.X.F.V     v26, v5, none",
+            "VFCVT.F.X.V     v27, v26, none",
+            "VFSGNJ.VV       v4, v27, v5, none",
+            "CSRRW           zero, ra, 0x2(2)"
         ],
         "disassembly": "roundss xmm2, xmm3, 0x03"
     },
     "660f3a0bd303": {
-        "instruction_count": 5,
+        "instruction_count": 7,
         "expected_asm": [
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
-            "VFMV.F.S        f28, v5",
-            "FCVT.L.D        ra, f28, rtz",
-            "FCVT.D.L        f29, ra, rtz",
-            "VFMV.S.F        v4, f29"
+            "ADDIW           t1, zero, 0x1(1)",
+            "CSRRW           ra, t1, 0x2(2)",
+            "VFCVT.X.F.V     v26, v5, none",
+            "VFCVT.F.X.V     v27, v26, none",
+            "VFSGNJ.VV       v4, v27, v5, none",
+            "CSRRW           zero, ra, 0x2(2)"
         ],
         "disassembly": "roundsd xmm2, xmm3, 0x03"
     },

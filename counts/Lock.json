@@ -163,7 +163,7 @@
             "ANDI            t2, t3, 0x3(3)",
             "ADDIW           t4, zero, 0x3(3)",
             "BNE             t2, t4, 0x28(40)",
-            "ADDI            t2, s11, 0x268(616)",
+            "ADDI            t2, s11, 0x260(608)",
             "ADDIW           t4, zero, 0x1(1)",
             "AMOADD.D        zero, t2, t4, aq, rl",
             "FENCE          ",
