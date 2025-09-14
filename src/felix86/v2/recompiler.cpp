@@ -2118,8 +2118,12 @@ void Recompiler::updateOverflowAdd(biscuit::GPR lhs, biscuit::GPR rhs, biscuit::
         as.XOR(of, of, temp);
     } else {
         as.OR(of, lhs, rhs);
-        as.NOT(temp, result);
-        as.AND(of, temp, of);
+        if (Extensions::B) {
+            as.ANDN(of, of, result);
+        } else {
+            as.NOT(temp, result);
+            as.AND(of, temp, of);
+        }
         as.AND(temp, lhs, rhs);
         as.OR(of, of, temp);
         as.SRLI(temp, of, size - 2);
