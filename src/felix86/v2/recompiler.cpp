@@ -667,8 +667,9 @@ void Recompiler::flushX87() {
                 top_got = true;
                 as.LHU(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
             }
+            aaaaaa
 
-            ASSERT(x87_reg_cache[i].loaded);
+                ASSERT(x87_reg_cache[i].loaded);
             int index = i - pushed_this_block;
             as.ADDI(st, top, index);
             as.ANDI(st, st, 0b111);
