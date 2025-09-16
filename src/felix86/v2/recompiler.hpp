@@ -19,6 +19,12 @@ struct AddressCacheEntry {
     u64 host{}, guest{};
 };
 
+struct AllocatedX87Reg {
+    biscuit::FPR reg;
+    bool loaded = false;
+    bool dirty = false;
+};
+
 enum class FlagMode {
     Default,
     AlwaysEmit,
@@ -85,9 +91,9 @@ struct Recompiler {
 
     void setTOP(biscuit::GPR top);
 
-    biscuit::FPR getST(int index);
+    biscuit::FPR getST(int index, bool dirty = true);
 
-    biscuit::FPR getST(ZydisDecodedOperand* operand);
+    biscuit::FPR getST(ZydisDecodedOperand* operand, bool dirty = true);
 
     void setST(int index, biscuit::FPR value);
 
@@ -260,18 +266,6 @@ struct Recompiler {
         }
     }
 
-    static constexpr biscuit::FPR allocatedFPR(x86_ref_e reg) {
-        switch (reg) {
-        case X86_REF_ST0 ... X86_REF_ST7: {
-            return biscuit::FPR(ft0.Index() + (reg - X86_REF_ST0));
-        }
-        default: {
-            UNREACHABLE();
-            return f0;
-        }
-        }
-    }
-
     static constexpr biscuit::Vec allocatedVec(x86_ref_e reg) {
         switch (reg) {
         case X86_REF_XMM0: {
@@ -323,30 +317,6 @@ struct Recompiler {
         }
         case X86_REF_XMM15: {
             return biscuit::v17;
-        }
-        case X86_REF_MM0: {
-            return biscuit::v18;
-        }
-        case X86_REF_MM1: {
-            return biscuit::v19;
-        }
-        case X86_REF_MM2: {
-            return biscuit::v20;
-        }
-        case X86_REF_MM3: {
-            return biscuit::v21;
-        }
-        case X86_REF_MM4: {
-            return biscuit::v22;
-        }
-        case X86_REF_MM5: {
-            return biscuit::v23;
-        }
-        case X86_REF_MM6: {
-            return biscuit::v24;
-        }
-        case X86_REF_MM7: {
-            return biscuit::v25;
         }
         default: {
             UNREACHABLE();
@@ -604,9 +574,11 @@ struct Recompiler {
         return calltrace;
     }
 
-    void pushX87(biscuit::FPR val);
+    biscuit::FPR pushX87(bool dirty);
 
     void popX87();
+
+    void flushX87();
 
     void switchToMMX();
 
@@ -619,6 +591,10 @@ struct Recompiler {
 
     void setFsrmSSE(bool is_sse) {
         fsrm_sse = is_sse;
+    }
+
+    bool isFsrmSSE() {
+        return fsrm_sse;
     }
 
     void skipNext();
@@ -716,16 +692,23 @@ private:
 
     int optimization_guard_counter = 0; // see OptimizationGuard
 
+    std::array<AllocatedX87Reg, 8> x87_reg_cache;
+
+    int pushed_this_block = 0;
+
     constexpr static std::array scratch_gprs = {
         x1, x6, x28, x29, x7, x30, x31,
     };
 
+    // TODO: is the below comment still true? make it not true
+    // TODO: to remove "if changed" comment, go to places that regs are hardcoded and add static asserts that they are scratches
     // TODO: For better or for worst (definitely for worst) we rely on the fact that we start with an even
     // register and go sequentially like this
     // This has to do with the fact we want even registers sometimes so widening operations can use
     // the register group. In the future with a proper allocator we can make it so the order here doesn't
     // matter and the order picks an available group.
-    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v1}; // If changed, also change hardcoded in punpckh
+    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v1, v18,
+                                               v19, v20, v21, v22, v23, v24, v25}; // If changed, also change hardcoded in punpckh
 
     constexpr static std::array scratch_fprs = {ft8, ft9, ft10, ft11};
 };

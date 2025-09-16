@@ -9643,9 +9643,9 @@ FAST_HANDLE(FLD) {
         rec.restoreState();
         rec.pushX87(fa0); // push return value
     } else {
+        biscuit::FPR new_reg = rec.pushX87(true);
         biscuit::FPR st = rec.getST(&operands[0]);
-        biscuit::FPR temp = rec.scratchFPR();
-        as.FMV_D(temp, st); // move to temp because getST could return allocated FPR
+        as.FMV_D(new_reg, st); // move to temp because getST could return allocated FPR
         rec.pushX87(temp);
     }
 }
