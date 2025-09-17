@@ -25,6 +25,12 @@ struct AllocatedX87Reg {
     bool dirty = false;
 };
 
+struct AllocatedMMXReg {
+    biscuit::Vec reg;
+    bool loaded = false;
+    bool dirty = false;
+};
+
 enum class FlagMode {
     Default,
     AlwaysEmit,
@@ -694,6 +700,8 @@ private:
 
     std::array<AllocatedX87Reg, 8> x87_reg_cache;
 
+    std::array<AllocatedMMXReg, 8> mmx_reg_cache;
+
     int pushed_this_block = 0;
 
     constexpr static std::array scratch_gprs = {
@@ -707,8 +715,7 @@ private:
     // This has to do with the fact we want even registers sometimes so widening operations can use
     // the register group. In the future with a proper allocator we can make it so the order here doesn't
     // matter and the order picks an available group.
-    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v1, v18,
-                                               v19, v20, v21, v22, v23, v24, v25}; // If changed, also change hardcoded in punpckh
+    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v1}; // If changed, also change hardcoded in punpckh
 
     constexpr static std::array scratch_fprs = {ft8, ft9, ft10, ft11};
 };

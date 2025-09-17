@@ -9641,17 +9641,17 @@ FAST_HANDLE(FLD) {
         as.MV(a0, address);
         rec.callPointer(offsetof(ThreadState, f80_to_64));
         rec.restoreState();
-        rec.pushX87(fa0); // push return value
+        biscuit::FPR new_reg = rec.pushX87(true);
+        as.FMV_D(new_reg, fa0);
     } else {
         biscuit::FPR new_reg = rec.pushX87(true);
         biscuit::FPR st = rec.getST(&operands[0]);
         as.FMV_D(new_reg, st); // move to temp because getST could return allocated FPR
-        rec.pushX87(temp);
     }
 }
 
 FAST_HANDLE(FILD) {
-    biscuit::FPR ftemp = rec.scratchFPR();
+    biscuit::FPR ftemp = rec.pushX87(true);
     biscuit::GPR value = rec.getGPR(&operands[0]);
     switch (operands[0].size) {
     case 16: {
@@ -9671,7 +9671,6 @@ FAST_HANDLE(FILD) {
         UNREACHABLE();
     }
     }
-    rec.pushX87(ftemp);
 }
 
 void OP(void (Assembler::*func)(FPR, FPR, FPR, RMode), Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction,
@@ -9960,10 +9959,9 @@ FAST_HANDLE(FPTAN) {
 
     // FPTAN also pushes 1.0 for compatibility reasons
     biscuit::GPR temp = rec.scratch();
-    biscuit::FPR one = rec.scratchFPR();
+    biscuit::FPR one = rec.pushX87(true);
     as.LI(temp, 0x3FF0000000000000ull);
     as.FMV_D_X(one, temp);
-    rec.pushX87(one);
 }
 
 FAST_HANDLE(FWAIT) {
@@ -10254,7 +10252,7 @@ FAST_HANDLE(FCHS) {
 }
 
 FAST_HANDLE(FLD1) {
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::FPR st = rec.pushX87(true);
 
     if (Extensions::Zfa) {
         as.FLI_D(st, 1.0);
@@ -10263,59 +10261,51 @@ FAST_HANDLE(FLD1) {
         as.LI(temp, 0x3FF0000000000000ull);
         as.FMV_D_X(st, temp);
     }
-
-    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDL2T) {
     constexpr u64 value = 0x400A'934F'0979'A371ull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::FPR st = rec.pushX87(true);
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDL2E) {
     constexpr u64 value = 0x3FF7'1547'652B'82FEull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::FPR st = rec.pushX87(true);
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDPI) {
     constexpr u64 value = 0x4009'21FB'5444'2D18ull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::FPR st = rec.pushX87(true);
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDLG2) {
     constexpr u64 value = 0x3FD3'4413'509F'79FFull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::FPR st = rec.pushX87(true);
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDLN2) {
     constexpr u64 value = 0x3FE6'2E42'FEFA'39EFull;
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::FPR st = rec.pushX87(true);
     biscuit::GPR temp = rec.scratch();
     as.LI(temp, value);
     as.FMV_D_X(st, temp);
-    rec.pushX87(st);
 }
 
 FAST_HANDLE(FLDZ) {
-    biscuit::FPR st = rec.scratchFPR();
+    biscuit::FPR st = rec.pushX87(true);
     as.FMV_D_X(st, x0);
-    rec.pushX87(st);
 }
 
 FAST_HANDLE(FABS) {

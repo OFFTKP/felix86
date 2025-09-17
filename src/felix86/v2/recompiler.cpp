@@ -125,7 +125,8 @@ Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), max_code_c
     }
 
     for (int i = 0; i < 8; i++) {
-        x87_reg_cache[i].reg = biscuit::FPR(biscuit::fa0.Index() + i);
+        x87_reg_cache[i].reg = biscuit::FPR(biscuit::ft0.Index() + i);
+        mmx_reg_cache[i].reg = biscuit::Vec(biscuit::v18.Index() + i);
     }
 }
 
@@ -495,6 +496,8 @@ u64 Recompiler::compileSequence(u64 rip) {
     for (int i = 0; i < 8; i++) {
         x87_reg_cache[i].loaded = false;
         x87_reg_cache[i].dirty = false;
+        mmx_reg_cache[i].loaded = false;
+        mmx_reg_cache[i].dirty = false;
     }
 
     pushed_this_block = 0;
@@ -655,25 +658,21 @@ void Recompiler::skipNext() {
 }
 
 void Recompiler::flushX87() {
-    biscuit::GPR top, ftw;
+    biscuit::GPR top;
     biscuit::GPR st = scratch();
     biscuit::GPR address = scratch();
     bool top_got = false;
+    bool x87_dirty = false;
     for (int i = 0; i < 8; i++) {
         if (x87_reg_cache[i].dirty) {
             if (!top_got) {
                 top = getTOP();
-                ftw = scratch();
                 top_got = true;
-                as.LHU(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
             }
-            aaaaaa
-
-                ASSERT(x87_reg_cache[i].loaded);
+            ASSERT(x87_reg_cache[i].loaded);
             int index = i - pushed_this_block;
             as.ADDI(st, top, index);
             as.ANDI(st, st, 0b111);
-            as.LI(address, 0b11);
             if (Extensions::B) {
                 as.SH3ADD(address, st, threadStatePointer());
             } else {
@@ -681,6 +680,18 @@ void Recompiler::flushX87() {
                 as.ADD(address, threadStatePointer(), st);
             }
             as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, fp), address);
+            x87_dirty = true;
+        }
+    }
+
+    for (int i = 0; i < 8; i++) {
+        if (mmx_reg_cache[i].dirty) {
+            ASSERT(!x87_dirty);
+            ASSERT(mmx_reg_cache[i].loaded);
+            setVectorState(SEW::E64, 1);
+            biscuit::Vec vec = mmx_reg_cache[i].reg;
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp) + i * 8);
+            as.VSE64(vec, address);
         }
     }
 
@@ -690,7 +701,6 @@ void Recompiler::flushX87() {
     popScratch();
 
     if (top_got) {
-        popScratch();
         popScratch();
     }
 }
@@ -1343,8 +1353,26 @@ void Recompiler::vsplat(biscuit::Vec vec, u64 imm) {
 }
 
 biscuit::Vec Recompiler::getVec(x86_ref_e ref) {
-    biscuit::Vec vec = allocatedVec(ref);
-    return vec;
+    if (ref >= X86_REF_MM0 && ref <= X86_REF_MM7) {
+        AllocatedMMXReg& entry = mmx_reg_cache[ref - X86_REF_MM0];
+        if (entry.loaded) {
+            return entry.reg;
+        }
+
+        // We don't statically allocate MMX registers because they are so rare
+        // to justify loading/storing them on every VM enter/exit
+        biscuit::GPR address = scratch();
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp));
+        setVectorState(SEW::E64, 1);
+        as.VLE64(entry.reg, address);
+        popScratch();
+        entry.loaded = true;
+        entry.dirty = true; // TODO: this will dirty loaded mmx regs that aren't written to, fix
+        return entry.reg;
+    } else {
+        biscuit::Vec vec = allocatedVec(ref);
+        return vec;
+    }
 }
 
 void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {

@@ -293,18 +293,6 @@ void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, con
             state->xmm[i] = xmms[allocated_vec.Index()];
         }
 
-        if (state->x87_state == x87State::MMX) {
-            for (int i = 0; i < 8; i++) {
-                biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_MM0 + i));
-                state->fp[i] = xmms[allocated_vec.Index()].data[0];
-            }
-        } else {
-            for (int i = 0; i < 8; i++) {
-                biscuit::FPR allocated_fpr = Recompiler::allocatedFPR((x86_ref_e)(X86_REF_ST0 + i));
-                state->fp[i] = fprs[allocated_fpr.Index()];
-            }
-        }
-
         state->cf = gprs[Recompiler::allocatedGPR(X86_REF_CF).Index()];
         state->zf = gprs[Recompiler::allocatedGPR(X86_REF_ZF).Index()];
         state->sf = gprs[Recompiler::allocatedGPR(X86_REF_SF).Index()];
@@ -438,6 +426,10 @@ void setupFrame_x64(RegisteredSignal& signal, int sig, ThreadState* state, const
             WARN("Unknown x87 state when creating signal frame");
         }
     }
+
+    frame->uc.uc_mcontext.fpregs->ftw = state->fpu_tw;
+    frame->uc.uc_mcontext.fpregs->cwd = state->fpu_cw;
+    frame->uc.uc_mcontext.fpregs->swd = state->fpu_sw;
 
     state->SetGpr(X86_REF_RSP, (u64)frame);        // set the new stack pointer
     state->SetGpr(X86_REF_RDI, sig);               // set the signal
@@ -608,6 +600,11 @@ void Signals::sigreturn(ThreadState* state) {
         state->SetGpr(X86_REF_RDI, frame->uc.uc_mcontext.di);
         state->SetRip(frame->uc.uc_mcontext.ip);
 
+        x86_fpstate_32* fpstate = (x86_fpstate_32*)(u64)frame->uc.uc_mcontext.fpstate;
+        state->fpu_tw = fpstate->tag;
+        state->fpu_sw = fpstate->sw;
+        state->fpu_cw = fpstate->cw;
+
         u64 flags = frame->uc.uc_mcontext.flags;
         bool cf = (flags >> 0) & 1;
         bool pf = (flags >> 2) & 1;
@@ -623,6 +620,16 @@ void Signals::sigreturn(ThreadState* state) {
         state->SetFlag(X86_REF_SF, sf);
         state->SetFlag(X86_REF_OF, of);
         state->SetFlag(X86_REF_DF, df);
+
+        for (int i = 0; i < 8; i++) {
+            Float80 reg = fpstate->_st[i];
+            if (reg.exponent == 0xFFFF) {
+                memcpy(&state->fp[i], &reg.significand, sizeof(u64));
+            } else {
+                double f64 = f80_to_64(&reg);
+                memcpy(&state->fp[i], &f64, sizeof(u64));
+            }
+        }
 
         // Restore signal mask to what it was supposed to be outside of signal handler
         sigset_t host_mask = {};
@@ -659,6 +666,10 @@ void Signals::sigreturn(ThreadState* state) {
         state->SetGpr(X86_REF_R15, frame->uc.uc_mcontext.gregs[REG_R15]);
         state->SetRip(frame->uc.uc_mcontext.gregs[REG_RIP]);
 
+        state->fpu_tw = frame->uc.uc_mcontext.fpregs->ftw;
+        state->fpu_sw = frame->uc.uc_mcontext.fpregs->swd;
+        state->fpu_cw = frame->uc.uc_mcontext.fpregs->cwd;
+
         u64 flags = frame->uc.uc_mcontext.gregs[REG_EFL];
         bool cf = (flags >> 0) & 1;
         bool pf = (flags >> 2) & 1;
@@ -692,20 +703,20 @@ void Signals::sigreturn(ThreadState* state) {
             state->SetXmm(X86_REF_XMM13, frame->uc.uc_mcontext.fpregs->xmm[13]);
             state->SetXmm(X86_REF_XMM14, frame->uc.uc_mcontext.fpregs->xmm[14]);
             state->SetXmm(X86_REF_XMM15, frame->uc.uc_mcontext.fpregs->xmm[15]);
-
-            for (int i = 0; i < 8; i++) {
-                x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
-                if (reg->exponent == 0xFFFF) {
-                    memcpy(&state->fp[i], reg->significand, sizeof(u64));
-                } else {
-                    double f64 = f80_to_64((Float80*)reg);
-                    memcpy(&state->fp[i], &f64, sizeof(u64));
-                }
-            }
         } else {
             // Don't set the state, because the frame isn't going to have correct
             // values. Most things shouldn't modify the values of registers in signal handlers.
             // But if they do, and you need support for that, update your kernel.
+        }
+
+        for (int i = 0; i < 8; i++) {
+            x64_fpxreg* reg = &frame->uc.uc_mcontext.fpregs->_st[i];
+            if (reg->exponent == 0xFFFF) {
+                memcpy(&state->fp[i], reg->significand, sizeof(u64));
+            } else {
+                double f64 = f80_to_64((Float80*)reg);
+                memcpy(&state->fp[i], &f64, sizeof(u64));
+            }
         }
 
         // Restore signal mask to what it was supposed to be outside of signal handler
