@@ -695,7 +695,7 @@ void Recompiler::flushX87() {
         }
     }
 
-    WARN("TODO: flush ftw too. can we reuse st?");
+    WARN_ONCE("TODO: flush ftw too. can we reuse st?");
 
     popScratch();
     popScratch();
