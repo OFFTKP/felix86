@@ -681,6 +681,7 @@ void Recompiler::flushX87() {
             }
             as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, fp), address);
             x87_dirty = true;
+            LOG("Flushing %d %d", index, pushed_this_block);
         }
     }
 
