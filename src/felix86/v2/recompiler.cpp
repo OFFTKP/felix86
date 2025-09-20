@@ -493,12 +493,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
 
-    for (int i = 0; i < 8; i++) {
-        x87_reg_cache[i].loaded = false;
-        x87_reg_cache[i].dirty = false;
-        mmx_reg_cache[i].loaded = false;
-        mmx_reg_cache[i].dirty = false;
-    }
+    resetX87();
 
     pushed_this_block = 0;
     current_block_metadata = &block_meta;
@@ -3358,8 +3353,6 @@ void Recompiler::switchToMMX() {
 }
 
 void Recompiler::switchToX87() {
-    setVectorState(SEW::E64, 1);
-
     biscuit::GPR val = scratch();
     as.LI(val, (int)x87State::x87);
     as.SB(val, offsetof(ThreadState, x87_state), threadStatePointer());

@@ -586,6 +586,15 @@ struct Recompiler {
 
     void flushX87();
 
+    void resetX87() {
+        for (int i = 0; i < 8; i++) {
+            x87_reg_cache[i].loaded = false;
+            x87_reg_cache[i].dirty = false;
+            mmx_reg_cache[i].loaded = false;
+            mmx_reg_cache[i].dirty = false;
+        }
+    }
+
     void switchToMMX();
 
     void switchToX87();

@@ -1498,6 +1498,10 @@ FAST_HANDLE(UD2) {
     WARN_ONCE("UD2 instruction being compiled?");
 
     // UD2 will trigger SIGILL, so we need to do the same
+    // 8 bytes total to satisfy the linking code that asserts we have at least 2 instructions per block
+    as.C_UNDEF();
+    as.C_UNDEF();
+    as.C_UNDEF();
     as.C_UNDEF();
     rec.stopCompiling();
 }
