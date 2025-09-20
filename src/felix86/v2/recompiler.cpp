@@ -127,6 +127,7 @@ Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), max_code_c
     for (int i = 0; i < 8; i++) {
         x87_reg_cache[i].reg = biscuit::FPR(biscuit::ft0.Index() + i);
         mmx_reg_cache[i].reg = biscuit::Vec(biscuit::v18.Index() + i);
+        printf("%d\n", x87_reg_cache[i].reg.Index());
     }
 }
 
@@ -3283,10 +3284,15 @@ biscuit::FPR Recompiler::pushX87(bool dirty) {
         WARN("Pushing while ST7 was previously used in block");
     }
 
-    // ST0 becomes ST1 etc in cache
-    for (int i = 0; i < 8; i++) {
-        x87_reg_cache[(i + 1) & 0b111] = x87_reg_cache[i];
-    }
+    AllocatedX87Reg temp = x87_reg_cache[7];
+    x87_reg_cache[7] = x87_reg_cache[6];
+    x87_reg_cache[6] = x87_reg_cache[5];
+    x87_reg_cache[5] = x87_reg_cache[4];
+    x87_reg_cache[4] = x87_reg_cache[3];
+    x87_reg_cache[3] = x87_reg_cache[2];
+    x87_reg_cache[2] = x87_reg_cache[1];
+    x87_reg_cache[1] = x87_reg_cache[0];
+    x87_reg_cache[0] = temp;
 
     pushed_this_block++;
     x87_reg_cache[0].loaded = true;
@@ -3340,9 +3346,15 @@ void Recompiler::popX87() {
     x87_reg_cache[0].loaded = false;
     x87_reg_cache[0].dirty = false;
 
-    for (int i = 0; i < 8; i++) {
-        x87_reg_cache[(i - 1) & 0b111] = x87_reg_cache[i];
-    }
+    AllocatedX87Reg temp = x87_reg_cache[0];
+    x87_reg_cache[0] = x87_reg_cache[1];
+    x87_reg_cache[1] = x87_reg_cache[2];
+    x87_reg_cache[2] = x87_reg_cache[3];
+    x87_reg_cache[3] = x87_reg_cache[4];
+    x87_reg_cache[4] = x87_reg_cache[5];
+    x87_reg_cache[5] = x87_reg_cache[6];
+    x87_reg_cache[6] = x87_reg_cache[7];
+    x87_reg_cache[7] = temp;
 }
 
 // Move from x87 registers to MMX registers and switch the x87_state flag
