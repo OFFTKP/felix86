@@ -127,7 +127,6 @@ Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), max_code_c
     for (int i = 0; i < 8; i++) {
         x87_reg_cache[i].reg = biscuit::FPR(biscuit::ft0.Index() + i);
         mmx_reg_cache[i].reg = biscuit::Vec(biscuit::v18.Index() + i);
-        printf("%d\n", x87_reg_cache[i].reg.Index());
     }
 }
 
@@ -662,6 +661,7 @@ void Recompiler::flushX87() {
     bool x87_dirty = false;
     for (int i = 0; i < 8; i++) {
         if (x87_reg_cache[i].dirty) {
+            printf("Flushing %d\n", i);
             if (!top_got) {
                 top = getTOP();
                 tag_word = scratch();
