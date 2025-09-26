@@ -2897,7 +2897,7 @@ void Recompiler::setFlags(biscuit::GPR flags) {
 
 biscuit::GPR Recompiler::getTOP() {
     biscuit::GPR top = scratch();
-    as.LB(top, offsetof(ThreadState, fpu_top), threadStatePointer());
+    as.LBU(top, offsetof(ThreadState, fpu_top), threadStatePointer());
     return top;
 }
 
@@ -3256,42 +3256,6 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
 }
 
 biscuit::FPR Recompiler::pushX87(bool dirty) {
-    // biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
-    // biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
-    // biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
-    // biscuit::FPR st3 = allocatedFPR(X86_REF_ST3);
-    // biscuit::FPR st4 = allocatedFPR(X86_REF_ST4);
-    // biscuit::FPR st5 = allocatedFPR(X86_REF_ST5);
-    // biscuit::FPR st6 = allocatedFPR(X86_REF_ST6);
-    // biscuit::FPR st7 = allocatedFPR(X86_REF_ST7);
-
-    // as.FMV_D(st7, st6);
-    // as.FMV_D(st6, st5);
-    // as.FMV_D(st5, st4);
-    // as.FMV_D(st4, st3);
-    // as.FMV_D(st3, st2);
-    // as.FMV_D(st2, st1);
-    // as.FMV_D(st1, st0);
-    // as.FMV_D(st0, val);
-
-    // biscuit::GPR top = getTOP();
-    // as.ADDI(top, top, -1);
-    // as.ANDI(top, top, 0b111);
-    // setTOP(top);
-
-    // // Mark as valid in the tag word
-    // biscuit::GPR mask = scratch();
-    // biscuit::GPR fpu_tw = scratch();
-    // as.LHU(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
-    // as.SLLI(top, top, 1);
-    // as.LI(mask, 0b11);
-    // as.SLL(mask, mask, top);
-    // as.NOT(mask, mask);
-    // as.AND(fpu_tw, fpu_tw, mask);
-    // as.SH(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
-    // popScratch();
-    // popScratch();
-    // popScratch();
     if (x87_reg_cache[7].loaded) {
         WARN("Pushing while ST7 was previously used in block");
     }
@@ -3313,60 +3277,41 @@ biscuit::FPR Recompiler::pushX87(bool dirty) {
 }
 
 void Recompiler::popX87() {
-    // biscuit::FPR st0 = allocatedFPR(X86_REF_ST0);
-    // biscuit::FPR st1 = allocatedFPR(X86_REF_ST1);
-    // biscuit::FPR st2 = allocatedFPR(X86_REF_ST2);
-    // biscuit::FPR st3 = allocatedFPR(X86_REF_ST3);
-    // biscuit::FPR st4 = allocatedFPR(X86_REF_ST4);
-    // biscuit::FPR st5 = allocatedFPR(X86_REF_ST5);
-    // biscuit::FPR st6 = allocatedFPR(X86_REF_ST6);
-    // biscuit::FPR st7 = allocatedFPR(X86_REF_ST7);
-    // biscuit::FPR temp = scratchFPR();
+    if (pushed_this_block > 0) {
+        pushed_this_block--;
+        x87_reg_cache[0].loaded = false;
+        x87_reg_cache[0].dirty = false;
 
-    // as.FMV_D(temp, st0);
-    // as.FMV_D(st0, st1);
-    // as.FMV_D(st1, st2);
-    // as.FMV_D(st2, st3);
-    // as.FMV_D(st3, st4);
-    // as.FMV_D(st4, st5);
-    // as.FMV_D(st5, st6);
-    // as.FMV_D(st6, st7);
-    // as.FMV_D(st7, temp);
+        AllocatedX87Reg temp = x87_reg_cache[0];
+        x87_reg_cache[0] = x87_reg_cache[1];
+        x87_reg_cache[1] = x87_reg_cache[2];
+        x87_reg_cache[2] = x87_reg_cache[3];
+        x87_reg_cache[3] = x87_reg_cache[4];
+        x87_reg_cache[4] = x87_reg_cache[5];
+        x87_reg_cache[5] = x87_reg_cache[6];
+        x87_reg_cache[6] = x87_reg_cache[7];
+        x87_reg_cache[7] = temp;
+    } else {
+        // Popping more than we push, needs manual top/ftw adjustment
+        biscuit::GPR ftw = scratch();
+        biscuit::GPR mask = scratch();
+        biscuit::GPR top = getTOP();
 
-    // popScratchFPR();
+        as.LHU(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        as.ADDI(top, top, 1);
+        as.ANDI(top, top, 0b111);
+        setTOP(top);
 
-    // biscuit::GPR top = getTOP();
+        as.LI(mask, 0b11);
+        as.SLLI(top, top, 1);
+        as.SLL(mask, mask, top);
+        as.OR(ftw, ftw, mask);
 
-    // // Mark as empty in the tag word
-    // biscuit::GPR mask = scratch();
-    // biscuit::GPR fpu_tw = scratch();
-    // as.LHU(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
-    // as.SLLI(top, top, 1);
-    // as.LI(mask, 0b11);
-    // as.SLL(mask, mask, top);
-    // as.OR(fpu_tw, fpu_tw, mask);
-    // as.SH(fpu_tw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        as.SH(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
 
-    // as.ADDI(top, top, 1);
-    // as.ANDI(top, top, 0b111);
-    // setTOP(top);
-    // popScratch();
-    // popScratch();
-    // popScratch();
-
-    pushed_this_block--;
-    x87_reg_cache[0].loaded = false;
-    x87_reg_cache[0].dirty = false;
-
-    AllocatedX87Reg temp = x87_reg_cache[0];
-    x87_reg_cache[0] = x87_reg_cache[1];
-    x87_reg_cache[1] = x87_reg_cache[2];
-    x87_reg_cache[2] = x87_reg_cache[3];
-    x87_reg_cache[3] = x87_reg_cache[4];
-    x87_reg_cache[4] = x87_reg_cache[5];
-    x87_reg_cache[5] = x87_reg_cache[6];
-    x87_reg_cache[6] = x87_reg_cache[7];
-    x87_reg_cache[7] = temp;
+        popScratch();
+        popScratch();
+    }
 }
 
 // Move from x87 registers to MMX registers and switch the x87_state flag
