@@ -655,6 +655,7 @@ void Recompiler::skipNext() {
 
 void Recompiler::flushX87() {
     biscuit::GPR top;
+    biscuit::GPR tag_word;
     biscuit::GPR st = scratch();
     biscuit::GPR address = scratch();
     bool top_got = false;
@@ -663,6 +664,8 @@ void Recompiler::flushX87() {
         if (x87_reg_cache[i].dirty) {
             if (!top_got) {
                 top = getTOP();
+                tag_word = scratch();
+                as.LWU(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
                 top_got = true;
             }
             ASSERT(x87_reg_cache[i].loaded);
@@ -672,10 +675,19 @@ void Recompiler::flushX87() {
             if (Extensions::B) {
                 as.SH3ADD(address, st, threadStatePointer());
             } else {
-                as.SLLI(st, st, 3);
-                as.ADD(address, threadStatePointer(), st);
+                as.SLLI(address, st, 3);
+                as.ADD(address, address, threadStatePointer());
             }
             as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, fp), address);
+            as.LI(address, 0b11);
+            as.SLLI(st, st, 1);
+            as.SLL(address, address, st);
+            if (Extensions::B) {
+                as.ANDN(tag_word, tag_word, address);
+            } else {
+                as.NOT(address, address);
+                as.AND(tag_word, tag_word, address);
+            }
             x87_dirty = true;
         }
     }
@@ -698,14 +710,14 @@ void Recompiler::flushX87() {
         }
     }
 
-    WARN_ONCE("TODO: flush ftw too. can we reuse st?");
-
-    popScratch();
-    popScratch();
-
     if (top_got) {
+        as.SW(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        popScratch();
         popScratch();
     }
+
+    popScratch();
+    popScratch();
 }
 
 void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip) {
