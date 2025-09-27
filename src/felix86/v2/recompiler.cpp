@@ -717,6 +717,8 @@ void Recompiler::flushX87() {
 
     popScratch();
     popScratch();
+
+    resetX87();
 }
 
 void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 rip) {
