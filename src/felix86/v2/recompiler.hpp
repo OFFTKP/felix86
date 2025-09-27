@@ -593,6 +593,7 @@ struct Recompiler {
             mmx_reg_cache[i].loaded = false;
             mmx_reg_cache[i].dirty = false;
         }
+        pushed_this_block = 0;
     }
 
     void switchToMMX();
