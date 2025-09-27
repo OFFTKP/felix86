@@ -2914,8 +2914,10 @@ biscuit::FPR Recompiler::getST(int index, bool dirty) {
     biscuit::GPR address = scratch();
     biscuit::GPR top = getTOP();
     ASSERT(index - pushed_this_block >= 0); // negative wouldn't make sense as it would be cached
-    as.ADDI(top, top, index - pushed_this_block);
-    as.ANDI(top, top, 0b111);
+    if (index - pushed_this_block != 0) {
+        as.ADDI(top, top, index - pushed_this_block);
+        as.ANDI(top, top, 0b111);
+    }
 
     if (Extensions::B) {
         as.SH3ADD(address, top, threadStatePointer());
@@ -3298,19 +3300,19 @@ void Recompiler::popX87() {
         biscuit::GPR mask = scratch();
         biscuit::GPR top = getTOP();
 
-        as.LHU(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
-
         as.LI(mask, 0b11);
-        as.SLLI(top, top, 1);
-        as.SLL(mask, mask, top);
-        as.OR(ftw, ftw, mask);
+        as.SLLI(ftw, top, 1);
+        as.SLL(mask, mask, ftw);
 
         as.ADDI(top, top, 1);
         as.ANDI(top, top, 0b111);
         setTOP(top);
 
+        as.LHU(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        as.OR(ftw, ftw, mask);
         as.SH(ftw, offsetof(ThreadState, fpu_tw), threadStatePointer());
 
+        popScratch();
         popScratch();
         popScratch();
     }
