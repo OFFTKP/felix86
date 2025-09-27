@@ -664,7 +664,7 @@ void Recompiler::flushX87() {
             if (!top_got) {
                 top = getTOP();
                 tag_word = scratch();
-                as.LWU(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+                as.LHU(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
                 top_got = true;
             }
             ASSERT(x87_reg_cache[i].loaded);
@@ -710,7 +710,7 @@ void Recompiler::flushX87() {
     }
 
     if (top_got) {
-        as.SW(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        as.SH(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
         popScratch();
         popScratch();
     }
