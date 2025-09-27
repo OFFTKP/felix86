@@ -10362,9 +10362,12 @@ FAST_HANDLE(FNINIT) {
     as.LI(temp, -1);
     as.SH(temp, offsetof(ThreadState, fpu_tw), Recompiler::threadStatePointer());
 
+    as.SB(x0, offsetof(ThreadState, fpu_top), Recompiler::threadStatePointer());
+
     // FINIT sets it to nearest neighbor which happens to be 0 in both x86 and RISC-V
     as.FSRM(x0);
     rec.setFsrmSSE(false);
+    rec.resetX87();
 }
 
 void FCMOV(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, biscuit::GPR cond) {
