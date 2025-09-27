@@ -661,7 +661,6 @@ void Recompiler::flushX87() {
     bool x87_dirty = false;
     for (int i = 0; i < 8; i++) {
         if (x87_reg_cache[i].dirty) {
-            printf("Flushing %d\n", i);
             if (!top_got) {
                 top = getTOP();
                 tag_word = scratch();
