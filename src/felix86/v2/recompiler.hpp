@@ -273,7 +273,7 @@ struct Recompiler {
         }
     }
 
-    static constexpr biscuit::Vec allocatedVec(x86_ref_e reg) {
+    biscuit::Vec allocatedVec(x86_ref_e reg) {
         switch (reg) {
         case X86_REF_XMM0: {
             // Important to start on an even vector register so vector grouping works when we save/restore the entire state,
@@ -324,6 +324,23 @@ struct Recompiler {
         }
         case X86_REF_XMM15: {
             return biscuit::v17;
+        }
+        case X86_REF_MM0 ... X86_REF_MM7: {
+            AllocatedMMXReg& entry = mmx_reg_cache[reg - X86_REF_MM0];
+            if (entry.loaded) {
+                return entry.reg;
+            }
+
+            // We don't statically allocate MMX registers because they are so rare
+            // to justify loading/storing them on every VM enter/exit
+            biscuit::GPR address = scratch();
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, fp));
+            setVectorState(SEW::E64, 1);
+            as.VLE64(entry.reg, address);
+            popScratch();
+            entry.loaded = true;
+            entry.dirty = true; // TODO: this will dirty loaded mmx regs that aren't written to, fix
+            return entry.reg;
         }
         default: {
             UNREACHABLE();
