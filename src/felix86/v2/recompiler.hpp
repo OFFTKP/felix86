@@ -273,7 +273,7 @@ struct Recompiler {
         }
     }
 
-    biscuit::Vec allocatedVec(x86_ref_e reg) {
+    static constexpr biscuit::Vec allocatedXMM(x86_ref_e reg) {
         switch (reg) {
         case X86_REF_XMM0: {
             // Important to start on an even vector register so vector grouping works when we save/restore the entire state,
@@ -324,6 +324,18 @@ struct Recompiler {
         }
         case X86_REF_XMM15: {
             return biscuit::v17;
+        }
+        default: {
+            UNREACHABLE();
+            break;
+        }
+        }
+    }
+
+    biscuit::Vec allocatedVec(x86_ref_e reg) {
+        switch (reg) {
+        case X86_REF_XMM0 ... X86_REF_XMM15: {
+            return allocatedXMM(reg);
         }
         case X86_REF_MM0 ... X86_REF_MM7: {
             AllocatedMMXReg& entry = mmx_reg_cache[reg - X86_REF_MM0];

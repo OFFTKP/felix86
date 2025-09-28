@@ -289,7 +289,7 @@ void reconstruct_state(ThreadState* state, const u64* gprs, const u64* fprs, con
             biscuit::GPR allocated_gpr = Recompiler::allocatedGPR((x86_ref_e)(X86_REF_RAX + i));
             state->gprs[i] = gprs[allocated_gpr.Index()];
 
-            biscuit::Vec allocated_vec = Recompiler::allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
+            biscuit::Vec allocated_vec = Recompiler::allocatedXMM((x86_ref_e)(X86_REF_XMM0 + i));
             state->xmm[i] = xmms[allocated_vec.Index()];
         }
 
