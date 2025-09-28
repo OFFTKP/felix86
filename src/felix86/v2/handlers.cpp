@@ -10039,7 +10039,7 @@ FAST_HANDLE(FNSTENV) {
 
 FAST_HANDLE(FNSTSW) {
     biscuit::GPR temp = rec.scratch();
-    as.LWU(temp, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    as.LHU(temp, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
     rec.setGPR(&operands[0], temp);
 }
 
@@ -10199,7 +10199,7 @@ void FCOM(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, int pop
     as.OR(c0, c0, c2);
     as.OR(c0, c0, c3);
 
-    as.SW(c0, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    as.SH(c0, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
 
     rec.resetScratch();
     if (pop_count == 1) {
