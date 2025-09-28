@@ -574,6 +574,7 @@ u64 Recompiler::compileSequence(u64 rip) {
 
         // Last instruction before block ends, flush x87
         if (current_instruction_index == instructions.size() - 1) {
+            resetScratch();
             flushX87();
         }
 
