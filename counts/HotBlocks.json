@@ -726,12 +726,12 @@
             "SB              s9, s11, 0x1cd(461)",
             "ADDIW           t1, zero, 0x1(1)",
             "SB              t1, s11, 0x224(548)",
-            "LUI             t5, 0x159(345)",
-            "ADDIW           t5, t5, 0xfffffe85(-379)",
-            "SLLI            t5, t5, 0xd(13)",
-            "ADDI            t5, t5, 0xffffff3f(-193)",
-            "SLLI            t5, t5, 0xd(13)",
-            "ADDI            t5, t5, 0xfffff8f0(-1808)",
+            "LUI             t5, 0x560(1376)",
+            "ADDIW           t5, t5, 0xfffffb43(-1213)",
+            "SLLI            t5, t5, 0xc(12)",
+            "ADDI            t5, t5, 0x6b1(1713)",
+            "SLLI            t5, t5, 0xc(12)",
+            "ADDI            t5, t5, 0xfffff9d0(-1584)",
             "ADDI            a0, sp, 0x0(0)",
             "JALR            zero, t5, 0x0(0)"
         ]
