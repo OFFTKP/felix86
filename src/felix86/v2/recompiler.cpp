@@ -654,17 +654,21 @@ void Recompiler::skipNext() {
 
 void Recompiler::flushX87() {
     biscuit::GPR top;
-    biscuit::GPR tag_word;
+    biscuit::GPR tag_word = x0;
     biscuit::GPR st = scratch();
     biscuit::GPR address = scratch();
     bool top_got = false;
     bool x87_dirty = false;
+    bool tag_dirty = false;
     for (int i = 0; i < 8; i++) {
         if (x87_reg_cache[i].dirty) {
             if (!top_got) {
                 top = getTOP();
                 tag_word = scratch();
-                as.LHU(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+                if (x87_reg_cache[i].modify_tag) {
+                    as.LHU(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+                    tag_dirty = true;
+                }
                 top_got = true;
             }
             ASSERT(x87_reg_cache[i].loaded);
@@ -678,14 +682,19 @@ void Recompiler::flushX87() {
                 as.ADD(address, address, threadStatePointer());
             }
             as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, fp), address);
-            as.LI(address, 0b11);
-            as.SLLI(st, st, 1);
-            as.SLL(address, address, st);
-            if (Extensions::B) {
-                as.ANDN(tag_word, tag_word, address);
-            } else {
-                as.NOT(address, address);
-                as.AND(tag_word, tag_word, address);
+
+            if (x87_reg_cache[i].modify_tag) {
+                ASSERT(pushed_this_block > 0);
+                ASSERT(tag_word != x0);
+                as.LI(address, 0b11);
+                as.SLLI(st, st, 1);
+                as.SLL(address, address, st);
+                if (Extensions::B) {
+                    as.ANDN(tag_word, tag_word, address);
+                } else {
+                    as.NOT(address, address);
+                    as.AND(tag_word, tag_word, address);
+                }
             }
             x87_dirty = true;
         }
@@ -710,7 +719,9 @@ void Recompiler::flushX87() {
     }
 
     if (top_got) {
-        as.SH(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        if (tag_dirty) {
+            as.SH(tag_word, offsetof(ThreadState, fpu_tw), threadStatePointer());
+        }
         popScratch();
         popScratch();
     }
@@ -3258,7 +3269,7 @@ void Recompiler::checkModifiesRax(ZydisDecodedInstruction& instruction, ZydisDec
     }
 }
 
-biscuit::FPR Recompiler::pushX87(bool dirty) {
+biscuit::FPR Recompiler::pushX87() {
     if (x87_reg_cache[7].loaded) {
         WARN("Pushing while ST7 was previously used in block");
     }
@@ -3275,25 +3286,14 @@ biscuit::FPR Recompiler::pushX87(bool dirty) {
 
     pushed_this_block++;
     x87_reg_cache[0].loaded = true;
-    x87_reg_cache[0].dirty = dirty;
+    x87_reg_cache[0].dirty = true;
+    x87_reg_cache[0].modify_tag = true;
     return x87_reg_cache[0].reg;
 }
 
 void Recompiler::popX87() {
     if (pushed_this_block > 0) {
         pushed_this_block--;
-        x87_reg_cache[0].loaded = false;
-        x87_reg_cache[0].dirty = false;
-
-        AllocatedX87Reg temp = x87_reg_cache[0];
-        x87_reg_cache[0] = x87_reg_cache[1];
-        x87_reg_cache[1] = x87_reg_cache[2];
-        x87_reg_cache[2] = x87_reg_cache[3];
-        x87_reg_cache[3] = x87_reg_cache[4];
-        x87_reg_cache[4] = x87_reg_cache[5];
-        x87_reg_cache[5] = x87_reg_cache[6];
-        x87_reg_cache[6] = x87_reg_cache[7];
-        x87_reg_cache[7] = temp;
     } else {
         // Popping more than we push, needs manual top/ftw adjustment
         biscuit::GPR ftw = scratch();
@@ -3316,6 +3316,20 @@ void Recompiler::popX87() {
         popScratch();
         popScratch();
     }
+
+    x87_reg_cache[0].loaded = false;
+    x87_reg_cache[0].dirty = false;
+    x87_reg_cache[0].modify_tag = false;
+
+    AllocatedX87Reg temp = x87_reg_cache[0];
+    x87_reg_cache[0] = x87_reg_cache[1];
+    x87_reg_cache[1] = x87_reg_cache[2];
+    x87_reg_cache[2] = x87_reg_cache[3];
+    x87_reg_cache[3] = x87_reg_cache[4];
+    x87_reg_cache[4] = x87_reg_cache[5];
+    x87_reg_cache[5] = x87_reg_cache[6];
+    x87_reg_cache[6] = x87_reg_cache[7];
+    x87_reg_cache[7] = temp;
 }
 
 // Move from x87 registers to MMX registers and switch the x87_state flag

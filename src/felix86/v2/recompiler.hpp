@@ -23,6 +23,7 @@ struct AllocatedX87Reg {
     biscuit::FPR reg;
     bool loaded = false;
     bool dirty = false;
+    bool modify_tag = false;
 };
 
 struct AllocatedMMXReg {
@@ -580,7 +581,7 @@ struct Recompiler {
         return calltrace;
     }
 
-    biscuit::FPR pushX87(bool dirty);
+    biscuit::FPR pushX87();
 
     void popX87();
 
@@ -590,6 +591,7 @@ struct Recompiler {
         for (int i = 0; i < 8; i++) {
             x87_reg_cache[i].loaded = false;
             x87_reg_cache[i].dirty = false;
+            x87_reg_cache[i].modify_tag = false;
             mmx_reg_cache[i].loaded = false;
             mmx_reg_cache[i].dirty = false;
         }
