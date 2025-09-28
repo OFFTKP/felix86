@@ -9915,7 +9915,7 @@ FAST_HANDLE(FTST) {
     biscuit::GPR nan_bit = rec.scratch();
     as.LI(rmask, mask);
     biscuit::GPR fsw = rec.scratch();
-    as.LD(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    as.LHU(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
     biscuit::FPR st0 = rec.getST(0);
     as.FCLASS_D(class_bits, st0);
     as.AND(fsw, fsw, rmask);
@@ -9942,7 +9942,7 @@ FAST_HANDLE(FTST) {
     as.OR(fsw, fsw, negative_bit);
     as.OR(fsw, fsw, equal_bit);
 
-    as.SD(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
+    as.SH(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
 }
 
 FAST_HANDLE(FPATAN) {
