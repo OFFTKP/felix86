@@ -9908,6 +9908,7 @@ FAST_HANDLE(FSINCOS) {
 FAST_HANDLE(FTST) {
     // TODO: most likely not a perfect implementation, for example when it comes to handling subnormals
     u64 mask = ~(C0_BIT | C2_BIT | C3_BIT);
+    biscuit::FPR st0 = rec.getST(0);
     biscuit::GPR class_bits = rec.scratch();
     biscuit::GPR rmask = rec.scratch();
     biscuit::GPR negative_bit = rec.scratch();
@@ -9916,7 +9917,6 @@ FAST_HANDLE(FTST) {
     as.LI(rmask, mask);
     biscuit::GPR fsw = rec.scratch();
     as.LHU(fsw, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
-    biscuit::FPR st0 = rec.getST(0);
     as.FCLASS_D(class_bits, st0);
     as.AND(fsw, fsw, rmask);
 
