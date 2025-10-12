@@ -1038,9 +1038,17 @@ biscuit::Vec Recompiler::getVec(ZydisRegister reg) {
 }
 
 ZydisMnemonic Recompiler::decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands) {
-    ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)rip, 15, &instruction, operands);
-    if (!ZYAN_SUCCESS(status)) {
-        ERROR("Failed to decode instruction at 0x%016lx", rip);
+    if (operands) {
+        ZyanStatus status = ZydisDecoderDecodeFull(&decoder, (void*)rip, 15, &instruction, operands);
+        if (!ZYAN_SUCCESS(status)) {
+            ERROR("Failed to decode instruction at 0x%016lx", rip);
+        }
+    } else {
+        ZydisDecoderContext context;
+        ZyanStatus status = ZydisDecoderDecodeInstruction(&decoder, &context, (void*)rip, 15, &instruction);
+        if (!ZYAN_SUCCESS(status)) {
+            ERROR("Failed to decode instruction at 0x%016lx", rip);
+        }
     }
     return instruction.mnemonic;
 }
@@ -1988,6 +1996,7 @@ void Recompiler::scanAhead(u64 rip) {
         flag_access_cpazso[i].clear();
     }
 
+    u64 initial_rip = rip;
     instructions.clear();
     while (true) {
         instructions.push_back({});
@@ -2085,6 +2094,111 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+            if (g_config.scan_ahead_multi) {
+                // We need to see where the jump will land, and scan some of its instructions
+                // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
+                // then we can skip those flag calculations
+                if (is_jump && operands[0].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+                    auto scan_landing_block = [&](u64 rip_ahead) {
+                        bool jump_to_self = rip_ahead == initial_rip;
+                        ZydisDecodedInstruction instruction_ahead;
+                        u32 changed_this_block = 0;
+                        u32 used_this_block = 0;
+                        u32 flags_we_care_about =
+                            ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
+                        // 5 is heuristically picked with no real reason
+                        // If we go too high we risk messing our performance
+                        // TODO: some benchmarking may be in order
+                        for (int i = 0; i < 5; i++) {
+                            ZydisMnemonic mnemonic;
+                            if (jump_to_self) {
+                                // Jump to self, we already decoded the instructions
+                                ASSERT(i < instructions.size());
+                                instruction_ahead = instructions[i].first;
+                                mnemonic = instruction_ahead.mnemonic;
+                            } else {
+                                mnemonic = decode(rip_ahead, instruction_ahead, nullptr);
+                            }
+                            bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
+                            bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
+                            bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
+                            bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
+                            bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
+                            bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
+
+                            u32 changed = instruction_ahead.cpu_flags->modified | instruction_ahead.cpu_flags->set_0 |
+                                          instruction_ahead.cpu_flags->set_1 | instruction_ahead.cpu_flags->undefined;
+                            u32 used = instruction_ahead.cpu_flags->tested;
+
+                            u32 used_not_previously_changed = used & ~changed_this_block;
+                            used_this_block |= used_not_previously_changed;
+                            changed_this_block |= changed;
+
+                            u32 changed_and_not_used = changed_this_block & ~used_this_block;
+                            if (changed_and_not_used == flags_we_care_about) {
+                                // All flags changed already, break early
+                                break;
+                            }
+
+                            if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+                                // Block ahead ended in <= 5 instructions so let's break
+                                break;
+                            }
+
+                            rip_ahead += instruction_ahead.length;
+                        }
+
+                        // Now every flag in the changed_this_block set but not in the used_this_block set
+                        // doesn't have to be calculated, return this
+                        return changed_this_block & ~used_this_block;
+                    };
+
+                    u32 thrashed_ahead;
+                    if (mnemonic == ZYDIS_MNEMONIC_JMP) {
+                        u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
+                        u64 rip_ahead = rip + instruction.length + immediate;
+                        thrashed_ahead = scan_landing_block(rip_ahead);
+                    } else {
+                        ASSERT(instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ);
+                        ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKZD);
+                        ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKNZD);
+                        u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
+                        u64 rip_ahead_false = rip + instruction.length;
+                        u64 rip_ahead_true = rip_ahead_false + immediate;
+                        // For the flags to not be calculated they need to be overwritten in both paths
+                        thrashed_ahead = scan_landing_block(rip_ahead_false) & scan_landing_block(rip_ahead_true);
+                    }
+
+                    // Now for each flag that is thrashed ahead add a flag overwrite access to
+                    // trick the instruction handlers into not emitting this flag
+                    // If the JCC actually uses the flag, that's fine because the flag access will be after the usage
+                    // so the instruction handler will emit that flag
+                    if (thrashed_ahead & ZYDIS_CPUFLAG_CF) {
+                        flag_access_cpazso[0].push_back({true, rip});
+                    }
+
+                    if (thrashed_ahead & ZYDIS_CPUFLAG_PF) {
+                        flag_access_cpazso[1].push_back({true, rip});
+                    }
+
+                    if (thrashed_ahead & ZYDIS_CPUFLAG_AF) {
+                        flag_access_cpazso[2].push_back({true, rip});
+                    }
+
+                    if (thrashed_ahead & ZYDIS_CPUFLAG_ZF) {
+                        flag_access_cpazso[3].push_back({true, rip});
+                    }
+
+                    if (thrashed_ahead & ZYDIS_CPUFLAG_SF) {
+                        flag_access_cpazso[4].push_back({true, rip});
+                    }
+
+                    if (thrashed_ahead & ZYDIS_CPUFLAG_OF) {
+                        flag_access_cpazso[5].push_back({true, rip});
+                    }
+                }
+            }
+
             break;
         }
 
