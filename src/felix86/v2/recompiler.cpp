@@ -2094,7 +2094,7 @@ void Recompiler::scanAhead(u64 rip) {
         }
 
         if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
-            if (g_config.scan_ahead_multi) {
+            if (g_config.scan_ahead_multi && !g_config.paranoid) {
                 // We need to see where the jump will land, and scan some of its instructions
                 // If all the landing places overwrite the flags (1 landing spot for jmp, 2 for jcc)
                 // then we can skip those flag calculations
@@ -2158,8 +2158,7 @@ void Recompiler::scanAhead(u64 rip) {
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
                         u64 rip_ahead = rip + instruction.length + immediate;
                         thrashed_ahead = scan_landing_block(rip_ahead);
-                    } else {
-                        ASSERT(instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ);
+                    } else if (instruction.mnemonic >= ZYDIS_MNEMONIC_JB && instruction.mnemonic <= ZYDIS_MNEMONIC_JZ) {
                         ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKZD);
                         ASSERT(instruction.mnemonic != ZYDIS_MNEMONIC_JKNZD);
                         u64 immediate = sextImmediate(getImmediate(&operands[0]), operands[0].imm.size);
@@ -2167,6 +2166,8 @@ void Recompiler::scanAhead(u64 rip) {
                         u64 rip_ahead_true = rip_ahead_false + immediate;
                         // For the flags to not be calculated they need to be overwritten in both paths
                         thrashed_ahead = scan_landing_block(rip_ahead_false) & scan_landing_block(rip_ahead_true);
+                    } else {
+                        break;
                     }
 
                     // Now for each flag that is thrashed ahead add a flag overwrite access to
