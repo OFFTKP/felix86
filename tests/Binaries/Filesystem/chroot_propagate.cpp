@@ -23,7 +23,7 @@ int main() {
     bool is_execve = !!getenv("__BTEST_EXECVE");
     if (is_execve) {
         // We should already be chrooted, make sure the file exists
-        int fd = open("/file1_felix86", O_RDONLY, 0644);
+        int fd = open("/file1_felix86", O_RDONLY, 0600);
         if (fd <= 0) {
             printf("Failed to open /file1_felix86?\n");
             return 1;
