@@ -212,6 +212,9 @@ FEXTestLoader::~FEXTestLoader() {
 void FEXTestLoader::Run() {
     for (auto& [address, size] : memory_mappings) {
         auto stuff = mmap((void*)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+        if (stuff == MAP_FAILED) {
+            WARN("mmap failed for memory mapping %lx with size %lx during test -- errno: %s", address, size, strerror(errno));
+        }
         munmap_me.push_back({stuff, size});
     }
     u64 stack = 0xC000'0000 + 4096;

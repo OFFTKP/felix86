@@ -50,7 +50,7 @@ int main() {
 
         if (::chroot(cpath) != 0) {
             printf("No perms?\n");
-            return 1;
+            return 2;
         }
 
         chdir("/");
@@ -58,7 +58,7 @@ int main() {
         int fd = open("/file1_felix86", O_RDONLY, 0644);
         if (fd <= 0) {
             printf("Failed to open /file1_felix86?\n");
-            return 1;
+            return 3;
         }
         close(fd);
 
@@ -68,13 +68,13 @@ int main() {
             const char* envp[] = {"__BTEST_EXECVE=1", nullptr};
             int execed = execve("/executable_felix86", (char**)argv, (char**)envp);
             printf("Failed execve\n");
-            return 1;
+            return 4;
         } else {
             int status;
             waitpid(pid, &status, 0);
             int result = WEXITSTATUS(status);
             if (result != FELIX86_BTEST_SUCCESS) {
-                return 1;
+                return 5;
             }
         }
     }
