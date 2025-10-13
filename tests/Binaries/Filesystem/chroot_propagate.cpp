@@ -45,6 +45,9 @@ int main() {
 
         std::filesystem::path exec = dir / "executable_felix86";
         std::filesystem::copy(buffer, exec);
+        if (chmod(exec.c_str(), 0755) != 0) {
+            return 6;
+        }
 
         touch(dir / "file1_felix86");
 
