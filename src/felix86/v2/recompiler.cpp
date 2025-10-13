@@ -2106,7 +2106,7 @@ void Recompiler::scanAhead(u64 rip) {
                         u32 used_this_block = 0;
                         u32 flags_we_care_about =
                             ZYDIS_CPUFLAG_OF | ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_ZF | ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_PF;
-                        // 5 is heuristically picked with no real reason
+                        // 10 is heuristically picked with no real reason
                         // If we go too high we risk messing our performance
                         // TODO: some benchmarking may be in order
                         for (size_t i = 0; i < 10; i++) {
