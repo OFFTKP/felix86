@@ -2109,7 +2109,7 @@ void Recompiler::scanAhead(u64 rip) {
                         // 5 is heuristically picked with no real reason
                         // If we go too high we risk messing our performance
                         // TODO: some benchmarking may be in order
-                        for (size_t i = 0; i < 5; i++) {
+                        for (size_t i = 0; i < 10; i++) {
                             ZydisMnemonic mnemonic;
                             if (jump_to_self) {
                                 // Jump to self, we already decoded the instructions
