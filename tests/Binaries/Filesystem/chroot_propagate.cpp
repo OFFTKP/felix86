@@ -74,6 +74,7 @@ int main() {
             waitpid(pid, &status, 0);
             int result = WEXITSTATUS(status);
             if (result != FELIX86_BTEST_SUCCESS) {
+                printf("Bad return value: %d\n", result);
                 return 5;
             }
         }
