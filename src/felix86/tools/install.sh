@@ -84,7 +84,7 @@ select_release_url() {
   echo "│   Welcome to the felix86 installer!   │"
   echo "├───────────────────────────────────────┤"
   echo "│                                       │"
-  echo "│  Please select the version you'd      │"
+  echo "│  Please choose the version you'd      │"
   echo "│  like to install                      │"
   echo "│                                       │"
   echo "└───────────────────────────────────────┘"
@@ -93,7 +93,7 @@ select_release_url() {
     local version="${entries[$i]%% *}"
     local display="felix86 $version"
     if [[ $i -eq 0 ]]; then
-        display="$display (Recommended)"
+        display="$display (Default)"
     fi
     printf "%d) %s\n" $((i+1)) "$display"
   done
@@ -103,7 +103,8 @@ select_release_url() {
 
   local choice
   while true; do
-    read -p "Select a release (1-$latest_index): " choice
+    read -p "Select a release (1-$latest_index) [default: 1]: " choice
+    choice=${choice:-1}
     if [[ "$choice" =~ ^[1-9][0-9]*$ ]] && (( choice >= 1 && choice <= latest_index )); then
       break
     else
@@ -174,29 +175,31 @@ echo "Successfully installed felix86 at $FILE and libraries at $INSTALLATION_DIR
 felix86 --set-thunks $INSTALLATION_DIR/lib
 
 echo ""
-echo "Would you like to download and set a rootfs?"
-echo "1) Ubuntu 24.04 (Recommended)"
-echo "2) Let me set a custom path"
-echo "3) Nope"
+echo "Which rootfs would you like to download?"
+echo "1) Ubuntu 24.04 (Default)"
+echo "2) I already have a rootfs"
 
 while true; do
-    read -p "Your choice: " choice
-    if [[ "$choice" == "1" || "$choice" == "2" || "$choice" == "3" ]]; then
+    read -p "Your choice [default: 1]: " choice
+    choice=${choice:-1}
+    if [[ "$choice" == "1" || "$choice" == "2" ]]; then
         break
     else
-        echo "Invalid input. Please enter 1, 2 or 3."
+        echo "Invalid input. Please enter 1 or 2."
     fi
 done
 
 
 if [ "$choice" -eq 1 ]; then
-    echo "Where do you want to extract the downloaded rootfs?"
-    read NEW_ROOTFS
+    read -p "Installation path for rootfs [default: $INSTALLATION_DIR/rootfs]: " NEW_ROOTFS
+    DEFAULT_ROOTFS=$INSTALLATION_DIR/rootfs
+    NEW_ROOTFS=${NEW_ROOTFS:-$DEFAULT_ROOTFS}
     NEW_ROOTFS=$(eval echo "$NEW_ROOTFS")
     if [ ! -e "$NEW_ROOTFS" ] || [ -d "$NEW_ROOTFS" ] && [ -z "$(ls -A "$NEW_ROOTFS" 2> /dev/null)" ]; then
         echo "Downloading rootfs download link from felix86.com/rootfs/ubuntu.txt..."
         check_url "https://felix86.com/rootfs/ubuntu.txt"
         UBUNTU_2404_LINK=$(curl -k -s https://felix86.com/rootfs/ubuntu.txt)
+        echo "Installing rootfs to $NEW_ROOTFS"
         echo "Creating rootfs directory..."
         sudo mkdir -p $NEW_ROOTFS
         echo "Downloading Ubuntu 24.04 rootfs..."
@@ -217,16 +220,12 @@ if [ "$choice" -eq 1 ]; then
 elif [ "$choice" -eq 2 ]; then
     echo "You selected to use your own rootfs."
     echo "Please specify the absolute path to your rootfs"
-    read -p "Path to rootfs: " line
+    read -p "Path: " line
     felix86 --set-rootfs $line
 fi
 
 # Finally register felix86 in binfmt_misc
 sudo -E felix86 --binfmt-misc
-
-if ! felix86 -d; then
-  echo "Failed binfmt_misc installation check"
-fi
 
 # Let's try to run a test program
 set +e
@@ -264,3 +263,17 @@ echo "│                                       │"
 echo "│ /path/to/rootfs/MyGame.AppImage       │"
 echo "│                                       │"
 echo "└───────────────────────────────────────┘"
+
+if ! felix86 -d; then
+  echo "Failed binfmt_misc installation check"
+  echo "felix86 is currently not used as the default emulator for x86 applications"
+  echo "If you have other x86 emulators registered then you will need to unregister them"
+  echo "Example of unregistering an emulator: sudo sh -c \"echo -1 > /proc/sys/fs/binfmt_misc/qemu-x86_64\""
+  echo "To make this change permanent, make sure to remove the respective file from one of these directories:"
+  echo "  /etc/binfmt.d"
+  echo "  /run/binfmt.d"
+  echo "  /usr/local/lib/binfmt.d"
+  echo "  /usr/lib/binfmt.d"
+  echo "After you're done, to register felix86, run: sudo -E $FILE -b"
+  echo "If you don't register to binfmt_misc, some apps like sudo (needed by AppImages) will not work"
+fi

@@ -3,6 +3,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 #include <linux/limits.h>
 #include <spawn.h>
 #include <sys/file.h>
@@ -16,6 +17,15 @@ std::string rootfs_path;
 int lock_fd = -1;
 uid_t uid;
 gid_t gid;
+
+#define ANSI_COLOR_RED "\x1b[31m"
+#define ANSI_COLOR_GREEN "\x1b[32m"
+#define ANSI_COLOR_YELLOW "\x1b[33m"
+#define ANSI_COLOR_BLUE "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN "\x1b[36m"
+#define ANSI_BOLD "\x1b[1m"
+#define ANSI_COLOR_RESET "\x1b[0m"
 
 #define DIE(message, ...)                                                                                                                            \
     do {                                                                                                                                             \
@@ -180,15 +190,27 @@ int main(int argc, char* argv[]) {
     }
 
     if (geteuid() != 0) {
+        if (std::string(argv[0]) == "sudo") {
+            DIE("Ran felix86-mounter as sudo but euid is not 0?");
+        }
+
         char buffer[PATH_MAX];
         int size = readlink("/proc/self/exe", buffer, PATH_MAX);
         buffer[size] = 0;
-        printf("felix86-mounter was not given proper permissions to run\n");
-        printf("Please install using the installation script\n\nOR\n\n");
-        printf("Run the following commands:\n");
-        printf("    sudo chown root:root %s\n", buffer);
-        printf("    sudo chmod u+s %s\n", buffer);
-        DIE("Failed permission check");
+        printf(ANSI_COLOR_YELLOW "I need administrator privileges for the first run per boot" ANSI_COLOR_RESET "\n");
+        printf(ANSI_COLOR_YELLOW "in order to mount the rootfs" ANSI_COLOR_RESET "\n");
+        printf(ANSI_COLOR_CYAN "If you want to permanently give felix86 permission and not" ANSI_COLOR_RESET "\n");
+        printf(ANSI_COLOR_CYAN "be prompted once per boot, run the following commands:" ANSI_COLOR_RESET "\n");
+        printf(ANSI_COLOR_CYAN "  sudo chown root:root %s" ANSI_COLOR_RESET "\n", buffer);
+        printf(ANSI_COLOR_CYAN "  sudo chmod u+s %s" ANSI_COLOR_RESET "\n", buffer);
+
+        std::string sudo = "sudo";
+        std::string e = "-E";
+        std::vector<char*> args = {
+            sudo.data(), e.data(), buffer, argv[1], argv[2], nullptr,
+        };
+        execvpe("sudo", args.data(), environ);
+        DIE("Failed to execvpe sudo, do you have sudo?");
     }
 
     bool exists;
