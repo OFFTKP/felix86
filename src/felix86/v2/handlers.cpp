@@ -3586,10 +3586,10 @@ void PUNPCKH(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     biscuit::Vec src = rec.getVec(&operands[1]);
 
     // Pick even scratch registers for the widening add (can't use MF2, ruins 128 VLEN)
-    biscuit::Vec temp1 = v26;
-    biscuit::Vec temp2 = v28;
-    biscuit::Vec dst_down = v30;
-    biscuit::Vec src_down = v31;
+    biscuit::Vec temp1 = rec.scratchVecM2();
+    biscuit::Vec temp2 = rec.scratchVecM2();
+    biscuit::Vec dst_down = rec.scratchVecM2();
+    biscuit::Vec src_down = rec.scratchVec();
 
     rec.setVectorState(sew, vlen);
     as.VSLIDEDOWN(dst_down, dst, num);
@@ -8131,6 +8131,7 @@ FAST_HANDLE(MOVLHPS) {
 FAST_HANDLE(ADDSUBPS) {
     // NOTE: using dst directly saves a move but causes potentially
     // torn state if signal happens during vmnand
+    // TODO: the eventual signal handling rewrite should solve this
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
@@ -8275,6 +8276,20 @@ FAST_HANDLE(PSIGNW) {
 
 FAST_HANDLE(PSIGNB) {
     PSIGN(rec, rip, as, instruction, operands, SEW::E8, 16);
+}
+
+FAST_HANDLE(PMULHRSW) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec product = rec.scratchVecM2();
+    rec.setVectorState(SEW::E16, 4);
+    as.VWMUL(product, dst, src);
+    rec.setVectorState(SEW::E32, 4, LMUL::M2);
+    as.VSRL(product, product, 14);
+    as.VADD(product, product, 1);
+    rec.setVectorState(SEW::E16, 4);
+    as.VNSRL(dst, product, 1);
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(FXSAVE) {

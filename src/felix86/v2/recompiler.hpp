@@ -74,6 +74,8 @@ struct Recompiler {
 
     biscuit::Vec scratchVec();
 
+    biscuit::Vec scratchVecM2();
+
     biscuit::FPR scratchFPR();
 
     ZydisMnemonic decode(u64 rip, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands);

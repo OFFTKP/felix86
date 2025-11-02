@@ -794,6 +794,14 @@ biscuit::Vec Recompiler::scratchVec() {
     return scratch_vec[vector_scratch_index++];
 }
 
+biscuit::Vec Recompiler::scratchVecM2() {
+    if (scratch_vec[vector_scratch_index].Index() % 2 != 0) {
+        vector_scratch_index++;
+    }
+    ASSERT(vector_scratch_index != (int)scratch_vec.size());
+    return scratch_vec[vector_scratch_index++];
+}
+
 biscuit::FPR Recompiler::scratchFPR() {
     ASSERT(fpu_scratch_index != (int)scratch_fprs.size());
     return scratch_fprs[fpu_scratch_index++];
@@ -2141,7 +2149,7 @@ void Recompiler::scanAhead(u64 rip) {
                             }
 
                             if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
-                                // Block ahead ended in <= 5 instructions so let's break
+                                // Block ahead ended in <= 10 instructions so let's break
                                 break;
                             }
 
