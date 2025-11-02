@@ -8282,12 +8282,12 @@ FAST_HANDLE(PMULHRSW) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec product = rec.scratchVecM2();
-    rec.setVectorState(SEW::E16, 8);
+    rec.setVectorState(SEW::E16, 0);
     as.VWMUL(product, dst, src);
-    rec.setVectorState(SEW::E32, 4, LMUL::M2);
+    rec.setVectorState(SEW::E32, 0, LMUL::M2);
     as.VSRL(product, product, 14);
     as.VADD(product, product, 1);
-    rec.setVectorState(SEW::E16, 8);
+    rec.setVectorState(SEW::E16, 4);
     as.VNSRL(dst, product, 1);
     rec.setVec(&operands[0], dst);
 }
