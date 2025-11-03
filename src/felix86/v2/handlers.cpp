@@ -8329,6 +8329,30 @@ FAST_HANDLE(PHADDW) {
     rec.setVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PHADDD) {
+    biscuit::Vec group = rec.scratchVecM2();
+    biscuit::Vec temp = rec.scratchVecM2();
+    biscuit::Vec narrow1 = rec.scratchVec();
+    biscuit::Vec narrow2 = rec.scratchVec();
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E32, 8, LMUL::M2);
+    as.VMV1R(group, dst);
+    if (src.Index() % 2 != 0) {
+        as.VMV1R(temp, src);
+    } else {
+        temp = src;
+    }
+    as.VSLIDEUP(group, temp, 8);
+    rec.setVectorState(SEW::E32, 4);
+    as.LI(shift, 32);
+    as.VNSRL(narrow1, group, shift);
+    as.VNSRL(narrow2, group, shift);
+    as.VADD(dst, narrow1, narrow2);
+    rec.setVec(&operands[0], dst);
+}
+
 FAST_HANDLE(FXSAVE) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();
