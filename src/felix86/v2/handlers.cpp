@@ -8296,8 +8296,8 @@ FAST_HANDLE(PMADDUBSW) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec product = rec.scratchVecM2();
-    biscuit::Vec narrow1 = rec.scratchVec();
-    biscuit::Vec narrow2 = rec.scratchVec();
+    biscuit::Vec narrow1 = rec.scratchVecM2();
+    biscuit::Vec narrow2 = rec.scratchVecM2();
     rec.setVectorState(SEW::E8, 16);
     as.VWMULSU(product, src, dst);
     rec.setVectorState(SEW::E16, 16);
