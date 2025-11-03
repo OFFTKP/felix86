@@ -8296,14 +8296,34 @@ FAST_HANDLE(PMADDUBSW) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec product = rec.scratchVecM2();
-    biscuit::Vec narrow1 = rec.scratchVecM2();
-    biscuit::Vec narrow2 = rec.scratchVecM2();
+    biscuit::Vec narrow1 = rec.scratchVec();
+    biscuit::Vec narrow2 = rec.scratchVec();
     rec.setVectorState(SEW::E8, 16);
     as.VWMULSU(product, src, dst);
     rec.setVectorState(SEW::E16, 16);
     as.VNSRL(narrow1, product, 0);
     as.VNSRL(narrow2, product, 16);
     as.VSADD(dst, narrow1, narrow2);
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PHADDW) {
+    biscuit::Vec group = rec.scratchVecM2();
+    biscuit::Vec temp = rec.scratchVecM2();
+    biscuit::Vec narrow1 = rec.scratchVec();
+    biscuit::Vec narrow2 = rec.scratchVec();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E16, 16, LMUL::M2);
+    as.VMV(group, dst);
+    if (src.Index() % 2 != 0) {
+        as.VMV(temp, src);
+    }
+    as.VSLIDEUP(group, src.Index() % 2 != 0 ? temp : src, 8);
+    rec.setVectorState(SEW::E16, 8);
+    as.VNSRL(narrow1, group, 0);
+    as.VNSRL(narrow2, group, 16);
+    as.VADD(dst, narrow1, narrow2);
     rec.setVec(&operands[0], dst);
 }
 
