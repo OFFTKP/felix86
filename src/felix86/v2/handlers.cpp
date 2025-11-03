@@ -8460,7 +8460,7 @@ FAST_HANDLE(PCLMULQDQ) {
     } else {
         as.VMV_XS(X, dst);
     }
-    if (imm & 1) {
+    if (imm & 0b10000) {
         as.VSLIDEDOWN(temp, src, 1);
         as.VMV_XS(Y, temp);
     } else {

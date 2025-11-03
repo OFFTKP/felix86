@@ -100,6 +100,7 @@ H0F3A_TEST(66_40)
 H0F3A_TEST(0_66_0F)
 H0F3A_TEST(0_66_21)
 
+H0F3A_TEST(pclmulqdq)
 H0F3A_TEST(pcmpistri_equal_any)
 H0F3A_TEST(pcmpistri_equal_each)
 H0F3A_TEST(pcmpistri_equal_ordered)
