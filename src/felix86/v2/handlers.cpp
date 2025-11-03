@@ -8448,6 +8448,7 @@ FAST_HANDLE(PCLMULQDQ) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
     biscuit::GPR X = rec.scratch();
     biscuit::GPR Y = rec.scratch();
     biscuit::GPR dst_low = rec.scratch();
@@ -8469,8 +8470,8 @@ FAST_HANDLE(PCLMULQDQ) {
     as.CLMUL(dst_low, X, Y);
     as.CLMULH(dst_high, X, Y);
     as.VMV_SX(temp, dst_high);
-    as.VSLIDE1UP(temp, temp, dst_low);
-    rec.setVec(&operands[0], temp);
+    as.VSLIDE1UP(temp2, temp, dst_low);
+    rec.setVec(&operands[0], temp2);
 }
 
 FAST_HANDLE(FXSAVE) {
