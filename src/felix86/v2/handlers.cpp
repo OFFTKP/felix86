@@ -8344,7 +8344,7 @@ FAST_HANDLE(PHADDD) {
     } else {
         temp = src;
     }
-    as.VSLIDEUP(group, temp, 8);
+    as.VSLIDEUP(group, temp, 4);
     rec.setVectorState(SEW::E32, 4);
     as.LI(shift, 32);
     as.VNSRL(narrow1, group, shift);
