@@ -8353,6 +8353,96 @@ FAST_HANDLE(PHADDD) {
     rec.setVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PHADDSW) {
+    biscuit::Vec group = rec.scratchVecM2();
+    biscuit::Vec temp = rec.scratchVecM2();
+    biscuit::Vec narrow1 = rec.scratchVec();
+    biscuit::Vec narrow2 = rec.scratchVec();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E16, 16, LMUL::M2);
+    as.VMV1R(group, dst);
+    if (src.Index() % 2 != 0) {
+        as.VMV1R(temp, src);
+    } else {
+        temp = src;
+    }
+    as.VSLIDEUP(group, temp, operands[0].size / 16);
+    rec.setVectorState(SEW::E16, 8);
+    as.VNSRL(narrow1, group, 0);
+    as.VNSRL(narrow2, group, 16);
+    as.VSADD(dst, narrow1, narrow2);
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PHSUBW) {
+    biscuit::Vec group = rec.scratchVecM2();
+    biscuit::Vec temp = rec.scratchVecM2();
+    biscuit::Vec narrow1 = rec.scratchVec();
+    biscuit::Vec narrow2 = rec.scratchVec();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E16, 16, LMUL::M2);
+    as.VMV1R(group, dst);
+    if (src.Index() % 2 != 0) {
+        as.VMV1R(temp, src);
+    } else {
+        temp = src;
+    }
+    as.VSLIDEUP(group, temp, operands[0].size / 16);
+    rec.setVectorState(SEW::E16, 8);
+    as.VNSRL(narrow1, group, 0);
+    as.VNSRL(narrow2, group, 16);
+    as.VSUB(dst, narrow1, narrow2);
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PHSUBD) {
+    biscuit::Vec group = rec.scratchVecM2();
+    biscuit::Vec temp = rec.scratchVecM2();
+    biscuit::Vec narrow1 = rec.scratchVec();
+    biscuit::Vec narrow2 = rec.scratchVec();
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E32, 8, LMUL::M2);
+    as.VMV1R(group, dst);
+    if (src.Index() % 2 != 0) {
+        as.VMV1R(temp, src);
+    } else {
+        temp = src;
+    }
+    as.VSLIDEUP(group, temp, operands[0].size / 32);
+    rec.setVectorState(SEW::E32, 4);
+    as.LI(shift, 32);
+    as.VNSRL(narrow1, group, 0);
+    as.VNSRL(narrow2, group, shift);
+    as.VSUB(dst, narrow1, narrow2);
+    rec.setVec(&operands[0], dst);
+}
+
+FAST_HANDLE(PHSUBSW) {
+    biscuit::Vec group = rec.scratchVecM2();
+    biscuit::Vec temp = rec.scratchVecM2();
+    biscuit::Vec narrow1 = rec.scratchVec();
+    biscuit::Vec narrow2 = rec.scratchVec();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    rec.setVectorState(SEW::E16, 16, LMUL::M2);
+    as.VMV1R(group, dst);
+    if (src.Index() % 2 != 0) {
+        as.VMV1R(temp, src);
+    } else {
+        temp = src;
+    }
+    as.VSLIDEUP(group, temp, operands[0].size / 16);
+    rec.setVectorState(SEW::E16, 8);
+    as.VNSRL(narrow1, group, 0);
+    as.VNSRL(narrow2, group, 16);
+    as.VSSUB(dst, narrow1, narrow2);
+    rec.setVec(&operands[0], dst);
+}
+
 FAST_HANDLE(FXSAVE) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();
