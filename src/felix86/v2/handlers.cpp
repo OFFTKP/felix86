@@ -8474,6 +8474,29 @@ FAST_HANDLE(PCLMULQDQ) {
     rec.setVec(&operands[0], temp2);
 }
 
+FAST_HANDLE(CRC32) {
+    constexpr u64 p = 0x105EC76F1;
+    constexpr u64 mu = 0x4869EC38DEA713F1ul;
+    biscuit::GPR initial = rec.getGPR(&operands[0], X86_SIZE_DWORD);
+    biscuit::GPR data = rec.getGPR(&operands[1]);
+    biscuit::GPR crc = rec.scratch();
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR rmu = rec.scratch();
+    biscuit::GPR rp = rec.scratch();
+    u8 bits = operands[1].size;
+    as.LI(rmu, mu);
+    as.LI(rp, p);
+    as.XOR(temp, data, initial);
+    as.SLLI(crc, temp, 64 - bits);
+    as.CLMUL(crc, crc, rmu);
+    as.CLMULH(crc, crc, rp);
+    if (bits == 16) {
+        as.SRLI(temp, initial, bits);
+        as.XOR(crc, crc, temp);
+    }
+    rec.setGPR(&operands[0], crc);
+}
+
 FAST_HANDLE(FXSAVE) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();

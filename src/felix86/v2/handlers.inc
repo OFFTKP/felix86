@@ -195,6 +195,7 @@ X(PUSHAD)
 X(POPA)
 X(POPAD)
 X(CLFLUSH)
+X(CRC32)
 X(INVLPG) /* thunking dummy instruction */
 
 SIMD(PUNPCKLBW)
