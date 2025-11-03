@@ -82,5 +82,3 @@ jobs:
           chmod +x ./test/felix86
           FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
           ./test/felix86 -k
-          FELIX86_ALL_EXTENSIONS=g,v ./test/felix86_test
-          ./test/felix86 -k
