@@ -8347,7 +8347,7 @@ FAST_HANDLE(PHADDD) {
     as.VSLIDEUP(group, temp, 4);
     rec.setVectorState(SEW::E32, 4);
     as.LI(shift, 32);
-    as.VNSRL(narrow1, group, shift);
+    as.VNSRL(narrow1, group, 0);
     as.VNSRL(narrow2, group, shift);
     as.VADD(dst, narrow1, narrow2);
     rec.setVec(&operands[0], dst);
