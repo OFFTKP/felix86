@@ -8314,14 +8314,13 @@ FAST_HANDLE(PHADDW) {
     biscuit::Vec narrow2 = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E16, 8);
-    as.VMV(group, dst);
+    rec.setVectorState(SEW::E16, 16, LMUL::M2);
+    as.VMV1R(group, dst);
     if (src.Index() % 2 != 0) {
-        as.VMV(temp, src);
+        as.VMV1R(temp, src);
     } else {
         temp = src;
     }
-    rec.setVectorState(SEW::E16, 16, LMUL::M2);
     as.VSLIDEUP(group, temp, 8);
     rec.setVectorState(SEW::E16, 8);
     as.VNSRL(narrow1, group, 0);
