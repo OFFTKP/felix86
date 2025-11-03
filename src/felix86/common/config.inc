@@ -45,3 +45,4 @@ X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages 
 X(Performance, bool, noflag_opts, true, FELIX86_NOFLAG_OPTS, "Optimize some instructions when the flag calculations aren't necessary", false)
 X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically compress instructions whenever possible which may slightly improve performance", false)
 X(Performance, bool, scan_ahead_multi, false, FELIX86_SCAN_AHEAD_MULTI, "Scan ahead to multiple blocks when possible, avoiding even more flag calculations", false)
+X(Performance, bool, pclmulqdq, false, FELIX86_PCLMULQDQ, "Enable the PCLMULQDQ instruction, might improve performance in some applications", false)
