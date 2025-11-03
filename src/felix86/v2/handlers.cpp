@@ -8490,7 +8490,7 @@ FAST_HANDLE(CRC32) {
     as.SLLI(crc, temp, 64 - bits);
     as.CLMUL(crc, crc, rmu);
     as.CLMULH(crc, crc, rp);
-    if (bits == 16) {
+    if (bits == 16 || bits == 8) {
         as.SRLI(temp, initial, bits);
         as.XOR(crc, crc, temp);
     }
