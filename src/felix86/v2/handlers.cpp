@@ -8292,6 +8292,21 @@ FAST_HANDLE(PMULHRSW) {
     rec.setVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PMADDUBSW) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec product = rec.scratchVecM2();
+    biscuit::Vec narrow1 = rec.scratchVecM2();
+    biscuit::Vec narrow2 = rec.scratchVecM2();
+    rec.setVectorState(SEW::E8, 16);
+    as.VWMULSU(product, src, dst);
+    rec.setVectorState(SEW::E16, 16);
+    as.VNSRL(narrow1, product, 0);
+    as.VNSRL(narrow2, product, 16);
+    as.VSADD(dst, narrow1, narrow2);
+    rec.setVec(&operands[0], dst);
+}
+
 FAST_HANDLE(FXSAVE) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();
