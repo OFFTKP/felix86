@@ -111,6 +111,9 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         if (g_config.no_sse4_2) {
             result.ecx &= ~(1 << 20);
         }
+        if (!Extensions::B) {
+            result.ecx &= ~(1 << 1); // disable PCLMULQDQ
+        }
     }
 
     if (found && leaf == 0x8000'0001) {

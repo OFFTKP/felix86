@@ -8443,6 +8443,36 @@ FAST_HANDLE(PHSUBSW) {
     rec.setVec(&operands[0], dst);
 }
 
+FAST_HANDLE(PCLMULQDQ) {
+    ASSERT(Extensions::B);
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::GPR X = rec.scratch();
+    biscuit::GPR Y = rec.scratch();
+    biscuit::GPR dst_low = rec.scratch();
+    biscuit::GPR dst_high = rec.scratch();
+    u8 imm = rec.getImmediate(&operands[2]);
+    rec.setVectorState(SEW::E64, 2);
+    if (imm & 1) {
+        as.VSLIDEDOWN(temp, dst, 1);
+        as.VMV_XS(X, temp);
+    } else {
+        as.VMV_XS(X, dst);
+    }
+    if (imm & 1) {
+        as.VSLIDEDOWN(temp, src, 1);
+        as.VMV_XS(Y, temp);
+    } else {
+        as.VMV_XS(Y, src);
+    }
+    as.CLMUL(dst_low, X, Y);
+    as.CLMULH(dst_high, X, Y);
+    as.VMV_SX(temp, dst_high);
+    as.VSLIDE1UP(temp, temp, dst_low);
+    rec.setVec(&operands[0], temp);
+}
+
 FAST_HANDLE(FXSAVE) {
     biscuit::GPR address = rec.lea(&operands[0]);
     rec.writebackState();
