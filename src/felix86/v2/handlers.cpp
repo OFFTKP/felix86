@@ -8475,6 +8475,8 @@ FAST_HANDLE(PCLMULQDQ) {
 }
 
 FAST_HANDLE(CRC32) {
+    ASSERT(Extensions::B);
+    // Read: https://mails.dpdk.org/archives/dev/2024-August/299978.html
     constexpr u64 p = 0x105EC76F1;
     constexpr u64 mu = 0x4869EC38DEA713F1ul;
     biscuit::GPR initial = rec.getGPR(&operands[0], X86_SIZE_DWORD);

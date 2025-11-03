@@ -108,7 +108,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         if (g_config.no_sse4_1) {
             result.ecx &= ~(1 << 19);
         }
-        if (g_config.no_sse4_2) {
+        if (g_config.no_sse4_2 || !Extensions::B /* CRC32 needs Zbc */) {
             result.ecx &= ~(1 << 20);
         }
         if (!Extensions::B) {
