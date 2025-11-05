@@ -1113,28 +1113,124 @@ FAST_HANDLE(CMP) {
     SetCmpFlags(rip, rec, as, dst, src, result, size, operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && size != X86_SIZE_QWORD);
 }
 
-FAST_HANDLE(OR) {
+FAST_HANDLE(OR_reg) {
+    x86_size_e size = rec.getSize(&operands[0]);
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src;
+    bool is_immediate = false;
+    u64 immediate_zext = 0;
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+        src = rec.getGPR(&operands[1]);
+    } else if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+        is_immediate = true;
+        immediate_zext = rec.zextImmediate(rec.getImmediate(&operands[1]), operands[0].size);
+    } else {
+        UNREACHABLE();
+    }
+
+    switch (operands[0].size) {
+    case 8: {
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            src = rec.getGPR(&operands[1]);
+        }
+        if (rec.getSize(&operands[0]) == X86_SIZE_BYTE_HIGH) {
+            if (!is_immediate) {
+                as.SLLI(src, src, 8);
+            } else {
+                immediate_zext <<= 8;
+            }
+        }
+        if (is_immediate) {
+            rec.ori(dst, dst, immediate_zext);
+        } else {
+            as.OR(dst, dst, src);
+        }
+        break;
+    }
+    case 16: {
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            src = rec.getGPR(&operands[1]);
+        }
+        if (is_immediate) {
+            rec.ori(dst, dst, immediate_zext);
+        } else {
+            as.OR(dst, dst, src);
+        }
+        break;
+    }
+    case 32: {
+        if (is_immediate) {
+            // We prefer sign extending here because eg. ori with 0xFFFF'FFFF, it's okay
+            // for trash to be in upper bits since it gets zero extended right after.
+            // This is not the case with 8/16 bits since we need to preserve the upper bits.
+            immediate_zext = rec.sextImmediate(rec.getImmediate(&operands[1]), operands[0].size);
+            biscuit::GPR temp = rec.scratch();
+            rec.ori(temp, dst, immediate_zext);
+            rec.zext(dst, temp, X86_SIZE_DWORD);
+        } else {
+            as.OR(dst, dst, src);
+            rec.zext(dst, dst, X86_SIZE_DWORD);
+        }
+        break;
+    }
+    case 64: {
+        if (is_immediate) {
+            rec.ori(dst, dst, immediate_zext);
+        } else {
+            as.OR(dst, dst, src);
+        }
+        break;
+    }
+    }
+
+    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
+    bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
+    bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
+    bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
+    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
+    if (needs_cf) {
+        rec.clearFlag(X86_REF_CF);
+    }
+
+    if (needs_pf) {
+        rec.updateParity(dst);
+    }
+
+    if (needs_zf) {
+        if (size == X86_SIZE_DWORD) {
+            size = X86_SIZE_QWORD; // don't zero extend, it's already zero extended
+        }
+        rec.updateZero(dst, size);
+    }
+
+    if (needs_sf) {
+        rec.updateSign(dst, size);
+    }
+
+    if (needs_of) {
+        rec.clearFlag(X86_REF_OF);
+    }
+
+    if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
+        rec.clearFlag(X86_REF_AF);
+    }
+}
+
+FAST_HANDLE(OR_mem) {
     bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
     bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
     bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
     bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
-    bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
-        // We can do it faster if we don't need to calculate flags
-        return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::OR, &Assembler::OR);
-    }
-
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR dst;
-
-    bool writeback = true;
     bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
+    biscuit::GPR dst = rec.scratch();
+    biscuit::GPR result = rec.scratch();
     if (needs_atomic) {
+        biscuit::GPR src = rec.getGPR(&operands[1]);
         biscuit::GPR address = rec.lea(&operands[0]);
-        dst = rec.scratch();
         switch (operands[0].size) {
         case 8: {
             if (Extensions::Zabha) {
@@ -1196,18 +1292,29 @@ FAST_HANDLE(OR) {
         }
         }
 
-        if (needs_any_flag || !g_config.noflag_opts) {
+        if (needs_any_flag) {
             as.OR(result, dst, src);
         }
-
-        writeback = false;
     } else {
-        dst = rec.getGPR(&operands[0]);
-        as.OR(result, dst, src);
+        biscuit::GPR address = rec.lea(&operands[0], false);
+        rec.readMemory(dst, address, 0, rec.getSize(&operands[0]));
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            rec.ori(result, dst, rec.getImmediate(&operands[1]));
+        } else if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+            if (rec.getSize(&operands[1]) == X86_SIZE_BYTE_HIGH) {
+                biscuit::GPR temp = rec.scratch();
+                as.SRLI(temp, src, 8);
+                src = temp;
+            }
+            as.OR(result, src, dst);
+        } else {
+            UNREACHABLE();
+        }
+        rec.writeMemory(result, address, 0, rec.getSize(&operands[0]));
     }
 
     x86_size_e size = rec.getSize(&operands[0]);
-
     if (needs_cf) {
         rec.clearFlag(X86_REF_CF);
     }
@@ -1231,9 +1338,17 @@ FAST_HANDLE(OR) {
     if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
         rec.clearFlag(X86_REF_AF);
     }
+}
 
-    if (writeback) {
-        rec.setGPR(&operands[0], result);
+FAST_HANDLE(OR) {
+    bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
+    bool dst_mem = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY;
+    if (dst_reg) {
+        return fast_OR_reg(rec, rip, as, instruction, operands);
+    } else if (dst_mem) {
+        return fast_OR_mem(rec, rip, as, instruction, operands);
+    } else {
+        UNREACHABLE();
     }
 }
 

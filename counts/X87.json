@@ -1464,7 +1464,7 @@
     "dd3f": {
         "instruction_count": 2,
         "expected_asm": [
-            "LWU             ra, s11, 0x220(544)",
+            "LHU             ra, s11, 0x220(544)",
             "SH              ra, a0, 0x0(0)"
         ],
         "disassembly": "fnstsw [rdi]"

@@ -2626,6 +2626,27 @@ void Recompiler::expirePendingLinks(u64 rip) {
     block_meta.pending_links.clear();
 }
 
+u64 Recompiler::zextImmediate(u64 imm, ZyanU8 size) {
+    switch (size) {
+    case 8: {
+        return (u64)(u8)imm;
+    }
+    case 16: {
+        return (u64)(u16)imm;
+    }
+    case 32: {
+        return (u64)(u32)imm;
+    }
+    case 64: {
+        return imm;
+    }
+    default: {
+        UNREACHABLE();
+        return 0;
+    }
+    }
+}
+
 u64 Recompiler::sextImmediate(u64 imm, ZyanU8 size) {
     switch (size) {
     case 8: {
@@ -2658,6 +2679,21 @@ void Recompiler::addi(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
         biscuit::GPR reg = scratch();
         as.LI(reg, imm);
         as.ADD(dst, src, reg);
+        popScratch();
+    }
+}
+
+void Recompiler::ori(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
+    if (imm == 0 && dst == src) {
+        return;
+    }
+
+    if ((i64)imm >= -2048 && (i64)imm < 2048) {
+        as.ORI(dst, src, imm);
+    } else {
+        biscuit::GPR reg = scratch();
+        as.LI(reg, imm);
+        as.OR(dst, src, reg);
         popScratch();
     }
 }
