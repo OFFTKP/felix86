@@ -1346,7 +1346,7 @@ FAST_HANDLE(OR) {
     bool not_imm = operands[1].type != ZYDIS_OPERAND_TYPE_IMMEDIATE;
     if (dst_reg && not_imm) {
         return fast_OR_reg(rec, rip, as, instruction, operands);
-    } else if (dst_mem && not_imm) {
+    } else if (dst_mem && not_imm && false) {
         return fast_OR_mem(rec, rip, as, instruction, operands);
     } else {
         bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
