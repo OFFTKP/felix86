@@ -1344,7 +1344,7 @@ FAST_HANDLE(OR) {
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     bool dst_mem = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY;
     bool not_imm = operands[1].type != ZYDIS_OPERAND_TYPE_IMMEDIATE;
-    if (dst_reg && not_imm) {
+    if (dst_reg && not_imm && false) {
         return fast_OR_reg(rec, rip, as, instruction, operands);
     } else if (dst_mem && not_imm && false) {
         return fast_OR_mem(rec, rip, as, instruction, operands);
