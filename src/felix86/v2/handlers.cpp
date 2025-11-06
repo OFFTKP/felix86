@@ -1200,9 +1200,10 @@ FAST_HANDLE(OR_reg) {
 
     if (needs_zf) {
         if (size == X86_SIZE_DWORD) {
-            size = X86_SIZE_QWORD; // don't zero extend, it's already zero extended
+            rec.updateZero(dst, X86_SIZE_QWORD); // don't zero extend, it's already zero extended
+        } else {
+            rec.updateZero(dst, size);
         }
-        rec.updateZero(dst, size);
     }
 
     if (needs_sf) {
@@ -1343,134 +1344,12 @@ FAST_HANDLE(OR_mem) {
 FAST_HANDLE(OR) {
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     bool dst_mem = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY;
-    bool not_imm = operands[1].type != ZYDIS_OPERAND_TYPE_IMMEDIATE;
-    if (dst_reg && not_imm) {
-        printf("%s\n", disassemble_one(rip).c_str());
+    if (dst_reg) {
         return fast_OR_reg(rec, rip, as, instruction, operands);
-    } else if (dst_mem && not_imm && false) {
+    } else if (dst_mem) {
         return fast_OR_mem(rec, rip, as, instruction, operands);
     } else {
-        bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
-        bool needs_pf = rec.shouldEmitFlag(rip, X86_REF_PF);
-        bool needs_zf = rec.shouldEmitFlag(rip, X86_REF_ZF);
-        bool needs_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
-        bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
-        bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
-        bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-        if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
-            // We can do it faster if we don't need to calculate flags
-            return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::OR, &Assembler::OR);
-        }
-
-        biscuit::GPR result = rec.scratch();
-        biscuit::GPR src = rec.getGPR(&operands[1]);
-        biscuit::GPR dst;
-
-        bool writeback = true;
-        bool needs_atomic = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && (instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK);
-        if (needs_atomic) {
-            biscuit::GPR address = rec.lea(&operands[0]);
-            dst = rec.scratch();
-            switch (operands[0].size) {
-            case 8: {
-                if (Extensions::Zabha) {
-                    as.AMOOR_B(Ordering::AQRL, dst, src, address);
-                    rec.zext(dst, dst, X86_SIZE_BYTE);
-                } else {
-                    biscuit::GPR masked_address = rec.scratch();
-                    biscuit::GPR shifted_address = rec.scratch();
-                    biscuit::GPR shifted_src = rec.scratch();
-
-                    as.ANDI(masked_address, address, -4);
-                    as.SLLI(shifted_address, address, 3);
-                    as.SLLW(shifted_src, src, shifted_address);
-                    as.AMOOR_W(Ordering::AQRL, dst, shifted_src, masked_address);
-                    as.SRLW(dst, dst, shifted_address);
-                    rec.zext(dst, dst, X86_SIZE_BYTE);
-
-                    rec.popScratch();
-                    rec.popScratch();
-                    rec.popScratch();
-                }
-                rec.setLockHandled();
-                break;
-            }
-            case 16: {
-                if (Extensions::Zabha) {
-                    as.AMOOR_H(Ordering::AQRL, dst, src, address);
-                    rec.zext(dst, dst, X86_SIZE_WORD);
-                } else {
-                    biscuit::GPR masked_address = rec.scratch();
-                    biscuit::GPR shifted_address = rec.scratch();
-                    biscuit::GPR shifted_src = rec.scratch();
-
-                    as.ANDI(masked_address, address, -4);
-                    as.SLLI(shifted_address, address, 3);
-                    as.SLLW(shifted_src, src, shifted_address);
-                    as.AMOOR_W(Ordering::AQRL, dst, shifted_src, masked_address);
-                    as.SRLW(dst, dst, shifted_address);
-                    rec.zext(dst, dst, X86_SIZE_WORD);
-
-                    rec.popScratch();
-                    rec.popScratch();
-                    rec.popScratch();
-                }
-                rec.setLockHandled();
-                break;
-            }
-            case 32: {
-                as.AMOOR_W(Ordering::AQRL, dst, src, address);
-                // TODO: probably remove this and other zexts in OR, as dst value doesn't matter in flag calculation and result gets sign extended
-                rec.zext(dst, dst, X86_SIZE_DWORD);
-                rec.setLockHandled();
-                break;
-            }
-            case 64: {
-                as.AMOOR_D(Ordering::AQRL, dst, src, address);
-                rec.setLockHandled();
-                break;
-            }
-            }
-
-            if (needs_any_flag || !g_config.noflag_opts) {
-                as.OR(result, dst, src);
-            }
-
-            writeback = false;
-        } else {
-            dst = rec.getGPR(&operands[0]);
-            as.OR(result, dst, src);
-        }
-
-        x86_size_e size = rec.getSize(&operands[0]);
-
-        if (needs_cf) {
-            rec.clearFlag(X86_REF_CF);
-        }
-
-        if (needs_pf) {
-            rec.updateParity(result);
-        }
-
-        if (needs_zf) {
-            rec.updateZero(result, size);
-        }
-
-        if (needs_sf) {
-            rec.updateSign(result, size);
-        }
-
-        if (needs_of) {
-            rec.clearFlag(X86_REF_OF);
-        }
-
-        if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
-            rec.clearFlag(X86_REF_AF);
-        }
-
-        if (writeback) {
-            rec.setGPR(&operands[0], result);
-        }
+        UNREACHABLE();
     }
 }
 
