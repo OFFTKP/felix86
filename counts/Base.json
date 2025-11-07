@@ -4604,7 +4604,7 @@
             "XORI            ra, ra, 0x1(1)",
             "SB              ra, s11, 0x1c9(457)",
             "SLTIU           s7, a2, 0x1(1)",
-            "SRLI            s8, a2, 0x3f(63)",
+            "SRLIW           s8, a2, 0x1f(31)",
             "ADDIW           s9, zero, 0x0(0)",
             "SB              zero, s11, 0x1ca(458)"
         ],
@@ -4698,7 +4698,7 @@
             "XORI            t3, t3, 0x1(1)",
             "SB              t3, s11, 0x1c9(457)",
             "SLTIU           s7, a2, 0x1(1)",
-            "SRLI            s8, a2, 0x3f(63)",
+            "SRLIW           s8, a2, 0x1f(31)",
             "ADDIW           s9, zero, 0x0(0)",
             "SB              zero, s11, 0x1ca(458)"
         ],
@@ -4946,7 +4946,7 @@
             "XORI            t1, t1, 0x1(1)",
             "SB              t1, s11, 0x1c9(457)",
             "SLTIU           s7, a2, 0x1(1)",
-            "SRLI            s8, a2, 0x3f(63)",
+            "SRLIW           s8, a2, 0x1f(31)",
             "ADDIW           s9, zero, 0x0(0)",
             "SB              zero, s11, 0x1ca(458)"
         ],
@@ -4964,7 +4964,7 @@
             "XORI            t1, t1, 0x1(1)",
             "SB              t1, s11, 0x1c9(457)",
             "SLTIU           s7, a2, 0x1(1)",
-            "SRLI            s8, a2, 0x3f(63)",
+            "SRLIW           s8, a2, 0x1f(31)",
             "ADDIW           s9, zero, 0x0(0)",
             "SB              zero, s11, 0x1ca(458)"
         ],
