@@ -195,12 +195,12 @@
             "BNE             zero, s7, 0x10(16)",
             "ADDI            gp, gp, 0x13a(314)",
             "AUIPC           t6, 0xffffffeb(-21)",
-            "JALR            zero, t6, 0x4c(76)",
+            "JALR            zero, t6, 0x24(36)",
             "LUI             ra, 0xd(13)",
             "ADDIW           ra, ra, 0xfffffc32(-974)",
             "ADD             gp, gp, ra",
             "AUIPC           t6, 0xffffffeb(-21)",
-            "JALR            zero, t6, 0x38(56)"
+            "JALR            zero, t6, 0x10(16)"
         ]
     },
     "Crysis": {
@@ -726,12 +726,12 @@
             "SB              s9, s11, 0x1cd(461)",
             "ADDIW           t1, zero, 0x1(1)",
             "SB              t1, s11, 0x224(548)",
-            "LUI             t5, 0x157(343)",
-            "ADDIW           t5, t5, 0xfffff83d(-1987)",
-            "SLLI            t5, t5, 0xe(14)",
-            "ADDI            t5, t5, 0xfffffa4b(-1461)",
+            "LUI             t5, 0x2b2(690)",
+            "ADDIW           t5, t5, 0x703(1795)",
+            "SLLI            t5, t5, 0xd(13)",
+            "ADDI            t5, t5, 0xfffffcc5(-827)",
             "SLLI            t5, t5, 0xc(12)",
-            "ADDI            t5, t5, 0x550(1360)",
+            "ADDI            t5, t5, 0x570(1392)",
             "ADDI            a0, sp, 0x0(0)",
             "JALR            zero, t5, 0x0(0)"
         ]
@@ -897,7 +897,7 @@
             "XOR             s9, s9, t3",
             "ADDI            gp, t0, 0x0(0)",
             "AUIPC           t6, 0xffffffea(-22)",
-            "JALR            zero, t6, 0x578(1400)"
+            "JALR            zero, t6, 0x550(1360)"
         ]
     },
     "Baldur 2 FMV": {
@@ -2672,7 +2672,7 @@
             "ADDI            s1, s1, 0x8(8)",
             "ADDI            gp, ra, 0x0(0)",
             "AUIPC           t6, 0xffffffe9(-23)",
-            "JALR            zero, t6, 0xfffff9cc(-1588)"
+            "JALR            zero, t6, 0xfffff9a4(-1628)"
         ]
     },
     "dotnet rotate": {
@@ -6538,12 +6538,12 @@
             "ADDIW           t1, t1, 0xfffffc34(-972)",
             "ADD             gp, gp, t1",
             "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffffd74(-652)",
+            "JALR            zero, t6, 0xfffffd4c(-692)",
             "LUI             t1, 0xfffb09a1(-325215)",
             "ADDIW           t1, t1, 0xffffffb3(-77)",
             "ADD             gp, gp, t1",
             "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffffd60(-672)"
+            "JALR            zero, t6, 0xfffffd38(-712)"
         ]
     },
     "7z block": {
@@ -6659,10 +6659,10 @@
             "BNE             zero, ra, 0x10(16)",
             "ADDI            gp, gp, 0x74(116)",
             "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffffba0(-1120)",
+            "JALR            zero, t6, 0xfffffb78(-1160)",
             "ADDI            gp, gp, 0x8b(139)",
             "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffffb94(-1132)"
+            "JALR            zero, t6, 0xfffffb6c(-1172)"
         ]
     },
     "Outlast camera": {
@@ -6901,9 +6901,9 @@
             "BNE             zero, ra, 0x10(16)",
             "ADDI            gp, gp, 0x16f(367)",
             "AUIPC           t6, 0xffffffe4(-28)",
-            "JALR            zero, t6, 0x7ec(2028)",
+            "JALR            zero, t6, 0x7c4(1988)",
             "AUIPC           t6, 0xffffffe4(-28)",
-            "JALR            zero, t6, 0x7e4(2020)"
+            "JALR            zero, t6, 0x7bc(1980)"
         ]
     },
     "Outlast camera 2": {
@@ -7130,9 +7130,9 @@
             "BNE             zero, ra, 0x10(16)",
             "ADDI            gp, gp, 0x160(352)",
             "AUIPC           t6, 0xffffffe4(-28)",
-            "JALR            zero, t6, 0x468(1128)",
+            "JALR            zero, t6, 0x440(1088)",
             "AUIPC           t6, 0xffffffe4(-28)",
-            "JALR            zero, t6, 0x460(1120)"
+            "JALR            zero, t6, 0x438(1080)"
         ]
     }
 }

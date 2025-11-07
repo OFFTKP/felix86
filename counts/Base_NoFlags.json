@@ -1401,21 +1401,23 @@
         "disassembly": "or dl, bh"
     },
     "08de": {
-        "instruction_count": 3,
+        "instruction_count": 4,
         "expected_asm": [
             "ANDI            ra, s0, 0xff(255)",
             "SLLI            ra, ra, 0x8(8)",
-            "OR              a2, a2, ra"
+            "OR              a2, a2, ra",
+            "SRLI            t1, a2, 0x8(8)"
         ],
         "disassembly": "or dh, bl"
     },
     "08fe": {
-        "instruction_count": 4,
+        "instruction_count": 5,
         "expected_asm": [
             "SRLI            ra, s0, 0x8(8)",
             "ANDI            ra, ra, 0xff(255)",
             "SLLI            ra, ra, 0x8(8)",
-            "OR              a2, a2, ra"
+            "OR              a2, a2, ra",
+            "SRLI            t1, a2, 0x8(8)"
         ],
         "disassembly": "or dh, bh"
     },
@@ -1451,11 +1453,12 @@
         "disassembly": "or dl, [rdi]"
     },
     "0a37": {
-        "instruction_count": 3,
+        "instruction_count": 4,
         "expected_asm": [
             "LBU             ra, a0, 0x0(0)",
             "SLLI            ra, ra, 0x8(8)",
-            "OR              a2, a2, ra"
+            "OR              a2, a2, ra",
+            "SRLI            t3, a2, 0x8(8)"
         ],
         "disassembly": "or dh, [rdi]"
     },
@@ -1545,18 +1548,20 @@
         "disassembly": "or dl, 0xFF"
     },
     "80ce01": {
-        "instruction_count": 1,
+        "instruction_count": 2,
         "expected_asm": [
-            "ORI             a2, a2, 0x100(256)"
+            "ORI             a2, a2, 0x100(256)",
+            "SRLI            ra, a2, 0x8(8)"
         ],
         "disassembly": "or dh, 0x01"
     },
     "80ceff": {
-        "instruction_count": 3,
+        "instruction_count": 4,
         "expected_asm": [
             "LUI             ra, 0x10(16)",
             "ADDIW           ra, ra, 0xffffff00(-256)",
-            "OR              a2, a2, ra"
+            "OR              a2, a2, ra",
+            "SRLI            ra, a2, 0x8(8)"
         ],
         "disassembly": "or dh, 0xFF"
     },
