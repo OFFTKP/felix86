@@ -80,7 +80,13 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
 }
 
 static u8* allocateCodeCache(size_t size) {
-    void* address = ::mmap(nullptr, max_code_cache_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
+    u64 min = std::min(g_executable_start, g_interpreter_start);
+    void* address = ::mmap((void*)(min - 256 * 1024 * 1024), max_code_cache_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    if (address == MAP_FAILED) {
+        WARN("Failed to allocate code cache near the program");
+        address = ::mmap(nullptr, max_code_cache_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+    }
     ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
     u8* first_chunk = (u8*)::mmap(address, code_cache_sizes[0], PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
     ASSERT(first_chunk == address);
@@ -1624,7 +1630,16 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
         ASSERT(!g_mode32);
-        as.LI(address, current_rip + current_instruction->length + operand->mem.disp.value);
+        u64 offset = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
+        if (IsValid2GBImm(offset)) {
+            u32 hi20 = static_cast<i32>(((static_cast<u32>(offset) + 0x800) >> 12) & 0xFFFFF);
+            u32 lo12 = static_cast<i32>(offset << 20) >> 20;
+            as.AUIPC(address, hi20);
+            as.ADDI(address, address, lo12);
+            WARN("NEARBY");
+        } else {
+            as.LI(address, current_rip + current_instruction->length + operand->mem.disp.value);
+        }
         return address;
     }
 
