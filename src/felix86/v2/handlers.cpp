@@ -1194,20 +1194,26 @@ FAST_HANDLE(OR_reg) {
         rec.clearFlag(X86_REF_CF);
     }
 
+    biscuit::GPR result = dst;
+    if (size == X86_SIZE_BYTE_HIGH) {
+        result = rec.scratch();
+        as.SRLI(result, dst, 8);
+    }
+
     if (needs_pf) {
-        rec.updateParity(dst);
+        rec.updateParity(result);
     }
 
     if (needs_zf) {
         if (size == X86_SIZE_DWORD) {
-            rec.updateZero(dst, X86_SIZE_QWORD); // don't zero extend, it's already zero extended
+            rec.updateZero(result, X86_SIZE_QWORD); // don't zero extend, it's already zero extended
         } else {
-            rec.updateZero(dst, size);
+            rec.updateZero(result, size);
         }
     }
 
     if (needs_sf) {
-        rec.updateSign(dst, size);
+        rec.updateSign(result, size);
     }
 
     if (needs_of) {
@@ -1344,7 +1350,7 @@ FAST_HANDLE(OR_mem) {
 FAST_HANDLE(OR) {
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
     bool dst_mem = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY;
-    if (dst_reg && false) {
+    if (dst_reg) {
         return fast_OR_reg(rec, rip, as, instruction, operands);
     } else if (dst_mem) {
         return fast_OR_mem(rec, rip, as, instruction, operands);
