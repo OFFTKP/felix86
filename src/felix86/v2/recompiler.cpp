@@ -1636,7 +1636,6 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
             u32 lo12 = static_cast<i32>(offset << 20) >> 20;
             as.AUIPC(address, hi20);
             as.ADDI(address, address, lo12);
-            WARN("NEARBY");
         } else {
             as.LI(address, current_rip + current_instruction->length + operand->mem.disp.value);
         }
