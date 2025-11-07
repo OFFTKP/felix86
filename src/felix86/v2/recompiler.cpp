@@ -82,14 +82,11 @@ static bool flag_passthrough(ZydisMnemonic mnemonic, x86_ref_e flag) {
 static u8* allocateCodeCache(size_t size) {
     // Try allocating code cache near program so that rip-relative immediates can be made in fewer instructions
     u64 min = std::min(g_executable_start, g_interpreter_start);
-    if (min < 256 * 1024 * 1024) {
-        min = std::max(g_executable_end, g_interpreter_end);
-        min += 256 * 1024 * 1024;
-    } else {
-        min -= 256 * 1024 * 1024;
-    }
     void* address = MAP_FAILED;
-    if (!g_mode32) {
+    // If the program is allocated in 32-bit address space then it's not worth performing this optimization
+    // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
+    if (min > 4 * 1024 * 1024 && !g_mode32) {
+        min += 256 * 1024 * 1024;
         address = ::mmap((void*)min, max_code_cache_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
         if (address == MAP_FAILED) {
             WARN("Failed to allocate code cache near the program");
