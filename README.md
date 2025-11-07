@@ -1,4 +1,4 @@
-[中文](./README_CN.md) | [Website](https://felix86.com) | [Discord](https://discord.gg/TgBxgFwByU)
+[中文](./README_CN.md) | [Website](https://felix86.com) | **[Discord](https://discord.gg/TgBxgFwByU)**
 
 # felix86
 
@@ -18,6 +18,8 @@ This command downloads and runs the installer script, which fetches the latest f
 [Read the usage guide](./docs/how-to-use.md) for more information.
 
 If you are a developer, [read the contributing guide](./docs/contributing.md).
+
+Feel free to join our **Discord server**: [https://discord.gg/TgBxgFwByU](https://discord.gg/TgBxgFwByU)
 
 ## Features
 - Just-in-Time (JIT) recompiler
