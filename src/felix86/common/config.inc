@@ -33,6 +33,7 @@ X(Debugging, bool, capture_sigabrt, false, FELIX86_CAPTURE_SIGABRT, "Sleep for 4
 X(Debugging, bool, hacky_envs, true, FELIX86_HACKY_ENVS, "Enable some hacky environment variable solutions to allow some apps to work under felix86", false)
 X(Debugging, bool, always_flags, false, FELIX86_ALWAYS_FLAGS, "Emit flag calculations for every instruction even if they are unused", false)
 X(Debugging, bool, paranoid, false, FELIX86_PARANOID, "Disables multiple optimizations in hopes to catch bugs", false)
+X(Debugging, bool, alignment_check, false, FELIX86_ALIGNMENT_CHECK, "Insert code that checks for correct alignment on atomics", false)
 
 X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance", false)
 X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup", false)

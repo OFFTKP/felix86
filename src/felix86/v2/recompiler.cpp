@@ -105,6 +105,10 @@ static void deallocateCodeCache(void* address) {
     munmap(address, max_code_cache_size);
 }
 
+void alignment_check_failed(void* rip) {
+    WARN("Unaligned atomic access at %lx", rip);
+}
+
 Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), max_code_cache_size) {
     if (g_config.auto_compress) {
         as.EnableOptimization(Optimization::AutoCompress);
@@ -773,6 +777,36 @@ void Recompiler::compileInstruction(ZydisDecodedInstruction& instruction, ZydisD
 
     if (g_config.no_sse4_2 && (instruction.meta.isa_set == ZYDIS_ISA_SET_SSE4)) {
         ERROR("SSE4.2 instruction %s at %016lx when FELIX86_NO_SSE4_2 is enabled", ZydisMnemonicGetString(mnemonic), rip);
+    }
+
+    if (g_config.alignment_check) {
+        if ((instruction.attributes & ZYDIS_ATTRIB_HAS_LOCK) && operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            u8 size = operands[0].size;
+            if (size > 8) {
+                u8 bytes = size / 8;
+                u8 alignment_bits = log2(bytes);
+                u64 mask = (1 << (alignment_bits + 1)) - 1;
+                biscuit::GPR address = lea(&operands[0]);
+                biscuit::GPR temp = scratch();
+                biscuit::Label ok;
+                as.ANDI(temp, address, mask);
+                as.BEQZ(temp, &ok);
+
+                writebackState();
+                biscuit::Literal lrip(current_rip);
+                biscuit::Label after;
+                as.LD(a0, &lrip);
+                call((u64)alignment_check_failed);
+                as.J(&after);
+                as.Place(&lrip);
+                as.Bind(&after);
+                restoreState();
+
+                as.Bind(&ok);
+
+                resetScratch();
+            }
+        }
     }
 
     lock_handled = false;
