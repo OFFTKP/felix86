@@ -8754,6 +8754,7 @@ FAST_HANDLE(XADD_lock_64) {
     as.ANDI(masked_address, address, 0b111);
     as.BEQZ(masked_address, &ok);
 
+    as.ANDI(masked_address, address, ~0b111);
     as.Bind(&loop);
     as.FENCETSO();
     as.LD(dst, 0, address);
