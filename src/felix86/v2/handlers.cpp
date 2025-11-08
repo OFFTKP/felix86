@@ -8742,14 +8742,36 @@ FAST_HANDLE(XADD_lock_64) {
     bool update_sf = rec.shouldEmitFlag(rip, X86_REF_SF);
     bool update_any = update_af | update_cf | update_zf | update_pf | update_of | update_sf;
 
+    biscuit::Label ok;
+    biscuit::Label after;
+    biscuit::Label loop;
+    biscuit::GPR masked_address = rec.scratch();
+    biscuit::GPR result = rec.scratch();
     biscuit::GPR dst = rec.scratch();
+    biscuit::GPR temp = rec.scratch();
     biscuit::GPR src = rec.getGPR(&operands[1]);
     biscuit::GPR address = rec.lea(&operands[0]);
+    as.ANDI(masked_address, address, 0b111);
+    as.BEQZ(masked_address, &ok);
+
+    as.Bind(&loop);
+    as.FENCETSO();
+    as.LD(dst, 0, address);
+    as.LR_D(Ordering::AQRL, temp, masked_address);
+    as.ADD(result, dst, src);
+    as.SC_D(Ordering::AQRL, temp, temp, masked_address);
+    as.BNEZ(temp, &loop);
+    as.SD(result, 0, address);
+    as.FENCETSO();
+    as.J(&after);
+
+    as.Bind(&ok);
     as.AMOADD_D(Ordering::AQRL, dst, src, address);
+
     rec.setLockHandled();
 
+    as.Bind(&after);
     if (!g_config.noflag_opts || update_any) {
-        biscuit::GPR result = rec.scratch();
         as.ADD(result, dst, src);
 
         x86_size_e size = rec.getSize(&operands[0]);
