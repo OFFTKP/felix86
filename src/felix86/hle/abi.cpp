@@ -131,17 +131,20 @@ void my_printer(ThreadState* state, const char* name) {
     int len = strlen(name);
     const char* signature = name + len + 1;
     int sig_len = strlen(signature);
-    printf("Calling function %s (%s) {", name, signature);
+    char buffer[4096];
+    int size = 0;
+    size += sprintf(buffer + size, "Calling function %s (%s) {", name, signature);
     for (int i = 2; i < sig_len; i++) {
         if (i >= 8) {
-            printf("too big...");
+            size += sprintf(buffer + size, "too big...");
             break;
         }
         x86_ref_e ref = x86arg(i - 2);
         u64 gpr = state->gprs[ref];
-        printf("arg%d = %lx, ", i - 2, gpr);
+        size += sprintf(buffer + size, "arg%d = %lx, ", i - 2, gpr);
     }
-    printf("}\n");
+    size += sprintf(buffer + size, "}");
+    PLAIN("%s", buffer);
 }
 
 GuestToHostMarshaller::GuestToHostMarshaller(const std::string& name, const std::string& signature) : name(name), signature(signature) {}
@@ -150,29 +153,29 @@ void GuestToHostMarshaller::emitPrologue(biscuit::Assembler& as) {
     ASSERT(signature.size() >= 2);
     ASSERT(signature[1] == '_');
 
-#if 1
-    biscuit::Label after;
-    as.MV(a0, s11);
-    as.LI(t0, (u64)my_printer);
-    as.AUIPC(a1, 0);
-    as.ADDI(a1, a1, 16);
-    as.JALR(t0);
-    as.J(&after);
-    for (int i = 0; i < name.size(); i++) {
-        u8 c = name[i];
-        as.GetCodeBuffer().Emit(c);
-    }
-    as.GetCodeBuffer().Emit((u8)0);
-    for (int i = 0; i < signature.size(); i++) {
-        u8 c = signature[i];
-        as.GetCodeBuffer().Emit(c);
-    }
-    as.GetCodeBuffer().Emit((u8)0);
-    while ((u64)as.GetCursorPointer() & 0b11) {
+    if (g_config.print_thunks) {
+        biscuit::Label after;
+        as.MV(a0, s11);
+        as.LI(t0, (u64)my_printer);
+        as.AUIPC(a1, 0);
+        as.ADDI(a1, a1, 16);
+        as.JALR(t0);
+        as.J(&after);
+        for (int i = 0; i < name.size(); i++) {
+            u8 c = name[i];
+            as.GetCodeBuffer().Emit(c);
+        }
         as.GetCodeBuffer().Emit((u8)0);
+        for (int i = 0; i < signature.size(); i++) {
+            u8 c = signature[i];
+            as.GetCodeBuffer().Emit(c);
+        }
+        as.GetCodeBuffer().Emit((u8)0);
+        while ((u64)as.GetCursorPointer() & 0b11) {
+            as.GetCodeBuffer().Emit((u8)0);
+        }
+        as.Bind(&after);
     }
-    as.Bind(&after);
-#endif
 
     int gprcount = 0;
     int fprcount = 0;
