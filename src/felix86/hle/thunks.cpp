@@ -283,16 +283,16 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
         WARN("Couldn't find signature for %s", name);
         u8* a_wasteful_page = (u8*)mmap(nullptr, 4096, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
         ASSERT(a_wasteful_page != MAP_FAILED);
-        // 48 8d 3d 17 00 00 00 ; lea rdi, [rip + 23], load pointer to string
+        // 48 8d 3d 0f 00 00 00 ; lea rdi, [rip + 15], load pointer to string
         // 0f 01 39 ; invlpg [rcx] ; see handlers.cpp -- invlpg (magic instruction that generates jump to host code)
         // 00 00 00 00 00 00 00 00 ; pointer we jump to
         // ... 00 ; signature const char* = v_q
+        // ... 00 ; name const char*
         // c3 ; ret
-        // ... 00 ; string to load, a total of 23 bytes after the first instruction
         a_wasteful_page[0] = 0x48;
         a_wasteful_page[1] = 0x8d;
         a_wasteful_page[2] = 0x3d;
-        a_wasteful_page[3] = 0x10;
+        a_wasteful_page[3] = 0x0f;
         a_wasteful_page[4] = 0x00;
         a_wasteful_page[5] = 0x00;
         a_wasteful_page[6] = 0x00;
@@ -305,16 +305,17 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
         a_wasteful_page[19] = '_';
         a_wasteful_page[20] = 'q';
         a_wasteful_page[21] = '\0';
-        a_wasteful_page[22] = 0xc3;
         size_t size = strlen(name);
-        memcpy(a_wasteful_page + 23, name, size);
-        a_wasteful_page[23 + size] = 0;
+        memcpy(a_wasteful_page + 22, name, size);
+        a_wasteful_page[22 + size] = 0;
+        a_wasteful_page[22 + size + 1] = 0xc3;
         a_wasteful_page[4095] = 0xf4; // hlt at the end of the page just in case
         return a_wasteful_page;
     }
 
     const char* signature = thunk->signature;
     size_t sigsize = strlen(signature);
+    size_t namesize = strlen(name);
     ThreadState* state = ThreadState::Get();
     SignalGuard guard;
     // We can't put this code in code cache, because it needs to outlive potential code cache clears
@@ -331,8 +332,9 @@ void* generate_guest_pointer(const char* name, u64 host_ptr) {
     memory[2] = 0x39;
     memcpy(&memory[3], &host_ptr, sizeof(u64));
     memcpy(&memory[3 + 8], signature, sigsize);
-    memory[3 + 8 + sigsize + 1] = 0xc3;
-    state->x86_trampoline_storage += 3 + 8 + sigsize + 2;
+    memcpy(&memory[3 + 8 + sigsize + 1], name, namesize);
+    memory[3 + 8 + sigsize + 1 + namesize + 1] = 0xc3;
+    state->x86_trampoline_storage += 3 + 8 + sigsize + 1 + namesize + 1 + 1;
     VERBOSE("Created guest-callable host pointer for %s: %p", name, host_ptr);
     return memory;
 }
@@ -393,7 +395,7 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
     if (ptr) {
         // We can't return `ptr` here because it's a host pointer
         // But we also can't return our own thunked pointers, we need to return the one
-        // getprocaddr returned. So we generate an invlpg [rcx] to create a proper guest pointer that will jump to our pointer
+        // getprocaddr returned. So we generate an `] to create a proper guest pointer that will jump to our pointer
         return generate_guest_pointer(name, (u64)ptr);
     } else {
         return nullptr;
@@ -1074,13 +1076,13 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
     return trampoline;
 }
 
-void* Thunks::generateTrampoline(Recompiler& rec, const char* signature, u64 host_ptr) {
+void* Thunks::generateTrampoline(Recompiler& rec, const char* name, const char* signature, u64 host_ptr) {
     ASSERT(signature);
     ASSERT(host_ptr);
     Assembler& as = rec.getAssembler();
     void* trampoline = as.GetCursorPointer();
 
-    GuestToHostMarshaller marshaller(std::string("ptr_") + signature, signature);
+    GuestToHostMarshaller marshaller(name, signature);
     marshaller.emitPrologue(as);
     Recompiler::call(as, host_ptr);
     marshaller.emitEpilogue(as);

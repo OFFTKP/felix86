@@ -10890,12 +10890,14 @@ FAST_HANDLE(INVLPG) {
         u64 address = *address_ptr;
         const char* signature = (const char*)(rip + instruction.length + 8);
         size_t signature_size = strlen(signature);
-        VERBOSE("Generating trampoline for %lx (%s)", address, signature);
+        const char* name = (const char*)(rip + instruction.length + 8 + signature_size + 1);
+        size_t name_size = strlen(name);
+        VERBOSE("Generating trampoline for %lx (%s %s)", address, name, signature);
         rec.writebackState();
-        void* trampoline = Thunks::generateTrampoline(rec, signature, address);
+        void* trampoline = Thunks::generateTrampoline(rec, name, signature, address);
         ASSERT_MSG(trampoline != nullptr, "Failed to install trampoline for %lx", address);
         rec.restoreState();
-        rip += 8 + signature_size + 1; // also skip null byte
+        rip += 8 + signature_size + 1 + name_size + 1; // also skip null bytes
         break;
     }
     case INVLPG_THUNK_CONSTRUCTOR: {
