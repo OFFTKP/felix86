@@ -2107,10 +2107,13 @@ void Recompiler::scanAhead(u64 rip) {
                 continue;
             } else if (operands[0].mem.base == ZYDIS_REGISTER_RCX) {
                 // Super hack! After invlpg [rcx] comes an address and a string which the recompiler skips and we also need to skip here.
-                const char* string = (const char*)(rip + instruction.length + 8);
-                size_t size = strlen(string);
-                ASSERT(size > 0);
-                rip += instruction.length + 8 + size + 1; // don't forget null terminator
+                const char* signature = (const char*)(rip + instruction.length + 8);
+                size_t signature_size = strlen(signature);
+                const char* name = (const char*)(rip + instruction.length + 8 + signature_size + 1);
+                size_t name_size = strlen(name);
+                ASSERT(signature_size > 0);
+                ASSERT(name_size > 0);
+                rip += instruction.length + 8 + signature_size + 1 + name_size + 1; // don't forget null terminator
                 continue;
             }
         }
