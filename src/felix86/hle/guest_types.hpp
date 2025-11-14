@@ -6,6 +6,7 @@
 #include <sys/epoll.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
+#include <sys/socket.h>
 #include <sys/statfs.h>
 #include <sys/sysinfo.h>
 #include <sys/uio.h>
@@ -497,6 +498,14 @@ struct x86_msghdr {
 
 static_assert(std::is_trivial<x86_msghdr>::value);
 static_assert(sizeof(x86_msghdr) == 28);
+
+struct x86_mmsghdr {
+    x86_msghdr header;
+    u32 msg_len;
+};
+
+static_assert(std::is_trivial<x86_mmsghdr>::value);
+static_assert(sizeof(x86_mmsghdr) == 32);
 
 struct __attribute__((packed)) x86_statfs64 {
     u32 f_type;

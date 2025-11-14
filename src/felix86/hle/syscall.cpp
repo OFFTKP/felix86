@@ -2717,6 +2717,14 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = FD::dup2(arg1, arg2);
             break;
         }
+        case felix86_x86_32_recvmmsg: {
+            result = ::recvmmsg32(arg1, (x86_mmsghdr*)arg2, arg3, arg4, (x86_timespec*)arg5);
+            break;
+        }
+        case felix86_x86_32_sendmmsg: {
+            result = ::sendmmsg32(arg1, (x86_mmsghdr*)arg2, arg3, arg4);
+            break;
+        }
         case felix86_x86_32_fstatat64: {
             x86_stat64* stat = (x86_stat64*)arg3;
             struct stat64 host_stat;
@@ -2886,6 +2894,14 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             case SYS_ACCEPT4: {
                 result = ::accept4(args[0], (sockaddr*)(u64)args[1], (socklen_t*)(u64)args[2], args[3]);
+                break;
+            }
+            case SYS_RECVMMSG: {
+                result = ::recvmmsg32(args[0], (x86_mmsghdr*)(u64)args[1], args[2], args[3], (x86_timespec*)(u64)args[4]);
+                break;
+            }
+            case SYS_SENDMMSG: {
+                result = ::sendmmsg32(args[0], (x86_mmsghdr*)(u64)args[1], args[2], args[3]);
                 break;
             }
             default: {
