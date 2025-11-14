@@ -1,4 +1,7 @@
 #!/bin/bash
+
+### Important: If you update this script, make sure to also update https://felix86.com/install.sh
+
 arch=$(uname -m)
 
 if [ "$arch" != "riscv64" ]; then
