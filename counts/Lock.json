@@ -80,11 +80,23 @@
         "disassembly": "lock xadd [rdi], eax"
     },
     "f0480fc107": {
-        "instruction_count": 3,
+        "instruction_count": 15,
         "expected_asm": [
-            "ADDI            t1, a0, 0x0(0)",
-            "AMOADD.D        ra, t1, t0, aq, rl",
-            "ADDI            t0, ra, 0x0(0)"
+            "ADDI            t2, a0, 0x0(0)",
+            "ANDI            ra, t2, 0x7(7)",
+            "BEQ             ra, zero, 0x2c(44)",
+            "ANDI            ra, t2, 0xfffffff8(-8)",
+            "FENCE          ",
+            "LD              t3, t2, 0x0(0)",
+            "LR.D            t4, ra, aq, rl",
+            "ADD             t1, t3, t0",
+            "SC.D            t4, ra, t4, aq, rl",
+            "BNE             zero, t4, 0xffffffec(-20)",
+            "SD              t1, t2, 0x0(0)",
+            "FENCE          ",
+            "JAL             zero, 0x8(8)",
+            "AMOADD.D        t3, t2, t0, aq, rl",
+            "ADDI            t0, t3, 0x0(0)"
         ],
         "disassembly": "lock xadd [rdi], rax"
     },
