@@ -2495,7 +2495,7 @@ void Recompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) {
         break;
     }
     case X86_SIZE_DWORD: {
-        if (!Extensions::B) {
+        if (Extensions::B) {
             as.ZEXTW(dest, src);
         } else {
             as.SLLI(dest, src, 32);
