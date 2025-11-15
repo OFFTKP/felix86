@@ -847,7 +847,11 @@ biscuit::Vec Recompiler::scratchVecM2() {
         vector_scratch_index++;
     }
     ASSERT(vector_scratch_index != (int)scratch_vec.size());
-    return scratch_vec[vector_scratch_index++];
+    biscuit::Vec ret = scratch_vec[vector_scratch_index++];
+    ASSERT(vector_scratch_index != (int)scratch_vec.size());
+    ASSERT(ret.Index() % 2 == 0);
+    vector_scratch_index++;
+    return ret;
 }
 
 biscuit::FPR Recompiler::scratchFPR() {

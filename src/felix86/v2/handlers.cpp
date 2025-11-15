@@ -3707,7 +3707,7 @@ void PUNPCKH(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
     // Pick even scratch registers for the widening add (can't use MF2, ruins 128 VLEN)
     biscuit::Vec temp1 = rec.scratchVecM2();
     biscuit::Vec temp2 = rec.scratchVecM2();
-    biscuit::Vec dst_down = rec.scratchVecM2();
+    biscuit::Vec dst_down = rec.scratchVec();
     biscuit::Vec src_down = rec.scratchVec();
 
     biscuit::Vec dst = rec.getVec(&operands[0]);
@@ -8391,9 +8391,9 @@ FAST_HANDLE(PSIGNB) {
 }
 
 FAST_HANDLE(PMULHRSW) {
+    biscuit::Vec product = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    biscuit::Vec product = rec.scratchVecM2();
     rec.setVectorState(SEW::E16, 8);
     as.VWMUL(product, dst, src);
     rec.setVectorState(SEW::E32, 8, LMUL::M2);
@@ -8405,11 +8405,11 @@ FAST_HANDLE(PMULHRSW) {
 }
 
 FAST_HANDLE(PMADDUBSW) {
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec product = rec.scratchVecM2();
     biscuit::Vec narrow1 = rec.scratchVecM2();
     biscuit::Vec narrow2 = rec.scratchVecM2();
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E8, 16);
     as.VWMULSU(product, src, dst);
     rec.setVectorState(SEW::E16, 16);
