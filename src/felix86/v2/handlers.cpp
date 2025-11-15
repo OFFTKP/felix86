@@ -4512,30 +4512,20 @@ FAST_HANDLE(PMULDQ) {
 }
 
 FAST_HANDLE(PMADDWD) {
-    biscuit::Vec result = rec.scratchVec();
-    biscuit::Vec dst_compress = rec.scratchVec();
-    biscuit::Vec src_compress = rec.scratchVec();
-    biscuit::Vec dst_compress2 = rec.scratchVec();
-    biscuit::Vec src_compress2 = rec.scratchVec();
-    biscuit::Vec vec_mask = rec.scratchVec();
-    biscuit::GPR mask = rec.scratch();
+    biscuit::GPR shift = rec.scratch();
+    biscuit::Vec product = rec.scratchVecM2();
+    biscuit::Vec left = rec.scratchVec();
+    biscuit::Vec right = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-
-    rec.setVectorState(SEW::E16, 8);
-    as.LI(mask, 0b01010101);
-    as.VMV(v0, mask);
-    as.VMNAND(vec_mask, v0, v0);
-    as.VCOMPRESS(dst_compress, dst, v0);
-    as.VCOMPRESS(src_compress, src, v0);
-    as.VCOMPRESS(dst_compress2, dst, vec_mask);
-    as.VCOMPRESS(src_compress2, src, vec_mask);
-
-    rec.setVectorState(SEW::E16, 4, LMUL::MF2);
-    as.VWMUL(result, dst_compress, src_compress);
-    as.VWMACC(result, dst_compress2, src_compress2);
-
-    rec.setVec(&operands[0], result);
+    as.LI(shift, 32);
+    rec.setVectorState(SEW::E16, 16);
+    as.VWMUL(product, dst, src);
+    rec.setVectorState(SEW::E32, 4);
+    as.VNSRL(left, product, 0);
+    as.VNSRL(right, product, shift);
+    as.VADD(dst, left, right);
+    rec.setVec(&operands[0], dst);
 }
 
 FAST_HANDLE(MAXPS) {
