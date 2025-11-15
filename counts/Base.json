@@ -16528,5 +16528,20 @@
             "LD              s2, s2, 0xfffffff8(-8)"
         ],
         "disassembly": "leave"
+    },
+    "0fc9": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "REV8            ra, s10",
+            "SRLI            s10, ra, 0x20(32)"
+        ],
+        "disassembly": "bswap ecx"
+    },
+    "480fc9": {
+        "instruction_count": 1,
+        "expected_asm": [
+            "REV8            s10, s10"
+        ],
+        "disassembly": "bswap rcx"
     }
 }

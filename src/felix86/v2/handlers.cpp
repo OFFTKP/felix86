@@ -6654,64 +6654,22 @@ FAST_HANDLE(POPCNT) {
     }
 }
 
-void REV8(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src) {
-    if (Extensions::B) {
-        as.REV8(result, src);
-    } else {
-        biscuit::GPR a1 = rec.scratch();
-        biscuit::GPR a2 = rec.scratch();
-        biscuit::GPR a3 = rec.scratch();
-        biscuit::GPR a4 = rec.scratch();
-        biscuit::GPR a5 = rec.scratch();
-        // Lifted from clang
-        as.SRLI(a1, src, 40);
-        as.LUI(a2, 16);
-        as.SRLI(a3, src, 56);
-        as.SRLI(a4, src, 24);
-        as.LUI(a5, 4080);
-        as.ADDIW(a2, a2, -256);
-        as.AND(a1, a1, a2);
-        as.OR(a1, a1, a3);
-        as.SRLI(a3, src, 8);
-        as.AND(a4, a4, a5);
-        as.SRLIW(a3, a3, 24);
-        as.SLLI(a3, a3, 24);
-        as.OR(a3, a3, a4);
-        as.SRLIW(a4, src, 24);
-        as.AND(a5, a5, src);
-        as.AND(a2, a2, src);
-        as.SLLI(result, src, 56);
-        as.SLLI(a4, a4, 32);
-        as.SLLI(a5, a5, 24);
-        as.OR(a4, a4, a5);
-        as.SLLI(a2, a2, 40);
-        as.OR(a1, a1, a3);
-        as.OR(result, result, a2);
-        as.OR(result, result, a4);
-        as.OR(result, result, a1);
-        rec.popScratch();
-        rec.popScratch();
-        rec.popScratch();
-        rec.popScratch();
-        rec.popScratch();
-    }
-}
-
 FAST_HANDLE(BSWAP) {
     x86_size_e size = rec.getSize(&operands[0]);
-    biscuit::GPR dst = rec.getGPR(&operands[0]);
-    biscuit::GPR result = rec.scratch();
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR temp = rec.scratch();
 
     if (size == X86_SIZE_DWORD) {
-        REV8(rec, as, result, dst);
-        as.SRLI(result, result, 32);
+        as.REV8(temp, dst);
+        as.SRLI(dst, temp, 32);
     } else if (size == X86_SIZE_QWORD) {
-        REV8(rec, as, result, dst);
+        as.REV8(dst, dst);
     } else {
         UNREACHABLE();
     }
 
-    rec.setGPR(&operands[0], result);
+    x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+    rec.setGPR(ref, X86_SIZE_QWORD, dst);
 }
 
 FAST_HANDLE(MOVLPS) {
