@@ -1220,7 +1220,7 @@ FAST_HANDLE(OR_reg) {
         rec.clearFlag(X86_REF_OF);
     }
 
-    if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
+    if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
         rec.clearFlag(X86_REF_AF);
     }
 }
@@ -1342,7 +1342,7 @@ FAST_HANDLE(OR_mem) {
         rec.clearFlag(X86_REF_OF);
     }
 
-    if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
+    if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
         rec.clearFlag(X86_REF_AF);
     }
 }
@@ -1459,7 +1459,7 @@ FAST_HANDLE(XOR) {
         rec.clearFlag(X86_REF_OF);
     }
 
-    if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
+    if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
         rec.clearFlag(X86_REF_AF);
     }
 
@@ -1598,7 +1598,7 @@ FAST_HANDLE(AND) {
     }
 
     // Technically undefined, but some software relies on them being AF==0
-    if (!g_config.unsafe_flags && rec.shouldEmitFlag(rip, X86_REF_AF)) {
+    if (rec.shouldEmitFlag(rip, X86_REF_AF)) {
         rec.clearFlag(X86_REF_AF);
     }
 
