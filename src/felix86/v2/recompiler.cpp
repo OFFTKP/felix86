@@ -2189,6 +2189,7 @@ void Recompiler::scanAhead(u64 rip) {
                             bool is_jump = instruction_ahead.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
                             bool is_ret = mnemonic == ZYDIS_MNEMONIC_RET || mnemonic == ZYDIS_MNEMONIC_IRETD || mnemonic == ZYDIS_MNEMONIC_IRETQ;
                             bool is_call = mnemonic == ZYDIS_MNEMONIC_CALL;
+                            bool is_call_ret = is_call || is_ret;
                             bool is_illegal = mnemonic == ZYDIS_MNEMONIC_UD2;
                             bool is_hlt = mnemonic == ZYDIS_MNEMONIC_HLT;
                             bool is_int3 = mnemonic == ZYDIS_MNEMONIC_INT3;
@@ -2207,7 +2208,17 @@ void Recompiler::scanAhead(u64 rip) {
                                 break;
                             }
 
-                            if (is_jump || is_ret || is_call || is_illegal || is_hlt || is_int3) {
+                            if (is_call_ret) {
+                                if (g_config.unsafe_flags) {
+                                    // Pretend call and ret overwrites all flags
+                                    changed_this_block = ZYDIS_CPUFLAG_CF | ZYDIS_CPUFLAG_PF | ZYDIS_CPUFLAG_AF | ZYDIS_CPUFLAG_ZF |
+                                                         ZYDIS_CPUFLAG_SF | ZYDIS_CPUFLAG_OF;
+                                }
+
+                                break;
+                            }
+
+                            if (is_jump || is_illegal || is_hlt || is_int3) {
                                 // Block ahead ended in <= 10 instructions so let's break
                                 break;
                             }

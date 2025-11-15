@@ -294,6 +294,7 @@ u8 outlast_camera2[] = {
 
 int main() {
     g_config.inline_syscalls = false;
+    g_config.scan_ahead_multi = false;
     Extensions::G = true;
     Extensions::B = true;
     Extensions::C = true;
