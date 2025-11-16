@@ -317,7 +317,7 @@ int sendmmsg32(int fd, x86_mmsghdr* messages, u32 n, int flags) {
     int result = ::sendmmsg(fd, host_mmsgs.data(), n, flags);
 
     if (result != -1) {
-        for (u32 i = 0; i < result; i++) {
+        for (int i = 0; i < result; i++) {
             messages[i].msg_len = host_mmsgs[i].msg_len;
         }
     }
