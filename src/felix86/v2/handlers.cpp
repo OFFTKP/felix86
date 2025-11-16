@@ -3013,8 +3013,10 @@ FAST_HANDLE(XCHG_lock) {
             // We could use lr.d/sc.d, but then it wouldn't work for
             // (Address & 0b111) == 0b111
             // So whatever, let's handle both cases here
+            as.FENCETSO();
             as.LHU(scratch, 0, address);
             as.SH(src, 0, address);
+            as.FENCETSO();
             as.MV(dst, scratch);
             as.J(&end);
 
@@ -3045,8 +3047,22 @@ FAST_HANDLE(XCHG_lock) {
         break;
     }
     case X86_SIZE_DWORD: {
+        biscuit::Label unaligned, end;
+        biscuit::GPR masked = rec.scratch();
+        as.ANDI(masked, address, 0b11);
+        as.BNEZ(masked, &unaligned);
+
         as.MV(scratch, src);
         as.AMOSWAP_W(Ordering::AQRL, dst, scratch, address);
+        as.J(&end);
+
+        as.Bind(&unaligned);
+        as.FENCETSO();
+        as.LWU(dst, 0, address);
+        as.SW(src, 0, address);
+        as.FENCETSO();
+
+        as.Bind(&end);
         rec.setLockHandled();
         break;
     }
