@@ -256,7 +256,7 @@ int recvmmsg32(int fd, x86_mmsghdr* messages, u32 n, int flags, x86_timespec* ti
 // Thanks FEX-Emu for these
 int sendmmsg32(int fd, x86_mmsghdr* messages, u32 n, int flags) {
     std::vector<iovec> host_iovecs;
-    std::vector<struct mmsghdr> host_mmsgs;
+    std::vector<struct mmsghdr> host_mmsgs(n);
 
     u32 len = 0;
     for (u32 i = 0; i < n; i++) {
