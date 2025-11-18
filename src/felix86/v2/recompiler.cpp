@@ -1916,7 +1916,6 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
 
     if (current_instruction->address_width == 32) {
         // The additions may have overflown the address
-        ASSERT(g_mode32);
         as.ZEXTW(address, address);
     }
 
