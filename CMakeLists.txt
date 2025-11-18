@@ -159,8 +159,13 @@ if (BUILD_THUNKING)
 endif()
 
 add_executable(felix86)
-target_sources(felix86 PRIVATE src/felix86/main.cpp ${FELIX86_REPL_SOURCES})
-target_link_libraries(felix86 PRIVATE felix86_core readline)
+target_sources(felix86 PRIVATE src/felix86/main.cpp)
+target_link_libraries(felix86 PRIVATE felix86_core)
+
+if (BUILD_REPL)
+    target_sources(felix86 PRIVATE ${FELIX86_REPL_SOURCES})
+    target_link_libraries(felix86 PRIVATE readline)
+endif()
 
 add_executable(felix86-mounter src/felix86/mounter.cpp)
 
