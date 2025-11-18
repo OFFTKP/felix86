@@ -27,6 +27,8 @@ void* empty_pthread_handler(void*) {
     return nullptr;
 }
 
+void __attribute__((noreturn)) enter_repl();
+
 std::string version_full = get_version_full();
 const char* argp_program_version = version_full.c_str();
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";
@@ -44,6 +46,7 @@ static struct argp_option options[] = {
     {"detect-binfmt-misc", 'd', 0, 0, "Check if we are correctly registered in binfmt_misc, returns 0 if ok"},
     {"unregister-binfmt-misc", 'u', 0, 0, "Unregister the emulator from binfmt_misc"},
     {"log-server", 'l', 0, 0, "Start just the log server in the background"},
+    {"repl", 'r', 0, 0, "Enter a REPL environment for testing instruction translations"},
     {0}};
 
 int guest_arg_start_index = -1;
@@ -419,6 +422,11 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     case 'l': {
         Logger::startServer(true);
         exit(0);
+        break;
+    }
+    case 'r': {
+        enter_repl();
+        __builtin_unreachable();
         break;
     }
     case 's': {
