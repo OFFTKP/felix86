@@ -591,10 +591,19 @@ FAST_HANDLE(MOV) {
             rec.setGPR(&operands[0], src);
         } else if (reg_mem) {
             switch (operands[0].size) {
-            case 8:
-            case 16: {
+            case 8: {
                 biscuit::GPR src = rec.getGPR(&operands[1]);
                 rec.setGPR(&operands[0], src);
+                break;
+            }
+            case 16: {
+                // Saves a ZEXT doing it this way
+                biscuit::GPR tmp = rec.scratch();
+                biscuit::GPR dst = rec.allocatedGPR(rec.zydisToRef(operands[0].reg.value));
+                biscuit::GPR src = rec.getGPR(&operands[1]);
+                as.SRLI(tmp, dst, 16);
+                as.SLLI(tmp, tmp, 16);
+                as.OR(dst, tmp, src);
                 break;
             }
             case 32:
