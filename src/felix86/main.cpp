@@ -46,7 +46,9 @@ static struct argp_option options[] = {
     {"detect-binfmt-misc", 'd', 0, 0, "Check if we are correctly registered in binfmt_misc, returns 0 if ok"},
     {"unregister-binfmt-misc", 'u', 0, 0, "Unregister the emulator from binfmt_misc"},
     {"log-server", 'l', 0, 0, "Start just the log server in the background"},
+#ifdef BUILD_REPL
     {"repl", 'r', 0, 0, "Enter a REPL environment for testing instruction translations"},
+#endif
     {0}};
 
 int guest_arg_start_index = -1;
@@ -424,11 +426,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         exit(0);
         break;
     }
+#ifdef BUILD_REPL
     case 'r': {
         enter_repl();
         __builtin_unreachable();
         break;
     }
+#endif
     case 's': {
         Config::initialize(true /* ignore envs, because we save the config later */);
         char* real_path = realpath(arg, nullptr);

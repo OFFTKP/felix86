@@ -165,6 +165,7 @@ target_link_libraries(felix86 PRIVATE felix86_core)
 if (BUILD_REPL)
     target_sources(felix86 PRIVATE ${FELIX86_REPL_SOURCES})
     target_link_libraries(felix86 PRIVATE readline)
+    target_compile_definitions(felix86 PRIVATE BUILD_REPL)
 endif()
 
 add_executable(felix86-mounter src/felix86/mounter.cpp)
