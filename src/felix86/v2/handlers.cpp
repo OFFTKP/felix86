@@ -2462,8 +2462,22 @@ FAST_HANDLE(LEA) {
     ASSERT(operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY);
     operands[1].mem.segment = ZYDIS_REGISTER_NONE;
     operands[1].attributes &= ~ZYDIS_ATTRIB_HAS_SEGMENT;
+    int temp = instruction.address_width;
+    if (g_mode32 && instruction.address_width == 32) {
+        // Don't let Recompiler::lea zero-extend so we zext+move here
+        instruction.address_width = 64;
+    }
+
     biscuit::GPR address = rec.lea(&operands[1]);
-    rec.setGPR(&operands[0], address);
+    instruction.address_width = temp;
+    if (g_mode32 && instruction.address_width == 32) {
+        x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+        biscuit::GPR reg = rec.getGPR(ref, X86_SIZE_QWORD);
+        as.ZEXTW(reg, address);
+        rec.setGPR(ref, X86_SIZE_QWORD, reg);
+    } else {
+        rec.setGPR(&operands[0], address);
+    }
 }
 
 FAST_HANDLE(RDFSBASE) {
