@@ -35,14 +35,6 @@ void from_json(const ordered_json& j, Instruction& p) {
 }
 
 void gen_many(Recompiler& rec, const std::string& name, nlohmann::ordered_json& json, void (*func)(Xbyak::CodeGenerator&)) {
-    static bool init = false;
-    static ZydisDecoder zydis;
-    if (!init) {
-        init = true;
-        ZydisDecoderInit(&zydis, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
-        ZydisDecoderEnableMode(&zydis, ZYDIS_DECODER_MODE_AMD_BRANCHES, ZYAN_TRUE);
-    }
-
     rec.setVectorState(SEW::E1024, 0);
     Xbyak::CodeGenerator x;
     auto x86_start = x.getCurr();

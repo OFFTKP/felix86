@@ -867,6 +867,11 @@ void Recompiler::popScratchVec() {
 void Recompiler::popScratch() {
     scratch_index--;
     ASSERT(scratch_index >= 0);
+
+    if (scratch_gprs[scratch_index] == cached_lea) {
+        cached_lea = x0;
+        cached_lea_operand = nullptr;
+    }
 }
 
 void Recompiler::popScratchFPR() {
@@ -1166,8 +1171,8 @@ biscuit::GPR Recompiler::getGPR(const ZydisDecodedOperand* operand) {
     case ZYDIS_OPERAND_TYPE_MEMORY: {
         biscuit::GPR dest = scratch();
         u64 immediate = operand->mem.disp.value;
-        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) &&
-            !g_config.paranoid) { // can't do this with seg+a32
+        if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+            g_config.no_address_overflow) { // can't do this with seg+a32
             // Remove the immediate from the operand and use it in the write memory instruction
             // This can turn an ADDI+load into just a load if the LEA is just a register
             ZydisDecodedOperand op = *operand;
@@ -1414,7 +1419,7 @@ biscuit::GPR Recompiler::getGPR(x86_ref_e ref, x86_size_e size) {
         return gpr16;
     }
     case X86_SIZE_DWORD: {
-        if (!g_mode32) {
+        if (!g_mode32 || g_config.paranoid) {
             // Need to zext and store in scratch
             biscuit::GPR gpr32 = scratch();
             zext(gpr32, gpr, X86_SIZE_DWORD);
@@ -1722,18 +1727,18 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     if (has_disp) {
         // Load the displacement first
         if (has_base && IsValidSigned12BitImm(operand->mem.disp.value)) {
-            base = getGPR(operand->mem.base);
+            base = allocatedGPR(zydisToRef(operand->mem.base));
             as.ADDI(address, base, operand->mem.disp.value);
         } else {
             as.LI(address, operand->mem.disp.value);
             if (has_base) {
-                base = getGPR(operand->mem.base);
+                base = allocatedGPR(zydisToRef(operand->mem.base));
                 as.ADD(address, address, base);
             }
         }
 
         if (has_index) {
-            index = getGPR(operand->mem.index);
+            index = allocatedGPR(zydisToRef(operand->mem.index));
             u8 scale = operand->mem.scale;
             if (scale != 1) {
                 if (Extensions::B) {
@@ -1779,7 +1784,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
         }
     } else {
         if (has_index) {
-            index = getGPR(operand->mem.index);
+            index = allocatedGPR(zydisToRef(operand->mem.index));
             u8 scale = operand->mem.scale;
             if (!has_base) {
                 // No base, shift directly into address
@@ -1804,7 +1809,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
                 }
             } else {
                 // Add index to the base
-                base = getGPR(operand->mem.base);
+                base = allocatedGPR(zydisToRef(operand->mem.base));
                 if (scale != 1) {
                     if (Extensions::B) {
                         switch (scale) {
@@ -1848,7 +1853,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
                 }
             }
         } else if (has_base) {
-            base = getGPR(operand->mem.base);
+            base = allocatedGPR(zydisToRef(operand->mem.base));
             as.MV(address, base);
         } else {
             // We only get here if there's no base or index or segment and immediate == 0
@@ -1859,7 +1864,8 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     }
 
     // Address override prefix, this needs to happen before adding the segment override
-    if (current_instruction->address_width != 64) {
+    if (current_instruction->address_width == 16) {
+        WARN("16-bit addressing");
         zext(address, address, zydisToSize(current_instruction->address_width));
     }
 
@@ -3170,15 +3176,35 @@ biscuit::FPR Recompiler::getST(ZydisDecodedOperand* operand, bool dirty) {
         switch (operand->size) {
         case 32: {
             biscuit::FPR st = scratchFPR();
-            as.FLW(st, 0, lea(operand, false));
+            biscuit::GPR address;
+            u64 immediate = operand->mem.disp.value;
+            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+                g_config.no_address_overflow) { // can't do this with seg+a32
+                ZydisDecodedOperand op = *operand;
+                op.mem.disp.value = 0;
+                address = lea(&op, false);
+                as.FLW(st, immediate, address);
+            } else {
+                address = lea(operand, false);
+                as.FLW(st, 0, address);
+            }
             as.FCVT_D_S(st, st);
-            popScratch(); // the gpr address scratch
             return st;
         }
         case 64: {
             biscuit::FPR st = scratchFPR();
-            as.FLD(st, 0, lea(operand, false));
-            popScratch(); // the gpr address scratch
+            biscuit::GPR address;
+            u64 immediate = operand->mem.disp.value;
+            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+                g_config.no_address_overflow) { // can't do this with seg+a32
+                ZydisDecodedOperand op = *operand;
+                op.mem.disp.value = 0;
+                address = lea(&op, false);
+                as.FLD(st, immediate, address);
+            } else {
+                address = lea(operand, false);
+                as.FLD(st, 0, address);
+            }
             return st;
         }
         case 80: {
@@ -3211,14 +3237,34 @@ void Recompiler::setST(ZydisDecodedOperand* operand, biscuit::FPR value) {
         switch (operand->size) {
         case 32: {
             biscuit::FPR temp = scratchFPR();
+            biscuit::GPR address;
             as.FCVT_S_D(temp, value);
-            as.FSW(temp, 0, lea(operand, false));
-            popScratch(); // the gpr address scratch
+            u64 immediate = operand->mem.disp.value;
+            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+                g_config.no_address_overflow) { // can't do this with seg+a32
+                ZydisDecodedOperand op = *operand;
+                op.mem.disp.value = 0;
+                address = lea(&op, false);
+                as.FSW(temp, immediate, address);
+            } else {
+                address = lea(operand, false);
+                as.FSW(temp, 0, address);
+            }
             break;
         }
         case 64: {
-            as.FSD(value, 0, lea(operand, false));
-            popScratch(); // the gpr address scratch
+            biscuit::GPR address;
+            u64 immediate = operand->mem.disp.value;
+            if (IsValidSigned12BitImm(immediate) && !(current_instruction->attributes & ZYDIS_ATTRIB_HAS_SEGMENT) && !g_config.paranoid &&
+                g_config.no_address_overflow) { // can't do this with seg+a32
+                ZydisDecodedOperand op = *operand;
+                op.mem.disp.value = 0;
+                address = lea(&op, false);
+                as.FSD(value, immediate, address);
+            } else {
+                address = lea(operand, false);
+                as.FSD(value, 0, address);
+            }
             break;
         }
         case 80: {
