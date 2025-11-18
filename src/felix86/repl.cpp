@@ -17,7 +17,7 @@ FlagMode flag_mode = FlagMode::Default;
 
 void print_help() {
     printf("Commands:\n");
-    printf("  c <INSTRUCTIONS>     - compile x86 instructions, separated by semicolons, and print the result\n");
+    printf("  <INSTRUCTIONS>       - compile x86 instructions, separated by semicolons, and print the result\n");
     printf("  mode64               - switch to 64-bit mode (default)\n");
     printf("  mode32               - switch to 32-bit mode\n");
     printf("  exit                 - exit this environment\n");
@@ -170,12 +170,6 @@ void __attribute__((noreturn)) enter_repl() {
         } else if (cmd == "mode64") {
             g_mode32 = false;
             printf("Switched to x86-64 mode\n");
-        } else if (cmd == "c") {
-            std::string assembly;
-            std::getline(iss, assembly);
-            if (!assembly.empty() && assembly[0] == ' ')
-                assembly.erase(0, 1);
-            compile(assembly);
         } else if (cmd == "help") {
             print_help();
         } else if (cmd == "noflags") {
@@ -187,10 +181,8 @@ void __attribute__((noreturn)) enter_repl() {
         } else if (cmd == "flags") {
             flag_mode = FlagMode::Default;
             printf("Switched to default flag emitting mode\n");
-        }
-
-        else {
-            printf("Unknown command: %s\n", cmd.c_str());
+        } else {
+            compile(line.c_str());
         }
     }
 }
