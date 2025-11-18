@@ -1914,7 +1914,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
         popScratch();
     }
 
-    if (current_instruction->address_width == 32) {
+    if (g_mode32 && current_instruction->address_width != 64 /* HACK: we set address_width = 64 in handler for LEA to avoid this zext*/) {
         // The additions may have overflown the address
         as.ZEXTW(address, address);
     }
