@@ -1864,7 +1864,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     }
 
     // Address override prefix, this needs to happen before adding the segment override
-    if (current_instruction->address_width != 64) {
+    if (current_instruction->attributes & ZYDIS_ATTRIB_HAS_ADDRESSSIZE) {
         if (current_instruction->address_width == 16) {
             WARN("16-bit addressing");
         }
