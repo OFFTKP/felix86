@@ -135,6 +135,11 @@ set(FELIX86_CORE_SOURCES
     src/felix86/emulator.cpp
 )
 
+set(FELIX86_REPL_SOURCES
+    src/felix86/repl.cpp
+    external/box64/rv64_printer.c
+)
+
 set(FELIX86_INCLUDES
     include
     src
@@ -154,8 +159,8 @@ if (BUILD_THUNKING)
 endif()
 
 add_executable(felix86)
-target_sources(felix86 PRIVATE src/felix86/main.cpp src/felix86/repl.cpp)
-target_link_libraries(felix86 PRIVATE felix86_core)
+target_sources(felix86 PRIVATE src/felix86/main.cpp ${FELIX86_REPL_SOURCES})
+target_link_libraries(felix86 PRIVATE felix86_core readline)
 
 add_executable(felix86-mounter src/felix86/mounter.cpp)
 
