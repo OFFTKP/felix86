@@ -2472,14 +2472,15 @@ FAST_HANDLE(LEA) {
     operands[1].mem.segment = ZYDIS_REGISTER_NONE;
     operands[1].attributes &= ~ZYDIS_ATTRIB_HAS_SEGMENT;
     int temp = instruction.address_width;
-    if (instruction.address_width == 32) {
+    bool lea_dont_zext = instruction.address_width == 32 && operands[0].size >= 32;
+    if (lea_dont_zext) {
         // Don't let Recompiler::lea zero-extend so we zext+move here
         instruction.address_width = 64;
     }
 
     biscuit::GPR address = rec.lea(&operands[1]);
     instruction.address_width = temp;
-    if (instruction.address_width == 32) {
+    if (lea_dont_zext) {
         x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
         biscuit::GPR reg = rec.getGPR(ref, X86_SIZE_QWORD);
         as.ZEXTW(reg, address);
