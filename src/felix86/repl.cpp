@@ -78,8 +78,9 @@ void compile(const std::string& input) {
         int status;
         waitpid(fork_result, &status, 0);
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-            printf("nasm failed with exit code: %d -- Do you have nasm installed?\n", WEXITSTATUS(status));
-            exit(1);
+            printf("nasm error\n", WEXITSTATUS(status));
+            ::remove(pbuffer);
+            return;
         }
         u8 temp_buf[4096];
         while (true) {
