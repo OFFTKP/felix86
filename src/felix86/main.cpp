@@ -670,7 +670,20 @@ int main(int argc, char* argv[]) {
                     if (status == 0) { // Yes
                         Config::addTrustedPath(parent);
                         Filesystem::TrustFolder(parent);
-                        g_params.executable_path = canonical_path;
+                        for (const auto& fake_mount : g_fake_mounts) {
+                            if (is_subpath(canonical_path, fake_mount.src_path)) {
+                                std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
+                                std::filesystem::path executable =
+                                    g_config.rootfs_path / fake_mount.dst_path.relative_path() / cutoff_path.relative_path();
+                                if (chdir(executable.parent_path().c_str()) != 0) {
+                                    WARN("Failed to chdir into %s", executable.parent_path().c_str());
+                                } else {
+                                    g_dont_chdir = true;
+                                }
+                                g_params.executable_path = canonical_path;
+                                break;
+                            }
+                        }
                     } else if (status == 1) { // No
                         ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted");
                     } else {
