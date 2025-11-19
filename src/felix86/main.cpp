@@ -53,6 +53,8 @@ static struct argp_option options[] = {
 
 int guest_arg_start_index = -1;
 
+std::filesystem::path unmodified_executable_path;
+
 template <>
 struct fmt::formatter<std::filesystem::path> : formatter<std::string_view> {
     template <typename FormatContext>
@@ -387,6 +389,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     if (key == ARGP_KEY_ARG) {
         if (g_params.argv.empty()) {
             g_params.executable_path = arg;
+            unmodified_executable_path = arg;
         }
 
         g_params.argv.push_back(arg);
@@ -610,8 +613,56 @@ int main(int argc, char* argv[]) {
         return 1;
     } else {
         if (!std::filesystem::exists(g_params.executable_path)) {
-            ERROR("Executable path does not exist: %s", g_params.executable_path.c_str());
-            return 1;
+            // Executable path might be outside the rootfs but in a trusted folder, let's check
+            if (!g_execve_process && std::filesystem::exists(unmodified_executable_path) &&
+                std::filesystem::is_regular_file(unmodified_executable_path)) {
+                bool found = false;
+                std::error_code ec;
+                std::filesystem::path canonical_path = std::filesystem::canonical(unmodified_executable_path, ec);
+                if (ec) {
+                    ERROR("Executable not inside rootfs, couldn't canonicalize path");
+                }
+
+                for (const auto& fake_mount : g_fake_mounts) {
+                    if (is_subpath(canonical_path, fake_mount.src_path)) {
+                        // Path is in trusted folder, transform to path that is inside rootfs
+                        std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
+                        g_params.executable_path = g_config.rootfs_path / fake_mount.dst_path.relative_path() / cutoff_path.relative_path();
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    std::filesystem::path parent = unmodified_executable_path.parent_path();
+                    std::string dialog = "/bin/dialog";
+                    if (!std::filesystem::exists(dialog)) {
+                        dialog = "/bin/whiptail";
+                        if (!std::filesystem::exists(dialog)) {
+                            ERROR("%s is not a trusted folder, couldn't find /bin/dialog to prompt user. Please add %s to %s/trusted.txt manually",
+                                  unmodified_executable_path.c_str(), parent.c_str(), Config::getConfigDir().c_str());
+                        }
+                    }
+
+                    std::string command = dialog + " --title Add to trusted folders? --yes-label \"Yes\" --no-label \"No\" --yesno \"" +
+                                          unmodified_executable_path.string() + " seems to be outside the rootfs." +
+                                          " Would you like to add the parent folder " + parent.string() +
+                                          " to the trusted folders?"
+                                          "\" 10 50";
+                    int result = system(command.c_str());
+                    if (result == 0) { // Yes
+                        Config::addTrustedPath(parent);
+                        Filesystem::TrustFolder(parent);
+                    } else if (result == 1) { // No
+                        ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted");
+                    } else {
+                        ERROR("%s is not a trusted folder, error while using %s to prompt user. Please add %s to %s/trusted.txt manually",
+                              unmodified_executable_path.c_str(), dialog.c_str(), parent.c_str(), Config::getConfigDir().c_str());
+                    }
+                }
+            } else {
+                ERROR("Executable path does not exist: %s or %s", unmodified_executable_path.c_str(), g_params.executable_path.c_str());
+            }
         }
 
         if (!std::filesystem::is_regular_file(g_params.executable_path)) {

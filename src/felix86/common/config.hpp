@@ -28,11 +28,11 @@ struct Config {
 
     static bool addTrustedPath(const std::filesystem::path& path);
 
+    static std::filesystem::path getConfigDir();
+
 private:
     std::string __environment;
     std::filesystem::path config_path;
-
-    static std::filesystem::path getConfigDir();
 
     friend void addToEnvironment(Config& config, const char* env_name, const char* env);
 };

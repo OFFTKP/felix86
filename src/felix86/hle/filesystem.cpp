@@ -84,8 +84,10 @@ void Filesystem::initializeEmulatedNodes() {
     }
 }
 
-std::filesystem::path ConvertToTrustedPath(const std::filesystem::path& path) {
+std::filesystem::path Filesystem::ConvertToTrustedPath(const std::filesystem::path& path) {
     // Should be easily convertible to a normalized path by just replacing slashes
+    ASSERT(path.is_absolute());
+    ASSERT(std::filesystem::canonical(path) == path);
     std::string normalized_path = path.string();
     const std::string dirname = path.filename();
     replace_all(normalized_path, "/", "-");
@@ -179,8 +181,6 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
     g_fake_mounts.push_back(node);
     return true;
 }
-
-bool Filesystem::IsInsideTrustedFolderOrRootfs(const std::filesystem::path& path) {}
 
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     bool follow = !(flags & O_NOFOLLOW);
