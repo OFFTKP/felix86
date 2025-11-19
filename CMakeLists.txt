@@ -160,7 +160,7 @@ endif()
 
 add_executable(felix86)
 target_sources(felix86 PRIVATE src/felix86/main.cpp)
-target_link_libraries(felix86 PRIVATE felix86_core)
+target_link_libraries(felix86 PRIVATE felix86_core dialog)
 
 if (BUILD_REPL)
     target_sources(felix86 PRIVATE ${FELIX86_REPL_SOURCES})

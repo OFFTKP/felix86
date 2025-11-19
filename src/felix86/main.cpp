@@ -1,5 +1,6 @@
 #include <fstream>
 #include <argp.h>
+#include <dialog.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <fmt/format.h>
@@ -635,29 +636,24 @@ int main(int argc, char* argv[]) {
 
                 if (!found) {
                     std::filesystem::path parent = unmodified_executable_path.parent_path();
-                    std::string dialog = "/bin/dialog";
-                    if (!std::filesystem::exists(dialog)) {
-                        dialog = "/bin/whiptail";
-                        if (!std::filesystem::exists(dialog)) {
-                            ERROR("%s is not a trusted folder, couldn't find /bin/dialog to prompt user. Please add %s to %s/trusted.txt manually",
-                                  unmodified_executable_path.c_str(), parent.c_str(), Config::getConfigDir().c_str());
-                        }
-                    }
+                    int status;
+                    init_dialog(stdin, stdout);
+                    status = dialog_yesno("Add to trusted folders?",
+                                          (unmodified_executable_path.string() + " seems to be outside the rootfs." +
+                                           " Would you like to add the parent folder " + parent.string() + " to the trusted folders?")
+                                              .c_str(),
+                                          0, 0);
+                    end_dialog();
 
-                    std::string command = dialog + " --title Add to trusted folders? --yes-label \"Yes\" --no-label \"No\" --yesno \"" +
-                                          unmodified_executable_path.string() + " seems to be outside the rootfs." +
-                                          " Would you like to add the parent folder " + parent.string() +
-                                          " to the trusted folders?"
-                                          "\" 10 50";
-                    int result = system(command.c_str());
-                    if (result == 0) { // Yes
+                    if (status == 0) { // Yes
                         Config::addTrustedPath(parent);
                         Filesystem::TrustFolder(parent);
-                    } else if (result == 1) { // No
+                    } else if (status == 1) { // No
                         ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted");
                     } else {
-                        ERROR("%s is not a trusted folder, error while using %s to prompt user. Please add %s to %s/trusted.txt manually",
-                              unmodified_executable_path.c_str(), dialog.c_str(), parent.c_str(), Config::getConfigDir().c_str());
+                        ERROR("%s is not a trusted folder. Please add %s to %s/trusted.txt manually or move executable"
+                              " and its libraries inside rootfs",
+                              unmodified_executable_path.c_str(), parent.c_str(), Config::getConfigDir().c_str());
                     }
                 }
             } else {
