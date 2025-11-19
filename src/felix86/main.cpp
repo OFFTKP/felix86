@@ -664,15 +664,7 @@ int main(int argc, char* argv[]) {
                     if (status == 0) { // Yes
                         Config::addTrustedPath(parent);
                         Filesystem::TrustFolder(parent);
-
-                        for (const auto& fake_mount : g_fake_mounts) {
-                            if (is_subpath(canonical_path, fake_mount.src_path)) {
-                                // Path is in trusted folder, transform to path that is inside rootfs
-                                std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
-                                g_params.executable_path = g_config.rootfs_path / fake_mount.dst_path.relative_path() / cutoff_path.relative_path();
-                                break;
-                            }
-                        }
+                        g_params.executable_path = canonical_path;
                     } else if (status == 1) { // No
                         ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted");
                     } else {
