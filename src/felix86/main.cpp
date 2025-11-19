@@ -1,6 +1,5 @@
 #include <fstream>
 #include <argp.h>
-#include <dialog.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <fmt/format.h>
@@ -637,13 +636,30 @@ int main(int argc, char* argv[]) {
                 if (!found) {
                     std::filesystem::path parent = unmodified_executable_path.parent_path();
                     int status;
-                    init_dialog(stdin, stdout);
-                    status = dialog_yesno("Add to trusted folders?",
-                                          (unmodified_executable_path.string() + " seems to be outside the rootfs." +
-                                           " Would you like to add the parent folder " + parent.string() + " to the trusted folders?")
-                                              .c_str(),
-                                          0, 0);
-                    end_dialog();
+                    if (isatty(STDOUT_FILENO)) {
+                        if (std::filesystem::exists("/bin/whiptail")) {
+                            status = system(("/bin/whiptail --title \"Add to trusted folders?\" --yes-label=Yes --no-label=No --yesno \"" +
+                                             (unmodified_executable_path.string() + " seems to be outside the rootfs." +
+                                              " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
+                                             "\" 0 0")
+                                                .c_str());
+                        } else {
+                            status = 2;
+                            WARN("Couldn't find /bin/whiptail to ask user if they want to trust the folder");
+                        }
+                    } else {
+                        if (std::filesystem::exists("/bin/zenity")) {
+                            status = system(
+                                ("/bin/zenity --question --title=\"Add to trusted folders?\" --ok-label=\"Yes\" --cancel-label=\"No\" --text=\"" +
+                                 (unmodified_executable_path.string() + " seems to be outside the rootfs." +
+                                  " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
+                                 "\"")
+                                    .c_str());
+                        } else {
+                            status = 2;
+                            WARN("Couldn't find /bin/zenity to ask user if they want to trust the folder");
+                        }
+                    }
 
                     if (status == 0) { // Yes
                         Config::addTrustedPath(parent);
@@ -686,7 +702,8 @@ int main(int argc, char* argv[]) {
 
     if (!g_config.binfmt_misc_installed && !g_execve_process && check_if_privileged_executable(g_params.executable_path)) {
         // Privileged executable but no binfmt_misc support, warn the user
-        WARN("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to install "
+        WARN("This is a privileged executable but the emulator isn't installed in binfmt_misc, might run into problems. Run `felix86 -b` to "
+             "install "
              "it, make sure to remove other x86/x86-64 emulators from binfmt_misc");
     }
 
