@@ -634,12 +634,12 @@ int main(int argc, char* argv[]) {
                 }
 
                 if (!found) {
-                    std::filesystem::path parent = unmodified_executable_path.parent_path();
+                    std::filesystem::path parent = canonical_path.parent_path();
                     int status;
                     if (isatty(STDOUT_FILENO)) {
                         if (std::filesystem::exists("/bin/whiptail")) {
                             status = system(("/bin/whiptail --title \"Add to trusted folders?\" --yes-button Yes --no-button No --yesno \"" +
-                                             (unmodified_executable_path.string() + " seems to be outside the rootfs." +
+                                             (canonical_path.string() + " seems to be outside the rootfs." +
                                               " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
                                              "\" 0 0")
                                                 .c_str());
@@ -651,8 +651,8 @@ int main(int argc, char* argv[]) {
                         if (std::filesystem::exists("/bin/zenity")) {
                             status = system(
                                 ("/bin/zenity --question --title=\"Add to trusted folders?\" --ok-label=\"Yes\" --cancel-label=\"No\" --text=\"" +
-                                 (unmodified_executable_path.string() + " seems to be outside the rootfs." +
-                                  " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
+                                 (canonical_path.string() + " seems to be outside the rootfs." + " Would you like to add the parent folder " +
+                                  parent.string() + " to the trusted folders?") +
                                  "\"")
                                     .c_str());
                         } else {
@@ -667,9 +667,9 @@ int main(int argc, char* argv[]) {
                     } else if (status == 1) { // No
                         ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted");
                     } else {
-                        ERROR("%s is not a trusted folder. Please add %s to %s/trusted.txt manually or move executable"
+                        ERROR("%s is not in a trusted folder. Please add %s to %s/trusted.txt manually or move executable"
                               " and its libraries inside rootfs",
-                              unmodified_executable_path.c_str(), parent.c_str(), Config::getConfigDir().c_str());
+                              canonical_path.c_str(), parent.c_str(), Config::getConfigDir().c_str());
                     }
                 }
             } else {

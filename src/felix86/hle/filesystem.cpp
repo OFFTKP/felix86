@@ -175,7 +175,7 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
     }
 
     result = open(mount_me.c_str(), O_PATH | O_DIRECTORY);
-    if (result != 0) {
+    if (result == -1) {
         return false;
     }
 
