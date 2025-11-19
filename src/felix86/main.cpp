@@ -638,7 +638,7 @@ int main(int argc, char* argv[]) {
                     int status;
                     if (isatty(STDOUT_FILENO)) {
                         if (std::filesystem::exists("/bin/whiptail")) {
-                            status = system(("/bin/whiptail --title \"Add to trusted folders?\" --yes-label=Yes --no-label=No --yesno \"" +
+                            status = system(("/bin/whiptail --title \"Add to trusted folders?\" --yes-label Yes --no-label No --yesno \"" +
                                              (unmodified_executable_path.string() + " seems to be outside the rootfs." +
                                               " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
                                              "\" 0 0")

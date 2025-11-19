@@ -91,8 +91,6 @@ bool Config::initialize(bool ignore_envs) {
                 WARN("Failed to trust some folders. If they don't exist anymore, remove them from %s", trusted_paths.c_str());
             }
         }
-    } else {
-        WARN("Error while opening trusted.txt file");
     }
 
     return true;
