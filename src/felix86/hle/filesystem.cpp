@@ -95,6 +95,10 @@ std::filesystem::path Filesystem::ConvertToTrustedPath(const std::filesystem::pa
     // Make our fake directory
     std::error_code ec;
     const std::filesystem::path dest_path = std::filesystem::path("/run") / "felix86" / "trusted" / normalized_path / dirname;
+    if (std::filesystem::exists(dest_path, ec) && std::filesystem::is_directory(dest_path, ec)) {
+        return dest_path;
+    }
+
     bool ok = std::filesystem::create_directories(dest_path, ec);
     if (!ok || ec) {
         return {};

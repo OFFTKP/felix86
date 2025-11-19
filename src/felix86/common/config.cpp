@@ -80,6 +80,10 @@ bool Config::initialize(bool ignore_envs) {
             std::string line;
             bool all_ok = true;
             while (std::getline(file, line)) {
+                if (line.empty()) {
+                    continue;
+                }
+
                 bool ok = Filesystem::TrustFolder(line);
                 if (!ok) {
                     WARN("Failed to trust folder %s", line.c_str());
