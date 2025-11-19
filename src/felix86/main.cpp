@@ -634,6 +634,7 @@ int main(int argc, char* argv[]) {
                             g_dont_chdir = true;
                         }
                         g_params.executable_path = canonical_path;
+                        g_executable_path_absolute = executable;
                         found = true;
                         break;
                     }
@@ -681,6 +682,7 @@ int main(int argc, char* argv[]) {
                                     g_dont_chdir = true;
                                 }
                                 g_params.executable_path = canonical_path;
+                                g_executable_path_absolute = executable;
                                 break;
                             }
                         }
@@ -703,14 +705,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (g_params.executable_path.is_absolute()) {
-        g_executable_path_absolute = g_params.executable_path.lexically_normal();
-    } else {
-        FdPath fd_path = Filesystem::resolve(AT_FDCWD, g_params.executable_path.c_str(), true);
-        ASSERT_MSG(fd_path.full_path(), "Failed to resolve %s", g_params.executable_path.c_str());
-        ASSERT_MSG(fd_path.full_path()[0] == '/', "Resolved path is not absolute? %s", fd_path.full_path());
-        g_executable_path_absolute = fd_path.full_path();
-        g_executable_path_absolute = g_executable_path_absolute.lexically_normal();
+    if (g_executable_path_absolute.empty()) {
+        if (g_params.executable_path.is_absolute()) {
+            g_executable_path_absolute = g_params.executable_path.lexically_normal();
+        } else {
+            FdPath fd_path = Filesystem::resolve(AT_FDCWD, g_params.executable_path.c_str(), true);
+            ASSERT_MSG(fd_path.full_path(), "Failed to resolve %s", g_params.executable_path.c_str());
+            ASSERT_MSG(fd_path.full_path()[0] == '/', "Resolved path is not absolute? %s", fd_path.full_path());
+            g_executable_path_absolute = fd_path.full_path();
+            g_executable_path_absolute = g_executable_path_absolute.lexically_normal();
+        }
     }
 
 #if 0
