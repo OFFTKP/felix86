@@ -279,9 +279,11 @@ std::pair<ExitReason, int> Emulator::Start() {
     BRK::allocate();
 
     if (!g_execve_process) {
-        // Go inside the rootfs
-        ASSERT(g_rootfs_fd > 0);
-        ASSERT(fchdir(g_rootfs_fd) == 0);
+        if (!g_dont_chdir) {
+            // Go inside the rootfs
+            ASSERT(g_rootfs_fd > 0);
+            ASSERT(fchdir(g_rootfs_fd) == 0);
+        }
     }
 
     ThreadState* main_state = ThreadState::Create(nullptr);

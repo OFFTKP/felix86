@@ -50,6 +50,7 @@ bool g_no_riscv_v_state{};
 std::filesystem::path g_executable_path_absolute{};
 std::filesystem::path g_mounts_path{};
 std::vector<FakeMountNode> g_fake_mounts{};
+bool g_dont_chdir = false;
 
 // g_output_fd should be replaced upon connecting to the server, however if an error occurs before then we should at least log it
 int g_output_fd = STDERR_FILENO;

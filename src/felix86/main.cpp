@@ -627,7 +627,13 @@ int main(int argc, char* argv[]) {
                     if (is_subpath(canonical_path, fake_mount.src_path)) {
                         // Path is in trusted folder, transform to path that is inside rootfs
                         std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
-                        g_params.executable_path = g_config.rootfs_path / fake_mount.dst_path.relative_path() / cutoff_path.relative_path();
+                        std::filesystem::path executable = g_config.rootfs_path / fake_mount.dst_path.relative_path() / cutoff_path.relative_path();
+                        if (chdir(executable.parent_path().c_str()) != 0) {
+                            WARN("Failed to chdir into %s", executable.parent_path().c_str());
+                        } else {
+                            g_dont_chdir = true;
+                        }
+                        g_params.executable_path = canonical_path;
                         found = true;
                         break;
                     }
