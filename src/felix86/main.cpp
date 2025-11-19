@@ -687,7 +687,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (!std::filesystem::is_regular_file(g_params.executable_path)) {
-            ERROR("Executable path is not a regular file");
+            ERROR("Executable path %s is not a regular file", g_params.executable_path.c_str());
             return 1;
         }
     }
