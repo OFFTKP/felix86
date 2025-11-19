@@ -4,6 +4,7 @@
 #include <map>
 #include <unordered_map>
 #include <vector>
+#include <linux/stat.h>
 #include <unistd.h>
 #include "felix86/common/process_lock.hpp"
 #include "felix86/common/start_params.hpp"
@@ -91,6 +92,19 @@ extern int g_linux_minor;
 extern bool g_no_riscv_v_state;
 extern std::filesystem::path g_executable_path_absolute;
 extern std::filesystem::path g_mounts_path;
+
+struct FakeMountNode {
+    std::filesystem::path src_path;
+    std::filesystem::path dst_path;
+
+    // We need to compare with dst_stat and src_stat at times
+    // When resolving a path, dst_stat is useful to see if we are currently in a fake mounted component
+    // When resolving fd+"..", src_stat is useful to see if we are inside a fake mount and redirect .. to dst_path/..
+    struct statx dst_stat{};
+    int src_fd{}; // used for current_fd in path resolution
+    struct statx src_stat{};
+};
+extern std::vector<FakeMountNode> g_fake_mounts;
 
 bool parse_extensions(const char* ext);
 void initialize_globals();

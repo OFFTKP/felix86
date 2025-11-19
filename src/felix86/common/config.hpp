@@ -26,9 +26,13 @@ struct Config {
     [[nodiscard]] static Config load(const std::filesystem::path& path, bool ignore_envs = false);
     static void save(const std::filesystem::path& path, const Config& config);
 
+    static bool addTrustedPath(const std::filesystem::path& path);
+
 private:
     std::string __environment;
     std::filesystem::path config_path;
+
+    static std::filesystem::path getConfigDir();
 
     friend void addToEnvironment(Config& config, const char* env_name, const char* env);
 };

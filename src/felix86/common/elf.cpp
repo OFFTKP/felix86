@@ -578,9 +578,17 @@ Elf::PeekResult Elf::Peek(const std::filesystem::path& path) {
         return Elf::PeekResult::NotElf;
     }
 
+    if (e_ident[0] != 0x7F || e_ident[1] != 'E' || e_ident[2] != 'L' || e_ident[3] != 'F') {
+        fclose(file);
+        return PeekResult::NotElf;
+    }
+
+    bool mode32 = e_ident[4] == ELFCLASS32;
+    fseek(file, 0, SEEK_SET);
+    Elf_Ehdr ehdr(mode32, file);
     fclose(file);
 
-    if (e_ident[0] != 0x7F || e_ident[1] != 'E' || e_ident[2] != 'L' || e_ident[3] != 'F') {
+    if (ehdr.machine() != EM_386 && ehdr.machine() != EM_X86_64) {
         return PeekResult::NotElf;
     }
 

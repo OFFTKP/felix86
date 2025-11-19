@@ -84,6 +84,104 @@ void Filesystem::initializeEmulatedNodes() {
     }
 }
 
+std::filesystem::path ConvertToTrustedPath(const std::filesystem::path& path) {
+    // Should be easily convertible to a normalized path by just replacing slashes
+    std::string normalized_path = path.string();
+    const std::string dirname = path.filename();
+    replace_all(normalized_path, "/", "-");
+
+    // Make our fake directory
+    std::error_code ec;
+    const std::filesystem::path dest_path = std::filesystem::path("/run") / "felix86" / "trusted" / normalized_path / dirname;
+    bool ok = std::filesystem::create_directories(dest_path, ec);
+    if (!ok || ec) {
+        return {};
+    }
+
+    return dest_path;
+}
+
+bool Filesystem::TrustFolder(const std::filesystem::path& path) {
+    // Goal: We need a way to run things that are outside the rootfs
+    // Ideas:
+    // - Symlink folder: Bad. Symlinks are resolved inside the rootfs. Allows access outside the rootfs
+    // - Mounting: Bad. Pollutes mounts even more, gets us deeper in root requiring hell
+    // - Fake mounting: Seems to work. But then:
+    //    Say /mydir is mounted to /rootfs/home/mnt
+    //    /mydir/test should resolve to /rootfs/home/mnt/test, sure
+    //    /mydir/.. should resolve to /rootfs/home, not /, sure
+    //    open(/home/mnt) should resolve to open(/mydir), what about a later open(fd, "..")? Needs care
+    // We will place these fake paths inside a tmpfs, in this case /run/felix86/trusted/NormalizedPath/DirName
+    // For example, say my path is /home/myname/mydir, the dir it will exist in is /run/felix86/trusted/home-myname-mydir/mydir
+    // In case programs rely on the directory name the executable is in being correct (for whatever reason) then this would cover it
+    // The "normalized path" here serves as a unique identifier per trusted path
+    // This is to not conflict with other dirs that have the same final component name but a different path
+    std::error_code ec;
+    const std::filesystem::path final_path = std::filesystem::canonical(path, ec);
+    if (ec) {
+        return false;
+    }
+
+    bool is_directory = std::filesystem::is_directory(path, ec);
+    if (!is_directory || ec) {
+        return false;
+    }
+
+    std::filesystem::path dest_path = ConvertToTrustedPath(final_path);
+    if (dest_path.empty()) {
+        return false;
+    }
+
+    return FakeMount(final_path, dest_path);
+}
+
+// Make our resolveImpl function think that dst points to mount_me and has the contents of mount_me, while
+// also not allowing the program to see the contents of mount_me/.. (in this case it would see dst/..)
+// Currently, dst must be a path that is mounted inside the rootfs like /run/... because of our dst.relative_path shenanigans when mount_me+".."
+bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst) {
+    std::error_code ec;
+    bool is_directory = std::filesystem::is_directory(mount_me, ec);
+    if (!is_directory || ec) {
+        return false;
+    }
+
+    is_directory = std::filesystem::is_directory(dst, ec);
+    if (!is_directory || ec) {
+        return false;
+    }
+
+    bool is_absolute = mount_me.is_absolute() && dst.is_absolute();
+    if (!is_absolute) {
+        return false;
+    }
+
+    FakeMountNode node;
+    node.dst_path = dst;
+    node.src_path = mount_me;
+    int result = statx(AT_FDCWD, mount_me.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &node.src_stat);
+    if (result != 0) {
+        return false;
+    }
+
+    result = statx(AT_FDCWD, dst.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &node.dst_stat);
+    if (result != 0) {
+        return false;
+    }
+
+    result = open(mount_me.c_str(), O_PATH | O_DIRECTORY);
+    if (result != 0) {
+        return false;
+    }
+
+    node.src_fd = FD::moveToHighNumber(result);
+    FD::protect(node.src_fd);
+
+    g_fake_mounts.push_back(node);
+    return true;
+}
+
+bool Filesystem::IsInsideTrustedFolderOrRootfs(const std::filesystem::path& path) {}
+
 int Filesystem::OpenAt(int fd, const char* filename, int flags, u64 mode) {
     bool follow = !(flags & O_NOFOLLOW);
     FdPath fd_path = resolve(fd, filename, follow);
@@ -825,18 +923,46 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
             return FdPath::error(errno);
         }
 
-        if (current_component == ".." && statx_inode_same(&root_statx, &current_statx)) {
-            // Warn about attempted container escapes as they could be a bug in our implementation
-            // This way we still allow programs to use fd's outside the rootfs, as long as they
-            // don't go inside and try to escape again
-            // For example fd + a component with an absolute symlink shouldn't be able to then escape the rootfs
-            VERBOSE("Tried to escape rootfs: %d %s", current_fd, current_relative_path.c_str());
+        // See if current_fd+current_relative_path is inside a fake mount and replace current_fd if so
+        for (const FakeMountNode& mount : g_fake_mounts) {
+            if (statx_inode_same(&mount.dst_stat, &current_statx)) {
+                current_fd = mount.src_fd;
+                current_relative_path = ".";
 
-            // Skip this component and point to rootfs
-            current_fd = g_rootfs_fd;
-            // Also clear this since we are starting resolution from rootfs now
-            current_relative_path = ".";
-            continue;
+                // Need to recalculate statx for ".." check
+                result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
+                if (result != 0) {
+                    VERBOSE("Error while resolving statx (for fake mount) %d %s, error: %s", current_fd, current_relative_path.c_str());
+                    return FdPath::error(errno);
+                }
+                break;
+            }
+        }
+
+        if (current_component == "..") {
+            if (statx_inode_same(&root_statx, &current_statx)) {
+                // Warn about attempted container escapes as they could be a bug in our implementation
+                // This way we still allow programs to use fd's outside the rootfs, as long as they
+                // don't go inside and try to escape again
+                // For example fd + a component with an absolute symlink shouldn't be able to then escape the rootfs
+                VERBOSE("Tried to escape rootfs: %d %s", current_fd, current_relative_path.c_str());
+
+                // Skip this component and point to rootfs
+                current_fd = g_rootfs_fd;
+                // Also clear this since we are starting resolution from rootfs now
+                current_relative_path = ".";
+                continue;
+            } else {
+                // Go through our fake mounts and see if any match
+                for (const FakeMountNode& mount : g_fake_mounts) {
+                    if (statx_inode_same(&mount.src_stat, &current_statx)) {
+                        // Don't allow looking outside the fake mount, redirect to outside of where we are mounted
+                        current_fd = g_rootfs_fd;
+                        current_relative_path = mount.dst_path.parent_path().relative_path();
+                        break;
+                    }
+                }
+            }
         }
 
         std::filesystem::path current = current_relative_path / current_component;

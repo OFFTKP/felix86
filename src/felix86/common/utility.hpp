@@ -3,6 +3,7 @@
 #include <climits>
 #include <cstddef>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <stdbool.h>

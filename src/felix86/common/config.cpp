@@ -4,6 +4,7 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/types.hpp"
+#include "felix86/hle/filesystem.hpp"
 #include "fmt/format.h"
 
 Config g_config{};
@@ -25,10 +26,10 @@ struct into<toml::value> {
 };
 } // namespace toml
 
-bool Config::initialize(bool ignore_envs) {
+std::filesystem::path Config::getConfigDir() {
     const char* homedir;
     if ((homedir = getenv("HOME")) == NULL) {
-        ERROR("$HOME is not set, don't know where to save config file");
+        return {};
     }
 
     std::filesystem::path config_path = homedir;
@@ -36,23 +37,32 @@ bool Config::initialize(bool ignore_envs) {
     if (!std::filesystem::exists(config_path)) {
         bool ok = std::filesystem::create_directories(config_path);
         if (!ok) {
-            return false;
+            return {};
         }
     } else if (!std::filesystem::is_directory(config_path)) {
-        return false;
+        return {};
     }
 
     config_path /= "felix86";
     if (!std::filesystem::exists(config_path)) {
         bool ok = std::filesystem::create_directory(config_path);
         if (!ok) {
-            return false;
+            return {};
         }
     } else if (!std::filesystem::is_directory(config_path)) {
+        return {};
+    }
+
+    return config_path;
+}
+
+bool Config::initialize(bool ignore_envs) {
+    const std::filesystem::path config_dir = getConfigDir();
+    if (config_dir.empty()) {
         return false;
     }
 
-    config_path /= "config.toml";
+    std::filesystem::path config_path = config_dir / "config.toml";
     if (!std::filesystem::exists(config_path)) {
         LOG("Created configuration file: %s", config_path.c_str());
         save(config_path, g_config);
@@ -61,6 +71,48 @@ bool Config::initialize(bool ignore_envs) {
     g_config = load(config_path, ignore_envs);
     g_config.config_path = config_path;
 
+    std::error_code ec;
+    const std::filesystem::path trusted_paths = config_dir / "trusted.txt";
+    if (std::filesystem::exists(trusted_paths, ec)) {
+        std::ifstream file(trusted_paths);
+
+        if (file.is_open()) {
+            std::string line;
+            bool all_ok = true;
+            while (std::getline(file, line)) {
+                bool ok = Filesystem::TrustFolder(line);
+                if (!ok) {
+                    WARN("Failed to trust folder %s", line.c_str());
+                    all_ok = false;
+                }
+            }
+
+            if (!all_ok) {
+                WARN("Failed to trust some folders. If they don't exist anymore, remove them from %s", trusted_paths.c_str());
+            }
+        }
+    } else {
+        WARN("Error while opening trusted.txt file");
+    }
+
+    return true;
+}
+
+bool Config::addTrustedPath(const std::filesystem::path& path) {
+    const std::filesystem::path config_dir = getConfigDir();
+    const std::filesystem::path trusted_paths = config_dir / "trusted.txt";
+    {
+        std::string line;
+        std::ifstream file(trusted_paths);
+        while (std::getline(file, line)) {
+            if (line == path) {
+                return true;
+            }
+        }
+    }
+
+    std::ofstream out(trusted_paths, std::ios_base::app | std::ios_base::out);
+    out << path.string() << "\n";
     return true;
 }
 

@@ -178,6 +178,14 @@ struct Filesystem {
         return executable_path;
     }
 
+    static std::filesystem::path ConvertToTrustedPath(const std::filesystem::path& path);
+
+    static bool TrustFolder(const std::filesystem::path& path);
+
+    static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst);
+
+    static bool IsInsideTrustedFolderOrRootfs(const std::filesystem::path& path);
+
     // Emulated syscall functions
     int OpenAt(int fd, const char* filename, int flags, u64 mode);
 
