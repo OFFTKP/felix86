@@ -5994,5 +5994,112 @@
             "ADDI            t0, t1, 0x0(0)"
         ],
         "disassembly": "cmpxchg [rdi], rbx"
+    },
+    "6666f30fbcc3": {
+        "instruction_count": 5,
+        "expected_asm": [
+            "BSETI           t1, s0, 0x10(16)",
+            "CTZW            ra, t1",
+            "SRLI            t3, t0, 0x10(16)",
+            "SLLI            t3, t3, 0x10(16)",
+            "OR              t0, t3, ra"
+        ],
+        "disassembly": "tzcnt ax, bx"
+    },
+    "6666f30fbc07": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "LHU             ra, a0, 0x0(0)",
+            "BSETI           t4, ra, 0x10(16)",
+            "CTZW            t3, t4",
+            "SRLI            t2, t0, 0x10(16)",
+            "SLLI            t2, t2, 0x10(16)",
+            "OR              t0, t2, t3"
+        ],
+        "disassembly": "tzcnt ax, [rdi]"
+    },
+    "f30fbcc3": {
+        "instruction_count": 1,
+        "expected_asm": [
+            "CTZW            t0, s0"
+        ],
+        "disassembly": "tzcnt eax, ebx"
+    },
+    "f30fbc07": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "LWU             ra, a0, 0x0(0)",
+            "CTZW            t0, ra"
+        ],
+        "disassembly": "tzcnt eax, [rdi]"
+    },
+    "f3480fbcc3": {
+        "instruction_count": 1,
+        "expected_asm": [
+            "CTZ             t0, s0"
+        ],
+        "disassembly": "tzcnt rax, rbx"
+    },
+    "f3480fbc07": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "LD              ra, a0, 0x0(0)",
+            "CTZ             t0, ra"
+        ],
+        "disassembly": "tzcnt rax, [rdi]"
+    },
+    "6666f30fbdc3": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "ZEXT.H          ra, s0",
+            "CLZW            t1, ra",
+            "ADDI            t1, t1, 0xfffffff0(-16)",
+            "SRLI            t3, t0, 0x10(16)",
+            "SLLI            t3, t3, 0x10(16)",
+            "OR              t0, t3, t1"
+        ],
+        "disassembly": "lzcnt ax, bx"
+    },
+    "6666f30fbd07": {
+        "instruction_count": 6,
+        "expected_asm": [
+            "LHU             t1, a0, 0x0(0)",
+            "CLZW            t4, t1",
+            "ADDI            t4, t4, 0xfffffff0(-16)",
+            "SRLI            t2, t0, 0x10(16)",
+            "SLLI            t2, t2, 0x10(16)",
+            "OR              t0, t2, t4"
+        ],
+        "disassembly": "lzcnt ax, [rdi]"
+    },
+    "f30fbdc3": {
+        "instruction_count": 1,
+        "expected_asm": [
+            "CLZW            t0, s0"
+        ],
+        "disassembly": "lzcnt eax, ebx"
+    },
+    "f30fbd07": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "LWU             t1, a0, 0x0(0)",
+            "CLZW            t0, t1"
+        ],
+        "disassembly": "lzcnt eax, [rdi]"
+    },
+    "f3480fbdc3": {
+        "instruction_count": 1,
+        "expected_asm": [
+            "CLZ             t0, s0"
+        ],
+        "disassembly": "lzcnt rax, rbx"
+    },
+    "f3480fbd07": {
+        "instruction_count": 2,
+        "expected_asm": [
+            "LD              t1, a0, 0x0(0)",
+            "CLZ             t0, t1"
+        ],
+        "disassembly": "lzcnt rax, [rdi]"
     }
 }

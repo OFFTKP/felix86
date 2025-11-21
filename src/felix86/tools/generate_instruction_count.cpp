@@ -402,6 +402,18 @@ int main() {
         GEN(cmpxchg(ptr[rdi], bx));
         GEN(cmpxchg(ptr[rdi], ebx));
         GEN(cmpxchg(ptr[rdi], rbx));
+        GEN(tzcnt(ax, bx));
+        GEN(tzcnt(ax, word[rdi]));
+        GEN(tzcnt(eax, ebx));
+        GEN(tzcnt(eax, dword[rdi]));
+        GEN(tzcnt(rax, rbx));
+        GEN(tzcnt(rax, qword[rdi]));
+        GEN(lzcnt(ax, bx));
+        GEN(lzcnt(ax, word[rdi]));
+        GEN(lzcnt(eax, ebx));
+        GEN(lzcnt(eax, dword[rdi]));
+        GEN(lzcnt(rax, rbx));
+        GEN(lzcnt(rax, qword[rdi]));
         if (flags) {
             GEN_Group1(mov);
             GEN(mov(rax, qword[rdi + 128]));

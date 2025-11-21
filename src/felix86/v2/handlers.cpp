@@ -6323,26 +6323,6 @@ FAST_HANDLE(PALIGNR) {
     rec.setVec(&operands[0], result);
 }
 
-void CTZ(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src) {
-    if (Extensions::B) {
-        as.CTZ(result, src);
-    } else {
-        // This would infinitely loop if src is 0, but we know it's not
-        biscuit::GPR scratch = rec.scratch();
-        Label loop, escape;
-        as.LI(result, 0);
-
-        as.Bind(&loop);
-        as.SRL(scratch, src, result);
-        as.ANDI(scratch, scratch, 1);
-        as.BNEZ(scratch, &escape);
-        as.ADDI(result, result, 1);
-        as.J(&loop);
-
-        as.Bind(&escape);
-    }
-}
-
 FAST_HANDLE(BSF) {
     biscuit::GPR result = rec.scratch();
     biscuit::GPR src = rec.getGPR(&operands[1]);
@@ -6354,7 +6334,7 @@ FAST_HANDLE(BSF) {
     as.SEQZ(zf, src);
     as.BEQZ(src, &end);
 
-    CTZ(rec, as, result, src);
+    as.CTZ(result, src);
 
     rec.setGPR(&operands[0], result);
 
@@ -6362,23 +6342,78 @@ FAST_HANDLE(BSF) {
 }
 
 FAST_HANDLE(TZCNT) {
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR dst = rec.getGPR(&operands[0]);
-    (void)dst; // must be loaded since conditional code follows
-    biscuit::GPR zf = rec.flag(X86_REF_ZF);
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
+    if (instruction.operand_width == 16) {
+        // Unlike 32/64-bit operands, there's no CTZH
+        // To avoid having to do a branch, we can insert the 16th bit to the src
+        // If the src operand is 0, the CTZW will return 16 because it found that bit
+        x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
+        biscuit::GPR dst = rec.allocatedGPR(dst_ref); // don't zext
+        biscuit::GPR src;
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // don't zext this either, we will insert a bit anyway
+        } else {
+            src = rec.getGPR(&operands[1]);
+        }
 
-    Label end;
-    as.LI(result, instruction.operand_width);
-    as.SEQZ(cf, src);
-    as.BEQZ(src, &end);
-    CTZ(rec, as, result, src);
-    as.J(&end);
+        if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flag(X86_REF_CF);
+            if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                rec.zext(cf, src, X86_SIZE_WORD);
+                as.SEQZ(cf, cf);
+            } else {
+                as.SEQZ(cf, src);
+            }
+        }
 
-    as.Bind(&end);
-    rec.setGPR(&operands[0], result);
-    as.SEQZ(zf, result);
+        biscuit::GPR result = rec.scratch();
+        biscuit::GPR modified_src = rec.scratch();
+        biscuit::GPR modified_dst = rec.scratch();
+        as.BSETI(modified_src, src, 16);
+        as.CTZW(result, modified_src);
+        as.SRLI(modified_dst, dst, 16);
+        as.SLLI(modified_dst, modified_dst, 16);
+        as.OR(dst, modified_dst, result);
+        rec.setGPR(dst_ref, X86_SIZE_QWORD, dst);
+
+        if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+            biscuit::GPR zf = rec.flag(X86_REF_ZF);
+            as.SEQZ(zf, result);
+        }
+    } else if (instruction.operand_width == 32 || instruction.operand_width == 64) {
+        x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
+        biscuit::GPR dst = rec.allocatedGPR(dst_ref); // don't zext
+        biscuit::GPR src;
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // don't zext this either, CTZW will deal with 32 bits only anyway
+        } else {
+            src = rec.getGPR(&operands[1]);
+        }
+
+        if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+            biscuit::GPR cf = rec.flag(X86_REF_CF);
+            if (instruction.operand_width == 32 && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                rec.zext(cf, src, X86_SIZE_DWORD);
+                as.SEQZ(cf, cf);
+            } else {
+                as.SEQZ(cf, src);
+            }
+        }
+
+        // behavior if src == 0 matches nicely here
+        if (instruction.operand_width == 32) {
+            as.CTZW(dst, src);
+        } else {
+            as.CTZ(dst, src);
+        }
+        rec.setGPR(dst_ref, X86_SIZE_QWORD, dst);
+
+        if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+            biscuit::GPR zf = rec.flag(X86_REF_ZF);
+            as.SEQZ(zf, dst);
+        }
+    } else {
+        UNREACHABLE();
+    }
 }
 
 void BITSTRING_func(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, u64 func) {
@@ -6571,57 +6606,61 @@ FAST_HANDLE(BSR) {
     as.Bind(&end);
 }
 
-void LZCNT(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, int size) {
-    if (Extensions::B) {
-        if (size == 64) {
-            as.CLZ(result, src);
-        } else if (size == 32) {
-            as.CLZW(result, src);
-        } else if (size == 16) {
-            as.CLZW(result, src);
-            as.ADDI(result, result, -16);
-        } else {
-            UNREACHABLE();
-        }
-    } else {
-        biscuit::GPR temp = rec.scratch();
-        biscuit::GPR bit = rec.scratch();
-        as.LI(result, 0);
-        as.LI(temp, size - 1);
-
-        biscuit::Label loop, end;
-        as.Bind(&loop);
-        as.BLT(temp, x0, &end);
-        as.SRL(bit, src, temp);
-        as.ANDI(bit, bit, 1);
-        as.BNE(bit, x0, &end);
-        as.ADDI(temp, temp, -1);
-        as.ADDI(result, result, 1);
-        as.J(&loop);
-        as.Bind(&end);
-    }
-}
-
 FAST_HANDLE(LZCNT) {
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR result = rec.scratch();
-
-    // perform the count (stub above handles both hw and sw paths)
-    LZCNT(rec, as, result, src, instruction.operand_width);
-
-    // write back the destination register
-    rec.setGPR(&operands[0], result);
-
-    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
-        biscuit::GPR zf = rec.flag(X86_REF_ZF);
-        as.SEQZ(zf, result);
+    x86_ref_e dst_ref = rec.zydisToRef(operands[0].reg.value);
+    biscuit::GPR dst = rec.allocatedGPR(dst_ref); // don't zext
+    biscuit::GPR src;
+    bool zexted = false;
+    biscuit::GPR zexted_src = rec.scratch();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // don't zext here
+    } else {
+        src = rec.getGPR(&operands[1]);
+        zexted_src = src;
+        zexted = true;
     }
 
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flag(X86_REF_CF);
-        biscuit::GPR tmp = rec.scratch();
-        as.ADDI(tmp, result, -instruction.operand_width);
-        as.SEQZ(cf, tmp);
+        if (instruction.operand_width == 64) {
+            as.SEQZ(cf, src);
+        } else {
+            if (!zexted) {
+                rec.zext(zexted_src, src, rec.zydisToSize(instruction.operand_width));
+                zexted = true;
+            }
+            as.SEQZ(cf, zexted_src);
+        }
+    }
+
+    biscuit::GPR result;
+    if (instruction.operand_width == 16) {
+        result = rec.scratch();
+        biscuit::GPR modified_dst = rec.scratch();
+        if (!zexted) {
+            as.ZEXTH(zexted_src, src);
+        }
+        as.CLZW(result, zexted_src);
+        as.ADDI(result, result, -16); // top 16 bits are zero in clzw
+        as.SRLI(modified_dst, dst, 16);
+        as.SLLI(modified_dst, modified_dst, 16);
+        as.OR(dst, modified_dst, result);
+        rec.setGPR(dst_ref, X86_SIZE_QWORD, dst);
+    } else if (instruction.operand_width == 32 || instruction.operand_width == 64) {
+        if (instruction.operand_width == 32) {
+            as.CLZW(dst, src);
+        } else {
+            as.CLZ(dst, src);
+        }
+        result = dst;
+        rec.setGPR(dst_ref, X86_SIZE_QWORD, dst);
+    } else {
+        UNREACHABLE();
+    }
+
+    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+        biscuit::GPR zf = rec.flag(X86_REF_ZF);
+        as.SEQZ(zf, result);
     }
 }
 
