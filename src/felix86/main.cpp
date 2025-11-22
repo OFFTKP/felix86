@@ -688,14 +688,14 @@ int main(int argc, char* argv[]) {
                             }
                         }
                     } else if (status == 1) { // No
-                        if (tty) {
-                            ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted");
-                        } else {
-                            system((std::string("zenity --info --title=\"felix86: Directory not trusted!\" --text=\"Running x86 executables that are "
-                                                "outside the rootfs (") +
-                                    g_config.rootfs_path.string() + ") require you to mark the directory as trusted!\"")
-                                       .c_str());
+                        if (!tty) {
+                            (void)system(
+                                (std::string("zenity --info --title=\"felix86: Directory not trusted!\" --text=\"Running x86 executables that are "
+                                             "outside the rootfs (") +
+                                 g_config.rootfs_path.string() + ") require you to mark the directory as trusted!\"")
+                                    .c_str());
                         }
+                        ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted");
                     } else {
                         ERROR("%s is not in a trusted folder. Please add %s to %s/trusted.txt manually or move executable"
                               " and its libraries inside rootfs",
