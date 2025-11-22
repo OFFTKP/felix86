@@ -34,9 +34,9 @@
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f0, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f0, t1, 0x88(136)",
             "FADD.D          f0, f0, f28, dyn"
         ],
         "disassembly": "fadd [rdi]"
@@ -45,9 +45,9 @@
         "instruction_count": 5,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f0, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f0, t1, 0x88(136)",
             "FADD.D          f0, f0, f28, dyn"
         ],
         "disassembly": "fadd [rdi]"
@@ -139,9 +139,9 @@
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f1, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f1, t1, 0x88(136)",
             "FSUB.D          f1, f1, f28, dyn"
         ],
         "disassembly": "fsub [rdi]"
@@ -150,9 +150,9 @@
         "instruction_count": 5,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f1, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f1, t1, 0x88(136)",
             "FSUB.D          f1, f1, f28, dyn"
         ],
         "disassembly": "fsub [rdi]"
@@ -244,9 +244,9 @@
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f2, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f2, t1, 0x88(136)",
             "FSUB.D          f2, f28, f2, dyn"
         ],
         "disassembly": "fsubr [rdi]"
@@ -255,9 +255,9 @@
         "instruction_count": 5,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f2, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f2, t1, 0x88(136)",
             "FSUB.D          f2, f28, f2, dyn"
         ],
         "disassembly": "fsubr [rdi]"
@@ -349,9 +349,9 @@
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f3, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f3, t1, 0x88(136)",
             "FMUL.D          f3, f3, f28, dyn"
         ],
         "disassembly": "fmul [rdi]"
@@ -360,9 +360,9 @@
         "instruction_count": 5,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f3, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f3, t1, 0x88(136)",
             "FMUL.D          f3, f3, f28, dyn"
         ],
         "disassembly": "fmul [rdi]"
@@ -454,9 +454,9 @@
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f4, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f4, t1, 0x88(136)",
             "FDIV.D          f4, f4, f28, dyn"
         ],
         "disassembly": "fdiv [rdi]"
@@ -465,9 +465,9 @@
         "instruction_count": 5,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f4, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f4, t1, 0x88(136)",
             "FDIV.D          f4, f4, f28, dyn"
         ],
         "disassembly": "fdiv [rdi]"
@@ -559,9 +559,9 @@
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f5, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f5, t1, 0x88(136)",
             "FDIV.D          f5, f28, f5, dyn"
         ],
         "disassembly": "fdivr [rdi]"
@@ -570,9 +570,9 @@
         "instruction_count": 5,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
-            "LBU             t1, s11, 0x222(546)",
-            "SH3ADD          ra, t1, s11",
-            "FLD             f5, ra, 0x88(136)",
+            "LBU             t3, s11, 0x222(546)",
+            "SH3ADD          t1, t3, s11",
+            "FLD             f5, t1, 0x88(136)",
             "FDIV.D          f5, f28, f5, dyn"
         ],
         "disassembly": "fdivr [rdi]"

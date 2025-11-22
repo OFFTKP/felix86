@@ -6783,7 +6783,7 @@ FAST_HANDLE(ROL) {
     }
 
     bool needs_flags = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF);
-    if ((operands[0].size == 32 || operands[0].size == 64) && Extensions::Zicond && g_config.noflag_opts && needs_flags) {
+    if ((operands[0].size == 32 || operands[0].size == 64) && Extensions::Zicond && g_config.noflag_opts && !needs_flags) {
         biscuit::GPR dst;
         if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
             dst = rec.getGPR(&operands[0], X86_SIZE_QWORD); // don't zext
@@ -6873,7 +6873,7 @@ FAST_HANDLE(ROR) {
     }
 
     bool needs_flags = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF);
-    if ((operands[0].size == 32 || operands[0].size == 64) && Extensions::Zicond && g_config.noflag_opts && needs_flags) {
+    if ((operands[0].size == 32 || operands[0].size == 64) && Extensions::Zicond && g_config.noflag_opts && !needs_flags) {
         biscuit::GPR dst;
         if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
             dst = rec.getGPR(&operands[0], X86_SIZE_QWORD); // don't zext

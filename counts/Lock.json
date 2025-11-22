@@ -284,15 +284,17 @@
         "disassembly": "lock xchg [rdi], ah"
     },
     "f0668707": {
-        "instruction_count": 27,
+        "instruction_count": 29,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "ZEXT.H          t1, t0",
             "ANDI            t5, ra, 0x3(3)",
             "ADDI            t5, t5, 0xfffffffd(-3)",
-            "BNE             zero, t5, 0x14(20)",
+            "BNE             zero, t5, 0x1c(28)",
+            "FENCE          ",
             "LHU             t3, ra, 0x0(0)",
             "SH              t1, ra, 0x0(0)",
+            "FENCE          ",
             "ADDI            t4, t3, 0x0(0)",
             "JAL             zero, 0x3c(60)",
             "ANDI            t2, ra, 0xfffffffc(-4)",
@@ -317,12 +319,19 @@
         "disassembly": "lock xchg [rdi], ax"
     },
     "f08707": {
-        "instruction_count": 5,
+        "instruction_count": 12,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "ADD.UW          t1, t0, zero",
+            "ANDI            t2, ra, 0x3(3)",
+            "BNE             zero, t2, 0x10(16)",
             "ADDI            t3, t1, 0x0(0)",
             "AMOSWAP.W       t4, ra, t3, aq, rl",
+            "JAL             zero, 0x14(20)",
+            "FENCE          ",
+            "LWU             t4, ra, 0x0(0)",
+            "SW              t1, ra, 0x0(0)",
+            "FENCE          ",
             "ADD.UW          t0, t4, zero"
         ],
         "disassembly": "lock xchg [rdi], eax"
