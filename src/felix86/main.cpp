@@ -690,8 +690,9 @@ int main(int argc, char* argv[]) {
                     } else if (status == 1) { // No
                         if (!tty) {
                             int result = system(
-                                (std::string("zenity --info --title=\"felix86: Directory not trusted!\" --text=\"Running x86 executables that are "
-                                             "outside the rootfs (") +
+                                (std::string(
+                                     "/bin/zenity --info --title=\"felix86: Directory not trusted!\" --text=\"Running x86 executables that are "
+                                     "outside the rootfs (") +
                                  g_config.rootfs_path.string() + ") require you to mark the directory as trusted!\"")
                                     .c_str());
                             (void)result;
