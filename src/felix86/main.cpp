@@ -646,26 +646,25 @@ int main(int argc, char* argv[]) {
                     bool tty = isatty(STDOUT_FILENO);
                     if (tty) {
                         if (std::filesystem::exists("/bin/whiptail")) {
-                            status = system(("/bin/whiptail --title \"felix86: Add to trusted folders?\" --yes-button Yes --no-button No --yesno \"" +
-                                             (canonical_path.string() + " seems to be outside the rootfs." +
-                                              " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
-                                             "\" 0 0")
-                                                .c_str());
+                            status = WEXITSTATUS(
+                                system(("/bin/whiptail --title \"felix86: Add to trusted folders?\" --yes-button Yes --no-button No --yesno \"" +
+                                        (canonical_path.string() + " seems to be outside the rootfs." + " Would you like to add the parent folder " +
+                                         parent.string() + " to the trusted folders?") +
+                                        "\" 0 0")
+                                           .c_str()));
                         } else {
                             status = 2;
                             WARN("Couldn't find /bin/whiptail to ask user if they want to trust the folder");
                         }
                     } else {
                         if (std::filesystem::exists("/bin/zenity")) {
-                            status = system(("/bin/zenity --question --title=\"felix86: Add to trusted folders?\" --ok-label=\"Yes\" "
-                                             "--cancel-label=\"No\" --text=\"" +
-                                             (canonical_path.string() + " seems to be outside the rootfs." +
-                                              " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
-                                             "\"")
-                                                .c_str());
-                            if (status == 0x100) {
-                                status = 1;
-                            }
+                            status =
+                                WEXITSTATUS(system(("/bin/zenity --question --title=\"felix86: Add to trusted folders?\" --ok-label=\"Yes\" "
+                                                    "--cancel-label=\"No\" --text=\"" +
+                                                    (canonical_path.string() + " seems to be outside the rootfs." +
+                                                     " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
+                                                    "\"")
+                                                       .c_str()));
                         } else {
                             status = 2;
                             WARN("Couldn't find /bin/zenity to ask user if they want to trust the folder");
