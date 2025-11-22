@@ -663,6 +663,9 @@ int main(int argc, char* argv[]) {
                                               " Would you like to add the parent folder " + parent.string() + " to the trusted folders?") +
                                              "\"")
                                                 .c_str());
+                            if (status == 0xFF) {
+                                status = 1;
+                            }
                         } else {
                             status = 2;
                             WARN("Couldn't find /bin/zenity to ask user if they want to trust the folder");
