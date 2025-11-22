@@ -39,6 +39,7 @@ You should now be inside the rootfs.
 Here you can run your x86 and x86-64 applications, such as games:
 ![My rootfs is named /rootfs](./example.png)
 
+**You can also run x86 executables that are outside the rootfs, the first time you do so you will be prompted to mark the directory as trusted.**
 
 The rootfs you downloaded should have enough libraries to support most games, but if any are missing use your **x86-64 package manager** to install them while inside the rootfs.    
 
@@ -53,6 +54,7 @@ The rootfs you downloaded should have enough libraries to support most games, bu
   - `felix86 /path/to/rootfs/program`
   - `felix86 /program`                   (will search inside rootfs only)
   - `/path/to/rootfs/program`            (make sure it's not a script, otherwise run it with felix86 prepended)
+  - `/path/to/program`                   (running programs outside the rootfs will prompt you to trust the directory)
 - If your GPU has x86/x86-64 drivers then they will be automatically used. Many RISC-V boards come with iGPUs that don't have x86 drivers and felix86 is not able to use them currently.
 - The environment variable `FELIX86_ALWAYS_TSO=1` may be necessary for Unity games, random crashes may occur without it
 - Not all games are going to work. If something doesn't work, open an issue on github!
