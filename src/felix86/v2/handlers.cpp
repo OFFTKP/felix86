@@ -6795,13 +6795,7 @@ FAST_HANDLE(ROL) {
             if (operands[0].size == 32) {
                 biscuit::GPR result = rec.scratch();
                 as.RORIW(result, dst, (32 - operands[1].imm.value.u) & 0x1F);
-                as.ZEXTW(result, result);
-                if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-                    x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
-                    rec.setGPR(ref, X86_SIZE_QWORD, dst);
-                } else {
-                    rec.setGPR(&operands[0], dst);
-                }
+                rec.setGPR(&operands[0], dst);
             } else {
                 as.RORI(dst, dst, (64 - operands[1].imm.value.u) & 0x3F);
                 rec.setGPR(&operands[0], dst);
@@ -6885,13 +6879,7 @@ FAST_HANDLE(ROR) {
             if (operands[0].size == 32) {
                 biscuit::GPR result = rec.scratch();
                 as.RORIW(result, dst, operands[1].imm.value.u & 0x1F);
-                as.ZEXTW(result, result);
-                if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-                    x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
-                    rec.setGPR(ref, X86_SIZE_QWORD, dst);
-                } else {
-                    rec.setGPR(&operands[0], dst);
-                }
+                rec.setGPR(&operands[0], dst);
             } else {
                 as.RORI(dst, dst, operands[1].imm.value.u & 0x3F);
                 rec.setGPR(&operands[0], dst);

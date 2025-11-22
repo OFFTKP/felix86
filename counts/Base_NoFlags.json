@@ -3227,7 +3227,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "RORIW           ra, a2, 0x1f(31)",
-            "ADD.UW          ra, ra, zero"
+            "ADD.UW          a2, a2, zero"
         ],
         "disassembly": "rol edx, 0x01"
     },
@@ -3309,7 +3309,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "RORIW           ra, a2, 0x1(1)",
-            "ADD.UW          ra, ra, zero"
+            "ADD.UW          a2, a2, zero"
         ],
         "disassembly": "rol edx, 0x3F"
     },
@@ -3446,11 +3446,10 @@
         "disassembly": "rol word ptr [rdi], 0x01"
     },
     "d107": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "LWU             ra, a0, 0x0(0)",
             "RORIW           t3, ra, 0x1f(31)",
-            "ADD.UW          t3, t3, zero",
             "SW              ra, a0, 0x0(0)"
         ],
         "disassembly": "rol dword ptr [rdi], 0x01"
@@ -3503,11 +3502,10 @@
         "disassembly": "rol word ptr [rdi], 0x3F"
     },
     "c1073f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "LWU             ra, a0, 0x0(0)",
             "RORIW           t3, ra, 0x1(1)",
-            "ADD.UW          t3, t3, zero",
             "SW              ra, a0, 0x0(0)"
         ],
         "disassembly": "rol dword ptr [rdi], 0x3F"
@@ -3660,7 +3658,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "RORIW           ra, a2, 0x1(1)",
-            "ADD.UW          ra, ra, zero"
+            "ADD.UW          a2, a2, zero"
         ],
         "disassembly": "ror edx, 0x01"
     },
@@ -3748,7 +3746,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "RORIW           ra, a2, 0x1f(31)",
-            "ADD.UW          ra, ra, zero"
+            "ADD.UW          a2, a2, zero"
         ],
         "disassembly": "ror edx, 0x3F"
     },
@@ -3895,11 +3893,10 @@
         "disassembly": "ror word ptr [rdi], 0x01"
     },
     "d10f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "LWU             ra, a0, 0x0(0)",
             "RORIW           t3, ra, 0x1(1)",
-            "ADD.UW          t3, t3, zero",
             "SW              ra, a0, 0x0(0)"
         ],
         "disassembly": "ror dword ptr [rdi], 0x01"
@@ -3956,11 +3953,10 @@
         "disassembly": "ror word ptr [rdi], 0x3F"
     },
     "c10f3f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "LWU             ra, a0, 0x0(0)",
             "RORIW           t3, ra, 0x1f(31)",
-            "ADD.UW          t3, t3, zero",
             "SW              ra, a0, 0x0(0)"
         ],
         "disassembly": "ror dword ptr [rdi], 0x3F"
