@@ -6777,115 +6777,184 @@ FAST_HANDLE(MOVHLPS) {
 }
 
 FAST_HANDLE(ROL) {
-    x86_size_e size = rec.getSize(&operands[0]);
-    bool needs_cf = rec.shouldEmitFlag(rip, X86_REF_CF);
-    bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
-    bool needs_any_flag = needs_cf || needs_of;
-    bool qword_or_dword = size == X86_SIZE_QWORD || size == X86_SIZE_DWORD;
-    bool is_immediate = operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE;
-    if (g_config.noflag_opts && qword_or_dword && is_immediate && !needs_any_flag) {
-        switch (size) {
-        case X86_SIZE_DWORD: {
-            biscuit::GPR dst;
-            if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-                // Don't zext, we use the W instructions so it's ok
-                dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
-            } else {
-                dst = rec.getGPR(&operands[0]);
-            }
-            u8 immediate = rec.getImmediate(&operands[1]) & 31;
-            u8 rotate_amount = (32 - immediate) & 31;
-            if (Extensions::B) {
-                as.RORIW(dst, dst, rotate_amount);
-            } else {
-                biscuit::GPR temp = rec.scratch();
-                as.SRLIW(temp, dst, rotate_amount);
-                as.SLLIW(dst, dst, immediate);
-                as.OR(dst, dst, temp);
-            }
-            rec.setGPR(&operands[0], dst);
-            break;
-        }
-        case X86_SIZE_QWORD: {
-            biscuit::GPR dst = rec.getGPR(&operands[0]);
-            u8 immediate = rec.getImmediate(&operands[1]) & 63;
-            u8 rotate_amount = (64 - immediate) & 63;
-            if (Extensions::B) {
-                as.RORI(dst, dst, rotate_amount);
-            } else {
-                biscuit::GPR temp = rec.scratch();
-                as.SRLI(temp, dst, rotate_amount);
-                as.SLLI(dst, dst, immediate);
-                as.OR(dst, dst, temp);
-            }
-            rec.setGPR(&operands[0], dst);
-            break;
-        }
-        default: {
-            UNREACHABLE();
-        }
-        }
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && operands[1].imm.value.u == 0) {
+        WARN("ROL with imm==0?");
         return;
     }
 
-    biscuit::GPR dst = rec.getGPR(&operands[0]);
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR count = rec.scratch();
+    bool needs_flags = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF);
+    if ((operands[0].size == 32 || operands[0].size == 64) && Extensions::Zicond && g_config.noflag_opts && needs_flags) {
+        biscuit::GPR dst;
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            dst = rec.getGPR(&operands[0], X86_SIZE_QWORD); // don't zext
+        } else {
+            dst = rec.getGPR(&operands[0]);
+        }
 
-    Label zero_count;
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            if (operands[0].size == 32) {
+                biscuit::GPR result = rec.scratch();
+                as.RORIW(result, dst, (32 - operands[1].imm.value.u) & 0x1F);
+                as.ZEXTW(result, result);
+                if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                    x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+                    rec.setGPR(ref, X86_SIZE_QWORD, dst);
+                } else {
+                    rec.setGPR(&operands[0], dst);
+                }
+            } else {
+                as.RORI(dst, dst, (64 - operands[1].imm.value.u) & 0x3F);
+                rec.setGPR(&operands[0], dst);
+            }
+        } else if (operands[0].size == 32) {
+            // We need to do extra work here to make sure not to zero-extend if the rotated count is zero
+            biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // we will mask it ourselves
+            biscuit::GPR masked_src = rec.scratch();
+            biscuit::GPR is_zero = rec.scratch();
+            as.ANDI(masked_src, src, operands[0].size - 1);
+            as.SEQZ(is_zero, masked_src);
+            biscuit::GPR rotated = rec.scratch();
+            as.ROLW(rotated, dst, masked_src);
+            as.ZEXTW(rotated, rotated);
 
-    // TODO: optimize rotate with immediate to skip this check
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
-    biscuit::GPR of = rec.flag(X86_REF_OF);
-    as.ANDI(count, src, rec.getBitSize(size) == 64 ? 63 : 31);
-    as.BEQZ(count, &zero_count);
+            biscuit::GPR not_zero = rec.scratch();
+            as.CZERO_EQZ(not_zero, rotated, is_zero);
+            as.CZERO_NEZ(masked_src, dst, is_zero);
+            as.OR(dst, masked_src, not_zero);
 
-    biscuit::GPR temp = rec.scratch();
-    biscuit::GPR neg_count = rec.scratch();
-    as.NEG(neg_count, count);
-    as.ANDI(neg_count, neg_count, rec.getBitSize(size) - 1);
-    as.SLL(temp, dst, count);
-    as.SRL(neg_count, dst, neg_count);
-    as.OR(dst, temp, neg_count);
-    as.ANDI(cf, dst, 1);
-    as.SRLI(of, dst, rec.getBitSize(size) - 1);
-    as.XOR(of, of, cf);
+            if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+                rec.setGPR(ref, X86_SIZE_QWORD, dst);
+            } else {
+                rec.setGPR(&operands[0], dst);
+            }
+        } else if (operands[0].size == 64) {
+            biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // ROL will mask for us
+            as.ROL(dst, dst, src);
+            rec.setGPR(&operands[0], dst);
+        } else {
+            UNREACHABLE();
+        }
+    } else {
+        x86_size_e size = rec.getSize(&operands[0]);
+        biscuit::GPR dst = rec.getGPR(&operands[0]);
+        biscuit::GPR src = rec.getGPR(&operands[1]);
+        biscuit::GPR count = rec.scratch();
 
-    rec.setGPR(&operands[0], dst);
+        Label zero_count;
 
-    as.Bind(&zero_count);
+        // TODO: optimize rotate with immediate to skip this check
+        biscuit::GPR cf = rec.flag(X86_REF_CF);
+        biscuit::GPR of = rec.flag(X86_REF_OF);
+        as.ANDI(count, src, rec.getBitSize(size) == 64 ? 63 : 31);
+        as.BEQZ(count, &zero_count);
+
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR neg_count = rec.scratch();
+        as.NEG(neg_count, count);
+        as.ANDI(neg_count, neg_count, rec.getBitSize(size) - 1);
+        as.SLL(temp, dst, count);
+        as.SRL(neg_count, dst, neg_count);
+        as.OR(dst, temp, neg_count);
+        as.ANDI(cf, dst, 1);
+        as.SRLI(of, dst, rec.getBitSize(size) - 1);
+        as.XOR(of, of, cf);
+
+        rec.setGPR(&operands[0], dst);
+
+        as.Bind(&zero_count);
+    }
 }
 
-// TODO: optimize me for immediates and no flags like ROL
 FAST_HANDLE(ROR) {
-    x86_size_e size = rec.getSize(&operands[0]);
-    biscuit::GPR dst = rec.getGPR(&operands[0]);
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR count = rec.scratch();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && operands[1].imm.value.u == 0) {
+        WARN("ROR with imm==0?");
+        return;
+    }
 
-    Label zero_count;
+    bool needs_flags = rec.shouldEmitFlag(rip, X86_REF_CF) || rec.shouldEmitFlag(rip, X86_REF_OF);
+    if ((operands[0].size == 32 || operands[0].size == 64) && Extensions::Zicond && g_config.noflag_opts && needs_flags) {
+        biscuit::GPR dst;
+        if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            dst = rec.getGPR(&operands[0], X86_SIZE_QWORD); // don't zext
+        } else {
+            dst = rec.getGPR(&operands[0]);
+        }
 
-    biscuit::GPR cf = rec.flag(X86_REF_CF);
-    biscuit::GPR of = rec.flag(X86_REF_OF);
-    as.ANDI(count, src, rec.getBitSize(size) == 64 ? 63 : 31);
-    as.BEQZ(count, &zero_count);
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE) {
+            if (operands[0].size == 32) {
+                biscuit::GPR result = rec.scratch();
+                as.RORIW(result, dst, operands[1].imm.value.u & 0x1F);
+                as.ZEXTW(result, result);
+                if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                    x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+                    rec.setGPR(ref, X86_SIZE_QWORD, dst);
+                } else {
+                    rec.setGPR(&operands[0], dst);
+                }
+            } else {
+                as.RORI(dst, dst, operands[1].imm.value.u & 0x3F);
+                rec.setGPR(&operands[0], dst);
+            }
+        } else if (operands[0].size == 32) {
+            // We need to do extra work here to make sure not to zero-extend if the rotated count is zero
+            biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // we will mask it ourselves
+            biscuit::GPR masked_src = rec.scratch();
+            biscuit::GPR is_zero = rec.scratch();
+            as.ANDI(masked_src, src, operands[0].size - 1);
+            as.SEQZ(is_zero, masked_src);
+            biscuit::GPR rotated = rec.scratch();
+            as.RORW(rotated, dst, masked_src);
+            as.ZEXTW(rotated, rotated);
 
-    biscuit::GPR temp = rec.scratch();
-    biscuit::GPR neg_count = rec.scratch();
-    as.NEG(neg_count, count);
-    as.ANDI(neg_count, neg_count, rec.getBitSize(size) - 1);
-    as.SRL(temp, dst, count);
-    as.SLL(neg_count, dst, neg_count);
-    as.OR(dst, temp, neg_count);
-    as.SRLI(cf, dst, rec.getBitSize(size) - 1);
-    as.ANDI(cf, cf, 1);
-    as.SRLI(of, dst, rec.getBitSize(size) - 2);
-    as.ANDI(of, of, 1);
-    as.XOR(of, of, cf);
+            biscuit::GPR not_zero = rec.scratch();
+            as.CZERO_EQZ(not_zero, rotated, is_zero);
+            as.CZERO_NEZ(masked_src, dst, is_zero);
+            as.OR(dst, masked_src, not_zero);
 
-    rec.setGPR(&operands[0], dst);
+            if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+                x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
+                rec.setGPR(ref, X86_SIZE_QWORD, dst);
+            } else {
+                rec.setGPR(&operands[0], dst);
+            }
+        } else if (operands[0].size == 64) {
+            biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD); // ROR will mask for us
+            as.ROR(dst, dst, src);
+            rec.setGPR(&operands[0], dst);
+        } else {
+            UNREACHABLE();
+        }
+    } else {
+        x86_size_e size = rec.getSize(&operands[0]);
+        biscuit::GPR dst = rec.getGPR(&operands[0]);
+        biscuit::GPR src = rec.getGPR(&operands[1]);
+        biscuit::GPR count = rec.scratch();
 
-    as.Bind(&zero_count);
+        Label zero_count;
+
+        biscuit::GPR cf = rec.flag(X86_REF_CF);
+        biscuit::GPR of = rec.flag(X86_REF_OF);
+        as.ANDI(count, src, rec.getBitSize(size) == 64 ? 63 : 31);
+        as.BEQZ(count, &zero_count);
+
+        biscuit::GPR temp = rec.scratch();
+        biscuit::GPR neg_count = rec.scratch();
+        as.NEG(neg_count, count);
+        as.ANDI(neg_count, neg_count, rec.getBitSize(size) - 1);
+        as.SRL(temp, dst, count);
+        as.SLL(neg_count, dst, neg_count);
+        as.OR(dst, temp, neg_count);
+        as.SRLI(cf, dst, rec.getBitSize(size) - 1);
+        as.ANDI(cf, cf, 1);
+        as.SRLI(of, dst, rec.getBitSize(size) - 2);
+        as.ANDI(of, of, 1);
+        as.XOR(of, of, cf);
+
+        rec.setGPR(&operands[0], dst);
+
+        as.Bind(&zero_count);
+    }
 }
 
 FAST_HANDLE(PSLLDQ) {
