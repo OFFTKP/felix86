@@ -30,7 +30,7 @@ struct x86_drm_amdgpu_gem_metadata {
 
     x86_drm_amdgpu_gem_metadata(const struct drm_amdgpu_gem_metadata& host) {
         handle = host.handle;
-        op = host.handle;
+        op = host.op;
         data.flags = host.data.flags;
         data.tiling_info = host.data.tiling_info;
         data.data_size_bytes = host.data.data_size_bytes;
