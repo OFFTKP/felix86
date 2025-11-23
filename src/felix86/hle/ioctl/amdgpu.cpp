@@ -8,9 +8,8 @@
 
 int ioctl32_amdgpu(int fd, u32 cmd, u32 args) {
     switch (_IOC_NR(cmd)) {
-        MARSHAL_CASE(DRM_IOCTL_AMDGPU_GEM_METADATA, drm_amdgpu_gem_metadata);
-
         SIMPLE_CASE(DRM_IOCTL_AMDGPU_GEM_CREATE);
+        SIMPLE_CASE(DRM_IOCTL_AMDGPU_GEM_METADATA);
         SIMPLE_CASE(DRM_IOCTL_AMDGPU_GEM_MMAP);
         SIMPLE_CASE(DRM_IOCTL_AMDGPU_CTX);
         SIMPLE_CASE(DRM_IOCTL_AMDGPU_BO_LIST);
