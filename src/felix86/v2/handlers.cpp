@@ -6795,7 +6795,7 @@ FAST_HANDLE(ROL) {
             if (operands[0].size == 32) {
                 biscuit::GPR result = rec.scratch();
                 as.RORIW(result, dst, (32 - operands[1].imm.value.u) & 0x1F);
-                rec.setGPR(&operands[0], dst);
+                rec.setGPR(&operands[0], result);
             } else {
                 as.RORI(dst, dst, (64 - operands[1].imm.value.u) & 0x3F);
                 rec.setGPR(&operands[0], dst);
@@ -6879,7 +6879,7 @@ FAST_HANDLE(ROR) {
             if (operands[0].size == 32) {
                 biscuit::GPR result = rec.scratch();
                 as.RORIW(result, dst, operands[1].imm.value.u & 0x1F);
-                rec.setGPR(&operands[0], dst);
+                rec.setGPR(&operands[0], result);
             } else {
                 as.RORI(dst, dst, operands[1].imm.value.u & 0x3F);
                 rec.setGPR(&operands[0], dst);
