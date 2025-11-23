@@ -699,7 +699,7 @@ int main(int argc, char* argv[]) {
                                     .c_str());
                             (void)result;
                         }
-                        ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted", g_executable_path_absolute.c_str());
+                        ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted", unmodified_executable_path.c_str());
                     } else {
                         ERROR("%s is not in a trusted folder. Please add %s to %s/trusted.txt manually or move executable"
                               " and its libraries inside rootfs",
