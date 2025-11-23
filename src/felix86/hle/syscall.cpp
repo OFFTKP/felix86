@@ -538,11 +538,17 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_dup: {
-        result = SYSCALL(dup, arg1, arg2, arg3, arg4, arg5, arg6);
+        result = SYSCALL(dup, arg1);
+        if (result > 0) {
+            Ioctl32::duplicateFd(arg1, result);
+        }
         break;
     }
     case felix86_riscv64_dup3: {
         result = FD::dup3(arg1, arg2, arg3);
+        if (result > 0) {
+            Ioctl32::duplicateFd(arg1, result);
+        }
         break;
     }
     case felix86_riscv64_fstat: {
@@ -2320,9 +2326,15 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
                 result = ::fcntl(fd, F_SETLKW, &host_flock);
                 break;
             }
-            case F_SETFL:
             case F_DUPFD:
-            case F_DUPFD_CLOEXEC:
+            case F_DUPFD_CLOEXEC: {
+                result = ::fcntl(arg1, arg2, arg3);
+                if (result > 0) {
+                    Ioctl32::duplicateFd(fd, result);
+                }
+                break;
+            }
+            case F_SETFL:
             case F_GETFD:
             case F_SETFD:
             case F_GETFL:
@@ -2715,6 +2727,9 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
         }
         case felix86_x86_32_dup2: {
             result = FD::dup2(arg1, arg2);
+            if (result > 0) {
+                Ioctl32::duplicateFd(arg1, result);
+            }
             break;
         }
         case felix86_x86_32_recvmmsg: {

@@ -71,6 +71,13 @@ void Ioctl32::registerFd(int fd, const std::string& name) {
     handler_map[fd] = type;
 }
 
+void Ioctl32::duplicateFd(int fd, int new_fd) {
+    auto it = handler_map.find(fd);
+    if (it != handler_map.end()) {
+        handler_map[fd] = it->second;
+    }
+}
+
 ioctl_handler_type Ioctl32::getHandler(int fd) {
     auto guard = g_process_globals.states_lock.lock();
     if (handler_map.find(fd) != handler_map.end()) {
