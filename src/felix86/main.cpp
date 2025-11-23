@@ -624,7 +624,6 @@ int main(int argc, char* argv[]) {
                 }
 
                 for (const auto& fake_mount : g_fake_mounts) {
-                    printf("%s %s\n", canonical_path.c_str(), fake_mount.src_path.c_str());
                     if (is_subpath(canonical_path, fake_mount.src_path)) {
                         // Path is in trusted folder, transform to path that is inside rootfs
                         std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
@@ -700,7 +699,7 @@ int main(int argc, char* argv[]) {
                                     .c_str());
                             (void)result;
                         }
-                        ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted");
+                        ERROR("%s needs to be moved inside the rootfs or a parent folder needs to be trusted", g_executable_path_absolute.c_str());
                     } else {
                         ERROR("%s is not in a trusted folder. Please add %s to %s/trusted.txt manually or move executable"
                               " and its libraries inside rootfs",
