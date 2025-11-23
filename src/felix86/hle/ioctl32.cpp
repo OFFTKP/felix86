@@ -72,12 +72,10 @@ void Ioctl32::registerFd(int fd, const std::string& name) {
 }
 
 void Ioctl32::duplicateFd(int fd, int new_fd) {
-    WARN("Duplicating %d %d", fd, new_fd);
     auto guard = g_process_globals.states_lock.lock();
     auto it = handler_map.find(fd);
     if (it != handler_map.end()) {
-        WARN("Fnd");
-        handler_map[fd] = it->second;
+        handler_map[new_fd] = it->second;
     }
 }
 
