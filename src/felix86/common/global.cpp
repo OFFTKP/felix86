@@ -281,13 +281,6 @@ void initialize_globals() {
         g_mounts_path = mounts_path;
     }
 
-    if (g_mounts_path.empty()) {
-        char templ[] = "/tmp/.f86.mnt.XXXXXX";
-        char* path = mkdtemp(templ);
-        ASSERT_MSG(path == templ, "Failed to mkdtemp for mounts directory?");
-        g_mounts_path = path;
-    }
-
     const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
     if (guest_rootfs) {
         g_config.rootfs_path = guest_rootfs;
@@ -381,8 +374,6 @@ void initialize_globals() {
         }
         exit(1);
     }
-
-    ASSERT_MSG(!g_mounts_path.empty(), "Mounts path is empty?");
 
     if (!std::filesystem::exists(g_config.rootfs_path)) {
         ERROR("Rootfs path does <%s> not exist", g_config.rootfs_path.c_str());
