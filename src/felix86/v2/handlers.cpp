@@ -7212,9 +7212,9 @@ FAST_HANDLE(MASKMOVDQU) {
     biscuit::Vec data = rec.getVec(&operands[0]);
     biscuit::Vec mask = rec.getVec(&operands[1]);
     biscuit::GPR imm = rec.scratch();
-    as.LI(imm, 0x80);
+    as.LI(imm, 0x7F);
     rec.setVectorState(SEW::E8, 16);
-    as.VMSGTU(v0, mask, 0x7F); // >= 0x80 -> bit 7 set in element
+    as.VMSGTU(v0, mask, imm); // >= 0x80 -> bit 7 set in element
     as.VSE8(data, address, VecMask::Yes);
 }
 
