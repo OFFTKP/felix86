@@ -78,6 +78,7 @@ jobs:
           path: ./test/
       - name: Test
         run: |
+          echo $RUNNER_TEMP
           chmod +x ./test/felix86_test
           chmod +x ./test/felix86
           FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
