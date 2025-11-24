@@ -82,3 +82,11 @@ jobs:
           chmod +x ./test/felix86
           FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
           ./test/felix86 -k
+          FELIX86PATH=$(pwd)/test/felix86
+          TEMPDIR=$(mktemp)
+          git -C $TEMPDIR/tests clone https://github.com/felix86-emu/binary_tests
+          cd $TEMPDIR/tests
+          mkdir binaries
+          bash ./install-tests.sh $TEMPDIR/tests/binaries
+          bash ./run-tests.sh $FELIX86PATH $TEMPDIR/tests/binaries
+
