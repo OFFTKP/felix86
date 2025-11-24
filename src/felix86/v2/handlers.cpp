@@ -7001,7 +7001,6 @@ FAST_HANDLE(PSLLW) {
         as.VMV_XS(count, src); // for some reason, bits 0-63 need to be considered for the shift
         rec.setVectorState(SEW::E16, 8);
         // Make a mask to zero elements if shift is >= 16
-        as.VMV_XS(count, src);
         as.SLTIU(mask, count, 16);
         as.NEG(mask, mask);
         as.VSLL(shifted, dst, count);
