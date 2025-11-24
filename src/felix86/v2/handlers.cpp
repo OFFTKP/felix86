@@ -6996,6 +6996,8 @@ FAST_HANDLE(PSLLW) {
         biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 2);
+        as.VMV_XS(count, src); // for some reason, bits 0-63 need to be considered for the shift
         rec.setVectorState(SEW::E16, 8);
         // Make a mask to zero elements if shift is >= 16
         as.VMV_XS(count, src);
@@ -7053,14 +7055,16 @@ FAST_HANDLE(PSLLD) {
     } else {
         biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
+        biscuit::Vec shifted = rec.scratchVec();
         biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 2);
+        as.VMV_XS(count, src); // for some reason, bits 0-63 need to be considered for the shift
         rec.setVectorState(SEW::E32, 4);
         // Make a mask to zero elements if shift is >= 32
-        as.VMV_XS(count, src);
         as.SLTIU(mask, count, 32);
         as.NEG(mask, mask);
-        as.VSLL(dst, dst, count);
-        as.VAND(dst, dst, mask);
+        as.VSLL(shifted, dst, count);
+        as.VAND(dst, shifted, mask);
         rec.setVec(&operands[0], dst);
     }
 }
@@ -7080,9 +7084,10 @@ FAST_HANDLE(PSRLD) {
         biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 2);
+        as.VMV_XS(count, src); // for some reason, bits 0-63 need to be considered for the shift
         rec.setVectorState(SEW::E32, 4);
         // Make a mask to zero elements if shift is >= 32
-        as.VMV_XS(count, src);
         as.SLTIU(mask, count, 32);
         as.NEG(mask, mask);
         as.VSRL(dst, dst, count);
@@ -7106,9 +7111,10 @@ FAST_HANDLE(PSRLW) {
         biscuit::GPR count = rec.scratch();
         biscuit::GPR mask = rec.scratch();
         biscuit::Vec src = rec.getVec(&operands[1]);
+        rec.setVectorState(SEW::E64, 2);
+        as.VMV_XS(count, src); // for some reason, bits 0-63 need to be considered for the shift
         rec.setVectorState(SEW::E16, 8);
         // Make a mask to zero elements if shift is >= 16
-        as.VMV_XS(count, src);
         as.SLTIU(mask, count, 16);
         as.NEG(mask, mask);
         as.VSRL(dst, dst, count);
