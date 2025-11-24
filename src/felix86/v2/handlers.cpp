@@ -7207,6 +7207,17 @@ FAST_HANDLE(PSRAD) {
     rec.setVec(&operands[0], dst);
 }
 
+FAST_HANDLE(MASKMOVDQU) {
+    biscuit::GPR address = rec.getGPR(X86_REF_RDI, X86_SIZE_QWORD);
+    biscuit::Vec data = rec.getVec(&operands[0]);
+    biscuit::Vec mask = rec.getVec(&operands[1]);
+    biscuit::GPR imm = rec.scratch();
+    as.LI(imm, 0x80);
+    rec.setVectorState(SEW::E8, 16);
+    as.VMSGTU(v0, mask, 0x7F); // >= 0x80 -> bit 7 set in element
+    as.VSE8(data, address, VecMask::Yes);
+}
+
 FAST_HANDLE(SFENCE) {
     as.FENCE(FenceOrder::RW, FenceOrder::RW); // just make a full fence for now, TODO: we can optimize this some day
 }
