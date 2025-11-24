@@ -85,8 +85,8 @@ jobs:
           FELIX86PATH=$(pwd)/test/felix86
           TEMPDIR=$(mktemp -d)
           git clone https://github.com/felix86-emu/binary_tests $TEMPDIR/tests
-          mkdir -p $TEMPDIR/binaries
           cd $TEMPDIR/tests
           bash ./install-tests.sh $TEMPDIR/binaries
           bash ./run-tests.sh $FELIX86PATH $TEMPDIR/binaries
+          rm -rf $TEMPDIR/binaries
 
