@@ -601,8 +601,8 @@ void felix86_mpsadbw(u8* dst, u8* src, u8 imm) {
     uint16_t dst_offset = ((imm >> 2) & 1) * 4;
     u8* src_shifted = src + src_offset;
     u8* dst_shifted = dst + dst_offset;
-    i8 dst_bytes[10];
-    i8 src_bytes[4];
+    int dst_bytes[10];
+    int src_bytes[4];
     for (int i = 0; i < 4; i++) {
         src_bytes[i] = src_shifted[i];
     }
