@@ -83,10 +83,8 @@ jobs:
           FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
           ./test/felix86 -k
           FELIX86PATH=$(pwd)/test/felix86
-          TEMPDIR=$(mktemp -d)
-          git clone https://github.com/felix86-emu/binary_tests $TEMPDIR/tests
-          cd $TEMPDIR/tests
-          bash ./install-tests.sh $TEMPDIR/binaries
-          bash ./run-tests.sh $FELIX86PATH $TEMPDIR/binaries
-          rm -rf $TEMPDIR/binaries
+          git clone https://github.com/felix86-emu/binary_tests $RUNNER_TEMP/tests
+          cd $RUNNER_TEMP/tests
+          bash ./install-tests.sh $RUNNER_TEMP/binaries
+          bash ./run-tests.sh $FELIX86PATH $RUNNER_TEMP/binaries
 
