@@ -612,10 +612,10 @@ void felix86_mpsadbw(u8* dst, u8* src, u8 imm) {
 
     u16* dst_16 = (u16*)dst;
     for (int i = 0; i < 8; i++) {
-        i16 temp0 = std::abs(dst_bytes[i + 0] - src_bytes[0]);
-        i16 temp1 = std::abs(dst_bytes[i + 1] - src_bytes[1]);
-        i16 temp2 = std::abs(dst_bytes[i + 2] - src_bytes[2]);
-        i16 temp3 = std::abs(dst_bytes[i + 3] - src_bytes[3]);
+        int temp0 = std::abs(dst_bytes[i + 0] - src_bytes[0]);
+        int temp1 = std::abs(dst_bytes[i + 1] - src_bytes[1]);
+        int temp2 = std::abs(dst_bytes[i + 2] - src_bytes[2]);
+        int temp3 = std::abs(dst_bytes[i + 3] - src_bytes[3]);
         dst_16[i] = temp0 + temp1 + temp2 + temp3;
     }
 }
