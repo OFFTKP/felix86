@@ -158,6 +158,7 @@ static_assert(sizeof(XmmReg) == 16);
     X(felix86_fxsave)                                                                                                                                \
     X(felix86_fxrstor)                                                                                                                               \
     X(felix86_pcmpxstrx)                                                                                                                             \
+    X(felix86_mpsadbw)                                                                                                                               \
     X(felix86_crash_and_burn)
 
 // TODO: Please make me standard layout type? offsetof warnings...

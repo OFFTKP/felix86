@@ -595,6 +595,31 @@ void felix86_psadbw(u8* dst, u8* src) {
     dst64[1] = (u16)result2;
 }
 
+void felix86_mpsadbw(u8* dst, u8* src, u8 imm) {
+    WARN("Interpreting MPSADBW");
+    uint16_t src_offset = (imm & 0b11) * 4;
+    uint16_t dst_offset = ((imm >> 2) & 1) * 4;
+    u8* src_shifted = src + src_offset;
+    u8* dst_shifted = dst + dst_offset;
+    i8 dst_bytes[10];
+    i8 src_bytes[4];
+    for (int i = 0; i < 4; i++) {
+        src_bytes[i] = src_shifted[i];
+    }
+    for (int i = 0; i < 10; i++) {
+        dst_bytes[i] = dst_shifted[i];
+    }
+
+    u16* dst_16 = (u16*)dst;
+    for (int i = 0; i < 8; i++) {
+        i16 temp0 = std::abs(dst_bytes[i + 0] - src_bytes[0]);
+        i16 temp1 = std::abs(dst_bytes[i + 1] - src_bytes[1]);
+        i16 temp2 = std::abs(dst_bytes[i + 2] - src_bytes[2]);
+        i16 temp3 = std::abs(dst_bytes[i + 3] - src_bytes[3]);
+        dst_16[i] = temp0 + temp1 + temp2 + temp3;
+    }
+}
+
 void dump_states() {
     if (!g_config.calltrace) {
         printf("Enable FELIX86_CALLTRACE to see the calltrace\n");

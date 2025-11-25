@@ -9898,6 +9898,20 @@ FAST_HANDLE(PSADBW) {
     }
 }
 
+FAST_HANDLE(MPSADBW) {
+    rec.writebackState();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        as.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[1].reg.value) - X86_REF_XMM0));
+    } else {
+        biscuit::GPR address = rec.lea(&operands[1]);
+        as.MV(a1, address);
+    }
+    as.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[0].reg.value) - X86_REF_XMM0));
+    as.LI(a2, rec.getImmediate(&operands[2]));
+    rec.callPointer(offsetof(ThreadState, felix86_mpsadbw));
+    rec.restoreState();
+}
+
 FAST_HANDLE(PAVGB) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);

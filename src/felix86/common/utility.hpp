@@ -100,6 +100,7 @@ bool felix86_btr(u64 address, i64 offset);
 bool felix86_btc(u64 address, i64 offset);
 bool felix86_bt(u64 address, i64 offset);
 void felix86_psadbw(u8* dst, u8* src);
+void felix86_mpsadbw(u8* dst, u8* src, u8 imm);
 
 void felix86_fsin(ThreadState* state);
 void felix86_fcos(ThreadState* state);
