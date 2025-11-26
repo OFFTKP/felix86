@@ -6312,13 +6312,18 @@ FAST_HANDLE(PSHUFHW) {
 }
 
 FAST_HANDLE(PALIGNR) {
+    int elements = operands[0].size / 8;
+    u8 imm = rec.getImmediate(&operands[2]);
+    if (imm == elements) {
+        WARN("palingr is nop?");
+        return;
+    }
+
     biscuit::Vec group = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    u8 imm = rec.getImmediate(&operands[2]);
 
-    int elements = operands[0].size / 8;
-    if (imm > elements * 2) {
+    if (imm >= elements * 2) {
         rec.setVectorState(SEW::E8, elements);
         as.VXOR(dst, dst, dst);
         rec.setVec(&operands[0], dst);
