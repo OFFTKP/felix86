@@ -6334,7 +6334,7 @@ FAST_HANDLE(PALIGNR) {
 
     if (imm > elements) {
         as.VXOR(result, result, result);
-        as.VSLIDEDOWN(result, dst, imm);
+        as.VSLIDEDOWN(result, dst, elements - imm);
     } else {
         as.VSLIDEDOWN(result, src, imm);
         as.VSLIDEUP(result, dst, elements - imm);
