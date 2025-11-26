@@ -6334,6 +6334,7 @@ FAST_HANDLE(PALIGNR) {
 
     if (imm > elements) {
         as.VXOR(result, result, result);
+        rec.setVectorState(SEW::E8, imm - elements);
         as.VSLIDEDOWN(result, dst, imm - elements);
     } else {
         as.VSLIDEDOWN(result, src, imm);
