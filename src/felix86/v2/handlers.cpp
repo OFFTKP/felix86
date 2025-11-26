@@ -6333,6 +6333,7 @@ FAST_HANDLE(PALIGNR) {
 
     biscuit::GPR temp = rec.scratch();
     as.VSETVLI(temp, x0, SEW::E8, biscuit::LMUL::M2);
+    as.VMV(group, 0);
     as.VMV1R(group, src);
     as.VMV1R(group2, dst);
     as.VSLIDEUP(group, group2, elements);
