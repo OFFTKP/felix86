@@ -6338,6 +6338,7 @@ FAST_HANDLE(PALIGNR) {
     as.VSLIDEUP(group, group2, elements);
     as.VSLIDEDOWN(group2, group, imm);
 
+    rec.setVectorState(SEW::E64, 2);
     rec.setVec(&operands[0], group2);
 }
 
