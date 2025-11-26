@@ -156,34 +156,18 @@
         "disassembly": "pshufb xmm1, [rdi]"
     },
     "660f3a0fd30a": {
-        "instruction_count": 11,
+        "instruction_count": 4,
         "expected_asm": [
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0xffffffc0(-64)",
-            "VMV.S.X         v0, ra",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VMV.V.I         v26, 0x0(0)",
-            "VSLIDEDOWN.VI   v26, v5, 0xa(10), none",
-            "VAND.VI         v26, v26, 0x0(0), v0.t",
-            "VMV.V.I         v27, 0x0(0)",
-            "VSLIDEUP.VI     v27, v4, 0x6(6), none",
-            "VOR.VV          v26, v26, v27, none",
-            "VMV.V.V         v4, v26"
+            "VSETIVLI        zero, 16, e8, m2, tu, mu",
+            "VMV.V.V         v26, v5",
+            "VSLIDEUP.VI     v26, v4, 0xfffffff0(-16), none",
+            "VSLIDEDOWN.VI   v4, v26, 0xa(10), none"
         ],
         "disassembly": "palignr xmm2, xmm3, 0x0A"
     },
     "660f3a0fd310": {
-        "instruction_count": 8,
-        "expected_asm": [
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "LUI             ra, 0xfffffff0(-16)",
-            "VMV.S.X         v0, ra",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VMV.V.I         v26, 0x0(0)",
-            "VSLIDEDOWN.VI   v26, v4, 0x0(0), none",
-            "VAND.VI         v26, v26, 0x0(0), v0.t",
-            "VMV.V.V         v4, v26"
-        ],
+        "instruction_count": 0,
+        "expected_asm": [],
         "disassembly": "palignr xmm2, xmm3, 0x10"
     }
 }

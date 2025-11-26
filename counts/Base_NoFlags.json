@@ -3227,7 +3227,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "RORIW           ra, a2, 0x1f(31)",
-            "ADD.UW          a2, a2, zero"
+            "ADD.UW          a2, ra, zero"
         ],
         "disassembly": "rol edx, 0x01"
     },
@@ -3309,7 +3309,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "RORIW           ra, a2, 0x1(1)",
-            "ADD.UW          a2, a2, zero"
+            "ADD.UW          a2, ra, zero"
         ],
         "disassembly": "rol edx, 0x3F"
     },
@@ -3394,8 +3394,8 @@
             "SLTIU           t1, ra, 0x1(1)",
             "ROLW            t3, a2, ra",
             "ADD.UW          t3, t3, zero",
-            "CZERO.EQZ       t4, t3, t1",
-            "CZERO.NEZ       ra, a2, t1",
+            "CZERO.EQZ       t4, a2, t1",
+            "CZERO.NEZ       ra, t3, t1",
             "OR              a2, ra, t4"
         ],
         "disassembly": "rol edx, cl"
@@ -3450,7 +3450,7 @@
         "expected_asm": [
             "LWU             ra, a0, 0x0(0)",
             "RORIW           t3, ra, 0x1f(31)",
-            "SW              ra, a0, 0x0(0)"
+            "SW              t3, a0, 0x0(0)"
         ],
         "disassembly": "rol dword ptr [rdi], 0x01"
     },
@@ -3506,7 +3506,7 @@
         "expected_asm": [
             "LWU             ra, a0, 0x0(0)",
             "RORIW           t3, ra, 0x1(1)",
-            "SW              ra, a0, 0x0(0)"
+            "SW              t3, a0, 0x0(0)"
         ],
         "disassembly": "rol dword ptr [rdi], 0x3F"
     },
@@ -3565,8 +3565,8 @@
             "SLTIU           t4, t3, 0x1(1)",
             "ROLW            t2, ra, t3",
             "ADD.UW          t2, t2, zero",
-            "CZERO.EQZ       t5, t2, t4",
-            "CZERO.NEZ       t3, ra, t4",
+            "CZERO.EQZ       t5, ra, t4",
+            "CZERO.NEZ       t3, t2, t4",
             "OR              ra, t3, t5",
             "SW              ra, a0, 0x0(0)"
         ],
@@ -3658,7 +3658,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "RORIW           ra, a2, 0x1(1)",
-            "ADD.UW          a2, a2, zero"
+            "ADD.UW          a2, ra, zero"
         ],
         "disassembly": "ror edx, 0x01"
     },
@@ -3746,7 +3746,7 @@
         "instruction_count": 2,
         "expected_asm": [
             "RORIW           ra, a2, 0x1f(31)",
-            "ADD.UW          a2, a2, zero"
+            "ADD.UW          a2, ra, zero"
         ],
         "disassembly": "ror edx, 0x3F"
     },
@@ -3837,8 +3837,8 @@
             "SLTIU           t1, ra, 0x1(1)",
             "RORW            t3, a2, ra",
             "ADD.UW          t3, t3, zero",
-            "CZERO.EQZ       t4, t3, t1",
-            "CZERO.NEZ       ra, a2, t1",
+            "CZERO.EQZ       t4, a2, t1",
+            "CZERO.NEZ       ra, t3, t1",
             "OR              a2, ra, t4"
         ],
         "disassembly": "ror edx, cl"
@@ -3897,7 +3897,7 @@
         "expected_asm": [
             "LWU             ra, a0, 0x0(0)",
             "RORIW           t3, ra, 0x1(1)",
-            "SW              ra, a0, 0x0(0)"
+            "SW              t3, a0, 0x0(0)"
         ],
         "disassembly": "ror dword ptr [rdi], 0x01"
     },
@@ -3957,7 +3957,7 @@
         "expected_asm": [
             "LWU             ra, a0, 0x0(0)",
             "RORIW           t3, ra, 0x1f(31)",
-            "SW              ra, a0, 0x0(0)"
+            "SW              t3, a0, 0x0(0)"
         ],
         "disassembly": "ror dword ptr [rdi], 0x3F"
     },
@@ -4020,8 +4020,8 @@
             "SLTIU           t4, t3, 0x1(1)",
             "RORW            t2, ra, t3",
             "ADD.UW          t2, t2, zero",
-            "CZERO.EQZ       t5, t2, t4",
-            "CZERO.NEZ       t3, ra, t4",
+            "CZERO.EQZ       t5, ra, t4",
+            "CZERO.NEZ       t3, t2, t4",
             "OR              ra, t3, t5",
             "SW              ra, a0, 0x0(0)"
         ],
