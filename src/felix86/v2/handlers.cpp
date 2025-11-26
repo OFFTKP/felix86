@@ -6335,9 +6335,9 @@ FAST_HANDLE(PALIGNR) {
     as.VMV1R(group, src);
     as.VMV1R(group2, dst);
     as.VSLIDEUP(group, group2, elements);
-    as.VSLIDEDOWN(dst, group, imm);
+    as.VSLIDEDOWN(group2, group, imm);
 
-    rec.setVec(&operands[0], dst);
+    rec.setVec(&operands[0], group2);
 }
 
 FAST_HANDLE(BSF) {
