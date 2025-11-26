@@ -1651,7 +1651,7 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     current_grouping = grouping;
 
     // TODO: One day when we have chips that perform better with VTA::Yes, enable it
-    if (!Extensions::Xtheadvector) {
+    if (!Extensions::Xtheadvector && vlen <= 31) {
         as.VSETIVLI(x0, vlen, sew, grouping, VTA::No, VMA::No);
     } else {
         biscuit::GPR vl = scratch();
