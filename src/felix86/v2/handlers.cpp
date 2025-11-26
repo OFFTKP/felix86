@@ -6320,6 +6320,7 @@ FAST_HANDLE(PALIGNR) {
     }
 
     biscuit::Vec group = rec.scratchVecM2();
+    biscuit::Vec group2 = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
 
@@ -6332,7 +6333,8 @@ FAST_HANDLE(PALIGNR) {
 
     rec.setVectorState(SEW::E8, elements, biscuit::LMUL::M2);
     as.VMV1R(group, src);
-    as.VSLIDEUP(group, dst, elements);
+    as.VMV1R(group2, dst);
+    as.VSLIDEUP(group, group2, elements);
     as.VSLIDEDOWN(dst, group, imm);
 
     rec.setVec(&operands[0], dst);
