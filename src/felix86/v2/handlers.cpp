@@ -6331,7 +6331,7 @@ FAST_HANDLE(PALIGNR) {
     }
 
     rec.setVectorState(SEW::E8, elements, biscuit::LMUL::M2);
-    as.VMV(group, src);
+    as.VMV1R(group, src);
     as.VSLIDEUP(group, dst, elements);
     as.VSLIDEDOWN(dst, group, imm);
 
