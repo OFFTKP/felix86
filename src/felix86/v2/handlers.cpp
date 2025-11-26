@@ -6319,8 +6319,6 @@ FAST_HANDLE(PALIGNR) {
         return;
     }
 
-    biscuit::Vec group = rec.scratchVecM2();
-    biscuit::Vec group2 = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
 
@@ -6331,18 +6329,17 @@ FAST_HANDLE(PALIGNR) {
         return;
     }
 
-    biscuit::GPR temp = rec.scratch();
-    as.VSETVLI(temp, x0, SEW::E8, biscuit::LMUL::M2);
-    as.VMV(group, 0);
-    as.VMV(group2, 0);
-    as.VMV1R(group, src);
-    as.VMV1R(group2, dst);
-    as.VSLIDEUP(group, group2, elements);
-    as.VMV(group2, 0);
-    as.VSLIDEDOWN(group2, group, imm);
+    biscuit::Vec result = rec.scratchVec();
+    rec.setVectorState(SEW::E8, 16);
 
-    rec.setVectorState(SEW::E64, 2);
-    rec.setVec(&operands[0], group2);
+    if (imm > elements) {
+        as.VXOR(result, result, result);
+        as.VSLIDEDOWN(result, dst, imm);
+    } else {
+        as.VSLIDEDOWN(result, src, imm);
+        as.VSLIDEUP(result, dst, elements - imm);
+    }
+    rec.setVec(&operands[0], result);
 }
 
 FAST_HANDLE(BSF) {
