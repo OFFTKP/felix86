@@ -1104,8 +1104,8 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     bool implicit = !(((u8)type >> 1) & 1);
     bool index = !(((u8)type) & 1);
 
-    int dst_length;
-    int src_length;
+    i64 dst_length;
+    i64 src_length;
 
     Mode mode = (Mode)((control >> 2) & 0b11);
     Polarity polarity = (Polarity)((control >> 4) & 0b11);
@@ -1135,11 +1135,16 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
             }
         }
     } else {
-        dst_length = (int)state->gprs[0]; // eax
-        src_length = (int)state->gprs[2]; // edx
+        dst_length = (i64)state->gprs[0]; // eax
+        src_length = (i64)state->gprs[2]; // edx
 
-        ASSERT(dst_length >= 0);
-        ASSERT(src_length >= 0);
+        if (std::abs(dst_length) > Count) {
+            dst_length = Count;
+        }
+
+        if (std::abs(dst_length) > Count) {
+            src_length = Count;
+        }
     }
 
     for (int j = 0; j < Count; j++) {
