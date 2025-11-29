@@ -1053,7 +1053,7 @@ void felix86_fpatan(ThreadState* state) {
 void felix86_f2xm1(ThreadState* state) {
     double st0;
     memcpy(&st0, &state->fp[TOP(0)], sizeof(double));
-    double result = ::expm1(M_LN2 * st0);
+    double result = ::exp2m1(st0);
     memcpy(&state->fp[TOP(0)], &result, sizeof(double));
 }
 
@@ -1081,7 +1081,7 @@ void felix86_fyl2xp1(ThreadState* state) {
     double st0, st1;
     memcpy(&st0, &state->fp[TOP(0)], sizeof(double));
     memcpy(&st1, &state->fp[TOP(1)], sizeof(double));
-    double result = (st1 * log1p(st0)) / M_LN2;
+    double result = st1 * log2p1(st0);
     memcpy(&state->fp[TOP(1)], &result, sizeof(double));
 }
 
