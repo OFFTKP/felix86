@@ -13,7 +13,7 @@ Run the following command:
 bash <(curl -s https://install.felix86.com)
 ```
 
-This command downloads and runs the installer script, which fetches the latest felix86 artifact and lets you either download a rootfs or use your own.
+This command downloads and runs a script which installs felix86 and a rootfs of your choice.
 
 [Read the usage guide](./docs/how-to-use.md) for more information.
 
@@ -23,14 +23,12 @@ Feel free to join our **Discord server**: [https://discord.gg/TgBxgFwByU](https:
 
 ## Features
 - Just-in-Time (JIT) recompiler
-- Uses the RISC-V Vector Extension for SSE instructions
-- Utilizes the B extension, if available, for bit manipulation instructions like `bsr`
-- Supports a variety of optional extensions, such as XThead custom extensions
+- Uses the RISC-V Vector Extension for SSE instructions up to SSE 4.2
+- Utilizes many standard extensions such as `B`, `Zicond`, `Zacas` and others
+- Supports a variety of custom extensions
 - Can use the host libraries in some cases for improved performance
 
 ## Compatibility
-felix86 is in the early stages of development.
-
 A compatibility list can be found here: https://felix86.com/compat
 
 ## Dependencies
@@ -43,6 +41,9 @@ felix86 relies on several great projects:
 - [fmt](https://github.com/fmtlib/fmt) for string formatting
 - [nlohmann/json](https://github.com/nlohmann/json) for JSON parsing
 - [toml11](https://github.com/ToruNiina/toml11) for TOML parsing
+
+We also use binary tests from other projects to verify correct behavior and prevent regressions.    
+[You can find these tests here.](https://github.com/felix86-emu/binary_tests)
 
 ## Why?
 felix86 was started for several reasons, including:
