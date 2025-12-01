@@ -284,47 +284,13 @@ void initialize_globals() {
 
     const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
     if (guest_rootfs) {
+        g_original_rootfs = g_config.rootfs_path;
         g_config.rootfs_path = guest_rootfs;
     } else {
         ASSERT(!g_execve_process);
         ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
 
-        auto add_fake_mount = [](const std::filesystem::path& host_path, const std::filesystem::path& guest_path) {
-            std::error_code ec;
-            std::filesystem::create_directories(guest_path, ec);
-            if (ec) {
-                return false;
-            }
-
-            FakeMountNode node;
-            node.src_path = host_path;
-            node.dst_path = guest_path;
-
-            int result = ::statx(AT_FDCWD, host_path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &node.src_stat);
-            if (result != 0) {
-                return false;
-            }
-
-            result = ::statx(AT_FDCWD, guest_path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &node.dst_stat);
-            if (result != 0) {
-                return false;
-            }
-
-            result = open(host_path.c_str(), O_PATH | O_DIRECTORY);
-            if (result == -1) {
-                return false;
-            }
-
-            node.src_fd = FD::moveToHighNumber(result);
-            FD::protect(node.src_fd);
-            return true;
-        };
-
-        ASSERT_MSG(add_fake_mount("/dev", g_config.rootfs_path / "dev"), "Failed to fake-mount /dev");
-        ASSERT_MSG(add_fake_mount("/proc", g_config.rootfs_path / "proc"), "Failed to fake-mount /proc");
-        ASSERT_MSG(add_fake_mount("/sys", g_config.rootfs_path / "sys"), "Failed to fake-mount /sys");
-        ASSERT_MSG(add_fake_mount("/run", g_config.rootfs_path / "run"), "Failed to fake-mount /run");
-        ASSERT_MSG(add_fake_mount("/tmp", g_config.rootfs_path / "tmp"), "Failed to fake-mount /tmp");
+        g_original_rootfs = g_config.rootfs_path;
 
         // Running for the first time, and we don't have a __FELIX86_ROOTFS set
         // This means we need to mount everything and set it as the rootfs path
@@ -403,6 +369,44 @@ void initialize_globals() {
         //            "felix86-mounter didn't create us a 'mounts' directory?");
         // g_mounts_path = g_config.rootfs_path.parent_path() / "mounts";
     }
+
+    auto add_fake_mount = [](const std::filesystem::path& host_path, const std::filesystem::path& guest_path) {
+        std::error_code ec;
+        std::filesystem::create_directories(guest_path, ec);
+        if (ec) {
+            return false;
+        }
+
+        FakeMountNode node;
+        node.src_path = host_path;
+        node.dst_path = guest_path;
+
+        int result = ::statx(AT_FDCWD, host_path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &node.src_stat);
+        if (result != 0) {
+            return false;
+        }
+
+        result = ::statx(AT_FDCWD, guest_path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &node.dst_stat);
+        if (result != 0) {
+            return false;
+        }
+
+        result = open(host_path.c_str(), O_PATH | O_DIRECTORY);
+        if (result == -1) {
+            return false;
+        }
+
+        node.src_fd = FD::moveToHighNumber(result);
+        FD::protect(node.src_fd);
+        g_fake_mounts.push_back(node);
+        return true;
+    };
+
+    ASSERT_MSG(add_fake_mount("/dev", g_original_rootfs / "dev"), "Failed to fake-mount /dev");
+    ASSERT_MSG(add_fake_mount("/proc", g_original_rootfs / "proc"), "Failed to fake-mount /proc");
+    ASSERT_MSG(add_fake_mount("/sys", g_original_rootfs / "sys"), "Failed to fake-mount /sys");
+    ASSERT_MSG(add_fake_mount("/run", g_original_rootfs / "run"), "Failed to fake-mount /run");
+    ASSERT_MSG(add_fake_mount("/tmp", g_original_rootfs / "tmp"), "Failed to fake-mount /tmp");
 
     if (g_config.rootfs_path.empty()) {
         printf("Rootfs path is empty. Please run `felix86 -s <rootfs_path>` or set the rootfs_path variable in %s\n", g_config.path().c_str());
