@@ -24,7 +24,7 @@ struct x86_linux_dirent {
     char d_name[];
 };
 
-static_assert(std::is_trivial_v<x86_linux_dirent>);
+static_assert(std::is_trivially_copyable_v<x86_linux_dirent>);
 static_assert(sizeof(x86_linux_dirent) == 24);
 
 struct x86_sigset_argpack {
@@ -207,7 +207,7 @@ struct x86_sysinfo {
 };
 
 static_assert(sizeof(x86_sysinfo) == 64);
-static_assert(std::is_trivial_v<x86_sysinfo>);
+static_assert(std::is_trivially_copyable_v<x86_sysinfo>);
 
 struct __attribute__((packed)) x86_stat64 {
     u64 st_dev;
@@ -336,7 +336,7 @@ struct __attribute__((packed)) x86_stat {
     [[maybe_unused]] i64 unused[3];
 };
 
-static_assert(std::is_trivial<x86_stat>::value);
+static_assert(std::is_trivially_copyable<x86_stat>::value);
 static_assert(sizeof(x86_stat) == 144);
 
 struct x64_ipc_perm {
@@ -380,7 +380,7 @@ struct x64_ipc_perm {
     }
 };
 
-static_assert(std::is_trivial<x64_ipc_perm>::value);
+static_assert(std::is_trivially_copyable<x64_ipc_perm>::value);
 static_assert(sizeof(x64_ipc_perm) == 48);
 
 struct x64_semid64_ds {
@@ -411,7 +411,7 @@ struct x64_semid64_ds {
     }
 };
 
-static_assert(std::is_trivial<x64_semid64_ds>::value);
+static_assert(std::is_trivially_copyable<x64_semid64_ds>::value);
 static_assert(sizeof(x64_semid64_ds) == 104);
 
 struct __attribute__((packed)) x86_flock64 {
@@ -442,7 +442,7 @@ struct __attribute__((packed)) x86_flock64 {
     }
 };
 
-static_assert(std::is_trivial<x86_flock64>::value);
+static_assert(std::is_trivially_copyable<x86_flock64>::value);
 static_assert(sizeof(x86_flock64) == 24);
 
 struct __attribute__((packed)) x86_flock {
@@ -473,7 +473,7 @@ struct __attribute__((packed)) x86_flock {
     }
 };
 
-static_assert(std::is_trivial<x86_flock>::value);
+static_assert(std::is_trivially_copyable<x86_flock>::value);
 static_assert(sizeof(x86_flock) == 16);
 
 struct x86_cmsghdr {
@@ -483,7 +483,7 @@ struct x86_cmsghdr {
     u8 cmsg_data[0]; // variable sized
 };
 
-static_assert(std::is_trivial<x86_cmsghdr>::value);
+static_assert(std::is_trivially_copyable<x86_cmsghdr>::value);
 static_assert(sizeof(x86_cmsghdr) == 12);
 
 struct x86_msghdr {
@@ -496,7 +496,7 @@ struct x86_msghdr {
     u32 msg_flags;
 };
 
-static_assert(std::is_trivial<x86_msghdr>::value);
+static_assert(std::is_trivially_copyable<x86_msghdr>::value);
 static_assert(sizeof(x86_msghdr) == 28);
 
 struct x86_mmsghdr {
@@ -504,7 +504,7 @@ struct x86_mmsghdr {
     u32 msg_len;
 };
 
-static_assert(std::is_trivial<x86_mmsghdr>::value);
+static_assert(std::is_trivially_copyable<x86_mmsghdr>::value);
 static_assert(sizeof(x86_mmsghdr) == 32);
 
 struct __attribute__((packed)) x86_statfs64 {
@@ -538,7 +538,7 @@ struct __attribute__((packed)) x86_statfs64 {
     }
 };
 
-static_assert(std::is_trivial<x86_statfs64>::value);
+static_assert(std::is_trivially_copyable<x86_statfs64>::value);
 static_assert(sizeof(x86_statfs64) == 84);
 
 struct x86_rusage {
@@ -908,7 +908,7 @@ struct x86_semid_ds_32 {
     }
 };
 
-static_assert(std::is_trivial_v<x86_semid_ds_32>);
+static_assert(std::is_trivially_copyable_v<x86_semid_ds_32>);
 static_assert(sizeof(x86_semid_ds_32) == 44);
 
 struct x86_semid_ds_64 {
@@ -942,7 +942,7 @@ struct x86_semid_ds_64 {
     }
 };
 
-static_assert(std::is_trivial_v<x86_semid_ds_64>);
+static_assert(std::is_trivially_copyable_v<x86_semid_ds_64>);
 static_assert(sizeof(x86_semid_ds_64) == 64);
 
 struct x86_shminfo_32 {
