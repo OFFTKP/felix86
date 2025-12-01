@@ -683,6 +683,12 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
 }
 
 int Filesystem::Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data) {
+    bool mount_rootfs_if_fail = false;
+    if (source == nullptr && std::string(target) == "/" && (flags & (MS_PRIVATE | MS_SHARED | MS_SLAVE | MS_UNBINDABLE))) {
+        // HACK: changing propagation type of root, but root may not be a mount, make it a mount if failed
+        mount_rootfs_if_fail = true;
+    }
+
     const char* sptr = nullptr;
     const char* tptr = nullptr;
 
@@ -705,7 +711,23 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
         }
         tptr = rtarget.full_path();
     }
-    int result = ::mount(sptr, tptr, fstype, flags, data);
+    int result;
+
+    do {
+        result = ::mount(sptr, tptr, fstype, flags, data);
+        if (!mount_rootfs_if_fail) {
+            break;
+        } else if (result != 0 && errno == EINVAL) {
+            WARN("Rootfs isn't a mount, attempting to mount on itself...");
+            mount(g_config.rootfs_path.c_str(), g_config.rootfs_path.c_str(), nullptr, MS_BIND, nullptr);
+            mount_rootfs_if_fail = false;
+            // Retry the mount once...
+            continue;
+        } else {
+            break;
+        }
+    } while (true);
+
     if (result != 0) {
         int error = errno;
         VERBOSE("Mounting %s -> %s, error: %s", sptr, tptr, strerror(errno));
