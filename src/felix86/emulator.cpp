@@ -232,15 +232,17 @@ std::pair<ExitReason, int> Emulator::Start() {
     prctl(PR_RISCV_SET_ICACHE_FLUSH_CTX, PR_RISCV_CTX_SW_FENCEI_ON, PR_RISCV_SCOPE_PER_PROCESS);
 #endif
 
-    std::string path = g_params.executable_path;
-    Elf::PeekResult peek = Elf::Peek(g_params.executable_path);
+    FdPath fd_path = Filesystem::resolve(g_params.executable_path.string().c_str(), true);
+    ASSERT(fd_path.full_path());
+    std::filesystem::path path = fd_path.full_path();
+    Elf::PeekResult peek = Elf::Peek(path);
     if (peek == Elf::PeekResult::NotElf) {
-        Script::PeekResult peek = Script::Peek(g_params.executable_path);
+        Script::PeekResult peek = Script::Peek(path);
         if (peek == Script::PeekResult::Script) {
             ERROR("You are trying to run a script file\nPlease start emulated bash and use it to run the script instead");
         } else {
-            if (std::filesystem::exists(g_params.executable_path)) {
-                FILE* f = fopen(g_params.executable_path.c_str(), "r");
+            if (std::filesystem::exists(path)) {
+                FILE* f = fopen(path.c_str(), "r");
                 ASSERT(f);
                 fseek(f, 0L, SEEK_END);
                 size_t size = ftell(f);
@@ -248,11 +250,11 @@ std::pair<ExitReason, int> Emulator::Start() {
                 if (size == 0) {
                     // Sometimes, things decide to just execute an empty file.
                     // We need to return 0 and warn
-                    WARN("Tried to execute an empty file: %s, returning 0...", g_params.executable_path.c_str());
+                    WARN("Tried to execute an empty file: %s, returning 0...", path.c_str());
                     _exit(0);
                 }
             }
-            ERROR("Unknown file format: %s", g_params.executable_path.c_str());
+            ERROR("Unknown file format: %s", path.c_str());
         }
     }
 
@@ -274,7 +276,7 @@ std::pair<ExitReason, int> Emulator::Start() {
         Thunks::initialize();
     }
 
-    g_fs->LoadExecutable(g_params.executable_path);
+    g_fs->LoadExecutable(path);
 
     BRK::allocate();
 
