@@ -283,14 +283,12 @@ void initialize_globals() {
     }
 
     const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
+    std::filesystem::path original_rootfs = g_config.rootfs_path;
     if (guest_rootfs) {
-        g_original_rootfs = g_config.rootfs_path;
         g_config.rootfs_path = guest_rootfs;
     } else {
         ASSERT(!g_execve_process);
         ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
-
-        g_original_rootfs = g_config.rootfs_path;
 
         // Running for the first time, and we don't have a __FELIX86_ROOTFS set
         // This means we need to mount everything and set it as the rootfs path
@@ -402,11 +400,11 @@ void initialize_globals() {
         return true;
     };
 
-    ASSERT_MSG(add_fake_mount("/dev", g_original_rootfs / "dev"), "Failed to fake-mount /dev");
-    ASSERT_MSG(add_fake_mount("/proc", g_original_rootfs / "proc"), "Failed to fake-mount /proc");
-    ASSERT_MSG(add_fake_mount("/sys", g_original_rootfs / "sys"), "Failed to fake-mount /sys");
-    ASSERT_MSG(add_fake_mount("/run", g_original_rootfs / "run"), "Failed to fake-mount /run");
-    ASSERT_MSG(add_fake_mount("/tmp", g_original_rootfs / "tmp"), "Failed to fake-mount /tmp");
+    ASSERT_MSG(add_fake_mount("/dev", original_rootfs / "dev"), "Failed to fake-mount /dev");
+    ASSERT_MSG(add_fake_mount("/proc", original_rootfs / "proc"), "Failed to fake-mount /proc");
+    ASSERT_MSG(add_fake_mount("/sys", original_rootfs / "sys"), "Failed to fake-mount /sys");
+    ASSERT_MSG(add_fake_mount("/run", original_rootfs / "run"), "Failed to fake-mount /run");
+    ASSERT_MSG(add_fake_mount("/tmp", original_rootfs / "tmp"), "Failed to fake-mount /tmp");
 
     if (g_config.rootfs_path.empty()) {
         printf("Rootfs path is empty. Please run `felix86 -s <rootfs_path>` or set the rootfs_path variable in %s\n", g_config.path().c_str());
