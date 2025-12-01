@@ -1766,13 +1766,10 @@ std::string felix86_mountinfo() {
 
             std::string path1s = path1;
             std::string path2s = path2;
-            PLAIN("Before: %s %s", path1s.c_str(), path2s.c_str());
             for (auto& mount_path : g_process_globals.mount_paths) {
                 replaceOne(path1s, mount_path, "");
                 replaceOne(path2s, mount_path, "");
-                PLAIN("Mount path: %s", mount_path.c_str());
             }
-            PLAIN("After: %s %s", path1s.c_str(), path2s.c_str());
 
             char replacement[4096];
             sprintf(replacement, "%d %d %s %s %s", nid, nid2, devid, path1s.c_str(), path2s.c_str());
