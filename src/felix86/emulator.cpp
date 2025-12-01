@@ -232,7 +232,13 @@ std::pair<ExitReason, int> Emulator::Start() {
     prctl(PR_RISCV_SET_ICACHE_FLUSH_CTX, PR_RISCV_CTX_SW_FENCEI_ON, PR_RISCV_SCOPE_PER_PROCESS);
 #endif
 
-    FdPath fd_path = Filesystem::resolve(g_params.executable_path.string().c_str(), true);
+    std::string spath = g_params.executable_path;
+    if (is_subpath(spath, g_config.rootfs_path)) {
+        spath = spath.substr(g_config.rootfs_path.string().size());
+    }
+
+    FdPath fd_path = Filesystem::resolve(spath.c_str(), true);
+    ASSERT_MSG(!fd_path.is_error(), "File not found: %s (without rootfs: %s)", g_params.executable_path.c_str(), spath.c_str());
     ASSERT(fd_path.full_path());
     std::filesystem::path path = fd_path.full_path();
     Elf::PeekResult peek = Elf::Peek(path);
