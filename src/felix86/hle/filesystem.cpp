@@ -685,7 +685,8 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
 int Filesystem::Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data) {
     bool mount_rootfs_if_fail = false;
     if (source == nullptr && std::string(target) == "/" && (flags & (MS_PRIVATE | MS_SHARED | MS_SLAVE | MS_UNBINDABLE))) {
-        // HACK: changing propagation type of root, but root may not be a mount, make it a mount if failed
+        // HACK: changing propagation type of root, but root may not be a mount, make it a mount if fail
+        // Needed by bubblewrap. If rootfs happens to be a mount already (user mounted it manually somewhere) then the mount won't fail
         mount_rootfs_if_fail = true;
     }
 
@@ -718,8 +719,11 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
         if (!mount_rootfs_if_fail) {
             break;
         } else if (result != 0 && errno == EINVAL) {
-            WARN("Rootfs isn't a mount, attempting to mount on itself...");
-            mount(g_config.rootfs_path.c_str(), g_config.rootfs_path.c_str(), nullptr, MS_BIND, nullptr);
+            int r = mount(tptr, tptr, nullptr, MS_BIND, nullptr);
+            if (r == -1) {
+                r = -errno;
+            }
+            WARN("Rootfs isn't a mount, attempting to mount on itself returned %d...", r);
             mount_rootfs_if_fail = false;
             // Retry the mount once...
             continue;
