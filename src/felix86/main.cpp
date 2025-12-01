@@ -620,10 +620,10 @@ int main(int argc, char* argv[]) {
         ERROR("Executable path not specified");
         return 1;
     } else {
-        FdPath resolved_path = Filesystem::resolve(g_params.executable_path.c_str(), true);
-        if (resolved_path.is_error()) {
+        if (!is_subpath(g_params.executable_path, g_config.rootfs_path)) {
+            FdPath resolved_path = Filesystem::resolve(g_params.executable_path.c_str(), true); // check if it exists inside rootfs
             // Executable path might be outside the rootfs but in a trusted folder, let's check
-            if (!g_execve_process && std::filesystem::exists(unmodified_executable_path) &&
+            if (!g_execve_process && resolved_path.is_error() && std::filesystem::exists(unmodified_executable_path) &&
                 std::filesystem::is_regular_file(unmodified_executable_path)) {
                 bool found = false;
                 std::error_code ec;
