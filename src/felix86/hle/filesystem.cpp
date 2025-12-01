@@ -259,9 +259,13 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
         ASSERT(!npath.is_error());
         ASSERT(npath.full_path());
         std::string path = npath.full_path();
-        const size_t rootfs_size = g_config.rootfs_path.string().size();
+        size_t rootfs_size;
+        if (path.find(g_config.rootfs_path.string())) {
+            rootfs_size = g_config.rootfs_path.string().size();
+        } else {
+            rootfs_size = 0;
+        }
         const size_t stem_size = path.size() - rootfs_size;
-        ASSERT_MSG(path.find(g_config.rootfs_path.string()) == 0, "Path: %s", path.c_str()); // it should be in rootfs but lets make sure
         int bytes = std::min((int)stem_size, bufsiz);
         memcpy(buf, path.c_str() + rootfs_size, bytes);
         return bytes;
