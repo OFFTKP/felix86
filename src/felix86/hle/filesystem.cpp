@@ -1135,11 +1135,13 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
     // Final check: is the final path a fake mount?
     struct statx current_statx;
     result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
-    for (const FakeMountNode& mount : g_fake_mounts) {
-        if (statx_inode_same(&mount.dst_stat, &current_statx)) {
-            current_fd = mount.src_fd;
-            current_relative_path = ".";
-            break;
+    if (result == 0) {
+        for (const FakeMountNode& mount : g_fake_mounts) {
+            if (statx_inode_same(&mount.dst_stat, &current_statx)) {
+                current_fd = mount.src_fd;
+                current_relative_path = ".";
+                break;
+            }
         }
     }
 
