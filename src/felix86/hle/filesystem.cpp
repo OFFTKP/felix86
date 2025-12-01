@@ -77,8 +77,8 @@ void Filesystem::initializeEmulatedNodes() {
 
     // Populate the stat field in each node
     for (int i = 0; i < EMULATED_NODE_COUNT; i++) {
-        std::filesystem::path node_path = emulated_nodes[i].path.relative_path();
-        if (std::filesystem::exists(node_path)) { // if we are chrooted with no access to /proc then tough luck
+        std::filesystem::path node_path = emulated_nodes[i].path;
+        if (std::filesystem::exists(node_path)) {
             ASSERT(statx(AT_FDCWD, node_path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &emulated_nodes[i].stat) == 0);
         }
     }
