@@ -41,7 +41,7 @@ static struct argp_option options[] = {
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
     {"set-rootfs", 's', "DIR", 0, "Set the rootfs path in config.toml"},
-    {"get-rootfs", 'g', "DIR", 0, "Get the rootfs path from config.toml"},
+    {"get-rootfs", 'g', 0, 0, "Get the rootfs path from config.toml"},
     {"set-thunks", 'S', "DIR", 0, "Set the thunks path in config.toml"},
     {"binfmt-misc", 'b', 0, 0, "Register the emulator in binfmt_misc so that x86-64 executables can run without prepending the emulator path"},
     {"detect-binfmt-misc", 'd', 0, 0, "Check if we are correctly registered in binfmt_misc, returns 0 if ok"},
