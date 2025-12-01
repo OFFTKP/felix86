@@ -936,6 +936,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
         // See if current_fd+current_relative_path is inside a fake mount and replace current_fd if so
         for (const FakeMountNode& mount : g_fake_mounts) {
+            PLAIN("Checking if %d %s is %s", current_fd, current_relative_path.c_str(), mount.dst_path.c_str());
             if (statx_inode_same(&mount.dst_stat, &current_statx)) {
                 current_fd = mount.src_fd;
                 current_relative_path = ".";
