@@ -936,7 +936,6 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
         // See if current_fd+current_relative_path is inside a fake mount and replace current_fd if so
         for (const FakeMountNode& mount : g_fake_mounts) {
-            PLAIN("Checking if %d %s is %s", current_fd, current_relative_path.c_str(), mount.dst_path.c_str());
             if (statx_inode_same(&mount.dst_stat, &current_statx)) {
                 current_fd = mount.src_fd;
                 current_relative_path = ".";
@@ -1132,6 +1131,17 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
 
     current_relative_path = current_relative_path.lexically_normal();
     ASSERT(current_relative_path.is_relative());
+
+    // Final check: is the final path a fake mount?
+    struct statx current_statx;
+    result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
+    for (const FakeMountNode& mount : g_fake_mounts) {
+        if (statx_inode_same(&mount.dst_stat, &current_statx)) {
+            current_fd = mount.src_fd;
+            current_relative_path = ".";
+            break;
+        }
+    }
 
     if (current_relative_path.empty()) {
         // We can't use an empty path in many syscalls and we can't convert it to null either
