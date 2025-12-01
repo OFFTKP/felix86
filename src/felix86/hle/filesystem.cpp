@@ -636,12 +636,7 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     // Solution: make a separate dir for each rootfs
     // Each /proc/self/fd/# will now resolve to a path with the rootfs it had at the time of opening the file
     // This way we can get the proper guest path after removeRootfsPrefix!
-    int result = ::mount(g_config.rootfs_path.c_str(), g_config.rootfs_path.c_str(), nullptr, MS_BIND,
-                         nullptr); // Mounting the root on top of itself so we can move it
-    if (result != 0) {
-        WARN("Failed to mount root %s on itself during pivot_root: %s", g_config.rootfs_path.c_str(), strerror(errno));
-    }
-    result = ::mount(new_root_full, dir, nullptr, MS_MOVE, nullptr);
+    int result = ::mount(new_root_full, dir, nullptr, MS_MOVE, nullptr);
 
     // Unlike chroot, pivot_root is CAP_SYS_ADMIN,
     if (result != 0) {
@@ -707,12 +702,7 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
         }
         tptr = rtarget.full_path();
     }
-    int result = ::mount(g_config.rootfs_path.c_str(), g_config.rootfs_path.c_str(), nullptr, MS_BIND,
-                         nullptr); // Mounting the root on top of itself so we can move it
-    if (result != 0) {
-        WARN("Failed to mount root %s on itself during pivot_root: %s", g_config.rootfs_path.c_str(), strerror(errno));
-    }
-    result = ::mount(sptr, tptr, fstype, flags, data);
+    int result = ::mount(sptr, tptr, fstype, flags, data);
     if (result != 0) {
         int error = errno;
         VERBOSE("Mounting %s -> %s, error: %s", sptr, tptr, strerror(errno));
