@@ -683,11 +683,11 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
 }
 
 int Filesystem::Mount(const char* source, const char* target, const char* fstype, u64 flags, const void* data) {
-    bool mount_rootfs_if_fail = false;
-    if (source == nullptr && std::string(target) == "/" && (flags & (MS_PRIVATE | MS_SHARED | MS_SLAVE | MS_UNBINDABLE))) {
-        // HACK: changing propagation type of root, but root may not be a mount, make it a mount if fail
-        // Needed by bubblewrap. If rootfs happens to be a mount already (user mounted it manually somewhere) then the mount won't fail
-        mount_rootfs_if_fail = true;
+    bool mount_root_if_fail = false;
+    if (source == nullptr && std::string(target) == "/" && (flags & MS_SLAVE) && fstype == nullptr && data == nullptr) {
+        // HACK: changing propagation type of root, but rootfs may not be a mount, and it will cause this to fail
+        // If it fails, try doing the syscall on the original root. Needed by bubblewrap.
+        mount_root_if_fail = true;
     }
 
     const char* sptr = nullptr;
@@ -716,17 +716,15 @@ int Filesystem::Mount(const char* source, const char* target, const char* fstype
 
     do {
         result = ::mount(sptr, tptr, fstype, flags, data);
-        if (!mount_rootfs_if_fail) {
+        if (!mount_root_if_fail) {
             break;
         } else if (result != 0 && errno == EINVAL) {
-            int r = mount(tptr, tptr, nullptr, MS_BIND, nullptr);
-            if (r == -1) {
-                r = -errno;
+            WARN("Rootfs isn't a mount and tried to make it MS_SLAVE, doing it to host root instead");
+            result = mount(source, target, fstype, flags, data);
+            if (result != 0) {
+                WARN("Failed to make host root MS_SLAVE...");
             }
-            WARN("Rootfs isn't a mount, attempting to mount on itself returned %d...", r);
-            mount_rootfs_if_fail = false;
-            // Retry the mount once...
-            continue;
+            break;
         } else {
             break;
         }
