@@ -5,6 +5,7 @@
 #include <linux/perf_event.h>
 #include <spawn.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
@@ -287,6 +288,43 @@ void initialize_globals() {
     } else {
         ASSERT(!g_execve_process);
         ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
+
+        auto add_fake_mount = [](const std::filesystem::path& host_path, const std::filesystem::path& guest_path) {
+            std::error_code ec;
+            std::filesystem::create_directories(guest_path, ec);
+            if (ec) {
+                return false;
+            }
+
+            FakeMountNode node;
+            node.src_path = host_path;
+            node.dst_path = guest_path;
+
+            int result = ::statx(AT_FDCWD, host_path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &node.src_stat);
+            if (result != 0) {
+                return false;
+            }
+
+            result = ::statx(AT_FDCWD, guest_path.c_str(), 0, STATX_TYPE | STATX_INO | STATX_MNT_ID, &node.dst_stat);
+            if (result != 0) {
+                return false;
+            }
+
+            result = open(host_path.c_str(), O_PATH | O_DIRECTORY);
+            if (result == -1) {
+                return false;
+            }
+
+            node.src_fd = FD::moveToHighNumber(result);
+            FD::protect(node.src_fd);
+            return true;
+        };
+
+        ASSERT_MSG(add_fake_mount("/dev", g_config.rootfs_path / "dev"), "Failed to fake-mount /dev");
+        ASSERT_MSG(add_fake_mount("/proc", g_config.rootfs_path / "proc"), "Failed to fake-mount /proc");
+        ASSERT_MSG(add_fake_mount("/sys", g_config.rootfs_path / "sys"), "Failed to fake-mount /sys");
+        ASSERT_MSG(add_fake_mount("/run", g_config.rootfs_path / "run"), "Failed to fake-mount /run");
+        ASSERT_MSG(add_fake_mount("/tmp", g_config.rootfs_path / "tmp"), "Failed to fake-mount /tmp");
 
         // Running for the first time, and we don't have a __FELIX86_ROOTFS set
         // This means we need to mount everything and set it as the rootfs path

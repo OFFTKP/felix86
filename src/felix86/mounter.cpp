@@ -367,15 +367,15 @@ int main(int argc, char* argv[]) {
     bind_mount(rootfs_path.c_str(), mount_target, false);
 
     // Rootfs was mounted, mount everything else we need
-    prepare_mount("/dev", mount_target / "dev");
-    prepare_mount("/proc", mount_target / "proc");
-    prepare_mount("/sys", mount_target / "sys");
-    prepare_mount("/run", mount_target / "run");
-    fs_mount("proc", "proc", mount_target / "proc");
-    fs_mount("sysfs", "sysfs", mount_target / "sys");
-    bind_mount("/dev", mount_target / "dev", true);
-    bind_mount("/run", mount_target / "run", true);
-    bind_mount("/tmp", mount_target / "tmp", true);
+    // prepare_mount("/dev", mount_target / "dev");
+    // prepare_mount("/proc", mount_target / "proc");
+    // prepare_mount("/sys", mount_target / "sys");
+    // prepare_mount("/run", mount_target / "run");
+    // fs_mount("proc", "proc", mount_target / "proc");
+    // fs_mount("sysfs", "sysfs", mount_target / "sys");
+    // bind_mount("/dev", mount_target / "dev", true);
+    // bind_mount("/run", mount_target / "run", true);
+    // bind_mount("/tmp", mount_target / "tmp", true);
 
     auto copy = [](const char* src, const std::filesystem::path& dst) {
         if (!std::filesystem::exists(src)) {
