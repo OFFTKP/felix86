@@ -94,7 +94,8 @@ std::filesystem::path Filesystem::ConvertToTrustedPath(const std::filesystem::pa
 
     // Make our fake directory
     std::error_code ec;
-    const std::filesystem::path dest_path = std::filesystem::path("/run") / "felix86" / "trusted" / normalized_path / dirname;
+    const std::filesystem::path dest_path =
+        std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "felix86" / "trusted" / normalized_path / dirname;
     if (std::filesystem::exists(dest_path, ec) && std::filesystem::is_directory(dest_path, ec)) {
         return dest_path;
     }
@@ -117,8 +118,8 @@ bool Filesystem::TrustFolder(const std::filesystem::path& path) {
     //    /mydir/test should resolve to /rootfs/home/mnt/test, sure
     //    /mydir/.. should resolve to /rootfs/home, not /, sure
     //    open(/home/mnt) should resolve to open(/mydir), what about a later open(fd, "..")? Needs care
-    // We will place these fake paths inside a tmpfs, in this case /run/felix86/trusted/NormalizedPath/DirName
-    // For example, say my path is /home/myname/mydir, the dir it will exist in is /run/felix86/trusted/home-myname-mydir/mydir
+    // We will place these fake paths inside a tmpfs, in this case /run/user/$uid/felix86/trusted/NormalizedPath/DirName
+    // For example, say my path is /home/myname/mydir, the dir it will exist in is /run/user/$uid/felix86/trusted/home-myname-mydir/mydir
     // In case programs rely on the directory name the executable is in being correct (for whatever reason) then this would cover it
     // The "normalized path" here serves as a unique identifier per trusted path
     // This is to not conflict with other dirs that have the same final component name but a different path
@@ -610,9 +611,9 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     const char* new_root_full = new_root_resolved.full_path();
 
     if (g_mounts_path.empty()) {
-        char templ[] = "/run/felix86/mounts/XXXXXX";
-        char* path = mkdtemp(templ);
-        ASSERT_MSG(path == templ, "Failed to mkdtemp for mounts directory?");
+        std::string templ = "/run/user/" + std::to_string(getuid()) + "/felix86/mounts/XXXXXX";
+        char* path = mkdtemp(templ.data());
+        ASSERT_MSG(path == templ.data(), "Failed to mkdtemp for mounts directory?");
         g_mounts_path = path;
     }
 
