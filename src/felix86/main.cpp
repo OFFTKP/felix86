@@ -725,6 +725,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (!is_subpath(g_params.executable_path, g_config.rootfs_path)) {
+        // TODO: HACK: instead of moving the path, the emulator start function should resolve the path perhaps
+        g_params.executable_path = g_config.rootfs_path / g_params.executable_path.relative_path();
+    }
+
     if (g_executable_path_absolute.empty()) {
         if (g_params.executable_path.is_absolute()) {
             g_executable_path_absolute = g_params.executable_path.lexically_normal();
