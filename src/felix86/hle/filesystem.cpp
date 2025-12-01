@@ -611,7 +611,9 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     const char* new_root_full = new_root_resolved.full_path();
 
     if (g_mounts_path.empty()) {
-        std::string templ = "/run/user/" + std::to_string(getuid()) + "/felix86/mounts/XXXXXX";
+        std::string mnts = "/run/user/" + std::to_string(getuid()) + "/felix86/mounts";
+        std::filesystem::create_directories(mnts);
+        std::string templ = mnts + "/XXXXXX";
         char* path = mkdtemp(templ.data());
         ASSERT_MSG(path == templ.data(), "Failed to mkdtemp for mounts directory?");
         g_mounts_path = path;
