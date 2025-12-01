@@ -380,15 +380,27 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         break;
     }
     case felix86_riscv64_io_uring_enter: {
-        result = SYSCALL(io_uring_enter, arg1, arg2, arg3, arg4, arg5, arg6);
+        if (g_config.enable_io_uring) {
+            result = SYSCALL(io_uring_enter, arg1, arg2, arg3, arg4, arg5, arg6);
+        } else {
+            result = -ENOSYS;
+        }
         break;
     }
     case felix86_riscv64_io_uring_register: {
-        result = SYSCALL(io_uring_register, arg1, arg2, arg3, arg4);
+        if (g_config.enable_io_uring) {
+            result = SYSCALL(io_uring_register, arg1, arg2, arg3, arg4);
+        } else {
+            result = -ENOSYS;
+        }
         break;
     }
     case felix86_riscv64_io_uring_setup: {
-        result = SYSCALL(io_uring_setup, arg1, arg2);
+        if (g_config.enable_io_uring) {
+            result = SYSCALL(io_uring_setup, arg1, arg2);
+        } else {
+            result = -ENOSYS;
+        }
         break;
     }
     case felix86_riscv64_epoll_ctl: {

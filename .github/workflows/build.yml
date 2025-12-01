@@ -55,7 +55,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux_artifact
-          path: ./artifact/
+          path: ./artifact
       - name: Upload test binary
         uses: actions/upload-artifact@v4
         with:
@@ -67,17 +67,19 @@ jobs:
     runs-on: bpi-f3
     steps:
       - name: Download main artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: linux_artifact
           path: ./artifact
       - name: Download test artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: test_artifact
-          path: ./test/
+          path: ./test
       - name: Test
         run: |
+          # We don't update the binfmt_misc installation so don't use it while running tests
+          export FELIX86_BINFMT_MISC_INSTALLED=0
           chmod +x ./test/felix86_test
           chmod +x ./test/felix86
           FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
@@ -85,6 +87,6 @@ jobs:
           FELIX86PATH=$(pwd)/test/felix86
           git clone https://github.com/felix86-emu/binary_tests $RUNNER_TEMP/tests
           cd $RUNNER_TEMP/tests
-          bash ./install-tests.sh $RUNNER_TEMP/binaries
-          bash ./run-tests.sh $FELIX86PATH $RUNNER_TEMP/binaries
+          bash ./install-tests.sh $HOME/binaries
+          bash ./run-tests.sh $FELIX86PATH $HOME/binaries
 
