@@ -240,6 +240,7 @@ std::pair<ExitReason, int> Emulator::Start() {
     FdPath fd_path = Filesystem::resolve(spath.c_str(), true);
     ASSERT_MSG(!fd_path.is_error(), "File not found: %s (without rootfs: %s)", g_params.executable_path.c_str(), spath.c_str());
     ASSERT(fd_path.full_path());
+    g_executable_path_absolute = fd_path.full_path();
     std::filesystem::path path = fd_path.full_path();
     Elf::PeekResult peek = Elf::Peek(path);
     if (peek == Elf::PeekResult::NotElf) {
