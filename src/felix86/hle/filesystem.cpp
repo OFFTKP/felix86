@@ -610,7 +610,7 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     const char* new_root_full = new_root_resolved.full_path();
 
     if (g_mounts_path.empty()) {
-        char templ[] = "/tmp/.f86.mnt.XXXXXX";
+        char templ[] = "/run/felix86/mounts/XXXXXX";
         char* path = mkdtemp(templ);
         ASSERT_MSG(path == templ, "Failed to mkdtemp for mounts directory?");
         g_mounts_path = path;
