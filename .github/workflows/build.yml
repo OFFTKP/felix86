@@ -85,8 +85,9 @@ jobs:
           FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
           ./test/felix86 -k
           FELIX86PATH=$(pwd)/test/felix86
+          ROOTFSPATH=$($FELIX86PATH -g)
           git clone https://github.com/felix86-emu/binary_tests $RUNNER_TEMP/tests
           cd $RUNNER_TEMP/tests
-          bash ./install-tests.sh $HOME/binaries
-          bash ./run-tests.sh $FELIX86PATH $HOME/binaries
+          bash ./install-tests.sh $ROOTFSPATH/felix86_test_binaries
+          bash ./run-tests.sh $FELIX86PATH $ROOTFSPATH/felix86_test_binaries
 
