@@ -1076,7 +1076,7 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
             if (statx_inode_same(&mount.dst_stat, &current_statx)) {
                 current_fd = mount.src_fd;
                 current_relative_path = ".";
-                WARN("Switching to %s", mount.dst_path.c_str());
+                WARN("Switching to %s", mount.src_path.c_str());
 
                 // Need to recalculate statx for ".." check
                 result = statx(current_fd, current_relative_path.c_str(), AT_EMPTY_PATH, STATX_TYPE | STATX_INO | STATX_MNT_ID, &current_statx);
