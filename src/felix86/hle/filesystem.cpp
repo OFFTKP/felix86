@@ -15,6 +15,80 @@
 
 #define FLAGS_SET(v, flags) ((~(v) & (flags)) == 0)
 
+bool is_magic_link(int fd, const std::filesystem::path& path) {
+    // Open a directory to the current relative path
+    // If we don't do that, then openat2 will fail if a magic-link is merely a component
+    // For example if I do /proc/self/root/etc, I don't want the openat2 to fail here because etc
+    // is not a magic-link, but it would fail because /proc/self/root is
+    // We want to just check if the current component is a magic-link
+    int dirfd = AT_FDCWD;
+    if (path.empty()) {
+        if (fd != AT_FDCWD) {
+            dirfd = dup(fd);
+        }
+    } else {
+        dirfd = openat(fd, path.c_str(), O_PATH | O_DIRECTORY);
+    }
+    ASSERT_MSG(dirfd == AT_FDCWD || dirfd >= 0, "Dirfd: %d %s", dirfd, strerror(errno));
+
+    int result1 = openat(dirfd, path.c_str(), O_PATH);
+
+    struct open_how how{
+        .flags = O_PATH,
+        .mode = 0,
+        .resolve = RESOLVE_NO_MAGICLINKS,
+    };
+
+    int result2 = syscall(SYS_openat2, dirfd, path.c_str(), &how, sizeof(open_how));
+    int result2_error = errno;
+
+    // TODO: maybe optimize some cases using close_range
+    close(dirfd);
+    if (result1 > 0) {
+        close(result1);
+    }
+    if (result2 > 0) {
+        close(result2);
+    }
+
+    if (result1 > 0 && result2 > 0) {
+        // Both succeeded... that's fine
+        return false;
+    } else if (result1 < 0 && result2 < 0) {
+        // Both failed... that's fine
+        return false;
+    } else {
+        // One succeeded and one failed
+        if (result2 > 0 && result1 < 0) {
+            // Shouldn't be possible
+            WARN("openat2 succeeded and openat failed during magic-link detection... what?");
+            return false;
+        } else {
+            // Is magic link!
+            ASSERT(result2 < 0 && result1 > 0);
+            ASSERT(result2_error == ELOOP); // this is how openat2 should fail when a component is a magic-link
+            return true;
+        }
+    }
+}
+
+void remove_if_found(std::string& path, const std::filesystem::path& rootfs) {
+    if (path.find(rootfs) == 0) {
+        if (path == rootfs) {
+            // Special case, it is the rootfs path
+            path = "/";
+        } else {
+            std::string sub = path.substr(rootfs.string().size());
+            path = sub;
+        }
+
+        ASSERT(!path.empty());
+        if (path[0] != '/') {
+            path = '/' + path;
+        }
+    }
+}
+
 bool statx_inode_same(const struct statx* a, const struct statx* b) {
     return (a && a->stx_mask != 0) && (b && b->stx_mask != 0) && FLAGS_SET(a->stx_mask, STATX_TYPE | STATX_INO) &&
            FLAGS_SET(b->stx_mask, STATX_TYPE | STATX_INO) && ((a->stx_mode ^ b->stx_mode) & S_IFMT) == 0 && a->stx_dev_major == b->stx_dev_major &&
@@ -283,7 +357,10 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
 
     if (result > 0) {
         std::string str(our_buffer, result);
-        removeRootfsPrefix(str);
+        if (is_magic_link(fd_path.fd(), fd_path.path())) {
+            // Remove rootfs prefix if it's magic link such as /proc/self/fd stuff
+            remove_if_found(str, g_original_rootfs);
+        }
         strncpy(buf, str.c_str(), bufsiz);
         return std::min(bufsiz, (int)str.size());
     }
@@ -873,25 +950,8 @@ FdPath Filesystem::resolve(const char* path, bool resolve_symlinks) {
 void Filesystem::removeRootfsPrefix(std::string& path) {
     // Check if the path starts with rootfs (ie. when readlinking /proc stuff) and remove it
     auto lock = g_process_globals.states_lock.lock();
-    auto remove_if_found = [&path](const std::filesystem::path& rootfs) {
-        if (path.find(rootfs) == 0) {
-            if (path == g_config.rootfs_path) {
-                // Special case, it is the rootfs path
-                path = "/";
-            } else {
-                std::string sub = path.substr(rootfs.string().size());
-                path = sub;
-            }
-
-            ASSERT(!path.empty());
-            if (path[0] != '/') {
-                path = '/' + path;
-            }
-        }
-    };
-
     for (const auto& rootfs : g_process_globals.mount_paths) {
-        remove_if_found(rootfs.lexically_normal());
+        remove_if_found(path, rootfs.lexically_normal());
     }
 }
 
@@ -1060,59 +1120,11 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
             // Unfortunately there's no simple way of checking if it's a magic link that I can think of, other than using
             // openat2 with RESOLVE_NO_MAGICLINKS and openat and seeing whether there's a mismatch in results
             {
-                // Open a directory to the current relative path
-                // If we don't do that, then openat2 will fail if a magic-link is merely a component
-                // For example if I do /proc/self/root/etc, I don't want the openat2 to fail here because etc
-                // is not a magic-link, but it would fail because /proc/self/root is
-                // We want to just check if the current component is a magic-link
-                int dirfd = AT_FDCWD;
-                if (current_relative_path.empty()) {
-                    if (current_fd != AT_FDCWD) {
-                        dirfd = dup(current_fd);
-                    }
-                } else {
-                    dirfd = openat(current_fd, current_relative_path.c_str(), O_PATH | O_DIRECTORY);
-                }
-                ASSERT_MSG(dirfd == AT_FDCWD || dirfd >= 0, "Dirfd: %d %s", dirfd, strerror(errno));
-
-                int result1 = openat(dirfd, current_component.c_str(), O_PATH);
-
-                struct open_how how{
-                    .flags = O_PATH,
-                    .mode = 0,
-                    .resolve = RESOLVE_NO_MAGICLINKS,
-                };
-                int result2 = syscall(SYS_openat2, dirfd, current_component.c_str(), &how, sizeof(open_how));
-                int result2_error = errno;
-
-                // TODO: maybe optimize some cases using close_range
-                close(dirfd);
-                if (result1 > 0) {
-                    close(result1);
-                }
-                if (result2 > 0) {
-                    close(result2);
-                }
-
-                if (result1 > 0 && result2 > 0) {
-                    // Both succeeded... that's fine
-                } else if (result1 < 0 && result2 < 0) {
-                    // Both failed... that's fine
-                } else {
-                    // One succeeded and one failed
-                    if (result2 > 0 && result1 < 0) {
-                        // Shouldn't be possible
-                        WARN("openat2 succeeded and openat failed during magic-link detection... what?");
-                    } else {
-                        ASSERT(result2 < 0 && result1 > 0);
-
-                        // So this is a magic-link. Append it to the path without resolving it and continue to the next component
-                        ASSERT(result2_error == ELOOP); // this is how openat2 should fail when a component is a magic-link
-
-                        // Finally do what we need, don't resolve and append it to the path
-                        current_relative_path = current_relative_path / current_component;
-                        continue;
-                    }
+                bool magic_link = is_magic_link(current_fd, current_relative_path);
+                if (magic_link) {
+                    // If it's a magic link, don't resolve and append it to the path
+                    current_relative_path = current_relative_path / current_component;
+                    continue;
                 }
             }
 
