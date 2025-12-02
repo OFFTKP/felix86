@@ -979,7 +979,10 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
     std::filesystem::path current_relative_path;
 
     size_t size = strlen(path);
-    ASSERT_MSG(size > 0 && size < PATH_MAX, "Path exceeds maximum limit?");
+    if (size >= PATH_MAX) {
+        WARN("Starting name %s too long", path);
+        return FdPath::error(ENAMETOOLONG);
+    }
 
     std::filesystem::path resolve_me = std::filesystem::path(path).relative_path();
 
@@ -1231,8 +1234,16 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
         // So in this case we will convert it to a full path and return that instead
         FdPath ret = FdPath::create(current_fd, current_relative_path);
         ret.full_path();
+        if (strlen(ret.full_path()) >= PATH_MAX) {
+            WARN("Resolved path %s too long", ret.full_path());
+            return FdPath::error(ENAMETOOLONG);
+        }
         return ret;
     }
 
+    if (current_relative_path.string().size() >= PATH_MAX) {
+        WARN("Resolved path %s too long", current_relative_path.c_str());
+        return FdPath::error(ENAMETOOLONG);
+    }
     return FdPath::create(current_fd, current_relative_path);
 }
