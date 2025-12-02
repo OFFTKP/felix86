@@ -108,7 +108,7 @@ int FD::moveToHighNumber(int fd) {
     int tries = 50;
     while (tries-- > 0) {
         int result = fcntl(high_fd, F_GETFD);
-        if (result != 0) {
+        if (result < 0) {
             // We can use this FD
             int new_fd = ::dup2(fd, high_fd);
             ASSERT_MSG(new_fd > 0, "Failed to duplicate fd %d to %d with error %s", fd, high_fd, strerror(errno));
