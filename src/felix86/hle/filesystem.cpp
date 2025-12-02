@@ -593,6 +593,7 @@ int Filesystem::Chroot(const char* path) {
     // TODO: setting rootfs_path is most likely thread unsafe?
     auto guard = g_process_globals.states_lock.lock();
     g_config.rootfs_path = fd_path.full_path();
+    g_process_globals.mount_paths.push_back(g_config.rootfs_path);
     int old_rootfs_fd = g_rootfs_fd;
     g_rootfs_fd = open(fd_path.full_path(), O_PATH | O_DIRECTORY);
     FD::unprotectAndClose(old_rootfs_fd);
