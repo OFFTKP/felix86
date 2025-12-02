@@ -260,9 +260,8 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
         ASSERT(npath.full_path());
         std::string path = npath.full_path();
         size_t rootfs_size;
-        if (path.find(g_config.rootfs_path.string())) {
+        if (is_subpath(path, g_config.rootfs_path)) {
             rootfs_size = g_config.rootfs_path.string().size();
-            PLAIN("Removing %s from %s", g_config.rootfs_path.c_str(), path.c_str());
         } else {
             rootfs_size = 0;
         }
