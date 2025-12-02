@@ -621,6 +621,7 @@ int main(int argc, char* argv[]) {
         ERROR("Executable path not specified");
         return 1;
     } else {
+        g_params.executable_path = std::filesystem::absolute(g_params.executable_path);
         if (is_subpath(g_params.executable_path, g_config.rootfs_path)) {
             // All is good
         } else {
