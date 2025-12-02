@@ -103,7 +103,8 @@ struct FakeMountNode {
     // When resolving a path, dst_stat is useful to see if we are currently in a fake mounted component
     // When resolving fd+"..", src_stat is useful to see if we are inside a fake mount and redirect .. to dst_path/..
     struct statx dst_stat{};
-    int src_fd{}; // used for current_fd in path resolution
+    int src_fd{};        // used for current_fd in path resolution
+    int dst_parent_fd{}; // ditto
     struct statx src_stat{};
 
     // Fake mounts are used for two purposes, mounting /dev & co, and trusted folders

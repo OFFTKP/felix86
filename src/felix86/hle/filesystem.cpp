@@ -112,7 +112,6 @@ void replace_trusted_folder_path(std::string& path) {
         if (trusted.trusted_folder) {
             if (path.find(trusted.src_path) == 0) {
                 replace_all(path, trusted.src_path, trusted.dst_path);
-                remove_if_found(path, g_config.rootfs_path);
                 break;
             }
         }
@@ -225,7 +224,7 @@ bool Filesystem::TrustFolder(const std::filesystem::path& path) {
         return false;
     }
 
-    return FakeMount(final_path, dest_path);
+    return FakeMount(final_path, dest_path, true);
 }
 
 // Make our resolveImpl function think that dst points to mount_me and has the contents of mount_me, while
@@ -235,16 +234,25 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
     std::error_code ec;
     bool is_directory = std::filesystem::is_directory(mount_me, ec);
     if (!is_directory || ec) {
+        WARN("1");
+        return false;
+    }
+
+    std::filesystem::create_directories(dst, ec);
+    if (ec) {
+        WARN("2");
         return false;
     }
 
     is_directory = std::filesystem::is_directory(dst, ec);
     if (!is_directory || ec) {
+        WARN("3");
         return false;
     }
 
     bool is_absolute = mount_me.is_absolute() && dst.is_absolute();
     if (!is_absolute) {
+        WARN("4");
         return false;
     }
 
@@ -268,6 +276,18 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
 
     node.src_fd = FD::moveToHighNumber(result);
     FD::protect(node.src_fd);
+
+    if (trusted_folder) {
+        result = open(dst.parent_path().c_str(), O_PATH | O_DIRECTORY);
+        if (result == -1) {
+            return false;
+        }
+
+        node.dst_parent_fd = FD::moveToHighNumber(result);
+        FD::protect(node.dst_parent_fd);
+    } else {
+        node.dst_parent_fd = g_rootfs_fd;
+    }
 
     node.trusted_folder = trusted_folder;
 
@@ -709,9 +729,21 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     const char* new_root_full = new_root_resolved.full_path();
 
     if (g_mounts_path.empty()) {
-        std::string mnts = "/run/user/" + std::to_string(getuid()) + "/felix86/mounts";
-        std::filesystem::create_directories(mnts);
-        std::string templ = mnts + "/XXXXXX";
+        std::filesystem::path rundir = "/run/user/" + std::to_string(geteuid());
+        if (!std::filesystem::exists(rundir)) {
+            rundir = "/tmp"; // :(
+            if (!std::filesystem::exists(rundir)) {
+                ERROR("Neither %s or /tmp exist", ("/run/user/" + std::to_string(geteuid())).c_str());
+            }
+        }
+
+        std::filesystem::path mounts = rundir / "felix86" / "mounts";
+        std::error_code ec;
+        std::filesystem::create_directories(mounts, ec);
+        if (ec) {
+            ERROR("Failed while creating directories for pivot root: %s", mounts.c_str());
+        }
+        std::string templ = mounts.string() + "/XXXXXX";
         char* path = mkdtemp(templ.data());
         ASSERT_MSG(path == templ.data(), "Failed to mkdtemp for mounts directory?");
         g_mounts_path = path;
@@ -1073,13 +1105,18 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
                 continue;
             } else {
                 // Go through our fake mounts and see if any match
+                bool found = false;
                 for (const FakeMountNode& mount : g_fake_mounts) {
                     if (statx_inode_same(&mount.src_stat, &current_statx)) {
                         // Don't allow looking outside the fake mount, redirect to outside of where we are mounted
-                        current_fd = g_rootfs_fd;
-                        current_relative_path = mount.dst_path.parent_path().relative_path();
+                        current_fd = mount.dst_parent_fd;
+                        current_relative_path = ".";
+                        found = true;
                         break;
                     }
+                }
+                if (found) {
+                    continue;
                 }
             }
         }

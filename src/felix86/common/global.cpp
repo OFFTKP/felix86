@@ -291,12 +291,6 @@ void initialize_globals() {
         ASSERT_MSG(!g_config.rootfs_path.empty(), "Empty rootfs path, please set using felix86 -s <PATH>");
     }
 
-    ASSERT_MSG(Filesystem::FakeMount("/dev", g_original_rootfs / "dev"), "Failed to fake-mount /dev");
-    ASSERT_MSG(Filesystem::FakeMount("/proc", g_original_rootfs / "proc"), "Failed to fake-mount /proc");
-    ASSERT_MSG(Filesystem::FakeMount("/sys", g_original_rootfs / "sys"), "Failed to fake-mount /sys");
-    ASSERT_MSG(Filesystem::FakeMount("/run", g_original_rootfs / "run"), "Failed to fake-mount /run");
-    ASSERT_MSG(Filesystem::FakeMount("/tmp", g_original_rootfs / "tmp"), "Failed to fake-mount /tmp");
-
     if (g_config.rootfs_path.empty()) {
         printf("Rootfs path is empty. Please run `felix86 -s <rootfs_path>` or set the rootfs_path variable in %s\n", g_config.path().c_str());
 
@@ -348,6 +342,12 @@ void initialize_globals() {
     ASSERT_MSG(g_rootfs_fd > 0, "Failed to open rootfs directory");
     g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
     FD::protect(g_rootfs_fd);
+
+    ASSERT_MSG(Filesystem::FakeMount("/dev", g_original_rootfs / "dev"), "Failed to fake-mount /dev");
+    ASSERT_MSG(Filesystem::FakeMount("/proc", g_original_rootfs / "proc"), "Failed to fake-mount /proc");
+    ASSERT_MSG(Filesystem::FakeMount("/sys", g_original_rootfs / "sys"), "Failed to fake-mount /sys");
+    ASSERT_MSG(Filesystem::FakeMount("/run", g_original_rootfs / "run"), "Failed to fake-mount /run");
+    ASSERT_MSG(Filesystem::FakeMount("/tmp", g_original_rootfs / "tmp"), "Failed to fake-mount /tmp");
 
     if (getenv("__FELIX86_MOUNT_0")) {
         size_t current_mount = 0;

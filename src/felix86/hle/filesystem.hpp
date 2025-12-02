@@ -71,9 +71,8 @@ struct FdPath {
                 if (fd_path.second.get_str()) {
                     new_path /= fd_path.second.get_str();
                 }
-                fd_path.second = new_path;
                 ASSERT_MSG(new_path.is_absolute(), "Path: %s / %s", buffer, fd_path.second.get_str());
-                fd_path.second = new_path;
+                fd_path.second = new_path.lexically_normal();
                 return path();
             } else {
                 int fd = fd_path.first;
@@ -96,7 +95,7 @@ struct FdPath {
                     new_path /= fd_path.second.get_str();
                 }
                 ASSERT_MSG(new_path.is_absolute(), "Path: %s / %s", buffer, fd_path.second.get_str());
-                fd_path.second = new_path;
+                fd_path.second = new_path.lexically_normal();
                 return path();
             }
         }
