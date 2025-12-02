@@ -713,8 +713,6 @@ int main(int argc, char* argv[]) {
                               canonical_path.c_str(), parent.c_str(), Config::getConfigDir().c_str());
                     }
                 }
-            } else {
-                ERROR("Executable %s not part of rootfs or trusted folder?", canonical_path.c_str());
             }
         }
     }
