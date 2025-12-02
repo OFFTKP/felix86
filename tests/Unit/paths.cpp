@@ -308,3 +308,29 @@ CATCH_TEST_CASE("Escape root", "[paths]") {
 
     EPILOGUE();
 }
+
+CATCH_TEST_CASE("Proc self ns user", "[paths]") {
+    {
+        g_fake_mounts.clear();
+        g_config.verbose = 1;
+        CATCH_REQUIRE(Filesystem::FakeMount("/run", g_original_rootfs / "run"));
+        FdPath resolved = Filesystem::resolve("/run/user", true);
+        CATCH_REQUIRE(!resolved.is_error());
+
+        // TODO: remove trailing slash
+        CATCH_REQUIRE(resolved.full_path() == std::string("/run/user"));
+        g_fake_mounts.clear();
+    }
+
+    {
+        g_fake_mounts.clear();
+        g_config.verbose = 1;
+        CATCH_REQUIRE(Filesystem::FakeMount("/proc", g_original_rootfs / "proc"));
+        FdPath resolved = Filesystem::resolve("/proc/self", true);
+        CATCH_REQUIRE(!resolved.is_error());
+
+        // TODO: remove trailing slash
+        CATCH_REQUIRE(resolved.full_path() == std::string("/proc/self"));
+        g_fake_mounts.clear();
+    }
+}
