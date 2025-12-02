@@ -624,6 +624,17 @@ int main(int argc, char* argv[]) {
         g_params.executable_path = std::filesystem::absolute(g_params.executable_path);
         if (is_subpath(g_params.executable_path, g_config.rootfs_path)) {
             // All is good
+            std::string scwd;
+            {
+                char buffer[PATH_MAX];
+                char* cwd = getcwd(buffer, PATH_MAX);
+                ASSERT(cwd == buffer);
+                scwd = cwd;
+            }
+
+            if (is_subpath(scwd, g_config.rootfs_path)) {
+                g_dont_chdir = true; // don't change the dir, cwd is already inside rootfs
+            }
         } else {
             // Executable path might be outside the rootfs but in a fakemount (e.g. in /tmp or in a trusted folder)
             std::error_code ec;
