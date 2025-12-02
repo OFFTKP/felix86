@@ -546,6 +546,7 @@ int main(int argc, char* argv[]) {
         g_params.argv[0] = argv0_original;
     } else {
         ASSERT(!g_execve_process);
+        replace_all(g_params.argv[0], g_config.rootfs_path, "");
     }
 
     std::string args = "Arguments: ";

@@ -9,7 +9,6 @@
     Config config = g_config;                                                                                                                        \
     int fd = g_rootfs_fd;                                                                                                                            \
     g_config.rootfs_path = "/tmp/felix86_paths/myrootfs";                                                                                            \
-    g_original_rootfs = g_config.rootfs_path;                                                                                                        \
     g_process_globals.mount_paths.push_back(g_config.rootfs_path);                                                                                   \
     std::filesystem::create_directories(g_config.rootfs_path);                                                                                       \
     g_rootfs_fd = open(g_config.rootfs_path.c_str(), O_PATH | O_DIRECTORY);                                                                          \

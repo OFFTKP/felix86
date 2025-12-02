@@ -49,7 +49,6 @@ int g_linux_minor = 0;
 bool g_no_riscv_v_state{};
 std::filesystem::path g_executable_path_absolute{};
 std::filesystem::path g_mounts_path{};
-std::filesystem::path g_original_rootfs{};
 std::vector<FakeMountNode> g_fake_mounts{};
 bool g_dont_chdir = false;
 
@@ -283,7 +282,7 @@ void initialize_globals() {
     }
 
     const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
-    g_original_rootfs = g_config.rootfs_path;
+    std::filesystem::path original_rootfs = g_config.rootfs_path;
     if (guest_rootfs) {
         g_config.rootfs_path = guest_rootfs;
     } else {
@@ -343,11 +342,11 @@ void initialize_globals() {
     g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
     FD::protect(g_rootfs_fd);
 
-    ASSERT_MSG(Filesystem::FakeMount("/dev", g_original_rootfs / "dev"), "Failed to fake-mount /dev");
-    ASSERT_MSG(Filesystem::FakeMount("/proc", g_original_rootfs / "proc"), "Failed to fake-mount /proc");
-    ASSERT_MSG(Filesystem::FakeMount("/sys", g_original_rootfs / "sys"), "Failed to fake-mount /sys");
-    ASSERT_MSG(Filesystem::FakeMount("/run", g_original_rootfs / "run"), "Failed to fake-mount /run");
-    ASSERT_MSG(Filesystem::FakeMount("/tmp", g_original_rootfs / "tmp"), "Failed to fake-mount /tmp");
+    ASSERT_MSG(Filesystem::FakeMount("/dev", original_rootfs / "dev"), "Failed to fake-mount /dev");
+    ASSERT_MSG(Filesystem::FakeMount("/proc", original_rootfs / "proc"), "Failed to fake-mount /proc");
+    ASSERT_MSG(Filesystem::FakeMount("/sys", original_rootfs / "sys"), "Failed to fake-mount /sys");
+    ASSERT_MSG(Filesystem::FakeMount("/run", original_rootfs / "run"), "Failed to fake-mount /run");
+    ASSERT_MSG(Filesystem::FakeMount("/tmp", original_rootfs / "tmp"), "Failed to fake-mount /tmp");
 
     if (getenv("__FELIX86_MOUNT_0")) {
         size_t current_mount = 0;
