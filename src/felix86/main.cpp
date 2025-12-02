@@ -620,35 +620,36 @@ int main(int argc, char* argv[]) {
         ERROR("Executable path not specified");
         return 1;
     } else {
-        if (!is_subpath(g_params.executable_path, g_config.rootfs_path)) {
-            FdPath resolved_path = Filesystem::resolve(g_params.executable_path.c_str(), true); // check if it exists inside rootfs
-            // Executable path might be outside the rootfs but in a trusted folder, let's check
-            if (!g_execve_process && resolved_path.is_error() && std::filesystem::exists(unmodified_executable_path) &&
-                std::filesystem::is_regular_file(unmodified_executable_path)) {
-                bool found = false;
-                std::error_code ec;
-                std::filesystem::path canonical_path = std::filesystem::canonical(unmodified_executable_path, ec);
-                if (ec) {
-                    ERROR("Executable not inside rootfs, couldn't canonicalize path");
-                }
+        if (is_subpath(g_params.executable_path, g_config.rootfs_path)) {
+            // All is good
+        } else {
+            // Executable path might be outside the rootfs but in a fakemount (e.g. in /tmp or in a trusted folder)
+            std::error_code ec;
+            bool found = false;
+            std::filesystem::path canonical_path = std::filesystem::canonical(unmodified_executable_path, ec);
+            if (ec) {
+                ERROR("Executable not inside rootfs, couldn't canonicalize path");
+            }
 
-                for (const auto& fake_mount : g_fake_mounts) {
-                    if (is_subpath(canonical_path, fake_mount.src_path)) {
-                        // Path is in trusted folder, transform to path that is inside rootfs
-                        std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
-                        std::filesystem::path executable = g_config.rootfs_path / fake_mount.dst_path.relative_path() / cutoff_path.relative_path();
-                        if (chdir(executable.parent_path().c_str()) != 0) {
-                            WARN("Failed to chdir into %s", executable.parent_path().c_str());
+            for (const auto& fake_mount : g_fake_mounts) {
+                if (is_subpath(canonical_path, fake_mount.src_path)) {
+                    if (!g_execve_process) {
+                        std::filesystem::path parent_path = canonical_path.parent_path();
+                        if (chdir(parent_path.c_str()) != 0) {
+                            WARN("Failed to chdir into %s", parent_path.c_str());
                         } else {
                             g_dont_chdir = true;
                         }
-                        g_params.executable_path = canonical_path;
-                        found = true;
-                        break;
                     }
-                }
 
-                if (!found) {
+                    g_params.executable_path = canonical_path;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                if (!g_execve_process) {
                     std::filesystem::path parent = canonical_path.parent_path();
                     int status;
                     bool tty = isatty(STDOUT_FILENO);
@@ -713,6 +714,8 @@ int main(int argc, char* argv[]) {
                               canonical_path.c_str(), parent.c_str(), Config::getConfigDir().c_str());
                     }
                 }
+            } else {
+                ERROR("Executable %s not part of rootfs or trusted folder?", canonical_path.c_str());
             }
         }
     }

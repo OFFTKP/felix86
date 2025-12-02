@@ -182,7 +182,7 @@ struct Filesystem {
 
     static bool TrustFolder(const std::filesystem::path& path);
 
-    static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst);
+    static bool FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst, bool trusted_folder = false);
 
     // Emulated syscall functions
     int OpenAt(int fd, const char* filename, int flags, u64 mode);
@@ -299,8 +299,6 @@ private:
     static bool isProcSelfExe(const char* path);
 
     static FdPath resolveImpl(int fd, const char* path, bool resolve_final);
-
-    static std::pair<int, NullablePath> resolveImplOld(int fd, const char* path, bool resolve_symlinks);
 
     std::filesystem::path executable_path;
     std::shared_ptr<Elf> elf;

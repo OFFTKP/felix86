@@ -107,6 +107,18 @@ void seal_memfd(int fd) {
     ASSERT(fcntl(fd, F_ADD_SEALS, F_SEAL_SEAL | F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE | F_SEAL_FUTURE_WRITE) == 0);
 }
 
+void replace_trusted_folder_path(std::string& path) {
+    for (const auto& trusted : g_fake_mounts) {
+        if (trusted.trusted_folder) {
+            if (path.find(trusted.src_path) == 0) {
+                replace_all(path, trusted.src_path, trusted.dst_path);
+                remove_if_found(path, g_config.rootfs_path);
+                break;
+            }
+        }
+    }
+}
+
 void Filesystem::initializeEmulatedNodes() {
     // clang-format off
     emulated_nodes[PROC_CPUINFO] = EmulatedNode {
@@ -186,7 +198,7 @@ bool Filesystem::TrustFolder(const std::filesystem::path& path) {
     // Goal: We need a way to run things that are outside the rootfs
     // Ideas:
     // - Symlink folder: Bad. Symlinks are resolved inside the rootfs. Allows access outside the rootfs
-    // - Mounting: Bad. Pollutes mounts even more, gets us deeper in root requiring hell
+    // - Mounting: Bad. Pollutes mountinfo, gets us in root requiring hell
     // - Fake mounting: Seems to work. But then:
     //    Say /mydir is mounted to /rootfs/home/mnt
     //    /mydir/test should resolve to /rootfs/home/mnt/test, sure
@@ -219,7 +231,7 @@ bool Filesystem::TrustFolder(const std::filesystem::path& path) {
 // Make our resolveImpl function think that dst points to mount_me and has the contents of mount_me, while
 // also not allowing the program to see the contents of mount_me/.. (in this case it would see dst/..)
 // Currently, dst must be a path that is mounted inside the rootfs like /run/... because of our dst.relative_path shenanigans when mount_me+".."
-bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst) {
+bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::filesystem::path& dst, bool trusted_folder) {
     std::error_code ec;
     bool is_directory = std::filesystem::is_directory(mount_me, ec);
     if (!is_directory || ec) {
@@ -256,6 +268,8 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
 
     node.src_fd = FD::moveToHighNumber(result);
     FD::protect(node.src_fd);
+
+    node.trusted_folder = trusted_folder;
 
     g_fake_mounts.push_back(node);
     return true;
@@ -357,6 +371,7 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
 
     if (result > 0) {
         std::string str(our_buffer, result);
+        replace_trusted_folder_path(str);
         if (is_magic_link(fd_path.fd(), fd_path.path())) {
             // Remove rootfs prefix if it's magic link such as /proc/self/fd stuff
             remove_if_found(str, g_original_rootfs);
@@ -373,6 +388,7 @@ int Filesystem::Getcwd(char* buf, size_t size) {
 
     if (result > 0) {
         std::string str = buf;
+        replace_trusted_folder_path(str);
         removeRootfsPrefix(str);
         strncpy(buf, str.c_str(), size);
         return strlen(buf);
@@ -1198,98 +1214,4 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
     }
 
     return FdPath::create(current_fd, current_relative_path);
-}
-
-std::pair<int, NullablePath> Filesystem::resolveImplOld(int fd, const char* path, bool resolve_symlinks) {
-    if (path == nullptr) {
-        return {fd, nullptr};
-    }
-
-    if (path[0] == 0) {
-        return {fd, path};
-    }
-
-    if (path[0] == '/' && path[1] == 0) {
-        return {AT_FDCWD, g_config.rootfs_path};
-    }
-
-    if (isProcSelfExe(path)) {
-        return {AT_FDCWD, g_executable_path_absolute};
-    }
-
-    // Convert the fd + path combo to an absolute path;
-    std::filesystem::path resolve_me;
-    if (path[0] == '/') {
-        resolve_me = path;
-    } else {
-        char buffer[PATH_MAX];
-        if (fd == AT_FDCWD) {
-            char* cwd = getcwd(buffer, PATH_MAX);
-            std::string file = std::filesystem::path(cwd) / path;
-            removeRootfsPrefix(file);
-            resolve_me = file;
-        } else {
-            std::string self_fd = "/proc/self/fd/" + std::to_string(fd);
-            ssize_t size = readlink(self_fd.c_str(), buffer, PATH_MAX);
-            if (size < 0) {
-                WARN("Failed to read path for fd: %d and pathname %s", fd, path);
-                return {fd, path};
-            }
-            buffer[size] = 0;
-            std::string file = std::filesystem::path(buffer) / path;
-            removeRootfsPrefix(file);
-            resolve_me = file;
-        }
-    }
-
-    if (resolve_symlinks) {
-        // If we want to resolve symlinks anyway, then just resolve the entire thing in openat2
-        struct open_how open_how;
-        open_how.flags = O_PATH;
-        open_how.resolve = RESOLVE_IN_ROOT | RESOLVE_NO_MAGICLINKS;
-        open_how.mode = 0;
-        int path_fd = syscall(SYS_openat2, g_rootfs_fd, resolve_me.c_str(), &open_how, sizeof(struct open_how));
-        if (path_fd > 0) {
-            char buffer[PATH_MAX];
-            std::string self_fd = "/proc/self/fd/" + std::to_string(path_fd);
-            ssize_t size = readlink(self_fd.c_str(), buffer, PATH_MAX - 1);
-            ASSERT(size > 0);
-            buffer[size] = 0;
-            close(path_fd);
-            return {AT_FDCWD, std::filesystem::path{buffer}};
-        } else {
-            if (resolve_me.is_absolute()) {
-                return {AT_FDCWD, g_config.rootfs_path / resolve_me.relative_path()};
-            } else {
-                return {fd, resolve_me};
-            }
-        }
-    } else {
-        // If we don't want to resolve symlinks on the last component, resolve just the basepath then add the final component
-        const std::filesystem::path final_component = resolve_me.filename();
-        const std::filesystem::path base_path = resolve_me.parent_path();
-        struct open_how open_how;
-        open_how.flags = O_PATH;
-        open_how.resolve = RESOLVE_IN_ROOT | RESOLVE_NO_MAGICLINKS;
-        open_how.mode = 0;
-        int path_fd = syscall(SYS_openat2, g_rootfs_fd, base_path.c_str(), &open_how, sizeof(struct open_how));
-        if (path_fd > 0) {
-            char buffer[PATH_MAX];
-            std::string self_fd = "/proc/self/fd/" + std::to_string(path_fd);
-            ssize_t size = readlink(self_fd.c_str(), buffer, PATH_MAX - 1);
-            ASSERT(size > 0);
-            buffer[size] = 0;
-            close(path_fd);
-
-            std::filesystem::path final = buffer;
-            final /= final_component;
-            return {AT_FDCWD, final};
-        } else {
-            if (resolve_me.is_absolute()) {
-                return {AT_FDCWD, g_config.rootfs_path / resolve_me.relative_path()};
-            } else {
-                return {fd, resolve_me};
-            }
-        }
-    }
 }
