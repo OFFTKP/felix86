@@ -123,7 +123,7 @@ std::filesystem::path Filesystem::ConvertToTrustedPath(const std::filesystem::pa
     // Make our fake directory
     std::error_code ec;
     const std::filesystem::path dest_path =
-        std::filesystem::path("/run") / "user" / std::to_string(getuid()) / "felix86" / "trusted" / normalized_path / dirname;
+        std::filesystem::path("/run") / "user" / std::to_string(geteuid()) / "felix86" / "trusted" / normalized_path / dirname;
     if (std::filesystem::exists(dest_path, ec) && std::filesystem::is_directory(dest_path, ec)) {
         return dest_path;
     }
@@ -146,8 +146,8 @@ bool Filesystem::TrustFolder(const std::filesystem::path& path) {
     //    /mydir/test should resolve to /rootfs/home/mnt/test, sure
     //    /mydir/.. should resolve to /rootfs/home, not /, sure
     //    open(/home/mnt) should resolve to open(/mydir), what about a later open(fd, "..")? Needs care
-    // We will place these fake paths inside a tmpfs, in this case /run/user/$uid/felix86/trusted/NormalizedPath/DirName
-    // For example, say my path is /home/myname/mydir, the dir it will exist in is /run/user/$uid/felix86/trusted/home-myname-mydir/mydir
+    // We will place these fake paths inside a tmpfs, in this case /run/user/$euid/felix86/trusted/NormalizedPath/DirName
+    // For example, say my path is /home/myname/mydir, the dir it will exist in is /run/user/$euid/felix86/trusted/home-myname-mydir/mydir
     // In case programs rely on the directory name the executable is in being correct (for whatever reason) then this would cover it
     // The "normalized path" here serves as a unique identifier per trusted path
     // This is to not conflict with other dirs that have the same final component name but a different path
@@ -691,6 +691,7 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     ASSERT(path.string().size() < PATH_MAX);
     strncpy(buffer, path.c_str(), PATH_MAX);
     char* dir = mkdtemp(buffer);
+    ASSERT_MSG(dir == buffer, "Couldn't mkdtemp at %s", buffer);
 
     // Move the new_root mount to the g_mounts_path because we want a unique path when doing removeRootfsPrefix
     // so as to not accidentally remove parts of the root that we aren't supposed to

@@ -968,7 +968,7 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
     }
 
     if (handler->func == (u64)SIG_IGN) {
-        ERROR("Signal %d hit but signal handler is SIGIGN", sig);
+        SIGLOG("Signal %d hit but signal handler is SIGIGN", sig);
         return true;
     }
 
