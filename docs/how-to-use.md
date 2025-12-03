@@ -8,11 +8,11 @@ felix86 runs x86 and x86-64 apps and games on RISC-V. These apps and games need 
 > Currently the emulator is only tested on boards with **VLEN=256**
 
 ## Step 0 - Requirements
-You need a RISC-V board with `rv64gv` extensions. **RVV 1.0** is necessary.
+You need a RISC-V board with `rv64gvb` extensions. **RVV 1.0** is necessary.
 
 To run the installation script, you'll need the following programs:
 ```
-curl tar unzip sudo bash
+curl tar unzip sudo bash jq
 ```
 They are installed by default in most distributions.
 
@@ -20,7 +20,7 @@ They are installed by default in most distributions.
 Simply run the quick installation script:
 
 ```bash
-curl -s https://raw.githubusercontent.com/OFFTKP/felix86/master/src/felix86/tools/install.sh -o /tmp/felix86_install.sh && bash /tmp/felix86_install.sh && rm /tmp/felix86_install.sh
+bash <(curl -s https://install.felix86.com)
 ```
 
 This will guide you through the process of installing felix86 and downloading a rootfs.
@@ -30,9 +30,9 @@ After running the installation script you should be ready to run x86 and x86-64 
 
 You can run them as if they are RISC-V applications. **Make sure they are inside the rootfs.**
 
-It is recommended you "enter" the rootfs by running the x86-64 bash inside the rootfs:    
+It is recommended you "enter" the rootfs via a shell:
 ```
-FELIX86_QUIET=1 felix86 /bin/bash
+FELIX86_QUIET=1 felix86 --shell
 ```
 
 You should now be inside the rootfs.    
@@ -52,7 +52,6 @@ The rootfs you downloaded should have enough libraries to support most games, bu
 - If you're trying to run Steam, [read this page](./steam.md)
 - There's multiple ways to run programs using felix86:
   - `felix86 /path/to/rootfs/program`
-  - `felix86 /program`                   (will search inside rootfs only)
   - `/path/to/rootfs/program`            (make sure it's not a script, otherwise run it with felix86 prepended)
   - `/path/to/program`                   (running programs outside the rootfs will prompt you to trust the directory)
 - If your GPU has x86/x86-64 drivers then they will be automatically used. Many RISC-V boards come with iGPUs that don't have x86 drivers and felix86 is not able to use them currently.

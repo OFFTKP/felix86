@@ -437,7 +437,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             ERROR("Couldn't find a shell inside the rootfs");
         }
 
-        const std::filesystem::path home = getenv("$HOME");
+        const char* home_env = getenv("HOME");
+        if (!home_env) {
+            ERROR("$HOME is not set?");
+        }
+
+        const std::filesystem::path home = home_env;
         const std::filesystem::path home_inside_rootfs = g_config.rootfs_path / home.relative_path();
         std::filesystem::create_directories(home_inside_rootfs, ec);
         if (ec) {
