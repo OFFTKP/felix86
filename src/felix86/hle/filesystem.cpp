@@ -680,6 +680,7 @@ int Filesystem::Chroot(const char* path) {
     if (result == 0) {
         final_path = dir;
     } else {
+        WARN("Mount failed during chroot, may cause problems");
         final_path = fd_path.full_path();
     }
 
