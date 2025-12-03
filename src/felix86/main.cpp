@@ -37,6 +37,7 @@ static char doc[] = "felix86 - a userspace x86_64 emulator";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
+    {"shell", 5, 0, 0, "Enter the rootfs through a shell"},
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
@@ -400,6 +401,64 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
     }
 
     switch (key) {
+    case 5: {
+        std::error_code ec;
+        Config::initialize();
+        if (g_config.rootfs_path.empty()) {
+            ERROR("Rootfs path not set. Set it using `felix86 -s <path>`. If you don't have one, use the installer script!");
+        }
+
+        bool rootfs_exists = std::filesystem::exists(g_config.rootfs_path, ec);
+        if (!rootfs_exists || ec) {
+            ERROR("Rootfs path %s does not exist", g_config.rootfs_path.c_str());
+        }
+
+        bool rootfs_dir = std::filesystem::is_directory(g_config.rootfs_path, ec);
+        if (!rootfs_dir || ec) {
+            ERROR("Rootfs path %s is not a directory", g_config.rootfs_path.c_str());
+        }
+
+        std::filesystem::path shell_path;
+        const char* shell = getenv("SHELL");
+        if (shell) {
+            std::filesystem::path path = g_config.rootfs_path / std::filesystem::path(shell).relative_path();
+            bool exists = std::filesystem::exists(path, ec);
+            bool is_file = std::filesystem::is_regular_file(path, ec);
+            if (exists && is_file && !ec) {
+                shell_path = path;
+            }
+        }
+
+        if (shell_path.empty()) {
+            shell_path = g_config.rootfs_path / "bin/sh";
+        }
+
+        if (!std::filesystem::exists(shell_path, ec) || !std::filesystem::is_regular_file(shell_path, ec)) {
+            ERROR("Couldn't find a shell inside the rootfs");
+        }
+
+        const std::filesystem::path home = getenv("$HOME");
+        const std::filesystem::path home_inside_rootfs = g_config.rootfs_path / home.relative_path();
+        std::filesystem::create_directories(home_inside_rootfs, ec);
+        if (ec) {
+            ERROR("Failed to create directories %s", home_inside_rootfs.c_str());
+        }
+
+        int result = chdir(home_inside_rootfs.c_str());
+        if (result != 0) {
+            ERROR("Failed to chdir to %s", home_inside_rootfs.c_str());
+        }
+
+        std::string path_string = shell_path;
+        char* const argv[2] = {
+            path_string.data(),
+            nullptr,
+        };
+
+        (void)execve("/proc/self/exe", argv, environ);
+        ERROR("Failed to start %s, error: %s", path_string.c_str(), strerror(errno));
+        break;
+    }
     case 'i': {
         exit(print_system_info());
         break;

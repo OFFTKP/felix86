@@ -182,6 +182,7 @@ bool Filesystem::FakeMount(const std::filesystem::path& mount_me, const std::fil
 
     std::filesystem::create_directories(dst, ec);
     if (ec) {
+        WARN("Failed to create directory %s, is the rootfs owned by a higher privileged user?", dst.c_str());
         return false;
     }
 
