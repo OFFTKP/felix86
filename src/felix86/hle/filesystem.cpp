@@ -676,7 +676,7 @@ int Filesystem::Chroot(const char* path) {
     // we will do without
     std::filesystem::path final_path;
     std::filesystem::path dir = create_unique_mount_path();
-    int result = ::mount(fd_path.full_path(), dir.c_str(), nullptr, MS_MOVE, nullptr);
+    int result = ::mount(fd_path.full_path(), dir.c_str(), nullptr, MS_BIND, nullptr);
     if (result == 0) {
         final_path = dir;
     } else {
