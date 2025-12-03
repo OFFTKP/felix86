@@ -625,46 +625,7 @@ int Filesystem::Rmdir(const char* dir) {
     return rmdirInternal(fd_path.full_path());
 }
 
-int Filesystem::Chroot(const char* path) {
-    WARN("chroot(%s)", path);
-    if (!path) {
-        return -EINVAL;
-    }
-
-    // Note: We'd like to move the new root inside g_mounts_path like in pivot_root, but it's not possible:
-    //    - Unlike pivot_root, chroot's new root doesn't need to be a mount
-    //    - Chroot requires CAP_SYS_CHROOT instead of CAP_SYS_ADMIN, so there may be programs that can chroot but not mount
-    FdPath fd_path = resolve(path, true);
-    if (fd_path.is_error()) {
-        VERBOSE("Error while resolving path during chroot(%s), error: %s", path, strerror(fd_path.get_errno()));
-        return -fd_path.get_errno();
-    }
-
-    // TODO: setting rootfs_path is most likely thread unsafe?
-    auto guard = g_process_globals.states_lock.lock();
-    g_config.rootfs_path = fd_path.full_path();
-    g_process_globals.mount_paths.push_back(g_config.rootfs_path);
-    int old_rootfs_fd = g_rootfs_fd;
-    g_rootfs_fd = open(fd_path.full_path(), O_PATH | O_DIRECTORY);
-    FD::unprotectAndClose(old_rootfs_fd);
-    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", fd_path.full_path());
-    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
-    FD::protect(g_rootfs_fd);
-    return 0;
-}
-
-int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
-    WARN("pivot_root(%s, %s)", new_root, put_old);
-    const std::filesystem::path rootfs = g_config.rootfs_path;
-    FdPath new_root_resolved = resolve(new_root, true);
-
-    if (new_root_resolved.is_error()) {
-        WARN("Failed to resolve new_root: %s with error %s", new_root, strerror(new_root_resolved.get_errno()));
-        return -new_root_resolved.get_errno();
-    }
-
-    const char* new_root_full = new_root_resolved.full_path();
-
+std::filesystem::path create_unique_mount_path() {
     if (g_mounts_path.empty()) {
         std::filesystem::path rundir = "/run/user/" + std::to_string(geteuid());
         if (!std::filesystem::exists(rundir)) {
@@ -692,6 +653,62 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     strncpy(buffer, path.c_str(), PATH_MAX);
     char* dir = mkdtemp(buffer);
     ASSERT_MSG(dir == buffer, "Couldn't mkdtemp at %s", buffer);
+    return dir;
+}
+
+int Filesystem::Chroot(const char* path) {
+    WARN("chroot(%s)", path);
+    if (!path) {
+        return -EINVAL;
+    }
+
+    // Note: We'd like to move the new root inside g_mounts_path like in pivot_root, but it's not possible:
+    //    - Unlike pivot_root, chroot's new root doesn't need to be a mount
+    //    - Chroot requires CAP_SYS_CHROOT instead of CAP_SYS_ADMIN, so there may be programs that can chroot but not mount
+    FdPath fd_path = resolve(path, true);
+    if (fd_path.is_error()) {
+        VERBOSE("Error while resolving path during chroot(%s), error: %s", path, strerror(fd_path.get_errno()));
+        return -fd_path.get_errno();
+    }
+
+    // Mount at a unique path
+    // Because chrooting is only CAP_SYS_CHROOT and not CAP_SYS_ADMIN, if this fails
+    // we will do without
+    std::filesystem::path final_path;
+    std::filesystem::path dir = create_unique_mount_path();
+    int result = ::mount(fd_path.full_path(), dir.c_str(), nullptr, MS_MOVE, nullptr);
+    if (result == 0) {
+        final_path = dir;
+    } else {
+        final_path = fd_path.full_path();
+    }
+
+    // TODO: setting rootfs_path is most likely thread unsafe?
+    auto guard = g_process_globals.states_lock.lock();
+    g_config.rootfs_path = final_path;
+    g_process_globals.mount_paths.push_back(g_config.rootfs_path);
+    int old_rootfs_fd = g_rootfs_fd;
+    g_rootfs_fd = open(final_path.c_str(), O_PATH | O_DIRECTORY);
+    FD::unprotectAndClose(old_rootfs_fd);
+    ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", final_path.c_str());
+    g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
+    FD::protect(g_rootfs_fd);
+    return 0;
+}
+
+int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
+    WARN("pivot_root(%s, %s)", new_root, put_old);
+    const std::filesystem::path rootfs = g_config.rootfs_path;
+    FdPath new_root_resolved = resolve(new_root, true);
+
+    if (new_root_resolved.is_error()) {
+        WARN("Failed to resolve new_root: %s with error %s", new_root, strerror(new_root_resolved.get_errno()));
+        return -new_root_resolved.get_errno();
+    }
+
+    const char* new_root_full = new_root_resolved.full_path();
+
+    std::filesystem::path path = create_unique_mount_path();
 
     // Move the new_root mount to the g_mounts_path because we want a unique path when doing removeRootfsPrefix
     // so as to not accidentally remove parts of the root that we aren't supposed to
@@ -707,21 +724,21 @@ int Filesystem::PivotRoot(const char* new_root, const char* put_old) {
     // Solution: make a separate dir for each rootfs
     // Each /proc/self/fd/# will now resolve to a path with the rootfs it had at the time of opening the file
     // This way we can get the proper guest path after removeRootfsPrefix!
-    int result = ::mount(new_root_full, dir, nullptr, MS_MOVE, nullptr);
+    int result = ::mount(new_root_full, path.c_str(), nullptr, MS_MOVE, nullptr);
 
     // Unlike chroot, pivot_root is CAP_SYS_ADMIN,
     if (result != 0) {
-        WARN("Failed to move mount during pivot_root %s -> %s, error: %s", new_root_full, dir, strerror(errno));
+        WARN("Failed to move mount during pivot_root %s -> %s, error: %s", new_root_full, path.c_str(), strerror(errno));
         return -errno;
     } else {
         auto lock = g_process_globals.states_lock.lock();
         int old_rootfs_fd = g_rootfs_fd;
-        g_rootfs_fd = open(dir, O_PATH | O_DIRECTORY);
+        g_rootfs_fd = open(path.c_str(), O_PATH | O_DIRECTORY);
         FD::unprotectAndClose(old_rootfs_fd);
-        ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", dir);
+        ASSERT_MSG(g_rootfs_fd > 0, "Failed to open new rootfs dir: %s", path.c_str());
         g_rootfs_fd = FD::moveToHighNumber(g_rootfs_fd);
         FD::protect(g_rootfs_fd);
-        g_config.rootfs_path = dir;
+        g_config.rootfs_path = path;
 
         g_process_globals.mount_paths.push_back(g_config.rootfs_path);
     }
