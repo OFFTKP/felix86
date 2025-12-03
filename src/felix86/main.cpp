@@ -405,17 +405,20 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         std::error_code ec;
         Config::initialize();
         if (g_config.rootfs_path.empty()) {
-            ERROR("Rootfs path not set. Set it using `felix86 -s <path>`. If you don't have one, use the installer script!");
+            printf("Rootfs path not set. Set it using `felix86 -s <path>`. If you don't have one, use the installer script!\n");
+            exit(1);
         }
 
         bool rootfs_exists = std::filesystem::exists(g_config.rootfs_path, ec);
         if (!rootfs_exists || ec) {
-            ERROR("Rootfs path %s does not exist", g_config.rootfs_path.c_str());
+            printf("Rootfs path %s does not exist\n", g_config.rootfs_path.c_str());
+            exit(1);
         }
 
         bool rootfs_dir = std::filesystem::is_directory(g_config.rootfs_path, ec);
         if (!rootfs_dir || ec) {
-            ERROR("Rootfs path %s is not a directory", g_config.rootfs_path.c_str());
+            printf("Rootfs path %s is not a directory\n", g_config.rootfs_path.c_str());
+            exit(1);
         }
 
         std::filesystem::path shell_path;
@@ -430,38 +433,63 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         }
 
         if (shell_path.empty()) {
-            shell_path = g_config.rootfs_path / "bin/sh";
+            shell_path = g_config.rootfs_path / "bin/bash";
         }
 
         if (!std::filesystem::exists(shell_path, ec) || !std::filesystem::is_regular_file(shell_path, ec)) {
-            ERROR("Couldn't find a shell inside the rootfs");
+            printf("Couldn't find a shell inside the rootfs\n");
+            exit(1);
         }
 
         const char* home_env = getenv("HOME");
         if (!home_env) {
-            ERROR("$HOME is not set?");
+            printf("$HOME is not set?\n");
+            exit(1);
         }
 
         const std::filesystem::path home = home_env;
         const std::filesystem::path home_inside_rootfs = g_config.rootfs_path / home.relative_path();
         std::filesystem::create_directories(home_inside_rootfs, ec);
         if (ec) {
-            ERROR("Failed to create directories %s", home_inside_rootfs.c_str());
+            printf("Failed to create directories %s\n", home_inside_rootfs.c_str());
+            exit(1);
         }
 
         int result = chdir(home_inside_rootfs.c_str());
         if (result != 0) {
-            ERROR("Failed to chdir to %s", home_inside_rootfs.c_str());
+            printf("Failed to chdir to %s\n", home_inside_rootfs.c_str());
+            exit(1);
         }
 
         std::string path_string = shell_path;
-        char* const argv[2] = {
+        std::string self = "/proc/self/exe";
+        char* const argv[3] = {
+            self.data(),
             path_string.data(),
             nullptr,
         };
 
-        (void)execve("/proc/self/exe", argv, environ);
-        ERROR("Failed to start %s, error: %s", path_string.c_str(), strerror(errno));
+        std::string ps1;
+        if (shell_path.filename() == "zsh") {
+            ps1 = "PS1=%F{215}felix86%f %F{153}%~%f > ";
+        } else if (shell_path.filename() == "bash") {
+            ps1 = "PS1=\\033[38;5;215mfelix86 \\033[38;5;153m\\w\\033[0m > ";
+        } else {
+            // We don't know the escape codes used...
+            ps1 = "PS1=felix86 > ";
+        }
+
+        std::vector<char*> envp;
+        char** envs = environ;
+        do {
+            envp.push_back(*envs++);
+        } while (*envs);
+        envp.push_back(ps1.data());
+        envp.push_back(nullptr);
+
+        (void)execve(self.c_str(), argv, envp.data());
+        printf("Failed to start %s, error: %s\n", path_string.c_str(), strerror(errno));
+        exit(1);
         break;
     }
     case 'i': {
