@@ -331,7 +331,7 @@ int Filesystem::ReadlinkAt(int fd, const char* filename, char* buf, int bufsiz) 
 
     if (result > 0) {
         std::string str(our_buffer, result);
-        replace_trusted_folder_path(str);
+        // TODO: when magic link, replace_trusted_folder_path(str), for /proc/self/fd stuff
         removeRootfsPrefix(str);
         strncpy(buf, str.c_str(), bufsiz);
         return std::min(bufsiz, (int)str.size());
