@@ -168,8 +168,6 @@ if (BUILD_REPL)
     target_compile_definitions(felix86 PRIVATE BUILD_REPL)
 endif()
 
-add_executable(felix86-mounter src/felix86/mounter.cpp)
-
 if (BUILD_THUNKGEN)
     add_executable(felix86_thunkgen src/felix86/hle/guest_libs/generator.cpp)
     target_include_directories(felix86_thunkgen PRIVATE src/felix86/hle)

@@ -463,22 +463,27 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
 
         std::string path_string = shell_path;
         std::string self = "/proc/self/exe";
-        char* const argv[3] = {
-            self.data(),
-            path_string.data(),
-            nullptr,
-        };
-
         std::string ps1;
+        std::string norc;
         if (shell_path.filename() == "zsh") {
             ps1 = "PS1=%F{215}felix86%f %F{153}%~%f > ";
+            norc = "-f";
         } else if (shell_path.filename() == "bash") {
             ps1 = "PS1=\\033[38;5;215mfelix86 \\033[38;5;153m\\w\\033[0m > ";
+            norc = "--norc";
         } else {
             // We don't know the escape codes used...
             ps1 = "PS1=felix86 > ";
         }
 
+        char* const argv[4] = {
+            self.data(),
+            path_string.data(),
+            norc.empty() ? nullptr : norc.data(),
+            nullptr,
+        };
+
+        std::string quiet = "FELIX86_QUIET=1";
         std::vector<char*> envp;
         char** envs = environ;
         do {
@@ -489,6 +494,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             envp.push_back(*envs++);
         } while (*envs);
         envp.push_back(ps1.data());
+        envp.push_back(quiet.data());
         envp.push_back(nullptr);
 
         (void)execve(self.c_str(), argv, envp.data());
