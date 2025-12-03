@@ -482,6 +482,10 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         std::vector<char*> envp;
         char** envs = environ;
         do {
+            std::string str = *envs;
+            if (str.find("PS1=") == 0) {
+                continue;
+            }
             envp.push_back(*envs++);
         } while (*envs);
         envp.push_back(ps1.data());
