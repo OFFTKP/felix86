@@ -2,23 +2,33 @@
 
 # felix86
 
-felix86 是一个 Linux 用户空间模拟器，允许您在 RISC-V 处理器上运行 x86-64 Linux 程序
+felix86 是一款 Linux 用户空间模拟器，可在 RISC-V 处理器上运行 x86 和 x86-64 程序
 
-> [!NOTE]
-> felix86 尚未完全发布。没有编译后的二进制文件可供下载。
->
-> 如果你想协助开发，请查看 [汇编和使用指南](./docs/how-to-use.md) 和[软件开发人员小贴士](./docs/contributing.md).
+## 入门指南
 
-## 特点
+### Ubuntu/Debian/Bianbu 及其他系统
+执行以下命令：
+
+```bash
+bash <(curl -s https://install.felix86.com)
+```
+
+该命令将下载并执行脚本，自动安装 felix86 及您选择的根文件系统。
+
+[阅读使用指南](./docs/how-to-use.md) 获取更多信息。
+
+开发者请参阅[贡献指南](./docs/contributing.md)。
+
+欢迎加入我们的**Discord服务器**：[https://discord.gg/TgBxgFwByU](https://discord.gg/TgBxgFwByU)
+
+## 核心特性
 - 准时 (JIT) 重编译器
-- 使用 RISC-V 向量扩展来处理 SSE 指令
-- 在可用的情况下，利用 B 扩展来处理位操作指令，如 `bsr`
-- 支持各种可选扩展，如 XThead 自定义扩展
-
+- 采用RISC-V向量扩展实现SSE 4.2级指令集
+- 支持`B`、`Zicond`、`Zacas`等多项标准扩展
+- 兼容各类自定义扩展
+- 可在特定场景调用宿主库提升性能
 
 ## 兼容性
-felix86 尚处于早期开发阶段。
-
 兼容性列表可在此处找到： https://felix86.com/compat
 
 ## 依赖关系
@@ -31,6 +41,9 @@ felix86 依赖于多个优秀项目：
 - [fmt](https://github.com/fmtlib/fmt) 用于字符串格式化
 - [nlohmann/json](https://github.com/nlohmann/json) 用于 JSON 解析
 - [toml11](https://github.com/ToruNiina/toml11) 用于 TOML 解析
+
+我们还采用其他项目的二进制测试来验证正确行为并防止回归。    
+[测试用例详见此处](https://github.com/felix86-emu/binary_tests)
 
 ## 为什么？
 felix86 的启动有几个原因，包括
