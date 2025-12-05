@@ -105,7 +105,7 @@ void compile(const std::string& input) {
     output.push_back(0x0F);
     output.push_back(0x0B);
 
-    std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>();
+    std::unique_ptr<Recompiler> rec = std::make_unique<Recompiler>(true);
     rec->setFlagMode(flag_mode);
     auto start = rec->getAssembler().GetCursorPointer();
     rec->compileSequence((u64)output.data());

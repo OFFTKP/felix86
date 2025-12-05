@@ -171,4 +171,6 @@ std::string disassemble_one(u64 address);
 
 void felix86_crash_and_burn();
 
+[[noreturn]] void felix86_exit_dispatcher(struct felix86_frame* frame);
+
 std::string felix86_mountinfo();

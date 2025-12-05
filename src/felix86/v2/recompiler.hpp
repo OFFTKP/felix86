@@ -57,7 +57,10 @@ struct BlockMetadata {
 
 // WARN: don't allocate this struct on the stack as it's quite big due to address_cache and can lead to stack overflow
 struct Recompiler {
-    explicit Recompiler();
+    // Relocatable means only emit position independent code
+    // This is disabled by default as it is worse for performance since it also disables linking
+    // But enabled for some utilities like the instruction generator so that the code is always the same
+    explicit Recompiler(bool relocatable = false);
     ~Recompiler();
     Recompiler(const Recompiler&) = delete;
     Recompiler& operator=(const Recompiler&) = delete;
@@ -487,21 +490,11 @@ struct Recompiler {
 
     void call(u64 target) {
         current_sew = SEW::E1024; // set state to garbage as a call may overwrite it
-        call(as, target);
-    }
-
-    void callPointer(u64 offset) {
-        ASSERT(isScratch(t4));
-        as.LD(t4, offset, threadStatePointer());
-        as.JALR(t4);
-    }
-
-    static void call(Assembler& as, u64 target) {
         ASSERT(isScratch(t4));
         i64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset)) {
             as.JAL(offset);
-        } else if (IsValid2GBImm(offset)) {
+        } else if (IsValid2GBImm(offset) && !relocatable) {
             const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
             const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
             as.AUIPC(t4, hi20);
@@ -510,6 +503,12 @@ struct Recompiler {
             as.LI(t4, target);
             as.JALR(t4);
         }
+    }
+
+    void callPointer(u64 offset) {
+        ASSERT(isScratch(t4));
+        as.LD(t4, offset, threadStatePointer());
+        as.JALR(t4);
     }
 
     void pushCalltrace() {
@@ -751,6 +750,8 @@ private:
     std::array<AllocatedMMXReg, 8> mmx_reg_cache;
 
     int pushed_this_block = 0;
+
+    bool relocatable = false;
 
     constexpr static std::array scratch_gprs = {
         x1, x6, x28, x29, x7, x30, x31,

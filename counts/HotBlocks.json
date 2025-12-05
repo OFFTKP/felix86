@@ -1,6 +1,6 @@
 {
     "llvmpipe_shader": {
-        "instruction_count": 199,
+        "instruction_count": 196,
         "expected_asm": [
             "LD              s3, a1, 0x0(0)",
             "LWU             s3, s3, 0x4(4)",
@@ -192,19 +192,16 @@
             "ADDIW           s9, zero, 0x0(0)",
             "SB              zero, s11, 0x1ca(458)",
             "ADD.UW          s3, ra, zero",
-            "BNE             zero, s7, 0x10(16)",
-            "ADDI            gp, gp, 0x13a(314)",
-            "AUIPC           t6, 0xffffffeb(-21)",
-            "JALR            zero, t6, 0x140(320)",
-            "LUI             ra, 0xd(13)",
-            "ADDIW           ra, ra, 0xfffffc32(-974)",
-            "ADD             gp, gp, ra",
-            "AUIPC           t6, 0xffffffeb(-21)",
-            "JALR            zero, t6, 0x12c(300)"
+            "LD              ra, s1, 0x0(0)",
+            "ADDI            s1, s1, 0x8(8)",
+            "ADDI            gp, ra, 0x0(0)",
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)"
         ]
     },
     "Crysis": {
-        "instruction_count": 528,
+        "instruction_count": 523,
         "expected_asm": [
             "ADDI            ra, a0, 0xffffffe0(-32)",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
@@ -726,18 +723,13 @@
             "SB              s9, s11, 0x1cd(461)",
             "ADDIW           t1, zero, 0x1(1)",
             "SB              t1, s11, 0x224(548)",
-            "LUI             t5, 0x55f(1375)",
-            "ADDIW           t5, t5, 0x791(1937)",
-            "SLLI            t5, t5, 0xc(12)",
-            "ADDI            t5, t5, 0x261(609)",
-            "SLLI            t5, t5, 0xc(12)",
-            "ADDI            t5, t5, 0x6f0(1776)",
             "ADDI            a0, sp, 0x0(0)",
-            "JALR            zero, t5, 0x0(0)"
+            "LD              t4, s11, 0x480(1152)",
+            "JALR            ra, t4, 0x0(0)"
         ]
     },
     "XXHash": {
-        "instruction_count": 159,
+        "instruction_count": 160,
         "expected_asm": [
             "SH3ADD          ra, a3, a5",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
@@ -896,12 +888,13 @@
             "SLT             t3, ra, a3",
             "XOR             s9, s9, t3",
             "ADDI            gp, t0, 0x0(0)",
-            "AUIPC           t6, 0xffffffea(-22)",
-            "JALR            zero, t6, 0x66c(1644)"
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)"
         ]
     },
     "Baldur 2 FMV": {
-        "instruction_count": 1770,
+        "instruction_count": 1771,
         "expected_asm": [
             "ADDI            t0, s1, 0x0(0)",
             "ADDIW           t1, zero, 0xfffffff0(-16)",
@@ -2671,12 +2664,13 @@
             "LD              ra, s1, 0x0(0)",
             "ADDI            s1, s1, 0x8(8)",
             "ADDI            gp, ra, 0x0(0)",
-            "AUIPC           t6, 0xffffffe9(-23)",
-            "JALR            zero, t6, 0xfffffac0(-1344)"
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)"
         ]
     },
     "dotnet rotate": {
-        "instruction_count": 3866,
+        "instruction_count": 3868,
         "expected_asm": [
             "ADD.UW          t0, a6, zero",
             "RORIW           ra, t0, 0x1b(27)",
@@ -6533,21 +6527,23 @@
             "SLT             t4, ra, t0",
             "XOR             s9, s9, t4",
             "XORI            ra, s7, 0x1(1)",
-            "BNE             zero, ra, 0x18(24)",
+            "BNE             zero, ra, 0x1c(28)",
             "LUI             t1, 0x1(1)",
             "ADDIW           t1, t1, 0xfffffc34(-972)",
             "ADD             gp, gp, t1",
-            "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffffe68(-408)",
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)",
             "LUI             t1, 0xfffb09a1(-325215)",
             "ADDIW           t1, t1, 0xffffffb3(-77)",
             "ADD             gp, gp, t1",
-            "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffffe54(-428)"
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)"
         ]
     },
     "7z block": {
-        "instruction_count": 114,
+        "instruction_count": 116,
         "expected_asm": [
             "LD              s0, a0, 0x0(0)",
             "LD              a1, a0, 0x28(40)",
@@ -6656,17 +6652,19 @@
             "XOR             s9, s9, t4",
             "ANDI            s9, s9, 0x1(1)",
             "XORI            ra, s5, 0x1(1)",
-            "BNE             zero, ra, 0x10(16)",
+            "BNE             zero, ra, 0x14(20)",
             "ADDI            gp, gp, 0x74(116)",
-            "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffffc94(-876)",
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)",
             "ADDI            gp, gp, 0x8b(139)",
-            "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffffc88(-888)"
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)"
         ]
     },
     "Outlast camera": {
-        "instruction_count": 236,
+        "instruction_count": 238,
         "expected_asm": [
             "LWU             s10, a0, 0x10(16)",
             "LD              s4, a0, 0x8(8)",
@@ -6898,16 +6896,18 @@
             "SLT             t1, ra, a4",
             "XOR             s9, s9, t1",
             "XORI            ra, s7, 0x1(1)",
-            "BNE             zero, ra, 0x10(16)",
+            "BNE             zero, ra, 0x14(20)",
             "ADDI            gp, gp, 0x16f(367)",
-            "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffff8e0(-1824)",
-            "AUIPC           t6, 0xffffffe5(-27)",
-            "JALR            zero, t6, 0xfffff8d8(-1832)"
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)",
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)"
         ]
     },
     "Outlast camera 2": {
-        "instruction_count": 224,
+        "instruction_count": 226,
         "expected_asm": [
             "ADDI            ra, t0, 0x214(532)",
             "LHU             s6, ra, 0x0(0)",
@@ -7127,12 +7127,14 @@
             "VFADD.VV        v3, v3, v2, none",
             "OR              ra, s5, s7",
             "XORI            ra, ra, 0x1(1)",
-            "BNE             zero, ra, 0x10(16)",
+            "BNE             zero, ra, 0x14(20)",
             "ADDI            gp, gp, 0x160(352)",
-            "AUIPC           t6, 0xffffffe4(-28)",
-            "JALR            zero, t6, 0x55c(1372)",
-            "AUIPC           t6, 0xffffffe4(-28)",
-            "JALR            zero, t6, 0x554(1364)"
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)",
+            "LD              t6, s11, 0x488(1160)",
+            "LD              t6, t6, 0x88(136)",
+            "JALR            zero, t6, 0x0(0)"
         ]
     }
 }

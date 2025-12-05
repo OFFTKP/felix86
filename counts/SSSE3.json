@@ -158,10 +158,10 @@
     "660f3a0fd30a": {
         "instruction_count": 4,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m2, tu, mu",
-            "VMV.V.V         v26, v5",
-            "VSLIDEUP.VI     v26, v4, 0xfffffff0(-16), none",
-            "VSLIDEDOWN.VI   v4, v26, 0xa(10), none"
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSLIDEDOWN.VI   v26, v5, 0xa(10), none",
+            "VSLIDEUP.VI     v26, v4, 0x6(6), none",
+            "VMV.V.V         v4, v26"
         ],
         "disassembly": "palignr xmm2, xmm3, 0x0A"
     },

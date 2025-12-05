@@ -1070,7 +1070,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name) {
 
     GuestToHostMarshaller marshaller(name, signature);
     marshaller.emitPrologue(as);
-    Recompiler::call(as, target);
+    rec.call(target);
     marshaller.emitEpilogue(as);
 
     return trampoline;
@@ -1084,7 +1084,7 @@ void* Thunks::generateTrampoline(Recompiler& rec, const char* name, const char* 
 
     GuestToHostMarshaller marshaller(name, signature);
     marshaller.emitPrologue(as);
-    Recompiler::call(as, host_ptr);
+    rec.call(host_ptr);
     marshaller.emitEpilogue(as);
 
     return trampoline;

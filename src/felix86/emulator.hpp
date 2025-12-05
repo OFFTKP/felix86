@@ -22,10 +22,6 @@ struct Emulator {
 
     static void StartTest(const TestConfig& config, u64 stack);
 
-    // The exit dispatcher function also restores the stack pointer to what it was before
-    // entering the dispatcher, so it can be called from anywhere
-    [[noreturn]] static void ExitDispatcher(felix86_frame* frame);
-
 private:
     [[nodiscard]] static std::pair<void*, size_t> setupMainStack(ThreadState* state);
 

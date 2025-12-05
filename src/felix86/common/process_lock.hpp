@@ -25,7 +25,6 @@ struct Semaphore {
     Semaphore();
 
     [[nodiscard]] SemaphoreGuard lock() {
-        assert(inner != SEM_FAILED);
         return SemaphoreGuard(&inner);
     }
 

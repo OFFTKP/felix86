@@ -295,7 +295,7 @@ int main() {
     Extensions::Zicond = true;
     Handlers::initialize();
 
-    std::unique_ptr<Recompiler> rec_storage = std::make_unique<Recompiler>();
+    std::unique_ptr<Recompiler> rec_storage = std::make_unique<Recompiler>(true /* relocatable code */);
     Recompiler& rec = *rec_storage;
     nlohmann::ordered_json json;
 
@@ -1169,8 +1169,7 @@ int main() {
         x.pcmpeqd(xmm1, xmm10);
         x.movmskps(r14d, xmm1);
         x.xor_(r14d, 0x0F);
-        u8* curr = x.getCurr<u8*>();
-        x.jz((void*)(curr + 0xcafe));
+        x.ret();
     });
 
     gen_many(rec, "Crysis", json, [](Xbyak::CodeGenerator& x) {

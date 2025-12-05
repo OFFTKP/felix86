@@ -1619,9 +1619,8 @@ FAST_HANDLE(AND) {
 FAST_HANDLE(HLT) {
     rec.setExitReason(ExitReason::EXIT_REASON_HLT);
     rec.writebackState();
-    as.LI(t5, (u64)Emulator::ExitDispatcher);
     as.MV(a0, sp);
-    as.JR(t5);
+    rec.callPointer(offsetof(ThreadState, felix86_exit_dispatcher));
     rec.stopCompiling();
 }
 
@@ -11067,9 +11066,8 @@ FAST_HANDLE(INVLPG) {
     case INVLPG_GUEST_CODE_FINISHED: {
         rec.setExitReason(ExitReason::EXIT_REASON_GUEST_CODE_FINISHED);
         rec.writebackState();
-        as.LI(t5, (u64)Emulator::ExitDispatcher);
         as.MV(a0, sp);
-        as.JR(t5);
+        rec.callPointer(offsetof(ThreadState, felix86_exit_dispatcher));
         rec.stopCompiling();
         break;
     }

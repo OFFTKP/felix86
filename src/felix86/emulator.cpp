@@ -218,10 +218,6 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     return (void*)next_block;
 }
 
-void Emulator::ExitDispatcher(felix86_frame* frame) {
-    frame->state->recompiler->exitDispatcher(frame);
-}
-
 std::pair<ExitReason, int> Emulator::Start() {
     ExitReason exit_reason;
     int exit_code;

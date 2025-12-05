@@ -9,6 +9,7 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
+#include "felix86/emulator.hpp"
 #include "felix86/hle/cpuid.hpp"
 #include "felix86/v2/recompiler.hpp"
 #include "fmt/format.h"
@@ -1779,4 +1780,8 @@ std::string felix86_mountinfo() {
         rv += "\n";
     }
     return rv;
+}
+
+void felix86_exit_dispatcher(struct felix86_frame* frame) {
+    frame->state->recompiler->exitDispatcher(frame);
 }

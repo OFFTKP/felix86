@@ -109,7 +109,7 @@ void alignment_check_failed(void* rip) {
     WARN("Unaligned atomic access at %lx", rip);
 }
 
-Recompiler::Recompiler() : as(allocateCodeCache(code_cache_sizes[0]), max_code_cache_size) {
+Recompiler::Recompiler(bool relocatable) : as(allocateCodeCache(code_cache_sizes[0]), max_code_cache_size), relocatable(relocatable) {
     if (g_config.auto_compress) {
         as.EnableOptimization(Optimization::AutoCompress);
     }
@@ -1682,7 +1682,7 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
         ASSERT(!g_mode32);
         u64 offset = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
-        if (IsValid2GBImm(offset)) {
+        if (IsValid2GBImm(offset) && !relocatable) {
             u32 hi20 = static_cast<i32>(((static_cast<u32>(offset) + 0x800) >> 12) & 0xFFFFF);
             u32 lo12 = static_cast<i32>(offset << 20) >> 20;
             as.AUIPC(address, hi20);
@@ -2049,13 +2049,20 @@ void Recompiler::restoreState() {
 
 void Recompiler::backToDispatcher() {
     OptimizationGuard guard(as, optimization_guard_counter);
-    const u64 offset = compile_next_handler - (u64)as.GetCursorPointer();
-    ASSERT(IsValid2GBImm(offset));
-    const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
-    const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
-    ASSERT(isScratch(t6));
-    as.AUIPC(t6, hi20);
-    as.JR(t6, lo12);
+    if (!relocatable) {
+        const u64 offset = compile_next_handler - (u64)as.GetCursorPointer();
+        ASSERT(IsValid2GBImm(offset));
+        const auto hi20 = static_cast<int32_t>(((static_cast<uint32_t>(offset) + 0x800) >> 12) & 0xFFFFF);
+        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        ASSERT(isScratch(t6));
+        as.AUIPC(t6, hi20);
+        as.JR(t6, lo12);
+    } else {
+        ASSERT(isScratch(t6));
+        as.LD(t6, offsetof(ThreadState, recompiler), threadStatePointer());
+        as.LD(t6, offsetof(Recompiler, compile_next_handler), t6);
+        as.JR(t6);
+    }
 }
 
 void Recompiler::enterDispatcher(ThreadState* state) {
@@ -2620,7 +2627,7 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
 
 void Recompiler::jumpAndLink(u64 rip) {
     OptimizationGuard guard(as, optimization_guard_counter);
-    if (!g_config.link) {
+    if (!g_config.link || relocatable) {
         // Just emit jump to dispatcher
         backToDispatcher();
         return;
@@ -2685,7 +2692,7 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {
-    if (!g_config.link) {
+    if (!g_config.link || relocatable) {
         return;
     }
 
