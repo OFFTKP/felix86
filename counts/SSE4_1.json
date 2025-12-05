@@ -724,31 +724,64 @@
         "disassembly": "pcmpeqq xmm1, [rdi]"
     },
     "660f3817dc": {
-        "instruction_count": 4,
+        "instruction_count": 16,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VAND.VV         v28, v5, v6, none",
             "VXOR.VI         v30, v5, 0xffffffff(-1), none",
-            "VAND.VV         v29, v6, v30, none"
+            "VAND.VV         v29, v6, v30, none",
+            "VMSNE.VI        v26, v28, 0x0(0), none",
+            "VMV.X.S         s7, v26",
+            "SLLI            s7, s7, 0x3e(62)",
+            "SLTIU           s7, s7, 0x1(1)",
+            "VMSNE.VI        v27, v29, 0x0(0), none",
+            "VMV.X.S         s5, v27",
+            "SLLI            s5, s5, 0x3e(62)",
+            "SLTIU           s5, s5, 0x1(1)",
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDI            s9, zero, 0x0(0)",
+            "ADDI            s8, zero, 0x0(0)",
+            "SB              zero, s11, 0x1c9(457)"
         ],
         "disassembly": "ptest xmm3, xmm4"
     },
     "660f3817d2": {
-        "instruction_count": 1,
+        "instruction_count": 10,
         "expected_asm": [
-            "VSETIVLI        zero, 2, e64, m1, tu, mu"
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
+            "VMSNE.VI        v26, v4, 0x0(0), none",
+            "VMV.X.S         s7, v26",
+            "SLLI            s7, s7, 0x3e(62)",
+            "SLTIU           s7, s7, 0x1(1)",
+            "ADDIW           s5, zero, 0x1(1)",
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDI            s9, zero, 0x0(0)",
+            "ADDI            s8, zero, 0x0(0)",
+            "SB              zero, s11, 0x1c9(457)"
         ],
         "disassembly": "ptest xmm2, xmm2"
     },
     "660f38170f": {
-        "instruction_count": 6,
+        "instruction_count": 18,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v30, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VAND.VV         v28, v3, v30, none",
             "VXOR.VI         v31, v3, 0xffffffff(-1), none",
-            "VAND.VV         v29, v30, v31, none"
+            "VAND.VV         v29, v30, v31, none",
+            "VMSNE.VI        v26, v28, 0x0(0), none",
+            "VMV.X.S         s7, v26",
+            "SLLI            s7, s7, 0x3e(62)",
+            "SLTIU           s7, s7, 0x1(1)",
+            "VMSNE.VI        v27, v29, 0x0(0), none",
+            "VMV.X.S         s5, v27",
+            "SLLI            s5, s5, 0x3e(62)",
+            "SLTIU           s5, s5, 0x1(1)",
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDI            s9, zero, 0x0(0)",
+            "ADDI            s8, zero, 0x0(0)",
+            "SB              zero, s11, 0x1c9(457)"
         ],
         "disassembly": "ptest xmm1, [rdi]"
     }

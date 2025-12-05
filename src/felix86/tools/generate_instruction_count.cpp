@@ -658,7 +658,7 @@ int main() {
 
 #undef GEN
 
-#define GEN(inst) gen(rec, json, [](Xbyak::CodeGenerator& x) { x.inst; })
+#define GEN(inst) gen(rec, json, [](Xbyak::CodeGenerator& x) { x.inst; }, true)
 #define GEN_SSE(name)                                                                                                                                \
     GEN(name(xmm3, xmm4));                                                                                                                           \
     GEN(name(xmm2, xmm2));                                                                                                                           \

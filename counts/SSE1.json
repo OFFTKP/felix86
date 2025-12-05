@@ -605,8 +605,11 @@
         "disassembly": "andnps xmm1, [rdi]"
     },
     "0f2fdc": {
-        "instruction_count": 11,
+        "instruction_count": 15,
         "expected_asm": [
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDIW           s9, zero, 0x0(0)",
+            "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v5",
             "VFMV.F.S        f29, v6",
@@ -616,14 +619,18 @@
             "FLT.S           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
+            "SB              ra, s11, 0x1c9(457)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
         "disassembly": "comiss xmm3, xmm4"
     },
     "0f2fd2": {
-        "instruction_count": 11,
+        "instruction_count": 15,
         "expected_asm": [
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDIW           s9, zero, 0x0(0)",
+            "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v4",
             "VFMV.F.S        f29, v4",
@@ -633,14 +640,18 @@
             "FLT.S           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
+            "SB              ra, s11, 0x1c9(457)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
         "disassembly": "comiss xmm2, xmm2"
     },
     "0f2f0f": {
-        "instruction_count": 11,
+        "instruction_count": 15,
         "expected_asm": [
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDIW           s9, zero, 0x0(0)",
+            "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v3",
             "FLW             f29, a0, 0x0(0)",
@@ -650,14 +661,18 @@
             "FLT.S           s5, f28, f29",
             "AND             t1, t1, t3",
             "XORI            t1, t1, 0x1(1)",
+            "SB              t1, s11, 0x1c9(457)",
             "OR              s5, s5, t1",
             "OR              s7, s7, t1"
         ],
         "disassembly": "comiss xmm1, [rdi]"
     },
     "0f2edc": {
-        "instruction_count": 11,
+        "instruction_count": 15,
         "expected_asm": [
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDIW           s9, zero, 0x0(0)",
+            "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v5",
             "VFMV.F.S        f29, v6",
@@ -667,14 +682,18 @@
             "FLT.S           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
+            "SB              ra, s11, 0x1c9(457)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
         "disassembly": "ucomiss xmm3, xmm4"
     },
     "0f2ed2": {
-        "instruction_count": 11,
+        "instruction_count": 15,
         "expected_asm": [
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDIW           s9, zero, 0x0(0)",
+            "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v4",
             "VFMV.F.S        f29, v4",
@@ -684,14 +703,18 @@
             "FLT.S           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
+            "SB              ra, s11, 0x1c9(457)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
         "disassembly": "ucomiss xmm2, xmm2"
     },
     "0f2e0f": {
-        "instruction_count": 11,
+        "instruction_count": 15,
         "expected_asm": [
+            "SB              zero, s11, 0x1ca(458)",
+            "ADDIW           s9, zero, 0x0(0)",
+            "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e32, m1, tu, mu",
             "VFMV.F.S        f28, v3",
             "FLW             f29, a0, 0x0(0)",
@@ -701,6 +724,7 @@
             "FLT.S           s5, f28, f29",
             "AND             t1, t1, t3",
             "XORI            t1, t1, 0x1(1)",
+            "SB              t1, s11, 0x1c9(457)",
             "OR              s5, s5, t1",
             "OR              s7, s7, t1"
         ],
