@@ -218,10 +218,7 @@ void* Emulator::CompileNext(ThreadState* thread_state) {
     return (void*)next_block;
 }
 
-std::pair<ExitReason, int> Emulator::Start() {
-    ExitReason exit_reason;
-    int exit_code;
-
+void Emulator::Start() {
     g_process_globals.initialize();
 
 #ifdef PR_RISCV_SET_ICACHE_FLUSH_CTX
@@ -299,13 +296,6 @@ std::pair<ExitReason, int> Emulator::Start() {
     VERBOSE("Entering main thread :)");
 
     Threads::StartThread(main_state);
-
-    VERBOSE("Bye-bye main thread :(");
-
-    exit_reason = main_state->exit_reason;
-    exit_code = main_state->exit_code;
-
-    return {exit_reason, exit_code};
 }
 
 void Emulator::StartTest(const TestConfig& config, u64 stack) {

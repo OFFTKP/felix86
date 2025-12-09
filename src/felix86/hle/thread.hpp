@@ -25,7 +25,7 @@ struct Threads {
 
     static long Clone(ThreadState* current_state, CloneArgs* args);
 
-    static void StartThread(ThreadState* state);
+    [[noreturn]] static void StartThread(ThreadState* state);
 
     static std::pair<u8*, size_t> AllocateStack(bool mode32);
 };

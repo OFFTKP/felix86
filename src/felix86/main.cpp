@@ -870,20 +870,6 @@ int main(int argc, char* argv[]) {
     pthread_create(&thread, nullptr, &empty_pthread_handler, nullptr);
     pthread_join(thread, nullptr);
 
-    auto [exit_reason, exit_code] = Emulator::Start();
-
-    if (!g_execve_process) {
-        LOG("Main process %d exited with reason: %s. Exit code: %d", getpid(), print_exit_reason(exit_reason), exit_code);
-    } else {
-        LOG("Execve process %d exited with reason: %s. Exit code: %d", getpid(), print_exit_reason(exit_reason), exit_code);
-    }
-
-    if (exit_reason == EXIT_REASON_EXIT_SYSCALL) {
-        syscall(SYS_exit, exit_code);
-    } else if (exit_reason == EXIT_REASON_EXIT_GROUP_SYSCALL) {
-        syscall(SYS_exit_group, exit_code);
-    } else {
-        WARN("Exiting with bad exit reason: %s", print_exit_reason(exit_reason));
-        syscall(SYS_exit, exit_code);
-    }
+    Emulator::Start();
+    ASSERT_MSG(false, "Exited the dispatcher too many times and reached this point?");
 }

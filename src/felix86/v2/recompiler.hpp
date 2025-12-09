@@ -159,7 +159,7 @@ struct Recompiler {
 
     void restoreState();
 
-    void enterDispatcher(ThreadState* state);
+    [[noreturn]] void enterDispatcher(ThreadState* state);
 
     [[noreturn]] void exitDispatcher(felix86_frame* state);
 

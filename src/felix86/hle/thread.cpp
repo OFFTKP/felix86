@@ -87,15 +87,6 @@ void* pthread_handler(void* args) {
 
     LOG("Thread %ld started", state->tid);
     Threads::StartThread(state);
-    LOG("Thread %ld exited with reason: %s", state->tid, print_exit_reason(state->exit_reason));
-
-    if (state->clear_tid_address) {
-        __atomic_store_n(state->clear_tid_address, 0, __ATOMIC_SEQ_CST);
-        syscall(SYS_futex, state->clear_tid_address, FUTEX_WAKE, ~0ULL, 0, 0, 0);
-    }
-
-    ThreadState::Destroy(state);
-
     return nullptr;
 }
 
@@ -420,7 +411,6 @@ std::pair<u8*, size_t> Threads::AllocateStack(bool mode32) {
 void Threads::StartThread(ThreadState* state) {
     state->tid = gettid();
     state->recompiler->enterDispatcher(state);
-    VERBOSE("Thread exited with reason %s", print_exit_reason(state->exit_reason));
 }
 
 int Threads::Unshare(int flags) {
