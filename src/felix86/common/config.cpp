@@ -145,26 +145,31 @@ bool Config::initialize(bool ignore_envs) {
     return true;
 }
 
+template <typename Type>
+void addValue(std::string& str, Type& value) {
+    if constexpr (std::is_same_v<Type, bool>) {
+        str += value ? "1" : "0";
+    } else if constexpr (std::is_same_v<Type, u64>) {
+        str += std::to_string(value);
+    } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {
+        str += value.string();
+    } else if constexpr (std::is_same_v<Type, std::string>) {
+        str += value;
+    } else {
+        static_assert(false);
+    }
+}
+
 std::string Config::getConfigHex() {
     std::string str;
 #define X(group, type, name, default_value, env_name, description, required)                                                                         \
     {                                                                                                                                                \
-        str += env_name;                                                                                                                             \
+        str += #env_name;                                                                                                                            \
         str += "=";                                                                                                                                  \
-        if constexpr (std::is_same_v<Type, bool>) {                                                                                                  \
-            str += g_initial_config.name ? "1" : "0";                                                                                                \
-        } else if constexpr (std::is_same_v<Type, u64>) {                                                                                            \
-            str += std::to_string(g_initial_config.name);                                                                                            \
-        } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {                                                                          \
-            str += g_initial_config.name.string();                                                                                                   \
-        } else if constexpr (std::is_same_v<Type, std::string>) {                                                                                    \
-            str += g_initial_config.name;                                                                                                            \
-        } else {                                                                                                                                     \
-            static_assert(false);                                                                                                                    \
-        }                                                                                                                                            \
+        addValue(str, g_initial_config.name);                                                                                                        \
         str += "\n";                                                                                                                                 \
     }
-#include "config.hpp"
+#include "config.inc"
 #undef X
 
     if (str.back() == '\n') {
