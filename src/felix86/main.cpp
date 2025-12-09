@@ -619,16 +619,17 @@ int main(int argc, char* argv[]) {
 #ifdef __x86_64__
     WARN("You're running an x86-64 executable version of felix86, get ready for a crash soon");
 #endif
-    argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &g_params);
-    if (guest_arg_start_index != -1) {
-        char** argv_next = &argv[guest_arg_start_index];
-        while (*argv_next) {
-            g_params.argv.push_back(*argv_next);
-            argv_next++;
+    g_execve_process = !!getenv("__FELIX86_EXECVE");
+    if (g_execve_process) {
+        argp_parse(&argp, argc, argv, ARGP_IN_ORDER, 0, &g_params);
+        if (guest_arg_start_index != -1) {
+            char** argv_next = &argv[guest_arg_start_index];
+            while (*argv_next) {
+                g_params.argv.push_back(*argv_next);
+                argv_next++;
+            }
         }
     }
-
-    g_execve_process = !!getenv("__FELIX86_EXECVE");
 
     Config::initialize();
     initialize_globals();
