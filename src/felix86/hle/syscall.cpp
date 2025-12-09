@@ -681,15 +681,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         if (g_config.calltrace_on_exit) {
             dump_states();
         }
-        LOG("%s %d exited with reason: %s. Exit code: %d", g_execve_process ? "Execve process" : "Main process", getpid(),
-            print_exit_reason(state->exit_reason), state->exit_code);
-        pid_t* tid = state->clear_tid_address;
-        ThreadState::Destroy(state);
-        if (tid) {
-            __atomic_store_n(tid, 0, __ATOMIC_SEQ_CST);
-            syscall(SYS_futex, tid, FUTEX_WAKE, ~0ULL, 0, 0, 0);
-        }
-        syscall(SYS_exit_group, arg1);
+        felix86_exit_dispatcher(frame);
         UNREACHABLE();
         break;
     }
@@ -1055,15 +1047,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         if (g_config.calltrace_on_exit) {
             dump_states();
         }
-        LOG("%s %d exited with reason: %s. Exit code: %d", g_execve_process ? "Execve process" : "Main process", getpid(),
-            print_exit_reason(state->exit_reason), state->exit_code);
-        pid_t* tid = state->clear_tid_address;
-        ThreadState::Destroy(state);
-        if (tid) {
-            __atomic_store_n(tid, 0, __ATOMIC_SEQ_CST);
-            syscall(SYS_futex, tid, FUTEX_WAKE, ~0ULL, 0, 0, 0);
-        }
-        syscall(SYS_exit, arg1);
+        felix86_exit_dispatcher(frame);
         UNREACHABLE();
         break;
     }
