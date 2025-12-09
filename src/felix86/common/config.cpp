@@ -307,6 +307,11 @@ void Config::initializeChild() {
     }
 
     std::string senv_hex = env;
+    if (senv_hex.empty()) {
+        printf("Config hex string is empty\n");
+        exit(1);
+    }
+
     if (senv_hex.size() % 2 != 0) {
         printf("Config hex string is bad: %s\n", env);
         exit(1);
@@ -317,10 +322,8 @@ void Config::initializeChild() {
     std::string senv = hex_to_string(senv_hex);
     std::unordered_map<std::string, std::string> env_map;
     std::vector<std::string> envs = split_string(senv, '\n');
-    printf("test:%s\n", senv.c_str());
     for (auto& str : envs) {
         auto it = str.find("=");
-        printf("str: %s\n", str.c_str());
         ASSERT(it != std::string::npos);
         std::string name = str.substr(0, it);
         std::string value = str.substr(it + 1);
@@ -339,6 +342,7 @@ void Config::initializeChild() {
 #undef X
 
     g_config = config;
+    g_initial_config = config;
 }
 
 Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
