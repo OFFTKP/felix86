@@ -75,13 +75,15 @@ void Logger::joinServer() {
     }
     g_output_fd = open(file, O_WRONLY, 0644);
     if (g_output_fd == -1) {
-        ERROR("Bad g_output_fd -- errno: %d -- pipe: %s", errno, file);
+        printf("Bad g_output_fd -- errno: %d -- pipe: %s", errno, file);
+        exit(1);
     }
     g_output_fd = FD::moveToHighNumber(g_output_fd);
     FD::protect(g_output_fd);
 
     // Also set this for when this process runs execve...
     g_pipe_name = file;
+    VERBOSE("felix86 PID %d joined log server at file %s", getpid(), file);
 }
 
 void Logger::serverLoop(int fd) {
