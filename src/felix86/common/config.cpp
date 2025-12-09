@@ -312,8 +312,10 @@ void Config::initializeChild() {
     std::string senv = hex_to_string(senv_hex);
     std::unordered_map<std::string, std::string> env_map;
     std::vector<std::string> envs = split_string(senv, '\n');
+    printf("test:%s\n", senv.c_str());
     for (auto& str : envs) {
         auto it = str.find("=");
+        printf("str: %s\n", str.c_str());
         ASSERT(it != std::string::npos);
         std::string name = str.substr(0, it);
         std::string value = str.substr(it + 1);
