@@ -75,24 +75,25 @@ std::filesystem::path Config::getConfigDir() {
         return {};
     }
 
+    std::error_code ec;
     std::filesystem::path config_path = homedir;
     config_path /= ".config";
-    if (!std::filesystem::exists(config_path)) {
-        bool ok = std::filesystem::create_directories(config_path);
+    if (!std::filesystem::exists(config_path, ec)) {
+        bool ok = std::filesystem::create_directories(config_path, ec);
         if (!ok) {
             return {};
         }
-    } else if (!std::filesystem::is_directory(config_path)) {
+    } else if (!std::filesystem::is_directory(config_path, ec)) {
         return {};
     }
 
     config_path /= "felix86";
-    if (!std::filesystem::exists(config_path)) {
-        bool ok = std::filesystem::create_directory(config_path);
+    if (!std::filesystem::exists(config_path, ec)) {
+        bool ok = std::filesystem::create_directory(config_path, ec);
         if (!ok) {
             return {};
         }
-    } else if (!std::filesystem::is_directory(config_path)) {
+    } else if (!std::filesystem::is_directory(config_path, ec)) {
         return {};
     }
 
