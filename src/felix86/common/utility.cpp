@@ -1376,7 +1376,7 @@ u64 mmap_min_addr() {
     return addr;
 }
 
-void felix86_set_segment(ThreadState* state, u64 value, ZydisRegister segment) {
+void felix86_set_segment(ThreadState* state, u64 value, int segment) {
     int index = value >> 3;
     u32 base = state->gdt[index];
 

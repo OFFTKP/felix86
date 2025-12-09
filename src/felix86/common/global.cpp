@@ -308,11 +308,11 @@ void initialize_globals() {
         ERROR("You selected the system root as the rootfs path, which is wrong");
     }
 
+    // TODO: pass in similar way as __FELIX86_CONFIG to children
     std::error_code ec;
     const std::filesystem::path trusted_paths = Config::getConfigDir() / "trusted.txt";
     if (std::filesystem::exists(trusted_paths, ec)) {
         std::ifstream file(trusted_paths);
-
         if (file.is_open()) {
             std::string line;
             bool all_ok = true;

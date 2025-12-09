@@ -1536,6 +1536,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         std::string log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
         envp.push_back("__FELIX86_EXECVE=1");
         envp.push_back(argv0_original.c_str());
+        std::string config_hex = std::string("__FELIX86_CONFIG=") + Config::getConfigHex();
+        envp.push_back(config_hex.c_str());
         envp.push_back(log_env.c_str());
         std::string rootfs_env = std::string("__FELIX86_ROOTFS=") + g_config.rootfs_path.string();
         envp.push_back(rootfs_env.c_str());

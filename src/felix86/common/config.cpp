@@ -4,10 +4,53 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/types.hpp"
-#include "felix86/hle/filesystem.hpp"
+#include "felix86/common/utility.hpp"
 #include "fmt/format.h"
 
 Config g_config{};
+Config g_initial_config{};
+
+namespace {
+
+int hex_value(unsigned char hex_digit) {
+    static const signed char hex_values[256] = {
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  -1, -1, -1, -1, -1, -1,
+        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    };
+    int value = hex_values[hex_digit];
+    return value;
+}
+
+std::string string_to_hex(const std::string& str) {
+    const char* hex_digits = "0123456789ABCDEF";
+    std::string ret;
+    ret.reserve(str.size() * 2);
+    for (auto c : str) {
+        ret.push_back(hex_digits[c >> 4]);
+        ret.push_back(hex_digits[c & 15]);
+    }
+    return ret;
+}
+
+std::string hex_to_string(const std::string& str) {
+    const auto len = str.size();
+    std::string output;
+    output.reserve(len / 2);
+    for (auto it = str.begin(); it != str.end();) {
+        int hi = hex_value(*it++);
+        int lo = hex_value(*it++);
+        output.push_back(hi << 4 | lo);
+    }
+    return output;
+}
+
+} // namespace
 
 namespace toml {
 template <>
@@ -96,7 +139,40 @@ bool Config::initialize(bool ignore_envs) {
     g_config = load(config_path, ignore_envs);
     g_config.config_path = config_path;
 
+    // g_config can be changed, c_initial_config won't be changed
+    g_initial_config = g_config;
+
     return true;
+}
+
+std::string Config::getConfigHex() {
+    std::string str;
+#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+    {                                                                                                                                                \
+        str += env_name;                                                                                                                             \
+        str += "=";                                                                                                                                  \
+        if constexpr (std::is_same_v<Type, bool>) {                                                                                                  \
+            str += g_initial_config.name ? "1" : "0";                                                                                                \
+        } else if constexpr (std::is_same_v<Type, u64>) {                                                                                            \
+            str += std::to_string(g_initial_config.name);                                                                                            \
+        } else if constexpr (std::is_same_v<Type, std::filesystem::path>) {                                                                          \
+            str += g_initial_config.name.string();                                                                                                   \
+        } else if constexpr (std::is_same_v<Type, std::string>) {                                                                                    \
+            str += g_initial_config.name;                                                                                                            \
+        } else {                                                                                                                                     \
+            static_assert(false);                                                                                                                    \
+        }                                                                                                                                            \
+        str += "\n";                                                                                                                                 \
+    }
+#include "config.hpp"
+#undef X
+
+    if (str.back() == '\n') {
+        str.pop_back();
+    }
+
+    std::string hex_string = string_to_hex(str);
+    return hex_string;
 }
 
 bool Config::addTrustedPath(const std::filesystem::path& path) {
@@ -198,7 +274,7 @@ std::string namify(const std::string& val) {
 }
 
 template <typename Type>
-bool loadFromEnv(Config& config, Type& value, const char* env_name, const char* env) {
+bool loadFromEnv(Config& config, Type& value, const char* env) {
     if constexpr (std::is_same_v<Type, bool>) {
         value = is_truthy(env);
         return true;
@@ -218,6 +294,46 @@ bool loadFromEnv(Config& config, Type& value, const char* env_name, const char* 
     return false;
 }
 
+void Config::initializeChild() {
+    const char* env = getenv("__FELIX86_CONFIG");
+    if (!env) {
+        printf("Failed to initialize config. __FELIX86_CONFIG from parent is null\n");
+        exit(1);
+    }
+
+    std::string senv_hex = env;
+    if (senv_hex.size() % 2 != 0) {
+        printf("Config hex string is bad: %s\n", env);
+        exit(1);
+    }
+
+    // The config string is a hex string so it can contain any character and newlines with no potential issues
+    Config config = {};
+    std::string senv = hex_to_string(senv_hex);
+    std::unordered_map<std::string, std::string> env_map;
+    std::vector<std::string> envs = split_string(senv, '\n');
+    for (auto& str : envs) {
+        auto it = str.find("=");
+        ASSERT(it != std::string::npos);
+        std::string name = str.substr(0, it);
+        std::string value = str.substr(it + 1);
+        env_map[name] = value;
+    }
+
+#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+    {                                                                                                                                                \
+        bool loaded = false;                                                                                                                         \
+        loaded = loadFromEnv<type>(config, config.name, env_map.at(#env_name).c_str());                                                              \
+        if (!loaded) {                                                                                                                               \
+            ERROR("Failed to load option " #env_name);                                                                                               \
+        }                                                                                                                                            \
+    }
+#include "config.inc"
+#undef X
+
+    g_config = config;
+}
+
 Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
     Config config = {};
 
@@ -233,7 +349,7 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
         bool loaded = false;                                                                                                                         \
         const char* env = getenv(#env_name);                                                                                                         \
         if (env && !ignore_envs) {                                                                                                                   \
-            loaded = loadFromEnv<type>(config, config.name, #env_name, env);                                                                         \
+            loaded = loadFromEnv<type>(config, config.name, env);                                                                                    \
         } else {                                                                                                                                     \
             loaded = loadFromToml<type>(toml, #group, #name, config.name);                                                                           \
         }                                                                                                                                            \

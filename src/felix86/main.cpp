@@ -630,7 +630,14 @@ int main(int argc, char* argv[]) {
 
     g_execve_process = !!getenv("__FELIX86_EXECVE");
 
-    Config::initialize();
+    if (!g_execve_process) {
+        Config::initialize();
+    } else {
+        // We pass the config to children using __FELIX86_CONFIG as loaded from Config::load
+        // Guest applications can change the user, which would then mean we have no access to $home
+        // to load the config file. So all execve'd runs should load the configs from a string
+        Config::initializeChild();
+    }
     initialize_globals();
     Signals::initialize();
 

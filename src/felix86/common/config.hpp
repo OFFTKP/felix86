@@ -14,6 +14,7 @@ struct Config {
 #undef X
 
     static bool initialize(bool ignore_envs = false);
+    static void initializeChild();
     static const char* getDescription(const char* name);
     const char* getEnvironment() {
         return __environment.c_str();
@@ -29,6 +30,8 @@ struct Config {
     static bool addTrustedPath(const std::filesystem::path& path);
 
     static std::filesystem::path getConfigDir();
+
+    static std::string getConfigHex();
 
 private:
     std::string __environment;
