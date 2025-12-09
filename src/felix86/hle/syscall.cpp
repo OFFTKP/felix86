@@ -1608,6 +1608,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
     }
     case felix86_riscv64_rt_sigreturn: {
         Signals::sigreturn(frame->state);
+        frame->state->exit_reason = EXIT_REASON_SIGRETURN;
         felix86_exit_dispatcher(frame);
         UNREACHABLE();
         break;

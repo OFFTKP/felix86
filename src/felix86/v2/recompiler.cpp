@@ -189,6 +189,13 @@ void Recompiler::emitDispatcher() {
 
     as.MV(threadStatePointer(), a0);
 
+    // Store the first frame so we can exit to it from a signal handler if needed
+    biscuit::Label ahead;
+    as.LD(t1, offsetof(ThreadState, first_frame), threadStatePointer());
+    as.BNEZ(t1, &ahead);
+    as.SD(sp, offsetof(ThreadState, first_frame), threadStatePointer());
+    as.Bind(&ahead);
+
     restoreState();
 
     compile_next_handler = (u64)as.GetCursorPointer();

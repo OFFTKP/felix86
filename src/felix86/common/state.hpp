@@ -197,6 +197,8 @@ struct ThreadState {
     u16 fpu_sw{};
     u8 fpu_top{};
 
+    u64 first_frame{};
+
     // This is important so that we know whether the current values in the fp array are MMX registers or x87 registers
     // Because if they are x87 registers we need to f64_to_f80 them when saving using fsave or when reading from signal handlers
     x87State x87_state = x87State::MMX;
