@@ -28,7 +28,7 @@ void* Thunks::generateTrampoline(Recompiler&, const char*) {
     return nullptr;
 }
 
-void* Thunks::generateTrampoline(Recompiler&, const char*, u64) {
+void* Thunks::generateTrampoline(Recompiler&, const char*, const char*, u64) {
     return nullptr;
 }
 
