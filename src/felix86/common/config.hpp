@@ -25,6 +25,7 @@ struct Config {
     }
 
     [[nodiscard]] static Config load(const std::filesystem::path& path, bool ignore_envs = false);
+    static bool loadProfile(Config& config, const std::filesystem::path& profile);
     static void save(const std::filesystem::path& path, const Config& config);
 
     static bool addTrustedPath(const std::filesystem::path& path);

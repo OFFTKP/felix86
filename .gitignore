@@ -1,5 +1,6 @@
 build/
 x86build/
 .clangd
+.cache
 *.txt
 !CMakeLists.txt

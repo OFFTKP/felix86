@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include "biscuit/cpuinfo.hpp"
 #include "felix86/common/config.hpp"
+#include "felix86/common/global.hpp"
 #include "felix86/common/info.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/sudo.hpp"
@@ -698,6 +699,20 @@ int main(int argc, char* argv[]) {
             while (*envp) {
                 g_params.envp.push_back(*envp);
                 envp++;
+            }
+        }
+
+        if (!g_config.environment.empty()) {
+            std::vector<std::string> envs = split_string(g_config.environment, ';');
+            for (const auto& env : envs) {
+                if (!env.empty()) {
+                    auto pos = env.find("=");
+                    if (pos == std::string::npos) {
+                        WARN("Environment variable %s in FELIX86_ENVIRONMENT has no '=' character", env.c_str());
+                    } else {
+                        g_params.envp.push_back(env);
+                    }
+                }
             }
         }
     }
