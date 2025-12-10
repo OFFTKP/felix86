@@ -163,6 +163,8 @@ target_sources(felix86 PRIVATE src/felix86/main.cpp)
 target_link_libraries(felix86 PRIVATE felix86_core)
 
 if (BUILD_REPL)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(READLINE REQUIRED readline)
     target_sources(felix86 PRIVATE ${FELIX86_REPL_SOURCES})
     target_link_libraries(felix86 PRIVATE readline)
     target_compile_definitions(felix86 PRIVATE BUILD_REPL)

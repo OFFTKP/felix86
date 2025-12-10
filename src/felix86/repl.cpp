@@ -78,7 +78,7 @@ void compile(const std::string& input) {
         int status;
         waitpid(fork_result, &status, 0);
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-            printf("nasm error\n", WEXITSTATUS(status));
+            printf("nasm error\n");
             ::remove(pbuffer);
             return;
         }
