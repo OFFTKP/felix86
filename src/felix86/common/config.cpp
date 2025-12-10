@@ -141,68 +141,66 @@ bool Config::initialize(bool ignore_envs) {
 
     std::error_code ec;
     std::filesystem::path profiles_path = config_dir / "profiles";
-    if (!std::filesystem::is_directory(profiles_path, ec)) {
-        std::filesystem::create_directories(profiles_path, ec);
-    } else {
-        if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
-            // Enable all optimizations, even ones that may break programs
-            Config extreme_config{};
-            extreme_config.link = true;
-            extreme_config.address_cache = true;
-            extreme_config.unsafe_flags = true;
-            extreme_config.opcode_fusing = true;
-            extreme_config.inline_syscalls = true;
-            extreme_config.inaccurate_minmax = true;
-            extreme_config.always_tso = false;
-            extreme_config.protect_pages = true; // this one is too breaking to disable
-            extreme_config.noflag_opts = true;
-            extreme_config.auto_compress = false;
-            extreme_config.scan_ahead_multi = true;
-            extreme_config.pclmulqdq = true;
-            extreme_config.no_address_overflow = true;
-            Config::save(profiles_path / "extreme.toml", extreme_config);
-        }
+    std::filesystem::create_directories(profiles_path, ec);
+    
+    if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
+        // Enable all optimizations, even ones that may break programs
+        Config extreme_config{};
+        extreme_config.link = true;
+        extreme_config.address_cache = true;
+        extreme_config.unsafe_flags = true;
+        extreme_config.opcode_fusing = true;
+        extreme_config.inline_syscalls = true;
+        extreme_config.inaccurate_minmax = true;
+        extreme_config.always_tso = false;
+        extreme_config.protect_pages = true; // this one is too breaking to disable
+        extreme_config.noflag_opts = true;
+        extreme_config.auto_compress = false;
+        extreme_config.scan_ahead_multi = true;
+        extreme_config.pclmulqdq = true;
+        extreme_config.no_address_overflow = true;
+        Config::save(profiles_path / "extreme.toml", extreme_config, true);
+    }
 
-        if (!std::filesystem::exists(profiles_path / "safe.toml", ec)) {
-            // Disable most optimizations
-            Config safe_config{};
-            safe_config.link = true;
-            safe_config.address_cache = true;
-            safe_config.unsafe_flags = false;
-            safe_config.opcode_fusing = false;
-            safe_config.inline_syscalls = false;
-            safe_config.inaccurate_minmax = false;
-            safe_config.always_tso = true;
-            safe_config.protect_pages = true;
-            safe_config.noflag_opts = true;
-            safe_config.auto_compress = false;
-            safe_config.scan_ahead_multi = false;
-            safe_config.pclmulqdq = false;
-            safe_config.no_address_overflow = false;
-            Config::save(profiles_path / "safe.toml", safe_config);
-        }
+    if (!std::filesystem::exists(profiles_path / "safe.toml", ec)) {
+        // Disable most optimizations
+        Config safe_config{};
+        safe_config.link = true;
+        safe_config.address_cache = true;
+        safe_config.unsafe_flags = false;
+        safe_config.opcode_fusing = false;
+        safe_config.inline_syscalls = false;
+        safe_config.inaccurate_minmax = false;
+        safe_config.always_tso = true;
+        safe_config.protect_pages = true;
+        safe_config.noflag_opts = true;
+        safe_config.auto_compress = false;
+        safe_config.scan_ahead_multi = false;
+        safe_config.pclmulqdq = false;
+        safe_config.no_address_overflow = false;
+        Config::save(profiles_path / "safe.toml", safe_config, true);
+    }
 
-        if (!std::filesystem::exists(profiles_path / "paranoid.toml", ec)) {
-            // Disable all optimizations except block linking and enable some safety checks
-            Config paranoid_config{};
-            paranoid_config.paranoid = true;
-            paranoid_config.alignment_check = true;
-            paranoid_config.always_flags = true;
-            paranoid_config.link = true;
-            paranoid_config.address_cache = false;
-            paranoid_config.unsafe_flags = false;
-            paranoid_config.opcode_fusing = false;
-            paranoid_config.inline_syscalls = false;
-            paranoid_config.inaccurate_minmax = false;
-            paranoid_config.always_tso = true;
-            paranoid_config.protect_pages = true;
-            paranoid_config.noflag_opts = false;
-            paranoid_config.auto_compress = false;
-            paranoid_config.scan_ahead_multi = false;
-            paranoid_config.pclmulqdq = false;
-            paranoid_config.no_address_overflow = false;
-            Config::save(profiles_path / "paranoid.toml", paranoid_config);
-        }
+    if (!std::filesystem::exists(profiles_path / "paranoid.toml", ec)) {
+        // Disable all optimizations except block linking and enable some safety checks
+        Config paranoid_config{};
+        paranoid_config.paranoid = true;
+        paranoid_config.alignment_check = true;
+        paranoid_config.always_flags = true;
+        paranoid_config.link = true;
+        paranoid_config.address_cache = false;
+        paranoid_config.unsafe_flags = false;
+        paranoid_config.opcode_fusing = false;
+        paranoid_config.inline_syscalls = false;
+        paranoid_config.inaccurate_minmax = false;
+        paranoid_config.always_tso = true;
+        paranoid_config.protect_pages = true;
+        paranoid_config.noflag_opts = false;
+        paranoid_config.auto_compress = false;
+        paranoid_config.scan_ahead_multi = false;
+        paranoid_config.pclmulqdq = false;
+        paranoid_config.no_address_overflow = false;
+        Config::save(profiles_path / "paranoid.toml", paranoid_config, true);
     }
 
     g_config = load(config_path, ignore_envs);
