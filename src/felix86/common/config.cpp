@@ -212,7 +212,18 @@ bool Config::initialize(bool ignore_envs) {
 
     const char* profile = getenv("FELIX86_PROFILE");
     if (profile) {
-        const std::filesystem::path path = profiles_path / profile;
+        std::filesystem::path path;
+
+        // Sets either the absolute profile path or a name of a profile in $HOME/.config/felix86/profiles
+        if (profile[0] != '/') {
+            std::string sprofile = profile;
+            std::transform(sprofile.begin(), sprofile.end(), sprofile.begin(),
+                [](unsigned char c){ return std::tolower(c); });
+            path  = profiles_path / (sprofile + ".toml");
+        } else {
+            path = profile;
+        }
+
         std::error_code ec;
         if (std::filesystem::exists(path, ec)) {
             Config::loadProfile(g_config, path);
