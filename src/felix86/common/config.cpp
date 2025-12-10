@@ -102,6 +102,36 @@ std::filesystem::path Config::getConfigDir() {
     return config_path;
 }
 
+void addToEnvironment(Config& config, const char* env_name, const char* env) {
+    config.__environment += "\n";
+    config.__environment += env_name;
+    config.__environment += "=";
+    config.__environment += env;
+}
+
+template <typename T>
+std::string namify(const T& val);
+
+template <>
+std::string namify(const bool& val) {
+    return val ? "true" : "false";
+}
+
+template <>
+std::string namify(const u64& val) {
+    return fmt::format("{:x}", val);
+}
+
+template <>
+std::string namify(const std::filesystem::path& val) {
+    return val;
+}
+
+template <>
+std::string namify(const std::string& val) {
+    return val;
+}
+
 bool Config::initialize(bool ignore_envs) {
     const std::filesystem::path config_dir = getConfigDir();
     if (config_dir.empty()) {
@@ -236,6 +266,13 @@ bool Config::initialize(bool ignore_envs) {
     // g_config can be changed, c_initial_config won't be changed
     g_initial_config = g_config;
 
+#define X(group, type, name, default_value, env_name, description, required)                                                                         \
+        if (g_config.name != type{default_value}) {                                                                                                    \
+            addToEnvironment(g_config, #env_name, namify(g_config.name).c_str());                                                                        \
+        }
+#include "config.inc"
+#undef X
+
     return true;
 }
 
@@ -342,36 +379,6 @@ bool loadFromToml(const toml::value& toml, const char* group, const char* name, 
     return false;
 }
 
-void addToEnvironment(Config& config, const char* env_name, const char* env) {
-    config.__environment += "\n";
-    config.__environment += env_name;
-    config.__environment += "=";
-    config.__environment += env;
-}
-
-template <typename T>
-std::string namify(const T& val);
-
-template <>
-std::string namify(const bool& val) {
-    return val ? "true" : "false";
-}
-
-template <>
-std::string namify(const u64& val) {
-    return fmt::format("{:x}", val);
-}
-
-template <>
-std::string namify(const std::filesystem::path& val) {
-    return val;
-}
-
-template <>
-std::string namify(const std::string& val) {
-    return val;
-}
-
 template <typename Type>
 bool loadFromEnv(Config& config, Type& value, const char* env) {
     if constexpr (std::is_same_v<Type, bool>) {
@@ -462,9 +469,6 @@ Config Config::load(const std::filesystem::path& path, bool ignore_envs) {
             ERROR("A value for %s is required but was not set. Please set it using the %s environment variable or in the configuration file %s in "  \
                   "group [\"%s\"]",                                                                                                                  \
                   #name, #env_name, path.c_str(), #group);                                                                                           \
-        }                                                                                                                                            \
-        if (config.name != type{default_value}) {                                                                                                    \
-            addToEnvironment(config, #env_name, namify(config.name).c_str());                                                                        \
         }                                                                                                                                            \
     }
 #include "config.inc"
