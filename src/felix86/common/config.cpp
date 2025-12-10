@@ -142,9 +142,7 @@ bool Config::initialize(bool ignore_envs) {
     std::error_code ec;
     std::filesystem::path profiles_path = config_dir / "profiles";
     if (!std::filesystem::is_directory(profiles_path, ec)) {
-        if (!ec) {
-            std::filesystem::create_directories(profiles_path, ec);
-        }
+        std::filesystem::create_directories(profiles_path, ec);
     } else {
         if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
             // Enable all optimizations, even ones that may break programs
@@ -203,7 +201,7 @@ bool Config::initialize(bool ignore_envs) {
             paranoid_config.scan_ahead_multi = false;
             paranoid_config.pclmulqdq = false;
             paranoid_config.no_address_overflow = false;
-            Config::save(profiles_path / "safe.toml", paranoid_config);
+            Config::save(profiles_path / "paranoid.toml", paranoid_config);
         }
     }
 
@@ -494,11 +492,11 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
     return true;
 }
 
-void Config::save(const std::filesystem::path& path, const Config& config) {
+void Config::save(const std::filesystem::path& path, const Config& config, bool only_non_default) {
     toml::ordered_table toml;
 
 #define X(group, type, name, default_value, env_name, description, required)                                                                         \
-    {                                                                                                                                                \
+    if (!only_non_default || config.name != default_value) {                                                                                         \
         if (!toml.contains(#group)) {                                                                                                                \
             toml[#group] = toml::ordered_table{};                                                                                                    \
         }                                                                                                                                            \
