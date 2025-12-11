@@ -202,17 +202,17 @@ TEST_CASE("BSETI", "[rvb]") {
     auto as = MakeAssembler32(value);
 
     as.BSETI(x31, x7, 0);
-    REQUIRE(value == 0x28039FB3);
+    REQUIRE(value == 0x28039F93);
 
     as.RewindBuffer();
 
     as.BSETI(x31, x7, 15);
-    REQUIRE(value == 0x28F39FB3);
+    REQUIRE(value == 0x28F39F93);
 
     as.RewindBuffer();
 
     as.BSETI(x31, x7, 31);
-    REQUIRE(value == 0x29F39FB3);
+    REQUIRE(value == 0x29F39F93);
 }
 
 TEST_CASE("BSETI (RV64)", "[rvb]") {
@@ -220,22 +220,22 @@ TEST_CASE("BSETI (RV64)", "[rvb]") {
     auto as = MakeAssembler64(value);
 
     as.BSETI(x31, x7, 0);
-    REQUIRE(value == 0x28039FB3);
+    REQUIRE(value == 0x28039F93);
 
     as.RewindBuffer();
 
     as.BSETI(x31, x7, 15);
-    REQUIRE(value == 0x28F39FB3);
+    REQUIRE(value == 0x28F39F93);
 
     as.RewindBuffer();
 
     as.BSETI(x31, x7, 31);
-    REQUIRE(value == 0x29F39FB3);
+    REQUIRE(value == 0x29F39F93);
 
     as.RewindBuffer();
 
     as.BSETI(x31, x7, 63);
-    REQUIRE(value == 0x2BF39FB3);
+    REQUIRE(value == 0x2BF39F93);
 }
 
 TEST_CASE("CLMUL", "[rvb]") {

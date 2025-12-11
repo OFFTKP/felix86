@@ -2,6 +2,7 @@
 
 #include <biscuit/code_buffer.hpp>
 #include <biscuit/csr.hpp>
+#include <biscuit/enum_utils.hpp>
 #include <biscuit/isa.hpp>
 #include <biscuit/label.hpp>
 #include <biscuit/literal.hpp>
@@ -45,43 +46,7 @@ enum class Optimization : uint32_t {
      */
     AutoCompress = 1,
 };
-
-constexpr Optimization operator|(Optimization lhs, Optimization rhs) {
-    return static_cast<Optimization>(
-        static_cast<std::underlying_type_t<Optimization>>(lhs) | static_cast<std::underlying_type_t<Optimization>>(rhs)
-    );
-}
-
-constexpr Optimization operator&(Optimization lhs, Optimization rhs) {
-    return static_cast<Optimization>(
-        static_cast<std::underlying_type_t<Optimization>>(lhs) & static_cast<std::underlying_type_t<Optimization>>(rhs)
-    );
-}
-
-constexpr Optimization operator^(Optimization lhs, Optimization rhs) {
-    return static_cast<Optimization>(
-        static_cast<std::underlying_type_t<Optimization>>(lhs) ^ static_cast<std::underlying_type_t<Optimization>>(rhs)
-    );
-}
-
-constexpr Optimization operator~(Optimization opt) {
-    return static_cast<Optimization>(~static_cast<std::underlying_type_t<Optimization>>(opt));
-}
-
-constexpr Optimization& operator|=(Optimization& lhs, Optimization rhs) {
-    lhs = lhs | rhs;
-    return lhs;
-}
-
-constexpr Optimization& operator&=(Optimization& lhs, Optimization rhs) {
-    lhs = lhs & rhs;
-    return lhs;
-}
-
-constexpr Optimization& operator^=(Optimization& lhs, Optimization rhs) {
-    lhs = lhs ^ rhs;
-    return lhs;
-}
+BISCUIT_DEFINE_ENUM_FLAG_OPERATORS(Optimization);
 
 /**
  * Defines the set of features that a particular assembler instance
@@ -457,6 +422,16 @@ public:
     // Zicond Extension Instructions
     void CZERO_EQZ(GPR rd, GPR value, GPR condition) noexcept;
     void CZERO_NEZ(GPR rd, GPR value, GPR condition) noexcept;
+
+    // Zalasr Extension Instructions
+    void LB(Ordering ordering, GPR rd, GPR rs) noexcept;
+    void LH(Ordering ordering, GPR rd, GPR rs) noexcept;
+    void LW(Ordering ordering, GPR rd, GPR rs) noexcept;
+    void LD(Ordering ordering, GPR rd, GPR rs) noexcept;
+    void SB(Ordering ordering, GPR rs2, GPR rs1) noexcept;
+    void SH(Ordering ordering, GPR rs2, GPR rs1) noexcept;
+    void SW(Ordering ordering, GPR rs2, GPR rs1) noexcept;
+    void SD(Ordering ordering, GPR rs2, GPR rs1) noexcept;
 
     // XTheadCondMov Extension Instructions
     void TH_MVEQZ(GPR rd, GPR value, GPR condition) noexcept;

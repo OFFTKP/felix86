@@ -1,5 +1,5 @@
-#include <biscuit/assembler.hpp>
 #include <biscuit/assert.hpp>
+#include <biscuit/assembler.hpp>
 
 #include <array>
 #include <bit>
@@ -10,9 +10,11 @@
 
 namespace biscuit {
 
-Assembler::Assembler(size_t capacity) : m_buffer(capacity) {}
+Assembler::Assembler(size_t capacity)
+    : m_buffer(capacity) {}
 
-Assembler::Assembler(uint8_t* buffer, size_t capacity, ArchFeature features) : m_buffer(buffer, capacity), m_features{features} {}
+Assembler::Assembler(uint8_t* buffer, size_t capacity, ArchFeature features)
+    : m_buffer(buffer, capacity), m_features{features} {}
 
 Assembler::~Assembler() = default;
 
@@ -86,7 +88,7 @@ void Assembler::AND(GPR rd, GPR lhs, GPR rhs) noexcept {
 void Assembler::ANDI(GPR rd, GPR rs, uint32_t imm) noexcept {
     if (IsOptimizationEnabled(Optimization::AutoCompress)) {
         uint32_t sign_extended = static_cast<uint32_t>(static_cast<int32_t>(imm << 26) >> 26);
-        if (rd == rs && IsValid3BitCompressedReg(rd) && (imm & 0xFFF) == (sign_extended & 0xFFF)) {
+        if (rd == rs  && IsValid3BitCompressedReg(rd) && (imm & 0xFFF) == (sign_extended & 0xFFF)) {
             C_ANDI(rd, imm);
             return;
         }
@@ -282,7 +284,8 @@ void Assembler::CALL(int32_t offset) noexcept {
     const auto needs_increment = (uimm & 0x800) != 0;
 
     // Sign-extend the lower portion if the MSB of it is set.
-    const auto new_lower = needs_increment ? static_cast<int32_t>(lower << 20) >> 20 : static_cast<int32_t>(lower);
+    const auto new_lower = needs_increment ? static_cast<int32_t>(lower << 20) >> 20
+                                           : static_cast<int32_t>(lower);
     const auto new_upper = needs_increment ? upper + 1 : upper;
 
     AUIPC(x1, static_cast<int32_t>(new_upper));
@@ -962,6 +965,50 @@ void Assembler::CZERO_EQZ(GPR rd, GPR value, GPR condition) noexcept {
 }
 void Assembler::CZERO_NEZ(GPR rd, GPR value, GPR condition) noexcept {
     EmitRType(m_buffer, 0b0000111, condition, value, 0b111, rd, 0b0110011);
+}
+
+// Zalasr Extension Instructions
+
+void Assembler::LB(Ordering ordering, GPR rd, GPR rs) noexcept {
+    BISCUIT_ASSERT(ordering == Ordering::AQ || ordering == Ordering::AQRL);
+    EmitAtomic(m_buffer, 0b00110, ordering, x0, rs, 0b000, rd, 0b0101111);
+}
+
+void Assembler::LH(Ordering ordering, GPR rd, GPR rs) noexcept {
+    BISCUIT_ASSERT(ordering == Ordering::AQ || ordering == Ordering::AQRL);
+    EmitAtomic(m_buffer, 0b00110, ordering, x0, rs, 0b001, rd, 0b0101111);
+}
+
+void Assembler::LW(Ordering ordering, GPR rd, GPR rs) noexcept {
+    BISCUIT_ASSERT(ordering == Ordering::AQ || ordering == Ordering::AQRL);
+    EmitAtomic(m_buffer, 0b00110, ordering, x0, rs, 0b010, rd, 0b0101111);
+}
+
+void Assembler::LD(Ordering ordering, GPR rd, GPR rs) noexcept {
+    BISCUIT_ASSERT(ordering == Ordering::AQ || ordering == Ordering::AQRL);
+    BISCUIT_ASSERT(IsRV64(m_features));
+    EmitAtomic(m_buffer, 0b00110, ordering, x0, rs, 0b011, rd, 0b0101111);
+}
+
+void Assembler::SB(Ordering ordering, GPR rs2, GPR rs1) noexcept {
+    BISCUIT_ASSERT(ordering == Ordering::RL || ordering == Ordering::AQRL);
+    EmitAtomic(m_buffer, 0b00111, ordering, rs2, rs1, 0b000, x0, 0b0101111);
+}
+
+void Assembler::SH(Ordering ordering, GPR rs2, GPR rs1) noexcept {
+    BISCUIT_ASSERT(ordering == Ordering::RL || ordering == Ordering::AQRL);
+    EmitAtomic(m_buffer, 0b00111, ordering, rs2, rs1, 0b001, x0, 0b0101111);
+}
+
+void Assembler::SW(Ordering ordering, GPR rs2, GPR rs1) noexcept {
+    BISCUIT_ASSERT(ordering == Ordering::RL || ordering == Ordering::AQRL);
+    EmitAtomic(m_buffer, 0b00111, ordering, rs2, rs1, 0b010, x0, 0b0101111);
+}
+
+void Assembler::SD(Ordering ordering, GPR rs2, GPR rs1) noexcept {
+    BISCUIT_ASSERT(ordering == Ordering::RL || ordering == Ordering::AQRL);
+    BISCUIT_ASSERT(IsRV64(m_features));
+    EmitAtomic(m_buffer, 0b00111, ordering, rs2, rs1, 0b011, x0, 0b0101111);
 }
 
 // XTheadCondMov Extension Instructions
@@ -1721,9 +1768,13 @@ ptrdiff_t Assembler::LinkAndGetOffset(Label* label) {
 
 void Assembler::ResolveLabelOffsets(Label* label) {
     // Conditional branch instructions make use of the B-type immediate encoding for offsets.
-    const auto is_b_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b1100011; };
+    const auto is_b_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b1100011;
+    };
     // JAL makes use of the J-type immediate encoding for offsets.
-    const auto is_j_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b1101111; };
+    const auto is_j_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b1101111;
+    };
     // C.BEQZ and C.BNEZ make use of this encoding type.
     const auto is_cb_type = [](uint32_t instruction) {
         const auto op = instruction & 0b11;
@@ -1787,9 +1838,13 @@ void Assembler::ResolveLabelOffsets(Label* label) {
 }
 
 void Assembler::ResolveLiteralOffsetsRaw(ptrdiff_t location, const std::set<ptrdiff_t>& offsets) {
-    [[maybe_unused]] const auto is_auipc_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b0010111; };
+    [[maybe_unused]] const auto is_auipc_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b0010111;
+    };
 
-    const auto is_gpr_load_type = [](uint32_t instruction) { return (instruction & 0x7F) == 0b0000011; };
+    const auto is_gpr_load_type = [](uint32_t instruction) {
+        return (instruction & 0x7F) == 0b0000011;
+    };
 
     for (const auto offset : offsets) {
         const auto address = m_buffer.GetOffsetAddress(offset);

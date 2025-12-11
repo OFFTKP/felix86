@@ -22,6 +22,7 @@ add_executable(${PROJECT_NAME}
     src/assembler_xthead_tests.cpp
     src/assembler_zabha_tests.cpp
     src/assembler_zacas_tests.cpp
+    src/assembler_zalasr_tests.cpp
     src/assembler_zawrs_tests.cpp
     src/assembler_zc_tests.cpp
     src/assembler_zfa_tests.cpp

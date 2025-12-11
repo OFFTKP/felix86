@@ -37,6 +37,7 @@ Includes both 32-bit and 64-bit instructions in the following:
 | Zaamo         | 2.1     |
 | Zabha         | 1.0     |
 | Zacas         | 1.0     |
+| Zalasr        | 1.0     |
 | Zalrsc        | 2.1     |
 | Zawrs         | 1.01    |
 | Zcb           | 1.0.0   |
