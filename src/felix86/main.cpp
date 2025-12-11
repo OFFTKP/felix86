@@ -34,7 +34,7 @@ std::string version_full = get_version_full();
 const char* argp_program_version = version_full.c_str();
 const char* argp_program_bug_address = "<https://github.com/OFFTKP/felix86/issues>";
 
-static char doc[] = "felix86 - a userspace x86_64 emulator";
+static char doc[] = "felix86 - a userspace x86 and x86_64 emulator for RISC-V";
 static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {

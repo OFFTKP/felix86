@@ -1,4 +1,3 @@
-#include "biscuit/assembler.hpp"
 #include "felix86/common/types.hpp"
 
 struct Recompiler;
