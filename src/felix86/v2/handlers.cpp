@@ -1678,7 +1678,9 @@ FAST_HANDLE(CALL) {
         u8* here = as.GetCursorPointer();
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         rec.jumpAndLink(address);
-        ASSERT(as.GetCursorPointer() == here + 12);
+        if (!rec.isRelocatable()) {
+            ASSERT(as.GetCursorPointer() == here + 12);
+        }
         rec.stopCompiling();
         break;
     }
@@ -2458,7 +2460,9 @@ FAST_HANDLE(JMP) {
         u8* here = as.GetCursorPointer();
         as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
         rec.jumpAndLink(address);
-        ASSERT(as.GetCursorPointer() == here + 12);
+        if (!rec.isRelocatable()) {
+            ASSERT(as.GetCursorPointer() == here + 12);
+        }
         rec.stopCompiling();
         break;
     }
@@ -3870,21 +3874,19 @@ FAST_HANDLE(PUNPCKHQDQ) {
 }
 
 FAST_HANDLE(UNPCKLPS) {
-    biscuit::Vec scratch = rec.scratchVec();
-    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec wide1 = rec.scratchVecM2();
+    biscuit::Vec wide2 = rec.scratchVecM2();
+    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src1 = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
 
     rec.setVectorState(SEW::E32, 4);
-    as.VMV(scratch, 0);
-    as.VMV(v0, 0b0101);
-    as.VIOTA(iota, v0);
-    as.VRGATHER(scratch, src1, iota, VecMask::Yes);
-    as.VMV(v0, 0b1010);
-    as.VIOTA(iota, v0);
-    as.VRGATHER(scratch, src2, iota, VecMask::Yes);
+    as.VWADDU(wide1, src1, x0);
+    as.VWADDU(wide2, src2, x0);
+    as.VSLIDE1UP(result, wide2, x0);
+    as.VOR(src1, result, wide1);
 
-    rec.setVec(&operands[0], scratch);
+    rec.setVec(&operands[0], src1);
 }
 
 FAST_HANDLE(UNPCKHPS) {
@@ -8303,14 +8305,13 @@ FAST_HANDLE(CVTSS2SD) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
 
-    if (dst == src) {
-        rec.setVectorState(SEW::E8, 16);
-        biscuit::Vec temp = rec.scratchVec();
-        as.VMV(temp, dst);
-        dst = temp;
-    }
-
     rec.setVectorState(SEW::E32, 1, LMUL::MF2);
+
+    if (dst == src) {
+        biscuit::Vec temp = rec.scratchVec();
+        as.VMV1R(temp, dst);
+        src = temp;
+    }
 
     as.VFWCVT_F_F(dst, src);
 
@@ -8321,14 +8322,14 @@ FAST_HANDLE(CVTSD2SS) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
 
+    rec.setVectorState(SEW::E32, 1, LMUL::MF2);
+
     if (dst == src) {
-        rec.setVectorState(SEW::E8, 16);
         biscuit::Vec temp = rec.scratchVec();
-        as.VMV(temp, dst);
-        dst = temp;
+        as.VMV1R(temp, dst);
+        src = temp;
     }
 
-    rec.setVectorState(SEW::E32, 1, LMUL::MF2);
     as.VFNCVT_F_F(dst, src);
 
     rec.setVec(&operands[0], dst);

@@ -699,6 +699,15 @@
         ],
         "disassembly": "cvtss2sd xmm3, xmm2"
     },
+    "f30f5ad2": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "VSETIVLI        zero, 1, e32, mf2, tu, mu",
+            "VMV1R.V         v26, v4",
+            "VFWCVT.F.F.V    v4, v26, none"
+        ],
+        "disassembly": "cvtss2sd xmm2, xmm2"
+    },
     "f30f5a1f": {
         "instruction_count": 4,
         "expected_asm": [
@@ -716,6 +725,15 @@
             "VFNCVT.F.F.W    v5, v4, none"
         ],
         "disassembly": "cvtsd2ss xmm3, xmm2"
+    },
+    "f20f5ad2": {
+        "instruction_count": 3,
+        "expected_asm": [
+            "VSETIVLI        zero, 1, e32, mf2, tu, mu",
+            "VMV1R.V         v26, v4",
+            "VFNCVT.F.F.W    v4, v26, none"
+        ],
+        "disassembly": "cvtsd2ss xmm2, xmm2"
     },
     "f20f5a1f": {
         "instruction_count": 4,

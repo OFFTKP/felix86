@@ -809,8 +809,10 @@ int main() {
     GEN_SSE(pcmpeqd);
 
     GEN(cvtss2sd(xmm3, xmm2));
+    GEN(cvtss2sd(xmm2, xmm2));
     GEN(cvtss2sd(xmm3, ptr[rdi]));
     GEN(cvtsd2ss(xmm3, xmm2));
+    GEN(cvtsd2ss(xmm2, xmm2));
     GEN(cvtsd2ss(xmm3, ptr[rdi]));
     GEN(cvtsi2sd(xmm3, rax));
     GEN(cvtsi2sd(xmm2, eax));

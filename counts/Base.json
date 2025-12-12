@@ -13683,10 +13683,10 @@
             "OR              ra, ra, s5",
             "ORI             ra, ra, 0x2(2)",
             "ORI             ra, ra, 0x200(512)",
-            "LBU             t1, s11, 0x258(600)",
+            "LBU             t1, s11, 0x268(616)",
             "SLLI            t1, t1, 0x15(21)",
             "OR              ra, ra, t1",
-            "LBU             t1, s11, 0x259(601)",
+            "LBU             t1, s11, 0x269(617)",
             "SLLI            t1, t1, 0x12(18)",
             "OR              ra, ra, t1",
             "ADDI            s1, s1, 0xfffffff8(-8)",
@@ -13718,10 +13718,10 @@
             "ANDI            s9, s9, 0x1(1)",
             "SRLI            t1, ra, 0x15(21)",
             "ANDI            t1, t1, 0x1(1)",
-            "SB              t1, s11, 0x258(600)",
+            "SB              t1, s11, 0x268(616)",
             "SRLI            t1, ra, 0x12(18)",
             "ANDI            t1, t1, 0x1(1)",
-            "SB              t1, s11, 0x259(601)"
+            "SB              t1, s11, 0x269(617)"
         ],
         "disassembly": "popfq"
     },

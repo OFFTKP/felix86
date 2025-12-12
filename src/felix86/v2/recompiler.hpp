@@ -515,6 +515,10 @@ struct Recompiler {
         as.JALR(t4);
     }
 
+    bool isRelocatable() {
+        return relocatable;
+    }
+
     void pushCalltrace() {
         if (g_config.calltrace) {
             ASSERT(isScratch(t4));

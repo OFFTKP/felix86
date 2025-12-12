@@ -2678,7 +2678,9 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     u8* here = as.GetCursorPointer();
     as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
     jumpAndLink(rip_false);
-    ASSERT(as.GetCursorPointer() == here + 12);
+    if (!relocatable) {
+        ASSERT(as.GetCursorPointer() == here + 12);
+    }
 
     as.Bind(&true_label);
     u64 rip_true_offset = rip_true - getCurrentMetadata().guest_address;
@@ -2691,7 +2693,9 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     here = as.GetCursorPointer();
     as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
     jumpAndLink(rip_true);
-    ASSERT(as.GetCursorPointer() == here + 12);
+    if (!relocatable) {
+        ASSERT(as.GetCursorPointer() == here + 12);
+    }
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {
