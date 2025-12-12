@@ -281,7 +281,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             // We mark pages as read-only when we recompile their code. But if the guest program
             // decides to override that by marking them as PROT_WRITE then we can no longer keep track
             // of them. So in that case, we will invalidate everything in that region to be safe.
-            Recompiler::invalidateRangeGlobal(start, start + size);
+            Recompiler::invalidateRangeGlobal(start, start + size, "mprotect");
         }
         break;
     }
@@ -813,7 +813,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
         // If there's any blocks in any threads that match this mmapped range they need to be invalidated
         if (result > 0) {
-            Recompiler::invalidateRangeGlobal(result, result + arg2);
+            Recompiler::invalidateRangeGlobal(result, result + arg2, "mmap");
 
             if ((int)arg5 != -1) {
                 // uses file descriptor, mmaps file to memory, may need to update mappings
@@ -833,7 +833,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         }
 
         if (result == 0) {
-            Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2);
+            Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2, "munmap");
             g_symbols_cached = false;
         }
         break;
@@ -946,8 +946,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         SignalGuard guard;
         result = (u64)g_mapper->remap((void*)arg1, arg2, arg3, arg4, (void*)arg5);
         if (result > 0) {
-            Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2);
-            Recompiler::invalidateRangeGlobal(result, result + arg3);
+            Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2, "mremap");
+            Recompiler::invalidateRangeGlobal(result, result + arg3, "mremap");
         }
         break;
     }
@@ -2106,7 +2106,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             SignalGuard guard;
             result = (ssize_t)g_mapper->map((void*)arg1, arg2, arg3, arg4, arg5, offset);
             if (result > 0) {
-                Recompiler::invalidateRangeGlobal(result, result + arg2);
+                Recompiler::invalidateRangeGlobal(result, result + arg2, "mmap_pgoff");
 
                 if ((int)arg5 != -1) {
                     g_symbols_cached = false;
@@ -2118,8 +2118,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             SignalGuard guard;
             result = (ssize_t)g_mapper->remap32((void*)arg1, arg2, arg3, arg4, (void*)arg5);
             if (result > 0) {
-                Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2);
-                Recompiler::invalidateRangeGlobal(result, result + arg3);
+                Recompiler::invalidateRangeGlobal(arg1, arg1 + arg2, "mremap");
+                Recompiler::invalidateRangeGlobal(result, result + arg3, "mremap");
             }
             break;
         }

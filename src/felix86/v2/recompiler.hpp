@@ -193,7 +193,7 @@ struct Recompiler {
 
     void invalidateBlock(BlockMetadata* block);
 
-    static void invalidateRangeGlobal(u64 start, u64 end);
+    static void invalidateRangeGlobal(u64 start, u64 end, const char* reason);
 
     int invalidateRange(u64 start, u64 end);
 

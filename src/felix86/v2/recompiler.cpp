@@ -3344,7 +3344,7 @@ int Recompiler::invalidateRange(u64 start, u64 end) {
     return blocks;
 }
 
-void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
+void Recompiler::invalidateRangeGlobal(u64 start, u64 end, const char* reason) {
     // Get all the pages in this range, search all thread states for these pages, invalidate the blocks in those pages
     auto states_guard = g_process_globals.states_lock.lock();
     start &= ~0xFFFull;
@@ -3366,7 +3366,7 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
     }
 
     if (g_config.print_invalidations) {
-        WARN("Invalidated %lu blocks", blocks);
+        WARN("Invalidated %lu blocks for reason: %s", blocks, reason);
     }
 
     // Flush the entire affected range in one syscall
