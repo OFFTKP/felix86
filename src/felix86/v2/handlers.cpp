@@ -1672,9 +1672,15 @@ FAST_HANDLE(CALL) {
         rec.addi(ripreg, ripreg, displacement);
         if (g_mode32) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
+            u8* here = as.GetCursorPointer();
+            as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
             rec.jumpAndLink((u32)(rip + instruction.length + displacement));
+            ASSERT(as.GetCursorPointer() == here + 12);
         } else {
+            u8* here = as.GetCursorPointer();
+            as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
             rec.jumpAndLink(rip + instruction.length + displacement);
+            ASSERT(as.GetCursorPointer() == here + 12);
         }
         rec.stopCompiling();
         break;
@@ -2450,9 +2456,15 @@ FAST_HANDLE(JMP) {
         rec.addi(ripreg, ripreg, offset);
         if (g_mode32) {
             rec.zext(ripreg, ripreg, X86_SIZE_DWORD);
+            u8* here = as.GetCursorPointer();
+            as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
             rec.jumpAndLink((u32)address);
+            ASSERT(as.GetCursorPointer() == here + 12);
         } else {
+            u8* here = as.GetCursorPointer();
+            as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
             rec.jumpAndLink(address);
+            ASSERT(as.GetCursorPointer() == here + 12);
         }
         rec.stopCompiling();
         break;
