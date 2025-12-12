@@ -1,5 +1,7 @@
 #include <array>
+#include <cstring>
 #include <sys/mman.h>
+#include "felix86/common/config.hpp"
 #include "felix86/common/print.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
@@ -1111,6 +1113,10 @@ bool dispatch_guest(int sig, siginfo_t* info, void* ctx) {
 
 // Main signal handler function, all signals come here
 void signal_handler(int sig, siginfo_t* info, void* ctx) {
+    if (g_config.print_all_signals) {
+        SIGLOG("------- Signal %s -------", sigdescr_np(sig));
+    }
+
     // First, check if this is a host signal
     bool handled;
 
