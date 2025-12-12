@@ -335,6 +335,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
             // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
             state->recompiler->jumpAndLink(state->rip);
             state->recompiler->as.SetCursorPointer(cursor);
+            WARN("Invalidated block");
             flush_icache();
         }
     } else {
