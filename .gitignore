@@ -4,3 +4,4 @@ x86build/
 .cache
 *.txt
 !CMakeLists.txt
+.vscode

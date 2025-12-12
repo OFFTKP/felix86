@@ -3882,8 +3882,12 @@ FAST_HANDLE(UNPCKLPS) {
 
     rec.setVectorState(SEW::E32, 4);
     as.VWADDU(wide1, src1, x0);
-    as.VWADDU(wide2, src2, x0);
-    as.VSLIDE1UP(result, wide2, x0);
+    if (src1 != src2) {
+        as.VWADDU(wide2, src2, x0);
+        as.VSLIDE1UP(result, wide2, x0);
+    } else {
+        as.VSLIDE1UP(result, wide1, x0);
+    }
     as.VOR(src1, result, wide1);
 
     rec.setVec(&operands[0], src1);
