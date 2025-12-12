@@ -322,7 +322,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
         auto linked_metadata = get_block_metadata(state, (u64)linked_block);
         ASSERT_MSG(linked_metadata, "Failed to get block metadata for address %lx", linked_block);
         // The link location should be an instruction after the AUIPC...
-        linked_block += 4;
+        u8* link_location = linked_block + sizeof(u32);
         if (linked_metadata->address != 0) {
             u8* cursor = state->recompiler->as.GetCursorPointer();
             ASSERT_MSG(linked_block >= state->recompiler->start_of_code_cache && linked_block < cursor, "%lx <= %lx < %lx",
@@ -330,12 +330,11 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
 
             // And here we need to mark the block for linking again. This will either link if the block is already compiled
             // or jump back to dispatcher that will link when the block gets compiled.
-            state->recompiler->as.SetCursorPointer(linked_block);
+            state->recompiler->as.SetCursorPointer(link_location);
             // Because there was a writebackState before entering this function, state->rip contains the guest address that we tried
             // to jump to before getting hit by this invalidation. So we can jumpAndLink there.
             state->recompiler->jumpAndLink(state->rip);
             state->recompiler->as.SetCursorPointer(cursor);
-            WARN("Invalidated block");
             flush_icache();
         }
     } else {
@@ -2672,32 +2671,26 @@ void Recompiler::jumpAndLinkConditional(biscuit::GPR condition, u64 rip_true, u6
     addi(rip, rip, rip_false_offset);
     if (g_mode32) {
         zext(rip, rip, X86_SIZE_DWORD);
-        u8* here = as.GetCursorPointer();
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
-        jumpAndLink((u32)rip_false);
-        ASSERT(as.GetCursorPointer() == here + 12);
-    } else {
-        u8* here = as.GetCursorPointer();
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
-        jumpAndLink(rip_false);
-        ASSERT(as.GetCursorPointer() == here + 12);
+        rip_false = (u32)rip_false;
     }
+
+    u8* here = as.GetCursorPointer();
+    as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+    jumpAndLink(rip_false);
+    ASSERT(as.GetCursorPointer() == here + 12);
 
     as.Bind(&true_label);
     u64 rip_true_offset = rip_true - getCurrentMetadata().guest_address;
     addi(rip, rip, rip_true_offset);
     if (g_mode32) {
         zext(rip, rip, X86_SIZE_DWORD);
-        u8* here = as.GetCursorPointer();
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
-        jumpAndLink((u32)rip_true);
-        ASSERT(as.GetCursorPointer() == here + 12);
-    } else {
-        u8* here = as.GetCursorPointer();
-        as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
-        jumpAndLink(rip_true);
-        ASSERT(as.GetCursorPointer() == here + 12);
+        rip_true = (u32)rip_true;
     }
+
+    here = as.GetCursorPointer();
+    as.AUIPC(t5, 0); // <- must be before link point, see invalidate_caller_thunk
+    jumpAndLink(rip_true);
+    ASSERT(as.GetCursorPointer() == here + 12);
 }
 
 void Recompiler::expirePendingLinks(u64 rip) {
