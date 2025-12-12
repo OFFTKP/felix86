@@ -11,6 +11,7 @@ X(Logging, bool, strace, false, FELIX86_STRACE, "Enable logging of syscalls", fa
 X(Logging, bool, strace_errors, false, FELIX86_STRACE_ERRORS, "Enable logging of syscalls only when they error", false)
 X(Logging, bool, print_signals, false, FELIX86_PRINT_SIGNALS, "Print on every guest signal handler", false);
 X(Logging, bool, print_all_signals, false, FELIX86_PRINT_ALL_SIGNALS, "Print all signals, even ones that are caused by the emulator", false);
+X(Logging, bool, print_invalidations, false, FELIX86_PRINT_INVALIDATIONS, "Print amount of blocks invalidated", false);
 X(Logging, bool, print_smc, false, FELIX86_PRINT_SMC, "Print on every SMC detection", false);
 X(Logging, bool, print_thunks, false, FELIX86_PRINT_THUNKS, "Print on every thunk function call", false);
 

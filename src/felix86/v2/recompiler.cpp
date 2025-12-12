@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "Zydis/Disassembler.h"
+#include "felix86/common/config.hpp"
 #include "felix86/common/frame.hpp"
 #include "felix86/common/gdbjit.hpp"
 #include "felix86/common/perf.hpp"
@@ -3326,18 +3327,21 @@ void Recompiler::invalidateBlock(BlockMetadata* block) {
     std::atomic_thread_fence(std::memory_order_seq_cst);
 }
 
-void Recompiler::invalidateRange(u64 start, u64 end) {
+int Recompiler::invalidateRange(u64 start, u64 end) {
     auto guard = page_map_lock.lock();
     auto lower = page_map.lower_bound(start);
     auto upper = page_map.upper_bound(end - 1);
 
+    int blocks = 0;
     for (auto it = lower; it != upper; it++) {
         auto& blocks_in_page = it->second;
         for (BlockMetadata* block : blocks_in_page) {
             invalidateBlock(block);
+            blocks++;
         }
         blocks_in_page.clear();
     }
+    return blocks;
 }
 
 void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
@@ -3347,8 +3351,9 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
     end = (end + 0xFFF) & ~0xFFFull;
     u64 min = UINT64_MAX;
     u64 max = 0;
+    u64 blocks = 0;
     for (ThreadState* state : g_process_globals.states) {
-        state->recompiler->invalidateRange(start, end);
+        blocks += state->recompiler->invalidateRange(start, end);
 
         u64 cache_start = (u64)state->recompiler->getStartOfCodeCache();
         u64 cache_end = (u64)state->recompiler->getEndOfCodeCache();
@@ -3358,6 +3363,10 @@ void Recompiler::invalidateRangeGlobal(u64 start, u64 end) {
         if (cache_end > max) {
             max = cache_end;
         }
+    }
+
+    if (g_config.print_invalidations) {
+        WARN("Invalidated %lu blocks", blocks);
     }
 
     // Flush the entire affected range in one syscall

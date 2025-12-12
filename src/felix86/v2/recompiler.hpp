@@ -195,7 +195,7 @@ struct Recompiler {
 
     static void invalidateRangeGlobal(u64 start, u64 end);
 
-    void invalidateRange(u64 start, u64 end);
+    int invalidateRange(u64 start, u64 end);
 
     constexpr static biscuit::GPR threadStatePointer() {
         return x27; // saved register so that when we exit VM we don't have to save it
