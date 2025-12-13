@@ -487,10 +487,6 @@ void Recompiler::markPagesAsReadOnly(u64 start, u64 end) {
 }
 
 u64 Recompiler::compileSequence(u64 rip) {
-    if (rip == 0x773864d4) {
-        raise(SIGTRAP);
-    }
-
     compiling = true;
     u8* bytes = (u8*)rip;
     bool all_zeroes = true;
