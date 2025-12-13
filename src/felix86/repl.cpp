@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -15,6 +16,15 @@ extern "C" const char* rv64_print(uint32_t opcode, uintptr_t addr);
 
 FlagMode flag_mode = FlagMode::Default;
 
+constexpr int color_count = 6;
+const char* colors[color_count] = {
+    "\x1b[31m", "\x1b[32m", "\x1b[33m", "\x1b[34m", "\x1b[35m", "\x1b[36m",
+};
+
+const char* reset = ANSI_COLOR_RESET;
+
+bool use_color = false;
+
 void print_help() {
     printf("Commands:\n");
     printf("  <INSTRUCTIONS>       - compile x86 instructions, separated by semicolons, and print the result\n");
@@ -24,11 +34,17 @@ void print_help() {
     printf("  flags                - instructions emit necessary flags as normal (default)\n");
     printf("  allflags             - instructions always emit all flags\n");
     printf("  noflags              - instructions never emit flags\n");
+    printf("  color                - toggle color coding different instructions\n");
 }
 
 void __attribute__((noreturn)) exit() {
     printf("Bye :(\n");
     exit(0);
+}
+
+void toggle_color() {
+    use_color ^= true;
+    printf("Color: %s\n", use_color ? "enabled" : "disabled");
 }
 
 void compile(const std::string& input) {
@@ -111,6 +127,8 @@ void compile(const std::string& input) {
     rec->compileSequence((u64)output.data());
     auto end = rec->getAssembler().GetCursorPointer();
 
+    BlockMetadata& metadata = rec->getBlockMetadata((u64)output.data());
+
     // Remove compiled UNDEF instructions off the end, if any
     u16* fin = (u16*)(end - 2);
     while (*fin == 0) {
@@ -118,13 +136,26 @@ void compile(const std::string& input) {
         fin = (u16*)(end - 2);
     }
 
+    size_t span_index = 0;
     for (int i = 0; i < end - start;) {
         void* address = start + i;
         i += 4;
         u32 data = 0;
         memcpy(&data, address, 4);
         const char* out = rv64_print(data, (u64)address);
-        printf("%s\n", out);
+
+        if (span_index + 1 < metadata.instruction_spans.size() && (u64)address == metadata.instruction_spans[span_index + 1].second) {
+            span_index++;
+        }
+
+        if (use_color) {
+            printf("%s", colors[span_index % color_count]);
+        }
+        printf("%s", out);
+        if (use_color) {
+            printf("%s", reset);
+        }
+        printf("\n");
     }
 }
 
@@ -173,6 +204,8 @@ void __attribute__((noreturn)) enter_repl() {
             printf("Switched to x86-64 mode\n");
         } else if (cmd == "help") {
             print_help();
+        } else if (cmd == "color") {
+            toggle_color();
         } else if (cmd == "noflags") {
             flag_mode = FlagMode::NeverEmit;
             printf("Switched to never emitting RISC-V instructions for x86 flags\n");
