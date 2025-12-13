@@ -1,4 +1,5 @@
 #include <Zydis/Zydis.h>
+#include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
@@ -1918,8 +1919,6 @@ FAST_HANDLE(RSTORSSP) {}
 
 FAST_HANDLE(SAVEPREVSSP) {}
 
-FAST_HANDLE(FNCLEX) {}
-
 FAST_HANDLE(PREFETCHT0) {}
 
 FAST_HANDLE(PREFETCHT1) {}
@@ -1931,6 +1930,14 @@ FAST_HANDLE(PREFETCHNTA) {}
 FAST_HANDLE(PREFETCHW) {}
 
 FAST_HANDLE(PREFETCHWT1) {}
+
+FAST_HANDLE(FNCLEX) {
+    biscuit::GPR sw = rec.scratch();
+    as.LHU(sw, offsetof(ThreadState, fpu_sw), Recompiler::threadStatePointer());
+    as.ANDI(sw, sw, ~0xFF);
+    as.BCLRI(sw, sw, 15);
+    as.SH(sw, offsetof(ThreadState, fpu_sw), Recompiler::threadStatePointer());
+}
 
 FAST_HANDLE(SHL_imm) {
     x86_size_e size = rec.getSize(&operands[0]);
