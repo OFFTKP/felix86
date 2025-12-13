@@ -10569,19 +10569,10 @@ FAST_HANDLE(FNSTENV) {
     rec.restoreState();
 }
 
-void print(u16 data) {
-    WARN("fpu_sw: %x", data);
-}
-
 FAST_HANDLE(FNSTSW) {
     biscuit::GPR temp = rec.scratch();
     as.LHU(temp, offsetof(ThreadState, fpu_sw), rec.threadStatePointer());
     rec.setGPR(&operands[0], temp);
-
-    rec.writebackState();
-    as.MV(a0, temp);
-    rec.call((u64)print);
-    rec.restoreState();
 }
 
 FAST_HANDLE(FLDENV) {
