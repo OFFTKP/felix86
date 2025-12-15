@@ -380,11 +380,10 @@
         "disassembly": "andpd xmm2, xmm2"
     },
     "660f540f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v26, a0, none, 1",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VAND.VV         v3, v3, v26, none"
         ],
         "disassembly": "andpd xmm1, [rdi]"
@@ -406,11 +405,10 @@
         "disassembly": "orpd xmm2, xmm2"
     },
     "660f560f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v26, a0, none, 1",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VOR.VV          v3, v3, v26, none"
         ],
         "disassembly": "orpd xmm1, [rdi]"
@@ -432,11 +430,10 @@
         "disassembly": "xorpd xmm2, xmm2"
     },
     "660f570f": {
-        "instruction_count": 4,
+        "instruction_count": 3,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v26, a0, none, 1",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VXOR.VV         v3, v3, v26, none"
         ],
         "disassembly": "xorpd xmm1, [rdi]"

@@ -4089,7 +4089,9 @@ FAST_HANDLE(MOVZX) {
 FAST_HANDLE(PXOR) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E64, 2);
+    if (!rec.isCurrentLength128()) {
+        rec.setVectorState(SEW::E64, 2);
+    }
     as.VXOR(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
@@ -4123,7 +4125,9 @@ FAST_HANDLE(MOVNTPS) {
 FAST_HANDLE(PAND) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E64, 2);
+    if (!rec.isCurrentLength128()) {
+        rec.setVectorState(SEW::E64, 2);
+    }
     as.VAND(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
@@ -4131,7 +4135,9 @@ FAST_HANDLE(PAND) {
 FAST_HANDLE(POR) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E64, 2);
+    if (!rec.isCurrentLength128()) {
+        rec.setVectorState(SEW::E64, 2);
+    }
     as.VOR(dst, dst, src);
     rec.setVec(&operands[0], dst);
 }
@@ -4140,7 +4146,9 @@ FAST_HANDLE(PANDN) {
     biscuit::Vec dst_not = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E64, 2);
+    if (!rec.isCurrentLength128()) {
+        rec.setVectorState(SEW::E64, 2);
+    }
     if (Extensions::Zvbb) {
         WARN_ONCE("PANDN + Zvbb is untested, please run tests and report results");
         as.VANDN(dst, src, dst);
