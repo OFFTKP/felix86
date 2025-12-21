@@ -17,6 +17,11 @@ struct Mapper {
     int shmat32(int shmid, void* address, int flags, u32* result_address);
     int shmdt32(void* address);
 
+    // Directly allocate in the freelist
+    void* allocate(u64 addr, u64 size) {
+        return freelist.allocate(addr, size);
+    }
+
 private:
     Freelist freelist;
     std::unordered_map<u32, int> page_to_shmid{};

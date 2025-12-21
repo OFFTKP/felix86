@@ -50,10 +50,6 @@ void* Mapper::map32(void* addr, u64 size, int prot, int flags, int fd, u64 offse
         if (result == MAP_FAILED) {
             i64 error = -errno;
             WARN("Even though our freelist says we have memory at %lx-%lx, mmap failed with: %ld", (u64)address, (u64)address + size, error);
-            std::ifstream ifs("/proc/self/maps");
-            std::stringstream ss;
-            ss << ifs.rdbuf();
-            PLAIN("Actual maps: %s", ss.str().c_str());
             return (void*)error;
         }
         ASSERT(result == address);
