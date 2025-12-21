@@ -35,9 +35,9 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         return ::syscall(SYS_semget, first, second, third);
     }
     case felix86_SEMCTL: {
-        u32 semid = first;
-        u32 semnum = second;
-        u32 semcmd = third & 0xFF;
+        u64 semid = first;
+        u64 semnum = second;
+        u64 semcmd = third & 0xFF;
         bool ipc64 = third & 0x100;
         x86_semun* semun = (x86_semun*)ptr;
         switch (semcmd) {
@@ -74,14 +74,14 @@ int ipc32(u32 call, u32 first, u64 second, u64 third, void* ptr, u64 fifth) {
         }
         case SEM_INFO:
         case IPC_INFO: {
-            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->_u32);
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, (u64)semun->_u32);
         }
         case GETALL:
         case SETALL: {
-            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->_u32);
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, (u64)semun->_u32);
         }
         case SETVAL: {
-            return ::syscall(SYS_semctl, semid, semnum, semcmd, semun->_i32);
+            return ::syscall(SYS_semctl, semid, semnum, semcmd, (u64)semun->_i32);
         }
         case IPC_RMID:
         case GETPID:
