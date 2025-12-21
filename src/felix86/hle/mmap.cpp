@@ -130,9 +130,11 @@ void* Mapper::map(void* addr, u64 size, int prot, int flags, int fd, u64 offset)
     if (g_mode32) {
         return map32(addr, size, prot, flags, fd, offset);
     } else {
-        // Nothing to do here
-        // In the future if we want to track mmaps we can add something
-        return mmap(addr, size, prot, flags, fd, offset);
+        if ((flags & (MAP_FIXED | MAP_FIXED_NOREPLACE)) && (u64)addr < UINT32_MAX) {
+            return map32(addr, size, prot, flags, fd, offset);
+        } else {
+            return mmap(addr, size, prot, flags, fd, offset);
+        }
     }
 }
 
@@ -140,7 +142,11 @@ int Mapper::unmap(void* addr, u64 size) {
     if (g_mode32) {
         return unmap32(addr, size);
     } else {
-        return munmap(addr, size);
+        if ((u64)addr < UINT32_MAX) {
+            return unmap32(addr, size);
+        } else {
+            return munmap(addr, size);
+        }
     }
 }
 

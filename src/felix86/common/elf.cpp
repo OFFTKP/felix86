@@ -547,9 +547,6 @@ void Elf::Load(const std::filesystem::path& path) {
         g_executable_start = (u64)(base_ptr + lowest_vaddr);
         g_executable_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
         g_process_globals.perf->addToFile(g_executable_start, g_executable_end - g_executable_start, path.filename());
-        if (g_executable_start < UINT32_MAX) {
-            g_mapper->allocate(g_executable_start, g_executable_end - g_executable_start);
-        }
     } else {
         u64 end = (u64)(base_ptr + PAGE_ALIGN(highest_vaddr));
         g_program_end = std::max(end, g_program_end);
@@ -557,9 +554,6 @@ void Elf::Load(const std::filesystem::path& path) {
         g_interpreter_end = PAGE_ALIGN((u64)(base_ptr + highest_vaddr));
         program_base = (u8*)base_ptr;
         g_process_globals.perf->addToFile(g_interpreter_start, g_interpreter_end - g_interpreter_start, path.filename());
-        if (g_interpreter_start < UINT32_MAX) {
-            g_mapper->allocate(g_interpreter_start, g_interpreter_end - g_interpreter_start);
-        }
     }
 
     phdr = base_ptr + lowest_vaddr + ehdr.phoff();
