@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <fstream>
 #include <sys/mman.h>
 #include <sys/shm.h>
 #include "felix86/common/global.hpp"
