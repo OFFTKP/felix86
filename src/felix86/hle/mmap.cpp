@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <sys/mman.h>
 #include <sys/shm.h>
 #include "felix86/common/global.hpp"
@@ -149,9 +150,14 @@ void* Mapper::remap(void* old_address, u64 old_size, u64 new_size, int flags, vo
     } else {
         if ((flags & MREMAP_FIXED) && (u64)new_address <= UINT32_MAX) {
             return remap32(old_address, old_size, new_size, flags, new_address);
+        } else if (!(flags & MREMAP_MAYMOVE) && (u64)old_address < UINT32_MAX) {
+            // Expands the old mapping, since the old mapping is in 32-bit area we need to pass it to remap32
+            ASSERT(!(flags & MREMAP_FIXED));
+            return remap32(old_address, old_size, new_size, flags, old_address);
         } else {
             void* result = ::mremap(old_address, old_size, new_size, flags, new_address);
-            ASSERT((u64)result > UINT32_MAX); // we don't want an allocation in the low 32-bit area
+            // we don't want an allocation in the low 32-bit area
+            ASSERT((u64)result > UINT32_MAX);
             return result;
         }
     }
