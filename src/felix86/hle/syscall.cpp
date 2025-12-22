@@ -1471,10 +1471,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             }
 
             path = std::filesystem::absolute(path);
-            ASSERT_MSG(path.string().find(g_config.rootfs_path.string()) == 0, "Script path is not inside rootfs? %s", path.c_str());
-
-            // We are running it through emulated bash, so the script itself needs to be a regular path
-            path = path.string().substr(g_config.rootfs_path.string().size());
+            if (path.string().find(g_config.rootfs_path.string()) != 0) {
+                WARN("Script path is not inside rootfs? %s", path.c_str()); // TODO: might be inside a trusted folder, check and don't warn
+            } else {
+                // We are running it through emulated bash, so the script itself needs to be a regular path
+                path = path.string().substr(g_config.rootfs_path.string().size());
+            }
         }
 
         argv.push_back(path.c_str());
