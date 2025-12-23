@@ -199,6 +199,11 @@ void Recompiler::emitDispatcher() {
 
     restoreState();
 
+    // Align this to cache line boundary since it's hit often
+    while ((u64)as.GetCursorPointer() & 0x3F) {
+        as.NOP();
+    }
+
     compile_next_handler = (u64)as.GetCursorPointer();
 
     if (g_config.address_cache) {

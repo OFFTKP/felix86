@@ -1,4 +1,6 @@
 #include <Zydis/Zydis.h>
+#include "Zydis/SharedTypes.h"
+#include "felix86/common/config.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -1803,14 +1805,24 @@ FAST_HANDLE(POP) {
         biscuit::GPR result = rec.scratch();
         biscuit::GPR rsp = rec.getGPR(X86_REF_RSP, rec.stackWidth());
         int imm = size_to_bytes(instruction.operand_width);
-        rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
         if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && rec.zydisToRef(operands[0].reg.value) == X86_REF_RSP) {
             // pop rsp special case
+            rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
             rec.setGPR(&operands[0], result);
         } else {
-            as.ADDI(rsp, rsp, imm);
-            rec.setGPR(X86_REF_RSP, rec.stackWidth(), rsp);
-            rec.setGPR(&operands[0], result);
+            if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].size >= 32) {
+                // load without zero extending or moving
+                biscuit::GPR reg = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+                rec.readMemory(reg, rsp, 0, rec.zydisToSize(instruction.operand_width));
+                rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, reg);
+                as.ADDI(rsp, rsp, imm);
+                rec.setGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+            } else {
+                rec.readMemory(result, rsp, 0, rec.zydisToSize(instruction.operand_width));
+                as.ADDI(rsp, rsp, imm);
+                rec.setGPR(X86_REF_RSP, X86_SIZE_QWORD, rsp);
+                rec.setGPR(&operands[0], result);
+            }
         }
     }
 }

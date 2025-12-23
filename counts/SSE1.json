@@ -591,11 +591,10 @@
         "disassembly": "andnps xmm2, xmm2"
     },
     "0f550f": {
-        "instruction_count": 5,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v27, a0, none, 1",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VXOR.VI         v26, v3, 0xffffffff(-1), none",
             "VAND.VV         v3, v26, v27, none"
         ],
