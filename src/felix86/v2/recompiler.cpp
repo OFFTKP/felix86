@@ -1683,14 +1683,16 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
 
     if (operand->mem.base == ZYDIS_REGISTER_RIP) {
         ASSERT(!g_mode32);
-        u64 offset = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
-        if (IsValid2GBImm(offset) && !relocatable) {
-            u32 hi20 = static_cast<i32>(((static_cast<u32>(offset) + 0x800) >> 12) & 0xFFFFF);
-            u32 lo12 = static_cast<i32>(offset << 20) >> 20;
+        u64 offset_from_start = (current_rip - current_block_metadata->guest_address) + current_instruction->length + (u64)operand->mem.disp.value;
+        u64 offset_from_cursor = (current_rip + current_instruction->length + operand->mem.disp.value) - (u64)as.GetCursorPointer();
+        if (IsValid2GBImm(offset_from_cursor) && !IsValidSigned12BitImm(offset_from_start) && !relocatable) {
+            u32 hi20 = static_cast<i32>(((static_cast<u32>(offset_from_cursor) + 0x800) >> 12) & 0xFFFFF);
+            u32 lo12 = static_cast<i32>(offset_from_cursor << 20) >> 20;
             as.AUIPC(address, hi20);
             as.ADDI(address, address, lo12);
         } else {
-            as.LI(address, current_rip + current_instruction->length + operand->mem.disp.value);
+            biscuit::GPR ripreg = getGPR(X86_REF_RIP, X86_SIZE_QWORD);
+            addi(address, ripreg, offset_from_start);
         }
         return address;
     }
