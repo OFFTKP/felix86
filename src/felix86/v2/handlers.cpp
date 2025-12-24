@@ -6790,8 +6790,13 @@ FAST_HANDLE(BSWAP) {
         as.SRLI(dst, temp, 32);
     } else if (size == X86_SIZE_QWORD) {
         as.REV8(dst, dst);
-    } else {
-        UNREACHABLE();
+    } else if (size == X86_SIZE_WORD) {
+        // This is undefined as per the manual, but exists in GenshinImpact.exe
+        WARN("BSWAP with word: %lx", rip);
+        as.REV8(temp, dst);
+        as.SRLI(temp, temp, 48);
+        rec.setGPR(&operands[0], temp);
+        return;
     }
 
     x86_ref_e ref = rec.zydisToRef(operands[0].reg.value);
