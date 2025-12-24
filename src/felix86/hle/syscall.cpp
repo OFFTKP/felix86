@@ -1888,6 +1888,14 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = ::alarm(arg1);
             break;
         }
+        case felix86_x86_32_vfork: {
+            WARN("32-bit vfork");
+            CloneArgs args = {};
+            u64 guest_flags = CLONE_VM | CLONE_VFORK | SIGCLD;
+            args.guest_flags = guest_flags;
+            result = Threads::Clone(state, &args);
+            break;
+        }
         case felix86_x86_32_symlink: {
             SignalGuard guard;
             result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
