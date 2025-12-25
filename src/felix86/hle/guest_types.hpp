@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/statfs.h>
 #include <sys/sysinfo.h>
+#include <sys/times.h>
 #include <sys/uio.h>
 #include "felix86/common/log.hpp"
 #include "felix86/common/types.hpp"
@@ -1113,6 +1114,29 @@ struct x86_siginfo_t {
         si_code = host_siginfo.si_code;
 
         memcpy(&fields, &host_siginfo._sifields, sizeof(host_siginfo._sifields));
+    }
+};
+
+struct x86_tms {
+    u32 tms_utime;
+    u32 tms_stime;
+    u32 tms_cutime;
+    u32 tms_cstime;
+
+    operator struct tms() const {
+        struct tms tms;
+        tms.tms_utime = tms_utime;
+        tms.tms_stime = tms.tms_stime;
+        tms.tms_cutime = tms.tms_cutime;
+        tms.tms_cstime = tms.tms_cstime;
+        return tms;
+    };
+
+    x86_tms(const tms& host_tms) {
+        tms_utime = host_tms.tms_utime;
+        tms_stime = host_tms.tms_stime;
+        tms_cutime = host_tms.tms_cutime;
+        tms_cstime = host_tms.tms_cstime;
     }
 };
 

@@ -2793,6 +2793,14 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             }
             break;
         }
+        case felix86_x86_32_times: {
+            struct tms host_tms{};
+            result = ::times(&host_tms);
+            if (arg1) {
+                *(x86_tms*)arg1 = host_tms;
+            }
+            break;
+        }
         case felix86_x86_32_ia32_truncate64: {
             u64 offset_low = arg2;
             u64 offset_high = arg3;
