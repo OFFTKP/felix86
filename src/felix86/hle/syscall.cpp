@@ -1901,6 +1901,10 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             result = Filesystem::SymlinkAt((char*)arg1, AT_FDCWD, (char*)arg2);
             break;
         }
+        case felix86_x86_32_getpgrp: {
+            result = ::getpgrp();
+            break;
+        }
         case felix86_x86_32_clone: {
             u64 child_tid = arg5;
             u64 parent_tid = arg3;
