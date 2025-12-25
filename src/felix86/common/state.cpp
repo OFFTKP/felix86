@@ -3,7 +3,7 @@
 #include "felix86/common/state.hpp"
 #include "felix86/v2/recompiler.hpp"
 
-constexpr size_t trampoline_storage_size = 1024 * 1024;
+constexpr size_t trampoline_storage_size = 1024 * 512;
 
 void ThreadState::InitializeKey() {
     int result = pthread_key_create(&g_thread_state_key, [](void*) {});

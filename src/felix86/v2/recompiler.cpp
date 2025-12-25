@@ -16,11 +16,13 @@
 #include "fmt/format.h"
 
 // TODO: benchmark to find best arrangement?
+constexpr static u64 MB = 1024 * 1024;
+
 constexpr static u64 code_cache_sizes[] = {
-    8 * 1024 * 1024,
-    16 * 1024 * 1024,
-    32 * 1024 * 1024,
-    64 * 1042 * 1024,
+    4 * MB,
+    8 * MB,
+    16 * MB,
+    32 * MB,
 };
 
 constexpr static u64 code_cache_sizes_count = std::size(code_cache_sizes);
@@ -86,8 +88,8 @@ static u8* allocateCodeCache(size_t size) {
     void* address = MAP_FAILED;
     // If the program is allocated in 32-bit address space then it's not worth performing this optimization
     // as to not interfere with MAP_32BIT and because immediates can be made in 2 instructions
-    if (min > 4 * 1024 * 1024 && !g_mode32) {
-        min += 256 * 1024 * 1024;
+    if (min > 4 * MB && !g_mode32) {
+        min += 256 * MB;
         address = ::mmap((void*)min, max_code_cache_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
         if (address == MAP_FAILED) {
             WARN("Failed to allocate code cache near the program");
