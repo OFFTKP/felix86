@@ -33,6 +33,7 @@ X(Debugging, u64, executable_base, 0, FELIX86_EXECUTABLE_BASE, "Make the executa
 X(Debugging, bool, sleep_on_error, false, FELIX86_SLEEP_ERROR, "Sleep for 40 seconds on error to give enough time to attach gdb", false)
 X(Debugging, bool, calltrace_on_exit, false, FELIX86_CALLTRACE_EXIT, "Print a calltrace when the exit or exit_group syscalls are called", false)
 X(Debugging, bool, capture_sigsegv, false, FELIX86_CAPTURE_SIGSEGV, "Sleep for 40 seconds on any SIGSEGV that is unrelated to self-modifying code", false)
+X(Debugging, bool, abort_sigsegv, false, FELIX86_ABORT_SIGSEGV, "Abort on SIGSEGV. This is a way to override guest SIGSEGV handlers in order to generate a host core dump on SIGSEGV", false)
 X(Debugging, bool, capture_sigabrt, false, FELIX86_CAPTURE_SIGABRT, "Sleep for 40 seconds on any SIGABRT", false)
 X(Debugging, bool, hacky_envs, true, FELIX86_HACKY_ENVS, "Enable some hacky environment variable solutions to allow some apps to work under felix86", false)
 X(Debugging, bool, always_flags, false, FELIX86_ALWAYS_FLAGS, "Emit flag calculations for every instruction even if they are unused", false)

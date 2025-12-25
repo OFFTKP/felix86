@@ -833,6 +833,14 @@ bool handle_breakpoint(ThreadState* current_state, siginfo_t* info, ucontext_t* 
 }
 
 bool handle_wild_sigsegv(ThreadState* current_state, siginfo_t* info, ucontext_t* context, u64 pc) {
+    if (g_config.abort_sigsegv) {
+        // Re-raise as SIGABRT so that a core dump is generated
+        struct sigaction sa{};
+        sa.sa_handler = SIG_DFL;
+        sigaction(SIGABRT, &sa, nullptr); // nop out old signal handler
+        raise(SIGABRT);
+    }
+
     // In many cases it's annoying to attach a debugger at the start of a program, because it may be spawning many processes which
     // can trip up gdb and it won't know which fork to follow. The "don't detach forks" mode is also kind of jittery as far as I can see.
     // The capture_sigsegv mode can help us sleep the process for a while to attach gdb and get a proper backtrace.
@@ -1143,7 +1151,7 @@ void Signals::initialize() {
     sigemptyset(&sa.sa_mask);
 
     for (auto& handler : host_signals) {
-        if ((u64)handler.func == (u64)&handle_wild_sigsegv && !g_config.capture_sigsegv) {
+        if ((u64)handler.func == (u64)&handle_wild_sigsegv && !g_config.capture_sigsegv && !g_config.abort_sigsegv) {
             continue;
         }
 
