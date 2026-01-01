@@ -1,4 +1,5 @@
 #include <fstream>
+#include <system_error>
 #include <argp.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -873,6 +874,35 @@ int main(int argc, char* argv[]) {
     if (g_execve_process) {
         pthread_setname_np(pthread_self(), "ExecveProcess");
     } else {
+        // Copy some important files to the rootfs
+        auto copy = [](const std::filesystem::path& src, const std::filesystem::path& dst) {
+            std::error_code ec;
+            std::filesystem::copy(src, dst, ec);
+            if (ec) {
+                VERBOSE("Failed to copy %s to the rootfs", src.c_str());
+            }
+        };
+
+        copy("/var/lib/dbus", g_config.rootfs_path / "var" / "lib" / "dbus");
+        copy("/etc/mtab", g_config.rootfs_path / "etc" / "mtab");
+        copy("/etc/passwd", g_config.rootfs_path / "etc" / "passwd");
+        copy("/etc/passwd-", g_config.rootfs_path / "etc" / "passwd-");
+        copy("/etc/group", g_config.rootfs_path / "etc" / "group");
+        copy("/etc/group-", g_config.rootfs_path / "etc" / "group-");
+        copy("/etc/shadow", g_config.rootfs_path / "etc" / "shadow");
+        copy("/etc/shadow-", g_config.rootfs_path / "etc" / "shadow-");
+        copy("/etc/gshadow", g_config.rootfs_path / "etc" / "gshadow");
+        copy("/etc/gshadow-", g_config.rootfs_path / "etc" / "gshadow-");
+        copy("/etc/hosts", g_config.rootfs_path / "etc" / "hosts");
+        copy("/etc/hostname", g_config.rootfs_path / "etc" / "hostname");
+        copy("/etc/timezone", g_config.rootfs_path / "etc" / "timezone");
+        copy("/etc/localtime", g_config.rootfs_path / "etc" / "localtime");
+        copy("/etc/fstab", g_config.rootfs_path / "etc" / "fstab");
+        copy("/etc/subuid", g_config.rootfs_path / "etc" / "subuid");
+        copy("/etc/subgid", g_config.rootfs_path / "etc" / "subgid");
+        copy("/etc/machine-id", g_config.rootfs_path / "etc" / "machine-id");
+        copy("/etc/resolv.conf", g_config.rootfs_path / "etc" / "resolv.conf");
+
         pthread_setname_np(pthread_self(), "MainProcess");
     }
 
