@@ -147,7 +147,7 @@ Recompiler::Recompiler(bool relocatable) : as(allocateCodeCache(code_cache_sizes
 
     for (int i = 0; i < 8; i++) {
         x87_reg_cache[i].reg = biscuit::FPR(biscuit::ft0.Index() + i);
-        mmx_reg_cache[i].reg = biscuit::Vec(biscuit::v18.Index() + i);
+        mmx_reg_cache[i].reg = biscuit::Vec(biscuit::v8.Index() + i);
     }
 }
 

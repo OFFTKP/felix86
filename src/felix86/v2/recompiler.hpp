@@ -209,6 +209,7 @@ struct Recompiler {
     // Get the allocated register for the given register reference
     static constexpr biscuit::GPR allocatedGPR(x86_ref_e reg) {
         // RDI, RSI, RDX, R10, R8, R9 are allocated to a0, a1, a2, a3, a4, a5 to match the syscall abi and save some swapping instructions
+        // !!! --- WARN: If any allocations are changed here, change them in the docs as well
         switch (reg) {
         case X86_REF_RIP: {
             return biscuit::gp; // we set --no-relax flag so that we can allocate gp
@@ -238,10 +239,10 @@ struct Recompiler {
             return biscuit::x10; // a0
         }
         case X86_REF_R8: {
-            return biscuit::x14; // a5
+            return biscuit::x14; // a4
         }
         case X86_REF_R9: {
-            return biscuit::x15; // a4
+            return biscuit::x15; // a5
         }
         case X86_REF_R10: {
             return biscuit::x13; // a3
@@ -282,55 +283,56 @@ struct Recompiler {
 
     static constexpr biscuit::Vec allocatedXMM(x86_ref_e reg) {
         switch (reg) {
+        // !!! --- WARN: If any allocations are changed here, change them in the docs as well
         case X86_REF_XMM0: {
-            // Important to start on an even vector register so vector grouping works when we save/restore the entire state,
+            // Important to start on a vector register divisible by eight so maximum vector grouping works when we save/restore the entire state,
             // but also not use v0 because that's used for the mask register
-            return biscuit::v2;
-        }
-        case X86_REF_XMM1: {
-            return biscuit::v3;
-        }
-        case X86_REF_XMM2: {
-            return biscuit::v4;
-        }
-        case X86_REF_XMM3: {
-            return biscuit::v5;
-        }
-        case X86_REF_XMM4: {
-            return biscuit::v6;
-        }
-        case X86_REF_XMM5: {
-            return biscuit::v7;
-        }
-        case X86_REF_XMM6: {
-            return biscuit::v8;
-        }
-        case X86_REF_XMM7: {
-            return biscuit::v9;
-        }
-        case X86_REF_XMM8: {
-            return biscuit::v10;
-        }
-        case X86_REF_XMM9: {
-            return biscuit::v11;
-        }
-        case X86_REF_XMM10: {
-            return biscuit::v12;
-        }
-        case X86_REF_XMM11: {
-            return biscuit::v13;
-        }
-        case X86_REF_XMM12: {
-            return biscuit::v14;
-        }
-        case X86_REF_XMM13: {
-            return biscuit::v15;
-        }
-        case X86_REF_XMM14: {
             return biscuit::v16;
         }
-        case X86_REF_XMM15: {
+        case X86_REF_XMM1: {
             return biscuit::v17;
+        }
+        case X86_REF_XMM2: {
+            return biscuit::v18;
+        }
+        case X86_REF_XMM3: {
+            return biscuit::v19;
+        }
+        case X86_REF_XMM4: {
+            return biscuit::v20;
+        }
+        case X86_REF_XMM5: {
+            return biscuit::v21;
+        }
+        case X86_REF_XMM6: {
+            return biscuit::v22;
+        }
+        case X86_REF_XMM7: {
+            return biscuit::v23;
+        }
+        case X86_REF_XMM8: {
+            return biscuit::v24;
+        }
+        case X86_REF_XMM9: {
+            return biscuit::v25;
+        }
+        case X86_REF_XMM10: {
+            return biscuit::v26;
+        }
+        case X86_REF_XMM11: {
+            return biscuit::v27;
+        }
+        case X86_REF_XMM12: {
+            return biscuit::v28;
+        }
+        case X86_REF_XMM13: {
+            return biscuit::v29;
+        }
+        case X86_REF_XMM14: {
+            return biscuit::v30;
+        }
+        case X86_REF_XMM15: {
+            return biscuit::v31;
         }
         default: {
             UNREACHABLE();
@@ -770,7 +772,7 @@ private:
     // This has to do with the fact we want even registers sometimes so widening operations can use
     // the register group. In the future with a proper allocator we can make it so the order here doesn't
     // matter and the order picks an available group.
-    constexpr static std::array scratch_vec = {v26, v27, v28, v29, v30, v31, v1}; // If changed, also change hardcoded in punpckh
+    constexpr static std::array scratch_vec = {v2, v3, v4, v5, v6, v7, v1};
 
     constexpr static std::array scratch_fprs = {ft8, ft9, ft10, ft11};
 };
