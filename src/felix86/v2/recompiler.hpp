@@ -743,7 +743,7 @@ private:
 
     bool skip_next = false;
 
-    std::array<AddressCacheEntry, 1 << address_cache_bits> address_cache{};
+    AddressCacheEntry* address_cache = nullptr;
 
     std::deque<u64> calltrace{};
 
