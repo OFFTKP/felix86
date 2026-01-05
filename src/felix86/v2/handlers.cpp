@@ -7729,7 +7729,8 @@ FAST_HANDLE(CMPXCHG_lock) {
 
             as.Bind(&start);
             as.LR_W(Ordering::AQRL, dst, address);
-            rec.zext(dst, dst, X86_SIZE_DWORD); // LR sign extends
+            as.SLLI(dst, dst, 32); // LR sign extends
+            as.SRLI(dst, dst, 32); // using ZEXT.W inside LR/SC sequence is not permitted
             as.BNE(dst, rax, &not_equal);
             as.SC_W(Ordering::AQRL, scratch, src, address);
             as.BNEZ(scratch, &start);
