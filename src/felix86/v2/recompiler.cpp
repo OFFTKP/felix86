@@ -104,9 +104,12 @@ Recompiler::Recompiler(bool relocatable) : relocatable(relocatable) {
                 break;
             }
         }
+
+        if (address == MAP_FAILED) {
+            WARN("Failed to allocate code cache near executable");
+        }
     }
     if (address == MAP_FAILED) {
-        WARN("Failed to allocate code cache near executable");
         address = ::mmap(nullptr, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
     }
     ASSERT_MSG(address != MAP_FAILED, "Failed to reserve code cache for thread %d?", gettid());
