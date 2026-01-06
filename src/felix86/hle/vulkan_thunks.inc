@@ -318,5 +318,8 @@ EXT("libvulkan.so", vkCmdSetSampleLocationsEnable, v_qd)
 EXT("libvulkan.so", vkCmdSetRasterizationStream, v_qd)
 EXT("libvulkan.so", vkCmdSetTessellationDomainOrigin, v_qd)
 
+// VK_EXT_depth_bias_control
+EXT("libvulkan.so", vkCmdSetDepthBias2, v_qq)
+
 #undef KHR
 #undef EXT
