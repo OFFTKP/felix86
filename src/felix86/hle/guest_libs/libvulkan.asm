@@ -2274,3 +2274,6 @@ vkGetPhysicalDeviceXlibPresentationSupportKHR:
 invlpg [rax]
 db "vkGetPhysicalDeviceXlibPresentationSupportKHR", 0
 ret
+
+section .init_array
+    dq __felix86_constructor
