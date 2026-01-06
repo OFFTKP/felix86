@@ -103,6 +103,7 @@ static std::unordered_map<Display*, Display*> guest_to_host;
 Display* host_XOpenDisplay(const char* name) {
     ASSERT(name);
     static Display* (*xopendisplay_ptr)(const char*) = (decltype(xopendisplay_ptr))dlsym(libX11, "XOpenDisplay");
+    ASSERT(xopendisplay_ptr);
     return xopendisplay_ptr(name);
 }
 
@@ -113,6 +114,7 @@ int host_XFlush(Display* display) {
     }
 
     static int (*xflush_ptr)(Display*) = (decltype(xflush_ptr))dlsym(libX11, "XFlush");
+    ASSERT(xflush_ptr);
     return xflush_ptr(display);
 }
 
@@ -1052,6 +1054,13 @@ void Thunks::initialize() {
             ptr = get_custom_vk_thunk(metadata.function_name);
             if (!ptr) {
                 ptr = dlsym(libvulkan, metadata.function_name);
+            }
+
+            constexpr const char* x11_name = "libX11.so";
+            libX11 = dlopen(x11_name, RTLD_NOW | RTLD_LOCAL);
+            if (!libX11) {
+                WARN("I couldn't open libX11.so, error: %s", dlerror());
+                thunk_vk = false;
             }
         } else if (lib_name == "libwayland-client.so" && thunk_wayland && libwayland) {
             ptr = get_custom_wl_thunk(metadata.function_name);
