@@ -65,6 +65,11 @@ XGetVisualInfoType felix86_guest_XGetVisualInfo = nullptr;
 XSyncType felix86_guest_XSync = nullptr;
 mallocType felix86_guest_malloc = nullptr;
 
+// We can't load it at function call time because vkGetInstanceProcAddr/vkGetDeviceProcAddr needs
+// a VkInstance or VkDevice, so we need to load this before the function call
+VkBool32 (*host_vkGetPhysicalDeviceXlibPresentationSupportKHR)(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, Display* dpy,
+                                                               VisualID visualID) = nullptr;
+
 // Since we only need these from wayland-client.h, instead of including the file and requiring
 // a dependency we just define them here
 struct wl_interface {
@@ -392,6 +397,12 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
         ptr = host_vkGetInstanceProcAddr(instance, name);
     }
 
+    if (strcmp(name, "vkGetPhysicalDeviceXlibPresentationSupportKHR") == 0) {
+        // See comment above host_vkGetPhysicalDeviceXlibPresentationSupportKHR for justification
+        host_vkGetPhysicalDeviceXlibPresentationSupportKHR =
+            (decltype(host_vkGetPhysicalDeviceXlibPresentationSupportKHR))host_vkGetInstanceProcAddr(instance, name);
+    }
+
     if (ptr) {
         // We can't return `ptr` here because it's a host pointer
         // But we also can't return our own thunked pointers, we need to return the one
@@ -440,6 +451,35 @@ VkResult felix86_thunk_vkCreateDebugReportCallbackEXT(VkInstance instance, const
 
 void felix86_thunk_vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
     // See vkCreateDebugReportCallbackEXT above
+}
+
+typedef struct felix86_VkXlibSurfaceCreateInfoKHR {
+    VkStructureType sType;
+    const void* pNext;
+    u32 flags;
+    Display* dpy;
+    Window window;
+} VkXlibSurfaceCreateInfoKHR;
+
+VkResult felix86_thunk_vkCreateXlibSurfaceKHR(VkInstance instance, const felix86_VkXlibSurfaceCreateInfoKHR* pCreateInfo,
+                                              const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+    Display* guest_display = pCreateInfo->dpy;
+    Display* host_display = guestToHostDisplay(guest_display);
+    felix86_VkXlibSurfaceCreateInfoKHR host_create_info = *pCreateInfo;
+    host_create_info.dpy = host_display;
+    static auto host_vkCreateXlibSurfaceKHR =
+        (decltype(&felix86_thunk_vkCreateXlibSurfaceKHR))host_vkGetInstanceProcAddr(instance, "vkCreateXlibSurfaceKHR");
+    VkResult result = host_vkCreateXlibSurfaceKHR(instance, &host_create_info, pAllocator, pSurface);
+    host_XFlush(host_display);
+    return result;
+}
+
+VkBool32 felix86_thunk_vkGetPhysicalDeviceXlibPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, Display* dpy,
+                                                                     VisualID visualID) {
+    Display* host_display = guestToHostDisplay(dpy);
+    VkBool32 result = host_vkGetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice, queueFamilyIndex, host_display, visualID);
+    host_XFlush(host_display);
+    return result;
 }
 
 #define WL_CLOSURE_MAX_ARGS 20
@@ -755,6 +795,10 @@ void* get_custom_vk_thunk(const std::string& name) {
         return (void*)felix86_thunk_vkCreateDebugReportCallbackEXT;
     } else if (name == "vkDestroyDebugReportCallbackEXT") {
         return (void*)felix86_thunk_vkDestroyDebugReportCallbackEXT;
+    } else if (name == "vkCreateXlibSurfaceKHR") {
+        return (void*)felix86_thunk_vkCreateXlibSurfaceKHR;
+    } else if (name == "vkGetPhysicalDeviceXlibPresentationSupportKHR") {
+        return (void*)felix86_thunk_vkGetPhysicalDeviceXlibPresentationSupportKHR;
     } else {
         return nullptr;
     }
