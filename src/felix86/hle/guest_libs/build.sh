@@ -12,7 +12,7 @@ patchelf --set-soname libwayland-client.so.0 ./libwayland-client.so
 
 # Build libvulkan thunk
 nasm -felf64 -shared ./libvulkan.asm -o ./build/vasm.o
-gcc -shared -s -o ./libvulkan.so.1 ./build/vasm.o
+gcc -shared -s -o ./libvulkan.so.1 ./build/vasm.o -lX11 # pull in X11 too for XSync and XGetVisualInfo
 patchelf --set-soname libvulkan.so.1 ./libvulkan.so.1
 
 nasm -felf64 -shared ./libGLX.asm -o ./build/glxasm.o

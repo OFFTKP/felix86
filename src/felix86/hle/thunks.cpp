@@ -1186,6 +1186,33 @@ void Thunks::runConstructor(const char* lib, GuestPointers* pointers) {
 
             pointers++;
         }
+
+        VERBOSE("Constructor for %s finished!", lib);
+        return; // everything ok!
+    } else if (libname == "libvulkan.so") {
+        while (pointers) {
+            const void* func = pointers->func;
+            if (!func) {
+                break;
+            }
+
+            const std::string name = pointers->name;
+
+            // The constructor may be called multiple times as Vulkan gets unloaded and reloaded so we need
+            // to always make new trampolines (obligatory TODO: only generate trampolines per signature vs per pointer)
+            if (name == "XGetVisualInfo") {
+                felix86_guest_XGetVisualInfo = (XGetVisualInfoType)ABIMadness::hostToGuestTrampoline("q_qqqq", func);
+            } else if (name == "XSync") {
+                felix86_guest_XSync = (XSyncType)ABIMadness::hostToGuestTrampoline("d_qd", func);
+            } else {
+                ERROR("Unknown function name when trying to run constructor: %s", pointers->name);
+            }
+
+            pointers++;
+        }
+
+        ASSERT_MSG(felix86_guest_XGetVisualInfo, "Failed to find XGetVisualInfo in thunked libvulkan");
+        ASSERT_MSG(felix86_guest_XSync, "Failed to find XSync in thunked libvulkan");
         VERBOSE("Constructor for %s finished!", lib);
         return; // everything ok!
     }

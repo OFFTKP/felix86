@@ -1,5 +1,39 @@
 bits 64
+
+; These are guest function pointers that we wanna call from host code at will
+section .data
+
+align 16
+libname:
+db "libvulkan.so", 0
+
+guest_func_names:
+XGetVisualInfo_name:
+db "XGetVisualInfo", 0
+
+XSync_name:
+db "XSync", 0
+
 section .text
+
+extern XGetVisualInfo
+extern XSync
+
+global __felix86_constructor:function
+align 16
+__felix86_constructor:
+invlpg [rbx]
+ret
+dd 0x12345678 ; invlpg + ret are 4 bytes, four more here to align to pointer
+dq libname
+; Here follows the null terminated list of {const char*, void*} (names, functions)
+dq XGetVisualInfo_name
+dq XGetVisualInfo
+dq XSync_name
+dq XSync
+dq 0
+dq 0
+
 
 global vkGetInstanceProcAddr:function
 align 16
