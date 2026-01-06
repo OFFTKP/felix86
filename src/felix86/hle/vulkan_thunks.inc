@@ -273,5 +273,18 @@ X("libvulkan.so", vkGetPhysicalDeviceXcbPresentationSupportKHR, d_qdqq)
 X("libvulkan.so", vkCreateXlibSurfaceKHR, d_qqxq)
 X("libvulkan.so", vkGetPhysicalDeviceXlibPresentationSupportKHR, d_qdqq)
 
+// VK_EXT_descriptor_buffer
+X("libvulkan.so", vkCmdBindDescriptorBufferEmbeddedSamplersEXT, v_qdqd)
+X("libvulkan.so", vkCmdBindDescriptorBuffersEXT, v_qdq)
+X("libvulkan.so", vkCmdSetDescriptorBufferOffsetsEXT, v_qdqddqq)
+X("libvulkan.so", vkGetBufferOpaqueCaptureDescriptorDataEXT, d_qqq)
+X("libvulkan.so", vkGetDescriptorEXT, v_qqqq)
+X("libvulkan.so", vkGetDescriptorSetLayoutBindingOffsetEXT, v_qqdq)
+X("libvulkan.so", vkGetDescriptorSetLayoutSizeEXT, v_qqq)
+X("libvulkan.so", vkGetImageOpaqueCaptureDescriptorDataEXT, d_qqq)
+X("libvulkan.so", vkGetImageViewOpaqueCaptureDescriptorDataEXT, d_qqq)
+X("libvulkan.so", vkGetSamplerOpaqueCaptureDescriptorDataEXT, d_qqq)
+X("libvulkan.so", vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT, d_qqq)
+
 #undef KHR
 #undef EXT
