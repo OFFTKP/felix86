@@ -286,5 +286,9 @@ X("libvulkan.so", vkGetImageViewOpaqueCaptureDescriptorDataEXT, d_qqq)
 X("libvulkan.so", vkGetSamplerOpaqueCaptureDescriptorDataEXT, d_qqq)
 X("libvulkan.so", vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT, d_qqq)
 
+// VK_EXT_shader_module_identifier
+X("libvulkan.so", vkGetShaderModuleCreateInfoIdentifierEXT, v_qqq)
+X("libvulkan.so", vkGetShaderModuleIdentifierEXT, v_qqq)
+
 #undef KHR
 #undef EXT
