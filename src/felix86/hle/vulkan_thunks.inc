@@ -212,6 +212,7 @@ EXT("libvulkan.so", vkCmdSetDepthWriteEnable, v_qd)
 KHR("libvulkan.so", vkCmdSetEvent2, v_qqq)
 EXT("libvulkan.so", vkCmdSetFrontFace, v_qd)
 EXT("libvulkan.so", vkCmdSetPrimitiveTopology, v_qd)
+EXT("libvulkan.so", vkCmdSetPrimitiveRestartEnable, v_qd)
 EXT("libvulkan.so", vkCmdSetRasterizerDiscardEnable, v_qd)
 EXT("libvulkan.so", vkCmdSetScissorWithCount, v_qdq)
 EXT("libvulkan.so", vkCmdSetStencilOp, v_qddddd)
@@ -289,6 +290,33 @@ X("libvulkan.so", vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT, d_qq
 // VK_EXT_shader_module_identifier
 X("libvulkan.so", vkGetShaderModuleCreateInfoIdentifierEXT, v_qqq)
 X("libvulkan.so", vkGetShaderModuleIdentifierEXT, v_qqq)
+
+// VK_EXT_extended_dynamic_state2
+EXT("libvulkan.so", vkCmdSetLogicOp, v_qd)
+EXT("libvulkan.so", vkCmdSetPatchControlPoints, v_qd)
+
+// VK_EXT_extended_dynamic_state3
+EXT("libvulkan.so", vkCmdSetAlphaToCoverageEnable, v_qd)
+EXT("libvulkan.so", vkCmdSetAlphaToOneEnable, v_qd)
+EXT("libvulkan.so", vkCmdSetColorBlendEnable, v_qddq)
+EXT("libvulkan.so", vkCmdSetColorBlendEquation, v_qddq)
+EXT("libvulkan.so", vkCmdSetColorWriteMask, v_qddq)
+EXT("libvulkan.so", vkCmdSetDepthClampEnable, v_qddq)
+EXT("libvulkan.so", vkCmdSetLogicOpEnable, v_qd)
+EXT("libvulkan.so", vkCmdSetPolygonMode, v_qd)
+EXT("libvulkan.so", vkCmdSetRasterizationSamples, v_qd)
+EXT("libvulkan.so", vkCmdSetSampleMask, v_qdq)
+EXT("libvulkan.so", vkCmdSetColorBlendAdvanced, v_qddq)
+EXT("libvulkan.so", vkCmdSetConservativeRasterizationMode, v_qd)
+EXT("libvulkan.so", vkCmdSetExtraPrimitiveOverestimationSize, v_qF)
+EXT("libvulkan.so", vkCmdSetDepthClipNegativeOneToOne, v_qd)
+EXT("libvulkan.so", vkCmdSetDepthClipEnable, v_qd)
+EXT("libvulkan.so", vkCmdSetLineRasterizationMode, v_qd)
+EXT("libvulkan.so", vkCmdSetLineStippleEnable, v_qd)
+EXT("libvulkan.so", vkCmdSetProvokingVertexMode, v_qd)
+EXT("libvulkan.so", vkCmdSetSampleLocationsEnable, v_qd)
+EXT("libvulkan.so", vkCmdSetRasterizationStream, v_qd)
+EXT("libvulkan.so", vkCmdSetTessellationDomainOrigin, v_qd)
 
 #undef KHR
 #undef EXT
