@@ -321,5 +321,47 @@ EXT("libvulkan.so", vkCmdSetTessellationDomainOrigin, v_qd)
 // VK_EXT_depth_bias_control
 EXT("libvulkan.so", vkCmdSetDepthBias2, v_qq)
 
+// VK_EXT_sample_locations
+EXT("libvulkan.so", vkCmdSetSampleLocations, v_qq)
+EXT("libvulkan.so", vkGetPhysicalDeviceMultisampleProperties, v_qdq)
+
+// VK_EXT_transform_feedback
+EXT("libvulkan.so", vkCmdBeginQueryIndexed, v_qqddd)
+EXT("libvulkan.so", vkCmdBeginTransformFeedback, v_qddqq)
+EXT("libvulkan.so", vkCmdBindTransformFeedbackBuffers, v_qddqqq)
+EXT("libvulkan.so", vkCmdDrawIndirectByteCount, v_qddqqdd)
+EXT("libvulkan.so", vkCmdEndQueryIndexed, v_qqdd)
+EXT("libvulkan.so", vkCmdEndTransformFeedback, v_qddqq)
+
+// VK_EXT_multi_draw
+EXT("libvulkan.so", vkCmdDrawMulti, v_qdqddd)
+EXT("libvulkan.so", vkCmdDrawMultiIndexed, v_qdqdddq)
+
+// VK_EXT_hdr_metadata
+EXT("libvulkan.so", vkSetHdrMetadata, v_qdqq)
+
+// VK_KHR_swapchain_maintenance1
+KHR_EXT("libvulkan.so", vkReleaseSwapchainImages, d_qq)
+
+// VK_KHR_maintenance5
+KHR_EXT("libvulkan.so", vkCmdBindIndexBuffer2, v_qqqqd)
+KHR_EXT("libvulkan.so", vkGetDeviceImageSubresourceLayout, v_qqq)
+KHR_EXT("libvulkan.so", vkGetImageSubresourceLayout2, v_qqqq)
+KHR_EXT("libvulkan.so", vkGetRenderingAreaGranularity, v_qqq)
+
+// VK_KHR_maintenance6
+KHR("libvulkan.so", vkCmdBindDescriptorSets2, v_qq)
+KHR("libvulkan.so", vkCmdPushConstants2, v_qq)
+EXT("libvulkan.so", vkCmdBindDescriptorBufferEmbeddedSamplers2, v_qq)
+EXT("libvulkan.so", vkCmdSetDescriptorBufferOffsets2, v_qq)
+KHR("libvulkan.so", vkCmdPushDescriptorSet2, v_qq)
+KHR("libvulkan.so", vkCmdPushDescriptorSetWithTemplate2, v_qq)
+
+// VK_KHR_present_wait
+KHR("libvulkan.so", vkWaitForPresent, d_qqqq)
+
+// VK_KHR_line_rasterization
+KHR_EXT("libvulkan.so", vkCmdSetLineStipple, v_qdw)
+
 #undef KHR
 #undef EXT
