@@ -8427,31 +8427,24 @@ FAST_HANDLE(MOVLHPS) {
 }
 
 FAST_HANDLE(ADDSUBPS) {
-    // NOTE: using dst directly saves a move but causes potentially
-    // torn state if signal happens during vmnand
-    // TODO: the eventual signal handling rewrite should solve this
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E32, 4);
     as.VMV(v0, 0b1010);
+    as.VFSUB(result, dst, src);
     as.VFADD(result, dst, src, VecMask::Yes);
-    as.VMNAND(v0, v0, v0);
-    as.VFSUB(result, dst, src, VecMask::Yes);
     rec.setVec(&operands[0], result);
 }
 
 FAST_HANDLE(ADDSUBPD) {
-    // NOTE: using dst directly saves a move but causes potentially
-    // torn state if signal happens during vmnand
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E64, 2);
     as.VMV(v0, 0b10);
+    as.VFSUB(result, dst, src);
     as.VFADD(result, dst, src, VecMask::Yes);
-    as.VMNAND(v0, v0, v0);
-    as.VFSUB(result, dst, src, VecMask::Yes);
     rec.setVec(&operands[0], result);
 }
 

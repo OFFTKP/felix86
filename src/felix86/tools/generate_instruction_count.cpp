@@ -730,11 +730,11 @@ int main() {
     GEN(cvtss2si(rax, xmm3));
     GEN(cvtss2si(eax, xmm2));
     GEN(cvtss2si(eax, dword[rdi]));
-    GEN(cvtss2si(rax, dword[rdi]));
+    GEN(cvtss2si(rax, qword[rdi]));
     GEN(cvttss2si(rax, xmm3));
     GEN(cvttss2si(eax, xmm2));
     GEN(cvttss2si(eax, dword[rdi]));
-    GEN(cvttss2si(rax, dword[rdi]));
+    GEN(cvttss2si(rax, qword[rdi]));
 
     GEN_SSE(pmulhuw);
     GEN_SSE(psadbw);
@@ -821,11 +821,11 @@ int main() {
     GEN(cvtsd2si(rax, xmm3));
     GEN(cvtsd2si(eax, xmm2));
     GEN(cvtsd2si(eax, dword[rdi]));
-    GEN(cvtsd2si(rax, dword[rdi]));
+    GEN(cvtsd2si(rax, qword[rdi]));
     GEN(cvttsd2si(rax, xmm3));
     GEN(cvttsd2si(eax, xmm2));
     GEN(cvttsd2si(eax, dword[rdi]));
-    GEN(cvttsd2si(rax, dword[rdi]));
+    GEN(cvttsd2si(rax, qword[rdi]));
     GEN(cvtps2pd(xmm3, xmm4));
     GEN(cvtps2pd(xmm2, xmm2));
     GEN(cvtps2pd(xmm3, ptr[rdi]));

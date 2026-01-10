@@ -414,7 +414,7 @@
         "disassembly": "lock cmpxchg [rdi], ax"
     },
     "f00fb107": {
-        "instruction_count": 23,
+        "instruction_count": 24,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "ADD.UW          t1, t0, zero",
@@ -425,17 +425,18 @@
             "FENCE          ",
             "LWU             t4, ra, 0x0(0)",
             "LR.W            t5, t2, aq, rl",
-            "BNE             t4, t3, 0x2c(44)",
+            "BNE             t4, t3, 0x30(48)",
             "SC.W            t5, t2, t5, aq, rl",
             "BNE             zero, t5, 0xffffffec(-20)",
             "SW              t1, ra, 0x0(0)",
             "FENCE          ",
-            "JAL             zero, 0x18(24)",
+            "JAL             zero, 0x1c(28)",
             "LR.W            t4, ra, aq, rl",
-            "ADD.UW          t4, t4, zero",
+            "SLLI            t4, t4, 0x20(32)",
+            "SRLI            t4, t4, 0x20(32)",
             "BNE             t4, t3, 0xc(12)",
             "SC.W            t5, ra, t1, aq, rl",
-            "BNE             zero, t5, 0xfffffff0(-16)",
+            "BNE             zero, t5, 0xffffffec(-20)",
             "SUB             t2, t3, t4",
             "BEQ             t2, zero, 0x8(8)",
             "ADD.UW          t0, t4, zero"
