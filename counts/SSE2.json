@@ -3024,42 +3024,33 @@
         "disassembly": "movmskpd rax, xmm2"
     },
     "660ff4dc": {
-        "instruction_count": 7,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
-            "VAND.VX         v2, v19, ra, none",
-            "VAND.VX         v3, v20, ra, none",
+            "VZEXT.VF2       v2, v19, none",
+            "VZEXT.VF2       v3, v20, none",
             "VMUL.VV         v19, v2, v3, none"
         ],
         "disassembly": "pmuludq xmm3, xmm4"
     },
     "660ff4d2": {
-        "instruction_count": 7,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
-            "VAND.VX         v2, v18, ra, none",
-            "VAND.VX         v3, v18, ra, none",
+            "VZEXT.VF2       v2, v18, none",
+            "VZEXT.VF2       v3, v18, none",
             "VMUL.VV         v18, v2, v3, none"
         ],
         "disassembly": "pmuludq xmm2, xmm2"
     },
     "660ff40f": {
-        "instruction_count": 9,
+        "instruction_count": 6,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v2, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "ADDIW           ra, zero, 0x1(1)",
-            "SLLI            ra, ra, 0x20(32)",
-            "ADDI            ra, ra, 0xffffffff(-1)",
-            "VAND.VX         v3, v17, ra, none",
-            "VAND.VX         v4, v2, ra, none",
+            "VZEXT.VF2       v3, v17, none",
+            "VZEXT.VF2       v4, v2, none",
             "VMUL.VV         v17, v3, v4, none"
         ],
         "disassembly": "pmuludq xmm1, [rdi]"
