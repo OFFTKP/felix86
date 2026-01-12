@@ -12,7 +12,6 @@
 #include <sys/personality.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
-#include <sys/siginfo.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
