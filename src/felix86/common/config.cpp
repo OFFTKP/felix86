@@ -73,7 +73,17 @@ struct into<toml::value> {
 
 std::filesystem::path Config::getConfigDir() {
     const char* homedir;
-    if ((homedir = getenv("HOME")) == NULL) {
+
+    // If SUDO_HOME is defined, use that as the home directory
+    // `sudo` sets SUDO_HOME to the original HOME, and HOME to /root
+    // We want felix86 instances running under sudo to use the original HOME so they can find the config file
+    if (getenv("SUDO_HOME")) {
+        homedir = getenv("SUDO_HOME");
+    } else {
+        homedir = getenv("HOME");
+    }
+
+    if (!homedir) {
         return {};
     }
 
@@ -146,7 +156,7 @@ bool Config::initialize(bool ignore_envs) {
         if (getuid() == 0) {
             // Config file created while running as sudo
             // This can happen if for example the first instance of felix86 happens to be
-            // running `sudo -E felix86 -b` to register to binfmt_misc
+            // running `sudo --preserve-env=HOME felix86 -b` to register to binfmt_misc
             // See if running through sudo and change permissions
             const char* uid = getenv("SUDO_UID");
             const char* gid = getenv("SUDO_GID");
@@ -172,7 +182,7 @@ bool Config::initialize(bool ignore_envs) {
     std::error_code ec;
     std::filesystem::path profiles_path = config_dir / "profiles";
     std::filesystem::create_directories(profiles_path, ec);
-    
+
     if (!std::filesystem::exists(profiles_path / "extreme.toml", ec)) {
         // Enable all optimizations, even ones that may break programs
         Config extreme_config{};
@@ -243,9 +253,8 @@ bool Config::initialize(bool ignore_envs) {
         // Sets either the absolute profile path or a name of a profile in $HOME/.config/felix86/profiles
         if (profile[0] != '/') {
             std::string sprofile = profile;
-            std::transform(sprofile.begin(), sprofile.end(), sprofile.begin(),
-                [](unsigned char c){ return std::tolower(c); });
-            path  = profiles_path / (sprofile + ".toml");
+            std::transform(sprofile.begin(), sprofile.end(), sprofile.begin(), [](unsigned char c) { return std::tolower(c); });
+            path = profiles_path / (sprofile + ".toml");
         } else {
             path = profile;
         }
@@ -262,14 +271,13 @@ bool Config::initialize(bool ignore_envs) {
         }
     }
 
-
     // g_config can be changed, c_initial_config won't be changed
     g_initial_config = g_config;
 
 #define X(group, type, name, default_value, env_name, description, required)                                                                         \
-        if (g_config.name != type{default_value}) {                                                                                                    \
-            addToEnvironment(g_config, #env_name, namify(g_config.name).c_str());                                                                        \
-        }
+    if (g_config.name != type{default_value}) {                                                                                                      \
+        addToEnvironment(g_config, #env_name, namify(g_config.name).c_str());                                                                        \
+    }
 #include "config.inc"
 #undef X
 
@@ -487,7 +495,7 @@ bool Config::loadProfile(Config& config, const std::filesystem::path& profile) {
 
 #define X(group, type, name, default_value, env_name, description, required)                                                                         \
     {                                                                                                                                                \
-        (void)loadFromToml<type>(toml, #group, #name, config.name);                                                                           \
+        (void)loadFromToml<type>(toml, #group, #name, config.name);                                                                                  \
     }
 #include "config.inc"
 #undef X

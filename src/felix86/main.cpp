@@ -207,12 +207,12 @@ void binfmt_misc(bool is_register) {
     if (!Sudo::hasPermissions()) {
         printf("I need root permissions to register felix86 in binfmt_misc, please re-run with root permissions as `sudo -E felix86 -b`\n");
         exit(1);
-    } else if (getenv("HOME")) {
-        std::string home = getenv("HOME");
-        if (home == "/root") {
-            WARN("$HOME is /root, did you forget to pass the environment variables to felix86? Re-run as `sudo -E felix86 -b` if this was not "
-                 "intended");
-        }
+    }
+
+    std::string config_dir = Config::getConfigDir();
+    if (config_dir == "/root") {
+        WARN("Config dir is /root, did you forget to pass the environment variables to felix86? Re-run as `sudo --preserve-env=HOME felix86 -b` if "
+             "this was not intended");
     }
 
     Config::initialize(true /* ignore envs, because we save the config later */);

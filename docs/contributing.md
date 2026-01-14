@@ -14,7 +14,7 @@ cmake --build build -j $(nproc)
 
 To install in binfmt_misc, run the following:
 ```
-sudo -E ./build/felix86 -b
+sudo --preserve-env=HOME ./build/felix86 -b
 ```
 This is not necessary for most games, but for example AppImages need it for setuid bit support.    
 If you recompile make sure to register felix86 again by running the same command.    
