@@ -3806,8 +3806,12 @@ FAST_HANDLE(PUNPCKLBW) {
 
     rec.setVectorState(SEW::E8, 16, LMUL::MF2);
     as.VWADDU(temp1, dst, x0);
-    as.VWADDU(temp2, src, x0);
-    as.VSLIDE1UP(temp3, temp2, x0);
+    if (Extensions::Zvbb) {
+        as.VWSLL(temp3, src, 8);
+    } else {
+        as.VWADDU(temp2, src, x0);
+        as.VSLIDE1UP(temp3, temp2, x0);
+    }
     as.VOR(dst, temp1, temp3);
 
     rec.setVec(&operands[0], dst);
@@ -3823,8 +3827,7 @@ FAST_HANDLE(PUNPCKLWD) {
     rec.setVectorState(SEW::E16, 8, LMUL::MF2);
     as.VWADDU(temp1, dst, x0);
     if (Extensions::Zvbb) {
-        WARN("Punpckl with zvbb, untested"); // TODO: port to other punpckl
-        as.VWSLL(temp3, src, 8);
+        as.VWSLL(temp3, src, 16);
     } else {
         as.VWADDU(temp2, src, x0);
         as.VSLIDE1UP(temp3, temp2, x0);
