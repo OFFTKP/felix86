@@ -3798,13 +3798,13 @@ void PUNPCKH(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instructio
 }
 
 FAST_HANDLE(PUNPCKLBW) {
+    biscuit::Vec temp1 = rec.scratchVecM2();
+    biscuit::Vec temp2 = rec.scratchVecM2();
+    biscuit::Vec temp3 = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    biscuit::Vec temp1 = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::Vec temp3 = rec.scratchVec();
 
-    rec.setVectorState(SEW::E8, 16, LMUL::MF2);
+    rec.setVectorState(SEW::E8, 16);
     as.VWADDU(temp1, dst, x0);
     if (Extensions::Zvbb) {
         as.VWSLL(temp3, src, 8);
@@ -3818,13 +3818,13 @@ FAST_HANDLE(PUNPCKLBW) {
 }
 
 FAST_HANDLE(PUNPCKLWD) {
+    biscuit::Vec temp1 = rec.scratchVecM2();
+    biscuit::Vec temp2 = rec.scratchVecM2();
+    biscuit::Vec temp3 = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    biscuit::Vec temp1 = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::Vec temp3 = rec.scratchVec();
 
-    rec.setVectorState(SEW::E16, 8, LMUL::MF2);
+    rec.setVectorState(SEW::E16, 8);
     as.VWADDU(temp1, dst, x0);
     if (Extensions::Zvbb) {
         as.VWSLL(temp3, src, 16);
@@ -3839,14 +3839,14 @@ FAST_HANDLE(PUNPCKLWD) {
 
 FAST_HANDLE(PUNPCKLDQ) {
     biscuit::GPR shift = rec.scratch();
+    biscuit::Vec temp1 = rec.scratchVecM2();
+    biscuit::Vec temp2 = rec.scratchVecM2();
+    biscuit::Vec temp3 = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    biscuit::Vec temp1 = rec.scratchVec();
-    biscuit::Vec temp2 = rec.scratchVec();
-    biscuit::Vec temp3 = rec.scratchVec();
 
     as.LI(shift, 32);
-    rec.setVectorState(SEW::E32, 4, LMUL::MF2);
+    rec.setVectorState(SEW::E32, 4);
     as.VWADDU(temp1, dst, x0);
     as.VWADDU(temp2, src, x0);
     as.VSLIDE1UP(temp3, temp2, x0);
