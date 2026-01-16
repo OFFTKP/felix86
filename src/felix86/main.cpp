@@ -654,8 +654,7 @@ int main(int argc, char* argv[]) {
     const char* argv0_original = getenv("__FELIX86_ARGV0");
     if (argv0_original) {
         g_params.argv[0] = argv0_original;
-    } else {
-        ASSERT(!g_execve_process);
+    } else if (!g_execve_process) {
         replace_all(g_params.argv[0], g_config.rootfs_path, "");
     }
 

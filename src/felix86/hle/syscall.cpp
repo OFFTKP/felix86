@@ -1496,6 +1496,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
 
             // Pass the unresolved path to the interpreter. The interpreter will do path resolving by itself,
             // and it's important to maintain the correct argv0.
+            // It's important that argv0 is correctly passed, for example winecfg which is a symlink into wineapploader
+            // which behaves differently based on the argv0.
             argv.push_back((char*)arg1);
         } else {
             // Change the emulated argv0 to be what we got in the execve, but pass the resolved path to the emulator
