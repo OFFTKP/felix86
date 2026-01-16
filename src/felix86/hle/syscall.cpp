@@ -1493,9 +1493,16 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                 // We are running it through emulated bash, so the script itself needs to be a regular path
                 path = path.string().substr(g_config.rootfs_path.string().size());
             }
-        }
 
-        argv.push_back(path.c_str());
+            // Pass the unresolved path to the interpreter. The interpreter will do path resolving by itself,
+            // and it's important to maintain the correct argv0.
+            argv.push_back((char*)arg1);
+        } else {
+            // Change the emulated argv0 to be what we got in the execve, but pass the resolved path to the emulator
+            std::string argv0_original = std::string("__FELIX86_ARGV0=") + (char*)arg1;
+            envp.push_back(argv0_original.c_str());
+            argv.push_back(path.c_str());
+        }
 
         if (arg2) {
             u8* guest_argv = (u8*)arg2;
@@ -1524,7 +1531,6 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             host_environ++;
         }
 
-        std::string argv0_original = std::string("__FELIX86_ARGV0=") + (char*)arg1;
         std::string guest_envs = "__FELIX86_GUEST_ENVS=";
         if (arg3) {
             u8* guest_envp = (u8*)arg3;
@@ -1553,7 +1559,6 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         // We need to tell the new process where the server is
         std::string log_env = std::string("__FELIX86_PIPE=") + Logger::getPipeName();
         envp.push_back("__FELIX86_EXECVE=1");
-        envp.push_back(argv0_original.c_str());
         std::string config_hex = std::string("__FELIX86_CONFIG=") + Config::getConfigHex();
         envp.push_back(config_hex.c_str());
         envp.push_back(log_env.c_str());
