@@ -87,6 +87,6 @@ jobs:
           ROOTFSPATH=$($FELIX86PATH -g)
           git clone https://github.com/felix86-emu/binary_tests $RUNNER_TEMP/tests
           cd $RUNNER_TEMP/tests
-          bash ./install-tests.sh $ROOTFSPATH/felix86_test_binaries
-          bash ./run-tests.sh $FELIX86PATH $ROOTFSPATH/felix86_test_binaries
+          bash ./install-tests.sh $ROOTFSPATH/$HOME/felix86_test_binaries
+          bash ./run-tests.sh $FELIX86PATH $ROOTFSPATH/$HOME/felix86_test_binaries
 
