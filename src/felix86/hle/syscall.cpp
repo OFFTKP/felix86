@@ -1494,6 +1494,9 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                 path = path.string().substr(g_config.rootfs_path.string().size());
             }
 
+            std::string argv0_original = std::string("__FELIX86_ARGV0=") + (char*)interpreter_fd_path.full_path();
+            envp.push_back(argv0_original.c_str());
+
             // Pass the unresolved path to the interpreter. The interpreter will do path resolving by itself,
             // and it's important to maintain the correct argv0.
             // It's important that argv0 is correctly passed, for example winecfg which is a symlink into wineapploader
