@@ -1434,6 +1434,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         std::vector<const char*> argv;
         std::vector<const char*> envp;
         std::string script_interpreter;
+        std::string argv0_original;
         std::vector<std::string> script_args;
 
         // This is going to be the first argument in execve
@@ -1494,7 +1495,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                 path = path.string().substr(g_config.rootfs_path.string().size());
             }
 
-            std::string argv0_original = std::string("__FELIX86_ARGV0=") + (char*)interpreter_fd_path.full_path();
+            argv0_original = std::string("__FELIX86_ARGV0=") + (char*)interpreter_fd_path.full_path();
             envp.push_back(argv0_original.c_str());
 
             // Pass the unresolved path to the interpreter. The interpreter will do path resolving by itself,
@@ -1504,7 +1505,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             argv.push_back((char*)arg1);
         } else {
             // Change the emulated argv0 to be what we got in the execve, but pass the resolved path to the emulator
-            std::string argv0_original = std::string("__FELIX86_ARGV0=") + (char*)arg1;
+            argv0_original = std::string("__FELIX86_ARGV0=") + (char*)arg1;
             envp.push_back(argv0_original.c_str());
             argv.push_back(path.c_str());
         }
