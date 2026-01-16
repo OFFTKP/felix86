@@ -4165,7 +4165,6 @@ FAST_HANDLE(PANDN) {
         rec.setVectorState(SEW::E64, 2);
     }
     if (Extensions::Zvbb) {
-        WARN_ONCE("PANDN + Zvbb is untested, please run tests and report results");
         as.VANDN(dst, src, dst);
     } else {
         as.VXOR(dst_not, dst, -1);
@@ -5619,7 +5618,6 @@ FAST_HANDLE(PTEST) {
     if (!same) {
         as.VAND(resultz, dst, src);
         if (Extensions::Zvbb) {
-            WARN_ONCE("PTEST + Zvbb is untested, please run tests and report results");
             as.VANDN(resultc, src, dst);
         } else {
             biscuit::Vec dst_not = rec.scratchVec();

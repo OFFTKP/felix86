@@ -25,6 +25,11 @@ void* Freelist::allocate(u32 addr, size_t size) {
         // Scan the list, find the first mapping that is fully inside a node, break it off
         Node* previous = nullptr;
         Node* current = list;
+        if ((u64)addr + size > (u64)UINT32_MAX + 1) {
+            // There can be a mmap or similar that starts in 32-bit address space and ends outside it
+            // For the freelist, we only care to track the 32-bit address space
+            size = ((u64)UINT32_MAX + 1) - addr;
+        }
         u64 end_addr = addr + size - 1;
         ASSERT(end_addr <= UINT32_MAX);
         bool all_ok = false;
@@ -103,7 +108,12 @@ void* Freelist::allocate(u32 addr, size_t size) {
 void Freelist::deallocate(u32 addr, size_t size) {
     ASSERT(!(addr & 0xFFF));
     ASSERT(!(size & 0xFFF));
-    ASSERT((size_t)addr + size <= (u64)UINT32_MAX + 1);
+
+    if ((u64)addr + size > (u64)UINT32_MAX + 1) {
+        // There can be a munmap or similar that starts in 32-bit address space and ends outside it
+        // For the freelist, we only care to track the 32-bit address space
+        size = ((u64)UINT32_MAX + 1) - addr;
+    }
 
     u32 new_start = addr;
     u32 new_end = addr + size - 1;
