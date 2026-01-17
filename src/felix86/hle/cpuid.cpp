@@ -86,15 +86,20 @@ bool cpu_name_tried = false;
 bool cpu_name_set = false;
 char cpu_name[48];
 
+const char* get_version_full();
+
 Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
     // Try getting the CPU name
     if (!cpu_name_tried) {
         cpu_name_tried = true;
         int fd = open("/proc/device-tree/cpus/cpu@0/model", O_RDONLY);
         if (fd != -1) {
-            int bytes_read = read(fd, cpu_name, sizeof(cpu_name) - 1);
+            char buffer[48];
+            int bytes_read = read(fd, buffer, sizeof(buffer) - 1);
             if (bytes_read != -1) {
-                cpu_name[bytes_read] = 0;
+                buffer[bytes_read] = 0;
+                std::string version = get_version_full();
+                snprintf(cpu_name, sizeof(cpu_name), "%s on %s", version.c_str(), buffer);
                 cpu_name_set = true;
             }
             ASSERT(close(fd) == 0);
