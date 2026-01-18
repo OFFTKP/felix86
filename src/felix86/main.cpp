@@ -671,7 +671,7 @@ int main(int argc, char* argv[]) {
         if (guest_envs) {
             std::vector<std::string> envs = split_string(guest_envs, ',');
             for (auto& env : envs) {
-                g_params.envp.push_back(env);
+                g_params.envp.push_back(hex_to_string(env));
             }
         }
     } else {

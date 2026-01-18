@@ -1547,7 +1547,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
                     break;
                 }
 
-                guest_envs += (const char*)ptr;
+                // Transform to hex because environment variables may have commas
+                guest_envs += string_to_hex((const char*)ptr);
                 guest_envs += ",";
 
                 guest_envp += g_mode32 ? 4 : 8;

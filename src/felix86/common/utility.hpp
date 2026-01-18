@@ -173,3 +173,41 @@ void felix86_crash_and_burn();
 [[noreturn]] void felix86_exit_dispatcher(struct felix86_frame* frame);
 
 std::string felix86_mountinfo();
+
+inline int hex_value(unsigned char hex_digit) {
+    static const signed char hex_values[256] = {
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  -1, -1, -1, -1, -1, -1,
+        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    };
+    int value = hex_values[hex_digit];
+    return value;
+}
+
+inline std::string string_to_hex(const std::string& str) {
+    const char* hex_digits = "0123456789ABCDEF";
+    std::string ret;
+    ret.reserve(str.size() * 2);
+    for (auto c : str) {
+        ret.push_back(hex_digits[c >> 4]);
+        ret.push_back(hex_digits[c & 15]);
+    }
+    return ret;
+}
+
+inline std::string hex_to_string(const std::string& str) {
+    const auto len = str.size();
+    std::string output;
+    output.reserve(len / 2);
+    for (auto it = str.begin(); it != str.end();) {
+        int hi = hex_value(*it++);
+        int lo = hex_value(*it++);
+        output.push_back(hi << 4 | lo);
+    }
+    return output;
+}
