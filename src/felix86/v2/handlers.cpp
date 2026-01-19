@@ -1550,7 +1550,7 @@ FAST_HANDLE(AND) {
                 as.SLLW(dst, dst, shifted_address);
                 as.NOT(dst, dst);
                 as.SLLW(shifted_src, src, shifted_address);
-                as.OR(shifted_address, shifted_src, dst);
+                as.OR(shifted_src, shifted_src, dst);
                 as.AMOAND_W(Ordering::AQRL, dst, shifted_src, masked_address);
                 as.SRLW(dst, dst, shifted_address);
                 rec.zext(dst, dst, X86_SIZE_WORD);

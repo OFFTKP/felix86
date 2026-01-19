@@ -405,8 +405,6 @@ struct Recompiler {
         return block_metadata[rip];
     }
 
-    void vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask = VecMask::No);
-
     bool blockExists(u64 rip);
 
     biscuit::GPR getFlags();

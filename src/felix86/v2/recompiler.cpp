@@ -364,7 +364,7 @@ void Recompiler::invalidateAt(ThreadState* state, u8* linked_block) {
 }
 
 void Recompiler::clearCodeCache(ThreadState* state) {
-    if (code_cache_size_index < code_cache_sizes_count) {
+    if (code_cache_size_index < code_cache_sizes_count - 1) {
         // Allocate more of our reserved buffer
         u8* old_mem = as.GetBufferPointer(0);
         u64 old_size = code_cache_sizes[code_cache_size_index];
@@ -526,7 +526,7 @@ u64 Recompiler::compileSequence(u64 rip) {
     }
 
     if (all_zeroes) {
-        ERROR("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?");
+        ERROR("Jumped to address %lx which has a sequence of zeroes -- probably a bad jump?", rip);
     }
 
     scanAhead(rip);
@@ -2335,7 +2335,7 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
 
     int index = 0;
     switch (ref) {
-    case X86_REF_CF: {
+    case X86_REF_CF:
         index = 0;
         break;
     case X86_REF_PF:
@@ -2356,7 +2356,6 @@ bool Recompiler::shouldEmitFlag(u64 rip, x86_ref_e ref) {
     default:
         UNREACHABLE();
         break;
-    }
     }
 
     for (auto& [changed, r] : flag_access_cpazso[index]) {
@@ -3083,17 +3082,6 @@ void Recompiler::sext(biscuit::GPR dst, biscuit::GPR src, x86_size_e size) {
 
 bool Recompiler::blockExists(u64 rip) {
     return getBlockMetadata(rip).address != 0;
-}
-
-void Recompiler::vrgather(biscuit::Vec dst, biscuit::Vec src, biscuit::Vec iota, VecMask mask) {
-    if (dst == src || dst == iota) {
-        biscuit::Vec temp = scratchVec();
-        as.VRGATHER(temp, src, iota, mask);
-        as.VMV(dst, temp);
-        popScratch();
-    } else {
-        as.VRGATHER(dst, src, iota, mask);
-    }
 }
 
 biscuit::GPR Recompiler::getFlags() {
