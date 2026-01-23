@@ -24,25 +24,21 @@ add_definitions("-DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE}")
 CheckGitSetup()
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
-    # Since felix86 needs RVV, specify the ISA here to get some free wins in the C++ side
-    # Also use --no-relax so that the `gp` register is free to do as we please
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
-endif()
-
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     string(REGEX MATCH "^([0-9]+)" GCC_VERSION_MAJOR "${CMAKE_CXX_COMPILER_VERSION}")
-
-    # It seems that gcc-14 has a bug where it compiles a badly aligned vector load from one of our packed structs,
-    # namely the conversion of x86_flock64 in Portal. This bug seems to be fixed in later gcc versions, but isn't
-    # backported so we need to warn and disable the V extension from static compilation.
-    if (GCC_VERSION_MAJOR STREQUAL "14")
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND GCC_VERSION_MAJOR STREQUAL "14")
+        # It seems that gcc-14 has a bug where it compiles a badly aligned vector load from one of our packed structs,
+        # namely the conversion of x86_flock64 in Portal. This bug seems to be fixed in later gcc versions, but isn't
+        # backported so we need to warn and disable the V extension from static compilation.
         message(WARNING "GCC 14 has a bug that causes unaligned vector load/stores which may cause bus errors in some of our packed structs. It is suggested you use a different compiler. More info: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115789")
 
         # Don't use vector extension to avoid this bug
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gc_zicsr_zifencei -mno-relax")
+    else()
+        # Since felix86 needs RVV, specify the ISA here to get some free wins in the C++ side
+        # Also use --no-relax so that the `gp` register is free to do as we please
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=rv64gcv_zicsr_zifencei -mno-relax")
     endif()
 endif()
 
