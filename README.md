@@ -15,9 +15,7 @@ bash <(curl -s https://install.felix86.com)
 
 This command downloads and runs a script which installs felix86 and a rootfs of your choice.
 
-[Read the usage guide](./docs/how-to-use.md) for more information.
-
-If you are a developer, [read the contributing guide](./docs/contributing.md).
+Documentation for developers and users can be found here: https://felix86.com/docs
 
 Feel free to join our **Discord server**: [https://discord.gg/TgBxgFwByU](https://discord.gg/TgBxgFwByU)
 
