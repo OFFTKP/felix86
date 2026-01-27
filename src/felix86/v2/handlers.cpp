@@ -10789,15 +10789,9 @@ FAST_HANDLE(FUCOMPP) {
 
 FAST_HANDLE(FRNDINT) {
     biscuit::FPR st0 = rec.getST(0);
-
-    if (Extensions::Zfa) {
-        as.FROUND_D(st0, st0);
-    } else {
-        biscuit::GPR temp = rec.scratch();
-        as.FCVT_L_D(temp, st0);
-        as.FCVT_D_L(st0, temp);
-    }
-
+    biscuit::GPR temp = rec.scratch();
+    as.FCVT_L_D(temp, st0);
+    as.FCVT_D_L(st0, temp);
     rec.setST(0, st0);
 }
 
