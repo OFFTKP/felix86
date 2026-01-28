@@ -380,6 +380,21 @@ EXT("libvulkan.so", vkSetDebugUtilsObjectName, d_qq)
 EXT("libvulkan.so", vkSetDebugUtilsObjectTag, d_qq)
 EXT("libvulkan.so", vkSubmitDebugUtilsMessage, v_qddq)
 
+// VK_EXT_attachment_feedback_loop_dynamic_state
+EXT("libvulkan.so", vkCmdSetAttachmentFeedbackLoopEnable, v_qd)
+
+// VK_EXT_conditional_rendering
+EXT("libvulkan.so", vkCmdBeginConditionalRendering, v_qq)
+EXT("libvulkan.so", vkCmdEndConditionalRendering, v_q)
+
+// VK_KHR_external_memory_fd
+KHR("libvulkan.so", vkGetMemoryFd, d_qqq)
+KHR("libvulkan.so", vkGetMemoryFdProperties, d_qddq)
+
+// VK_KHR_push_descriptor
+KHR("libvulkan.so", vkCmdPushDescriptorSet, v_qdqddq)
+
+
 #undef KHR
 #undef EXT
 #undef KHR_EXT
