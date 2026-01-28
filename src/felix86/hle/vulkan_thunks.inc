@@ -363,5 +363,11 @@ KHR("libvulkan.so", vkWaitForPresent, d_qqqq)
 // VK_KHR_line_rasterization
 KHR_EXT("libvulkan.so", vkCmdSetLineStipple, v_qdw)
 
+// VK_KHR_calibrated_timestamps
+KHR_EXT("libvulkan.so", vkGetCalibratedTimestamps, d_qdqqq)
+KHR_EXT("libvulkan.so", vkGetPhysicalDeviceCalibrateableTimeDomains, d_qqq)
+
 #undef KHR
 #undef EXT
+#undef KHR_EXT
+#undef KHR_AMD

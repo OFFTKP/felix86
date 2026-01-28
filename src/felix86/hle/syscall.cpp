@@ -2303,7 +2303,7 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 current_rsp = state->gprs[X86_REF_RSP];
 
             bool on_stack = false;
-            if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp && current_rsp < state->alt_stack.ss_size) {
+            if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp && current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
                 on_stack = true;
             }
 
