@@ -367,6 +367,19 @@ KHR_EXT("libvulkan.so", vkCmdSetLineStipple, v_qdw)
 KHR_EXT("libvulkan.so", vkGetCalibratedTimestamps, d_qdqqq)
 KHR_EXT("libvulkan.so", vkGetPhysicalDeviceCalibrateableTimeDomains, d_qqq)
 
+// VK_EXT_debug_utils
+EXT("libvulkan.so", vkCmdBeginDebugUtilsLabel, v_qq)
+EXT("libvulkan.so", vkCmdEndDebugUtilsLabel, v_q)
+EXT("libvulkan.so", vkCmdInsertDebugUtilsLabel, v_qq)
+EXT("libvulkan.so", vkCreateDebugUtilsMessenger, d_qqxq)
+EXT("libvulkan.so", vkDestroyDebugUtilsMessenger, v_qqx)
+EXT("libvulkan.so", vkQueueBeginDebugUtilsLabel, v_qq)
+EXT("libvulkan.so", vkQueueEndDebugUtilsLabel, v_q)
+EXT("libvulkan.so", vkQueueInsertDebugUtilsLabel, v_qq)
+EXT("libvulkan.so", vkSetDebugUtilsObjectName, d_qq)
+EXT("libvulkan.so", vkSetDebugUtilsObjectTag, d_qq)
+EXT("libvulkan.so", vkSubmitDebugUtilsMessage, v_qddq)
+
 #undef KHR
 #undef EXT
 #undef KHR_EXT
