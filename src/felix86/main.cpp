@@ -39,6 +39,7 @@ static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
     {"shell", 5, 0, 0, "Enter the rootfs through a shell"},
+    {"shell-debug", 5, 0, 0, "Enter the rootfs through a shell, enable logging"},
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
@@ -401,7 +402,13 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         return 0;
     }
 
+    bool shell_logging = false;
+
     switch (key) {
+    case 6: {
+        shell_logging = true;
+        [[fallthrough]];
+    }
     case 5: {
         std::error_code ec;
         Config::initialize();
@@ -495,7 +502,9 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
             envp.push_back(*envs++);
         } while (*envs);
         envp.push_back(ps1.data());
-        envp.push_back(quiet.data());
+        if (!shell_logging) {
+            envp.push_back(quiet.data());
+        }
         envp.push_back(nullptr);
 
         (void)execve(self.c_str(), argv, envp.data());
