@@ -70,6 +70,10 @@ mallocType felix86_guest_malloc = nullptr;
 VkBool32 (*host_vkGetPhysicalDeviceXlibPresentationSupportKHR)(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, Display* dpy,
                                                                VisualID visualID) = nullptr;
 
+// Ditto
+VkBool32 (*host_vkGetPhysicalDeviceXcbPresentationSupportKHR)(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, void* connection,
+                                                              void* visualID) = nullptr;
+
 // Since we only need these from wayland-client.h, instead of including the file and requiring
 // a dependency we just define them here
 struct wl_interface {
@@ -99,6 +103,7 @@ struct wl_message {
 static std::mutex display_map_mutex;
 static std::unordered_map<Display*, Display*> host_to_guest;
 static std::unordered_map<Display*, Display*> guest_to_host;
+static std::unordered_map<void*, void*> guest_to_host_connection;
 
 Display* host_XOpenDisplay(const char* name) {
     ASSERT(name);
@@ -182,6 +187,25 @@ Display* guestToHostDisplay(Display* guest_display) {
         WARN("Failed to XOpenDisplay: %s", display_name);
         return nullptr;
     }
+}
+
+void* guestToHostConnection(void* connection) {
+    std::lock_guard<std::mutex> lock(display_map_mutex);
+
+    if (guest_to_host_connection.find(connection) != guest_to_host_connection.end()) {
+        return guest_to_host_connection[connection];
+    }
+
+    static void* libxcb = dlopen("libxcb.so.1", RTLD_LAZY);
+    static auto host_xcb_connect = (void* (*)(void*, void*))dlsym(libxcb, "xcb_connect");
+    static auto host_xcb_connection_has_error = (bool (*)(void*))dlsym(libxcb, "xcb_connection_has_error");
+    void* host_connection = host_xcb_connect(nullptr, nullptr);
+    if (host_xcb_connection_has_error(host_connection)) {
+        ERROR("Couldn't open xcb connection");
+    }
+
+    guest_to_host_connection[connection] = host_connection;
+    return host_connection;
 }
 
 Display* hostToGuestDisplay(Display* host) {
@@ -399,10 +423,13 @@ void* felix86_thunk_vkGetInstanceProcAddr(VkInstance instance, const char* name)
         ptr = host_vkGetInstanceProcAddr(instance, name);
     }
 
+    // See comment above host_vkGetPhysicalDeviceXlibPresentationSupportKHR for justification
     if (strcmp(name, "vkGetPhysicalDeviceXlibPresentationSupportKHR") == 0) {
-        // See comment above host_vkGetPhysicalDeviceXlibPresentationSupportKHR for justification
         host_vkGetPhysicalDeviceXlibPresentationSupportKHR =
             (decltype(host_vkGetPhysicalDeviceXlibPresentationSupportKHR))host_vkGetInstanceProcAddr(instance, name);
+    } else if (strcmp(name, "vkGetPhysicalDeviceXcbPresentationSupportKHR")) {
+        host_vkGetPhysicalDeviceXcbPresentationSupportKHR =
+            (decltype(host_vkGetPhysicalDeviceXcbPresentationSupportKHR))host_vkGetInstanceProcAddr(instance, name);
     }
 
     if (ptr) {
@@ -455,13 +482,13 @@ void felix86_thunk_vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugR
     // See vkCreateDebugReportCallbackEXT above
 }
 
-typedef struct felix86_VkXlibSurfaceCreateInfoKHR {
+struct felix86_VkXlibSurfaceCreateInfoKHR {
     VkStructureType sType;
     const void* pNext;
     u32 flags;
     Display* dpy;
     Window window;
-} VkXlibSurfaceCreateInfoKHR;
+};
 
 VkResult felix86_thunk_vkCreateXlibSurfaceKHR(VkInstance instance, const felix86_VkXlibSurfaceCreateInfoKHR* pCreateInfo,
                                               const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
@@ -476,11 +503,37 @@ VkResult felix86_thunk_vkCreateXlibSurfaceKHR(VkInstance instance, const felix86
     return result;
 }
 
+struct felix86_VkXcbSurfaceCreateInfoKHR {
+    VkStructureType sType;
+    const void* pNext;
+    u32 flags;
+    void* connection;
+    void* window;
+};
+
+VkResult felix86_thunk_vkCreateXcbSurfaceKHR(VkInstance instance, const felix86_VkXcbSurfaceCreateInfoKHR* pCreateInfo,
+                                             const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+    void* host_connection = guestToHostConnection(pCreateInfo->connection);
+    felix86_VkXcbSurfaceCreateInfoKHR host_create_info = *pCreateInfo;
+    host_create_info.connection = host_connection;
+    static auto host_vkCreateXcbSurfaceKHR =
+        (decltype(&felix86_thunk_vkCreateXcbSurfaceKHR))host_vkGetInstanceProcAddr(instance, "vkCreateXcbSurfaceKHR");
+    VkResult result = host_vkCreateXcbSurfaceKHR(instance, &host_create_info, pAllocator, pSurface);
+    return result;
+}
+
 VkBool32 felix86_thunk_vkGetPhysicalDeviceXlibPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, Display* dpy,
                                                                      VisualID visualID) {
     Display* host_display = guestToHostDisplay(dpy);
     VkBool32 result = host_vkGetPhysicalDeviceXlibPresentationSupportKHR(physicalDevice, queueFamilyIndex, host_display, visualID);
     host_XFlush(host_display);
+    return result;
+}
+
+VkBool32 felix86_thunk_vkGetPhysicalDeviceXcbPresentationSupportKHR(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, void* connection,
+                                                                    void* visualID) {
+    void* host_connection = guestToHostConnection(connection);
+    VkBool32 result = host_vkGetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice, queueFamilyIndex, host_connection, visualID);
     return result;
 }
 
@@ -799,8 +852,12 @@ void* get_custom_vk_thunk(const std::string& name) {
         return (void*)felix86_thunk_vkDestroyDebugReportCallbackEXT;
     } else if (name == "vkCreateXlibSurfaceKHR") {
         return (void*)felix86_thunk_vkCreateXlibSurfaceKHR;
+    } else if (name == "vkCreateXcbSurfaceKHR") {
+        return (void*)felix86_thunk_vkCreateXcbSurfaceKHR;
     } else if (name == "vkGetPhysicalDeviceXlibPresentationSupportKHR") {
         return (void*)felix86_thunk_vkGetPhysicalDeviceXlibPresentationSupportKHR;
+    } else if (name == "vkGetPhysicalDeviceXcbPresentationSupportKHR") {
+        return (void*)felix86_thunk_vkGetPhysicalDeviceXcbPresentationSupportKHR;
     } else {
         return nullptr;
     }
