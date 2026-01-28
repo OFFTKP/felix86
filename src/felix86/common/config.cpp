@@ -201,6 +201,16 @@ bool Config::initialize(bool ignore_envs) {
         Config::save(profiles_path / "paranoid.toml", paranoid_config, true);
     }
 
+    if (!std::filesystem::exists(profiles_path / "zink.toml", ec)) {
+        // Enables Vulkan/Wayland thunking and sets environment variables to enable Zink
+        Config zink_config{};
+        zink_config.enabled_thunks = "vk,wl";
+        zink_config.environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+        // Set in host environment too for thunks
+        zink_config.host_environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+        Config::save(profiles_path / "zink.toml", zink_config, true);
+    }
+
     g_config = load(config_path, ignore_envs);
     g_config.config_path = config_path;
 

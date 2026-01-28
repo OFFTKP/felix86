@@ -715,6 +715,25 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
+
+        if (!g_config.host_environment.empty()) {
+            std::vector<std::string> envs = split_string(g_config.host_environment, ';');
+            for (const auto& env : envs) {
+                if (!env.empty()) {
+                    auto pos = env.find("=");
+                    if (pos == std::string::npos) {
+                        WARN("Environment variable %s in FELIX86_HOST_ENVIRONMENT has no '=' character", env.c_str());
+                    } else {
+                        std::string name = env.substr(0, pos);
+                        std::string value = env.substr(pos + 1);
+                        int result = setenv(name.c_str(), value.c_str(), true);
+                        if (result != 0) {
+                            WARN("Failed to set %s from FELIX86_HOST_ENVIRONMENT", name.c_str());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // TODO: These "hacky" environment variables are bandaid solutions to problems that we need to eventually fix
