@@ -394,6 +394,18 @@ KHR("libvulkan.so", vkGetMemoryFdProperties, d_qddq)
 // VK_KHR_push_descriptor
 KHR("libvulkan.so", vkCmdPushDescriptorSet, v_qdqddq)
 
+// VK_EXT_color_write_enable
+EXT("libvulkan.so", vkCmdSetColorWriteEnable, v_qdq)
+
+// VK_EXT_shader_object
+EXT("libvulkan.so", vkCmdBindShaders, v_qdqq)
+EXT("libvulkan.so", vkCreateShaders, d_qdqxq)
+EXT("libvulkan.so", vkDestroyShader, v_qqx)
+EXT("libvulkan.so", vkGetShaderBinaryData, d_qqqq)
+EXT("libvulkan.so", vkCmdSetVertexInput, v_qdqdq)
+
+// VK_EXT_external_memory_host
+EXT("libvulkan.so", vkGetMemoryHostPointerProperties, d_qdqq)
 
 #undef KHR
 #undef EXT
