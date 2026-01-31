@@ -39,7 +39,7 @@ static char args_doc[] = "TARGET_BINARY [TARGET_ARGS...]";
 
 static struct argp_option options[] = {
     {"shell", 5, 0, 0, "Enter the rootfs through a shell"},
-    {"shell-debug", 5, 0, 0, "Enter the rootfs through a shell, enable logging"},
+    {"shell-debug", 6, 0, 0, "Enter the rootfs through a shell, enable logging"},
     {"info", 'i', 0, 0, "Print system info"},
     {"configs", 'c', 0, 0, "Print the emulator configurations"},
     {"kill-all", 'k', 0, 0, "Kill all open emulator instances"},
