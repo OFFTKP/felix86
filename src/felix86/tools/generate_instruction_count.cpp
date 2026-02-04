@@ -972,6 +972,15 @@ int main() {
     GEN(pinsrb(xmm2, ptr[rdi], 5));
     GEN(pinsrw(xmm2, ptr[rdi], 4));
     GEN(pinsrd(xmm2, ptr[rdi], 3));
+    GEN(pinsrb(xmm2, eax, 5));
+    GEN(pinsrw(xmm2, eax, 4));
+    GEN(pinsrd(xmm2, eax, 3));
+    GEN(pinsrb(xmm2, ptr[rdi], 0));
+    GEN(pinsrw(xmm2, ptr[rdi], 0));
+    GEN(pinsrd(xmm2, ptr[rdi], 0));
+    GEN(pinsrb(xmm2, eax, 0));
+    GEN(pinsrw(xmm2, eax, 0));
+    GEN(pinsrd(xmm2, eax, 0));
     GEN(pextrb(ptr[rdi], xmm2, 5));
     GEN(pextrw(ptr[rdi], xmm2, 4));
     GEN(pextrd(ptr[rdi], xmm2, 3));

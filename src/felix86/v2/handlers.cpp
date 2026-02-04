@@ -7438,7 +7438,7 @@ void PINSR(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, SEW se
         } else {
             rec.setVectorState(sew, imm + 1);
             src_vec = rec.scratchVec();
-            biscuit::GPR src = rec.getGPR(&operands[1]);
+            biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
             as.VMV_SX(src_vec, src);
         }
         rec.setVectorState(sew, imm + 1);
