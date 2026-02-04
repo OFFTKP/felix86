@@ -1,4 +1,5 @@
 #include <Zydis/Zydis.h>
+#include "Zydis/DecoderTypes.h"
 #include "Zydis/SharedTypes.h"
 #include "felix86/common/config.hpp"
 #include "felix86/common/state.hpp"
@@ -7416,83 +7417,55 @@ FAST_HANDLE(UCOMISS) {
     COMIS(rec, rip, as, instruction, operands, SEW::E32);
 }
 
+void PINSR(Recompiler& rec, Assembler& as, ZydisDecodedOperand* operands, SEW sew, u8 imm) {
+    biscuit::Vec dst = rec.getVec(&operands[0]);
+    biscuit::Vec src_vec;
+
+    if (imm == 0) {
+        // If inserting to element 0 we can save some instructions
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            biscuit::GPR address = rec.lea(&operands[1], false);
+            rec.readMemory(dst, address, operands[1].size);
+        } else {
+            biscuit::GPR reg = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+            rec.setVectorState(sew, 1);
+            as.VMV_SX(dst, reg);
+        }
+        rec.setVec(&operands[0], dst);
+    } else {
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
+            src_vec = rec.getVec(&operands[1]);
+        } else {
+            rec.setVectorState(sew, imm + 1);
+            src_vec = rec.scratchVec();
+            biscuit::GPR src = rec.getGPR(&operands[1]);
+            as.VMV_SX(src_vec, src);
+        }
+        rec.setVectorState(sew, imm + 1);
+        as.VSLIDEUP(dst, src_vec, imm);
+        rec.setVec(&operands[0], dst);
+    }
+}
+
 FAST_HANDLE(PINSRB) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b1111;
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR mask = rec.scratch();
-    biscuit::Vec tmp = rec.scratchVec();
-    biscuit::Vec tmp2 = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-
-    rec.setVectorState(SEW::E16, 1);
-    as.LI(mask, (1 << imm));
-    as.VMV(v0, mask);
-
-    rec.setVectorState(SEW::E8, 16);
-    as.VMV_SX(tmp, src);
-    as.VSLIDEUP(tmp2, tmp, imm);
-    as.VMERGE(result, dst, tmp2);
-
-    rec.setVec(&operands[0], result);
+    PINSR(rec, as, operands, SEW::E8, imm);
 }
 
 FAST_HANDLE(PINSRW) {
     bool is_mmx = operands[0].reg.value >= ZYDIS_REGISTER_MM0 && operands[0].reg.value <= ZYDIS_REGISTER_MM7;
     u8 imm = rec.getImmediate(&operands[2]) & (is_mmx ? 0b11 : 0b111);
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR mask = rec.scratch();
-    biscuit::Vec tmp = rec.scratchVec();
-    biscuit::Vec tmp2 = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-
-    rec.setVectorState(SEW::E16, 8);
-    as.LI(mask, (1 << imm));
-    as.VMV(v0, mask);
-    as.VMV_SX(tmp, src);
-    as.VSLIDEUP(tmp2, tmp, imm);
-    as.VMERGE(result, dst, tmp2);
-
-    rec.setVec(&operands[0], result);
+    PINSR(rec, as, operands, SEW::E16, imm);
 }
 
 FAST_HANDLE(PINSRD) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b11;
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR mask = rec.scratch();
-    biscuit::Vec tmp = rec.scratchVec();
-    biscuit::Vec tmp2 = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-
-    rec.setVectorState(SEW::E32, 4);
-    as.LI(mask, (1 << imm));
-    as.VMV(v0, mask);
-    as.VMV_SX(tmp, src);
-    as.VSLIDEUP(tmp2, tmp, imm);
-    as.VMERGE(result, dst, tmp2);
-
-    rec.setVec(&operands[0], result);
+    PINSR(rec, as, operands, SEW::E32, imm);
 }
 
 FAST_HANDLE(PINSRQ) {
     u8 imm = rec.getImmediate(&operands[2]) & 0b1;
-    biscuit::Vec dst = rec.getVec(&operands[0]);
-    biscuit::GPR src = rec.getGPR(&operands[1]);
-    biscuit::GPR mask = rec.scratch();
-    biscuit::Vec tmp = rec.scratchVec();
-    biscuit::Vec tmp2 = rec.scratchVec();
-    biscuit::Vec result = rec.scratchVec();
-
-    rec.setVectorState(SEW::E64, 2);
-    as.LI(mask, (1 << imm));
-    as.VMV(v0, mask);
-    as.VMV_SX(tmp, src);
-    as.VSLIDEUP(tmp2, tmp, imm);
-    as.VMERGE(result, dst, tmp2);
-
-    rec.setVec(&operands[0], result);
+    PINSR(rec, as, operands, SEW::E64, imm);
 }
 
 FAST_HANDLE(PEXTRB) {

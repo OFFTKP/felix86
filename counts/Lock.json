@@ -191,7 +191,7 @@
             "SLLW            t4, t4, t5",
             "XORI            t4, t4, 0xffffffff(-1)",
             "SLLW            t6, t1, t5",
-            "OR              t5, t6, t4",
+            "OR              t6, t6, t4",
             "AMOAND.W        t4, t2, t6, aq, rl",
             "SRLW            t4, t4, t5",
             "ZEXT.H          t4, t4",

@@ -231,45 +231,32 @@
         "disassembly": "roundsd xmm2, xmm3, 0x03"
     },
     "660f3a201705": {
-        "instruction_count": 9,
+        "instruction_count": 4,
         "expected_asm": [
-            "LBU             ra, a0, 0x0(0)",
-            "VSETIVLI        zero, 1, e16, m1, tu, mu",
-            "ADDIW           t3, zero, 0x20(32)",
-            "VMV.V.X         v0, t3",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VMV.S.X         v2, ra",
-            "VSLIDEUP.VI     v3, v2, 0x5(5), none",
-            "VMERGE.VVM      v4, v18, v3",
-            "VMV.V.V         v18, v4"
+            "VSETIVLI        zero, 1, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 6, e8, m1, tu, mu",
+            "VSLIDEUP.VI     v18, v2, 0x5(5), none"
         ],
         "disassembly": "pinsrb xmm2, byte ptr [rdi], 0x05"
     },
     "660fc41704": {
-        "instruction_count": 8,
+        "instruction_count": 4,
         "expected_asm": [
-            "LHU             ra, a0, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "ADDIW           t3, zero, 0x10(16)",
-            "VMV.V.X         v0, t3",
-            "VMV.S.X         v2, ra",
-            "VSLIDEUP.VI     v3, v2, 0x4(4), none",
-            "VMERGE.VVM      v4, v18, v3",
-            "VMV.V.V         v18, v4"
+            "VSETIVLI        zero, 2, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 5, e16, m1, tu, mu",
+            "VSLIDEUP.VI     v18, v2, 0x4(4), none"
         ],
         "disassembly": "pinsrw xmm2, word ptr [rdi], 0x04"
     },
     "660f3a221703": {
-        "instruction_count": 8,
+        "instruction_count": 4,
         "expected_asm": [
-            "LWU             ra, a0, 0x0(0)",
+            "VSETIVLI        zero, 4, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
             "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "ADDIW           t3, zero, 0x8(8)",
-            "VMV.V.X         v0, t3",
-            "VMV.S.X         v2, ra",
-            "VSLIDEUP.VI     v3, v2, 0x3(3), none",
-            "VMERGE.VVM      v4, v18, v3",
-            "VMV.V.V         v18, v4"
+            "VSLIDEUP.VI     v18, v2, 0x3(3), none"
         ],
         "disassembly": "pinsrd xmm2, dword ptr [rdi], 0x03"
     },
