@@ -2,6 +2,7 @@
 #include <span>
 #include <fcntl.h>
 #include "felix86/common/config.hpp"
+#include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/cpuid.hpp"
@@ -138,6 +139,10 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
             result.ecx &= ~(1 << 1); // disable PCLMULQDQ
         } else if (g_config.pclmulqdq) {
             result.ecx |= 1 << 1;
+        }
+
+        if (!Extensions::Zknd || !Extensions::Zvkned) {
+            result.ecx &= ~(1 << 25); // Disable AES
         }
     }
 

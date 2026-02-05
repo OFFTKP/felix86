@@ -209,6 +209,7 @@ void initialize_extensions() {
         Extensions::Zba = cpuinfo.Has(RISCVExtension::Zba);
         Extensions::Zvbb = cpuinfo.Has(RISCVExtension::Zvbb);
         Extensions::Zvkned = cpuinfo.Has(RISCVExtension::Zvkned);
+        Extensions::Zknd = cpuinfo.Has(RISCVExtension::Zknd);
     }
 
 #ifdef __x86_64__

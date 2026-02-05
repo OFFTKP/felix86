@@ -2,6 +2,7 @@
 #include "Zydis/DecoderTypes.h"
 #include "Zydis/SharedTypes.h"
 #include "felix86/common/config.hpp"
+#include "felix86/common/global.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -9962,6 +9963,7 @@ FAST_HANDLE(PHMINPOSUW) {
 
 FAST_HANDLE(AESENC) {
     if (Extensions::Zvkned) {
+        WARN_ONCE("This program uses AESENC");
         biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -9974,6 +9976,7 @@ FAST_HANDLE(AESENC) {
 
 FAST_HANDLE(AESENCLAST) {
     if (Extensions::Zvkned) {
+        WARN_ONCE("This program uses AESENCLAST");
         biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -9984,8 +9987,45 @@ FAST_HANDLE(AESENCLAST) {
     }
 }
 
+FAST_HANDLE(AESDEC) {
+    // AESDEC does InvMixColumns then AddRoundKey, while VAESDM.VV does AddRoundKey then InvMixColumns
+    // Applying MixColumns to the input key then running VAESDM.VV matches the behavior for math reasons.
+    // There's no instruction to apply MixColumns, but there's one that applies InverseMixColumns, which can be used
+    // three times in a row to apply MixColumns
+    if (Extensions::Zvkned && Extensions::Zknd) {
+        WARN_ONCE("This program uses AESDEC");
+        biscuit::Vec slide = rec.scratchVec();
+        biscuit::Vec dst = rec.getVec(&operands[0]);
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        biscuit::Vec temp = rec.scratchVec();
+        biscuit::Vec mixed_key = rec.scratchVec();
+        biscuit::GPR low = rec.scratch();
+        biscuit::GPR high = rec.scratch();
+        biscuit::GPR low_mix = rec.scratch();
+        biscuit::GPR high_mix = rec.scratch();
+        rec.setVectorState(SEW::E64, 2);
+        as.VSLIDEDOWN(slide, src, 1);
+        as.VMV_XS(low, src);
+        as.VMV_XS(high, slide);
+        as.AES64IM(low_mix, low);
+        as.AES64IM(low_mix, low_mix);
+        as.AES64IM(low_mix, low_mix);
+        as.AES64IM(high_mix, high);
+        as.AES64IM(high_mix, high_mix);
+        as.AES64IM(high_mix, high_mix);
+        as.VMV_SX(temp, high_mix);
+        as.VSLIDE1UP(mixed_key, temp, low_mix);
+        rec.setVectorState(SEW::E32, 4);
+        as.VAESDM_VV(dst, mixed_key);
+        rec.setVec(&operands[0], dst);
+    } else {
+        ERROR("Hit AESDEC instruction but system does not support Zvkned or Zknd extension");
+    }
+}
+
 FAST_HANDLE(AESDECLAST) {
     if (Extensions::Zvkned) {
+        WARN_ONCE("This program uses AESDECLAST");
         biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
         rec.setVectorState(SEW::E32, 4);
@@ -9994,6 +10034,103 @@ FAST_HANDLE(AESDECLAST) {
     } else {
         ERROR("Hit AESDECLAST instruction but system does not support Zvkned extension");
     }
+}
+
+FAST_HANDLE(AESIMC) {
+    if (Extensions::Zknd) {
+        WARN_ONCE("This program uses AESIMC");
+        biscuit::Vec slide = rec.scratchVec();
+        biscuit::Vec src = rec.getVec(&operands[1]);
+        biscuit::Vec temp = rec.scratchVec();
+        biscuit::Vec mixed_key = rec.scratchVec();
+        biscuit::GPR low = rec.scratch();
+        biscuit::GPR high = rec.scratch();
+        biscuit::GPR low_mix = rec.scratch();
+        biscuit::GPR high_mix = rec.scratch();
+        rec.setVectorState(SEW::E64, 2);
+        as.VSLIDEDOWN(slide, src, 1);
+        as.VMV_XS(low, src);
+        as.VMV_XS(high, slide);
+        as.AES64IM(low_mix, low);
+        as.AES64IM(high_mix, high);
+        as.VMV_SX(temp, high_mix);
+        as.VSLIDE1UP(mixed_key, temp, low_mix);
+        rec.setVec(&operands[0], mixed_key);
+    } else {
+        ERROR("Hit AESIMC instruction but system does not support Zknd extension");
+    }
+}
+
+std::pair<bool, u8> aes_encode_rcon(u8 x86_imm) {
+    // Takes an RCON and returns whether it's encodeable and the RISC-V encoded value that AES64KS1I will decode
+    // For more info, see aes_decode_rcon
+    switch (x86_imm) {
+    case 0x01: {
+        return {true, 0x00};
+    }
+    case 0x02: {
+        return {true, 0x01};
+    }
+    case 0x04: {
+        return {true, 0x02};
+    }
+    case 0x08: {
+        return {true, 0x03};
+    }
+    case 0x10: {
+        return {true, 0x04};
+    }
+    case 0x20: {
+        return {true, 0x05};
+    }
+    case 0x40: {
+        return {true, 0x06};
+    }
+    case 0x80: {
+        return {true, 0x07};
+    }
+    case 0x1b: {
+        return {true, 0x08};
+    }
+    case 0x36: {
+        return {true, 0x09};
+    }
+    default: {
+        return {false, 0};
+    }
+    }
+}
+
+FAST_HANDLE(AESKEYGENASSIST) {
+    // AESKEYGENASSIST performs the following:
+    // RotWord(SubWord(X1)) ^ RCON for high bits, SubWord(X1) for low bits, repeat for top 64 bits
+    // The closest we get in RISC-V seems to be AES64KS1I which does
+    // SubWord(RotWord(X1)) ^ decode(imm) and the result is set on both low and high bits
+    // The issue is, decode(imm) can only produce some, but not all, RCON values, while RCON in x86 is provided in u8
+    // So in some cases, we aren't able to do this in assembly. Also we'd still need to do SubWord in software.
+    // Since AES usage is rare, let's just warn for now and implement it later
+    u8 imm = rec.getImmediate(&operands[2]);
+    auto [can_use_assembly, encoded] = aes_encode_rcon(imm);
+
+    if (can_use_assembly) {
+        WARN("Acceleratable AESKEYGENASSIST instruction with RCON=%d", imm);
+    } else {
+        WARN("AESKEYGENASSIST instruction with RCON=%d", imm);
+    }
+
+    x86_ref_e reg = rec.zydisToRef(operands[0].reg.value);
+    rec.writebackState();
+    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+        x86_ref_e src = rec.zydisToRef(operands[0].reg.value);
+        as.ADDI(a1, Recompiler::threadStatePointer(), offsetof(ThreadState, xmm) + (src - X86_REF_XMM0) * sizeof(XmmReg));
+    } else {
+        biscuit::GPR address = rec.lea(&operands[1]);
+        as.MV(a1, address);
+    }
+    as.ADDI(a0, Recompiler::threadStatePointer(), offsetof(ThreadState, xmm) + (reg - X86_REF_XMM0) * sizeof(XmmReg));
+    as.LI(a2, imm);
+    rec.callPointer(offsetof(ThreadState, felix86_aeskeygenassist));
+    rec.restoreState();
 }
 
 FAST_HANDLE(CMPXCHG16B) {

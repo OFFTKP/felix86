@@ -135,6 +135,7 @@ struct Extensions {
     X(Zvfh)                                                                                                                                          \
     X(Zvbb)                                                                                                                                          \
     X(Zvkned)                                                                                                                                        \
+    X(Zknd)                                                                                                                                          \
     X(Xtheadcondmov)                                                                                                                                 \
     X(Xtheadvector)                                                                                                                                  \
     X(Xtheadba)                                                                                                                                      \
