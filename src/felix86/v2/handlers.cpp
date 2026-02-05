@@ -10063,7 +10063,7 @@ FAST_HANDLE(AESIMC) {
 
 std::pair<bool, u8> aes_encode_rcon(u8 x86_imm) {
     // Takes an RCON and returns whether it's encodeable and the RISC-V encoded value that AES64KS1I will decode
-    // For more info, see aes_decode_rcon
+    // For more info, see aes_decode_rcon in the unprivileged spec
     switch (x86_imm) {
     case 0x01: {
         return {true, 0x00};
@@ -10108,7 +10108,7 @@ FAST_HANDLE(AESKEYGENASSIST) {
     // SubWord(RotWord(X1)) ^ decode(imm) and the result is set on both low and high bits
     // The issue is, decode(imm) can only produce some, but not all, RCON values, while RCON in x86 is provided in u8
     // So in some cases, we aren't able to do this in assembly. Also we'd still need to do SubWord in software.
-    // Since AES usage is rare, let's just warn for now and implement it later
+    // Since AES usage is rare, let's just warn for now and optimize it some day (TODO)
     u8 imm = rec.getImmediate(&operands[2]);
     auto [can_use_assembly, encoded] = aes_encode_rcon(imm);
 
