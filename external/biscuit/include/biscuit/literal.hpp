@@ -35,7 +35,7 @@ namespace biscuit {
  * as.JR(x2);               // Execution continues elsewhere
  * as.Place(&literal);      // Place the literal at this location in the buffer
  * @endcode
-*/
+ */
 template<class T>
 class Literal {
 public:
@@ -102,6 +102,10 @@ public:
      */
     [[nodiscard]] Location GetLocation() const noexcept {
         return m_location;
+    }
+
+    [[nodiscard]] T GetValue() const noexcept {
+        return m_value;
     }
 
 private:

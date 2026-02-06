@@ -11607,13 +11607,12 @@
         "disassembly": "mul [rdi]"
     },
     "48f727": {
-        "instruction_count": 6,
+        "instruction_count": 5,
         "expected_asm": [
             "LD              ra, a0, 0x0(0)",
-            "MULHU           t3, t0, ra",
+            "MULHU           a2, t0, ra",
             "MUL             t0, t0, ra",
-            "ADDI            a2, t3, 0x0(0)",
-            "SLTU            s5, zero, t3",
+            "SLTU            s5, zero, a2",
             "ADDI            s9, s5, 0x0(0)"
         ],
         "disassembly": "mul [rdi]"

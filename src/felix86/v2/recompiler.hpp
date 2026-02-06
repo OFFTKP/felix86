@@ -660,6 +660,20 @@ struct Recompiler {
 
     std::pair<ZydisDecodedInstruction*, ZydisDecodedOperand*> getNextInstruction();
 
+    biscuit::Literal<u64>* pushPendingLiteral(u64 value) {
+        for (auto& item : pending_literals) {
+            if (item.GetValue() == value) {
+                // Literal already exists, don't push it again
+                return &item;
+            }
+        }
+
+        pending_literals.push_back(biscuit::Literal<u64>{value});
+        return &pending_literals.back();
+    }
+
+    void expirePendingLiterals();
+
 private:
     struct FlagAccess {
         bool modification; // true if modified, false if used
@@ -758,6 +772,8 @@ private:
     int pushed_this_block = 0;
 
     bool relocatable = false;
+
+    std::vector<biscuit::Literal<u64>> pending_literals;
 
     constexpr static std::array scratch_gprs = {
         x1, x6, x28, x29, x7, x30, x31,

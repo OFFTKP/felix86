@@ -169,6 +169,7 @@ void __attribute__((noreturn)) enter_repl() {
     g_config.quiet = true;
     g_config.inline_syscalls = false;
     g_config.scan_ahead_multi = false;
+    g_config.literal_pooling = false;
     Extensions::G = true;
     Extensions::B = true;
     Extensions::C = true;

@@ -576,7 +576,15 @@ FAST_HANDLE(MOV) {
         bool not_same = rec.zydisToRef(operands[0].reg.value) != rec.zydisToRef(operands[1].reg.value);
         bool mem_reg = operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY && operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER;
         bool reg_mem = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY;
-        if (not_same && reg_reg) {
+        bool reg_imm64 = g_config.literal_pooling && operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].size == 64 &&
+                         operands[1].type == ZYDIS_OPERAND_TYPE_IMMEDIATE && operands[1].size == 64;
+        if (reg_imm64) {
+            u64 immediate = operands[1].imm.value.u;
+            Literal<u64>* literal = rec.pushPendingLiteral(immediate);
+            biscuit::GPR reg = rec.getGPR(&operands[0]);
+            as.LD(reg, literal);
+            rec.setGPR(&operands[0], reg);
+        } else if (not_same && reg_reg) {
             // Save a mask by doing it this way
             biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
             if (rec.zydisToSize(operands[1].reg.value) == X86_SIZE_BYTE_HIGH) {
@@ -3718,7 +3726,8 @@ FAST_HANDLE(MUL) {
         break;
     }
     case X86_SIZE_QWORD: {
-        biscuit::GPR result = rec.scratch();
+        bool is_src_rdx = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && rec.zydisToRef(operands[0].reg.value) == X86_REF_RDX;
+        biscuit::GPR result = is_src_rdx ? rec.scratch() : rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
         biscuit::GPR rax = rec.getGPR(X86_REF_RAX, X86_SIZE_QWORD);
         as.MULHU(result, rax, src);
         as.MUL(rax, rax, src);

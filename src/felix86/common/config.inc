@@ -56,3 +56,4 @@ X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically
 X(Performance, bool, scan_ahead_multi, true, FELIX86_SCAN_AHEAD_MULTI, "Scan ahead to multiple blocks when possible, avoiding even more flag calculations", false)
 X(Performance, bool, pclmulqdq, true, FELIX86_PCLMULQDQ, "Enable the PCLMULQDQ instruction, might improve performance in some applications", false)
 X(Performance, bool, no_address_overflow, true, FELIX86_NO_ADDRESS_OVERFLOW, "Assume addresses won't overflow in 32-bit apps, which allows for some optimizations", false)
+X(Performance, bool, literal_pooling, true, FELIX86_LITERAL_POOLING, "Place 64-bit immediates in a literal pool after the block", false)

@@ -441,6 +441,9 @@ u64 Recompiler::compile(ThreadState* state, u64 rip) {
 
     u64 end = (u64)as.GetCursorPointer();
 
+    // Place literal pool after the block
+    expirePendingLiterals();
+
     ASSERT(end - start >= 8); // At least 2 instructions, so that our unlinking logic works
 
     host_pc_map[block_meta.address_end - 1] = &block_meta;
@@ -2744,6 +2747,15 @@ void Recompiler::expirePendingLinks(u64 rip) {
     flush_icache();
 
     block_meta.pending_links.clear();
+}
+
+void Recompiler::expirePendingLiterals() {
+    if (g_config.literal_pooling) {
+        for (auto& literal : pending_literals) {
+            as.Place(&literal);
+        }
+        pending_literals.clear();
+    }
 }
 
 u64 Recompiler::zextImmediate(u64 imm, ZyanU8 size) {
