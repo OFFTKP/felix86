@@ -9656,11 +9656,6 @@ FAST_HANDLE(SHRD) {
 
 void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, pcmpxstrx type) {
     rec.writebackState();
-    as.MV(a0, rec.threadStatePointer());
-    as.LI(a1, (int)type);
-    ASSERT(operands[0].reg.value >= ZYDIS_REGISTER_XMM0 && operands[0].reg.value <= ZYDIS_REGISTER_XMM15);
-    as.ADDI(a2, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * (operands[0].reg.value - ZYDIS_REGISTER_XMM0)));
-
     if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
         as.ADDI(a3, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * (operands[1].reg.value - ZYDIS_REGISTER_XMM0)));
     } else {
@@ -9668,7 +9663,10 @@ void PCMPXSTRX(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction&
         ASSERT(scratch != a0 && scratch != a1 && scratch != a2);
         as.MV(a3, scratch);
     }
-
+    as.MV(a0, rec.threadStatePointer());
+    as.LI(a1, (int)type);
+    ASSERT(operands[0].reg.value >= ZYDIS_REGISTER_XMM0 && operands[0].reg.value <= ZYDIS_REGISTER_XMM15);
+    as.ADDI(a2, rec.threadStatePointer(), offsetof(ThreadState, xmm) + (sizeof(XmmReg) * (operands[0].reg.value - ZYDIS_REGISTER_XMM0)));
     as.LI(a4, operands[2].imm.value.u);
 
     rec.callPointer(offsetof(ThreadState, felix86_pcmpxstrx));
