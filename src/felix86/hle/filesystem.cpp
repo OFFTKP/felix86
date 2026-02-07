@@ -634,9 +634,9 @@ std::filesystem::path create_unique_mount_path() {
     }
 
     std::error_code ec;
-    bool created = std::filesystem::create_directories(g_mounts_path, ec);
-    if (!created) {
-        ERROR("Failed to create mounts directory %s", g_mounts_path.c_str());
+    bool exists = std::filesystem::is_directory(g_mounts_path, ec);
+    if (!exists) {
+        ERROR("Mounts directory %s doesn't exist?", g_mounts_path.c_str());
     }
 
     std::filesystem::path path = g_mounts_path / ("mount." + std::to_string(gettid()) + ".XXXXXX");
