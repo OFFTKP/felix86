@@ -303,8 +303,9 @@ void initialize_globals() {
             ERROR("Failed while creating directories for pivot root: %s", mounts.c_str());
         }
         std::string templ = mounts.string() + "/XXXXXX";
-        char* path = mktemp(templ.data());
-        g_mounts_path = path;
+        int result = mkstemp(templ.data());
+        ASSERT(result == 0);
+        g_mounts_path = templ;
     }
 
     const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
