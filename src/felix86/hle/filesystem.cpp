@@ -1,4 +1,6 @@
 #include <cstring>
+#include <filesystem>
+#include <system_error>
 #include <fcntl.h>
 #include <linux/openat2.h>
 #include <sys/inotify.h>
@@ -7,6 +9,7 @@
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <sys/xattr.h>
+#include "felix86/common/global.hpp"
 #include "felix86/common/overlay.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -627,24 +630,13 @@ int Filesystem::Rmdir(const char* dir) {
 
 std::filesystem::path create_unique_mount_path() {
     if (g_mounts_path.empty()) {
-        std::filesystem::path rundir = "/run/user/" + std::to_string(geteuid());
-        if (!std::filesystem::exists(rundir)) {
-            rundir = "/tmp"; // :(
-            if (!std::filesystem::exists(rundir)) {
-                ERROR("Neither %s or /tmp exist", ("/run/user/" + std::to_string(geteuid())).c_str());
-            }
-        }
+        ERROR("Mounts path is empty?");
+    }
 
-        std::filesystem::path mounts = rundir / "felix86" / "mounts";
-        std::error_code ec;
-        std::filesystem::create_directories(mounts, ec);
-        if (ec) {
-            ERROR("Failed while creating directories for pivot root: %s", mounts.c_str());
-        }
-        std::string templ = mounts.string() + "/XXXXXX";
-        char* path = mkdtemp(templ.data());
-        ASSERT_MSG(path == templ.data(), "Failed to mkdtemp for mounts directory?");
-        g_mounts_path = path;
+    std::error_code ec;
+    bool created = std::filesystem::create_directories(g_mounts_path, ec);
+    if (!created) {
+        ERROR("Failed to create mounts directory %s", g_mounts_path.c_str());
     }
 
     std::filesystem::path path = g_mounts_path / ("mount." + std::to_string(gettid()) + ".XXXXXX");

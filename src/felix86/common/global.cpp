@@ -279,7 +279,32 @@ void initialize_globals() {
 
     const char* mounts_path = getenv("__FELIX86_MOUNTS");
     if (mounts_path) {
+        ASSERT(g_execve_process);
         g_mounts_path = mounts_path;
+    } else {
+        // Create just the mounts path, which in most cases will be in /run/user/$UID/felix86/mounts
+        // Don't create the actual directory because in most cases we won't need it (it's only used for pivot_root and chroot)
+        // It's important we do this on the first run: Programs can change our UID with CLONE_NEWUSER
+        // and we won't know which /run/user/ directory is ours
+        ASSERT(!g_execve_process);
+        std::filesystem::path rundir = "/run/user/" + std::to_string(geteuid());
+        if (!std::filesystem::exists(rundir)) {
+            WARN("Mounts path is /tmp, this can lead to problems with bwrap");
+            rundir = "/tmp"; // :(
+            if (!std::filesystem::exists(rundir)) {
+                ERROR("Neither %s or /tmp exist", ("/run/user/" + std::to_string(geteuid())).c_str());
+            }
+        }
+
+        std::filesystem::path mounts = rundir / "felix86" / "mounts";
+        std::error_code ec;
+        std::filesystem::create_directories(mounts, ec);
+        if (ec) {
+            ERROR("Failed while creating directories for pivot root: %s", mounts.c_str());
+        }
+        std::string templ = mounts.string() + "/XXXXXX";
+        char* path = mktemp(templ.data());
+        g_mounts_path = path;
     }
 
     const char* guest_rootfs = getenv("__FELIX86_ROOTFS");
