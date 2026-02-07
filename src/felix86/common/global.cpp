@@ -282,8 +282,7 @@ void initialize_globals() {
         ASSERT(g_execve_process);
         g_mounts_path = mounts_path;
     } else {
-        // Create just the mounts path, which in most cases will be in /run/user/$UID/felix86/mounts
-        // Don't create the actual directory because in most cases we won't need it (it's only used for pivot_root and chroot)
+        // Create just the mounts path, which in most cases will be at /run/user/$UID/felix86/mounts
         // It's important we do this on the first run: Programs can change our UID with CLONE_NEWUSER
         // and we won't know which /run/user/ directory is ours
         ASSERT(!g_execve_process);

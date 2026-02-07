@@ -1571,10 +1571,8 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         envp.push_back(log_env.c_str());
         std::string rootfs_env = std::string("__FELIX86_ROOTFS=") + g_config.rootfs_path.string();
         envp.push_back(rootfs_env.c_str());
-        if (!g_mounts_path.empty()) {
-            std::string mounts_env = std::string("__FELIX86_MOUNTS=") + g_mounts_path.string();
-            envp.push_back(mounts_env.c_str());
-        }
+        std::string mounts_env = std::string("__FELIX86_MOUNTS=") + g_mounts_path.string();
+        envp.push_back(mounts_env.c_str());
         size_t current_mount = 0;
         for (auto& mount_path : g_process_globals.mount_paths) {
             envp.push_back(strdup((std::string("__FELIX86_MOUNT_") + std::to_string(current_mount++) + "=" + mount_path.string()).c_str()));
@@ -2303,7 +2301,8 @@ void felix86_syscall32(felix86_frame* frame, u32 rip_next) {
             u64 current_rsp = state->gprs[X86_REF_RSP];
 
             bool on_stack = false;
-            if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp && current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
+            if (!(state->alt_stack.ss_flags & SS_DISABLE) && current_rsp >= (u64)state->alt_stack.ss_sp &&
+                current_rsp < (u64)state->alt_stack.ss_sp + state->alt_stack.ss_size) {
                 on_stack = true;
             }
 
