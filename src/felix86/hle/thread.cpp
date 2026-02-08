@@ -298,6 +298,7 @@ long VForkMe(CloneArgs& args) {
                 int fd = syscall(SYS_pidfd_open, result, 0);
                 ASSERT_MSG(fd >= 0, "fd returned from pidfd_open is bad: %d", fd);
                 *args.parent_tid = fd;
+                WARN("pidfd: %d", fd);
             }
         }
 
