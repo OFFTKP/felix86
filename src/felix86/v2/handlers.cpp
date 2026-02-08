@@ -4042,7 +4042,7 @@ FAST_HANDLE(CPUID) {
 }
 
 FAST_HANDLE(SYSCALL) {
-    if (Seccomp::hasFilters()) {
+    if (Seccomp::hasFilters() && !g_config.seccomp_always_allow) {
         if (g_mode32) {
             ERROR("Seccomp during 32-bit program");
         }
