@@ -285,8 +285,10 @@ void BPFJit::printInstruction(const x64_sock_filter& instruction) {
     case BPF_JSET:
         opj = "BPF_JSET";
         break;
-    default:
-        UNREACHABLE();
+    default: {
+        opj = "Bad OPJ?";
+        break;
+    }
     }
     switch (BPF_SRC(code)) {
     case BPF_K:
@@ -304,7 +306,7 @@ void BPFJit::printInstruction(const x64_sock_filter& instruction) {
     case BPF_ST:
     case BPF_LDX:
     case BPF_STX:
-        PLAIN("%s | %s | %s", cl.c_str(), size.c_str(), mode.c_str());
+        PLAIN("%s | %s | %s (k: %x)", cl.c_str(), size.c_str(), mode.c_str(), instruction.k);
         break;
     case BPF_ALU:
         if (BPF_SRC(code) == BPF_K) {
@@ -315,9 +317,9 @@ void BPFJit::printInstruction(const x64_sock_filter& instruction) {
         break;
     case BPF_JMP:
         if (BPF_SRC(code) == BPF_K) {
-            PLAIN("%s | %s | %s | %s (k: %x)", cl.c_str(), size.c_str(), opj.c_str(), src.c_str(), instruction.k);
+            PLAIN("%s | %s | %s (k: %x, jt: %x, jf: %x)", cl.c_str(), opj.c_str(), src.c_str(), instruction.k, instruction.jt, instruction.jf);
         } else {
-            PLAIN("%s | %s | %s | %s", cl.c_str(), size.c_str(), opj.c_str(), src.c_str());
+            PLAIN("%s | %s | %s (jt: %x, jf: %x)", cl.c_str(), opj.c_str(), src.c_str(), instruction.jt, instruction.jf);
         }
         break;
     case BPF_RET:
