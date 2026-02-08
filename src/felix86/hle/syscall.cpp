@@ -1294,7 +1294,7 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         case PR_SET_SECCOMP:
         case PR_GET_SECCOMP: {
             WARN("prctl(SECCOMP) not implemented");
-            Seccomp::setFilter(0, (void*)arg2, 0);
+            Seccomp::setFilter(0, (void*)arg3, 0);
             result = -EINVAL;
             break;
         }
