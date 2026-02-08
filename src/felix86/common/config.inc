@@ -42,6 +42,7 @@ X(Debugging, bool, always_flags, false, FELIX86_ALWAYS_FLAGS, "Emit flag calcula
 X(Debugging, bool, paranoid, false, FELIX86_PARANOID, "Disables multiple optimizations in hopes to catch bugs", false)
 X(Debugging, bool, alignment_check, false, FELIX86_ALIGNMENT_CHECK, "Insert code that checks for correct alignment on atomics", false)
 X(Debugging, bool, enable_io_uring, false, FELIX86_ENABLE_IO_URING, "Enable io_uring -- See https://github.com/OFFTKP/felix86/issues/361", false)
+X(Debugging, bool, dump_seccomp, false, FELIX86_DUMP_SECCOMP, "Dump installed seccomp programs", false)
 
 X(Performance, bool, link, true, FELIX86_LINK, "Enable basic block linking, important for performance", false)
 X(Performance, bool, address_cache, true, FELIX86_ADDRESS_CACHE, "Use lower address bits to speed up block lookup", false)

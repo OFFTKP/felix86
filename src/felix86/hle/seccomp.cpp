@@ -5,6 +5,7 @@
 #include <linux/seccomp.h>
 #include <unistd.h>
 #include "biscuit/assembler.hpp"
+#include "felix86/common/config.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
@@ -48,6 +49,9 @@ struct BPFJit {
         labels.resize(program->len);
         prologue();
         for (int i = 0; i < program->len; i++) {
+            if (g_config.dump_seccomp) {
+                printInstruction(program->array[i]);
+            }
             compileInstruction(program->array[i], i);
         }
         // Code did not return and led here
@@ -57,12 +61,6 @@ struct BPFJit {
         as.C_UNDEF();
         as.Bind(&end_of_program);
         epilogue();
-    }
-
-    void printProgram(const x64_sock_fprog* program) {
-        for (int i = 0; i < program->len; i++) {
-            printInstruction(program->array[i]);
-        }
     }
 
 private:
@@ -224,6 +222,9 @@ void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
         }
         break;
     }
+    // TODO: handle ret cases when we need them
+    // TODO: properly handle multiple filters/ret cases
+    // TODO: a filter with tgkill and a filter with kill right after won't work correctly
     case BPF_RET: {
         if (BPF_SRC(code) == BPF_K) {
             switch (instruction.k) {
