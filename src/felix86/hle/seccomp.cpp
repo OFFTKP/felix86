@@ -360,7 +360,7 @@ void BPFJit::epilogue() {
 
 bool Seccomp::setFilter(u32 flags, void* args, u64 rip) {
     if (flags & ~(0)) {
-        ERROR("Unsupported seccomp flags: %x", flags);
+        WARN("Unsupported seccomp flags: %x", flags);
     }
 
     if (g_filter_instructions.size() - g_filter_index < 4096) {
