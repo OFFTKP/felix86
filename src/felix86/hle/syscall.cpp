@@ -937,8 +937,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
             break;
         }
         case SECCOMP_SET_MODE_FILTER: {
-            Seccomp::setFilter(arg2, (void*)arg3, 0);
-            result = -EINVAL;
+            if (!Seccomp::setFilter(arg2, (void*)arg3, 0)) {
+                WARN("Seccomp::setFilter failed");
+                result = -EINVAL;
+            } else {
+                result = 0;
+            }
             break;
         }
         default: {
@@ -1293,9 +1297,17 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         }
         case PR_SET_SECCOMP:
         case PR_GET_SECCOMP: {
-            WARN("prctl(SECCOMP) not implemented");
-            Seccomp::setFilter(0, (void*)arg3, 0);
-            result = -EINVAL;
+            if (option == PR_SET_SECCOMP && arg2 == SECCOMP_MODE_FILTER) {
+                if (!Seccomp::setFilter(0, (void*)arg3, 0)) {
+                    WARN("Seccomp::setFilter failed");
+                    result = -EINVAL;
+                } else {
+                    result = 0;
+                }
+            } else {
+                WARN("prctl(SECCOMP, %d) not implemented", arg2);
+                result = -EINVAL;
+            }
             break;
         }
         default: {

@@ -1,11 +1,16 @@
+#include <csignal>
 #include <cstddef>
 #include <linux/audit.h>
 #include <linux/bpf_common.h>
+#include <linux/seccomp.h>
+#include <unistd.h>
 #include "biscuit/assembler.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
+#include "felix86/common/utility.hpp"
 #include "felix86/hle/seccomp.hpp"
+#include "felix86/hle/syscall.hpp"
 #include "felix86/v2/recompiler.hpp"
 
 static u64 g_filter_index = 0;
@@ -36,10 +41,21 @@ struct BPFJit {
 
     void compileProgram(const x64_sock_fprog* program) {
         ASSERT(!g_mode32);
+        if (program->len == 0) {
+            WARN("seccomp program len == 0?");
+            return;
+        }
+        labels.resize(program->len);
         prologue();
         for (int i = 0; i < program->len; i++) {
-            compileInstruction(program->array[i]);
+            compileInstruction(program->array[i], i);
         }
+        // Code did not return and led here
+        as.LI(x1, (u64)felix86_crash_and_burn);
+        as.JALR(x1);
+        as.C_UNDEF();
+        as.C_UNDEF();
+        as.Bind(&end_of_program);
         epilogue();
     }
 
@@ -55,12 +71,14 @@ private:
     BPFJit(BPFJit&&) = delete;
     BPFJit& operator=(BPFJit&&) = delete;
     void prologue();
-    void compileInstruction(const x64_sock_filter& instruction);
+    void compileInstruction(const x64_sock_filter& instruction, int i);
     void printInstruction(const x64_sock_filter& instruction);
     void epilogue();
 
     Assembler& as;
     u64 rip;
+    std::vector<Label> labels;
+    Label end_of_program;
 };
 
 // Uses a specific convention to match the scratch registers in the felix86 recompiler:
@@ -72,31 +90,31 @@ constexpr inline auto X = x28;
 constexpr inline auto A = x29;
 constexpr inline auto temp = x30;
 constexpr inline auto pointer = x31;
-void BPFJit::compileInstruction(const x64_sock_filter& instruction) {
-    static_assert(Recompiler::isScratch(x28));
-    static_assert(Recompiler::isScratch(x29));
-    static_assert(Recompiler::isScratch(x30));
-    static_assert(Recompiler::isScratch(x31));
+static_assert(Recompiler::isScratch(x28));
+static_assert(Recompiler::isScratch(x29));
+static_assert(Recompiler::isScratch(x30));
+static_assert(Recompiler::isScratch(x31));
+
+void BPFJit::compileInstruction(const x64_sock_filter& instruction, int index) {
+    Label& label = labels[index];
+    as.Bind(&label);
     u16 code = instruction.code;
 #define SRC() (BPF_SRC(code) == BPF_K ? temp : X)
     switch (BPF_CLASS(code)) {
     case BPF_LD: {
         ASSERT(BPF_SIZE(code) == BPF_W);
         switch (BPF_MODE(code)) {
-        case BPF_IMM: {
-            break;
-        }
         case BPF_ABS: {
+            u32 offset = instruction.k;
+            ASSERT(offset < sizeof(x64_seccomp_data));
+            as.LWU(A, offset, pointer);
             break;
         }
-        case BPF_LEN: {
-            break;
-        }
-        case BPF_MEM: {
-            break;
-        }
+        case BPF_IMM:
+        case BPF_LEN:
+        case BPF_MEM:
         default: {
-            ERROR("Bad BPF mode: %x", BPF_MODE(code));
+            ERROR("Bad BPF mode: %x during BPF_LD", BPF_MODE(code));
             break;
         }
         }
@@ -158,6 +176,103 @@ void BPFJit::compileInstruction(const x64_sock_filter& instruction) {
             break;
         }
         }
+        break;
+    }
+    case BPF_JMP: {
+        Label& jump_true = labels[index + 1 + instruction.jt];
+        Label& jump_false = labels[index + 1 + instruction.jf];
+        if (BPF_SRC(code) == BPF_K) {
+            as.LI(temp, instruction.k);
+        }
+        switch (BPF_OP(code)) {
+        case BPF_JA: {
+            as.J(&jump_true);
+            break;
+        }
+        case BPF_JEQ: {
+            as.BEQ(A, SRC(), &jump_true);
+            if (instruction.jf != 0) {
+                as.J(&jump_false);
+            }
+            break;
+        }
+        case BPF_JGT: {
+            as.BGT(A, SRC(), &jump_true);
+            if (instruction.jf != 0) {
+                as.J(&jump_false);
+            }
+            break;
+        }
+        case BPF_JGE: {
+            as.BGE(A, SRC(), &jump_true);
+            if (instruction.jf != 0) {
+                as.J(&jump_false);
+            }
+            break;
+        }
+        case BPF_JSET: {
+            as.AND(temp, A, SRC());
+            as.BNEZ(temp, &jump_true);
+            if (instruction.jf != 0) {
+                as.J(&jump_false);
+            }
+            break;
+        }
+        default: {
+            ERROR("Bad BPF jump op: %x", BPF_OP(code));
+        }
+        }
+        break;
+    }
+    case BPF_RET: {
+        if (BPF_SRC(code) == BPF_K) {
+            switch (instruction.k) {
+            case SECCOMP_RET_KILL_PROCESS: {
+                as.LI(a7, felix86_riscv64_kill);
+                as.LI(a0, getpid());
+                as.LI(a1, SIGKILL);
+                as.ECALL();
+                as.LI(x1, (u64)felix86_crash_and_burn);
+                as.JALR(x1);
+                as.C_UNDEF();
+                as.C_UNDEF();
+                break;
+            }
+            case SECCOMP_RET_KILL_THREAD: {
+                as.LI(a7, felix86_riscv64_tgkill);
+                as.LI(a0, getpid());
+                as.LI(a1, gettid());
+                as.LI(a2, SIGKILL);
+                as.ECALL();
+                as.LI(x1, (u64)felix86_crash_and_burn);
+                as.JALR(x1);
+                as.C_UNDEF();
+                as.C_UNDEF();
+                break;
+            }
+            case SECCOMP_RET_LOG: {
+                WARN("SECCOMP_RET_LOG, treating as SECCOMP_RET_ALLOW");
+                [[fallthrough]];
+            }
+            case SECCOMP_RET_ALLOW: {
+                as.J(&end_of_program);
+                break;
+            }
+            default: {
+                WARN("Unknown RET value: %x", instruction.k);
+                as.C_UNDEF();
+                as.C_UNDEF();
+                break;
+            }
+            }
+        } else {
+            ERROR("Ret with SRC=X is unsupported");
+        }
+        break;
+    }
+    default: {
+        ERROR("Bad BPF class: %x", BPF_CLASS(code));
+        break;
     }
     }
 #undef SRC
@@ -381,7 +496,22 @@ bool Seccomp::setFilter(u32 flags, void* args, u64 rip) {
 
     u8* pointer = g_filter_instructions.data() + g_filter_index;
     Assembler as(pointer, g_filter_instructions.size() - g_filter_index);
+    u64 start = (u64)as.GetCursorPointer();
     BPFJit jit(as, rip);
-    jit.printProgram((const x64_sock_fprog*)args);
+    jit.compileProgram((const x64_sock_fprog*)args);
+    u64 here = (u64)as.GetCursorPointer();
+    u64 size = here - start;
+    ASSERT(size % 4 == 0);
+    g_filter_index += size;
     return true;
+}
+
+void Seccomp::emitFilters(biscuit::Assembler& as) {
+    for (u64 i = 0; i < g_filter_index; i += 4) {
+        as.GetCodeBuffer().Emit32(*(u32*)(g_filter_instructions.data() + i));
+    }
+}
+
+bool Seccomp::hasFilters() {
+    return g_filter_index != 0;
 }

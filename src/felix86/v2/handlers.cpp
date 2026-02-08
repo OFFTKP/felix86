@@ -6,7 +6,7 @@
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
-#include "felix86/emulator.hpp"
+#include "felix86/hle/seccomp.hpp"
 #include "felix86/hle/thunks.hpp"
 #include "felix86/v2/handlers.hpp"
 #include "felix86/v2/recompiler.hpp"
@@ -4042,6 +4042,15 @@ FAST_HANDLE(CPUID) {
 }
 
 FAST_HANDLE(SYSCALL) {
+    if (Seccomp::hasFilters()) {
+        if (g_mode32) {
+            ERROR("Seccomp during 32-bit program");
+        }
+
+        // Copy the filters over at the start of the syscall
+        Seccomp::emitFilters(as);
+    }
+
     if (!g_config.strace && g_config.inline_syscalls) {
         bool inlined = rec.tryInlineSyscall();
         if (inlined) {
