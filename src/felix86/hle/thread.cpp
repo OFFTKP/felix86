@@ -264,8 +264,6 @@ long VForkMe(CloneArgs& args) {
     int pipes[2];
     ASSERT(pipe2(pipes, O_CLOEXEC) != -1);
 
-    std::atomic_flag pidfd_done = {ATOMIC_FLAG_INIT};
-
     long result = fork();
 
     if (result == 0) {
@@ -293,13 +291,15 @@ long VForkMe(CloneArgs& args) {
             WARN("vfork giving us child tid?");
         }
 
-        // Spin until pidfd_open finishes on parent to avoid a race
-        while (pidfd_done.test() == false)
+        // Wait for pidfd_open to finish
+        pollfd pollfd{};
+        pollfd.fd = pipes[0];
+        pollfd.events = POLLIN | POLLOUT | POLLRDHUP | POLLERR | POLLHUP | POLLNVAL;
+        sigset_t mask{};
+        sigfillset(&mask);
+        while (ppoll(&pollfd, 1, nullptr, &mask) == -1 && errno == EINTR)
             ;
     } else {
-        // Close the write end of the pipe.
-        close(pipes[1]);
-
         if (args.guest_flags & CLONE_PIDFD) {
             ASSERT(!(args.guest_flags & CLONE_PARENT_SETTID));
             if (!args.parent_tid) {
@@ -310,7 +310,9 @@ long VForkMe(CloneArgs& args) {
                 *args.parent_tid = fd;
             }
         }
-        pidfd_done.test_and_set();
+
+        // Close the write end of the pipe.
+        close(pipes[1]);
 
         pollfd pollfd{};
         pollfd.fd = pipes[0];
