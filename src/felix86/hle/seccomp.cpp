@@ -368,6 +368,11 @@ bool Seccomp::setFilter(u32 flags, void* args, u64 rip) {
         return false;
     }
 
+    if (((x64_sock_fprog*)args)->array == nullptr) {
+        WARN("args->array is null during seccomp");
+        return false;
+    }
+
     if (g_filter_instructions.size() - g_filter_index < 4096) {
         g_filter_instructions.resize(g_filter_instructions.size() + 4096);
     }
