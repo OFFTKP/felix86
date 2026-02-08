@@ -504,6 +504,7 @@ bool Seccomp::setFilter(u32 flags, void* args, u64 rip) {
     u64 size = here - start;
     ASSERT(size % 4 == 0);
     g_filter_index += size;
+    WARN("Seccomp filter installed");
     return true;
 }
 
