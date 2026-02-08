@@ -723,6 +723,11 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = SYSCALL(ftruncate, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
     }
+    case felix86_riscv64_truncate: {
+        SignalGuard guard;
+        result = Filesystem::Truncate((char*)arg1, arg2);
+        break;
+    }
     case felix86_riscv64_read: {
         result = SYSCALL(read, arg1, arg2, arg3, arg4, arg5, arg6);
         break;
