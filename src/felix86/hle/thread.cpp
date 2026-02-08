@@ -181,6 +181,10 @@ long CloneMe(CloneArgs& host_clone_args) {
     ASSERT(!(host_clone_args.guest_flags & CLONE_VFORK)); // should be handled in a vfork handler
     void* host_stack = malloc(1024 * 1024);
 
+    if (host_clone_args.guest_flags & CLONE_PIDFD) {
+        ERROR("CLONE_PIDFD in CloneMe is not handled");
+    }
+
     // We use this "tid" to check that the cloned process has finished
     pid_t clone_tid = -1;
 
