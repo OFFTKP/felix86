@@ -9995,35 +9995,25 @@ FAST_HANDLE(AESENCLAST) {
 }
 
 FAST_HANDLE(AESDEC) {
-    // AESDEC does InvMixColumns then AddRoundKey, while VAESDM.VV does AddRoundKey then InvMixColumns
-    // Applying MixColumns to the input key then running VAESDM.VV matches the behavior for math reasons.
-    // There's no instruction to apply MixColumns, but there's one that applies InverseMixColumns, which can be used
-    // three times in a row to apply MixColumns
-    if (Extensions::Zvkned && Extensions::Zknd) {
+    // AESDEC and VAESDM.VV differ slightly, with AESDEC applying InvMixColumns before AddRoundKey
+    // We use VAESDM.VV with a constant that produces all zeroes in `sb`, such that `sb^rkey == rkey`
+    // This way, VAESDM.VV becomes an isolated InvMixColumns. We can then apply the first part of the AES round with
+    // VAESDF.VV, apply the InvMixColumns with the VAESDM.VV, then AddRoundKey manually.
+    if (Extensions::Zvkned) {
         WARN_ONCE("This program uses AESDEC");
-        biscuit::Vec slide = rec.scratchVec();
+        u64 constant = 0x63636363;
         biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
-        biscuit::Vec temp = rec.scratchVec();
-        biscuit::Vec mixed_key = rec.scratchVec();
-        biscuit::GPR low = rec.scratch();
-        biscuit::GPR high = rec.scratch();
-        biscuit::GPR low_mix = rec.scratch();
-        biscuit::GPR high_mix = rec.scratch();
-        rec.setVectorState(SEW::E64, 2);
-        as.VSLIDEDOWN(slide, src, 1);
-        as.VMV_XS(low, src);
-        as.VMV_XS(high, slide);
-        as.AES64IM(low_mix, low);
-        as.AES64IM(low_mix, low_mix);
-        as.AES64IM(low_mix, low_mix);
-        as.AES64IM(high_mix, high);
-        as.AES64IM(high_mix, high_mix);
-        as.AES64IM(high_mix, high_mix);
-        as.VMV_SX(temp, high_mix);
-        as.VSLIDE1UP(mixed_key, temp, low_mix);
+        biscuit::Vec vtemp = rec.scratchVec();
+        biscuit::Vec zeroes = rec.scratchVec();
+        biscuit::GPR temp = rec.scratch();
         rec.setVectorState(SEW::E32, 4);
-        as.VAESDM_VV(dst, mixed_key);
+        as.VXOR(zeroes, zeroes, zeroes);
+        as.VAESDF_VV(dst, zeroes);
+        as.LI(temp, constant);
+        as.VMV(vtemp, temp);
+        as.VAESDM_VV(vtemp, dst);
+        as.VXOR(dst, vtemp, src);
         rec.setVec(&operands[0], dst);
     } else {
         ERROR("Hit AESDEC instruction but system does not support Zvkned or Zknd extension");
@@ -10044,25 +10034,17 @@ FAST_HANDLE(AESDECLAST) {
 }
 
 FAST_HANDLE(AESIMC) {
-    if (Extensions::Zknd) {
+    if (Extensions::Zvkned) {
         WARN_ONCE("This program uses AESIMC");
-        biscuit::Vec slide = rec.scratchVec();
+        biscuit::GPR temp = rec.scratch();
+        biscuit::Vec dst = rec.getVec(&operands[0]);
         biscuit::Vec src = rec.getVec(&operands[1]);
-        biscuit::Vec temp = rec.scratchVec();
-        biscuit::Vec mixed_key = rec.scratchVec();
-        biscuit::GPR low = rec.scratch();
-        biscuit::GPR high = rec.scratch();
-        biscuit::GPR low_mix = rec.scratch();
-        biscuit::GPR high_mix = rec.scratch();
-        rec.setVectorState(SEW::E64, 2);
-        as.VSLIDEDOWN(slide, src, 1);
-        as.VMV_XS(low, src);
-        as.VMV_XS(high, slide);
-        as.AES64IM(low_mix, low);
-        as.AES64IM(high_mix, high);
-        as.VMV_SX(temp, high_mix);
-        as.VSLIDE1UP(mixed_key, temp, low_mix);
-        rec.setVec(&operands[0], mixed_key);
+        rec.setVectorState(SEW::E32, 4);
+        u64 constant = 0x63636363; // see AESDEC
+        as.LI(temp, constant);
+        as.VMV(dst, temp);
+        as.VAESDM_VV(dst, src);
+        rec.setVec(&operands[0], dst);
     } else {
         ERROR("Hit AESIMC instruction but system does not support Zknd extension");
     }
