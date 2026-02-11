@@ -10016,7 +10016,7 @@ FAST_HANDLE(AESDEC) {
         as.VXOR(dst, vtemp, src);
         rec.setVec(&operands[0], dst);
     } else {
-        ERROR("Hit AESDEC instruction but system does not support Zvkned or Zknd extension");
+        ERROR("Hit AESDEC instruction but system does not support Zvkned extension");
     }
 }
 
@@ -10046,7 +10046,7 @@ FAST_HANDLE(AESIMC) {
         as.VAESDM_VV(dst, src);
         rec.setVec(&operands[0], dst);
     } else {
-        ERROR("Hit AESIMC instruction but system does not support Zknd extension");
+        ERROR("Hit AESIMC instruction but system does not support Zvkned extension");
     }
 }
 

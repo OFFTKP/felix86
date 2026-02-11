@@ -141,7 +141,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
             result.ecx |= 1 << 1;
         }
 
-        if (!Extensions::Zknd || !Extensions::Zvkned) {
+        if (!Extensions::Zvkned) {
             result.ecx &= ~(1 << 25); // Disable AES
         }
     }
