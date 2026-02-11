@@ -22,7 +22,7 @@ bash <(curl -s https://install.felix86.com)
 欢迎加入我们的**Discord服务器**：[https://discord.gg/TgBxgFwByU](https://discord.gg/TgBxgFwByU)
 
 ## 核心特性
-- 准时 (JIT) 重编译器
+- 即时 (JIT) 重编译器
 - 采用RISC-V向量扩展实现SSE 4.2级指令集
 - 支持`B`、`Zicond`、`Zacas`等多项标准扩展
 - 兼容各类自定义扩展
