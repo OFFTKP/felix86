@@ -1217,7 +1217,7 @@
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.I         v2, 0x0(0)",
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
-            "VMV1R.V         v3, v19",
+            "VMV1R.V         v3, v20",
             "VRGATHER.VV     v3, v20, v2, none",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VMV.V.V         v19, v3"
@@ -1245,7 +1245,7 @@
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.I         v3, 0x0(0)",
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
-            "VMV1R.V         v4, v19",
+            "VMV1R.V         v4, v2",
             "VRGATHER.VV     v4, v2, v3, none",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VMV.V.V         v19, v4"
@@ -1263,7 +1263,7 @@
             "SLLI            ra, ra, 0x10(16)",
             "VMV.V.X         v2, ra",
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
-            "VMV1R.V         v3, v19",
+            "VMV1R.V         v3, v20",
             "VRGATHER.VV     v3, v20, v2, none",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VMV.V.V         v19, v3"
@@ -1301,7 +1301,7 @@
             "SLLI            ra, ra, 0x10(16)",
             "VMV.V.X         v3, ra",
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
-            "VMV1R.V         v4, v19",
+            "VMV1R.V         v4, v2",
             "VRGATHER.VV     v4, v2, v3, none",
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VMV.V.V         v19, v4"

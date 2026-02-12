@@ -6317,7 +6317,7 @@ FAST_HANDLE(PSHUFLW) {
     rec.setVectorState(SEW::E64, 2);
     rec.vsplat(iota, low);
     rec.setVectorState(SEW::E16, 4);
-    as.VMV1R(result, dst);
+    as.VMV1R(result, src);
     as.VRGATHER(result, src, iota);
 
     rec.setVec(&operands[0], result);
