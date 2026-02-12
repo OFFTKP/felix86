@@ -1212,114 +1212,99 @@
         "disassembly": "pshufd xmm3, [rdi], 0xE4"
     },
     "f20f70dc00": {
-        "instruction_count": 10,
+        "instruction_count": 7,
         "expected_asm": [
-            "ADDIW           ra, zero, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VID.V           v2, none",
-            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDE1UP.VX    v3, v2, ra, none",
-            "VMV.V.I         v4, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VRGATHER.VV     v4, v20, v3, none",
-            "VMV.V.V         v19, v4"
+            "VMV.V.I         v2, 0x0(0)",
+            "VSETIVLI        zero, 4, e16, m1, tu, mu",
+            "VMV1R.V         v3, v19",
+            "VRGATHER.VV     v3, v20, v2, none",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMV.V.V         v19, v3"
         ],
         "disassembly": "pshuflw xmm3, xmm4, 0x00"
     },
     "f20f70d200": {
-        "instruction_count": 10,
+        "instruction_count": 7,
         "expected_asm": [
-            "ADDIW           ra, zero, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VID.V           v2, none",
-            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDE1UP.VX    v3, v2, ra, none",
-            "VMV.V.I         v4, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VRGATHER.VV     v4, v18, v3, none",
-            "VMV.V.V         v18, v4"
+            "VMV.V.I         v2, 0x0(0)",
+            "VSETIVLI        zero, 4, e16, m1, tu, mu",
+            "VMV1R.V         v3, v18",
+            "VRGATHER.VV     v3, v18, v2, none",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMV.V.V         v18, v3"
         ],
         "disassembly": "pshuflw xmm2, xmm2, 0x00"
     },
     "f20f701f00": {
-        "instruction_count": 12,
+        "instruction_count": 9,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v2, a0, none, 1",
-            "ADDIW           ra, zero, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VID.V           v3, none",
-            "VSLIDEDOWN.VI   v3, v3, 0x4(4), none",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDE1UP.VX    v4, v3, ra, none",
-            "VMV.V.I         v5, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VRGATHER.VV     v5, v2, v4, none",
-            "VMV.V.V         v19, v5"
+            "VMV.V.I         v3, 0x0(0)",
+            "VSETIVLI        zero, 4, e16, m1, tu, mu",
+            "VMV1R.V         v4, v19",
+            "VRGATHER.VV     v4, v2, v3, none",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMV.V.V         v19, v4"
         ],
         "disassembly": "pshuflw xmm3, [rdi], 0x00"
     },
     "f20f70dce4": {
-        "instruction_count": 14,
+        "instruction_count": 12,
         "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "LUI             ra, 0x18(24)",
             "ADDIW           ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x11(17)",
             "ADDI            ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x10(16)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VID.V           v2, none",
-            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDE1UP.VX    v3, v2, ra, none",
-            "VMV.V.I         v4, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VRGATHER.VV     v4, v20, v3, none",
-            "VMV.V.V         v19, v4"
+            "VMV.V.X         v2, ra",
+            "VSETIVLI        zero, 4, e16, m1, tu, mu",
+            "VMV1R.V         v3, v19",
+            "VRGATHER.VV     v3, v20, v2, none",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMV.V.V         v19, v3"
         ],
         "disassembly": "pshuflw xmm3, xmm4, 0xE4"
     },
     "f20f70d2e4": {
-        "instruction_count": 14,
+        "instruction_count": 12,
         "expected_asm": [
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "LUI             ra, 0x18(24)",
             "ADDIW           ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x11(17)",
             "ADDI            ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x10(16)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VID.V           v2, none",
-            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDE1UP.VX    v3, v2, ra, none",
-            "VMV.V.I         v4, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VRGATHER.VV     v4, v18, v3, none",
-            "VMV.V.V         v18, v4"
+            "VMV.V.X         v2, ra",
+            "VSETIVLI        zero, 4, e16, m1, tu, mu",
+            "VMV1R.V         v3, v18",
+            "VRGATHER.VV     v3, v18, v2, none",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMV.V.V         v18, v3"
         ],
         "disassembly": "pshuflw xmm2, xmm2, 0xE4"
     },
     "f20f701fe4": {
-        "instruction_count": 16,
+        "instruction_count": 14,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
             "VLE8.V          v2, a0, none, 1",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "LUI             ra, 0x18(24)",
             "ADDIW           ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x11(17)",
             "ADDI            ra, ra, 0x1(1)",
             "SLLI            ra, ra, 0x10(16)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VID.V           v3, none",
-            "VSLIDEDOWN.VI   v3, v3, 0x4(4), none",
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDE1UP.VX    v4, v3, ra, none",
-            "VMV.V.I         v5, 0x0(0)",
-            "VSETIVLI        zero, 8, e16, m1, tu, mu",
-            "VRGATHER.VV     v5, v2, v4, none",
-            "VMV.V.V         v19, v5"
+            "VMV.V.X         v3, ra",
+            "VSETIVLI        zero, 4, e16, m1, tu, mu",
+            "VMV1R.V         v4, v19",
+            "VRGATHER.VV     v4, v2, v3, none",
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VMV.V.V         v19, v4"
         ],
         "disassembly": "pshuflw xmm3, [rdi], 0xE4"
     },

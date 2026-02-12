@@ -6309,22 +6309,16 @@ FAST_HANDLE(PSHUFLW) {
     u64 el3 = (imm >> 6) & 0b11;
     u64 low = el0 | el1 << 16 | el2 << 32 | el3 << 48;
 
+    biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec iota = rec.scratchVec();
-    biscuit::Vec iota2 = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
-    biscuit::GPR low_gpr = rec.scratch();
 
-    as.LI(low_gpr, low);
-    rec.setVectorState(SEW::E16, 8);
-    // Slide down 4 words, so then the register looks like 7 6 5 4, then we can slide up the other 4 elements
-    as.VID(iota);
-    as.VSLIDEDOWN(iota, iota, 4);
     rec.setVectorState(SEW::E64, 2);
-    as.VSLIDE1UP(iota2, iota, low_gpr);
-    as.VMV(result, 0);
-    rec.setVectorState(SEW::E16, 8);
-    as.VRGATHER(result, src, iota2);
+    rec.vsplat(iota, low);
+    rec.setVectorState(SEW::E16, 4);
+    as.VMV1R(result, dst);
+    as.VRGATHER(result, src, iota);
 
     rec.setVec(&operands[0], result);
 }

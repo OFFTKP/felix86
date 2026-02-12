@@ -193,7 +193,7 @@
             "LD              ra, s1, 0x0(0)",
             "ADDI            s1, s1, 0x8(8)",
             "ADDI            gp, ra, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)"
         ]
@@ -722,7 +722,7 @@
             "ADDIW           t1, zero, 0x1(1)",
             "SB              t1, s11, 0x231(561)",
             "ADDI            a0, sp, 0x0(0)",
-            "LD              t4, s11, 0x490(1168)",
+            "LD              t4, s11, 0x498(1176)",
             "JALR            ra, t4, 0x0(0)"
         ]
     },
@@ -886,7 +886,7 @@
             "SLT             t3, ra, a3",
             "XOR             s9, s9, t3",
             "ADDI            gp, t0, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)"
         ]
@@ -2447,7 +2447,7 @@
             "LD              ra, s1, 0x0(0)",
             "ADDI            s1, s1, 0x8(8)",
             "ADDI            gp, ra, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)"
         ]
@@ -6312,14 +6312,14 @@
             "ADDIW           t1, t1, 0xfffffc34(-972)",
             "ADD             gp, gp, t1",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)",
             "LUI             t1, 0xfffb09a1(-325215)",
             "ADDIW           t1, t1, 0xffffffb3(-77)",
             "ADD             gp, gp, t1",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)"
         ]
@@ -6437,12 +6437,12 @@
             "BNE             zero, ra, 0x18(24)",
             "ADDI            gp, gp, 0x74(116)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)",
             "ADDI            gp, gp, 0x8b(139)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)"
         ]
@@ -6683,11 +6683,11 @@
             "BNE             zero, ra, 0x18(24)",
             "ADDI            gp, gp, 0x16f(367)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)"
         ]
@@ -6916,11 +6916,11 @@
             "BNE             zero, ra, 0x18(24)",
             "ADDI            gp, gp, 0x160(352)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)",
             "AUIPC           t5, 0x0(0)",
-            "LD              t6, s11, 0x498(1176)",
+            "LD              t6, s11, 0x4a0(1184)",
             "LD              t6, t6, 0x88(136)",
             "JALR            zero, t6, 0x0(0)"
         ]
