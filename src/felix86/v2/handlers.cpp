@@ -6309,7 +6309,6 @@ FAST_HANDLE(PSHUFLW) {
     u64 el3 = (imm >> 6) & 0b11;
     u64 low = el0 | el1 << 16 | el2 << 32 | el3 << 48;
 
-    biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec iota = rec.scratchVec();
     biscuit::Vec result = rec.scratchVec();
