@@ -5437,9 +5437,13 @@ FAST_HANDLE(PACKSSWB) {
     biscuit::Vec temp = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E8, 16);
+    rec.setVectorState(SEW::E8, is_mmx ? 16 : 32, Extensions::VLEN >= 256 ? LMUL::M1 : LMUL::M2);
     as.VMV1R(temp, dst); // TODO: can be optimized away by sliding in dst if dst == src and signal rewrite
-    as.VSLIDEUP(temp, src, is_mmx ? 4 : 8);
+    if (Extensions::VLEN >= 256) {
+        as.VSLIDEUP(temp, src, is_mmx ? 8 : 16);
+    } else {
+        as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
+    }
     as.VNCLIP(dst, temp, 0);
     rec.setVec(&operands[0], dst);
 }
@@ -5449,9 +5453,13 @@ FAST_HANDLE(PACKSSDW) {
     biscuit::Vec temp = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E16, 8);
+    rec.setVectorState(SEW::E16, is_mmx ? 8 : 16);
     as.VMV1R(temp, dst); // TODO: can be optimized away by sliding in dst if dst == src and signal rewrite
-    as.VSLIDEUP(temp, src, is_mmx ? 2 : 4);
+    if (Extensions::VLEN >= 256) {
+        as.VSLIDEUP(temp, src, is_mmx ? 4 : 8);
+    } else {
+        as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
+    }
     as.VNCLIP(dst, temp, 0);
     rec.setVec(&operands[0], dst);
 }
