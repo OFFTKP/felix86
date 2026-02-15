@@ -5418,7 +5418,7 @@ FAST_HANDLE(PACKUSWB) {
         as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
     }
     as.VMAX(temp2, temp, x0);
-    rec.setVectorState(SEW::E8, is_mmx ? 16 : 32);
+    rec.setVectorState(SEW::E8, is_mmx ? 8 : 16);
     as.VNCLIPU(dst, temp2, 0);
     rec.setVec(&operands[0], dst);
 }
@@ -5437,7 +5437,7 @@ FAST_HANDLE(PACKUSDW) {
         as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
     }
     as.VMAX(temp2, temp, x0);
-    rec.setVectorState(SEW::E16, is_mmx ? 8 : 16);
+    rec.setVectorState(SEW::E16, is_mmx ? 4 : 8);
     as.VNCLIPU(dst, temp2, 0);
     rec.setVec(&operands[0], dst);
 }
@@ -5454,7 +5454,7 @@ FAST_HANDLE(PACKSSWB) {
     } else {
         as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
     }
-    rec.setVectorState(SEW::E8, is_mmx ? 16 : 32);
+    rec.setVectorState(SEW::E8, is_mmx ? 8 : 16);
     as.VNCLIP(dst, temp, 0);
     rec.setVec(&operands[0], dst);
 }
@@ -5471,7 +5471,7 @@ FAST_HANDLE(PACKSSDW) {
     } else {
         as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
     }
-    rec.setVectorState(SEW::E16, is_mmx ? 8 : 16);
+    rec.setVectorState(SEW::E16, is_mmx ? 4 : 8);
     as.VNCLIP(dst, temp, 0);
     rec.setVec(&operands[0], dst);
 }
