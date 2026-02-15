@@ -5410,14 +5410,15 @@ FAST_HANDLE(PACKUSWB) {
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
 
-    rec.setVectorState(SEW::E8, 32);
+    rec.setVectorState(SEW::E8, is_mmx ? 16 : 32, Extensions::VLEN >= 256 ? LMUL::M1 : LMUL::M2);
     as.VMV1R(temp, dst); // TODO: can be optimized away by sliding in dst if dst == src and signal rewrite
-    if (Extensions::VLEN >= 256) {
+    if (Extensions::VLEN >= 256 || is_mmx) {
         as.VSLIDEUP(temp, src, is_mmx ? 8 : 16);
     } else {
         as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
     }
     as.VMAX(temp2, temp, x0);
+    rec.setVectorState(SEW::E8, is_mmx ? 16 : 32);
     as.VNCLIPU(dst, temp2, 0);
     rec.setVec(&operands[0], dst);
 }
@@ -5428,14 +5429,15 @@ FAST_HANDLE(PACKUSDW) {
     biscuit::Vec temp2 = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E16, 16);
+    rec.setVectorState(SEW::E16, is_mmx ? 8 : 16, Extensions::VLEN >= 256 ? LMUL::M1 : LMUL::M2);
     as.VMV1R(temp, dst); // TODO: can be optimized away by sliding in dst if dst == src and signal rewrite
-    if (Extensions::VLEN >= 256) {
+    if (Extensions::VLEN >= 256 || is_mmx) {
         as.VSLIDEUP(temp, src, is_mmx ? 4 : 8);
     } else {
         as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
     }
     as.VMAX(temp2, temp, x0);
+    rec.setVectorState(SEW::E16, is_mmx ? 8 : 16);
     as.VNCLIPU(dst, temp2, 0);
     rec.setVec(&operands[0], dst);
 }
@@ -5447,11 +5449,12 @@ FAST_HANDLE(PACKSSWB) {
     biscuit::Vec src = rec.getVec(&operands[1]);
     rec.setVectorState(SEW::E8, is_mmx ? 16 : 32, Extensions::VLEN >= 256 ? LMUL::M1 : LMUL::M2);
     as.VMV1R(temp, dst); // TODO: can be optimized away by sliding in dst if dst == src and signal rewrite
-    if (Extensions::VLEN >= 256) {
+    if (Extensions::VLEN >= 256 || is_mmx) {
         as.VSLIDEUP(temp, src, is_mmx ? 8 : 16);
     } else {
         as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
     }
+    rec.setVectorState(SEW::E8, is_mmx ? 16 : 32);
     as.VNCLIP(dst, temp, 0);
     rec.setVec(&operands[0], dst);
 }
@@ -5461,13 +5464,14 @@ FAST_HANDLE(PACKSSDW) {
     biscuit::Vec temp = rec.scratchVecM2();
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
-    rec.setVectorState(SEW::E16, is_mmx ? 8 : 16);
+    rec.setVectorState(SEW::E16, is_mmx ? 8 : 16, Extensions::VLEN >= 256 ? LMUL::M1 : LMUL::M2);
     as.VMV1R(temp, dst); // TODO: can be optimized away by sliding in dst if dst == src and signal rewrite
-    if (Extensions::VLEN >= 256) {
+    if (Extensions::VLEN >= 256 || is_mmx) {
         as.VSLIDEUP(temp, src, is_mmx ? 4 : 8);
     } else {
         as.VMV1R(biscuit::Vec(temp.Index() + 1), src);
     }
+    rec.setVectorState(SEW::E16, is_mmx ? 8 : 16);
     as.VNCLIP(dst, temp, 0);
     rec.setVec(&operands[0], dst);
 }
