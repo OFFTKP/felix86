@@ -1231,14 +1231,12 @@
         "disassembly": "movhps qword ptr [rdi], xmm3"
     },
     "0f161f": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v3, a0, none, 1",
+            "VLE8.V          v2, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEUP.VI     v2, v3, 0x1(1), none",
-            "VMV.V.I         v0, 0x2(2)",
-            "VMERGE.VVM      v19, v19, v2"
+            "VSLIDEUP.VI     v19, v2, 0x1(1), none"
         ],
         "disassembly": "movhps xmm3, [rdi]"
     },
@@ -1260,22 +1258,18 @@
         "disassembly": "movlhps xmm2, xmm2"
     },
     "0f12dc": {
-        "instruction_count": 4,
+        "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEDOWN.VI   v2, v20, 0x1(1), none",
-            "VMV.V.I         v0, 0x2(2)",
-            "VMERGE.VVM      v19, v2, v19"
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v19, v20, 0x1(1), none"
         ],
         "disassembly": "movhlps xmm3, xmm4"
     },
     "0f12d2": {
-        "instruction_count": 4,
+        "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEDOWN.VI   v2, v18, 0x1(1), none",
-            "VMV.V.I         v0, 0x2(2)",
-            "VMERGE.VVM      v18, v2, v18"
+            "VSETIVLI        zero, 1, e64, m1, tu, mu",
+            "VSLIDEDOWN.VI   v18, v18, 0x1(1), none"
         ],
         "disassembly": "movhlps xmm2, xmm2"
     },

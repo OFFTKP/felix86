@@ -2777,14 +2777,12 @@
         "disassembly": "movhpd [rdi], xmm3"
     },
     "660f161f": {
-        "instruction_count": 6,
+        "instruction_count": 4,
         "expected_asm": [
             "VSETIVLI        zero, 8, e8, m1, tu, mu",
-            "VLE8.V          v3, a0, none, 1",
+            "VLE8.V          v2, a0, none, 1",
             "VSETIVLI        zero, 2, e64, m1, tu, mu",
-            "VSLIDEUP.VI     v2, v3, 0x1(1), none",
-            "VMV.V.I         v0, 0x2(2)",
-            "VMERGE.VVM      v19, v19, v2"
+            "VSLIDEUP.VI     v19, v2, 0x1(1), none"
         ],
         "disassembly": "movhpd xmm3, [rdi]"
     },
