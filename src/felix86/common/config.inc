@@ -3,7 +3,7 @@ X(General, std::filesystem::path, rootfs_path, "", FELIX86_ROOTFS, "Set the root
 X(General, std::filesystem::path, thunks_path, "", FELIX86_THUNKS, "Set the thunk libraries path", false)
 X(General, std::string, enabled_thunks, "none", FELIX86_ENABLED_THUNKS, "Set the enabled thunks, possible choices: \"vk, glx, wayland, egl\" or \"all\"", false)
 // TODO: Migrate to std::vector<std::string> so we don't have to split using ;
-X(General, std::string, environment, "", FELIX86_ENVIRONMENT, "Environment variables, separated by ';', to pass to the guest program", false)
+X(General, std::vector<std::string>, environment, std::vector<std::string>(), FELIX86_ENVIRONMENT, "Environment variables, placed into a vector of strings.", false)
 X(General, std::string, host_environment, "", FELIX86_HOST_ENVIRONMENT, "Environment variables, separated by ';', to export in the host", false)
 X(General, bool, binfmt_misc_installed, false, FELIX86_BINFMT_MISC_INSTALLED, "Whether binfmt_misc is installed, do NOT change this manually unless if you know what you're doing -- install with `felix86 --binfmt-misc` instead", false)
 

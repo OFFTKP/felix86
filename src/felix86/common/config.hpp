@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include "felix86/common/types.hpp"
+#include <vector>
 
 struct Config {
 #define X(group, type, name, value, ...) type name = value;

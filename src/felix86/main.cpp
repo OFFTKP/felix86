@@ -595,7 +595,7 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state) {
         current_group = #group;                                                                                                                      \
         printf("\n[%s]\n", current_group.c_str());                                                                                                   \
     }                                                                                                                                                \
-    fmt::print("{} {} = {} (default: {}) -- Environment variable: {}\n", #type, #name, g_config.name, #def, #env);
+    fmt::print("{} {} = {} (default: {}) -- Environment variable: {}\n", #type, #name, g_config.environment.size(), #def, #env);
 #include "felix86/common/config.inc"
 #undef X
         exit(0);
@@ -712,8 +712,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (!g_config.environment.empty()) {
-            std::vector<std::string> envs = split_string(g_config.environment, ';');
-            for (const auto& env : envs) {
+            for (const auto& env : g_config.environment) {
                 if (!env.empty()) {
                     auto pos = env.find("=");
                     if (pos == std::string::npos) {

@@ -205,7 +205,7 @@ bool Config::initialize(bool ignore_envs) {
         // Enables Vulkan/Wayland thunking and sets environment variables to enable Zink
         Config zink_config{};
         zink_config.enabled_thunks = "vk,wl";
-        zink_config.environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
+        zink_config.environment = {"LIBGL_KOPPER_DRI2=1", "MESA_LOADER_DRIVER_OVERRIDE=zink"};
         // Set in host environment too for thunks
         zink_config.host_environment = "LIBGL_KOPPER_DRI2=1;MESA_LOADER_DRIVER_OVERRIDE=zink";
         Config::save(profiles_path / "zink.toml", zink_config, true);
@@ -262,6 +262,10 @@ void addValue(std::string& str, Type& value) {
         str += value.string();
     } else if constexpr (std::is_same_v<Type, std::string>) {
         str += value;
+    } 
+    else if constexpr (std::is_same_v<Type, std::vector<std::string>>){
+        auto parsed = toml::parse(str);
+        value.push_back(str);
     } else {
         static_assert(false);
     }
@@ -347,7 +351,20 @@ bool loadFromToml(const toml::value& toml, const char* group, const char* name, 
             } else if constexpr (std::is_same_v<Type, std::string>) {
                 value = value_toml.as_string();
                 return true;
-            } else {
+            } else if constexpr (std::is_same_v<Type, std::vector<std::string>>) {
+                if(!value_toml.is_array()){
+                    return false;
+                }
+                value.clear();
+                for(auto &element : value_toml.as_array()){
+                    if(!element.is_string()){
+                        return false;
+                    }
+                    value.push_back(element.as_string());
+                }
+                return true;
+            }
+            else {
                 static_assert(false);
             }
         }
@@ -369,7 +386,17 @@ bool loadFromEnv(Config& config, Type& value, const char* env) {
     } else if constexpr (std::is_same_v<Type, std::string>) {
         value = env;
         return true;
-    } else {
+    } else if constexpr (std::is_same_v<Type, std::vector<std::string>>) {
+        auto parsed = toml::parse(env);
+        for(auto &element : parsed.as_array()){
+            if(!parsed.is_array()){
+                return false;
+            }
+            value.push_back(element.as_string());
+        }
+        return true;
+    } 
+    else {
         static_assert(false);
     }
 
