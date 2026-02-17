@@ -100,6 +100,16 @@ std::string namify(const std::string& val) {
     return val;
 }
 
+template <>
+std::string namify(const std::vector<std::string>& val) {
+    if(val.empty()){
+        return "";
+    }
+    else{
+        return val[0];
+    }
+}
+
 bool Config::initialize(bool ignore_envs) {
     const std::filesystem::path config_dir = getConfigDir();
     if (config_dir.empty()) {
