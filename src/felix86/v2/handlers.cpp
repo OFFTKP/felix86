@@ -3918,23 +3918,28 @@ FAST_HANDLE(UNPCKLPS) {
 }
 
 FAST_HANDLE(UNPCKHPS) {
-    biscuit::Vec scratch = rec.scratchVec();
-    biscuit::Vec iota = rec.scratchVec();
+    biscuit::Vec wide1 = rec.scratchVecM2();
+    biscuit::Vec wide2 = rec.scratchVecM2();
+    biscuit::Vec result = rec.scratchVec();
     biscuit::Vec src1 = rec.getVec(&operands[0]);
     biscuit::Vec src2 = rec.getVec(&operands[1]);
 
-    rec.setVectorState(SEW::E32, 4);
-    as.VMV(scratch, 0);
-    as.VMV(v0, 0b0101);
-    as.VIOTA(iota, v0);
-    as.VADD(iota, iota, 2);
-    as.VRGATHER(scratch, src1, iota, VecMask::Yes);
-    as.VMV(v0, 0b1010);
-    as.VIOTA(iota, v0);
-    as.VADD(iota, iota, 2);
-    as.VRGATHER(scratch, src2, iota, VecMask::Yes);
+    // TODO: optimize for src1 == src2
+    rec.setVectorState(SEW::E32, 8);
+    as.VWADDU(wide1, src1, x0);
+    as.VWADDU(wide2, src2, x0);
+    if (Extensions::VLEN > 128) {
+        as.VSLIDEDOWN(wide1, wide1, 4);
+        as.VSLIDEDOWN(wide2, wide2, 3);
+        as.VOR(src1, wide1, wide2);
+    } else {
+        biscuit::Vec down1 = biscuit::Vec(wide1.Index() + 1);
+        biscuit::Vec down2 = biscuit::Vec(wide2.Index() + 1);
+        as.VSLIDE1UP(result, down2, x0);
+        as.VOR(src1, result, down1);
+    }
 
-    rec.setVec(&operands[0], scratch);
+    rec.setVec(&operands[0], src1);
 }
 
 FAST_HANDLE(UNPCKLPD) {

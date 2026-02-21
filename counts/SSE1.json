@@ -2130,55 +2130,40 @@
         "disassembly": "shufps xmm3, [rdi], 0xE4"
     },
     "0f15dc": {
-        "instruction_count": 11,
+        "instruction_count": 6,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VMV.V.I         v2, 0x0(0)",
-            "VMV.V.I         v0, 0x5(5)",
-            "VIOTA.M         v3, v0, none",
-            "VADD.VI         v3, v3, 0x2(2), none",
-            "VRGATHER.VV     v2, v19, v3, v0.t",
-            "VMV.V.I         v0, 0xa(10)",
-            "VIOTA.M         v3, v0, none",
-            "VADD.VI         v3, v3, 0x2(2), none",
-            "VRGATHER.VV     v2, v20, v3, v0.t",
-            "VMV.V.V         v19, v2"
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VWADDU.VX       v2, v19, zero, none",
+            "VWADDU.VX       v4, v20, zero, none",
+            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
+            "VSLIDEDOWN.VI   v4, v4, 0x3(3), none",
+            "VOR.VV          v19, v2, v4, none"
         ],
         "disassembly": "unpckhps xmm3, xmm4"
     },
     "0f15d2": {
-        "instruction_count": 11,
+        "instruction_count": 6,
         "expected_asm": [
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VMV.V.I         v2, 0x0(0)",
-            "VMV.V.I         v0, 0x5(5)",
-            "VIOTA.M         v3, v0, none",
-            "VADD.VI         v3, v3, 0x2(2), none",
-            "VRGATHER.VV     v2, v18, v3, v0.t",
-            "VMV.V.I         v0, 0xa(10)",
-            "VIOTA.M         v3, v0, none",
-            "VADD.VI         v3, v3, 0x2(2), none",
-            "VRGATHER.VV     v2, v18, v3, v0.t",
-            "VMV.V.V         v18, v2"
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VWADDU.VX       v2, v18, zero, none",
+            "VWADDU.VX       v4, v18, zero, none",
+            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
+            "VSLIDEDOWN.VI   v4, v4, 0x3(3), none",
+            "VOR.VV          v18, v2, v4, none"
         ],
         "disassembly": "unpckhps xmm2, xmm2"
     },
     "0f151f": {
-        "instruction_count": 13,
+        "instruction_count": 8,
         "expected_asm": [
             "VSETIVLI        zero, 16, e8, m1, tu, mu",
-            "VLE8.V          v4, a0, none, 1",
-            "VSETIVLI        zero, 4, e32, m1, tu, mu",
-            "VMV.V.I         v2, 0x0(0)",
-            "VMV.V.I         v0, 0x5(5)",
-            "VIOTA.M         v3, v0, none",
-            "VADD.VI         v3, v3, 0x2(2), none",
-            "VRGATHER.VV     v2, v19, v3, v0.t",
-            "VMV.V.I         v0, 0xa(10)",
-            "VIOTA.M         v3, v0, none",
-            "VADD.VI         v3, v3, 0x2(2), none",
-            "VRGATHER.VV     v2, v4, v3, v0.t",
-            "VMV.V.V         v19, v2"
+            "VLE8.V          v7, a0, none, 1",
+            "VSETIVLI        zero, 8, e32, m1, tu, mu",
+            "VWADDU.VX       v2, v19, zero, none",
+            "VWADDU.VX       v4, v7, zero, none",
+            "VSLIDEDOWN.VI   v2, v2, 0x4(4), none",
+            "VSLIDEDOWN.VI   v4, v4, 0x3(3), none",
+            "VOR.VV          v19, v2, v4, none"
         ],
         "disassembly": "unpckhps xmm3, [rdi]"
     },
