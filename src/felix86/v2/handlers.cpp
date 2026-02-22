@@ -3944,6 +3944,7 @@ FAST_HANDLE(UNPCKHPS) {
     rec.setVectorState(SEW::E32, 8);
     as.VWADDU(wide1, src1, x0);
     as.VWADDU(wide2, src2, x0);
+    rec.setVectorState(SEW::E32, 4);
     if (Extensions::VLEN > 128) {
         as.VSLIDEDOWN(wide1, wide1, 4);
         as.VSLIDEDOWN(wide2, wide2, 3);
@@ -3956,7 +3957,6 @@ FAST_HANDLE(UNPCKHPS) {
     }
 
     rec.setVec(&operands[0], src1);
-    rec.v0Modified();
 }
 
 FAST_HANDLE(UNPCKLPD) {
@@ -15824,7 +15824,7 @@ FAST_HANDLE(VPSRLDQ) {
     }
 }
 
-template<void (Assembler::*operation)(Vec, Vec, Vec, VecMask)>
+template <void (Assembler::*operation)(Vec, Vec, Vec, VecMask)>
 void VPSHIFTV(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, int vl) {
     biscuit::Vec dst = rec.scratchVec();
     biscuit::Vec data = rec.getVec(&operands[1]);
