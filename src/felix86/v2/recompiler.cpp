@@ -532,15 +532,14 @@ u64 Recompiler::compileSequence(u64 rip) {
     scanAhead(rip);
     BlockMetadata& block_meta = getBlockMetadata(rip);
 
+    // TODO: Put all this resetting functionality in a function
     resetX87();
-
     pushed_this_block = 0;
     current_block_metadata = &block_meta;
-    current_sew = SEW::E1024;
-    current_vlen = 0;
-    current_grouping = LMUL::M1;
+    resetVectorState();
     local_x87_state = x87State::Unknown; // we don't know what ThreadState::x87_state is at runtime
     fsrm_sse = true;                     // dispatcher loads SSE rounding mode as a default
+    v0_has_mask = false;
 
     current_block_metadata->guest_address = rip;
 
@@ -561,7 +560,11 @@ u64 Recompiler::compileSequence(u64 rip) {
         bool is_sse = (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_XMM0 &&
                        operands[0].reg.value <= ZYDIS_REGISTER_XMM15) ||
                       (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_XMM0 &&
-                       operands[1].reg.value <= ZYDIS_REGISTER_XMM15);
+                       operands[1].reg.value <= ZYDIS_REGISTER_XMM15) ||
+                      (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[0].reg.value >= ZYDIS_REGISTER_YMM0 &&
+                       operands[0].reg.value <= ZYDIS_REGISTER_YMM15) ||
+                      (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER && operands[1].reg.value >= ZYDIS_REGISTER_YMM0 &&
+                       operands[1].reg.value <= ZYDIS_REGISTER_YMM15);
 
         if (instruction.mnemonic == ZYDIS_MNEMONIC_EMMS) {
             ran_mmx_once = false; // if we run another mmx instruction, set tag to valid again
@@ -1031,6 +1034,10 @@ x86_ref_e Recompiler::zydisToRef(ZydisRegister reg) {
         ref = (x86_ref_e)(X86_REF_XMM0 + (reg - ZYDIS_REGISTER_XMM0));
         break;
     }
+    case ZYDIS_REGISTER_YMM0 ... ZYDIS_REGISTER_YMM15: {
+        ref = (x86_ref_e)(X86_REF_YMM0 + (reg - ZYDIS_REGISTER_YMM0));
+        break;
+    }
     case ZYDIS_REGISTER_MM0 ... ZYDIS_REGISTER_MM7: {
         ref = (x86_ref_e)(X86_REF_MM0 + (reg - ZYDIS_REGISTER_MM0));
         break;
@@ -1118,7 +1125,8 @@ biscuit::GPR Recompiler::getGPR(ZydisRegister reg) {
 }
 
 biscuit::Vec Recompiler::getVec(ZydisRegister reg) {
-    ASSERT((reg >= ZYDIS_REGISTER_XMM0 && reg <= ZYDIS_REGISTER_XMM15) || (reg >= ZYDIS_REGISTER_MM0 && reg <= ZYDIS_REGISTER_MM7));
+    ASSERT((reg >= ZYDIS_REGISTER_XMM0 && reg <= ZYDIS_REGISTER_XMM15) || (reg >= ZYDIS_REGISTER_MM0 && reg <= ZYDIS_REGISTER_MM7) ||
+           (reg >= ZYDIS_REGISTER_YMM0 && reg <= ZYDIS_REGISTER_YMM15));
     x86_ref_e ref = zydisToRef(reg);
     return getVec(ref);
 }
@@ -1474,6 +1482,15 @@ void Recompiler::vsplat(biscuit::Vec vec, u64 imm) {
     }
 }
 
+void Recompiler::vzeroTopBits(biscuit::Vec dst, biscuit::Vec src) {
+    setVectorState(SEW::E64, 4);
+    if (!v0_has_mask) {
+        as.VMV(v0, -4); // 0b1100
+        v0_has_mask = true;
+    }
+    as.VMERGE(dst, src, 0);
+}
+
 biscuit::Vec Recompiler::getVec(x86_ref_e ref) {
     biscuit::Vec vec = allocatedVec(ref);
     return vec;
@@ -1561,25 +1578,25 @@ void Recompiler::setVec(x86_ref_e ref, biscuit::Vec vec) {
 
     if (dest != vec) {
         if (Extensions::VLEN == 128) {
-            ASSERT_MSG(isXMMOrMM(ref), "setVec dealing with YMM registers but your VLEN is 128");
+            ASSERT_MSG(isXMM(ref) || isMM(ref), "setVec dealing with YMM registers but your VLEN is 128");
             as.VMV1R(dest, vec);
         } else if (Extensions::VLEN >= 256) {
-            if (isXMMOrMM(ref)) {
-                if (!isCurrentLength128()) {
-                    setVectorState(SEW::E8, 16);
-                }
-
-                as.VMV(dest, vec);
-            } else if (isYMM(ref)) {
-                if (Extensions::VLEN == 256) {
-                    as.VMV1R(dest, vec); // doesn't have to mess with vector state
+            if (isMM(ref)) {
+                as.VMV1R(dest, vec);
+            } else if (isXMM(ref)) {
+                bool avx_instruction = current_instruction->encoding == ZYDIS_INSTRUCTION_ENCODING_VEX;
+                if (avx_instruction) {
+                    vzeroTopBits(dest, vec);
                 } else {
-                    if (!isCurrentLength256()) {
-                        setVectorState(SEW::E8, 32);
+                    if (!isCurrentLength128()) {
+                        setVectorState(SEW::E64, 2);
                     }
 
+                    // Retain top bits
                     as.VMV(dest, vec);
                 }
+            } else if (isYMM(ref)) {
+                as.VMV1R(dest, vec);
             } else {
                 UNREACHABLE();
             }
@@ -1672,6 +1689,8 @@ bool Recompiler::setVectorState(SEW sew, int vlen, LMUL grouping) {
     current_grouping = grouping;
 
     // TODO: One day when we have chips that perform better with VTA::Yes, enable it
+    // TODO: If we don't enable AVX, or if vectors only go up to 128, enable tail/mask agnostic for most cases
+    // WARN: If changed, change the isCurrentLength128 & similar functions to make sure VTA/VMA are No
     if (!Extensions::Xtheadvector && vlen <= 31) {
         as.VSETIVLI(x0, vlen, sew, grouping, VTA::No, VMA::No);
     } else {
@@ -1959,9 +1978,8 @@ void Recompiler::setExitReason(ExitReason reason) {
 }
 
 void Recompiler::writebackState() {
-    current_sew = SEW::E1024;
-    current_vlen = 0;
-    current_grouping = LMUL::M1;
+    v0Modified();
+    resetVectorState();
 
     flushX87();
 
@@ -1976,8 +1994,12 @@ void Recompiler::writebackState() {
     biscuit::GPR address = scratch();
     ASSERT(address != t5); // reason: see invalidate_caller_thunk
 
-    static_assert(sizeof(XmmReg) == 16); // Change the below if XmmReg length is changed
-    setVectorState(SEW::E64, 2);
+    if (Extensions::VLEN >= 256) {
+        setVectorState(SEW::E64, 4);
+    } else {
+        ASSERT_MSG(g_config.no_avx && g_config.no_avx2, "AVX not disabled on VLEN=128 machine?");
+        setVectorState(SEW::E64, 2);
+    }
 
     // TODO: can we optimize using special stores
     for (int i = 0; i < 16; i++) {
@@ -2003,16 +2025,12 @@ void Recompiler::writebackState() {
     as.SB(temp, offsetof(ThreadState, state_is_correct), threadStatePointer());
     popScratch();
 
-    current_sew = SEW::E1024;
-    current_vlen = 0;
-    current_grouping = LMUL::M1;
+    resetVectorState();
     cached_lea_operand = nullptr;
 }
 
 void Recompiler::restoreState() {
-    current_sew = SEW::E1024;
-    current_vlen = 0;
-    current_grouping = LMUL::M1;
+    resetVectorState();
 
     biscuit::GPR rip = allocatedGPR(X86_REF_RIP);
     as.LD(rip, offsetof(ThreadState, rip), threadStatePointer());
@@ -2025,8 +2043,11 @@ void Recompiler::restoreState() {
     biscuit::GPR address = scratch();
     ASSERT(address != t5); // reason: see invalidate_caller_thunk
 
-    static_assert(sizeof(XmmReg) == 16); // Change the below if XmmReg length is changed
-    setVectorState(SEW::E64, 2);
+    if (Extensions::VLEN >= 256) {
+        setVectorState(SEW::E64, 4);
+    } else {
+        setVectorState(SEW::E64, 2);
+    }
 
     // TODO: can we optimize these using special loads
     for (int i = 0; i < 16; i++) {
@@ -2064,10 +2085,9 @@ void Recompiler::restoreState() {
     as.SB(x0, offsetof(ThreadState, state_is_correct), threadStatePointer());
     as.FENCETSO();
 
-    current_sew = SEW::E1024;
-    current_vlen = 0;
-    current_grouping = LMUL::M1;
+    resetVectorState();
     cached_lea_operand = nullptr;
+    v0Modified();
 }
 
 void Recompiler::backToDispatcher() {

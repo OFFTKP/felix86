@@ -6,6 +6,7 @@
 #include "Zydis/Decoder.h"
 #include "Zydis/Disassembler.h"
 #include "felix86/common/elf.hpp"
+#include "felix86/common/global.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -25,6 +26,10 @@ struct fxsave_st {
     u8 reserved[6];
 };
 
+struct Xmm128 {
+    u64 val[2];
+};
+
 struct fxsave_data {
     u16 fcw;
     u16 fsw;
@@ -36,7 +41,7 @@ struct fxsave_data {
     u32 mxcsr;
     u32 mxcsr_mask;
     fxsave_st st[8];
-    XmmReg xmms[16];
+    Xmm128 xmms[16];
     u64 reserved_final[6];
     u64 available[6];
 };
@@ -459,8 +464,9 @@ void felix86_fxsave(struct ThreadState* state, u64 address) {
     bool is_mmx = (x87State)state->x87_state == x87State::MMX;
     fxsave_data* data = (fxsave_data*)address;
 
-    for (int i = 0; i < 16; i++) {
-        data->xmms[i] = state->xmm[i];
+    for (int i = 0; i < (g_mode32 ? 8 : 16); i++) {
+        data->xmms[i].val[0] = state->xmm[i].data[0];
+        data->xmms[i].val[1] = state->xmm[i].data[1];
     }
 
     for (int i = 0; i < 8; i++) {
@@ -498,8 +504,9 @@ void felix86_fxsave(struct ThreadState* state, u64 address) {
 void felix86_fxrstor(struct ThreadState* state, u64 address) {
     fxsave_data* data = (fxsave_data*)address;
 
-    for (int i = 0; i < 16; i++) {
-        state->xmm[i] = data->xmms[i];
+    for (int i = 0; i < (g_mode32 ? 8 : 16); i++) {
+        state->xmm[i].data[0] = data->xmms[i].val[0];
+        state->xmm[i].data[1] = data->xmms[i].val[1];
     }
 
     state->fpu_tw = 0;
@@ -596,6 +603,42 @@ void felix86_psadbw(u8* dst, u8* src) {
     dst64[1] = (u16)result2;
 }
 
+void felix86_vpsadbw(u8* dst, u8* src1, u8* src2) {
+    u64 result1 = 0;
+    u64 result2 = 0;
+
+    for (int i = 0; i < 8; i++) {
+        result1 += abs(src1[i] - src2[i]);
+        result2 += abs(src1[i + 8] - src2[i + 8]);
+    }
+
+    u64* dst64 = (u64*)dst;
+    dst64[0] = (u16)result1;
+    dst64[1] = (u16)result2;
+    dst64[2] = 0;
+    dst64[3] = 0;
+}
+
+void felix86_vpsadbw256(u8* dst, u8* src1, u8* src2) {
+    u64 result1 = 0;
+    u64 result2 = 0;
+    u64 result3 = 0;
+    u64 result4 = 0;
+
+    for (int i = 0; i < 8; i++) {
+        result1 += abs(src1[i] - src2[i]);
+        result2 += abs(src1[i + 8] - src2[i + 8]);
+        result3 += abs(src1[i + 16] - src2[i + 16]);
+        result4 += abs(src1[i + 24] - src2[i + 24]);
+    }
+
+    u64* dst64 = (u64*)dst;
+    dst64[0] = (u16)result1;
+    dst64[1] = (u16)result2;
+    dst64[2] = (u16)result3;
+    dst64[3] = (u16)result4;
+}
+
 void felix86_mpsadbw(u8* dst, u8* src, u8 imm) {
     WARN("Interpreting MPSADBW");
     uint16_t src_offset = (imm & 0b11) * 4;
@@ -618,6 +661,85 @@ void felix86_mpsadbw(u8* dst, u8* src, u8 imm) {
         int temp2 = std::abs(dst_bytes[i + 2] - src_bytes[2]);
         int temp3 = std::abs(dst_bytes[i + 3] - src_bytes[3]);
         dst_16[i] = temp0 + temp1 + temp2 + temp3;
+    }
+}
+
+void felix86_vmpsadbw_128(u8* dst, u8* src1, u8* src2, u8 imm) {
+    WARN("Interpreting VMPSADBW.128");
+    uint16_t src_offset = (imm & 0b11) * 4;
+    uint16_t dst_offset = ((imm >> 2) & 1) * 4;
+    u8* src2_shifted = src2 + src_offset;
+    u8* src1_shifted = src1 + dst_offset;
+    int src1_bytes[11];
+    int src2_bytes[4];
+    for (int i = 0; i < 4; i++) {
+        src2_bytes[i] = src2_shifted[i];
+    }
+    for (int i = 0; i < 11; i++) {
+        src1_bytes[i] = src1_shifted[i];
+    }
+
+    u16* dst_16 = (u16*)dst;
+    for (int i = 0; i < 8; i++) {
+        int temp0 = std::abs(src1_bytes[i + 0] - src2_bytes[0]);
+        int temp1 = std::abs(src1_bytes[i + 1] - src2_bytes[1]);
+        int temp2 = std::abs(src1_bytes[i + 2] - src2_bytes[2]);
+        int temp3 = std::abs(src1_bytes[i + 3] - src2_bytes[3]);
+        dst_16[i] = temp0 + temp1 + temp2 + temp3;
+    }
+
+    u64* dst_64 = (u64*)dst;
+    *(dst_64 + 2) = 0;
+    *(dst_64 + 3) = 0;
+}
+
+void felix86_vmpsadbw_256(u8* dst, u8* src1, u8* src2, u8 imm) {
+    WARN("Interpreting VMPSADBW.256");
+    {
+        uint16_t src_offset = (imm & 0b11) * 4;
+        uint16_t dst_offset = ((imm >> 2) & 1) * 4;
+        u8* src2_shifted = src2 + src_offset;
+        u8* src1_shifted = src1 + dst_offset;
+        int src1_bytes[11];
+        int src2_bytes[4];
+        for (int i = 0; i < 4; i++) {
+            src2_bytes[i] = src2_shifted[i];
+        }
+        for (int i = 0; i < 11; i++) {
+            src1_bytes[i] = src1_shifted[i];
+        }
+
+        u16* dst_16 = (u16*)dst;
+        for (int i = 0; i < 8; i++) {
+            int temp0 = std::abs(src1_bytes[i + 0] - src2_bytes[0]);
+            int temp1 = std::abs(src1_bytes[i + 1] - src2_bytes[1]);
+            int temp2 = std::abs(src1_bytes[i + 2] - src2_bytes[2]);
+            int temp3 = std::abs(src1_bytes[i + 3] - src2_bytes[3]);
+            dst_16[i] = temp0 + temp1 + temp2 + temp3;
+        }
+    }
+    {
+        uint16_t src_offset = ((imm >> 3) & 0b11) * 4;
+        uint16_t dst_offset = ((imm >> 5) & 1) * 4;
+        u8* src2_shifted = src2 + 16 + src_offset;
+        u8* src1_shifted = src1 + 16 + dst_offset;
+        int src1_bytes[11];
+        int src2_bytes[4];
+        for (int i = 0; i < 4; i++) {
+            src2_bytes[i] = src2_shifted[i];
+        }
+        for (int i = 0; i < 11; i++) {
+            src1_bytes[i] = src1_shifted[i];
+        }
+
+        u16* dst_16 = (u16*)dst;
+        for (int i = 0; i < 8; i++) {
+            int temp0 = std::abs(src1_bytes[i + 0] - src2_bytes[0]);
+            int temp1 = std::abs(src1_bytes[i + 1] - src2_bytes[1]);
+            int temp2 = std::abs(src1_bytes[i + 2] - src2_bytes[2]);
+            int temp3 = std::abs(src1_bytes[i + 3] - src2_bytes[3]);
+            dst_16[8 + i] = temp0 + temp1 + temp2 + temp3;
+        }
     }
 }
 
@@ -1287,10 +1409,7 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
     } else {
         // pcmpxstrm instructions
         if (!output_selection) {
-            for (u32 i = 0; i < (sizeof(XmmReg) / sizeof(u64)); i++) {
-                state->xmm[0].data[i] = 0;
-            }
-
+            state->xmm[0].data[1] = 0;
             state->xmm[0].data[0] = intres2;
         } else {
             static_assert(Count == 8 || Count == 16);
@@ -1519,12 +1638,12 @@ std::string felix86_maps() {
 }
 
 const std::string& felix86_cpuinfo() {
-#define ADD_FLAG(cond, name)                                                                                                                         \
-    do {                                                                                                                                             \
-        if (cond) {                                                                                                                                  \
-            flags += name;                                                                                                                           \
-            flags += " ";                                                                                                                            \
-        }                                                                                                                                            \
+#define ADD_FLAG(cond, name)                                                                                                                                   \
+    do {                                                                                                                                                       \
+        if (cond) {                                                                                                                                            \
+            flags += name;                                                                                                                                     \
+            flags += " ";                                                                                                                                      \
+        }                                                                                                                                                      \
     } while (0)
 
     static std::string cpuinfo = []() {

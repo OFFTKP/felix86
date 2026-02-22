@@ -435,3 +435,79 @@ TEST_CASE("SUBW", "[rv64i]") {
     as.SUBW(x0, x0, x0);
     REQUIRE(value == 0x4000003B);
 }
+
+TEST_CASE("LI literal", "[rv64i]") {
+    uint32_t instructions[10];
+    auto as = MakeAssembler64(instructions);
+    Literal<uint64_t> value(0x1234567890ABCDEF);
+    as.LILiteral(x7, &value);
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    as.Place(&value);
+
+    // Should emit AUIPC+ADDI with offset == 24
+    uint32_t expected_instructions[2];
+    {
+        auto as = MakeAssembler64(expected_instructions);
+        as.AUIPC(x7, 0);
+        as.ADDI(x7, x7, 24);
+    }
+
+    REQUIRE(instructions[0] == expected_instructions[0]);
+    REQUIRE(instructions[1] == expected_instructions[1]);
+}
+
+TEST_CASE("LI literal backward", "[rv64i]") {
+    uint32_t instructions[10];
+    auto as = MakeAssembler64(instructions);
+    Literal<uint64_t> value(0x1234567890ABCDEF);
+    as.Place(&value);
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    as.LILiteral(x7, &value);
+
+    // Should emit AUIPC+ADDI with offset == -28
+    uint32_t expected_instructions[2];
+    {
+        auto as = MakeAssembler64(expected_instructions);
+        as.AUIPC(x7, 0);
+        as.ADDI(x7, x7, -28);
+    }
+
+    REQUIRE(instructions[7] == expected_instructions[0]);
+    REQUIRE(instructions[8] == expected_instructions[1]);
+}
+
+TEST_CASE("LI literal backward big type", "[rv64i]") {
+    struct Data {
+        uint32_t data[8];
+    };
+
+    Data my_data;
+    uint32_t instructions[20];
+    auto as = MakeAssembler64(instructions);
+    Literal<Data> value(my_data);
+    as.Place(&value);
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    as.NOP();
+    as.LILiteral(x7, &value);
+
+    // Should emit AUIPC+ADDI with offset == -52
+    uint32_t expected_instructions[2];
+    {
+        auto as = MakeAssembler64(expected_instructions);
+        as.AUIPC(x7, 0);
+        as.ADDI(x7, x7, -52);
+    }
+
+    REQUIRE(instructions[13] == expected_instructions[0]);
+    REQUIRE(instructions[14] == expected_instructions[1]);
+}

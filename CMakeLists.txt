@@ -202,6 +202,7 @@ if (BUILD_TESTS)
         tests/FEX/rep.cpp
         tests/FEX/tertiary.cpp
         tests/FEX/two_byte.cpp
+        tests/FEX/vex.cpp
         tests/FEX/felix86_bugs.cpp
         tests/FEX/x87.cpp
         tests/Binaries/binary_test_loader.cpp

@@ -341,10 +341,18 @@ struct Recompiler {
         }
     }
 
+    static constexpr x86_ref_e ymmToXmm(x86_ref_e reg) {
+        ASSERT(reg >= X86_REF_YMM0 && reg <= X86_REF_YMM15);
+        return x86_ref_e(X86_REF_XMM0 + (reg - X86_REF_YMM0));
+    }
+
     biscuit::Vec allocatedVec(x86_ref_e reg) {
         switch (reg) {
         case X86_REF_XMM0 ... X86_REF_XMM15: {
             return allocatedXMM(reg);
+        }
+        case X86_REF_YMM0 ... X86_REF_YMM15: {
+            return allocatedXMM(ymmToXmm(reg));
         }
         case X86_REF_MM0 ... X86_REF_MM7: {
             int index = reg - X86_REF_MM0;
@@ -396,6 +404,16 @@ struct Recompiler {
     bool isGPR(ZydisRegister reg);
 
     void vsplat(biscuit::Vec vec, u64 imm);
+
+    void vzeroTopBits(biscuit::Vec dst, biscuit::Vec src);
+
+    void v0Modified() {
+        v0_has_mask = false;
+    }
+
+    bool v0HasMask() {
+        return v0_has_mask;
+    }
 
     void setLockHandled() {
         lock_handled = true;
@@ -490,8 +508,14 @@ struct Recompiler {
 
     void clearCodeCache(ThreadState* state);
 
+    void resetVectorState() {
+        current_sew = SEW::E1024;
+        current_vlen = 0;
+        current_grouping = LMUL::M1;
+    }
+
     void call(u64 target) {
-        current_sew = SEW::E1024; // set state to garbage as a call may overwrite it
+        resetVectorState(); // set state to garbage as a call may overwrite it
         ASSERT(isScratch(t4));
         i64 offset = target - (u64)as.GetCursorPointer();
         if (IsValidJTypeImm(offset)) {
@@ -548,8 +572,12 @@ struct Recompiler {
         return (u8*)as.GetCursorPointer();
     }
 
-    static bool isXMMOrMM(x86_ref_e ref) {
-        return (ref >= X86_REF_XMM0 && ref <= X86_REF_XMM15) || (ref >= X86_REF_MM0 && ref <= X86_REF_MM7);
+    static bool isXMM(x86_ref_e ref) {
+        return ref >= X86_REF_XMM0 && ref <= X86_REF_XMM15;
+    }
+
+    static bool isMM(x86_ref_e ref) {
+        return ref >= X86_REF_MM0 && ref <= X86_REF_MM7;
     }
 
     static bool isYMM(x86_ref_e ref) {
@@ -758,6 +786,8 @@ private:
     int pushed_this_block = 0;
 
     bool relocatable = false;
+
+    bool v0_has_mask = false;
 
     constexpr static std::array scratch_gprs = {
         x1, x6, x28, x29, x7, x30, x31,

@@ -187,6 +187,16 @@ std::string get_extensions() {
             extensions += ",";
         extensions += "zvkned";
     }
+    if (Extensions::Zvfhmin) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zvfhmin";
+    }
+    if (Extensions::Zicclsm) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "zicclsm";
+    }
 
     return extensions;
 }
@@ -210,13 +220,15 @@ void initialize_extensions() {
         Extensions::Zvbb = cpuinfo.Has(RISCVExtension::Zvbb);
         Extensions::Zvkned = cpuinfo.Has(RISCVExtension::Zvkned);
         Extensions::Zknd = cpuinfo.Has(RISCVExtension::Zknd);
+        Extensions::Zvfhmin = cpuinfo.Has(RISCVExtension::Zvfhmin);
+        Extensions::Zicclsm = cpuinfo.Has(RISCVExtension::Zicclsm);
     }
 
 #ifdef __x86_64__
     // Just so we can run some unit tests fine
     Extensions::G = true;
     Extensions::V = true;
-    Extensions::VLEN = 128;
+    Extensions::VLEN = 256;
 #endif
 }
 

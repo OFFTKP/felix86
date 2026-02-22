@@ -239,7 +239,7 @@ public:
     void AND(GPR rd, GPR lhs, GPR rhs) noexcept;
     void ANDI(GPR rd, GPR rs, uint32_t imm) noexcept;
 
-    void AUIPC(GPR rd, int32_t imm) noexcept;
+    void AUIPC(GPR rd, uint32_t imm) noexcept;
 
     void BEQ(GPR rs1, GPR rs2, Label* label) noexcept;
     void BEQZ(GPR rs, Label* label) noexcept;
@@ -302,6 +302,15 @@ public:
     void LH(GPR rd, int32_t imm, GPR rs) noexcept;
     void LHU(GPR rd, int32_t imm, GPR rs) noexcept;
     void LI(GPR rd, uint64_t imm) noexcept;
+    void LILabel(GPR rd, Label* label) noexcept;
+    template<class T>
+    void LILiteral(GPR rd, Literal<T>* literal) {
+        const auto offset = LinkAndGetOffset(literal);
+        const auto hi20 = static_cast<int32_t>((static_cast<uint32_t>(offset) + 0x800) >> 12 & 0xFFFFF);
+        const auto lo12 = static_cast<int32_t>(offset << 20) >> 20;
+        AUIPC(rd, hi20);
+        ADDI(rd, rd, lo12);
+    }
     void LUI(GPR rd, uint32_t imm) noexcept;
     void LW(GPR rd, int32_t imm, GPR rs) noexcept;
 

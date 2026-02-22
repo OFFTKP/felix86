@@ -135,14 +135,28 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         if (g_config.no_sse4_2 || !Extensions::B /* CRC32 needs Zbc */) {
             result.ecx &= ~(1 << 20);
         }
+        if (Extensions::VLEN < 256 || g_config.no_avx) {
+            result.ecx &= ~(1 << 28); // Disable AVX
+        }
         if (!Extensions::B) {
             result.ecx &= ~(1 << 1); // disable PCLMULQDQ
         } else if (g_config.pclmulqdq) {
             result.ecx |= 1 << 1;
         }
-
         if (!Extensions::Zvkned) {
             result.ecx &= ~(1 << 25); // Disable AES
+        }
+        if (!Extensions::Zvfhmin) {
+            result.ecx &= ~(1 << 29); // Disable F16C
+        }
+    }
+
+    if (found && leaf == 0x0000'0007) {
+        if (!Extensions::Zvkned) {
+            result.ecx &= ~(1 << 9); // Disable VAES
+        }
+        if (Extensions::VLEN < 256 || g_config.no_avx2 || !Extensions::Zicclsm) {
+            result.ebx &= ~(1 << 5); // Disable AVX2
         }
     }
 

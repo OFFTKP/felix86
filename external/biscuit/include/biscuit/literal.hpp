@@ -35,6 +35,17 @@ namespace biscuit {
  * as.JR(x2);               // Execution continues elsewhere
  * as.Place(&literal);      // Place the literal at this location in the buffer
  * @endcode
+ *
+ * An example of loading the address of a literal:
+ * @code{.cpp}
+ * Assembler as{...};
+ * Literal literal(0x1234567890ABCDEF);
+ *
+ * as.LILiteral(x2, &literal);     // Load the literal (emits a AUIPC+ADDI sequence)
+ * as.VLE64(v1, x2);
+ * as.RET();                       // Execution continues elsewhere
+ * as.Place(&literal);             // Place the literal at this location in the buffer
+ * @endcode
 */
 template<class T>
 class Literal {

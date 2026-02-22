@@ -9,6 +9,7 @@
 struct TestConfig {
     u64 entrypoint;
     bool mode32;
+    bool fill_ymm_with_trash;
 };
 
 struct Emulator {

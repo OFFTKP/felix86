@@ -84,6 +84,16 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
         ERROR("Failed to parse JSON");
     }
 
+    bool is_avx = false;
+    if (j.find("HostFeatures") != j.end()) {
+        std::vector<std::string> features = j["HostFeatures"];
+        for (const auto& feature : features) {
+            if (feature == "AVX") {
+                is_avx = true;
+            }
+        }
+    }
+
     if (j.find("RegData") != j.end()) {
         std::unordered_map<std::string, nlohmann::json> regs;
         regs = j["RegData"].get<std::unordered_map<std::string, nlohmann::json>>();
@@ -118,8 +128,16 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
     if (regs.find(#x) != regs.end()) {                                                                                                               \
         std::vector<std::string> data = regs[#x].get<std::vector<std::string>>();                                                                    \
         XmmReg reg = {};                                                                                                                             \
-        reg.data[0] = std::stoull(data[0], nullptr, 16);                                                                                             \
-        reg.data[1] = std::stoull(data[1], nullptr, 16);                                                                                             \
+        reg.data[0] = std::stoull(data.at(0), nullptr, 16);                                                                                          \
+        reg.data[1] = std::stoull(data.at(1), nullptr, 16);                                                                                          \
+        if (data.size() > 2) {                                                                                                                       \
+            reg.data[2] = std::stoull(data.at(2), nullptr, 16);                                                                                      \
+            reg.data[3] = std::stoull(data.at(3), nullptr, 16);                                                                                      \
+        } else {                                                                                                                                     \
+            ASSERT(!is_avx);                                                                                                                         \
+            reg.data[2] = 0xCCCC'CCCC'CCCC'CCCC; /* write data and make sure its not overwritten later */                                            \
+            reg.data[3] = 0xABCD'EF01'2345'6789; /* Emulator::StartTest should write the same data */                                                \
+        }                                                                                                                                            \
         expected_xmm[X86_REF_##x - X86_REF_XMM0] = reg;                                                                                              \
     }
         fill(XMM0);
@@ -196,6 +214,7 @@ FEXTestLoader::FEXTestLoader(const std::filesystem::path& path) {
 
     config.entrypoint = 0x10'000;
     config.mode32 = is_mode32;
+    config.fill_ymm_with_trash = !is_avx;
 }
 
 FEXTestLoader::~FEXTestLoader() {
@@ -241,7 +260,7 @@ void FEXTestLoader::Validate() {
             XmmReg expected = *pexpected;
             x86_ref_e ref = (x86_ref_e)(X86_REF_XMM0 + i);
             XmmReg actual = state->GetXmm(ref);
-            for (int j = 0; j < 2; j++) {
+            for (int j = 0; j < 4; j++) {
                 CATCH_INFO(fmt::format("Checking XMM{}[{}]", i, j));
                 CATCH_REQUIRE(expected.data[j] == actual.data[j]);
             }
@@ -260,7 +279,7 @@ void FEXTestLoader::Validate() {
     }
 
     // In case we go higher in the future
-    static_assert(sizeof(XmmReg) == 16, "XmmReg size mismatch");
+    static_assert(sizeof(XmmReg) == 32, "XmmReg size mismatch");
 }
 
 void FEXTestLoader::RunTest(const std::filesystem::path& path) {

@@ -3,7 +3,6 @@
 #include "biscuit/isa.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
-#include "felix86/common/signal_queue.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/hle/cpuid.hpp"
@@ -123,9 +122,9 @@ typedef enum : u8 {
 } x86_size_e;
 
 struct XmmReg {
-    u64 data[2] = {0, 0};
+    u64 data[4] = {0, 0, 0, 0};
 };
-static_assert(sizeof(XmmReg) == 16);
+static_assert(sizeof(XmmReg) == 32);
 
 #define FUNCTION_POINTERS                                                                                                                            \
     X(f80_to_64)                                                                                                                                     \
@@ -159,7 +158,11 @@ static_assert(sizeof(XmmReg) == 16);
     X(felix86_fxrstor)                                                                                                                               \
     X(felix86_pcmpxstrx)                                                                                                                             \
     X(felix86_mpsadbw)                                                                                                                               \
+    X(felix86_vpsadbw)                                                                                                                               \
+    X(felix86_vpsadbw256)                                                                                                                            \
     X(felix86_aeskeygenassist)                                                                                                                       \
+    X(felix86_vmpsadbw_128)                                                                                                                          \
+    X(felix86_vmpsadbw_256)                                                                                                                          \
     X(felix86_crash_and_burn)                                                                                                                        \
     X(felix86_exit_dispatcher)
 
@@ -345,13 +348,13 @@ struct ThreadState {
         return fp[ref - X86_REF_MM0];
     }
 
-    void SetXmm(x86_ref_e ref, u64 value) {
+    void SetMm(x86_ref_e ref, u64 value) {
         if (ref < X86_REF_MM0 || ref > X86_REF_MM7) {
             ERROR("Invalid MM register reference: %d", ref);
             return;
         }
 
-        fp[ref - X86_REF_XMM0] = value;
+        fp[ref - X86_REF_MM0] = value;
     }
 
     u64 GetRip() const {

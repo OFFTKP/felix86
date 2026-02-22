@@ -261,7 +261,7 @@
 namespace {
 
 #if defined(__linux__) && defined(__riscv)
-bool UseSigillHandler(biscuit::RISCVExtension extension) {
+bool UseSignalHandler(biscuit::RISCVExtension extension) {
     using namespace biscuit;
     switch (extension) {
     case RISCVExtension::I:
@@ -301,7 +301,8 @@ bool UseSigillHandler(biscuit::RISCVExtension extension) {
     case RISCVExtension::Zicntr:
     case RISCVExtension::Zihpm:
     case RISCVExtension::Zfbfmin:
-    case RISCVExtension::Zicbom: {
+    case RISCVExtension::Zicbom:
+    case RISCVExtension::Zicclsm: {
         return true;
     }
     default: {
@@ -310,10 +311,10 @@ bool UseSigillHandler(biscuit::RISCVExtension extension) {
     }
 }
 
-void SigillHandler(int, siginfo_t*, void* ctx) {
+void SignalHandler(int, siginfo_t*, void* ctx) {
     mcontext_t* mctx = &((ucontext_t*)ctx)->uc_mcontext;
 
-    // Since we hit SIGILL, set return value to false
+    // Since we hit a signal, set return value to false
     mctx->__gregs[REG_A0] = 0;
 
     // Instead of incrementing the PC, just set it to the return value immediately
@@ -589,21 +590,36 @@ void EmitInstruction(biscuit::Assembler& as, biscuit::RISCVExtension extension) 
         as.CBO_FLUSH(t0);
         break;
     }
+    case RISCVExtension::Zicclsm: {
+        // Unaligned scalar and vector memory accesses
+        as.LW(t1, 1, t0);
+        as.SW(x0, 1, t0);
+        as.VSETIVLI(x0, 1, SEW::E32);
+        as.ADDI(t1, t0, 1);
+        as.VSE32(v1, t1);
+        break;
+    }
     default: {
         BISCUIT_ASSERT(false);
     }
     }
 }
 
-bool CheckExtensionSigill(biscuit::RISCVExtension extension) {
+bool CheckExtensionSignal(biscuit::RISCVExtension extension) {
     using namespace biscuit;
 
-    struct sigaction sa, old_sa;
-    sa.sa_sigaction = SigillHandler;
+    struct sigaction sa, old_ill, old_segv, old_bus;
+    sa.sa_sigaction = SignalHandler;
     sa.sa_flags = SA_SIGINFO;
     sigemptyset(&sa.sa_mask);
 
-    int result = sigaction(SIGILL, &sa, &old_sa);
+    int result = sigaction(SIGILL, &sa, &old_ill);
+    BISCUIT_ASSERT(result == 0);
+
+    result = sigaction(SIGSEGV, &sa, &old_segv);
+    BISCUIT_ASSERT(result == 0);
+
+    result = sigaction(SIGBUS, &sa, &old_bus);
     BISCUIT_ASSERT(result == 0);
 
     uint64_t valid_memory[2]; // for extensions that might need to use a memory address
@@ -613,7 +629,7 @@ bool CheckExtensionSigill(biscuit::RISCVExtension extension) {
     biscuit::Assembler as(memory, 4096);
     bool (*function)(void*) = (bool (*)(void*))as.GetCursorPointer();
     as.MV(t0, a0); // instructions that need to access memory will be pointed here
-    as.LI(a0, 1);  // return true unless if we hit SIGILL
+    as.LI(a0, 1);  // return true unless if we hit a signal
     EmitInstruction(as, extension);
     as.RET();
 
@@ -625,7 +641,13 @@ bool CheckExtensionSigill(biscuit::RISCVExtension extension) {
     result = munmap(memory, 4096);
     BISCUIT_ASSERT(result == 0);
 
-    result = sigaction(SIGILL, &old_sa, nullptr);
+    result = sigaction(SIGILL, &old_ill, nullptr);
+    BISCUIT_ASSERT(result == 0);
+
+    result = sigaction(SIGSEGV, &old_segv, nullptr);
+    BISCUIT_ASSERT(result == 0);
+
+    result = sigaction(SIGBUS, &old_bus, nullptr);
     BISCUIT_ASSERT(result == 0);
 
     return has_extension;
@@ -773,6 +795,8 @@ bool CheckExtensionSyscall(biscuit::RISCVExtension extension) {
         return (features0 & RISCV_HWPROBE_EXT_ZAAMO) != 0;
     case RISCVExtension::Zalrsc:
         return (features0 & RISCV_HWPROBE_EXT_ZALRSC) != 0;
+    case RISCVExtension::Zicclsm:
+        BISCUIT_ASSERT(false);
     }
 
     return false;
@@ -785,8 +809,8 @@ namespace biscuit {
 
 bool CPUInfo::Has([[maybe_unused]] RISCVExtension extension) const {
 #if defined(__riscv) && defined(__linux__)
-    if (UseSigillHandler(extension)) {
-        return CheckExtensionSigill(extension);
+    if (UseSignalHandler(extension)) {
+        return CheckExtensionSignal(extension);
     } else {
         return CheckExtensionSyscall(extension);
     }

@@ -315,5 +315,12 @@ void Emulator::StartTest(const TestConfig& config, u64 stack) {
     main_state->SetGpr(X86_REF_RSP, stack);
     main_state->SetRip(config.entrypoint);
 
+    if (config.fill_ymm_with_trash) {
+        for (auto& ymm : main_state->xmm) {
+            ymm.data[2] = 0xCCCC'CCCC'CCCC'CCCC;
+            ymm.data[3] = 0xABCD'EF01'2345'6789;
+        }
+    }
+
     Threads::StartThread(main_state);
 }

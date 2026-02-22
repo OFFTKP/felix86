@@ -132,10 +132,11 @@ struct Extensions {
     X(Zihintpause)                                                                                                                                   \
     X(Zba)                                                                                                                                           \
     X(Zfa)                                                                                                                                           \
-    X(Zvfh)                                                                                                                                          \
+    X(Zvfhmin)                                                                                                                                       \
     X(Zvbb)                                                                                                                                          \
     X(Zvkned)                                                                                                                                        \
     X(Zknd)                                                                                                                                          \
+    X(Zicclsm)                                                                                                                                       \
     X(Xtheadcondmov)                                                                                                                                 \
     X(Xtheadvector)                                                                                                                                  \
     X(Xtheadba)                                                                                                                                      \
