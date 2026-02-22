@@ -469,7 +469,7 @@
     "660f2fdc": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -481,7 +481,7 @@
             "FLT.D           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
-            "SB              ra, s11, 0x1c9(457)",
+            "SB              ra, s11, 0x2c9(713)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
@@ -490,7 +490,7 @@
     "660f2fd2": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -502,7 +502,7 @@
             "FLT.D           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
-            "SB              ra, s11, 0x1c9(457)",
+            "SB              ra, s11, 0x2c9(713)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
@@ -511,7 +511,7 @@
     "660f2f0f": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -523,7 +523,7 @@
             "FLT.D           s5, f28, f29",
             "AND             t1, t1, t3",
             "XORI            t1, t1, 0x1(1)",
-            "SB              t1, s11, 0x1c9(457)",
+            "SB              t1, s11, 0x2c9(713)",
             "OR              s5, s5, t1",
             "OR              s7, s7, t1"
         ],
@@ -532,7 +532,7 @@
     "660f2edc": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -544,7 +544,7 @@
             "FLT.D           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
-            "SB              ra, s11, 0x1c9(457)",
+            "SB              ra, s11, 0x2c9(713)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
@@ -553,7 +553,7 @@
     "660f2ed2": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -565,7 +565,7 @@
             "FLT.D           s5, f28, f29",
             "AND             ra, ra, t1",
             "XORI            ra, ra, 0x1(1)",
-            "SB              ra, s11, 0x1c9(457)",
+            "SB              ra, s11, 0x2c9(713)",
             "OR              s5, s5, ra",
             "OR              s7, s7, ra"
         ],
@@ -574,7 +574,7 @@
     "660f2e0f": {
         "instruction_count": 15,
         "expected_asm": [
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDIW           s9, zero, 0x0(0)",
             "ADDIW           s8, zero, 0x0(0)",
             "VSETIVLI        zero, 1, e64, m1, tu, mu",
@@ -586,7 +586,7 @@
             "FLT.D           s5, f28, f29",
             "AND             t1, t1, t3",
             "XORI            t1, t1, 0x1(1)",
-            "SB              t1, s11, 0x1c9(457)",
+            "SB              t1, s11, 0x2c9(713)",
             "OR              s5, s5, t1",
             "OR              s7, s7, t1"
         ],
@@ -885,7 +885,7 @@
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, mf2, tu, mu",
             "VFWCVT.F.F.V    v2, v20, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v2"
         ],
         "disassembly": "cvtps2pd xmm3, xmm4"
@@ -895,7 +895,7 @@
         "expected_asm": [
             "VSETIVLI        zero, 4, e32, mf2, tu, mu",
             "VFWCVT.F.F.V    v2, v18, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v18, v2"
         ],
         "disassembly": "cvtps2pd xmm2, xmm2"
@@ -907,7 +907,7 @@
             "VLE8.V          v3, a0, none, 1",
             "VSETIVLI        zero, 4, e32, mf2, tu, mu",
             "VFWCVT.F.F.V    v2, v3, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v2"
         ],
         "disassembly": "cvtps2pd xmm3, qword ptr [rdi]"
@@ -1219,7 +1219,7 @@
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
             "VMV1R.V         v3, v20",
             "VRGATHER.VV     v3, v20, v2, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v3"
         ],
         "disassembly": "pshuflw xmm3, xmm4, 0x00"
@@ -1232,7 +1232,7 @@
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
             "VMV1R.V         v3, v18",
             "VRGATHER.VV     v3, v18, v2, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v18, v3"
         ],
         "disassembly": "pshuflw xmm2, xmm2, 0x00"
@@ -1247,7 +1247,7 @@
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
             "VMV1R.V         v4, v2",
             "VRGATHER.VV     v4, v2, v3, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v4"
         ],
         "disassembly": "pshuflw xmm3, [rdi], 0x00"
@@ -1265,7 +1265,7 @@
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
             "VMV1R.V         v3, v20",
             "VRGATHER.VV     v3, v20, v2, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v3"
         ],
         "disassembly": "pshuflw xmm3, xmm4, 0xE4"
@@ -1283,7 +1283,7 @@
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
             "VMV1R.V         v3, v18",
             "VRGATHER.VV     v3, v18, v2, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v18, v3"
         ],
         "disassembly": "pshuflw xmm2, xmm2, 0xE4"
@@ -1303,7 +1303,7 @@
             "VSETIVLI        zero, 4, e16, m1, tu, mu",
             "VMV1R.V         v4, v2",
             "VRGATHER.VV     v4, v2, v3, none",
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v4"
         ],
         "disassembly": "pshuflw xmm3, [rdi], 0xE4"
@@ -2825,7 +2825,7 @@
     "660f28dc": {
         "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v20"
         ],
         "disassembly": "movapd xmm3, xmm4"
@@ -2854,7 +2854,7 @@
     "660f10dc": {
         "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v20"
         ],
         "disassembly": "movupd xmm3, xmm4"
@@ -2883,7 +2883,7 @@
     "660f6fdc": {
         "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v20"
         ],
         "disassembly": "movdqa xmm3, xmm4"
@@ -2912,7 +2912,7 @@
     "f30f6fdc": {
         "instruction_count": 2,
         "expected_asm": [
-            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VSETIVLI        zero, 2, e64, m1, tu, mu",
             "VMV.V.V         v19, v20"
         ],
         "disassembly": "movdqu xmm3, xmm4"

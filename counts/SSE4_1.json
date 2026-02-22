@@ -791,10 +791,10 @@
             "VMV.X.S         s5, v3",
             "SLLI            s5, s5, 0x3e(62)",
             "SLTIU           s5, s5, 0x1(1)",
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDI            s9, zero, 0x0(0)",
             "ADDI            s8, zero, 0x0(0)",
-            "SB              zero, s11, 0x1c9(457)"
+            "SB              zero, s11, 0x2c9(713)"
         ],
         "disassembly": "ptest xmm3, xmm4"
     },
@@ -807,10 +807,10 @@
             "SLLI            s7, s7, 0x3e(62)",
             "SLTIU           s7, s7, 0x1(1)",
             "ADDIW           s5, zero, 0x1(1)",
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDI            s9, zero, 0x0(0)",
             "ADDI            s8, zero, 0x0(0)",
-            "SB              zero, s11, 0x1c9(457)"
+            "SB              zero, s11, 0x2c9(713)"
         ],
         "disassembly": "ptest xmm2, xmm2"
     },
@@ -831,10 +831,10 @@
             "VMV.X.S         s5, v3",
             "SLLI            s5, s5, 0x3e(62)",
             "SLTIU           s5, s5, 0x1(1)",
-            "SB              zero, s11, 0x1ca(458)",
+            "SB              zero, s11, 0x2ca(714)",
             "ADDI            s9, zero, 0x0(0)",
             "ADDI            s8, zero, 0x0(0)",
-            "SB              zero, s11, 0x1c9(457)"
+            "SB              zero, s11, 0x2c9(713)"
         ],
         "disassembly": "ptest xmm1, [rdi]"
     }

@@ -3941,10 +3941,9 @@ FAST_HANDLE(UNPCKHPS) {
     biscuit::Vec src2 = rec.getVec(&operands[1]);
 
     // TODO: optimize for src1 == src2
-    rec.setVectorState(SEW::E32, 8);
+    rec.setVectorState(SEW::E32, 4);
     as.VWADDU(wide1, src1, x0);
     as.VWADDU(wide2, src2, x0);
-    rec.setVectorState(SEW::E32, 4);
     if (Extensions::VLEN > 128) {
         as.VSLIDEDOWN(wide1, wide1, 4);
         as.VSLIDEDOWN(wide2, wide2, 3);
