@@ -9,6 +9,15 @@
         }                                                                                                                                            \
     }
 
+#define VEX_CRYPTO_TEST(opcode)                                                                                                                      \
+    CATCH_TEST_CASE(#opcode, "[VEX]") {                                                                                                              \
+        if (Extensions::Zvkned && Extensions::VLEN >= 256) {                                                                                         \
+            FEXTestLoader::RunTest("ASM/VEX/" #opcode ".asm");                                                                                       \
+        } else {                                                                                                                                     \
+            SUCCESS("Skipping test " #opcode ", no Zvkned or VLEN less than 256");                                                                   \
+        }                                                                                                                                            \
+    }
+
 #define VGATHER_TEST(opcode)                                                                                                                         \
     CATCH_TEST_CASE(#opcode, "[VEX]") {                                                                                                              \
         if (Extensions::Zicclsm && Extensions::VLEN >= 256) {                                                                                        \
@@ -39,16 +48,16 @@ VEX_TEST(vaddsd);
 VEX_TEST(vaddss);
 VEX_TEST(vaddsubpd);
 VEX_TEST(vaddsubps);
-VEX_TEST(vaesdec);
-VEX_TEST(vaesdec256);
-VEX_TEST(vaesdeclast);
-VEX_TEST(vaesdeclast256);
-VEX_TEST(vaesenc);
-VEX_TEST(vaesenc256);
-VEX_TEST(vaesenclast);
-VEX_TEST(vaesenclast256);
-VEX_TEST(vaesimc);
-VEX_TEST(vaeskeygenassist);
+VEX_CRYPTO_TEST(vaesdec);
+VEX_CRYPTO_TEST(vaesdec256);
+VEX_CRYPTO_TEST(vaesdeclast);
+VEX_CRYPTO_TEST(vaesdeclast256);
+VEX_CRYPTO_TEST(vaesenc);
+VEX_CRYPTO_TEST(vaesenc256);
+VEX_CRYPTO_TEST(vaesenclast);
+VEX_CRYPTO_TEST(vaesenclast256);
+VEX_CRYPTO_TEST(vaesimc);
+VEX_CRYPTO_TEST(vaeskeygenassist);
 VEX_TEST(vandnpd);
 VEX_TEST(vandnps);
 VEX_TEST(vandpd);
