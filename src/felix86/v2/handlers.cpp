@@ -5952,7 +5952,7 @@ FAST_HANDLE(PCMPGTQ) {
 }
 
 void CMPP(Recompiler& rec, u64 rip, Assembler& as, ZydisDecodedInstruction& instruction, ZydisDecodedOperand* operands, SEW sew, u8 vlen) {
-    u8 imm = rec.getImmediate(&operands[2]);
+    u8 imm = rec.getImmediate(&operands[2]) & 0b111;
     biscuit::Vec result = rec.scratchVec();
     biscuit::Vec temp1 = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
@@ -14503,7 +14503,7 @@ void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, 
     case NGE_UQ: {
         as.VMFNE(temp1, src1, src1);
         as.VMFNE(temp2, src2, src2);
-        as.VMFLT(v0, src2, src1);
+        as.VMFLT(v0, src1, src2);
         as.VMOR(v0, v0, temp1);
         as.VMOR(v0, v0, temp2);
         break;
@@ -14515,7 +14515,7 @@ void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, 
     case NGT_UQ: {
         as.VMFNE(temp1, src1, src1);
         as.VMFNE(temp2, src2, src2);
-        as.VMFLE(v0, src2, src1);
+        as.VMFLE(v0, src1, src2);
         as.VMOR(v0, v0, temp1);
         as.VMOR(v0, v0, temp2);
         break;
@@ -14533,7 +14533,11 @@ void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, 
         [[fallthrough]];
     }
     case NEQ_OQ: {
+        as.VMFNE(temp1, src1, src1);
+        as.VMFNE(temp2, src2, src2);
         as.VMFNE(v0, src1, src2);
+        as.VMANDNOT(v0, v0, temp1);
+        as.VMANDNOT(v0, v0, temp2);
         break;
     }
     case GE_OS: {
