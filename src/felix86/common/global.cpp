@@ -481,30 +481,6 @@ void initialize_globals() {
     g_fs = std::make_unique<Filesystem>();
     g_mapper = std::make_unique<Mapper>();
 
-    std::filesystem::path xauthority_path;
-    const char* xauth_env = getenv("XAUTHORITY");
-    if (xauth_env) {
-        xauthority_path = xauth_env;
-    } else {
-        // Also check $HOME
-        const char* home_env = getenv("HOME");
-        if (home_env) {
-            xauthority_path = std::filesystem::path(home_env) / ".Xauthority";
-        } else {
-            WARN("Couldn't find $HOME");
-        }
-    }
-
-    if (!g_execve_process) {
-        ASSERT(!g_config.rootfs_path.empty());
-
-        // Check if we can find the .Xauthority file inside the rootfs, otherwise warn
-        // Since many distros put it in /run we should be able to
-        if (!std::filesystem::exists(g_config.rootfs_path / xauthority_path.relative_path())) {
-            WARN("I couldn't find the .Xauthority file inside the rootfs");
-        }
-    }
-
     if (!g_execve_process) {
         // Check if $HOME exists inside the rootfs, and create it if not
         if (getenv("HOME")) {

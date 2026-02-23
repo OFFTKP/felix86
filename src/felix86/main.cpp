@@ -798,6 +798,7 @@ int main(int argc, char* argv[]) {
 
             for (const auto& fake_mount : g_fake_mounts) {
                 if (is_subpath(canonical_path, fake_mount.src_path)) {
+                    WARN("Here %s %s", canonical_path.c_str(), fake_mount.src_path.c_str());
                     if (!g_execve_process) {
                         std::filesystem::path parent_path = canonical_path.parent_path();
                         if (chdir(parent_path.c_str()) != 0) {
@@ -808,6 +809,7 @@ int main(int argc, char* argv[]) {
                     }
 
                     g_params.executable_path = canonical_path;
+                    WARN("Executable path changed: %s", g_params.executable_path.c_str());
                     found = true;
                     break;
                 }
@@ -849,6 +851,7 @@ int main(int argc, char* argv[]) {
                         Config::addTrustedPath(parent);
                         Filesystem::TrustFolder(parent);
                         for (const auto& fake_mount : g_fake_mounts) {
+                            WARN("Here %s %s", canonical_path.c_str(), fake_mount.src_path.c_str());
                             if (is_subpath(canonical_path, fake_mount.src_path)) {
                                 std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
                                 std::filesystem::path executable = fake_mount.dst_path / cutoff_path.relative_path();
@@ -858,6 +861,7 @@ int main(int argc, char* argv[]) {
                                     g_dont_chdir = true;
                                 }
                                 g_params.executable_path = canonical_path;
+                                WARN("Executable path changed: %s", g_params.executable_path.c_str());
                                 break;
                             }
                         }
