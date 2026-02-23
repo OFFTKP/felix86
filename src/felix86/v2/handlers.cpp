@@ -14401,7 +14401,7 @@ void VCMP(Recompiler& rec, Assembler& as, ZydisDecodedInstruction& instruction, 
     biscuit::Vec temp1 = rec.scratchVec();
     biscuit::Vec temp2 = rec.scratchVec();
     rec.setVectorState(sew, elements);
-    switch (imm) {
+    switch (imm & 0b11111) {
     case EQ_OS: {
         WARN("Signaling comparison at rip=%lx", rec.getCurrentMetadata().address);
         [[fallthrough]];

@@ -76,6 +76,7 @@ VEX_TEST(vcmpps);
 VEX_TEST(vcmpps_256);
 VEX_TEST(vcmpsd);
 VEX_TEST(vcmpss);
+VEX_TEST(vcmpss_eq);
 VEX_TEST(vcmpss_full);
 VEX_TEST(vcomisd);
 VEX_TEST(vcomiss);
