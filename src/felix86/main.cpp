@@ -809,9 +809,12 @@ int main(int argc, char* argv[]) {
 
                     std::filesystem::path cutoff_path = canonical_path.string().substr(fake_mount.src_path.string().size());
                     std::filesystem::path executable = fake_mount.dst_path / cutoff_path.relative_path();
+                    if (is_subpath(executable, g_config.rootfs_path)) {
+                        executable = executable.string().substr(g_config.rootfs_path.string().size());
+                    }
                     // Point /proc/self/exe & co to the fake mount guest path
                     g_executable_path_guest_override = executable;
-
+                    g_params.argv[0] = g_executable_path_guest_override;
                     g_params.executable_path = canonical_path;
                     WARN("Executable path changed: %s", g_params.executable_path.c_str());
                     found = true;
@@ -864,10 +867,13 @@ int main(int argc, char* argv[]) {
                                 } else {
                                     g_dont_chdir = true;
                                 }
+                                if (is_subpath(executable, g_config.rootfs_path)) {
+                                    executable = executable.string().substr(g_config.rootfs_path.string().size());
+                                }
                                 // Point /proc/self/exe & co to the fake mount guest path
                                 g_executable_path_guest_override = executable;
+                                g_params.argv[0] = g_executable_path_guest_override;
                                 g_params.executable_path = canonical_path;
-                                WARN("Executable path changed: %s", g_params.executable_path.c_str());
                                 break;
                             }
                         }
