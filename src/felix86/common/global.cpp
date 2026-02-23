@@ -48,6 +48,7 @@ int g_linux_major = 0;
 int g_linux_minor = 0;
 bool g_no_riscv_v_state{};
 std::filesystem::path g_executable_path_absolute{};
+std::filesystem::path g_executable_path_guest_override{};
 std::filesystem::path g_mounts_path{};
 std::vector<FakeMountNode> g_fake_mounts{};
 bool g_dont_chdir = false;

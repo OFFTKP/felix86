@@ -978,7 +978,11 @@ FdPath Filesystem::resolveImpl(int fd, const char* path, bool resolve_final) {
     }
 
     if (isProcSelfExe(path)) {
-        return FdPath::create(AT_FDCWD, g_executable_path_absolute);
+        if (g_executable_path_guest_override.empty()) {
+            return FdPath::create(AT_FDCWD, g_executable_path_absolute);
+        } else {
+            return FdPath::create(AT_FDCWD, g_executable_path_guest_override);
+        }
     }
 
     int current_fd;

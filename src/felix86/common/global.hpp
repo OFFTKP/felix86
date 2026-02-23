@@ -91,6 +91,7 @@ extern int g_linux_major;
 extern int g_linux_minor;
 extern bool g_no_riscv_v_state;
 extern std::filesystem::path g_executable_path_absolute;
+extern std::filesystem::path g_executable_path_guest_override;
 extern std::filesystem::path g_mounts_path;
 extern bool g_dont_chdir;
 
