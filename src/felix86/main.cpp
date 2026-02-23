@@ -816,7 +816,6 @@ int main(int argc, char* argv[]) {
                     g_executable_path_guest_override = executable;
                     g_params.argv[0] = g_executable_path_guest_override;
                     g_params.executable_path = canonical_path;
-                    WARN("Executable path changed: %s", g_params.executable_path.c_str());
                     found = true;
                     break;
                 }

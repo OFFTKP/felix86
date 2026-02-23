@@ -1683,6 +1683,12 @@ Result felix86_syscall_common(felix86_frame* frame, int rv_syscall, u64 arg1, u6
         result = Signals::sigprocmask(state, arg1, (sigset_t*)arg2, (sigset_t*)arg3);
         break;
     }
+    case felix86_riscv64_execveat: {
+        // TODO: implement me
+        result = -ENOSYS;
+        WARN("Tried to run execveat, returning ENOSYS");
+        break;
+    }
     default: {
         result = -ENOSYS;
         ERROR("Unimplemented syscall %s (%d)", riscv_get_name(rv_syscall), rv_syscall);
