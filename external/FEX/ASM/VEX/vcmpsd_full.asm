@@ -6,6 +6,7 @@
   }
 }
 %endif
+bits 64
 
 %define true 1
 %define false 0
