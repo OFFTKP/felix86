@@ -21,10 +21,9 @@ bash <(curl -s https://install.felix86.com)
 
 ## 核心特性
 - 即时 (JIT) 重编译器
-- 采用RISC-V向量扩展实现SSE 4.2级指令集
-- 支持`B`、`Zicond`、`Zacas`等多项标准扩展
-- 兼容各类自定义扩展
-- 可在特定场景调用宿主库提升性能
+- 采用RISC-V向量扩展，支持高达AVX2的SIMD扩展
+- 支持RVA23硬件及多种可选扩展
+- 在某些情况下使用主机库以提升性能
 
 ## 兼容性
 兼容性列表可在此处找到： https://felix86.com/compat

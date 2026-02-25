@@ -21,10 +21,9 @@ Feel free to join our **Discord server**: [https://discord.gg/TgBxgFwByU](https:
 
 ## Features
 - Just-in-Time (JIT) recompiler
-- Uses the RISC-V Vector Extension for SSE instructions up to SSE 4.2
-- Utilizes many standard extensions such as `B`, `Zicond`, `Zacas` and others
-- Supports a variety of custom extensions
-- Can use the host libraries in some cases for improved performance
+- Uses the RISC-V Vector Extension for SIMD extensions up to AVX2
+- Supports RVA23 hardware and many optional extensions
+- Uses the host libraries in some cases for improved performance
 
 ## Compatibility
 A compatibility list can be found here: https://felix86.com/compat

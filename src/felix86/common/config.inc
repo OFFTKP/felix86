@@ -17,16 +17,20 @@ X(Logging, bool, print_invalidations, false, FELIX86_PRINT_INVALIDATIONS, "Print
 X(Logging, bool, print_smc, false, FELIX86_PRINT_SMC, "Print on every SMC detection", false);
 X(Logging, bool, print_thunks, false, FELIX86_PRINT_THUNKS, "Print on every thunk function call", false);
 
+X(CPUID, bool, no_sse2, false, FELIX86_NO_SSE2, "Disable SSE2 instructions", false)
+X(CPUID, bool, no_sse3, false, FELIX86_NO_SSE3, "Disable SSE3 instructions", false)
+X(CPUID, bool, no_ssse3, false, FELIX86_NO_SSSE3, "Disable SSSE3 instructions", false)
+X(CPUID, bool, no_sse4_1, false, FELIX86_NO_SSE4_1, "Disable SSE4.1 instructions", false)
+X(CPUID, bool, no_sse4_2, false, FELIX86_NO_SSE4_2, "Disable SSE4.2 instructions", false)
+X(CPUID, bool, no_avx, true, FELIX86_NO_AVX, "Disable AVX instructions", false)
+X(CPUID, bool, no_avx2, true, FELIX86_NO_AVX2, "Disable AVX2 instructions", false)
+X(CPUID, bool, no_pclmulqdq, true, FELIX86_NO_PCLMULQDQ, "Disable PCLMULQDQ instruction", false)
+X(CPUID, std::string, manufacturer_id, "GenuineIntel", FELIX86_MANUFACTURER_ID, "Set a manufacturer ID", false)
+X(CPUID, std::string, cpu_name, "", FELIX86_CPU_NAME, "Set a specific CPU name in CPUID, up to 48 characters", false)
+
 X(Debugging, bool, dump_regs, false, FELIX86_DUMP_REGS, "Dump register values on exit", false)
 X(Debugging, bool, calltrace, false, FELIX86_CALLTRACE, "Capture a calltrace (push on every call, pop on every ret)", false)
 X(Debugging, bool, single_step, false, FELIX86_SINGLE_STEP, "Enable single stepping mode (each block is one instruction)", false)
-X(Debugging, bool, no_sse2, false, FELIX86_NO_SSE2, "Disable SSE2 instructions", false)
-X(Debugging, bool, no_sse3, false, FELIX86_NO_SSE3, "Disable SSE3 instructions", false)
-X(Debugging, bool, no_ssse3, false, FELIX86_NO_SSSE3, "Disable SSSE3 instructions", false)
-X(Debugging, bool, no_sse4_1, false, FELIX86_NO_SSE4_1, "Disable SSE4.1 instructions", false)
-X(Debugging, bool, no_sse4_2, false, FELIX86_NO_SSE4_2, "Disable SSE4.2 instructions", false)
-X(Debugging, bool, no_avx, true, FELIX86_NO_AVX, "Disable AVX instructions", false)
-X(Debugging, bool, no_avx2, true, FELIX86_NO_AVX2, "Disable AVX2 instructions", false)
 X(Debugging, bool, perf_blocks, false, FELIX86_PERF_BLOCKS, "Name blocks for perf", false)
 X(Debugging, bool, perf_symbols, false, FELIX86_PERF_SYMBOLS, "Use symbols for perf block naming, may cause some slowdown", false)
 X(Debugging, bool, perf_global, false, FELIX86_PERF_GLOBAL, "Name entire code cache for perf", false)
@@ -58,5 +62,4 @@ X(Performance, bool, protect_pages, true, FELIX86_PROTECT_PAGES, "Protect pages 
 X(Performance, bool, noflag_opts, true, FELIX86_NOFLAG_OPTS, "Optimize some instructions when the flag calculations aren't necessary", false)
 X(Performance, bool, auto_compress, false, FELIX86_AUTO_COMPRESS, "Automatically compress instructions whenever possible which may slightly improve performance", false)
 X(Performance, bool, scan_ahead_multi, true, FELIX86_SCAN_AHEAD_MULTI, "Scan ahead to multiple blocks when possible, avoiding even more flag calculations", false)
-X(Performance, bool, pclmulqdq, true, FELIX86_PCLMULQDQ, "Enable the PCLMULQDQ instruction, might improve performance in some applications", false)
 X(Performance, bool, no_address_overflow, true, FELIX86_NO_ADDRESS_OVERFLOW, "Assume addresses won't overflow in 32-bit apps, which allows for some optimizations", false)

@@ -7,6 +7,7 @@
 #include "biscuit/registers.hpp"
 #include "biscuit/vector.hpp"
 #include "felix86/common/config.hpp"
+#include "felix86/common/feature.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
@@ -8362,9 +8363,22 @@ FAST_HANDLE(MOVDQ2Q) {
     rec.setVec(&operands[0], dst);
 }
 
+void bad_getbv(u64 xcr) {
+    ERROR("Bad XCR: %d", xcr);
+}
+
 FAST_HANDLE(XGETBV) {
+    biscuit::Label is_zero;
     biscuit::GPR scratch = rec.scratch();
-    as.LI(scratch, 0b11);
+    biscuit::GPR ecx = rec.getGPR(X86_REF_RCX, X86_SIZE_DWORD);
+    as.BEQZ(ecx, &is_zero);
+    as.MV(a0, ecx);
+    as.LI(scratch, (u64)bad_getbv);
+    as.JALR(scratch);
+    as.C_UNDEF();
+    as.C_UNDEF();
+    as.Bind(&is_zero);
+    as.LI(scratch, get_xfeature_enabled_mask());
     rec.setGPR(X86_REF_RAX, X86_SIZE_QWORD, scratch);
     rec.setGPR(X86_REF_RDX, X86_SIZE_QWORD, x0);
 }

@@ -10,6 +10,8 @@
 #include "felix86/v2/recompiler.hpp"
 #undef si_pid
 
+#define FP_XSTATE_MAGIC1 0x46505853U
+#define FP_XSTATE_MAGIC2 0x46505845U
 #define SA_IA32_ABI 0x02000000u
 #define SA_X32_ABI 0x01000000u
 
@@ -124,6 +126,14 @@ struct Xmm128 {
     }
 };
 
+struct x64_fpx_sw_bytes {
+    u32 magic1{};
+    u32 extended_size{};
+    u64 xfeatures{};
+    u32 xstate_size{};
+    u32 padding[7]{};
+};
+
 struct x64_libc_fpstate {
     /* 64-bit fxsave format. Also the legacy part of xsave, which is the one we use as we don't support AVX  */
     u16 cwd;
@@ -136,8 +146,8 @@ struct x64_libc_fpstate {
     u32 mxcr_mask;
     x64_fpxreg _st[8];
     Xmm128 xmm[16];
-    u32 reserved[24]; // Bytes 464...511 are for the implementation to do whatever it wants.
-                      // Linux kernel uses them in _fpx_sw_bytes for magic numbers and xsave size and other stuff
+    u32 reserved[12];
+    x64_fpx_sw_bytes sw_reserved;
 };
 static_assert(sizeof(x64_libc_fpstate) == 512);
 

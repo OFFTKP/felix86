@@ -2,14 +2,18 @@
 #include <span>
 #include <fcntl.h>
 #include "felix86/common/config.hpp"
+#include "felix86/common/feature.hpp"
 #include "felix86/common/global.hpp"
 #include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/hle/cpuid.hpp"
 
-const char* manufacturer_id = "GenuineIntel";
-
 constexpr u32 NO_SUBLEAF = 0xFFFFFFFF;
+
+static inline void bit_set(u32& data, int position, bool value) {
+    data &= ~(1u << position);
+    data |= value << position;
+}
 
 // Generated using generate_cpuid.cpp
 [[maybe_unused]] constexpr std::array p4_mappings = {
@@ -93,18 +97,29 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
     // Try getting the CPU name
     if (!cpu_name_tried) {
         cpu_name_tried = true;
-        int fd = open("/proc/device-tree/cpus/cpu@0/model", O_RDONLY);
-        if (fd != -1) {
-            char buffer[48];
-            int bytes_read = read(fd, buffer, sizeof(buffer) - 1);
-            if (bytes_read != -1) {
-                buffer[bytes_read] = 0;
-                std::string version = get_version_full();
-                snprintf(cpu_name, sizeof(cpu_name), "%s on %s", version.c_str(), buffer);
-                cpu_name_set = true;
+        if (!g_config.cpu_name.empty() && g_config.cpu_name.size() < 48) {
+            snprintf(cpu_name, sizeof(cpu_name), "%s", g_config.cpu_name.c_str());
+            cpu_name_set = true;
+        } else {
+            int fd = open("/proc/device-tree/cpus/cpu@0/model", O_RDONLY);
+            if (fd != -1) {
+                char buffer[48];
+                int bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+                if (bytes_read != -1) {
+                    buffer[bytes_read] = 0;
+                    std::string version = get_version_full();
+                    snprintf(cpu_name, sizeof(cpu_name), "%s on %s", version.c_str(), buffer);
+                    cpu_name_set = true;
+                }
+                ASSERT(close(fd) == 0);
             }
-            ASSERT(close(fd) == 0);
         }
+    }
+
+    if (!cpu_name_set) {
+        std::string version = get_version_full();
+        snprintf(cpu_name, sizeof(cpu_name), "%s on Unknown CPU", version.c_str());
+        cpu_name_set = true;
     }
 
     Cpuid result{};
@@ -119,49 +134,34 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
         }
     }
 
+    if (found && leaf == 0x00000000) {
+        if (!g_config.manufacturer_id.empty()) {
+            g_config.manufacturer_id.resize(12);
+            memcpy(&result.ebx, g_config.manufacturer_id.data(), 4);
+            memcpy(&result.edx, g_config.manufacturer_id.data() + 4, 4);
+            memcpy(&result.ecx, g_config.manufacturer_id.data() + 8, 4);
+        }
+    }
+
     if (found && leaf == 0x00000001) {
-        if (g_config.no_sse2) {
-            result.edx &= ~(1 << 26);
-        }
-        if (g_config.no_sse3) {
-            result.ecx &= ~(1 << 0);
-        }
-        if (g_config.no_ssse3) {
-            result.ecx &= ~(1 << 9);
-        }
-        if (g_config.no_sse4_1) {
-            result.ecx &= ~(1 << 19);
-        }
-        if (g_config.no_sse4_2 || !Extensions::B /* CRC32 needs Zbc */) {
-            result.ecx &= ~(1 << 20);
-        }
-        if (Extensions::VLEN < 256 || g_config.no_avx) {
-            result.ecx &= ~(1 << 28); // Disable AVX
-        }
-        if (!Extensions::B) {
-            result.ecx &= ~(1 << 1); // disable PCLMULQDQ
-        } else if (g_config.pclmulqdq) {
-            result.ecx |= 1 << 1;
-        }
-        if (!Extensions::Zvkned) {
-            result.ecx &= ~(1 << 25); // Disable AES
-        }
-        if (!Extensions::Zvfhmin) {
-            result.ecx &= ~(1 << 29); // Disable F16C
-        }
+        bit_set(result.edx, 26, is_feature_enabled(x86_feature::SSE2));
+        bit_set(result.ecx, 0, is_feature_enabled(x86_feature::SSE3));
+        bit_set(result.ecx, 1, is_feature_enabled(x86_feature::PCLMULQDQ));
+        bit_set(result.ecx, 9, is_feature_enabled(x86_feature::SSSE3));
+        bit_set(result.ecx, 19, is_feature_enabled(x86_feature::SSE4_1));
+        bit_set(result.ecx, 20, is_feature_enabled(x86_feature::SSE4_2));
+        bit_set(result.ecx, 25, is_feature_enabled(x86_feature::AES));
+        bit_set(result.ecx, 28, is_feature_enabled(x86_feature::AVX));
+        bit_set(result.ecx, 29, is_feature_enabled(x86_feature::F16C));
     }
 
     if (found && leaf == 0x0000'0007) {
-        if (!Extensions::Zvkned) {
-            result.ecx &= ~(1 << 9); // Disable VAES
-        }
-        if (Extensions::VLEN < 256 || g_config.no_avx2 || !Extensions::Zicclsm) {
-            result.ebx &= ~(1 << 5); // Disable AVX2
-        }
+        bit_set(result.ecx, 9, is_feature_enabled(x86_feature::VAES));
+        bit_set(result.ebx, 5, is_feature_enabled(x86_feature::AVX2));
     }
 
     if (found && leaf == 0x8000'0001) {
-        result.ecx |= (1 << 5); // lzcnt/popcnt support
+        bit_set(result.ecx, 5, is_feature_enabled(x86_feature::LZCNT_POPCNT));
     }
 
     if (found && leaf == 0x8000'0002 && cpu_name_set) {
