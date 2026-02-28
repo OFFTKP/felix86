@@ -155,7 +155,6 @@ bool Config::initialize(bool ignore_envs) {
         extreme_config.noflag_opts = true;
         extreme_config.auto_compress = false;
         extreme_config.scan_ahead_multi = true;
-        extreme_config.no_pclmulqdq = true;
         extreme_config.no_address_overflow = true;
         Config::save(profiles_path / "extreme.toml", extreme_config, true);
     }
@@ -174,7 +173,6 @@ bool Config::initialize(bool ignore_envs) {
         safe_config.noflag_opts = true;
         safe_config.auto_compress = false;
         safe_config.scan_ahead_multi = false;
-        safe_config.no_pclmulqdq = false;
         safe_config.no_address_overflow = false;
         Config::save(profiles_path / "safe.toml", safe_config, true);
     }
@@ -196,7 +194,6 @@ bool Config::initialize(bool ignore_envs) {
         paranoid_config.noflag_opts = false;
         paranoid_config.auto_compress = false;
         paranoid_config.scan_ahead_multi = false;
-        paranoid_config.no_pclmulqdq = false;
         paranoid_config.no_address_overflow = false;
         Config::save(profiles_path / "paranoid.toml", paranoid_config, true);
     }
