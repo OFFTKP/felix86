@@ -22,9 +22,9 @@ X(CPUID, bool, no_sse3, false, FELIX86_NO_SSE3, "Disable SSE3 instructions", fal
 X(CPUID, bool, no_ssse3, false, FELIX86_NO_SSSE3, "Disable SSSE3 instructions", false)
 X(CPUID, bool, no_sse4_1, false, FELIX86_NO_SSE4_1, "Disable SSE4.1 instructions", false)
 X(CPUID, bool, no_sse4_2, false, FELIX86_NO_SSE4_2, "Disable SSE4.2 instructions", false)
-X(CPUID, bool, no_avx, true, FELIX86_NO_AVX, "Disable AVX instructions", false)
-X(CPUID, bool, no_avx2, true, FELIX86_NO_AVX2, "Disable AVX2 instructions", false)
-X(CPUID, bool, no_pclmulqdq, true, FELIX86_NO_PCLMULQDQ, "Disable PCLMULQDQ instruction", false)
+X(CPUID, bool, no_avx, false, FELIX86_NO_AVX, "Disable AVX instructions", false)
+X(CPUID, bool, no_avx2, false, FELIX86_NO_AVX2, "Disable AVX2 instructions", false)
+X(CPUID, bool, no_pclmulqdq, false, FELIX86_NO_PCLMULQDQ, "Disable PCLMULQDQ instruction", false)
 X(CPUID, std::string, manufacturer_id, "GenuineIntel", FELIX86_MANUFACTURER_ID, "Set a manufacturer ID", false)
 X(CPUID, std::string, cpu_name, "", FELIX86_CPU_NAME, "Set a specific CPU name in CPUID, up to 48 characters", false)
 
