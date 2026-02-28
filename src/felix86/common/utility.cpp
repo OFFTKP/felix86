@@ -1355,17 +1355,11 @@ void pcmpxstrx_impl(ThreadState* state, pcmpxstrx type, Int* dst, Int* src, u8 c
         break;
     }
     case EqualOrdered: {
-        intres1 = 0;
-        for (int j = 0; j < UpperBound; j++) {
-            bool match = true;
-            for (int i = 0; i < UpperBound; i++) {
-                if (!overrideIfInvalid(i, j + i)) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) {
-                intres1 |= (1 << j);
+        intres1 = Mask;
+        for (int j = 0; j <= UpperBound; j++) {
+            for (int i = 0, k = j; i <= UpperBound - j && k <= UpperBound; i++, k++) {
+                u32 bit = !overrideIfInvalid(i, k);
+                intres1 &= ~(bit << j);
             }
         }
         break;
