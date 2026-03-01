@@ -6,7 +6,9 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/frame.hpp"
 #include "felix86/common/gdbjit.hpp"
+#include "felix86/common/global.hpp"
 #include "felix86/common/perf.hpp"
+#include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
 #include "felix86/emulator.hpp"
@@ -1994,18 +1996,28 @@ void Recompiler::writebackState() {
     biscuit::GPR address = scratch();
     ASSERT(address != t5); // reason: see invalidate_caller_thunk
 
-    if (Extensions::VLEN >= 256) {
-        setVectorState(SEW::E64, 4);
+    if (Extensions::VLEN == 256 && g_config.group_loadstore) {
+        static_assert(sizeof(XmmReg) == 256 / 8);
+        as.VSETVLI(address, x0, SEW::E64, LMUL::M8);
+        biscuit::Vec xmm0 = allocatedVec(X86_REF_XMM0);
+        biscuit::Vec xmm8 = allocatedVec(X86_REF_XMM8);
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + 0 * sizeof(XmmReg));
+        as.VSE64(xmm0, address);
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + 8 * sizeof(XmmReg));
+        as.VSE64(xmm8, address);
+        resetVectorState();
     } else {
-        ASSERT_MSG(g_config.no_avx && g_config.no_avx2, "AVX not disabled on VLEN=128 machine?");
-        setVectorState(SEW::E64, 2);
-    }
-
-    // TODO: can we optimize using special stores
-    for (int i = 0; i < 16; i++) {
-        biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
-        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * sizeof(XmmReg));
-        as.VSE64(vec, address);
+        if (Extensions::VLEN >= 256) {
+            setVectorState(SEW::E64, 4);
+        } else {
+            ASSERT_MSG(g_config.no_avx && g_config.no_avx2, "AVX not disabled on VLEN=128 machine?");
+            setVectorState(SEW::E64, 2);
+        }
+        for (int i = 0; i < 16; i++) {
+            biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + i * sizeof(XmmReg));
+            as.VSE64(vec, address);
+        }
     }
 
     biscuit::GPR cf = allocatedGPR(X86_REF_CF);
@@ -2043,17 +2055,27 @@ void Recompiler::restoreState() {
     biscuit::GPR address = scratch();
     ASSERT(address != t5); // reason: see invalidate_caller_thunk
 
-    if (Extensions::VLEN >= 256) {
-        setVectorState(SEW::E64, 4);
+    if (Extensions::VLEN == 256 && g_config.group_loadstore) {
+        static_assert(sizeof(XmmReg) == 256 / 8);
+        as.VSETVLI(address, x0, SEW::E64, LMUL::M8);
+        biscuit::Vec xmm0 = allocatedVec(X86_REF_XMM0);
+        biscuit::Vec xmm8 = allocatedVec(X86_REF_XMM8);
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + 0 * sizeof(XmmReg));
+        as.VLE64(xmm0, address);
+        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + 8 * sizeof(XmmReg));
+        as.VLE64(xmm8, address);
+        resetVectorState();
     } else {
-        setVectorState(SEW::E64, 2);
-    }
-
-    // TODO: can we optimize these using special loads
-    for (int i = 0; i < 16; i++) {
-        biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
-        as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * i);
-        as.VLE64(vec, address);
+        if (Extensions::VLEN >= 256) {
+            setVectorState(SEW::E64, 4);
+        } else {
+            setVectorState(SEW::E64, 2);
+        }
+        for (int i = 0; i < 16; i++) {
+            biscuit::Vec vec = allocatedVec((x86_ref_e)(X86_REF_XMM0 + i));
+            as.ADDI(address, threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * i);
+            as.VLE64(vec, address);
+        }
     }
 
     popScratch();
