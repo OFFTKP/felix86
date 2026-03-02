@@ -72,6 +72,7 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
     rec.setVectorState(SEW::E1024, 0);
     rec.setFlagMode(flags ? FlagMode::AlwaysEmit : FlagMode::NeverEmit);
     rec.resetX87();
+    rec.v0Modified();
 
     Xbyak::CodeGenerator x(8192);
     auto x86_start = x.getCurr();
@@ -83,6 +84,8 @@ void gen(Recompiler& rec, nlohmann::ordered_json& json, void (*func)(Xbyak::Code
     u64 rip = (u64)x86_start;
     rec.decode(rip, zinstruction, zoperands);
     rec.compileInstruction(zinstruction, zoperands, rip);
+    rec.resetScratch();
+    rec.flushX87();
     auto after = rec.getAssembler().GetCursorPointer();
     int count = 0;
     Instruction inst;
@@ -293,6 +296,7 @@ int main() {
     Extensions::V = true;
     Extensions::VLEN = 256;
     Extensions::Zicond = true;
+    Extensions::Zvkned = true;
     Handlers::initialize();
 
     std::unique_ptr<Recompiler> rec_storage = std::make_unique<Recompiler>(true /* relocatable code */);
@@ -664,6 +668,100 @@ int main() {
     GEN(name(xmm2, xmm2));                                                                                                                           \
     GEN(name(xmm1, ptr[rdi]))
 
+#define GEN_AVX(name)                                                                                                                                \
+    GEN(name(xmm3, xmm4, xmm5));                                                                                                                     \
+    GEN(name(xmm1, xmm2, ptr[rdi]));                                                                                                                 \
+    GEN(name(ymm3, ymm4, ymm5));                                                                                                                     \
+    GEN(name(ymm1, ymm2, ptr[rdi]))
+
+#define GEN_AVX_YMM4(name)                                                                                                                           \
+    GEN(name(xmm3, xmm4, xmm5, xmm0));                                                                                                               \
+    GEN(name(xmm1, xmm2, ptr[rdi], xmm0));                                                                                                           \
+    GEN(name(ymm3, ymm4, ymm5, ymm0));                                                                                                               \
+    GEN(name(ymm1, ymm2, ptr[rdi], ymm0))
+
+#define GEN_AVX_XMM3(name)                                                                                                                           \
+    GEN(name(xmm3, xmm4, xmm5));                                                                                                                     \
+    GEN(name(xmm3, xmm2, xmm2));                                                                                                                     \
+    GEN(name(xmm1, xmm2, ptr[rdi]))
+
+#define GEN_AVX_XMM2(name)                                                                                                                           \
+    GEN(name(xmm3, xmm4));                                                                                                                           \
+    GEN(name(xmm1, ptr[rdi]))
+
+#define GEN_AVX_YMM2(name)                                                                                                                           \
+    GEN(name(ymm3, ymm4));                                                                                                                           \
+    GEN(name(ymm1, ptr[rdi]));                                                                                                                       \
+    GEN(name(xmm3, xmm4));                                                                                                                           \
+    GEN(name(xmm1, ptr[rdi]))
+
+#define GEN_AVX_YMM2_ONLY(name)                                                                                                                      \
+    GEN(name(ymm3, ymm4));                                                                                                                           \
+    GEN(name(ymm1, ptr[rdi]))
+
+#define GEN_AVX_YMM3_ONLY(name)                                                                                                                      \
+    GEN(name(ymm3, ymm4, ymm5));                                                                                                                     \
+    GEN(name(ymm1, ymm2, ptr[rdi]))
+
+#define GEN_AVX_MOV(name)                                                                                                                            \
+    GEN(name(xmm3, xmm4));                                                                                                                           \
+    GEN(name(xmm1, ptr[rdi]));                                                                                                                       \
+    GEN(name(ptr[rdi], xmm1));                                                                                                                       \
+    GEN(name(ymm3, ymm4));                                                                                                                           \
+    GEN(name(ymm1, ptr[rdi]));                                                                                                                       \
+    GEN(name(ptr[rdi], ymm1))
+
+#define GEN_AVX_IMM(name)                                                                                                                            \
+    GEN(name(xmm3, xmm4, xmm5, 0b10101010));                                                                                                         \
+    GEN(name(xmm1, xmm2, ptr[rdi], 0b10101010));                                                                                                     \
+    GEN(name(ymm3, ymm4, ymm5, 0b10101010));                                                                                                         \
+    GEN(name(ymm1, ymm2, ptr[rdi], 0b10101010))
+
+#define GEN_AVX_XMM3_IMM(name)                                                                                                                       \
+    GEN(name(xmm3, xmm4, xmm5, 0b10101010));                                                                                                         \
+    GEN(name(xmm1, xmm2, ptr[rdi], 0b10101010))
+
+#define GEN_AVX_XMM2_IMM(name)                                                                                                                       \
+    GEN(name(xmm3, xmm4, 0b10101010));                                                                                                               \
+    GEN(name(xmm1, ptr[rdi], 0b10101010))
+
+#define GEN_AVX_YMM2_IMM(name)                                                                                                                       \
+    GEN(name(ymm3, ymm4, 0b10101010));                                                                                                               \
+    GEN(name(ymm1, ptr[rdi], 0b10101010));                                                                                                           \
+    GEN(name(xmm3, xmm4, 0b10101010));                                                                                                               \
+    GEN(name(xmm1, ptr[rdi], 0b10101010))
+
+#define GEN_AVX_YMM3_IMM(name)                                                                                                                       \
+    GEN(name(ymm3, ymm4, ymm5, 0b10101010));                                                                                                         \
+    GEN(name(ymm1, ymm2, ptr[rdi], 0b10101010));                                                                                                     \
+    GEN(name(xmm3, xmm4, xmm5, 0b10101010));                                                                                                         \
+    GEN(name(xmm1, xmm2, ptr[rdi], 0b10101010))
+
+#define GEN_AVX_YMM2_ONLY_IMM(name)                                                                                                                  \
+    GEN(name(ymm3, ymm4, 0b10101010));                                                                                                               \
+    GEN(name(ymm1, ptr[rdi], 0b10101010))
+
+#define GEN_AVX_CMP(name)                                                                                                                            \
+    GEN(name(xmm3, xmm4, xmm5, 0));                                                                                                                  \
+    GEN(name(xmm3, xmm4, xmm5, 7));                                                                                                                  \
+    GEN(name(xmm1, xmm2, ptr[rdi], 0));                                                                                                              \
+    GEN(name(xmm1, xmm2, ptr[rdi], 7));                                                                                                              \
+    GEN(name(ymm3, ymm4, ymm5, 0));                                                                                                                  \
+    GEN(name(ymm3, ymm4, ymm5, 7));                                                                                                                  \
+    GEN(name(ymm1, ymm2, ptr[rdi], 0));                                                                                                              \
+    GEN(name(ymm1, ymm2, ptr[rdi], 7))
+
+#define GEN_AVX_CMP_XMM(name)                                                                                                                        \
+    GEN(name(xmm3, xmm4, xmm5, 0));                                                                                                                  \
+    GEN(name(xmm3, xmm4, xmm5, 7));                                                                                                                  \
+    GEN(name(xmm1, xmm2, ptr[rdi], 0));                                                                                                              \
+    GEN(name(xmm1, xmm2, ptr[rdi], 7))
+
+#define GEN_MMX(name)                                                                                                                                \
+    GEN(name(mm3, mm4));                                                                                                                             \
+    GEN(name(mm2, mm2));                                                                                                                             \
+    GEN(name(mm1, ptr[rdi]))
+
 #define GEN_SSE_MOV(name)                                                                                                                            \
     GEN(name(xmm3, xmm4));                                                                                                                           \
     GEN(name(xmm2, xmm2));                                                                                                                           \
@@ -930,15 +1028,41 @@ int main() {
     sse3 << json.dump(4);
     json.clear();
 
-    // GEN_SSE(pabsb);
-    // GEN_SSE(pabsw);
-    // GEN_SSE(pabsd);
+    GEN_SSE(pabsb);
+    GEN_SSE(pabsw);
+    GEN_SSE(pabsd);
     GEN_SSE(psignb);
     GEN_SSE(psignw);
     GEN_SSE(psignd);
     GEN_SSE(pshufb);
+    GEN_SSE(pmulhrsw);
+    GEN_SSE(pmaddubsw);
+    GEN_SSE(phsubw);
+    GEN_SSE(phsubd);
+    GEN_SSE(phsubsw);
+    GEN_SSE(phaddw);
+    GEN_SSE(phaddd);
+    GEN_SSE(phaddsw);
     GEN(palignr(xmm2, xmm3, 10));
     GEN(palignr(xmm2, xmm3, 16));
+
+    GEN_MMX(pabsb);
+    GEN_MMX(pabsw);
+    GEN_MMX(pabsd);
+    GEN_MMX(psignb);
+    GEN_MMX(psignw);
+    GEN_MMX(psignd);
+    GEN_MMX(pshufb);
+    GEN_MMX(pmulhrsw);
+    GEN_MMX(pmaddubsw);
+    GEN_MMX(phsubw);
+    GEN_MMX(phsubd);
+    GEN_MMX(phsubsw);
+    GEN_MMX(phaddw);
+    GEN_MMX(phaddd);
+    GEN_MMX(phaddsw);
+    GEN(palignr(mm2, mm3, 5));
+    GEN(palignr(mm2, mm3, 16));
 
     std::ofstream ssse3("counts/SSSE3.json");
     ssse3 << json.dump(4);
@@ -1005,6 +1129,474 @@ int main() {
 
     std::ofstream sse4_1("counts/SSE4_1.json");
     sse4_1 << json.dump(4);
+    json.clear();
+
+    GEN_AVX_XMM3(vaddss);
+    GEN_AVX_XMM3(vsubss);
+    GEN_AVX_XMM3(vmulss);
+    GEN_AVX_XMM3(vdivss);
+    GEN_AVX_XMM3(vsqrtss);
+    GEN_AVX_XMM3(vaddsd);
+    GEN_AVX_XMM3(vsubsd);
+    GEN_AVX_XMM3(vmulsd);
+    GEN_AVX_XMM3(vdivsd);
+    GEN_AVX_XMM3(vsqrtsd);
+    GEN_AVX(vaddps);
+    GEN_AVX(vsubps);
+    GEN_AVX(vmulps);
+    GEN_AVX(vdivps);
+    GEN_AVX_YMM2(vsqrtps);
+    GEN_AVX(vaddpd);
+    GEN_AVX(vsubpd);
+    GEN_AVX(vmulpd);
+    GEN_AVX(vdivpd);
+    GEN_AVX_YMM2(vsqrtpd);
+    GEN_AVX(vpmullw);
+    GEN_AVX(vpmulhw);
+    GEN_AVX(vpmulhuw);
+    GEN_AVX(vpmulld);
+    GEN_AVX(vpmuldq);
+    GEN_AVX(vpmuludq);
+    GEN_AVX(vpmulhrsw);
+    GEN_AVX(vandps);
+    GEN_AVX(vandpd);
+    GEN_AVX(vpand);
+    GEN_AVX(vandnps);
+    GEN_AVX(vandnpd);
+    GEN_AVX(vpandn);
+    GEN_AVX(vorps);
+    GEN_AVX(vorpd);
+    GEN_AVX(vpor);
+    GEN_AVX(vxorps);
+    GEN_AVX(vxorpd);
+    GEN_AVX(vpxor);
+    GEN_AVX(vpaddb);
+    GEN_AVX(vpaddw);
+    GEN_AVX(vpaddd);
+    GEN_AVX(vpaddq);
+    GEN_AVX(vpaddsb);
+    GEN_AVX(vpaddsw);
+    GEN_AVX(vpaddusb);
+    GEN_AVX(vpaddusw);
+    GEN_AVX(vpavgb);
+    GEN_AVX(vpavgw);
+    GEN_AVX_YMM2_IMM(vpshuflw);
+    GEN_AVX_YMM2_IMM(vpshufhw);
+    GEN_AVX(vpacksswb);
+    GEN_AVX(vpackssdw);
+    GEN_AVX(vpackuswb);
+    GEN_AVX(vpackusdw);
+    GEN_AVX(vpshufb);
+    GEN_AVX(vpsubb);
+    GEN_AVX(vpsubw);
+    GEN_AVX(vpsubd);
+    GEN_AVX(vpsubq);
+    GEN_AVX(vpsubsb);
+    GEN_AVX(vpsubsw);
+    GEN_AVX(vpsubusb);
+    GEN_AVX(vpsubusw);
+
+    GEN(vpmovmskb(eax, xmm2));
+    GEN(vpmovmskb(rax, xmm2));
+    GEN(vpmovmskb(eax, ymm2));
+    GEN(vpmovmskb(rax, ymm2));
+
+    GEN_AVX(vpminsb);
+    GEN_AVX(vpminsw);
+    GEN_AVX(vpminsd);
+    GEN_AVX(vpminub);
+    GEN_AVX(vpminuw);
+    GEN_AVX(vpminud);
+    GEN_AVX(vpmaxsb);
+    GEN_AVX(vpmaxsw);
+    GEN_AVX(vpmaxsd);
+    GEN_AVX(vpmaxub);
+    GEN_AVX(vpmaxuw);
+    GEN_AVX(vpmaxud);
+    GEN_AVX(vmaxps);
+    GEN_AVX(vmaxpd);
+    GEN_AVX(vminps);
+    GEN_AVX(vminpd);
+    GEN_AVX_XMM3(vmaxss);
+    GEN_AVX_XMM3(vmaxsd);
+    GEN_AVX_XMM3(vminss);
+    GEN_AVX_XMM3(vminsd);
+    GEN_AVX_YMM2(vpabsb);
+    GEN_AVX_YMM2(vpabsw);
+    GEN_AVX_YMM2(vpabsd);
+    GEN_AVX_XMM3(vrcpss);
+    GEN_AVX_YMM2(vrcpps);
+    GEN_AVX_XMM3(vrsqrtss);
+    GEN_AVX_YMM2(vrsqrtps);
+    GEN_AVX(vpcmpeqb);
+    GEN_AVX(vpcmpeqw);
+    GEN_AVX(vpcmpeqd);
+    GEN_AVX(vpcmpeqq);
+    GEN_AVX(vpcmpgtb);
+    GEN_AVX(vpcmpgtw);
+    GEN_AVX(vpcmpgtd);
+    GEN_AVX(vpcmpgtq);
+
+    GEN_AVX(vpsrlw);
+    GEN_AVX(vpsrld);
+    GEN_AVX(vpsrlq);
+    GEN_AVX(vpsllw);
+    GEN_AVX(vpslld);
+    GEN_AVX(vpsllq);
+    GEN(vpsrlw(ymm2, ymm3, 5));
+    GEN(vpsrlw(xmm2, xmm3, 5));
+    GEN(vpsrld(ymm2, ymm3, 5));
+    GEN(vpsrld(xmm2, xmm3, 5));
+    GEN(vpsrlq(ymm2, ymm3, 5));
+    GEN(vpsrlq(xmm2, xmm3, 5));
+    GEN(vpslldq(xmm2, xmm3, 5));
+    GEN(vpsrldq(xmm2, xmm3, 5));
+    GEN(vpslldq(ymm2, ymm3, 5));
+    GEN(vpsrldq(ymm2, ymm3, 5));
+    GEN_AVX(vpsllvd);
+    GEN_AVX(vpsllvq);
+    GEN_AVX(vpsrlvd);
+    GEN_AVX(vpsrlvq);
+    GEN_AVX(vpsravd);
+    GEN_AVX(vpsraw);
+    GEN_AVX(vpsrad);
+    GEN(vpsraw(ymm2, ymm3, 5));
+    GEN(vpsraw(xmm2, xmm3, 5));
+    GEN(vpsrad(ymm2, ymm3, 5));
+    GEN(vpsrad(xmm2, xmm3, 5));
+
+    GEN_AVX_IMM(vblendps);
+    GEN_AVX_IMM(vblendpd);
+    GEN_AVX_YMM4(vblendvps);
+    GEN_AVX_YMM4(vblendvpd);
+    GEN_AVX_YMM4(vpblendvb);
+    GEN_AVX_YMM3_IMM(vpblendw);
+    GEN_AVX_YMM3_IMM(vpblendd);
+
+    GEN(vbroadcastss(xmm1, xmm2));
+    GEN(vbroadcastss(ymm1, xmm2));
+    GEN(vbroadcastss(xmm1, ptr[rdi]));
+    GEN(vbroadcastss(ymm1, ptr[rdi]));
+    GEN(vbroadcastsd(ymm1, xmm2));
+    GEN(vbroadcastsd(ymm1, ptr[rdi]));
+    GEN(vbroadcastf128(ymm1, ptr[rdi]));
+    GEN(vbroadcasti128(ymm1, ptr[rdi]));
+
+    GEN_AVX_IMM(vshufps);
+    GEN_AVX_IMM(vshufpd);
+    GEN_AVX_YMM2_IMM(vpshufd);
+
+    GEN(vmovmskps(eax, xmm2));
+    GEN(vmovmskps(rax, xmm2));
+    GEN(vmovmskps(eax, ymm2));
+    GEN(vmovmskps(rax, ymm2));
+    GEN(vmovmskpd(eax, xmm2));
+    GEN(vmovmskpd(rax, xmm2));
+    GEN(vmovmskpd(eax, ymm2));
+    GEN(vmovmskpd(rax, ymm2));
+
+    GEN_AVX(vpunpcklbw);
+    GEN_AVX(vpunpcklwd);
+    GEN_AVX(vpunpckldq);
+    GEN_AVX(vpunpcklqdq);
+    GEN_AVX(vpunpckhbw);
+    GEN_AVX(vpunpckhwd);
+    GEN_AVX(vpunpckhdq);
+    GEN_AVX(vpunpckhqdq);
+    GEN_AVX_IMM(vpalignr);
+
+    GEN_AVX_XMM3_IMM(vroundss);
+    GEN_AVX_XMM3_IMM(vroundsd);
+    GEN_AVX_YMM2_IMM(vroundps);
+    GEN_AVX_YMM2_IMM(vroundpd);
+
+    GEN_AVX(vphaddw);
+    GEN_AVX_XMM2(vphminposuw);
+    GEN_AVX(vpmaddwd);
+    GEN_AVX(vpmaddubsw);
+    GEN_AVX(vphaddsw);
+    GEN_AVX(vphaddd);
+    GEN_AVX(vphsubw);
+    GEN_AVX(vphsubsw);
+    GEN_AVX(vphsubd);
+
+    GEN_AVX_CMP_XMM(vcmpss);
+    GEN_AVX_CMP_XMM(vcmpsd);
+    GEN_AVX_CMP(vcmpps);
+    GEN_AVX_CMP(vcmppd);
+
+    GEN_AVX_XMM2(vcomiss);
+    GEN_AVX_XMM2(vucomiss);
+    GEN_AVX_XMM2(vcomisd);
+    GEN_AVX_XMM2(vucomisd);
+
+    GEN(vcvtdq2pd(xmm1, xmm2));
+    GEN(vcvtdq2pd(xmm1, ptr[rdi]));
+    GEN(vcvtdq2pd(ymm1, xmm2));
+    GEN(vcvtdq2pd(ymm1, ptr[rdi]));
+    GEN(vcvtpd2dq(xmm1, xmm2));
+    GEN(vcvtpd2dq(xmm1, ptr[rdi]));
+    GEN(vcvtpd2dq(xmm1, ymm2));
+    GEN(vcvttpd2dq(xmm1, xmm2));
+    GEN(vcvttpd2dq(xmm1, ptr[rdi]));
+    GEN(vcvttpd2dq(xmm1, ymm2));
+    GEN(vcvtpd2ps(xmm1, xmm2));
+    GEN(vcvtpd2ps(xmm1, ptr[rdi]));
+    GEN(vcvtpd2ps(xmm1, ymm2));
+    GEN(vcvtdq2ps(xmm1, xmm2));
+    GEN(vcvtdq2ps(xmm1, ptr[rdi]));
+    GEN(vcvtdq2ps(xmm1, ymm2));
+    GEN(vcvtps2dq(xmm1, xmm2));
+    GEN(vcvtps2dq(xmm1, ptr[rdi]));
+    GEN(vcvtps2dq(xmm1, ymm2));
+    GEN(vcvtps2pd(xmm1, xmm2));
+    GEN(vcvtps2pd(xmm1, ptr[rdi]));
+    GEN(vcvtps2pd(ymm1, xmm2));
+    GEN(vcvttps2dq(xmm1, xmm2));
+    GEN(vcvttps2dq(xmm1, ptr[rdi]));
+    GEN(vcvttps2dq(ymm1, xmm2));
+
+    GEN(vcvttss2si(rax, xmm3));
+    GEN(vcvttss2si(eax, xmm2));
+    GEN(vcvttss2si(eax, dword[rdi]));
+    GEN(vcvttss2si(rax, dword[rdi]));
+    GEN(vcvttsd2si(rax, xmm3));
+    GEN(vcvttsd2si(eax, xmm2));
+    GEN(vcvttsd2si(eax, qword[rdi]));
+    GEN(vcvttsd2si(rax, qword[rdi]));
+    GEN(vcvtsd2si(rax, xmm3));
+    GEN(vcvtsd2si(eax, xmm2));
+    GEN(vcvtsd2si(eax, qword[rdi]));
+    GEN(vcvtsd2si(rax, qword[rdi]));
+    GEN(vcvtss2si(rax, xmm3));
+    GEN(vcvtss2si(eax, xmm2));
+    GEN(vcvtss2si(eax, dword[rdi]));
+    GEN(vcvtss2si(rax, dword[rdi]));
+
+    GEN(vcvtsi2ss(xmm3, xmm4, rax));
+    GEN(vcvtsi2ss(xmm2, xmm3, eax));
+    GEN(vcvtsi2ss(xmm1, xmm2, dword[rdi]));
+    GEN(vcvtsi2ss(xmm1, xmm2, qword[rdi]));
+    GEN(vcvtsi2sd(xmm3, xmm4, rax));
+    GEN(vcvtsi2sd(xmm2, xmm3, eax));
+    GEN(vcvtsi2sd(xmm1, xmm2, dword[rdi]));
+    GEN(vcvtsi2sd(xmm1, xmm2, qword[rdi]));
+
+    GEN_AVX_XMM3(vcvtss2sd);
+    GEN_AVX_XMM3(vcvtsd2ss);
+
+    GEN(vldmxcsr(ptr[rdi]));
+    GEN(vstmxcsr(ptr[rdi]));
+
+    GEN_AVX_IMM(vdpps);
+    GEN_AVX_XMM3_IMM(vdppd);
+
+    GEN(vextractf128(xmm1, ymm2, 0));
+    GEN(vextractf128(ptr[rdi], ymm2, 0));
+    GEN(vextracti128(xmm1, ymm2, 0));
+    GEN(vextracti128(ptr[rdi], ymm2, 0));
+    GEN(vextractps(eax, xmm2, 0));
+    GEN(vextractps(ptr[rdi], xmm2, 0));
+
+    GEN_AVX_MOV(vmovaps);
+    GEN_AVX_MOV(vmovapd);
+    GEN_AVX_MOV(vmovups);
+    GEN_AVX_MOV(vmovupd);
+    GEN_AVX_MOV(vmovdqu);
+    GEN_AVX_MOV(vmovdqa);
+
+    GEN(vmovhlps(xmm1, xmm2, xmm3));
+    GEN(vmovlhps(xmm1, xmm2, xmm3));
+    GEN(vmovhpd(xmm1, xmm2, ptr[rdi]));
+    GEN(vmovhpd(ptr[rdi], xmm1));
+    GEN(vmovhps(xmm1, xmm2, ptr[rdi]));
+    GEN(vmovhps(ptr[rdi], xmm1));
+    GEN(vmovlpd(xmm1, xmm2, ptr[rdi]));
+    GEN(vmovlpd(ptr[rdi], xmm1));
+    GEN(vmovlps(xmm1, xmm2, ptr[rdi]));
+    GEN(vmovlps(ptr[rdi], xmm1));
+
+    GEN(vmovd(xmm1, eax));
+    GEN(vmovd(eax, xmm1));
+    GEN(vmovd(xmm1, ptr[rdi]));
+    GEN(vmovd(ptr[rdi], xmm1));
+    GEN(vmovq(xmm1, rax));
+    GEN(vmovq(rax, xmm1));
+    GEN(vmovq(xmm1, ptr[rdi]));
+    GEN(vmovq(ptr[rdi], xmm1));
+    GEN(vmovq(xmm1, xmm2));
+
+    GEN(vmovss(xmm1, xmm2, xmm3));
+    GEN(vmovss(ptr[rdi], xmm1));
+    GEN(vmovss(xmm1, ptr[rdi]));
+    GEN(vmovsd(xmm1, xmm2, xmm3));
+    GEN(vmovsd(ptr[rdi], xmm1));
+    GEN(vmovsd(xmm1, ptr[rdi]));
+    GEN_AVX_YMM2(vmovsldup);
+    GEN_AVX_YMM2(vmovshdup);
+    GEN(vmovntdq(ptr[rdi], xmm1));
+    GEN(vmovntdq(ptr[rdi], ymm1));
+    GEN(vmovntdqa(xmm1, ptr[rdi]));
+    GEN(vmovntdqa(ymm1, ptr[rdi]));
+    GEN(vmovntps(ptr[rdi], xmm1));
+    GEN(vmovntps(ptr[rdi], ymm1));
+    GEN(vmovntpd(ptr[rdi], xmm1));
+    GEN(vmovntpd(ptr[rdi], ymm1));
+
+    GEN_AVX(vaddsubps);
+    GEN_AVX(vaddsubpd);
+
+    GEN(vcvtps2ph(xmm1, xmm2, 0));
+    GEN(vcvtps2ph(ptr[rdi], xmm1, 0));
+    GEN(vcvtps2ph(xmm1, ymm2, 0));
+    GEN(vcvtps2ph(ptr[rdi], ymm1, 0));
+    GEN(vcvtph2ps(xmm1, xmm2));
+    GEN(vcvtph2ps(xmm1, ptr[rdi]));
+    GEN(vcvtph2ps(ymm1, xmm2));
+    GEN(vcvtph2ps(ymm1, ptr[rdi]));
+
+    GEN_AVX_YMM2(vpmovzxbq);
+    GEN_AVX_YMM2(vpmovzxbd);
+    GEN_AVX_YMM2(vpmovzxbw);
+    GEN_AVX_YMM2(vpmovzxwd);
+    GEN_AVX_YMM2(vpmovzxwq);
+    GEN_AVX_YMM2(vpmovzxdq);
+    GEN_AVX_YMM2(vpmovsxbq);
+    GEN_AVX_YMM2(vpmovsxbd);
+    GEN_AVX_YMM2(vpmovsxbw);
+    GEN_AVX_YMM2(vpmovsxwd);
+    GEN_AVX_YMM2(vpmovsxwq);
+    GEN_AVX_YMM2(vpmovsxdq);
+
+    GEN(vpinsrb(xmm1, xmm2, eax, 1));
+    GEN(vpinsrb(xmm1, xmm2, ptr[rdi], 1));
+    GEN(vpinsrw(xmm1, xmm2, eax, 1));
+    GEN(vpinsrw(xmm1, xmm2, ptr[rdi], 1));
+    GEN(vpinsrd(xmm1, xmm2, eax, 1));
+    GEN(vpinsrd(xmm1, xmm2, ptr[rdi], 1));
+    GEN(vpinsrq(xmm1, xmm2, rax, 1));
+    GEN(vpinsrq(xmm1, xmm2, ptr[rdi], 1));
+    GEN(vpextrb(eax, xmm2, 1));
+    GEN(vpextrb(ptr[rdi], xmm2, 1));
+    GEN(vpextrw(eax, xmm2, 1));
+    GEN(vpextrw(ptr[rdi], xmm2, 1));
+    GEN(vpextrd(eax, xmm2, 1));
+    GEN(vpextrd(ptr[rdi], xmm2, 1));
+    GEN(vpextrq(rax, xmm2, 1));
+    GEN(vpextrq(ptr[rdi], xmm2, 1));
+
+    GEN_AVX(vhaddps);
+    GEN_AVX(vhaddpd);
+    GEN_AVX(vhsubps);
+    GEN_AVX(vhsubpd);
+
+    GEN(vinsertf128(ymm1, ymm2, xmm3, 0));
+    GEN(vinsertf128(ymm1, ymm2, ptr[rdi], 0));
+    GEN(vinserti128(ymm1, ymm2, xmm3, 0));
+    GEN(vinserti128(ymm1, ymm2, ptr[rdi], 0));
+    GEN(vinsertps(xmm1, xmm2, xmm3, 0));
+    GEN(vinsertps(xmm1, xmm2, ptr[rdi], 0));
+
+    GEN(vlddqu(xmm1, ptr[rdi]));
+    GEN(vlddqu(ymm1, ptr[rdi]));
+
+    GEN(vmaskmovps(xmm1, xmm2, ptr[rdi]));
+    GEN(vmaskmovps(ymm1, ymm2, ptr[rdi]));
+    GEN(vmaskmovps(ptr[rdi], xmm1, xmm2));
+    GEN(vmaskmovps(ptr[rdi], ymm1, ymm2));
+    GEN(vmaskmovpd(xmm1, xmm2, ptr[rdi]));
+    GEN(vmaskmovpd(ymm1, ymm2, ptr[rdi]));
+    GEN(vmaskmovpd(ptr[rdi], xmm1, xmm2));
+    GEN(vmaskmovpd(ptr[rdi], ymm1, ymm2));
+    GEN(vpmaskmovd(xmm1, xmm2, ptr[rdi]));
+    GEN(vpmaskmovd(ymm1, ymm2, ptr[rdi]));
+    GEN(vpmaskmovd(ptr[rdi], xmm1, xmm2));
+    GEN(vpmaskmovd(ptr[rdi], ymm1, ymm2));
+    GEN(vpmaskmovq(xmm1, xmm2, ptr[rdi]));
+    GEN(vpmaskmovq(ymm1, ymm2, ptr[rdi]));
+    GEN(vpmaskmovq(ptr[rdi], xmm1, xmm2));
+    GEN(vpmaskmovq(ptr[rdi], ymm1, ymm2));
+
+    GEN(vmaskmovdqu(xmm1, xmm2));
+
+    GEN(vgatherdps(xmm1, ptr[rdi + xmm2 * 4], xmm3));
+    GEN(vgatherdps(ymm1, ptr[rdi + ymm2 * 4], ymm3));
+    GEN(vgatherdpd(xmm1, ptr[rdi + xmm2 * 4], xmm3));
+    GEN(vgatherdpd(ymm1, ptr[rdi + xmm2 * 4], ymm3));
+    GEN(vgatherqps(xmm1, ptr[rdi + xmm2 * 4], xmm3));
+    GEN(vgatherqps(xmm1, ptr[rdi + ymm2 * 4], xmm3));
+    GEN(vgatherqpd(xmm1, ptr[rdi + xmm2 * 4], xmm3));
+    GEN(vgatherqpd(ymm1, ptr[rdi + ymm2 * 4], ymm3));
+    GEN(vpgatherdd(xmm1, ptr[rdi + xmm2 * 4], xmm3));
+    GEN(vpgatherdd(ymm1, ptr[rdi + ymm2 * 4], ymm3));
+    GEN(vpgatherdq(xmm1, ptr[rdi + xmm2 * 4], xmm3));
+    GEN(vpgatherdq(ymm1, ptr[rdi + xmm2 * 4], ymm3));
+    GEN(vpgatherqd(xmm1, ptr[rdi + xmm2 * 4], xmm3));
+    GEN(vpgatherqd(xmm1, ptr[rdi + ymm2 * 4], xmm3));
+    GEN(vpgatherqq(xmm1, ptr[rdi + xmm2 * 4], xmm3));
+    GEN(vpgatherqq(ymm1, ptr[rdi + ymm2 * 4], ymm3));
+
+    GEN_AVX_YMM3_ONLY(vpermd);
+    GEN_AVX_YMM2_ONLY_IMM(vpermq);
+    GEN_AVX_YMM3_ONLY(vpermps);
+    GEN_AVX_YMM2_ONLY_IMM(vpermpd);
+    GEN_AVX(vaesenc);
+    GEN_AVX(vaesenclast);
+    GEN_AVX(vaesdec);
+    GEN_AVX(vaesdeclast);
+    GEN_AVX_XMM2(vaesimc);
+    GEN_AVX_XMM2_IMM(vaeskeygenassist);
+
+    GEN_AVX(vpsadbw);
+    GEN_AVX(vpsignb);
+    GEN_AVX(vpsignw);
+    GEN_AVX(vpsignd);
+    GEN_AVX(vunpcklps);
+    GEN_AVX(vunpckhps);
+    GEN_AVX(vunpcklpd);
+    GEN_AVX(vunpckhpd);
+
+    GEN_AVX_YMM2(vmovddup);
+    GEN_AVX_IMM(vmpsadbw);
+    GEN_AVX_XMM2(vptest);
+    GEN_AVX_YMM2(vtestps);
+    GEN_AVX_YMM2(vtestpd);
+
+    GEN(vzeroall());
+    GEN(vzeroupper());
+
+    GEN_AVX_XMM2_IMM(vpcmpistri);
+    GEN_AVX_XMM2_IMM(vpcmpistrm);
+    GEN_AVX_XMM2_IMM(vpcmpestri);
+    GEN_AVX_XMM2_IMM(vpcmpestrm);
+
+    GEN_AVX_YMM2_IMM(vpermilps);
+    GEN_AVX_YMM2_IMM(vpermilpd);
+    GEN_AVX(vpermilps);
+    GEN_AVX(vpermilpd);
+
+    GEN(vperm2f128(ymm1, ymm2, ymm3, 0));
+    GEN(vperm2i128(ymm1, ymm2, ymm3, 0));
+
+    GEN(vpbroadcastb(xmm1, xmm2));
+    GEN(vpbroadcastb(ymm1, xmm2));
+    GEN(vpbroadcastw(xmm1, xmm2));
+    GEN(vpbroadcastw(ymm1, xmm2));
+    GEN(vpbroadcastd(xmm1, xmm2));
+    GEN(vpbroadcastd(ymm1, xmm2));
+    GEN(vpbroadcastq(xmm1, xmm2));
+    GEN(vpbroadcastq(ymm1, xmm2));
+    GEN(vpbroadcastb(xmm1, ptr[rdi]));
+    GEN(vpbroadcastb(ymm1, ptr[rdi]));
+    GEN(vpbroadcastw(xmm1, ptr[rdi]));
+    GEN(vpbroadcastw(ymm1, ptr[rdi]));
+    GEN(vpbroadcastd(xmm1, ptr[rdi]));
+    GEN(vpbroadcastd(ymm1, ptr[rdi]));
+    GEN(vpbroadcastq(xmm1, ptr[rdi]));
+    GEN(vpbroadcastq(ymm1, ptr[rdi]));
+
+    std::ofstream avx("counts/AVX.json");
+    avx << json.dump(4);
     json.clear();
 
     GEN(fadd(st3, st0));
@@ -1303,7 +1895,7 @@ int main() {
         x.movss(dword[r11 - 0x84], xmm10);
         x.shufps(xmm10, xmm10, 0xe7);
         x.movss(dword[r11 - 0x64], xmm10);
-        x.hlt();
+        x.ret();
     });
 
     gen_many(rec, "XXHash", json, [](Xbyak::CodeGenerator& x) {

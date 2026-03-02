@@ -1,6 +1,6 @@
 {
     "dcc3": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -10,12 +10,21 @@
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f0, ra, 0x88(136)",
-            "FADD.D          f3, f3, f0, dyn"
+            "FADD.D          f3, f3, f0, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)"
         ],
         "disassembly": "fadd st3, st0"
     },
     "d8c3": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -25,35 +34,54 @@
             "ANDI            t1, t1, 0x7(7)",
             "SH3ADD          ra, t1, s11",
             "FLD             f3, ra, 0x88(136)",
-            "FADD.D          f0, f0, f3, dyn"
+            "FADD.D          f0, f0, f3, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)"
         ],
         "disassembly": "fadd st0, st3"
     },
     "d807": {
-        "instruction_count": 6,
+        "instruction_count": 11,
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f0, t1, 0x88(136)",
-            "FADD.D          f0, f0, f28, dyn"
+            "FADD.D          f0, f0, f28, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)"
         ],
         "disassembly": "fadd [rdi]"
     },
     "dc07": {
-        "instruction_count": 5,
+        "instruction_count": 10,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f0, t1, 0x88(136)",
-            "FADD.D          f0, f0, f28, dyn"
+            "FADD.D          f0, f0, f28, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)"
         ],
         "disassembly": "fadd [rdi]"
     },
     "dec3": {
-        "instruction_count": 19,
+        "instruction_count": 24,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -73,12 +101,17 @@
             "SB              t3, s11, 0x322(802)",
             "LHU             ra, s11, 0x31e(798)",
             "OR              ra, ra, t1",
-            "SH              ra, s11, 0x31e(798)"
+            "SH              ra, s11, 0x31e(798)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x2(2)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)"
         ],
         "disassembly": "faddp st3, st0"
     },
     "de07": {
-        "instruction_count": 8,
+        "instruction_count": 13,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -87,12 +120,17 @@
             "SEXT.H          ra, ra",
             "FCVT.D.W        f28, ra, dyn",
             "FADD.D          f29, f1, f28, dyn",
-            "FSGNJ.D         f1, f29, f29"
+            "FSGNJ.D         f1, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)"
         ],
         "disassembly": "fiadd [rdi]"
     },
     "da07": {
-        "instruction_count": 7,
+        "instruction_count": 12,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -100,12 +138,17 @@
             "LWU             ra, a0, 0x0(0)",
             "FCVT.D.W        f28, ra, dyn",
             "FADD.D          f29, f1, f28, dyn",
-            "FSGNJ.D         f1, f29, f29"
+            "FSGNJ.D         f1, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)"
         ],
         "disassembly": "fiadd [rdi]"
     },
     "dceb": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -115,12 +158,21 @@
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f1, ra, 0x88(136)",
-            "FSUB.D          f4, f4, f1, dyn"
+            "FSUB.D          f4, f4, f1, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)"
         ],
         "disassembly": "fsub st3, st0"
     },
     "d8e3": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -130,35 +182,54 @@
             "ANDI            t1, t1, 0x7(7)",
             "SH3ADD          ra, t1, s11",
             "FLD             f4, ra, 0x88(136)",
-            "FSUB.D          f1, f1, f4, dyn"
+            "FSUB.D          f1, f1, f4, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)"
         ],
         "disassembly": "fsub st0, st3"
     },
     "d827": {
-        "instruction_count": 6,
+        "instruction_count": 11,
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f1, t1, 0x88(136)",
-            "FSUB.D          f1, f1, f28, dyn"
+            "FSUB.D          f1, f1, f28, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)"
         ],
         "disassembly": "fsub [rdi]"
     },
     "dc27": {
-        "instruction_count": 5,
+        "instruction_count": 10,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f1, t1, 0x88(136)",
-            "FSUB.D          f1, f1, f28, dyn"
+            "FSUB.D          f1, f1, f28, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)"
         ],
         "disassembly": "fsub [rdi]"
     },
     "deeb": {
-        "instruction_count": 19,
+        "instruction_count": 24,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -178,12 +249,17 @@
             "SB              t3, s11, 0x322(802)",
             "LHU             ra, s11, 0x31e(798)",
             "OR              ra, ra, t1",
-            "SH              ra, s11, 0x31e(798)"
+            "SH              ra, s11, 0x31e(798)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x2(2)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)"
         ],
         "disassembly": "fsubp st3, st0"
     },
     "de27": {
-        "instruction_count": 8,
+        "instruction_count": 13,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -192,12 +268,17 @@
             "SEXT.H          ra, ra",
             "FCVT.D.W        f28, ra, dyn",
             "FSUB.D          f29, f2, f28, dyn",
-            "FSGNJ.D         f2, f29, f29"
+            "FSGNJ.D         f2, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fisub [rdi]"
     },
     "da27": {
-        "instruction_count": 7,
+        "instruction_count": 12,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -205,12 +286,17 @@
             "LWU             ra, a0, 0x0(0)",
             "FCVT.D.W        f28, ra, dyn",
             "FSUB.D          f29, f2, f28, dyn",
-            "FSGNJ.D         f2, f29, f29"
+            "FSGNJ.D         f2, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fisub [rdi]"
     },
     "dce3": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -220,12 +306,21 @@
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f2, ra, 0x88(136)",
-            "FSUB.D          f5, f2, f5, dyn"
+            "FSUB.D          f5, f2, f5, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)"
         ],
         "disassembly": "fsubr st3, st0"
     },
     "d8eb": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -235,35 +330,54 @@
             "ANDI            t1, t1, 0x7(7)",
             "SH3ADD          ra, t1, s11",
             "FLD             f5, ra, 0x88(136)",
-            "FSUB.D          f2, f5, f2, dyn"
+            "FSUB.D          f2, f5, f2, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)"
         ],
         "disassembly": "fsubr st0, st3"
     },
     "d82f": {
-        "instruction_count": 6,
+        "instruction_count": 11,
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f2, t1, 0x88(136)",
-            "FSUB.D          f2, f28, f2, dyn"
+            "FSUB.D          f2, f28, f2, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fsubr [rdi]"
     },
     "dc2f": {
-        "instruction_count": 5,
+        "instruction_count": 10,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f2, t1, 0x88(136)",
-            "FSUB.D          f2, f28, f2, dyn"
+            "FSUB.D          f2, f28, f2, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fsubr [rdi]"
     },
     "dee3": {
-        "instruction_count": 19,
+        "instruction_count": 24,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -283,12 +397,17 @@
             "SB              t3, s11, 0x322(802)",
             "LHU             ra, s11, 0x31e(798)",
             "OR              ra, ra, t1",
-            "SH              ra, s11, 0x31e(798)"
+            "SH              ra, s11, 0x31e(798)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x2(2)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)"
         ],
         "disassembly": "fsubrp st3, st0"
     },
     "de2f": {
-        "instruction_count": 8,
+        "instruction_count": 13,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -297,12 +416,17 @@
             "SEXT.H          ra, ra",
             "FCVT.D.W        f28, ra, dyn",
             "FSUB.D          f29, f28, f3, dyn",
-            "FSGNJ.D         f3, f29, f29"
+            "FSGNJ.D         f3, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)"
         ],
         "disassembly": "fisubr [rdi]"
     },
     "da2f": {
-        "instruction_count": 7,
+        "instruction_count": 12,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -310,12 +434,17 @@
             "LWU             ra, a0, 0x0(0)",
             "FCVT.D.W        f28, ra, dyn",
             "FSUB.D          f29, f28, f3, dyn",
-            "FSGNJ.D         f3, f29, f29"
+            "FSGNJ.D         f3, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)"
         ],
         "disassembly": "fisubr [rdi]"
     },
     "dccb": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -325,12 +454,21 @@
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f3, ra, 0x88(136)",
-            "FMUL.D          f6, f6, f3, dyn"
+            "FMUL.D          f6, f6, f3, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f6, t1, 0x88(136)"
         ],
         "disassembly": "fmul st3, st0"
     },
     "d8cb": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -340,35 +478,54 @@
             "ANDI            t1, t1, 0x7(7)",
             "SH3ADD          ra, t1, s11",
             "FLD             f6, ra, 0x88(136)",
-            "FMUL.D          f3, f3, f6, dyn"
+            "FMUL.D          f3, f3, f6, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f6, t1, 0x88(136)"
         ],
         "disassembly": "fmul st0, st3"
     },
     "d80f": {
-        "instruction_count": 6,
+        "instruction_count": 11,
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f3, t1, 0x88(136)",
-            "FMUL.D          f3, f3, f28, dyn"
+            "FMUL.D          f3, f3, f28, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)"
         ],
         "disassembly": "fmul [rdi]"
     },
     "dc0f": {
-        "instruction_count": 5,
+        "instruction_count": 10,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f3, t1, 0x88(136)",
-            "FMUL.D          f3, f3, f28, dyn"
+            "FMUL.D          f3, f3, f28, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)"
         ],
         "disassembly": "fmul [rdi]"
     },
     "decb": {
-        "instruction_count": 19,
+        "instruction_count": 24,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -388,12 +545,17 @@
             "SB              t3, s11, 0x322(802)",
             "LHU             ra, s11, 0x31e(798)",
             "OR              ra, ra, t1",
-            "SH              ra, s11, 0x31e(798)"
+            "SH              ra, s11, 0x31e(798)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x2(2)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f6, t1, 0x88(136)"
         ],
         "disassembly": "fmulp st3, st0"
     },
     "da0f": {
-        "instruction_count": 7,
+        "instruction_count": 12,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -401,12 +563,17 @@
             "LWU             ra, a0, 0x0(0)",
             "FCVT.D.W        f28, ra, dyn",
             "FMUL.D          f29, f4, f28, dyn",
-            "FSGNJ.D         f4, f29, f29"
+            "FSGNJ.D         f4, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)"
         ],
         "disassembly": "fimul [rdi]"
     },
     "de0f": {
-        "instruction_count": 8,
+        "instruction_count": 13,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -415,12 +582,17 @@
             "SEXT.H          ra, ra",
             "FCVT.D.W        f28, ra, dyn",
             "FMUL.D          f29, f4, f28, dyn",
-            "FSGNJ.D         f4, f29, f29"
+            "FSGNJ.D         f4, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)"
         ],
         "disassembly": "fimul [rdi]"
     },
     "dcfb": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -430,12 +602,21 @@
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f4, ra, 0x88(136)",
-            "FDIV.D          f7, f7, f4, dyn"
+            "FDIV.D          f7, f7, f4, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)"
         ],
         "disassembly": "fdiv st3, st0"
     },
     "d8f3": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -445,35 +626,54 @@
             "ANDI            t1, t1, 0x7(7)",
             "SH3ADD          ra, t1, s11",
             "FLD             f7, ra, 0x88(136)",
-            "FDIV.D          f4, f4, f7, dyn"
+            "FDIV.D          f4, f4, f7, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)"
         ],
         "disassembly": "fdiv st0, st3"
     },
     "d837": {
-        "instruction_count": 6,
+        "instruction_count": 11,
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f4, t1, 0x88(136)",
-            "FDIV.D          f4, f4, f28, dyn"
+            "FDIV.D          f4, f4, f28, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)"
         ],
         "disassembly": "fdiv [rdi]"
     },
     "dc37": {
-        "instruction_count": 5,
+        "instruction_count": 10,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f4, t1, 0x88(136)",
-            "FDIV.D          f4, f4, f28, dyn"
+            "FDIV.D          f4, f4, f28, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)"
         ],
         "disassembly": "fdiv [rdi]"
     },
     "defb": {
-        "instruction_count": 19,
+        "instruction_count": 24,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -493,12 +693,17 @@
             "SB              t3, s11, 0x322(802)",
             "LHU             ra, s11, 0x31e(798)",
             "OR              ra, ra, t1",
-            "SH              ra, s11, 0x31e(798)"
+            "SH              ra, s11, 0x31e(798)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x2(2)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)"
         ],
         "disassembly": "fdivp st3, st0"
     },
     "da37": {
-        "instruction_count": 7,
+        "instruction_count": 12,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -506,12 +711,17 @@
             "LWU             ra, a0, 0x0(0)",
             "FCVT.D.W        f28, ra, dyn",
             "FDIV.D          f29, f5, f28, dyn",
-            "FSGNJ.D         f5, f29, f29"
+            "FSGNJ.D         f5, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)"
         ],
         "disassembly": "fidiv [rdi]"
     },
     "de37": {
-        "instruction_count": 8,
+        "instruction_count": 13,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -520,12 +730,17 @@
             "SEXT.H          ra, ra",
             "FCVT.D.W        f28, ra, dyn",
             "FDIV.D          f29, f5, f28, dyn",
-            "FSGNJ.D         f5, f29, f29"
+            "FSGNJ.D         f5, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)"
         ],
         "disassembly": "fidiv [rdi]"
     },
     "dcf3": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -535,12 +750,21 @@
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f5, ra, 0x88(136)",
-            "FDIV.D          f0, f5, f0, dyn"
+            "FDIV.D          f0, f5, f0, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)"
         ],
         "disassembly": "fdivr st3, st0"
     },
     "d8fb": {
-        "instruction_count": 9,
+        "instruction_count": 18,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -550,35 +774,54 @@
             "ANDI            t1, t1, 0x7(7)",
             "SH3ADD          ra, t1, s11",
             "FLD             f0, ra, 0x88(136)",
-            "FDIV.D          f5, f0, f5, dyn"
+            "FDIV.D          f5, f0, f5, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)"
         ],
         "disassembly": "fdivr st0, st3"
     },
     "d83f": {
-        "instruction_count": 6,
+        "instruction_count": 11,
         "expected_asm": [
             "FLW             f28, a0, 0x0(0)",
             "FCVT.D.S        f28, f28, dyn",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f5, t1, 0x88(136)",
-            "FDIV.D          f5, f28, f5, dyn"
+            "FDIV.D          f5, f28, f5, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)"
         ],
         "disassembly": "fdivr [rdi]"
     },
     "dc3f": {
-        "instruction_count": 5,
+        "instruction_count": 10,
         "expected_asm": [
             "FLD             f28, a0, 0x0(0)",
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f5, t1, 0x88(136)",
-            "FDIV.D          f5, f28, f5, dyn"
+            "FDIV.D          f5, f28, f5, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)"
         ],
         "disassembly": "fdivr [rdi]"
     },
     "def3": {
-        "instruction_count": 19,
+        "instruction_count": 24,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "ADDI            t1, t1, 0x3(3)",
@@ -598,12 +841,17 @@
             "SB              t3, s11, 0x322(802)",
             "LHU             ra, s11, 0x31e(798)",
             "OR              ra, ra, t1",
-            "SH              ra, s11, 0x31e(798)"
+            "SH              ra, s11, 0x31e(798)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x2(2)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)"
         ],
         "disassembly": "fdivrp st3, st0"
     },
     "da3f": {
-        "instruction_count": 7,
+        "instruction_count": 12,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -611,12 +859,17 @@
             "LWU             ra, a0, 0x0(0)",
             "FCVT.D.W        f28, ra, dyn",
             "FDIV.D          f29, f28, f6, dyn",
-            "FSGNJ.D         f6, f29, f29"
+            "FSGNJ.D         f6, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f6, t1, 0x88(136)"
         ],
         "disassembly": "fidivr [rdi]"
     },
     "de3f": {
-        "instruction_count": 8,
+        "instruction_count": 13,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -625,12 +878,17 @@
             "SEXT.H          ra, ra",
             "FCVT.D.W        f28, ra, dyn",
             "FDIV.D          f29, f28, f6, dyn",
-            "FSGNJ.D         f6, f29, f29"
+            "FSGNJ.D         f6, f29, f29",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f6, t1, 0x88(136)"
         ],
         "disassembly": "fidivr [rdi]"
     },
     "dbf3": {
-        "instruction_count": 29,
+        "instruction_count": 38,
         "expected_asm": [
             "LBU             t4, s11, 0x322(802)",
             "SH3ADD          t3, t4, s11",
@@ -660,12 +918,21 @@
             "SB              s5, s11, 0x2c9(713)",
             "JAL             zero, 0xc(12)",
             "ADDIW           s7, zero, 0x0(0)",
-            "ADDIW           s5, zero, 0x1(1)"
+            "ADDIW           s5, zero, 0x1(1)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f6, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)"
         ],
         "disassembly": "fcomi st0, st3"
     },
     "dff3": {
-        "instruction_count": 39,
+        "instruction_count": 44,
         "expected_asm": [
             "LBU             t4, s11, 0x322(802)",
             "SH3ADD          t3, t4, s11",
@@ -705,12 +972,17 @@
             "SB              t3, s11, 0x322(802)",
             "LHU             ra, s11, 0x31e(798)",
             "OR              ra, ra, t1",
-            "SH              ra, s11, 0x31e(798)"
+            "SH              ra, s11, 0x31e(798)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x2(2)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)"
         ],
         "disassembly": "fcomip st0, st3"
     },
     "dbeb": {
-        "instruction_count": 29,
+        "instruction_count": 38,
         "expected_asm": [
             "LBU             t4, s11, 0x322(802)",
             "SH3ADD          t3, t4, s11",
@@ -740,12 +1012,21 @@
             "SB              s5, s11, 0x2c9(713)",
             "JAL             zero, 0xc(12)",
             "ADDIW           s7, zero, 0x0(0)",
-            "ADDIW           s5, zero, 0x1(1)"
+            "ADDIW           s5, zero, 0x1(1)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fucomi st0, st3"
     },
     "dfeb": {
-        "instruction_count": 39,
+        "instruction_count": 44,
         "expected_asm": [
             "LBU             t4, s11, 0x322(802)",
             "SH3ADD          t3, t4, s11",
@@ -785,31 +1066,46 @@
             "SB              t3, s11, 0x322(802)",
             "LHU             ra, s11, 0x31e(798)",
             "OR              ra, ra, t1",
-            "SH              ra, s11, 0x31e(798)"
+            "SH              ra, s11, 0x31e(798)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x2(2)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fucomip st0, st3"
     },
     "df17": {
-        "instruction_count": 6,
+        "instruction_count": 11,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f0, ra, 0x88(136)",
             "ADDI            ra, a0, 0x0(0)",
             "FCVT.W.D        t1, f0, dyn",
-            "SH              t1, ra, 0x0(0)"
+            "SH              t1, ra, 0x0(0)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)"
         ],
         "disassembly": "fist [rdi]"
     },
     "db17": {
-        "instruction_count": 6,
+        "instruction_count": 11,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f0, ra, 0x88(136)",
             "ADDI            ra, a0, 0x0(0)",
             "FCVT.W.D        t1, f0, dyn",
-            "SW              t1, ra, 0x0(0)"
+            "SW              t1, ra, 0x0(0)",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)"
         ],
         "disassembly": "fist [rdi]"
     },
@@ -946,17 +1242,22 @@
         "disassembly": "fisttp [rdi]"
     },
     "d9e1": {
-        "instruction_count": 4,
+        "instruction_count": 9,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f6, ra, 0x88(136)",
-            "FSGNJX.D        f6, f6, f6"
+            "FSGNJX.D        f6, f6, f6",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f6, t1, 0x88(136)"
         ],
         "disassembly": "fabs"
     },
     "d9fe": {
-        "instruction_count": 117,
+        "instruction_count": 61,
         "expected_asm": [
             "SD              gp, s11, 0x80(128)",
             "SD              t0, s11, 0x0(0)",
@@ -975,39 +1276,11 @@
             "SD              s6, s11, 0x68(104)",
             "SD              s3, s11, 0x70(112)",
             "SD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         ra, zero, e64, m8, tu, mu",
             "ADDI            ra, s11, 0xc8(200)",
             "VSE64.V         v16, ra, none, 1",
-            "ADDI            ra, s11, 0xe8(232)",
-            "VSE64.V         v17, ra, none, 1",
-            "ADDI            ra, s11, 0x108(264)",
-            "VSE64.V         v18, ra, none, 1",
-            "ADDI            ra, s11, 0x128(296)",
-            "VSE64.V         v19, ra, none, 1",
-            "ADDI            ra, s11, 0x148(328)",
-            "VSE64.V         v20, ra, none, 1",
-            "ADDI            ra, s11, 0x168(360)",
-            "VSE64.V         v21, ra, none, 1",
-            "ADDI            ra, s11, 0x188(392)",
-            "VSE64.V         v22, ra, none, 1",
-            "ADDI            ra, s11, 0x1a8(424)",
-            "VSE64.V         v23, ra, none, 1",
             "ADDI            ra, s11, 0x1c8(456)",
             "VSE64.V         v24, ra, none, 1",
-            "ADDI            ra, s11, 0x1e8(488)",
-            "VSE64.V         v25, ra, none, 1",
-            "ADDI            ra, s11, 0x208(520)",
-            "VSE64.V         v26, ra, none, 1",
-            "ADDI            ra, s11, 0x228(552)",
-            "VSE64.V         v27, ra, none, 1",
-            "ADDI            ra, s11, 0x248(584)",
-            "VSE64.V         v28, ra, none, 1",
-            "ADDI            ra, s11, 0x268(616)",
-            "VSE64.V         v29, ra, none, 1",
-            "ADDI            ra, s11, 0x288(648)",
-            "VSE64.V         v30, ra, none, 1",
-            "ADDI            ra, s11, 0x2a8(680)",
-            "VSE64.V         v31, ra, none, 1",
             "SB              s5, s11, 0x2c8(712)",
             "SB              s7, s11, 0x2cb(715)",
             "SB              s8, s11, 0x2cc(716)",
@@ -1034,39 +1307,11 @@
             "LD              s6, s11, 0x68(104)",
             "LD              s3, s11, 0x70(112)",
             "LD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         t1, zero, e64, m8, tu, mu",
             "ADDI            t1, s11, 0xc8(200)",
             "VLE64.V         v16, t1, none, 1",
-            "ADDI            t1, s11, 0xe8(232)",
-            "VLE64.V         v17, t1, none, 1",
-            "ADDI            t1, s11, 0x108(264)",
-            "VLE64.V         v18, t1, none, 1",
-            "ADDI            t1, s11, 0x128(296)",
-            "VLE64.V         v19, t1, none, 1",
-            "ADDI            t1, s11, 0x148(328)",
-            "VLE64.V         v20, t1, none, 1",
-            "ADDI            t1, s11, 0x168(360)",
-            "VLE64.V         v21, t1, none, 1",
-            "ADDI            t1, s11, 0x188(392)",
-            "VLE64.V         v22, t1, none, 1",
-            "ADDI            t1, s11, 0x1a8(424)",
-            "VLE64.V         v23, t1, none, 1",
             "ADDI            t1, s11, 0x1c8(456)",
             "VLE64.V         v24, t1, none, 1",
-            "ADDI            t1, s11, 0x1e8(488)",
-            "VLE64.V         v25, t1, none, 1",
-            "ADDI            t1, s11, 0x208(520)",
-            "VLE64.V         v26, t1, none, 1",
-            "ADDI            t1, s11, 0x228(552)",
-            "VLE64.V         v27, t1, none, 1",
-            "ADDI            t1, s11, 0x248(584)",
-            "VLE64.V         v28, t1, none, 1",
-            "ADDI            t1, s11, 0x268(616)",
-            "VLE64.V         v29, t1, none, 1",
-            "ADDI            t1, s11, 0x288(648)",
-            "VLE64.V         v30, t1, none, 1",
-            "ADDI            t1, s11, 0x2a8(680)",
-            "VLE64.V         v31, t1, none, 1",
             "LBU             s5, s11, 0x2c8(712)",
             "LBU             s7, s11, 0x2cb(715)",
             "LBU             s8, s11, 0x2cc(716)",
@@ -1079,7 +1324,7 @@
         "disassembly": "fsin"
     },
     "d9ff": {
-        "instruction_count": 117,
+        "instruction_count": 61,
         "expected_asm": [
             "SD              gp, s11, 0x80(128)",
             "SD              t0, s11, 0x0(0)",
@@ -1098,39 +1343,11 @@
             "SD              s6, s11, 0x68(104)",
             "SD              s3, s11, 0x70(112)",
             "SD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         ra, zero, e64, m8, tu, mu",
             "ADDI            ra, s11, 0xc8(200)",
             "VSE64.V         v16, ra, none, 1",
-            "ADDI            ra, s11, 0xe8(232)",
-            "VSE64.V         v17, ra, none, 1",
-            "ADDI            ra, s11, 0x108(264)",
-            "VSE64.V         v18, ra, none, 1",
-            "ADDI            ra, s11, 0x128(296)",
-            "VSE64.V         v19, ra, none, 1",
-            "ADDI            ra, s11, 0x148(328)",
-            "VSE64.V         v20, ra, none, 1",
-            "ADDI            ra, s11, 0x168(360)",
-            "VSE64.V         v21, ra, none, 1",
-            "ADDI            ra, s11, 0x188(392)",
-            "VSE64.V         v22, ra, none, 1",
-            "ADDI            ra, s11, 0x1a8(424)",
-            "VSE64.V         v23, ra, none, 1",
             "ADDI            ra, s11, 0x1c8(456)",
             "VSE64.V         v24, ra, none, 1",
-            "ADDI            ra, s11, 0x1e8(488)",
-            "VSE64.V         v25, ra, none, 1",
-            "ADDI            ra, s11, 0x208(520)",
-            "VSE64.V         v26, ra, none, 1",
-            "ADDI            ra, s11, 0x228(552)",
-            "VSE64.V         v27, ra, none, 1",
-            "ADDI            ra, s11, 0x248(584)",
-            "VSE64.V         v28, ra, none, 1",
-            "ADDI            ra, s11, 0x268(616)",
-            "VSE64.V         v29, ra, none, 1",
-            "ADDI            ra, s11, 0x288(648)",
-            "VSE64.V         v30, ra, none, 1",
-            "ADDI            ra, s11, 0x2a8(680)",
-            "VSE64.V         v31, ra, none, 1",
             "SB              s5, s11, 0x2c8(712)",
             "SB              s7, s11, 0x2cb(715)",
             "SB              s8, s11, 0x2cc(716)",
@@ -1157,39 +1374,11 @@
             "LD              s6, s11, 0x68(104)",
             "LD              s3, s11, 0x70(112)",
             "LD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         t1, zero, e64, m8, tu, mu",
             "ADDI            t1, s11, 0xc8(200)",
             "VLE64.V         v16, t1, none, 1",
-            "ADDI            t1, s11, 0xe8(232)",
-            "VLE64.V         v17, t1, none, 1",
-            "ADDI            t1, s11, 0x108(264)",
-            "VLE64.V         v18, t1, none, 1",
-            "ADDI            t1, s11, 0x128(296)",
-            "VLE64.V         v19, t1, none, 1",
-            "ADDI            t1, s11, 0x148(328)",
-            "VLE64.V         v20, t1, none, 1",
-            "ADDI            t1, s11, 0x168(360)",
-            "VLE64.V         v21, t1, none, 1",
-            "ADDI            t1, s11, 0x188(392)",
-            "VLE64.V         v22, t1, none, 1",
-            "ADDI            t1, s11, 0x1a8(424)",
-            "VLE64.V         v23, t1, none, 1",
             "ADDI            t1, s11, 0x1c8(456)",
             "VLE64.V         v24, t1, none, 1",
-            "ADDI            t1, s11, 0x1e8(488)",
-            "VLE64.V         v25, t1, none, 1",
-            "ADDI            t1, s11, 0x208(520)",
-            "VLE64.V         v26, t1, none, 1",
-            "ADDI            t1, s11, 0x228(552)",
-            "VLE64.V         v27, t1, none, 1",
-            "ADDI            t1, s11, 0x248(584)",
-            "VLE64.V         v28, t1, none, 1",
-            "ADDI            t1, s11, 0x268(616)",
-            "VLE64.V         v29, t1, none, 1",
-            "ADDI            t1, s11, 0x288(648)",
-            "VLE64.V         v30, t1, none, 1",
-            "ADDI            t1, s11, 0x2a8(680)",
-            "VLE64.V         v31, t1, none, 1",
             "LBU             s5, s11, 0x2c8(712)",
             "LBU             s7, s11, 0x2cb(715)",
             "LBU             s8, s11, 0x2cc(716)",
@@ -1202,16 +1391,30 @@
         "disassembly": "fcos"
     },
     "d9e8": {
-        "instruction_count": 3,
+        "instruction_count": 17,
         "expected_asm": [
             "ADDIW           ra, zero, 0x3ff(1023)",
             "SLLI            ra, ra, 0x34(52)",
-            "FMV.D.X         f5, ra"
+            "FMV.D.X         f5, ra",
+            "LBU             t3, s11, 0x322(802)",
+            "LHU             t4, s11, 0x31e(798)",
+            "ADDI            ra, t3, 0xffffffff(-1)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f5, t1, 0x88(136)",
+            "ADDIW           t1, zero, 0x3(3)",
+            "SLLI            ra, ra, 0x1(1)",
+            "SLL             t1, t1, ra",
+            "ANDN            t4, t4, t1",
+            "ADDI            t3, t3, 0xffffffff(-1)",
+            "ANDI            t3, t3, 0x7(7)",
+            "SB              t3, s11, 0x322(802)",
+            "SH              t4, s11, 0x31e(798)"
         ],
         "disassembly": "fld1"
     },
     "d9e9": {
-        "instruction_count": 9,
+        "instruction_count": 23,
         "expected_asm": [
             "LUI             ra, 0x1003(4099)",
             "ADDIW           ra, ra, 0xfffffa4d(-1459)",
@@ -1221,12 +1424,26 @@
             "ADDI            ra, ra, 0xfffffbcd(-1075)",
             "SLLI            ra, ra, 0xd(13)",
             "ADDI            ra, ra, 0x371(881)",
-            "FMV.D.X         f4, ra"
+            "FMV.D.X         f4, ra",
+            "LBU             t3, s11, 0x322(802)",
+            "LHU             t4, s11, 0x31e(798)",
+            "ADDI            ra, t3, 0xffffffff(-1)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f4, t1, 0x88(136)",
+            "ADDIW           t1, zero, 0x3(3)",
+            "SLLI            ra, ra, 0x1(1)",
+            "SLL             t1, t1, ra",
+            "ANDN            t4, t4, t1",
+            "ADDI            t3, t3, 0xffffffff(-1)",
+            "ANDI            t3, t3, 0x7(7)",
+            "SB              t3, s11, 0x322(802)",
+            "SH              t4, s11, 0x31e(798)"
         ],
         "disassembly": "fldl2t"
     },
     "d9ea": {
-        "instruction_count": 9,
+        "instruction_count": 23,
         "expected_asm": [
             "LUI             ra, 0x7ff(2047)",
             "ADDIW           ra, ra, 0xfffffe2b(-469)",
@@ -1236,12 +1453,26 @@
             "ADDI            ra, ra, 0xfffffa57(-1449)",
             "SLLI            ra, ra, 0xf(15)",
             "ADDI            ra, ra, 0x2fe(766)",
-            "FMV.D.X         f3, ra"
+            "FMV.D.X         f3, ra",
+            "LBU             t3, s11, 0x322(802)",
+            "LHU             t4, s11, 0x31e(798)",
+            "ADDI            ra, t3, 0xffffffff(-1)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f3, t1, 0x88(136)",
+            "ADDIW           t1, zero, 0x3(3)",
+            "SLLI            ra, ra, 0x1(1)",
+            "SLL             t1, t1, ra",
+            "ANDN            t4, t4, t1",
+            "ADDI            t3, t3, 0xffffffff(-1)",
+            "ANDI            t3, t3, 0x7(7)",
+            "SB              t3, s11, 0x322(802)",
+            "SH              t4, s11, 0x31e(798)"
         ],
         "disassembly": "fldl2e"
     },
     "d9eb": {
-        "instruction_count": 9,
+        "instruction_count": 23,
         "expected_asm": [
             "LUI             ra, 0x200(512)",
             "ADDIW           ra, ra, 0x491(1169)",
@@ -1251,12 +1482,26 @@
             "ADDI            ra, ra, 0x443(1091)",
             "SLLI            ra, ra, 0xc(12)",
             "ADDI            ra, ra, 0xfffffd18(-744)",
-            "FMV.D.X         f2, ra"
+            "FMV.D.X         f2, ra",
+            "LBU             t3, s11, 0x322(802)",
+            "LHU             t4, s11, 0x31e(798)",
+            "ADDI            ra, t3, 0xffffffff(-1)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)",
+            "ADDIW           t1, zero, 0x3(3)",
+            "SLLI            ra, ra, 0x1(1)",
+            "SLL             t1, t1, ra",
+            "ANDN            t4, t4, t1",
+            "ADDI            t3, t3, 0xffffffff(-1)",
+            "ANDI            t3, t3, 0x7(7)",
+            "SB              t3, s11, 0x322(802)",
+            "SH              t4, s11, 0x31e(798)"
         ],
         "disassembly": "fldpi"
     },
     "d9ec": {
-        "instruction_count": 9,
+        "instruction_count": 23,
         "expected_asm": [
             "LUI             ra, 0xff(255)",
             "ADDIW           ra, ra, 0x4d1(1233)",
@@ -1266,12 +1511,26 @@
             "ADDI            ra, ra, 0x13f(319)",
             "SLLI            ra, ra, 0xf(15)",
             "ADDI            ra, ra, 0xfffff9ff(-1537)",
-            "FMV.D.X         f1, ra"
+            "FMV.D.X         f1, ra",
+            "LBU             t3, s11, 0x322(802)",
+            "LHU             t4, s11, 0x31e(798)",
+            "ADDI            ra, t3, 0xffffffff(-1)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f1, t1, 0x88(136)",
+            "ADDIW           t1, zero, 0x3(3)",
+            "SLLI            ra, ra, 0x1(1)",
+            "SLL             t1, t1, ra",
+            "ANDN            t4, t4, t1",
+            "ADDI            t3, t3, 0xffffffff(-1)",
+            "ANDI            t3, t3, 0x7(7)",
+            "SB              t3, s11, 0x322(802)",
+            "SH              t4, s11, 0x31e(798)"
         ],
         "disassembly": "fldlg2"
     },
     "d9ed": {
-        "instruction_count": 7,
+        "instruction_count": 21,
         "expected_asm": [
             "LUI             ra, 0x3fe63(261731)",
             "ADDIW           ra, ra, 0xfffffe43(-445)",
@@ -1279,40 +1538,78 @@
             "ADDI            ra, ra, 0xfffffbe9(-1047)",
             "SLLI            ra, ra, 0xe(14)",
             "ADDI            ra, ra, 0xfffff9ef(-1553)",
-            "FMV.D.X         f0, ra"
+            "FMV.D.X         f0, ra",
+            "LBU             t3, s11, 0x322(802)",
+            "LHU             t4, s11, 0x31e(798)",
+            "ADDI            ra, t3, 0xffffffff(-1)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f0, t1, 0x88(136)",
+            "ADDIW           t1, zero, 0x3(3)",
+            "SLLI            ra, ra, 0x1(1)",
+            "SLL             t1, t1, ra",
+            "ANDN            t4, t4, t1",
+            "ADDI            t3, t3, 0xffffffff(-1)",
+            "ANDI            t3, t3, 0x7(7)",
+            "SB              t3, s11, 0x322(802)",
+            "SH              t4, s11, 0x31e(798)"
         ],
         "disassembly": "fldln2"
     },
     "d9ee": {
-        "instruction_count": 1,
+        "instruction_count": 15,
         "expected_asm": [
-            "FMV.D.X         f7, zero"
+            "FMV.D.X         f7, zero",
+            "LBU             t3, s11, 0x322(802)",
+            "LHU             t4, s11, 0x31e(798)",
+            "ADDI            ra, t3, 0xffffffff(-1)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDIW           t1, zero, 0x3(3)",
+            "SLLI            ra, ra, 0x1(1)",
+            "SLL             t1, t1, ra",
+            "ANDN            t4, t4, t1",
+            "ADDI            t3, t3, 0xffffffff(-1)",
+            "ANDI            t3, t3, 0x7(7)",
+            "SB              t3, s11, 0x322(802)",
+            "SH              t4, s11, 0x31e(798)"
         ],
         "disassembly": "fldz"
     },
     "d9e0": {
-        "instruction_count": 4,
+        "instruction_count": 9,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f7, ra, 0x88(136)",
-            "FSGNJN.D        f7, f7, f7"
+            "FSGNJN.D        f7, f7, f7",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)"
         ],
         "disassembly": "fchs"
     },
     "d9fc": {
-        "instruction_count": 5,
+        "instruction_count": 10,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f7, ra, 0x88(136)",
             "FCVT.L.D        ra, f7, dyn",
-            "FCVT.D.L        f7, ra, dyn"
+            "FCVT.D.L        f7, ra, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)"
         ],
         "disassembly": "frndint"
     },
     "d9f8": {
-        "instruction_count": 117,
+        "instruction_count": 61,
         "expected_asm": [
             "SD              gp, s11, 0x80(128)",
             "SD              t0, s11, 0x0(0)",
@@ -1331,39 +1628,11 @@
             "SD              s6, s11, 0x68(104)",
             "SD              s3, s11, 0x70(112)",
             "SD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         ra, zero, e64, m8, tu, mu",
             "ADDI            ra, s11, 0xc8(200)",
             "VSE64.V         v16, ra, none, 1",
-            "ADDI            ra, s11, 0xe8(232)",
-            "VSE64.V         v17, ra, none, 1",
-            "ADDI            ra, s11, 0x108(264)",
-            "VSE64.V         v18, ra, none, 1",
-            "ADDI            ra, s11, 0x128(296)",
-            "VSE64.V         v19, ra, none, 1",
-            "ADDI            ra, s11, 0x148(328)",
-            "VSE64.V         v20, ra, none, 1",
-            "ADDI            ra, s11, 0x168(360)",
-            "VSE64.V         v21, ra, none, 1",
-            "ADDI            ra, s11, 0x188(392)",
-            "VSE64.V         v22, ra, none, 1",
-            "ADDI            ra, s11, 0x1a8(424)",
-            "VSE64.V         v23, ra, none, 1",
             "ADDI            ra, s11, 0x1c8(456)",
             "VSE64.V         v24, ra, none, 1",
-            "ADDI            ra, s11, 0x1e8(488)",
-            "VSE64.V         v25, ra, none, 1",
-            "ADDI            ra, s11, 0x208(520)",
-            "VSE64.V         v26, ra, none, 1",
-            "ADDI            ra, s11, 0x228(552)",
-            "VSE64.V         v27, ra, none, 1",
-            "ADDI            ra, s11, 0x248(584)",
-            "VSE64.V         v28, ra, none, 1",
-            "ADDI            ra, s11, 0x268(616)",
-            "VSE64.V         v29, ra, none, 1",
-            "ADDI            ra, s11, 0x288(648)",
-            "VSE64.V         v30, ra, none, 1",
-            "ADDI            ra, s11, 0x2a8(680)",
-            "VSE64.V         v31, ra, none, 1",
             "SB              s5, s11, 0x2c8(712)",
             "SB              s7, s11, 0x2cb(715)",
             "SB              s8, s11, 0x2cc(716)",
@@ -1390,39 +1659,11 @@
             "LD              s6, s11, 0x68(104)",
             "LD              s3, s11, 0x70(112)",
             "LD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         t1, zero, e64, m8, tu, mu",
             "ADDI            t1, s11, 0xc8(200)",
             "VLE64.V         v16, t1, none, 1",
-            "ADDI            t1, s11, 0xe8(232)",
-            "VLE64.V         v17, t1, none, 1",
-            "ADDI            t1, s11, 0x108(264)",
-            "VLE64.V         v18, t1, none, 1",
-            "ADDI            t1, s11, 0x128(296)",
-            "VLE64.V         v19, t1, none, 1",
-            "ADDI            t1, s11, 0x148(328)",
-            "VLE64.V         v20, t1, none, 1",
-            "ADDI            t1, s11, 0x168(360)",
-            "VLE64.V         v21, t1, none, 1",
-            "ADDI            t1, s11, 0x188(392)",
-            "VLE64.V         v22, t1, none, 1",
-            "ADDI            t1, s11, 0x1a8(424)",
-            "VLE64.V         v23, t1, none, 1",
             "ADDI            t1, s11, 0x1c8(456)",
             "VLE64.V         v24, t1, none, 1",
-            "ADDI            t1, s11, 0x1e8(488)",
-            "VLE64.V         v25, t1, none, 1",
-            "ADDI            t1, s11, 0x208(520)",
-            "VLE64.V         v26, t1, none, 1",
-            "ADDI            t1, s11, 0x228(552)",
-            "VLE64.V         v27, t1, none, 1",
-            "ADDI            t1, s11, 0x248(584)",
-            "VLE64.V         v28, t1, none, 1",
-            "ADDI            t1, s11, 0x268(616)",
-            "VLE64.V         v29, t1, none, 1",
-            "ADDI            t1, s11, 0x288(648)",
-            "VLE64.V         v30, t1, none, 1",
-            "ADDI            t1, s11, 0x2a8(680)",
-            "VLE64.V         v31, t1, none, 1",
             "LBU             s5, s11, 0x2c8(712)",
             "LBU             s7, s11, 0x2cb(715)",
             "LBU             s8, s11, 0x2cc(716)",
@@ -1435,17 +1676,22 @@
         "disassembly": "fprem"
     },
     "d9fa": {
-        "instruction_count": 4,
+        "instruction_count": 9,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f7, ra, 0x88(136)",
-            "FSQRT.D         f7, f7, dyn"
+            "FSQRT.D         f7, f7, dyn",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)"
         ],
         "disassembly": "fsqrt"
     },
     "d9cb": {
-        "instruction_count": 11,
+        "instruction_count": 20,
         "expected_asm": [
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
@@ -1457,7 +1703,16 @@
             "FLD             f2, ra, 0x88(136)",
             "FSGNJ.D         f28, f7, f7",
             "FSGNJ.D         f7, f2, f2",
-            "FSGNJ.D         f2, f28, f28"
+            "FSGNJ.D         f2, f28, f28",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fxch st3"
     },
@@ -1470,7 +1725,7 @@
         "disassembly": "fnstsw [rdi]"
     },
     "d927": {
-        "instruction_count": 119,
+        "instruction_count": 63,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "SD              gp, s11, 0x80(128)",
@@ -1490,39 +1745,11 @@
             "SD              s6, s11, 0x68(104)",
             "SD              s3, s11, 0x70(112)",
             "SD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         t1, zero, e64, m8, tu, mu",
             "ADDI            t1, s11, 0xc8(200)",
             "VSE64.V         v16, t1, none, 1",
-            "ADDI            t1, s11, 0xe8(232)",
-            "VSE64.V         v17, t1, none, 1",
-            "ADDI            t1, s11, 0x108(264)",
-            "VSE64.V         v18, t1, none, 1",
-            "ADDI            t1, s11, 0x128(296)",
-            "VSE64.V         v19, t1, none, 1",
-            "ADDI            t1, s11, 0x148(328)",
-            "VSE64.V         v20, t1, none, 1",
-            "ADDI            t1, s11, 0x168(360)",
-            "VSE64.V         v21, t1, none, 1",
-            "ADDI            t1, s11, 0x188(392)",
-            "VSE64.V         v22, t1, none, 1",
-            "ADDI            t1, s11, 0x1a8(424)",
-            "VSE64.V         v23, t1, none, 1",
             "ADDI            t1, s11, 0x1c8(456)",
             "VSE64.V         v24, t1, none, 1",
-            "ADDI            t1, s11, 0x1e8(488)",
-            "VSE64.V         v25, t1, none, 1",
-            "ADDI            t1, s11, 0x208(520)",
-            "VSE64.V         v26, t1, none, 1",
-            "ADDI            t1, s11, 0x228(552)",
-            "VSE64.V         v27, t1, none, 1",
-            "ADDI            t1, s11, 0x248(584)",
-            "VSE64.V         v28, t1, none, 1",
-            "ADDI            t1, s11, 0x268(616)",
-            "VSE64.V         v29, t1, none, 1",
-            "ADDI            t1, s11, 0x288(648)",
-            "VSE64.V         v30, t1, none, 1",
-            "ADDI            t1, s11, 0x2a8(680)",
-            "VSE64.V         v31, t1, none, 1",
             "SB              s5, s11, 0x2c8(712)",
             "SB              s7, s11, 0x2cb(715)",
             "SB              s8, s11, 0x2cc(716)",
@@ -1550,39 +1777,11 @@
             "LD              s6, s11, 0x68(104)",
             "LD              s3, s11, 0x70(112)",
             "LD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         t3, zero, e64, m8, tu, mu",
             "ADDI            t3, s11, 0xc8(200)",
             "VLE64.V         v16, t3, none, 1",
-            "ADDI            t3, s11, 0xe8(232)",
-            "VLE64.V         v17, t3, none, 1",
-            "ADDI            t3, s11, 0x108(264)",
-            "VLE64.V         v18, t3, none, 1",
-            "ADDI            t3, s11, 0x128(296)",
-            "VLE64.V         v19, t3, none, 1",
-            "ADDI            t3, s11, 0x148(328)",
-            "VLE64.V         v20, t3, none, 1",
-            "ADDI            t3, s11, 0x168(360)",
-            "VLE64.V         v21, t3, none, 1",
-            "ADDI            t3, s11, 0x188(392)",
-            "VLE64.V         v22, t3, none, 1",
-            "ADDI            t3, s11, 0x1a8(424)",
-            "VLE64.V         v23, t3, none, 1",
             "ADDI            t3, s11, 0x1c8(456)",
             "VLE64.V         v24, t3, none, 1",
-            "ADDI            t3, s11, 0x1e8(488)",
-            "VLE64.V         v25, t3, none, 1",
-            "ADDI            t3, s11, 0x208(520)",
-            "VLE64.V         v26, t3, none, 1",
-            "ADDI            t3, s11, 0x228(552)",
-            "VLE64.V         v27, t3, none, 1",
-            "ADDI            t3, s11, 0x248(584)",
-            "VLE64.V         v28, t3, none, 1",
-            "ADDI            t3, s11, 0x268(616)",
-            "VLE64.V         v29, t3, none, 1",
-            "ADDI            t3, s11, 0x288(648)",
-            "VLE64.V         v30, t3, none, 1",
-            "ADDI            t3, s11, 0x2a8(680)",
-            "VLE64.V         v31, t3, none, 1",
             "LBU             s5, s11, 0x2c8(712)",
             "LBU             s7, s11, 0x2cb(715)",
             "LBU             s8, s11, 0x2cc(716)",
@@ -1595,7 +1794,7 @@
         "disassembly": "fldenv [rdi]"
     },
     "d937": {
-        "instruction_count": 119,
+        "instruction_count": 63,
         "expected_asm": [
             "ADDI            ra, a0, 0x0(0)",
             "SD              gp, s11, 0x80(128)",
@@ -1615,39 +1814,11 @@
             "SD              s6, s11, 0x68(104)",
             "SD              s3, s11, 0x70(112)",
             "SD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         t1, zero, e64, m8, tu, mu",
             "ADDI            t1, s11, 0xc8(200)",
             "VSE64.V         v16, t1, none, 1",
-            "ADDI            t1, s11, 0xe8(232)",
-            "VSE64.V         v17, t1, none, 1",
-            "ADDI            t1, s11, 0x108(264)",
-            "VSE64.V         v18, t1, none, 1",
-            "ADDI            t1, s11, 0x128(296)",
-            "VSE64.V         v19, t1, none, 1",
-            "ADDI            t1, s11, 0x148(328)",
-            "VSE64.V         v20, t1, none, 1",
-            "ADDI            t1, s11, 0x168(360)",
-            "VSE64.V         v21, t1, none, 1",
-            "ADDI            t1, s11, 0x188(392)",
-            "VSE64.V         v22, t1, none, 1",
-            "ADDI            t1, s11, 0x1a8(424)",
-            "VSE64.V         v23, t1, none, 1",
             "ADDI            t1, s11, 0x1c8(456)",
             "VSE64.V         v24, t1, none, 1",
-            "ADDI            t1, s11, 0x1e8(488)",
-            "VSE64.V         v25, t1, none, 1",
-            "ADDI            t1, s11, 0x208(520)",
-            "VSE64.V         v26, t1, none, 1",
-            "ADDI            t1, s11, 0x228(552)",
-            "VSE64.V         v27, t1, none, 1",
-            "ADDI            t1, s11, 0x248(584)",
-            "VSE64.V         v28, t1, none, 1",
-            "ADDI            t1, s11, 0x268(616)",
-            "VSE64.V         v29, t1, none, 1",
-            "ADDI            t1, s11, 0x288(648)",
-            "VSE64.V         v30, t1, none, 1",
-            "ADDI            t1, s11, 0x2a8(680)",
-            "VSE64.V         v31, t1, none, 1",
             "SB              s5, s11, 0x2c8(712)",
             "SB              s7, s11, 0x2cb(715)",
             "SB              s8, s11, 0x2cc(716)",
@@ -1675,39 +1846,11 @@
             "LD              s6, s11, 0x68(104)",
             "LD              s3, s11, 0x70(112)",
             "LD              s4, s11, 0x78(120)",
-            "VSETIVLI        zero, 4, e64, m1, tu, mu",
+            "VSETVLI         t3, zero, e64, m8, tu, mu",
             "ADDI            t3, s11, 0xc8(200)",
             "VLE64.V         v16, t3, none, 1",
-            "ADDI            t3, s11, 0xe8(232)",
-            "VLE64.V         v17, t3, none, 1",
-            "ADDI            t3, s11, 0x108(264)",
-            "VLE64.V         v18, t3, none, 1",
-            "ADDI            t3, s11, 0x128(296)",
-            "VLE64.V         v19, t3, none, 1",
-            "ADDI            t3, s11, 0x148(328)",
-            "VLE64.V         v20, t3, none, 1",
-            "ADDI            t3, s11, 0x168(360)",
-            "VLE64.V         v21, t3, none, 1",
-            "ADDI            t3, s11, 0x188(392)",
-            "VLE64.V         v22, t3, none, 1",
-            "ADDI            t3, s11, 0x1a8(424)",
-            "VLE64.V         v23, t3, none, 1",
             "ADDI            t3, s11, 0x1c8(456)",
             "VLE64.V         v24, t3, none, 1",
-            "ADDI            t3, s11, 0x1e8(488)",
-            "VLE64.V         v25, t3, none, 1",
-            "ADDI            t3, s11, 0x208(520)",
-            "VLE64.V         v26, t3, none, 1",
-            "ADDI            t3, s11, 0x228(552)",
-            "VLE64.V         v27, t3, none, 1",
-            "ADDI            t3, s11, 0x248(584)",
-            "VLE64.V         v28, t3, none, 1",
-            "ADDI            t3, s11, 0x268(616)",
-            "VLE64.V         v29, t3, none, 1",
-            "ADDI            t3, s11, 0x288(648)",
-            "VLE64.V         v30, t3, none, 1",
-            "ADDI            t3, s11, 0x2a8(680)",
-            "VLE64.V         v31, t3, none, 1",
             "LBU             s5, s11, 0x2c8(712)",
             "LBU             s7, s11, 0x2cb(715)",
             "LBU             s8, s11, 0x2cc(716)",
@@ -1720,7 +1863,7 @@
         "disassembly": "fnstenv [rdi]"
     },
     "dac3": {
-        "instruction_count": 10,
+        "instruction_count": 19,
         "expected_asm": [
             "BEQ             s5, zero, 0x28(40)",
             "LBU             t1, s11, 0x322(802)",
@@ -1731,12 +1874,21 @@
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f7, ra, 0x88(136)",
-            "FSGNJ.D         f7, f2, f2"
+            "FSGNJ.D         f7, f2, f2",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fcmovb st0, st3"
     },
     "dacb": {
-        "instruction_count": 10,
+        "instruction_count": 19,
         "expected_asm": [
             "BEQ             s7, zero, 0x28(40)",
             "LBU             t1, s11, 0x322(802)",
@@ -1747,12 +1899,21 @@
             "LBU             t1, s11, 0x322(802)",
             "SH3ADD          ra, t1, s11",
             "FLD             f7, ra, 0x88(136)",
-            "FSGNJ.D         f7, f2, f2"
+            "FSGNJ.D         f7, f2, f2",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fcmove st0, st3"
     },
     "dad3": {
-        "instruction_count": 11,
+        "instruction_count": 20,
         "expected_asm": [
             "OR              ra, s5, s7",
             "BEQ             ra, zero, 0x28(40)",
@@ -1764,12 +1925,21 @@
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f7, t1, 0x88(136)",
-            "FSGNJ.D         f7, f2, f2"
+            "FSGNJ.D         f7, f2, f2",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fcmovbe st0, st3"
     },
     "dadb": {
-        "instruction_count": 11,
+        "instruction_count": 20,
         "expected_asm": [
             "LBU             ra, s11, 0x2c9(713)",
             "BEQ             ra, zero, 0x28(40)",
@@ -1781,12 +1951,21 @@
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f7, t1, 0x88(136)",
-            "FSGNJ.D         f7, f2, f2"
+            "FSGNJ.D         f7, f2, f2",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fcmovu st0, st3"
     },
     "dbc3": {
-        "instruction_count": 11,
+        "instruction_count": 20,
         "expected_asm": [
             "XORI            ra, s5, 0x1(1)",
             "BEQ             ra, zero, 0x28(40)",
@@ -1798,12 +1977,21 @@
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f7, t1, 0x88(136)",
-            "FSGNJ.D         f7, f2, f2"
+            "FSGNJ.D         f7, f2, f2",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fcmovnb st0, st3"
     },
     "dbcb": {
-        "instruction_count": 11,
+        "instruction_count": 20,
         "expected_asm": [
             "XORI            ra, s7, 0x1(1)",
             "BEQ             ra, zero, 0x28(40)",
@@ -1815,12 +2003,21 @@
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f7, t1, 0x88(136)",
-            "FSGNJ.D         f7, f2, f2"
+            "FSGNJ.D         f7, f2, f2",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fcmovne st0, st3"
     },
     "dbd3": {
-        "instruction_count": 12,
+        "instruction_count": 21,
         "expected_asm": [
             "OR              ra, s5, s7",
             "XORI            ra, ra, 0x1(1)",
@@ -1833,12 +2030,21 @@
             "LBU             t3, s11, 0x322(802)",
             "SH3ADD          t1, t3, s11",
             "FLD             f7, t1, 0x88(136)",
-            "FSGNJ.D         f7, f2, f2"
+            "FSGNJ.D         f7, f2, f2",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fcmovnbe st0, st3"
     },
     "dbdb": {
-        "instruction_count": 12,
+        "instruction_count": 21,
         "expected_asm": [
             "LBU             ra, s11, 0x2c9(713)",
             "XORI            t1, ra, 0x1(1)",
@@ -1851,7 +2057,16 @@
             "LBU             t4, s11, 0x322(802)",
             "SH3ADD          t3, t4, s11",
             "FLD             f7, t3, 0x88(136)",
-            "FSGNJ.D         f7, f2, f2"
+            "FSGNJ.D         f7, f2, f2",
+            "LBU             t3, s11, 0x322(802)",
+            "ADDI            ra, t3, 0x0(0)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f7, t1, 0x88(136)",
+            "ADDI            ra, t3, 0x3(3)",
+            "ANDI            ra, ra, 0x7(7)",
+            "SH3ADD          t1, ra, s11",
+            "FSD             f2, t1, 0x88(136)"
         ],
         "disassembly": "fcmovnu st0, st3"
     }
