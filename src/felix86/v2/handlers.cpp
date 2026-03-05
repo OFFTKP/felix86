@@ -12433,12 +12433,11 @@ FAST_HANDLE(VPABSD) {
 }
 
 FAST_HANDLE(VPSHUFB) {
-    bool is_xmms = !instruction.raw.vex.L;
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR bitmask = rec.scratch();
     biscuit::Vec iota_dup = rec.scratchVec();
     biscuit::Vec iota_add = rec.scratchVec();
-    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
+    biscuit::Vec dst = rec.scratchVec(); // TODO: can be non-scratch when dst != src and ymms
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec iota = rec.getVec(&operands[2]);
 
@@ -14368,8 +14367,7 @@ FAST_HANDLE(VPSHUFD) {
     as.Place(&iota_literal);
     as.Bind(&after);
 
-    bool is_xmms = !instruction.raw.vex.L;
-    biscuit::Vec dst = is_xmms ? rec.scratchVec() : rec.getVec(&operands[0]);
+    biscuit::Vec dst = rec.scratchVec(); // TODO: can be non-scratch when dst != src and ymms
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec iota_reg = rec.scratchVec();
     biscuit::GPR address = rec.scratch();
