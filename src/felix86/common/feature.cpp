@@ -1,6 +1,7 @@
 #include "felix86/common/config.hpp"
 #include "felix86/common/feature.hpp"
 #include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
 
 u64 get_xfeature_enabled_mask() {
     u64 result = 0;
@@ -80,4 +81,6 @@ bool is_feature_enabled(x86_feature feature) {
         return true;
     }
     }
+    UNREACHABLE();
+    return false;
 }

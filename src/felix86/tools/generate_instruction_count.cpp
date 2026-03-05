@@ -1598,6 +1598,8 @@ int main() {
     GEN(vpbroadcastq(xmm1, ptr[rdi]));
     GEN(vpbroadcastq(ymm1, ptr[rdi]));
 
+    GEN_AVX_YMM3_IMM(vpclmulqdq);
+
     std::ofstream avx("counts/AVX.json");
     avx << json.dump(4);
     json.clear();
