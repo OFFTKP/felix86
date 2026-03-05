@@ -81,7 +81,7 @@ jobs:
           export FELIX86_BINFMT_MISC_INSTALLED=0
           chmod +x ./test/felix86_test
           chmod +x ./test/felix86
-          FELIX86_ALL_EXTENSIONS=g,v,b ./test/felix86_test
+          ./test/felix86_test
           ./test/felix86 -k
           FELIX86PATH=$(pwd)/test/felix86
           ROOTFSPATH=$($FELIX86PATH -g)
