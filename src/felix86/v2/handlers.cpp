@@ -6830,8 +6830,9 @@ FAST_HANDLE(BZHI) {
     as.MV(result, src);
     as.ANDI(temp, index, 0xFF);
     as.LI(max, 63);
-    as.BGT(index, max, &no_zero);
-    as.NEG(neg_shift, index);
+    as.BGT(temp, max, &no_zero);
+    as.ANDI(temp, temp, 0x3F); // TODO: is this necessary?
+    as.NEG(neg_shift, temp);
     as.SLL(result, result, neg_shift);
     as.SRL(result, result, neg_shift);
     as.Bind(&no_zero);
