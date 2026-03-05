@@ -6835,6 +6835,7 @@ FAST_HANDLE(BZHI) {
     as.NEG(neg_shift, temp);
     as.SLL(result, result, neg_shift);
     as.SRL(result, result, neg_shift);
+    as.CZERO_EQZ(result, result, temp); // if it's 0 we just clear the register
     as.Bind(&no_zero);
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flag(X86_REF_CF);
