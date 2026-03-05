@@ -148,10 +148,25 @@ std::string get_extensions() {
             extensions += ",";
         extensions += "c";
     }
-    if (Extensions::B) {
+    if (Extensions::Zba) {
         if (!extensions.empty())
             extensions += ",";
-        extensions += "b";
+        extensions += "Zba";
+    }
+    if (Extensions::Zbb) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "Zbb";
+    }
+    if (Extensions::Zbs) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "Zbs";
+    }
+    if (Extensions::Zbc) {
+        if (!extensions.empty())
+            extensions += ",";
+        extensions += "Zbc";
     }
     if (Extensions::Zacas) {
         if (!extensions.empty())
@@ -210,8 +225,10 @@ void initialize_extensions() {
                         cpuinfo.Has(RISCVExtension::F) && cpuinfo.Has(RISCVExtension::D);
         Extensions::V = cpuinfo.Has(RISCVExtension::V);
         Extensions::C = cpuinfo.Has(RISCVExtension::C);
-        Extensions::B = cpuinfo.Has(RISCVExtension::Zba) && cpuinfo.Has(RISCVExtension::Zbb) && cpuinfo.Has(RISCVExtension::Zbc) &&
-                        cpuinfo.Has(RISCVExtension::Zbs);
+        Extensions::Zba = cpuinfo.Has(RISCVExtension::Zba);
+        Extensions::Zbb = cpuinfo.Has(RISCVExtension::Zbb);
+        Extensions::Zbs = cpuinfo.Has(RISCVExtension::Zbs);
+        Extensions::Zbc = cpuinfo.Has(RISCVExtension::Zbc);
         Extensions::Zacas = cpuinfo.Has(RISCVExtension::Zacas);
         Extensions::Zicond = cpuinfo.Has(RISCVExtension::Zicond);
         Extensions::Zicbom = cpuinfo.Has(RISCVExtension::Zicbom);
@@ -438,11 +455,6 @@ void initialize_globals() {
     }
 
 #ifdef __riscv
-    if (!Extensions::G) {
-        WARN("G extension was not specified, enabling it by default");
-        Extensions::G = true;
-    }
-
     if (Extensions::V) {
         struct sigaction old_act;
         struct sigaction new_act;
@@ -460,10 +472,13 @@ void initialize_globals() {
         sigaction(SIGILL, &old_act, nullptr);
 
         if (Extensions::Xtheadvector) {
-            ERROR("This board has xtheadvector, but felix86 only works with RVV 1.0 currently");
+            ERROR("This board has xtheadvector, but felix86 only works with RVV 1.0");
         }
     }
 #endif
+
+    ASSERT_MSG(Extensions::G && Extensions::V && Extensions::Zba && Extensions::Zbb && Extensions::Zbs,
+               "felix86 requires at minimum rv64gv_zba_zbb_zbs to work");
 
     Handlers::initialize();
 
@@ -533,15 +548,8 @@ bool parse_extensions(const char* arg) {
         }
     }
 
-    if (Extensions::V) {
-        biscuit::CPUInfo cpuinfo;
-        Extensions::VLEN = cpuinfo.GetVlenb() * 8;
-    }
-
-    if (!Extensions::G) {
-        WARN("G extension was not specified, enabling it by default");
-        Extensions::G = true;
-    }
+    biscuit::CPUInfo cpuinfo;
+    Extensions::VLEN = cpuinfo.GetVlenb() * 8;
 
     return true;
 }

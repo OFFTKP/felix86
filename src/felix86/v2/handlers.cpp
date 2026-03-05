@@ -659,7 +659,7 @@ FAST_HANDLE(ADD) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::ADD, &Assembler::ADDW);
     }
@@ -861,7 +861,7 @@ FAST_HANDLE(SUB) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf || needs_af;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::SUB, &Assembler::SUBW);
     }
@@ -1424,7 +1424,7 @@ FAST_HANDLE(XOR) {
     bool needs_of = rec.shouldEmitFlag(rip, X86_REF_OF);
     bool needs_any_flag = needs_cf || needs_of || needs_pf || needs_sf || needs_zf;
     bool dst_reg = operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER;
-    if (Extensions::B && g_config.noflag_opts && !needs_any_flag && dst_reg) {
+    if (g_config.noflag_opts && !needs_any_flag && dst_reg) {
         // We can do it faster if we don't need to calculate flags
         return OP_noflags_destreg(rec, rip, as, instruction, operands, &Assembler::XOR, &Assembler::XOR);
     }
@@ -6736,32 +6736,18 @@ FAST_HANDLE(BEXTR) {
 }
 
 void BSR(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, int size) {
-    if (Extensions::B) {
-        if (size == 64) {
-            as.CLZ(result, src);
-            as.XORI(result, result, 63);
-        } else if (size == 32) {
-            as.CLZW(result, src);
-            as.XORI(result, result, 31);
-        } else if (size == 16) {
-            as.SLLI(result, src, 16);
-            as.CLZW(result, result);
-            as.XORI(result, result, 15);
-        } else {
-            UNREACHABLE();
-        }
+    if (size == 64) {
+        as.CLZ(result, src);
+        as.XORI(result, result, 63);
+    } else if (size == 32) {
+        as.CLZW(result, src);
+        as.XORI(result, result, 31);
+    } else if (size == 16) {
+        as.SLLI(result, src, 16);
+        as.CLZW(result, result);
+        as.XORI(result, result, 15);
     } else {
-        // This would infinitely loop if src is 0, but we know it's not
-        biscuit::GPR scratch = rec.scratch();
-        Label loop, escape;
-        as.LI(result, size - 1);
-        as.Bind(&loop);
-        as.SRL(scratch, src, result);
-        as.ANDI(scratch, scratch, 1);
-        as.BNEZ(scratch, &escape);
-        as.ADDI(result, result, -1);
-        as.J(&loop);
-        as.Bind(&escape);
+        UNREACHABLE();
     }
 }
 
@@ -6840,31 +6826,15 @@ FAST_HANDLE(LZCNT) {
 }
 
 void POPCNT(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, int size) {
-    if (Extensions::B) {
-        // hardware CPOP (population count)
-        if (size == 64) {
-            as.CPOP(result, src);
-        } else if (size == 32) {
-            as.CPOPW(result, src);
-        } else if (size == 16) {
-            as.CPOPW(result, src);
-        } else {
-            UNREACHABLE();
-        }
+    // hardware CPOP (population count)
+    if (size == 64) {
+        as.CPOP(result, src);
+    } else if (size == 32) {
+        as.CPOPW(result, src);
+    } else if (size == 16) {
+        as.CPOPW(result, src);
     } else {
-        biscuit::GPR tmp = rec.scratch();
-        biscuit::GPR tmp2 = rec.scratch();
-        as.MV(tmp, src);  // high bits are already masked from getGPR
-        as.LI(result, 0); // count = 0
-        Label loop, done;
-        as.Bind(&loop);
-        as.BEQZ(tmp, &done);        // if tmp == 0 break
-        as.ADDI(result, result, 1); // count++
-        as.ADDI(tmp2, tmp, -1);
-        as.AND(tmp, tmp, tmp2); // tmp &= (tmp - 1) (clears lsb)
-        as.J(&loop);
-        as.Bind(&done);
-        rec.popScratch();
+        UNREACHABLE();
     }
 }
 
@@ -8846,7 +8816,8 @@ FAST_HANDLE(PHSUBSW) {
 }
 
 FAST_HANDLE(PCLMULQDQ) {
-    ASSERT(Extensions::B);
+    // TODO: port to Zvbc when available, also change in feature.cpp
+    ASSERT(Extensions::Zbc);
     biscuit::Vec dst = rec.getVec(&operands[0]);
     biscuit::Vec src = rec.getVec(&operands[1]);
     biscuit::Vec temp = rec.scratchVec();
@@ -8877,7 +8848,7 @@ FAST_HANDLE(PCLMULQDQ) {
 }
 
 FAST_HANDLE(CRC32) {
-    ASSERT(Extensions::B);
+    ASSERT(Extensions::Zbc);
     // Read: https://mails.dpdk.org/archives/dev/2024-August/299978.html
     constexpr u64 p = 0x105EC76F1;
     constexpr u64 mu = 0x4869EC38DEA713F1ul;
@@ -11324,742 +11295,6 @@ FAST_HANDLE(INVLPG) {
     }
 }
 
-FAST_HANDLE(MOVSS_no_rvv) {
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 0);
-        rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, src);
-    } else if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 0);
-        if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-            rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, x0);
-            rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, x0);
-        }
-        rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, src);
-    } else {
-        UNREACHABLE();
-    }
-}
-
-FAST_HANDLE(MOVAPS_no_rvv) {
-    biscuit::GPR src0 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
-    biscuit::GPR src1 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src0);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, src1);
-}
-
-FAST_HANDLE(MOVUPS_no_rvv) {
-    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
-FAST_HANDLE(MOVDQU_no_rvv) {
-    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
-FAST_HANDLE(MOVAPD_no_rvv) {
-    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
-FAST_HANDLE(MOVUPD_no_rvv) {
-    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
-FAST_HANDLE(MOVDQA_no_rvv) {
-    fast_MOVAPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
-FAST_HANDLE(MOVLPS_no_rvv) {
-    biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src);
-}
-
-FAST_HANDLE(MOVHPS_no_rvv) {
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
-        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src);
-    } else if (operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY) {
-        biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
-        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, src);
-    } else {
-        UNREACHABLE();
-    }
-}
-
-FAST_HANDLE(MOVLHPS_no_rvv) {
-    biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, src);
-}
-
-FAST_HANDLE(MOVHLPS_no_rvv) {
-    biscuit::GPR src = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, src);
-}
-
-FAST_HANDLE(MOVMSKPS_no_rvv) {
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR val0 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
-    biscuit::GPR val1 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
-    biscuit::GPR temp0 = rec.scratch();
-    biscuit::GPR temp1 = rec.scratch();
-
-    as.MV(result, x0);
-
-    if (Extensions::B) {
-        as.BEXTI(temp1, val0, 31);
-    } else {
-        as.SRLI(temp0, val0, 31);
-        as.ANDI(temp1, temp0, 1);
-    }
-
-    as.OR(result, result, temp1);
-
-    as.SRLI(temp0, val0, 63 - 1);
-    as.ANDI(temp1, temp0, 0b10);
-    as.OR(result, result, temp1);
-
-    as.SRLI(temp0, val1, 31 - 2);
-    as.ANDI(temp1, temp0, 0b100);
-    as.OR(result, result, temp1);
-
-    as.SRLI(temp0, val1, 63 - 3);
-    as.ANDI(temp1, temp0, 0b1000);
-    as.OR(result, result, temp1);
-
-    rec.setGPR(&operands[0], result);
-}
-
-FAST_HANDLE(ADDSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
-    as.FADD_S(result, dst, src);
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(SUBSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
-    as.FSUB_S(result, dst, src);
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(MULSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
-    as.FMUL_S(result, dst, src);
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(DIVSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
-    as.FDIV_S(result, dst, src);
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(RCPSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-
-    // TODO: Use Zfa if available
-    biscuit::GPR ones = rec.scratch();
-    biscuit::FPR fones = rec.scratchFPR();
-    as.LI(ones, 0x3F800000);
-    as.FMV_W_X(fones, ones);
-    as.FDIV_S(result, fones, dst);
-
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(SQRTSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-    as.FSQRT_S(result, dst);
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(MAXSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
-    as.FMAX_S(result, dst, src);
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(MINSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-    biscuit::FPR src = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, 0);
-    as.FMIN_S(result, dst, src);
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(RSQRTSS_no_rvv) {
-    biscuit::FPR result = rec.scratchFPR();
-    biscuit::FPR sqrted = rec.scratchFPR();
-    biscuit::FPR dst = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, 0);
-
-    // TODO: Use Zfa if available
-    biscuit::GPR ones = rec.scratch();
-    biscuit::FPR fones = rec.scratchFPR();
-    as.FSQRT_S(sqrted, dst);
-    as.LI(ones, 0x3F800000);
-    as.FMV_W_X(fones, ones);
-    as.FDIV_S(result, fones, sqrted);
-
-    rec.setElementFPR(&operands[0], X86_SIZE_DWORD, 0, result);
-}
-
-FAST_HANDLE(ADDPS_no_rvv) {
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
-
-        as.FADD_S(temp, lhs, rhs);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(SUBPS_no_rvv) {
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
-
-        as.FSUB_S(temp, lhs, rhs);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(MULPS_no_rvv) {
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
-
-        as.FMUL_S(temp, lhs, rhs);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(DIVPS_no_rvv) {
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
-
-        as.FDIV_S(temp, lhs, rhs);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(RCPPS_no_rvv) {
-    // TODO: Zfa
-    biscuit::FPR fones = rec.scratchFPR();
-    biscuit::GPR ones = rec.scratch();
-    as.LI(ones, 0x3f800000);
-    as.FMV_W_X(fones, ones);
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-
-        as.FDIV_S(temp, fones, lhs);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(SQRTPS_no_rvv) {
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-
-        as.FSQRT_S(temp, lhs);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(MAXPS_no_rvv) {
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
-
-        as.FMAX_S(temp, lhs, rhs);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(MINPS_no_rvv) {
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-        biscuit::FPR rhs = rec.getElementFPR(&operands[1], X86_SIZE_DWORD, i);
-
-        as.FMIN_S(temp, lhs, rhs);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(RSQRTPS_no_rvv) {
-    // TODO: Zfa
-    biscuit::FPR fones = rec.scratchFPR();
-    biscuit::GPR ones = rec.scratch();
-    as.LI(ones, 0x3f800000);
-    as.FMV_W_X(fones, ones);
-    for (int i = 0; i < 4; i++) {
-        biscuit::FPR sqrted = rec.scratchFPR();
-        biscuit::FPR temp = rec.scratchFPR();
-        biscuit::FPR lhs = rec.getElementFPR(&operands[0], X86_SIZE_DWORD, i);
-
-        as.FSQRT_S(sqrted, lhs);
-        as.FDIV_S(temp, fones, sqrted);
-
-        rec.setElementFPR(&operands[0], X86_SIZE_DWORD, i, temp);
-
-        rec.popScratchFPR();
-        rec.popScratchFPR();
-    }
-}
-
-FAST_HANDLE(CMPSS_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(COMISS_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(UCOMISS_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(CMPPS_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(SHUFPS_no_rvv) {
-    u8 imm = rec.getImmediate(&operands[2]);
-    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, imm & 0b11);
-    biscuit::GPR el1 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, (imm >> 2) & 0b11);
-    biscuit::GPR el2 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, (imm >> 4) & 0b11);
-    biscuit::GPR el3 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, (imm >> 6) & 0b11);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, el0);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 1, el1);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 2, el2);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
-}
-
-FAST_HANDLE(SHUFPD_no_rvv) {
-    u8 imm = rec.getImmediate(&operands[2]);
-    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, imm & 0b1);
-    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, (imm >> 2) & 0b1);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, el0);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, el1);
-}
-
-FAST_HANDLE(UNPCKHPS_no_rvv) {
-    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 2);
-    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 2);
-    biscuit::GPR el2 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 3);
-    biscuit::GPR el3 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 3);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, el0);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 1, el1);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 2, el2);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
-}
-
-FAST_HANDLE(UNPCKLPS_no_rvv) {
-    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 0);
-    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 0);
-    biscuit::GPR el2 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 1);
-    biscuit::GPR el3 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 1);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, el0);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 1, el1);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 2, el2);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
-}
-
-FAST_HANDLE(CVTSI2SS_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(CVTSS2SI_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(CVTTSS2SI_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(CVTPI2PS_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(CVTPS2PI_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(CVTTPS2PI_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(ANDPS_no_rvv) {
-    for (int i = 0; i < 2; i++) {
-        biscuit::GPR temp = rec.scratch();
-        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, i);
-        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, i);
-
-        as.AND(temp, lhs, rhs);
-
-        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, i, temp);
-    }
-}
-
-FAST_HANDLE(ORPS_no_rvv) {
-    for (int i = 0; i < 2; i++) {
-        biscuit::GPR temp = rec.scratch();
-        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, i);
-        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, i);
-
-        as.OR(temp, lhs, rhs);
-
-        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, i, temp);
-    }
-}
-
-FAST_HANDLE(XORPS_no_rvv) {
-    for (int i = 0; i < 2; i++) {
-        biscuit::GPR temp = rec.scratch();
-        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, i);
-        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, i);
-
-        as.XOR(temp, lhs, rhs);
-
-        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, i, temp);
-    }
-}
-
-FAST_HANDLE(ANDNPS_no_rvv) {
-    for (int i = 0; i < 2; i++) {
-        biscuit::GPR temp = rec.scratch();
-        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_QWORD, i);
-        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, i);
-
-        if (Extensions::B) {
-            as.ANDN(temp, rhs, lhs);
-        } else {
-            as.NOT(temp, lhs);
-            as.AND(temp, temp, rhs);
-        }
-
-        rec.setElementGPR(&operands[0], X86_SIZE_QWORD, i, temp);
-    }
-}
-
-FAST_HANDLE(PMULHUW_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(PSADBW_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(PAVGB_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(PAVGW_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(PMAXUB_no_rvv) {
-    for (int i = 0; i < 16; i++) {
-        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_BYTE, i);
-        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_BYTE, i);
-        biscuit::GPR result = rec.scratch();
-
-        if (Extensions::B) {
-            as.MAXU(result, lhs, rhs);
-        } else {
-            biscuit::Label skip;
-            as.MV(result, lhs);
-            as.BGTU(lhs, rhs, &skip);
-            as.MV(result, rhs);
-            as.Bind(&skip);
-        }
-
-        rec.setElementGPR(&operands[0], X86_SIZE_BYTE, i, result);
-
-        rec.popScratch();
-        rec.popScratch();
-        rec.popScratch();
-    }
-}
-
-FAST_HANDLE(PMINUB_no_rvv) {
-    for (int i = 0; i < 16; i++) {
-        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_BYTE, i);
-        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_BYTE, i);
-        biscuit::GPR result = rec.scratch();
-
-        if (Extensions::B) {
-            as.MINU(result, lhs, rhs);
-        } else {
-            biscuit::Label skip;
-            as.MV(result, lhs);
-            as.BLTU(lhs, rhs, &skip);
-            as.MV(result, rhs);
-            as.Bind(&skip);
-        }
-
-        rec.setElementGPR(&operands[0], X86_SIZE_BYTE, i, result);
-
-        rec.popScratch();
-        rec.popScratch();
-        rec.popScratch();
-    }
-}
-
-FAST_HANDLE(PMAXSW_no_rvv) {
-    for (int i = 0; i < 8; i++) {
-        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_WORD, i, true);
-        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_WORD, i, true);
-        biscuit::GPR result = rec.scratch();
-
-        if (Extensions::B) {
-            as.MAX(result, lhs, rhs);
-        } else {
-            biscuit::Label skip;
-            as.MV(result, lhs);
-            as.BGT(lhs, rhs, &skip);
-            as.MV(result, rhs);
-            as.Bind(&skip);
-        }
-
-        rec.setElementGPR(&operands[0], X86_SIZE_WORD, i, result);
-
-        rec.popScratch();
-        rec.popScratch();
-        rec.popScratch();
-    }
-}
-
-FAST_HANDLE(PMINSW_no_rvv) {
-    for (int i = 0; i < 8; i++) {
-        biscuit::GPR lhs = rec.getElementGPR(&operands[0], X86_SIZE_WORD, i, true);
-        biscuit::GPR rhs = rec.getElementGPR(&operands[1], X86_SIZE_WORD, i, true);
-        biscuit::GPR result = rec.scratch();
-
-        if (Extensions::B) {
-            as.MIN(result, lhs, rhs);
-        } else {
-            biscuit::Label skip;
-            as.MV(result, lhs);
-            as.BLT(lhs, rhs, &skip);
-            as.MV(result, rhs);
-            as.Bind(&skip);
-        }
-
-        rec.setElementGPR(&operands[0], X86_SIZE_WORD, i, result);
-
-        rec.popScratch();
-        rec.popScratch();
-        rec.popScratch();
-    }
-}
-
-FAST_HANDLE(PEXTRW_no_rvv) {
-    u8 imm = rec.getImmediate(&operands[2]);
-    biscuit::GPR extracted = rec.getElementGPR(&operands[1], X86_SIZE_WORD, imm & 0b11);
-    if (operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, extracted);
-    } else {
-        rec.setGPR(&operands[0], extracted);
-    }
-}
-
-FAST_HANDLE(PINSRW_no_rvv) {
-    u8 imm = rec.getImmediate(&operands[2]);
-    biscuit::GPR reg = rec.getGPR(&operands[1]);
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        rec.zext(reg, reg, X86_SIZE_WORD);
-    }
-    rec.setElementGPR(&operands[0], X86_SIZE_WORD, imm & 0b11, reg);
-}
-
-FAST_HANDLE(PMOVMSKB_no_rvv) {
-    biscuit::GPR result = rec.scratch();
-    biscuit::GPR bit = rec.scratch();
-    as.MV(result, x0);
-
-    biscuit::GPR el0 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
-    for (int i = 0; i < 8; i++) {
-        if (Extensions::B) {
-            as.BEXTI(bit, el0, (8 * i) - 1);
-        } else {
-            as.SRLI(bit, el0, (8 * i) - 1);
-            as.ANDI(bit, bit, 1);
-        }
-        as.SLLI(bit, bit, i);
-        as.OR(result, result, bit);
-    }
-
-    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 1);
-    for (int i = 0; i < 8; i++) {
-        if (Extensions::B) {
-            as.BEXTI(bit, el1, (8 * i) - 1);
-        } else {
-            as.SRLI(bit, el1, (8 * i) - 1);
-            as.ANDI(bit, bit, 1);
-        }
-        as.SLLI(bit, bit, i);
-        as.OR(result, result, bit);
-    }
-}
-
-FAST_HANDLE(PSHUFW_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(MOVNTQ_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(MOVNTPS_no_rvv) {
-    UNIMPLEMENTED();
-}
-
-FAST_HANDLE(PUNPCKLWD_no_rvv) {
-    biscuit::GPR r0 = rec.scratch();
-
-    as.MV(r0, x0);
-    {
-        biscuit::GPR temp = rec.getElementGPR(&operands[0], X86_SIZE_WORD, 0);
-        as.OR(r0, r0, temp);
-        rec.popScratch();
-    }
-    {
-        biscuit::GPR temp = rec.getElementGPR(&operands[1], X86_SIZE_WORD, 0);
-        as.SLLI(temp, temp, 16);
-        as.OR(r0, r0, temp);
-        rec.popScratch();
-    }
-    {
-        biscuit::GPR temp = rec.getElementGPR(&operands[0], X86_SIZE_WORD, 1);
-        as.SLLI(temp, temp, 32);
-        as.OR(r0, r0, temp);
-        rec.popScratch();
-    }
-    {
-        biscuit::GPR temp = rec.getElementGPR(&operands[1], X86_SIZE_WORD, 1);
-        as.SLLI(temp, temp, 48);
-        as.OR(r0, r0, temp);
-        rec.popScratch();
-    }
-
-    biscuit::GPR r1 = rec.scratch();
-    as.MV(r1, x0);
-    {
-        biscuit::GPR temp = rec.getElementGPR(&operands[0], X86_SIZE_WORD, 2);
-        as.OR(r1, r1, temp);
-        rec.popScratch();
-    }
-    {
-        biscuit::GPR temp = rec.getElementGPR(&operands[1], X86_SIZE_WORD, 2);
-        as.SLLI(temp, temp, 16);
-        as.OR(r1, r1, temp);
-        rec.popScratch();
-    }
-    {
-        biscuit::GPR temp = rec.getElementGPR(&operands[0], X86_SIZE_WORD, 3);
-        as.SLLI(temp, temp, 32);
-        as.OR(r1, r1, temp);
-        rec.popScratch();
-    }
-    {
-        biscuit::GPR temp = rec.getElementGPR(&operands[1], X86_SIZE_WORD, 3);
-        as.SLLI(temp, temp, 48);
-        as.OR(r1, r1, temp);
-        rec.popScratch();
-    }
-
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 0, r0);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, r1);
-}
-
-FAST_HANDLE(PUNPCKLDQ_no_rvv) {
-    biscuit::GPR el0 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 0);
-    biscuit::GPR el1 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 0);
-    biscuit::GPR el2 = rec.getElementGPR(&operands[0], X86_SIZE_DWORD, 1);
-    biscuit::GPR el3 = rec.getElementGPR(&operands[1], X86_SIZE_DWORD, 1);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 0, el0);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 1, el1);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 2, el2);
-    rec.setElementGPR(&operands[0], X86_SIZE_DWORD, 3, el3);
-}
-
-FAST_HANDLE(PUNPCKLQDQ_no_rvv) {
-    biscuit::GPR el0 = rec.getElementGPR(&operands[1], X86_SIZE_QWORD, 0);
-    rec.setElementGPR(&operands[0], X86_SIZE_QWORD, 1, el0);
-}
-
-FAST_HANDLE(PXOR_no_rvv) {
-    fast_XORPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
-FAST_HANDLE(POR_no_rvv) {
-    fast_ORPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
-FAST_HANDLE(PAND_no_rvv) {
-    fast_ANDPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
-FAST_HANDLE(PANDN_no_rvv) {
-    fast_ANDNPS_no_rvv(rec, rip, as, instruction, operands);
-}
-
 FAST_HANDLE(ANDN) {
     biscuit::GPR result = operands[0].size == 64 ? rec.getGPR(&operands[0]) : rec.scratch();
     biscuit::GPR src1 = rec.getGPR(&operands[1], X86_SIZE_QWORD);
@@ -14375,6 +13610,62 @@ FAST_HANDLE(VPGATHERQQ) {
     VGATHER(rec, as, instruction, operands, SEW::E64, 4, false);
 }
 
+FAST_HANDLE(VPCLMULQDQ) {
+    // TODO: port to Zvbc when available, also change in feature.cpp
+    ASSERT(Extensions::Zbc);
+    biscuit::Vec src1 = rec.getVec(&operands[1]);
+    biscuit::Vec src2 = rec.getVec(&operands[2]);
+    biscuit::Vec temp = rec.scratchVec();
+    biscuit::Vec temp2 = rec.scratchVec();
+    biscuit::GPR X = rec.scratch();
+    biscuit::GPR Y = rec.scratch();
+    biscuit::GPR dst_low = rec.scratch();
+    biscuit::GPR dst_high = rec.scratch();
+    u8 imm = rec.getImmediate(&operands[2]);
+    rec.setVectorState(SEW::E64, 4);
+    if (imm & 1) {
+        as.VSLIDEDOWN(temp, src1, 1);
+        as.VMV_XS(X, temp);
+    } else {
+        as.VMV_XS(X, src1);
+    }
+    if (imm & 0b10000) {
+        as.VSLIDEDOWN(temp, src2, 1);
+        as.VMV_XS(Y, temp);
+    } else {
+        as.VMV_XS(Y, src2);
+    }
+    as.CLMUL(dst_low, X, Y);
+    as.CLMULH(dst_high, X, Y);
+    as.VMV_SX(temp, dst_high);
+    as.VSLIDE1UP(temp2, temp, dst_low);
+
+    if (instruction.raw.vex.L) {
+        if (imm & 1) {
+            as.VSLIDEDOWN(temp, src1, 3);
+            as.VMV_XS(X, temp);
+        } else {
+            as.VSLIDEDOWN(temp, src1, 2);
+            as.VMV_XS(X, temp);
+        }
+        if (imm & 0b10000) {
+            as.VSLIDEDOWN(temp, src2, 3);
+            as.VMV_XS(Y, temp);
+        } else {
+            as.VSLIDEDOWN(temp, src2, 2);
+            as.VMV_XS(Y, temp);
+        }
+        as.CLMUL(dst_low, X, Y);
+        as.CLMULH(dst_high, X, Y);
+        as.VMV_SX(temp, dst_low);
+        as.VSLIDEUP(temp2, temp, 2);
+        as.VMV_SX(temp, dst_high);
+        as.VSLIDEUP(temp2, temp, 3);
+    }
+
+    rec.setVec(&operands[0], temp2);
+}
+
 FAST_HANDLE(VDPPD) {
     biscuit::GPR splat = rec.scratch();
     biscuit::Vec mul = rec.scratchVec();
@@ -15911,7 +15202,6 @@ void Handlers::initialize() {
 #undef SIMD
 #undef X87
 #undef AVX
-    if (Extensions::V) {
 #define X(name)
 #define SIMD(name) Handlers::ptr_##name = fast_##name;
 #define X87(name)
@@ -15921,80 +15211,6 @@ void Handlers::initialize() {
 #undef SIMD
 #undef X87
 #undef AVX
-    } else {
-#define MAP(name) Handlers::ptr_##name = fast_##name##_no_rvv
-        MAP(MOVSS);
-        MAP(MOVAPS);
-        MAP(MOVUPS);
-        MAP(MOVAPD);
-        MAP(MOVUPD);
-        MAP(MOVDQA);
-        MAP(MOVDQU);
-        MAP(MOVLPS);
-        MAP(MOVHPS);
-        MAP(MOVLHPS);
-        MAP(MOVHLPS);
-        MAP(MOVMSKPS);
-        MAP(ADDSS);
-        MAP(SUBSS);
-        MAP(MULSS);
-        MAP(DIVSS);
-        MAP(RCPSS);
-        MAP(SQRTSS);
-        MAP(MAXSS);
-        MAP(MINSS);
-        MAP(RSQRTSS);
-        MAP(ADDPS);
-        MAP(SUBPS);
-        MAP(MULPS);
-        MAP(DIVPS);
-        MAP(RCPPS);
-        MAP(SQRTPS);
-        MAP(MAXPS);
-        MAP(MINPS);
-        MAP(RSQRTPS);
-        MAP(CMPSS);
-        MAP(COMISS);
-        MAP(UCOMISS);
-        MAP(CMPPS);
-        MAP(SHUFPS);
-        MAP(SHUFPD);
-        MAP(UNPCKHPS);
-        MAP(UNPCKLPS);
-        MAP(CVTSI2SS);
-        MAP(CVTSS2SI);
-        MAP(CVTTSS2SI);
-        MAP(CVTPI2PS);
-        MAP(CVTPS2PI);
-        MAP(CVTTPS2PI);
-        MAP(ANDPS);
-        MAP(ORPS);
-        MAP(XORPS);
-        MAP(ANDNPS);
-        MAP(PMULHUW);
-        MAP(PSADBW);
-        MAP(PAVGB);
-        MAP(PAVGW);
-        MAP(PMAXUB);
-        MAP(PMINUB);
-        MAP(PMAXSW);
-        MAP(PMINSW);
-        MAP(PEXTRW);
-        MAP(PINSRW);
-        MAP(PMOVMSKB);
-        MAP(PSHUFW);
-        MAP(MOVNTQ);
-        MAP(MOVNTPS);
-        MAP(PUNPCKLWD);
-        MAP(PUNPCKLDQ);
-        MAP(PUNPCKLQDQ);
-        MAP(PXOR);
-        MAP(POR);
-        MAP(PAND);
-        MAP(PANDN);
-#undef MAP
-    }
-
 // When we support 80-bit mode, this will be changed
 #define X(name)
 #define SIMD(name)

@@ -123,7 +123,6 @@ struct Extensions {
 #define FELIX86_EXTENSIONS_TOTAL                                                                                                                     \
     X(G)                                                                                                                                             \
     X(C)                                                                                                                                             \
-    X(B)                                                                                                                                             \
     X(V)                                                                                                                                             \
     X(Zacas)                                                                                                                                         \
     X(Zam)                                                                                                                                           \
@@ -132,6 +131,9 @@ struct Extensions {
     X(Zicond)                                                                                                                                        \
     X(Zihintpause)                                                                                                                                   \
     X(Zba)                                                                                                                                           \
+    X(Zbb)                                                                                                                                           \
+    X(Zbc)                                                                                                                                           \
+    X(Zbs)                                                                                                                                           \
     X(Zfa)                                                                                                                                           \
     X(Zvfhmin)                                                                                                                                       \
     X(Zvbb)                                                                                                                                          \

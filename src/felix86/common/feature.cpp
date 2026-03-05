@@ -43,7 +43,7 @@ bool is_feature_enabled(x86_feature feature) {
     case x86_feature::SSE4_2: {
         // Zbc is needed for CRC32
         // TODO: Zbc is not part of RVA23 so it shouldn't be necessary for CRC32
-        return !g_config.no_sse4_2 && is_feature_enabled(x86_feature::SSE4_1) && Extensions::B;
+        return !g_config.no_sse4_2 && is_feature_enabled(x86_feature::SSE4_1) && Extensions::Zbc;
     }
     case x86_feature::OSXSAVE: {
         return true;
@@ -62,13 +62,13 @@ bool is_feature_enabled(x86_feature feature) {
         return is_feature_enabled(x86_feature::AES) && is_feature_enabled(x86_feature::AVX);
     }
     case x86_feature::PCLMULQDQ: {
-        return !g_config.no_pclmulqdq && Extensions::B;
+        return !g_config.no_pclmulqdq && Extensions::Zbc;
     }
     case x86_feature::VPCLMULQDQ: {
-        return false && is_feature_enabled(x86_feature::AVX);
+        return is_feature_enabled(x86_feature::AVX) && is_feature_enabled(x86_feature::PCLMULQDQ);
     }
     case x86_feature::BMI1: {
-        return is_feature_enabled(x86_feature::AVX) && Extensions::B;
+        return is_feature_enabled(x86_feature::AVX);
     }
     case x86_feature::BMI2: {
         return false && is_feature_enabled(x86_feature::BMI1);
@@ -77,7 +77,7 @@ bool is_feature_enabled(x86_feature feature) {
         return is_feature_enabled(x86_feature::AVX) && Extensions::Zvfhmin;
     }
     case x86_feature::LZCNT_POPCNT: {
-        return Extensions::B;
+        return true;
     }
     }
 }

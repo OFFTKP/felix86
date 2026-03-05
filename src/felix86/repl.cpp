@@ -170,7 +170,10 @@ void __attribute__((noreturn)) enter_repl() {
     g_config.inline_syscalls = false;
     g_config.scan_ahead_multi = false;
     Extensions::G = true;
-    Extensions::B = true;
+    Extensions::Zba = true;
+    Extensions::Zbb = true;
+    Extensions::Zbs = true;
+    Extensions::Zbc = true;
     Extensions::C = true;
     Extensions::V = true;
     Extensions::VLEN = 256;

@@ -720,12 +720,7 @@ void Recompiler::flushX87() {
             int index = i - pushed_this_block;
             as.ADDI(st, top, index);
             as.ANDI(st, st, 0b111);
-            if (Extensions::B) {
-                as.SH3ADD(address, st, threadStatePointer());
-            } else {
-                as.SLLI(address, st, 3);
-                as.ADD(address, address, threadStatePointer());
-            }
+            as.SH3ADD(address, st, threadStatePointer());
             as.FSD(x87_reg_cache[i].reg, offsetof(ThreadState, fp), address);
 
             if (x87_reg_cache[i].modify_tag) {
@@ -734,12 +729,7 @@ void Recompiler::flushX87() {
                 as.LI(address, 0b11);
                 as.SLLI(st, st, 1);
                 as.SLL(address, address, st);
-                if (Extensions::B) {
-                    as.ANDN(tag_word, tag_word, address);
-                } else {
-                    as.NOT(address, address);
-                    as.AND(tag_word, tag_word, address);
-                }
+                as.ANDN(tag_word, tag_word, address);
             }
             x87_dirty = true;
         }
@@ -1512,40 +1502,21 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     }
     case X86_SIZE_BYTE_HIGH: {
         ASSERT(reg != allocatedGPR(ref));
-        if (!Extensions::B) {
-            biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
-            biscuit::GPR gpr8 = scratch();
-            biscuit::GPR mask = scratch();
-            as.LI(mask, 0xff00);
-            as.SLLI(gpr8, reg, 8);
-            as.AND(gpr8, gpr8, mask);
-            as.NOT(mask, mask);
-            as.AND(dest, dest, mask);
-            as.OR(dest, dest, gpr8);
-            popScratch();
-            popScratch();
-        } else {
-            biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
-            biscuit::GPR gpr8 = scratch();
-            as.ANDI(gpr8, reg, 0xFF);
-            as.RORI(dest, dest, 8);
-            as.ANDI(dest, dest, ~0xFF);
-            as.OR(dest, dest, gpr8);
-            as.RORI(dest, dest, 56);
-            popScratch();
-        }
+        biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
+        biscuit::GPR gpr8 = scratch();
+        as.ANDI(gpr8, reg, 0xFF);
+        as.RORI(dest, dest, 8);
+        as.ANDI(dest, dest, ~0xFF);
+        as.OR(dest, dest, gpr8);
+        as.RORI(dest, dest, 56);
+        popScratch();
         break;
     }
     case X86_SIZE_WORD: {
         ASSERT(reg != allocatedGPR(ref));
         biscuit::GPR dest = getGPR(ref, X86_SIZE_QWORD);
         biscuit::GPR gpr16 = scratch();
-        if (Extensions::B) {
-            as.ZEXTH(gpr16, reg);
-        } else {
-            as.SLLI(gpr16, reg, 48);
-            as.SRLI(gpr16, gpr16, 48);
-        }
+        as.ZEXTH(gpr16, reg);
         as.SRLI(dest, dest, 16);
         as.SLLI(dest, dest, 16);
         as.OR(dest, dest, gpr16);
@@ -1554,12 +1525,8 @@ void Recompiler::setGPR(x86_ref_e ref, x86_size_e size, biscuit::GPR reg) {
     }
     case X86_SIZE_DWORD: {
         biscuit::GPR dest = allocatedGPR(ref); // don't need to load as the entire register is overwritten
-        if (Extensions::B) {                   // TODO: in 32-bit mode we prob don't need to zero extend and we can do the same as 64-bit movs
-            as.ZEXTW(dest, reg);
-        } else {
-            as.SLLI(dest, reg, 32);
-            as.SRLI(dest, dest, 32);
-        }
+        // TODO: in 32-bit mode we prob don't need to zero extend and we can do the same as 64-bit movs
+        as.ZEXTW(dest, reg);
         break;
     }
     case X86_SIZE_QWORD: {
@@ -1785,42 +1752,21 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
             index = allocatedGPR(zydisToRef(operand->mem.index));
             u8 scale = operand->mem.scale;
             if (scale != 1) {
-                if (Extensions::B) {
-                    switch (scale) {
-                    case 2:
-                        as.SH1ADD(address, index, address);
-                        break;
-                    case 4:
-                        as.SH2ADD(address, index, address);
-                        break;
-                    case 8: {
-                        as.SH3ADD(address, index, address);
-                        break;
-                    }
-                    default: {
-                        UNREACHABLE();
-                        break;
-                    }
-                    }
-                } else {
-                    switch (scale) {
-                    case 2:
-                        scale = 1;
-                        break;
-                    case 4:
-                        scale = 2;
-                        break;
-                    case 8:
-                        scale = 3;
-                        break;
-                    default:
-                        UNREACHABLE();
-                        break;
-                    }
-                    biscuit::GPR scale_reg = scratch();
-                    as.SLLI(scale_reg, index, scale);
-                    as.ADD(address, address, scale_reg);
-                    popScratch();
+                switch (scale) {
+                case 2:
+                    as.SH1ADD(address, index, address);
+                    break;
+                case 4:
+                    as.SH2ADD(address, index, address);
+                    break;
+                case 8: {
+                    as.SH3ADD(address, index, address);
+                    break;
+                }
+                default: {
+                    UNREACHABLE();
+                    break;
+                }
                 }
             } else {
                 as.ADD(address, address, index);
@@ -1855,42 +1801,21 @@ biscuit::GPR Recompiler::lea(const ZydisDecodedOperand* operand, bool use_temp) 
                 // Add index to the base
                 base = allocatedGPR(zydisToRef(operand->mem.base));
                 if (scale != 1) {
-                    if (Extensions::B) {
-                        switch (scale) {
-                        case 2:
-                            as.SH1ADD(address, index, base);
-                            break;
-                        case 4:
-                            as.SH2ADD(address, index, base);
-                            break;
-                        case 8: {
-                            as.SH3ADD(address, index, base);
-                            break;
-                        }
-                        default: {
-                            UNREACHABLE();
-                            break;
-                        }
-                        }
-                    } else {
-                        switch (scale) {
-                        case 2:
-                            scale = 1;
-                            break;
-                        case 4:
-                            scale = 2;
-                            break;
-                        case 8:
-                            scale = 3;
-                            break;
-                        default:
-                            UNREACHABLE();
-                            break;
-                        }
-                        biscuit::GPR scale_reg = scratch();
-                        as.SLLI(scale_reg, index, scale);
-                        as.ADD(address, base, scale_reg);
-                        popScratch();
+                    switch (scale) {
+                    case 2:
+                        as.SH1ADD(address, index, base);
+                        break;
+                    case 4:
+                        as.SH2ADD(address, index, base);
+                        break;
+                    case 8: {
+                        as.SH3ADD(address, index, base);
+                        break;
+                    }
+                    default: {
+                        UNREACHABLE();
+                        break;
+                    }
                     }
                 } else {
                     as.ADD(address, base, index);
@@ -2569,21 +2494,11 @@ void Recompiler::zext(biscuit::GPR dest, biscuit::GPR src, x86_size_e size) {
         break;
     }
     case X86_SIZE_WORD: {
-        if (Extensions::B) {
-            as.ZEXTH(dest, src);
-        } else {
-            as.SLLI(dest, src, 48);
-            as.SRLI(dest, dest, 48);
-        }
+        as.ZEXTH(dest, src);
         break;
     }
     case X86_SIZE_DWORD: {
-        if (Extensions::B) {
-            as.ZEXTW(dest, src);
-        } else {
-            as.SLLI(dest, src, 32);
-            as.SRLI(dest, dest, 32);
-        }
+        as.ZEXTW(dest, src);
         break;
     }
     case X86_SIZE_QWORD: {
@@ -2624,20 +2539,8 @@ u64 Recompiler::getSignMask(x86_size_e size_e) {
 
 void Recompiler::updateParity(biscuit::GPR result) {
     biscuit::GPR pf = scratch();
-    if (Extensions::B) {
-        as.ANDI(pf, result, 0xFF);
-        as.CPOPW(pf, pf);
-    } else {
-        biscuit::GPR temp = scratch();
-        as.SRLI(pf, result, 4);
-        as.XOR(pf, pf, result);
-        as.SRLI(temp, pf, 2);
-        as.XOR(temp, pf, temp);
-        as.SRLI(pf, temp, 1);
-        as.XOR(pf, pf, temp);
-        popScratch();
-    }
-
+    as.ANDI(pf, result, 0xFF);
+    as.CPOPW(pf, pf);
     as.ANDI(pf, pf, 1);
     as.XORI(pf, pf, 1);
     as.SB(pf, offsetof(ThreadState, pf), threadStatePointer());
@@ -2666,21 +2569,11 @@ void Recompiler::updateSign(biscuit::GPR result, x86_size_e size) {
         break;
     }
     case 16: {
-        if (Extensions::B) {
-            as.BEXTI(sf, result, 15);
-        } else {
-            as.SRLI(sf, result, 15);
-            as.ANDI(sf, sf, 1);
-        }
+        as.BEXTI(sf, result, 15);
         break;
     }
     case 8: {
-        if (Extensions::B) {
-            as.BEXTI(sf, result, 7);
-        } else {
-            as.SRLI(sf, result, 7);
-            as.ANDI(sf, sf, 1);
-        }
+        as.BEXTI(sf, result, 7);
         break;
     }
     default: {
@@ -2861,21 +2754,11 @@ void Recompiler::ori(biscuit::GPR dst, biscuit::GPR src, u64 imm) {
 }
 
 void Recompiler::sextb(biscuit::GPR dest, biscuit::GPR src) {
-    if (Extensions::B) {
-        as.SEXTB(dest, src);
-    } else {
-        as.SLLI(dest, src, 56);
-        as.SRAI(dest, dest, 56);
-    }
+    as.SEXTB(dest, src);
 }
 
 void Recompiler::sexth(biscuit::GPR dest, biscuit::GPR src) {
-    if (Extensions::B) {
-        as.SEXTH(dest, src);
-    } else {
-        as.SLLI(dest, src, 48);
-        as.SRAI(dest, dest, 48);
-    }
+    as.SEXTH(dest, src);
 }
 
 biscuit::GPR Recompiler::getCond(int cond) {
@@ -3222,14 +3105,7 @@ biscuit::FPR Recompiler::getST(int index, bool dirty) {
         as.ADDI(top, top, index - pushed_this_block);
         as.ANDI(top, top, 0b111);
     }
-
-    if (Extensions::B) {
-        as.SH3ADD(address, top, threadStatePointer());
-    } else {
-        as.SLLI(top, top, 3);
-        as.ADD(address, top, threadStatePointer());
-    }
-
+    as.SH3ADD(address, top, threadStatePointer());
     as.FLD(x87_reg_cache[index].reg, offsetof(ThreadState, fp), address);
 
     popScratch();

@@ -260,8 +260,8 @@ VEX_TEST(vpbroadcastb);
 VEX_TEST(vpbroadcastd);
 VEX_TEST(vpbroadcastq);
 VEX_TEST(vpbroadcastw);
-// VEX_TEST(vpclmulqdq); TODO: VPCLMULQDQ
-// VEX_TEST(vpclmulqdq_256);
+VEX_TEST(vpclmulqdq);
+VEX_TEST(vpclmulqdq_256);
 VEX_TEST(vpcmpeqb);
 VEX_TEST(vpcmpeqd);
 VEX_TEST(vpcmpeqq);

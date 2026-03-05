@@ -158,6 +158,7 @@ Cpuid felix86_cpuid_impl(u32 leaf, u32 subleaf) {
 
     if (found && leaf == 0x0000'0007) {
         bit_set(result.ecx, 9, is_feature_enabled(x86_feature::VAES));
+        bit_set(result.ecx, 10, is_feature_enabled(x86_feature::VPCLMULQDQ));
         bit_set(result.ebx, 5, is_feature_enabled(x86_feature::AVX2));
     }
 
