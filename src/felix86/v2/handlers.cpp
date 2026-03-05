@@ -4,11 +4,13 @@
 #include "Zydis/DecoderTypes.h"
 #include "Zydis/SharedTypes.h"
 #include "biscuit/assembler.hpp"
+#include "biscuit/label.hpp"
 #include "biscuit/registers.hpp"
 #include "biscuit/vector.hpp"
 #include "felix86/common/config.hpp"
 #include "felix86/common/feature.hpp"
 #include "felix86/common/global.hpp"
+#include "felix86/common/log.hpp"
 #include "felix86/common/state.hpp"
 #include "felix86/common/types.hpp"
 #include "felix86/common/utility.hpp"
@@ -6733,6 +6735,120 @@ FAST_HANDLE(BEXTR) {
     }
 
     rec.setGPR(&operands[0], result);
+}
+
+FAST_HANDLE(SHLX) {
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
+    if (operands[0].size == 64) {
+        as.SLL(dst, src, shift);
+    } else if (operands[0].size == 32) {
+        as.SLLW(dst, src, shift);
+    } else {
+        UNREACHABLE();
+    }
+    rec.setGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(SHRX) {
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
+    if (operands[0].size == 64) {
+        as.SRL(dst, src, shift);
+    } else if (operands[0].size == 32) {
+        as.SRLW(dst, src, shift);
+    } else {
+        UNREACHABLE();
+    }
+    rec.setGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(SARX) {
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR shift = rec.getGPR(&operands[2], X86_SIZE_QWORD);
+    if (operands[0].size == 64) {
+        as.SRA(dst, src, shift);
+    } else if (operands[0].size == 32) {
+        as.SRAW(dst, src, shift);
+    } else {
+        UNREACHABLE();
+    }
+    rec.setGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(RORX) {
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    u8 shift = rec.getImmediate(&operands[2]);
+    shift &= g_mode32 ? 0x1F : 0x3F;
+    if (operands[0].size == 64) {
+        as.RORI(dst, src, shift);
+    } else if (operands[0].size == 32) {
+        as.RORIW(dst, src, shift);
+    } else {
+        UNREACHABLE();
+    }
+    rec.setGPR(&operands[0], dst);
+}
+
+FAST_HANDLE(MULX) {
+    biscuit::GPR hi_dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR lo_dst = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    if (operands[0].size == 64) {
+        biscuit::GPR src = rec.getGPR(&operands[2], X86_SIZE_QWORD);
+        biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
+        as.MUL(lo_dst, src, rdx);
+        as.MULHU(hi_dst, src, rdx);
+        rec.setGPR(&operands[0], hi_dst);
+        rec.setGPR(&operands[1], lo_dst);
+    } else if (operands[0].size == 32) {
+        biscuit::GPR src = rec.getGPR(&operands[2], X86_SIZE_QWORD);
+        biscuit::GPR rdx = rec.getGPR(X86_REF_RDX, X86_SIZE_QWORD);
+        as.MUL(lo_dst, src, rdx);
+        as.SRLI(hi_dst, lo_dst, 32);
+        as.ZEXTW(lo_dst, lo_dst);
+        rec.setGPR(operands[0].reg.value, X86_SIZE_QWORD, hi_dst);
+        rec.setGPR(operands[1].reg.value, X86_SIZE_QWORD, lo_dst);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+FAST_HANDLE(BZHI) {
+    biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
+    biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
+    biscuit::GPR index = rec.getGPR(&operands[2], X86_SIZE_QWORD);
+    biscuit::GPR temp = rec.scratch();
+    biscuit::GPR max = rec.scratch();
+    biscuit::GPR neg_shift = rec.scratch();
+    biscuit::Label no_zero;
+    as.MV(dst, src);
+    as.ANDI(temp, index, 0xFF);
+    as.LI(max, 63);
+    as.BGT(index, max, &no_zero);
+    as.NEG(neg_shift, index);
+    as.SLL(dst, dst, neg_shift);
+    as.SRL(dst, dst, neg_shift);
+    as.Bind(&no_zero);
+    if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
+        biscuit::GPR cf = rec.flag(X86_REF_CF);
+        as.LI(max, operands[0].size - 1);
+        as.SGTU(cf, index, max);
+    }
+    rec.setGPR(&operands[0], dst);
+    if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
+        biscuit::GPR zf = rec.flag(X86_REF_ZF);
+        as.SEQZ(zf, dst);
+    }
+    if (rec.shouldEmitFlag(rip, X86_REF_SF)) {
+        rec.updateSign(dst, rec.zydisToSize(operands[0].size));
+    }
+    if (rec.shouldEmitFlag(rip, X86_REF_OF)) {
+        rec.clearFlag(X86_REF_OF);
+    }
 }
 
 void BSR(Recompiler& rec, Assembler& as, biscuit::GPR result, biscuit::GPR src, int size) {

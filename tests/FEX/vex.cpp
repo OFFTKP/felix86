@@ -33,14 +33,14 @@ VEX_TEST(blsi);
 VEX_TEST(blsmsk);
 VEX_TEST(blsr);
 
-// VEX_TEST(bzhi);
-// VEX_TEST(mulx);
+VEX_TEST(bzhi);
+VEX_TEST(mulx);
 // VEX_TEST(pdep);
 // VEX_TEST(pext);
-// VEX_TEST(rorx);
-// VEX_TEST(sarx);
-// VEX_TEST(shlx);
-// VEX_TEST(shrx);
+VEX_TEST(rorx);
+VEX_TEST(sarx);
+VEX_TEST(shlx);
+VEX_TEST(shrx);
 
 VEX_TEST(vaddpd);
 VEX_TEST(vaddps);
