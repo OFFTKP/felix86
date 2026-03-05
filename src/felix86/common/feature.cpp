@@ -4,12 +4,14 @@
 
 u64 get_xfeature_enabled_mask() {
     u64 result = 0;
-    result |= 0b1; // x87/MMX
-    if (!g_config.no_sse2) {
-        result |= 0b10; // SSE
+    if (is_feature_enabled(x86_feature::MMX)) {
+        result |= 0b1; // x87/MMX
+        if (is_feature_enabled(x86_feature::SSE)) {
+            result |= 0b10; // SSE
 
-        if (!g_config.no_avx) {
-            result |= 0b100; // AVX
+            if (is_feature_enabled(x86_feature::AVX)) {
+                result |= 0b100; // AVX
+            }
         }
     }
     return result;
@@ -42,6 +44,9 @@ bool is_feature_enabled(x86_feature feature) {
         // Zbc is needed for CRC32
         // TODO: Zbc is not part of RVA23 so it shouldn't be necessary for CRC32
         return !g_config.no_sse4_2 && is_feature_enabled(x86_feature::SSE4_1) && Extensions::B;
+    }
+    case x86_feature::OSXSAVE: {
+        return true;
     }
     case x86_feature::AVX: {
         return !g_config.no_avx && is_feature_enabled(x86_feature::SSE4_2) && Extensions::VLEN >= 256;
