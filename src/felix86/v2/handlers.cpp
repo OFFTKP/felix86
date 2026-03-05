@@ -6783,10 +6783,11 @@ FAST_HANDLE(RORX) {
     biscuit::GPR dst = rec.getGPR(&operands[0], X86_SIZE_QWORD);
     biscuit::GPR src = rec.getGPR(&operands[1], X86_SIZE_QWORD);
     u8 shift = rec.getImmediate(&operands[2]);
-    shift &= g_mode32 ? 0x1F : 0x3F;
     if (operands[0].size == 64) {
+        shift &= 0x3F;
         as.RORI(dst, src, shift);
     } else if (operands[0].size == 32) {
+        shift &= 0x1F;
         as.RORIW(dst, src, shift);
     } else {
         UNREACHABLE();
@@ -6824,21 +6825,22 @@ FAST_HANDLE(BZHI) {
     biscuit::GPR temp = rec.scratch();
     biscuit::GPR max = rec.scratch();
     biscuit::GPR neg_shift = rec.scratch();
+    biscuit::GPR result = rec.scratch();
     biscuit::Label no_zero;
-    as.MV(dst, src);
+    as.MV(result, src);
     as.ANDI(temp, index, 0xFF);
     as.LI(max, 63);
     as.BGT(index, max, &no_zero);
     as.NEG(neg_shift, index);
-    as.SLL(dst, dst, neg_shift);
-    as.SRL(dst, dst, neg_shift);
+    as.SLL(result, result, neg_shift);
+    as.SRL(result, result, neg_shift);
     as.Bind(&no_zero);
     if (rec.shouldEmitFlag(rip, X86_REF_CF)) {
         biscuit::GPR cf = rec.flag(X86_REF_CF);
         as.LI(max, operands[0].size - 1);
         as.SGTU(cf, index, max);
     }
-    rec.setGPR(&operands[0], dst);
+    rec.setGPR(&operands[0], result);
     if (rec.shouldEmitFlag(rip, X86_REF_ZF)) {
         biscuit::GPR zf = rec.flag(X86_REF_ZF);
         as.SEQZ(zf, dst);
