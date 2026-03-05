@@ -11,6 +11,7 @@ enum class x86_feature {
     SSSE3,
     SSE4_1,
     SSE4_2,
+    OSXSAVE,
     AVX,
     AVX2,
     BMI1,
