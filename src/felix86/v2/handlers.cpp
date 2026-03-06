@@ -10140,7 +10140,7 @@ FAST_HANDLE(MPSADBW) {
         rec.restoreState();
     } else {
         ASSERT(Extensions::VLEN >= 256);
-        u8 imm = rec.getImmediate(&operands[3]);
+        u8 imm = rec.getImmediate(&operands[2]);
         // TODO: move to literal pool eventually
         struct Iota {
             u8 data[32] = {0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 8, 2, 3, 4, 5, 6, 7, 8, 9, 3, 4, 5, 6, 7, 8, 9, 10};
