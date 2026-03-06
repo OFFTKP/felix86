@@ -10125,17 +10125,68 @@ FAST_HANDLE(PSADBW) {
 }
 
 FAST_HANDLE(MPSADBW) {
-    rec.writebackState();
-    if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
-        as.ADDI(a1, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[1].reg.value) - X86_REF_XMM0));
+    if (Extensions::VLEN == 128) {
+        rec.writebackState();
+        if (operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER) {
+            as.ADDI(a1, rec.threadStatePointer(),
+                    offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[1].reg.value) - X86_REF_XMM0));
+        } else {
+            biscuit::GPR address = rec.lea(&operands[1]);
+            as.MV(a1, address);
+        }
+        as.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[0].reg.value) - X86_REF_XMM0));
+        as.LI(a2, rec.getImmediate(&operands[2]));
+        rec.callPointer(offsetof(ThreadState, felix86_mpsadbw));
+        rec.restoreState();
     } else {
-        biscuit::GPR address = rec.lea(&operands[1]);
-        as.MV(a1, address);
+        ASSERT(Extensions::VLEN >= 256);
+        u8 imm = rec.getImmediate(&operands[3]);
+        // TODO: move to literal pool eventually
+        struct Iota {
+            u8 data[32] = {0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 8, 2, 3, 4, 5, 6, 7, 8, 9, 3, 4, 5, 6, 7, 8, 9, 10};
+        } iota_data;
+        for (int i = 0; i < 32; i++) {
+            iota_data.data[i] += !!(imm & 0b100) * 4;
+        }
+        Literal<Iota> iota_literal(iota_data);
+        biscuit::Vec src1 = rec.getVec(&operands[0]);
+        biscuit::Vec src2 = rec.getVec(&operands[1]);
+        biscuit::Vec iota1 = rec.scratchVec();
+        biscuit::Vec iota2 = rec.scratchVec();
+        biscuit::Vec temp1 = rec.scratchVec();
+        biscuit::Vec temp2 = rec.scratchVec();
+        biscuit::Vec result = rec.scratchVec();
+        biscuit::GPR scratch = rec.scratch();
+        biscuit::GPR address = rec.scratch();
+        as.LI(scratch, 0x80);
+        as.LILiteral(address, &iota_literal);
+        rec.setVectorState(SEW::E8, 32);
+        as.VMV(temp2, scratch);
+        as.VIOTA(iota2, temp2);
+        u8 offset = (imm & 0b11) * 4;
+        if (offset != 0) {
+            as.VADD(iota2, iota2, offset);
+        }
+        as.VLE8(iota1, address);
+        rec.setVectorState(SEW::E8, 32);
+        as.VRGATHER(temp1, src1, iota1);
+        as.VRGATHER(temp2, src2, iota2);
+        as.VMAXU(iota1, temp1, temp2);
+        as.VMINU(iota2, temp1, temp2);
+        as.VSUB(iota1, iota1, iota2);
+        as.VSLIDEDOWN(iota2, iota1, 16);
+        rec.setVectorState(SEW::E8, 16, LMUL::MF2);
+        as.VWADDU(temp1, iota1, iota2);
+        rec.setVectorState(SEW::E16, 8);
+        as.VSLIDEDOWN(temp2, temp1, 8);
+        as.VADD(result, temp1, temp2);
+        rec.setVec(&operands[0], result);
+
+        Label after;
+        as.J(&after);
+        as.Place(&iota_literal);
+        as.Bind(&after);
     }
-    as.ADDI(a0, rec.threadStatePointer(), offsetof(ThreadState, xmm) + sizeof(XmmReg) * (rec.zydisToRef(operands[0].reg.value) - X86_REF_XMM0));
-    as.LI(a2, rec.getImmediate(&operands[2]));
-    rec.callPointer(offsetof(ThreadState, felix86_mpsadbw));
-    rec.restoreState();
 }
 
 FAST_HANDLE(PAVGB) {
