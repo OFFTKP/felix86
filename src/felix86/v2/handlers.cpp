@@ -14287,7 +14287,7 @@ FAST_HANDLE(VMPSADBW) {
         as.VRGATHER(temp2, src2, iota2);
         as.VMAXU(result, temp1, temp2);
         as.VMINU(temp1, temp1, temp2);
-        as.VSUB(temp1, temp1, result);
+        as.VSUB(temp1, result, temp1);
         as.VSLIDEDOWN(temp2, temp1, 16);
         rec.setVectorState(SEW::E8, 16, LMUL::MF2);
         as.VWADDU(temp3, temp1, temp2);
@@ -14303,7 +14303,7 @@ FAST_HANDLE(VMPSADBW) {
         as.VRGATHER(temp2, src2, iota2);
         as.VMAXU(result, temp1, temp2);
         as.VMINU(temp1, temp1, temp2);
-        as.VSUB(temp1, temp1, result);
+        as.VSUB(temp1, result, temp1);
         as.VSLIDEDOWN(temp2, temp1, 16);
         rec.setVectorState(SEW::E8, 16, LMUL::MF2);
         as.VWADDU(temp3, temp1, temp2);
