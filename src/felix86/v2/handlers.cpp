@@ -14268,6 +14268,7 @@ FAST_HANDLE(VMPSADBW) {
         biscuit::Vec iota2 = rec.scratchVec();
         biscuit::Vec temp1 = rec.scratchVec();
         biscuit::Vec temp2 = rec.scratchVec();
+        biscuit::Vec temp3 = rec.scratchVec();
         biscuit::Vec result = rec.scratchVec();
         biscuit::GPR scratch = rec.scratch();
         biscuit::GPR address = rec.scratch();
@@ -14289,10 +14290,10 @@ FAST_HANDLE(VMPSADBW) {
         as.VSUB(temp1, temp1, result);
         as.VSLIDEDOWN(temp2, temp1, 16);
         rec.setVectorState(SEW::E8, 16, LMUL::MF2);
-        as.VWADDU(temp1, temp1, temp2);
+        as.VWADDU(temp3, temp1, temp2);
         rec.setVectorState(SEW::E16, 8);
-        as.VSLIDEDOWN(temp2, temp1, 8);
-        as.VADD(result, temp1, temp2);
+        as.VSLIDEDOWN(temp2, temp3, 8);
+        as.VADD(result, temp3, temp2);
 
         rec.setVectorState(SEW::E8, 32);
         as.LI(scratch, 16);
@@ -14305,10 +14306,10 @@ FAST_HANDLE(VMPSADBW) {
         as.VSUB(temp1, temp1, result);
         as.VSLIDEDOWN(temp2, temp1, 16);
         rec.setVectorState(SEW::E8, 16, LMUL::MF2);
-        as.VWADDU(temp1, temp1, temp2);
+        as.VWADDU(temp3, temp1, temp2);
         rec.setVectorState(SEW::E16, 8);
-        as.VSLIDEDOWN(temp2, temp1, 8);
-        as.VADD(temp1, temp1, temp2);
+        as.VSLIDEDOWN(temp2, temp3, 8);
+        as.VADD(temp1, temp3, temp2);
         as.VSLIDEUP(result, temp1, 8);
 
         rec.setVec(&operands[0], result);
