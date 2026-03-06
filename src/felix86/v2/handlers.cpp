@@ -14285,9 +14285,9 @@ FAST_HANDLE(VMPSADBW) {
         rec.setVectorState(SEW::E8, 32);
         as.VRGATHER(temp1, src1, iota1);
         as.VRGATHER(temp2, src2, iota2);
-        as.VMAXU(result, temp1, temp2);
+        as.VMAXU(temp3, temp1, temp2);
         as.VMINU(temp1, temp1, temp2);
-        as.VSUB(temp1, result, temp1);
+        as.VSUB(temp1, temp3, temp1);
         as.VSLIDEDOWN(temp2, temp1, 16);
         rec.setVectorState(SEW::E8, 16, LMUL::MF2);
         as.VWADDU(temp3, temp1, temp2);
@@ -14301,16 +14301,16 @@ FAST_HANDLE(VMPSADBW) {
         as.VADD(iota2, iota2, scratch);
         as.VRGATHER(temp1, src1, iota1);
         as.VRGATHER(temp2, src2, iota2);
-        as.VMAXU(result, temp1, temp2);
+        as.VMAXU(temp3, temp1, temp2);
         as.VMINU(temp1, temp1, temp2);
-        as.VSUB(temp1, result, temp1);
+        as.VSUB(temp1, temp3, temp1);
         as.VSLIDEDOWN(temp2, temp1, 16);
         rec.setVectorState(SEW::E8, 16, LMUL::MF2);
         as.VWADDU(temp3, temp1, temp2);
         rec.setVectorState(SEW::E16, 8);
         as.VSLIDEDOWN(temp2, temp3, 8);
         as.VADD(temp1, temp3, temp2);
-        as.VSLIDEUP(result, temp1, 8);
+        as.VSLIDEUP(result, temp1, 16);
 
         rec.setVec(&operands[0], result);
 
