@@ -14295,8 +14295,9 @@ FAST_HANDLE(VMPSADBW) {
         as.VADD(result, temp1, temp2);
 
         rec.setVectorState(SEW::E8, 32);
-        as.VADD(iota1, iota1, 16);
-        as.VADD(iota2, iota2, 16);
+        as.LI(scratch, 16);
+        as.VADD(iota1, iota1, scratch);
+        as.VADD(iota2, iota2, scratch);
         as.VRGATHER(temp1, src1, iota1);
         as.VRGATHER(temp2, src2, iota2);
         as.VMAXU(result, temp1, temp2);
