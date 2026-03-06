@@ -14307,10 +14307,10 @@ FAST_HANDLE(VMPSADBW) {
         as.VSLIDEDOWN(temp2, temp1, 16);
         rec.setVectorState(SEW::E8, 16, LMUL::MF2);
         as.VWADDU(temp3, temp1, temp2);
-        rec.setVectorState(SEW::E16, 8);
+        rec.setVectorState(SEW::E16, 16);
         as.VSLIDEDOWN(temp2, temp3, 8);
         as.VADD(temp1, temp3, temp2);
-        as.VSLIDEUP(result, temp1, 16);
+        as.VSLIDEUP(result, temp1, 8);
 
         rec.setVec(&operands[0], result);
 
