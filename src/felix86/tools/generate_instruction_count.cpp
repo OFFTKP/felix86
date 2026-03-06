@@ -1130,6 +1130,8 @@ int main() {
     GEN_SSE(pcmpeqq);
     GEN_SSE(ptest);
 
+    GEN(mpsadbw(xmm0, ptr[rdi], 0b111));
+
     std::ofstream sse4_1("counts/SSE4_1.json");
     sse4_1 << json.dump(4);
     json.clear();

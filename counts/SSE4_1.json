@@ -837,5 +837,43 @@
             "SB              zero, s11, 0x2c9(713)"
         ],
         "disassembly": "ptest xmm1, [rdi]"
+    },
+    "660f3a420707": {
+        "instruction_count": 32,
+        "expected_asm": [
+            "VSETIVLI        zero, 16, e8, m1, tu, mu",
+            "VLE8.V          v2, a0, none, 1",
+            "ADDIW           ra, zero, 0x80(128)",
+            "AUIPC           t1, 0x0(0)",
+            "ADDI            t1, t1, 0x54(84)",
+            "ADDIW           t3, zero, 0x20(32)",
+            "VSETVLI         zero, t3, e8, m1, tu, mu",
+            "VMV.V.X         v6, ra",
+            "VIOTA.M         v4, v6, none",
+            "VADD.VI         v4, v4, 0xc(12), none",
+            "VLE8.V          v3, t1, none, 1",
+            "VRGATHER.VV     v5, v16, v3, none",
+            "VRGATHER.VV     v6, v2, v4, none",
+            "VMAXU.VV        v3, v5, v6, none",
+            "VMINU.VV        v4, v5, v6, none",
+            "VSUB.VV         v3, v3, v4, none",
+            "VSLIDEDOWN.VI   v4, v3, 0xfffffff0(-16), none",
+            "VSETIVLI        zero, 16, e8, mf2, tu, mu",
+            "VWADDU.VV       v5, v3, v4, none",
+            "VSETIVLI        zero, 8, e16, m1, tu, mu",
+            "VSLIDEDOWN.VI   v6, v5, 0x8(8), none",
+            "VADD.VV         v7, v5, v6, none",
+            "VMV.V.V         v16, v7",
+            "JAL             zero, 0x24(36)",
+            "04050607 ???",
+            "08090A0B ???",
+            "05060708 ???",
+            "090A0B0C ???",
+            "06070809 ???",
+            "0A0B0C0D ???",
+            "VLSE8.V         v16, zero, s2, none, 1",
+            "0B0C0D0E ???"
+        ],
+        "disassembly": "mpsadbw xmm0, [rdi], 0x07"
     }
 }
